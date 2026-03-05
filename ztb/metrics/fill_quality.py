@@ -131,6 +131,10 @@ class FillRecord:
     pending_reconciliation: bool | None = None  # True=status_unknown発生→次サイクルで再照合
     # 181# EV_weighted: 30s/120s 加重平均 PnL (178# §1.3 設計)
     ev_weighted_pnl: float | None = None  # 0.4*pnl30 + 0.6*pnl120 (bps)
+    # 292# P0: ev_weighted 可観測性強化 (290#/291# review)
+    ev_score_pretrade: float | None = None        # ランタイム ev_score (ex-ante 予測値)
+    ev_offset_mult_applied: float | None = None   # 実適用 offset 乗数 (1.0=変更なし)
+    decision_path: str | None = None              # "primary_only" / "ev_offset" / "ev_emergency_skip"
     # 187# B-2: guard_trace — gated_regime + effective_cycle_interval 記録
     gated_regime: str | None = None              # ヒステリシス適用後の実効 regime
     effective_cycle_interval: float | None = None  # 使用されたサイクル間隔 (秒)

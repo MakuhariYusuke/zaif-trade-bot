@@ -2197,6 +2197,12 @@ class FillLoopOrchestratorMixin:
             ):
                 _vel = self._maker_price.last_mid_trend_bps
                 _thr = self.config.forced_buy_delay_velocity_threshold_bps
+                # 292# P1: ranging/trending_down では緩い閾値を適用
+                _ranging_thr = self.config.forced_buy_delay_velocity_threshold_ranging_bps
+                if _ranging_thr is not None and self._regime_detector is not None:
+                    _cur_regime = self._regime_detector.current_regime.value
+                    if _cur_regime in ("ranging", "trending_down"):
+                        _thr = _ranging_thr
                 if _vel is not None and _vel <= _thr:
                     self._forced_buy_delay_remaining = max(
                         self._forced_buy_delay_remaining,

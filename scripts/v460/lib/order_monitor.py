@@ -524,6 +524,18 @@ class OrderMonitor:
                                 min_order_btc,
                                 int(current_lot / min_order_btc) * min_order_btc,
                             )
+                            # 292# P1: reprice deadband — queue position 保護
+                            _min_delta = cfg.stale_reprice_min_delta_jpy
+                            if _min_delta > 0 and abs(new_price - order_price) < _min_delta:
+                                logger.info(
+                                    f"[stale_order] Reprice deadband: "
+                                    f"|{new_price:.0f} - {order_price:.0f}| = "
+                                    f"{abs(new_price - order_price):.0f} < "
+                                    f"min_delta={_min_delta:.0f} JPY. "
+                                    f"Skip reprice to protect queue position"
+                                )
+                                # キャンセル済みなので再発注 (同じ価格で queue 復帰)
+                                new_price = order_price
                             new_order = await adapter.place_order(
                                 symbol=cfg.symbol,
                                 side=side,

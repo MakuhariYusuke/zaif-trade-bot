@@ -2,8 +2,8 @@
 
 > **目的**: fill_test buy 側の PnL 劣化根本原因を特定し、  
 > G1.2-full 完了後に実施すべき改善施策を優先順位付きで提案する  
-> **日付**: 2026-03-06 (深堀り改訂版 v3 — ev_weighted tautology 確認済)  
-> **SHA**: `e7d2f50d9bda` (287# fix 適用済)  
+> **日付**: 2026-03-06 (v4 — 290#/291# review 反映)  
+> **SHA**: `2e414ee7e` → 292# で FillRecord 可観測性強化  
 > **制約**: G1.2-full 168h 測定中のためコード/YAML 変更不可
 
 ---
@@ -175,27 +175,43 @@ ev 期 (02-28+) の buy filled 209 件中:
 - `model_used=ev_weighted:ev_weighted_buy`: **20 件** (9.6%) — ev_weighted 使用
 - `model_used=None`: 9 件 (4.3%)
 
+> ⚠️ **v4 修正 (290# review)**: 上記の `model_used` ベースの利用率 9.6% は
+> **誤ったプロキシ**。`ev_as_offset_enabled=true` モード (現在の本番設定) では、
+> SkipGate は ev_score を計算するが、`model_used` は常に `primary:side_buy` のまま
+> (`skip_gate_evaluator.py` L1203-1207)。ev_weighted 判定で decision が変わるのは
+> emergency_skip 時のみ。つまり **実際の ev パス利用率は 9.6% より遥かに高い
+> (≒ 100% に近い)** が、FillRecord に記録されていなかった。
+>
+> 292# で `ev_score_pretrade`, `ev_offset_mult_applied`, `decision_path` の
+> 3 フィールドを追加し、この可観測性ギャップを解消。
+
 ev_weighted 使用 20 件での予測 ev_score vs PnL30:  
 Spearman ρ=-0.110 (p=0.645) — **非有意、サンプル不足**
 
 → ランタイム ev_score の予測力は**評価不能** (n=20 は統計的に無意味)。
+→ **292# 以降の新データで `ev_score_pretrade` を蓄積して再評価可能に。**
 
-### 4.6 ev_weighted パス利用率の低さの原因
+### 4.6 ~~ev_weighted パス利用率の低さの原因~~ (290# で解消)
 
-209 件中 20 件 (9.6%) しか ev_weighted パスを通らない理由 (要調査):
-1. alt model (pnl120_buy) のロード失敗?
-2. AS mode で ev_weighted が不適用? (コード上明示: AS mode → ev_weighted skip)
-3. 特定の regime/条件で bypass?
+> ⚠️ **v4 修正**: 289# v3 で「9.6% しか ev_weighted パスを通らない」と報告したが、
+> これは `model_used` フィールドが `ev_as_offset` モードを反映しない仕様に起因。
+> 実際には ev_score は毎サイクル計算されており、offset 乗数として適用されていた。
+> 292# の FillRecord 拡張で定量的に追跡可能になった。
 
-→ **ev_weighted の改善効果を活かすには、まずパス利用率を上げることが前提**。
+~~209 件中 20 件 (9.6%) しか ev_weighted パスを通らない理由 (要調査):~~
+~~1. alt model (pnl120_buy) のロード失敗?~~
+~~2. AS mode で ev_weighted が不適用? (コード上明示: AS mode → ev_weighted skip)~~
+~~3. 特定の regime/条件で bypass?~~
+
+~~→ **ev_weighted の改善効果を活かすには、まずパス利用率を上げることが前提**。~~
 
 ### 4.7 ✅ ev_weighted の結論
 
 | 仮説 | 検証結果 | 判定 |
 |---|---|---|
 | H4: ev_weighted_pnl ρ=0.88 は予測力 | Tautological (ex-post 値) | **棄却** |
-| H5: ランタイム ev_score は予測的 | n=20、ρ=-0.110 (p=0.645) | **評価不能** |
-| H6: ev_weighted パスが十分利用されている | 9.6% のみ | **否定** |
+| H5: ランタイム ev_score は予測的 | n=20、ρ=-0.110 (p=0.645) | **評価不能 → 292# で蓄積開始** |
+| ~~H6: ev_weighted パスが十分利用されている~~ | ~~9.6% のみ~~ | **v4 修正: model_used は誤プロキシ** |
 
 > ⚠️ v2 で提案した「ev_emergency_threshold 引下げで +0.94bps」は  
 > **tautological な ev_weighted_pnl に基づく invalid な SIM** であった。  
@@ -342,7 +358,7 @@ PnL30 が負 → PnL120 が正に回復: **16.4%** のケース
 | R6 | 「SG score 改善は不要か」 | 無識別 ≠ 害。adaptive threshold が SG score に依存しているため、識別力向上は adaptive 精度向上に繋がる。長期的には重要 |
 | R7 | 「旧モデル期のデータは除外すべき」 | 分析上は除外済み。但しモデル再訓練時は全データ使用するため、旧期間のバイアスが混入するリスクあり |
 | R8 | 「Q5がQ1より悪いのは偶然か」 | p=0.61 で有意差なし。Q5=-1.27 はノイズの範囲内 |
-| R9 | 「ランタイム ev_score は有効かも」 | 可能性あり。但し n=20 で評価不能。ev_weighted パス利用率 9.6% を上げることが先決 |
+| R9 | 「ランタイム ev_score は有効かも」 | 可能性あり。292# で `ev_score_pretrade` を FillRecord に追加、蓄積後に再評価 |
 
 ### 7.3 ev_weighted_pnl フィールドの正体 ✅ RESOLVED
 
@@ -356,19 +372,24 @@ PnL30 が負 → PnL120 が正に回復: **16.4%** のケース
 
 ---
 
-## 8. ev_weighted パス利用率の調査 (新 TODO)
+## 8. ~~ev_weighted パス利用率の調査~~ (290# で解消 → 292# で可観測性強化済)
 
-ev_weighted 期 (02-28+) の buy filled 209 件中 ev_weighted パスを通ったのは 20 件 (9.6%) のみ。  
-残り 180 件 (86.1%) は primary:side_buy で判定されており、  
-ev_weighted offset modifier が適用されていない。
+> ⚠️ **v4 修正**: `model_used` は `ev_as_offset` モードの利用率を反映しない
+> (skip_gate_evaluator.py L1203-1207)。実際にはほぼ全 cycle で ev_score が
+> 計算されoffset に適用されていた。
+>
+> 292# で以下の 3 フィールドを FillRecord に追加し、この盲点を解消:
+> - `ev_score_pretrade`: ランタイム ev_score (ex-ante 予測値)
+> - `ev_offset_mult_applied`: 実適用 offset 乗数 (1.0=変更なし)
+> - `decision_path`: "primary_only" / "ev_offset" / "ev_emergency_skip" / "ev_no_change"
 
-確認すべき事項:
-1. alt model (`skip_gate_lgbm_pnl120_buy.pkl`) のロード状態
-2. `skip_gate_ev_weighted_enabled` が fill_test 中に常に True か
-3. AS mode 判定が多発していないか (AS mode では ev_weighted bypass)
-4. ログ確認: `[skip_gate] 188# ev_weighted skipped` の出現頻度
+~~確認すべき事項:~~
+~~1. alt model (`skip_gate_lgbm_pnl120_buy.pkl`) のロード状態~~
+~~2. `skip_gate_ev_weighted_enabled` が fill_test 中に常に True か~~
+~~3. AS mode 判定が多発していないか (AS mode では ev_weighted bypass)~~
+~~4. ログ確認: `[skip_gate] 188# ev_weighted skipped` の出現頻度~~
 
-**ev_weighted パスが 90% 不使用なら、offset modifier 改善の効果も 10% に限定される。**
+~~**ev_weighted パスが 90% 不使用なら、offset modifier 改善の効果も 10% に限定される。**~~
 
 ---
 
@@ -434,10 +455,12 @@ ev_weighted offset modifier が適用されていない。
 
 ## 10. 改善施策ロードマップ (G1.2-full 完了後)
 
-### 10.1 最優先: ev_weighted パス利用率の調査
+### 10.1 ~~最優先: ev_weighted パス利用率の調査~~ → 292# で解消
 
-- 9.6% → 目標 80%+ に引き上げれば offset modifier が機能
-- alt model ロード状態、AS mode bypass 頻度を確認
+- ~~9.6% → 目標 80%+ に引き上げれば offset modifier が機能~~
+- ~~alt model ロード状態、AS mode bypass 頻度を確認~~
+- **v4 修正**: 290# で `model_used` は ev_as_offset モードの誤プロキシと判明。
+  292# で `ev_score_pretrade`, `decision_path` を追加し、真の利用率を追跡可能に。
 
 ### 10.2 ~~Phase A: ev_weighted 閾値調整~~ ❌ 凍結
 
@@ -513,7 +536,7 @@ Phase B (hour_offsets 追加) は ev_weighted と独立して即実行可能
 | F-6 | Buy は PnL120 > PnL30 (回復傾向) | mean -0.667→-0.337, win% 46.5→50.0 | ○ |
 | F-7 | Buy model は trending_up/down を訓練データに含まない | metadata 確認済 | ◎ |
 | F-8 | **ev_weighted_pnl (ρ=0.88) は tautological — ex-post 値** | コード検証 + 完全一致確認 | ◎ |
-| F-9 | **ev_weighted パス利用率はわずか 9.6%** | 209 件中 20 件のみ ev_weighted 判定 | ◎ |
+| F-9 | ~~ev_weighted パス利用率はわずか 9.6%~~ | ~~209 件中 20 件のみ~~ → **290# で model_used は誤プロキシと判明。292# で解消** | ◎ |
 
 ### 12.2 要確認事項
 
@@ -521,7 +544,7 @@ Phase B (hour_offsets 追加) は ev_weighted と独立して即実行可能
 |---|---|---|---|
 | ~~V-1~~ | ~~ev_weighted_pnl が ex-ante か ex-post か~~ | ✅ RESOLVED: ex-post (tautological) | ✅ 完了 |
 | ~~V-2~~ | ~~ev_weighted の ρ=0.88 が tautological でないか~~ | ✅ RESOLVED: tautological confirmed | ✅ 完了 |
-| V-3 | ev_weighted パス利用率 9.6% の原因 | offset modifier の実効性全体 | 🔴 最優先 |
+| ~~V-3~~ | ~~ev_weighted パス利用率 9.6% の原因~~ | ✅ RESOLVED: model_used は ev_as_offset の誤プロキシ (290#)。292# で FillRecord 拡張 | ✅ 完了 |
 | V-4 | ランタイム ev_score (predicted) の予測力 | ev_emergency threshold 最適化の可否 | 🟡 n蓄積後 |
 | V-5 | sell 側の ev_weighted パス利用率 | 対照群検証 | 🟡 中 |
 
@@ -543,7 +566,7 @@ Phase B (hour_offsets 追加) は ev_weighted と独立して即実行可能
 | v2「ev < -4 skip で +1.013bps」 | **無効** — 事後値でフィルタ (leakage) | ev_weighted_pnl に基づく全 SIM が無効 |
 | v2「Phase A: ev_emergency -8→-5」 | **凍結** — 根拠消失 | tautological SIM に基づく提案 |
 | v2「ev_weighted が唯一の有効識別器」 | **SG score も ev_weighted_pnl も識別力なし** | 前者は non-discriminating、後者は tautological |
-| ev_weighted への言及なし (v1) → 「発見」 (v2) | ev_weighted **パス利用率 9.6%** が新たな問題 | ランタイム ev_score の検証は n 不足で未完 |
+| ev_weighted への言及なし (v1) → 「発見」 (v2) | ~~ev_weighted パス利用率 9.6%~~ → **290# で model_used 誤プロキシ判明、292# で解消** | ランタイム ev_score の検証は n 不足で未完 → 292# で蓄積開始 |
 | 最大レバー: ev threshold (v2) | **最大レバー: 夜間 skip (Phase B, YAML)** | 統計的に堅牢かつ ev と独立 |
 
 ## Appendix B: 統計的検定サマリー

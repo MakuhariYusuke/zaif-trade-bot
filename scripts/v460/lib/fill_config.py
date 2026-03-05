@@ -369,6 +369,8 @@ class FillTestConfig:
     stale_max_reprice_sell: int | None = None        # sell 側最大 reprice (None=共通値)
     # 158# P1-2: reprice 時の offset 引き締め (1.0=変更なし, 0.85=15% 引き締め→より市場価格に近づける)
     stale_reprice_tighten: float = 1.0
+    # 292# P1: reprice deadband — 価格差がこの値未満なら queue 保護のためスキップ
+    stale_reprice_min_delta_jpy: float = 0.0
     # 168# P2-C3: reprice SkipGate 閾値緩和 offset
     stale_reprice_skip_gate_offset: float = 0.0
     # 096# adapter recency window (全履歴混合を停止)
@@ -521,6 +523,8 @@ class FillTestConfig:
     forced_buy_delay_enabled: bool = False          # True で遅延実行を有効化
     forced_buy_delay_velocity_threshold_bps: float = -5.0  # velocity がこの値以下で遅延発動
     forced_buy_delay_cycles: int = 3                # 遅延サイクル数
+    # 292# P1: ranging/trending_down 時の緩和閾値 (None=共通値使用)
+    forced_buy_delay_velocity_threshold_ranging_bps: float | None = None
     # 249# dual_kill_bypass → quiescence: 両方 kill 時は休止 (242# "No Trade = normal")
     dual_kill_quiescence_enabled: bool = False  # True で dual_kill_bypass を無効化 → 静観
     # ---- 137# P1-08: spread 狭小時の「休む」判定 ----
@@ -1137,6 +1141,7 @@ class FillTestConfig:
             "max_reprice_sell": "stale_max_reprice_sell",
             # 158# P1-2: reprice offset tightening
             "reprice_tighten": "stale_reprice_tighten",
+            "reprice_min_delta_jpy": "stale_reprice_min_delta_jpy",
             "reprice_skip_gate_offset": "stale_reprice_skip_gate_offset",
         }
         for yaml_key, config_key in so_map.items():
@@ -1381,6 +1386,10 @@ class FillTestConfig:
             kwargs["forced_buy_delay_velocity_threshold_bps"] = float(fbd["velocity_threshold_bps"])
         if "cycles" in fbd:
             kwargs["forced_buy_delay_cycles"] = int(fbd["cycles"])
+        if "velocity_threshold_ranging_bps" in fbd:
+            kwargs["forced_buy_delay_velocity_threshold_ranging_bps"] = float(
+                fbd["velocity_threshold_ranging_bps"]
+            )
 
         # 249# dual_kill_quiescence
         _dkq = 止血.get("dual_kill_quiescence_enabled")

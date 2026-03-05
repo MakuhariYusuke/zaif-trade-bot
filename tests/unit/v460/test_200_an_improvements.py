@@ -15,8 +15,26 @@ M: ev_as_offset warning zone + DRY
 from __future__ import annotations
 
 import math
+from typing import get_args
 
 import pytest
+
+from scripts.v460.lib import cancel_reasons as CR
+from scripts.v460.lib.cancel_reasons import CancelReason
+from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
+from scripts.v460.lib.fill_config import FillTestConfig, compute_ev_offset_multiplier
+from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
+from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+from scripts.v460.lib.regime_detector import (
+    FillTestRegime,
+    FillTestRegimeDetector,
+    RegimeConfig,
+)
+from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+from scripts.v460.lib.velocity_math import (
+    compute_instant_velocity_bps,
+    compute_velocity_offset_multiplier,
+)
 
 
 class TestSoftDrawdownIntervalMultiplierReset:
@@ -24,7 +42,6 @@ class TestSoftDrawdownIntervalMultiplierReset:
 
     def test_maybe_reset_day_resets_soft_triggered(self) -> None:
         """daily_drawdown_guard.maybe_reset_day() が True を返す場合を確認."""
-        from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
         guard = DailyDrawdownGuard(enabled=True, hard_limit_bps=-50.0, soft_limit_bps=-30.0)
         # 初回は current_day=None → reset
         result = guard.maybe_reset_day()
@@ -37,17 +54,13 @@ class TestPostonlyCrossingSkip:
     """B/I: POSTONLY_CROSSING_SKIP cancel reason が存在すること."""
 
     def test_cancel_reason_constant(self) -> None:
-        from scripts.v460.lib import cancel_reasons as CR
         assert CR.POSTONLY_CROSSING_SKIP == "postonly_crossing_skip"
 
     def test_in_audit_set(self) -> None:
-        from scripts.v460.lib import cancel_reasons as CR
         assert CR.POSTONLY_CROSSING_SKIP in CR.AUDIT_CANCEL_REASONS
 
     def test_in_cancel_reason_literal(self) -> None:
         """CancelReason Literal に含まれること."""
-        from scripts.v460.lib.cancel_reasons import CancelReason
-        from typing import get_args
         assert "postonly_crossing_skip" in get_args(CancelReason)
 
 
@@ -55,7 +68,6 @@ class TestLowVolBoostProportional:
     """C: low_vol_boost 比例モード."""
 
     def test_config_fields_exist(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert hasattr(cfg, "low_vol_boost_proportional")
         assert hasattr(cfg, "low_vol_boost_min")
@@ -92,7 +104,6 @@ class TestBalanceForcedCooldown:
     """E: balance_forced_cooldown_sec config."""
 
     def test_config_field_exists(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert hasattr(cfg, "balance_forced_cooldown_sec")
         assert cfg.balance_forced_cooldown_sec == 0.0  # default: disabled
@@ -145,15 +156,11 @@ class TestRegimeVelocityModulation:
     """H: regime velocity modulation (opt-in)."""
 
     def test_velocity_modulation_disabled_by_default(self) -> None:
-        from scripts.v460.lib.regime_detector import RegimeConfig
         cfg = RegimeConfig()
         assert cfg.velocity_modulation is False
 
     def test_velocity_modulation_increases_confidence_on_match(self) -> None:
         """velocity が trend 方向と一致 → confidence 強化."""
-        from scripts.v460.lib.regime_detector import (
-            FillTestRegimeDetector, RegimeConfig, FillTestRegime,
-        )
         cfg = RegimeConfig(
             window=10,
             velocity_modulation=True,
@@ -193,7 +200,6 @@ class TestVelocityMath:
     """L: velocity_math SSOT モジュール."""
 
     def test_fixed_mode(self) -> None:
-        from scripts.v460.lib.velocity_math import compute_velocity_offset_multiplier
         mult, prop = compute_velocity_offset_multiplier(
             observed_velocity_bps=10.0,
             threshold_bps=5.0,
@@ -205,7 +211,6 @@ class TestVelocityMath:
         assert prop is False
 
     def test_proportional_mode(self) -> None:
-        from scripts.v460.lib.velocity_math import compute_velocity_offset_multiplier
         mult, prop = compute_velocity_offset_multiplier(
             observed_velocity_bps=10.0,
             threshold_bps=5.0,
@@ -219,7 +224,6 @@ class TestVelocityMath:
         assert prop is True
 
     def test_capped_at_max(self) -> None:
-        from scripts.v460.lib.velocity_math import compute_velocity_offset_multiplier
         mult, _ = compute_velocity_offset_multiplier(
             observed_velocity_bps=100.0,
             threshold_bps=5.0,
@@ -231,8 +235,6 @@ class TestVelocityMath:
 
     def test_ssot_matches_evaluator_static_method(self) -> None:
         """skip_gate_evaluator の static method が velocity_math に委譲していること."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        from scripts.v460.lib.velocity_math import compute_velocity_offset_multiplier
         # 同一引数で同一結果
         kwargs = dict(
             observed_velocity_bps=7.5,
@@ -251,7 +253,6 @@ class TestInstantVelocityBps:
 
     def test_normal_upward(self) -> None:
         """上昇の場合に正の bps を返すこと。"""
-        from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
 
         result = compute_instant_velocity_bps(
             current_mid=10_100_000.0,
@@ -265,7 +266,6 @@ class TestInstantVelocityBps:
 
     def test_normal_downward(self) -> None:
         """下降の場合に負の bps を返すこと。"""
-        from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
 
         result = compute_instant_velocity_bps(
             current_mid=9_950_000.0,
@@ -278,7 +278,6 @@ class TestInstantVelocityBps:
 
     def test_stale_returns_none(self) -> None:
         """dt が max_dt 以上の場合は None を返すこと。"""
-        from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
 
         result = compute_instant_velocity_bps(
             current_mid=10_100_000.0,
@@ -290,7 +289,6 @@ class TestInstantVelocityBps:
 
     def test_zero_dt_returns_none(self) -> None:
         """dt=0 の場合は None を返すこと。"""
-        from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
 
         result = compute_instant_velocity_bps(
             current_mid=10_100_000.0,
@@ -302,7 +300,6 @@ class TestInstantVelocityBps:
 
     def test_zero_prev_mid_returns_none(self) -> None:
         """prev_mid=0 の場合は None を返すこと (0 除算防止)。"""
-        from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
 
         result = compute_instant_velocity_bps(
             current_mid=10_000_000.0,
@@ -314,7 +311,6 @@ class TestInstantVelocityBps:
 
     def test_sign_convention_matches_trade_velocity(self) -> None:
         """符号規約が price_velocity_bps と同一 (正=上昇) であること。"""
-        from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
 
         up = compute_instant_velocity_bps(
             current_mid=10_010_000.0, prev_mid=10_000_000.0,
@@ -332,7 +328,6 @@ class TestEvOffsetWarningZone:
     """M: ev_as_offset warning zone + DRY."""
 
     def test_compute_ev_offset_multiplier_normal(self) -> None:
-        from scripts.v460.lib.fill_config import compute_ev_offset_multiplier
         # ev_score=0 → mult=1.0
         mult = compute_ev_offset_multiplier(
             ev_score=0.0, sensitivity=0.05, min_mult=0.5, max_mult=1.5,
@@ -340,7 +335,6 @@ class TestEvOffsetWarningZone:
         assert mult == 1.0
 
     def test_positive_ev_boosts(self) -> None:
-        from scripts.v460.lib.fill_config import compute_ev_offset_multiplier
         mult = compute_ev_offset_multiplier(
             ev_score=5.0, sensitivity=0.05, min_mult=0.5, max_mult=1.5,
         )
@@ -348,7 +342,6 @@ class TestEvOffsetWarningZone:
         assert abs(mult - 1.25) < 0.001
 
     def test_warning_zone_additional_tightening(self) -> None:
-        from scripts.v460.lib.fill_config import compute_ev_offset_multiplier
         # ev_score=-5.0 (below warning threshold -4.0)
         # raw = 1.0 + 0.05*(-5) = 0.75
         # warning factor 0.7 → 0.75 * 0.7 = 0.525
@@ -359,7 +352,6 @@ class TestEvOffsetWarningZone:
         assert abs(mult - 0.525) < 0.001
 
     def test_above_warning_no_factor(self) -> None:
-        from scripts.v460.lib.fill_config import compute_ev_offset_multiplier
         # ev_score=-3.0 (above warning threshold -4.0)
         # raw = 1.0 + 0.05*(-3) = 0.85 → no warning factor
         mult = compute_ev_offset_multiplier(
@@ -369,7 +361,6 @@ class TestEvOffsetWarningZone:
         assert abs(mult - 0.85) < 0.001
 
     def test_config_warning_fields_exist(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert hasattr(cfg, "skip_gate_ev_warning_threshold")
         assert hasattr(cfg, "skip_gate_ev_warning_offset_factor")
@@ -381,12 +372,10 @@ class TestSoftDrawdownIntervalConfig:
     """10-E: soft_drawdown_interval_multiplier YAML 外部化."""
 
     def test_config_field_default(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.soft_drawdown_interval_multiplier == 3.0
 
     def test_yaml_parsing(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         kwargs = FillTestConfig._parse_stopgap_section({
             "止血": {
                 "daily_drawdown": {
@@ -409,27 +398,22 @@ class TestPostInitValidation201:
     """201# review: 新規フィールドの __post_init__ バリデーション."""
 
     def test_soft_drawdown_multiplier_zero_raises(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         with pytest.raises(ValueError, match="soft_drawdown_interval_multiplier must be > 0"):
             FillTestConfig(soft_drawdown_interval_multiplier=0.0)
 
     def test_soft_drawdown_multiplier_negative_raises(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         with pytest.raises(ValueError, match="soft_drawdown_interval_multiplier must be > 0"):
             FillTestConfig(soft_drawdown_interval_multiplier=-1.0)
 
     def test_low_vol_boost_min_below_one_raises(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         with pytest.raises(ValueError, match="low_vol_boost_min must be >= 1.0"):
             FillTestConfig(low_vol_boost_min=0.5)
 
     def test_low_vol_boost_min_exceeds_max_raises(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         with pytest.raises(ValueError, match="low_vol_boost_min.*must be <=.*low_vol_offset_boost"):
             FillTestConfig(low_vol_boost_min=2.0, low_vol_offset_boost=1.4)
 
     def test_balance_forced_cooldown_negative_raises(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         with pytest.raises(ValueError, match="balance_forced_cooldown_sec must be >= 0"):
             FillTestConfig(balance_forced_cooldown_sec=-1.0)
 
@@ -438,7 +422,6 @@ class TestCooldownYamlWiring:
     """201# review: balance_forced_cooldown_sec YAML 配線."""
 
     def test_cooldown_parsed_from_yaml(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         kwargs = FillTestConfig._parse_stopgap_section({
             "止血": {
                 "balance_forced_cooldown_sec": 30.0,
@@ -451,7 +434,6 @@ class TestPostonlyCrossingStreak:
     """201# review: crossing 連続発生カウンタ."""
 
     def test_crossing_streak_class_attr_exists(self) -> None:
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
         assert hasattr(FillCycleExecutorMixin, "_postonly_crossing_streak")
         assert FillCycleExecutorMixin._postonly_crossing_streak == 0
 
@@ -460,15 +442,12 @@ class TestOrchestratorClassAttrs:
     """201# review: 動的属性のクラスレベル宣言."""
 
     def test_mixin_declares_soft_dd_mult(self) -> None:
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         assert hasattr(FillLoopOrchestratorMixin, "_soft_drawdown_interval_multiplier")
         assert FillLoopOrchestratorMixin._soft_drawdown_interval_multiplier == 1.0
 
     def test_mixin_declares_halt_start_cycle(self) -> None:
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         assert FillLoopOrchestratorMixin._halt_start_cycle is None
 
     def test_mixin_declares_balance_forced_attrs(self) -> None:
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         assert FillLoopOrchestratorMixin._last_balance_forced_time == 0.0
         assert FillLoopOrchestratorMixin._balance_forced_freq_count == 0

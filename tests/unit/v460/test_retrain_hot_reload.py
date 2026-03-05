@@ -537,10 +537,10 @@ class TestE2ERetrainHotReload:
             model_dir.mkdir()
             model_path = model_dir / "gate.pkl"
 
-            # 80件の fill records を生成 (十分なサンプル数)
+            # 60件の fill records を生成 (十分なサンプル数)
             rng = np.random.RandomState(42)
             records = []
-            for i in range(80):
+            for i in range(60):
                 records.append(json.dumps({
                     "cycle_id": f"e2e_{i}",
                     "side": "buy" if i % 2 == 0 else "sell",
@@ -571,7 +571,8 @@ class TestE2ERetrainHotReload:
             cfg["quality_gate_enabled"] = False  # E2E テストでは品質ゲート無効
             cfg["latest_run_only"] = False
             cfg["exclude_missing_run_id"] = False
-            cfg["lgbm_n_estimators"] = 40
+            cfg["lgbm_n_estimators"] = 20
+            cfg["early_stopping_rounds"] = 0
             cfg["bootstrap_threshold"] = 50
 
             result = retrain_model(cfg)

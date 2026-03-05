@@ -274,7 +274,7 @@ class TestManifest:
 
     def test_write_and_read(self, tmp_path: Path) -> None:
 
-        mw = ManifestWriter(path=tmp_path / "manifest.jsonl")
+        mw = ManifestWriter(path=tmp_path / "manifest.jsonl", sync_writes=False)
         entry = mw.start_run(
             config_path="test.yaml",
             config={"seed": 42},
@@ -311,14 +311,14 @@ class TestManifest:
             f.write('["not","object"]\n')
             f.write('{"run_id":"ok2","status":"completed"}\n')
 
-        mw = ManifestWriter(path=manifest_path)
+        mw = ManifestWriter(path=manifest_path, sync_writes=False)
         entries = mw.read_all()
         run_ids = [str(entry.get("run_id")) for entry in entries]
         assert run_ids == ["ok1", "ok2"]
 
     def test_start_run_with_empty_data_path_is_pending(self, tmp_path: Path) -> None:
 
-        mw = ManifestWriter(path=tmp_path / "manifest.jsonl")
+        mw = ManifestWriter(path=tmp_path / "manifest.jsonl", sync_writes=False)
         entry = mw.start_run(
             config_path="test.yaml",
             config={"seed": 7},
@@ -330,7 +330,7 @@ class TestManifest:
 
     def test_start_run_with_directory_data_path_is_pending(self, tmp_path: Path) -> None:
 
-        mw = ManifestWriter(path=tmp_path / "manifest.jsonl")
+        mw = ManifestWriter(path=tmp_path / "manifest.jsonl", sync_writes=False)
         entry = mw.start_run(
             config_path="test.yaml",
             config={"seed": 8},

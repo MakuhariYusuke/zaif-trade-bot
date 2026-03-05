@@ -122,6 +122,14 @@ def _compute_data_hash(data_path: str) -> str:
         return "pending"
 
 
+def _resolve_sync_writes(default: bool = True) -> bool:
+    """Manifest fsync 動作を環境変数で切り替える."""
+    raw = os.getenv("ZTB_MANIFEST_SYNC_WRITES")
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 @dataclass
 class ManifestEntry:
     """Single run entry for manifest.jsonl — §4.3 schema."""
@@ -153,9 +161,15 @@ class ManifestEntry:
 class ManifestWriter:
     """JSONL append-only manifest writer."""
 
-    def __init__(self, path: str | Path | None = None) -> None:
+    def __init__(
+        self,
+        path: str | Path | None = None,
+        *,
+        sync_writes: bool | None = None,
+    ) -> None:
         self.path = Path(path) if path else _PROJECT_ROOT / "results" / "v460" / "manifest.jsonl"
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._sync_writes = _resolve_sync_writes() if sync_writes is None else bool(sync_writes)
 
     def start_run(
         self,
@@ -215,7 +229,8 @@ class ManifestWriter:
         with open(self.path, "a", encoding="utf-8") as f:
             f.write(entry.to_json() + "\n")
             f.flush()
-            os.fsync(f.fileno())  # 032#16: ディスクフル時の部分書き込み防止
+            if self._sync_writes:
+                os.fsync(f.fileno())  # 032#16: ディスクフル時の部分書き込み防止
 
     def read_all(self) -> list[JSONDict]:
         """Read all manifest entries, skipping malformed lines."""

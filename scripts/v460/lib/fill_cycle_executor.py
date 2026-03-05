@@ -279,6 +279,9 @@ class FillCycleExecutorMixin:
         order_lot: float,
         cancel_failed_likely_filled: bool,
         mid_at_fill: float | None,
+        ev_score_pretrade: float | None = None,
+        ev_offset_mult_applied: float | None = None,
+        decision_path: str | None = None,
     ) -> dict[str, object]:
         """FillRecord の市場観測/実行メタ系フィールドを構築."""
         return {
@@ -324,6 +327,10 @@ class FillCycleExecutorMixin:
             ),
             "ab_test_variant": self.config.ab_test_variant or None,
             "cancel_failed_likely_filled": cancel_failed_likely_filled or None,
+            # 292# P0: ev_weighted 可観測性強化 (290#/291# review)
+            "ev_score_pretrade": ev_score_pretrade,
+            "ev_offset_mult_applied": ev_offset_mult_applied,
+            "decision_path": decision_path,
         }
 
     def _build_fill_strategy_fields(
@@ -570,6 +577,9 @@ class FillCycleExecutorMixin:
         macro_slope_5m: float | None = None,
         macro_slope_15m: float | None = None,
         macro_aligned: bool | None = None,
+        ev_score_pretrade: float | None = None,
+        ev_offset_mult_applied: float | None = None,
+        decision_path: str | None = None,
     ) -> FillRecord:
         """188# FillRecord を組み立てる.
 
@@ -624,6 +634,9 @@ class FillCycleExecutorMixin:
                 order_lot=order_lot,
                 cancel_failed_likely_filled=cancel_failed_likely_filled,
                 mid_at_fill=pnl.mid_at_fill,
+                ev_score_pretrade=ev_score_pretrade,
+                ev_offset_mult_applied=ev_offset_mult_applied,
+                decision_path=decision_path,
             )
         )
         payload.update(
@@ -673,6 +686,38 @@ class FillCycleExecutorMixin:
             self._side_selector.set_rapid_exit(side)
         return pnl
 
+    @staticmethod
+    def _derive_decision_path(
+        *,
+        ev_score_pretrade: float | None,
+        skip_gate_reason: str,
+        ev_offset_applied: bool,
+    ) -> str:
+        """292# P0: FillRecord.decision_path を一元導出する."""
+        if ev_score_pretrade is None:
+            return "primary_only"
+        if "emergency_skip" in skip_gate_reason:
+            return "ev_emergency_skip"
+        return "ev_offset" if ev_offset_applied else "ev_no_change"
+
+    def _log_cycle_result(
+        self,
+        *,
+        filled: bool,
+        queue_wait: float,
+        post_fill_pnl: float | None,
+    ) -> None:
+        if post_fill_pnl is not None:
+            logger.info(
+                f"Cycle {self._cycle_count} result: "
+                f"filled={filled}, wait={queue_wait:.1f}s, pnl={post_fill_pnl:.2f}bps"
+            )
+            return
+        logger.info(
+            f"Cycle {self._cycle_count} result: "
+            f"filled={filled}, wait={queue_wait:.1f}s"
+        )
+
     async def run_single_cycle(
         self,
         side_override: str | None = None,
@@ -683,18 +728,7 @@ class FillCycleExecutorMixin:
         degraded_liquidation: bool = False,
         toxicity_offset_mult: float = 1.0,
     ) -> FillRecord:
-        """1 サイクル: 発注 → 監視 → 結果記録.
-
-        009# §4.2 の流れに準拠.
-        041# 時間帯フィルター・残高チェック追加.
-        055# Fix: side 決定前に最新 imbalance を取得.
-        075# Fix: side_override で run_continuous() が決定した side を強制適用.
-        129# D.2: balance_forced_switch フラグを FillRecord に記録.
-        158# P1-1: balance_forced_rescue — offset 倍増で安全にポジション解消.
-        190# B: one_sided_balance — 片側残高時の ev_weighted threshold 緩和.
-        234# degraded_liquidation — Kill Gate blocked + balance_forced 時の縮退清算.
-        240# toxicity_offset_mult — Toxicity Budget (232# §2.2) offset 乗数.
-        """
+        """1 サイクル: 発注 → 監視 → 結果記録."""
         self._cycle_count += 1
         cycle_id = self._new_cycle_id()
 
@@ -922,6 +956,8 @@ class FillCycleExecutorMixin:
         # SkipGate PASS 後に ev_score を使って order_price を post-hoc 調整
         # 200# M: DRY — compute_ev_offset_multiplier に共通化 + warning zone
         _ev_offset_applied = False
+        _ev_score_pretrade: float | None = sg.ev_score   # 292# P0
+        _ev_offset_mult_applied: float | None = None     # 292# P0
         if (
             sg.ev_score is not None
             and self.config.skip_gate_ev_as_offset_enabled
@@ -949,6 +985,7 @@ class FillCycleExecutorMixin:
             )
             if _applied_mult is not None and _delta is not None:
                 _ev_offset_applied = True
+                _ev_offset_mult_applied = _applied_mult  # 292# P0
                 logger.info(
                     f"[193# ev_offset] {side}: ev_score={_ev_s:.3f} "
                     f"→ offset_mult={_applied_mult:.3f} "
@@ -1324,6 +1361,12 @@ class FillCycleExecutorMixin:
                                 regime_str, _macro_trend,
                             )
 
+        _decision_path = self._derive_decision_path(
+            ev_score_pretrade=_ev_score_pretrade,
+            skip_gate_reason=skip_gate_reason,
+            ev_offset_applied=_ev_offset_applied,
+        )
+
         record = self._build_fill_record(
             cycle_id=cycle_id,
             t_submit=t_submit,
@@ -1361,13 +1404,15 @@ class FillCycleExecutorMixin:
             macro_slope_5m=_macro_slope_5m,
             macro_slope_15m=_macro_slope_15m,
             macro_aligned=_macro_aligned,
+            ev_score_pretrade=_ev_score_pretrade,
+            ev_offset_mult_applied=_ev_offset_mult_applied,
+            decision_path=_decision_path,
         )
 
-        logger.info(
-            f"Cycle {self._cycle_count} result: "
-            f"filled={filled}, wait={queue_wait:.1f}s, "
-            f"pnl={post_fill_pnl:.2f}bps" if post_fill_pnl is not None
-            else f"Cycle {self._cycle_count} result: filled={filled}, wait={queue_wait:.1f}s"
+        self._log_cycle_result(
+            filled=filled,
+            queue_wait=queue_wait,
+            post_fill_pnl=post_fill_pnl,
         )
 
         # 237# phantom guard: status_unknown 時の再照合待ちフラグ

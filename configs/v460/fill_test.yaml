@@ -238,6 +238,8 @@ stale_order:
   max_reprice_sell: 1          # sell 側: 1回 (134# P1-06: 2→1 縮小)
   # 168# P2-C2: reprice 後の offset を mid に 15% 寄せ、drift PnL 改善
   reprice_tighten: 0.85
+  # 292# P1: reprice deadband (JPY) — 新旧価格差がこの値未満なら queue 保護のためスキップ
+  reprice_min_delta_jpy: 500.0
   # 168# P2-C3: reprice 時の SkipGate 閾値緩和 offset (bps)
   #   AS mode: threshold += offset (高→緩), PnL mode: threshold -= offset (低→緩)
   reprice_skip_gate_offset: 0.05
@@ -554,6 +556,8 @@ loss_control:
   forced_buy_delay:
     enabled: true                  # 286# 有効化
     velocity_threshold_bps: -5.0   # velocity ≤ この値で遅延発動
+    # 292# P1: ranging/trending_down 時の緩和閾値
+    velocity_threshold_ranging_bps: -3.0
     cycles: 3                      # 遅延サイクル数
   # 249# dual_kill → quiescence: 両方kill時はbypassせず静観 (242# "No Trade = normal")
   dual_kill_quiescence_enabled: true

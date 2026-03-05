@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-06 (289# Buy側パフォーマンス改善調査)
+> 最終更新: 2026-03-07 (292# ev_weighted可観測性強化 + reprice deadband + forced_buy_delay強化)
 
 ---
 
@@ -279,7 +279,10 @@
 | 286 | fix | [286_ph2_fix_282_284_comprehensive_resolution.md](286_ph2_fix_282_284_comprehensive_resolution.md) | 282#–284# 課題包括的解決: Lock portalocker強化, Split-Brain検知, KPI分離, AS防御, Guard再分類 |
 | 287 | fix | [287_ph2_fix_balance_forced_switch_attribute.md](287_ph2_fix_balance_forced_switch_attribute.md) | CRITICAL fix: `record.balance_forced` → `balance_forced_switch` AttributeError修正 (286# P1-5 属性名誤記) |
 | 288 | rpt | [288_ph2_ph3_rpt_skipgate_retrain_assessment.md](288_ph2_ph3_rpt_skipgate_retrain_assessment.md) | SkipGate全データ再訓練評価 + retrain_scheduler(126#)整合性確認。全5モデル品質ゲート棄却=既存最適化済 |
-| 289 | analysis | [289_ph2_analysis_buy_side_improvement.md](289_ph2_analysis_buy_side_improvement.md) | Buy側PnL改善深堀v3: SGスコア反転=Simpson's Paradox(棄却), ev_weighted_pnl=tautological(ex-post確認), 夜間58%損失寄与→Phase B(YAML), evパス利用率9.6%問題発見 |
+| 289 | analysis | [289_ph2_analysis_buy_side_improvement.md](289_ph2_analysis_buy_side_improvement.md) | Buy側PnL改善深堀v4: SGスコア反転=Simpson's Paradox, ev_weighted_pnl=tautological, 290#でmodel_used誤プロキシ判明→292#で解消 |
+| 290 | rev | [290_ph2_rev_289_buy_side_systems_market_corrections.md](290_ph2_rev_289_buy_side_systems_market_corrections.md) | 289レビュー補正: ev_as_offset前提で「ev利用犇9.6%」解釈を修正。buy不振を在庫修復交絡+低情報帯参加+観測不足の複合問題として再定義 |
+| 291 | rev | [291_ph2_gemini_31_pro_review_289_290_buy_side_blindspots.md](291_ph2_gemini_31_pro_review_289_290_buy_side_blindspots.md) | Gemini 3.1 Proレビュー: Queue Position放棄・強制買い毒性・観測不足の指摘 |
+| 292 | impl | [292_ev_weighted_observability_enhancement.md](292_ev_weighted_observability_enhancement.md) | 290#/291#レビュー実装: FillRecord 3フィールド追加(ev_score_pretrade/offset_mult/decision_path) + reprice deadband + forced_buy_delayレジーム強化 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
