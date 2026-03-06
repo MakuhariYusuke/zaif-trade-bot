@@ -265,6 +265,11 @@ def run_dashboard(
                 ],
                 "pnl30_p_value": ab_result.pnl30_p_value,
                 "pnl30_effect_size": ab_result.pnl30_effect_size,
+                # 298# F-4: ノンパラメトリック検定結果
+                "mann_whitney_p_value": ab_result.mann_whitney_p_value,
+                "cliffs_delta_value": ab_result.cliffs_delta_value,
+                "cliffs_delta_interpretation": ab_result.cliffs_delta_interpretation,
+                "holm_significant": ab_result.holm_significant,
                 "summary": ab_result.summary(),
             }
 

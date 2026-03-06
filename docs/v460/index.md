@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-07 (298# F-4 ノンパラメトリック検定統合 + G-2 調査完了)
+> 最終更新: 2026-03-07 (299# A/Bテスト実施報告 — F-4 検定バリデーション)
 
 ---
 
@@ -289,6 +289,7 @@
 | 296 | impl | [296_ph2_impl_p2p3_cleanup_and_v459_asset_survey.md](296_ph2_impl_p2p3_cleanup_and_v459_asset_survey.md) | P2/P3 cleanup: B-14 except as e (16箇所), F-2 cancel_reason CR定数化 (5新規+18置換), B-17 MCB/SAD型安全化, v459資産調査 |
 | 297 | rpt | [297_ph2_rpt_f4_g2_pre_analysis.md](297_ph2_rpt_f4_g2_pre_analysis.md) | F-4/G-2 事前調査: 統計検定スタック分析 + 168# P3残タスク評価 |
 | 298 | impl | [298_ph2_impl_f4_nonparametric_tests.md](298_ph2_impl_f4_nonparametric_tests.md) | F-4: Mann-Whitney U + Cliff's δ + Holm-Bonferroni を ab_judgment に統合。G-2: CB/DD 統合済確認 |
+| 299 | rpt | [299_ph2_rpt_ab_test_f4_validation.md](299_ph2_rpt_ab_test_f4_validation.md) | A/Bテスト実施報告: F-4検定バリデーション + レジーム別考察 (6,952レコード/22日間) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
