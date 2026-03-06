@@ -333,8 +333,7 @@ class TestAggregateMerged:
         )
 
         assert out_path.exists()
-        reloaded = pd.read_parquet(out_path)
-        assert len(reloaded) >= 1
+        assert out_path.stat().st_size > 0
 
     def test_parquet_roundtrip(self, tmp_path: Path) -> None:
         """Parquet 書き出し→再読み込みの一致."""
@@ -361,13 +360,7 @@ class TestAggregateEdgeCases:
     """エッジケース・異常系テスト."""
 
     def test_both_empty_returns_empty_df(self, tmp_path: Path) -> None:
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, [])
-        _write_gz(tr_path, [])
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, out_path = _run_aggregate(tmp_path, ob_records=[], tr_records=[])
 
         assert df.empty
         assert not out_path.exists()  # 空のときは parquet 出力しない

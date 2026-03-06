@@ -291,13 +291,22 @@ class TestReconcileRateLimit:
     @pytest.mark.asyncio
     async def test_rate_limit_blocks_rapid_calls(self, guard: PhantomPositionGuard):
         """短時間の連続呼出しは rate limit で抑制."""
+        class _Adapter:
+            async def get_order_status(self, order_id: str) -> _MockOrderStatus | None:
+                del order_id
+                return _MockOrderStatus(status="cancelled")
+
+            async def get_balance(self, currency: str) -> list[_MockBalance]:
+                del currency
+                return [_MockBalance(free=0.1)]
+
+        adapter = _Adapter()
         guard.register_unknown("o1", "buy", 0.001, 1e7)
-        adapter = _make_adapter(order_status=_MockOrderStatus(status="cancelled"))
         # 1回目: 成功
         await guard.reconcile(adapter)
         # 2回目の登録
         guard.register_unknown("o2", "buy", 0.001, 1e7)
-        # 2回目の reconcile: rate limit で空リスト
+        # 2回目の reconcile: 直後呼び出しのため rate limit で空リスト
         result = await guard.reconcile(adapter)
         assert result == []
         assert guard.has_pending  # まだ pending

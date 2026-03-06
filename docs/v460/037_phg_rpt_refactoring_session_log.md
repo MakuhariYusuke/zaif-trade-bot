@@ -947,3 +947,108 @@
 1. `test_enricher_skip_gate.py` の setup/call を raw sample 数・cache invalidation 条件の観点でさらに絞る
 2. `test_aggregate_to_1min.py` の persistence 必須ケースと pure aggregation ケースをもう一段分離する
 3. `test_fill_quality.py` の `compute_maker_price` / `GateCheckG11` 周辺で runner 初期化を外せる箇所を探す
+
+---
+
+## 2026-03-07 / Session 037-026
+
+### 実施
+- 本体コードの既存 cache を横展開
+  - `scripts/v460/ml/retrain_scheduler.py`
+    - `load_retrain_config()` を手書き `yaml.safe_load()` から `config_loader.load_fill_test_config()` に切替
+    - file-signature cache をそのまま再利用する構成へ整理
+- `BrokerRegistry` 初期化の軽量化
+  - `ztb/trading/live/registry/broker_registry.py`
+    - built-in broker 登録を module-level 定数化
+    - `BrokerRegistry()` ごとの `register_broker()` 呼出しとログ出力を回避
+- test 側の残件整理
+  - `test_regime_detector.py`
+    - `fill_test.yaml` 直読を fixture に統合
+    - `inspect.getsource()` を `_source()` cache helper に集約
+  - `test_fill_quality.py`
+    - 31 箇所の `inspect.getsource()` を `_source()` cache helper に集約
+  - `test_166_remaining_tasks.py`
+    - `SkipGate` / `SkipGateConfig` の method 内 import を module-level へ集約
+  - `test_277_magic_number_grounding.py`
+    - `fill_test.yaml` 直読を fixture 化
+  - `test_157_regime_features.py`
+    - `load_retrain_config()` 呼出しで shared YAML path fixture を使用
+
+### 結果
+- 対象回帰:
+  - `test_fill_quality.py` + `test_regime_detector.py` + `test_retrain_hot_reload.py` + `test_166_remaining_tasks.py` + `test_146_multi_exchange.py::TestBrokerRegistry` + `test_157_regime_features.py` + `test_277_magic_number_grounding.py`
+  - `500 passed, 9 warnings in 7.94s`
+- broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` 除外、`test_yaml_has_microprice_side` deselect）
+  - `4068 passed, 1 deselected, 19 warnings in 39.57s`
+
+### 主要 durations 変化
+- broad wall time: `44.22s -> 39.57s`
+- `test_retrain_hot_reload.py::TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload` は相対的上位に残るが、他の source/YAML 系が後退したことで実計算パスだけが前面化
+- `test_fill_quality.py::TestGateCheckG11::test_g1_1_with_data` は `0.18s`
+- `test_regime_detector.py::TestPhaseD18RangingYaml::test_yaml_has_ranging_discount` は `0.07s`
+- `test_146_multi_exchange.py::TestBrokerRegistry::test_no_skeleton_or_sim` は `0.20s`（初期化コスト削減後の再測定）
+
+### 補足
+- broad 上位はほぼ実 I/O / 実データ経路に集約された
+  - `test_aggregate_to_1min.py`
+  - `test_enricher_skip_gate.py`
+  - `test_237_phantom_position_guard.py`
+  - `test_102_structural_fixes.py`
+- つまり、残りは「簡単な重複除去」より「責務を保ったまま実 I/O をどこまで削れるか」の段階に入っている
+
+### 次アクション
+1. `test_aggregate_to_1min.py` の persistence 必須ケースを最小件数まで縮小し、非 persistence 系をさらに patch 化する
+2. `test_enricher_skip_gate.py` の real-data / cache invalidation 系で sample_rows と file-touch 戦略を見直す
+3. `test_102_structural_fixes.py` / `test_237_phantom_position_guard.py` の runtime-heavy 単発テストを、制御フロー検証に必要な最小状態へ落とす
+
+---
+
+## 2026-03-07 / Session 037-027
+
+### 実施
+- `test_aggregate_to_1min.py`
+  - `test_parquet_output_created` から不要な `pd.read_parquet()` を除去
+  - `test_both_empty_returns_empty_df` を `_run_aggregate()` ベースへ寄せ、空 gzip 生成を削除
+- `test_237_phantom_position_guard.py`
+  - `TestReconcileRateLimit` を fake clock 依存から外し、実際の `_MIN_RECONCILE_INTERVAL_SEC` 判定だけを見る構成へ変更
+- `test_141_side_specific_models.py`
+  - sklearn pipeline を fit して pickle 化していた helper を、picklable な軽量 `regressor/scaler` stub ベースへ置換
+  - `test_hot_reload_updated_side_model` も同 stub でハッシュ差分だけを確認する形へ整理
+- `test_146_multi_exchange.py`
+  - `inspect.getsource()` / `Path.read_text()` の repeated call を cache helper に集約
+- `test_166_remaining_tasks.py`
+  - `set_output()` 呼出し確認を `MagicMock` から軽量 recorder stub に置換
+- `test_fill_quality.py`
+  - `TestFillTestRunnerSaveResilience` の retry backoff を `0.01 -> 0.0` に変更し、保存失敗系テストの待機を除去
+- `test_enricher_skip_gate.py`
+  - 実データ sample cap をいったん `117` まで詰めたが broad で `n_samples` が揺れたため、成立条件を守る安全下限として `120` に戻した
+
+### 結果
+- 対象回帰 1:
+  - `test_aggregate_to_1min.py` + `test_enricher_skip_gate.py` + `test_237_phantom_position_guard.py`
+  - `137 passed in 5.38s`
+- 対象回帰 2:
+  - `test_141_side_specific_models.py` + `test_146_multi_exchange.py` + `test_166_remaining_tasks.py` + `test_fill_quality.py`
+  - `320 passed, 6 warnings in 5.99s`
+- broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` 除外、`test_yaml_has_microprice_side` deselect）
+  - `4068 passed, 1 deselected, 18 warnings in 32.18s`
+
+### 主要 durations 変化
+- broad wall time: `39.57s -> 32.18s`
+- `test_141_side_specific_models.py::TestEvaluatorSideDispatch::test_select_gate_for_side_both`
+  - `0.42s -> 0.02s`
+- `test_fill_quality.py::TestFillTestRunnerSaveResilience::test_try_save_batch_emergency_dump_after_3_failures`
+  - broad 上位から後退
+- `test_aggregate_to_1min.py::TestAggregateMerged::test_parquet_output_created`
+  - 依然上位だが、責務重複を除いたことで persistence 専用ケースとして明確化
+
+### 補足
+- `test_enricher_skip_gate.py` の real-data integration は、単体実行と broad 実行で `n_samples` が一致しないことを確認した
+- このため sample cap は「最小理論値」ではなく、「広域並列・ファイル更新揺れ込みでも落ちない安全下限」を採用した
+
+### 次アクション
+1. `test_enricher_skip_gate.py` の real-data setup を、件数ではなく成立条件ベースの fixture cache にできないかを見る
+2. `test_237_phantom_position_guard.py` / `test_102_structural_fixes.py` の runtime-heavy 単発をさらに局所化する
+3. `test_ml_pipeline.py` / `test_build_features_pipeline.py` の実データ・実集約 setup を共通 helper 側から圧縮する

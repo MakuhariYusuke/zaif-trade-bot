@@ -17,6 +17,7 @@ from __future__ import annotations
 import importlib
 import inspect
 import os
+from functools import lru_cache
 from pathlib import Path
 from unittest.mock import patch
 
@@ -39,6 +40,16 @@ from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+
+
+@lru_cache(maxsize=None)
+def _source(obj: object) -> str:
+    return inspect.getsource(obj)
+
+
+@lru_cache(maxsize=None)
+def _read_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
 
 # ---------------------------------------------------------------------------
 # BrokerRegistry
@@ -133,13 +144,13 @@ class TestBitFlyerAdapterFixes:
     def test_make_request_uses_asyncio_to_thread(self) -> None:
         """_make_request が asyncio.to_thread を使用 (イベントループ非ブロック)."""
 
-        src = inspect.getsource(BitFlyerAdapter._make_request)
+        src = _source(BitFlyerAdapter._make_request)
         assert "asyncio.to_thread" in src
 
     def test_make_request_raises_network_error(self) -> None:
         """_make_request の docstring が NetworkError を記載."""
 
-        src = inspect.getsource(BitFlyerAdapter._make_request)
+        src = _source(BitFlyerAdapter._make_request)
         assert "NetworkError" in src
         # 旧い "Exception: For API errors" は除去
         assert "Exception: For API errors" not in src
@@ -173,7 +184,7 @@ class TestSymbolNormalization:
     def test_bitflyer_api_calls_uppercase(self) -> None:
         """BitFlyer API 呼び出しではシンボルを .upper() する."""
 
-        src = inspect.getsource(BitFlyerAdapter._place_order_real)
+        src = _source(BitFlyerAdapter._place_order_real)
         assert "symbol.upper()" in src
 
 # ---------------------------------------------------------------------------
@@ -287,7 +298,7 @@ class TestAdapterInheritance:
             assert "get_orderbook" in dir(cls)
             assert "get_recent_trades" in dir(cls)
             # Should be overridden (not the base default)
-            src = inspect.getsource(cls.get_orderbook)
+            src = _source(cls.get_orderbook)
             assert "MarketDataNotSupported" not in src
 
 # ---------------------------------------------------------------------------
@@ -402,36 +413,26 @@ class TestRunFillTestExchangeDecoupling:
     """run_fill_test.py から CoincheckAdapter 直接参照が除去されている."""
 
     def test_no_coincheck_adapter_import(self) -> None:
-        src = (_PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py").read_text(
-            encoding="utf-8"
-        )
+        src = _read_text(_PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py")
         assert "from ztb.trading.live.exchanges.coincheck.adapter import" not in src
 
     def test_uses_broker_registry(self) -> None:
         # 158# P2-4: broker registry は fill_test_cli.py に移動
-        src = (_PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_test_cli.py").read_text(
-            encoding="utf-8"
-        )
+        src = _read_text(_PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_test_cli.py")
         assert "get_broker_registry" in src
 
     def test_ibbroker_type_annotation(self) -> None:
-        src = (_PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py").read_text(
-            encoding="utf-8"
-        )
+        src = _read_text(_PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py")
         assert "adapter: IBroker" in src
 
     def test_exchange_cli_arg(self) -> None:
         # 158# P2-4: CLI は fill_test_cli.py に移動
-        src = (_PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_test_cli.py").read_text(
-            encoding="utf-8"
-        )
+        src = _read_text(_PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_test_cli.py")
         assert '"--exchange"' in src
 
     def test_create_adapter_call(self) -> None:
         # 158# P2-4: CLI は fill_test_cli.py に移動
-        src = (_PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_test_cli.py").read_text(
-            encoding="utf-8"
-        )
+        src = _read_text(_PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_test_cli.py")
         assert "registry.create_adapter(" in src
 
 # ---------------------------------------------------------------------------
@@ -442,21 +443,15 @@ class TestRunObservationExchangeDecoupling:
     """run_observation.py の CoincheckAdapter 直接参照が除去されている."""
 
     def test_no_coincheck_adapter_import(self) -> None:
-        src = (_PROJECT_ROOT / "scripts" / "v460" / "run_observation.py").read_text(
-            encoding="utf-8"
-        )
+        src = _read_text(_PROJECT_ROOT / "scripts" / "v460" / "run_observation.py")
         assert "from ztb.trading.live.exchanges.coincheck.adapter import" not in src
 
     def test_uses_broker_registry(self) -> None:
-        src = (_PROJECT_ROOT / "scripts" / "v460" / "run_observation.py").read_text(
-            encoding="utf-8"
-        )
+        src = _read_text(_PROJECT_ROOT / "scripts" / "v460" / "run_observation.py")
         assert "get_broker_registry" in src
 
     def test_exchange_cli_arg(self) -> None:
-        src = (_PROJECT_ROOT / "scripts" / "v460" / "run_observation.py").read_text(
-            encoding="utf-8"
-        )
+        src = _read_text(_PROJECT_ROOT / "scripts" / "v460" / "run_observation.py")
         assert '"--exchange"' in src
 
 # ---------------------------------------------------------------------------
@@ -518,9 +513,7 @@ class TestS11ReviewFixes:
 
     def test_run_observation_exchange_lowercase(self) -> None:
         """§11 #2: run_observation.py が exchange 引数を lowercase 正規化する."""
-        src = (_PROJECT_ROOT / "scripts" / "v460" / "run_observation.py").read_text(
-            encoding="utf-8"
-        )
+        src = _read_text(_PROJECT_ROOT / "scripts" / "v460" / "run_observation.py")
         # .lower() が呼ばれていること
         assert ".lower()" in src
         # has_broker() 事前チェック
@@ -528,9 +521,7 @@ class TestS11ReviewFixes:
 
     def test_run_observation_unknown_exchange_exit(self) -> None:
         """§11 #2: 未知 exchange 時に sys.exit(1)."""
-        src = (_PROJECT_ROOT / "scripts" / "v460" / "run_observation.py").read_text(
-            encoding="utf-8"
-        )
+        src = _read_text(_PROJECT_ROOT / "scripts" / "v460" / "run_observation.py")
         assert "sys.exit(1)" in src
 
 # ---------------------------------------------------------------------------

@@ -34,10 +34,6 @@ from scripts.v460.ml.retrain_scheduler import (
     retrain_model,
 )
 from scripts.v460.ml.skip_gate import SkipDecision, SkipGate, SkipGateConfig
-from sklearn.impute import SimpleImputer
-from sklearn.linear_model import Ridge
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 from ztb.ml.online_monitor import OnlineMonitor, OnlineMonitorConfig
 
 try:
@@ -45,6 +41,28 @@ try:
     _HAS_LIGHTGBM = True
 except ImportError:
     _HAS_LIGHTGBM = False
+
+
+class _IdentityScaler:
+    """SkipGate pickle 用の軽量 scaler."""
+
+    def set_output(self, *, transform: str) -> "_IdentityScaler":
+        del transform
+        return self
+
+    def transform(self, x: object) -> object:
+        return x
+
+
+class _ConstantRegressor:
+    """常に一定値を返す軽量 regressor."""
+
+    def __init__(self, value: float) -> None:
+        self._value = value
+
+    def predict(self, x: object) -> np.ndarray:
+        n_rows = len(x) if hasattr(x, "__len__") else 1
+        return np.full(n_rows, self._value, dtype=float)
 
 # ---------------------------------------------------------------------------
 # §1: FillConfig — side 別モデルパスフィールド
@@ -258,27 +276,27 @@ class TestRetrainSideSpecificFunction:
 # ---------------------------------------------------------------------------
 # §3: SkipGateEvaluator — side 別モデルロード + ディスパッチ
 # ---------------------------------------------------------------------------
-def _create_mock_gate(tmp_path: Path, filename: str, target: str = "pnl30") -> Path:
+def _create_mock_gate(
+    tmp_path: Path,
+    filename: str,
+    target: str = "pnl30",
+    *,
+    prediction: float = 0.2,
+    version: str | None = None,
+) -> Path:
     """テスト用 SkipGate pkl を作成."""
 
     feature_cols = ["side_buy", "spread_jpy", "offset_ratio"]
-    pipeline = Pipeline([
-        ("imputer", SimpleImputer(strategy="median")),
-        ("scaler", StandardScaler()),
-        ("model", Ridge()),
-    ])
-    # Fit with dummy data
-    X = pd.DataFrame(np.random.randn(10, 3), columns=feature_cols)
-    y = np.random.randn(10)
-    pipeline.fit(X, y)
-
     gate = SkipGate(
-        model=pipeline.named_steps["model"],
-        scaler=pipeline.named_steps["scaler"],
+        model=_ConstantRegressor(prediction),
+        scaler=_IdentityScaler(),
         feature_cols=feature_cols,
         config=SkipGateConfig(mode="pnl", use_ob_features=False),
-        metadata={"version": f"test_{target}", "target": target, "n_samples": 10},
-        pipeline=pipeline,
+        metadata={
+            "version": version or f"test_{target}",
+            "target": target,
+            "n_samples": 10,
+        },
     )
     path = tmp_path / filename
     gate.save(path)
@@ -610,25 +628,13 @@ class TestSideModelHotReload:
         assert evaluator._gate_sell is not None
         old_hash = evaluator._model_file_hash_sell
 
-        # sell モデルを再作成 (ハッシュが変わるように異なる乱数 seed を使用)
-
-        np.random.seed(999)
-        feature_cols = ["side_buy", "spread_jpy", "offset_ratio"]
-        pipeline = Pipeline([
-            ("imputer", SimpleImputer(strategy="median")),
-            ("scaler", StandardScaler()),
-            ("model", Ridge()),
-        ])
-        X = pd.DataFrame(np.random.randn(20, 3), columns=feature_cols)
-        y = np.random.randn(20)
-        pipeline.fit(X, y)
+        # sell モデルを再作成してハッシュ変更を起こす.
         gate_new = SkipGate(
-            model=pipeline.named_steps["model"],
-            scaler=pipeline.named_steps["scaler"],
-            feature_cols=feature_cols,
+            model=_ConstantRegressor(0.35),
+            scaler=_IdentityScaler(),
+            feature_cols=["side_buy", "spread_jpy", "offset_ratio"],
             config=SkipGateConfig(mode="pnl", use_ob_features=False),
             metadata={"version": "pnl120_v2", "target": "pnl120", "n_samples": 20},
-            pipeline=pipeline,
         )
         gate_new.save(sell_path)
 

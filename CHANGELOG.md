@@ -3837,3 +3837,34 @@ python scripts/unified_trainer.py \
 ### Notes
 - The latest broad v460 performance run completed at `4068 passed, 1 deselected, 19 warnings in 44.22s` on the current Windows workspace.
 - The previously observed `test_306_proposals.py::TestMicropriceSideSelector::test_microprice_overrides_to_sell` broad-run-only failure did not reproduce in repeated filtered broad runs after the current changes.
+
+### Changed
+- Reused the existing cached YAML loader in `scripts/v460/ml/retrain_scheduler.py::load_retrain_config()` so retrain-related tests and runtime code no longer parse `fill_test.yaml` independently of `config_loader`.
+- Reduced default-registry initialization cost in [broker_registry.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/trading/live/registry/broker_registry.py) by seeding built-in brokers from constants instead of routing every `BrokerRegistry()` construction through repeated `register_broker()` validation/logging.
+- Removed remaining direct `fill_test.yaml` reads from `tests/unit/v460/test_regime_detector.py` and `tests/unit/v460/test_277_magic_number_grounding.py`, and updated `tests/unit/v460/test_157_regime_features.py` to reuse the shared YAML path fixture.
+- Consolidated remaining method-local `SkipGate` imports in `tests/unit/v460/test_166_remaining_tasks.py`.
+- Added cached source helpers to `tests/unit/v460/test_fill_quality.py` and `tests/unit/v460/test_regime_detector.py`, replacing repeated `inspect.getsource()` calls on the same classes/modules.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_fill_quality.py tests/unit/v460/test_regime_detector.py tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_166_remaining_tasks.py tests/unit/v460/test_146_multi_exchange.py tests/unit/v460/test_157_regime_features.py tests/unit/v460/test_277_magic_number_grounding.py -q --no-cov --tb=short --durations=30`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=20 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- The latest filtered broad run completed at `4068 passed, 1 deselected, 19 warnings in 39.57s`, improving on the prior `44.22s` measurement in the same workspace.
+- Remaining top offenders are now concentrated in real aggregation / enrichment paths (`test_aggregate_to_1min.py`, `test_enricher_skip_gate.py`) plus a small number of runtime-initialization tests (`test_102_structural_fixes.py`, `test_237_phantom_position_guard.py`).
+
+### Changed
+- Tightened `tests/unit/v460/test_aggregate_to_1min.py` further by keeping real parquet reads only in the dedicated roundtrip case, while the empty-input edge case now uses the patched raw-loader helper instead of writing empty gzip fixtures.
+- Simplified `tests/unit/v460/test_237_phantom_position_guard.py::TestReconcileRateLimit::test_rate_limit_blocks_rapid_calls` to rely on the guard's real in-process interval check rather than patching `time.time()`, removing a logging-sensitive fake-clock path.
+- Reworked `tests/unit/v460/test_141_side_specific_models.py` to serialize lightweight picklable dummy skip-gate components instead of fitting sklearn pipelines in model-dispatch tests and side-model hot-reload checks.
+- Added cached source/file-text helpers in `tests/unit/v460/test_146_multi_exchange.py`, replaced the remaining heavy `MagicMock` set-output probes in `tests/unit/v460/test_166_remaining_tasks.py` with lightweight recorders, and removed retry backoff waiting from `tests/unit/v460/test_fill_quality.py` save-resilience tests.
+- Restored `tests/unit/v460/test_enricher_skip_gate.py` real-data sample cap to the safe lower bound (`120`) after broader runs showed the filtered real tail can fluctuate below the single-test minimum.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_aggregate_to_1min.py tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_237_phantom_position_guard.py -q --no-cov --tb=short --durations=30`
+- `python -m pytest tests/unit/v460/test_141_side_specific_models.py tests/unit/v460/test_146_multi_exchange.py tests/unit/v460/test_166_remaining_tasks.py tests/unit/v460/test_fill_quality.py -q --no-cov --tb=short --durations=30`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- The latest filtered broad run completed at `4068 passed, 1 deselected, 18 warnings in 32.18s` on the current Windows workspace.
+- `tests/unit/v460/test_141_side_specific_models.py::TestEvaluatorSideDispatch::test_select_gate_for_side_both` dropped from `0.42s` to `0.02s` after replacing fitted sklearn payloads with lightweight dummy gates.

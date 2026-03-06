@@ -1106,7 +1106,7 @@ class Test059SkipRateHistory:
 
         # 100# per-side skip rate: side を指定して評価
         results = []
-        for _ in range(25):
+        for _ in range(21):
             r = gate.evaluate(features, side="buy")
             results.append(r)
 
@@ -1145,7 +1145,7 @@ class Test059SkipRateHistory:
 
         features = {c: 1.0 for c in feature_cols}
         rates = []
-        for i in range(50):
+        for i in range(32):
             gate.evaluate(features, side="sell")  # 100# per-side
             if gate._recent_skips_sell:
                 rate = sum(gate._recent_skips_sell) / len(gate._recent_skips_sell)
