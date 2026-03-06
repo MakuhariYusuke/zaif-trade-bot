@@ -63,8 +63,9 @@ def _get_deps_hash() -> str:
         if lines:
             lines.sort()
             return hashlib.sha256("\n".join(lines).encode()).hexdigest()[:16]
-    except Exception:
+    except Exception as e:
         # metadata API unavailable/broken -> fallback below
+        logger.debug("importlib.metadata unavailable: %s", e)
         pass
 
     try:
@@ -94,7 +95,8 @@ def _get_cuda_version() -> str | None:
         try:
             if torch_mod.cuda.is_available():  # type: ignore[attr-defined]
                 return cast(str | None, torch_mod.version.cuda)  # type: ignore[attr-defined]
-        except Exception:
+        except Exception as e:
+            logger.debug("CUDA version detection failed: %s", e)
             return None
         return None
 

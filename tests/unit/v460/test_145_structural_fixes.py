@@ -168,6 +168,11 @@ class TestCancelReasons:
             CR.SAD_FROZEN,                     # 211# P1-C
             CR.SAD_DRY,                        # 211# P1-C
             CR.MCB_SAD_ESCALATION,             # 211# P1-D
+            CR.DEGRADED_LIQUIDATION_DUTY_SKIP, # 234# 縮退清算
+            CR.ONE_SIDED_COOLDOWN_SKIP,        # 234# one-sided
+            CR.ONE_SIDED_FREEZE_SKIP,          # 234# one-sided
+            CR.FORCED_BUY_DELAY,               # 294# forced_buy_delay
+            CR.SKIP_GATE_RULE_UNKNOWN_SELL,    # 296# unknown sell
         }
         assert CR.AUDIT_CANCEL_REASONS == expected
 

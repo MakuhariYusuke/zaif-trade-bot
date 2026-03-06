@@ -17,6 +17,7 @@ import time
 from collections.abc import Awaitable, Callable
 from typing import Final, Protocol, cast, runtime_checkable
 
+from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import FillMonitorResult, FillTestConfig
 from scripts.v460.lib.regime_detector import RegimeDetectorLike
 
@@ -467,7 +468,7 @@ class OrderMonitor:
                             t_fill = chk.t_fill
                             _cancel_failed_likely_filled = True
                         if not filled:
-                            cancel_reason_poll = "stale_adverse_drift"
+                            cancel_reason_poll = CR.STALE_ADVERSE_DRIFT
                         break
                     if drift_bps >= _stale_drift and is_favorable_drift:
                         # 292# BS-1: cancel 前に deadband 判定 — queue position 保護
@@ -534,7 +535,7 @@ class OrderMonitor:
                         )
 
                         if reprice_gate_skipped:
-                            cancel_reason_poll = "stale_skip_gate_blocked"
+                            cancel_reason_poll = CR.STALE_SKIP_GATE_BLOCKED
                             break
 
                         try:
@@ -581,7 +582,7 @@ class OrderMonitor:
                                 f"[stale_order] Reprice failed: {place_err}. "
                                 f"Treating as cancelled."
                             )
-                            cancel_reason_poll = "stale_reprice_failed"
+                            cancel_reason_poll = CR.STALE_REPRICE_FAILED
                             break
                 except Exception as stale_err:
                     logger.debug(f"[stale_order] Check failed (non-fatal): {stale_err}")
@@ -590,9 +591,9 @@ class OrderMonitor:
         # 117# B-fix: stale_skip_gate_blocked / stale_reprice_failed は既にキャンセル済み
         # 200# P0-1: stale_adverse_drift も既にキャンセル済み
         _already_cancelled = cancel_reason_poll in (
-            "stale_skip_gate_blocked",
-            "stale_reprice_failed",
-            "stale_adverse_drift",
+            CR.STALE_SKIP_GATE_BLOCKED,
+            CR.STALE_REPRICE_FAILED,
+            CR.STALE_ADVERSE_DRIFT,
         )
         if not filled and not _already_cancelled:
             # 262# DRY: cancel-recheck ヘルパー

@@ -268,6 +268,6 @@ class LockManager:
             else:
                 parts.append(now_ts)
             self._lockfile_path.write_text("|".join(parts), encoding="utf-8")
-        except Exception:
+        except Exception as e:
             # 255# bare except → debug log (heartbeat 更新失敗は致命的ではないが可観測化)
-            logger.debug("lockfile heartbeat update failed", exc_info=True)
+            logger.debug("lockfile heartbeat update failed: %s", e, exc_info=True)

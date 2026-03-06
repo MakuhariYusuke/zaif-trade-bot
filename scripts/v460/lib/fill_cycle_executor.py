@@ -822,13 +822,13 @@ class FillCycleExecutorMixin:
             # 130# orderbook_error 細分化
             err_msg = str(e).lower()
             if "timeout" in err_msg or "timed out" in err_msg:
-                ob_cancel_reason = "orderbook_timeout"
+                ob_cancel_reason = CR.ORDERBOOK_TIMEOUT
             elif "rate" in err_msg or "limit" in err_msg or "too many" in err_msg:
-                ob_cancel_reason = "orderbook_rate_limit"
+                ob_cancel_reason = CR.ORDERBOOK_RATE_LIMIT
             elif "empty" in err_msg or "no bid" in err_msg or "no ask" in err_msg:
-                ob_cancel_reason = "orderbook_empty"
+                ob_cancel_reason = CR.ORDERBOOK_EMPTY
             else:
-                ob_cancel_reason = "orderbook_error"
+                ob_cancel_reason = CR.ORDERBOOK_ERROR
             logger.error(f"Failed to compute maker price: {e}")
             return self._make_price_error_skip(
                 side=side, cancel_reason=ob_cancel_reason,
@@ -1191,18 +1191,18 @@ class FillCycleExecutorMixin:
                 # CM-2: エラー分類
                 err_lower = last_error.lower()
                 if "post_only" in err_lower or "taker" in err_lower:
-                    cancel_reason = "post_only_reject"
+                    cancel_reason = CR.POST_ONLY_REJECT
                 elif (
                     "insufficient" in err_lower
                     or "balance" in err_lower
                     # 042# Coincheck の日本語エラーメッセージ対応 — 121# YAML 外部化
                     or any(p in last_error for p in self.config.insufficient_funds_patterns)
                 ):
-                    cancel_reason = "insufficient_funds"
+                    cancel_reason = CR.INSUFFICIENT_FUNDS
                 elif "minimum" in err_lower or "size" in err_lower:
-                    cancel_reason = "minimum_size"
+                    cancel_reason = CR.MINIMUM_SIZE
                 else:
-                    cancel_reason = "api_error"
+                    cancel_reason = CR.API_ERROR
 
                 logger.warning(
                     f"Order attempt {attempt + 1} failed ({cancel_reason}): {e}"
@@ -1233,9 +1233,9 @@ class FillCycleExecutorMixin:
                             # 保守的価格: best_bid/best_ask そのまま (確実に maker)
                             order_price = ob.bids[0][0] if side == "buy" else ob.asks[0][0]
                             logger.info(f"Retry with conservative price: {order_price:.0f}")
-                    except Exception:
+                    except Exception as e:
                         # 255# bare except → debug log (リトライ時 OB fetch 失敗可観測化)
-                        logger.debug("OB fetch failed during retry, using previous price", exc_info=True)
+                        logger.debug("OB fetch failed during retry, using previous price: %s", e, exc_info=True)
 
         if order is None:
             # 200# B/I: postonly crossing は意図的 skip — circuit_breaker に通知しない

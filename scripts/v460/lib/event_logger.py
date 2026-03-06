@@ -94,18 +94,18 @@ class TeeWriter:
         for w in self.writers:
             try:
                 w.write(s)
-            except Exception:
+            except Exception as e:
                 # 253# bare except → debug ログで可観測性確保
-                logger.debug("TeeWriter.write failed for %s", type(w).__name__, exc_info=True)
+                logger.debug("TeeWriter.write failed for %s: %s", type(w).__name__, e, exc_info=True)
         return len(s)
 
     def flush(self) -> None:
         for w in self.writers:
             try:
                 w.flush()
-            except Exception:
+            except Exception as e:
                 # 253# bare except → debug ログで可観測性確保
-                logger.debug("TeeWriter.flush failed for %s", type(w).__name__, exc_info=True)
+                logger.debug("TeeWriter.flush failed for %s: %s", type(w).__name__, e, exc_info=True)
 
 
 def setup_stderr_mirror(results_dir: str | Path) -> None:

@@ -172,9 +172,9 @@ class FillTestHealthMonitor:
             try:
                 disk = self._psutil.disk_usage(".")
                 status["disk_free_gb"] = round(disk.free / (1024**3), 2)
-            except Exception:
+            except Exception as e:
                 # 255# bare except → debug log (disk_usage 例外可観測化)
-                logger.debug("disk_usage check failed", exc_info=True)
+                logger.debug("disk_usage check failed: %s", e, exc_info=True)
 
             if rss_mb >= self._thresholds.rss_critical_mb:
                 logger.error(

@@ -332,8 +332,8 @@ def fill_test_main() -> None:
             {"hours": str(args.hours), "config": args.config,
              "git_sha": runner._git_sha, "dry_run": str(args.dry_run)},
         )
-    except Exception:
-        logger.debug("Discord notification skipped (start)", exc_info=True)
+    except Exception as e:
+        logger.debug("Discord notification skipped (start): %s", e, exc_info=True)
 
     # Signal handler
     def _signal_handler(signum: int, frame: object) -> None:
@@ -405,8 +405,8 @@ def fill_test_main() -> None:
                 "crash" if (stop_reason or "").startswith("crash:") else "stop",
                 _details,
             )
-        except Exception:
-            logger.debug("Discord notification skipped (stop)", exc_info=True)
+        except Exception as e:
+            logger.debug("Discord notification skipped (stop): %s", e, exc_info=True)
         # 286# 283# P0-3: start/stop ペア保証 — crash 時も必ず stop イベントを記録。
         # crash イベントは except ブロックで既に記録済みだが、
         # stop イベントはセッション境界の確定に必要 (split-brain 事後検出の基盤)。

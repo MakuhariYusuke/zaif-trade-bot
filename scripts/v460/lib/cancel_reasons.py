@@ -60,6 +60,14 @@ SAD_FROZEN = "sad_frozen"
 SAD_DRY = "sad_dry"
 # 211# P1-D: MCB×SAD AND Escalation (両方 WARNING 以上で即 HALT)
 MCB_SAD_ESCALATION = "mcb_sad_escalation"
+# 234# 縮退清算 + one-sided エスカレーション
+DEGRADED_LIQUIDATION_DUTY_SKIP = "degraded_liquidation_duty_skip"
+ONE_SIDED_COOLDOWN_SKIP = "one_sided_cooldown_skip"
+ONE_SIDED_FREEZE_SKIP = "one_sided_freeze_skip"
+# 294# forced_buy_delay (regime-aware 購入遅延)
+FORCED_BUY_DELAY = "forced_buy_delay"
+# 296# skip_gate_rule: unknown regime sell skip
+SKIP_GATE_RULE_UNKNOWN_SELL = "skip_gate_rule_unknown_sell"
 
 AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     CIRCUIT_BREAKER_OPEN,
@@ -91,6 +99,11 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     SAD_FROZEN,
     SAD_DRY,
     MCB_SAD_ESCALATION,
+    DEGRADED_LIQUIDATION_DUTY_SKIP,
+    ONE_SIDED_COOLDOWN_SKIP,
+    ONE_SIDED_FREEZE_SKIP,
+    FORCED_BUY_DELAY,
+    SKIP_GATE_RULE_UNKNOWN_SELL,
 })
 
 # ======================================================================
@@ -179,4 +192,8 @@ CancelReason = Literal[
     "degraded_liquidation_duty_skip",
     "one_sided_cooldown_skip",
     "one_sided_freeze_skip",
+    # 294# forced_buy_delay
+    "forced_buy_delay",
+    # 296# skip_gate_rule: unknown regime sell
+    "skip_gate_rule_unknown_sell",
 ]

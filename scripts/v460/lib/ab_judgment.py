@@ -12,12 +12,15 @@
 
 from __future__ import annotations
 
+import logging
 import math
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
 from typing import TypedDict
+
+logger = logging.getLogger(__name__)
 
 import numpy as np
 
@@ -200,7 +203,8 @@ def _resolve_ab_test_analyzer_class() -> object | None:
     try:
         from ztb.adaptation.ab_test.analyzer import ABTestAnalyzer
         return ABTestAnalyzer
-    except Exception:
+    except Exception as e:
+        logger.debug("ABTestAnalyzer import failed: %s", e)
         return None
 
 
@@ -232,7 +236,8 @@ def _compute_statistical_comparison(
             p if math.isfinite(p) else None,
             eff if math.isfinite(eff) else None,
         )
-    except Exception:
+    except Exception as e:
+        logger.debug("scipy ttest_ind failed, trying ABTestAnalyzer: %s", e)
         analyzer_cls = _resolve_ab_test_analyzer_class()
         if analyzer_cls is None:
             return None, None
@@ -245,7 +250,8 @@ def _compute_statistical_comparison(
                 p if math.isfinite(p) else None,
                 eff if math.isfinite(eff) else None,
             )
-        except Exception:
+        except Exception as e:
+            logger.debug("ABTestAnalyzer.analyze_parallel failed: %s", e)
             return None, None
 
 

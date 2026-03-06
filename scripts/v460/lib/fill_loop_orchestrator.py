@@ -51,7 +51,9 @@ from scripts.v460.lib.spread_anomaly_detector import SADLevel
 
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
+    from scripts.v460.lib.micro_circuit_breaker import MicroCircuitBreaker
     from scripts.v460.lib.phantom_position_guard import PhantomPositionGuard
+    from scripts.v460.lib.spread_anomaly_detector import SpreadAnomalyDetector
     from ztb.metrics.fill_quality import FillRecord
     from ztb.risk.sell_dynamic_kill import DynamicKillManager, ToxicityAssessment
 
@@ -144,8 +146,9 @@ class FillLoopOrchestratorMixin:
     #: 過度な I/O を避けつつ再起動時の巻き戻しを 5 分以内に抑える。
     _STATE_SAVE_INTERVAL_SEC: float = 300.0
     # 228# H3: MCB/SAD/CycleStrategy class-level None defaults (hasattr 排除用)
-    _mcb: object | None = None
-    _sad: object | None = None
+    # 296# B-17: object → 具象型化 (TYPE_CHECKING)
+    _mcb: MicroCircuitBreaker | None = None
+    _sad: SpreadAnomalyDetector | None = None
     _cycle_strategy: object | None = None
     # 237# PhantomPositionGuard class-level default (hasattr 排除)
     # 238# C-1: object → PhantomPositionGuard 型安全化 (TYPE_CHECKING)
@@ -1771,9 +1774,9 @@ class FillLoopOrchestratorMixin:
                                 proc = psutil.Process()
                                 mem_mb = proc.memory_info().rss / (1024 * 1024)
                                 mem_info = f"mem={mem_mb:.1f}MB, "
-                            except Exception:
+                            except Exception as e:
                                 # 254# bare except → debug log (psutil 不在/権限エラー可観測化)
-                                logger.debug("psutil memory check unavailable", exc_info=True)
+                                logger.debug("psutil memory check unavailable: %s", e, exc_info=True)
                                 mem_info = ""
                             logger.info(
                                 f"[heartbeat] Still in time_filter zone "
@@ -2081,7 +2084,7 @@ class FillLoopOrchestratorMixin:
                     self._inc_guard_fire("one_sided_freeze_skip")
                     await self._execute_skip(
                         st, side=next_side,
-                        cancel_reason="one_sided_freeze_skip",
+                        cancel_reason=CR.ONE_SIDED_FREEZE_SKIP,
                         order_quantity=self._current_lot,
                         update_last_side=True,
                     )
@@ -2102,7 +2105,7 @@ class FillLoopOrchestratorMixin:
                     self._inc_guard_fire("one_sided_cooldown_skip")
                     await self._execute_skip(
                         st, side=next_side,
-                        cancel_reason="one_sided_cooldown_skip",
+                        cancel_reason=CR.ONE_SIDED_COOLDOWN_SKIP,
                         order_quantity=self._current_lot,
                         update_last_side=True,
                     )
@@ -2237,7 +2240,7 @@ class FillLoopOrchestratorMixin:
                 self._inc_guard_fire("forced_buy_delay")
                 await self._execute_skip(
                     st, side=next_side,
-                    cancel_reason="forced_buy_delay",
+                    cancel_reason=CR.FORCED_BUY_DELAY,
                     order_quantity=self._current_lot,
                     balance_forced_switch=_balance_forced,
                     update_last_side=True,
@@ -2421,7 +2424,7 @@ class FillLoopOrchestratorMixin:
                 )
                 await self._execute_skip(
                     st, side=next_side,
-                    cancel_reason="toxicity_participation_skip",
+                    cancel_reason=CR.TOXICITY_PARTICIPATION_SKIP,
                     order_quantity=self._current_lot,
                     update_last_side=True,
                 )
@@ -2446,7 +2449,7 @@ class FillLoopOrchestratorMixin:
                     self._inc_guard_fire("degraded_liquidation_duty_skip")
                     await self._execute_skip(
                         st, side=next_side,
-                        cancel_reason="degraded_liquidation_duty_skip",
+                        cancel_reason=CR.DEGRADED_LIQUIDATION_DUTY_SKIP,
                         order_quantity=self._current_lot,
                         update_last_side=True,
                     )

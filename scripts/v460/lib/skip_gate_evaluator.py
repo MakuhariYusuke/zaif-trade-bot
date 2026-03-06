@@ -18,6 +18,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, cast
 
+from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import FillTestConfig, SkipGateResult
 from scripts.v460.lib.ob_utils import OrderBookSnapshot
 from scripts.v460.ml.skip_gate import SkipDecision, build_features_from_market_state
@@ -976,7 +977,7 @@ class SkipGateEvaluator:
                 side=side,
                 order_price=order_price,
                 order_quantity=current_lot,
-                cancel_reason="skip_gate_rule_unknown_sell",
+                cancel_reason=CR.SKIP_GATE_RULE_UNKNOWN_SELL,
                 spread_at_order=spread_at_order,
                 spread_offset_ratio=effective_offset_ratio,
                 skip_gate_score=0.0,
