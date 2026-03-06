@@ -199,6 +199,7 @@ _DEFAULT_CONFIG: ConfigMap = {
     "wf_val_pct": 0.10,
     "wf_test_pct": 0.15,
     "wf_step_pct": 0.20,
+    "wf_max_windows": None,          # 305# 最大評価window数 (None/<=0=全件)
     "wf_embargo_rows": 0,            # fill records は日次でない → 行数ベース (splitter min=1)
     "wf_min_window_train": 30,       # window 当たり最低訓練サンプル数
     "wf_min_window_test": 10,        # window 当たり最低テストサンプル数
@@ -626,6 +627,9 @@ def _evaluate_wf_multi(
         if (w.train_end - w.train_start) >= min_train
         and (w.test_end - w.test_start) >= min_test
     ]
+    max_windows = safe_to_int(cfg.get("wf_max_windows", 0), 0)
+    if max_windows > 0 and len(valid_windows) > max_windows:
+        valid_windows = valid_windows[:max_windows]
     if len(valid_windows) < 2:
         logger.info(
             f"C1: Only {len(valid_windows)} valid window(s) from {len(windows)} total "

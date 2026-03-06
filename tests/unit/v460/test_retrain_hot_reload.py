@@ -1132,6 +1132,7 @@ class TestMultiWindowWF:
             "wf_val_pct": 0.10,
             "wf_test_pct": 0.15,
             "wf_step_pct": 0.25,
+            "wf_max_windows": 2,
             "wf_embargo_rows": 0,
             "wf_min_window_train": 20,
             "wf_min_window_test": 5,
@@ -1152,6 +1153,43 @@ class TestMultiWindowWF:
         assert "score" in result
         assert "feature_importance" in result
 
+    def test_evaluate_wf_multi_respects_wf_max_windows(self) -> None:
+        """wf_max_windows 指定時は評価 window 数が上限で切られる."""
+
+        n = 260
+        rng = np.random.RandomState(42)
+        X = pd.DataFrame(
+            rng.randn(n, 4),
+            columns=["f1", "f2", "f3", "f4"],
+        )
+        y = pd.Series(rng.randn(n), name="target")
+        enriched = pd.DataFrame({
+            "post_fill_30s_pnl": rng.randn(n) * 0.1,
+            "post_fill_120s_pnl": rng.randn(n) * 0.2,
+        })
+
+        cfg = {
+            "wf_multi_window_enabled": True,
+            "wf_initial_train_pct": 0.50,
+            "wf_val_pct": 0.10,
+            "wf_test_pct": 0.15,
+            "wf_step_pct": 0.15,
+            "wf_max_windows": 2,
+            "wf_embargo_rows": 0,
+            "wf_min_window_train": 20,
+            "wf_min_window_test": 5,
+            "early_stopping_rounds": 0,
+            "lgbm_n_estimators": 10,
+            "lgbm_max_depth": 2,
+            "lgbm_learning_rate": 0.1,
+            "lgbm_num_leaves": 4,
+            "lgbm_min_child_samples": 5,
+        }
+
+        result = _evaluate_wf_multi(X, y, enriched, cfg)
+        assert result is not None
+        assert result["n_windows"] == 2
+
     def test_evaluate_wf_multi_fallback_small_data(self) -> None:
         """データ不足時に multi-window が None を返す (single-window フォールバック)."""
 
@@ -1170,6 +1208,7 @@ class TestMultiWindowWF:
             "wf_val_pct": 0.10,
             "wf_test_pct": 0.15,
             "wf_step_pct": 0.20,
+            "wf_max_windows": 2,
             "wf_embargo_rows": 0,
             "wf_min_window_train": 30,
             "wf_min_window_test": 10,
@@ -1205,6 +1244,7 @@ class TestMultiWindowWF:
             "wf_val_pct": 0.10,
             "wf_test_pct": 0.15,
             "wf_step_pct": 0.20,
+            "wf_max_windows": 2,
             "wf_embargo_rows": 0,
             "wf_min_window_train": 20,
             "wf_min_window_test": 5,

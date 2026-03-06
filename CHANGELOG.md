@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 306# perf+core+test: WF評価上限制御 + integration負荷削減 + source検証高速化 (2026-03-06)
+
+### Changed
+- **本体コード最適化（計算量上限制御）**
+  - `scripts/v460/ml/retrain_scheduler.py`
+    - `wf_max_windows` 設定を追加（`None`/`<=0` は従来通り全 window）
+    - `_evaluate_wf_multi()` が有効 window を上限件数で打ち切るよう改善
+    - multi-window 評価の最悪計算量を運用設定で直接制御可能に
+- **テスト負荷軽減**
+  - `tests/unit/v460/test_retrain_hot_reload.py`
+    - `TestMultiWindowWF` の設定に `wf_max_windows=2` を導入
+    - `wf_max_windows` の上限尊重を検証する回帰テストを追加
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - 実データ統合サンプル上限を `500 -> 300` に調整
+  - `tests/unit/v460/test_240_toxicity_budget.py`
+    - 大型モジュールの `inspect.getsource(...)` 反復を廃止
+    - ソース文字列をファイル読込キャッシュへ置換し、構造検証の実行コストを削減
+
+### Verification
+- 変更対象回帰:
+  - `209 passed, 4 warnings in 6.37s`
+- v460 全体:
+  - `3992 passed, 19 warnings in 36.39s`（`--no-cov --durations=20`）
+
+### Performance Notes
+- `test_enricher_skip_gate::Test058Integration::test_enrichment_with_real_data` setup:
+  - `0.28s -> 0.24s`
+- `test_ml_pipeline::Test057Integration::test_load_real_data` call:
+  - `0.24s -> 0.14s`（前コミット横展開の効果を維持）
+- v460 全体実行時間:
+  - `40.52s -> 36.39s`（約 `-4.13s`）
+
 ## 305# perf+dry+io: ML学習軽量化横展開 + fill_test.yaml fixture共通化 (2026-03-06)
 
 ### Changed

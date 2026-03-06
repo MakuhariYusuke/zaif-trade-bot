@@ -532,3 +532,36 @@
 1. `test_240_toxicity_budget.py` の高負荷ケースを、検証意図を維持した入力縮小またはモック化で軽量化
 2. `test_retrain_hot_reload.py::TestMultiWindowWF` の fold 計算負荷を段階削減（window 数維持）
 3. `fill_test.yaml` 直読の残件（`test_166_hotfixes.py`, `test_197_boost_optimization_gate_integration.py` など）を fixture 化で横展開
+
+---
+
+## 2026-03-06 / Session 037-015
+
+### 実施
+- 本体性能改善
+  - `retrain_scheduler.py`
+    - `wf_max_windows` 設定を追加し、`_evaluate_wf_multi()` の評価 window 数を上限化
+    - large dataset + 小 step 設定時の multi-window 計算コストを抑制
+- テスト負荷軽減
+  - `test_retrain_hot_reload.py`
+    - `TestMultiWindowWF` の主要ケースへ `wf_max_windows=2` を適用
+    - `wf_max_windows` 上限尊重の回帰テストを追加
+  - `test_enricher_skip_gate.py`
+    - 実データ統合のサンプル上限を `500 -> 300` へ調整
+  - `test_240_toxicity_budget.py`
+    - `inspect.getsource()` の反復呼び出しを、ファイルソースキャッシュ参照へ置換
+
+### 結果
+- 変更対象テスト:
+  - `209 passed, 4 warnings in 6.37s`
+- v460 全体:
+  - `3992 passed, 19 warnings in 36.39s`（`--no-cov --durations=20`）
+- 主要 durations 変化:
+  - `test_enricher_skip_gate::Test058Integration::test_enrichment_with_real_data` setup `0.24s`
+  - `test_retrain_hot_reload::TestMultiWindowWF::test_evaluate_wf_multi_returns_fold_data` call `0.23s`
+  - `test_ml_pipeline::Test057Integration::test_load_real_data` call `0.14s`
+
+### 次アクション
+1. `test_189_alt_horizon_macro_integration.py` の setup 負荷（YAML 読込/fixture 初期化）を分解して削減
+2. `test_pnl_monte_carlo.py` の乱数試行数と感度グリッドを検証意図維持で段階縮小
+3. `fill_test.yaml` 直読残件の fixture 化を継続（`test_166_hotfixes.py`, `test_197_boost_optimization_gate_integration.py`）
