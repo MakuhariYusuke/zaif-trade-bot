@@ -155,6 +155,11 @@ class FillTestConfig:
     # 143# R-1a: レジーム別 offset 調整
     regime_high_vol_offset_boost: float = 1.2   # high_vol 時に offset × 1.2 (+20% 拡張)
     regime_ranging_offset_discount: float = 1.0 # ranging 時に offset × N (1.0=無効, <1.0で縮小)
+    # 303# C: none レジーム Passive MM フォールバック
+    # regime 未確定 (warmup/欠損) 時に 13 段パイプラインをバイパスし固定 offset で指値
+    # AS 43% の根本対策: 情報不足時はパッシブに待機
+    none_regime_passive_mm_enabled: bool = False
+    none_regime_fixed_offset_bps: float = 2.0  # 固定 offset (bps of mid_price)
     # 227# C1: Ranging × OBI (Order Book Imbalance) 方向別非対称 offset
     # AS理論: ranging市場ではOBIがmean-reversion方向を予測
     ranging_obi_asymmetry_factor: float = 0.0  # 0.0=無効, 0.15=bid/ask不均衡で±15%非対称化
@@ -218,6 +223,9 @@ class FillTestConfig:
     dd_cooldown_release_lot_scale: float = 0.3 # cooldown release 中の lot 倍率
     # 249# DD halt cooldown re-arm: release 後の追加損失で再 halt
     dd_cooldown_rearm_budget_bps: float = -10.0  # release 後にこの bps 以下で再 halt
+    # 303# B: DD soft lot reduction の side 分離
+    # True 時: soft_triggered で当該 side のみ lot 縮小 (他 side は据え置き)
+    daily_drawdown_soft_lot_side_aware: bool = False
     # 268# DD 日付リセット TZ: 0=UTC, 9=JST。JST 運用なら 9.0 推奨 (halt 最大時間が ~22h→14h に短縮)
     dd_day_reset_utc_offset_hours: float = 9.0
     # 049# E3 サンプリング: 全約定ではなくサンプリングで multi-timeframe 計測

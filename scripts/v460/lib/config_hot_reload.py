@@ -302,6 +302,11 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "per_side_dd_reanchor_budget_bps",
     "recovery_trending_penalty",
     "recovery_high_vol_penalty",
+    # 303# B: DD soft lot side 分離
+    "daily_drawdown_soft_lot_side_aware",
+    # 303# C: none regime Passive MM
+    "none_regime_passive_mm_enabled",
+    "none_regime_fixed_offset_bps",
     # --- one-sided escalation ---
     "one_sided_escalation_cooldown_offset",
     "one_sided_escalation_cooldown_cycles",

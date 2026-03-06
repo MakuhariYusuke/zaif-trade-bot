@@ -1334,6 +1334,32 @@ class MakerPriceCalculator:
                 msg=f"sell_guard: spread {spread:.0f} > max {cfg.sell_max_spread_jpy:.0f}",
             )
 
+        # === 303# C: none レジーム Passive MM バイパス ===
+        # regime 未確定時に 13段パイプラインをスキップし固定 offset で配置。
+        # AS 43% (301# F1) の根本対策: 情報がない状態での積極約定を抑止。
+        if cfg.none_regime_passive_mm_enabled:
+            _current_regime = (
+                self._regime_detector.current_regime.value
+                if self._regime_detector is not None
+                else "none"
+            )
+            if _current_regime == "none":
+                _fixed_ratio = cfg.none_regime_fixed_offset_bps / 10000.0
+                _fixed_offset = max(cfg.min_offset_jpy, mid_price * _fixed_ratio)
+                logger.info(
+                    f"[303# C] Passive MM bypass: regime=none, "
+                    f"fixed_offset={_fixed_offset:.0f} JPY "
+                    f"({cfg.none_regime_fixed_offset_bps:.1f} bps)"
+                )
+                return self._finalize_price_with_spread_guard(
+                    side=side,
+                    best_bid=best_bid,
+                    best_ask=best_ask,
+                    spread=spread,
+                    offset=_fixed_offset,
+                    effective_offset_ratio=_fixed_ratio,
+                )
+
         # === offset 決定ロジック ===
         # 096# 状態分離: _base_offset_ratio* を参照
         effective_offset_ratio = self._base_offset_ratio

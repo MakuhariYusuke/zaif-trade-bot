@@ -136,6 +136,9 @@ class FillLoopOrchestratorMixin:
     _forced_buy_delay_remaining: int = 0
     # 294# P0: 連続ブロックカウンタ (デッドロック防止)
     _forced_buy_delay_consecutive: int = 0
+    # 303# B: DD soft lot side 分離 — side 別 lot 倍率 (1.0 = 通常)
+    _dd_soft_lot_scale_buy: float = 1.0
+    _dd_soft_lot_scale_sell: float = 1.0
     # 250# P1-4: freeze/cooldown が紐付いた side
     # — None 時は全 side スキップ (後方互換), side 指定時はその side のみ
     _one_sided_frozen_side: str | None = None
@@ -1120,21 +1123,40 @@ class FillLoopOrchestratorMixin:
                     side=next_side,
                 )
                 if dd_result.get("soft_triggered"):
-                    old_lot = self._current_lot
-                    new_lot = self._current_lot / 2
-                    if new_lot >= self.config.order_quantity:
-                        self._current_lot = new_lot
-                        self._balance_checker.pre_shrink_lot = self._current_lot
+                    # 303# B: side-aware soft lot reduction
+                    _triggered_side = dd_result.get("soft_triggered_side", "")
+                    if (
+                        self.config.daily_drawdown_soft_lot_side_aware
+                        and _triggered_side in ("buy", "sell")
+                    ):
+                        # side 別 lot 倍率を 0.5 に縮小
+                        if _triggered_side == "buy":
+                            self._dd_soft_lot_scale_buy = 0.5
+                        else:
+                            self._dd_soft_lot_scale_sell = 0.5
                         logger.warning(
-                            f"[daily_drawdown] soft lot reduction: "
-                            f"{old_lot:.4f} → {self._current_lot:.4f} BTC"
+                            f"[daily_drawdown] 303# side-aware soft lot: "
+                            f"{_triggered_side} scale → 0.5 "
+                            f"(buy={self._dd_soft_lot_scale_buy}, "
+                            f"sell={self._dd_soft_lot_scale_sell})"
                         )
                     else:
-                        self._soft_drawdown_interval_multiplier = self.config.soft_drawdown_interval_multiplier
-                        logger.warning(
-                            f"[daily_drawdown] min lot reached ({old_lot:.4f} BTC), "
-                            f"applying 3x interval multiplier instead of lot reduction"
-                        )
+                        # 従来の集約 lot 縮小
+                        old_lot = self._current_lot
+                        new_lot = self._current_lot / 2
+                        if new_lot >= self.config.order_quantity:
+                            self._current_lot = new_lot
+                            self._balance_checker.pre_shrink_lot = self._current_lot
+                            logger.warning(
+                                f"[daily_drawdown] soft lot reduction: "
+                                f"{old_lot:.4f} → {self._current_lot:.4f} BTC"
+                            )
+                        else:
+                            self._soft_drawdown_interval_multiplier = self.config.soft_drawdown_interval_multiplier
+                            logger.warning(
+                                f"[daily_drawdown] min lot reached ({old_lot:.4f} BTC), "
+                                f"applying 3x interval multiplier instead of lot reduction"
+                            )
         st.batch.append(record)
         self._recent_records.append(record)
 
@@ -1434,6 +1456,15 @@ class FillLoopOrchestratorMixin:
                         f"{_old_mult:.1f} → 1.0"
                     )
                     self._soft_drawdown_interval_multiplier = 1.0
+                # 303# B: side-aware soft lot scale も日替わりリセット
+                if self._dd_soft_lot_scale_buy < 1.0 or self._dd_soft_lot_scale_sell < 1.0:
+                    logger.info(
+                        f"[daily_drawdown] Day reset → dd_soft_lot_scale "
+                        f"buy={self._dd_soft_lot_scale_buy:.2f} → 1.0, "
+                        f"sell={self._dd_soft_lot_scale_sell:.2f} → 1.0"
+                    )
+                    self._dd_soft_lot_scale_buy = 1.0
+                    self._dd_soft_lot_scale_sell = 1.0
                 # 207# §4: toxic veto も日替わりでクリア
                 if self._toxic_veto:
                     logger.info(

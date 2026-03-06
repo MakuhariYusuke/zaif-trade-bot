@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-07 (300# A/B テスト深堀り — システム工学 × 市場微視構造理論)
+> 最終更新: 2026-03-07 (301# 292-300横断レビュー)
 
 ---
 
@@ -291,6 +291,9 @@
 | 298 | impl | [298_ph2_impl_f4_nonparametric_tests.md](298_ph2_impl_f4_nonparametric_tests.md) | F-4: Mann-Whitney U + Cliff's δ + Holm-Bonferroni を ab_judgment に統合。G-2: CB/DD 統合済確認 |
 | 299 | rpt | [299_ph2_rpt_ab_test_f4_validation.md](299_ph2_rpt_ab_test_f4_validation.md) | A/Bテスト実施報告: F-4検定バリデーション + レジーム別考察 (6,952レコード/22日間) |
 | 300 | rev | [300_ph2_rev_ab_test_deep_analysis.md](300_ph2_rev_ab_test_deep_analysis.md) | A/Bテスト深堀り: 5構造的矛盾の特定 + Glosten-Milgrom/Kyle/A-S理論 + 検出力分析 + 外部AIレビュー用Q5 |
+| 301 | rev | [301_ph2_rev_292_300_multifaceted_review.md](301_ph2_rev_292_300_multifaceted_review.md) | 292-300横断レビュー: `none` 除外によるF-4楽観化、sell-vs-buy擬似A/B、hot-reload過信、forced_buy_delayの位置付け、統計/可観測性の残課題を整理 |
+| 302 | rev | [302_ph2_gemini_31_pro_review_300_301_hft_blindspots.md](302_ph2_gemini_31_pro_review_300_301_hft_blindspots.md) | Gemini 3.1 Pro HFT盲点レビュー: none regime過剰エンジニアリング、Taker執行欠落、AlternationTrap+DD Guard死のスパイラル |
+| 303 | resp/impl | [303_ph2_resp_301_302_review_response.md](303_ph2_resp_301_302_review_response.md) | 301#/302#レビュー応答+実装: Side Comparison表記修正, none含有版二系統出力, DD soft lot side分離, none regime Passive MMバイパス |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

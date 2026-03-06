@@ -64,6 +64,9 @@ class FillCycleExecutorMixin:
     _alert_lot_mult: float = 1.0
     _halt_recovery_lot_mult: float = 1.0
     _daily_drawdown_guard: DailyDrawdownGuard | None = None
+    # 303# B: DD soft lot side 分離 — side 別 lot 倍率
+    _dd_soft_lot_scale_buy: float = 1.0
+    _dd_soft_lot_scale_sell: float = 1.0
 
     async def _compute_orderbook_imbalance(self, depth: int = 5) -> tuple[float, float, float]:
         """054# S1: 板不均衡を計算 — 120# MakerPriceCalculator に委譲."""
@@ -1130,6 +1133,19 @@ class FillCycleExecutorMixin:
             _order_lot = max(self.config.order_quantity, _order_lot * _recovery_lm)
             logger.info(
                 f"[224# B1] Recovery lot_scale={_recovery_lm:.2f}: "
+                f"{_pre_lot:.6f} → {_order_lot:.6f}"
+            )
+
+        # 303# B: DD soft lot reduction — side-aware lot 縮小
+        _dd_side_scale = (
+            self._dd_soft_lot_scale_buy if side == "buy"
+            else self._dd_soft_lot_scale_sell
+        )
+        if _dd_side_scale < 1.0:
+            _pre_lot = _order_lot
+            _order_lot = max(self.config.order_quantity, _order_lot * _dd_side_scale)
+            logger.info(
+                f"[303# B] DD soft lot side-aware: {side} scale={_dd_side_scale:.2f}: "
                 f"{_pre_lot:.6f} → {_order_lot:.6f}"
             )
 

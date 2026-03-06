@@ -44,6 +44,7 @@ class DrawdownAction(TypedDict):
 
     halted: bool
     soft_triggered: bool
+    soft_triggered_side: str  # 303# B: "" = 集約, "buy"/"sell" = 当該 side
     daily_pnl_bps: float
     side_halted: str  # 205# §9.5: "" = 無し, "buy"/"sell" = 片側封鎖
 
@@ -183,7 +184,7 @@ class DailyDrawdownGuard:
             DrawdownAction(halted, soft_triggered, daily_pnl_bps, side_halted).
         """
         if not self._enabled:
-            return DrawdownAction(halted=False, soft_triggered=False, daily_pnl_bps=0.0, side_halted="")
+            return DrawdownAction(halted=False, soft_triggered=False, soft_triggered_side="", daily_pnl_bps=0.0, side_halted="")
 
         self.maybe_reset_day()
         self._state.daily_pnl_bps += pnl_bps
@@ -192,6 +193,7 @@ class DailyDrawdownGuard:
         result = DrawdownAction(
             halted=False,
             soft_triggered=False,
+            soft_triggered_side="",
             daily_pnl_bps=self._state.daily_pnl_bps,
             side_halted="",
         )
@@ -216,6 +218,7 @@ class DailyDrawdownGuard:
                 f"<= soft limit {self._soft_limit_bps}bps — requesting lot reduction"
             )
             result["soft_triggered"] = True
+            result["soft_triggered_side"] = side  # 303# B: トリガー元 side
 
         # Hard limit check (aggregate)
         if self._state.daily_pnl_bps <= self._hard_limit_bps:

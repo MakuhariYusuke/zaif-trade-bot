@@ -139,9 +139,10 @@ class ABJudgmentResult:
     def summary(self) -> str:
         """人間可読サマリ."""
         lines = [
-            f"[A/B Judgment] {self.overall.value.upper()}",
+            f"[Side Comparison] {self.overall.value.upper()}",
             f"  variant={self.variant_label} (n={self.n_variant})"
             f" vs control={self.control_label} (n={self.n_control})",
+            "  ※ 観察比較であり、ランダム割当の A/B テストではない (301# F2)",
         ]
         for c in self.criteria:
             flag = "✅" if c.verdict == Verdict.PASS else ("⚠️" if c.verdict == Verdict.INSUFFICIENT else "❌")

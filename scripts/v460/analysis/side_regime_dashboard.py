@@ -90,11 +90,41 @@ class DashboardResult(TypedDict, total=False):
     trending_daily: list[dict[str, object]]
     # 160# P0-B/C: judgment 統合
     ab_judgment: dict[str, object] | None
+    ab_judgment_incl_none: dict[str, object] | None  # 303# A: none 含有版
     trending_eval: dict[str, object] | None
     per_regime_judgment: list[dict[str, object]] | None
 
 
 # 161# DRY: _to_finite -> ztb.utils.safety.safe_to_finite に統合
+
+
+def _ab_result_to_dict(ab_result: ABJudgmentResult) -> dict[str, object]:
+    """ABJudgmentResult を dict に変換 (DRY: 303# A)."""
+    return {
+        "overall": ab_result.overall.value,
+        "variant_label": ab_result.variant_label,
+        "control_label": ab_result.control_label,
+        "n_variant": ab_result.n_variant,
+        "n_control": ab_result.n_control,
+        "criteria": [
+            {
+                "name": c.name,
+                "verdict": c.verdict.value,
+                "value": c.value,
+                "threshold": c.threshold,
+                "detail": c.detail,
+            }
+            for c in ab_result.criteria
+        ],
+        "pnl30_p_value": ab_result.pnl30_p_value,
+        "pnl30_effect_size": ab_result.pnl30_effect_size,
+        # 298# F-4: ノンパラメトリック検定結果
+        "mann_whitney_p_value": ab_result.mann_whitney_p_value,
+        "cliffs_delta_value": ab_result.cliffs_delta_value,
+        "cliffs_delta_interpretation": ab_result.cliffs_delta_interpretation,
+        "holm_significant": ab_result.holm_significant,
+        "summary": ab_result.summary(),
+    }
 
 
 def _compute_side_metrics(records: list[MetricRecord]) -> SideMetrics:
@@ -231,6 +261,7 @@ def run_dashboard(
 
     # === 160# P0-B/C: judgment 統合 ===
     result["ab_judgment"] = None
+    result["ab_judgment_incl_none"] = None  # 303# A: none 含有版
     result["trending_eval"] = None
     result["per_regime_judgment"] = None
 
@@ -247,31 +278,23 @@ def run_dashboard(
                 variant_label="sell",
                 control_label="buy",
             )
-            result["ab_judgment"] = {
-                "overall": ab_result.overall.value,
-                "variant_label": ab_result.variant_label,
-                "control_label": ab_result.control_label,
-                "n_variant": ab_result.n_variant,
-                "n_control": ab_result.n_control,
-                "criteria": [
-                    {
-                        "name": c.name,
-                        "verdict": c.verdict.value,
-                        "value": c.value,
-                        "threshold": c.threshold,
-                        "detail": c.detail,
-                    }
-                    for c in ab_result.criteria
-                ],
-                "pnl30_p_value": ab_result.pnl30_p_value,
-                "pnl30_effect_size": ab_result.pnl30_effect_size,
-                # 298# F-4: ノンパラメトリック検定結果
-                "mann_whitney_p_value": ab_result.mann_whitney_p_value,
-                "cliffs_delta_value": ab_result.cliffs_delta_value,
-                "cliffs_delta_interpretation": ab_result.cliffs_delta_interpretation,
-                "holm_significant": ab_result.holm_significant,
-                "summary": ab_result.summary(),
-            }
+            result["ab_judgment"] = _ab_result_to_dict(ab_result)
+
+            # 303# A: none レジーム含有版 (301# F1 楽観バイアス除去)
+            from copy import copy
+            if ab_criteria is not None:
+                criteria_incl = copy(ab_criteria)
+                criteria_incl.exclude_regimes = []
+            else:
+                criteria_incl = ABJudgmentCriteria(exclude_regimes=[])
+            ab_result_incl = evaluate_ab_variant(
+                variant_records=sell_records,
+                control_records=buy_records,
+                criteria=criteria_incl,
+                variant_label="sell",
+                control_label="buy",
+            )
+            result["ab_judgment_incl_none"] = _ab_result_to_dict(ab_result_incl)
 
         # P0-C: trending_down sell 実測評価
         all_records_dict = [dict(r) for r in records]
@@ -374,8 +397,14 @@ def _print_dashboard(result: DashboardResult) -> None:
     # 160# P0-B/C: judgment 結果出力
     ab_j = result.get("ab_judgment")
     if ab_j:
-        print(f"\n  --- P0-B: A/B Judgment ---")
+        print(f"\n  --- Side Comparison (excl. none) ---")
         print(f"  {ab_j['summary']}")
+
+    # 303# A: none 含有版
+    ab_j_incl = result.get("ab_judgment_incl_none")
+    if ab_j_incl:
+        print(f"\n  --- Side Comparison (incl. none) ---")
+        print(f"  {ab_j_incl['summary']}")
 
     te = result.get("trending_eval")
     if te:
@@ -384,7 +413,7 @@ def _print_dashboard(result: DashboardResult) -> None:
 
     prj = result.get("per_regime_judgment")
     if prj:
-        print(f"\n  --- Per-Regime A/B Judgment ---")
+        print(f"\n  --- Per-Regime Side Comparison ---")
         for entry in prj:  # type: ignore[union-attr]
             regime = str(entry["regime"])
             overall = str(entry["overall"])
