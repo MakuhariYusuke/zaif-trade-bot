@@ -384,35 +384,47 @@ def hourly_pnl_as(records: list[dict]) -> dict:
 
 
 def offset_quintile_analysis(records: list[dict]) -> dict:
-    """Offset quintile 別の PnL + AS率."""
+    """Mid-distance quintile 別の PnL + AS率.
+
+    314# T2: effective_offset_used (ratio) は方向混在で信頼不可.
+    fill_price と mid_at_fill から mid_distance_bps を直接計算し quintile 分析.
+    mid_distance_bps > 0 は有利方向 (sell: fill > mid, buy: fill < mid).
+    """
+    BPS = 10000.0
     result = {}
     for side in ["sell", "buy"]:
         filled = extract_filled(records, side=side)
-        offsets_pnls = []
+        rows: list[tuple[float, float, bool]] = []
         for r in filled:
-            o = safe_to_finite(r.get("effective_offset_used"))
-            p = safe_to_finite(r.get("post_fill_30s_pnl"))
-            if o is not None and p is not None:
-                offsets_pnls.append((o, p, r.get("adverse_selected", False)))
+            fp = safe_to_finite(r.get("fill_price"))
+            mid = safe_to_finite(r.get("mid_at_fill"))
+            pnl = safe_to_finite(r.get("post_fill_30s_pnl"))
+            if fp is None or mid is None or mid <= 0 or pnl is None:
+                continue
+            if side == "sell":
+                dist = (fp - mid) / mid * BPS
+            else:
+                dist = (mid - fp) / mid * BPS
+            rows.append((dist, pnl, bool(r.get("adverse_selected", False))))
 
-        if len(offsets_pnls) < 10:
-            result[side] = {"n": len(offsets_pnls), "quintiles": []}
+        if len(rows) < 10:
+            result[side] = {"n": len(rows), "quintiles": []}
             continue
 
-        offsets_pnls.sort(key=lambda x: x[0])
-        n = len(offsets_pnls)
+        rows.sort(key=lambda x: x[0])
+        n = len(rows)
         quintiles = []
         for qi in range(5):
             start = qi * n // 5
             end = (qi + 1) * n // 5
-            chunk = offsets_pnls[start:end]
-            offs = [c[0] for c in chunk]
+            chunk = rows[start:end]
+            dists = [c[0] for c in chunk]
             pnls = np.array([c[1] for c in chunk])
             n_as = sum(1 for c in chunk if c[2])
             quintiles.append({
                 "quintile": qi + 1,
                 "n": len(chunk),
-                "offset_range": [round(min(offs), 6), round(max(offs), 6)],
+                "mid_dist_range_bps": [round(min(dists), 2), round(max(dists), 2)],
                 "mean_pnl": round(float(np.mean(pnls)), 4),
                 "as_rate": round(n_as / len(chunk), 4) if chunk else 0,
             })
@@ -652,17 +664,18 @@ def main() -> None:
             p10 = f"{h['p10']:+.4f}" if h.get('p10') is not None else "N/A"
             print(f"    {h['hour']:02d}h: n={h['n']:3d}, pnl={avg}, p10={p10}, AS={h['as_rate']:.1%}")
 
-    # --- §8: Offset Quintile ---
+    # --- §8: Mid-Distance Quintile ---
     print("\n" + "=" * 70)
-    print("  §8 Offset Quintile 分析")
+    print("  §8 Mid-Distance Quintile 分析 (314# T2: fill_price/mid ベース)")
     print("=" * 70)
     oq = offset_quintile_analysis(records)
     for side in ["sell", "buy"]:
         d = oq[side]
         print(f"\n  [{side.upper()}] n={d['n']}")
         for q in d.get("quintiles", []):
-            print(f"    Q{q['quintile']}(n={q['n']}): offset=[{q['offset_range'][0]:.4f}, "
-                  f"{q['offset_range'][1]:.4f}], pnl={q['mean_pnl']:+.4f}, AS={q['as_rate']:.1%}")
+            r = q['mid_dist_range_bps']
+            print(f"    Q{q['quintile']}(n={q['n']}): mid_dist=[{r[0]:+.2f}, "
+                  f"{r[1]:+.2f}] bps, pnl={q['mean_pnl']:+.4f}, AS={q['as_rate']:.1%}")
 
     # --- §9: 306# との比較 ---
     print("\n" + "=" * 70)
