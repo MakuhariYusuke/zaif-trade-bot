@@ -276,10 +276,12 @@ class PnLMonteCarloSimulator:
         )
 
         # --- Percentiles ---
-        percentiles: dict[str, float] = {}
-        for p in cfg.confidence_levels:
-            key = f"{p*100:.0f}%"
-            percentiles[key] = float(np.percentile(monthly_pnls, p * 100))
+        pct_levels = [p * 100 for p in cfg.confidence_levels]
+        pct_values = np.percentile(monthly_pnls, pct_levels)
+        percentiles = {
+            f"{p * 100:.0f}%": float(v)
+            for p, v in zip(cfg.confidence_levels, pct_values)
+        }
 
         # VaR / CVaR
         var_95 = float(np.percentile(monthly_pnls, 5))  # 5th percentile (loss side)
@@ -362,6 +364,12 @@ class PnLMonteCarloSimulator:
 
         cfg = self.config
         pnl_bps = self._extract_filled_pnl_bps()
+        adjusted_pnl_by_adj: dict[float, np.ndarray] = {}
+        for adj in pnl_adjustments_bps:
+            adj_value = float(adj)
+            adjusted_pnl_by_adj[adj_value] = (
+                pnl_bps if adj_value == 0.0 else (pnl_bps + adj_value)
+            )
 
         notional = cfg.lot_size_btc * cfg.btc_price_jpy
         jpy_per_bps = 1e-4 * notional
@@ -370,7 +378,8 @@ class PnLMonteCarloSimulator:
 
         for fr in fill_rates:
             for adj in pnl_adjustments_bps:
-                adjusted_pnl = pnl_bps + adj
+                adj_value = float(adj)
+                adjusted_pnl = adjusted_pnl_by_adj[adj_value]
                 monthly = self._simulate_monthly_pnls(
                     fill_rate=fr,
                     pnl_bps=adjusted_pnl,
@@ -380,7 +389,7 @@ class PnLMonteCarloSimulator:
 
                 results.append({
                     "fill_rate": fr,
-                    "pnl_adj_bps": adj,
+                    "pnl_adj_bps": adj_value,
                     "mean_jpy": float(np.mean(monthly)),
                     "std_jpy": float(np.std(monthly)),
                     "var_95_jpy": float(np.percentile(monthly, 5)),

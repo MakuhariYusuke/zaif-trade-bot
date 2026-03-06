@@ -635,3 +635,36 @@
 1. `test_145_s13_boundary_guards.py` / `test_013_fixes.py` など method 内 import 上位の集約を継続
 2. `test_166_hotfixes.py` / `test_197_boost_optimization_gate_integration.py` の `fill_test.yaml` 直読を fixture 化
 3. `test_enricher_skip_gate.py` setup の `0.5s` 級スパイク要因（実データ準備）を分解して平準化
+
+---
+
+## 2026-03-06 / Session 037-018
+
+### 実施
+- テスト負荷軽減（実データ統合）
+  - `test_enricher_skip_gate.py`
+    - 実データサンプル上限を `300 -> 220` に調整
+- DRY 改善（method 内 import / 重複I/O）
+  - `test_145_s13_boundary_guards.py`
+    - method 内 import を先頭集約
+  - `test_166_hotfixes.py`
+    - `fill_test.yaml` 直読を共通 fixture (`v460_fill_test_yaml_base`) へ置換
+    - `cycle_gate_aggregator.py` 読込を module fixture 化
+- 本体最適化
+  - `ztb/risk/pnl_monte_carlo.py`
+    - percentile 算出を一括化
+    - sensitivity の調整済み PnL 配列をキャッシュ再利用
+
+### 結果
+- 変更対象テスト:
+  - `142 passed, 3 warnings in 6.32s`
+- v460 全体:
+  - `4006 passed, 18 warnings in 56.66s`（`--no-cov --durations=20`）
+- 補足:
+  - `Test058Integration` setup は `0.40s -> 0.32s` に低下
+  - method 内 import 総数は `614 -> 582` に減少
+
+### 次アクション
+1. `test_013_fixes.py` / `test_build_features_pipeline.py` の method 内 import 集約を継続
+2. `test_197_boost_optimization_gate_integration.py` の YAML 直読を fixture 化
+3. `test_retrain_hot_reload.py::TestMultiWindowWF` と `test_pnl_monte_carlo` 上位ケースの試行負荷を段階削減

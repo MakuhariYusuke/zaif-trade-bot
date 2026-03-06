@@ -9,8 +9,20 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from scripts.v460.lib.lock_manager import LockConflictError, LockManager
 from scripts.v460.lib.balance_checker import BalanceChecker
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.lock_manager import LockConflictError, LockManager
+
+
+@pytest.fixture(scope="module")
+def hotfix_yaml(v460_fill_test_yaml_base: dict[str, object]) -> dict[str, object]:
+    """fill_test.yaml の共通キャッシュ."""
+    return v460_fill_test_yaml_base
+
+
+@pytest.fixture(scope="module")
+def cycle_gate_source() -> str:
+    return Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8")
 
 
 # ======================================================================
@@ -91,7 +103,6 @@ class TestInsufficientCooldown:
 
     @pytest.fixture
     def config(self):
-        from scripts.v460.lib.fill_config import FillTestConfig
         return FillTestConfig()
 
     def test_cooldown_state_init(self, config):
@@ -140,16 +151,12 @@ class TestRescueConfig:
     """166# HF1: rescue 設定が YAML から正しく読み込まれる."""
 
     def test_default_rescue_disabled(self):
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.balance_forced_rescue_enabled is False
         assert cfg.balance_forced_rescue_offset_mult == 2.0
 
-    def test_yaml_rescue_enabled(self):
-        import yaml
-        from scripts.v460.lib.fill_config import FillTestConfig
-        yaml_cfg = yaml.safe_load(open("configs/v460/fill_test.yaml"))
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+    def test_yaml_rescue_enabled(self, hotfix_yaml: dict[str, object]):
+        cfg = FillTestConfig.from_yaml(hotfix_yaml)
         assert cfg.balance_forced_rescue_enabled is True
         assert cfg.balance_forced_rescue_offset_mult == 1.3  # 171# 2.0→1.3
 
@@ -164,31 +171,25 @@ class TestTrendingSellSkipRebalance:
     194#: HF4 ロジックは CycleGateAggregator に集約。
     """
 
-    def test_hf4_code_exists_in_orchestrator(self):
+    def test_hf4_code_exists_in_orchestrator(self, cycle_gate_source: str):
         """HF4 コードが CycleGateAggregator に存在する."""
-        from pathlib import Path
-        source = Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8")
-        assert "166# HF4" in source
-        assert "buy side insufficient" in source or "buy_side_insufficient" in source
+        assert "166# HF4" in cycle_gate_source
+        assert (
+            "buy side insufficient" in cycle_gate_source
+            or "buy_side_insufficient" in cycle_gate_source
+        )
 
-    def test_max_consecutive_trending_sell_skip_yaml(self):
+    def test_max_consecutive_trending_sell_skip_yaml(
+        self,
+        hotfix_yaml: dict[str, object],
+    ):
         """YAML で max_consecutive_trending_sell_skip=10 が設定されている (171# 20→10)."""
-        import yaml
-        from pathlib import Path
-        cfg_path = Path("configs/v460/fill_test.yaml")
-        with open(cfg_path) as f:
-            raw = yaml.safe_load(f)
-        val = raw.get("loss_control", {}).get("max_consecutive_trending_sell_skip", None)
+        val = hotfix_yaml.get("loss_control", {}).get("max_consecutive_trending_sell_skip", None)
         assert val == 10, f"Expected 10, got {val}"
 
-    def test_config_loads_max_consecutive(self):
+    def test_config_loads_max_consecutive(self, hotfix_yaml: dict[str, object]):
         """FillTestConfig が max_consecutive_trending_sell_skip を正しくロードする (171# 10)."""
-        import yaml
-        from scripts.v460.lib.fill_config import FillTestConfig
-        cfg_path = "configs/v460/fill_test.yaml"
-        with open(cfg_path) as f:
-            raw = yaml.safe_load(f)
-        cfg = FillTestConfig.from_yaml(raw)
+        cfg = FillTestConfig.from_yaml(hotfix_yaml)
         assert cfg.max_consecutive_trending_sell_skip == 10
 
 
@@ -202,29 +203,23 @@ class TestTrendingSellSkipRebalance2:
     194#: HF4 ロジックは CycleGateAggregator に集約。
     """
 
-    def test_hf4_code_exists_in_orchestrator(self):
+    def test_hf4_code_exists_in_orchestrator(self, cycle_gate_source: str):
         """HF4 コードが CycleGateAggregator に存在する."""
-        from pathlib import Path
-        source = Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8")
-        assert "166# HF4" in source
-        assert "buy side insufficient" in source or "buy_side_insufficient" in source
+        assert "166# HF4" in cycle_gate_source
+        assert (
+            "buy side insufficient" in cycle_gate_source
+            or "buy_side_insufficient" in cycle_gate_source
+        )
 
-    def test_max_consecutive_trending_sell_skip_yaml(self):
+    def test_max_consecutive_trending_sell_skip_yaml(
+        self,
+        hotfix_yaml: dict[str, object],
+    ):
         """YAML で max_consecutive_trending_sell_skip=10 が設定されている (171# 20→10)."""
-        import yaml
-        from pathlib import Path
-        cfg_path = Path("configs/v460/fill_test.yaml")
-        with open(cfg_path) as f:
-            raw = yaml.safe_load(f)
-        val = raw.get("loss_control", {}).get("max_consecutive_trending_sell_skip", None)
+        val = hotfix_yaml.get("loss_control", {}).get("max_consecutive_trending_sell_skip", None)
         assert val == 10, f"Expected 10, got {val}"
 
-    def test_config_loads_max_consecutive(self):
+    def test_config_loads_max_consecutive(self, hotfix_yaml: dict[str, object]):
         """FillTestConfig が max_consecutive_trending_sell_skip を正しくロードする (169# C3: 20)."""
-        import yaml
-        from scripts.v460.lib.fill_config import FillTestConfig
-        cfg_path = "configs/v460/fill_test.yaml"
-        with open(cfg_path) as f:
-            raw = yaml.safe_load(f)
-        cfg = FillTestConfig.from_yaml(raw)
+        cfg = FillTestConfig.from_yaml(hotfix_yaml)
         assert cfg.max_consecutive_trending_sell_skip == 10  # 171# 20→10

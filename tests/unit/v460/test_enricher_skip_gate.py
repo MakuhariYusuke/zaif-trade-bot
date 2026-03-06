@@ -41,7 +41,7 @@ from scripts.v460.ml.skip_gate import (
 )
 from scripts.v460.ml.data_loader import build_as_features, load_fill_records as load_fill_records_df
 
-_REAL_DATA_SAMPLE_ROWS = 300
+_REAL_DATA_SAMPLE_ROWS = 220
 
 
 def _write_jsonl_gz(path: Path, rows: list[dict[str, Any]]) -> None:

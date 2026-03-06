@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 309# perf+dry+core: integration負荷追加圧縮 + import集約横展開 + MC感度計算最適化 (2026-03-06)
+
+### Changed
+- **テスト負荷軽減**
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - 実データ統合テストのサンプル上限を `300 -> 220` に調整
+    - `Test058Integration` setup の I/O/特徴量生成コストを圧縮
+- **DRY 改善（method 内 import / YAML 直読集約）**
+  - `tests/unit/v460/test_145_s13_boundary_guards.py`
+    - method 内 import を先頭集約
+  - `tests/unit/v460/test_166_hotfixes.py`
+    - `fill_test.yaml` 直読を `v460_fill_test_yaml_base` fixture 再利用へ置換
+    - `cycle_gate_aggregator.py` ソース読込を module fixture 化
+    - method 内 import を先頭集約
+- **本体コード最適化（挙動互換）**
+  - `ztb/risk/pnl_monte_carlo.py`
+    - `run()` の percentile 算出を一括計算化（`np.percentile` 呼び出し回数削減）
+    - `sensitivity_analysis()` で調整済み PnL 配列を事前キャッシュし再利用
+
+### Verification
+- 変更対象回帰:
+  - `142 passed, 3 warnings in 6.32s`
+- v460 全体:
+  - `4006 passed, 18 warnings in 56.66s`（`--no-cov --durations=20`）
+
+### Performance Notes
+- `test_enricher_skip_gate::Test058Integration::test_enrichment_with_real_data` setup:
+  - `0.40s -> 0.32s`
+- v460 method 内 import 総数:
+  - `614 -> 582`
+
 ## 308# perf+dry+core: YAML I/O集約の横展開 + live_trader source検証軽量化 + MC定数経路最適化 (2026-03-06)
 
 ### Changed

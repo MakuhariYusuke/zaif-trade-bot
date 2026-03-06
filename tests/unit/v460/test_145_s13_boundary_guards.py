@@ -16,6 +16,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
+from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
+from ztb.trading.live.exchanges.base.adapter import BaseExchangeAdapter
+from ztb.trading.live.exchanges.base.broker_interfaces import IBroker
+from ztb.trading.live.exchanges.bitflyer.adapter import BitFlyerAdapter
+from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
 
 # ======================================================================
@@ -28,7 +34,6 @@ class TestEmptyValidIndexNocrash:
 
     def test_empty_valid_index_returns_uniform(self) -> None:
         """len(valid_index)==0 → 空配列 + reason=empty_valid_index."""
-        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
 
         df = pd.DataFrame({"regime": ["trending", "high_vol", "ranging"]})
         empty_idx = pd.Index([], dtype="int64")
@@ -46,7 +51,6 @@ class TestEmptyValidIndexNocrash:
 
     def test_empty_valid_index_no_numpy_error(self) -> None:
         """空配列で np.min/np.max/np.mean が呼ばれない."""
-        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
 
         df = pd.DataFrame({"regime": []})
         empty_idx = pd.Index([], dtype="int64")
@@ -58,7 +62,6 @@ class TestEmptyValidIndexNocrash:
 
     def test_single_sample_valid_index(self) -> None:
         """1 件だけの valid_index でも正常動作."""
-        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
 
         df = pd.DataFrame({"regime": ["trending"]}, index=[0])
         idx = pd.Index([0])
@@ -83,7 +86,6 @@ class TestLookbackZeroGuard:
 
     def test_lookback_zero_in_compute_weights(self) -> None:
         """lookback=0 → max(1,...) により lookback=1 として動作."""
-        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
 
         df = pd.DataFrame({"regime": ["trending", "ranging", "high_vol"]})
         idx = df.index
@@ -98,7 +100,6 @@ class TestLookbackZeroGuard:
 
     def test_lookback_zero_does_not_index_error(self) -> None:
         """lookback=0 + empty X_valid でも IndexError にならない."""
-        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
 
         df = pd.DataFrame({"regime": ["x"]}, index=[0])
         # lookback=0 → max(1, 0) = 1, len(regimes)=1 >= 1 → regime detection 実行
@@ -108,7 +109,6 @@ class TestLookbackZeroGuard:
 
     def test_lookback_negative_clamped(self) -> None:
         """負の lookback もmax(1,...) でクランプ."""
-        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
 
         df = pd.DataFrame({"regime": ["trending", "ranging"]})
         idx = df.index
@@ -132,7 +132,6 @@ class TestBusyLoopIntervalGuard:
     """get_effective_interval が 0 を返さないこと."""
 
     def _make_trigger(self, **kwargs):  # type: ignore[no-untyped-def]
-        from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
         cfg = RetrainTriggerConfig(
             check_trades_health=False,
             **kwargs,
@@ -170,7 +169,6 @@ class TestBusyLoopIntervalGuard:
 
     def test_config_rejects_zero_multiplier(self) -> None:
         """regime_interval_multipliers に 0 を指定すると ValueError."""
-        from ztb.ml.retrain_trigger import RetrainTriggerConfig
         with pytest.raises(ValueError, match="must be > 0"):
             RetrainTriggerConfig(
                 regime_interval_multipliers={"high_vol": 0.0},
@@ -178,7 +176,6 @@ class TestBusyLoopIntervalGuard:
 
     def test_config_rejects_negative_multiplier(self) -> None:
         """regime_interval_multipliers に負値を指定すると ValueError."""
-        from ztb.ml.retrain_trigger import RetrainTriggerConfig
         with pytest.raises(ValueError, match="must be > 0"):
             RetrainTriggerConfig(
                 regime_interval_multipliers={"high_vol": -1.0},
@@ -186,7 +183,6 @@ class TestBusyLoopIntervalGuard:
 
     def test_config_rejects_zero_base_interval(self) -> None:
         """base_interval_sec=0 は ValueError."""
-        from ztb.ml.retrain_trigger import RetrainTriggerConfig
         with pytest.raises(ValueError, match="base_interval_sec must be >= 1"):
             RetrainTriggerConfig(base_interval_sec=0)
 
@@ -206,7 +202,6 @@ class TestBitflyerDocstringCleanup:
 
     def test_no_duplicate_docstring(self) -> None:
         """_make_request のソースに docstring が 1 つだけ."""
-        from ztb.trading.live.exchanges.bitflyer.adapter import BitFlyerAdapter
 
         src = inspect.getsource(BitFlyerAdapter._make_request)
         # triple-quote の出現回数 (開始+終了で 2 回が正常)
@@ -224,26 +219,18 @@ class TestCoincheckAdapterInheritance:
 
     def test_implements_ibroker(self) -> None:
         """CoincheckAdapter が IBroker を実装していること."""
-        from ztb.trading.live.exchanges.base.broker_interfaces import IBroker
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
         assert issubclass(CoincheckAdapter, IBroker)
 
     def test_coincheck_uses_base_adapter(self) -> None:
         """CoincheckAdapter が BaseExchangeAdapter 継承であること (145# §14)."""
-        from ztb.trading.live.exchanges.base.adapter import BaseExchangeAdapter
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
         assert issubclass(CoincheckAdapter, BaseExchangeAdapter)
 
     def test_bitflyer_uses_base_adapter(self) -> None:
         """BitFlyerAdapter が BaseExchangeAdapter 継承であること."""
-        from ztb.trading.live.exchanges.base.adapter import BaseExchangeAdapter
-        from ztb.trading.live.exchanges.bitflyer.adapter import BitFlyerAdapter
         assert issubclass(BitFlyerAdapter, BaseExchangeAdapter)
 
     def test_shared_interface_methods(self) -> None:
         """両 adapter が IBroker の主要メソッドを実装していること."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-        from ztb.trading.live.exchanges.bitflyer.adapter import BitFlyerAdapter
 
         required_methods = [
             "place_order", "cancel_order", "get_order_status",
