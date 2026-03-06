@@ -58,6 +58,7 @@ class PnlMeasurer:
         113# R1: run_single_cycle Phase 5.
         047# E3: multi-timeframe 計測.
         054# S3: Early Exit 監視.
+        305# Execution Quality 分解: spread_capture + adverse_selection_cost.
 
         Returns:
             PnlMeasurement dataclass.
@@ -139,6 +140,18 @@ class PnlMeasurer:
                 else m.mid_30s_after > m.mid_at_fill
             )
             m.adverse_selected = m.post_fill_pnl < -cfg.as_deadzone_bps
+
+            # 305# Execution Quality 分解 (Kissell & Glantz 2003):
+            #   PnL = spread_capture + adverse_selection_cost
+            # spread_capture: fill_price が mid よりも有利な分 (MM の付加価値)
+            # adverse_selection_cost: mid が約定後に不利方向に動いた分
+            if fill_price is not None and m.mid_at_fill > 0:
+                m.spread_capture_bps = self._side_pnl_bps(
+                    side, fill_price, m.mid_at_fill,
+                )
+                m.adverse_selection_cost_bps = self._side_pnl_bps(
+                    side, m.mid_at_fill, m.mid_30s_after,
+                )
 
         # early_exit_triggered → 呼び出し側で rapid_exit フラグを設定
         m.early_exit_triggered = early_exit_triggered

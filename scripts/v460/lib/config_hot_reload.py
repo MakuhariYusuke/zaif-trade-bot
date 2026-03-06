@@ -307,6 +307,9 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     # 303# C: none regime Passive MM
     "none_regime_passive_mm_enabled",
     "none_regime_fixed_offset_bps",
+    # 305# Parkinson σ 推定器
+    "sigma_parkinson_enabled",
+    "sigma_parkinson_window_sec",
     # --- one-sided escalation ---
     "one_sided_escalation_cooldown_offset",
     "one_sided_escalation_cooldown_cycles",

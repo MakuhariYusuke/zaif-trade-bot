@@ -578,6 +578,12 @@ class FillTestConfig:
     # ILLIQ = |ΔP/P| / Volume — 非流動性指標 → spread_adaptive 閾値を動的調整。
     amihud_illiq_enabled: bool = False       # True で ILLIQ 補正を有効化
     amihud_illiq_baseline: float = 0.001     # ILLIQ ベースライン (正規化基準)
+    # ---- 305# Parkinson σ推定器: Parkinson (1980) High-Low Volatility Estimator ----
+    # Roll proxy σ = spread/(2·mid) は薄い板で極めてノイジー。
+    # Parkinson: σ_P = ln(H/L) / (2·√(ln2)) — rolling window 内の max/min mid から推定。
+    # AS δ*, inv_skew, VG, Kyle λ の全段精度を向上させる。
+    sigma_parkinson_enabled: bool = False     # True で Parkinson σ を使用 (False: Roll proxy)
+    sigma_parkinson_window_sec: float = 300.0 # high/low 追跡ウィンドウ (秒)
     # ---- 286# 283# P1-6: Buy-side AS Guard — microprice 急落時の buy offset 拡大 ----
     # Glosten-Milgrom (1985): 価格急落時は情報非対称性リスクが急上昇し、
     # buy 側 maker は逆選択を被りやすい。velocity が閾値を超えたら
@@ -1886,6 +1892,12 @@ class PnlMeasurement:
     early_exit_triggered: bool = False
     # 120# A4-2: EE 発動時の中断時点 PnL (post_fill_pnl は常に固定30s)
     pnl_at_exit_bps: float | None = None
+    # 305# Execution Quality 分解 (Kissell & Glantz 2003):
+    #   PnL = spread_capture + adverse_selection_cost
+    #   spread_capture: fill_price vs mid_at_fill (MM の付加価値)
+    #   adverse_selection_cost: mid_at_fill vs mid_after (情報コスト)
+    spread_capture_bps: float | None = None
+    adverse_selection_cost_bps: float | None = None
 
 
 # ======================================================================

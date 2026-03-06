@@ -138,6 +138,9 @@ class MakerPriceCalculator:
         "_loss_boost_set_time",      # 226# T1: boost 設定時刻 (指数減衰用)
         "_smoothed_velocity_bps",    # 227# C3: EMA-smoothed velocity (bid-ask bounce noise filter)
         "_last_amihud_illiq",        # 266# Amihud ILLIQ キャッシュ
+        "_mid_high",                 # 305# Parkinson σ: rolling window 内 max mid
+        "_mid_low",                  # 305# Parkinson σ: rolling window 内 min mid
+        "_mid_hl_reset_time",        # 305# Parkinson σ: high/low リセット時刻
     )
 
     def __init__(
@@ -194,6 +197,10 @@ class MakerPriceCalculator:
         self._smoothed_velocity_bps: float | None = None
         # 266# Amihud ILLIQ キャッシュ
         self._last_amihud_illiq: float = 0.0
+        # 305# Parkinson σ: rolling high/low tracking for HF volume estimator
+        self._mid_high: float = 0.0
+        self._mid_low: float = float("inf")
+        self._mid_hl_reset_time: float = 0.0
 
     def get_fallback_price(self) -> tuple[float | None, float | None]:
         """156# §16: OB エラー時のフォールバック価格と記録時刻を返す.
@@ -538,15 +545,47 @@ class MakerPriceCalculator:
     def _estimate_sigma(self, spread: float, mid_price: float) -> tuple[float, float]:
         """266# σ 推定: Roll (1984) micro-vol proxy × RegimeDetector vol_ratio.
 
+        305# Parkinson 拡張: sigma_parkinson_enabled=True 時は
+        Parkinson (1980) High-Low Volatility Estimator を使用。
+        σ_P = ln(H/L) / (2·√(ln2)) — rolling window 内の max/min mid から推定。
+        Roll proxy (spread/(2·mid)) は薄い板で極めてノイジーであるのに対し、
+        Parkinson は実際の価格変動範囲に基づくため安定性が高い。
+
         Returns:
             (sigma, vol_ratio) — σ 推定値と vol_ratio。
             _apply_as_reservation_shift (AS + δ*) で直接使用。
             _apply_kyle_lambda, _apply_amihud_illiq は depth ベースで独自推定。
         """
-        sigma = spread / (2.0 * mid_price) if mid_price > 0 else 0.0
         vol_ratio = 1.0
         if self._regime_detector is not None:
             vol_ratio = max(self._regime_detector.last_volatility_ratio, 0.1)
+
+        cfg = self._config
+        # 305# Parkinson σ: rolling high/low から Parkinson estimator で σ を推定
+        if cfg.sigma_parkinson_enabled and mid_price > 0:
+            now = time.time()
+            window = cfg.sigma_parkinson_window_sec
+            # window 経過でリセット
+            if now - self._mid_hl_reset_time > window:
+                self._mid_high = mid_price
+                self._mid_low = mid_price
+                self._mid_hl_reset_time = now
+            else:
+                if mid_price > self._mid_high:
+                    self._mid_high = mid_price
+                if mid_price < self._mid_low:
+                    self._mid_low = mid_price
+
+            if self._mid_high > 0 and self._mid_low > 0 and self._mid_high > self._mid_low:
+                # Parkinson (1980): σ_P = ln(H/L) / (2·√(ln2))
+                log_hl = math.log(self._mid_high / self._mid_low)
+                sigma = log_hl / (2.0 * math.sqrt(math.log(2.0)))
+            else:
+                # high == low (動きなし) → Roll proxy にフォールバック
+                sigma = spread / (2.0 * mid_price) if mid_price > 0 else 0.0
+        else:
+            sigma = spread / (2.0 * mid_price) if mid_price > 0 else 0.0
+
         sigma *= vol_ratio
         return sigma, vol_ratio
 
@@ -1277,7 +1316,13 @@ class MakerPriceCalculator:
         else:
             imb = 0.0
 
-        ob = await adapter.get_orderbook(symbol, depth=1)
+        # 305# S2: OB キャッシュ再利用 — calculate_imbalance() の depth=5 OB を活用。
+        # 二重 API 呼出し (100-200ms/cycle) を排除。
+        # キャッシュ未取得時 (imbalance_enabled=False 等) のみ fresh fetch。
+        if self._last_ob_snapshot is not None and self._last_ob_snapshot.bids and self._last_ob_snapshot.asks:
+            ob = self._last_ob_snapshot
+        else:
+            ob = await adapter.get_orderbook(symbol, depth=1)
         if not ob.bids or not ob.asks:
             raise ValueError("Empty orderbook")
         best_bid = ob.bids[0][0]
