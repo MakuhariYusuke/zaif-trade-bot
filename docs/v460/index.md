@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-07 (311# 観測比較再実行 + 深堀り分析)
+> 最終更新: 2026-03-07 (312# 308-311再レビュー)
 
 ---
 
@@ -302,6 +302,9 @@
 | 309 | resp | [309_ph2_review_response_307_308_fixes.md](309_ph2_review_response_307_308_fixes.md) | 307#/308# レビュー対応: L1/L2 理論倒錯修正 + deep dive スキーマ是正 |
 | 310 | impl | [310_ph2_impl_design_improvements.md](310_ph2_impl_design_improvements.md) | 設計面改修: 時間帯ブースト + Decision Path + L2 Safety + None Observability + Spread/AS 分解 |
 | 311 | rpt | [311_ph2_rpt_observational_comparison_rerun.md](311_ph2_rpt_observational_comparison_rerun.md) | 観測比較再実行 + 309#/310# 理論修正検証 + 深堀り分析 |
+| 312 | rev | [312_ph2_rev_308_311_multifaceted_validation.md](312_ph2_rev_308_311_multifaceted_validation.md) | 308-311再レビュー: mixed-SHA分析の限界, spread/AS分解式の再検証, sell_hour_boost評価の交絡, floor discount仮説の扱い, none/L2の優先順位を再整理 |
+| 313 | rev | [313_ph2_gemini_31_pro_review_309_312_pricing_math_inversion.md](313_ph2_gemini_31_pro_review_309_312_pricing_math_inversion.md) | Gemini 3.1 Pro レビュー: spread capture 転倒確認 + VG「自発的自殺」指摘 + fill rate 過剰最適化 |
+| 314 | resp | [314_ph2_resp_312_313_review_response_plan.md](314_ph2_resp_312_313_review_response_plan.md) | 312#/313# レビュー応答: 全 Finding 検証 + 盲点 4 件 (B1 ratio セマンティクス転倒, B2 ceiling 未適用) + 3 Phase 実行計画 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
