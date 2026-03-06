@@ -33,6 +33,7 @@ from scripts.v460.lib.ab_judgment import (
     _holm_bonferroni,
     _mann_whitney_u,
     _norm_cdf,
+    _pairwise_counts,
 )
 from ztb.io.json_io import JSONObject
 from ztb.utils.dataclass_utils import filter_known_dataclass_fields
@@ -1127,6 +1128,34 @@ class TestCliffsDelta:
         assert abs(d1 + d2) < 1e-10
 
 
+class TestPairwiseCounts:
+    """_pairwise_counts テスト."""
+
+    def test_all_greater(self) -> None:
+        x = np.array([10.0, 20.0])
+        y = np.array([1.0, 2.0])
+        more, less, equal = _pairwise_counts(x, y)
+        assert more == 4
+        assert less == 0
+        assert equal == 0
+
+    def test_all_ties(self) -> None:
+        """T-2: タイ多数ケース."""
+        x = np.array([1.0, 1.0, 1.0, 1.0])
+        y = np.array([1.0, 1.0, 1.0, 1.0])
+        more, less, equal = _pairwise_counts(x, y)
+        assert more == 0
+        assert less == 0
+        assert equal == 16
+
+    def test_ties_produce_high_p_value(self) -> None:
+        """T-2: 全タイ → Mann-Whitney p=1.0."""
+        x = np.array([1.0, 1.0, 1.0, 1.0])
+        y = np.array([1.0, 1.0, 1.0, 1.0])
+        _, p = _mann_whitney_u(x, y)
+        assert p > 0.9
+
+
 class TestHolmBonferroni:
     """_holm_bonferroni テスト."""
 
@@ -1209,3 +1238,43 @@ class TestF4Integration:
         assert "Mann-Whitney" in summary
         assert "Cliff's δ" in summary
         assert "Holm" in summary
+
+    def test_summary_with_none_effect_size(self) -> None:
+        """T-1: pnl30_effect_size=None でも summary() が TypeError にならない."""
+        result = ABJudgmentResult(
+            overall=Verdict.PASS,
+            pnl30_p_value=0.05,
+            pnl30_effect_size=None,
+        )
+        summary = result.summary()
+        assert "Welch t" in summary
+        assert "N/A" in summary
+
+    def test_summary_with_none_cliffs_delta(self) -> None:
+        """T-1: cliffs_delta_value=None でも summary() が TypeError にならない."""
+        result = ABJudgmentResult(
+            overall=Verdict.PASS,
+            mann_whitney_p_value=0.03,
+            cliffs_delta_value=None,
+            cliffs_delta_interpretation="",
+        )
+        summary = result.summary()
+        assert "Mann-Whitney" in summary
+        assert "N/A" in summary
+
+    def test_holm_not_applied_when_single_p(self) -> None:
+        """T-3: ttest p=None (scipy失敗) → collected_p=1 → Holm スキップ."""
+        result = ABJudgmentResult(
+            overall=Verdict.PASS,
+            pnl30_p_value=None,
+            pnl30_effect_size=None,
+            mann_whitney_p_value=0.01,
+            cliffs_delta_value=0.5,
+            cliffs_delta_interpretation="large",
+            holm_significant=None,  # Holm 未適用
+        )
+        # Holm がスキップされている → holm_significant は None のまま
+        assert result.holm_significant is None
+        summary = result.summary()
+        # Holm マーカーなし
+        assert "Holm" not in summary

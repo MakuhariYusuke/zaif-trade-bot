@@ -150,17 +150,19 @@ class ABJudgmentResult:
             holm_t = ""
             if self.holm_significant is not None and len(self.holm_significant) >= 1:
                 holm_t = " (Holm ✓)" if self.holm_significant[0] else " (Holm ✗)"
+            eff_str = f"{self.pnl30_effect_size:.3f}" if self.pnl30_effect_size is not None else "N/A"
             lines.append(
                 f"  [stat] Welch t: p={self.pnl30_p_value:.4f}{holm_t}, "
-                f"Cohen's d={self.pnl30_effect_size:.3f}"
+                f"Cohen's d={eff_str}"
             )
         if self.mann_whitney_p_value is not None:
             holm_mw = ""
             if self.holm_significant is not None and len(self.holm_significant) >= 2:
                 holm_mw = " (Holm ✓)" if self.holm_significant[1] else " (Holm ✗)"
+            cd_str = f"{self.cliffs_delta_value:.3f}" if self.cliffs_delta_value is not None else "N/A"
             lines.append(
                 f"  [stat] Mann-Whitney: p={self.mann_whitney_p_value:.4f}{holm_mw}, "
-                f"Cliff's δ={self.cliffs_delta_value:.3f} "
+                f"Cliff's δ={cd_str} "
                 f"({self.cliffs_delta_interpretation})"
             )
         return "\n".join(lines)
@@ -257,10 +259,26 @@ def _norm_cdf(z: float) -> float:
     return 0.5 * erfc_val
 
 
+def _pairwise_counts(
+    x: np.ndarray, y: np.ndarray,
+) -> tuple[int, int, int]:
+    """全ペア比較で (more, less, equal) カウントを返す (numpy ベクトル化).
+
+    x[i] > y[j] → more, x[i] < y[j] → less, x[i] == y[j] → equal.
+    O(n*m) メモリだが Python ループ比 ~100x 高速。
+    """
+    # diff[i,j] = x[i] - y[j]
+    diff = x[:, None] - y[None, :]
+    more = int(np.sum(diff > 0))
+    less = int(np.sum(diff < 0))
+    equal = int(np.sum(diff == 0))
+    return more, less, equal
+
+
 def _mann_whitney_u(
     x: np.ndarray, y: np.ndarray,
 ) -> tuple[float, float]:
-    """Mann-Whitney U 検定 (正規近似, O(n*m)).
+    """Mann-Whitney U 検定 (正規近似, numpy ベクトル化).
 
     Returns:
         (U 統計量, 近似 p 値)
@@ -269,14 +287,8 @@ def _mann_whitney_u(
     if nx == 0 or ny == 0:
         return 0.0, 1.0
 
-    # 全ペア比較
-    u = 0.0
-    for xi in x:
-        for yi in y:
-            if xi > yi:
-                u += 1
-            elif xi == yi:
-                u += 0.5
+    more, _less, equal = _pairwise_counts(x, y)
+    u = float(more) + 0.5 * float(equal)
 
     mu = nx * ny / 2
     sigma = math.sqrt(nx * ny * (nx + ny + 1) / 12)
@@ -291,7 +303,7 @@ def _mann_whitney_u(
 def _cliffs_delta(
     x: np.ndarray, y: np.ndarray,
 ) -> tuple[float, str]:
-    """Cliff's Delta (ノンパラメトリック効果量).
+    """Cliff's Delta (ノンパラメトリック効果量, numpy ベクトル化).
 
     Returns:
         (delta, 解釈) — 解釈は negligible / small / medium / large
@@ -300,15 +312,7 @@ def _cliffs_delta(
     if nx == 0 or ny == 0:
         return 0.0, "negligible"
 
-    more = 0
-    less = 0
-    for xi in x:
-        for yi in y:
-            if xi > yi:
-                more += 1
-            elif xi < yi:
-                less += 1
-
+    more, less, _equal = _pairwise_counts(x, y)
     delta = (more - less) / (nx * ny)
     abs_d = abs(delta)
     if abs_d < 0.147:
