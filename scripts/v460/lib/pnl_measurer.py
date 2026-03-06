@@ -17,14 +17,13 @@ import asyncio
 import logging
 import random as _rng
 import time
-from typing import Awaitable, Callable, Final
+from typing import Awaitable, Callable
 
 from scripts.v460.lib.fill_config import FillTestConfig, PnlMeasurement
 
 logger = logging.getLogger(__name__)
 
-# 定数
-_BPS_FACTOR: Final[int] = 10_000
+from scripts.v460.lib.constants import BPS_FACTOR as _BPS_FACTOR
 
 
 class PnlMeasurer:
@@ -37,6 +36,13 @@ class PnlMeasurer:
 
     def __init__(self, config: FillTestConfig) -> None:
         self._config = config
+
+    @staticmethod
+    def _side_pnl_bps(side: str, mid_at_fill: float, mid_after: float) -> float:
+        """304# DRY: side 別 PnL bps 計算 (buy: mid上昇が利益, sell: mid下落が利益)."""
+        if side == "buy":
+            return (mid_after - mid_at_fill) / mid_at_fill * _BPS_FACTOR
+        return (mid_at_fill - mid_after) / mid_at_fill * _BPS_FACTOR
 
     async def measure(
         self,
@@ -96,10 +102,7 @@ class PnlMeasurer:
                 await asyncio.sleep(monitor_sec)
                 try:
                     mid_now = await get_mid_price()
-                    if side == "buy":
-                        interim_pnl = (mid_now - m.mid_at_fill) / m.mid_at_fill * _BPS_FACTOR
-                    else:
-                        interim_pnl = (m.mid_at_fill - mid_now) / m.mid_at_fill * _BPS_FACTOR
+                    interim_pnl = self._side_pnl_bps(side, m.mid_at_fill, mid_now)
                     if interim_pnl < -cfg.early_exit_threshold_bps:
                         logger.warning(
                             f"[early_exit] Loss threshold hit at {(tick+1)*monitor_sec:.0f}s: "
@@ -130,14 +133,12 @@ class PnlMeasurer:
             logger.debug("mid_30s_after fetch failed: %s", exc)
 
         if m.mid_at_fill is not None and m.mid_30s_after is not None:
-            if side == "buy":
-                m.post_fill_pnl = (m.mid_30s_after - m.mid_at_fill) / m.mid_at_fill * _BPS_FACTOR
-                m.adverse_selected_raw = m.mid_30s_after < m.mid_at_fill
-                m.adverse_selected = m.post_fill_pnl < -cfg.as_deadzone_bps
-            else:
-                m.post_fill_pnl = (m.mid_at_fill - m.mid_30s_after) / m.mid_at_fill * _BPS_FACTOR
-                m.adverse_selected_raw = m.mid_30s_after > m.mid_at_fill
-                m.adverse_selected = m.post_fill_pnl < -cfg.as_deadzone_bps
+            m.post_fill_pnl = self._side_pnl_bps(side, m.mid_at_fill, m.mid_30s_after)
+            m.adverse_selected_raw = (
+                m.mid_30s_after < m.mid_at_fill if side == "buy"
+                else m.mid_30s_after > m.mid_at_fill
+            )
+            m.adverse_selected = m.post_fill_pnl < -cfg.as_deadzone_bps
 
         # early_exit_triggered → 呼び出し側で rapid_exit フラグを設定
         m.early_exit_triggered = early_exit_triggered
@@ -152,10 +153,7 @@ class PnlMeasurer:
                 await asyncio.sleep(e3_wait_60)
             try:
                 m.mid_60s_after = await get_mid_price()
-                if side == "buy":
-                    m.post_fill_60s_pnl = (m.mid_60s_after - m.mid_at_fill) / m.mid_at_fill * _BPS_FACTOR
-                else:
-                    m.post_fill_60s_pnl = (m.mid_at_fill - m.mid_60s_after) / m.mid_at_fill * _BPS_FACTOR
+                m.post_fill_60s_pnl = self._side_pnl_bps(side, m.mid_at_fill, m.mid_60s_after)
             except Exception as exc:
                 logger.debug("mid_60s_after PnL failed: %s", exc)
 
@@ -166,10 +164,7 @@ class PnlMeasurer:
                 await asyncio.sleep(e3_wait_120)
             try:
                 m.mid_120s_after = await get_mid_price()
-                if side == "buy":
-                    m.post_fill_120s_pnl = (m.mid_120s_after - m.mid_at_fill) / m.mid_at_fill * _BPS_FACTOR
-                else:
-                    m.post_fill_120s_pnl = (m.mid_at_fill - m.mid_120s_after) / m.mid_at_fill * _BPS_FACTOR
+                m.post_fill_120s_pnl = self._side_pnl_bps(side, m.mid_at_fill, m.mid_120s_after)
             except Exception as exc:
                 logger.debug("mid_120s_after PnL failed: %s", exc)
 

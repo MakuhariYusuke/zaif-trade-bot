@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
+from scripts.v460.lib.constants import BPS_FACTOR
 from scripts.v460.lib.lot_manager import (
     compute_confidence_lot_factor,
     compute_effective_order_lot,
@@ -50,8 +51,8 @@ class FillRecordHelpersMixin:
     ────────────────────────────────────────────────────
     """
 
-    # 106# R2: bps 換算定数 (1 bps = 1e-4)
-    _BPS_FACTOR: int = 10_000
+    # 106# R2: bps 換算定数 — 304# constants.py SSOT
+    _BPS_FACTOR: int = BPS_FACTOR
 
     # ──────────────────────────────────────────────────────────────────
     # 145# §9-#5/7: skip_record / cycle_id ヘルパ (DRY)

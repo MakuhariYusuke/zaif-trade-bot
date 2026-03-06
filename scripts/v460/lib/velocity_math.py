@@ -54,7 +54,7 @@ Reference:
 
 from __future__ import annotations
 
-_BPS_FACTOR: float = 10_000.0
+from scripts.v460.lib.constants import BPS_FACTOR as _BPS_FACTOR
 
 
 def compute_instant_velocity_bps(

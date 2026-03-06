@@ -54,7 +54,7 @@ class FillCycleExecutorMixin:
     _postonly_crossing_streak: int = 0
     # 234# no_feasible_quote 連続カウンタ (制約集合崩壊検出用)
     # 236# per-side 化: buy/sell 交互実行で相互リセットされる問題を修正
-    _consecutive_no_feasible: dict[str, int] | None = None
+    _consecutive_no_feasible: dict[str, int] = {}  # 304# None 判定排除
     # 266# _current_regime_value は fill_record_helpers Mixin が提供 (class-level 宣言不要)
     # 237# PhantomPositionGuard: クラスレベルデフォルト (hasattr 排除)
     # 238# C-1: object → PhantomPositionGuard 型安全化 (TYPE_CHECKING)
@@ -191,6 +191,29 @@ class FillCycleExecutorMixin:
                 balance_jpy=_jpy_snap,
             )
         return True
+
+    @staticmethod
+    def _recalc_price_with_new_offset(
+        side: str,
+        order_price: float,
+        spread_at_order: float | None,
+        old_ratio: float,
+        new_ratio: float,
+    ) -> float:
+        """304# DRY: offset 変更後の maker 価格再計算.
+
+        mid を逆算し、新しい offset ratio で price を再算出する。
+        spread 不明時は order_price をそのまま返す。
+        """
+        if spread_at_order is None or spread_at_order <= 0:
+            return order_price
+        # mid を逆推定: order_price = mid ∓ spread * old_ratio / 2
+        if side == "buy":
+            mid_est = order_price + spread_at_order * old_ratio / 2
+            return round(mid_est - spread_at_order * new_ratio / 2)
+        else:
+            mid_est = order_price - spread_at_order * old_ratio / 2
+            return round(mid_est + spread_at_order * new_ratio / 2)
 
     def _resolve_fill_cancel_reason(
         self,
@@ -794,8 +817,6 @@ class FillCycleExecutorMixin:
             order_price, spread_at_order, effective_offset_ratio = await self._compute_maker_price(side)
             # 234# no_feasible_quote 連続カウンタリセット (成功時)
             # 236# per-side 化
-            if self._consecutive_no_feasible is None:
-                self._consecutive_no_feasible = {}
             self._consecutive_no_feasible[side] = 0
         except InfeasibleQuoteError as e:
             # 239# 232# §1.5: 型安全な制約崩壊分類 — 文字列パース不要
@@ -805,8 +826,6 @@ class FillCycleExecutorMixin:
             else:
                 logger.warning(f"Maker price rejected: {e}")
             # 234# no_feasible_quote 検出: spread 制約で連続失敗 (236# per-side)
-            if self._consecutive_no_feasible is None:
-                self._consecutive_no_feasible = {}
             _cnf = self._consecutive_no_feasible.get(side, 0) + 1
             self._consecutive_no_feasible[side] = _cnf
             if _cnf >= 3:
@@ -847,15 +866,10 @@ class FillCycleExecutorMixin:
                 effective_offset_ratio * _rescue_mult,
                 self.config.max_offset_ratio,
             )
-            # 価格を rescue offset で再計算
-            if spread_at_order is not None and spread_at_order > 0:
-                mid_est = order_price + (spread_at_order * _pre_rescue_offset / 2 if side == "buy"
-                                         else -spread_at_order * _pre_rescue_offset / 2)
-                if side == "buy":
-                    order_price = mid_est - spread_at_order * effective_offset_ratio / 2
-                else:
-                    order_price = mid_est + spread_at_order * effective_offset_ratio / 2
-                order_price = round(order_price)
+            order_price = self._recalc_price_with_new_offset(
+                side, order_price, spread_at_order,
+                _pre_rescue_offset, effective_offset_ratio,
+            )
             logger.info(
                 f"[158# P1-1] balance_forced_rescue: offset "
                 f"{_pre_rescue_offset:.4f}→{effective_offset_ratio:.4f} "
@@ -871,16 +885,11 @@ class FillCycleExecutorMixin:
                 effective_offset_ratio * _deg_offset_mult,
                 self.config.max_offset_ratio,
             )
-            # 価格を degraded offset で再計算
-            if spread_at_order is not None and spread_at_order > 0:
-                mid_est = order_price + (spread_at_order * _pre_deg_offset / 2 if side == "buy"
-                                         else -spread_at_order * _pre_deg_offset / 2)
-                if side == "buy":
-                    order_price = mid_est - spread_at_order * effective_offset_ratio / 2
-                else:
-                    order_price = mid_est + spread_at_order * effective_offset_ratio / 2
-                order_price = round(order_price)
-            else:
+            order_price = self._recalc_price_with_new_offset(
+                side, order_price, spread_at_order,
+                _pre_deg_offset, effective_offset_ratio,
+            )
+            if spread_at_order is None or spread_at_order <= 0:
                 # 235# C-3 guard: spread 不明時は offset 拡大のみ (価格再計算不可)
                 logger.warning(
                     f"[235#] degraded_liquidation: spread unavailable — "
@@ -1102,7 +1111,7 @@ class FillCycleExecutorMixin:
         t_submit = time.time()
         order: object | None = None
         last_error: str | None = None
-        cancel_reason: str = "unknown"  # 032# #6: ループ未実行時の NameError 防止
+        cancel_reason: str = CR.UNKNOWN  # 032# #6: ループ未実行時の NameError 防止
 
         # 105#: lot floor guard — 121# BalanceChecker に委譲
         self._balance_checker.apply_lot_floor()

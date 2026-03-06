@@ -38,6 +38,9 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
+# 304# magic number → 名前付き定数
+_WARMUP_REPAIR_EPS: float = 0.01  # per-side PnL ≈ 0 判定閾値
+_WARMUP_REPAIR_MIN_PNL: float = 1.0  # 合計 PnL が有意と判定する最小 bps
 
 class DrawdownAction(TypedDict):
     """173# update_pnl() の型安全な戻り値."""
@@ -571,7 +574,7 @@ class DailyDrawdownGuard:
             return False  # fill なしなら warmup 不要
         # Case 1: per-side PnL が両方 0.0 だが合計が有意
         _per_side_sum = abs(s.daily_pnl_bps_buy) + abs(s.daily_pnl_bps_sell)
-        if _per_side_sum < 0.01 and abs(s.daily_pnl_bps) >= 1.0:
+        if _per_side_sum < _WARMUP_REPAIR_EPS and abs(s.daily_pnl_bps) >= _WARMUP_REPAIR_MIN_PNL:
             logger.warning(
                 f"[215# P0-A] DD state inconsistency detected: "
                 f"daily_pnl={s.daily_pnl_bps:+.2f}bps but "

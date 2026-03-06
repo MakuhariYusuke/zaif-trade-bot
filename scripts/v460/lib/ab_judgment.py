@@ -246,7 +246,12 @@ def _cohen_d(sample_a: np.ndarray, sample_b: np.ndarray) -> float:
 
 
 def _norm_cdf(z: float) -> float:
-    """標準正規分布の CDF (Abramowitz & Stegun 7.1.26 erfc 近似)."""
+    """標準正規分布の CDF (Abramowitz & Stegun 7.1.26 erfc 近似).
+
+    Reference: Abramowitz, M. & Stegun, I. A. (1964),
+    *Handbook of Mathematical Functions*, eq. 7.1.26.
+    最大絶対誤差 ≤ 1.5×10⁻⁷.
+    """
     a1, a2, a3 = 0.254829592, -0.284496736, 1.421413741
     a4, a5 = -1.453152027, 1.061405429
     p = 0.3275911
@@ -705,8 +710,9 @@ class TrendingEvalCriteria:
     downside_p10_min_bps: float = -5.0  # p10 下限 (bps)
 
     # 対照群 (trending sell skip = 約定していた場合の期待値)
-    # trending sell の期待損失: -0.66 bps (160# §1.3)
+    # trending sell の期待損失: -0.66 bps (160# §1.3, 2026-02 データ)
     # D-4 opening が正味プラスであれば、期待値改善と判定
+    # NOTE: 市場条件変動で陳腐化リスクあり — 動的推定は将来課題 (P3)
     counterfactual_pnl30_bps: float = -0.66
 
     @classmethod

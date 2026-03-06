@@ -87,8 +87,9 @@ from scripts.v460.lib.fill_config import FillTestConfig
 
 logger = logging.getLogger(__name__)
 
+from scripts.v460.lib.constants import BPS_FACTOR as _BPS_FACTOR
+
 # 定数
-_BPS_FACTOR: Final[int] = 10_000
 _MIN_ORDER_BTC: Final[float] = 0.001
 # レコードキャッシュ TTL (秒) — 同一サイクル内の二重ロードを防止
 _RECORDS_CACHE_TTL_SEC: Final[float] = 10.0

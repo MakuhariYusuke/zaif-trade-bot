@@ -75,8 +75,9 @@ class ImbalanceResult(NamedTuple):
     ask_total: float
 
 
+from scripts.v460.lib.constants import BPS_FACTOR as _BPS_FACTOR
+
 # 定数
-_BPS_FACTOR: Final[int] = 10_000
 _MIN_ORDER_BTC: Final[float] = 0.001
 
 
@@ -831,8 +832,6 @@ class MakerPriceCalculator:
                 f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
                 f"(regime=unknown, boost={_applied_mult:.2f})"
             )
-        return effective_offset_ratio
-
         return effective_offset_ratio
 
     def _apply_spread_adaptive(

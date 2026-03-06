@@ -23,8 +23,7 @@ from scripts.v460.lib.regime_detector import RegimeDetectorLike
 
 logger = logging.getLogger(__name__)
 
-# 定数
-_BPS_FACTOR: Final[int] = 10_000
+from scripts.v460.lib.constants import BPS_FACTOR as _BPS_FACTOR
 
 
 @runtime_checkable
