@@ -28,7 +28,7 @@ from scripts.v460.ml.fill_classifier import FillModelMetrics, train_fill_classif
 def synthetic_fill_df() -> pd.DataFrame:
     """合成 fill records: 100件のテストデータ."""
     rng = np.random.RandomState(42)
-    n = 80
+    n = 60
     timestamps = np.arange(1700000000, 1700000000 + n * 120, 120, dtype=float)
     sides = rng.choice(["buy", "sell"], n)
     prices = 14_500_000 + rng.randn(n) * 10_000
@@ -206,6 +206,8 @@ class Test057ASClassifier:
     def test_train_gb_model(self, synthetic_fill_df: pd.DataFrame) -> None:
         """GradientBoosting で学習."""
         X, y = build_as_features(synthetic_fill_df)
+        X = X.head(40)
+        y = y.loc[X.index]
         metrics, model, scaler, _ = train_as_classifier(X, y, model_type="gb", n_splits=2)
         assert metrics.feature_importances is not None
         assert len(metrics.feature_importances) == X.shape[1]
@@ -258,6 +260,8 @@ class Test057FillClassifier:
     def test_train_gb(self, synthetic_fill_df: pd.DataFrame) -> None:
         """GradientBoosting で学習."""
         X, y = build_fill_features(synthetic_fill_df)
+        X = X.head(40)
+        y = y.loc[X.index]
         metrics, model, scaler = train_fill_classifier(X, y, model_type="gb", n_splits=2)
         assert metrics.feature_importances is not None
 

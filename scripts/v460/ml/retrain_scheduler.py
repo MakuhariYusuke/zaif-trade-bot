@@ -166,6 +166,7 @@ _DEFAULT_CONFIG: ConfigMap = {
     "bootstrap_min_new_samples": 10,     # Bootstrap 段階での最小新規
     "bootstrap_threshold": 100,          # total < この値なら Bootstrap 段階と判定
     "target": "pnl120",            # 127# M2: "pnl120" or "pnl30"
+    "fill_records_max_files": None, # 最新 N ファイルのみ読み込む上限 (None=全件)
     # 127# H2: run_id 分離
     "latest_run_only": True,        # 最新 run_id のみ学習
     "exclude_missing_run_id": True, # run_id 欠損行除外
@@ -1093,12 +1094,19 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
     )
     exclude_missing = safe_to_bool(cfg.get("exclude_missing_run_id", True), True)
     latest_run_only = safe_to_bool(cfg.get("latest_run_only", True), True)
+    max_files_raw = cfg.get("fill_records_max_files")
+    fill_records_max_files: int | None = None
+    if max_files_raw is not None:
+        parsed_max_files = safe_to_int(max_files_raw, 0)
+        if parsed_max_files > 0:
+            fill_records_max_files = parsed_max_files
 
     # Step 1: データロード
     try:
         records = load_fill_records(
             results_dir,
             exclude_missing_run_id=exclude_missing,
+            max_files=fill_records_max_files,
         )
     except FileNotFoundError:
         return {**result, "status": "skipped", "reason": "no fill_records found"}

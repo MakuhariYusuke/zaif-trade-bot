@@ -57,14 +57,18 @@ def _select_raw_files(
     date_filter: Optional[set[str]],
 ) -> list[Path]:
     """date_filter を適用した raw ファイル一覧を返す."""
-    files: list[Path] = []
-    for f in sorted(data_dir.glob("*.jsonl.gz")):
-        if date_filter is not None:
-            stem = f.stem.replace(".jsonl", "")
-            if stem not in date_filter:
+    # date_filter がある場合は対象日ファイルを直接引き当てて directory 全走査を回避。
+    if date_filter is not None:
+        selected: list[Path] = []
+        for day in sorted(date_filter):
+            if len(day) != 8 or not day.isdigit():
                 continue
-        files.append(f)
-    return files
+            candidate = data_dir / f"{day}.jsonl.gz"
+            if candidate.exists():
+                selected.append(candidate)
+        return selected
+
+    return sorted(data_dir.glob("*.jsonl.gz"))
 
 
 def _build_file_signature(files: list[Path]) -> tuple[tuple[str, int, int], ...]:

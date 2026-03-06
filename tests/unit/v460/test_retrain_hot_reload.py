@@ -347,6 +347,34 @@ class TestRetrainConfig:
             with pytest.raises(ValueError, match="pnl120.*pnl30"):
                 load_retrain_config(yaml_path)
 
+    def test_retrain_model_forwards_fill_records_max_files(self) -> None:
+        """fill_records_max_files が load_fill_records に伝播する."""
+        cfg = dict(_DEFAULT_CONFIG)
+        cfg["results_dir"] = "results/v460/fill_test"
+        cfg["fill_records_max_files"] = 7
+
+        def _fake_loader(*args: object, **kwargs: object) -> pd.DataFrame:
+            assert kwargs.get("max_files") == 7
+            raise FileNotFoundError("test")
+
+        with patch("scripts.v460.ml.retrain_scheduler.load_fill_records", side_effect=_fake_loader):
+            result = retrain_model(cfg)
+        assert result["status"] == "skipped"
+
+    def test_retrain_model_ignores_non_positive_fill_records_max_files(self) -> None:
+        """fill_records_max_files<=0 は未指定(None)として扱う."""
+        cfg = dict(_DEFAULT_CONFIG)
+        cfg["results_dir"] = "results/v460/fill_test"
+        cfg["fill_records_max_files"] = 0
+
+        def _fake_loader(*args: object, **kwargs: object) -> pd.DataFrame:
+            assert kwargs.get("max_files") is None
+            raise FileNotFoundError("test")
+
+        with patch("scripts.v460.ml.retrain_scheduler.load_fill_records", side_effect=_fake_loader):
+            result = retrain_model(cfg)
+        assert result["status"] == "skipped"
+
 
 class TestBuildFullFeatures:
     """126# _build_full_features テスト."""

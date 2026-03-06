@@ -8,6 +8,7 @@ import tempfile
 from datetime import datetime as dt
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -417,6 +418,32 @@ class Test058RawLoadCache:
         )
         df3 = load_raw_orderbook(tmp_path, date_filter={"20260220"})
         assert len(df3) == 2
+
+    def test_trades_date_filter_avoids_full_glob_scan(self, tmp_path: Path) -> None:
+        """date_filter 指定時は directory glob 全走査を行わず直接ファイル解決する."""
+        trades_dir = tmp_path / "trades"
+        trades_dir.mkdir()
+        _write_jsonl_gz(
+            trades_dir / "20260220.jsonl.gz",
+            [{"ts": 1.0, "price": 100.0, "amount": 0.1, "side": "buy"}],
+        )
+
+        with patch("pathlib.Path.glob", side_effect=AssertionError("glob should not be called")):
+            df = load_raw_trades(tmp_path, date_filter={"20260220"})
+        assert len(df) == 1
+
+    def test_orderbook_date_filter_avoids_full_glob_scan(self, tmp_path: Path) -> None:
+        """date_filter 指定時は directory glob 全走査を行わず直接ファイル解決する."""
+        ob_dir = tmp_path / "orderbook"
+        ob_dir.mkdir()
+        _write_jsonl_gz(
+            ob_dir / "20260220.jsonl.gz",
+            [{"ts": 1.0, "bids": [[100.0, 0.2]], "asks": [[101.0, 0.3]]}],
+        )
+
+        with patch("pathlib.Path.glob", side_effect=AssertionError("glob should not be called")):
+            df = load_raw_orderbook(tmp_path, date_filter={"20260220"})
+        assert len(df) == 1
 
 
 # ======================================================================

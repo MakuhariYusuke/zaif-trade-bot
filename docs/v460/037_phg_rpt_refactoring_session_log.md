@@ -427,3 +427,36 @@
 1. `test_ml_pipeline` の GB 学習テストを共通学習 fixture 化し、再学習回数を削減
 2. `test_retrain_hot_reload` の single-window leakage 系のデータ件数を段階縮小
 3. import 集約の次点（`test_202_log_improvements.py` 等）を継続
+
+---
+
+## 2026-03-06 / Session 037-012
+
+### 実施
+- 本体コード最適化
+  - `scripts/v460/ml/feature_enricher.py`
+    - `date_filter` 指定時の raw ファイル選択を direct resolve 化
+    - `glob("*.jsonl.gz")` 全走査を回避
+  - `scripts/v460/ml/retrain_scheduler.py`
+    - `fill_records_max_files` を追加し、`load_fill_records(..., max_files=...)` へ伝播
+- テスト最適化
+  - `test_enricher_skip_gate.py`
+    - date_filter 時に `Path.glob` を使わない回帰テストを追加
+  - `test_retrain_hot_reload.py`
+    - `fill_records_max_files` の伝播/無効値挙動テストを追加
+  - `test_ml_pipeline.py`
+    - 合成データ件数と GB テスト負荷を軽量化
+
+### 結果
+- 変更対象テスト:
+  - `170 passed, 4 warnings in 7.11s`
+- v460 全体:
+  - `3962 passed, 19 warnings in 39.86s`（`--no-cov --durations=20`）
+- `--durations=20` 上位:
+  - `test_ml_pipeline::Test057Integration::test_load_real_data` `0.43s`
+  - `test_ml_pipeline` の GB 学習系 `0.23-0.26s`
+
+### 次アクション
+1. `test_ml_pipeline` の GB 学習を共通fit fixtureへ寄せて再学習回数を削減
+2. `test_fill_test_config.py` 上位ケース（`Test055NextSideBehavior`）の負荷源を分析
+3. `fill_records_max_files` を運用設定へ段階適用するための YAML 例を docs 化

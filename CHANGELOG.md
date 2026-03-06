@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 303# perf+core+test: raw走査最適化 + retrain読込上限制御 + ML負荷削減 (2026-03-06)
+
+### Changed
+- **本体コード最適化（実運用向け）**
+  - `scripts/v460/ml/feature_enricher.py`
+    - `_select_raw_files()` を改善
+    - `date_filter` 指定時は `YYYYMMDD.jsonl.gz` を直接解決し、`glob("*.jsonl.gz")` の全走査を回避
+  - `scripts/v460/ml/retrain_scheduler.py`
+    - `fill_records_max_files` 設定を追加（`None`=従来通り全件）
+    - `retrain_model()` が `load_fill_records(..., max_files=...)` に伝播
+- **テスト最適化**
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - `date_filter` 指定時に `glob` 全走査しないことを検証する回帰テストを追加
+  - `tests/unit/v460/test_retrain_hot_reload.py`
+    - `fill_records_max_files` の伝播/無効値の挙動テストを追加
+    - 既存重い統合ケースの軽量化を継続
+  - `tests/unit/v460/test_ml_pipeline.py`
+    - 合成データ・GB学習テストを軽量化
+
+### Verification
+- 変更対象回帰:
+  - `170 passed, 4 warnings in 7.11s`
+- v460 全体:
+  - `3962 passed, 19 warnings in 39.86s`（`--no-cov --durations=20`）
+
+### Performance Notes
+- `feature_enricher` は date_filter 付きで raw ファイル数に依存した全走査を回避。
+- `--durations=20` 上位は引き続き `test_ml_pipeline` の GB 学習系が中心。
+
 ## 302# perf+dry: retrain/ml重い統合テストの軽量化継続 (2026-03-06)
 
 ### Changed
