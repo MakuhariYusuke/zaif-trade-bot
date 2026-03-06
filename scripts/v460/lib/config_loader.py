@@ -13,6 +13,7 @@ Override 規則:
 from __future__ import annotations
 
 import copy
+from functools import lru_cache
 from pathlib import Path
 from typing import cast
 
@@ -27,6 +28,33 @@ def _coerce_config_section(raw: object) -> ConfigSection:
     if isinstance(raw, dict):
         return cast(ConfigSection, raw)
     return {}
+
+
+def _yaml_file_signature(path: Path) -> tuple[int, int]:
+    """Return (mtime_ns, size) for cache invalidation; missing file keeps old behavior."""
+    try:
+        st = path.stat()
+    except OSError:
+        return -1, -1
+    return st.st_mtime_ns, st.st_size
+
+
+@lru_cache(maxsize=64)
+def _read_config_section_cached(
+    path_str: str,
+    mtime_ns: int,
+    size: int,
+) -> ConfigSection:
+    del mtime_ns, size  # only used as cache key
+    return _coerce_config_section(read_yaml(path_str))
+
+
+def _read_config_section(path: Path) -> ConfigSection:
+    """Read YAML with file-signature cache while keeping caller isolation."""
+    mtime_ns, size = _yaml_file_signature(path)
+    return copy.deepcopy(
+        _read_config_section_cached(str(path), mtime_ns, size)
+    )
 
 
 def _deep_merge(base: ConfigSection, override: ConfigSection) -> ConfigSection:
@@ -63,7 +91,7 @@ def load_config(
     if not exp_path.is_absolute():
         exp_path = _PROJECT_ROOT / exp_path
 
-    exp_raw = _coerce_config_section(read_yaml(exp_path))
+    exp_raw = _read_config_section(exp_path)
 
     # Resolve base
     if base_path is None:
@@ -75,7 +103,7 @@ def load_config(
         if not base_path.is_absolute():
             base_path = _PROJECT_ROOT / base_path
 
-    base_raw = _coerce_config_section(read_yaml(base_path))
+    base_raw = _read_config_section(base_path)
 
     merged = _deep_merge(base_raw, exp_raw)
 
@@ -137,7 +165,7 @@ def load_gate_thresholds(
         if not path.is_absolute():
             path = _PROJECT_ROOT / path
 
-    return _coerce_config_section(read_yaml(path))
+    return _read_config_section(path)
 
 
 def load_fill_test_config(
@@ -161,4 +189,4 @@ def load_fill_test_config(
         if not path.is_absolute():
             path = _PROJECT_ROOT / path
 
-    return _coerce_config_section(read_yaml(path))
+    return _read_config_section(path)

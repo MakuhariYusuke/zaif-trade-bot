@@ -460,3 +460,38 @@
 1. `test_ml_pipeline` の GB 学習を共通fit fixtureへ寄せて再学習回数を削減
 2. `test_fill_test_config.py` 上位ケース（`Test055NextSideBehavior`）の負荷源を分析
 3. `fill_records_max_files` を運用設定へ段階適用するための YAML 例を docs 化
+
+---
+
+## 2026-03-06 / Session 037-013
+
+### 実施
+- 本体 I/O 最適化
+  - `ztb/metrics/fill_quality.py`
+    - `list_fill_record_files()` を `glob` 全走査からディレクトリ署名付きキャッシュ方式へ更新
+    - `start_date`/`end_date` の両指定時に、日付ファイル名の直接解決経路を追加
+  - `scripts/v460/lib/config_loader.py`
+    - YAML 読込を mtime/size 連動キャッシュ化
+    - `load_config` / `load_gate_thresholds` / `load_fill_test_config` に適用
+- テスト I/O・DRY 改善
+  - `test_fill_test_config.py`
+    - `fill_test.yaml` を module-scope fixture 化し、反復 `open + yaml.safe_load` を集約
+    - method 内 import を先頭集約（`pytest` / `inspect` / `FillRecord`）
+  - `test_fill_quality.py`
+    - 日付範囲の直接解決経路（ディレクトリ非走査）を検証する回帰テストを追加
+    - ディレクトリ更新時に列挙キャッシュが invalidate される回帰テストを追加
+
+### 結果
+- 変更対象テスト:
+  - `305 passed, 5 warnings in 9.44s`
+- v460 全体:
+  - `3964 passed, 18 warnings in 39.35s`（`--no-cov --durations=20`）
+- `--durations=20` 上位:
+  - `test_ml_pipeline::Test057Integration::test_load_real_data` `0.38s`
+  - `test_ml_pipeline` GB 学習系 `0.28-0.29s`
+  - `test_fill_test_config::Test055NextSideBehavior` `0.19s`
+
+### 次アクション
+1. `Test055NextSideBehavior` で重い `FillTestRunner` 初期化を軽量化できる既存 helper（lightweight runner）への置換可否を確認
+2. `scripts/v460/ml/skip_gate.py` / `ztb/ml/retrain_trigger.py` 側の `list_fill_record_files` 呼び出しで日付境界情報を渡せる経路を調査
+3. `test_ml_pipeline` の GB 学習を fit 済み fixture 再利用へ寄せ、再学習回数を段階削減

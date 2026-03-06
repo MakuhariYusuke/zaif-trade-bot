@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import copy
+import inspect
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -20,6 +22,20 @@ from ztb.metrics.fill_quality import (
 )
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_FILL_TEST_YAML_PATH = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
+
+
+@pytest.fixture(scope="module")
+def fill_test_yaml_base() -> dict[str, object]:
+    with open(_FILL_TEST_YAML_PATH, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
+    assert isinstance(raw, dict)
+    return raw
+
+
+@pytest.fixture
+def fill_test_yaml(fill_test_yaml_base: dict[str, object]) -> dict[str, object]:
+    return copy.deepcopy(fill_test_yaml_base)
 
 
 def _make_runner(
@@ -193,29 +209,22 @@ class TestFillTestConfigFromYaml:
 class TestFillTestYamlFile:
     """configs/v460/fill_test.yaml ファイル自体のバリデーション."""
 
-    def test_yaml_is_valid(self) -> None:
+    def test_yaml_is_valid(self, fill_test_yaml: dict[str, object]) -> None:
         """YAML として正しく parse できる."""
-        path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
-        with open(path, "r", encoding="utf-8") as f:
-            cfg = yaml.safe_load(f)
-        assert isinstance(cfg, dict)
+        assert isinstance(fill_test_yaml, dict)
 
-    def test_yaml_roundtrip(self) -> None:
+    def test_yaml_roundtrip(self, fill_test_yaml: dict[str, object]) -> None:
         """YAML → FillTestConfig → 主要フィールドが一致."""
-        path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
-        with open(path, "r", encoding="utf-8") as f:
-            cfg = yaml.safe_load(f)
+        cfg = fill_test_yaml
         config = FillTestConfig.from_yaml(cfg)
         assert config.symbol == cfg["symbol"]
         assert config.order_quantity == cfg["order_quantity"]
         assert config.spread_offset_ratio == cfg["spread_offset_ratio"]
         assert config.loss_cap_jpy == cfg["safety"]["loss_cap_jpy"]
 
-    def test_yaml_tuning_roundtrip(self) -> None:
+    def test_yaml_tuning_roundtrip(self, fill_test_yaml: dict[str, object]) -> None:
         """103# tuning セクションの全 18 キーが FillTestConfig に正しくマッピングされる."""
-        path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
-        with open(path, "r", encoding="utf-8") as f:
-            cfg = yaml.safe_load(f)
+        cfg = fill_test_yaml
         config = FillTestConfig.from_yaml(cfg)
         tuning = cfg.get("tuning", {})
         assert config.max_offset_ratio == tuning["max_offset_ratio"]
@@ -254,13 +263,11 @@ class TestFillTestYamlFile:
 
     def test_post_init_balance_shrink_divisor_zero(self) -> None:
         """103# balance_shrink_divisor=0 → ValueError."""
-        import pytest
         with pytest.raises(ValueError, match="balance_shrink_divisor"):
             FillTestConfig(balance_shrink_divisor=0)
 
     def test_post_init_offset_ratio_invariant(self) -> None:
         """103# max_offset_ratio <= min_offset_ratio → ValueError."""
-        import pytest
         with pytest.raises(ValueError, match="max_offset_ratio"):
             FillTestConfig(max_offset_ratio=0.01, min_offset_ratio=0.01)
 
@@ -405,11 +412,9 @@ class Test054SpreadAdaptiveConfig:
         assert config.wide_spread_bps == 30.0
         assert config.wide_spread_ratio == 0.6
 
-    def test_yaml_roundtrip_054(self) -> None:
+    def test_yaml_roundtrip_054(self, fill_test_yaml: dict[str, object]) -> None:
         """054# 全設定の YAML → FillTestConfig roundtrip."""
-        path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
-        with open(path, "r", encoding="utf-8") as f:
-            cfg = yaml.safe_load(f)
+        cfg = fill_test_yaml
         config = FillTestConfig.from_yaml(cfg)
         # S1 (071# disabled — OB無視)
         assert config.imbalance_enabled is False
@@ -430,7 +435,6 @@ class Test054FillRecordNewFields:
 
     def test_new_fields_exist(self) -> None:
         """054# 新フィールドが FillRecord に存在する."""
-        from ztb.metrics.fill_quality import FillRecord
         fields = FillRecord.__dataclass_fields__
         assert "orderbook_imbalance" in fields
         assert "bid_depth_total" in fields
@@ -441,7 +445,6 @@ class Test054FillRecordNewFields:
 
     def test_new_fields_default_none(self) -> None:
         """054# 新フィールドのデフォルト値は全て None."""
-        from ztb.metrics.fill_quality import FillRecord
         rec = FillRecord(
             cycle_id="test",
             timestamp=1.0,
@@ -458,7 +461,6 @@ class Test054FillRecordNewFields:
 
     def test_new_fields_roundtrip(self) -> None:
         """054# 新フィールドの to_dict/from_dict roundtrip."""
-        from ztb.metrics.fill_quality import FillRecord
         rec = FillRecord(
             cycle_id="test_054",
             timestamp=1.0,
@@ -483,7 +485,6 @@ class Test054FillRecordNewFields:
 
     def test_backward_compat_from_dict(self) -> None:
         """054# 新フィールドなしの古い dict から FillRecord を復元できる."""
-        from ztb.metrics.fill_quality import FillRecord
         old_dict = {
             "cycle_id": "old_record",
             "timestamp": 1.0,
@@ -853,11 +854,9 @@ class Test062SkipGateConfig:
         assert config.skip_gate_mode == "as"
         assert config.skip_gate_model_path == "models/v460/skip_gate_as.pkl"
 
-    def test_yaml_roundtrip_skip_gate(self) -> None:
+    def test_yaml_roundtrip_skip_gate(self, fill_test_yaml: dict[str, object]) -> None:
         """YAML → FillTestConfig roundtrip for skip_gate."""
-        path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
-        with open(path, "r", encoding="utf-8") as f:
-            cfg = yaml.safe_load(f)
+        cfg = fill_test_yaml
         config = FillTestConfig.from_yaml(cfg)
         assert config.skip_gate_enabled == cfg["skip_gate"]["enabled"]
         assert config.skip_gate_mode == cfg["skip_gate"]["mode"]
@@ -894,11 +893,9 @@ class Test062SkipGateConfig:
         config = FillTestConfig.from_yaml(yaml_cfg)
         assert config.skip_gate_use_ob_features is True
 
-    def test_072_yaml_roundtrip_use_ob_features(self) -> None:
+    def test_072_yaml_roundtrip_use_ob_features(self, fill_test_yaml: dict[str, object]) -> None:
         """072# fill_test.yaml の use_ob_features roundtrip."""
-        path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
-        with open(path, "r", encoding="utf-8") as f:
-            cfg = yaml.safe_load(f)
+        cfg = fill_test_yaml
         config = FillTestConfig.from_yaml(cfg)
         assert config.skip_gate_use_ob_features == cfg["skip_gate"]["use_ob_features"]
 
@@ -1055,9 +1052,6 @@ class TestSideOverride:
 
         ソースコードレベルで side_override パスの存在を確認.
         """
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-
         source = inspect.getsource(FillTestRunner.run_continuous)
         assert "side_override=next_side" in source or "side_override=" in source, (
             "run_continuous must pass side_override to run_single_cycle"
@@ -1111,9 +1105,6 @@ class Test110DeadlockBreak:
 
     def test_deadlock_break_logic_in_source(self) -> None:
         """run_continuous 内に 110# デッドロック解除ロジックが存在."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-
         source = inspect.getsource(FillTestRunner.run_continuous)
         assert "consecutive_086_wait" in source, (
             "run_continuous must reference consecutive_086_wait counter"
@@ -1127,9 +1118,6 @@ class Test110DeadlockBreak:
 
     def test_is_time_filtered_unchanged(self) -> None:
         """110# は _is_time_filtered ロジック自体は変更しない."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-
         source = inspect.getsource(FillTestRunner._is_time_filtered)
         # 086# / 110# ロジックは _is_time_filtered ではなく main loop にある
         assert "_consecutive_086_wait" not in source, (

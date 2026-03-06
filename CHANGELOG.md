@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 304# perf+io+dry: fill record列挙最適化 + YAML読込キャッシュ + テストI/O重複削減 (2026-03-06)
+
+### Changed
+- **本体コード最適化（I/O）**
+  - `ztb/metrics/fill_quality.py`
+    - `list_fill_record_files()` を改善
+    - `glob("fill_records_*.jsonl")` 依存を削減し、ディレクトリ署名付きキャッシュ + `iterdir` ベース列挙へ変更
+    - `start_date`/`end_date` 両指定時は `YYYYMMDD` の直接解決を優先し、日付範囲限定の全走査を回避
+  - `scripts/v460/lib/config_loader.py`
+    - YAML 読込を mtime/size 連動キャッシュ化（`_read_config_section_cached`）
+    - 返却時は `deepcopy` を維持し、呼び出し側の破壊的変更を隔離
+    - `load_config()` / `load_gate_thresholds()` / `load_fill_test_config()` に適用
+- **テスト最適化（I/O + DRY）**
+  - `tests/unit/v460/test_fill_test_config.py`
+    - `fill_test.yaml` の module-scope fixture (`fill_test_yaml_base`) を追加
+    - 反復 `open(...) + yaml.safe_load(...)` を fixture 利用へ集約
+    - method 内 import（`pytest` / `inspect` / `FillRecord`）を先頭集約
+  - `tests/unit/v460/test_fill_quality.py`
+    - `list_fill_record_files` の直接解決経路とキャッシュ invalidation の回帰テストを追加
+
+### Verification
+- 変更対象回帰:
+  - `305 passed, 5 warnings in 9.44s`
+- v460 全体:
+  - `3964 passed, 18 warnings in 39.35s`（`--no-cov --durations=20`）
+
+### Performance Notes
+- `list_fill_record_files` は日付範囲付き呼び出しでディレクトリ走査を回避可能になり、分析/再学習系の I/O を削減。
+- `fill_test.yaml` の反復読込はキャッシュ + fixture 化で抑制し、設定関連テストの負荷を低減。
+
 ## 303# perf+core+test: raw走査最適化 + retrain読込上限制御 + ML負荷削減 (2026-03-06)
 
 ### Changed

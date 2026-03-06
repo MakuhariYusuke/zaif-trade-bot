@@ -1296,6 +1296,96 @@ class TestFillRecordIO:
             )
             assert [path.name for path in files] == ["fill_records_20260102.jsonl"]
 
+    def test_list_fill_record_files_date_range_uses_direct_resolution(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            emergency = root / "emergency"
+            emergency.mkdir()
+            save_fill_records(
+                [
+                    FillRecord(
+                        cycle_id="d1",
+                        timestamp=1700000000.0,
+                        side="buy",
+                        order_price=100.0,
+                        order_quantity=0.001,
+                    ),
+                ],
+                root / "fill_records_20260102.jsonl",
+            )
+            save_fill_records(
+                [
+                    FillRecord(
+                        cycle_id="e1",
+                        timestamp=1700000060.0,
+                        side="sell",
+                        order_price=101.0,
+                        order_quantity=0.001,
+                    ),
+                ],
+                emergency / "emergency_20260102.jsonl",
+            )
+
+            original_iterdir = Path.iterdir
+
+            def _guarded_iterdir(path: Path):
+                if path in (root, emergency):
+                    raise AssertionError("bounded date range should not scan directory")
+                return original_iterdir(path)
+
+            monkeypatch.setattr(Path, "iterdir", _guarded_iterdir)
+
+            files = list_fill_record_files(
+                root,
+                include_emergency=True,
+                start_date="2026-01-02",
+                end_date="2026-01-02",
+            )
+            assert [path.name for path in files] == [
+                "fill_records_20260102.jsonl",
+                "emergency_20260102.jsonl",
+            ]
+
+    def test_list_fill_record_files_cache_invalidates_when_directory_changes(self) -> None:
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            save_fill_records(
+                [
+                    FillRecord(
+                        cycle_id="d1",
+                        timestamp=1700000000.0,
+                        side="buy",
+                        order_price=100.0,
+                        order_quantity=0.001,
+                    ),
+                ],
+                root / "fill_records_20260101.jsonl",
+            )
+            before = list_fill_record_files(root, include_emergency=False)
+            assert [path.name for path in before] == ["fill_records_20260101.jsonl"]
+
+            save_fill_records(
+                [
+                    FillRecord(
+                        cycle_id="d2",
+                        timestamp=1700000060.0,
+                        side="buy",
+                        order_price=101.0,
+                        order_quantity=0.001,
+                    ),
+                ],
+                root / "fill_records_20260102.jsonl",
+            )
+            os.utime(root, None)
+
+            after = list_fill_record_files(root, include_emergency=False)
+            assert [path.name for path in after] == [
+                "fill_records_20260101.jsonl",
+                "fill_records_20260102.jsonl",
+            ]
+
     def test_load_fill_record_objects_glob_supports_date_range(self) -> None:
 
         with tempfile.TemporaryDirectory() as tmpdir:

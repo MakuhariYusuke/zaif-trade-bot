@@ -17,7 +17,8 @@ import logging
 import math
 from collections import deque
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, Iterable, Iterator, Mapping, Sequence
 
@@ -1192,6 +1193,81 @@ def _extract_fill_record_file_date(path: Path) -> str | None:
     date_part = path.stem.split("_")[-1]
     return date_part if len(date_part) == 8 and date_part.isdigit() else None
 
+
+def _directory_signature(path: Path) -> tuple[int, int]:
+    """Directory signature for cache invalidation."""
+    try:
+        st = path.stat()
+    except OSError:
+        return -1, -1
+    return st.st_mtime_ns, st.st_ctime_ns
+
+
+def _scan_jsonl_by_prefix(directory: Path, prefix: str) -> list[Path]:
+    if not directory.is_dir():
+        return []
+    try:
+        files = [
+            path
+            for path in directory.iterdir()
+            if path.is_file()
+            and path.name.startswith(prefix)
+            and path.suffix == ".jsonl"
+        ]
+    except OSError:
+        return []
+    return sorted(files)
+
+
+@lru_cache(maxsize=256)
+def _list_fill_record_files_cached(
+    directory: str,
+    include_emergency: bool,
+    root_sig: tuple[int, int],
+    emergency_sig: tuple[int, int],
+) -> tuple[Path, ...]:
+    del root_sig, emergency_sig  # signature-only cache keys
+    root = Path(directory)
+    files = _scan_jsonl_by_prefix(root, "fill_records_")
+    if include_emergency:
+        files.extend(_scan_jsonl_by_prefix(root / "emergency", "emergency_"))
+    return tuple(files)
+
+
+def _resolve_fill_record_files_by_date_range(
+    directory: Path,
+    *,
+    include_emergency: bool,
+    start_date: str,
+    end_date: str,
+) -> list[Path] | None:
+    """Resolve date-bounded file list directly without directory scan."""
+    try:
+        start = datetime.strptime(start_date, "%Y%m%d")
+        end = datetime.strptime(end_date, "%Y%m%d")
+    except ValueError:
+        return None
+    if start > end:
+        return []
+    day_count = (end - start).days
+    if day_count > 3650:
+        return None
+
+    files: list[Path] = []
+    for i in range(day_count + 1):
+        day_str = (start + timedelta(days=i)).strftime("%Y%m%d")
+        fill_path = directory / f"fill_records_{day_str}.jsonl"
+        if fill_path.is_file():
+            files.append(fill_path)
+    if include_emergency:
+        emergency_dir = directory / "emergency"
+        for i in range(day_count + 1):
+            day_str = (start + timedelta(days=i)).strftime("%Y%m%d")
+            emergency_path = emergency_dir / f"emergency_{day_str}.jsonl"
+            if emergency_path.is_file():
+                files.append(emergency_path)
+    return files
+
 def list_fill_record_files(
     directory: str | Path,
     *,
@@ -1203,6 +1279,16 @@ def list_fill_record_files(
     d = Path(directory)
     norm_start = _normalize_fill_record_date(start_date)
     norm_end = _normalize_fill_record_date(end_date)
+
+    if norm_start is not None and norm_end is not None:
+        direct_files = _resolve_fill_record_files_by_date_range(
+            d,
+            include_emergency=include_emergency,
+            start_date=norm_start,
+            end_date=norm_end,
+        )
+        if direct_files is not None:
+            return direct_files
 
     def _within_date(path: Path) -> bool:
         if norm_start is None and norm_end is None:
@@ -1216,18 +1302,15 @@ def list_fill_record_files(
             return False
         return True
 
-    files = [
-        path for path in sorted(d.glob("fill_records_*.jsonl"))
-        if _within_date(path)
-    ]
-    if include_emergency:
-        emergency_dir = d / "emergency"
-        if emergency_dir.exists():
-            files.extend(
-                path for path in sorted(emergency_dir.glob("emergency_*.jsonl"))
-                if _within_date(path)
-            )
-    return files
+    root_sig = _directory_signature(d)
+    emergency_sig = _directory_signature(d / "emergency") if include_emergency else (-1, -1)
+    all_files = _list_fill_record_files_cached(
+        str(d),
+        include_emergency,
+        root_sig,
+        emergency_sig,
+    )
+    return [path for path in all_files if _within_date(path)]
 
 def iter_fill_record_objects_from_files(files: Iterable[Path]) -> Iterator[dict[str, object]]:
     """指定ファイル群から raw object を逐次読み込み、cycle_id を跨いで重複排除する."""
