@@ -3837,18 +3837,3 @@ python scripts/unified_trainer.py \
 ### Notes
 - The latest broad v460 performance run completed at `4068 passed, 1 deselected, 19 warnings in 44.22s` on the current Windows workspace.
 - The previously observed `test_306_proposals.py::TestMicropriceSideSelector::test_microprice_overrides_to_sell` broad-run-only failure did not reproduce in repeated filtered broad runs after the current changes.
-
-### Changed
-- Reused the existing cached YAML loader in `scripts/v460/ml/retrain_scheduler.py::load_retrain_config()` so retrain-related tests and runtime code no longer parse `fill_test.yaml` independently of `config_loader`.
-- Reduced default-registry initialization cost in [broker_registry.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/trading/live/registry/broker_registry.py) by seeding built-in brokers from constants instead of routing every `BrokerRegistry()` construction through repeated `register_broker()` validation/logging.
-- Removed remaining direct `fill_test.yaml` reads from `tests/unit/v460/test_regime_detector.py` and `tests/unit/v460/test_277_magic_number_grounding.py`, and updated `tests/unit/v460/test_157_regime_features.py` to reuse the shared YAML path fixture.
-- Consolidated remaining method-local `SkipGate` imports in `tests/unit/v460/test_166_remaining_tasks.py`.
-- Added cached source helpers to `tests/unit/v460/test_fill_quality.py` and `tests/unit/v460/test_regime_detector.py`, replacing repeated `inspect.getsource()` calls on the same classes/modules.
-
-### Verified
-- `python -m pytest tests/unit/v460/test_fill_quality.py tests/unit/v460/test_regime_detector.py tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_166_remaining_tasks.py tests/unit/v460/test_146_multi_exchange.py tests/unit/v460/test_157_regime_features.py tests/unit/v460/test_277_magic_number_grounding.py -q --no-cov --tb=short --durations=30`
-- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=20 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py -k 'not test_yaml_has_microprice_side'`
-
-### Notes
-- The latest filtered broad run completed at `4068 passed, 1 deselected, 19 warnings in 39.57s`, improving on the prior `44.22s` measurement in the same workspace.
-- Remaining top offenders are now concentrated in real aggregation / enrichment paths (`test_aggregate_to_1min.py`, `test_enricher_skip_gate.py`) plus a small number of runtime-initialization tests (`test_102_structural_fixes.py`, `test_237_phantom_position_guard.py`).

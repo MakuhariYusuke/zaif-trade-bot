@@ -18,7 +18,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import numpy as np
 import pandas as pd
 import pytest
-from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
 
 # ── C.6: SkipGate set_output ──────────────────────────────
 
@@ -27,6 +26,7 @@ class TestSklearnWarningFix:
 
     def test_pipeline_set_output_called(self):
         """Pipeline ロード時に set_output(transform='pandas') が呼ばれる."""
+        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
 
         mock_pipeline = MagicMock()
         mock_pipeline.set_output = MagicMock()
@@ -42,6 +42,7 @@ class TestSklearnWarningFix:
 
     def test_scaler_set_output_called(self):
         """スタンドアロン scaler にも set_output が呼ばれる."""
+        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
 
         mock_scaler = MagicMock()
         mock_scaler.set_output = MagicMock()
@@ -56,6 +57,7 @@ class TestSklearnWarningFix:
 
     def test_no_set_output_when_pipeline_none(self):
         """Pipeline=None の場合は set_output を呼ばない."""
+        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
 
         gate = SkipGate(
             model=MagicMock(),
@@ -72,6 +74,8 @@ class TestSklearnWarningFix:
         model_path = Path("models/v460/skip_gate_lgbm_pnl120.pkl")
         if not model_path.exists():
             pytest.skip("Production model not available")
+
+        from scripts.v460.ml.skip_gate import SkipGate
 
         gate = SkipGate.load(model_path)
         x = np.zeros(len(gate.feature_cols))

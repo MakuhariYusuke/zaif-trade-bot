@@ -12,7 +12,6 @@ import os
 import tempfile
 import time
 from datetime import datetime, timezone
-from functools import lru_cache
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -73,11 +72,6 @@ _FAST_STATUS_UNKNOWN_RETRY_DELAYS = [0.0, 0.0, 0.0]
 _FAST_CYCLE_ORDER_TIMEOUT_SEC = 0.002
 _FAST_CYCLE_POLL_INTERVAL_SEC = 0.001
 _FAST_CYCLE_POST_FILL_WAIT_SEC = 0.0
-
-
-@lru_cache(maxsize=None)
-def _source(obj: object) -> str:
-    return inspect.getsource(obj)
 
 
 def _make_fast_cycle_runner(
@@ -1588,20 +1582,20 @@ class TestAdapterRealModeP20:
 
     def test_get_current_price_has_no_not_implemented(self) -> None:
         """get_current_price がreal modeで NotImplementedError を投げないことの静的確認."""
-        source = _source(CoincheckAdapter.get_current_price)
+        source = inspect.getsource(CoincheckAdapter.get_current_price)
         # 009# P2-0: real mode should NOT raise NotImplementedError
         assert "NotImplementedError" not in source
 
     def test_get_order_status_has_no_not_implemented(self) -> None:
-        source = _source(CoincheckAdapter.get_order_status)
+        source = inspect.getsource(CoincheckAdapter.get_order_status)
         assert "NotImplementedError" not in source
 
     def test_get_open_orders_has_no_not_implemented(self) -> None:
-        source = _source(CoincheckAdapter.get_open_orders)
+        source = inspect.getsource(CoincheckAdapter.get_open_orders)
         assert "NotImplementedError" not in source
 
     def test_get_positions_has_no_not_implemented(self) -> None:
-        source = _source(CoincheckAdapter.get_positions)
+        source = inspect.getsource(CoincheckAdapter.get_positions)
         assert "NotImplementedError" not in source
 
 
@@ -2280,7 +2274,7 @@ class TestAPIResponseLogLevel:
 
     def test_api_response_log_is_debug(self) -> None:
         """adapter.py の API Response ログが logger.debug であることを確認."""
-        source = _source(CoincheckAdapter._make_api_request)
+        source = inspect.getsource(CoincheckAdapter._make_api_request)
         # logger.info("API Response ...") が存在しないことを確認
         assert 'logger.info(f"API Response status' not in source
         assert 'logger.info(f"API Response content' not in source
@@ -2303,7 +2297,7 @@ class Test049CleanOnlyMainJudgment:
 
     def test_main_uses_filter_clean_records(self) -> None:
         """main() のソースに filter_clean_records が含まれることを確認."""
-        source = _source(cli_mod)
+        source = inspect.getsource(cli_mod)
         # filter_clean_records が使われている
         assert "filter_clean_records" in source
         # 旧パターン (records を直接 compute_fill_metrics に渡す) が存在しない
@@ -2313,7 +2307,7 @@ class Test049CleanOnlyMainJudgment:
 
     def test_main_exit_code_uses_judgment_type(self) -> None:
         """049# §4-#1: 通常実行の exit code が judgment_type を参照."""
-        source = _source(cli_mod)
+        source = inspect.getsource(cli_mod)
         # FINAL/INTERIM 分岐がある
         assert 'jtype == "FINAL"' in source or "judgment_type" in source
         # 旧パターン (gate_result のみ) が存在しない
@@ -2321,7 +2315,7 @@ class Test049CleanOnlyMainJudgment:
 
     def test_main_has_data_quality_output(self) -> None:
         """049# §6.1-#4: judgment に data_quality セクションが含まれる."""
-        source = _source(cli_mod)
+        source = inspect.getsource(cli_mod)
         assert '"data_quality"' in source
         assert '"clean_records"' in source
         assert '"quarantine_records"' in source
@@ -2378,7 +2372,7 @@ class Test049E3Sampling:
     def test_e3_sampling_ratio_zero_skips_all(self) -> None:
         """e3_sampling_ratio=0.0 で E3 計測がスキップされる (ソース確認)."""
         # 120#: E3 logic extracted to PnlMeasurer.measure
-        source = _source(PnlMeasurer.measure)
+        source = inspect.getsource(PnlMeasurer.measure)
         assert "e3_sampling_ratio" in source
 
 
@@ -2410,7 +2404,7 @@ class Test049SideOffset:
         base_offset_ratio_buy/sell を参照する設計に変更。
         120#: maker_price.py に抽出済み。
         """
-        source = _source(MakerPriceCalculator)  # 163# mixin split: compute→class全体
+        source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
         # 096# 状態分離: base_offset_ratio* を使用
         assert "base_offset_ratio" in source
         assert "effective_offset_ratio" in source
@@ -2446,7 +2440,7 @@ class Test049FastFillDefense:
     def test_fast_fill_boost_flag_initialized(self) -> None:
         """100# FillTestRunner が FastFillDefense インスタンスを持つ."""
 
-        source = _source(FillTestRunner.__init__)
+        source = inspect.getsource(FillTestRunner.__init__)
         assert "_fast_fill_defense" in source
 
     def test_fast_fill_defense_logic_in_run_continuous(self) -> None:
@@ -2455,7 +2449,7 @@ class Test049FastFillDefense:
         265# extract: post-cycle 処理は _process_post_cycle に分離。
         """
 
-        source = _source(FillTestRunner._process_post_cycle)
+        source = inspect.getsource(FillTestRunner._process_post_cycle)
         assert "fast_fill_defense" in source
         assert "evaluate_fill" in source
 
@@ -2501,7 +2495,7 @@ class Test050FastFillDefenseRestore:
         120#: offset 管理は MakerPriceCalculator に移動
         """
 
-        source = _source(FillTestRunner.__init__)
+        source = inspect.getsource(FillTestRunner.__init__)
         assert "_fast_fill_defense" in source
         # 120#: offset は _maker_price 経由で管理
         assert "_maker_price" in source
@@ -2512,7 +2506,7 @@ class Test050FastFillDefenseRestore:
         265# extract: post-cycle 処理は _process_post_cycle に分離。
         """
 
-        source = _source(FillTestRunner._process_post_cycle)
+        source = inspect.getsource(FillTestRunner._process_post_cycle)
         # 100# FastFillDefense の evaluate_fill / reset_on_unfilled で管理
         assert "fast_fill_defense" in source
         assert "reset_on_unfilled" in source
@@ -2526,7 +2520,7 @@ class Test050EffectiveOffsetRecord:
 
         120#: maker_price.py に抽出済み。MakerPriceResult NamedTuple で返却。
         """
-        source = _source(MakerPriceCalculator)  # 163# mixin split: compute→class全体
+        source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
         assert "effective_offset_ratio" in source
         # MakerPriceResult に price, spread, effective_offset_ratio を格納
         assert "MakerPriceResult" in source
@@ -2534,7 +2528,7 @@ class Test050EffectiveOffsetRecord:
     def test_run_single_cycle_unpacks_3_values(self) -> None:
         """run_single_cycle が 3 値展開を行う."""
 
-        source = _source(FillTestRunner.run_single_cycle)
+        source = inspect.getsource(FillTestRunner.run_single_cycle)
         assert "effective_offset_ratio" in source
 
 
@@ -2756,11 +2750,11 @@ class Test051BalanceAutoShrink:
 
     def test_balance_shrink_fields_exist(self) -> None:
         """BalanceChecker に balance_shrink 関連フィールドがある (121# 委譲)."""
-        source = _source(BalanceChecker.__init__)
+        source = inspect.getsource(BalanceChecker.__init__)
         assert "_balance_shrink_active" in source
         assert "_pre_shrink_lot" in source
         # 121# FillTestRunner は BalanceChecker に委譲
-        runner_src = _source(FillTestRunner.__init__)
+        runner_src = inspect.getsource(FillTestRunner.__init__)
         assert "_balance_checker" in runner_src
 
     def test_balance_shrink_logic_in_run_continuous(self) -> None:
@@ -2770,10 +2764,10 @@ class Test051BalanceAutoShrink:
         """
 
         # balance_shrink は run_continuous 内 (guard chain)
-        rc_source = _source(FillTestRunner.run_continuous)
+        rc_source = inspect.getsource(FillTestRunner.run_continuous)
         assert "balance_shrink" in rc_source
         # 121# pre_shrink_lot は _process_post_cycle 内 (_balance_checker 経由)
-        post_source = _source(FillTestRunner._process_post_cycle)
+        post_source = inspect.getsource(FillTestRunner._process_post_cycle)
         assert "pre_shrink_lot" in post_source
 
     def test_shrink_threshold_is_3(self) -> None:
@@ -2800,14 +2794,14 @@ class Test051MonitorExtensions:
 
     def test_run_monitor_uses_clean_records(self) -> None:
         """run_monitor が clean/quarantine 分離を使う."""
-        source = _source(run_monitor)
+        source = inspect.getsource(run_monitor)
         assert "partition_clean_records" in source
         assert "iter_fill_records_glob" in source
         assert "clean_records" in source
         assert "quarantine_records" in source
 
     def test_run_monitor_uses_shared_pnl_helper(self) -> None:
-        source = _source(_check_cumulative_loss)
+        source = inspect.getsource(_check_cumulative_loss)
         assert "compute_record_pnl_jpy" in source
 
     def test_monitor_imports_new_functions(self) -> None:
@@ -2838,7 +2832,7 @@ class Test052AdaptSellOffsetSync:
         096# 状態分離: _base_offset_ratio_sell を直接更新する設計に変更。
         120#: adaptation_engine.py に抽出済み。
         """
-        source = _source(AdaptationEngine.try_auto_adapt)
+        source = inspect.getsource(AdaptationEngine.try_auto_adapt)
         # 096# 状態分離: base_offset_ratio_sell を使用
         assert "base_offset_ratio_sell" in source
         # 120#: 比例調整 ratio = new_base / base_offset_ratio
@@ -2862,7 +2856,7 @@ class Test052AdaptSellOffsetSync:
 
     def test_dynamic_lot_shrink_in_balance_check(self) -> None:
         """052# BalanceChecker にロット自動縮小が含まれる (121# 抽出)."""
-        source = _source(BalanceChecker._check_buy)
+        source = inspect.getsource(BalanceChecker._check_buy)
         assert "_min_order_btc" in source
         assert "affordable_lot" in source
 
@@ -2888,7 +2882,7 @@ class Test052AdaptSellOffsetSync:
 
         120#: maker_price.py に抽出済み。
         """
-        source = _source(MakerPriceCalculator)  # 163# mixin split: compute→class全体
+        source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
         assert "trending" in source
         assert "regime_trending_offset_boost" in source
 
@@ -2906,7 +2900,7 @@ class Test052AdaptSellOffsetSync:
     def test_balance_shrink_uses_min_order_btc(self) -> None:
         """052# balance_shrink の最低ロットが min_order_btc を使用する (121# YAML 外部化)."""
 
-        source = _source(FillTestRunner.run_continuous)
+        source = inspect.getsource(FillTestRunner.run_continuous)
         assert "min_order_btc" in source
 
 
@@ -2962,7 +2956,7 @@ class Test107TimeFilterDynamicGating:
 
         120#: maker_price.py に抽出済み。
         """
-        source = _source(MakerPriceCalculator)  # 163# mixin split: compute→class全体
+        source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
         assert "volatility_guard" in source
         assert "velocity_threshold_bps" in source or "vpin_threshold" in source
 
@@ -2983,7 +2977,7 @@ class Test107TimeFilterDynamicGating:
 
     def test_vg_inv_skew_damping_code_present(self) -> None:
         """168# InvSkew/VG damping ロジックがソースに含まれる."""
-        source = _source(MakerPriceCalculator)
+        source = inspect.getsource(MakerPriceCalculator)
         assert "vg_inv_skew_damping_enabled" in source
         assert "_last_inv_skew_factor" in source
         assert "vg_damping" in source  # ログラベル
@@ -3112,7 +3106,7 @@ class Test107TimeFilterDynamicGating:
 
     def test_p2c3_reprice_skip_gate_offset_in_code(self) -> None:
         """168# P2-C3: order_monitor.py で reprice_skip_gate_offset が使用されている."""
-        source = _source(OrderMonitor)
+        source = inspect.getsource(OrderMonitor)
         assert "stale_reprice_skip_gate_offset" in source
         assert "threshold_offset" in source  # evaluate に offset を渡している
 
@@ -3125,14 +3119,14 @@ class Test107TimeFilterDynamicGating:
     def test_batch_persistence_used_in_run_continuous(self) -> None:
         """119# run_continuous 内で BatchPersistence.maybe_flush が使用されている."""
 
-        source = _source(FillTestRunner.run_continuous)
+        source = inspect.getsource(FillTestRunner.run_continuous)
         assert "_batch_persistence.maybe_flush" in source
 
     def test_vpin_caching_in_code(self) -> None:
         """107# VPIN が SkipGate features からキャッシュされている."""
 
         # 113# R1: VPIN caching moved to _evaluate_skip_gate
-        source = _source(FillTestRunner._evaluate_skip_gate)
+        source = inspect.getsource(FillTestRunner._evaluate_skip_gate)
         assert "_last_vpin" in source
 
 

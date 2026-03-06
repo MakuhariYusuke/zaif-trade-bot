@@ -1,0 +1,1048 @@
+{
+  "ab_judgment": {
+    "overall": "fail",
+    "criteria": [
+      {
+        "name": "fill_rate",
+        "verdict": "pass",
+        "value": 0.40197113692361847,
+        "threshold": 0.3,
+        "detail": "variant=40.2% control=40.5% — OK"
+      },
+      {
+        "name": "avg_pnl30",
+        "verdict": "pass",
+        "value": -0.3279626823003959,
+        "threshold": -1.0,
+        "detail": "variant=-0.3280 control=-0.3124 bps — OK"
+      },
+      {
+        "name": "downside_p10",
+        "verdict": "fail",
+        "value": -6.871030126380764,
+        "threshold": -5.0,
+        "detail": "variant=-6.8710 control=-5.6682 bps — below absolute min -5.00"
+      }
+    ],
+    "variant_label": "sell",
+    "control_label": "buy",
+    "n_variant": 1142,
+    "n_control": 1155,
+    "pnl30_p_value": 0.951031495543252,
+    "pnl30_effect_size": -0.002564259376839411,
+    "mann_whitney_p_value": 0.4795435424263417,
+    "cliffs_delta_value": 0.01703853647811616,
+    "cliffs_delta_interpretation": "negligible",
+    "holm_significant": [
+      false,
+      false
+    ],
+    "bootstrap_mean_diff": -0.01551999746405458,
+    "bootstrap_ci_lower": -0.5500837252705315,
+    "bootstrap_ci_upper": 0.4740734226968979,
+    "bootstrap_p_value": 0.9605,
+    "matched_n_pairs": 934,
+    "matched_mean_diff": -0.07233732269928883,
+    "matched_ci_lower": -0.6036409673892472,
+    "matched_ci_upper": 0.46258376951575253,
+    "matched_p_value": 0.20886602794041265
+  },
+  "ab_judgment_incl_none": {
+    "overall": "fail",
+    "criteria": [
+      {
+        "name": "fill_rate",
+        "verdict": "fail",
+        "value": 0.33812566560170393,
+        "threshold": 0.3,
+        "detail": "variant=33.8% control=39.6% — degraded 14.6% vs control"
+      },
+      {
+        "name": "avg_pnl30",
+        "verdict": "pass",
+        "value": -0.3758042889492196,
+        "threshold": -1.0,
+        "detail": "variant=-0.3758 control=-0.2949 bps — OK"
+      },
+      {
+        "name": "downside_p10",
+        "verdict": "fail",
+        "value": -6.849637159205283,
+        "threshold": -5.0,
+        "detail": "variant=-6.8496 control=-5.6565 bps — below absolute min -5.00"
+      }
+    ],
+    "variant_label": "sell",
+    "control_label": "buy",
+    "n_variant": 1270,
+    "n_control": 1294,
+    "pnl30_p_value": 0.7333680203615671,
+    "pnl30_effect_size": -0.013467433754848823,
+    "mann_whitney_p_value": 0.4007737432738243,
+    "cliffs_delta_value": 0.019165378670788255,
+    "cliffs_delta_interpretation": "negligible",
+    "holm_significant": [
+      false,
+      false
+    ],
+    "bootstrap_mean_diff": -0.08090668089555342,
+    "bootstrap_ci_lower": -0.5847700352091963,
+    "bootstrap_ci_upper": 0.4357772495055017,
+    "bootstrap_p_value": 0.759,
+    "matched_n_pairs": 1049,
+    "matched_mean_diff": -0.1561172633049898,
+    "matched_ci_lower": -0.65018991943251,
+    "matched_ci_upper": 0.372982649578987,
+    "matched_p_value": 0.16091226157639582
+  },
+  "per_regime_judgment": [
+    {
+      "regime": "none",
+      "overall": "fail",
+      "criteria": [
+        {
+          "name": "fill_rate",
+          "verdict": "fail",
+          "value": 0.13989071038251366,
+          "threshold": 0.3,
+          "detail": "variant=14.0% control=33.7% — below absolute min 30.0%; degraded 58.4% vs control"
+        },
+        {
+          "name": "avg_pnl30",
+          "verdict": "pass",
+          "value": -0.8026411232692024,
+          "threshold": -1.0,
+          "detail": "variant=-0.8026 control=-0.1491 bps — OK"
+        },
+        {
+          "name": "downside_p10",
+          "verdict": "fail",
+          "value": -5.860609706314611,
+          "threshold": -5.0,
+          "detail": "variant=-5.8606 control=-4.6327 bps — below absolute min -5.00"
+        }
+      ],
+      "variant_label": "sell[none]",
+      "control_label": "buy[none]",
+      "n_variant": 128,
+      "n_control": 139,
+      "pnl30_p_value": 0.34432357256995405,
+      "pnl30_effect_size": -0.1164117162953374,
+      "mann_whitney_p_value": 0.6557587605195847,
+      "cliffs_delta_value": 0.031587230215827336,
+      "cliffs_delta_interpretation": "negligible",
+      "holm_significant": [
+        false,
+        false
+      ],
+      "bootstrap_mean_diff": -0.653531743157901,
+      "bootstrap_ci_lower": -1.790789536445647,
+      "bootstrap_ci_upper": 0.7877089539992984,
+      "bootstrap_p_value": 0.3155,
+      "matched_n_pairs": 115,
+      "matched_mean_diff": -0.8365560852678134,
+      "matched_ci_lower": -2.479891803289817,
+      "matched_ci_upper": 0.6580930362740005,
+      "matched_p_value": 0.5429323234316228
+    },
+    {
+      "regime": "ranging",
+      "overall": "fail",
+      "criteria": [
+        {
+          "name": "fill_rate",
+          "verdict": "pass",
+          "value": 0.45975056689342403,
+          "threshold": 0.3,
+          "detail": "variant=46.0% control=36.1% — OK"
+        },
+        {
+          "name": "avg_pnl30",
+          "verdict": "pass",
+          "value": -0.17576000290128596,
+          "threshold": -1.0,
+          "detail": "variant=-0.1758 control=-0.4801 bps — OK"
+        },
+        {
+          "name": "downside_p10",
+          "verdict": "fail",
+          "value": -6.737004892381164,
+          "threshold": -5.0,
+          "detail": "variant=-6.7370 control=-5.4340 bps — below absolute min -5.00"
+        }
+      ],
+      "variant_label": "sell[ranging]",
+      "control_label": "buy[ranging]",
+      "n_variant": 811,
+      "n_control": 812,
+      "pnl30_p_value": 0.2941498638757753,
+      "pnl30_effect_size": 0.05210288221025636,
+      "mann_whitney_p_value": 0.8954981872392285,
+      "cliffs_delta_value": -0.0037659521481112537,
+      "cliffs_delta_interpretation": "negligible",
+      "holm_significant": [
+        false,
+        false
+      ],
+      "bootstrap_mean_diff": 0.30432597653710447,
+      "bootstrap_ci_lower": -0.3286862801359829,
+      "bootstrap_ci_upper": 0.9415340104790831,
+      "bootstrap_p_value": 0.3475,
+      "matched_n_pairs": 637,
+      "matched_mean_diff": 0.23806627917071713,
+      "matched_ci_lower": -0.36329028289823295,
+      "matched_ci_upper": 0.8417259489726284,
+      "matched_p_value": 0.4727192692276203
+    },
+    {
+      "regime": "trending",
+      "overall": "fail",
+      "criteria": [
+        {
+          "name": "fill_rate",
+          "verdict": "fail",
+          "value": 0.3277777777777778,
+          "threshold": 0.3,
+          "detail": "variant=32.8% control=73.3% — degraded 55.3% vs control"
+        },
+        {
+          "name": "avg_pnl30",
+          "verdict": "pass",
+          "value": -0.6595631886760257,
+          "threshold": -1.0,
+          "detail": "variant=-0.6596 control=+0.5727 bps — OK"
+        },
+        {
+          "name": "downside_p10",
+          "verdict": "fail",
+          "value": -6.563695687370279,
+          "threshold": -5.0,
+          "detail": "variant=-6.5637 control=-6.9571 bps — below absolute min -5.00"
+        }
+      ],
+      "variant_label": "sell[trending]",
+      "control_label": "buy[trending]",
+      "n_variant": 118,
+      "n_control": 118,
+      "pnl30_p_value": 0.12848359261966713,
+      "pnl30_effect_size": -0.19861937947958846,
+      "mann_whitney_p_value": 0.23557913886764514,
+      "cliffs_delta_value": 0.08934214306233841,
+      "cliffs_delta_interpretation": "negligible",
+      "holm_significant": [
+        false,
+        false
+      ],
+      "bootstrap_mean_diff": -1.2322224090174898,
+      "bootstrap_ci_lower": -2.768980073093924,
+      "bootstrap_ci_upper": 0.32835310711345966,
+      "bootstrap_p_value": 0.1045,
+      "matched_n_pairs": 88,
+      "matched_mean_diff": -1.1896795552554342,
+      "matched_ci_lower": -3.3431588272920463,
+      "matched_ci_upper": 0.8022977215705478,
+      "matched_p_value": 0.42194852673975247
+    },
+    {
+      "regime": "trending_down",
+      "overall": "fail",
+      "criteria": [
+        {
+          "name": "fill_rate",
+          "verdict": "pass",
+          "value": 0.39906103286384975,
+          "threshold": 0.3,
+          "detail": "variant=39.9% control=40.0% — OK"
+        },
+        {
+          "name": "avg_pnl30",
+          "verdict": "pass",
+          "value": -0.4897486431173375,
+          "threshold": -1.0,
+          "detail": "variant=-0.4897 control=+0.6832 bps — OK"
+        },
+        {
+          "name": "downside_p10",
+          "verdict": "fail",
+          "value": -7.586664164129223,
+          "threshold": -5.0,
+          "detail": "variant=-7.5867 control=-6.2313 bps — below absolute min -5.00"
+        }
+      ],
+      "variant_label": "sell[trending_down]",
+      "control_label": "buy[trending_down]",
+      "n_variant": 85,
+      "n_control": 84,
+      "pnl30_p_value": 0.32871213280928313,
+      "pnl30_effect_size": -0.15085962873538752,
+      "mann_whitney_p_value": 0.1344810414609785,
+      "cliffs_delta_value": 0.13333333333333333,
+      "cliffs_delta_interpretation": "negligible",
+      "holm_significant": [
+        false,
+        false
+      ],
+      "bootstrap_mean_diff": -1.1729461417043818,
+      "bootstrap_ci_lower": -3.7317527334327454,
+      "bootstrap_ci_upper": 0.8323802029686043,
+      "bootstrap_p_value": 0.322,
+      "matched_n_pairs": 58,
+      "matched_mean_diff": -0.04092076951569772,
+      "matched_ci_lower": -2.671164648068274,
+      "matched_ci_upper": 2.442437059438599,
+      "matched_p_value": 0.8013300320287398
+    },
+    {
+      "regime": "trending_up",
+      "overall": "fail",
+      "criteria": [
+        {
+          "name": "fill_rate",
+          "verdict": "fail",
+          "value": 0.18385650224215247,
+          "threshold": 0.3,
+          "detail": "variant=18.4% control=53.7% — below absolute min 30.0%; degraded 65.8% vs control"
+        },
+        {
+          "name": "avg_pnl30",
+          "verdict": "fail",
+          "value": -1.154938098749242,
+          "threshold": -1.0,
+          "detail": "variant=-1.1549 control=-0.3295 bps — below absolute min -1.00"
+        },
+        {
+          "name": "downside_p10",
+          "verdict": "fail",
+          "value": -9.895366823350972,
+          "threshold": -5.0,
+          "detail": "variant=-9.8954 control=-5.6915 bps — below absolute min -5.00; degraded +4.20bps vs control (max +2.00)"
+        }
+      ],
+      "variant_label": "sell[trending_up]",
+      "control_label": "buy[trending_up]",
+      "n_variant": 82,
+      "n_control": 94,
+      "pnl30_p_value": 0.42512138284500267,
+      "pnl30_effect_size": -0.12216799748881053,
+      "mann_whitney_p_value": 0.5256445567563786,
+      "cliffs_delta_value": 0.05552672548002076,
+      "cliffs_delta_interpretation": "negligible",
+      "holm_significant": [
+        false,
+        false
+      ],
+      "bootstrap_mean_diff": -0.8254786810790403,
+      "bootstrap_ci_lower": -2.544827855371911,
+      "bootstrap_ci_upper": 1.0799592216308906,
+      "bootstrap_p_value": 0.391,
+      "matched_n_pairs": 60,
+      "matched_mean_diff": -0.8246264210357303,
+      "matched_ci_lower": -2.8262092655998288,
+      "matched_ci_upper": 1.2556841797771794,
+      "matched_p_value": 0.3652125953853078
+    },
+    {
+      "regime": "unknown",
+      "overall": "insufficient",
+      "criteria": [
+        {
+          "name": "sample_size",
+          "verdict": "insufficient",
+          "value": 46.0,
+          "threshold": 50.0,
+          "detail": "variant filled=46 < min=50"
+        }
+      ],
+      "variant_label": "sell[unknown]",
+      "control_label": "buy[unknown]",
+      "n_variant": 46,
+      "n_control": 47,
+      "pnl30_p_value": null,
+      "pnl30_effect_size": null,
+      "mann_whitney_p_value": null,
+      "cliffs_delta_value": null,
+      "cliffs_delta_interpretation": "",
+      "holm_significant": null,
+      "bootstrap_mean_diff": null,
+      "bootstrap_ci_lower": null,
+      "bootstrap_ci_upper": null,
+      "bootstrap_p_value": null,
+      "matched_n_pairs": 0,
+      "matched_mean_diff": null,
+      "matched_ci_lower": null,
+      "matched_ci_upper": null,
+      "matched_p_value": null
+    }
+  ],
+  "spread_as_decomposition": {
+    "sell": {
+      "n": 1089,
+      "spread_capture_bps": {
+        "mean": 0.8623,
+        "p50": 0.7396
+      },
+      "realized_pnl_bps": {
+        "mean": -0.279,
+        "p50": -0.351
+      },
+      "as_cost_bps": {
+        "mean": 1.1413,
+        "p50": 1.1599,
+        "p90": 7.8969
+      },
+      "efficiency": -0.3235
+    },
+    "buy": {
+      "n": 1102,
+      "spread_capture_bps": {
+        "mean": 0.2779,
+        "p50": 0.2209
+      },
+      "realized_pnl_bps": {
+        "mean": -0.2938,
+        "p50": -0.2052
+      },
+      "as_cost_bps": {
+        "mean": 0.5718,
+        "p50": 0.4263,
+        "p90": 6.0037
+      },
+      "efficiency": -1.0573
+    }
+  },
+  "decision_path": {
+    "sell": {
+      "ev_offset": {
+        "n": 60,
+        "mean_pnl": 0.094,
+        "p10": -9.4952,
+        "as_rate": 0.3333
+      },
+      "unknown": {
+        "n": 1210,
+        "mean_pnl": -0.3991,
+        "p10": -6.8096,
+        "as_rate": 0.3025
+      }
+    },
+    "buy": {
+      "ev_offset": {
+        "n": 64,
+        "mean_pnl": -0.386,
+        "p10": -6.8347,
+        "as_rate": 0.1875
+      },
+      "unknown": {
+        "n": 1230,
+        "mean_pnl": -0.2902,
+        "p10": -5.5499,
+        "as_rate": 0.2829
+      }
+    }
+  },
+  "sell_hour_boost": {
+    "boosted_hours": [
+      8,
+      13,
+      14,
+      16
+    ],
+    "boosted": {
+      "n": 138,
+      "n_with_pnl": 138,
+      "mean_pnl": -2.7488,
+      "p10": -11.887,
+      "p50": -1.9031,
+      "as_rate": 0.4928,
+      "mean_offset": 0.256604
+    },
+    "non_boosted": {
+      "n": 1132,
+      "n_with_pnl": 1132,
+      "mean_pnl": -0.0865,
+      "p10": -6.3548,
+      "p50": -0.2497,
+      "as_rate": 0.2809,
+      "mean_offset": 0.306618
+    }
+  },
+  "none_regime": {
+    "total_filled": 2564,
+    "none_count": 267,
+    "none_rate": 0.1041,
+    "none_overall": {
+      "n": 267,
+      "mean_pnl": -0.4624,
+      "as_rate": 0.427
+    },
+    "none_sell": {
+      "n": 128,
+      "mean_pnl": -0.8026,
+      "as_rate": 0.4219
+    },
+    "none_buy": {
+      "n": 139,
+      "mean_pnl": -0.1491,
+      "as_rate": 0.4317
+    },
+    "non_none_overall": {
+      "n": 2297,
+      "mean_pnl": -0.3202,
+      "as_rate": 0.2751
+    }
+  },
+  "hourly_pnl_as": {
+    "sell": [
+      {
+        "hour": 0,
+        "n": 84,
+        "mean_pnl": -1.8365,
+        "p10": -7.086,
+        "as_rate": 0.3571
+      },
+      {
+        "hour": 1,
+        "n": 61,
+        "mean_pnl": 0.6438,
+        "p10": -5.9233,
+        "as_rate": 0.2459
+      },
+      {
+        "hour": 2,
+        "n": 53,
+        "mean_pnl": -0.4819,
+        "p10": -5.6795,
+        "as_rate": 0.2453
+      },
+      {
+        "hour": 3,
+        "n": 65,
+        "mean_pnl": -0.0962,
+        "p10": -4.067,
+        "as_rate": 0.2769
+      },
+      {
+        "hour": 4,
+        "n": 41,
+        "mean_pnl": -1.4629,
+        "p10": -6.3981,
+        "as_rate": 0.3415
+      },
+      {
+        "hour": 5,
+        "n": 64,
+        "mean_pnl": 0.7098,
+        "p10": -5.3143,
+        "as_rate": 0.2812
+      },
+      {
+        "hour": 6,
+        "n": 74,
+        "mean_pnl": -0.1333,
+        "p10": -5.3392,
+        "as_rate": 0.2703
+      },
+      {
+        "hour": 7,
+        "n": 57,
+        "mean_pnl": -1.2125,
+        "p10": -6.6077,
+        "as_rate": 0.3158
+      },
+      {
+        "hour": 8,
+        "n": 27,
+        "mean_pnl": -3.5464,
+        "p10": -11.8723,
+        "as_rate": 0.6296
+      },
+      {
+        "hour": 9,
+        "n": 47,
+        "mean_pnl": 0.4011,
+        "p10": -5.6514,
+        "as_rate": 0.2128
+      },
+      {
+        "hour": 10,
+        "n": 46,
+        "mean_pnl": 0.4277,
+        "p10": -3.6294,
+        "as_rate": 0.1957
+      },
+      {
+        "hour": 11,
+        "n": 51,
+        "mean_pnl": 0.8393,
+        "p10": -6.2992,
+        "as_rate": 0.1961
+      },
+      {
+        "hour": 12,
+        "n": 44,
+        "mean_pnl": 0.6666,
+        "p10": -4.6473,
+        "as_rate": 0.1591
+      },
+      {
+        "hour": 13,
+        "n": 55,
+        "mean_pnl": -2.1558,
+        "p10": -12.0334,
+        "as_rate": 0.4182
+      },
+      {
+        "hour": 14,
+        "n": 38,
+        "mean_pnl": -3.2768,
+        "p10": -11.3744,
+        "as_rate": 0.4474
+      },
+      {
+        "hour": 15,
+        "n": 59,
+        "mean_pnl": 0.7376,
+        "p10": -8.1416,
+        "as_rate": 0.322
+      },
+      {
+        "hour": 16,
+        "n": 18,
+        "mean_pnl": -2.2495,
+        "p10": -8.4592,
+        "as_rate": 0.6111
+      },
+      {
+        "hour": 17,
+        "n": 58,
+        "mean_pnl": 0.366,
+        "p10": -6.8207,
+        "as_rate": 0.3103
+      },
+      {
+        "hour": 18,
+        "n": 28,
+        "mean_pnl": 1.8176,
+        "p10": -5.6451,
+        "as_rate": 0.3929
+      },
+      {
+        "hour": 19,
+        "n": 60,
+        "mean_pnl": 0.3974,
+        "p10": -6.5641,
+        "as_rate": 0.2833
+      },
+      {
+        "hour": 20,
+        "n": 80,
+        "mean_pnl": 0.2979,
+        "p10": -4.9715,
+        "as_rate": 0.2875
+      },
+      {
+        "hour": 21,
+        "n": 42,
+        "mean_pnl": -2.0539,
+        "p10": -8.0922,
+        "as_rate": 0.381
+      },
+      {
+        "hour": 22,
+        "n": 59,
+        "mean_pnl": -1.2268,
+        "p10": -8.5914,
+        "as_rate": 0.3051
+      },
+      {
+        "hour": 23,
+        "n": 59,
+        "mean_pnl": 0.4583,
+        "p10": -4.4066,
+        "as_rate": 0.2373
+      }
+    ],
+    "buy": [
+      {
+        "hour": 0,
+        "n": 84,
+        "mean_pnl": -0.1816,
+        "p10": -4.0909,
+        "as_rate": 0.1786
+      },
+      {
+        "hour": 1,
+        "n": 59,
+        "mean_pnl": 0.373,
+        "p10": -4.0766,
+        "as_rate": 0.2712
+      },
+      {
+        "hour": 2,
+        "n": 55,
+        "mean_pnl": -0.0098,
+        "p10": -5.7128,
+        "as_rate": 0.3091
+      },
+      {
+        "hour": 3,
+        "n": 64,
+        "mean_pnl": 0.3393,
+        "p10": -4.6417,
+        "as_rate": 0.2656
+      },
+      {
+        "hour": 4,
+        "n": 45,
+        "mean_pnl": 0.2648,
+        "p10": -5.5129,
+        "as_rate": 0.2
+      },
+      {
+        "hour": 5,
+        "n": 67,
+        "mean_pnl": -0.1513,
+        "p10": -4.8757,
+        "as_rate": 0.2687
+      },
+      {
+        "hour": 6,
+        "n": 74,
+        "mean_pnl": 0.4111,
+        "p10": -4.163,
+        "as_rate": 0.2297
+      },
+      {
+        "hour": 7,
+        "n": 57,
+        "mean_pnl": 0.7221,
+        "p10": -1.6944,
+        "as_rate": 0.1053
+      },
+      {
+        "hour": 8,
+        "n": 28,
+        "mean_pnl": -0.5743,
+        "p10": -2.8781,
+        "as_rate": 0.2143
+      },
+      {
+        "hour": 9,
+        "n": 47,
+        "mean_pnl": -0.7308,
+        "p10": -4.2965,
+        "as_rate": 0.234
+      },
+      {
+        "hour": 10,
+        "n": 43,
+        "mean_pnl": -1.907,
+        "p10": -7.0321,
+        "as_rate": 0.3488
+      },
+      {
+        "hour": 11,
+        "n": 54,
+        "mean_pnl": -0.2051,
+        "p10": -4.6609,
+        "as_rate": 0.2407
+      },
+      {
+        "hour": 12,
+        "n": 44,
+        "mean_pnl": -0.2858,
+        "p10": -4.4574,
+        "as_rate": 0.2955
+      },
+      {
+        "hour": 13,
+        "n": 61,
+        "mean_pnl": -0.735,
+        "p10": -8.4221,
+        "as_rate": 0.2787
+      },
+      {
+        "hour": 14,
+        "n": 42,
+        "mean_pnl": -1.7067,
+        "p10": -15.7738,
+        "as_rate": 0.4286
+      },
+      {
+        "hour": 15,
+        "n": 61,
+        "mean_pnl": -0.5997,
+        "p10": -9.9799,
+        "as_rate": 0.4098
+      },
+      {
+        "hour": 16,
+        "n": 18,
+        "mean_pnl": -2.3579,
+        "p10": -9.9873,
+        "as_rate": 0.3889
+      },
+      {
+        "hour": 17,
+        "n": 58,
+        "mean_pnl": -0.5097,
+        "p10": -7.6093,
+        "as_rate": 0.4138
+      },
+      {
+        "hour": 18,
+        "n": 27,
+        "mean_pnl": -2.3746,
+        "p10": -9.5586,
+        "as_rate": 0.4815
+      },
+      {
+        "hour": 19,
+        "n": 60,
+        "mean_pnl": 0.1164,
+        "p10": -6.608,
+        "as_rate": 0.4167
+      },
+      {
+        "hour": 20,
+        "n": 77,
+        "mean_pnl": 0.7741,
+        "p10": -3.2107,
+        "as_rate": 0.1688
+      },
+      {
+        "hour": 21,
+        "n": 43,
+        "mean_pnl": -0.9336,
+        "p10": -6.188,
+        "as_rate": 0.3256
+      },
+      {
+        "hour": 22,
+        "n": 65,
+        "mean_pnl": -0.4096,
+        "p10": -4.301,
+        "as_rate": 0.2308
+      },
+      {
+        "hour": 23,
+        "n": 61,
+        "mean_pnl": -0.6134,
+        "p10": -5.0658,
+        "as_rate": 0.2623
+      }
+    ]
+  },
+  "offset_quintiles": {
+    "sell": {
+      "n": 1089,
+      "quintiles": [
+        {
+          "quintile": 1,
+          "n": 217,
+          "offset_range": [
+            0.136427,
+            0.267592
+          ],
+          "mean_pnl": -0.6487,
+          "as_rate": 0.341
+        },
+        {
+          "quintile": 2,
+          "n": 218,
+          "offset_range": [
+            0.268168,
+            0.3
+          ],
+          "mean_pnl": -0.7007,
+          "as_rate": 0.3073
+        },
+        {
+          "quintile": 3,
+          "n": 218,
+          "offset_range": [
+            0.3,
+            0.3
+          ],
+          "mean_pnl": -0.2411,
+          "as_rate": 0.1972
+        },
+        {
+          "quintile": 4,
+          "n": 218,
+          "offset_range": [
+            0.3,
+            0.482222
+          ],
+          "mean_pnl": 0.573,
+          "as_rate": 0.3211
+        },
+        {
+          "quintile": 5,
+          "n": 218,
+          "offset_range": [
+            0.487222,
+            2.087689
+          ],
+          "mean_pnl": -0.3791,
+          "as_rate": 0.2844
+        }
+      ]
+    },
+    "buy": {
+      "n": 1102,
+      "quintiles": [
+        {
+          "quintile": 1,
+          "n": 220,
+          "offset_range": [
+            0.019087,
+            0.063
+          ],
+          "mean_pnl": -0.198,
+          "as_rate": 0.2409
+        },
+        {
+          "quintile": 2,
+          "n": 220,
+          "offset_range": [
+            0.063,
+            0.075
+          ],
+          "mean_pnl": -0.1206,
+          "as_rate": 0.2409
+        },
+        {
+          "quintile": 3,
+          "n": 221,
+          "offset_range": [
+            0.075,
+            0.100014
+          ],
+          "mean_pnl": -0.6285,
+          "as_rate": 0.2489
+        },
+        {
+          "quintile": 4,
+          "n": 220,
+          "offset_range": [
+            0.100333,
+            0.15
+          ],
+          "mean_pnl": 0.0579,
+          "as_rate": 0.2545
+        },
+        {
+          "quintile": 5,
+          "n": 221,
+          "offset_range": [
+            0.15,
+            0.825385
+          ],
+          "mean_pnl": -0.5772,
+          "as_rate": 0.3032
+        }
+      ]
+    }
+  },
+  "improvement_proposals": [
+    {
+      "id": "P1",
+      "priority": "P0",
+      "title": "Sell downside tail (p10) の改善",
+      "detail": "sell p10 = -6.87 bps (閾値 -5.0)",
+      "source": "AB judgment downside_p10"
+    },
+    {
+      "id": "R-none-fill_rate",
+      "priority": "P1",
+      "title": "none regime: fill_rate FAIL",
+      "detail": "variant=14.0% control=33.7% — below absolute min 30.0%; degraded 58.4% vs control",
+      "source": "per_regime[none]"
+    },
+    {
+      "id": "R-none-downside_p10",
+      "priority": "P1",
+      "title": "none regime: downside_p10 FAIL",
+      "detail": "variant=-5.8606 control=-4.6327 bps — below absolute min -5.00",
+      "source": "per_regime[none]"
+    },
+    {
+      "id": "R-ranging-downside_p10",
+      "priority": "P1",
+      "title": "ranging regime: downside_p10 FAIL",
+      "detail": "variant=-6.7370 control=-5.4340 bps — below absolute min -5.00",
+      "source": "per_regime[ranging]"
+    },
+    {
+      "id": "R-trending-fill_rate",
+      "priority": "P1",
+      "title": "trending regime: fill_rate FAIL",
+      "detail": "variant=32.8% control=73.3% — degraded 55.3% vs control",
+      "source": "per_regime[trending]"
+    },
+    {
+      "id": "R-trending-downside_p10",
+      "priority": "P1",
+      "title": "trending regime: downside_p10 FAIL",
+      "detail": "variant=-6.5637 control=-6.9571 bps — below absolute min -5.00",
+      "source": "per_regime[trending]"
+    },
+    {
+      "id": "R-trending_down-downside_p10",
+      "priority": "P1",
+      "title": "trending_down regime: downside_p10 FAIL",
+      "detail": "variant=-7.5867 control=-6.2313 bps — below absolute min -5.00",
+      "source": "per_regime[trending_down]"
+    },
+    {
+      "id": "R-trending_up-fill_rate",
+      "priority": "P1",
+      "title": "trending_up regime: fill_rate FAIL",
+      "detail": "variant=18.4% control=53.7% — below absolute min 30.0%; degraded 65.8% vs control",
+      "source": "per_regime[trending_up]"
+    },
+    {
+      "id": "R-trending_up-avg_pnl30",
+      "priority": "P1",
+      "title": "trending_up regime: avg_pnl30 FAIL",
+      "detail": "variant=-1.1549 control=-0.3295 bps — below absolute min -1.00",
+      "source": "per_regime[trending_up]"
+    },
+    {
+      "id": "R-trending_up-downside_p10",
+      "priority": "P1",
+      "title": "trending_up regime: downside_p10 FAIL",
+      "detail": "variant=-9.8954 control=-5.6915 bps — below absolute min -5.00; degraded +4.20bps vs control (max +2.00)",
+      "source": "per_regime[trending_up]"
+    },
+    {
+      "id": "D-sell",
+      "priority": "P1",
+      "title": "sell AS cost (1.14) > spread capture (0.86)",
+      "detail": "efficiency = -0.3235",
+      "source": "spread_as_decomposition"
+    },
+    {
+      "id": "D-buy",
+      "priority": "P0",
+      "title": "buy AS cost (0.57) > spread capture (0.28)",
+      "detail": "efficiency = -1.0573",
+      "source": "spread_as_decomposition"
+    },
+    {
+      "id": "N1",
+      "priority": "P1",
+      "title": "None regime PnL 劣後 (-0.46 vs -0.32 bps)",
+      "detail": "None rate = 10.4%",
+      "source": "none_regime_analysis"
+    },
+    {
+      "id": "H1",
+      "priority": "P1",
+      "title": "Boost時間帯 PnL (-2.75) < 非Boost (-0.09) — AS率 49.3% vs 28.1%",
+      "detail": "sell_hour_offset_boost がAS改善に寄与しているか要検証",
+      "source": "sell_hour_boost_analysis"
+    }
+  ]
+}

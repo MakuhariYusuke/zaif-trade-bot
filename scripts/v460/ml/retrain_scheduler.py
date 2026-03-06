@@ -268,9 +268,9 @@ def load_retrain_config(config_path: Path | None = None) -> ConfigMap:
     yaml_path = config_path or Path("configs/v460/fill_test.yaml")
     if yaml_path.exists():
         try:
-            from scripts.v460.lib.config_loader import load_fill_test_config
-
-            yaml_data = ensure_dict(load_fill_test_config(yaml_path))
+            import yaml
+            with open(yaml_path) as f:
+                yaml_data = ensure_dict(yaml.safe_load(f) or {})
 
             # 127# C1: skip_gate セクションから model_path / mode / use_ob_features を継承
             sg_cfg = ensure_dict(yaml_data.get("skip_gate"))

@@ -350,9 +350,9 @@ class TestRetrainPipelineIntegrity:
         trigger.update_regime("ranging")
         assert trigger.get_effective_interval() == 5400  # 3600 * 1.5
 
-    def test_retrain_config_loads_from_yaml(self, v460_fill_test_yaml_path: Path) -> None:
+    def test_retrain_config_loads_from_yaml(self) -> None:
         """load_retrain_config が fill_test.yaml から正常に設定を読み込む."""
-        cfg = load_retrain_config(v460_fill_test_yaml_path)
+        cfg = load_retrain_config(Path("configs/v460/fill_test.yaml"))
         assert cfg["mode"] == "pnl"
         assert "model_path" in cfg
 

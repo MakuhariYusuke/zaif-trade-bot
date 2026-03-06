@@ -12,7 +12,6 @@ import math
 import os
 import time
 from datetime import datetime, timezone
-from functools import lru_cache
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -34,11 +33,6 @@ from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
 from ztb.metrics.fill_quality import FillRecord, filter_clean_records
 from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-
-
-@lru_cache(maxsize=None)
-def _source(obj: object) -> str:
-    return inspect.getsource(obj)
 
 # ======================================================================
 # Fixtures
@@ -575,12 +569,13 @@ class TestTimeFilterNoRecord:
             assert tf.is_filtered(side=None) is False
             assert tf.is_filtered() is False
 
-    def test_yaml_side_specific_time_filter(
-        self,
-        v460_fill_test_yaml: dict[str, object],
-    ) -> None:
+    def test_yaml_side_specific_time_filter(self) -> None:
         """163# Step2 YAML side 別 time_filter (107# Phase 3 Step 2)."""
-        tf = v460_fill_test_yaml["time_filter"]
+
+        yaml_path = Path("configs/v460/fill_test.yaml")
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f)
+        tf = cfg["time_filter"]
         assert "skip_utc_hours_buy" in tf
         assert "skip_utc_hours_sell" in tf
         # 168# §4.2 #8: buy = [16], sell = [8, 21] (損失バンド精緻化)
@@ -761,7 +756,7 @@ class TestRateLimitDoubleCheck:
     def test_rate_limit_called_before_transactions(self) -> None:
         """_get_order_status_real のソースに _check_rate_limit がある."""
 
-        source = _source(CoincheckAdapter._get_order_status_real)
+        source = inspect.getsource(CoincheckAdapter._get_order_status_real)
         count = source.count("_check_rate_limit")
         assert count >= 1, f"Expected ≥1 rate limit checks in _get_order_status_real, found {count}"
 
@@ -774,7 +769,7 @@ class TestPriceRounding:
     def test_price_uses_round_not_int(self) -> None:
         """_place_order_real のソースに round(price) が使われている."""
 
-        source = _source(CoincheckAdapter._place_order_real)
+        source = inspect.getsource(CoincheckAdapter._place_order_real)
         assert "round(price)" in source, "price should use round() not int()"
         assert "int(price)" not in source, "int(price) should be replaced by round(price)"
 
@@ -787,7 +782,7 @@ class TestBalanceLocked:
     def test_balance_source_has_reserved_handling(self) -> None:
         """_get_balance_real のソースに _reserved の処理が含まれる."""
 
-        source = _source(CoincheckAdapter._get_balance_real)
+        source = inspect.getsource(CoincheckAdapter._get_balance_real)
         assert "_reserved" in source, "_get_balance_real should handle *_reserved keys"
         assert "locked=0.0" not in source, "locked should not be hardcoded to 0.0"
 
@@ -801,7 +796,7 @@ class TestBug10InsufficientFundsNoRetry:
     def test_source_has_insufficient_funds_break(self) -> None:
         """run_single_cycle のソースに insufficient_funds → break が含まれる."""
 
-        source = _source(FillTestRunner.run_single_cycle)
+        source = inspect.getsource(FillTestRunner.run_single_cycle)
         # 084# 改修: 非リトライ対象をセットで管理
         assert '"insufficient_funds"' in source
         assert "not retriable" in source.lower() or "_non_retriable" in source
@@ -915,7 +910,7 @@ class TestBalanceCurrencyFilter:
     def test_ignore_suffixes_in_source(self) -> None:
         """_get_balance_real のソースに _lending 等の除外ロジックがある."""
 
-        source = _source(CoincheckAdapter._get_balance_real)
+        source = inspect.getsource(CoincheckAdapter._get_balance_real)
         for suffix in ["_lending", "_lend_in_use", "_lent", "_debt", "_tsumitate"]:
             assert suffix in source, f"{suffix} should be excluded in _get_balance_real"
 
@@ -925,7 +920,7 @@ class TestBalanceCurrencyFilter:
         120#: adaptation_engine.py に抽出済み。
         """
 
-        source = _source(AdaptationEngine.update_dynamic_loss_cap)
+        source = inspect.getsource(AdaptationEngine.update_dynamic_loss_cap)
         assert "JPY_RESERVED" not in source, "Dead check should be removed"
         assert "BTC_RESERVED" not in source, "Dead check should be removed"
 
@@ -935,7 +930,7 @@ class TestBug086TimeFilterPositionAccumulation:
     def test_source_has_position_accumulation_guard(self) -> None:
         """run_continuous に片側蓄積防止ガードが含まれる."""
 
-        source = _source(FillTestRunner.run_continuous)
+        source = inspect.getsource(FillTestRunner.run_continuous)
         assert "alt_side == self._last_side" in source, (
             "086# 片側蓄積防止ガードが必要"
         )
@@ -1144,7 +1139,7 @@ class TestPhaseD18EnumConsistency:
     def test_high_vol_uses_enum_comparison(self) -> None:
         """maker_price.py の high_vol ロジックが enum 比較を使用."""
 
-        source = _source(MakerPriceCalculator)
+        source = inspect.getsource(MakerPriceCalculator)
         assert "FillTestRegime.HIGH_VOL" in source
         assert "FillTestRegime.RANGING" in source
         assert "FillTestRegime.UNKNOWN" in source

@@ -76,9 +76,11 @@ class TestNewConfigFields:
         assert cfg.fallback_duration_sec == 1800.0
         assert cfg.unknown_regime_max_consecutive == 15
 
-    def test_yaml_file_has_new_fields(self, v460_fill_test_yaml: dict[str, object]) -> None:
+    def test_yaml_file_has_new_fields(self) -> None:
         """fill_test.yaml に 277# の新規フィールドが定義されている."""
-        data = v460_fill_test_yaml
+        import yaml
+        with open("configs/v460/fill_test.yaml", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
         assert data["phantom_detection_sleep_multiplier"] == 3.0
         assert data["halt_persist_interval"] == 10
         assert data["stop_condition_check_interval"] == 30
