@@ -73,14 +73,18 @@ class SideSelector:
     def rapid_exit_side(self, value: str | None) -> None:
         self._rapid_exit_side = value
 
-    def next(self, imbalance: float = 0.0, microprice_bias_bps: float = 0.0) -> str:
+    def next(self, imbalance: float = 0.0, microprice_bias_bps: float = 0.0,
+             *, spread_bps: float = 0.0, regime: str = "") -> str:
         """次の side を決定: 交互 or Smart Side or Microprice.
 
         120# A5: frozen_side に該当する side は自動的に反対に迂回。
         309# L2 (308# 修正): microprice_bias_bps > 0 → buy (safety), < 0 → sell (safety)。
+        310# C: ガードレール — spread_bps / regime 条件付き有効化。
         Args:
             imbalance: 現在の板不均衡 (Smart Side 用)
             microprice_bias_bps: microprice vs mid の偏向 (bps, 306# L2)
+            spread_bps: 現在のスプレッド (bps, 310# C ガードレール用)
+            regime: 現在のレジーム文字列 (310# C ガードレール用)
         """
         # 055# Fix #1: S3 rapid exit で決定された side を最優先で返却
         if self._rapid_exit_side is not None:
@@ -112,23 +116,40 @@ class SideSelector:
         # 旧実装 (306#) は liveness 優先で逆方向に送っていたが、
         # これは事実上の AS seeker であり理論的に倒錯していた。
         if self._config.microprice_side_enabled:
-            threshold = self._config.microprice_side_threshold
-            if microprice_bias_bps > threshold:
-                mp_side = "buy"
-                if mp_side != base_side:
-                    logger.info(
-                        f"[microprice_side] bias={microprice_bias_bps:+.2f}bps "
-                        f"> {threshold} → buy (buy pressure, safety mode)"
-                    )
-                    return mp_side
-            elif microprice_bias_bps < -threshold:
-                mp_side = "sell"
-                if mp_side != base_side:
-                    logger.info(
-                        f"[microprice_side] bias={microprice_bias_bps:+.2f}bps "
-                        f"< -{threshold} → sell (sell pressure, safety mode)"
-                    )
-                    return mp_side
+            # 310# C: ガードレール — 条件未達時はスキップ
+            _guardrail_pass = True
+            _min_sp = self._config.microprice_side_min_spread_bps
+            if _min_sp > 0 and spread_bps < _min_sp:
+                _guardrail_pass = False
+                logger.debug(
+                    f"[microprice_side] guardrail: spread={spread_bps:.1f}bps "
+                    f"< min={_min_sp:.1f}bps — skipped"
+                )
+            _rg = self._config.microprice_side_regime_gate
+            if _guardrail_pass and _rg and regime and regime not in _rg:
+                _guardrail_pass = False
+                logger.debug(
+                    f"[microprice_side] guardrail: regime={regime} "
+                    f"not in {_rg} — skipped"
+                )
+            if _guardrail_pass:
+                threshold = self._config.microprice_side_threshold
+                if microprice_bias_bps > threshold:
+                    mp_side = "buy"
+                    if mp_side != base_side:
+                        logger.info(
+                            f"[microprice_side] bias={microprice_bias_bps:+.2f}bps "
+                            f"> {threshold} → buy (buy pressure, safety mode)"
+                        )
+                        return mp_side
+                elif microprice_bias_bps < -threshold:
+                    mp_side = "sell"
+                    if mp_side != base_side:
+                        logger.info(
+                            f"[microprice_side] bias={microprice_bias_bps:+.2f}bps "
+                            f"< -{threshold} → sell (sell pressure, safety mode)"
+                        )
+                        return mp_side
 
         if not self._config.smart_side_enabled:
             return base_side

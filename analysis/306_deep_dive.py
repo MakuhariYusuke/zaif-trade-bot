@@ -509,9 +509,121 @@ def new_observability_analysis(records: list[dict]) -> dict:
     return result
 
 
+def spread_as_cost_decomposition(records: list[dict]) -> dict:
+    """310# E: Spread Capture / AS Cost 分解 (307# F7).
+
+    Maker の理論的 PnL 分解:
+      spread_capture_bps = spread_bps × effective_offset_used
+        → offset 分だけ板の内側に入った理論的収益 (maker edge)
+      realized_pnl = post_fill_30s_pnl (bps)
+      as_cost = spread_capture - realized_pnl
+        → spread_capture を食い潰した逆選択コスト
+    """
+    result: dict = {}
+    for side in ["sell", "buy"]:
+        filled = extract_filled(records, side=side)
+        sc_list: list[float] = []
+        pnl_list: list[float] = []
+        as_cost_list: list[float] = []
+        for r in filled:
+            offset = safe_to_finite(r.get("effective_offset_used"))
+            pnl = safe_to_finite(r.get("post_fill_30s_pnl"))
+            spread_bps = safe_to_finite(r.get("spread_bps"))
+            if offset is not None and pnl is not None and spread_bps is not None and spread_bps > 0:
+                # spread_capture = how much of the spread we captured by placing offset inside
+                sc_bps = spread_bps * offset
+                as_cost = sc_bps - pnl
+                sc_list.append(sc_bps)
+                pnl_list.append(pnl)
+                as_cost_list.append(as_cost)
+        n = len(sc_list)
+        sc_arr = np.array(sc_list) if sc_list else np.array([])
+        pnl_arr = np.array(pnl_list) if pnl_list else np.array([])
+        as_arr = np.array(as_cost_list) if as_cost_list else np.array([])
+        result[side] = {
+            "n": n,
+            "spread_capture_bps": {
+                "mean": round(float(np.mean(sc_arr)), 4) if n > 0 else None,
+                "p50": round(float(np.median(sc_arr)), 4) if n > 0 else None,
+            },
+            "realized_pnl_bps": {
+                "mean": round(float(np.mean(pnl_arr)), 4) if n > 0 else None,
+                "p50": round(float(np.median(pnl_arr)), 4) if n > 0 else None,
+            },
+            "as_cost_bps": {
+                "mean": round(float(np.mean(as_arr)), 4) if n > 0 else None,
+                "p50": round(float(np.median(as_arr)), 4) if n > 0 else None,
+                "p90": round(float(np.percentile(as_arr, 90)), 4) if n >= 5 else None,
+            },
+            "efficiency": round(
+                float(np.mean(pnl_arr) / np.mean(sc_arr)), 4
+            ) if n > 0 and np.mean(sc_arr) != 0 else None,
+        }
+    return result
+
+
+def none_regime_analysis(records: list[dict]) -> dict:
+    """310# D: None regime 観測性分析 (307# F5).
+
+    regime="none" のレコードを分類:
+      - warmup: 初期レコード (timestamp 順で先頭 N レコード)
+      - true_none: regime detector が実際に none を返している
+    """
+    filled = [r for r in records if r.get("filled")]
+    none_records = [r for r in filled if str(r.get("regime") or "none") == "none"]
+    non_none = [r for r in filled if str(r.get("regime") or "none") != "none"]
+
+    # PnL 比較
+    none_pnls = [
+        safe_to_finite(r.get("post_fill_30s_pnl"))
+        for r in none_records
+        if safe_to_finite(r.get("post_fill_30s_pnl")) is not None
+    ]
+    non_none_pnls = [
+        safe_to_finite(r.get("post_fill_30s_pnl"))
+        for r in non_none
+        if safe_to_finite(r.get("post_fill_30s_pnl")) is not None
+    ]
+    none_as_count = sum(
+        1 for r in none_records
+        if r.get("post_fill_30s_pnl") is not None
+        and float(r["post_fill_30s_pnl"]) < 0
+    )
+    none_pnl_arr = np.array(none_pnls) if none_pnls else np.array([])
+    non_none_pnl_arr = np.array(non_none_pnls) if non_none_pnls else np.array([])
+
+    # 時間帯分布
+    hour_dist: dict[int, int] = defaultdict(int)
+    for r in none_records:
+        ts = r.get("timestamp")
+        if ts:
+            from datetime import datetime, timezone
+            try:
+                dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+                hour_dist[dt.hour] += 1
+            except (ValueError, TypeError):
+                pass
+
+    return {
+        "total_filled": len(filled),
+        "none_regime_count": len(none_records),
+        "none_regime_rate": round(len(none_records) / len(filled), 4) if filled else 0,
+        "none_pnl": {
+            "n": len(none_pnls),
+            "mean": round(float(np.mean(none_pnl_arr)), 4) if none_pnls else None,
+            "as_rate": round(none_as_count / len(none_pnls), 4) if none_pnls else None,
+        },
+        "non_none_pnl": {
+            "n": len(non_none_pnls),
+            "mean": round(float(np.mean(non_none_pnl_arr)), 4) if non_none_pnls else None,
+        },
+        "none_hour_distribution": dict(sorted(hour_dist.items())),
+    }
+
+
 def main() -> None:
     print("=" * 70)
-    print("  309# 306# 深堀り分析 (307#/308# レビュー反映版)")
+    print("  310# 306# 深堀り分析 (310# 設計改修版)")
     print("=" * 70)
 
     records = load_records()
@@ -667,7 +779,38 @@ def main() -> None:
         print(f"    microprice_bias: n={mp['n']}, mean={mp.get('mean')}, "
               f"std={mp.get('std')}, p10={mp.get('p10')}, p90={mp.get('p90')}")
 
-    # 10. 全結果 JSON 出力
+    # 10. Spread Capture / AS Cost 分解 (307# F7)
+    print("\n" + "=" * 70)
+    print("  §10 Spread Capture / AS Cost 分解 (307# F7)")
+    print("=" * 70)
+    decomp = spread_as_cost_decomposition(records)
+    for side in ["sell", "buy"]:
+        d = decomp[side]
+        print(f"\n  [{side.upper()}] n={d['n']}")
+        sc = d["spread_capture_bps"]
+        print(f"    spread_capture: mean={sc['mean']} bps, p50={sc['p50']} bps")
+        rp = d["realized_pnl_bps"]
+        print(f"    realized_pnl:   mean={rp['mean']} bps, p50={rp['p50']} bps")
+        ac = d["as_cost_bps"]
+        print(f"    AS cost:        mean={ac['mean']} bps, p50={ac['p50']} bps, p90={ac.get('p90')} bps")
+        print(f"    efficiency:     {d['efficiency']}")
+
+    # 11. None regime 分析 (307# F5)
+    print("\n" + "=" * 70)
+    print("  §11 None Regime 分析 (307# F5)")
+    print("=" * 70)
+    none_result = none_regime_analysis(records)
+    print(f"  Total filled: {none_result['total_filled']}")
+    print(f"  None regime: {none_result['none_regime_count']} "
+          f"({none_result['none_regime_rate']:.2%})")
+    np_stats = none_result["none_pnl"]
+    print(f"  None PnL: n={np_stats['n']}, mean={np_stats['mean']}, AS={np_stats['as_rate']}")
+    nnp = none_result["non_none_pnl"]
+    print(f"  Non-none PnL: n={nnp['n']}, mean={nnp['mean']}")
+    if none_result["none_hour_distribution"]:
+        print(f"  Hour distribution: {none_result['none_hour_distribution']}")
+
+    # 12. 全結果 JSON 出力
     full_result = {
         "regime_matched": regime_results,
         "as_deep_dive": as_result,
@@ -677,6 +820,8 @@ def main() -> None:
         "fill_speed": speed,
         "decision_path": dp_result,
         "new_observability": obs_result,
+        "spread_as_decomposition": decomp,
+        "none_regime": none_result,
     }
     out_path = Path("analysis_results/306_deep_dive.json")
     out_path.parent.mkdir(exist_ok=True)

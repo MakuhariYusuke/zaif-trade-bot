@@ -71,6 +71,9 @@ class AdaptationResult:
     fill_rate: float
     as_ratio: float
     sample_count: int
+    # 310# B: decision_path — 判断の根本理由を型安全に分類
+    # 307# F6 指摘: AS 防御とデッドロック解除の混同を解消
+    decision_path: str = "hold"  # "as_defense" | "deadlock_break" | "fill_recovery" | "ev_optimization" | "hold" | "insufficient_data"
 
     @property
     def changed(self) -> bool:
@@ -119,6 +122,7 @@ def compute_adaptation(
             fill_rate=fill_rate,
             as_ratio=as_ratio,
             sample_count=sample_count,
+            decision_path="insufficient_data",
         )
 
     low_fill = fill_rate < config.min_fill_rate
@@ -142,7 +146,9 @@ def compute_adaptation(
                 fill_rate=fill_rate,
                 as_ratio=as_ratio,
                 sample_count=sample_count,
+                decision_path="deadlock_break",
             )
+        # 310# B: AS が支配的 (EV は中立だがAS高) → AS 防御で hold
         return AdaptationResult(
             previous_offset=current,
             new_offset=current,
@@ -155,6 +161,7 @@ def compute_adaptation(
             fill_rate=fill_rate,
             as_ratio=as_ratio,
             sample_count=sample_count,
+            decision_path="as_defense",
         )
 
     if high_as:
@@ -171,6 +178,7 @@ def compute_adaptation(
             fill_rate=fill_rate,
             as_ratio=as_ratio,
             sample_count=sample_count,
+            decision_path="as_defense",
         )
 
     if low_fill:
@@ -187,6 +195,7 @@ def compute_adaptation(
             fill_rate=fill_rate,
             as_ratio=as_ratio,
             sample_count=sample_count,
+            decision_path="fill_recovery",
         )
 
     # 両方正常 → 306# A1: EV ベースの微調整
@@ -206,6 +215,7 @@ def compute_adaptation(
                 fill_rate=fill_rate,
                 as_ratio=as_ratio,
                 sample_count=sample_count,
+                decision_path="ev_optimization",
             )
     return AdaptationResult(
         previous_offset=current,
@@ -218,6 +228,7 @@ def compute_adaptation(
         fill_rate=fill_rate,
         as_ratio=as_ratio,
         sample_count=sample_count,
+        decision_path="hold",
     )
 
 

@@ -139,6 +139,9 @@ class FillLoopOrchestratorMixin:
     # 303# B: DD soft lot side 分離 — side 別 lot 倍率 (1.0 = 通常)
     _dd_soft_lot_scale_buy: float = 1.0
     _dd_soft_lot_scale_sell: float = 1.0
+    # 310# D: None regime observability (307# F5)
+    _none_regime_cycle_count: int = 0
+    _total_regime_cycle_count: int = 0
     # 250# P1-4: freeze/cooldown が紐付いた side
     # — None 時は全 side スキップ (後方互換), side 指定時はその side のみ
     _one_sided_frozen_side: str | None = None
@@ -1248,6 +1251,7 @@ class FillLoopOrchestratorMixin:
                 f"btcDelta={st.cumulative_btc_delta:+.4f}BTC, "
                 f"lot={self._current_lot:.4f}BTC, "
                 f"regime={regime_tag}, "
+                f"none_regime={self._none_regime_cycle_count}/{self._total_regime_cycle_count}, "
                 f"unsaved_batch={len(st.batch)}"
             )
             # 249# Total Equity MTM
@@ -1697,6 +1701,13 @@ class FillLoopOrchestratorMixin:
             _is_rescue = False  # 158# P1-1: balance_forced rescue フラグ
             _one_sided_balance = False  # 190# B: 片側 balance フラグ (ev_weighted threshold 緩和用)
             _inventory_escape = False  # 269# P0: Inventory Escape Mode
+
+            # 310# D: None regime observability (307# F5)
+            self._total_regime_cycle_count += 1
+            _current_regime_str = self._current_regime_value()
+            if _current_regime_str == "none":
+                self._none_regime_cycle_count += 1
+
             # 073# side 別時間帯フィルター: side 決定後にフィルタリング
             # side 別リスト未設定時はグローバルリスト (041# 互換)
             next_side = self._next_side()

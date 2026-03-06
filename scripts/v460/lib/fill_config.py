@@ -261,6 +261,12 @@ class FillTestConfig:
     # 300# §2.3 Smart Side がレジーム不感症 → microprice で構造的 AS 低減
     microprice_side_enabled: bool = False    # True で microprice ベース side 選択を有効化
     microprice_side_threshold: float = 0.3  # microprice 偏向度 (bps) がこの値以上で side 切替
+    # 310# C: L2 Safety Mode 再有効化ガードレール (308# 盲点1 設計改修)
+    # 無条件有効化ではなくスプレッド・レジーム条件付きで制御
+    microprice_side_min_spread_bps: float = 15.0  # spread がこの値 (bps) 以上の時のみ有効
+    microprice_side_regime_gate: list[str] = field(
+        default_factory=lambda: ["ranging"]  # これらの regime でのみ有効 (空=全レジーム)
+    )
     # ---- 306# L1: Dynamic Cycle Interval ----
     # cycle_interval_sec ∝ 1/σ: 高σ時に短周期 (素早い在庫回転), 低σ時に長周期 (API節約)
     # 300# §1.3 VG は量のフィルタ → σ 連動で質も改善
@@ -276,6 +282,11 @@ class FillTestConfig:
     # ---- 306# S1: Offset Stage 寄与記録 (301# F6, 300# T0-1) ----
     # offset パイプライン各ステージの寄与量を FillRecord に記録 → 定量分析基盤
     offset_stage_recording_enabled: bool = False  # True で stage-by-stage 記録を有効化
+    # ---- 310# A: Sell AS Time-of-Day Offset Boost (307# F3, 306# H5) ----
+    # 306# 実証: UTC 08h AS=63%, 13-14h AS=42-43%, 16h AS=61% (sell)
+    # sell 時間帯別 offset multiplier — Ho-Stoll (1981): 情報非対称の時間変動を反映
+    # key=UTC hour, value=offset multiplier (1.0=無効, >1.0=拡大)
+    sell_hour_offset_boost: dict[int, float] = field(default_factory=dict)
     # ---- 306# T1-3: Max Offset Ratio 天井 (300# §2.1 構造的矛盾 #2) ----
     # 全ステージが offset を拡大する方向にのみ作用 → 天井で toxic fill only trap を防止
     offset_ceiling_ratio: float = 0.0  # 0.0=無効, >0 で offset 上限 (e.g. 0.15)
@@ -1871,6 +1882,11 @@ class FillTestConfig:
             kwargs["microprice_side_enabled"] = ms["enabled"]
         if "threshold_bps" in ms:
             kwargs["microprice_side_threshold"] = float(ms["threshold_bps"])
+        # 310# C: L2 guardrails
+        if "min_spread_bps" in ms:
+            kwargs["microprice_side_min_spread_bps"] = float(ms["min_spread_bps"])
+        if "regime_gate" in ms:
+            kwargs["microprice_side_regime_gate"] = [str(r) for r in ms["regime_gate"]]
         # Dynamic cycle interval
         dci = yaml_cfg.get("dynamic_cycle_interval", {})
         if dci.get("enabled") is not None:
@@ -1892,6 +1908,12 @@ class FillTestConfig:
         osr = yaml_cfg.get("offset_stage_recording", {})
         if osr.get("enabled") is not None:
             kwargs["offset_stage_recording_enabled"] = osr["enabled"]
+        # 310# A: Sell AS Time-of-Day Offset Boost
+        shob = yaml_cfg.get("sell_hour_offset_boost", {})
+        if shob:
+            kwargs["sell_hour_offset_boost"] = {
+                int(k): float(v) for k, v in shob.items()
+            }
         # Offset ceiling
         if "offset_ceiling_ratio" in yaml_cfg:
             kwargs["offset_ceiling_ratio"] = float(yaml_cfg["offset_ceiling_ratio"])

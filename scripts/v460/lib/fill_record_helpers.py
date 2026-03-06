@@ -297,8 +297,17 @@ class FillRecordHelpersMixin:
         """buy/sell を決定 — 121# SideSelector に委譲.
 
         306# L2: microprice_bias_bps を追加入力。
+        310# C: spread_bps / regime ガードレールを追加入力。
         """
+        # 310# C: spread bps 算出 (public API 経由)
+        _spread = self._maker_price.last_spread_raw or 0.0
+        _mid = self._maker_price.last_mid_price or 0.0
+        _spread_bps = (_spread / _mid * 10000.0) if _mid > 0 else 0.0
+        # 310# C: regime
+        _regime = self._current_regime_value() if hasattr(self, "_current_regime_value") else ""
         return self._side_selector.next(
             imbalance=self._maker_price._last_imbalance,
             microprice_bias_bps=self._maker_price.compute_microprice_bias_bps(),
+            spread_bps=_spread_bps,
+            regime=_regime,
         )

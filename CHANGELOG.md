@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 310# 設計面改修: 307#/308# 残課題の構造的解消 (2026-03-07)
+
+### Added
+- **310# A: Sell AS Time-of-Day Offset Boost** — Ho-Stoll (1981) 準拠の時間帯別 sell offset 乗数 (UTC 08/13/14/16h)
+  - `_apply_sell_hour_boost()` pipeline stage (maker_price.py)
+  - `sell_hour_offset_boost` YAML config
+- **310# B: param_adapter Decision Path Split** — `AdaptationResult.decision_path` で 7 分岐パスを明示ラベル化 (307# F6)
+- **310# C: L2 Safety Mode Guardrails** — 将来の再有効化に備えた 2 重ガードレール (308# Blindspot 1)
+  - `microprice_side_min_spread_bps: 15.0` — 狭スプレッド時にスキップ
+  - `microprice_side_regime_gate: ["ranging"]` — 非 ranging regime でスキップ
+- **310# D: None Regime Observability** — `_none_regime_cycle_count` カウンター + progress log 出力 (307# F5)
+  - deep dive §11: None regime = 10.43%, PnL -0.46 bps (non-none -0.32 bps)
+- **310# E: Spread/AS Cost Decomposition** — deep dive §10 (307# F7)
+  - `spread_capture_bps = spread_bps × effective_offset_used`
+  - Sell efficiency: -0.32, Buy efficiency: -1.07
+- `docs/v460/310_ph2_impl_design_improvements.md`: 全 5 改修の記録
+
+### Changed
+- `test_306_proposals.py`: 51 → 67 tests (+16: sell_hour_boost/decision_path/guardrails)
+- `test_260_compute_extract_regime_split.py`: compute() 行数上限 280 → 290
+
+### Verification
+- test_306_proposals.py: 67 passed
+- v460 全体: 4085 passed, 19 warnings (回帰なし)
+
 ## 309# 307#/308# レビュー対応: 理論倒錯修正 + スキーマ是正 (2026-03-06)
 
 ### Fixed

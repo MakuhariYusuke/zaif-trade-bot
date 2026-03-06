@@ -21,6 +21,7 @@ import collections
 import logging
 import math
 import time
+from datetime import datetime, timezone
 from typing import Final, NamedTuple, Protocol, Sequence
 
 from scripts.v460.lib.fast_fill_defense import FastFillDefense
@@ -1290,6 +1291,38 @@ class MakerPriceCalculator:
             )
         return effective_offset_ratio
 
+    def _apply_sell_hour_boost(
+        self,
+        side: str,
+        effective_offset_ratio: float,
+    ) -> float:
+        """310# A: Sell AS Time-of-Day Offset Boost (307# F3, 306# H5).
+
+        Ho-Stoll (1981): 情報非対称性は時間帯により変動する。
+        306# deep dive 実証データ:
+          UTC 08h AS=63%, 13h AS=42%, 14h AS=43%, 16h AS=61% (sell 側)
+        これらの高 AS 時間帯で sell offset を拡大し逆選択コストを低減。
+        skip_gate_hour_offsets (ML 閾値調整) や hard_skip_utc_hours (全停止)
+        とは独立した第三の防御レイヤー (offset 拡大) として機能する。
+        """
+        cfg = self._config
+        if side != "sell" or not cfg.sell_hour_offset_boost:
+            return effective_offset_ratio
+        utc_h = datetime.now(timezone.utc).hour
+        mult = cfg.sell_hour_offset_boost.get(utc_h)
+        if mult is not None and mult > 1.0:
+            _prev = effective_offset_ratio
+            effective_offset_ratio, _applied = self._scale_offset_ratio(
+                effective_offset_ratio,
+                mult,
+                min_ratio=cfg.min_offset_ratio,
+            )
+            logger.info(
+                f"[310# A] sell_hour_boost: UTC {utc_h}h × {mult:.2f}, "
+                f"offset {_prev:.4f} → {effective_offset_ratio:.4f}"
+            )
+        return effective_offset_ratio
+
     def _apply_loss_boost(
         self,
         side: str,
@@ -1595,6 +1628,14 @@ class MakerPriceCalculator:
         )
         if _stage_tracking:
             _stages["buy_as_guard"] = effective_offset_ratio
+
+        # 310# A: Sell AS Time-of-Day Offset Boost (307# F3, 306# H5)
+        # Ho-Stoll (1981): 時間帯別の情報非対称性変動を offset に反映
+        effective_offset_ratio = self._apply_sell_hour_boost(
+            side, effective_offset_ratio,
+        )
+        if _stage_tracking:
+            _stages["sell_hour"] = effective_offset_ratio
 
         # 260# P2-2: loss_boost / FFD boost をパイプラインステージとして抽出
         effective_offset_ratio = self._apply_loss_boost(

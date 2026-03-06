@@ -477,6 +477,9 @@ daily_drawdown_soft_lot_side_aware: true  # 306# 有効化
 microprice_side:
   enabled: false                   # 309# 無効化 (308# 盲点1: 理論倒錯 — AS seeker 問題)
   threshold_bps: 0.3              # microprice 偏向度 (bps) がこの値以上で side 切替
+  # 310# C: 再有効化ガードレール (設計改修)
+  min_spread_bps: 15.0            # spread がこの bps 以上の時のみ有効 (低 spread = noise)
+  regime_gate: ["ranging"]        # これらの regime でのみ有効 (trending は方向 alpha)
 
 # ---- 306# Dynamic Cycle Interval (305# L1) ----
 # 309# 修正: cycle_interval ∝ σ: 高σ時に長周期 (Cooldown/AS防御), 低σ時に短周期 (積極捕捉)
@@ -501,6 +504,15 @@ offset_stage_recording:
 # ---- 306# Offset 天井 (300# §2.1 構造的矛盾 #2) ----
 # 全ステージが offset を拡大方向のみ → 天井で toxic fill only trap を防止
 offset_ceiling_ratio: 0.15        # offset 上限 (ratio, 0=無効)
+
+# ---- 310# A: Sell AS Time-of-Day Offset Boost (307# F3, 306# H5) ----
+# 306# deep dive 実証: 高 AS 時間帯の sell offset を拡大し逆選択コストを低減
+# Ho-Stoll (1981): 情報非対称性の日内変動
+sell_hour_offset_boost:
+  8: 1.5     # UTC 08h: AS 63% → offset × 1.5
+  13: 1.3    # UTC 13h: AS 42% → offset × 1.3
+  14: 1.3    # UTC 14h: AS 43% → offset × 1.3
+  16: 1.5    # UTC 16h: AS 61% → offset × 1.5
 
 # ---- 133# 止血施策 (P0-08/09/10) ----
 loss_control:
