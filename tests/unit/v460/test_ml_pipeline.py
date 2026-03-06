@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections import deque
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,25 @@ from scripts.v460.ml.as_classifier import (
 )
 from scripts.v460.ml.data_loader import build_as_features, build_fill_features, load_fill_records
 from scripts.v460.ml.fill_classifier import FillModelMetrics, train_fill_classifier
+
+
+def _tail_jsonl_objects(path: Path, *, limit: int) -> list[dict[str, Any]]:
+    """JSONL の末尾 limit 行ぶんだけを object として読む."""
+    tail_lines: deque[str] = deque(maxlen=limit)
+    with path.open(encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                tail_lines.append(line)
+
+    rows: list[dict[str, Any]] = []
+    for line in tail_lines:
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict):
+            rows.append(obj)
+    return rows
 
 
 # ======================================================================
@@ -303,16 +323,21 @@ class Test057Integration:
     @pytest.fixture
     def real_data_available(self) -> bool:
         """実データの有無."""
-        return Path("results/v460/fill_test/fill_records_20260213.jsonl").exists()
+        return any(Path("results/v460/fill_test").glob("fill_records_*.jsonl"))
 
-    def test_load_real_data(self, real_data_available: bool) -> None:
+    def test_load_real_data(self, real_data_available: bool, tmp_path: Path) -> None:
         """実データのロードと AS 特徴量構築."""
         if not real_data_available:
             pytest.skip("No real fill records")
-        df = load_fill_records(max_files=2)
-        if len(df) > 100:
-            # 統合テストはロード経路の健全性確認が主目的のため、特徴量構築はサブセットで十分。
-            df = df.tail(100).copy()
+        results_dir = Path("results/v460/fill_test")
+        latest_file = max(results_dir.glob("fill_records_*.jsonl"))
+        sample_rows = _tail_jsonl_objects(latest_file, limit=80)
+        (tmp_path / latest_file.name).write_text(
+            "\n".join(json.dumps(row, ensure_ascii=False) for row in sample_rows) + "\n",
+            encoding="utf-8",
+        )
+
+        df = load_fill_records(tmp_path, max_files=1)
         assert len(df) >= 30
         X, y = build_as_features(df)
         assert len(X) >= 15

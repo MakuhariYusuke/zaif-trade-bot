@@ -3797,3 +3797,18 @@ python scripts/unified_trainer.py \
 ### Notes
 - The broader v460 performance run completed at `4052 passed, 1 deselected, 19 warnings` with observed wall-clock variance of roughly `46s` to `50s` across reruns on the current Windows workspace.
 - No actionable `MakerPriceCalculator` class mutator/reload path was found via text search in `tests/unit/v460`, `scripts/v460/lib`, or `ztb`; current broader runs also do not reproduce the earlier `_last_sigma` contamination symptom when the unrelated excluded cases are removed.
+
+### Changed
+- Replaced remaining direct `configs/v460/fill_test.yaml` reads in `tests/unit/v460/test_197_boost_optimization_gate_integration.py`, `tests/unit/v460/test_276_blocking_policy_dry.py`, `tests/unit/v460/test_253_hot_reload_dead_config_getattr_bare_except.py`, `tests/unit/v460/test_168_low_vol_offset_boost.py`, `tests/unit/v460/test_163_regime_adaptive_gating.py`, and `tests/unit/v460/test_306_proposals.py` with the shared `v460_fill_test_yaml` fixture, removing repeated YAML I/O and consolidating test setup.
+- Reduced remaining hot-reload and Monte Carlo overhead in `tests/unit/v460/test_retrain_hot_reload.py` and `tests/unit/v460/test_pnl_monte_carlo.py` by replacing one reload path with hash/load patching and lowering simulation counts where only determinism, not Monte Carlo convergence quality, is under test.
+- Cached repeated source inspection in `tests/unit/v460/test_158_regime_deadlock_fix.py` and `tests/unit/v460/test_143_regime_utilization.py`, and trimmed warm-start sample sizes further in `tests/unit/v460/test_skip_gate_d8.py`.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_197_boost_optimization_gate_integration.py tests/unit/v460/test_276_blocking_policy_dry.py tests/unit/v460/test_253_hot_reload_dead_config_getattr_bare_except.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_163_regime_adaptive_gating.py tests/unit/v460/test_306_proposals.py tests/unit/v460/test_155_hindsight_review.py::TestGetFallbackPrice::test_run_fill_test_uses_public_api -q --no-cov --tb=short --durations=30`
+- `python -m pytest tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_pnl_monte_carlo.py tests/unit/v460/test_158_regime_deadlock_fix.py tests/unit/v460/test_143_regime_utilization.py -q --no-cov --tb=short --durations=30`
+- `python -m pytest tests/unit/v460/test_skip_gate_d8.py tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_pnl_monte_carlo.py tests/unit/v460/test_158_regime_deadlock_fix.py tests/unit/v460/test_143_regime_utilization.py tests/unit/v460/test_197_boost_optimization_gate_integration.py tests/unit/v460/test_276_blocking_policy_dry.py tests/unit/v460/test_253_hot_reload_dead_config_getattr_bare_except.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_163_regime_adaptive_gating.py tests/unit/v460/test_306_proposals.py tests/unit/v460/test_155_hindsight_review.py::TestGetFallbackPrice::test_run_fill_test_uses_public_api -q --no-cov --tb=short --durations=25`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=20 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- The latest broad v460 performance run completed at `4068 passed, 1 deselected, 19 warnings in 44.22s` on the current Windows workspace.
+- The previously observed `test_306_proposals.py::TestMicropriceSideSelector::test_microprice_overrides_to_sell` broad-run-only failure did not reproduce in repeated filtered broad runs after the current changes.

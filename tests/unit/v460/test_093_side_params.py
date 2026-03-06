@@ -131,13 +131,9 @@ class TestSpreadAdaptiveSideYAML:
         assert cfg.narrow_spread_boost_buy is None
         assert cfg.narrow_spread_boost_sell is None
 
-    def test_production_yaml_has_side_boost(self) -> None:
+    def test_production_yaml_has_side_boost(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """本番 YAML に 093# side 別 boost が設定されている."""
-        import yaml
-        yaml_path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
-        with open(yaml_path) as f:
-            y = yaml.safe_load(f)
-        sa = y["spread_adaptive"]
+        sa = v460_fill_test_yaml["spread_adaptive"]
         assert "narrow_spread_boost_buy" in sa
         assert "narrow_spread_boost_sell" in sa
         assert sa["narrow_spread_boost_buy"] == pytest.approx(2.0)   # 183# 1.5→2.0 (spread<2kでAS32%対策)
@@ -183,13 +179,9 @@ class TestFastFillDefenseSideYAML:
         assert cfg.fast_fill_offset_boost_buy is None
         assert cfg.fast_fill_offset_boost_sell is None
 
-    def test_production_yaml_has_side_defense(self) -> None:
+    def test_production_yaml_has_side_defense(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """本番 YAML に 093# side 別 fast_fill_defense が設定されている."""
-        import yaml
-        yaml_path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
-        with open(yaml_path) as f:
-            y = yaml.safe_load(f)
-        ffd = y["fast_fill_defense"]
+        ffd = v460_fill_test_yaml["fast_fill_defense"]
         assert ffd.get("threshold_sec_sell") == pytest.approx(15.0)
         assert ffd.get("offset_boost_sell") == pytest.approx(2.5)
 

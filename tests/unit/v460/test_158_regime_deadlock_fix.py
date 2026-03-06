@@ -30,6 +30,11 @@ from scripts.v460.run_fill_test import FillTestRunner
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 from ztb.utils.errors import NetworkError
 
+_RUN_CONTINUOUS_SOURCE = inspect.getsource(FillTestRunner.run_continuous)
+_RUN_SINGLE_CYCLE_SOURCE = inspect.getsource(FillTestRunner.run_single_cycle)
+_RUNNER_INIT_SOURCE = inspect.getsource(FillTestRunner.__init__)
+_CANCEL_ORDER_REAL_SOURCE = inspect.getsource(CoincheckAdapter._cancel_order_real)
+
 
 # =====================================================================
 # A. レジーム更新 — skip パスでの regime_detector.update() 呼出し保証
@@ -42,7 +47,7 @@ class TestRegimeUpdateDuringSkip:
     def test_run_fill_test_has_regime_update_in_main_loop(self) -> None:
         """メインループ (run メソッド) に §20-A のレジーム更新コードが存在."""
 
-        source = inspect.getsource(FillTestRunner.run_continuous)
+        source = _RUN_CONTINUOUS_SOURCE
         # §20-A: main loop regime update
         assert "§20-A" in source
         assert "_maker_price.get_fallback_price()" in source
@@ -54,7 +59,7 @@ class TestRegimeUpdateDuringSkip:
         194#: skip chain は CycleGateAggregator に集約。
         orchestrator 内で §20-A が _cycle_gate.evaluate() より前にあることを確認。
         """
-        source = inspect.getsource(FillTestRunner.run_continuous)
+        source = _RUN_CONTINUOUS_SOURCE
         idx_regime_update = source.find("§20-A")
         idx_gate_evaluate = source.find("_cycle_gate.evaluate(")
         idx_balance_forced = source.find("skip_balance_forced")
@@ -155,12 +160,12 @@ class TestMaxConsecutiveTrendingSellSkip:
 
     def test_runner_has_counter(self) -> None:
         """FillTestRunner に _trending_sell_skip_count カウンタが存在."""
-        source = inspect.getsource(FillTestRunner.__init__)
+        source = _RUNNER_INIT_SOURCE
         assert "_trending_sell_skip_count" in source
 
     def test_safety_valve_code_in_run(self) -> None:
         """run メソッドに §20-B 安全弁ロジックが含まれる."""
-        source = inspect.getsource(FillTestRunner.run_continuous)
+        source = _RUN_CONTINUOUS_SOURCE
         assert "§20-B" in source
         assert "safety valve" in source.lower() or "安全弁" in source
         assert "_trending_sell_skip_count" in source
@@ -168,7 +173,7 @@ class TestMaxConsecutiveTrendingSellSkip:
 
     def test_counter_reset_on_cycle_execution(self) -> None:
         """run_single_cycle 実行後に trending_sell_skip_count がリセットされるコードが存在."""
-        source = inspect.getsource(FillTestRunner.run_continuous)
+        source = _RUN_CONTINUOUS_SOURCE
         # カウンタリセットが run_single_cycle 後に存在
         idx_run_single = source.rfind("run_single_cycle(")
         idx_reset = source.find("_trending_sell_skip_count = 0", idx_run_single)
@@ -177,7 +182,7 @@ class TestMaxConsecutiveTrendingSellSkip:
 
     def test_consecutive_log_format(self) -> None:
         """skip ログに consecutive カウント情報が含まれる."""
-        source = inspect.getsource(FillTestRunner.run_continuous)
+        source = _RUN_CONTINUOUS_SOURCE
         assert "consecutive=" in source
 
 
@@ -191,7 +196,7 @@ class TestCancelFailedHandling:
 
     def test_adapter_catches_failed_to_cancel(self) -> None:
         """_cancel_order_real が 'Failed to cancel' で WARNING ログ → re-raise."""
-        source = inspect.getsource(CoincheckAdapter._cancel_order_real)
+        source = _CANCEL_ORDER_REAL_SOURCE
         assert "failed to cancel" in source.lower()
         assert "§20-C" in source
         # "Failed to cancel" は re-raise (fill recheck のため)
@@ -276,13 +281,13 @@ class TestSpreadTooNarrowClassification:
 
     def test_spread_too_narrow_classification_in_source(self) -> None:
         """run_single_cycle に spread_too_narrow 分類コードが存在."""
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        source = _RUN_SINGLE_CYCLE_SOURCE
         assert "spread too narrow" in source.lower() or "spread_too_narrow" in source.lower()
         assert "§20-D" in source
 
     def test_spread_too_narrow_log_level_is_info(self) -> None:
         """spread_too_narrow は logger.info で出力 (ERROR ではない)."""
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        source = _RUN_SINGLE_CYCLE_SOURCE
         # "spread too narrow" 周辺に logger.info がある
         idx = source.find("spread too narrow")
         if idx < 0:
@@ -303,7 +308,7 @@ class TestIntegrationConsistency:
 
     def test_all_skip_paths_covered_by_regime_update(self) -> None:
         """§20-A のレジーム更新がすべてのスキップパスの前に配置されている."""
-        source = inspect.getsource(FillTestRunner.run_continuous)
+        source = _RUN_CONTINUOUS_SOURCE
 
         # §20-A の位置
         idx_regime_update = source.find("§20-A")

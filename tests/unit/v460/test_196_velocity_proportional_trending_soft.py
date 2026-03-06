@@ -480,52 +480,29 @@ class TestCycleGateResultTrendingOffset:
 class TestConfigYamlParse196:
     """196# YAML parse テスト."""
 
-    def test_yaml_velocity_proportional(self):
+    def test_yaml_velocity_proportional(self, v460_fill_test_yaml: dict[str, object]):
         """live YAML に velocity_offset_proportional が含まれること."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
-
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
-
-        sg = cfg["skip_gate"]
+        sg = v460_fill_test_yaml["skip_gate"]
         assert sg["velocity_offset_proportional"] is True
         assert sg["velocity_offset_boost_factor"] == 1.5
         assert sg["velocity_offset_max_mult"] == 4.0
 
-    def test_yaml_trending_sell_soft(self):
+    def test_yaml_trending_sell_soft(self, v460_fill_test_yaml: dict[str, object]):
         """live YAML に trending_sell_as_offset_enabled が含まれること."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
-
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
-
-        lc = cfg["loss_control"]
+        lc = v460_fill_test_yaml["loss_control"]
         assert lc["trending_sell_as_offset_enabled"] is True
         assert lc["trending_sell_offset_boost_factor"] == 3.0  # 246# 2.0→3.0 sell 防御強化
         # 253# 削除済み: balance_forced_apply_trending_offset
 
-    def test_config_from_yaml_round_trip(self):
+    def test_config_from_yaml_round_trip(self, v460_fill_test_yaml: dict[str, object]):
         """from_yaml で 196# フィールドが正しく parse されること."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
-
-        # FillTestConfig.from_yaml はトップレベル構造に依存するため
-        # 個別セクションを直接検証
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        with open(yaml_path) as f:
-            raw = yaml.safe_load(f)
-
         # skip_gate セクションに velocity proportional 設定が存在
-        sg = raw["skip_gate"]
+        sg = v460_fill_test_yaml["skip_gate"]
         assert "velocity_offset_proportional" in sg
         assert "velocity_offset_max_mult" in sg
 
         # loss_control セクションに trending_sell soft 設定が存在
-        lc = raw["loss_control"]
+        lc = v460_fill_test_yaml["loss_control"]
         assert "trending_sell_as_offset_enabled" in lc
         assert "trending_sell_offset_boost_factor" in lc
 

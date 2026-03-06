@@ -17,6 +17,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from scripts.v460.lib.fill_config import FillTestConfig
+
 
 # =====================================================================
 # Helpers
@@ -113,7 +115,8 @@ class TestMicropriceSideSelector:
         from scripts.v460.lib.side_selector import SideSelector
         config = _make_config(microprice_side_enabled=True, microprice_side_threshold=0.3)
         ss = SideSelector(config)
-        side = ss.next(microprice_bias_bps=1.0)  # > 0.3 → buy (safety)
+        # 310# C: spread + regime guardrails 通過のため引数追加
+        side = ss.next(microprice_bias_bps=1.0, spread_bps=20.0, regime="ranging")
         assert side == "buy"
 
     def test_microprice_overrides_to_sell(self) -> None:
@@ -122,7 +125,8 @@ class TestMicropriceSideSelector:
         config = _make_config(microprice_side_enabled=True, microprice_side_threshold=0.3)
         ss = SideSelector(config)
         # last_side=None → base_side="buy", bias < -0.3 → sell
-        side = ss.next(microprice_bias_bps=-1.0)  # < -0.3 → sell
+        # 310# C: spread + regime guardrails 通過のため引数追加
+        side = ss.next(microprice_bias_bps=-1.0, spread_bps=20.0, regime="ranging")
         assert side == "sell"
 
     def test_microprice_within_threshold_no_override(self) -> None:
@@ -130,9 +134,32 @@ class TestMicropriceSideSelector:
         from scripts.v460.lib.side_selector import SideSelector
         config = _make_config(microprice_side_enabled=True, microprice_side_threshold=0.3)
         ss = SideSelector(config)
-        side1 = ss.next(microprice_bias_bps=0.1)  # within threshold
+        side1 = ss.next(microprice_bias_bps=0.1, spread_bps=20.0, regime="ranging")
         # Should use alternation (first call = "buy")
         assert side1 in ("buy", "sell")
+
+    def test_microprice_guardrail_spread_blocks(self) -> None:
+        """310# C: spread < min → microprice skipped, fallback to alternation."""
+        from scripts.v460.lib.side_selector import SideSelector
+        config = _make_config(
+            microprice_side_enabled=True, microprice_side_threshold=0.3,
+            microprice_side_min_spread_bps=15.0,
+        )
+        ss = SideSelector(config)
+        # bias would override to sell, but spread too narrow
+        side = ss.next(microprice_bias_bps=-1.0, spread_bps=5.0, regime="ranging")
+        assert side == "buy"  # alternation: first call = buy
+
+    def test_microprice_guardrail_regime_blocks(self) -> None:
+        """310# C: regime not in gate → microprice skipped."""
+        from scripts.v460.lib.side_selector import SideSelector
+        config = _make_config(
+            microprice_side_enabled=True, microprice_side_threshold=0.3,
+        )
+        ss = SideSelector(config)
+        # bias would override to sell, but regime is trending (not in ["ranging"])
+        side = ss.next(microprice_bias_bps=-1.0, spread_bps=20.0, regime="trending")
+        assert side == "buy"  # alternation: first call = buy
 
 
 # =====================================================================
@@ -365,41 +392,37 @@ class TestOffsetCeiling:
 class TestParkinsonsigmaYAML:
     """YAML に sigma_parkinson セクションが存在."""
 
-    def test_yaml_has_sigma_parkinson(self) -> None:
+    def test_yaml_has_sigma_parkinson(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """fill_test.yaml に sigma_parkinson が存在."""
-        import yaml
-        with open("configs/v460/fill_test.yaml", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+        data = v460_fill_test_yaml
         assert "sigma_parkinson" in data
         assert data["sigma_parkinson"]["enabled"] is True
 
-    def test_yaml_has_microprice_side(self) -> None:
+    def test_yaml_has_microprice_side(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """fill_test.yaml に microprice_side が存在 (309# で disabled)."""
-        import yaml
-        with open("configs/v460/fill_test.yaml", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+        data = v460_fill_test_yaml
         assert "microprice_side" in data
         assert data["microprice_side"]["enabled"] is False  # 309# 理論倒錯修正で無効化
 
-    def test_yaml_has_dynamic_cycle_interval(self) -> None:
+    def test_yaml_has_dynamic_cycle_interval(
+        self,
+        v460_fill_test_yaml: dict[str, object],
+    ) -> None:
         """fill_test.yaml に dynamic_cycle_interval が存在."""
-        import yaml
-        with open("configs/v460/fill_test.yaml", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+        data = v460_fill_test_yaml
         assert "dynamic_cycle_interval" in data
 
-    def test_yaml_has_queue_position(self) -> None:
+    def test_yaml_has_queue_position(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """fill_test.yaml に queue_position が存在."""
-        import yaml
-        with open("configs/v460/fill_test.yaml", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+        data = v460_fill_test_yaml
         assert "queue_position" in data
 
-    def test_yaml_has_offset_stage_recording(self) -> None:
+    def test_yaml_has_offset_stage_recording(
+        self,
+        v460_fill_test_yaml: dict[str, object],
+    ) -> None:
         """fill_test.yaml に offset_stage_recording が存在."""
-        import yaml
-        with open("configs/v460/fill_test.yaml", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+        data = v460_fill_test_yaml
         assert "offset_stage_recording" in data
 
 
@@ -681,3 +704,161 @@ class TestABJudgmentNewFields:
         assert result.bootstrap_ci_upper is not None
         # Matched pairs should find some
         assert result.matched_n_pairs > 0
+
+
+# =====================================================================
+# 310# A: Sell AS Time-of-Day Offset Boost
+# =====================================================================
+
+
+class TestSellHourOffsetBoost:
+    """310# A: sell_hour_offset_boost pipeline stage tests."""
+
+    def test_config_field_exists(self) -> None:
+        """sell_hour_offset_boost field is available in FillTestConfig."""
+        config = _make_config()
+        assert hasattr(config, "sell_hour_offset_boost")
+        assert isinstance(config.sell_hour_offset_boost, dict)
+
+    def test_sell_hour_boost_applies_multiplier(self) -> None:
+        """Sell side with matching UTC hour → offset multiplied."""
+        from unittest.mock import patch
+        from datetime import datetime, timezone
+        mp = _make_maker_price(sell_hour_offset_boost={8: 1.5, 16: 1.5})
+        mock_dt = datetime(2025, 1, 1, 8, 0, tzinfo=timezone.utc)
+        with patch("scripts.v460.lib.maker_price.datetime") as mock_datetime:
+            mock_datetime.now.return_value = mock_dt
+            mock_datetime.side_effect = lambda *a, **k: datetime(*a, **k)
+            result = mp._apply_sell_hour_boost("sell", 0.05)
+        assert result > 0.05  # Should be boosted
+
+    def test_sell_hour_boost_no_effect_on_buy(self) -> None:
+        """Buy side → no boost regardless of hour."""
+        mp = _make_maker_price(sell_hour_offset_boost={8: 1.5})
+        result = mp._apply_sell_hour_boost("buy", 0.05)
+        assert result == 0.05
+
+    def test_sell_hour_boost_empty_dict(self) -> None:
+        """Empty config → no boost."""
+        mp = _make_maker_price()
+        result = mp._apply_sell_hour_boost("sell", 0.05)
+        assert result == 0.05
+
+    def test_yaml_parsing(self) -> None:
+        """YAML sell_hour_offset_boost parses correctly."""
+        config = FillTestConfig.from_yaml({
+            "sell_hour_offset_boost": {"8": 1.5, "16": 1.5},
+        })
+        assert config.sell_hour_offset_boost == {8: 1.5, 16: 1.5}
+
+
+# =====================================================================
+# 310# B: param_adapter decision_path
+# =====================================================================
+
+
+class TestDecisionPath:
+    """310# B: AdaptationResult.decision_path tests (307# F6)."""
+
+    def test_insufficient_data(self) -> None:
+        """少サンプル → decision_path='insufficient_data'."""
+        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
+        result = compute_adaptation(
+            fill_rate=0.5, as_ratio=0.4, sample_count=5,
+            config=AdaptationConfig(min_samples=20),
+        )
+        assert result.decision_path == "insufficient_data"
+
+    def test_as_defense_hold(self) -> None:
+        """AS+fill両方異常, EV中立 → decision_path='as_defense'."""
+        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
+        result = compute_adaptation(
+            fill_rate=0.50, as_ratio=0.40, sample_count=30,
+            config=AdaptationConfig(min_samples=20, max_as_ratio=0.15),
+            avg_pnl_bps=0.0,
+        )
+        assert result.decision_path == "as_defense"
+        assert result.action == "hold"
+
+    def test_deadlock_break(self) -> None:
+        """AS+fill両方異常, EV<<0, 十分サンプル → decision_path='deadlock_break'."""
+        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
+        result = compute_adaptation(
+            fill_rate=0.50, as_ratio=0.40, sample_count=50,
+            config=AdaptationConfig(min_samples=20, max_as_ratio=0.15),
+            avg_pnl_bps=-5.0,
+        )
+        assert result.decision_path == "deadlock_break"
+        assert result.action == "increase"
+
+    def test_as_defense_decrease(self) -> None:
+        """AS のみ高 → decision_path='as_defense', action='decrease'."""
+        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
+        result = compute_adaptation(
+            fill_rate=0.90, as_ratio=0.40, sample_count=50,
+            config=AdaptationConfig(min_samples=20, max_as_ratio=0.15),
+        )
+        assert result.decision_path == "as_defense"
+        assert result.action == "decrease"
+
+    def test_fill_recovery(self) -> None:
+        """fill_rate のみ低 → decision_path='fill_recovery'."""
+        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
+        result = compute_adaptation(
+            fill_rate=0.50, as_ratio=0.05, sample_count=50,
+            config=AdaptationConfig(min_samples=20, min_fill_rate=0.80, max_as_ratio=0.15),
+        )
+        assert result.decision_path == "fill_recovery"
+        assert result.action == "increase"
+
+    def test_ev_optimization(self) -> None:
+        """正常+EV正+AS余裕 → decision_path='ev_optimization'."""
+        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
+        result = compute_adaptation(
+            fill_rate=0.90, as_ratio=0.10, sample_count=100,
+            config=AdaptationConfig(
+                min_samples=20, min_fill_rate=0.80, max_as_ratio=0.30,
+                current_offset_ratio=0.10, step_ratio=0.01,
+            ),
+            avg_pnl_bps=2.0, opportunity_cost_bps=0.5,
+        )
+        assert result.decision_path == "ev_optimization"
+        assert result.action == "decrease"
+
+    def test_hold_normal(self) -> None:
+        """正常範囲 → decision_path='hold'."""
+        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
+        result = compute_adaptation(
+            fill_rate=0.90, as_ratio=0.10, sample_count=50,
+            config=AdaptationConfig(min_samples=20, min_fill_rate=0.80, max_as_ratio=0.15),
+        )
+        assert result.decision_path == "hold"
+        assert result.action == "hold"
+
+
+# =====================================================================
+# 310# C: L2 Microprice Guardrails
+# =====================================================================
+
+
+class TestMicropriceGuardrails:
+    """310# C: spread/regime guardrails for microprice side selection."""
+
+    def test_config_guardrail_fields(self) -> None:
+        """FillTestConfig has guardrail fields."""
+        config = _make_config()
+        assert hasattr(config, "microprice_side_min_spread_bps")
+        assert hasattr(config, "microprice_side_regime_gate")
+
+    def test_yaml_guardrail_parsing(self) -> None:
+        """YAML guardrails parse correctly."""
+        config = FillTestConfig.from_yaml({
+            "microprice_side": {
+                "enabled": True,
+                "threshold_bps": 0.3,
+                "min_spread_bps": 20.0,
+                "regime_gate": ["ranging", "high_vol"],
+            },
+        })
+        assert config.microprice_side_min_spread_bps == 20.0
+        assert config.microprice_side_regime_gate == ["ranging", "high_vol"]

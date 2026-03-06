@@ -40,6 +40,8 @@ from scripts.v460.run_fill_test import FillTestRunner
 from ztb.metrics.fill_quality import FillRecord, _quarantine_reason
 from ztb.ml import online_monitor
 
+_MAKER_PRICE_SOURCE = inspect.getsource(MakerPriceCalculator)
+
 # ======================================================================
 # R-1a: Offset regime adaptation tests
 # ======================================================================
@@ -66,12 +68,12 @@ class TestRegimeOffsetBoostSource:
     """143# R-1a: maker_price.py にレジーム別 offset ロジックが含まれることをソースで確認."""
 
     def test_high_vol_offset_boost_in_source(self) -> None:
-        source = inspect.getsource(MakerPriceCalculator)
+        source = _MAKER_PRICE_SOURCE
         assert "regime_high_vol_offset_boost" in source
         assert "high_vol" in source
 
     def test_ranging_offset_discount_in_source(self) -> None:
-        source = inspect.getsource(MakerPriceCalculator)
+        source = _MAKER_PRICE_SOURCE
         assert "regime_ranging_offset_discount" in source
         assert "ranging" in source
 

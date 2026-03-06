@@ -13,8 +13,6 @@
 from __future__ import annotations
 
 import inspect
-from pathlib import Path
-
 import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig
@@ -96,12 +94,9 @@ class TestVelocityBoostOptimization:
         cfg = FillTestConfig()
         assert cfg.velocity_offset_boost_factor == 1.5
 
-    def test_yaml_velocity_boost_is_1_5(self):
+    def test_yaml_velocity_boost_is_1_5(self, v460_fill_test_yaml: dict[str, object]):
         """live YAML が 1.5 に設定されていること."""
-        import yaml  # type: ignore[import-untyped]
-
-        with open(Path("configs/v460/fill_test.yaml")) as f:
-            raw = yaml.safe_load(f)
+        raw = v460_fill_test_yaml
         assert raw["skip_gate"]["velocity_offset_boost_factor"] == 1.5
 
     def test_config_accepts_custom_velocity_boost(self):
@@ -123,12 +118,9 @@ class TestTrendingBoostOptimization:
         cfg = FillTestConfig()
         assert cfg.trending_sell_offset_boost_factor == 2.0
 
-    def test_yaml_trending_boost_is_3_0(self):
+    def test_yaml_trending_boost_is_3_0(self, v460_fill_test_yaml: dict[str, object]):
         """246# live YAML が 3.0 に強化されていること."""
-        import yaml  # type: ignore[import-untyped]
-
-        with open(Path("configs/v460/fill_test.yaml")) as f:
-            raw = yaml.safe_load(f)
+        raw = v460_fill_test_yaml
         assert raw["loss_control"]["trending_sell_offset_boost_factor"] == 3.0
 
 
@@ -502,12 +494,12 @@ class TestBackwardCompatibility197:
 class TestYamlNewFields197:
     """197# YAML 新フィールドの検証."""
 
-    def test_yaml_balance_forced_trending_offset_removed_253(self):
+    def test_yaml_balance_forced_trending_offset_removed_253(
+        self,
+        v460_fill_test_yaml: dict[str, object],
+    ):
         """253# YAML から balance_forced_apply_trending_offset が削除済."""
-        import yaml  # type: ignore[import-untyped]
-
-        with open(Path("configs/v460/fill_test.yaml")) as f:
-            raw = yaml.safe_load(f)
+        raw = v460_fill_test_yaml
         lc = raw["loss_control"]
         assert "balance_forced_apply_trending_offset" not in lc
 

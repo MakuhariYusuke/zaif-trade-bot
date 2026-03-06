@@ -197,17 +197,12 @@ class TestEffectiveBlockedHours:
 class TestFillTestConfigRegimeAdaptive:
     """163# FillTestConfig が regime_adaptive フィールドを正しくパースする."""
 
-    def test_from_yaml_parses_regime_adaptive(self) -> None:
+    def test_from_yaml_parses_regime_adaptive(
+        self,
+        v460_fill_test_yaml: dict[str, object],
+    ) -> None:
         """YAML から regime_adaptive_* が正しく読み込まれる."""
-        import yaml
-        from pathlib import Path
-
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        if not yaml_path.exists():
-            pytest.skip("fill_test.yaml not found")
-        with open(yaml_path, encoding="utf-8") as f:
-            raw = yaml.safe_load(f)
-        cfg = FillTestConfig.from_yaml(raw)
+        cfg = FillTestConfig.from_yaml(v460_fill_test_yaml)
         assert cfg.regime_adaptive_enabled is True
         # 169# time_filter 全廃: regime_adaptive リストも空 (VG + sell_dynamic_kill が根本対策)
         assert cfg.regime_adaptive_extra_buy == []
@@ -220,17 +215,9 @@ class TestFillTestConfigRegimeAdaptive:
         assert cfg.regime_adaptive_extra_buy is None
         assert cfg.regime_adaptive_extra_sell is None
 
-    def test_step2_yaml_values(self) -> None:
+    def test_step2_yaml_values(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """YAML が Step 2 の値に更新されている."""
-        import yaml
-        from pathlib import Path
-
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        if not yaml_path.exists():
-            pytest.skip("fill_test.yaml not found")
-        with open(yaml_path, encoding="utf-8") as f:
-            raw = yaml.safe_load(f)
-        tf = raw["time_filter"]
+        tf = v460_fill_test_yaml["time_filter"]
         assert tf["skip_utc_hours"] == []
         # 169# time_filter 全廃: 条件ベースフィルタに完全移行
         assert tf["skip_utc_hours_buy"] == []

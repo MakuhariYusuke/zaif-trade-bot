@@ -10,7 +10,6 @@ from dataclasses import dataclass, field
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import yaml
 
 from scripts.v460.lib.fill_config import FillTestConfig as FillConfig
 from scripts.v460.lib.fast_fill_defense import FastFillDefense
@@ -79,10 +78,9 @@ class TestLowVolOffsetBoostConfig:
         assert cfg.low_vol_offset_boost == 1.4
         assert cfg.low_vol_threshold == 0.75
 
-    def test_yaml_parsing(self) -> None:
+    def test_yaml_parsing(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """YAML から正しく読み込まれる."""
-        with open("configs/v460/fill_test.yaml") as f:
-            raw = yaml.safe_load(f)
+        raw = v460_fill_test_yaml
         cfg = FillConfig.from_yaml(raw)
         assert cfg.low_vol_offset_boost_enabled is True
         assert cfg.low_vol_offset_boost == 1.4

@@ -900,3 +900,50 @@
 1. `test_ml_pipeline.py::Test057Integration::test_load_real_data` の対象ファイル数・サンプル数をさらに絞れるか確認
 2. `test_retrain_hot_reload.py::TestHotReload` / `TestE2ERetrainHotReload` の save-load 検証を維持したまま、モデル生成経路の最小化を検討
 3. `test_stopgap_health.py` の loader 実ファイルケースを、BOM/不正行/重複除去の責務ごとに helper 化できるか確認
+
+---
+
+## 2026-03-06 / Session 037-025
+
+### 実施
+- `fill_test.yaml` 直読の残件を shared fixture に統合
+  - `test_197_boost_optimization_gate_integration.py`
+  - `test_276_blocking_policy_dry.py`
+  - `test_253_hot_reload_dead_config_getattr_bare_except.py`
+  - `test_168_low_vol_offset_boost.py`
+  - `test_163_regime_adaptive_gating.py`
+  - `test_306_proposals.py`
+- `test_253_hot_reload_dead_config_getattr_bare_except.py` は `fill_config.py` ソース検査も module-level cache に寄せ、毎回の `inspect.getsource(FillTestConfig)` を除去
+- `test_retrain_hot_reload.py`
+  - `TestHotReload::test_reload_on_file_change` は実ファイル上書き + 実ロードから、`compute_file_hash` / `_load_gate_from_path` patch に切替
+  - hot-reload 制御フロー自体の検証は維持しつつ、不要な pickle save/load を除去
+- `test_pnl_monte_carlo.py`
+  - seed 再現性テストの `n_simulations` を成立範囲まで削減
+- `test_158_regime_deadlock_fix.py` / `test_143_regime_utilization.py`
+  - `inspect.getsource()` を module-level source cache に寄せて重複読込を削減
+- `test_skip_gate_d8.py`
+  - warm-start history / non-adaptive / truncation 系のサンプル数をさらに圧縮
+
+### 結果
+- 対象回帰:
+  - YAML fixture 化 + public API 確認束 → `199 passed in 3.67s`
+  - `retrain_hot_reload` + `pnl_monte_carlo` + source-inspection 束 → `199 passed, 7 warnings in 8.34s`
+  - 追加で `test_skip_gate_d8.py` を含む回帰束 → `439 passed, 7 warnings in 10.24s`
+- 主要 durations 変化:
+  - `test_retrain_hot_reload.py::TestHotReload::test_reload_on_file_change` `0.38s -> 0.02s`
+  - `test_pnl_monte_carlo.py::TestSimulationRun::test_reproducibility_with_seed` `0.43s -> 0.02s`
+  - `test_pnl_monte_carlo.py::TestSimulationRun::test_different_seed_different_results` `0.26s -> 0.03s`
+  - `test_197_boost_optimization_gate_integration.py` / `test_306_proposals.py` の YAML-only ケースは broad durations 上位から離脱
+
+### 全体測定
+- `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` 除外、`test_yaml_has_microprice_side` deselect）
+  - `4068 passed, 1 deselected, 19 warnings in 44.22s`
+
+### 補足
+- broad run で一度出ていた `test_306_proposals.py::TestMicropriceSideSelector::test_microprice_overrides_to_sell` の単発失敗は、今回の反復実行では再現していない
+- 現在の主な残ボトルネックは `test_enricher_skip_gate.py` 実データ setup、`test_aggregate_to_1min.py` の persistence/edge I/O、`test_fill_quality.py` の一部 core-path 実行
+
+### 次アクション
+1. `test_enricher_skip_gate.py` の setup/call を raw sample 数・cache invalidation 条件の観点でさらに絞る
+2. `test_aggregate_to_1min.py` の persistence 必須ケースと pure aggregation ケースをもう一段分離する
+3. `test_fill_quality.py` の `compute_maker_price` / `GateCheckG11` 周辺で runner 初期化を外せる箇所を探す

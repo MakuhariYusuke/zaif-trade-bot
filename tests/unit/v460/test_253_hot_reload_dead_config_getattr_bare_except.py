@@ -19,6 +19,8 @@ import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig
 
+_FILL_CONFIG_SOURCE = Path("scripts/v460/lib/fill_config.py").read_text(encoding="utf-8")
+
 
 # ═══════════════════════════════════════════════════════════════════
 # P1-1: sell_asymmetric_high_vol_enabled hot_reload + YAML 配線
@@ -33,12 +35,9 @@ class TestSellAsymmetricHotReload:
         from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         assert "sell_asymmetric_high_vol_enabled" in _HOT_RELOADABLE_FIELDS
 
-    def test_yaml_has_field(self) -> None:
+    def test_yaml_has_field(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """live YAML に sell_asymmetric_high_vol_enabled が存在."""
-        import yaml  # type: ignore[import-untyped]
-
-        with open(Path("configs/v460/fill_test.yaml")) as f:
-            raw = yaml.safe_load(f)
+        raw = v460_fill_test_yaml
         lc = raw["loss_control"]
         assert "sell_asymmetric_high_vol_enabled" in lc
         assert lc["sell_asymmetric_high_vol_enabled"] is False
@@ -74,18 +73,15 @@ class TestDeadConfigRemoval:
         from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         assert "balance_forced_apply_trending_offset" not in _HOT_RELOADABLE_FIELDS
 
-    def test_not_in_yaml(self) -> None:
+    def test_not_in_yaml(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """live YAML から削除済."""
-        import yaml  # type: ignore[import-untyped]
-
-        with open(Path("configs/v460/fill_test.yaml")) as f:
-            raw = yaml.safe_load(f)
+        raw = v460_fill_test_yaml
         lc = raw["loss_control"]
         assert "balance_forced_apply_trending_offset" not in lc
 
     def test_not_in_fill_config_source(self) -> None:
         """fill_config.py ソースで field 定義が残存しないこと."""
-        src = inspect.getsource(FillTestConfig)
+        src = _FILL_CONFIG_SOURCE
         # フィールド定義行がないことを確認 (コメントは許容)
         for line in src.split("\n"):
             stripped = line.strip()
@@ -95,10 +91,9 @@ class TestDeadConfigRemoval:
                     f"Non-comment reference found: {stripped}"
                 )
 
-    def test_yaml_comment_exists(self) -> None:
+    def test_yaml_comment_exists(self, v460_fill_test_yaml_path: Path) -> None:
         """YAML に削除理由コメントが残存。"""
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        text = yaml_path.read_text(encoding="utf-8")
+        text = v460_fill_test_yaml_path.read_text(encoding="utf-8")
         assert "253# 削除済み" in text
 
 

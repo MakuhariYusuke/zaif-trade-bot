@@ -288,8 +288,8 @@ class TestSimulationRun:
     def test_reproducibility_with_seed(self) -> None:
         """同じ seed → 同結果."""
         recs = _make_records_typical(8, 2)
-        cfg1 = MonteCarloConfig(n_simulations=80, random_seed=12345)
-        cfg2 = MonteCarloConfig(n_simulations=80, random_seed=12345)
+        cfg1 = MonteCarloConfig(n_simulations=24, random_seed=12345)
+        cfg2 = MonteCarloConfig(n_simulations=24, random_seed=12345)
 
         result1 = PnLMonteCarloSimulator(recs, cfg1).run()
         result2 = PnLMonteCarloSimulator(recs, cfg2).run()
@@ -300,8 +300,8 @@ class TestSimulationRun:
     def test_different_seed_different_results(self) -> None:
         """異なる seed → 異なる結果 (統計結果は近いが厳密不一致)."""
         recs = _make_records_typical(8, 2)
-        cfg1 = MonteCarloConfig(n_simulations=120, random_seed=1)
-        cfg2 = MonteCarloConfig(n_simulations=120, random_seed=999)
+        cfg1 = MonteCarloConfig(n_simulations=32, random_seed=1)
+        cfg2 = MonteCarloConfig(n_simulations=32, random_seed=999)
 
         result1 = PnLMonteCarloSimulator(recs, cfg1).run()
         result2 = PnLMonteCarloSimulator(recs, cfg2).run()

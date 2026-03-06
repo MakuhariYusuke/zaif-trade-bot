@@ -230,12 +230,8 @@ spread_adaptive:
 class TestFillTestYAMLIntegration:
     """183# 実 YAML ファイルの読み込みが成功し、183# 設定が反映される."""
 
-    def test_load_fill_test_yaml(self) -> None:
-        from pathlib import Path
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        if not yaml_path.exists():
-            pytest.skip("fill_test.yaml not found")
-        data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+    def test_load_fill_test_yaml(self, v460_fill_test_yaml: dict[str, object]) -> None:
+        data = v460_fill_test_yaml
         cfg = FillTestConfig.from_yaml(data)
 
         # 183# velocity skip

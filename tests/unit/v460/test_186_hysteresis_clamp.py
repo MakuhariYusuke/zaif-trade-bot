@@ -155,19 +155,9 @@ class TestHysteresisYAML:
         assert cfg.trend_exit_confidence == 0.30  # default
         assert cfg.trend_min_dwell == 3  # default
 
-    def test_fill_test_yaml_integration(self) -> None:
+    def test_fill_test_yaml_integration(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """実際の fill_test.yaml からヒステリシス設定が正しくパースされる."""
-        import yaml
-        from pathlib import Path
-
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        if not yaml_path.exists():
-            pytest.skip("fill_test.yaml not found")
-
-        with yaml_path.open() as f:
-            yaml_cfg = yaml.safe_load(f)
-
-        cfg = RegimePolicyConfig.from_yaml(yaml_cfg)
+        cfg = RegimePolicyConfig.from_yaml(v460_fill_test_yaml)
         assert cfg.trend_min_confidence == 0.45
         assert cfg.trend_exit_confidence == 0.30
         assert cfg.trend_min_dwell == 3

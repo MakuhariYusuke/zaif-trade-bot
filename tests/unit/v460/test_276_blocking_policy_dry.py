@@ -224,11 +224,12 @@ class TestHaltSleepMultiplierConfig:
         cfg = FillTestConfig.from_yaml(yaml_cfg)
         assert cfg.halt_sleep_multiplier == 7.0
 
-    def test_yaml_file_has_halt_sleep_multiplier(self) -> None:
+    def test_yaml_file_has_halt_sleep_multiplier(
+        self,
+        v460_fill_test_yaml: dict[str, object],
+    ) -> None:
         """fill_test.yaml に halt_sleep_multiplier が定義されている."""
-        import yaml
-        with open("configs/v460/fill_test.yaml", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+        data = v460_fill_test_yaml
         assert "halt_sleep_multiplier" in data
         assert data["halt_sleep_multiplier"] == 5.0
 

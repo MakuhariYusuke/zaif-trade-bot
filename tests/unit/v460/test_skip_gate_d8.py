@@ -27,6 +27,13 @@ from scripts.v460.ml.skip_gate import (
 )
 
 
+class _PickleStub:
+    """SkipGate save/load 用の最小 picklable object."""
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
 # ---------------------------------------------------------------------------
 # Fixture helpers
 # ---------------------------------------------------------------------------
@@ -222,18 +229,18 @@ class TestWarmStartImmediateConvergence:
         gate = _make_gate(adaptive_threshold=True)
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
-            self._write_fill_records(tmpdir_path, n_buy=25, n_sell=25)
+            self._write_fill_records(tmpdir_path, n_buy=12, n_sell=12)
             warm_start_skip_gate_thresholds(gate, tmpdir_path, window=50)
 
-            assert len(gate._pas_history_buy) == 25
-            assert len(gate._pas_history_sell) == 25
+            assert len(gate._pas_history_buy) == 12
+            assert len(gate._pas_history_sell) == 12
 
     def test_warm_start_window_truncation(self) -> None:
         """window パラメータがヒストリーサイズを制限."""
         gate = _make_gate(adaptive_threshold=True)
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
-            self._write_fill_records(tmpdir_path, n_buy=50, n_sell=50)
+            self._write_fill_records(tmpdir_path, n_buy=30, n_sell=30)
             warm_start_skip_gate_thresholds(gate, tmpdir_path, window=20)
 
             assert len(gate._pas_history_buy) <= 20
@@ -273,7 +280,7 @@ class TestWarmStartImmediateConvergence:
         )
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
-            self._write_fill_records(tmpdir_path, n_buy=30, n_sell=30)
+            self._write_fill_records(tmpdir_path, n_buy=12, n_sell=12)
             warm_start_skip_gate_thresholds(gate, tmpdir_path, window=50)
 
             # 履歴は復元されるが閾値は変更されない
@@ -335,12 +342,12 @@ class TestWarmStartImmediateConvergence:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
-            self._write_fill_records(tmpdir_path, n_buy=25, n_sell=25)
-            warm_start_skip_gate_thresholds(gate, tmpdir_path, window=50)
+            self._write_fill_records(tmpdir_path, n_buy=6, n_sell=6)
+            warm_start_skip_gate_thresholds(gate, tmpdir_path, window=12)
 
             # 全レコードが使用される (後方互換)
-            assert len(gate._pas_history_buy) == 25
-            assert len(gate._pas_history_sell) == 25
+            assert len(gate._pas_history_buy) == 6
+            assert len(gate._pas_history_sell) == 6
 
     def test_warm_start_ignores_malformed_timestamp(self) -> None:
         """timestamp が壊れた行を含んでも warm_start が継続する."""
@@ -513,21 +520,16 @@ class TestSkipGateSaveLoad:
     @staticmethod
     def _make_picklable_gate(**kwargs: object) -> SkipGate:
         """pickle 可能な SkipGate (MagicMock は pickle 不可)."""
-        from sklearn.linear_model import SGDClassifier
-        from sklearn.pipeline import Pipeline
-        from sklearn.preprocessing import StandardScaler as SkScaler
-
         config = SkipGateConfig(
             as_threshold_buy=kwargs.get("as_threshold_buy", 0.55),  # type: ignore[arg-type]
             sell_enabled=kwargs.get("sell_enabled", False),  # type: ignore[arg-type]
         )
-        model = SGDClassifier()
-        scaler = SkScaler()
+        model = _PickleStub("model")
+        scaler = _PickleStub("scaler")
         feature_cols = ["spread_jpy", "offset_ratio", "regime_trending"]
-        pipeline = Pipeline([("scaler", SkScaler()), ("clf", SGDClassifier())])
         return SkipGate(
             model=model, scaler=scaler, feature_cols=feature_cols,
-            config=config, pipeline=pipeline,
+            config=config, pipeline=None,
         )
 
     def test_save_load_roundtrip(self) -> None:

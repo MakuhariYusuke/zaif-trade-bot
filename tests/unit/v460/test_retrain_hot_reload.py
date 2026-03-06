@@ -60,6 +60,13 @@ from ztb.utils.run_manifest import compute_file_hash
 # Fixture helpers
 # ---------------------------------------------------------------------------
 
+
+class _PickleStub:
+    """SkipGate save/load 用の最小 picklable object."""
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
 def _make_picklable_gate(
     *,
     n_samples: int = 100,
@@ -67,18 +74,13 @@ def _make_picklable_gate(
     mode: str = "pnl",
 ) -> SkipGate:
     """pickle 可能な SkipGate を作成."""
-    from sklearn.linear_model import SGDClassifier
-    from sklearn.pipeline import Pipeline
-    from sklearn.preprocessing import StandardScaler
-
     config = SkipGateConfig(mode=mode)
-    model = SGDClassifier()
-    scaler = StandardScaler()
+    model = _PickleStub("model")
+    scaler = _PickleStub("scaler")
     feature_cols = ["spread_jpy", "offset_ratio", "regime_trending"]
-    pipeline = Pipeline([("scaler", StandardScaler()), ("clf", SGDClassifier())])
     gate = SkipGate(
         model=model, scaler=scaler, feature_cols=feature_cols,
-        config=config, pipeline=pipeline,
+        config=config, pipeline=None,
         metadata={
             "version": version,
             "n_samples": n_samples,
@@ -276,13 +278,19 @@ class TestHotReload:
             evaluator = SkipGateEvaluator(cfg, Path(tmpdir))
             original_hash = evaluator._model_file_hash
 
-            # v2 で上書き
             gate_v2 = _make_picklable_gate(version="v2", n_samples=200)
-            _save_gate_to(gate_v2, model_path)
 
             # 強制チェック
             evaluator._last_reload_check = 0
-            evaluator._check_and_reload_model()
+            with patch(
+                "scripts.v460.lib.skip_gate_evaluator.compute_file_hash",
+                return_value="b" * 64,
+            ), patch.object(
+                evaluator,
+                "_load_gate_from_path",
+                return_value=gate_v2,
+            ):
+                evaluator._check_and_reload_model()
 
             assert evaluator._model_file_hash != original_hash
             assert evaluator._skip_gate is not None
@@ -324,9 +332,8 @@ class TestHotReload:
             cfg = self._make_config(str(model_path))
             evaluator = SkipGateEvaluator(cfg, Path(tmpdir))
 
-            # v2 で上書き
-            gate_v2 = _make_picklable_gate(version="v2")
-            _save_gate_to(gate_v2, model_path)
+            # 内容変更だけ入れる。interval 内なので reload 経路には入らない。
+            model_path.write_bytes(b"changed but should not be reloaded yet")
 
             # last_reload_check を更新しない → interval 内
             evaluator._check_and_reload_model()
