@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-07 (299# A/Bテスト実施報告 — F-4 検定バリデーション)
+> 最終更新: 2026-03-07 (300# A/B テスト深堀り — システム工学 × 市場微視構造理論)
 
 ---
 
@@ -290,6 +290,7 @@
 | 297 | rpt | [297_ph2_rpt_f4_g2_pre_analysis.md](297_ph2_rpt_f4_g2_pre_analysis.md) | F-4/G-2 事前調査: 統計検定スタック分析 + 168# P3残タスク評価 |
 | 298 | impl | [298_ph2_impl_f4_nonparametric_tests.md](298_ph2_impl_f4_nonparametric_tests.md) | F-4: Mann-Whitney U + Cliff's δ + Holm-Bonferroni を ab_judgment に統合。G-2: CB/DD 統合済確認 |
 | 299 | rpt | [299_ph2_rpt_ab_test_f4_validation.md](299_ph2_rpt_ab_test_f4_validation.md) | A/Bテスト実施報告: F-4検定バリデーション + レジーム別考察 (6,952レコード/22日間) |
+| 300 | rev | [300_ph2_rev_ab_test_deep_analysis.md](300_ph2_rev_ab_test_deep_analysis.md) | A/Bテスト深堀り: 5構造的矛盾の特定 + Glosten-Milgrom/Kyle/A-S理論 + 検出力分析 + 外部AIレビュー用Q5 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
