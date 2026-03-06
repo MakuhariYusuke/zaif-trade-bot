@@ -141,6 +141,8 @@ class MakerPriceCalculator:
         "_mid_high",                 # 305# Parkinson σ: rolling window 内 max mid
         "_mid_low",                  # 305# Parkinson σ: rolling window 内 min mid
         "_mid_hl_reset_time",        # 305# Parkinson σ: high/low リセット時刻
+        "_last_sigma",               # 306# L1: 最新 σ キャッシュ (dynamic cycle interval)
+        "_last_offset_stages",       # 306# E1: offset stage recording (JSON)
     )
 
     def __init__(
@@ -201,6 +203,10 @@ class MakerPriceCalculator:
         self._mid_high: float = 0.0
         self._mid_low: float = float("inf")
         self._mid_hl_reset_time: float = 0.0
+        # 306# L1: 最新 σ キャッシュ (dynamic cycle interval 用)
+        self._last_sigma: float = 0.0
+        # 306# E1: offset stage recording
+        self._last_offset_stages: str | None = None
 
     def get_fallback_price(self) -> tuple[float | None, float | None]:
         """156# §16: OB エラー時のフォールバック価格と記録時刻を返す.
@@ -209,6 +215,16 @@ class MakerPriceCalculator:
             (prev_mid_price, prev_mid_time) — 未設定時は (None, None).
         """
         return self._prev_mid_price, self._prev_mid_time
+
+    @property
+    def last_sigma(self) -> float:
+        """306# L1: 最新の σ 推定値 (dynamic cycle interval 用)."""
+        return self._last_sigma
+
+    @property
+    def last_offset_stages(self) -> str | None:
+        """306# E1: 最新の offset pipeline stage 記録 (JSON)."""
+        return self._last_offset_stages
 
     @property
     def last_spread(self) -> float | None:
@@ -425,6 +441,58 @@ class MakerPriceCalculator:
         self._last_ask_depth = ask_volume
         return ImbalanceResult(imbalance, bid_volume, ask_volume)
 
+    def compute_microprice_bias_bps(self) -> float:
+        """306# L2: Microprice vs Mid の偏向を bps で返す.
+
+        microprice = (Pb·Qa + Pa·Qb) / (Qa + Qb)
+        bias_bps = (microprice - mid) / mid × 10_000
+
+        正 → 買い圧力 (bid 厚い → microprice > mid → sell 有利)
+        負 → 売り圧力 (ask 厚い → microprice < mid → buy 有利)
+
+        OB キャッシュ (_last_ob_snapshot) を使用 — 追加 API 呼出しなし。
+        """
+        ob = self._last_ob_snapshot
+        if ob is None or not ob.bids or not ob.asks:
+            return 0.0
+        best_bid = ob.bids[0][0]
+        best_ask = ob.asks[0][0]
+        bid_qty = ob.bids[0][1]
+        ask_qty = ob.asks[0][1]
+        total_qty = bid_qty + ask_qty
+        if total_qty <= 0 or best_ask <= 0:
+            return 0.0
+        microprice = (best_bid * ask_qty + best_ask * bid_qty) / total_qty
+        mid = (best_bid + best_ask) / 2.0
+        if mid <= 0:
+            return 0.0
+        return (microprice - mid) / mid * 10_000.0
+
+    def estimate_queue_depth(self, side: str, order_price: float) -> float:
+        """306# O1: 推定キュー深度 (自注文より有利な価格帯の volume 合計).
+
+        buy: order_price 以上の bid volume (= 先に約定される queue)
+        sell: order_price 以下の ask volume
+        OB キャッシュを使用 — 追加 API 呼出しなし。
+        """
+        ob = self._last_ob_snapshot
+        if ob is None:
+            return 0.0
+        depth_ahead = 0.0
+        if side == "buy":
+            for price, qty in ob.bids:
+                if price >= order_price:
+                    depth_ahead += qty
+                else:
+                    break  # sorted desc
+        else:
+            for price, qty in ob.asks:
+                if price <= order_price:
+                    depth_ahead += qty
+                else:
+                    break  # sorted asc
+        return depth_ahead
+
     # ------------------------------------------------------------------
     # mid price (簡易)
     # ------------------------------------------------------------------
@@ -587,6 +655,8 @@ class MakerPriceCalculator:
             sigma = spread / (2.0 * mid_price) if mid_price > 0 else 0.0
 
         sigma *= vol_ratio
+        # 306# L1: cache for dynamic cycle interval
+        self._last_sigma = sigma
         return sigma, vol_ratio
 
     def _dynamic_tau(self, base_tau: float, vol_ratio: float) -> float:
@@ -1412,6 +1482,12 @@ class MakerPriceCalculator:
         elif side == "sell" and self._base_offset_ratio_sell is not None:
             effective_offset_ratio = self._base_offset_ratio_sell
 
+        # 306# E1: offset stage recording — 各ステージの寄与を追跡
+        _stage_tracking = cfg.offset_stage_recording_enabled
+        _stages: dict[str, float] = {}
+        if _stage_tracking:
+            _stages["base"] = effective_offset_ratio
+
         # 162# Inventory Skewing: 在庫偏重に応じた非対称 offset 補正
         # 228# C2: time-decay 適用 — 古い fill 履歴の影響を減衰
         # buy 偏重(imbalance>0) -> buy offset拡大(抑制), sell offset縮小(促進)
@@ -1462,49 +1538,67 @@ class MakerPriceCalculator:
         effective_offset_ratio = self._apply_as_reservation_shift(
             side, spread, mid_price, effective_offset_ratio,
         )
+        if _stage_tracking:
+            _stages["as_shift"] = effective_offset_ratio
 
         # 163# ステージ抽出: _apply_regime_boosts()
         effective_offset_ratio = self._apply_regime_boosts(
             side, effective_offset_ratio,
         )
+        if _stage_tracking:
+            _stages["regime"] = effective_offset_ratio
 
         # 163# ステージ抽出: _apply_spread_adaptive()
         effective_offset_ratio = self._apply_spread_adaptive(
             side, spread, mid_price, effective_offset_ratio,
         )
+        if _stage_tracking:
+            _stages["spread_adapt"] = effective_offset_ratio
 
         # 266# ステージ: _apply_kyle_lambda()
         # Kyle (1985) 価格インパクト係数 → offset 安全マージン
         effective_offset_ratio = self._apply_kyle_lambda(
             side, spread, mid_price, effective_offset_ratio,
         )
+        if _stage_tracking:
+            _stages["kyle"] = effective_offset_ratio
 
         # 266# ステージ: _apply_amihud_illiq()
         # Amihud (2002) 非流動性比率 → 低流動性時の offset 拡大
         effective_offset_ratio = self._apply_amihud_illiq(
             side, spread, mid_price, effective_offset_ratio,
         )
+        if _stage_tracking:
+            _stages["amihud"] = effective_offset_ratio
 
         # 163# ステージ抽出: _apply_volatility_guard()
         effective_offset_ratio = self._apply_volatility_guard(
             side, mid_trend_bps, effective_offset_ratio,
         )
+        if _stage_tracking:
+            _stages["vol_guard"] = effective_offset_ratio
 
         # 163# ステージ抽出: _apply_imbalance_risk()
         effective_offset_ratio = self._apply_imbalance_risk(
             side, imb, effective_offset_ratio,
         )
+        if _stage_tracking:
+            _stages["imb_risk"] = effective_offset_ratio
 
         # 286# ステージ: _apply_buy_as_guard()
         # 283# P1-6 / 284# P1: Buy-side AS 防御 — microprice 急落時の offset 拡大
         effective_offset_ratio = self._apply_buy_as_guard(
             side, mid_trend_bps, effective_offset_ratio,
         )
+        if _stage_tracking:
+            _stages["buy_as_guard"] = effective_offset_ratio
 
         # 260# P2-2: loss_boost / FFD boost をパイプラインステージとして抽出
         effective_offset_ratio = self._apply_loss_boost(
             side, now, effective_offset_ratio,
         )
+        if _stage_tracking:
+            _stages["loss_boost"] = effective_offset_ratio
 
         offset = max(cfg.min_offset_jpy, spread * effective_offset_ratio)
 
@@ -1512,6 +1606,29 @@ class MakerPriceCalculator:
         effective_offset_ratio, offset = self._apply_ffd_boost(
             side, spread, effective_offset_ratio, offset,
         )
+        if _stage_tracking:
+            _stages["ffd"] = effective_offset_ratio
+            _stages["final"] = effective_offset_ratio
+
+        # 306# E1: offset ceiling — 300# T1-3 指摘の上限制御
+        _ceil = cfg.offset_ceiling_ratio
+        if _ceil > 0 and effective_offset_ratio > _ceil:
+            logger.info(
+                f"[306# ceiling] offset {effective_offset_ratio:.4f} "
+                f"> ceiling {_ceil:.4f} — clamped"
+            )
+            effective_offset_ratio = _ceil
+            offset = max(cfg.min_offset_jpy, spread * effective_offset_ratio)
+            if _stage_tracking:
+                _stages["ceiling"] = effective_offset_ratio
+
+        # 306# E1: cache last offset stages for FillRecord
+        if _stage_tracking:
+            import json as _json
+            self._last_offset_stages = _json.dumps(_stages)
+        else:
+            self._last_offset_stages = None
+
         return self._finalize_price_with_spread_guard(
             side=side,
             best_bid=best_bid,

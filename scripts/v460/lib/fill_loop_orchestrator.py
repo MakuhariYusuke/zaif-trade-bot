@@ -2654,6 +2654,9 @@ class FillLoopOrchestratorMixin:
                     # 179# S1: regime 別サイクル間隔
                     regime = self._current_regime_value()
                     interval = self._cycle_strategy.effective_interval(regime)
+                    # 306# L1: σ 連動 dynamic cycle interval
+                    if self.config.dynamic_cycle_interval_enabled:
+                        interval = self._compute_dynamic_interval(interval)
                 # 200# P0-2: soft drawdown interval 延長
                 soft_dd_mult = self._soft_drawdown_interval_multiplier
                 # 202# A: 単一サイクル大損失クールダウン (1回適用で自動リセット)
@@ -2682,6 +2685,22 @@ class FillLoopOrchestratorMixin:
 
         # 265# extract: 最終 cleanup (~35行) を分離
         return await self._finalize_run(st, heartbeat_task)
+
+    # ── 306# L1: σ 連動 dynamic cycle interval ────────────────────
+    def _compute_dynamic_interval(self, base_interval: float) -> float:
+        """σ に反比例するサイクル間隔: σ 高 → 短く, σ 低 → 長く.
+
+        interval = base_interval × (σ_ref / σ), clamped to [min_sec, max_sec].
+        σ=0 (推定前) はフォールバックとして base_interval をそのまま返す。
+        """
+        sigma = self._maker_price.last_sigma
+        if sigma <= 0:
+            return base_interval
+        cfg = self.config
+        ratio = cfg.dynamic_cycle_interval_sigma_ref / sigma
+        adjusted = base_interval * ratio
+        return max(cfg.dynamic_cycle_interval_min_sec,
+                   min(adjusted, cfg.dynamic_cycle_interval_max_sec))
 
     async def cleanup_heartbeat(self) -> None:
         """175# 異常終了時の heartbeat タスク cleanup.

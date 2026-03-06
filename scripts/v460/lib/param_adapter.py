@@ -82,14 +82,24 @@ def compute_adaptation(
     as_ratio: float,
     sample_count: int,
     config: AdaptationConfig | None = None,
+    *,
+    avg_pnl_bps: float = 0.0,
+    opportunity_cost_bps: float = 0.5,
 ) -> AdaptationResult:
     """fill_test メトリクスに基づき spread_offset_ratio の推奨値を算出.
+
+    306# A1: EV-based adaptation 拡張 — fill_rate × avg_pnl vs
+    (1-fill_rate) × opportunity_cost で期待値を評価。
+    EV > 0: 現行 offset が収益性あり → hold バイアス。
+    EV < 0: offset 調整の方向を期待値で決定。
 
     Args:
         fill_rate: 約定率 (0.0-1.0). FillMetrics.fill_rate_p90 を推奨.
         as_ratio: 逆選択比率 (0.0-1.0). FillMetrics.adverse_selection_ratio を推奨.
         sample_count: 総注文数. サンプル不足時は hold.
         config: 適応設定. None なら defaults.
+        avg_pnl_bps: 306# A1: 平均 PnL (bps). EV 計算に使用。
+        opportunity_cost_bps: 306# A1: 機会損失 (bps). 未約定サイクルのコスト。
 
     Returns:
         AdaptationResult with recommended new_offset.
@@ -114,10 +124,25 @@ def compute_adaptation(
     low_fill = fill_rate < config.min_fill_rate
     high_as = as_ratio > config.max_as_ratio
 
+    # 306# A1: EV (Expected Value) 計算
+    ev = fill_rate * avg_pnl_bps - (1.0 - fill_rate) * opportunity_cost_bps
+
     if high_as and low_fill:
-        # 084# 修正: 両方異常 → hold (デッドロック防止)
-        # 旧ロジック: AS 回避優先で offset 縮小 → fill rate さらに低下 → 負のスパイラル
-        # 新ロジック: 縮小も増加もせず hold — 別の対策 (time_filter, SkipGate) に委ねる
+        # 084# 修正: 両方異常 → 306# A1: EV が明確に負なら offset 増加 (安全側)
+        if ev < -opportunity_cost_bps and sample_count >= config.min_samples * 2:
+            new = min(config.max_offset_ratio, current + config.step_ratio)
+            return AdaptationResult(
+                previous_offset=current,
+                new_offset=new,
+                action="increase",
+                reason=(
+                    f"EV 負 ({ev:+.2f}bps) + AS 超過 + fill_rate 低下 "
+                    f"→ offset 拡大で AS 回避 (306# A1)"
+                ),
+                fill_rate=fill_rate,
+                as_ratio=as_ratio,
+                sample_count=sample_count,
+            )
         return AdaptationResult(
             previous_offset=current,
             new_offset=current,
@@ -164,14 +189,31 @@ def compute_adaptation(
             sample_count=sample_count,
         )
 
-    # 両方正常 → hold
+    # 両方正常 → 306# A1: EV ベースの微調整
+    # EV が正で AS に余裕がある → offset 微縮小 (約定率向上)
+    # EV が正で fill_rate に余裕がある → hold (現状維持)
+    if ev > opportunity_cost_bps and as_ratio < config.max_as_ratio * 0.7:
+        new = max(config.min_offset_ratio, current - config.step_ratio * 0.5)
+        if new != current:
+            return AdaptationResult(
+                previous_offset=current,
+                new_offset=new,
+                action="decrease",
+                reason=(
+                    f"EV 正 ({ev:+.2f}bps), AS 余裕あり ({as_ratio:.1%}) "
+                    f"→ offset 微縮小で約定率向上 (306# A1)"
+                ),
+                fill_rate=fill_rate,
+                as_ratio=as_ratio,
+                sample_count=sample_count,
+            )
     return AdaptationResult(
         previous_offset=current,
         new_offset=current,
         action="hold",
         reason=(
-            f"正常範囲内 (fill_rate={fill_rate:.1%}, AS={as_ratio:.1%}) "
-            f"→ 変更不要"
+            f"正常範囲内 (fill_rate={fill_rate:.1%}, AS={as_ratio:.1%}, "
+            f"EV={ev:+.2f}bps) → 変更不要"
         ),
         fill_rate=fill_rate,
         as_ratio=as_ratio,
@@ -208,6 +250,8 @@ def compute_side_adaptation(
     *,
     buy_config: AdaptationConfig | None = None,
     sell_config: AdaptationConfig | None = None,
+    buy_avg_pnl_bps: float = 0.0,
+    sell_avg_pnl_bps: float = 0.0,
 ) -> SideAdaptationResult:
     """088# side 分離適応: buy/sell を独立に最適化.
 
@@ -232,12 +276,14 @@ def compute_side_adaptation(
         as_ratio=buy_as_ratio,
         sample_count=buy_sample_count,
         config=buy_config,
+        avg_pnl_bps=buy_avg_pnl_bps,
     )
     sell_result = compute_adaptation(
         fill_rate=sell_fill_rate,
         as_ratio=sell_as_ratio,
         sample_count=sell_sample_count,
         config=sell_config,
+        avg_pnl_bps=sell_avg_pnl_bps,
     )
 
     if buy_result.changed:

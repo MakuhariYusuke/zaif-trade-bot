@@ -294,7 +294,11 @@ class FillRecordHelpersMixin:
         return existing
 
     def _next_side(self) -> str:
-        """buy/sell を決定 — 121# SideSelector に委譲."""
+        """buy/sell を決定 — 121# SideSelector に委譲.
+
+        306# L2: microprice_bias_bps を追加入力。
+        """
         return self._side_selector.next(
             imbalance=self._maker_price._last_imbalance,
+            microprice_bias_bps=self._maker_price.compute_microprice_bias_bps(),
         )

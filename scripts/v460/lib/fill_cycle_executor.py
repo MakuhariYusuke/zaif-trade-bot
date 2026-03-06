@@ -606,6 +606,8 @@ class FillCycleExecutorMixin:
         ev_score_pretrade: float | None = None,
         ev_offset_mult_applied: float | None = None,
         decision_path: str | None = None,
+        queue_depth_ahead: float | None = None,
+        queue_fill_prob_est: float | None = None,
     ) -> FillRecord:
         """188# FillRecord を組み立てる.
 
@@ -623,6 +625,13 @@ class FillCycleExecutorMixin:
             "run_id": self._run_id,
             "git_sha": self._git_sha,
             "pid": os.getpid(),  # 285# 283# P0-1: Split-Brain 検知用
+            # 306# O1: queue position estimation
+            "queue_depth_ahead": queue_depth_ahead,
+            "queue_fill_prob_est": queue_fill_prob_est,
+            # 306# E1: offset stage recording
+            "offset_stages": self._maker_price.last_offset_stages,
+            # 306# L2: microprice bias
+            "microprice_bias_bps": self._maker_price.compute_microprice_bias_bps(),
         }
         payload.update(
             self._build_fill_measurement_fields(
@@ -1170,6 +1179,20 @@ class FillCycleExecutorMixin:
                     f"{_pre_lot:.6f} → {_order_lot:.6f}"
                 )
 
+        # 306# O1: Queue Position Estimation — OB cache から推定
+        _queue_depth_ahead: float | None = None
+        _queue_fill_prob_est: float | None = None
+        if self.config.queue_position_tracking_enabled and order_price > 0:
+            _queue_depth_ahead = self._maker_price.estimate_queue_depth(
+                side, order_price,
+            )
+            # 簡易 fill 確率: exp(-depth/lot) — depth=0 で 1.0, depth >> lot で ≈0
+            if _queue_depth_ahead is not None and _order_lot > 0:
+                import math as _math
+                _queue_fill_prob_est = _math.exp(
+                    -_queue_depth_ahead / max(_order_lot, 1e-8)
+                )
+
         for attempt in range(1 + self.config.max_order_retries):
             try:
                 # 130# E1: postonly 二重確認 — 発注直前に mid price を再取得し
@@ -1436,6 +1459,8 @@ class FillCycleExecutorMixin:
             ev_score_pretrade=_ev_score_pretrade,
             ev_offset_mult_applied=_ev_offset_mult_applied,
             decision_path=_decision_path,
+            queue_depth_ahead=_queue_depth_ahead,
+            queue_fill_prob_est=_queue_fill_prob_est,
         )
 
         self._log_cycle_result(

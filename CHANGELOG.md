@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 306# impl: 6提案実装 + 299# 観察比較再設計 (2026-03-06)
+
+### Added
+- **O1: Queue Position Estimation** — 板前方深度推定 + フィル確率 exp(-depth/lot)
+- **L2: Microprice Side Selection** — 微小価格偏差による最適サイド選択
+- **L1: Dynamic Cycle Interval** — σ連動サイクル間隔 (σ_ref/σ × base, clamped)
+- **A1: EV-based Offset Adaptation** — 期待値ベースのデッドロック脱出 + 微細最適化
+- **E1: Offset Stage Recording** — 10+ パイプライン段階の JSON 記録
+- **Parkinson σ YAML** — fill_test.yaml に完全設定セクション追加
+- **Offset Ceiling** (300# T1-3) — 無制限 offset 膨張防止
+- **Block Bootstrap** (MBB) — 時系列自己相関を尊重した CI 推定
+- **Matched Temporal Comparison** — 時間近接 buy/sell ペアリング + Wilcoxon signed-rank
+- **BH FDR** — Benjamini-Hochberg regime 横断多重比較補正
+- `FillRecord`: queue_depth_ahead, queue_fill_prob_est, offset_stages, microprice_bias_bps
+- `test_306_proposals.py`: 51 テスト
+
+### Changed
+- `ab_judgment.py`: ABJudgmentResult に bootstrap/matched フィールド追加
+- `side_regime_dashboard.py`: 新統計フィールドの dict/JSON 出力
+- `config_hot_reload.py`: 12 フィールドのホットリロード対応
+- `test_260_compute_extract_regime_split.py`: 行数 assertion 235→280
+
+### 299# Rerun Results
+- Block Bootstrap: diff=-0.023 bps, 95%CI [-0.565, +0.499], p=0.9355
+- Matched Pairs (n=928): diff=-0.069 bps, 95%CI [-0.638, +0.460], p=0.2043
+- 全4手法で sell/buy 間に統計的有意差なし（結論頑健）
+
+### Verification
+- test_306_proposals.py: 51 passed
+- test_160_ab_judgment.py: 93 passed
+- v460 全体: 4052+ passed, 19 warnings
+
 ## 309# perf+dry+core: integration負荷追加圧縮 + import集約横展開 + MC感度計算最適化 (2026-03-06)
 
 ### Changed

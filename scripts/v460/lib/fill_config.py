@@ -255,6 +255,30 @@ class FillTestConfig:
     smart_side_enabled: bool = False
     smart_side_mode: str = "suppress"      # suppress / follow
     smart_side_max_consecutive: int = 2    # 片側蓄積防止 (000# §3.3)
+    # ---- 306# L2: Microprice Side Selection ----
+    # microprice = (Pb·Qa + Pa·Qb) / (Qa + Qb)
+    # microprice > mid → sell 優先 (買い圧力強), microprice < mid → buy 優先
+    # 300# §2.3 Smart Side がレジーム不感症 → microprice で構造的 AS 低減
+    microprice_side_enabled: bool = False    # True で microprice ベース side 選択を有効化
+    microprice_side_threshold: float = 0.3  # microprice 偏向度 (bps) がこの値以上で side 切替
+    # ---- 306# L1: Dynamic Cycle Interval ----
+    # cycle_interval_sec ∝ 1/σ: 高σ時に短周期 (素早い在庫回転), 低σ時に長周期 (API節約)
+    # 300# §1.3 VG は量のフィルタ → σ 連動で質も改善
+    dynamic_cycle_interval_enabled: bool = False  # True で σ 連動 interval を有効化
+    dynamic_cycle_interval_min_sec: float = 60.0   # interval 下限 (秒)
+    dynamic_cycle_interval_max_sec: float = 300.0  # interval 上限 (秒)
+    dynamic_cycle_interval_sigma_ref: float = 0.0005  # σ 基準値 (この σ で cycle_interval_sec)
+    # ---- 306# O1: Queue Position Estimation ----
+    # 発注時の same_side_depth_ahead を記録し fill probability を推定
+    # 低確率注文の早期 cancel で機会コスト削減
+    queue_position_tracking_enabled: bool = False  # True で QPE を有効化
+    queue_position_early_cancel_prob: float = 0.05  # fill prob がこの値以下で早期 cancel
+    # ---- 306# S1: Offset Stage 寄与記録 (301# F6, 300# T0-1) ----
+    # offset パイプライン各ステージの寄与量を FillRecord に記録 → 定量分析基盤
+    offset_stage_recording_enabled: bool = False  # True で stage-by-stage 記録を有効化
+    # ---- 306# T1-3: Max Offset Ratio 天井 (300# §2.1 構造的矛盾 #2) ----
+    # 全ステージが offset を拡大する方向にのみ作用 → 天井で toxic fill only trap を防止
+    offset_ceiling_ratio: float = 0.0  # 0.0=無効, >0 で offset 上限 (e.g. 0.15)
     # 054# S3: テール損失カット (post-fill早期監視)
     early_exit_enabled: bool = False
     early_exit_threshold_bps: float = 5.0  # 損失閾値 (bps)
@@ -1824,6 +1848,53 @@ class FillTestConfig:
 
         # 163# ステージ抽出: PnL fee + preflight + tuning + resilience + A/B test
         kwargs.update(cls._parse_infra_section(yaml_cfg))
+
+        # ---- 306# 新機能セクション ----
+        # Parkinson σ
+        sp = yaml_cfg.get("sigma_parkinson", {})
+        if sp.get("enabled") is not None:
+            kwargs["sigma_parkinson_enabled"] = sp["enabled"]
+        if "window_sec" in sp:
+            kwargs["sigma_parkinson_window_sec"] = float(sp["window_sec"])
+        # none レジーム Passive MM
+        nr = yaml_cfg.get("none_regime", {})
+        if nr.get("passive_mm_enabled") is not None:
+            kwargs["none_regime_passive_mm_enabled"] = nr["passive_mm_enabled"]
+        if "fixed_offset_bps" in nr:
+            kwargs["none_regime_fixed_offset_bps"] = float(nr["fixed_offset_bps"])
+        # DD Guard soft lot side-aware
+        if "daily_drawdown_soft_lot_side_aware" in yaml_cfg:
+            kwargs["daily_drawdown_soft_lot_side_aware"] = yaml_cfg["daily_drawdown_soft_lot_side_aware"]
+        # Microprice side selection
+        ms = yaml_cfg.get("microprice_side", {})
+        if ms.get("enabled") is not None:
+            kwargs["microprice_side_enabled"] = ms["enabled"]
+        if "threshold_bps" in ms:
+            kwargs["microprice_side_threshold"] = float(ms["threshold_bps"])
+        # Dynamic cycle interval
+        dci = yaml_cfg.get("dynamic_cycle_interval", {})
+        if dci.get("enabled") is not None:
+            kwargs["dynamic_cycle_interval_enabled"] = dci["enabled"]
+        for yk, ck in {
+            "min_sec": "dynamic_cycle_interval_min_sec",
+            "max_sec": "dynamic_cycle_interval_max_sec",
+            "sigma_ref": "dynamic_cycle_interval_sigma_ref",
+        }.items():
+            if yk in dci:
+                kwargs[ck] = float(dci[yk])
+        # Queue position estimation
+        qp = yaml_cfg.get("queue_position", {})
+        if qp.get("tracking_enabled") is not None:
+            kwargs["queue_position_tracking_enabled"] = qp["tracking_enabled"]
+        if "early_cancel_prob" in qp:
+            kwargs["queue_position_early_cancel_prob"] = float(qp["early_cancel_prob"])
+        # Offset stage recording
+        osr = yaml_cfg.get("offset_stage_recording", {})
+        if osr.get("enabled") is not None:
+            kwargs["offset_stage_recording_enabled"] = osr["enabled"]
+        # Offset ceiling
+        if "offset_ceiling_ratio" in yaml_cfg:
+            kwargs["offset_ceiling_ratio"] = float(yaml_cfg["offset_ceiling_ratio"])
 
         return cls(**kwargs)
 

@@ -149,6 +149,14 @@ class FillRecord:
     # 285# 283# P0-1: Split-Brain 検知用 — プロセス ID 記録
     # 同一時刻帯に複数 run_id/pid が存在すれば多重起動を検出可能
     pid: int | None = None                       # os.getpid() at record creation
+    # ---- 306# O1: Queue Position Estimation ----
+    queue_depth_ahead: float | None = None       # 発注時の same_side_depth_ahead (BTC)
+    queue_fill_prob_est: float | None = None      # 推定 fill probability [0,1]
+    # ---- 306# S1: Offset Stage 寄与記録 (301# F6, 300# T0-1) ----
+    # JSON 形式で各ステージの寄与を記録: {"as_shift": 0.02, "vg": 0.05, ...}
+    offset_stages: str | None = None              # JSON-encoded stage contributions
+    # ---- 306# L2: Microprice Side Selection ----
+    microprice_bias_bps: float | None = None      # microprice vs mid の偏向 (bps)
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

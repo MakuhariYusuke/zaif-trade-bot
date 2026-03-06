@@ -452,6 +452,21 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "regime_high_vol_multiplier",
     "regime_timeout_multipliers",
     "regime_reprice_adjustments",
+    # 306# Microprice side selection
+    "microprice_side_enabled",
+    "microprice_side_threshold",
+    # 306# Dynamic cycle interval
+    "dynamic_cycle_interval_enabled",
+    "dynamic_cycle_interval_min_sec",
+    "dynamic_cycle_interval_max_sec",
+    "dynamic_cycle_interval_sigma_ref",
+    # 306# Queue position estimation
+    "queue_position_tracking_enabled",
+    "queue_position_early_cancel_prob",
+    # 306# Offset stage recording
+    "offset_stage_recording_enabled",
+    # 306# Offset ceiling (300# 構造的矛盾 #2)
+    "offset_ceiling_ratio",
 })
 
 # 構造体再構築が必要なコンポーネントのマッピング

@@ -136,6 +136,17 @@ class ABJudgmentResult:
     cliffs_delta_interpretation: str = ""
     holm_significant: list[bool] | None = None  # [ttest, mann_whitney]
 
+    # 306# 301#-F2 改善: block bootstrap + matched comparison
+    bootstrap_mean_diff: float | None = None  # buy-sell PnL30 差の bootstrap 推定値
+    bootstrap_ci_lower: float | None = None  # 95% CI 下限
+    bootstrap_ci_upper: float | None = None  # 95% CI 上限
+    bootstrap_p_value: float | None = None  # bootstrap permutation p 値
+    matched_n_pairs: int = 0  # 時間近接 matched pair 数
+    matched_mean_diff: float | None = None  # matched pair PnL30 差の平均
+    matched_ci_lower: float | None = None  # matched 95% CI 下限
+    matched_ci_upper: float | None = None  # matched 95% CI 上限
+    matched_p_value: float | None = None  # matched Wilcoxon signed-rank p 値
+
     def summary(self) -> str:
         """人間可読サマリ."""
         lines = [
@@ -165,6 +176,25 @@ class ABJudgmentResult:
                 f"  [stat] Mann-Whitney: p={self.mann_whitney_p_value:.4f}{holm_mw}, "
                 f"Cliff's δ={cd_str} "
                 f"({self.cliffs_delta_interpretation})"
+            )
+        # 306# block bootstrap CI
+        if self.bootstrap_mean_diff is not None:
+            ci_lo = f"{self.bootstrap_ci_lower:+.4f}" if self.bootstrap_ci_lower is not None else "N/A"
+            ci_hi = f"{self.bootstrap_ci_upper:+.4f}" if self.bootstrap_ci_upper is not None else "N/A"
+            bp = f"p={self.bootstrap_p_value:.4f}" if self.bootstrap_p_value is not None else "p=N/A"
+            lines.append(
+                f"  [stat] Block Bootstrap: diff={self.bootstrap_mean_diff:+.4f} bps, "
+                f"95%CI=[{ci_lo}, {ci_hi}], {bp}"
+            )
+        # 306# matched temporal comparison
+        if self.matched_n_pairs > 0:
+            md = f"{self.matched_mean_diff:+.4f}" if self.matched_mean_diff is not None else "N/A"
+            mci_lo = f"{self.matched_ci_lower:+.4f}" if self.matched_ci_lower is not None else "N/A"
+            mci_hi = f"{self.matched_ci_upper:+.4f}" if self.matched_ci_upper is not None else "N/A"
+            mp = f"p={self.matched_p_value:.4f}" if self.matched_p_value is not None else "p=N/A"
+            lines.append(
+                f"  [stat] Matched Pairs (n={self.matched_n_pairs}): "
+                f"diff={md} bps, 95%CI=[{mci_lo}, {mci_hi}], {mp}"
             )
         return "\n".join(lines)
 
@@ -352,6 +382,219 @@ def _holm_bonferroni(
         else:
             break
     return significant
+
+
+# --- 306# 301#-F2: Block Bootstrap + Matched Temporal Comparison ---
+
+
+def _benjamini_hochberg(
+    p_values: list[float], alpha: float = 0.05,
+) -> list[bool]:
+    """Benjamini-Hochberg FDR 多重比較補正 (301# F5).
+
+    Holm-Bonferroni より検出力が高い。regime 横断テスト向け。
+
+    Returns:
+        各検定が FDR-adjusted alpha 水準で有意かどうかのリスト
+    """
+    n = len(p_values)
+    if n == 0:
+        return []
+    sorted_idx = sorted(range(n), key=lambda i: p_values[i])
+    significant = [False] * n
+    # 最大 k s.t. p_(k) <= k/n * alpha を見つける
+    max_significant_rank = -1
+    for rank, idx in enumerate(sorted_idx):
+        bh_threshold = (rank + 1) / n * alpha
+        if p_values[idx] <= bh_threshold:
+            max_significant_rank = rank
+    # max_significant_rank 以下の全検定を有意とする
+    if max_significant_rank >= 0:
+        for rank in range(max_significant_rank + 1):
+            significant[sorted_idx[rank]] = True
+    return significant
+
+
+def _block_bootstrap_mean_diff(
+    x: np.ndarray,
+    y: np.ndarray,
+    *,
+    n_bootstrap: int = 2000,
+    block_size: int = 10,
+    seed: int = 42,
+) -> tuple[float, float, float, float]:
+    """Block Bootstrap for mean difference (306# 301#-F2).
+
+    時系列自己相関を尊重するため、連続ブロック単位でリサンプリングする。
+    Künsch (1989) の移動ブロックブートストラップ (MBB) を実装。
+
+    Args:
+        x: variant (sell) PnL30 配列
+        y: control (buy) PnL30 配列
+        n_bootstrap: ブートストラップ反復数
+        block_size: ブロックサイズ (自己相関長の目安)
+        seed: 乱数シード
+
+    Returns:
+        (mean_diff, ci_lower, ci_upper, p_value)
+        mean_diff = mean(x) - mean(y)
+        p_value = bootstrap permutation p値
+    """
+    rng = np.random.default_rng(seed)
+    observed_diff = float(np.mean(x)) - float(np.mean(y))
+
+    def _block_resample(arr: np.ndarray) -> np.ndarray:
+        n = len(arr)
+        if n <= block_size:
+            # ブロックサイズ以下なら通常リサンプリング
+            idx = rng.integers(0, n, size=n)
+            return arr[idx]
+        n_blocks = max(1, int(math.ceil(n / block_size)))
+        starts = rng.integers(0, n - block_size + 1, size=n_blocks)
+        blocks = [arr[s : s + block_size] for s in starts]
+        return np.concatenate(blocks)[:n]
+
+    boot_diffs = np.empty(n_bootstrap, dtype=float)
+    for i in range(n_bootstrap):
+        x_boot = _block_resample(x)
+        y_boot = _block_resample(y)
+        boot_diffs[i] = float(np.mean(x_boot)) - float(np.mean(y_boot))
+
+    ci_lower = float(np.percentile(boot_diffs, 2.5))
+    ci_upper = float(np.percentile(boot_diffs, 97.5))
+
+    # Bootstrap permutation p-value: centeringして帰無仮説検定
+    centered = boot_diffs - float(np.mean(boot_diffs))
+    p_value = float(np.mean(np.abs(centered) >= abs(observed_diff)))
+
+    return observed_diff, ci_lower, ci_upper, p_value
+
+
+def _matched_temporal_comparison(
+    variant_records: list[FillRecord],
+    control_records: list[FillRecord],
+    *,
+    max_gap_sec: float = 600.0,
+) -> tuple[int, float | None, float | None, float | None, float | None]:
+    """時間近接 Matched Pair 比較 (306# 301#-F2).
+
+    同じ regime 内で時間的に近い variant/control fill をペアリングし、
+    市場条件をマッチさせた上でペア差を検定する。
+
+    Args:
+        variant_records: variant (sell) の filled レコード
+        control_records: control (buy) の filled レコード
+        max_gap_sec: 最大時間差 (秒)
+
+    Returns:
+        (n_pairs, mean_diff, ci_lower, ci_upper, p_value)
+    """
+    # filled only + timestamp/pnl30 抽出
+    def _extract_ts_pnl(records: list[FillRecord]) -> list[tuple[float, float]]:
+        result = []
+        for r in records:
+            if not r.get("filled"):
+                continue
+            ts = safe_to_finite(r.get("timestamp"))
+            pnl = safe_to_finite(r.get("post_fill_30s_pnl"))
+            if ts is None or pnl is None:
+                continue
+            result.append((float(ts), float(pnl)))
+        return sorted(result, key=lambda x: x[0])
+
+    v_data = _extract_ts_pnl(variant_records)
+    c_data = _extract_ts_pnl(control_records)
+
+    if not v_data or not c_data:
+        return 0, None, None, None, None
+
+    # Greedy nearest-neighbor matching (regime 内時間近接)
+    used_c = set[int]()
+    pairs: list[tuple[float, float]] = []  # (v_pnl, c_pnl)
+
+    c_idx = 0
+    for v_ts, v_pnl in v_data:
+        best_ci = -1
+        best_gap = max_gap_sec + 1.0
+        # c_data 内で v_ts に最も近い未使用ペアを探す
+        for ci in range(max(0, c_idx - 5), len(c_data)):
+            if ci in used_c:
+                continue
+            gap = abs(c_data[ci][0] - v_ts)
+            if gap < best_gap:
+                best_gap = gap
+                best_ci = ci
+            # c_data はソート済みなので、gap が増加し始めたら打ち切り
+            if c_data[ci][0] > v_ts + max_gap_sec:
+                break
+        if best_ci >= 0 and best_gap <= max_gap_sec:
+            pairs.append((v_pnl, c_data[best_ci][1]))
+            used_c.add(best_ci)
+            # c_idx を進めて探索窓を制限
+            while c_idx < len(c_data) and c_idx in used_c:
+                c_idx += 1
+
+    n_pairs = len(pairs)
+    if n_pairs < 10:
+        return n_pairs, None, None, None, None
+
+    diffs = np.array([v - c for v, c in pairs], dtype=float)
+    mean_diff = float(np.mean(diffs))
+
+    # Bootstrap CI for paired differences
+    rng = np.random.default_rng(42)
+    n_boot = 2000
+    boot_means = np.empty(n_boot, dtype=float)
+    for i in range(n_boot):
+        idx = rng.integers(0, n_pairs, size=n_pairs)
+        boot_means[i] = float(np.mean(diffs[idx]))
+    ci_lower = float(np.percentile(boot_means, 2.5))
+    ci_upper = float(np.percentile(boot_means, 97.5))
+
+    # Wilcoxon signed-rank test (ノンパラメトリック, 正規近似)
+    p_value = _wilcoxon_signed_rank(diffs)
+
+    return n_pairs, mean_diff, ci_lower, ci_upper, p_value
+
+
+def _wilcoxon_signed_rank(diffs: np.ndarray) -> float:
+    """Wilcoxon signed-rank test (正規近似, pure Python/numpy).
+
+    ゼロ差は除外し、残りに対して正規近似 z-test を行う。
+
+    Returns:
+        両側 p 値
+    """
+    # ゼロ差を除外
+    nonzero = diffs[diffs != 0.0]
+    n = len(nonzero)
+    if n < 5:
+        return 1.0
+
+    abs_vals = np.abs(nonzero)
+    ranks = np.empty(n, dtype=float)
+    sorted_idx = np.argsort(abs_vals)
+    # 平均順位 (tie 処理)
+    i = 0
+    while i < n:
+        j = i
+        while j < n and abs_vals[sorted_idx[j]] == abs_vals[sorted_idx[i]]:
+            j += 1
+        avg_rank = (i + 1 + j) / 2.0  # 1-based
+        for k in range(i, j):
+            ranks[sorted_idx[k]] = avg_rank
+        i = j
+
+    # 正の差の順位和
+    w_plus = float(np.sum(ranks[nonzero > 0]))
+    # 正規近似
+    mu = n * (n + 1) / 4.0
+    sigma = math.sqrt(n * (n + 1) * (2 * n + 1) / 24.0)
+    if sigma <= 0.0:
+        return 1.0
+    z = (w_plus - mu) / sigma
+    p_value = 2.0 * (1.0 - _norm_cdf(abs(z)))
+    return p_value
 
 
 def _compute_statistical_comparison(
@@ -587,6 +830,37 @@ def evaluate_ab_variant(
                 result.holm_significant = _holm_bonferroni(collected_p)
         except Exception as e:
             logger.debug("Nonparametric test failed: %s", e)
+
+        # 306# 301#-F2: Block Bootstrap for mean difference CI
+        try:
+            diff, ci_lo, ci_hi, bp = _block_bootstrap_mean_diff(v_pnl, c_pnl)
+            if math.isfinite(diff):
+                result.bootstrap_mean_diff = diff
+            if math.isfinite(ci_lo):
+                result.bootstrap_ci_lower = ci_lo
+            if math.isfinite(ci_hi):
+                result.bootstrap_ci_upper = ci_hi
+            if math.isfinite(bp):
+                result.bootstrap_p_value = bp
+        except Exception as e:
+            logger.debug("Block bootstrap failed: %s", e)
+
+        # 306# 301#-F2: Matched temporal comparison
+        try:
+            mp_n, mp_diff, mp_ci_lo, mp_ci_hi, mp_p = _matched_temporal_comparison(
+                variant_records, control_records,
+            )
+            result.matched_n_pairs = mp_n
+            if mp_diff is not None and math.isfinite(mp_diff):
+                result.matched_mean_diff = mp_diff
+            if mp_ci_lo is not None and math.isfinite(mp_ci_lo):
+                result.matched_ci_lower = mp_ci_lo
+            if mp_ci_hi is not None and math.isfinite(mp_ci_hi):
+                result.matched_ci_upper = mp_ci_hi
+            if mp_p is not None and math.isfinite(mp_p):
+                result.matched_p_value = mp_p
+        except Exception as e:
+            logger.debug("Matched temporal comparison failed: %s", e)
 
     # --- 総合判定 ---
     verdicts = [c.verdict for c in result.criteria]

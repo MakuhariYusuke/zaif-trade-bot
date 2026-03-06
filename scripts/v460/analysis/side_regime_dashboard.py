@@ -123,6 +123,16 @@ def _ab_result_to_dict(ab_result: ABJudgmentResult) -> dict[str, object]:
         "cliffs_delta_value": ab_result.cliffs_delta_value,
         "cliffs_delta_interpretation": ab_result.cliffs_delta_interpretation,
         "holm_significant": ab_result.holm_significant,
+        # 306# 301#-F2: Block Bootstrap + Matched Temporal Comparison
+        "bootstrap_mean_diff": ab_result.bootstrap_mean_diff,
+        "bootstrap_ci_lower": ab_result.bootstrap_ci_lower,
+        "bootstrap_ci_upper": ab_result.bootstrap_ci_upper,
+        "bootstrap_p_value": ab_result.bootstrap_p_value,
+        "matched_n_pairs": ab_result.matched_n_pairs,
+        "matched_mean_diff": ab_result.matched_mean_diff,
+        "matched_ci_lower": ab_result.matched_ci_lower,
+        "matched_ci_upper": ab_result.matched_ci_upper,
+        "matched_p_value": ab_result.matched_p_value,
         "summary": ab_result.summary(),
     }
 

@@ -35,6 +35,7 @@ class SideSelector:
     """009# §4.2: buy/sell 交互 + 054# S2 Smart Side.
 
     120# A5: inventory-aware side hint — 残高不足 side を一時的に回避。
+    306# L2: Microprice side selection — 板の質的非対称性で side 決定。
     """
 
     def __init__(self, config: FillTestConfig) -> None:
@@ -72,12 +73,14 @@ class SideSelector:
     def rapid_exit_side(self, value: str | None) -> None:
         self._rapid_exit_side = value
 
-    def next(self, imbalance: float = 0.0) -> str:
-        """次の side を決定: 交互 or Smart Side.
+    def next(self, imbalance: float = 0.0, microprice_bias_bps: float = 0.0) -> str:
+        """次の side を決定: 交互 or Smart Side or Microprice.
 
         120# A5: frozen_side に該当する side は自動的に反対に迂回。
+        306# L2: microprice_bias_bps > 0 → sell 優先 (買い圧力), < 0 → buy 優先。
         Args:
             imbalance: 現在の板不均衡 (Smart Side 用)
+            microprice_bias_bps: microprice vs mid の偏向 (bps, 306# L2)
         """
         # 055# Fix #1: S3 rapid exit で決定された side を最優先で返却
         if self._rapid_exit_side is not None:
@@ -100,6 +103,27 @@ class SideSelector:
                 if self._frozen_remaining <= 0:
                     self._frozen_side = None
                 return alt
+
+        # 306# L2: Microprice side selection
+        # microprice > mid → 買い圧力 → sell が有利 (300# §2.3 構造的矛盾 #4 解消)
+        if self._config.microprice_side_enabled:
+            threshold = self._config.microprice_side_threshold
+            if microprice_bias_bps > threshold:
+                mp_side = "sell"
+                if mp_side != base_side:
+                    logger.info(
+                        f"[microprice_side] bias={microprice_bias_bps:+.2f}bps "
+                        f"> {threshold} → sell (buy pressure)"
+                    )
+                    return mp_side
+            elif microprice_bias_bps < -threshold:
+                mp_side = "buy"
+                if mp_side != base_side:
+                    logger.info(
+                        f"[microprice_side] bias={microprice_bias_bps:+.2f}bps "
+                        f"< -{threshold} → buy (sell pressure)"
+                    )
+                    return mp_side
 
         if not self._config.smart_side_enabled:
             return base_side

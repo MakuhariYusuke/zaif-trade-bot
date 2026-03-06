@@ -2223,34 +2223,33 @@ class TestAtomicLock:
         with patch.object(LockManager, "_acquire_os_lock", return_value=None):
             yield
 
+    def _make_lock_manager(self, tmp_path: Path) -> LockManager:
+        results_dir = tmp_path / "results"
+        results_dir.mkdir(parents=True, exist_ok=True)
+        return LockManager(results_dir=results_dir, run_id="test_run")
+
     def test_acquire_creates_lockfile(self, tmp_path: Path) -> None:
         """ロックファイルが作成される."""
-
-        adapter = AsyncMock()
-        config = FillTestConfig(results_dir=str(tmp_path / "results"))
-        runner = FillTestRunner(adapter, config)
-        runner._acquire_lock()
-        lock_path = runner._results_dir / "fill_test.lock"
+        manager = self._make_lock_manager(tmp_path)
+        manager.acquire()
+        lock_path = tmp_path / "results" / "fill_test.lock"
         assert lock_path.exists()
         content = lock_path.read_text(encoding="utf-8")
         assert str(os.getpid()) in content
-        runner._release_lock()
+        manager.release()
 
     def test_acquire_blocks_second(self, tmp_path: Path) -> None:
         """既存の有効ロック → RuntimeError."""
-
-        adapter = AsyncMock()
-        config = FillTestConfig(results_dir=str(tmp_path / "results"))
-        runner = FillTestRunner(adapter, config)
-        runner._acquire_lock()
+        manager = self._make_lock_manager(tmp_path)
+        manager.acquire()
 
         # 同じディレクトリで 2 つ目が起動 → ロックに自PIDが記録済みなので
         # stale ではない (自PID=fill_test)。ただしテスト環境では
         # psutil が実行中プロセスを fill_test と判定するか次第。
         # ここでは lockfile が既に存在する状態を直接テスト
-        lock_path = runner._results_dir / "fill_test.lock"
+        lock_path = tmp_path / "results" / "fill_test.lock"
         assert lock_path.exists()
-        runner._release_lock()
+        manager.release()
 
     def test_atomic_exclusive_create(self, tmp_path: Path) -> None:
         """open(O_CREAT|O_EXCL) で排他的作成が行われる."""

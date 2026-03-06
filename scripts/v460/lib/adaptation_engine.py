@@ -292,6 +292,9 @@ class AdaptationEngine:
                     sell_sample_count=sell_metrics.total_orders,
                     buy_config=buy_config,
                     sell_config=sell_config,
+                    # 306# A1: EV-based adaptation
+                    buy_avg_pnl_bps=buy_metrics.post_fill_30s_pnl_mean,
+                    sell_avg_pnl_bps=sell_metrics.post_fill_30s_pnl_mean,
                 )
 
                 new_buy = base_offset_ratio_buy
