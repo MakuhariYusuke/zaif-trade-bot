@@ -225,8 +225,18 @@ while ($waited -lt $StartupConfirmSec) {
     Start-Sleep -Seconds 5
     $waited += 5
 
-    # プロセス生存確認
-    $alive = $null -ne (Get-Process -Id $newPid -ErrorAction SilentlyContinue)
+    # プロセス生存確認 (親 or 子 PID)
+    $alive = ($null -ne (Get-Process -Id $newPid -ErrorAction SilentlyContinue))
+    if (-not $alive) {
+        # 親PIDが dead でも lock ファイルの子PIDが生きている場合がある
+        if (Test-Path $lockPath) {
+            $checkLock = Get-Content $lockPath -Raw -ErrorAction SilentlyContinue
+            if ($checkLock) {
+                $checkPid = $checkLock.Trim().Split("|")[0]
+                $alive = $null -ne (Get-Process -Id $checkPid -ErrorAction SilentlyContinue)
+            }
+        }
+    }
     if (-not $alive) {
         Log "ERROR" "  新プロセス PID=$newPid が起動直後に終了しました！"
         Log "ERROR" "  stderr ログを確認: $stderrLog"
@@ -241,12 +251,17 @@ while ($waited -lt $StartupConfirmSec) {
     }
 
     # lock ファイル確認
+    # NOTE: Start-Process の PID とlock の PID は異なる場合がある
+    # (Python ランチャーが子プロセスを spawn するため)
+    # lock PID が alive であれば成功とみなす
     if (Test-Path $lockPath) {
         $newLock = Get-Content $lockPath -Raw
         $newParts = $newLock.Trim().Split("|")
         $newLockPid = $newParts[0]
-        Log "INFO" "  lock 確認: PID=$newLockPid (期待: $newPid) [${waited}s]"
-        if ($newLockPid -eq $newPid) {
+        $lockPidAlive = $null -ne (Get-Process -Id $newLockPid -ErrorAction SilentlyContinue)
+        Log "INFO" "  lock 確認: PID=$newLockPid (alive=$lockPidAlive) [${waited}s]"
+        if ($lockPidAlive) {
+            $newPid = [int]$newLockPid  # 実際の PID に更新
             $confirmed = $true
             break
         }
