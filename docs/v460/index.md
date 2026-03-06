@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-06 (307# 303-306再レビュー)
+> 最終更新: 2026-03-07 (311# 観測比較再実行 + 深堀り分析)
 
 ---
 
@@ -298,6 +298,10 @@
 | 305 | rpt | [305_ph2_analysis_systems_market_theory_p0_improvements.md](305_ph2_analysis_systems_market_theory_p0_improvements.md) | システム工学+市場理論分析: spread capture / AS cost 分解, Parkinson σ, EV-based offset, microprice side, queue/cancel latency 改善提案 |
 | 306 | impl | [306_ph2_impl_six_proposals_observational_redesign.md](306_ph2_impl_six_proposals_observational_redesign.md) | 6提案実装 + 299# 観察比較再設計: queue推定, microprice side, dynamic interval, EV-based adaptation, offset stage recording, ceiling, deep dive再分析 |
 | 307 | rev | [307_ph2_rev_303_306_systems_market_review.md](307_ph2_rev_303_306_systems_market_review.md) | 303-306再レビュー: 306 deep dive の観測設計ギャップ, side差解釈の限界, AS/session本丸論, none/repair交絡, A1ロジック整合性を整理 |
+| 308 | rev | [308_ph2_gemini_31_pro_review_306_307_inverted_microstructure.md](308_ph2_gemini_31_pro_review_306_307_inverted_microstructure.md) | Gemini 3.1 Pro レビュー: L1/L2 理論倒錯発見 + AS Seeker 指摘 |
+| 309 | resp | [309_ph2_review_response_307_308_fixes.md](309_ph2_review_response_307_308_fixes.md) | 307#/308# レビュー対応: L1/L2 理論倒錯修正 + deep dive スキーマ是正 |
+| 310 | impl | [310_ph2_impl_design_improvements.md](310_ph2_impl_design_improvements.md) | 設計面改修: 時間帯ブースト + Decision Path + L2 Safety + None Observability + Spread/AS 分解 |
+| 311 | rpt | [311_ph2_rpt_observational_comparison_rerun.md](311_ph2_rpt_observational_comparison_rerun.md) | 観測比較再実行 + 309#/310# 理論修正検証 + 深堀り分析 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
