@@ -415,6 +415,42 @@ def _benjamini_hochberg(
     return significant
 
 
+def _bootstrap_sample_means(
+    arr: np.ndarray,
+    *,
+    rng: np.random.Generator,
+    n_bootstrap: int,
+    sample_size: int,
+) -> np.ndarray:
+    """IID bootstrap の標本平均をベクトル化計算する."""
+    idx = rng.integers(0, len(arr), size=(n_bootstrap, sample_size))
+    return np.mean(arr[idx], axis=1, dtype=float)
+
+
+def _block_bootstrap_sample_means(
+    arr: np.ndarray,
+    *,
+    rng: np.random.Generator,
+    n_bootstrap: int,
+    block_size: int,
+) -> np.ndarray:
+    """移動ブロックブートストラップの標本平均をベクトル化計算する."""
+    n = len(arr)
+    if n <= block_size:
+        return _bootstrap_sample_means(
+            arr,
+            rng=rng,
+            n_bootstrap=n_bootstrap,
+            sample_size=n,
+        )
+
+    n_blocks = max(1, int(math.ceil(n / block_size)))
+    starts = rng.integers(0, n - block_size + 1, size=(n_bootstrap, n_blocks))
+    offsets = np.arange(block_size, dtype=int)
+    indices = (starts[..., None] + offsets).reshape(n_bootstrap, -1)[:, :n]
+    return np.mean(arr[indices], axis=1, dtype=float)
+
+
 def _block_bootstrap_mean_diff(
     x: np.ndarray,
     y: np.ndarray,
@@ -442,23 +478,19 @@ def _block_bootstrap_mean_diff(
     """
     rng = np.random.default_rng(seed)
     observed_diff = float(np.mean(x)) - float(np.mean(y))
-
-    def _block_resample(arr: np.ndarray) -> np.ndarray:
-        n = len(arr)
-        if n <= block_size:
-            # ブロックサイズ以下なら通常リサンプリング
-            idx = rng.integers(0, n, size=n)
-            return arr[idx]
-        n_blocks = max(1, int(math.ceil(n / block_size)))
-        starts = rng.integers(0, n - block_size + 1, size=n_blocks)
-        blocks = [arr[s : s + block_size] for s in starts]
-        return np.concatenate(blocks)[:n]
-
-    boot_diffs = np.empty(n_bootstrap, dtype=float)
-    for i in range(n_bootstrap):
-        x_boot = _block_resample(x)
-        y_boot = _block_resample(y)
-        boot_diffs[i] = float(np.mean(x_boot)) - float(np.mean(y_boot))
+    x_boot_means = _block_bootstrap_sample_means(
+        x,
+        rng=rng,
+        n_bootstrap=n_bootstrap,
+        block_size=block_size,
+    )
+    y_boot_means = _block_bootstrap_sample_means(
+        y,
+        rng=rng,
+        n_bootstrap=n_bootstrap,
+        block_size=block_size,
+    )
+    boot_diffs = x_boot_means - y_boot_means
 
     ci_lower = float(np.percentile(boot_diffs, 2.5))
     ci_upper = float(np.percentile(boot_diffs, 97.5))
@@ -544,10 +576,12 @@ def _matched_temporal_comparison(
     # Bootstrap CI for paired differences
     rng = np.random.default_rng(42)
     n_boot = 2000
-    boot_means = np.empty(n_boot, dtype=float)
-    for i in range(n_boot):
-        idx = rng.integers(0, n_pairs, size=n_pairs)
-        boot_means[i] = float(np.mean(diffs[idx]))
+    boot_means = _bootstrap_sample_means(
+        diffs,
+        rng=rng,
+        n_bootstrap=n_boot,
+        sample_size=n_pairs,
+    )
     ci_lower = float(np.percentile(boot_means, 2.5))
     ci_upper = float(np.percentile(boot_means, 97.5))
 

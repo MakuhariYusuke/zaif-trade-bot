@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 309# 307#/308# レビュー対応: 理論倒錯修正 + スキーマ是正 (2026-03-06)
+
+### Fixed
+- **L2 Microprice Side: 理論倒錯修正** — 旧: buy pressure → sell (AS seeker) → 新: buy pressure → buy (safety mode, Glosten-Milgrom 1985). YAML `enabled: false` に変更
+- **L1 Dynamic Interval: 数式反転** — 旧: `σ_ref/σ` (高σ→短interval, Taker戦術) → 新: `σ/σ_ref` (高σ→長interval, A-S Cooldown)
+- **deep_dive.py スキーマ齟齬** — `effective_offset_ratio` → `effective_offset_used`, `fill_timestamp` → `queue_wait_sec` (307# F1)
+- **param_adapter.py 理由文** — 「offset拡大でAS回避」→「liveness優先 — deadlock break」(307# F6)
+
+### Added
+- `analysis/306_deep_dive.py` §8: `decision_path` / `balance_forced_switch` 交絡分離分析 (307# F2)
+- `analysis/306_deep_dive.py` §9: `offset_stages` / `queue_depth_ahead` / `microprice_bias_bps` 新可観測性分析
+- `docs/v460/309_ph2_review_response_307_308_fixes.md`: 全指摘の妥当性判定 + 修正記録
+
 ## 306# impl: 6提案実装 + 299# 観察比較再設計 (2026-03-06)
 
 ### Added

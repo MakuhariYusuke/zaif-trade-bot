@@ -2688,16 +2688,21 @@ class FillLoopOrchestratorMixin:
 
     # ── 306# L1: σ 連動 dynamic cycle interval ────────────────────
     def _compute_dynamic_interval(self, base_interval: float) -> float:
-        """σ に反比例するサイクル間隔: σ 高 → 短く, σ 低 → 長く.
+        """309# σ に比例するサイクル間隔: σ 高 → 長く (Cooldown), σ 低 → 短く.
 
-        interval = base_interval × (σ_ref / σ), clamped to [min_sec, max_sec].
+        interval = base_interval × (σ / σ_ref), clamped to [min_sec, max_sec].
         σ=0 (推定前) はフォールバックとして base_interval をそのまま返す。
+
+        Avellaneda-Stoikov (2008): 高ボラ時は informed flow の密度が
+        上がり、maker の逆選択リスクが増大する。最適応答は
+        スプレッド拡大 + 実行頻度低下 (Cooldown)。
+        308# 盲点2: 旧実装 (σ_ref/σ) は taker 戦術であり maker には逆効果。
         """
         sigma = self._maker_price.last_sigma
         if sigma <= 0:
             return base_interval
         cfg = self.config
-        ratio = cfg.dynamic_cycle_interval_sigma_ref / sigma
+        ratio = sigma / cfg.dynamic_cycle_interval_sigma_ref
         adjusted = base_interval * ratio
         return max(cfg.dynamic_cycle_interval_min_sec,
                    min(adjusted, cfg.dynamic_cycle_interval_max_sec))

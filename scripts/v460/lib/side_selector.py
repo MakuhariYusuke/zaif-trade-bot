@@ -77,7 +77,7 @@ class SideSelector:
         """次の side を決定: 交互 or Smart Side or Microprice.
 
         120# A5: frozen_side に該当する side は自動的に反対に迂回。
-        306# L2: microprice_bias_bps > 0 → sell 優先 (買い圧力), < 0 → buy 優先。
+        309# L2 (308# 修正): microprice_bias_bps > 0 → buy (safety), < 0 → sell (safety)。
         Args:
             imbalance: 現在の板不均衡 (Smart Side 用)
             microprice_bias_bps: microprice vs mid の偏向 (bps, 306# L2)
@@ -104,24 +104,29 @@ class SideSelector:
                     self._frozen_side = None
                 return alt
 
-        # 306# L2: Microprice side selection
-        # microprice > mid → 買い圧力 → sell が有利 (300# §2.3 構造的矛盾 #4 解消)
+        # 309# L2: Microprice side selection (308# 盲点1 修正: safety モード)
+        # Glosten-Milgrom (1985): informed flow が支配する側に
+        # maker が立つと逆選択コストが上昇する。
+        # microprice > mid → 買い圧力 → buy に回る (safety: 厚い queue の後方)
+        # microprice < mid → 売り圧力 → sell に回る (safety: 厚い queue の後方)
+        # 旧実装 (306#) は liveness 優先で逆方向に送っていたが、
+        # これは事実上の AS seeker であり理論的に倒錯していた。
         if self._config.microprice_side_enabled:
             threshold = self._config.microprice_side_threshold
             if microprice_bias_bps > threshold:
-                mp_side = "sell"
-                if mp_side != base_side:
-                    logger.info(
-                        f"[microprice_side] bias={microprice_bias_bps:+.2f}bps "
-                        f"> {threshold} → sell (buy pressure)"
-                    )
-                    return mp_side
-            elif microprice_bias_bps < -threshold:
                 mp_side = "buy"
                 if mp_side != base_side:
                     logger.info(
                         f"[microprice_side] bias={microprice_bias_bps:+.2f}bps "
-                        f"< -{threshold} → buy (sell pressure)"
+                        f"> {threshold} → buy (buy pressure, safety mode)"
+                    )
+                    return mp_side
+            elif microprice_bias_bps < -threshold:
+                mp_side = "sell"
+                if mp_side != base_side:
+                    logger.info(
+                        f"[microprice_side] bias={microprice_bias_bps:+.2f}bps "
+                        f"< -{threshold} → sell (sell pressure, safety mode)"
                     )
                     return mp_side
 

@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-07 (301# 292-300横断レビュー)
+> 最終更新: 2026-03-06 (307# 303-306再レビュー)
 
 ---
 
@@ -294,6 +294,10 @@
 | 301 | rev | [301_ph2_rev_292_300_multifaceted_review.md](301_ph2_rev_292_300_multifaceted_review.md) | 292-300横断レビュー: `none` 除外によるF-4楽観化、sell-vs-buy擬似A/B、hot-reload過信、forced_buy_delayの位置付け、統計/可観測性の残課題を整理 |
 | 302 | rev | [302_ph2_gemini_31_pro_review_300_301_hft_blindspots.md](302_ph2_gemini_31_pro_review_300_301_hft_blindspots.md) | Gemini 3.1 Pro HFT盲点レビュー: none regime過剰エンジニアリング、Taker執行欠落、AlternationTrap+DD Guard死のスパイラル |
 | 303 | resp/impl | [303_ph2_resp_301_302_review_response.md](303_ph2_resp_301_302_review_response.md) | 301#/302#レビュー応答+実装: Side Comparison表記修正, none含有版二系統出力, DD soft lot side分離, none regime Passive MMバイパス |
+| 304 | refactor | [304_ph2_refactor_bps_ssot_dry_helpers.md](304_ph2_refactor_bps_ssot_dry_helpers.md) | BPS_FACTOR SSOT + DRY ヘルパー + マジックナンバー排除: 定数集約, mid逆推定ヘルパー, side別PnL計算共通化, hot_swap PID修正 |
+| 305 | rpt | [305_ph2_analysis_systems_market_theory_p0_improvements.md](305_ph2_analysis_systems_market_theory_p0_improvements.md) | システム工学+市場理論分析: spread capture / AS cost 分解, Parkinson σ, EV-based offset, microprice side, queue/cancel latency 改善提案 |
+| 306 | impl | [306_ph2_impl_six_proposals_observational_redesign.md](306_ph2_impl_six_proposals_observational_redesign.md) | 6提案実装 + 299# 観察比較再設計: queue推定, microprice side, dynamic interval, EV-based adaptation, offset stage recording, ceiling, deep dive再分析 |
+| 307 | rev | [307_ph2_rev_303_306_systems_market_review.md](307_ph2_rev_303_306_systems_market_review.md) | 303-306再レビュー: 306 deep dive の観測設計ギャップ, side差解釈の限界, AS/session本丸論, none/repair交絡, A1ロジック整合性を整理 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

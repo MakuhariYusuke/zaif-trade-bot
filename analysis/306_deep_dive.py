@@ -68,7 +68,7 @@ def as_rate(records: list[dict]) -> float:
 def offset_stats(records: list[dict]) -> dict:
     offsets = []
     for r in records:
-        v = safe_to_finite(r.get("effective_offset_ratio"))
+        v = safe_to_finite(r.get("effective_offset_used"))
         if v is not None:
             offsets.append(v)
     if not offsets:
@@ -238,14 +238,17 @@ def as_deep_dive(records: list[dict]) -> dict:
 
 
 def offset_pnl_correlation(records: list[dict]) -> dict:
-    """offset と pnl30 の相関分析."""
+    """゛ｆset と pnl30 の相関分析.
+
+    309# 修正: effective_offset_ratio → effective_offset_used (307# F1)。
+    """
     result = {}
     for side in ["sell", "buy"]:
         filled = extract_filled(records, side=side)
         offsets = []
         pnls = []
         for r in filled:
-            o = safe_to_finite(r.get("effective_offset_ratio"))
+            o = safe_to_finite(r.get("effective_offset_used"))
             p = safe_to_finite(r.get("post_fill_30s_pnl"))
             if o is not None and p is not None:
                 offsets.append(o)
@@ -316,16 +319,19 @@ def weekly_trend(records: list[dict]) -> list[dict]:
 
 
 def fill_speed_analysis(records: list[dict]) -> dict:
-    """約定速度分析: 注文から約定までの時間."""
+    """約定速度分析: queue_wait_sec ベース.
+
+    309# 修正: fill_timestamp → queue_wait_sec (307# F1)。
+    FillRecord の queue_wait_sec が約定時の待機秒数。
+    """
     result = {}
     for side in ["sell", "buy"]:
         filled = extract_filled(records, side=side)
         durations = []
         for r in filled:
-            placed = safe_to_finite(r.get("timestamp"))
-            fill_ts = safe_to_finite(r.get("fill_timestamp"))
-            if placed is not None and fill_ts is not None and fill_ts > placed:
-                durations.append(fill_ts - placed)
+            wait = safe_to_finite(r.get("queue_wait_sec"))
+            if wait is not None and wait > 0:
+                durations.append(wait)
         if not durations:
             result[side] = {"n": 0}
             continue
@@ -374,9 +380,138 @@ def pnl_distribution_shape(records: list[dict]) -> dict:
     return result
 
 
+def decision_path_analysis(records: list[dict]) -> dict:
+    """309# 新規: decision_path 別分析 (307# F2: 交絡分離).
+
+    alpha trade と repair trade を分離して PnL / AS 率を比較。
+    balance_forced_switch も分離。
+    """
+    result = {}
+    for side in ["sell", "buy"]:
+        filled = extract_filled(records, side=side)
+        # decision_path 別
+        path_groups: dict[str, list[dict]] = defaultdict(list)
+        for r in filled:
+            path = r.get("decision_path") or "unknown"
+            path_groups[path].append(r)
+        path_stats = {}
+        for path, recs in sorted(path_groups.items()):
+            pnl = pnl_array(recs)
+            path_stats[path] = {
+                "n": len(recs),
+                "avg_pnl30": round(float(np.mean(pnl)), 4) if len(pnl) > 0 else None,
+                "as_rate": round(as_rate(recs), 4),
+            }
+        # balance_forced_switch 分離
+        forced = [r for r in filled if r.get("balance_forced_switch")]
+        normal = [r for r in filled if not r.get("balance_forced_switch")]
+        f_pnl = pnl_array(forced)
+        n_pnl = pnl_array(normal)
+        result[side] = {
+            "by_decision_path": path_stats,
+            "forced_switch": {
+                "n": len(forced),
+                "avg_pnl30": round(float(np.mean(f_pnl)), 4) if len(f_pnl) > 0 else None,
+                "as_rate": round(as_rate(forced), 4),
+            },
+            "normal": {
+                "n": len(normal),
+                "avg_pnl30": round(float(np.mean(n_pnl)), 4) if len(n_pnl) > 0 else None,
+                "as_rate": round(as_rate(normal), 4),
+            },
+        }
+    return result
+
+
+def new_observability_analysis(records: list[dict]) -> dict:
+    """309# 新規: 306# で追加した可観測性フィールドの分析.
+
+    offset_stages, queue_depth_ahead, queue_fill_prob_est,
+    microprice_bias_bps を活用 (307# F1/F7 対応)。
+    """
+    result = {}
+    for side in ["sell", "buy"]:
+        filled = extract_filled(records, side=side)
+
+        # offset_stages 分析 (JSON 展開)
+        stage_contributions: dict[str, list[float]] = defaultdict(list)
+        n_with_stages = 0
+        for r in filled:
+            raw = r.get("offset_stages")
+            if raw and isinstance(raw, str):
+                try:
+                    stages = json.loads(raw)
+                    n_with_stages += 1
+                    for k, v in stages.items():
+                        val = safe_to_finite(v)
+                        if val is not None:
+                            stage_contributions[k].append(val)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+        stage_stats = {}
+        for stage, vals in sorted(stage_contributions.items()):
+            arr = np.array(vals)
+            stage_stats[stage] = {
+                "n": len(vals),
+                "mean": round(float(np.mean(arr)), 6),
+                "std": round(float(np.std(arr)), 6),
+                "p50": round(float(np.median(arr)), 6),
+            }
+
+        # queue_depth_ahead 分析
+        queue_depths = []
+        for r in filled:
+            v = safe_to_finite(r.get("queue_depth_ahead"))
+            if v is not None:
+                queue_depths.append(v)
+        q_arr = np.array(queue_depths) if queue_depths else np.array([])
+
+        # queue_fill_prob_est 分析
+        fill_probs = []
+        for r in filled:
+            v = safe_to_finite(r.get("queue_fill_prob_est"))
+            if v is not None:
+                fill_probs.append(v)
+        fp_arr = np.array(fill_probs) if fill_probs else np.array([])
+
+        # microprice_bias_bps 分析
+        mp_biases = []
+        for r in filled:
+            v = safe_to_finite(r.get("microprice_bias_bps"))
+            if v is not None:
+                mp_biases.append(v)
+        mp_arr = np.array(mp_biases) if mp_biases else np.array([])
+
+        result[side] = {
+            "offset_stages": {
+                "n_records_with_stages": n_with_stages,
+                "per_stage": stage_stats,
+            },
+            "queue_depth_ahead": {
+                "n": len(queue_depths),
+                "mean": round(float(np.mean(q_arr)), 6) if len(q_arr) > 0 else None,
+                "p50": round(float(np.median(q_arr)), 6) if len(q_arr) > 0 else None,
+                "p90": round(float(np.percentile(q_arr, 90)), 6) if len(q_arr) >= 5 else None,
+            },
+            "queue_fill_prob_est": {
+                "n": len(fill_probs),
+                "mean": round(float(np.mean(fp_arr)), 6) if len(fp_arr) > 0 else None,
+                "p50": round(float(np.median(fp_arr)), 6) if len(fp_arr) > 0 else None,
+            },
+            "microprice_bias_bps": {
+                "n": len(mp_biases),
+                "mean": round(float(np.mean(mp_arr)), 4) if len(mp_arr) > 0 else None,
+                "std": round(float(np.std(mp_arr)), 4) if len(mp_arr) > 0 else None,
+                "p10": round(float(np.percentile(mp_arr, 10)), 4) if len(mp_arr) >= 5 else None,
+                "p90": round(float(np.percentile(mp_arr, 90)), 4) if len(mp_arr) >= 5 else None,
+            },
+        }
+    return result
+
+
 def main() -> None:
     print("=" * 70)
-    print("  306# 299# 観察比較 深堀り分析")
+    print("  309# 306# 深堀り分析 (307#/308# レビュー反映版)")
     print("=" * 70)
 
     records = load_records()
@@ -484,7 +619,7 @@ def main() -> None:
 
     # 7. 約定速度
     print("\n" + "=" * 70)
-    print("  §7 約定速度分析")
+    print("  §7 約定速度分析 (queue_wait_sec)")
     print("=" * 70)
     speed = fill_speed_analysis(records)
     for side in ["sell", "buy"]:
@@ -493,8 +628,46 @@ def main() -> None:
             print(f"  [{side.upper()}] n={d['n']}, mean={d['mean_sec']:.1f}s, "
                   f"median={d['median_sec']:.1f}s, p90={d['p90_sec']:.1f}s, "
                   f"fast_fill(<30s)={d['fast_fill_rate']:.4f}")
+        else:
+            print(f"  [{side.upper()}] n=0")
 
-    # 8. 全結果 JSON 出力
+    # 8. 交絡分離: decision_path / balance_forced_switch (307# F2)
+    print("\n" + "=" * 70)
+    print("  §8 交絡分離: decision_path / balance_forced_switch (307# F2)")
+    print("=" * 70)
+    dp_result = decision_path_analysis(records)
+    for side in ["sell", "buy"]:
+        d = dp_result[side]
+        print(f"\n  [{side.upper()}]")
+        print(f"    forced_switch: n={d['forced_switch']['n']}, "
+              f"pnl30={d['forced_switch']['avg_pnl30']}, AS={d['forced_switch']['as_rate']:.4f}")
+        print(f"    normal: n={d['normal']['n']}, "
+              f"pnl30={d['normal']['avg_pnl30']}, AS={d['normal']['as_rate']:.4f}")
+        for path, stats in d["by_decision_path"].items():
+            print(f"    path={path}: n={stats['n']}, "
+                  f"pnl30={stats['avg_pnl30']}, AS={stats['as_rate']:.4f}")
+
+    # 9. 新可観測性フィールド (309# / 307# F1)
+    print("\n" + "=" * 70)
+    print("  §9 306# 新可観測性 (offset_stages / queue / microprice)")
+    print("=" * 70)
+    obs_result = new_observability_analysis(records)
+    for side in ["sell", "buy"]:
+        d = obs_result[side]
+        print(f"\n  [{side.upper()}]")
+        stages = d["offset_stages"]
+        print(f"    offset_stages: {stages['n_records_with_stages']} records")
+        for stage, st in stages["per_stage"].items():
+            print(f"      {stage}: n={st['n']}, mean={st['mean']:.6f}, p50={st['p50']:.6f}")
+        q = d["queue_depth_ahead"]
+        print(f"    queue_depth_ahead: n={q['n']}, mean={q.get('mean')}, p90={q.get('p90')}")
+        fp = d["queue_fill_prob_est"]
+        print(f"    queue_fill_prob_est: n={fp['n']}, mean={fp.get('mean')}, p50={fp.get('p50')}")
+        mp = d["microprice_bias_bps"]
+        print(f"    microprice_bias: n={mp['n']}, mean={mp.get('mean')}, "
+              f"std={mp.get('std')}, p10={mp.get('p10')}, p90={mp.get('p90')}")
+
+    # 10. 全結果 JSON 出力
     full_result = {
         "regime_matched": regime_results,
         "as_deep_dive": as_result,
@@ -502,6 +675,8 @@ def main() -> None:
         "pnl_shape": shape,
         "weekly_trend": weekly,
         "fill_speed": speed,
+        "decision_path": dp_result,
+        "new_observability": obs_result,
     }
     out_path = Path("analysis_results/306_deep_dive.json")
     out_path.parent.mkdir(exist_ok=True)

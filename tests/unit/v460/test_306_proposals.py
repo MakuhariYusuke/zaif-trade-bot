@@ -108,21 +108,22 @@ class TestMicropriceBiasBps:
 class TestMicropriceSideSelector:
     """SideSelector microprice 統合テスト."""
 
-    def test_microprice_overrides_to_sell(self) -> None:
-        """Positive bias above threshold → sell."""
-        from scripts.v460.lib.side_selector import SideSelector
-        config = _make_config(microprice_side_enabled=True, microprice_side_threshold=0.3)
-        ss = SideSelector(config)
-        side = ss.next(microprice_bias_bps=1.0)  # > 0.3 → sell
-        assert side == "sell"
-
     def test_microprice_overrides_to_buy(self) -> None:
-        """Negative bias below -threshold → buy."""
+        """309# Positive bias above threshold → buy (safety mode: buy pressure → buy)."""
         from scripts.v460.lib.side_selector import SideSelector
         config = _make_config(microprice_side_enabled=True, microprice_side_threshold=0.3)
         ss = SideSelector(config)
-        side = ss.next(microprice_bias_bps=-1.0)  # < -0.3 → buy
+        side = ss.next(microprice_bias_bps=1.0)  # > 0.3 → buy (safety)
         assert side == "buy"
+
+    def test_microprice_overrides_to_sell(self) -> None:
+        """309# Negative bias below -threshold → sell (safety mode: sell pressure → sell)."""
+        from scripts.v460.lib.side_selector import SideSelector
+        config = _make_config(microprice_side_enabled=True, microprice_side_threshold=0.3)
+        ss = SideSelector(config)
+        # last_side=None → base_side="buy", bias < -0.3 → sell
+        side = ss.next(microprice_bias_bps=-1.0)  # < -0.3 → sell
+        assert side == "sell"
 
     def test_microprice_within_threshold_no_override(self) -> None:
         """Within threshold → no microprice override (alternation used)."""
@@ -145,24 +146,24 @@ class TestDynamicCycleInterval:
     @staticmethod
     def _compute(base: float, sigma: float, sigma_ref: float = 0.0005,
                  min_sec: float = 60.0, max_sec: float = 300.0) -> float:
-        """Pure computation extracted from _compute_dynamic_interval."""
+        """309# Pure computation: σ/σ_ref (high vol → longer, low vol → shorter)."""
         if sigma <= 0:
             return base
-        ratio = sigma_ref / sigma
+        ratio = sigma / sigma_ref
         adjusted = base * ratio
         return max(min_sec, min(adjusted, max_sec))
 
-    def test_high_sigma_shortens_interval(self) -> None:
-        """σ > σ_ref → interval shortened."""
+    def test_high_sigma_lengthens_interval(self) -> None:
+        """309# σ > σ_ref → interval lengthened (Cooldown)."""
         result = self._compute(120.0, sigma=0.001, sigma_ref=0.0005,
                                min_sec=30.0, max_sec=300.0)
-        assert result == 60.0, f"Expected 60.0, got {result}"
+        assert result == 240.0, f"Expected 240.0, got {result}"
 
-    def test_low_sigma_lengthens_interval(self) -> None:
-        """σ < σ_ref → interval lengthened."""
+    def test_low_sigma_shortens_interval(self) -> None:
+        """309# σ < σ_ref → interval shortened (積極参加)."""
         result = self._compute(120.0, sigma=0.00025, sigma_ref=0.0005,
                                min_sec=60.0, max_sec=300.0)
-        assert result == 240.0, f"Expected 240.0, got {result}"
+        assert result == 60.0, f"Expected 60.0, got {result}"
 
     def test_sigma_zero_returns_base(self) -> None:
         """σ=0 → base_interval unchanged."""
@@ -170,14 +171,14 @@ class TestDynamicCycleInterval:
         assert result == 120.0
 
     def test_clamped_to_min(self) -> None:
-        """Very high σ → clamped to min_sec."""
-        result = self._compute(120.0, sigma=0.05, sigma_ref=0.0005,
+        """309# Very low σ → clamped to min_sec."""
+        result = self._compute(120.0, sigma=0.000001, sigma_ref=0.0005,
                                min_sec=60.0, max_sec=300.0)
         assert result == 60.0  # clamped to min
 
     def test_clamped_to_max(self) -> None:
-        """Very low σ → clamped to max_sec."""
-        result = self._compute(120.0, sigma=0.000001, sigma_ref=0.0005,
+        """309# Very high σ → clamped to max_sec."""
+        result = self._compute(120.0, sigma=0.05, sigma_ref=0.0005,
                                min_sec=60.0, max_sec=300.0)
         assert result == 300.0  # clamped to max
 
@@ -373,12 +374,12 @@ class TestParkinsonsigmaYAML:
         assert data["sigma_parkinson"]["enabled"] is True
 
     def test_yaml_has_microprice_side(self) -> None:
-        """fill_test.yaml に microprice_side が存在."""
+        """fill_test.yaml に microprice_side が存在 (309# で disabled)."""
         import yaml
         with open("configs/v460/fill_test.yaml", encoding="utf-8") as f:
             data = yaml.safe_load(f)
         assert "microprice_side" in data
-        assert data["microprice_side"]["enabled"] is True
+        assert data["microprice_side"]["enabled"] is False  # 309# 理論倒錯修正で無効化
 
     def test_yaml_has_dynamic_cycle_interval(self) -> None:
         """fill_test.yaml に dynamic_cycle_interval が存在."""

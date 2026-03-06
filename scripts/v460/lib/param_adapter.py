@@ -137,7 +137,7 @@ def compute_adaptation(
                 action="increase",
                 reason=(
                     f"EV 負 ({ev:+.2f}bps) + AS 超過 + fill_rate 低下 "
-                    f"→ offset 拡大で AS 回避 (306# A1)"
+                    f"→ liveness 優先 — deadlock break (309# F6 修正)"
                 ),
                 fill_rate=fill_rate,
                 as_ratio=as_ratio,

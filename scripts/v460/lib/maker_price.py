@@ -447,8 +447,11 @@ class MakerPriceCalculator:
         microprice = (Pb·Qa + Pa·Qb) / (Qa + Qb)
         bias_bps = (microprice - mid) / mid × 10_000
 
-        正 → 買い圧力 (bid 厚い → microprice > mid → sell 有利)
-        負 → 売り圧力 (ask 厚い → microprice < mid → buy 有利)
+        正 → 買い圧力 (bid 厚い → microprice > mid)
+        負 → 売り圧力 (ask 厚い → microprice < mid)
+        309# 注: 旧306#では「sell有利」としていたが、308#レビューにより
+        maker理論的には buy pressure 時の sell は AS seeker と判定。
+        Side 選択では safety モード (同方向) に修正済。
 
         OB キャッシュ (_last_ob_snapshot) を使用 — 追加 API 呼出しなし。
         """
