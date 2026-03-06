@@ -130,6 +130,12 @@ class ABJudgmentResult:
     pnl30_p_value: float | None = None
     pnl30_effect_size: float | None = None  # Cohen's d
 
+    # 297# F-4: ノンパラメトリック検定結果
+    mann_whitney_p_value: float | None = None
+    cliffs_delta_value: float | None = None
+    cliffs_delta_interpretation: str = ""
+    holm_significant: list[bool] | None = None  # [ttest, mann_whitney]
+
     def summary(self) -> str:
         """人間可読サマリ."""
         lines = [
@@ -141,9 +147,21 @@ class ABJudgmentResult:
             flag = "✅" if c.verdict == Verdict.PASS else ("⚠️" if c.verdict == Verdict.INSUFFICIENT else "❌")
             lines.append(f"  {flag} {c.name}: {c.detail}")
         if self.pnl30_p_value is not None:
+            holm_t = ""
+            if self.holm_significant is not None and len(self.holm_significant) >= 1:
+                holm_t = " (Holm ✓)" if self.holm_significant[0] else " (Holm ✗)"
             lines.append(
-                f"  [stat] pnl30 p={self.pnl30_p_value:.4f}, "
+                f"  [stat] Welch t: p={self.pnl30_p_value:.4f}{holm_t}, "
                 f"Cohen's d={self.pnl30_effect_size:.3f}"
+            )
+        if self.mann_whitney_p_value is not None:
+            holm_mw = ""
+            if self.holm_significant is not None and len(self.holm_significant) >= 2:
+                holm_mw = " (Holm ✓)" if self.holm_significant[1] else " (Holm ✗)"
+            lines.append(
+                f"  [stat] Mann-Whitney: p={self.mann_whitney_p_value:.4f}{holm_mw}, "
+                f"Cliff's δ={self.cliffs_delta_value:.3f} "
+                f"({self.cliffs_delta_interpretation})"
             )
         return "\n".join(lines)
 
@@ -218,6 +236,112 @@ def _cohen_d(sample_a: np.ndarray, sample_b: np.ndarray) -> float:
     if pooled <= 0.0 or not math.isfinite(pooled):
         return 0.0
     return (mean_b - mean_a) / pooled
+
+
+# --- 297# F-4: ノンパラメトリック検定 + 多重比較補正 ---
+# gate_c3_comparison.py から cherry-pick (pure Python, scipy 不要)
+
+
+def _norm_cdf(z: float) -> float:
+    """標準正規分布の CDF (Abramowitz & Stegun 7.1.26 erfc 近似)."""
+    a1, a2, a3 = 0.254829592, -0.284496736, 1.421413741
+    a4, a5 = -1.453152027, 1.061405429
+    p = 0.3275911
+    x = abs(z) / math.sqrt(2)
+    t = 1.0 / (1.0 + p * x)
+    erfc_val = (
+        ((((a5 * t + a4) * t) + a3) * t + a2) * t + a1
+    ) * t * math.exp(-x * x)
+    if z >= 0:
+        return 1.0 - 0.5 * erfc_val
+    return 0.5 * erfc_val
+
+
+def _mann_whitney_u(
+    x: np.ndarray, y: np.ndarray,
+) -> tuple[float, float]:
+    """Mann-Whitney U 検定 (正規近似, O(n*m)).
+
+    Returns:
+        (U 統計量, 近似 p 値)
+    """
+    nx, ny = len(x), len(y)
+    if nx == 0 or ny == 0:
+        return 0.0, 1.0
+
+    # 全ペア比較
+    u = 0.0
+    for xi in x:
+        for yi in y:
+            if xi > yi:
+                u += 1
+            elif xi == yi:
+                u += 0.5
+
+    mu = nx * ny / 2
+    sigma = math.sqrt(nx * ny * (nx + ny + 1) / 12)
+    if sigma <= 0.0:
+        return u, 1.0
+
+    z = (u - mu) / sigma
+    p_value = 2.0 * (1.0 - _norm_cdf(abs(z)))
+    return u, p_value
+
+
+def _cliffs_delta(
+    x: np.ndarray, y: np.ndarray,
+) -> tuple[float, str]:
+    """Cliff's Delta (ノンパラメトリック効果量).
+
+    Returns:
+        (delta, 解釈) — 解釈は negligible / small / medium / large
+    """
+    nx, ny = len(x), len(y)
+    if nx == 0 or ny == 0:
+        return 0.0, "negligible"
+
+    more = 0
+    less = 0
+    for xi in x:
+        for yi in y:
+            if xi > yi:
+                more += 1
+            elif xi < yi:
+                less += 1
+
+    delta = (more - less) / (nx * ny)
+    abs_d = abs(delta)
+    if abs_d < 0.147:
+        interp = "negligible"
+    elif abs_d < 0.33:
+        interp = "small"
+    elif abs_d < 0.474:
+        interp = "medium"
+    else:
+        interp = "large"
+    return delta, interp
+
+
+def _holm_bonferroni(
+    p_values: list[float], alpha: float = 0.05,
+) -> list[bool]:
+    """Holm-Bonferroni 多重比較補正.
+
+    Returns:
+        各検定が alpha 水準で有意かどうかのリスト
+    """
+    n = len(p_values)
+    if n == 0:
+        return []
+    sorted_idx = sorted(range(n), key=lambda i: p_values[i])
+    significant = [False] * n
+    for rank, idx in enumerate(sorted_idx):
+        adjusted_alpha = alpha / (n - rank)
+        if p_values[idx] <= adjusted_alpha:
+            significant[idx] = True
+        else:
+            break
+    return significant
 
 
 def _compute_statistical_comparison(
@@ -432,6 +556,27 @@ def evaluate_ab_variant(
         p_value, effect_size = _compute_statistical_comparison(c_pnl, v_pnl)
         result.pnl30_p_value = p_value
         result.pnl30_effect_size = effect_size
+
+        # 297# F-4: ノンパラメトリック検定 + Holm-Bonferroni 補正
+        try:
+            _, mw_p = _mann_whitney_u(c_pnl, v_pnl)
+            cd_val, cd_interp = _cliffs_delta(c_pnl, v_pnl)
+            if math.isfinite(mw_p):
+                result.mann_whitney_p_value = mw_p
+            if math.isfinite(cd_val):
+                result.cliffs_delta_value = cd_val
+                result.cliffs_delta_interpretation = cd_interp
+
+            # Holm-Bonferroni: 2 検定 (Welch t + Mann-Whitney) を補正
+            collected_p: list[float] = []
+            if p_value is not None and math.isfinite(p_value):
+                collected_p.append(p_value)
+            if result.mann_whitney_p_value is not None:
+                collected_p.append(result.mann_whitney_p_value)
+            if len(collected_p) >= 2:
+                result.holm_significant = _holm_bonferroni(collected_p)
+        except Exception as e:
+            logger.debug("Nonparametric test failed: %s", e)
 
     # --- 総合判定 ---
     verdicts = [c.verdict for c in result.criteria]

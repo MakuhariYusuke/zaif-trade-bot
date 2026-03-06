@@ -29,6 +29,10 @@ from scripts.v460.lib.ab_judgment import (
     evaluate_trending_down_sell,
     _compute_metrics,
     _extract_pnl30_array,
+    _cliffs_delta,
+    _holm_bonferroni,
+    _mann_whitney_u,
+    _norm_cdf,
 )
 from ztb.io.json_io import JSONObject
 from ztb.utils.dataclass_utils import filter_known_dataclass_fields
@@ -1043,3 +1047,165 @@ class TestEmptyPnlInsufficient:
         )
         result = evaluate_ab_variant(sell, buy, criteria=criteria)
         assert not any(c.name == "pnl_data" for c in result.criteria)
+
+
+# ======================================================================
+# 297# F-4: ノンパラメトリック検定 + 多重比較補正テスト
+# ======================================================================
+
+
+class TestNormCdf:
+    """_norm_cdf 近似テスト."""
+
+    def test_standard_values(self) -> None:
+        assert abs(_norm_cdf(0.0) - 0.5) < 1e-6
+        assert abs(_norm_cdf(1.96) - 0.975) < 1e-3
+        assert abs(_norm_cdf(-1.96) - 0.025) < 1e-3
+
+    def test_extreme_values(self) -> None:
+        assert _norm_cdf(5.0) > 0.999
+        assert _norm_cdf(-5.0) < 0.001
+
+
+class TestMannWhitneyU:
+    """_mann_whitney_u テスト."""
+
+    def test_identical_samples(self) -> None:
+        x = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+        _, p = _mann_whitney_u(x, x.copy())
+        # 同一分布 → p値は大きい (有意差なし)
+        assert p > 0.5
+
+    def test_distinct_samples(self) -> None:
+        x = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+        y = np.array([10.0, 11.0, 12.0, 13.0, 14.0])
+        _, p = _mann_whitney_u(x, y)
+        assert p < 0.05
+
+    def test_empty_input(self) -> None:
+        u, p = _mann_whitney_u(np.array([]), np.array([1, 2, 3]))
+        assert u == 0.0
+        assert p == 1.0
+
+    def test_returns_u_statistic(self) -> None:
+        x = np.array([1.0, 2.0, 3.0])
+        y = np.array([4.0, 5.0, 6.0])
+        u, p = _mann_whitney_u(x, y)
+        # x < y for all pairs → u = 0 (x wins 0 pairs)
+        assert u == 0.0
+        assert p < 0.05
+
+
+class TestCliffsDelta:
+    """_cliffs_delta テスト."""
+
+    def test_large_effect(self) -> None:
+        x = np.array([10.0, 11.0, 12.0, 13.0, 14.0])
+        y = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+        delta, interp = _cliffs_delta(x, y)
+        assert delta == 1.0
+        assert interp == "large"
+
+    def test_negligible_effect(self) -> None:
+        rng = np.random.default_rng(42)
+        x = rng.normal(0, 1, 100)
+        y = rng.normal(0, 1, 100)
+        delta, interp = _cliffs_delta(x, y)
+        assert abs(delta) < 0.33
+        assert interp in ("negligible", "small")
+
+    def test_empty_input(self) -> None:
+        delta, interp = _cliffs_delta(np.array([]), np.array([1.0]))
+        assert delta == 0.0
+        assert interp == "negligible"
+
+    def test_symmetric(self) -> None:
+        x = np.array([1.0, 2.0, 3.0])
+        y = np.array([4.0, 5.0, 6.0])
+        d1, _ = _cliffs_delta(x, y)
+        d2, _ = _cliffs_delta(y, x)
+        assert abs(d1 + d2) < 1e-10
+
+
+class TestHolmBonferroni:
+    """_holm_bonferroni テスト."""
+
+    def test_all_significant(self) -> None:
+        result = _holm_bonferroni([0.001, 0.002], alpha=0.05)
+        assert result == [True, True]
+
+    def test_none_significant(self) -> None:
+        result = _holm_bonferroni([0.5, 0.6], alpha=0.05)
+        assert result == [False, False]
+
+    def test_partial_significance(self) -> None:
+        # 0.01 < 0.025 (=0.05/2) → 有意
+        # 0.04 < 0.05  (=0.05/1)  → 有意
+        result = _holm_bonferroni([0.01, 0.04], alpha=0.05)
+        assert result == [True, True]
+
+    def test_holm_step_down_rejection(self) -> None:
+        # 0.03 < 0.025 (=0.05/2) → 棄却失敗 → 以降も棄却しない
+        result = _holm_bonferroni([0.03, 0.04], alpha=0.05)
+        assert result == [False, False]
+
+    def test_empty(self) -> None:
+        assert _holm_bonferroni([]) == []
+
+    def test_single_p_value(self) -> None:
+        assert _holm_bonferroni([0.01]) == [True]
+        assert _holm_bonferroni([0.10]) == [False]
+
+
+class TestF4Integration:
+    """297# F-4: evaluate_ab_variant へのノンパラメトリック検定統合テスト."""
+
+    def test_nonparametric_fields_populated(self) -> None:
+        """十分なサンプルでノンパラメトリック結果が格納される."""
+        variant = _make_records(100, fill_rate=0.8, pnl_mean=1.0)
+        control = _make_records(80, fill_rate=0.8, pnl_mean=-0.5)
+        criteria = ABJudgmentCriteria(
+            min_filled_records=10,
+            min_control_filled_records=5,
+            min_calendar_days=1,
+            exclude_regimes=[],
+        )
+        result = evaluate_ab_variant(variant, control, criteria=criteria)
+        # Mann-Whitney 結果が格納される
+        assert result.mann_whitney_p_value is not None
+        assert result.cliffs_delta_value is not None
+        assert result.cliffs_delta_interpretation != ""
+        # Holm-Bonferroni が適用される
+        assert result.holm_significant is not None
+        assert len(result.holm_significant) == 2
+
+    def test_insufficient_sample_no_nonparametric(self) -> None:
+        """サンプル不足ではノンパラメトリック結果が None."""
+        variant = _make_records(5, fill_rate=1.0, pnl_mean=1.0)
+        control = _make_records(5, fill_rate=1.0, pnl_mean=-0.5)
+        criteria = ABJudgmentCriteria(
+            min_filled_records=3,
+            min_control_filled_records=3,
+            min_calendar_days=1,
+            exclude_regimes=[],
+        )
+        result = evaluate_ab_variant(variant, control, criteria=criteria)
+        # n < 10 → 統計検定スキップ
+        assert result.mann_whitney_p_value is None
+        assert result.cliffs_delta_value is None
+
+    def test_summary_includes_nonparametric(self) -> None:
+        """summary() にノンパラメトリック結果が含まれる."""
+        variant = _make_records(100, fill_rate=0.8, pnl_mean=1.0)
+        control = _make_records(80, fill_rate=0.8, pnl_mean=-0.5)
+        criteria = ABJudgmentCriteria(
+            min_filled_records=10,
+            min_control_filled_records=5,
+            min_calendar_days=1,
+            exclude_regimes=[],
+        )
+        result = evaluate_ab_variant(variant, control, criteria=criteria)
+        summary = result.summary()
+        assert "Mann-Whitney" in summary
+        assert "Cliff's δ" in summary
+        assert "Holm" in summary
