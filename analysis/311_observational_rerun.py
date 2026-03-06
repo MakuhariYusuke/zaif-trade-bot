@@ -22,10 +22,6 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 from scripts.v460.lib.ab_judgment import (
     ABJudgmentCriteria,
     evaluate_ab_variant,
-    _block_bootstrap_mean_diff,
-    _matched_temporal_comparison,
-    _mann_whitney_u,
-    _cliffs_delta,
 )
 from ztb.metrics.fill_quality import (
     iter_fill_record_objects_glob,
@@ -165,20 +161,18 @@ def decision_path_analysis(records: list[dict]) -> dict:
     result = {}
     for side in ["sell", "buy"]:
         filled = extract_filled(records, side=side)
-        by_path: dict[str, list[float]] = defaultdict(list)
+        by_path: dict[str, list[dict]] = defaultdict(list)
         for r in filled:
             path = str(r.get("decision_path") or "unknown")
-            pnl = safe_to_finite(r.get("post_fill_30s_pnl"))
-            if pnl is not None:
-                by_path[path].append(pnl)
+            by_path[path].append(r)
         path_stats = {}
-        for path, pnls in sorted(by_path.items()):
-            arr = np.array(pnls)
+        for path, recs in sorted(by_path.items()):
+            arr = pnl_array(recs)
             path_stats[path] = {
-                "n": len(pnls),
-                "mean_pnl": round(float(np.mean(arr)), 4),
-                "p10": round(float(np.percentile(arr, 10)), 4) if len(pnls) >= 5 else None,
-                "as_rate": round(as_rate([r for r in filled if str(r.get("decision_path") or "unknown") == path]), 4),
+                "n": len(recs),
+                "mean_pnl": round(float(np.mean(arr)), 4) if len(arr) > 0 else None,
+                "p10": round(float(np.percentile(arr, 10)), 4) if len(arr) >= 5 else None,
+                "as_rate": round(as_rate(recs), 4),
             }
         result[side] = path_stats
     return result
@@ -233,6 +227,10 @@ def sell_hour_boost_analysis(records: list[dict]) -> dict:
     def _stats(recs: list[dict]) -> dict:
         arr = pnl_array(recs)
         n = len(arr)
+        offsets = [
+            v for r in recs
+            if (v := safe_to_finite(r.get("effective_offset_used"))) is not None
+        ]
         return {
             "n": len(recs),
             "n_with_pnl": n,
@@ -240,10 +238,7 @@ def sell_hour_boost_analysis(records: list[dict]) -> dict:
             "p10": round(float(np.percentile(arr, 10)), 4) if n >= 5 else None,
             "p50": round(float(np.median(arr)), 4) if n > 0 else None,
             "as_rate": round(as_rate(recs), 4),
-            "mean_offset": round(float(np.mean([
-                safe_to_finite(r.get("effective_offset_used")) or 0.0
-                for r in recs
-            ])), 6) if recs else None,
+            "mean_offset": round(float(np.mean(offsets)), 6) if offsets else None,
         }
 
     return {
@@ -472,21 +467,31 @@ def derive_improvement_proposals(
                     "source": f"per_regime[{regime}]",
                 })
 
-    # 3. AS cost > spread capture
+    # 3. Negative spread capture or positive AS cost
     # 314# T0-2: efficiency ベースの P0 判定を廃止 (312# F2).
-    # spread_capture 式が修正されたため、P1 としてのみ報告.
+    # 315# fix: 両方が負の場合の false positive を排除.
+    # AS cost > 0 (正の逆選択コスト) がある場合のみ報告.
     for side in ["sell", "buy"]:
         d = decomp.get(side, {})
         sc_mean = d.get("spread_capture_bps", {}).get("mean")
         as_mean = d.get("as_cost_bps", {}).get("mean")
-        if sc_mean is not None and as_mean is not None and as_mean > sc_mean:
-            proposals.append({
-                "id": f"D-{side}",
-                "priority": "P1",
-                "title": f"{side} AS cost ({as_mean:.2f}) > spread capture ({sc_mean:.2f})",
-                "detail": f"AS exceeds spread capture by {as_mean - sc_mean:.2f} bps",
-                "source": "spread_as_decomposition",
-            })
+        if sc_mean is not None and as_mean is not None:
+            if sc_mean < 0:
+                proposals.append({
+                    "id": f"D-{side}-sc",
+                    "priority": "P1",
+                    "title": f"{side} spread capture ({sc_mean:.2f} bps) が負",
+                    "detail": f"entry 時点で mid より不利な価格で約定 (検出レイテンシバイアス)",
+                    "source": "spread_as_decomposition",
+                })
+            elif as_mean > 0 and as_mean > sc_mean:
+                proposals.append({
+                    "id": f"D-{side}",
+                    "priority": "P1",
+                    "title": f"{side} AS cost ({as_mean:.2f}) > spread capture ({sc_mean:.2f})",
+                    "detail": f"AS exceeds spread capture by {as_mean - sc_mean:.2f} bps",
+                    "source": "spread_as_decomposition",
+                })
 
     # 4. None regime degradation
     none_pnl = none_regime.get("none_overall", {}).get("mean_pnl")
@@ -607,7 +612,8 @@ def main() -> None:
     for side in ["sell", "buy"]:
         print(f"\n  [{side.upper()}]")
         for path, stats in dp[side].items():
-            print(f"    {path}: n={stats['n']}, pnl={stats['mean_pnl']:+.4f}, AS={stats['as_rate']}")
+            pnl_s = f"{stats['mean_pnl']:+.4f}" if stats['mean_pnl'] is not None else "N/A"
+            print(f"    {path}: n={stats['n']}, pnl={pnl_s}, AS={stats['as_rate']:.1%}")
 
     # --- §5: Sell Hour Boost ---
     print("\n" + "=" * 70)
@@ -725,7 +731,7 @@ def main() -> None:
         "sell_hour_boost": hb,
         "none_regime": nr,
         "hourly_pnl_as": hourly,
-        "offset_quintiles": oq,
+        "mid_distance_quintiles": oq,
         "improvement_proposals": proposals,
     }
     out_path = Path("analysis_results/311_observational_rerun.json")

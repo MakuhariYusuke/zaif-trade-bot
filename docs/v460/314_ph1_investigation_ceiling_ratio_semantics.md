@@ -1,6 +1,6 @@
 # 314# Phase 1: Ceiling / Ratio Semantics 調査報告
 
-**実施日**: 2025-07-05
+**実施日**: 2026-03-07
 **対象Issue**: 312# B2 (ceiling不適用疑惑), 313# R2 (ratio意味不一致), 314# B1 (ratio方向二重性)
 
 ---
@@ -158,6 +158,32 @@ post-ceiling multiplier の振る舞い自体は **意図通り**:
 
 **問題は ratio の記録方法のみ**。発注価格自体は合理的。
 
+#### 314# B1 (maker_price.py 内部パイプライン) への見解
+
+314# 計画書 §4 B1 は maker_price.py 内部の boost ステージ（VG, regime, sell_hour）が
+ratio を増加させ「防御のつもりで攻撃的にしている」と指摘した。
+
+これは **概念的には正しい**: maker_price.py 内では ratio↑ = mid 接近 = アグレッシブ。
+しかし **実務的には ceiling (0.15) が全ステージの増加を制限** し、その後
+fill_cycle_executor の非 aggressive multiplier が価格をさらに保守方向に押すため、
+最終的な発注価格は十分に保守的。
+
+B1 の方向修正（全 boost を ratio↓ 方向に反転）は理論的には正しいが、
+現行の ceiling + fill_cycle_executor 補償により実害がないため **NOT RECOMMENDED**。
+
+#### sell_offset_floor (0.30) vs offset_ceiling_ratio (0.15) の矛盾
+
+**315# 追加発見**: YAML で `sell_guard.offset_floor: 0.30`、`offset_ceiling_ratio: 0.15`。
+パイプライン順序は floor → ... → ceiling のため、ceiling が常に勝ち **floor は死んだ設定**。
+
+- sell_floor (246#): ratio ≥ 0.30 を保証（最低限のアグレッシブさ確保）
+- ceiling (306#): ratio ≤ 0.15 で制限（過剰アグレッシブ防止）
+- 0.30 > 0.15 のため floor は効果なし
+
+**影響**: 実害なし（ceiling が勝つ = より保守的 = AS 保護）。
+ただし設定の意図が矛盾しており、将来の混乱源になり得る。
+floor と ceiling の関係を YAML コメントで明示するか、ceiling を floor 以上に引き上げるべき。
+
 ### 4.2 要修正箇所（計測系）
 
 | 対象 | 問題 | 修正方針 |
@@ -209,13 +235,17 @@ post-ceiling multiplier の振る舞い自体は **意図通り**:
 
 | 指標 | 旧値（バグ有） | 新値（修正後） | 変化 |
 |------|---------------|---------------|------|
-| Sell spread_capture | +8.30 bps | **-0.502 bps** | -8.80 bps |
-| Buy spread_capture | +1.20 bps | **-0.485 bps** | -1.69 bps |
-| Sell AS cost | +8.74 bps | **-0.121 bps** | -8.86 bps |
-| Buy AS cost | +1.58 bps | **-0.180 bps** | -1.76 bps |
-| Sell efficiency | 95.0% → -3.8% | **76.0%** | 根本的に異なる |
-| Buy efficiency | 77.5% → -25.8% | **63.0%** | 根本的に異なる |
+| Sell spread_capture | +0.862 bps | **-0.502 bps** | -1.36 bps |
+| Buy spread_capture | +0.278 bps | **-0.485 bps** | -0.76 bps |
+| Sell AS cost | +1.141 bps | **-0.121 bps** | -1.26 bps |
+| Buy AS cost | +0.572 bps | **-0.180 bps** | -0.75 bps |
+| Sell efficiency | -32.4% | **76.0%** | 根本的に異なる |
+| Buy efficiency | -105.7% | **63.0%** | 根本的に異なる |
 
-**解釈**: 旧式の「spread capture = 8.3 bps」は ratio の膨張による完全な artifact。実際は両サイドとも検出レイテンシにより -0.5 bps の negative spread capture。efficiency は positive（76%/63%）だが、分子・分母ともに negative であるため「損失の76%が entry 由来」という意味。
+> **注**: 314# 計画書の「8.3 倍過大評価」は ratio 0.446 と (0.5-0.446)=0.054 の比率
+> であり、bps 値ではない。旧式 `sc_bps = spread_bps × ratio` の実際の出力は
+> 上記の通り +0.862 bps（ratio の膨張で不正確だが、10 bps 級ではなかった）。
+
+**解釈**: 旧式は ratio の膨張により spread capture を過大評価（+0.9 bps を +0.3 bps の PnL と比較 → "capture は十分" と誤認）。修正後は検出レイテンシにより -0.5 bps の negative spread capture が明らかに。efficiency が正（76%/63%）なのは分子・分母ともに負であるため「損失の76%が entry 由来」の意味。
 
 post-310# の fill data が蓄積され次第、`--git-sha dcc3064` で 310# 単独の効果を検証可能。
