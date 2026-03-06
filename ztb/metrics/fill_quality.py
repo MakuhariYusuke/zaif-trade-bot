@@ -164,6 +164,10 @@ class FillRecord:
     # regime_observation_count: detector の蓄積観測数。
     # < window (通常20) なら warmup 中、>= window なら成熟 unknown (低信頼度)
     regime_observation_count: int | None = None   # detector observation count at order time
+    # ---- 319# S-3: mid_at_order (316# S-3: spread capture 精度向上) ----
+    # 注文発行時の mid price。mid_at_fill (post-fill 測定時の mid) との差で
+    # 検出レイテンシバイアスを分離し、spread capture 計算の精度を向上。
+    mid_at_order: float | None = None             # mid price at order submission
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

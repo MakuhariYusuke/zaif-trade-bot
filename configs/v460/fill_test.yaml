@@ -451,6 +451,9 @@ buy_as_guard:
 # ---- 088# sell 専用ハードガード ----
 sell_guard:
   max_spread_jpy: 5000.0       # 168# P2-C1: 4000→5000。165# SO-1 offset_floor 0.20 で保護強化済 (prev: 085# 4677=-7.37bps)
+  # 319# C-1: ceiling (0.15) > floor (0.30) のため floor は現在無効 (ceiling が優先)
+  # ceiling を 0.30 以上に引き上げた場合に自動的に floor が有効化される
+  # 全 sell パイプラインステージ (regime boost, ranging discount, VG, hour boost 等) は ceiling で 0.15 にクランプされる
   offset_floor: 0.30           # 246# 0.20→0.30 (Glosten-Milgrom: sell AS premium 増額。245#分析: sell pass_pnl=-1.316bps, win_rate=34.4% DEGRADED → 防御強化)
 
 # ---- 305# Parkinson σ推定器 (Parkinson 1980) ----
@@ -505,7 +508,7 @@ offset_stage_recording:
 
 # ---- 306# Offset 天井 (300# §2.1 構造的矛盾 #2) ----
 # 全ステージが offset を拡大方向のみ → 天井で toxic fill only trap を防止
-offset_ceiling_ratio: 0.15        # offset 上限 (ratio, 0=無効)
+offset_ceiling_ratio: 0.15        # offset 上限 (ratio, 0=無効)。319# C-1: sell_guard.offset_floor(0.30)に優先 → sell側パイプライン全ステージが0.15にクランプされる
 
 # ---- 310# A: Sell AS Time-of-Day Offset Boost (307# F3, 306# H5) ----
 # 306# deep dive 実証: 高 AS 時間帯の sell offset を拡大し逆選択コストを低減
@@ -562,7 +565,7 @@ loss_control:
   sell_asymmetric_high_vol_enabled: false
   # 196# trending_sell ソフト化: hard skip → offset boost
   trending_sell_as_offset_enabled: true
-  trending_sell_offset_boost_factor: 3.0    # 246# 2.0→3.0 (Kyle 1985: trending_up sell PnL=-0.919bps worst regime。245#分析: FR=27.7%→offset boost 必要)
+  trending_sell_offset_boost_factor: 4.0    # 319# 3.0→4.0 (316# S-1: trending_up sell p10=-9.86bps 全指標最悪 → ceiling後0.15×4.0=0.60で防御強化。パイプライン側boost(1.8)はceiling(0.15)に殺されるためexecutor側で調整)
   # 253# 削除済み: balance_forced_apply_trending_offset (234# dead config → 235# TODO 解消)
   # 234# P0-A: 縮退清算モード (Kill Gate blocked + balance_forced 時)
   degraded_liquidation_enabled: true        # 縮退清算モードの有効/無効

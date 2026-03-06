@@ -307,7 +307,9 @@
 | 314 | resp | [314_ph2_resp_312_313_review_response_plan.md](314_ph2_resp_312_313_review_response_plan.md) | 312#/313# レビュー応答: 全 Finding 検証 + 盲点 4 件 (B1 ratio セマンティクス転倒, B2 ceiling 未適用) + 3 Phase 実行計画 |
 | 315 | rpt | [315_ph2_rpt_ceiling_ratio_semantics.md](315_ph2_rpt_ceiling_ratio_semantics.md) | Ceiling / Ratio Semantics 調査報告: ceiling 正常動作確認 + post-ceiling multiplier による ratio 膨張 + effective_offset_used 信頼不可 |
 | 316 | fix | [316_ph2_fix_self_review_and_observation.md](316_ph2_fix_self_review_and_observation.md) | セルフレビュー修正 6 件 + 317# 観測比較実験結果 + 先行施策 7 件 (S-1 trending_up boost, S-3 mid_at_order, S-7 テール分析) |
+| 317 | rpt | [317_ph2_rpt_observation_experiment.md](317_ph2_rpt_observation_experiment.md) | 観測比較実験報告: 全データ n=2575 + dcc3064 n=16(不足) + 構造的課題 6 件特定 |
 | 318 | fix | [318_ph2_fix_307_f5_none_regime.md](318_ph2_fix_307_f5_none_regime.md) | 307# F5 none レジーム問題修正: Passive MM 死亡バグ修正 + regime_at_order/observation_count 追加 + 分析スクリプト改善 |
+| 319 | fix/rpt | [319_ph2_fix_deep_analysis_and_s1_s3_s5_s7.md](319_ph2_fix_deep_analysis_and_s1_s3_s5_s7.md) | 深層分析: sell パイプライン全死 C-1 発見 + S-1 修正版 (boost 3.0→4.0) + S-3 mid_at_order + S-5 YAML 整合 + S-7 テール分析 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

@@ -610,6 +610,7 @@ class FillCycleExecutorMixin:
         queue_fill_prob_est: float | None = None,
         regime_at_order: str | None = None,
         regime_observation_count: int | None = None,
+        mid_at_order: float | None = None,
     ) -> FillRecord:
         """188# FillRecord を組み立てる.
 
@@ -637,6 +638,8 @@ class FillCycleExecutorMixin:
             # 318# F5-3: none regime 可観測性 (307# F5)
             "regime_at_order": regime_at_order,
             "regime_observation_count": regime_observation_count,
+            # 319# S-3: mid_at_order (316# S-3: spread capture 精度向上)
+            "mid_at_order": mid_at_order,
         }
         payload.update(
             self._build_fill_measurement_fields(
@@ -833,8 +836,12 @@ class FillCycleExecutorMixin:
         # 1. maker limit 価格算出
         spread_at_order: float | None = None
         effective_offset_ratio: float = self.config.spread_offset_ratio
+        _mid_at_order: float | None = None
         try:
             order_price, spread_at_order, effective_offset_ratio = await self._compute_maker_price(side)
+            # 319# S-3: compute() 内で算出された mid price をキャプチャ
+            # get_fallback_price() は compute() が最後にセットした _prev_mid_price を返す
+            _mid_at_order = self._maker_price.get_fallback_price()[0]
             # 234# no_feasible_quote 連続カウンタリセット (成功時)
             # 236# per-side 化
             self._consecutive_no_feasible[side] = 0
@@ -1474,6 +1481,7 @@ class FillCycleExecutorMixin:
             queue_fill_prob_est=_queue_fill_prob_est,
             regime_at_order=_regime_at_order,
             regime_observation_count=_regime_obs_count,
+            mid_at_order=_mid_at_order,
         )
 
         self._log_cycle_result(

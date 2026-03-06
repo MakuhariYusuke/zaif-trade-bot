@@ -299,6 +299,34 @@ class TestNoneRegimePassiveMM:
         assert r.regime_at_order is None
         assert r.regime_observation_count is None
 
+    def test_fill_record_has_mid_at_order(self) -> None:
+        """319# S-3: FillRecord に mid_at_order フィールドが存在し、デフォルト None."""
+        from ztb.metrics.fill_quality import FillRecord
+        import dataclasses
+
+        field_names = {f.name for f in dataclasses.fields(FillRecord)}
+        assert "mid_at_order" in field_names
+
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="sell",
+            order_price=100.0, order_quantity=0.001,
+        )
+        assert r.mid_at_order is None
+
+    def test_fill_record_mid_at_order_roundtrip(self) -> None:
+        """319# S-3: mid_at_order が to_dict / from_dict でラウンドトリップ."""
+        from ztb.metrics.fill_quality import FillRecord
+
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="sell",
+            order_price=100.0, order_quantity=0.001,
+            mid_at_order=13000000.5,
+        )
+        d = r.to_dict()
+        assert d["mid_at_order"] == 13000000.5
+        r2 = FillRecord.from_dict(d)
+        assert r2.mid_at_order == 13000000.5
+
 
 # ======================================================================
 # B/C: hot-reload 登録テスト

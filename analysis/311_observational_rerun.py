@@ -484,6 +484,159 @@ def offset_quintile_analysis(records: list[dict]) -> dict:
 
 
 # ======================================================================
+# §3.5: 319# S-7 テール損失分析 (downside_p10 改善)
+# ======================================================================
+
+def tail_loss_analysis(records: list[dict], percentile: float = 10.0) -> dict:
+    """p10 以下のテール損失を分析し、共通特徴を特定.
+
+    316# S-7: downside_p10 が全 regime で fail のため、テール事象の
+    条件付き回避ルール設計に必要な特徴を抽出する。
+
+    Args:
+        records: fill records
+        percentile: テール閾値 (default: 10 = p10 以下)
+
+    Returns:
+        side 別に tail records の特徴統計を返す dict
+    """
+    from datetime import datetime, timezone
+
+    result = {}
+    for side in ["sell", "buy"]:
+        filled = extract_filled(records, side=side)
+        arr = pnl_array(filled)
+        if len(arr) < 10:
+            result[side] = {"n": 0, "tail_n": 0, "message": "insufficient data"}
+            continue
+
+        threshold = float(np.percentile(arr, percentile))
+
+        # テール records を抽出
+        tail_records = []
+        for r in filled:
+            pnl_val = safe_to_finite(r.get("post_fill_30s_pnl"))
+            if pnl_val is not None and pnl_val <= threshold:
+                tail_records.append(r)
+
+        # --- 特徴抽出 ---
+        # Regime 分布
+        regime_counts: dict[str, int] = defaultdict(int)
+        for r in tail_records:
+            regime = str(r.get("regime") or "null")
+            regime_counts[regime] += 1
+
+        # 時間帯分布
+        hour_counts: dict[int, int] = defaultdict(int)
+        for r in tail_records:
+            ts = r.get("timestamp")
+            if ts is None:
+                continue
+            try:
+                if isinstance(ts, str):
+                    dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                elif isinstance(ts, (int, float)):
+                    dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+                else:
+                    continue
+                hour_counts[dt.hour] += 1
+            except Exception:
+                continue
+
+        # Decision path 分布
+        path_counts: dict[str, int] = defaultdict(int)
+        for r in tail_records:
+            path = r.get("decision_path", "unknown")
+            path_counts[str(path)] += 1
+
+        # Spread at order 統計
+        spreads = [
+            safe_to_finite(r.get("spread_at_order"))
+            for r in tail_records
+        ]
+        spreads = [s for s in spreads if s is not None]
+
+        # AS 率
+        tail_as = as_rate(tail_records)
+        total_as = as_rate(filled)
+
+        # 全体対比: regime over-representation
+        total_regime_counts: dict[str, int] = defaultdict(int)
+        for r in filled:
+            regime = str(r.get("regime") or "null")
+            total_regime_counts[regime] += 1
+
+        regime_overrep = {}
+        for regime, count in regime_counts.items():
+            total_count = total_regime_counts.get(regime, 0)
+            if total_count > 0:
+                tail_share = count / len(tail_records) if tail_records else 0
+                total_share = total_count / len(filled)
+                ratio = tail_share / total_share if total_share > 0 else 0
+                regime_overrep[regime] = {
+                    "tail_n": count,
+                    "total_n": total_count,
+                    "tail_share": round(tail_share, 4),
+                    "total_share": round(total_share, 4),
+                    "overrep_ratio": round(ratio, 3),
+                }
+
+        # 時間帯 over-representation
+        total_hour_counts: dict[int, int] = defaultdict(int)
+        for r in filled:
+            ts = r.get("timestamp")
+            if ts is None:
+                continue
+            try:
+                if isinstance(ts, str):
+                    dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                elif isinstance(ts, (int, float)):
+                    dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+                else:
+                    continue
+                total_hour_counts[dt.hour] += 1
+            except Exception:
+                continue
+
+        # top-3 worst hours
+        hour_detail = []
+        for h in range(24):
+            tc = tail_records
+            h_tail = hour_counts.get(h, 0)
+            h_total = total_hour_counts.get(h, 0)
+            if h_total == 0:
+                continue
+            tail_share = h_tail / len(tail_records) if tail_records else 0
+            total_share = h_total / len(filled) if filled else 0
+            ratio = tail_share / total_share if total_share > 0 else 0
+            hour_detail.append({
+                "hour": h,
+                "tail_n": h_tail,
+                "total_n": h_total,
+                "overrep_ratio": round(ratio, 3),
+            })
+        hour_detail.sort(key=lambda x: x["overrep_ratio"], reverse=True)
+
+        tail_pnl = pnl_array(tail_records)
+
+        result[side] = {
+            "n": len(filled),
+            "tail_n": len(tail_records),
+            "tail_threshold_bps": round(threshold, 4),
+            "tail_mean_pnl": round(float(np.mean(tail_pnl)), 4) if len(tail_pnl) > 0 else None,
+            "tail_as_rate": round(tail_as, 4),
+            "total_as_rate": round(total_as, 4),
+            "as_overrep": round(tail_as / total_as, 3) if total_as > 0 else None,
+            "spread_at_order_mean": round(float(np.mean(spreads)), 1) if spreads else None,
+            "spread_at_order_p90": round(float(np.percentile(spreads, 90)), 1) if len(spreads) >= 5 else None,
+            "regime_overrep": regime_overrep,
+            "top_hours": hour_detail[:5],
+            "decision_path_counts": dict(path_counts),
+        }
+    return result
+
+
+# ======================================================================
 # §4: 改善提案導出
 # ======================================================================
 
@@ -777,6 +930,46 @@ def main() -> None:
     else:
         print("  306# 結果ファイルが見つかりません")
 
+    # --- §9.5: 319# S-7 Tail Loss 分析 ---
+    print("\n" + "=" * 70)
+    print("  §9.5 319# S-7: テール損失分析 (downside_p10 改善)")
+    print("=" * 70)
+    tl = tail_loss_analysis(records)
+    for side in ["sell", "buy"]:
+        d = tl[side]
+        if d.get("message"):
+            print(f"\n  [{side.upper()}] {d['message']}")
+            continue
+        print(f"\n  [{side.upper()}] n={d['n']}, tail(p10以下): n={d['tail_n']}")
+        print(f"    tail threshold: {d['tail_threshold_bps']:+.4f} bps")
+        print(f"    tail mean pnl: {d['tail_mean_pnl']:+.4f} bps")
+        print(f"    AS率: tail={d['tail_as_rate']:.1%} vs total={d['total_as_rate']:.1%} "
+              f"(overrep={d['as_overrep']:.2f}x)")
+        if d.get("spread_at_order_mean"):
+            print(f"    spread_at_order: mean={d['spread_at_order_mean']:.0f}, "
+                  f"p90={d.get('spread_at_order_p90', 'N/A')}")
+        # Regime over-representation
+        print(f"    Regime 集中度:")
+        for regime, info in sorted(
+            d.get("regime_overrep", {}).items(),
+            key=lambda x: x[1].get("overrep_ratio", 0),
+            reverse=True,
+        ):
+            if info["tail_n"] >= 3:
+                print(f"      {regime}: tail={info['tail_n']}/{info['total_n']} "
+                      f"({info['tail_share']:.1%} vs {info['total_share']:.1%}) "
+                      f"overrep={info['overrep_ratio']:.2f}x")
+        # Top hours
+        print(f"    時間帯集中度 (top-3):")
+        for h in d.get("top_hours", [])[:3]:
+            if h["tail_n"] >= 2:
+                print(f"      UTC {h['hour']:02d}h: tail={h['tail_n']}/{h['total_n']} "
+                      f"overrep={h['overrep_ratio']:.2f}x")
+        # Decision path
+        dp_counts = d.get("decision_path_counts", {})
+        if dp_counts:
+            print(f"    Decision path: {dp_counts}")
+
     # --- §10: 改善提案 ---
     print("\n" + "=" * 70)
     print("  §10 改善提案")
@@ -803,6 +996,7 @@ def main() -> None:
         "none_regime": nr,
         "hourly_pnl_as": hourly,
         "mid_distance_quintiles": oq,
+        "tail_loss_analysis": tl,
         "improvement_proposals": proposals,
     }
     out_path = Path("analysis_results/311_observational_rerun.json")
