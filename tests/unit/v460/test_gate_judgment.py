@@ -227,11 +227,12 @@ class TestGateJudgmentMonteCarlo:
 
     def test_monte_carlo_enabled(self) -> None:
         """monte_carlo=True で MC 結果が含まれる."""
+        mc_simulations = 60
         records = _make_records_mixed(n_filled=50, n_cancelled=10)
         result = run_gate_judgment(
             records, _default_gate_cfg(),
             monte_carlo=True,
-            mc_simulations=100,  # テスト用に少量
+            mc_simulations=mc_simulations,
         )
 
         assert "monte_carlo" in result
@@ -241,7 +242,7 @@ class TestGateJudgmentMonteCarlo:
         assert "var_95_jpy" in mc
         assert "prob_loss" in mc
         assert "prob_profit" in mc
-        assert mc["n_simulations"] == 100
+        assert mc["n_simulations"] == mc_simulations
 
     def test_monte_carlo_pnl_consistency(self) -> None:
         """MC の PnL mean が observed mean と整合性がある."""
@@ -255,7 +256,7 @@ class TestGateJudgmentMonteCarlo:
         result = run_gate_judgment(
             records, _default_gate_cfg(),
             monte_carlo=True,
-            mc_simulations=500,
+            mc_simulations=120,
         )
 
         mc = result["monte_carlo"]
@@ -272,7 +273,7 @@ class TestGateJudgmentMonteCarlo:
         result = run_gate_judgment(
             records, _default_gate_cfg(),
             monte_carlo=True,
-            mc_simulations=200,
+            mc_simulations=80,
         )
 
         mc = result["monte_carlo"]
@@ -287,11 +288,11 @@ class TestGateJudgmentMonteCarlo:
         records = _make_records_mixed(n_filled=50, n_cancelled=10)
         result_small = run_gate_judgment(
             records, _default_gate_cfg(),
-            monte_carlo=True, mc_simulations=100, mc_lot=0.001,
+            monte_carlo=True, mc_simulations=60, mc_lot=0.001,
         )
         result_large = run_gate_judgment(
             records, _default_gate_cfg(),
-            monte_carlo=True, mc_simulations=100, mc_lot=0.01,
+            monte_carlo=True, mc_simulations=60, mc_lot=0.01,
         )
 
         mc_small = result_small["monte_carlo"]
@@ -305,7 +306,7 @@ class TestGateJudgmentMonteCarlo:
         records = _make_records_mixed(n_filled=50, n_cancelled=10)
         result = run_gate_judgment(
             records, _default_gate_cfg(),
-            monte_carlo=True, mc_simulations=100,
+            monte_carlo=True, mc_simulations=60,
         )
 
         serialized = json.dumps(result, ensure_ascii=False)

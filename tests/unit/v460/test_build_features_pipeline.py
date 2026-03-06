@@ -15,6 +15,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
+from scripts.v460.build_features import V460_FEATURES, build_proxy_features
+from ztb.data.market_data_collector import MarketDataCollector
+from ztb.features.microstructure import (
+    MICROSTRUCTURE_FEATURES,
+    add_microstructure_features,
+)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
@@ -42,6 +48,27 @@ def _make_ohlcv(n: int = 200) -> pd.DataFrame:
     })
 
 
+@pytest.fixture(scope="module")
+def proxy_features_default() -> pd.DataFrame:
+    """代表的な proxy feature 出力を再利用する."""
+    return build_proxy_features(_make_ohlcv(200))
+
+
+@pytest.fixture(scope="module")
+def proxy_features_zero_volume() -> pd.DataFrame:
+    """volume=0 系の出力を再利用する."""
+    df = _make_ohlcv(100)
+    df["volume"] = 0.0
+    return build_proxy_features(df)
+
+
+@pytest.fixture(scope="module")
+def proxy_window_variants() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """window 差分比較用の2出力を返す."""
+    df = _make_ohlcv(200)
+    return build_proxy_features(df, window=10), build_proxy_features(df, window=30)
+
+
 # =====================================================================
 # Proxy Mode テスト
 # =====================================================================
@@ -50,70 +77,46 @@ def _make_ohlcv(n: int = 200) -> pd.DataFrame:
 class TestBuildProxyFeatures:
     """build_proxy_features のテスト."""
 
-    def test_output_columns(self) -> None:
+    def test_output_columns(self, proxy_features_default: pd.DataFrame) -> None:
         """出力に close + V460_FEATURES 10 種がすべて含まれる."""
-        from scripts.v460.build_features import V460_FEATURES, build_proxy_features
-
-        df = _make_ohlcv(200)
-        result = build_proxy_features(df)
-
-        assert "close" in result.columns
+        assert "close" in proxy_features_default.columns
         for feat in V460_FEATURES:
-            assert feat in result.columns, f"Missing feature: {feat}"
+            assert feat in proxy_features_default.columns, f"Missing feature: {feat}"
 
     def test_output_shape(self) -> None:
         """行数が入力と一致."""
-        from scripts.v460.build_features import build_proxy_features
-
         df = _make_ohlcv(150)
         result = build_proxy_features(df)
         assert len(result) == 150
 
-    def test_no_inf_values(self) -> None:
+    def test_no_inf_values(self, proxy_features_default: pd.DataFrame) -> None:
         """無限大が含まれない."""
-        from scripts.v460.build_features import build_proxy_features
-
-        df = _make_ohlcv(200)
-        result = build_proxy_features(df)
-        numeric = result.select_dtypes(include=[np.number])
+        numeric = proxy_features_default.select_dtypes(include=[np.number])
         assert not np.isinf(numeric.values).any(), "Inf detected in output"
 
-    def test_nan_limited_to_warmup(self) -> None:
+    def test_nan_limited_to_warmup(self, proxy_features_default: pd.DataFrame) -> None:
         """NaN は warmup 期間のみ (末尾は NaN なし)."""
-        from scripts.v460.build_features import build_proxy_features
-
-        df = _make_ohlcv(200)
-        result = build_proxy_features(df)
         # 末尾 50 行は NaN がないはず (window=20 なので)
-        tail = result.tail(50)
+        tail = proxy_features_default.tail(50)
         nan_count = tail.isna().sum().sum()
         assert nan_count == 0, f"NaN in tail 50 rows: {nan_count}"
 
-    def test_bid_ask_spread_positive(self) -> None:
+    def test_bid_ask_spread_positive(self, proxy_features_default: pd.DataFrame) -> None:
         """bid_ask_spread は常に ≥ 0."""
-        from scripts.v460.build_features import build_proxy_features
-
-        df = _make_ohlcv(200)
-        result = build_proxy_features(df)
         # high >= low なので spread >= 0
-        assert (result["bid_ask_spread"].dropna() >= 0).all()
+        assert (proxy_features_default["bid_ask_spread"].dropna() >= 0).all()
 
-    def test_depth_imbalance_range(self) -> None:
+    def test_depth_imbalance_range(self, proxy_features_default: pd.DataFrame) -> None:
         """depth_imbalance (CLV) は [-1, 1] 範囲."""
-        from scripts.v460.build_features import build_proxy_features
-
-        df = _make_ohlcv(200)
-        result = build_proxy_features(df)
-        di = result["depth_imbalance"].dropna()
+        di = proxy_features_default["depth_imbalance"].dropna()
         assert (di >= -1.01).all() and (di <= 1.01).all()
 
-    def test_different_window(self) -> None:
+    def test_different_window(
+        self,
+        proxy_window_variants: tuple[pd.DataFrame, pd.DataFrame],
+    ) -> None:
         """window パラメータが変更可能."""
-        from scripts.v460.build_features import build_proxy_features
-
-        df = _make_ohlcv(200)
-        r10 = build_proxy_features(df, window=10)
-        r30 = build_proxy_features(df, window=30)
+        r10, r30 = proxy_window_variants
         # 異なる window → 異なる rolling 計算
         assert not np.allclose(
             r10["trade_flow_imbalance"].dropna().values[-50:],
@@ -122,20 +125,13 @@ class TestBuildProxyFeatures:
 
     def test_small_input(self) -> None:
         """最小入力 (n=5) でもクラッシュしない."""
-        from scripts.v460.build_features import build_proxy_features
-
         df = _make_ohlcv(5)
         result = build_proxy_features(df, window=3)
         assert len(result) == 5
 
-    def test_zero_volume_handling(self) -> None:
+    def test_zero_volume_handling(self, proxy_features_zero_volume: pd.DataFrame) -> None:
         """volume=0 でも除算エラーにならない (eps ガード)."""
-        from scripts.v460.build_features import build_proxy_features
-
-        df = _make_ohlcv(100)
-        df["volume"] = 0.0
-        result = build_proxy_features(df)
-        assert not result.isna().all().any(), "全 NaN 列がある"
+        assert not proxy_features_zero_volume.isna().all().any(), "全 NaN 列がある"
 
 
 # =====================================================================
@@ -196,78 +192,53 @@ def _make_raw_data(tmp_path: Path, n_minutes: int = 30) -> tuple[Path, Path, Pat
     return ob_path, tr_path, out_path
 
 
+@pytest.fixture(scope="class")
+def real_mode_aggregate_30(tmp_path_factory: pytest.TempPathFactory) -> pd.DataFrame:
+    """30分相当の aggregate 出力を再利用する."""
+    tmp_path = tmp_path_factory.mktemp("build_features_agg_30")
+    ob_path, tr_path, out_path = _make_raw_data(tmp_path, 30)
+    return MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+
+
+@pytest.fixture(scope="class")
+def real_mode_micro_40(tmp_path_factory: pytest.TempPathFactory) -> pd.DataFrame:
+    """microstructure 追加済みの real-mode 出力を再利用する."""
+    tmp_path = tmp_path_factory.mktemp("build_features_micro_40")
+    ob_path, tr_path, out_path = _make_raw_data(tmp_path, 40)
+    agg = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+    if "close" not in agg.columns and "mid_price" in agg.columns:
+        agg["close"] = agg["mid_price"]
+    return add_microstructure_features(agg)
+
+
 class TestRealModePipeline:
     """MarketDataCollector.aggregate_to_1min → add_microstructure_features の連結確認."""
 
-    def test_aggregate_output_schema(self, tmp_path: Path) -> None:
+    def test_aggregate_output_schema(self, real_mode_aggregate_30: pd.DataFrame) -> None:
         """aggregate_to_1min の出力カラムを確認."""
-        from ztb.data.market_data_collector import MarketDataCollector
-
-        ob_path, tr_path, out_path = _make_raw_data(tmp_path, 30)
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
-
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) > 0
+        assert isinstance(real_mode_aggregate_30, pd.DataFrame)
+        assert len(real_mode_aggregate_30) > 0
         # aggregate 出力に mid_price 等が含まれる
         for col in ["best_bid", "best_ask", "mid_price"]:
-            assert col in df.columns, f"Missing column: {col}"
+            assert col in real_mode_aggregate_30.columns, f"Missing column: {col}"
 
-    def test_microstructure_on_aggregated(self, tmp_path: Path) -> None:
+    def test_microstructure_on_aggregated(self, real_mode_micro_40: pd.DataFrame) -> None:
         """aggregate_to_1min 出力 → add_microstructure_features で特徴量追加."""
-        from ztb.data.market_data_collector import MarketDataCollector
-        from ztb.features.microstructure import (
-            MICROSTRUCTURE_FEATURES,
-            add_microstructure_features,
-        )
-
-        ob_path, tr_path, out_path = _make_raw_data(tmp_path, 60)
-        agg = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
-
-        # close 列がない場合は mid_price を代用 (build_features.py と同じロジック)
-        if "close" not in agg.columns and "mid_price" in agg.columns:
-            agg["close"] = agg["mid_price"]
-
-        result = add_microstructure_features(agg)
-
         # microstructure features が追加される
         for feat in MICROSTRUCTURE_FEATURES:
-            assert feat in result.columns, f"Missing microstructure feature: {feat}"
+            assert feat in real_mode_micro_40.columns, f"Missing microstructure feature: {feat}"
 
-    def test_v460_features_coverage(self, tmp_path: Path) -> None:
+    def test_v460_features_coverage(self, real_mode_micro_40: pd.DataFrame) -> None:
         """V460_FEATURES 10 種がすべて生成される (real mode 相当)."""
-        from scripts.v460.build_features import V460_FEATURES
-        from ztb.data.market_data_collector import MarketDataCollector
-        from ztb.features.microstructure import add_microstructure_features
-
-        ob_path, tr_path, out_path = _make_raw_data(tmp_path, 60)
-        agg = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
-
-        if "close" not in agg.columns and "mid_price" in agg.columns:
-            agg["close"] = agg["mid_price"]
-
-        result = add_microstructure_features(agg)
-
-        missing = [f for f in V460_FEATURES if f not in result.columns]
+        missing = [f for f in V460_FEATURES if f not in real_mode_micro_40.columns]
         assert not missing, f"Missing V460 features: {missing}"
 
-    def test_pipeline_no_inf(self, tmp_path: Path) -> None:
+    def test_pipeline_no_inf(self, real_mode_micro_40: pd.DataFrame) -> None:
         """パイプライン出力に Inf がない."""
-        from ztb.data.market_data_collector import MarketDataCollector
-        from ztb.features.microstructure import add_microstructure_features
-
-        ob_path, tr_path, out_path = _make_raw_data(tmp_path, 60)
-        agg = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
-        if "close" not in agg.columns and "mid_price" in agg.columns:
-            agg["close"] = agg["mid_price"]
-        result = add_microstructure_features(agg)
-        numeric = result.select_dtypes(include=[np.number])
+        numeric = real_mode_micro_40.select_dtypes(include=[np.number])
         assert not np.isinf(numeric.values).any()
 
-    def test_pipeline_row_count(self, tmp_path: Path) -> None:
+    def test_pipeline_row_count(self, real_mode_aggregate_30: pd.DataFrame) -> None:
         """aggregate 後の行数が分単位で概ね正しい."""
-        from ztb.data.market_data_collector import MarketDataCollector
-
-        ob_path, tr_path, out_path = _make_raw_data(tmp_path, 30)
-        result = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
         # 30 分 → 最大 30 行 (端の分は欠落可能)
-        assert 20 <= len(result) <= 31
+        assert 20 <= len(real_mode_aggregate_30) <= 31

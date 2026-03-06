@@ -31,6 +31,8 @@ from ztb.metrics.fill_quality import (
 
 logger = logging.getLogger(__name__)
 
+_VECTORIZED_MC_MAX_SAMPLES = 8_000_000
+
 @dataclass
 class MonteCarloConfig:
     """シミュレーション設定."""
@@ -201,6 +203,22 @@ class PnLMonteCarloSimulator:
         # PnL 値が定数のときは sampling を省いて高速化できる。
         if pnl_bps.size == 1:
             return fills_per_sim.astype(np.float64) * float(pnl_bps[0]) * jpy_per_bps
+        max_fills = int(fills_per_sim.max(initial=0))
+        if (
+            max_fills > 0
+            and self.config.n_simulations * max_fills <= _VECTORIZED_MC_MAX_SAMPLES
+        ):
+            sampled = self._rng.choice(
+                pnl_bps,
+                size=(self.config.n_simulations, max_fills),
+                replace=True,
+            )
+            sampled_cumsum = np.cumsum(sampled, axis=1, dtype=np.float64)
+            positive = fills_per_sim > 0
+            if np.any(positive):
+                fill_idx = fills_per_sim[positive] - 1
+                monthly_pnls[positive] = sampled_cumsum[positive, fill_idx]
+            return monthly_pnls * jpy_per_bps
 
         for i, fills_this_month in enumerate(fills_per_sim):
             fills_this_month = int(fills_this_month)

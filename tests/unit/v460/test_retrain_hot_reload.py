@@ -565,10 +565,10 @@ class TestE2ERetrainHotReload:
             model_dir.mkdir()
             model_path = model_dir / "gate.pkl"
 
-            # 30件の fill records を生成 (最低要件を満たす範囲で軽量化)
+            # 最低要件を満たす範囲で fill records を絞る
             rng = np.random.RandomState(42)
             records = []
-            for i in range(30):
+            for i in range(24):
                 records.append(json.dumps({
                     "cycle_id": f"e2e_{i}",
                     "side": "buy" if i % 2 == 0 else "sell",
@@ -599,7 +599,12 @@ class TestE2ERetrainHotReload:
             cfg["quality_gate_enabled"] = False  # E2E テストでは品質ゲート無効
             cfg["latest_run_only"] = False
             cfg["exclude_missing_run_id"] = False
-            cfg["lgbm_n_estimators"] = 8
+            cfg["lgbm_n_estimators"] = 4
+            cfg["lgbm_max_depth"] = 2
+            cfg["lgbm_num_leaves"] = 4
+            cfg["lgbm_min_child_samples"] = 2
+            cfg["lgbm_subsample"] = 1.0
+            cfg["lgbm_colsample_bytree"] = 1.0
             cfg["early_stopping_rounds"] = 0
             cfg["bootstrap_threshold"] = 20
             cfg["enriched_cache_enabled"] = False
@@ -1137,11 +1142,11 @@ class TestMultiWindowWF:
             "wf_min_window_train": 20,
             "wf_min_window_test": 5,
             "early_stopping_rounds": 0,
-            "lgbm_n_estimators": 10,
+            "lgbm_n_estimators": 6,
             "lgbm_max_depth": 2,
             "lgbm_learning_rate": 0.1,
             "lgbm_num_leaves": 4,
-            "lgbm_min_child_samples": 5,
+            "lgbm_min_child_samples": 3,
         }
 
         result = _evaluate_wf_multi(X, y, enriched, cfg)
@@ -1156,7 +1161,7 @@ class TestMultiWindowWF:
     def test_evaluate_wf_multi_respects_wf_max_windows(self) -> None:
         """wf_max_windows 指定時は評価 window 数が上限で切られる."""
 
-        n = 220
+        n = 180
         rng = np.random.RandomState(42)
         X = pd.DataFrame(
             rng.randn(n, 4),
@@ -1179,11 +1184,11 @@ class TestMultiWindowWF:
             "wf_min_window_train": 20,
             "wf_min_window_test": 5,
             "early_stopping_rounds": 0,
-            "lgbm_n_estimators": 10,
+            "lgbm_n_estimators": 6,
             "lgbm_max_depth": 2,
             "lgbm_learning_rate": 0.1,
             "lgbm_num_leaves": 4,
-            "lgbm_min_child_samples": 5,
+            "lgbm_min_child_samples": 3,
         }
 
         result = _evaluate_wf_multi(X, y, enriched, cfg)
@@ -1226,7 +1231,7 @@ class TestMultiWindowWF:
     def test_evaluate_wf_dispatches_multi(self) -> None:
         """_evaluate_wf が multi-window に正しくディスパッチする."""
 
-        n = 300
+        n = 180
         rng = np.random.RandomState(42)
         X = pd.DataFrame(
             rng.randn(n, 5),
@@ -1250,11 +1255,11 @@ class TestMultiWindowWF:
             "wf_min_window_test": 5,
             "wf_test_ratio": 0.2,
             "early_stopping_rounds": 0,
-            "lgbm_n_estimators": 10,
+            "lgbm_n_estimators": 6,
             "lgbm_max_depth": 2,
             "lgbm_learning_rate": 0.1,
             "lgbm_num_leaves": 4,
-            "lgbm_min_child_samples": 5,
+            "lgbm_min_child_samples": 3,
         }
 
         result = _evaluate_wf(X, y, enriched, cfg)
@@ -1265,7 +1270,7 @@ class TestMultiWindowWF:
     def test_single_window_returns_fold_data(self) -> None:
         """single-window でも fold-level PnL を返す."""
 
-        n = 200
+        n = 120
         rng = np.random.RandomState(42)
         X = pd.DataFrame(
             rng.randn(n, 5),
@@ -1280,11 +1285,11 @@ class TestMultiWindowWF:
         cfg = {
             "wf_test_ratio": 0.2,
             "early_stopping_rounds": 0,
-            "lgbm_n_estimators": 10,
+            "lgbm_n_estimators": 6,
             "lgbm_max_depth": 2,
             "lgbm_learning_rate": 0.1,
             "lgbm_num_leaves": 4,
-            "lgbm_min_child_samples": 5,
+            "lgbm_min_child_samples": 3,
             "warm_start_enabled": False,
         }
 

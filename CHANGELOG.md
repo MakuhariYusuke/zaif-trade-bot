@@ -3692,3 +3692,16 @@ python scripts/unified_trainer.py \
 
 ### Fixed
 - Fixed syntax errors in `live_trader.py` including untertermin
+
+## 2026-03-06
+
+### Changed
+- Refactored `tests/unit/v460/test_build_features_pipeline.py` to reuse shared fixtures for proxy feature generation and real-mode aggregate/microstructure inputs, removing repeated per-test setup and local imports.
+- Refactored `tests/unit/v460/test_013_fixes.py` to hoist adapter and order manager imports to module scope and eliminate repeated method-level imports.
+- Reduced simulation/training load in `tests/unit/v460/test_pnl_monte_carlo.py`, `tests/unit/v460/test_retrain_hot_reload.py`, `tests/unit/v460/test_gate_judgment.py`, and `tests/unit/v460/test_ml_pipeline.py` while preserving test intent.
+- Optimized `ztb/risk/pnl_monte_carlo.py` with an exact vectorized monthly simulation path for moderate-size Monte Carlo runs.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_build_features_pipeline.py tests/unit/v460/test_013_fixes.py tests/unit/v460/test_pnl_monte_carlo.py tests/unit/v460/test_retrain_hot_reload.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_gate_judgment.py tests/unit/v460/test_ml_pipeline.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/ -q --no-cov --durations=20`

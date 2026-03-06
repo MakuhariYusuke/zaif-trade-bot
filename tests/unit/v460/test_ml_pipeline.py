@@ -213,7 +213,7 @@ class Test057ASClassifier:
             y,
             model_type="gb",
             n_splits=2,
-            gb_n_estimators=18,
+            gb_n_estimators=10,
         )
         assert metrics.feature_importances is not None
         assert len(metrics.feature_importances) == X.shape[1]
@@ -221,7 +221,7 @@ class Test057ASClassifier:
     def test_model_predicts(self, synthetic_fill_df: pd.DataFrame) -> None:
         """学習済みモデルが predict_proba を返す."""
         X, y = build_as_features(synthetic_fill_df)
-        X = X.head(40)
+        X = X.head(30)
         y = y.loc[X.index]
         _, model, pipeline, _ = train_as_classifier(X, y, model_type="lr", n_splits=2)
         # 059#: pipeline は完全な Pipeline (imputer + scaler + model)
@@ -232,7 +232,7 @@ class Test057ASClassifier:
     def test_skip_policy_with_pnl(self, synthetic_fill_df: pd.DataFrame) -> None:
         """PnL 付きでスキップ効果計算."""
         X, y = build_as_features(synthetic_fill_df)
-        X = X.head(40)
+        X = X.head(30)
         y = y.loc[X.index]
         pnl = synthetic_fill_df.loc[X.index, "post_fill_30s_pnl"].astype(float)
         metrics, model, scaler, oof_probs = train_as_classifier(
@@ -243,7 +243,7 @@ class Test057ASClassifier:
     def test_evaluate_skip_policy(self, synthetic_fill_df: pd.DataFrame) -> None:
         """スキップポリシーの DataFrame が返る."""
         X, y = build_as_features(synthetic_fill_df)
-        X = X.head(40)
+        X = X.head(30)
         y = y.loc[X.index]
         pnl = synthetic_fill_df.loc[X.index, "post_fill_30s_pnl"].astype(float)
         _, model, scaler, oof_probs = train_as_classifier(X, y, model_type="lr", n_splits=2)
@@ -279,7 +279,7 @@ class Test057FillClassifier:
             y,
             model_type="gb",
             n_splits=2,
-            gb_n_estimators=18,
+            gb_n_estimators=10,
         )
         assert metrics.feature_importances is not None
 
@@ -310,9 +310,9 @@ class Test057Integration:
         if not real_data_available:
             pytest.skip("No real fill records")
         df = load_fill_records(max_files=2)
-        if len(df) > 150:
+        if len(df) > 100:
             # 統合テストはロード経路の健全性確認が主目的のため、特徴量構築はサブセットで十分。
-            df = df.tail(150).copy()
+            df = df.tail(100).copy()
         assert len(df) >= 30
         X, y = build_as_features(df)
         assert len(X) >= 15

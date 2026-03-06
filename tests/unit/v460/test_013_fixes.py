@@ -11,6 +11,9 @@ import urllib.parse
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from ztb.trading.live.exchanges.bitflyer.adapter import BitFlyerAdapter
+from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+from ztb.trading.live_trader.components.order_manager import OrderManager
 
 
 # ---------------------------------------------------------------------------
@@ -22,8 +25,6 @@ class TestC3SignatureConsistency:
 
     def test_make_api_request_signs_urlencode_body(self):
         """Signature = nonce + url + urlencode(data), NOT json.dumps(data)."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-
         adapter = CoincheckAdapter(
             api_key="test_key",
             api_secret="test_secret",
@@ -71,8 +72,6 @@ class TestC3SignatureConsistency:
 
     def test_signature_no_body_for_get(self):
         """GET requests: signature = nonce + url (no body)."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-
         adapter = CoincheckAdapter(
             api_key="test_key",
             api_secret="test_secret",
@@ -104,8 +103,6 @@ class TestC3SignatureConsistency:
 
     def test_old_json_dumps_not_used_in_signature(self):
         """Ensure json.dumps is NOT used for signature computation."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-
         source = inspect.getsource(CoincheckAdapter._make_api_request)
         # json.dumps should not appear in the signature computation section
         # It may still be imported but should not be used for message construction
@@ -128,7 +125,6 @@ class TestC4AsyncUnification:
 
     def test_place_order_real_uses_asyncio_to_thread(self):
         """_place_order_real must use asyncio.to_thread."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
         source = inspect.getsource(CoincheckAdapter._place_order_real)
         assert "asyncio.to_thread" in source, (
             "_place_order_real must use asyncio.to_thread for sync requests"
@@ -136,7 +132,6 @@ class TestC4AsyncUnification:
 
     def test_cancel_order_real_uses_asyncio_to_thread(self):
         """_cancel_order_real must use asyncio.to_thread."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
         source = inspect.getsource(CoincheckAdapter._cancel_order_real)
         assert "asyncio.to_thread" in source, (
             "_cancel_order_real must use asyncio.to_thread for sync requests"
@@ -144,7 +139,6 @@ class TestC4AsyncUnification:
 
     def test_get_balance_real_uses_asyncio_to_thread(self):
         """_get_balance_real must use asyncio.to_thread."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
         source = inspect.getsource(CoincheckAdapter._get_balance_real)
         assert "asyncio.to_thread" in source, (
             "_get_balance_real must use asyncio.to_thread for sync requests"
@@ -160,8 +154,6 @@ class TestC7OrderTypeMapping:
 
     def test_limit_buy_sends_correct_order_type(self):
         """Limit buy: order_type='buy', rate set, time_in_force='post_only'."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-
         adapter = CoincheckAdapter(
             api_key="k", api_secret="s", dry_run=False,
         )
@@ -190,8 +182,6 @@ class TestC7OrderTypeMapping:
 
     def test_limit_sell_sends_correct_order_type(self):
         """Limit sell: order_type='sell', rate set, time_in_force='post_only'."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-
         adapter = CoincheckAdapter(
             api_key="k", api_secret="s", dry_run=False,
         )
@@ -217,8 +207,6 @@ class TestC7OrderTypeMapping:
 
     def test_market_buy_sends_market_buy_amount(self):
         """Market buy: order_type='market_buy', market_buy_amount in JPY."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-
         adapter = CoincheckAdapter(
             api_key="k", api_secret="s", dry_run=False,
         )
@@ -248,8 +236,6 @@ class TestC7OrderTypeMapping:
 
     def test_market_sell_sends_correct_order_type(self):
         """Market sell: order_type='market_sell', amount in BTC."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-
         adapter = CoincheckAdapter(
             api_key="k", api_secret="s", dry_run=False,
         )
@@ -276,7 +262,6 @@ class TestC7OrderTypeMapping:
 
     def test_no_limit_buy_limit_sell_values(self):
         """'limit_buy'/'limit_sell' must NOT appear in source (145# _place_order_real)."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
         source = inspect.getsource(CoincheckAdapter._place_order_real)
         assert "limit_buy" not in source
         assert "limit_sell" not in source
@@ -291,7 +276,6 @@ class TestD1OrderManagerConnection:
 
     def test_no_todo_in_execute_trade(self):
         """The TODO comment should be removed."""
-        from ztb.trading.live_trader.components.order_manager import OrderManager
         source = inspect.getsource(OrderManager.execute_trade)
         assert "TODO" not in source, (
             "TODO should be removed — live trading is now implemented"
@@ -299,8 +283,6 @@ class TestD1OrderManagerConnection:
 
     def test_live_mode_calls_exchange_adapter(self):
         """Live mode must use exchange_adapter.place_order()."""
-        from ztb.trading.live_trader.components.order_manager import OrderManager
-
         # Create mock live_trader
         mock_trader = MagicMock()
         mock_trader.demo_mode = False
@@ -328,8 +310,6 @@ class TestD1OrderManagerConnection:
 
     def test_live_mode_no_adapter_returns_false(self):
         """Live mode without exchange_adapter returns False."""
-        from ztb.trading.live_trader.components.order_manager import OrderManager
-
         mock_trader = MagicMock()
         mock_trader.demo_mode = False
         mock_trader.exchange_adapter = None
@@ -349,7 +329,6 @@ class TestD3PostOnly:
 
     def test_place_order_source_contains_post_only(self):
         """_place_order_real source must reference post_only (145# §13)."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
         source = inspect.getsource(CoincheckAdapter._place_order_real)
         assert "post_only" in source, "post_only must be in _place_order_real"
 
@@ -363,8 +342,6 @@ class TestD5RateLimiter:
 
     def test_default_rate_limit_is_4(self):
         """Default CoincheckAdapter rate limit should be 4 req/s."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-
         adapter = CoincheckAdapter(dry_run=True)
         config = adapter.rate_limiter.config
         assert config.requests_per_second == 4.0, (
@@ -381,7 +358,6 @@ class TestC9Docstring:
 
     def test_docstring_not_stub_only(self):
         """Docstring should not claim 'real trading not implemented'."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
         docstring = CoincheckAdapter.__doc__ or ""
         assert "not implemented" not in docstring.lower(), (
             "Docstring still claims real trading is not implemented"
@@ -398,12 +374,10 @@ class TestC5BitFlyerNormalization:
 
     def test_place_order_normalizes_product_code(self):
         """_place_order_real must uppercase symbol for product_code."""
-        from ztb.trading.live.exchanges.bitflyer.adapter import BitFlyerAdapter
         source = inspect.getsource(BitFlyerAdapter._place_order_real)
         assert "symbol.upper()" in source or "product_code = symbol.upper()" in source
 
     def test_get_current_price_normalizes_product_code(self):
         """_get_current_price_real must uppercase symbol."""
-        from ztb.trading.live.exchanges.bitflyer.adapter import BitFlyerAdapter
         source = inspect.getsource(BitFlyerAdapter._get_current_price_real)
         assert "symbol.upper()" in source or "product_code = symbol.upper()" in source

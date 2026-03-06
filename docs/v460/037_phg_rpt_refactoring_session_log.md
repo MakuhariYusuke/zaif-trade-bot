@@ -668,3 +668,54 @@
 1. `test_013_fixes.py` / `test_build_features_pipeline.py` の method 内 import 集約を継続
 2. `test_197_boost_optimization_gate_integration.py` の YAML 直読を fixture 化
 3. `test_retrain_hot_reload.py::TestMultiWindowWF` と `test_pnl_monte_carlo` 上位ケースの試行負荷を段階削減
+
+---
+
+## 2026-03-06 / Session 037-019
+
+### 実施
+- DRY 改善と setup 再利用
+  - `test_build_features_pipeline.py`
+    - `build_proxy_features` の入力バリエーションを module fixture 化
+    - real-mode の集約済み DataFrame / microstructure 入力を class fixture 化
+    - method 内 import を解消し、ローカル import 数を `0` に削減
+  - `test_013_fixes.py`
+    - `BitFlyerAdapter` / `CoincheckAdapter` / `OrderManager` を先頭 import へ集約
+    - method 内 import 数を `0` に削減
+- 試行負荷の段階縮小
+  - `test_pnl_monte_carlo.py`
+    - Monte Carlo 試行数をケース別に縮小
+    - 感度分析の形状確認テストは `_simulate_monthly_pnls` を patch して実計算を回避
+  - `test_retrain_hot_reload.py`
+    - E2E retrain/hot-reload ケースの fill record 数を `30 -> 24` に調整
+    - LightGBM パラメータを最小構成へ寄せつつ、multi-window 成立条件を満たすサンプル数へ再調整
+  - `test_gate_judgment.py`
+    - Monte Carlo 統合テストの `mc_simulations` を `100/200/500 -> 60/80/120` に縮小
+  - `test_ml_pipeline.py`
+    - 学習用サブセットを `40 -> 30` 行へ縮小
+    - GB テストの `gb_n_estimators` を `18 -> 10` に縮小
+    - 実データ統合テストの tail 行数を `150 -> 100` に縮小
+- 本体最適化
+  - `ztb/risk/pnl_monte_carlo.py`
+    - `n_simulations * max_fills` が中規模以内のとき、月次 PnL サンプル生成を exact vectorized path で一括処理
+
+### 結果
+- 変更対象テスト:
+  - `148 passed, 7 warnings in 5.22s`
+  - `41 passed, 1 warning in 4.44s`
+- v460 全体:
+  - `4006 passed, 18 warnings in 46.80s`（`--no-cov --durations=20`）
+- 主要 durations 変化:
+  - `test_retrain_hot_reload.py::TestMultiWindowWF::test_evaluate_wf_multi_returns_fold_data` call `0.47s`
+  - `test_retrain_hot_reload.py::TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload` call `0.42s`
+  - `test_ml_pipeline.py::Test057Integration::test_load_real_data` call `0.21s`
+  - `test_gate_judgment.py::TestGateJudgmentMonteCarlo::test_monte_carlo_risk_metrics` call は durations 上位から離脱
+
+### 補足
+- 全体 wall time は run-to-run で揺れるが、今回触った heavy test 群の個別所要時間は明確に低下
+- 上位ボトルネックは `test_enricher_skip_gate` の実データ setup と、`test_aggregate_to_1min.py` の実ファイル I/O に集約しつつある
+
+### 次アクション
+1. `test_enricher_skip_gate.py` の real-data setup を fixture 分解し、前処理済み入力の再利用余地を確認
+2. `test_aggregate_to_1min.py` / `test_158_order_manager_integration.py` の実ファイル・実オブジェクト初期化をサブセット化できるか検証
+3. `test_fill_quality.py` の 0.15s 級ケースを時刻依存・lockfile I/O・設定読込に分解し、共通 fixture へ寄せる
