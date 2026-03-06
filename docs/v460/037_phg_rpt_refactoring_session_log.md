@@ -360,3 +360,35 @@
 1. `test_146_multi_exchange.py` / `test_v460_core.py` の import 検証系以外を段階集約
 2. `test_retrain_hot_reload.py` の重い統合ケースに `max_files`/subset 方針を横展開
 3. `scripts/v460/lib/manifest.py` の fast-path に対する明示ユニットテストを追加
+
+---
+
+## 2026-03-06 / Session 037-010
+
+### 実施
+- 本体コード最適化（挙動互換）
+  - `scripts/v460/lib/ab_judgment.py`
+    - `evaluate_ab_variant()` でメトリクス算出時に `pnl30_array` を同時計算し、再走査を削減
+    - 統計比較を軽量経路（`scipy.stats.ttest_ind` + 内部 `Cohen's d`）へ変更
+    - 既存 `ABTestAnalyzer` は fallback 経路として維持
+- DRY 改善（method 内 import 集約）
+  - `test_236_state_persistence_cqs.py`: ローカル import を全廃
+  - `test_249_directional_alpha.py`: ローカル import を全廃
+- テスト軽量化
+  - `test_160_ab_judgment.py`
+    - 統計検定不要ケースのサンプル数を縮小
+    - 統計検定そのものを検証するケースは維持
+
+### 結果
+- 変更対象テスト:
+  - `125 passed in 2.40s`（`test_160` / `test_236` / `test_249`）
+- v460 全体:
+  - `3958 passed, 20 warnings in 40.29s`（`--no-cov --durations=20`）
+- 主要ボトルネック更新:
+  - `test_160_ab_judgment` の 2 秒級 call が解消
+  - 上位は `test_ml_pipeline` / `test_retrain_hot_reload` / `test_enricher_skip_gate` へ集約
+
+### 次アクション
+1. `test_retrain_hot_reload.py` の高負荷統合ケースで subset 読み込みを段階導入
+2. `test_ml_pipeline.py` の GB 学習ケースを特徴量固定 fixture で再利用化
+3. `test_202_log_improvements.py` / `test_145_s13_boundary_guards.py` など次点の import 集約を継続

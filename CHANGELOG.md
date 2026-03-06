@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 301# perf+dry+core: ab_judgment統計計算軽量化 + v460 import集約継続 (2026-03-06)
+
+### Changed
+- **本体コード最適化（テスト専用ではない改善）**
+  - `scripts/v460/lib/ab_judgment.py`
+    - `evaluate_ab_variant()` のメトリクス計算を `pnl30_array` と同時算出化し、同一レコードの再走査を削減
+    - 統計比較を軽量経路（`scipy.stats.ttest_ind` + 内部 `Cohen's d`）へ変更
+    - 互換 fallback として既存 `ABTestAnalyzer` 経路は維持
+- **DRY 改善（method 内 import 集約）**
+  - `tests/unit/v460/test_236_state_persistence_cqs.py`（ローカル import 20 -> 0）
+  - `tests/unit/v460/test_249_directional_alpha.py`（ローカル import 20 -> 0）
+- **テスト効率化（検証目的を維持したデータ量調整）**
+  - `tests/unit/v460/test_160_ab_judgment.py`
+    - 統計検定が不要なケースはサンプル数を縮小
+    - 統計検定を検証するテストは維持
+
+### Verification
+- 対象回帰:
+  - `125 passed in 2.40s`（`test_160_ab_judgment.py`, `test_236_state_persistence_cqs.py`, `test_249_directional_alpha.py`）
+- v460 全体:
+  - `3958 passed, 20 warnings in 40.29s`（`--no-cov --durations=20`）
+
+### Performance Notes
+- `test_160_ab_judgment.py` の 2 秒級ボトルネックが解消され、同ファイルの上位 call は 0.03s 付近へ低下。
+
 ## 300# perf+dry+core: manifest/deps軽量化 + ML loader部分読込 + v460 import集約 (2026-03-06)
 
 ### Changed

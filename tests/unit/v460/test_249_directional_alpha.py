@@ -16,10 +16,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 from scripts.v460.lib.daily_drawdown_guard import (
     DailyDrawdownGuard,
     DailyDrawdownState,
 )
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.maker_price import MakerPriceCalculator
+from scripts.v460.lib.regime_detector import FillTestRegime
 
 
 # =============================================================
@@ -183,10 +187,6 @@ class TestInvSkewRegimeGate249:
         regime_value: str = "trending_up",
     ):
         """MakerPriceCalculator を最小構成で構築."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-        from scripts.v460.lib.regime_detector import FillTestRegime
-
         cfg = FillTestConfig(
             spread_offset_ratio=0.10,
             inventory_skewing_enabled=True,
@@ -277,8 +277,6 @@ class TestInvSkewRegimeGate249:
 
     def test_config_yaml_parsing_regime_gate(self) -> None:
         """YAML から inv_skew_regime_gate_enabled がパースされる."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         yaml_cfg = {
             "loss_control": {
                 "inventory_skewing": {
@@ -300,9 +298,6 @@ class TestDualKillQuiescence249:
     """249# dual_kill_bypass → quiescence: 両方 kill 時は静観."""
 
     def _make_gate(self, *, quiescence: bool = True):
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
-
         cfg = FillTestConfig(
             buy_dynamic_kill_enabled=True,
             sell_dynamic_kill_enabled=True,
@@ -383,8 +378,6 @@ class TestDualKillQuiescence249:
 
     def test_config_yaml_parsing_quiescence(self) -> None:
         """YAML から dual_kill_quiescence_enabled がパースされる."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         yaml_cfg = {
             "loss_control": {
                 "dual_kill_quiescence_enabled": True,
@@ -403,57 +396,39 @@ class TestParameterValidation249:
     """249# パラメータ境界バリデーション."""
 
     def test_degraded_lot_mult_low(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         with pytest.raises(ValueError, match="degraded_liquidation_lot_mult"):
             FillTestConfig(degraded_liquidation_lot_mult=0.005)
 
     def test_degraded_lot_mult_high(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         with pytest.raises(ValueError, match="degraded_liquidation_lot_mult"):
             FillTestConfig(degraded_liquidation_lot_mult=1.5)
 
     def test_degraded_offset_mult_low(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         with pytest.raises(ValueError, match="degraded_liquidation_offset_mult"):
             FillTestConfig(degraded_liquidation_offset_mult=0.5)
 
     def test_degraded_duty_cycle_low(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         with pytest.raises(ValueError, match="degraded_liquidation_duty_cycle"):
             FillTestConfig(degraded_liquidation_duty_cycle=1)
 
     def test_cooldown_release_lot_scale_low(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         with pytest.raises(ValueError, match="dd_cooldown_release_lot_scale"):
             FillTestConfig(dd_cooldown_release_lot_scale=0.005)
 
     def test_cooldown_release_lot_scale_high(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         with pytest.raises(ValueError, match="dd_cooldown_release_lot_scale"):
             FillTestConfig(dd_cooldown_release_lot_scale=1.5)
 
     def test_cooldown_release_sec_negative(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         with pytest.raises(ValueError, match="dd_cooldown_release_sec"):
             FillTestConfig(dd_cooldown_release_sec=-10)
 
     def test_cooldown_rearm_budget_positive(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         with pytest.raises(ValueError, match="dd_cooldown_rearm_budget_bps"):
             FillTestConfig(dd_cooldown_rearm_budget_bps=5.0)
 
     def test_valid_defaults_pass(self) -> None:
         """デフォルト値で validation エラーが出ないことを確認."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         assert cfg.degraded_liquidation_lot_mult == 0.2
         assert cfg.degraded_liquidation_offset_mult == 3.0
@@ -469,14 +444,10 @@ class TestConfigWiring249:
     """249# 新規 config フィールドのデフォルト値・YAML パース."""
 
     def test_rearm_config_defaults(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         assert cfg.dd_cooldown_rearm_budget_bps == -10.0
 
     def test_rearm_yaml_parsing(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         yaml_cfg = {
             "loss_control": {
                 "daily_drawdown": {
@@ -493,13 +464,9 @@ class TestConfigWiring249:
         assert cfg.dd_cooldown_rearm_budget_bps == -15.0
 
     def test_inv_skew_regime_gate_defaults(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         assert cfg.inv_skew_regime_gate_enabled is False
 
     def test_dual_kill_quiescence_defaults(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         assert cfg.dual_kill_quiescence_enabled is False

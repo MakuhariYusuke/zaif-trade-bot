@@ -233,8 +233,9 @@ class TestEvaluateABVariant:
     def test_pass_normal(self) -> None:
         """標準的な PASS ケース."""
         criteria = ABJudgmentCriteria(min_filled_records=5, min_control_filled_records=5, min_calendar_days=1)
-        variant = _make_records(20, fill_rate=0.6, pnl_mean=1.0, pnl_std=0.5)
-        control = _make_records(20, fill_rate=0.5, pnl_mean=0.5, pnl_std=0.5, side="buy")
+        # 統計検定は別テストで担保するため、ここは判定ロジック最小件数で高速化
+        variant = _make_records(12, fill_rate=0.6, pnl_mean=1.0, pnl_std=0.5)
+        control = _make_records(12, fill_rate=0.5, pnl_mean=0.5, pnl_std=0.5, side="buy")
         result = evaluate_ab_variant(variant, control, criteria)
         assert result.overall == Verdict.PASS
         assert len(result.criteria) == 3
@@ -265,8 +266,8 @@ class TestEvaluateABVariant:
             fill_rate_min=0.50,
         )
         # fill_rate = 20% < 50%
-        variant = _make_records(50, fill_rate=0.20, pnl_mean=1.0)
-        control = _make_records(50, fill_rate=0.50, pnl_mean=0.5, side="buy")
+        variant = _make_records(20, fill_rate=0.25, pnl_mean=1.0)
+        control = _make_records(20, fill_rate=0.50, pnl_mean=0.5, side="buy")
         result = evaluate_ab_variant(variant, control, criteria)
         assert result.overall == Verdict.FAIL
         fr_crit = next(c for c in result.criteria if c.name == "fill_rate")
@@ -282,8 +283,8 @@ class TestEvaluateABVariant:
             fill_rate_degradation_tolerance=0.05,
         )
         # variant 35% vs control 50% → 30% 悪化 > 5%
-        variant = _make_records(100, fill_rate=0.35, pnl_mean=1.0)
-        control = _make_records(100, fill_rate=0.50, pnl_mean=0.5, side="buy")
+        variant = _make_records(20, fill_rate=0.35, pnl_mean=1.0)
+        control = _make_records(20, fill_rate=0.50, pnl_mean=0.5, side="buy")
         result = evaluate_ab_variant(variant, control, criteria)
         fr_crit = next(c for c in result.criteria if c.name == "fill_rate")
         assert fr_crit.verdict == Verdict.FAIL
@@ -297,8 +298,8 @@ class TestEvaluateABVariant:
             avg_pnl30_min_bps=-0.5,
         )
         # pnl_mean = -2.0 < -0.5
-        variant = _make_records(20, fill_rate=0.6, pnl_mean=-2.0, pnl_std=0.3)
-        control = _make_records(20, fill_rate=0.5, pnl_mean=0.5, side="buy")
+        variant = _make_records(12, fill_rate=0.6, pnl_mean=-2.0, pnl_std=0.3)
+        control = _make_records(12, fill_rate=0.5, pnl_mean=0.5, side="buy")
         result = evaluate_ab_variant(variant, control, criteria)
         pnl_crit = next(c for c in result.criteria if c.name == "avg_pnl30")
         assert pnl_crit.verdict == Verdict.FAIL
@@ -313,8 +314,8 @@ class TestEvaluateABVariant:
             downside_p10_min_bps=-3.0,
         )
         # 低い PnL で p10 が -3.0 を割る
-        variant = _make_records(50, fill_rate=0.6, pnl_mean=-1.0, pnl_std=3.0)
-        control = _make_records(50, fill_rate=0.5, pnl_mean=0.5, pnl_std=0.5, side="buy")
+        variant = _make_records(18, fill_rate=0.6, pnl_mean=-1.0, pnl_std=3.0)
+        control = _make_records(18, fill_rate=0.5, pnl_mean=0.5, pnl_std=0.5, side="buy")
         result = evaluate_ab_variant(variant, control, criteria)
         ds_crit = next(c for c in result.criteria if c.name == "downside_p10")
         assert ds_crit.verdict == Verdict.FAIL
@@ -334,8 +335,8 @@ class TestEvaluateABVariant:
     def test_summary_contains_verdict(self) -> None:
         """summary() がverdict を含むこと."""
         criteria = ABJudgmentCriteria(min_filled_records=5, min_control_filled_records=5, min_calendar_days=1)
-        variant = _make_records(20, fill_rate=0.6, pnl_mean=1.0)
-        control = _make_records(20, fill_rate=0.5, pnl_mean=0.5, side="buy")
+        variant = _make_records(12, fill_rate=0.6, pnl_mean=1.0)
+        control = _make_records(12, fill_rate=0.5, pnl_mean=0.5, side="buy")
         result = evaluate_ab_variant(variant, control, criteria)
         s = result.summary()
         assert "PASS" in s or "FAIL" in s or "INSUFFICIENT" in s
@@ -356,8 +357,8 @@ class TestEvaluateABVariant:
             avg_pnl30_must_improve=True,
         )
         # variant pnl < control pnl
-        variant = _make_records(20, fill_rate=0.6, pnl_mean=0.1, pnl_std=0.1)
-        control = _make_records(20, fill_rate=0.5, pnl_mean=0.5, pnl_std=0.1, side="buy")
+        variant = _make_records(12, fill_rate=0.6, pnl_mean=0.1, pnl_std=0.1)
+        control = _make_records(12, fill_rate=0.5, pnl_mean=0.5, pnl_std=0.1, side="buy")
         result = evaluate_ab_variant(variant, control, criteria)
         pnl_crit = next(c for c in result.criteria if c.name == "avg_pnl30")
         assert pnl_crit.verdict == Verdict.FAIL

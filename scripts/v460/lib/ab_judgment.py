@@ -12,11 +12,11 @@
 
 from __future__ import annotations
 
-import logging
 import math
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
+from functools import lru_cache
 from typing import TypedDict
 
 import numpy as np
@@ -26,8 +26,6 @@ from ztb.io.json_io import JSONObject
 from ztb.metrics.fill_quality import format_utc_day
 from ztb.utils.dataclass_utils import filter_known_dataclass_fields
 from ztb.utils.safety import safe_to_finite
-
-logger = logging.getLogger(__name__)
 
 FillRecord = JSONObject
 
@@ -179,6 +177,78 @@ def _compute_metrics(records: list[FillRecord]) -> JudgmentMetrics:
     }
 
 
+def _compute_metrics_with_pnl(
+    records: list[FillRecord],
+) -> tuple[JudgmentMetrics, np.ndarray]:
+    """判定用メトリクスと PnL30 配列を同時計算（再走査回避）."""
+    base = compute_base_metrics(records)
+    metrics: JudgmentMetrics = {
+        "n_total": base["n_total"],
+        "n_filled": base["n_filled"],
+        "fill_rate": base["fill_rate"],
+        "avg_pnl30_bps": base["avg_pnl30_bps"],
+        "downside_p10_bps": base["downside_p10_bps"],
+        "downside_p05_bps": base["downside_p05_bps"],
+        "calendar_days": base["calendar_days"],
+    }
+    return metrics, base["pnl30_array"]
+
+
+@lru_cache(maxsize=1)
+def _resolve_ab_test_analyzer_class() -> object | None:
+    """ABTestAnalyzer クラスを遅延解決してキャッシュ."""
+    try:
+        from ztb.adaptation.ab_test.analyzer import ABTestAnalyzer
+        return ABTestAnalyzer
+    except Exception:
+        return None
+
+
+def _cohen_d(sample_a: np.ndarray, sample_b: np.ndarray) -> float:
+    """Cohen's d (sample_b - sample_a)."""
+    mean_a = float(np.mean(sample_a))
+    mean_b = float(np.mean(sample_b))
+    std_a = float(np.std(sample_a, ddof=1))
+    std_b = float(np.std(sample_b, ddof=1))
+    pooled = math.sqrt((std_a * std_a + std_b * std_b) / 2.0)
+    if pooled <= 0.0 or not math.isfinite(pooled):
+        return 0.0
+    return (mean_b - mean_a) / pooled
+
+
+def _compute_statistical_comparison(
+    control_pnl: np.ndarray,
+    variant_pnl: np.ndarray,
+) -> tuple[float | None, float | None]:
+    """P値と効果量を計算（軽量経路優先、必要時のみ互換fallback）。"""
+    try:
+        from scipy import stats
+
+        _, p_value = stats.ttest_ind(control_pnl, variant_pnl, equal_var=False)
+        effect_size = _cohen_d(control_pnl, variant_pnl)
+        p = float(p_value)
+        eff = float(effect_size)
+        return (
+            p if math.isfinite(p) else None,
+            eff if math.isfinite(eff) else None,
+        )
+    except Exception:
+        analyzer_cls = _resolve_ab_test_analyzer_class()
+        if analyzer_cls is None:
+            return None, None
+        try:
+            analyzer = analyzer_cls()
+            stat_result = analyzer.analyze_parallel(control_pnl, variant_pnl)
+            p = float(stat_result.p_value)
+            eff = float(stat_result.effect_size)
+            return (
+                p if math.isfinite(p) else None,
+                eff if math.isfinite(eff) else None,
+            )
+        except Exception:
+            return None, None
+
+
 def evaluate_ab_variant(
     variant_records: list[FillRecord],
     control_records: list[FillRecord],
@@ -214,8 +284,8 @@ def evaluate_ab_variant(
             if str(r.get("regime") or "none") not in excl
         ]
 
-    vm = _compute_metrics(variant_records)
-    cm = _compute_metrics(control_records)
+    vm, v_pnl = _compute_metrics_with_pnl(variant_records)
+    cm, c_pnl = _compute_metrics_with_pnl(control_records)
 
     result = ABJudgmentResult(
         overall=Verdict.PASS,
@@ -352,17 +422,10 @@ def evaluate_ab_variant(
     ))
 
     # --- 統計検定 (ztb.adaptation.ab_test.analyzer 活用) ---
-    v_pnl = _extract_pnl30_array(variant_records)
-    c_pnl = _extract_pnl30_array(control_records)
     if len(v_pnl) >= 10 and len(c_pnl) >= 10:
-        try:
-            from ztb.adaptation.ab_test.analyzer import ABTestAnalyzer
-            analyzer = ABTestAnalyzer()
-            stat_result = analyzer.analyze_parallel(c_pnl, v_pnl)
-            result.pnl30_p_value = stat_result.p_value
-            result.pnl30_effect_size = stat_result.effect_size
-        except Exception as e:
-            logger.debug(f"[ab_judgment] Statistical test failed (non-fatal): {e}")
+        p_value, effect_size = _compute_statistical_comparison(c_pnl, v_pnl)
+        result.pnl30_p_value = p_value
+        result.pnl30_effect_size = effect_size
 
     # --- 総合判定 ---
     verdicts = [c.verdict for c in result.criteria]
