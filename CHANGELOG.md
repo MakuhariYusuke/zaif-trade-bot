@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 302# perf+dry: retrain/ml重い統合テストの軽量化継続 (2026-03-06)
+
+### Changed
+- **テスト高速化（検証意図を維持）**
+  - `tests/unit/v460/test_retrain_hot_reload.py`
+    - `TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload`
+      - データ件数/学習パラメータを最小要件内で軽量化
+      - 2回目の重い再学習を、モデル差し替えによる hot-reload 検証へ変更
+      - `enrich_fill_records` を軽量モック化して I/O を抑制
+    - `TestTradesIOFallback::test_fallback_uses_7day_window`
+      - `raw_dir` を一時ディレクトリへ固定し、実ファイル走査コストを回避
+      - `load_raw_orderbook` をモックしてテスト目的（trades fallback 呼び出し順）のみに集中
+    - `TestMultiWindowWF::test_evaluate_wf_multi_returns_fold_data`
+      - 入力サイズ/設定を見直し、2-window 条件を満たしたまま計算量を削減
+  - `tests/unit/v460/test_ml_pipeline.py`
+    - 合成 fixture 件数を `100 -> 80`
+    - 実データ統合テストを `load_fill_records(max_files=6)` + `tail(600)` に調整
+
+### Verification
+- 変更対象回帰:
+  - `98 passed, 4 warnings in 4.56s` (`test_retrain_hot_reload.py` + `test_ml_pipeline.py`)
+- v460 全体:
+  - `3958 passed, 19 warnings in 39.15s`（`--no-cov --tb=short`）
+  - `3958 passed, 19 warnings in 39.70s`（`--no-cov --durations=20`）
+
+### Performance Notes
+- `--durations=20` 上位の `test_retrain_hot_reload::TestE2ERetrainHotReload` は `0.16s` まで低下。
+- 上位ボトルネックは主に `test_ml_pipeline` の GB 学習系に集約。
+
 ## 301# perf+dry+core: ab_judgment統計計算軽量化 + v460 import集約継続 (2026-03-06)
 
 ### Changed

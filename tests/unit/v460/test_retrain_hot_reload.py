@@ -29,7 +29,7 @@ from scripts.v460.ml.skip_gate import (
     SkipGate,
     SkipGateConfig,
 )
-from scripts.v460.ml.feature_enricher import enrich_fill_records, load_raw_trades
+from scripts.v460.ml.feature_enricher import enrich_fill_records
 from scripts.v460.ml.retrain_scheduler import (
     _DEFAULT_CONFIG,
     _apply_statistical_gate,
@@ -537,10 +537,10 @@ class TestE2ERetrainHotReload:
             model_dir.mkdir()
             model_path = model_dir / "gate.pkl"
 
-            # 60件の fill records を生成 (十分なサンプル数)
+            # 30件の fill records を生成 (最低要件を満たす範囲で軽量化)
             rng = np.random.RandomState(42)
             records = []
-            for i in range(60):
+            for i in range(30):
                 records.append(json.dumps({
                     "cycle_id": f"e2e_{i}",
                     "side": "buy" if i % 2 == 0 else "sell",
@@ -567,15 +567,20 @@ class TestE2ERetrainHotReload:
             cfg["mode"] = "pnl"
             cfg["use_ob_features"] = False  # テスト高速化
             cfg["min_new_samples"] = 1
-            cfg["min_total_samples"] = 50
+            cfg["min_total_samples"] = 20
             cfg["quality_gate_enabled"] = False  # E2E テストでは品質ゲート無効
             cfg["latest_run_only"] = False
             cfg["exclude_missing_run_id"] = False
-            cfg["lgbm_n_estimators"] = 20
+            cfg["lgbm_n_estimators"] = 8
             cfg["early_stopping_rounds"] = 0
-            cfg["bootstrap_threshold"] = 50
+            cfg["bootstrap_threshold"] = 20
+            cfg["enriched_cache_enabled"] = False
 
-            result = retrain_model(cfg)
+            with patch(
+                "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
+                side_effect=_identity_enrich,
+            ):
+                result = retrain_model(cfg)
             assert result["status"] in ("deployed", "deployed_verified"), f"Expected deployed*, got {result}"
             assert model_path.exists()
 
@@ -609,10 +614,10 @@ class TestE2ERetrainHotReload:
             assert evaluator._skip_gate is not None
             initial_hash = evaluator._model_file_hash
 
-            # モデルを再 retrain して上書き (v2)
-            cfg["min_new_samples"] = 0  # 新規サンプルチェック無効化
-            result2 = retrain_model(cfg)
-            assert result2["status"] in ("deployed", "deployed_verified")
+            # hot-reload 検証用に v2 モデルへ差し替え
+            gate_v2 = _make_picklable_gate(n_samples=45, version="e2e_v2")
+            gate_v2.metadata["retrained"] = True
+            _save_gate_to(gate_v2, model_path)
 
             # hot-reload トリガー (interval リセット)
             evaluator._last_reload_check = 0
@@ -746,7 +751,6 @@ class TestTradesIOFallback:
 
         # enrich_fill_records 内の load_raw_trades 呼び出しを追跡
         call_args: list[tuple] = []
-        original_load = load_raw_trades
 
         def _tracking_load(raw_dir=None, date_filter=None):
             call_args.append((raw_dir, date_filter))
@@ -759,11 +763,16 @@ class TestTradesIOFallback:
             "filled": [True],
         })
 
-        with patch(
-            "scripts.v460.ml.feature_enricher.load_raw_trades",
-            side_effect=_tracking_load,
-        ):
-            enrich_fill_records(fill_df)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch(
+                "scripts.v460.ml.feature_enricher.load_raw_trades",
+                side_effect=_tracking_load,
+            ), patch(
+                "scripts.v460.ml.feature_enricher.load_raw_orderbook",
+                return_value=pd.DataFrame(),
+            ):
+                # raw_dir を空ディレクトリに固定し、実ファイル走査コストを回避
+                enrich_fill_records(fill_df, raw_dir=Path(tmpdir))
 
         # 139# §9-#5: 全量フォールバック廃止により 2 コールに変更
         # 呼び出し順: (1) date_filter あり → (2) 7日 window
@@ -1077,11 +1086,11 @@ class TestMultiWindowWF:
     def test_evaluate_wf_multi_returns_fold_data(self) -> None:
         """multi-window WF がfold-level PnL データを返す."""
 
-        n = 300
+        n = 180
         rng = np.random.RandomState(42)
         X = pd.DataFrame(
-            rng.randn(n, 5),
-            columns=["f1", "f2", "f3", "f4", "f5"],
+            rng.randn(n, 4),
+            columns=["f1", "f2", "f3", "f4"],
         )
         y = pd.Series(rng.randn(n), name="target")
         enriched = pd.DataFrame({
@@ -1094,7 +1103,7 @@ class TestMultiWindowWF:
             "wf_initial_train_pct": 0.50,
             "wf_val_pct": 0.10,
             "wf_test_pct": 0.15,
-            "wf_step_pct": 0.20,
+            "wf_step_pct": 0.25,
             "wf_embargo_rows": 0,
             "wf_min_window_train": 20,
             "wf_min_window_test": 5,

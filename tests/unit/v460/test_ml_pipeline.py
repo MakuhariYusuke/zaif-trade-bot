@@ -28,7 +28,7 @@ from scripts.v460.ml.fill_classifier import FillModelMetrics, train_fill_classif
 def synthetic_fill_df() -> pd.DataFrame:
     """合成 fill records: 100件のテストデータ."""
     rng = np.random.RandomState(42)
-    n = 100
+    n = 80
     timestamps = np.arange(1700000000, 1700000000 + n * 120, 120, dtype=float)
     sides = rng.choice(["buy", "sell"], n)
     prices = 14_500_000 + rng.randn(n) * 10_000
@@ -287,10 +287,10 @@ class Test057Integration:
         """実データのロードと AS 特徴量構築."""
         if not real_data_available:
             pytest.skip("No real fill records")
-        df = load_fill_records(max_files=8)
-        if len(df) > 800:
+        df = load_fill_records(max_files=6)
+        if len(df) > 600:
             # 統合テストはロード経路の健全性確認が主目的のため、特徴量構築はサブセットで十分。
-            df = df.tail(800).copy()
+            df = df.tail(600).copy()
         assert len(df) >= 100
         X, y = build_as_features(df)
         assert len(X) >= 50

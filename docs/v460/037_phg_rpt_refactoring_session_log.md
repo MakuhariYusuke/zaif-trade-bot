@@ -392,3 +392,38 @@
 1. `test_retrain_hot_reload.py` の高負荷統合ケースで subset 読み込みを段階導入
 2. `test_ml_pipeline.py` の GB 学習ケースを特徴量固定 fixture で再利用化
 3. `test_202_log_improvements.py` / `test_145_s13_boundary_guards.py` など次点の import 集約を継続
+
+---
+
+## 2026-03-06 / Session 037-011
+
+### 実施
+- テスト高速化（重い統合ケースの計算/I/O削減）
+  - `test_retrain_hot_reload.py`
+    - `TestE2ERetrainHotReload`:
+      - 学習データ規模と LGBM パラメータを最小要件内で軽量化
+      - 2回目の重い再学習を、モデル差し替えベースの hot-reload 検証に置換
+      - `enrich_fill_records` を軽量モック化
+    - `TestTradesIOFallback`:
+      - `raw_dir` を一時ディレクトリに固定
+      - `load_raw_orderbook` をモック化し、trades fallback 呼び出し順の検証に集中
+    - `TestMultiWindowWF::test_evaluate_wf_multi_returns_fold_data`:
+      - 入力件数/step 設定を見直し、2-window 条件を維持しつつ計算量を削減
+  - `test_ml_pipeline.py`
+    - 合成 fixture 件数を `100 -> 80`
+    - 実データ統合テストを `max_files=6` + `tail(600)` に調整
+
+### 結果
+- 変更対象テスト:
+  - `98 passed, 4 warnings in 4.56s`（`test_retrain_hot_reload.py` + `test_ml_pipeline.py`）
+- v460 全体:
+  - `3958 passed, 19 warnings in 39.15s`（`--no-cov --tb=short`）
+  - `3958 passed, 19 warnings in 39.70s`（`--no-cov --durations=20`）
+- `--durations=20` 上位:
+  - `test_retrain_hot_reload::TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload` `0.16s`
+  - 主ボトルネックは `test_ml_pipeline` の GB 学習系へ集約
+
+### 次アクション
+1. `test_ml_pipeline` の GB 学習テストを共通学習 fixture 化し、再学習回数を削減
+2. `test_retrain_hot_reload` の single-window leakage 系のデータ件数を段階縮小
+3. import 集約の次点（`test_202_log_improvements.py` 等）を継続
