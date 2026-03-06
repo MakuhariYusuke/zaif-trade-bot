@@ -3868,3 +3868,32 @@ python scripts/unified_trainer.py \
 ### Notes
 - The latest filtered broad run completed at `4068 passed, 1 deselected, 18 warnings in 32.18s` on the current Windows workspace.
 - `tests/unit/v460/test_141_side_specific_models.py::TestEvaluatorSideDispatch::test_select_gate_for_side_both` dropped from `0.42s` to `0.02s` after replacing fitted sklearn payloads with lightweight dummy gates.
+
+### Changed
+- Stabilized real-data integration in `tests/unit/v460/test_enricher_skip_gate.py` by replacing the flaky fixed-tail assumption with a minimal-rows-plus-fallback selection path, then reused pre-fit gate templates via `deepcopy` to avoid repeated Ridge/LogisticRegression fitting in the skip-gate class tests.
+- Reworked `tests/unit/v460/test_build_features_pipeline.py` to patch `MarketDataCollector.aggregate_to_1min()` raw readers and parquet writes, keeping the aggregation logic under test while removing synthetic gzip write/read overhead from class fixtures.
+- Reduced repeated ML training cost in `tests/unit/v460/test_ml_pipeline.py` by lowering CV folds where only metric existence is asserted and trimming GradientBoosting estimator counts in the non-quality-sensitive tests.
+- Replaced the remaining AsyncMock-based balance-error path in `tests/unit/v460/test_237_phantom_position_guard.py` with a minimal async adapter stub.
+- Continued YAML fixture horizontal rollout in `tests/unit/v460/test_139_review_fixes.py` and `tests/unit/v460/test_094_stale_order.py`, removing two more direct `fill_test.yaml` reads.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_ml_pipeline.py tests/unit/v460/test_build_features_pipeline.py tests/unit/v460/test_102_structural_fixes.py tests/unit/v460/test_237_phantom_position_guard.py -q --no-cov --tb=short --durations=25`
+- `python -m pytest tests/unit/v460/test_enricher_skip_gate.py -q --no-cov --tb=short --durations=25`
+- `python -m pytest tests/unit/v460/test_139_review_fixes.py tests/unit/v460/test_094_stale_order.py -q --no-cov --tb=short --durations=15`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- The focused hotspot bundle improved from `159 passed in 8.21s` to `159 passed in 7.12s`.
+- Filtered broad reruns after the flaky-fix changes varied between `33.40s` and `35.69s` on the current Windows workspace; the remaining dominant costs are now real-data enrichment, source-inspection-heavy regime tests, and a handful of runtime-initialization cases.
+
+### Changed
+- Replaced the remaining direct `fill_test.yaml` read in `tests/unit/v460/test_regime_detector.py` with the shared `v460_fill_test_yaml` fixture and switched the enum/source inspection check to a cached file-text helper, avoiding repeated `inspect.getsource()` work on `maker_price.py`.
+- Reduced synthetic breadth in `tests/unit/v460/test_aggregate_to_1min.py::TestAggregateEdgeCases::test_many_minutes` from 10 minutes to 6 while preserving the multi-minute aggregation path and assertions.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_regime_detector.py tests/unit/v460/test_aggregate_to_1min.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=20 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- The latest filtered broad run for the current patch completed at `4043 passed, 1 deselected, 18 warnings in 37.13s` when excluding the unrelated line-count guard in `tests/unit/v460/test_113_resilience.py`.
+- The unrelated failure is `TestR1MethodExtraction::test_run_single_cycle_under_400_lines`, currently reporting `run_single_cycle is 732 lines (> 725)` in the working tree.

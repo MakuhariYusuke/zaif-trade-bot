@@ -18,9 +18,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
-import yaml
 from scripts.v460.lib.adaptation_engine import AdaptationEngine
-from scripts.v460.lib.maker_price import MakerPriceCalculator
 from scripts.v460.lib.ob_utils import depth_volume, extract_price, extract_size
 from scripts.v460.lib.regime_detector import (
     FillTestRegime,
@@ -31,6 +29,7 @@ from scripts.v460.lib.regime_detector import (
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from scripts.v460.lib.time_filter import TimeFilter
 from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+from tests.unit.v460._fill_test_source import read_source_text
 from ztb.metrics.fill_quality import FillRecord, filter_clean_records
 from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
@@ -39,6 +38,13 @@ from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 @lru_cache(maxsize=None)
 def _source(obj: object) -> str:
     return inspect.getsource(obj)
+
+
+@lru_cache(maxsize=None)
+def _maker_price_source() -> str:
+    return read_source_text(
+        Path("scripts") / "v460" / "lib" / "maker_price.py"
+    )
 
 # ======================================================================
 # Fixtures
@@ -1144,7 +1150,7 @@ class TestPhaseD18EnumConsistency:
     def test_high_vol_uses_enum_comparison(self) -> None:
         """maker_price.py の high_vol ロジックが enum 比較を使用."""
 
-        source = _source(MakerPriceCalculator)
+        source = _maker_price_source()
         assert "FillTestRegime.HIGH_VOL" in source
         assert "FillTestRegime.RANGING" in source
         assert "FillTestRegime.UNKNOWN" in source
@@ -1168,12 +1174,9 @@ class TestPhaseD18ObFetchStats:
 class TestPhaseD18RangingYaml:
     """156# §18: ranging_offset_discount YAML 有効化テスト."""
 
-    def test_yaml_has_ranging_discount(self) -> None:
+    def test_yaml_has_ranging_discount(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """YAML に ranging_offset_discount が設定されている."""
-
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
+        cfg = v460_fill_test_yaml
         regime = cfg["regime"]
         assert "ranging_offset_discount" in regime
         discount = regime["ranging_offset_discount"]

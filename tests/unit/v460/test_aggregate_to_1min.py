@@ -406,11 +406,11 @@ class TestAggregateEdgeCases:
 
     def test_many_minutes(self, tmp_path: Path) -> None:
         """複数分にわたるデータの集約."""
-        ob_records = [_make_ob_record(m) for m in range(10)]
-        tr_records = [_make_trade_record(m) for m in range(10)]
+        ob_records = [_make_ob_record(m) for m in range(6)]
+        tr_records = [_make_trade_record(m) for m in range(6)]
         df, _ = _run_aggregate(tmp_path, ob_records=ob_records, tr_records=tr_records)
 
-        assert len(df) == 10
+        assert len(df) == 6
 
     def test_mixed_case_side(self, tmp_path: Path) -> None:
         """side が 'Buy'/'SELL' 等の大文字混在でも動作."""
