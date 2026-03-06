@@ -62,6 +62,7 @@ def train_as_classifier(
     n_splits: int = 5,
     model_type: str = "gb",
     n_features_select: int | None = None,
+    gb_n_estimators: int | None = None,
 ) -> tuple[ASModelMetrics, ProbabilisticEstimator, Pipeline, np.ndarray]:
     """AS 分類器の学習と時系列 CV 評価.
 
@@ -73,6 +74,7 @@ def train_as_classifier(
         model_type: "lr" (LogisticRegression) or "gb" (GradientBoosting).
         n_features_select: 060# v2: SelectKBest(f_classif) で選択する特徴量数.
             None の場合は全特徴量を使用.
+        gb_n_estimators: GB 使用時の木の本数上書き (None で既定値).
 
     Returns:
         (metrics, model, pipeline, oof_probs) タプル.
@@ -94,7 +96,11 @@ def train_as_classifier(
 
         # 059# P0-1: Imputer+Scaler+Model を fold 内で fit (リーク防止)
         # 060# tuned: LR C=0.01, GB n=30/d=3/lr=0.05 (feature selection時)
-        clf = _build_classifier(model_type, n_features_select)
+        clf = _build_classifier(
+            model_type,
+            n_features_select,
+            gb_n_estimators=gb_n_estimators,
+        )
 
         # 060# v2: Feature selection (CV内で特徴量選択 → リーク防止)
         k = min(n_features_select, X_values.shape[1]) if n_features_select else None
@@ -115,7 +121,11 @@ def train_as_classifier(
     naive_pr_auc = float(np.mean(y_values))  # PR-AUC baseline for imbalanced
 
     # Final model on all data (for feature importance extraction only)
-    final_clf = _build_classifier(model_type, n_features_select)
+    final_clf = _build_classifier(
+        model_type,
+        n_features_select,
+        gb_n_estimators=gb_n_estimators,
+    )
     k_final = min(n_features_select, X.shape[1]) if n_features_select else None
     final_pipe = _build_training_pipeline(final_clf, k_final)
     final_pipe.fit(X_values, y_values)
@@ -277,6 +287,8 @@ def evaluate_skip_policy(
 def _build_classifier(
     model_type: str,
     n_features_select: int | None,
+    *,
+    gb_n_estimators: int | None,
 ) -> ProbabilisticEstimator:
     """model_type と設定に応じた分類器インスタンスを生成."""
     if model_type == "lr":
@@ -286,7 +298,9 @@ def _build_classifier(
             C=c_val, max_iter=2000, class_weight="balanced", random_state=42
         )
     # 060#: 小さい木 (n=30, lr=0.05) — 過学習防止
-    n_est = 30 if n_features_select else 100
+    n_est = gb_n_estimators if gb_n_estimators is not None else (30 if n_features_select else 100)
+    if n_est <= 0:
+        raise ValueError("gb_n_estimators must be >= 1")
     lr_val = 0.05 if n_features_select else 0.1
     return GradientBoostingClassifier(
         n_estimators=n_est,

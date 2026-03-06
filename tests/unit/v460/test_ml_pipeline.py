@@ -28,7 +28,7 @@ from scripts.v460.ml.fill_classifier import FillModelMetrics, train_fill_classif
 def synthetic_fill_df() -> pd.DataFrame:
     """合成 fill records: 100件のテストデータ."""
     rng = np.random.RandomState(42)
-    n = 60
+    n = 50
     timestamps = np.arange(1700000000, 1700000000 + n * 120, 120, dtype=float)
     sides = rng.choice(["buy", "sell"], n)
     prices = 14_500_000 + rng.randn(n) * 10_000
@@ -206,16 +206,24 @@ class Test057ASClassifier:
     def test_train_gb_model(self, synthetic_fill_df: pd.DataFrame) -> None:
         """GradientBoosting で学習."""
         X, y = build_as_features(synthetic_fill_df)
-        X = X.head(40)
+        X = X.head(30)
         y = y.loc[X.index]
-        metrics, model, scaler, _ = train_as_classifier(X, y, model_type="gb", n_splits=2)
+        metrics, model, scaler, _ = train_as_classifier(
+            X,
+            y,
+            model_type="gb",
+            n_splits=2,
+            gb_n_estimators=18,
+        )
         assert metrics.feature_importances is not None
         assert len(metrics.feature_importances) == X.shape[1]
 
     def test_model_predicts(self, synthetic_fill_df: pd.DataFrame) -> None:
         """学習済みモデルが predict_proba を返す."""
         X, y = build_as_features(synthetic_fill_df)
-        _, model, pipeline, _ = train_as_classifier(X, y, model_type="lr", n_splits=3)
+        X = X.head(40)
+        y = y.loc[X.index]
+        _, model, pipeline, _ = train_as_classifier(X, y, model_type="lr", n_splits=2)
         # 059#: pipeline は完全な Pipeline (imputer + scaler + model)
         probs = pipeline.predict_proba(X)
         assert probs.shape == (len(X), 2)
@@ -224,17 +232,21 @@ class Test057ASClassifier:
     def test_skip_policy_with_pnl(self, synthetic_fill_df: pd.DataFrame) -> None:
         """PnL 付きでスキップ効果計算."""
         X, y = build_as_features(synthetic_fill_df)
+        X = X.head(40)
+        y = y.loc[X.index]
         pnl = synthetic_fill_df.loc[X.index, "post_fill_30s_pnl"].astype(float)
         metrics, model, scaler, oof_probs = train_as_classifier(
-            X, y, pnl, model_type="lr", n_splits=3
+            X, y, pnl, model_type="lr", n_splits=2
         )
         assert isinstance(metrics.skip_top20_pnl_improvement_bps, float)
 
     def test_evaluate_skip_policy(self, synthetic_fill_df: pd.DataFrame) -> None:
         """スキップポリシーの DataFrame が返る."""
         X, y = build_as_features(synthetic_fill_df)
+        X = X.head(40)
+        y = y.loc[X.index]
         pnl = synthetic_fill_df.loc[X.index, "post_fill_30s_pnl"].astype(float)
-        _, model, scaler, oof_probs = train_as_classifier(X, y, model_type="lr", n_splits=3)
+        _, model, scaler, oof_probs = train_as_classifier(X, y, model_type="lr", n_splits=2)
         result = evaluate_skip_policy(X, y, pnl, model, scaler, oof_probs=oof_probs)
         assert isinstance(result, pd.DataFrame)
         assert "threshold" in result.columns
@@ -260,9 +272,15 @@ class Test057FillClassifier:
     def test_train_gb(self, synthetic_fill_df: pd.DataFrame) -> None:
         """GradientBoosting で学習."""
         X, y = build_fill_features(synthetic_fill_df)
-        X = X.head(40)
+        X = X.head(30)
         y = y.loc[X.index]
-        metrics, model, scaler = train_fill_classifier(X, y, model_type="gb", n_splits=2)
+        metrics, model, scaler = train_fill_classifier(
+            X,
+            y,
+            model_type="gb",
+            n_splits=2,
+            gb_n_estimators=18,
+        )
         assert metrics.feature_importances is not None
 
     def test_fill_rate_correct(self, synthetic_fill_df: pd.DataFrame) -> None:
@@ -291,13 +309,13 @@ class Test057Integration:
         """実データのロードと AS 特徴量構築."""
         if not real_data_available:
             pytest.skip("No real fill records")
-        df = load_fill_records(max_files=6)
-        if len(df) > 600:
+        df = load_fill_records(max_files=2)
+        if len(df) > 150:
             # 統合テストはロード経路の健全性確認が主目的のため、特徴量構築はサブセットで十分。
-            df = df.tail(600).copy()
-        assert len(df) >= 100
+            df = df.tail(150).copy()
+        assert len(df) >= 30
         X, y = build_as_features(df)
-        assert len(X) >= 50
+        assert len(X) >= 15
 
 
 class Test057DataLoaderCache:
@@ -373,3 +391,13 @@ class Test057DataLoaderCache:
     def test_max_files_invalid_raises(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError, match="max_files must be >= 1"):
             load_fill_records(tmp_path, max_files=0)
+
+    def test_as_gb_n_estimators_invalid_raises(self, synthetic_fill_df: pd.DataFrame) -> None:
+        X, y = build_as_features(synthetic_fill_df)
+        with pytest.raises(ValueError, match="gb_n_estimators must be >= 1"):
+            train_as_classifier(X.head(20), y.head(20), model_type="gb", n_splits=2, gb_n_estimators=0)
+
+    def test_fill_gb_n_estimators_invalid_raises(self, synthetic_fill_df: pd.DataFrame) -> None:
+        X, y = build_fill_features(synthetic_fill_df)
+        with pytest.raises(ValueError, match="gb_n_estimators must be >= 1"):
+            train_fill_classifier(X.head(20), y.head(20), model_type="gb", n_splits=2, gb_n_estimators=0)

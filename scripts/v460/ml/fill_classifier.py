@@ -52,6 +52,7 @@ def train_fill_classifier(
     *,
     n_splits: int = 5,
     model_type: str = "gb",
+    gb_n_estimators: int | None = None,
 ) -> tuple[FillModelMetrics, ProbabilisticEstimator, FeatureTransformer]:
     """Fill/Timeout 分類器の学習と時系列 CV 評価.
 
@@ -60,6 +61,7 @@ def train_fill_classifier(
         y: ラベル (0=timeout, 1=filled).
         n_splits: TimeSeriesSplit の fold 数.
         model_type: "lr" or "gb".
+        gb_n_estimators: GB 使用時の木の本数上書き (None で既定値).
 
     Returns:
         (metrics, model, scaler) タプル.
@@ -77,8 +79,11 @@ def train_fill_classifier(
             return LogisticRegression(
                 C=1.0, max_iter=1000, class_weight="balanced", random_state=42
             )
+        n_estimators = gb_n_estimators if gb_n_estimators is not None else 80
+        if n_estimators <= 0:
+            raise ValueError("gb_n_estimators must be >= 1")
         return GradientBoostingClassifier(
-            n_estimators=80,
+            n_estimators=n_estimators,
             max_depth=3,
             learning_rate=0.1,
             subsample=0.8,

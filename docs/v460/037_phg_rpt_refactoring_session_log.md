@@ -495,3 +495,40 @@
 1. `Test055NextSideBehavior` で重い `FillTestRunner` 初期化を軽量化できる既存 helper（lightweight runner）への置換可否を確認
 2. `scripts/v460/ml/skip_gate.py` / `ztb/ml/retrain_trigger.py` 側の `list_fill_record_files` 呼び出しで日付境界情報を渡せる経路を調査
 3. `test_ml_pipeline` の GB 学習を fit 済み fixture 再利用へ寄せ、再学習回数を段階削減
+
+---
+
+## 2026-03-06 / Session 037-014
+
+### 実施
+- 本体コード（再利用可能な負荷制御）
+  - `as_classifier.py` / `fill_classifier.py`
+    - GB 学習の木数を引数 (`gb_n_estimators`) で外部制御可能化
+    - デフォルト挙動は維持しつつ、テスト/実験の軽量化経路を提供
+- テスト高速化（横展開）
+  - `test_fill_test_config.py`
+    - `_next_side` 系ケースを `_LightweightFillTestRunner` へ置換
+    - `FillTestRunner` の重い初期化依存を排除
+  - `test_ml_pipeline.py`
+    - 合成データ規模・CV split・実データサブセットを見直し
+    - GB 学習ケースで `gb_n_estimators=18` を使用
+  - `tests/unit/v460/conftest.py`
+    - `v460_fill_test_yaml` fixture を追加（session cache + per-test deepcopy）
+  - `test_157_regime_features.py` / `test_176_trending_offset_asymmetry.py`
+    - `fill_test.yaml` の手読み込みを fixture 利用へ置換
+
+### 結果
+- 変更対象テスト:
+  - `172 passed in 5.10s`
+  - `150 passed in 2.96s`
+  - `22 passed in 2.60s`
+- v460 全体:
+  - `3985 passed, 19 warnings in 40.52s`（`--no-cov --durations=20`）
+- `--durations=20` の更新:
+  - `test_fill_test_config` の `_next_side` 系は上位から離脱
+  - 上位は `test_240_toxicity_budget` / `test_enricher_skip_gate` setup / `test_retrain_hot_reload` 系へ集約
+
+### 次アクション
+1. `test_240_toxicity_budget.py` の高負荷ケースを、検証意図を維持した入力縮小またはモック化で軽量化
+2. `test_retrain_hot_reload.py::TestMultiWindowWF` の fold 計算負荷を段階削減（window 数維持）
+3. `fill_test.yaml` 直読の残件（`test_166_hotfixes.py`, `test_197_boost_optimization_gate_integration.py` など）を fixture 化で横展開

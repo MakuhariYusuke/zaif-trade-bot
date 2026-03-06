@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 305# perf+dry+io: ML学習軽量化横展開 + fill_test.yaml fixture共通化 (2026-03-06)
+
+### Changed
+- **本体コード最適化（再利用性 + 負荷制御）**
+  - `scripts/v460/ml/as_classifier.py`
+    - `train_as_classifier(..., gb_n_estimators=...)` を追加
+    - 既定値は従来維持、テスト/実験時のみ GB 木数を明示制御可能に
+  - `scripts/v460/ml/fill_classifier.py`
+    - `train_fill_classifier(..., gb_n_estimators=...)` を追加
+    - 不正値 (`<=0`) は `ValueError` で明示失敗
+- **テスト負荷軽減（横展開）**
+  - `tests/unit/v460/test_fill_test_config.py`
+    - `_next_side` 系テストの runner を軽量化（`_LightweightFillTestRunner`）
+    - 重い `FillTestRunner` 初期化を回避し、ロジック検証に必要な依存のみ保持
+  - `tests/unit/v460/test_ml_pipeline.py`
+    - 合成データ件数・サブセット・CV split を見直し
+    - GB テストは `gb_n_estimators=18` で十分条件を維持したまま計算量を削減
+    - 実データ統合は `max_files=2` + `tail(150)` に調整
+  - `tests/unit/v460/conftest.py`
+    - `v460_fill_test_yaml` / `v460_fill_test_yaml_base` fixture を追加
+  - `tests/unit/v460/test_157_regime_features.py`
+  - `tests/unit/v460/test_176_trending_offset_asymmetry.py`
+    - `fill_test.yaml` の反復 `open + yaml.safe_load` を共通 fixture 利用へ置換
+
+### Verification
+- 変更対象回帰:
+  - `172 passed in 5.10s` (`test_ml_pipeline`, `test_fill_test_config`, `test_157`, `test_176`)
+  - `150 passed in 2.96s` (`test_fill_test_config`, `test_157`, `test_176`)
+  - `22 passed in 2.60s` (`test_ml_pipeline`)
+- v460 全体:
+  - `3985 passed, 19 warnings in 40.52s`（`--no-cov --durations=20`）
+
+### Performance Notes
+- `test_fill_test_config` の `_next_side` 系は軽量 runner 化で大幅短縮（上位 durations から外れる水準まで低下）。
+- `test_ml_pipeline::test_load_real_data` は `0.6s` 級から `0.2s` 台へ収束する回が増加（I/O 変動あり）。
+
 ## 304# perf+io+dry: fill record列挙最適化 + YAML読込キャッシュ + テストI/O重複削減 (2026-03-06)
 
 ### Changed

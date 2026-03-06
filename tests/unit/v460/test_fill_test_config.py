@@ -5,15 +5,16 @@
 
 from __future__ import annotations
 
-import copy
 import inspect
 from pathlib import Path
-from unittest.mock import MagicMock
+from types import SimpleNamespace
 
 import pytest
 import yaml
 
 from scripts.v460.lib.config_loader import load_fill_test_config
+from scripts.v460.lib.side_selector import SideSelector
+from scripts.v460.lib.time_filter import TimeFilter
 from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
 from ztb.metrics.fill_quality import (
     FillRecord,
@@ -22,20 +23,31 @@ from ztb.metrics.fill_quality import (
 )
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-_FILL_TEST_YAML_PATH = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
 
 
-@pytest.fixture(scope="module")
-def fill_test_yaml_base() -> dict[str, object]:
-    with open(_FILL_TEST_YAML_PATH, "r", encoding="utf-8") as f:
-        raw = yaml.safe_load(f)
-    assert isinstance(raw, dict)
-    return raw
+class _LightweightFillTestRunner:
+    """_next_side / SkipGate有無 / TimeFilter検証向けの軽量 runner."""
 
+    def __init__(self, config: FillTestConfig) -> None:
+        self.config = config
+        self._side_selector = SideSelector(config)
+        self._maker_price = SimpleNamespace(_last_imbalance=None)
+        self._time_filter = TimeFilter(config)
+        self._skip_gate = None
+        self._consecutive_same_side = 0
 
-@pytest.fixture
-def fill_test_yaml(fill_test_yaml_base: dict[str, object]) -> dict[str, object]:
-    return copy.deepcopy(fill_test_yaml_base)
+    @property
+    def _last_side(self) -> str | None:
+        return self._side_selector.last_side
+
+    @_last_side.setter
+    def _last_side(self, value: str | None) -> None:
+        self._side_selector.last_side = value
+
+    def _next_side(self) -> str:
+        return self._side_selector.next(
+            imbalance=self._maker_price._last_imbalance,
+        )
 
 
 def _make_runner(
@@ -45,8 +57,8 @@ def _make_runner(
     imbalance_threshold: float = 0.3,
     start_side: str = "buy",
     **kwargs: object,
-) -> FillTestRunner:
-    """テスト用の FillTestRunner を構築 (adapter はモック)."""
+) -> _LightweightFillTestRunner:
+    """テスト用の軽量 Runner を構築 (_next_side 系テスト向け)."""
     config = FillTestConfig(
         smart_side_enabled=smart_side_enabled,
         smart_side_mode=smart_side_mode,
@@ -56,8 +68,7 @@ def _make_runner(
         enable_regime=False,  # テストでレジーム検知は不要
         **kwargs,  # type: ignore[arg-type]
     )
-    adapter = MagicMock()
-    return FillTestRunner(adapter=adapter, config=config)
+    return _LightweightFillTestRunner(config=config)
 
 
 class TestLoadFillTestConfig:
@@ -209,22 +220,22 @@ class TestFillTestConfigFromYaml:
 class TestFillTestYamlFile:
     """configs/v460/fill_test.yaml ファイル自体のバリデーション."""
 
-    def test_yaml_is_valid(self, fill_test_yaml: dict[str, object]) -> None:
+    def test_yaml_is_valid(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """YAML として正しく parse できる."""
-        assert isinstance(fill_test_yaml, dict)
+        assert isinstance(v460_fill_test_yaml, dict)
 
-    def test_yaml_roundtrip(self, fill_test_yaml: dict[str, object]) -> None:
+    def test_yaml_roundtrip(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """YAML → FillTestConfig → 主要フィールドが一致."""
-        cfg = fill_test_yaml
+        cfg = v460_fill_test_yaml
         config = FillTestConfig.from_yaml(cfg)
         assert config.symbol == cfg["symbol"]
         assert config.order_quantity == cfg["order_quantity"]
         assert config.spread_offset_ratio == cfg["spread_offset_ratio"]
         assert config.loss_cap_jpy == cfg["safety"]["loss_cap_jpy"]
 
-    def test_yaml_tuning_roundtrip(self, fill_test_yaml: dict[str, object]) -> None:
+    def test_yaml_tuning_roundtrip(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """103# tuning セクションの全 18 キーが FillTestConfig に正しくマッピングされる."""
-        cfg = fill_test_yaml
+        cfg = v460_fill_test_yaml
         config = FillTestConfig.from_yaml(cfg)
         tuning = cfg.get("tuning", {})
         assert config.max_offset_ratio == tuning["max_offset_ratio"]
@@ -412,9 +423,9 @@ class Test054SpreadAdaptiveConfig:
         assert config.wide_spread_bps == 30.0
         assert config.wide_spread_ratio == 0.6
 
-    def test_yaml_roundtrip_054(self, fill_test_yaml: dict[str, object]) -> None:
+    def test_yaml_roundtrip_054(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """054# 全設定の YAML → FillTestConfig roundtrip."""
-        cfg = fill_test_yaml
+        cfg = v460_fill_test_yaml
         config = FillTestConfig.from_yaml(cfg)
         # S1 (071# disabled — OB無視)
         assert config.imbalance_enabled is False
@@ -854,9 +865,9 @@ class Test062SkipGateConfig:
         assert config.skip_gate_mode == "as"
         assert config.skip_gate_model_path == "models/v460/skip_gate_as.pkl"
 
-    def test_yaml_roundtrip_skip_gate(self, fill_test_yaml: dict[str, object]) -> None:
+    def test_yaml_roundtrip_skip_gate(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """YAML → FillTestConfig roundtrip for skip_gate."""
-        cfg = fill_test_yaml
+        cfg = v460_fill_test_yaml
         config = FillTestConfig.from_yaml(cfg)
         assert config.skip_gate_enabled == cfg["skip_gate"]["enabled"]
         assert config.skip_gate_mode == cfg["skip_gate"]["mode"]
@@ -893,9 +904,9 @@ class Test062SkipGateConfig:
         config = FillTestConfig.from_yaml(yaml_cfg)
         assert config.skip_gate_use_ob_features is True
 
-    def test_072_yaml_roundtrip_use_ob_features(self, fill_test_yaml: dict[str, object]) -> None:
+    def test_072_yaml_roundtrip_use_ob_features(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """072# fill_test.yaml の use_ob_features roundtrip."""
-        cfg = fill_test_yaml
+        cfg = v460_fill_test_yaml
         config = FillTestConfig.from_yaml(cfg)
         assert config.skip_gate_use_ob_features == cfg["skip_gate"]["use_ob_features"]
 

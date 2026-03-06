@@ -16,7 +16,6 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import yaml
 import ztb.analysis.regime as regime_module
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import FillTestConfig
@@ -288,11 +287,9 @@ class TestAdvancedRegimeDetectorArchived:
 class TestStaleCheckSellReduction:
     """stale_check_after_sec_sell の YAML 値が 20s に変更."""
 
-    def test_yaml_stale_check_sell_20s(self) -> None:
+    def test_yaml_stale_check_sell_20s(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """fill_test.yaml の stale_check_after_sec_sell が 20.0."""
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        with open(yaml_path) as f:
-            data = yaml.safe_load(f)
+        data = v460_fill_test_yaml
         stale = data.get("stale_order", {})
         assert stale.get("check_after_sec_sell") == 20.0
 
@@ -389,20 +386,18 @@ class TestRetrainPipelineIntegrity:
 class TestYAMLConsistency:
     """fill_test.yaml の新設定の一貫性."""
 
-    def test_buy_dynamic_kill_yaml_exists(self) -> None:
+    def test_buy_dynamic_kill_yaml_exists(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """fill_test.yaml に buy_dynamic_kill セクションが存在."""
-        with open("configs/v460/fill_test.yaml") as f:
-            data = yaml.safe_load(f)
+        data = v460_fill_test_yaml
         buy_kill = data.get("loss_control", {}).get("buy_dynamic_kill", {})
         assert buy_kill.get("enabled") is True
         assert buy_kill.get("window") == 50
         assert buy_kill.get("threshold_bps") == -0.8
         assert buy_kill.get("resume_window") == 10
 
-    def test_trending_offset_asymmetry_yaml(self) -> None:
+    def test_trending_offset_asymmetry_yaml(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """fill_test.yaml に trending_offset_boost_buy/sell が存在."""
-        with open("configs/v460/fill_test.yaml") as f:
-            data = yaml.safe_load(f)
+        data = v460_fill_test_yaml
         regime = data.get("regime", {})
         assert regime.get("trending_offset_boost_buy") == 1.0
         assert regime.get("trending_offset_boost_sell") == 1.5

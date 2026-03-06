@@ -15,7 +15,6 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 import scripts.v460.ml.retrain_scheduler as retrain_scheduler_mod
-import yaml  # type: ignore[import-untyped]
 
 from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
 from scripts.v460.lib.fill_config import FillTestConfig
@@ -109,11 +108,9 @@ class TestDirectionalBoostConfig:
         assert cfg.trending_down_buy_offset_boost == 1.8
         assert cfg.trending_down_sell_offset_boost == 0.7
 
-    def test_live_yaml_has_direction_boosts(self) -> None:
+    def test_live_yaml_has_direction_boosts(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """本番 YAML に方向別 boost が設定されている."""
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
+        cfg = v460_fill_test_yaml
 
         regime = cfg["regime"]
         assert regime["trending_up_buy_offset_boost"] == 0.7
@@ -121,15 +118,13 @@ class TestDirectionalBoostConfig:
         assert regime["trending_down_buy_offset_boost"] == 1.8
         assert regime["trending_down_sell_offset_boost"] == 0.7
 
-    def test_live_yaml_skip_sell_trending_false(self) -> None:
+    def test_live_yaml_skip_sell_trending_false(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """176# B → 196#: skip_sell_trending=true + trending_sell_as_offset_enabled=true.
 
         196#: ハードスキップではなく offset boost で保守的 sell 発注に変換。
         skip_sell_trending=true でゲート条件を有効化しつつ、soft mode で block しない。
         """
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
+        cfg = v460_fill_test_yaml
 
         lc = cfg["loss_control"]
         # 196#: skip_sell_trending=true (ゲート条件有効化) + soft mode
@@ -443,28 +438,25 @@ class TestMLFeatureTrendingDirection:
 class TestYAMLRegimeDirectionKeys:
     """176# 横展開: YAML の regime 関連マップに方向別キーが存在."""
 
-    def test_skip_gate_regime_thresholds_has_directions(self) -> None:
+    def test_skip_gate_regime_thresholds_has_directions(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """skip_gate regime_thresholds に trending_up/trending_down が存在."""
-        with open(Path("configs/v460/fill_test.yaml")) as f:
-            cfg = yaml.safe_load(f)
+        cfg = v460_fill_test_yaml
 
         thresholds = cfg["skip_gate"]["regime_thresholds"]
         assert "trending_up" in thresholds
         assert "trending_down" in thresholds
 
-    def test_regime_sample_weights_has_directions(self) -> None:
+    def test_regime_sample_weights_has_directions(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """retrain regime_sample_weights に trending_up/trending_down が存在."""
-        with open(Path("configs/v460/fill_test.yaml")) as f:
-            cfg = yaml.safe_load(f)
+        cfg = v460_fill_test_yaml
 
         weights = cfg["retrain"]["regime_sample_weights"]
         assert "trending_up" in weights
         assert "trending_down" in weights
 
-    def test_dynamic_kill_thresholds_already_directional(self) -> None:
+    def test_dynamic_kill_thresholds_already_directional(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """sell/buy dynamic_kill regime_thresholds は既に方向別 (回帰確認)."""
-        with open(Path("configs/v460/fill_test.yaml")) as f:
-            cfg = yaml.safe_load(f)
+        cfg = v460_fill_test_yaml
 
         sell_dk = cfg["loss_control"]["sell_dynamic_kill"]["regime_thresholds"]
         assert "trending_up" in sell_dk

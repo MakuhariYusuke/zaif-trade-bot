@@ -1,14 +1,38 @@
 from __future__ import annotations
 
+import copy
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+import yaml
 
 from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from ztb.metrics.fill_quality import FillRecord
+
+
+@pytest.fixture(scope="session")
+def v460_fill_test_yaml_path() -> Path:
+    """fill_test.yaml の絶対パス."""
+    return Path(__file__).resolve().parents[3] / "configs" / "v460" / "fill_test.yaml"
+
+
+@pytest.fixture(scope="session")
+def v460_fill_test_yaml_base(v460_fill_test_yaml_path: Path) -> dict[str, object]:
+    """fill_test.yaml の session キャッシュ."""
+    with open(v460_fill_test_yaml_path, encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
+    if not isinstance(raw, dict):
+        raise TypeError("fill_test.yaml must deserialize to dict")
+    return raw
+
+
+@pytest.fixture
+def v460_fill_test_yaml(v460_fill_test_yaml_base: dict[str, object]) -> dict[str, object]:
+    """fill_test.yaml のテストごと deepcopy."""
+    return copy.deepcopy(v460_fill_test_yaml_base)
 
 
 @pytest.fixture
