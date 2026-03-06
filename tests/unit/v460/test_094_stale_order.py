@@ -114,9 +114,12 @@ class TestStaleOrderYAML:
         assert cfg.stale_check_after_sec == pytest.approx(30.0)
         assert cfg.stale_max_reprice == 2
 
-    def test_production_yaml_has_stale_order(self, v460_fill_test_yaml: dict[str, object]) -> None:
+    def test_production_yaml_has_stale_order(self) -> None:
         """本番 YAML に 094# stale_order セクションが存在."""
-        y = v460_fill_test_yaml
+        import yaml
+        yaml_path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
+        with open(yaml_path) as f:
+            y = yaml.safe_load(f)
         so = y.get("stale_order", {})
         assert so.get("enabled") is True
         assert so.get("drift_bps") == pytest.approx(5.0)

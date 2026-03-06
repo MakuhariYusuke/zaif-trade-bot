@@ -425,8 +425,12 @@ class TestIntegrationRegimeKillFlow:
 class TestFeatureFreshnessDefault:
     """trigger_check_feature_freshness が YAML で true."""
 
-    def test_yaml_has_true(self, v460_fill_test_yaml: dict[str, object]) -> None:
-        cfg = v460_fill_test_yaml
+    def test_yaml_has_true(self) -> None:
+        yaml_path = Path(__file__).resolve().parents[3] / "configs" / "v460" / "fill_test.yaml"
+        if not yaml_path.exists():
+            pytest.skip("fill_test.yaml not found")
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f)
         retrain = cfg.get("retrain", {})
         assert retrain.get("trigger_check_feature_freshness") is True
 
