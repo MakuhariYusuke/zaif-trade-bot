@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-07 (292# ev_weighted可観測性強化 + reprice deadband + forced_buy_delay強化)
+> 最終更新: 2026-03-07 (296# P2/P3 cleanup + v459資産調査)
 
 ---
 
@@ -286,6 +286,7 @@
 | 293 | analysis | [293_ph2_blind_spot_analysis_buy_side_execution.md](293_ph2_blind_spot_analysis_buy_side_execution.md) | 290#/291#査読補完: セルフレビューによるblind spot分析 |
 | 294 | fix | [294_ph2_fix_forced_buy_delay_deadlock.md](294_ph2_fix_forced_buy_delay_deadlock.md) | CRITICAL fix: forced_buy_delay リアームループによる永久buyブロック。max_consecutive上限で解消 |
 | 295 | impl | [295_ph2_hot_reload_comprehensive_coverage.md](295_ph2_hot_reload_comprehensive_coverage.md) | Config hot-reload包括的カバレッジ修正: 157フィールド追加 (312/368=84.8%) + 290#/291#対応漏れ調査 + セルフレビュー |
+| 296 | impl | [296_ph2_impl_p2p3_cleanup_and_v459_asset_survey.md](296_ph2_impl_p2p3_cleanup_and_v459_asset_survey.md) | P2/P3 cleanup: B-14 except as e (16箇所), F-2 cancel_reason CR定数化 (5新規+18置換), B-17 MCB/SAD型安全化, v459資産調査 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
