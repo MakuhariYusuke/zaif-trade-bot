@@ -463,6 +463,8 @@ sigma_parkinson:
 # ---- 303# none レジーム Passive MM フォールバック ----
 # regime 未確定 (warmup/欠損) 時に 13 段パイプラインをバイパスし固定 offset で指値
 # AS 43% の根本対策 (302# 盲点1): 情報不足時はパッシブに待機
+# 318# F5-1 修正: "unknown" (warmup/低信頼度) も対象に含める
+# ※ 旧実装は "none" のみチェック → FillTestRegime に "none" 値は存在せず事実上無効だった
 none_regime:
   passive_mm_enabled: true         # 306# 有効化 (303# で実装済、303# 時点では false)
   fixed_offset_bps: 2.0           # 固定 offset (bps of mid_price)

@@ -158,6 +158,7 @@ class FillTestConfig:
     # 303# C: none レジーム Passive MM フォールバック
     # regime 未確定 (warmup/欠損) 時に 13 段パイプラインをバイパスし固定 offset で指値
     # AS 43% の根本対策: 情報不足時はパッシブに待機
+    # 318# F5-1: "unknown" も対象 (旧実装は "none" のみで事実上死んでいた)
     none_regime_passive_mm_enabled: bool = False
     none_regime_fixed_offset_bps: float = 2.0  # 固定 offset (bps of mid_price)
     # 227# C1: Ranging × OBI (Order Book Imbalance) 方向別非対称 offset

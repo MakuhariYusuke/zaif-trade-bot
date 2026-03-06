@@ -63,8 +63,13 @@ def extract_filled(records: list[dict], side: str | None = None,
             continue
         if side and r.get("side") != side:
             continue
-        if regime and str(r.get("regime") or "none") != regime:
-            continue
+        if regime:
+            # 318# F5: "null" は regime=None, それ以外は文字列比較
+            if regime == "null":
+                if r.get("regime") is not None:
+                    continue
+            elif str(r.get("regime") or "") != regime:
+                continue
         out.append(r)
     return out
 
@@ -120,14 +125,23 @@ def run_ab_comparison(records: list[dict]) -> dict:
 
 
 def run_per_regime_comparison(records: list[dict]) -> list[dict]:
-    """Regime 別の売買比較."""
-    regimes = sorted({str(r.get("regime") or "none") for r in records if r.get("filled")})
+    """Regime 別の売買比較.
+
+    318# F5: None (null) と "unknown" を明確に区別して表示。
+    """
+    def _regime_label(r: dict) -> str:
+        v = r.get("regime")
+        if v is None:
+            return "null"
+        return str(v)
+
+    regimes = sorted({_regime_label(r) for r in records if r.get("filled")})
     results = []
     for regime in regimes:
         sell_recs = [r for r in records if r.get("side") == "sell"
-                     and str(r.get("regime") or "none") == regime]
+                     and _regime_label(r) == regime]
         buy_recs = [r for r in records if r.get("side") == "buy"
-                     and str(r.get("regime") or "none") == regime]
+                     and _regime_label(r) == regime]
         criteria = ABJudgmentCriteria(exclude_regimes=[])
         result = evaluate_ab_variant(
             sell_recs, buy_recs,
@@ -310,10 +324,24 @@ def spread_as_decomposition(records: list[dict]) -> dict:
 
 
 def none_regime_analysis(records: list[dict]) -> dict:
-    """310# D: None regime 影響分析."""
+    """310# D / 318# F5-4: None/Unknown regime 影響分析.
+
+    318# F5-4 改善:
+    - "none" (regime=null) と "unknown" (warmup/低信頼度) を分離分析
+    - regime_at_order (発注時レジーム) と regime (post-cycle) の乖離を検出
+    - regime_observation_count によるサブ分類 (warmup vs mature-unknown)
+    """
     filled = [r for r in records if r.get("filled")]
-    none_recs = [r for r in filled if str(r.get("regime") or "none") == "none"]
-    non_none = [r for r in filled if str(r.get("regime") or "none") != "none"]
+
+    # None: regime フィールドが null (旧コード/価格取得失敗)
+    none_recs = [r for r in filled if r.get("regime") is None]
+    # Unknown: detector が UNKNOWN を返した (warmup/低信頼度)
+    unknown_recs = [r for r in filled if r.get("regime") == "unknown"]
+    # Combined: none + unknown
+    none_or_unknown = none_recs + unknown_recs
+    # Non-none: 有効なレジーム判定あり
+    non_none = [r for r in filled
+                if r.get("regime") is not None and r.get("regime") != "unknown"]
 
     def _stats(recs: list[dict]) -> dict:
         arr = pnl_array(recs)
@@ -323,18 +351,46 @@ def none_regime_analysis(records: list[dict]) -> dict:
             "as_rate": round(as_rate(recs), 4),
         }
 
-    # None regime の sell/buy 分解
-    none_sell = [r for r in none_recs if r.get("side") == "sell"]
-    none_buy = [r for r in none_recs if r.get("side") == "buy"]
+    # None/Unknown regime の sell/buy 分解
+    none_sell = [r for r in none_or_unknown if r.get("side") == "sell"]
+    none_buy = [r for r in none_or_unknown if r.get("side") == "buy"]
+
+    # 318# F5: regime_at_order vs regime の乖離分析
+    regime_mismatch = [
+        r for r in filled
+        if r.get("regime_at_order") is not None
+        and r.get("regime") is not None
+        and r.get("regime_at_order") != r.get("regime")
+    ]
+
+    # 318# F5: observation_count によるサブ分類
+    # warmup: obs_count < 20 (default window)
+    _window = 20
+    warmup_recs = [r for r in unknown_recs
+                   if (r.get("regime_observation_count") or 0) < _window]
+    mature_unknown = [r for r in unknown_recs
+                      if (r.get("regime_observation_count") or 0) >= _window]
 
     return {
         "total_filled": len(filled),
-        "none_count": len(none_recs),
-        "none_rate": round(len(none_recs) / len(filled), 4) if filled else 0,
-        "none_overall": _stats(none_recs),
+        # --- legacy compat: none_count = null + unknown combined ---
+        "none_count": len(none_or_unknown),
+        "none_rate": round(len(none_or_unknown) / len(filled), 4) if filled else 0,
+        "none_overall": _stats(none_or_unknown),
         "none_sell": _stats(none_sell),
         "none_buy": _stats(none_buy),
         "non_none_overall": _stats(non_none),
+        # --- 318# F5: 分離分析 ---
+        "null_regime_count": len(none_recs),
+        "unknown_regime_count": len(unknown_recs),
+        "null_regime": _stats(none_recs),
+        "unknown_regime": _stats(unknown_recs),
+        # --- 318# F5: サブ分類 ---
+        "warmup_unknown": _stats(warmup_recs),
+        "mature_unknown": _stats(mature_unknown),
+        # --- 318# F5: regime_at_order 乖離 ---
+        "regime_mismatch_count": len(regime_mismatch),
+        "regime_mismatch": _stats(regime_mismatch),
     }
 
 
@@ -469,7 +525,7 @@ def derive_improvement_proposals(
 
     # 3. Negative spread capture or positive AS cost
     # 314# T0-2: efficiency ベースの P0 判定を廃止 (312# F2).
-    # 315# fix: 両方が負の場合の false positive を排除.
+    # 316# fix: 両方が負の場合の false positive を排除.
     # AS cost > 0 (正の逆選択コスト) がある場合のみ報告.
     for side in ["sell", "buy"]:
         d = decomp.get(side, {})
@@ -493,15 +549,20 @@ def derive_improvement_proposals(
                     "source": "spread_as_decomposition",
                 })
 
-    # 4. None regime degradation
+    # 4. None regime degradation (318# F5: null + unknown 分離)
     none_pnl = none_regime.get("none_overall", {}).get("mean_pnl")
     nn_pnl = none_regime.get("non_none_overall", {}).get("mean_pnl")
     if none_pnl is not None and nn_pnl is not None and none_pnl < nn_pnl:
+        _null_n = none_regime.get("null_regime_count", 0)
+        _unk_n = none_regime.get("unknown_regime_count", 0)
         proposals.append({
             "id": "N1",
             "priority": "P1",
-            "title": f"None regime PnL 劣後 ({none_pnl:.2f} vs {nn_pnl:.2f} bps)",
-            "detail": f"None rate = {none_regime.get('none_rate', 0):.1%}",
+            "title": f"None/Unknown regime PnL 劣後 ({none_pnl:.2f} vs {nn_pnl:.2f} bps)",
+            "detail": (
+                f"None rate = {none_regime.get('none_rate', 0):.1%} "
+                f"(null={_null_n}, unknown={_unk_n})"
+            ),
             "source": "none_regime_analysis",
         })
 
@@ -571,7 +632,7 @@ def main() -> None:
             print(f"    Bootstrap: diff={d['bootstrap_mean_diff']:+.4f}, "
                   f"CI=[{d['bootstrap_ci_lower']:+.4f}, {d['bootstrap_ci_upper']:+.4f}], "
                   f"p={d['bootstrap_p_value']:.4f}")
-        if d.get("matched_n_pairs") is not None:
+        if d.get("matched_n_pairs") is not None and d.get("matched_mean_diff") is not None:
             print(f"    Matched(n={d['matched_n_pairs']}): diff={d['matched_mean_diff']:+.4f}, "
                   f"CI=[{d['matched_ci_lower']:+.4f}, {d['matched_ci_upper']:+.4f}], "
                   f"p={d['matched_p_value']:.4f}")
@@ -645,18 +706,28 @@ def main() -> None:
 
     # --- §6: None Regime ---
     print("\n" + "=" * 70)
-    print("  §6 310# D: None Regime 分析")
+    print("  §6 310# D / 318# F5: None/Unknown Regime 分析")
     print("=" * 70)
     nr = none_regime_analysis(records)
-    print(f"  Total: {nr['total_filled']}, None: {nr['none_count']} ({nr['none_rate']:.1%})")
+    print(f"  Total: {nr['total_filled']}, None+Unknown: {nr['none_count']} ({nr['none_rate']:.1%})")
+    print(f"    null(regime=None): {nr['null_regime_count']}")
+    print(f"    unknown(warmup/低信頼): {nr['unknown_regime_count']}")
     no = nr["none_overall"]
-    print(f"  None overall: pnl={no['mean_pnl']}, AS={no['as_rate']:.1%}")
+    print(f"  None+Unknown overall: pnl={no['mean_pnl']}, AS={no['as_rate']:.1%}")
     ns = nr["none_sell"]
     nb_ = nr["none_buy"]
-    print(f"  None sell: n={ns['n']}, pnl={ns['mean_pnl']}, AS={ns['as_rate']:.1%}")
-    print(f"  None buy:  n={nb_['n']}, pnl={nb_['mean_pnl']}, AS={nb_['as_rate']:.1%}")
+    print(f"  None+Unknown sell: n={ns['n']}, pnl={ns['mean_pnl']}, AS={ns['as_rate']:.1%}")
+    print(f"  None+Unknown buy:  n={nb_['n']}, pnl={nb_['mean_pnl']}, AS={nb_['as_rate']:.1%}")
     nno = nr["non_none_overall"]
     print(f"  Non-none: n={nno['n']}, pnl={nno['mean_pnl']}, AS={nno['as_rate']:.1%}")
+    # 318# F5: サブ分類
+    wu = nr["warmup_unknown"]
+    mu = nr["mature_unknown"]
+    print(f"\n  [318# F5 サブ分類]")
+    print(f"    Warmup unknown (obs<20): n={wu['n']}, pnl={wu['mean_pnl']}, AS={wu['as_rate']:.1%}")
+    print(f"    Mature unknown (obs>=20): n={mu['n']}, pnl={mu['mean_pnl']}, AS={mu['as_rate']:.1%}")
+    mm = nr["regime_mismatch"]
+    print(f"    regime_at_order ≠ regime 乖離: n={mm['n']}")
 
     # --- §7: Hourly PnL ---
     print("\n" + "=" * 70)

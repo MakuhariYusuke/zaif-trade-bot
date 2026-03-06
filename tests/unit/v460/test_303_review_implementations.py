@@ -260,6 +260,45 @@ class TestNoneRegimePassiveMM:
         assert cfg.none_regime_passive_mm_enabled is True
         assert cfg.none_regime_fixed_offset_bps == 3.0
 
+    def test_bypass_fires_for_unknown_regime(self) -> None:
+        """318# F5-1: Passive MM バイパスが 'unknown' レジームでも発火する.
+
+        旧実装は 'none' のみチェックしていたため、FillTestRegime.UNKNOWN
+        ('unknown') では発火しなかった。修正後は ('none', 'unknown') 両方対応。
+        """
+        import inspect
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+
+        source = inspect.getsource(MakerPriceCalculator.compute)
+        # 旧: `if _current_regime == "none":` → 新: `in ("none", "unknown")`
+        assert 'in ("none", "unknown")' in source, (
+            "318# F5-1: Passive MM bypass should check for both 'none' AND 'unknown'"
+        )
+        # "none" 単体チェックが残っていないことを確認
+        assert '_current_regime == "none"' not in source, (
+            "318# F5-1: Old none-only check should be removed"
+        )
+
+    def test_fill_record_has_regime_at_order(self) -> None:
+        """318# F5-3: FillRecord に regime_at_order フィールドが存在."""
+        from ztb.metrics.fill_quality import FillRecord
+        import dataclasses
+
+        field_names = {f.name for f in dataclasses.fields(FillRecord)}
+        assert "regime_at_order" in field_names
+        assert "regime_observation_count" in field_names
+
+    def test_fill_record_regime_at_order_default_none(self) -> None:
+        """318# F5-3: regime_at_order のデフォルト値は None."""
+        from ztb.metrics.fill_quality import FillRecord
+
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+        )
+        assert r.regime_at_order is None
+        assert r.regime_observation_count is None
+
 
 # ======================================================================
 # B/C: hot-reload 登録テスト

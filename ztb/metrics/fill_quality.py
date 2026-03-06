@@ -157,6 +157,13 @@ class FillRecord:
     offset_stages: str | None = None              # JSON-encoded stage contributions
     # ---- 306# L2: Microprice Side Selection ----
     microprice_bias_bps: float | None = None      # microprice vs mid の偏向 (bps)
+    # ---- 318# F5-3: None regime 可観測性 (307# F5) ----
+    # regime_at_order: 発注時 (pricing 時) のレジーム値。post-cycle の regime とは
+    # 異なる場合がある (cycle 中に detector が更新されるため)
+    regime_at_order: str | None = None            # 発注時の regime value
+    # regime_observation_count: detector の蓄積観測数。
+    # < window (通常20) なら warmup 中、>= window なら成熟 unknown (低信頼度)
+    regime_observation_count: int | None = None   # detector observation count at order time
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

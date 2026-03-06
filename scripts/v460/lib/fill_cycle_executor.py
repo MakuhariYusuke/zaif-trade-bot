@@ -608,6 +608,8 @@ class FillCycleExecutorMixin:
         decision_path: str | None = None,
         queue_depth_ahead: float | None = None,
         queue_fill_prob_est: float | None = None,
+        regime_at_order: str | None = None,
+        regime_observation_count: int | None = None,
     ) -> FillRecord:
         """188# FillRecord を組み立てる.
 
@@ -632,6 +634,9 @@ class FillCycleExecutorMixin:
             "offset_stages": self._maker_price.last_offset_stages,
             # 306# L2: microprice bias
             "microprice_bias_bps": self._maker_price.compute_microprice_bias_bps(),
+            # 318# F5-3: none regime 可観測性 (307# F5)
+            "regime_at_order": regime_at_order,
+            "regime_observation_count": regime_observation_count,
         }
         payload.update(
             self._build_fill_measurement_fields(
@@ -818,6 +823,12 @@ class FillCycleExecutorMixin:
         self._side_selector.update_after_decision(side)
 
         logger.info(f"=== Cycle {self._cycle_count} ({side}) ===")
+
+        # 318# F5-3: 発注時のレジーム情報をキャプチャ (post-cycle 更新前の値)
+        _regime_at_order = self._current_regime_value()
+        _regime_obs_count: int | None = None
+        if self._regime_detector is not None:
+            _regime_obs_count = self._regime_detector.observation_count
 
         # 1. maker limit 価格算出
         spread_at_order: float | None = None
@@ -1461,6 +1472,8 @@ class FillCycleExecutorMixin:
             decision_path=_decision_path,
             queue_depth_ahead=_queue_depth_ahead,
             queue_fill_prob_est=_queue_fill_prob_est,
+            regime_at_order=_regime_at_order,
+            regime_observation_count=_regime_obs_count,
         )
 
         self._log_cycle_result(

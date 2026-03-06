@@ -1484,20 +1484,23 @@ class MakerPriceCalculator:
                 msg=f"sell_guard: spread {spread:.0f} > max {cfg.sell_max_spread_jpy:.0f}",
             )
 
-        # === 303# C: none レジーム Passive MM バイパス ===
+        # === 303# C / 318# F5-1: none/unknown レジーム Passive MM バイパス ===
         # regime 未確定時に 13段パイプラインをスキップし固定 offset で配置。
         # AS 43% (301# F1) の根本対策: 情報がない状態での積極約定を抑止。
+        # 318# F5-1 修正: "none" だけでなく "unknown" (warmup/低信頼度) も対象。
+        # 旧実装は "none" のみチェックしていたが、FillTestRegime enum に "none" は
+        # 存在せず、detector 存在時は常に "unknown" を返すため事実上死んでいた。
         if cfg.none_regime_passive_mm_enabled:
             _current_regime = (
                 self._regime_detector.current_regime.value
                 if self._regime_detector is not None
                 else "none"
             )
-            if _current_regime == "none":
+            if _current_regime in ("none", "unknown"):
                 _fixed_ratio = cfg.none_regime_fixed_offset_bps / 10000.0
                 _fixed_offset = max(cfg.min_offset_jpy, mid_price * _fixed_ratio)
                 logger.info(
-                    f"[303# C] Passive MM bypass: regime=none, "
+                    f"[303# C] Passive MM bypass: regime={_current_regime}, "
                     f"fixed_offset={_fixed_offset:.0f} JPY "
                     f"({cfg.none_regime_fixed_offset_bps:.1f} bps)"
                 )
