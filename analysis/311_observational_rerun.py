@@ -27,7 +27,10 @@ from scripts.v460.lib.ab_judgment import (
     _mann_whitney_u,
     _cliffs_delta,
 )
-from ztb.metrics.fill_quality import iter_fill_record_objects_glob
+from ztb.metrics.fill_quality import (
+    iter_fill_record_objects_glob,
+    apply_fill_record_filters,
+)
 from ztb.utils.safety import safe_to_finite
 
 
@@ -35,10 +38,25 @@ from ztb.utils.safety import safe_to_finite
 # Data Loading
 # ======================================================================
 
-def load_records(results_dir: str = "results/v460/fill_test") -> list[dict]:
-    return list(iter_fill_record_objects_glob(
+def load_records(
+    results_dir: str = "results/v460/fill_test",
+    *,
+    git_sha: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> list[dict]:
+    """fill record をロード. 314# T0-3: SHA/date フィルタ対応."""
+    raw = list(iter_fill_record_objects_glob(
         Path(results_dir), include_emergency=False,
     ))
+    if git_sha or date_from or date_to:
+        filtered, meta = apply_fill_record_filters(
+            raw, git_sha=git_sha, date_from=date_from, date_to=date_to,
+        )
+        print(f"  [filter] git_sha={git_sha}, date_from={date_from}, "
+              f"date_to={date_to} → {len(raw)} → {len(filtered)} records")
+        return filtered
+    return raw
 
 
 def extract_filled(records: list[dict], side: str | None = None,
@@ -169,14 +187,21 @@ def decision_path_analysis(records: list[dict]) -> dict:
 def sell_hour_boost_analysis(records: list[dict]) -> dict:
     """310# A: sell_hour_offset_boost 効果検証.
 
-    Boost 対象時間帯 (UTC 08, 13, 14, 16) vs 非対象時間帯の比較.
+    314# T0-4 redesign: 312# F3 指摘に対応.
+    - 時間帯別比較: boost 対象 vs 非対象 (構造差の確認)
+    - 同一時間帯内 pre/post SHA 比較 (介入効果の測定)
     """
     from datetime import datetime, timezone
     boost_hours = {8, 13, 14, 16}
+    # 310# SHA prefix for pre/post split
+    post_310_sha = "dcc3064"
 
     filled_sell = extract_filled(records, side="sell")
     boosted: list[dict] = []
     non_boosted: list[dict] = []
+    # 同一時間帯内の pre/post 分離
+    boost_hour_pre: list[dict] = []
+    boost_hour_post: list[dict] = []
 
     for r in filled_sell:
         ts = r.get("timestamp")
@@ -193,8 +218,15 @@ def sell_hour_boost_analysis(records: list[dict]) -> dict:
         except Exception:
             continue
 
+        sha = str(r.get("git_sha", ""))
+        is_post = sha.startswith(post_310_sha)
+
         if hour in boost_hours:
             boosted.append(r)
+            if is_post:
+                boost_hour_post.append(r)
+            else:
+                boost_hour_pre.append(r)
         else:
             non_boosted.append(r)
 
@@ -218,11 +250,24 @@ def sell_hour_boost_analysis(records: list[dict]) -> dict:
         "boosted_hours": sorted(boost_hours),
         "boosted": _stats(boosted),
         "non_boosted": _stats(non_boosted),
+        # 314# F3: 同一時間帯内の pre/post 310# 比較
+        "boost_hour_pre_310": _stats(boost_hour_pre),
+        "boost_hour_post_310": _stats(boost_hour_post),
     }
 
 
 def spread_as_decomposition(records: list[dict]) -> dict:
-    """310# E: Spread Capture / AS Cost 分解."""
+    """310# E / 314# T0-1: Spread Capture / AS Cost 分解.
+
+    314# 修正: fill_price と mid_at_fill から直接 spread capture を計算.
+    旧式 (spread_bps * ratio) は ratio のセマンティクスが
+    maker_price.py と fill_cycle_executor.py で異なるため不正確.
+
+    spread_capture_bps = (fill_price - mid_at_fill) / mid_at_fill × 10000  (sell)
+                       = (mid_at_fill - fill_price) / mid_at_fill × 10000  (buy)
+    as_cost = spread_capture - realized_pnl
+    """
+    BPS = 10000.0
     result = {}
     for side in ["sell", "buy"]:
         filled = extract_filled(records, side=side)
@@ -230,15 +275,20 @@ def spread_as_decomposition(records: list[dict]) -> dict:
         pnl_list: list[float] = []
         as_cost_list: list[float] = []
         for r in filled:
-            offset = safe_to_finite(r.get("effective_offset_used"))
+            fill_price = safe_to_finite(r.get("fill_price"))
+            mid = safe_to_finite(r.get("mid_at_fill"))
             pnl = safe_to_finite(r.get("post_fill_30s_pnl"))
-            spread_bps = safe_to_finite(r.get("spread_bps"))
-            if offset is not None and pnl is not None and spread_bps is not None and spread_bps > 0:
-                sc_bps = spread_bps * offset
-                as_cost = sc_bps - pnl
-                sc_list.append(sc_bps)
-                pnl_list.append(pnl)
-                as_cost_list.append(as_cost)
+            if fill_price is None or mid is None or mid <= 0 or pnl is None:
+                continue
+            # spread capture: fill price の mid からの有利乖離
+            if side == "sell":
+                sc_bps = (fill_price - mid) / mid * BPS
+            else:
+                sc_bps = (mid - fill_price) / mid * BPS
+            as_cost = sc_bps - pnl
+            sc_list.append(sc_bps)
+            pnl_list.append(pnl)
+            as_cost_list.append(as_cost)
         n = len(sc_list)
         sc_arr = np.array(sc_list) if sc_list else np.array([])
         pnl_arr = np.array(pnl_list) if pnl_list else np.array([])
@@ -411,17 +461,18 @@ def derive_improvement_proposals(
                 })
 
     # 3. AS cost > spread capture
+    # 314# T0-2: efficiency ベースの P0 判定を廃止 (312# F2).
+    # spread_capture 式が修正されたため、P1 としてのみ報告.
     for side in ["sell", "buy"]:
         d = decomp.get(side, {})
-        eff = d.get("efficiency")
-        if eff is not None and eff < 0:
-            sc_mean = d.get("spread_capture_bps", {}).get("mean", 0)
-            as_mean = d.get("as_cost_bps", {}).get("mean", 0)
+        sc_mean = d.get("spread_capture_bps", {}).get("mean")
+        as_mean = d.get("as_cost_bps", {}).get("mean")
+        if sc_mean is not None and as_mean is not None and as_mean > sc_mean:
             proposals.append({
                 "id": f"D-{side}",
-                "priority": "P0" if eff < -0.5 else "P1",
+                "priority": "P1",
                 "title": f"{side} AS cost ({as_mean:.2f}) > spread capture ({sc_mean:.2f})",
-                "detail": f"efficiency = {eff:.4f}",
+                "detail": f"AS exceeds spread capture by {as_mean - sc_mean:.2f} bps",
                 "source": "spread_as_decomposition",
             })
 
@@ -463,11 +514,23 @@ def derive_improvement_proposals(
 # ======================================================================
 
 def main() -> None:
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--git-sha", default=None, help="git SHA prefix filter")
+    parser.add_argument("--date-from", default=None, help="date filter (YYYY-MM-DD)")
+    parser.add_argument("--date-to", default=None, help="date filter (YYYY-MM-DD)")
+    args = parser.parse_args()
+
     print("=" * 70)
     print("  311# 観察比較再実行 + 310# 理論検証")
+    print("  314# T0: spread capture / SHA filter / hour boost redesign 修正済")
     print("=" * 70)
 
-    records = load_records()
+    records = load_records(
+        git_sha=args.git_sha,
+        date_from=args.date_from,
+        date_to=args.date_to,
+    )
     filled = [r for r in records if r.get("filled")]
     print(f"\n  Total: {len(records)} records, Filled: {len(filled)}")
 
@@ -549,6 +612,18 @@ def main() -> None:
     if nb.get("mean_pnl") is not None:
         print(f"    PnL: mean={nb['mean_pnl']:+.4f}, p10={nb.get('p10')}, AS={nb['as_rate']:.1%}")
         print(f"    Offset: mean={nb['mean_offset']:.6f}")
+
+    # 314# F3: 同一時間帯内の pre/post 310# 比較
+    pre_h = hb.get("boost_hour_pre_310", {})
+    post_h = hb.get("boost_hour_post_310", {})
+    print(f"\n  [314# F3] Boost時間帯 pre-310# (n={pre_h.get('n', 0)}):")
+    if pre_h.get("mean_pnl") is not None:
+        print(f"    PnL: mean={pre_h['mean_pnl']:+.4f}, AS={pre_h['as_rate']:.1%}")
+    print(f"  [314# F3] Boost時間帯 post-310# (n={post_h.get('n', 0)}):")
+    if post_h.get("mean_pnl") is not None:
+        print(f"    PnL: mean={post_h['mean_pnl']:+.4f}, AS={post_h['as_rate']:.1%}")
+    else:
+        print(f"    データ不足 — post-310# 蓄積待ち")
 
     # --- §6: None Regime ---
     print("\n" + "=" * 70)

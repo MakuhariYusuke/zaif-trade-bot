@@ -5,47 +5,47 @@
       {
         "name": "fill_rate",
         "verdict": "pass",
-        "value": 0.40197113692361847,
+        "value": 0.4023190442726634,
         "threshold": 0.3,
-        "detail": "variant=40.2% control=40.5% — OK"
+        "detail": "variant=40.2% control=40.2% — OK"
       },
       {
         "name": "avg_pnl30",
         "verdict": "pass",
-        "value": -0.3279626823003959,
+        "value": -0.3343812111324685,
         "threshold": -1.0,
-        "detail": "variant=-0.3280 control=-0.3124 bps — OK"
+        "detail": "variant=-0.3344 control=-0.3244 bps — OK"
       },
       {
         "name": "downside_p10",
         "verdict": "fail",
-        "value": -6.871030126380764,
+        "value": -6.87453895830288,
         "threshold": -5.0,
-        "detail": "variant=-6.8710 control=-5.6682 bps — below absolute min -5.00"
+        "detail": "variant=-6.8745 control=-5.6886 bps — below absolute min -5.00"
       }
     ],
     "variant_label": "sell",
     "control_label": "buy",
-    "n_variant": 1142,
-    "n_control": 1155,
-    "pnl30_p_value": 0.951031495543252,
-    "pnl30_effect_size": -0.002564259376839411,
-    "mann_whitney_p_value": 0.4795435424263417,
-    "cliffs_delta_value": 0.01703853647811616,
+    "n_variant": 1145,
+    "n_control": 1157,
+    "pnl30_p_value": 0.9684885386427141,
+    "pnl30_effect_size": -0.0016476444627445857,
+    "mann_whitney_p_value": 0.4996918034461255,
+    "cliffs_delta_value": 0.016248164768845795,
     "cliffs_delta_interpretation": "negligible",
     "holm_significant": [
       false,
       false
     ],
-    "bootstrap_mean_diff": -0.01551999746405458,
-    "bootstrap_ci_lower": -0.5500837252705315,
-    "bootstrap_ci_upper": 0.4740734226968979,
-    "bootstrap_p_value": 0.9605,
-    "matched_n_pairs": 934,
-    "matched_mean_diff": -0.07233732269928883,
-    "matched_ci_lower": -0.6036409673892472,
-    "matched_ci_upper": 0.46258376951575253,
-    "matched_p_value": 0.20886602794041265
+    "bootstrap_mean_diff": -0.009983166880286554,
+    "bootstrap_ci_lower": -0.5490611582341196,
+    "bootstrap_ci_upper": 0.5106633452758278,
+    "bootstrap_p_value": 0.973,
+    "matched_n_pairs": 935,
+    "matched_mean_diff": -0.0630803880249918,
+    "matched_ci_lower": -0.6208360881017152,
+    "matched_ci_upper": 0.44816689859578174,
+    "matched_p_value": 0.22653388610526703
   },
   "ab_judgment_incl_none": {
     "overall": "fail",
@@ -53,47 +53,47 @@
       {
         "name": "fill_rate",
         "verdict": "fail",
-        "value": 0.33812566560170393,
+        "value": 0.33847381015687317,
         "threshold": 0.3,
-        "detail": "variant=33.8% control=39.6% — degraded 14.6% vs control"
+        "detail": "variant=33.8% control=39.4% — degraded 14.1% vs control"
       },
       {
         "name": "avg_pnl30",
         "verdict": "pass",
-        "value": -0.3758042889492196,
+        "value": -0.38146469012186424,
         "threshold": -1.0,
-        "detail": "variant=-0.3758 control=-0.2949 bps — OK"
+        "detail": "variant=-0.3815 control=-0.3056 bps — OK"
       },
       {
         "name": "downside_p10",
         "verdict": "fail",
-        "value": -6.849637159205283,
+        "value": -6.856573296579161,
         "threshold": -5.0,
-        "detail": "variant=-6.8496 control=-5.6565 bps — below absolute min -5.00"
+        "detail": "variant=-6.8566 control=-5.6682 bps — below absolute min -5.00"
       }
     ],
     "variant_label": "sell",
     "control_label": "buy",
-    "n_variant": 1270,
-    "n_control": 1294,
-    "pnl30_p_value": 0.7333680203615671,
-    "pnl30_effect_size": -0.013467433754848823,
-    "mann_whitney_p_value": 0.4007737432738243,
-    "cliffs_delta_value": 0.019165378670788255,
+    "n_variant": 1273,
+    "n_control": 1296,
+    "pnl30_p_value": 0.7493996545745469,
+    "pnl30_effect_size": -0.012615788819958928,
+    "mann_whitney_p_value": 0.4180230395428768,
+    "cliffs_delta_value": 0.018454268617924024,
     "cliffs_delta_interpretation": "negligible",
     "holm_significant": [
       false,
       false
     ],
-    "bootstrap_mean_diff": -0.08090668089555342,
-    "bootstrap_ci_lower": -0.5847700352091963,
-    "bootstrap_ci_upper": 0.4357772495055017,
-    "bootstrap_p_value": 0.759,
-    "matched_n_pairs": 1049,
-    "matched_mean_diff": -0.1561172633049898,
-    "matched_ci_lower": -0.65018991943251,
-    "matched_ci_upper": 0.372982649578987,
-    "matched_p_value": 0.16091226157639582
+    "bootstrap_mean_diff": -0.07586689611318809,
+    "bootstrap_ci_lower": -0.5537228381778503,
+    "bootstrap_ci_upper": 0.44299066654769487,
+    "bootstrap_p_value": 0.7795,
+    "matched_n_pairs": 1050,
+    "matched_mean_diff": -0.1477943929611103,
+    "matched_ci_lower": -0.6603936395562949,
+    "matched_ci_upper": 0.3591657708052353,
+    "matched_p_value": 0.17469313347291848
   },
   "per_regime_judgment": [
     {
@@ -152,47 +152,47 @@
         {
           "name": "fill_rate",
           "verdict": "pass",
-          "value": 0.45975056689342403,
+          "value": 0.45979614949037373,
           "threshold": 0.3,
           "detail": "variant=46.0% control=36.1% — OK"
         },
         {
           "name": "avg_pnl30",
           "verdict": "pass",
-          "value": -0.17576000290128596,
+          "value": -0.16722490551941896,
           "threshold": -1.0,
-          "detail": "variant=-0.1758 control=-0.4801 bps — OK"
+          "detail": "variant=-0.1672 control=-0.4967 bps — OK"
         },
         {
           "name": "downside_p10",
           "verdict": "fail",
-          "value": -6.737004892381164,
+          "value": -6.734188374400275,
           "threshold": -5.0,
-          "detail": "variant=-6.7370 control=-5.4340 bps — below absolute min -5.00"
+          "detail": "variant=-6.7342 control=-5.4450 bps — below absolute min -5.00"
         }
       ],
       "variant_label": "sell[ranging]",
       "control_label": "buy[ranging]",
-      "n_variant": 811,
-      "n_control": 812,
-      "pnl30_p_value": 0.2941498638757753,
-      "pnl30_effect_size": 0.05210288221025636,
-      "mann_whitney_p_value": 0.8954981872392285,
-      "cliffs_delta_value": -0.0037659521481112537,
+      "n_variant": 812,
+      "n_control": 814,
+      "pnl30_p_value": 0.25617061507769884,
+      "pnl30_effect_size": 0.056349923728477566,
+      "mann_whitney_p_value": 0.8209097190850634,
+      "cliffs_delta_value": -0.0064844288982220015,
       "cliffs_delta_interpretation": "negligible",
       "holm_significant": [
         false,
         false
       ],
-      "bootstrap_mean_diff": 0.30432597653710447,
-      "bootstrap_ci_lower": -0.3286862801359829,
-      "bootstrap_ci_upper": 0.9415340104790831,
-      "bootstrap_p_value": 0.3475,
-      "matched_n_pairs": 637,
-      "matched_mean_diff": 0.23806627917071713,
-      "matched_ci_lower": -0.36329028289823295,
-      "matched_ci_upper": 0.8417259489726284,
-      "matched_p_value": 0.4727192692276203
+      "bootstrap_mean_diff": 0.329442233937305,
+      "bootstrap_ci_lower": -0.32865948621690255,
+      "bootstrap_ci_upper": 0.9640636221938312,
+      "bootstrap_p_value": 0.3045,
+      "matched_n_pairs": 638,
+      "matched_mean_diff": 0.25114595051648153,
+      "matched_ci_lower": -0.3605953005214074,
+      "matched_ci_upper": 0.8755237963202741,
+      "matched_p_value": 0.5109684148600975
     },
     {
       "regime": "trending",
@@ -250,42 +250,42 @@
         {
           "name": "fill_rate",
           "verdict": "pass",
-          "value": 0.39906103286384975,
+          "value": 0.4,
           "threshold": 0.3,
-          "detail": "variant=39.9% control=40.0% — OK"
+          "detail": "variant=40.0% control=38.9% — OK"
         },
         {
           "name": "avg_pnl30",
           "verdict": "pass",
-          "value": -0.4897486431173375,
+          "value": -0.6384662923634852,
           "threshold": -1.0,
-          "detail": "variant=-0.4897 control=+0.6832 bps — OK"
+          "detail": "variant=-0.6385 control=+0.6832 bps — OK"
         },
         {
           "name": "downside_p10",
           "verdict": "fail",
-          "value": -7.586664164129223,
+          "value": -7.989338086356291,
           "threshold": -5.0,
-          "detail": "variant=-7.5867 control=-6.2313 bps — below absolute min -5.00"
+          "detail": "variant=-7.9893 control=-6.2313 bps — below absolute min -5.00"
         }
       ],
       "variant_label": "sell[trending_down]",
       "control_label": "buy[trending_down]",
-      "n_variant": 85,
+      "n_variant": 86,
       "n_control": 84,
-      "pnl30_p_value": 0.32871213280928313,
-      "pnl30_effect_size": -0.15085962873538752,
-      "mann_whitney_p_value": 0.1344810414609785,
-      "cliffs_delta_value": 0.13333333333333333,
+      "pnl30_p_value": 0.2729371562277232,
+      "pnl30_effect_size": -0.16902498297503588,
+      "mann_whitney_p_value": 0.10846461189240886,
+      "cliffs_delta_value": 0.14258028792912514,
       "cliffs_delta_interpretation": "negligible",
       "holm_significant": [
         false,
         false
       ],
-      "bootstrap_mean_diff": -1.1729461417043818,
-      "bootstrap_ci_lower": -3.7317527334327454,
-      "bootstrap_ci_upper": 0.8323802029686043,
-      "bootstrap_p_value": 0.322,
+      "bootstrap_mean_diff": -1.3216637909505295,
+      "bootstrap_ci_lower": -3.8049802533336576,
+      "bootstrap_ci_upper": 0.8478603721192586,
+      "bootstrap_p_value": 0.2605,
       "matched_n_pairs": 58,
       "matched_mean_diff": -0.04092076951569772,
       "matched_ci_lower": -2.671164648068274,
@@ -299,42 +299,42 @@
         {
           "name": "fill_rate",
           "verdict": "fail",
-          "value": 0.18385650224215247,
+          "value": 0.18568232662192394,
           "threshold": 0.3,
-          "detail": "variant=18.4% control=53.7% — below absolute min 30.0%; degraded 65.8% vs control"
+          "detail": "variant=18.6% control=50.5% — below absolute min 30.0%; degraded 63.3% vs control"
         },
         {
           "name": "avg_pnl30",
           "verdict": "fail",
-          "value": -1.154938098749242,
+          "value": -1.16281084638495,
           "threshold": -1.0,
-          "detail": "variant=-1.1549 control=-0.3295 bps — below absolute min -1.00"
+          "detail": "variant=-1.1628 control=-0.3295 bps — below absolute min -1.00"
         },
         {
           "name": "downside_p10",
           "verdict": "fail",
-          "value": -9.895366823350972,
+          "value": -9.860771319766066,
           "threshold": -5.0,
-          "detail": "variant=-9.8954 control=-5.6915 bps — below absolute min -5.00; degraded +4.20bps vs control (max +2.00)"
+          "detail": "variant=-9.8608 control=-5.6915 bps — below absolute min -5.00; degraded +4.17bps vs control (max +2.00)"
         }
       ],
       "variant_label": "sell[trending_up]",
       "control_label": "buy[trending_up]",
-      "n_variant": 82,
+      "n_variant": 83,
       "n_control": 94,
-      "pnl30_p_value": 0.42512138284500267,
-      "pnl30_effect_size": -0.12216799748881053,
-      "mann_whitney_p_value": 0.5256445567563786,
-      "cliffs_delta_value": 0.05552672548002076,
+      "pnl30_p_value": 0.4168296392445856,
+      "pnl30_effect_size": -0.12382869189173101,
+      "mann_whitney_p_value": 0.5064768180541828,
+      "cliffs_delta_value": 0.05793386311202256,
       "cliffs_delta_interpretation": "negligible",
       "holm_significant": [
         false,
         false
       ],
-      "bootstrap_mean_diff": -0.8254786810790403,
-      "bootstrap_ci_lower": -2.544827855371911,
-      "bootstrap_ci_upper": 1.0799592216308906,
-      "bootstrap_p_value": 0.391,
+      "bootstrap_mean_diff": -0.8333514287147484,
+      "bootstrap_ci_lower": -2.5054586506506946,
+      "bootstrap_ci_upper": 1.0787374729996568,
+      "bootstrap_p_value": 0.3875,
       "matched_n_pairs": 60,
       "matched_mean_diff": -0.8246264210357303,
       "matched_ci_lower": -2.8262092655998288,
@@ -376,46 +376,46 @@
   ],
   "spread_as_decomposition": {
     "sell": {
-      "n": 1089,
+      "n": 1273,
       "spread_capture_bps": {
-        "mean": 0.8623,
-        "p50": 0.7396
+        "mean": -0.502,
+        "p50": -0.2762
       },
       "realized_pnl_bps": {
-        "mean": -0.279,
-        "p50": -0.351
+        "mean": -0.3815,
+        "p50": -0.3173
       },
       "as_cost_bps": {
-        "mean": 1.1413,
-        "p50": 1.1599,
-        "p90": 7.8969
+        "mean": -0.1205,
+        "p50": 0.0771,
+        "p90": 6.74
       },
-      "efficiency": -0.3235
+      "efficiency": 0.7599
     },
     "buy": {
-      "n": 1102,
+      "n": 1296,
       "spread_capture_bps": {
-        "mean": 0.2779,
-        "p50": 0.2209
+        "mean": -0.4851,
+        "p50": -0.3142
       },
       "realized_pnl_bps": {
-        "mean": -0.2938,
-        "p50": -0.2052
+        "mean": -0.3056,
+        "p50": -0.1854
       },
       "as_cost_bps": {
-        "mean": 0.5718,
-        "p50": 0.4263,
-        "p90": 6.0037
+        "mean": -0.1795,
+        "p50": -0.1292,
+        "p90": 5.5744
       },
-      "efficiency": -1.0573
+      "efficiency": 0.63
     }
   },
   "decision_path": {
     "sell": {
       "ev_offset": {
-        "n": 60,
-        "mean_pnl": 0.094,
-        "p10": -9.4952,
+        "n": 63,
+        "mean_pnl": -0.0428,
+        "p10": -9.5643,
         "as_rate": 0.3333
       },
       "unknown": {
@@ -427,10 +427,10 @@
     },
     "buy": {
       "ev_offset": {
-        "n": 64,
-        "mean_pnl": -0.386,
-        "p10": -6.8347,
-        "as_rate": 0.1875
+        "n": 66,
+        "mean_pnl": -0.5934,
+        "p10": -6.95,
+        "as_rate": 0.197
       },
       "unknown": {
         "n": 1230,
@@ -457,19 +457,37 @@
       "mean_offset": 0.256604
     },
     "non_boosted": {
-      "n": 1132,
-      "n_with_pnl": 1132,
-      "mean_pnl": -0.0865,
-      "p10": -6.3548,
-      "p50": -0.2497,
-      "as_rate": 0.2809,
-      "mean_offset": 0.306618
+      "n": 1135,
+      "n_with_pnl": 1135,
+      "mean_pnl": -0.0936,
+      "p10": -6.3794,
+      "p50": -0.2549,
+      "as_rate": 0.2811,
+      "mean_offset": 0.307404
+    },
+    "boost_hour_pre_310": {
+      "n": 138,
+      "n_with_pnl": 138,
+      "mean_pnl": -2.7488,
+      "p10": -11.887,
+      "p50": -1.9031,
+      "as_rate": 0.4928,
+      "mean_offset": 0.256604
+    },
+    "boost_hour_post_310": {
+      "n": 0,
+      "n_with_pnl": 0,
+      "mean_pnl": null,
+      "p10": null,
+      "p50": null,
+      "as_rate": 0.0,
+      "mean_offset": null
     }
   },
   "none_regime": {
-    "total_filled": 2564,
+    "total_filled": 2569,
     "none_count": 267,
-    "none_rate": 0.1041,
+    "none_rate": 0.1039,
     "none_overall": {
       "n": 267,
       "mean_pnl": -0.4624,
@@ -486,9 +504,9 @@
       "as_rate": 0.4317
     },
     "non_none_overall": {
-      "n": 2297,
-      "mean_pnl": -0.3202,
-      "as_rate": 0.2751
+      "n": 2302,
+      "mean_pnl": -0.3294,
+      "as_rate": 0.2754
     }
   },
   "hourly_pnl_as": {
@@ -600,10 +618,10 @@
       },
       {
         "hour": 15,
-        "n": 59,
-        "mean_pnl": 0.7376,
-        "p10": -8.1416,
-        "as_rate": 0.322
+        "n": 61,
+        "mean_pnl": 0.7945,
+        "p10": -8.0603,
+        "as_rate": 0.3115
       },
       {
         "hour": 16,
@@ -614,10 +632,10 @@
       },
       {
         "hour": 17,
-        "n": 58,
-        "mean_pnl": 0.366,
-        "p10": -6.8207,
-        "as_rate": 0.3103
+        "n": 59,
+        "mean_pnl": 0.1347,
+        "p10": -7.0552,
+        "as_rate": 0.322
       },
       {
         "hour": 18,
@@ -770,10 +788,10 @@
       },
       {
         "hour": 15,
-        "n": 61,
-        "mean_pnl": -0.5997,
-        "p10": -9.9799,
-        "as_rate": 0.4098
+        "n": 63,
+        "mean_pnl": -0.8102,
+        "p10": -10.6363,
+        "as_rate": 0.4127
       },
       {
         "hour": 16,
@@ -835,37 +853,37 @@
   },
   "offset_quintiles": {
     "sell": {
-      "n": 1089,
+      "n": 1092,
       "quintiles": [
         {
           "quintile": 1,
-          "n": 217,
+          "n": 218,
           "offset_range": [
             0.136427,
-            0.267592
+            0.268168
           ],
-          "mean_pnl": -0.6487,
-          "as_rate": 0.341
+          "mean_pnl": -0.6411,
+          "as_rate": 0.3394
         },
         {
           "quintile": 2,
           "n": 218,
           "offset_range": [
-            0.268168,
+            0.26848,
             0.3
           ],
-          "mean_pnl": -0.7007,
+          "mean_pnl": -0.7065,
           "as_rate": 0.3073
         },
         {
           "quintile": 3,
-          "n": 218,
+          "n": 219,
           "offset_range": [
             0.3,
             0.3
           ],
-          "mean_pnl": -0.2411,
-          "as_rate": 0.1972
+          "mean_pnl": -0.2549,
+          "as_rate": 0.2009
         },
         {
           "quintile": 4,
@@ -874,23 +892,23 @@
             0.3,
             0.482222
           ],
-          "mean_pnl": 0.573,
+          "mean_pnl": 0.5592,
           "as_rate": 0.3211
         },
         {
           "quintile": 5,
-          "n": 218,
+          "n": 219,
           "offset_range": [
             0.487222,
             2.087689
           ],
-          "mean_pnl": -0.3791,
-          "as_rate": 0.2844
+          "mean_pnl": -0.3857,
+          "as_rate": 0.2831
         }
       ]
     },
     "buy": {
-      "n": 1102,
+      "n": 1104,
       "quintiles": [
         {
           "quintile": 1,
@@ -904,33 +922,33 @@
         },
         {
           "quintile": 2,
-          "n": 220,
+          "n": 221,
           "offset_range": [
             0.063,
             0.075
           ],
-          "mean_pnl": -0.1206,
-          "as_rate": 0.2409
+          "mean_pnl": -0.1411,
+          "as_rate": 0.2443
         },
         {
           "quintile": 3,
           "n": 221,
           "offset_range": [
             0.075,
-            0.100014
+            0.100333
           ],
-          "mean_pnl": -0.6285,
-          "as_rate": 0.2489
+          "mean_pnl": -0.5759,
+          "as_rate": 0.2443
         },
         {
           "quintile": 4,
-          "n": 220,
+          "n": 221,
           "offset_range": [
-            0.100333,
+            0.101098,
             0.15
           ],
-          "mean_pnl": 0.0579,
-          "as_rate": 0.2545
+          "mean_pnl": 0.0226,
+          "as_rate": 0.2534
         },
         {
           "quintile": 5,
@@ -939,8 +957,8 @@
             0.15,
             0.825385
           ],
-          "mean_pnl": -0.5772,
-          "as_rate": 0.3032
+          "mean_pnl": -0.6392,
+          "as_rate": 0.3077
         }
       ]
     }
@@ -971,7 +989,7 @@
       "id": "R-ranging-downside_p10",
       "priority": "P1",
       "title": "ranging regime: downside_p10 FAIL",
-      "detail": "variant=-6.7370 control=-5.4340 bps — below absolute min -5.00",
+      "detail": "variant=-6.7342 control=-5.4450 bps — below absolute min -5.00",
       "source": "per_regime[ranging]"
     },
     {
@@ -992,48 +1010,48 @@
       "id": "R-trending_down-downside_p10",
       "priority": "P1",
       "title": "trending_down regime: downside_p10 FAIL",
-      "detail": "variant=-7.5867 control=-6.2313 bps — below absolute min -5.00",
+      "detail": "variant=-7.9893 control=-6.2313 bps — below absolute min -5.00",
       "source": "per_regime[trending_down]"
     },
     {
       "id": "R-trending_up-fill_rate",
       "priority": "P1",
       "title": "trending_up regime: fill_rate FAIL",
-      "detail": "variant=18.4% control=53.7% — below absolute min 30.0%; degraded 65.8% vs control",
+      "detail": "variant=18.6% control=50.5% — below absolute min 30.0%; degraded 63.3% vs control",
       "source": "per_regime[trending_up]"
     },
     {
       "id": "R-trending_up-avg_pnl30",
       "priority": "P1",
       "title": "trending_up regime: avg_pnl30 FAIL",
-      "detail": "variant=-1.1549 control=-0.3295 bps — below absolute min -1.00",
+      "detail": "variant=-1.1628 control=-0.3295 bps — below absolute min -1.00",
       "source": "per_regime[trending_up]"
     },
     {
       "id": "R-trending_up-downside_p10",
       "priority": "P1",
       "title": "trending_up regime: downside_p10 FAIL",
-      "detail": "variant=-9.8954 control=-5.6915 bps — below absolute min -5.00; degraded +4.20bps vs control (max +2.00)",
+      "detail": "variant=-9.8608 control=-5.6915 bps — below absolute min -5.00; degraded +4.17bps vs control (max +2.00)",
       "source": "per_regime[trending_up]"
     },
     {
       "id": "D-sell",
       "priority": "P1",
-      "title": "sell AS cost (1.14) > spread capture (0.86)",
-      "detail": "efficiency = -0.3235",
+      "title": "sell AS cost (-0.12) > spread capture (-0.50)",
+      "detail": "AS exceeds spread capture by 0.38 bps",
       "source": "spread_as_decomposition"
     },
     {
       "id": "D-buy",
-      "priority": "P0",
-      "title": "buy AS cost (0.57) > spread capture (0.28)",
-      "detail": "efficiency = -1.0573",
+      "priority": "P1",
+      "title": "buy AS cost (-0.18) > spread capture (-0.49)",
+      "detail": "AS exceeds spread capture by 0.31 bps",
       "source": "spread_as_decomposition"
     },
     {
       "id": "N1",
       "priority": "P1",
-      "title": "None regime PnL 劣後 (-0.46 vs -0.32 bps)",
+      "title": "None regime PnL 劣後 (-0.46 vs -0.33 bps)",
       "detail": "None rate = 10.4%",
       "source": "none_regime_analysis"
     },
