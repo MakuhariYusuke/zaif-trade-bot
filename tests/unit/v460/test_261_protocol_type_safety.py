@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import inspect
 import typing
+from pathlib import Path
 
 import pytest
 from scripts.v460.lib import balance_checker
@@ -17,6 +18,14 @@ from scripts.v460.lib.config_hot_reload import ConfigHotReloader
 from scripts.v460.lib.maker_price import MakerPriceCalculator, OrderBookSnapshot, OrderbookProvider
 from scripts.v460.lib.ob_recorder import _normalize_levels
 from scripts.v460.lib.ob_utils import OrderBookLevel, OrderBookLevelLike, extract_price, extract_size
+
+_CONFIG_HOT_RELOADER_SOURCE = Path(
+    inspect.getsourcefile(ConfigHotReloader) or "",
+).read_text(encoding="utf-8")
+_BALANCE_CHECKER_SOURCE = Path(
+    inspect.getsourcefile(balance_checker) or "",
+).read_text(encoding="utf-8")
+_MAKER_PRICE_INIT_SOURCE = inspect.getsource(MakerPriceCalculator.__init__)
 
 
 # ======================================================================
@@ -111,9 +120,8 @@ class TestOrderBookSnapshotProtocol:
 
     def test_last_ob_snapshot_typed(self) -> None:
         """_last_ob_snapshot が OrderBookSnapshot | None 型."""
-        src = inspect.getsource(MakerPriceCalculator.__init__)
-        assert "OrderBookSnapshot" in src
-        assert "object | None" not in src
+        assert "OrderBookSnapshot" in _MAKER_PRICE_INIT_SOURCE
+        assert "object | None" not in _MAKER_PRICE_INIT_SOURCE
 
     def test_orderbook_provider_returns_snapshot(self) -> None:
         """OrderbookProvider.get_orderbook の戻り値が OrderBookSnapshot."""
@@ -135,8 +143,7 @@ class TestConfigHotReloadGetattr:
 
     def test_no_getattr_for_ffd(self) -> None:
         """config_hot_reload に getattr(runner, '_fast_fill_defense'...) がない."""
-        src = inspect.getsource(ConfigHotReloader)
-        assert 'getattr(runner, "_fast_fill_defense"' not in src
+        assert 'getattr(runner, "_fast_fill_defense"' not in _CONFIG_HOT_RELOADER_SOURCE
 
     def test_direct_ffd_access(self) -> None:
         """_do_reload 内で runner._fast_fill_defense を直接参照."""
@@ -166,8 +173,7 @@ class TestBalanceAdapterProtocol:
 
     def test_no_type_ignore_union_attr(self) -> None:
         """balance_checker に type: ignore[union-attr] が残っていない."""
-        src = inspect.getsource(balance_checker)
-        assert "type: ignore[union-attr]" not in src
+        assert "type: ignore[union-attr]" not in _BALANCE_CHECKER_SOURCE
 
     def test_balance_like_protocol(self) -> None:
         """_BalanceLike Protocol が free プロパティを持つ."""

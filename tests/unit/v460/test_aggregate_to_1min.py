@@ -178,13 +178,7 @@ class TestAggregateOrderbookOnly:
             _make_ob_record(0, 0, best_bid=10_000_000, best_ask=10_001_000),
             _make_ob_record(0, 30, best_bid=10_000_500, best_ask=10_001_500),  # last
         ]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, ob_records)
-        _write_gz(tr_path, [])
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=ob_records, tr_records=[])
 
         assert len(df) == 1
         assert df["best_bid"].iloc[0] == 10_000_500
@@ -192,13 +186,7 @@ class TestAggregateOrderbookOnly:
 
     def test_mid_price_correct(self, tmp_path: Path) -> None:
         ob_records = [_make_ob_record(0, 0, best_bid=10_000_000, best_ask=10_002_000)]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, ob_records)
-        _write_gz(tr_path, [])
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=ob_records, tr_records=[])
 
         assert df["mid_price"].iloc[0] == pytest.approx(10_001_000.0)
 
@@ -214,13 +202,7 @@ class TestAggregateOrderbookOnly:
     def test_depth_imbalance_range(self, tmp_path: Path) -> None:
         """depth_imbalance ∈ [-1, 1]."""
         ob_records = [_make_ob_record(0)]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, ob_records)
-        _write_gz(tr_path, [])
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=ob_records, tr_records=[])
 
         val = df["depth_imbalance"].iloc[0]
         assert -1.0 <= val <= 1.0
@@ -228,13 +210,7 @@ class TestAggregateOrderbookOnly:
     def test_spread_range_single_snapshot(self, tmp_path: Path) -> None:
         """分内に 1 スナップショットのみ → spread_range = 0."""
         ob_records = [_make_ob_record(0)]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, ob_records)
-        _write_gz(tr_path, [])
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=ob_records, tr_records=[])
 
         assert df["spread_range"].iloc[0] == pytest.approx(0.0)
 
@@ -244,13 +220,7 @@ class TestAggregateOrderbookOnly:
             _make_ob_record(0, 0, best_bid=10_000_000, best_ask=10_001_000),
             _make_ob_record(0, 30, best_bid=10_000_000, best_ask=10_003_000),  # wider spread
         ]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, ob_records)
-        _write_gz(tr_path, [])
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=ob_records, tr_records=[])
 
         assert df["spread_range"].iloc[0] > 0
 
@@ -268,13 +238,7 @@ class TestAggregateTradesOnly:
             _make_trade_record(0, 10, price=10_000_100, amount=0.2, side="sell"),
             _make_trade_record(1, 0, price=10_000_200, amount=0.3, side="buy"),
         ]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, [])
-        _write_gz(tr_path, tr_records)
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=[], tr_records=tr_records)
 
         assert len(df) == 2  # minute 0, minute 1
         assert "buy_volume" in df.columns
@@ -289,13 +253,7 @@ class TestAggregateTradesOnly:
             _make_trade_record(0, 10, amount=0.2, side="sell"),
             _make_trade_record(0, 20, amount=0.3, side="buy"),
         ]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, [])
-        _write_gz(tr_path, tr_records)
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=[], tr_records=tr_records)
 
         assert df["buy_volume"].iloc[0] == pytest.approx(0.4)
         assert df["sell_volume"].iloc[0] == pytest.approx(0.2)
@@ -307,13 +265,7 @@ class TestAggregateTradesOnly:
             _make_trade_record(0, 0, price=10_000_000, amount=0.1, side="buy"),
             _make_trade_record(0, 10, price=10_002_000, amount=0.3, side="buy"),
         ]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, [])
-        _write_gz(tr_path, tr_records)
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=[], tr_records=tr_records)
 
         expected_vwap = (10_000_000 * 0.1 + 10_002_000 * 0.3) / (0.1 + 0.3)
         assert df["vwap"].iloc[0] == pytest.approx(expected_vwap, rel=1e-8)
@@ -324,13 +276,7 @@ class TestAggregateTradesOnly:
             _make_trade_record(0, 0, amount=0.1, side="buy"),
             _make_trade_record(0, 10, amount=0.2, side="buy"),
         ]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, [])
-        _write_gz(tr_path, tr_records)
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=[], tr_records=tr_records)
 
         assert df["trade_flow_imbalance"].iloc[0] == pytest.approx(1.0)
 
@@ -339,13 +285,7 @@ class TestAggregateTradesOnly:
         tr_records = [
             _make_trade_record(0, 0, amount=0.1, side="sell"),
         ]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, [])
-        _write_gz(tr_path, tr_records)
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=[], tr_records=tr_records)
 
         assert df["trade_flow_imbalance"].iloc[0] == pytest.approx(-1.0)
 
@@ -450,13 +390,7 @@ class TestAggregateEdgeCases:
             "asks": [],
             "exchange": "coincheck",
         }]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, ob_records)
-        _write_gz(tr_path, [])
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=ob_records, tr_records=[])
 
         # Empty bids/asks → NaN for best_bid/ask → all NaN → dropped by dropna(how='all')
         # OR the row remains with NaN values
@@ -471,13 +405,7 @@ class TestAggregateEdgeCases:
             "asks": [[10_001_000.0, 0.3]],
             "exchange": "coincheck",
         }]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, ob_records)
-        _write_gz(tr_path, [])
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=ob_records, tr_records=[])
 
         assert len(df) == 1
         assert df["bid_vol_5"].iloc[0] == pytest.approx(0.5)
@@ -487,13 +415,7 @@ class TestAggregateEdgeCases:
         """複数分にわたるデータの集約."""
         ob_records = [_make_ob_record(m) for m in range(10)]
         tr_records = [_make_trade_record(m) for m in range(10)]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, ob_records)
-        _write_gz(tr_path, tr_records)
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=ob_records, tr_records=tr_records)
 
         assert len(df) == 10
 
@@ -503,13 +425,7 @@ class TestAggregateEdgeCases:
             _make_trade_record(0, 0, amount=0.1, side="Buy"),
             _make_trade_record(0, 10, amount=0.2, side="SELL"),
         ]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, [])
-        _write_gz(tr_path, tr_records)
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=[], tr_records=tr_records)
 
         # side.str.lower() == "buy" のため大文字でも正常動作
         assert df["buy_volume"].iloc[0] == pytest.approx(0.1)

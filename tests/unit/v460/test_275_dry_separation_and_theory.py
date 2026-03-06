@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
+from pathlib import Path
 
 import pytest
 import scripts.v460.lib.adaptation_engine as adaptation_engine_mod
@@ -20,6 +21,10 @@ import scripts.v460.lib.side_selector as side_selector_mod
 import scripts.v460.lib.spread_anomaly_detector as spread_anomaly_detector_mod
 import scripts.v460.lib.velocity_math as velocity_math_mod
 from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+
+_FILL_LOOP_ORCHESTRATOR_SOURCE = Path(
+    inspect.getsourcefile(FillLoopOrchestratorMixin) or "",
+).read_text(encoding="utf-8")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -73,11 +78,10 @@ class TestToxicVetoDRY:
 
     def test_no_inline_veto_decrement_in_source(self) -> None:
         """orchestrator のサイクル末尾に inline veto デクリメントが残っていないこと."""
-        source = inspect.getsource(FillLoopOrchestratorMixin)
         # 旧コード: "self._toxic_veto[_veto_side] -= 1" がサイクル末尾に
         # 残っていないことを確認 (_tick_toxic_veto 内は許容)
         # _tick_toxic_veto の定義外で直接デクリメントする行が無いか検証
-        lines = source.split("\n")
+        lines = _FILL_LOOP_ORCHESTRATOR_SOURCE.split("\n")
         inline_decrements = []
         in_tick_method = False
         for i, line in enumerate(lines):
@@ -98,8 +102,7 @@ class TestToxicVetoDRY:
 
     def test_tick_toxic_veto_called_in_cycle_end(self) -> None:
         """サイクル末尾で _tick_toxic_veto("cycle_end") が呼ばれていること."""
-        source = inspect.getsource(FillLoopOrchestratorMixin)
-        assert '_tick_toxic_veto("cycle_end")' in source
+        assert '_tick_toxic_veto("cycle_end")' in _FILL_LOOP_ORCHESTRATOR_SOURCE
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -175,9 +178,8 @@ class TestOppositeSideReuse:
 
     def test_opposite_side_used_in_source(self) -> None:
         """_opposite_side が複数箇所で呼ばれていること (DRY 活用確認)."""
-        source = inspect.getsource(FillLoopOrchestratorMixin)
         # _opposite_side の呼び出し回数をカウント (定義行を除く)
-        call_count = source.count("self._opposite_side(") + source.count(
+        call_count = _FILL_LOOP_ORCHESTRATOR_SOURCE.count("self._opposite_side(") + _FILL_LOOP_ORCHESTRATOR_SOURCE.count(
             "cls._opposite_side("
         )
         assert call_count >= 3, (

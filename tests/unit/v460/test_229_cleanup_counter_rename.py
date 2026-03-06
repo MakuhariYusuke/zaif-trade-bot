@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import inspect
 import time
+from pathlib import Path
 
 import pytest
 
@@ -22,6 +23,13 @@ from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
 from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator as MakerPrice
+
+_FAST_FILL_DEFENSE_SOURCE = Path(
+    inspect.getsourcefile(FastFillDefense) or "",
+).read_text(encoding="utf-8")
+_MAKER_PRICE_SOURCE = Path(
+    inspect.getsourcefile(MakerPrice) or "",
+).read_text(encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -107,10 +115,8 @@ class TestFFDModuleLevelImport:
 
     def test_no_inline_import_time(self):
         """get_boost_multiplier / evaluate_fill に inline import time がない."""
-        import scripts.v460.lib.fast_fill_defense as ffd_mod
-        src = inspect.getsource(ffd_mod)
         # module-level "import time" は OK だが "import time as _time" は NG
-        assert "import time as _time" not in src
+        assert "import time as _time" not in _FAST_FILL_DEFENSE_SOURCE
 
     def test_time_in_module_globals(self):
         """time が module-level でインポートされている."""
@@ -188,8 +194,10 @@ class TestInvDecayTauDirectAccess:
 
     def test_maker_price_source_no_getattr_inv_decay(self):
         """maker_price に getattr(..., "inv_decay_tau_sec", ...) が残っていない."""
-        src = inspect.getsource(MakerPrice)
-        assert 'getattr' not in src or 'inv_decay_tau_sec' not in src.split('getattr')[1] if 'getattr' in src else True
+        assert (
+            'getattr' not in _MAKER_PRICE_SOURCE
+            or 'inv_decay_tau_sec' not in _MAKER_PRICE_SOURCE.split('getattr')[1]
+        ) if 'getattr' in _MAKER_PRICE_SOURCE else True
 
     def test_decayed_imbalance_with_tau(self):
         """inv_decay_tau_sec を設定して _decayed_imbalance が減衰を適用する."""

@@ -15,6 +15,16 @@ from scripts.v460.lib.fill_config import FillTestConfig, SkipGateResult
 from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
+_FILL_CYCLE_EXECUTOR_SOURCE = Path(
+    inspect.getsourcefile(FillCycleExecutorMixin) or "",
+).read_text(encoding="utf-8")
+_SKIP_GATE_EVALUATOR_SOURCE = Path(
+    inspect.getsourcefile(SkipGateEvaluator) or "",
+).read_text(encoding="utf-8")
+_CYCLE_GATE_AGGREGATOR_SOURCE = Path(
+    inspect.getsourcefile(CycleGateAggregator) or "",
+).read_text(encoding="utf-8")
+
 
 # ─── helpers ─────────────────────────────────────────────────────────
 
@@ -498,24 +508,23 @@ class TestDesignConsistency:
 
     def test_executor_has_velocity_offset_block(self) -> None:
         """fill_cycle_executor.py に velocity offset ブロックが存在すること."""
-        source = inspect.getsource(FillCycleExecutorMixin)
-        assert "195# vel_offset" in source
+        assert "195# vel_offset" in _FILL_CYCLE_EXECUTOR_SOURCE
 
     def test_executor_velocity_after_ev(self) -> None:
         """velocity offset ブロックが ev_offset ブロックの後にあること."""
-        source = inspect.getsource(FillCycleExecutorMixin)
-        ev_pos = source.find("193# ev_offset")
-        vel_pos = source.find("195# vel_offset")
+        ev_pos = _FILL_CYCLE_EXECUTOR_SOURCE.find("193# ev_offset")
+        vel_pos = _FILL_CYCLE_EXECUTOR_SOURCE.find("195# vel_offset")
         assert ev_pos > 0
         assert vel_pos > 0
         assert vel_pos > ev_pos, "velocity offset must come after ev offset"
 
     def test_skip_gate_has_velocity_soft_mode(self) -> None:
         """skip_gate_evaluator.py に velocity ソフトモードのコードが存在すること."""
-        source = inspect.getsource(SkipGateEvaluator)
-        assert "195# velocity" in source or "velocity_skip_as_offset" in source
+        assert (
+            "195# velocity" in _SKIP_GATE_EVALUATOR_SOURCE
+            or "velocity_skip_as_offset" in _SKIP_GATE_EVALUATOR_SOURCE
+        )
 
     def test_cycle_gate_has_b1_soft_mode(self) -> None:
         """cycle_gate_aggregator.py に B1' ソフトモードのコードが存在すること."""
-        source = inspect.getsource(CycleGateAggregator)
-        assert "195# B1'→offset" in source
+        assert "195# B1'→offset" in _CYCLE_GATE_AGGREGATOR_SOURCE

@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 from scripts.v460.gate_judgment import _load_all_records, _side_metrics, run_gate_judgment
 
-from ztb.metrics.fill_quality import FillRecord, save_fill_records
+from ztb.metrics.fill_quality import FillRecord
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +91,12 @@ def _make_records_mixed(
                 cancel_reason="timeout",
             ))
     return recs
+
+
+def _write_records_jsonl(path: Path, records: list[FillRecord]) -> None:
+    """_load_all_records 用に FillRecord を直接 JSONL 化する."""
+    lines = [json.dumps(record.to_dict(), ensure_ascii=False) for record in records]
+    path.write_text("\n".join(lines), encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -331,7 +337,7 @@ class TestLoadAllRecords:
         """JSONL 1 ファイルからの読み込み."""
         with tempfile.TemporaryDirectory() as tmpdir:
             recs = _make_records_mixed(n_filled=10, n_cancelled=2, days=1)
-            save_fill_records(recs, Path(tmpdir) / "fill_records_20260220.jsonl")
+            _write_records_jsonl(Path(tmpdir) / "fill_records_20260220.jsonl", recs)
 
             loaded = _load_all_records(Path(tmpdir))
             assert len(loaded) == len(recs)
@@ -344,8 +350,8 @@ class TestLoadAllRecords:
                 replace(record, cycle_id=f"alt_{record.cycle_id}")
                 for record in _make_records_mixed(n_filled=5, n_cancelled=1, days=1)
             ]
-            save_fill_records(recs1, Path(tmpdir) / "fill_records_20260220.jsonl")
-            save_fill_records(recs2, Path(tmpdir) / "fill_records_20260221.jsonl")
+            _write_records_jsonl(Path(tmpdir) / "fill_records_20260220.jsonl", recs1)
+            _write_records_jsonl(Path(tmpdir) / "fill_records_20260221.jsonl", recs2)
 
             loaded = _load_all_records(Path(tmpdir))
             assert len(loaded) == len(recs1) + len(recs2)

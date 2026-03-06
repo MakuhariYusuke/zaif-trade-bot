@@ -3767,3 +3767,20 @@ python scripts/unified_trainer.py \
 
 ### Notes
 - `tests/unit/v460/test_102_structural_fixes.py` and `tests/unit/v460/test_143_regime_utilization.py` both pass in isolation and in small early-file bundles, so the current `maker_price.py` failure appears to be broader test interaction rather than a standalone construction bug.
+
+### Changed
+- Reduced remaining v460 test I/O/setup overhead in `tests/unit/v460/test_gate_judgment.py`, `tests/unit/v460/test_aggregate_to_1min.py`, and `tests/unit/v460/test_retrain_hot_reload.py` by replacing helper-path writes and walk-forward splitter setup with focused stubs where persistence/splitter internals are not under test.
+- Added an in-process cache for `ztb/utils/git_utils.py::get_git_sha()` so repeated runner/config initialization no longer re-runs `git rev-parse` in the same test process.
+- Refactored source-inspection tests in `tests/unit/v460/test_195_velocity_b1_soft.py`, `tests/unit/v460/test_229_cleanup_counter_rename.py`, `tests/unit/v460/test_261_protocol_type_safety.py`, and `tests/unit/v460/test_275_dry_separation_and_theory.py` to reuse cached source text instead of repeatedly calling `inspect.getsource()` on large modules/classes.
+- Reworked `tests/unit/v460/test_168_pnl_measurer_sell_hold.py` to use a fake clock for `PnlMeasurer` wait-path verification, preserving behavior checks while removing real 0.05s/0.15s sleeps from the suite.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_gate_judgment.py tests/unit/v460/test_aggregate_to_1min.py tests/unit/v460/test_retrain_hot_reload.py tests/unit/utils/test_run_manifest.py -q --no-cov --tb=short --durations=30`
+- `python -m pytest tests/unit/v460/test_retrain_hot_reload.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_195_velocity_b1_soft.py tests/unit/v460/test_229_cleanup_counter_rename.py tests/unit/v460/test_275_dry_separation_and_theory.py tests/unit/v460/test_261_protocol_type_safety.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_168_pnl_measurer_sell_hold.py -q --no-cov --tb=short --durations=15`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- The broader v460 performance run completed at `4052 passed, 1 deselected, 19 warnings` with observed wall-clock variance of roughly `46s` to `50s` across reruns on the current Windows workspace.
+- No actionable `MakerPriceCalculator` class mutator/reload path was found via text search in `tests/unit/v460`, `scripts/v460/lib`, or `ztb`; current broader runs also do not reproduce the earlier `_last_sigma` contamination symptom when the unrelated excluded cases are removed.

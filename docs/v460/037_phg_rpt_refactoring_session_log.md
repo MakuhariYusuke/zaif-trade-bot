@@ -822,3 +822,81 @@
 1. `maker_price` 汚染源の二分探索を続け、再現する最小ファイル集合を特定する
 2. `TestE2ERetrainHotReload` の 1 秒級コストをさらに削る
 3. `test_fill_quality.py` の残る status/cancel race 周辺を継続削減する
+
+---
+
+## 2026-03-06 / Session 037-023
+
+### 実施
+- `gate_judgment` / `aggregate_to_1min` / `retrain_hot_reload` の追加軽量化
+  - `test_gate_judgment.py`
+    - `save_fill_records()` 依存を外し、`_load_all_records()` 用の JSONL を直接書く helper に置換
+  - `test_aggregate_to_1min.py`
+    - orderbook-only / trades-only / edge-case 系でも `_run_aggregate()` を広く再利用し、gzip 実読込を不要化
+  - `test_retrain_hot_reload.py`
+    - multi-window WF 系は fake splitter を使う配線検証へ縮退
+    - fallback ケースも 1-window stub で成立させ、不要な splitter 計算を除去
+    - E2E retrain の fill record 数を `24 -> 20` に縮小
+- 本体コード側の起動オーバーヘッド削減
+  - `ztb/utils/git_utils.py`
+    - `get_git_sha()` に `lru_cache` を付与し、同一 process 内の繰返し git metadata 取得を抑制
+
+### 結果
+- 対象回帰:
+  - `test_retrain_hot_reload.py` → `81 passed, 4 warnings in 4.70s`
+  - `test_gate_judgment.py` + `test_aggregate_to_1min.py` + `test_retrain_hot_reload.py` → `126 passed, 5 warnings in 11.95s`
+- 主要 durations 変化:
+  - `test_retrain_hot_reload.py::TestMultiWindowWF::test_evaluate_wf_multi_returns_fold_data` `1.20s -> 0.02s`
+  - `test_retrain_hot_reload.py::TestMultiWindowWF::test_evaluate_wf_multi_respects_wf_max_windows` `0.03s`
+  - `test_retrain_hot_reload.py::TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload` `1.65s -> 1.17s`
+  - `test_fill_quality.py::TestUnknownFillHandling::test_status_none_twice_becomes_cancelled_status_unknown` `0.33s -> 0.19s`（`get_git_sha()` cache 適用後の再測定）
+
+### 補足
+- `MakerPriceCalculator` 汚染については、文字列検索で class mutation / reload / monkeypatch の直接経路を確認したが、実害に繋がる変更点は見つからなかった
+- 少なくとも現時点の作業木では、広い v460 実行（既知の別件除外あり）でも `_last_sigma` 問題は再現していない
+
+### 次アクション
+1. source-inspection テストの `inspect.getsource()` 重複をまとめて減らす
+2. `PnlMeasurer` 系テストの実時間 sleep を fake clock 化する
+3. 再度 full durations を回し、残る実計算ボトルネックを確認する
+
+---
+
+## 2026-03-06 / Session 037-024
+
+### 実施
+- source-inspection テストの再利用化
+  - `test_195_velocity_b1_soft.py`
+  - `test_229_cleanup_counter_rename.py`
+  - `test_261_protocol_type_safety.py`
+  - `test_275_dry_separation_and_theory.py`
+  - 大きいクラス/モジュールの source は module-level 定数へ集約し、各テストで再利用
+- `PnlMeasurer` wait-path テストの fake clock 化
+  - `test_168_pnl_measurer_sell_hold.py`
+  - `asyncio.sleep` と `time.time` を patch する `_FakeClock` fixture を追加
+  - 0.05s / 0.15s の実待機を削除しつつ、`actual_measurement_sec` と early-exit 分岐を厳密に検証
+
+### 結果
+- 対象回帰:
+  - source-inspection 群 → `105 passed in 4.33s`
+  - `test_168_pnl_measurer_sell_hold.py` → `9 passed in 0.92s`
+- 主要 durations 変化:
+  - `test_168_pnl_measurer_sell_hold.py::TestSellHoldWithEarlyExit::test_sell_early_exit_uses_sell_wait` `0.34s -> <0.01s`
+  - `test_168_pnl_measurer_sell_hold.py::TestSellHoldPeriodExtension::test_sell_uses_sell_specific_wait` `0.17s -> <0.01s`
+  - `test_229_cleanup_counter_rename.py::TestInvDecayTauDirectAccess::test_maker_price_source_no_getattr_inv_decay` は durations 上位から離脱
+  - `test_195_velocity_b1_soft.py::TestDesignConsistency::test_executor_has_velocity_offset_block` は durations 上位から離脱
+
+### 全体測定
+- `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` 除外、`test_yaml_has_microprice_side` deselect）
+  - `4052 passed, 1 deselected, 19 warnings`
+  - wall time は `46.10s` と `50.23s` を観測
+- run-to-run の揺れはあるが、sleep 系と source-inspection 系のボトルネックはほぼ除去済み
+
+### 補足
+- 直近 full durations の上位は、`test_ml_pipeline.py` 実データ統合、`test_retrain_hot_reload.py` の hot-reload save/load、`test_enricher_skip_gate.py` の実データ setup、`test_stopgap_health.py` の loader 実 I/O に移っている
+- つまり残課題は「不要な static inspection」ではなく、実際の I/O / 実データ経路 / pickle save-load 経路が中心
+
+### 次アクション
+1. `test_ml_pipeline.py::Test057Integration::test_load_real_data` の対象ファイル数・サンプル数をさらに絞れるか確認
+2. `test_retrain_hot_reload.py::TestHotReload` / `TestE2ERetrainHotReload` の save-load 検証を維持したまま、モデル生成経路の最小化を検討
+3. `test_stopgap_health.py` の loader 実ファイルケースを、BOM/不正行/重複除去の責務ごとに helper 化できるか確認

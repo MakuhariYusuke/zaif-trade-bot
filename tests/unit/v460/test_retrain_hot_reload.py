@@ -13,6 +13,7 @@ import pickle
 import tempfile
 import time
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -157,6 +158,41 @@ def _build_fast_regressor(
         else int(cfg.get("lgbm_n_estimators", 4))
     )
     return _FastRegressor(n_estimators=n_estimators)
+
+
+def _make_stub_window(
+    train_start: int,
+    train_end: int,
+    val_start: int,
+    val_end: int,
+    test_start: int,
+    test_end: int,
+    *,
+    window_id: int = 0,
+) -> SimpleNamespace:
+    """_evaluate_wf_multi 用の最小 window オブジェクト."""
+    return SimpleNamespace(
+        window_id=window_id,
+        train_start=train_start,
+        train_end=train_end,
+        val_start=val_start,
+        val_end=val_end,
+        test_start=test_start,
+        test_end=test_end,
+    )
+
+
+def _make_splitter_module(windows: list[SimpleNamespace]) -> SimpleNamespace:
+    """WalkForwardSplitter だけを持つ最小 module stub."""
+
+    class _FakeWalkForwardSplitter:
+        def __init__(self, **_: object) -> None:
+            self._windows = windows
+
+        def split(self, _df: pd.DataFrame) -> list[SimpleNamespace]:
+            return list(self._windows)
+
+    return SimpleNamespace(WalkForwardSplitter=_FakeWalkForwardSplitter)
 
 
 # =====================================================================
@@ -622,7 +658,7 @@ class TestE2ERetrainHotReload:
             # 最低要件を満たす範囲で fill records を絞る
             rng = np.random.RandomState(42)
             records = []
-            for i in range(24):
+            for i in range(20):
                 records.append(json.dumps({
                     "cycle_id": f"e2e_{i}",
                     "side": "buy" if i % 2 == 0 else "sell",
@@ -1181,7 +1217,7 @@ class TestMultiWindowWF:
     def test_evaluate_wf_multi_returns_fold_data(self) -> None:
         """multi-window WF がfold-level PnL データを返す."""
 
-        n = 180
+        n = 40
         rng = np.random.RandomState(42)
         X = pd.DataFrame(
             rng.randn(n, 4),
@@ -1201,17 +1237,25 @@ class TestMultiWindowWF:
             "wf_step_pct": 0.25,
             "wf_max_windows": 2,
             "wf_embargo_rows": 0,
-            "wf_min_window_train": 20,
-            "wf_min_window_test": 5,
+            "wf_min_window_train": 10,
+            "wf_min_window_test": 3,
             "early_stopping_rounds": 0,
-            "lgbm_n_estimators": 6,
+            "lgbm_n_estimators": 4,
             "lgbm_max_depth": 2,
             "lgbm_learning_rate": 0.1,
             "lgbm_num_leaves": 4,
             "lgbm_min_child_samples": 3,
         }
 
-        result = _evaluate_wf_multi(X, y, enriched, cfg)
+        splitter_mod = _make_splitter_module([
+            _make_stub_window(0, 12, 12, 15, 15, 19, window_id=0),
+            _make_stub_window(19, 31, 31, 34, 34, 38, window_id=1),
+        ])
+        with patch(
+            "scripts.v460.ml.retrain_scheduler._safe_import_ztb_module",
+            return_value=splitter_mod,
+        ):
+            result = _evaluate_wf_multi(X, y, enriched, cfg)
         assert result is not None, "Should return result for n=180"
         assert result["n_windows"] >= 2, f"Expected >= 2 windows, got {result['n_windows']}"
         assert "fold_pnl30" in result
@@ -1223,7 +1267,7 @@ class TestMultiWindowWF:
     def test_evaluate_wf_multi_respects_wf_max_windows(self) -> None:
         """wf_max_windows 指定時は評価 window 数が上限で切られる."""
 
-        n = 180
+        n = 48
         rng = np.random.RandomState(42)
         X = pd.DataFrame(
             rng.randn(n, 4),
@@ -1243,24 +1287,33 @@ class TestMultiWindowWF:
             "wf_step_pct": 0.15,
             "wf_max_windows": 2,
             "wf_embargo_rows": 0,
-            "wf_min_window_train": 20,
-            "wf_min_window_test": 5,
+            "wf_min_window_train": 10,
+            "wf_min_window_test": 3,
             "early_stopping_rounds": 0,
-            "lgbm_n_estimators": 6,
+            "lgbm_n_estimators": 4,
             "lgbm_max_depth": 2,
             "lgbm_learning_rate": 0.1,
             "lgbm_num_leaves": 4,
             "lgbm_min_child_samples": 3,
         }
 
-        result = _evaluate_wf_multi(X, y, enriched, cfg)
+        splitter_mod = _make_splitter_module([
+            _make_stub_window(0, 12, 12, 15, 15, 19, window_id=0),
+            _make_stub_window(19, 31, 31, 34, 34, 38, window_id=1),
+            _make_stub_window(8, 20, 20, 23, 23, 27, window_id=2),
+        ])
+        with patch(
+            "scripts.v460.ml.retrain_scheduler._safe_import_ztb_module",
+            return_value=splitter_mod,
+        ):
+            result = _evaluate_wf_multi(X, y, enriched, cfg)
         assert result is not None
         assert result["n_windows"] == 2
 
     def test_evaluate_wf_multi_fallback_small_data(self) -> None:
         """データ不足時に multi-window が None を返す (single-window フォールバック)."""
 
-        n = 40  # too small for multi-window
+        n = 24
         rng = np.random.RandomState(42)
         X = pd.DataFrame(rng.randn(n, 3), columns=["f1", "f2", "f3"])
         y = pd.Series(rng.randn(n))
@@ -1277,23 +1330,30 @@ class TestMultiWindowWF:
             "wf_step_pct": 0.20,
             "wf_max_windows": 2,
             "wf_embargo_rows": 0,
-            "wf_min_window_train": 30,
-            "wf_min_window_test": 10,
+            "wf_min_window_train": 10,
+            "wf_min_window_test": 3,
             "early_stopping_rounds": 0,
-            "lgbm_n_estimators": 10,
+            "lgbm_n_estimators": 4,
             "lgbm_max_depth": 2,
             "lgbm_learning_rate": 0.1,
             "lgbm_num_leaves": 4,
             "lgbm_min_child_samples": 5,
         }
 
-        result = _evaluate_wf_multi(X, y, enriched, cfg)
+        splitter_mod = _make_splitter_module([
+            _make_stub_window(0, 10, 10, 13, 13, 16, window_id=0),
+        ])
+        with patch(
+            "scripts.v460.ml.retrain_scheduler._safe_import_ztb_module",
+            return_value=splitter_mod,
+        ):
+            result = _evaluate_wf_multi(X, y, enriched, cfg)
         assert result is None, "Should return None (fallback) for small data"
 
     def test_evaluate_wf_dispatches_multi(self) -> None:
         """_evaluate_wf が multi-window に正しくディスパッチする."""
 
-        n = 180
+        n = 40
         rng = np.random.RandomState(42)
         X = pd.DataFrame(
             rng.randn(n, 5),
@@ -1313,18 +1373,26 @@ class TestMultiWindowWF:
             "wf_step_pct": 0.20,
             "wf_max_windows": 2,
             "wf_embargo_rows": 0,
-            "wf_min_window_train": 20,
-            "wf_min_window_test": 5,
+            "wf_min_window_train": 10,
+            "wf_min_window_test": 3,
             "wf_test_ratio": 0.2,
             "early_stopping_rounds": 0,
-            "lgbm_n_estimators": 6,
+            "lgbm_n_estimators": 4,
             "lgbm_max_depth": 2,
             "lgbm_learning_rate": 0.1,
             "lgbm_num_leaves": 4,
             "lgbm_min_child_samples": 3,
         }
 
-        result = _evaluate_wf(X, y, enriched, cfg)
+        splitter_mod = _make_splitter_module([
+            _make_stub_window(0, 12, 12, 15, 15, 19, window_id=0),
+            _make_stub_window(19, 31, 31, 34, 34, 38, window_id=1),
+        ])
+        with patch(
+            "scripts.v460.ml.retrain_scheduler._safe_import_ztb_module",
+            return_value=splitter_mod,
+        ):
+            result = _evaluate_wf(X, y, enriched, cfg)
         # multi-window が成功していれば n_windows >= 1
         assert result["n_windows"] >= 1
         assert "fold_pnl30" in result

@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from functools import lru_cache
 from pathlib import Path
 
 _GIT_READONLY_FLAGS = ["--no-optional-locks"]
@@ -53,6 +54,7 @@ def get_git_output(args: list[str], cwd: Path | None = None, timeout: int = 5) -
         return None
     return result.stdout.strip()
 
+@lru_cache(maxsize=32)
 def get_git_sha(cwd: Path | None = None, timeout: int = 5) -> str:
     return get_git_output(["rev-parse", "HEAD"], cwd=cwd, timeout=timeout) or "unknown"
 

@@ -6,8 +6,8 @@ post_fill_wait_sec_sell が設定されている場合、sell 側で sellspecifi
 from __future__ import annotations
 
 import asyncio
-import time
 from unittest.mock import AsyncMock
+from unittest.mock import patch
 
 import pytest
 
@@ -33,32 +33,52 @@ def _make_mid_price_mock(price: float = 10_000_000.0) -> AsyncMock:
     return AsyncMock(return_value=price)
 
 
+class _FakeClock:
+    """PnlMeasurer の sleep/time を進めるだけの仮想時計."""
+
+    def __init__(self, start: float = 1_000.0) -> None:
+        self.now = start
+
+    async def sleep(self, seconds: float) -> None:
+        self.now += seconds
+
+    def time(self) -> float:
+        return self.now
+
+
+@pytest.fixture
+def fake_pnl_clock() -> _FakeClock:
+    """PnlMeasurer の待機を実時間なしで進める."""
+    clock = _FakeClock()
+    with patch("scripts.v460.lib.pnl_measurer.asyncio.sleep", new=clock.sleep), patch(
+        "scripts.v460.lib.pnl_measurer.time.time",
+        new=clock.time,
+    ):
+        yield clock
+
+
 class TestSellHoldPeriodExtension:
     """168# sell 保持期間延長テスト."""
 
     @pytest.mark.asyncio
-    async def test_default_no_sell_override(self) -> None:
+    async def test_default_no_sell_override(self, fake_pnl_clock: _FakeClock) -> None:
         """post_fill_wait_sec_sell=None の場合、通常の wait_sec を使用."""
         config = _make_config(post_fill_wait_sec=0.05, post_fill_wait_sec_sell=None)
         measurer = PnlMeasurer(config)
         get_mid = _make_mid_price_mock()
 
-        t0 = time.monotonic()
         result = await measurer.measure(
             filled=True,
             fill_price=10_000_000.0,
             side="sell",
             get_mid_price=get_mid,
         )
-        elapsed = time.monotonic() - t0
 
-        # 0.05s ± tolerance (sell override なしなので通常値を使用)
-        assert 0.04 <= elapsed < 0.5
         assert result.actual_measurement_sec is not None
-        assert result.actual_measurement_sec >= 0.04
+        assert result.actual_measurement_sec == pytest.approx(0.05, abs=1e-9)
 
     @pytest.mark.asyncio
-    async def test_sell_uses_sell_specific_wait(self) -> None:
+    async def test_sell_uses_sell_specific_wait(self, fake_pnl_clock: _FakeClock) -> None:
         """sell 側は post_fill_wait_sec_sell (長い) を使用."""
         config = _make_config(
             post_fill_wait_sec=0.05,
@@ -67,22 +87,18 @@ class TestSellHoldPeriodExtension:
         measurer = PnlMeasurer(config)
         get_mid = _make_mid_price_mock()
 
-        t0 = time.monotonic()
         result = await measurer.measure(
             filled=True,
             fill_price=10_000_000.0,
             side="sell",
             get_mid_price=get_mid,
         )
-        elapsed = time.monotonic() - t0
 
-        # sell は 0.15s 待機 (通常の 0.05s ではない)
-        assert elapsed >= 0.12, f"sell should wait ~0.15s, got {elapsed:.3f}s"
         assert result.actual_measurement_sec is not None
-        assert result.actual_measurement_sec >= 0.12
+        assert result.actual_measurement_sec == pytest.approx(0.15, abs=1e-9)
 
     @pytest.mark.asyncio
-    async def test_buy_ignores_sell_override(self) -> None:
+    async def test_buy_ignores_sell_override(self, fake_pnl_clock: _FakeClock) -> None:
         """buy 側は post_fill_wait_sec_sell を無視し、通常の wait_sec を使用."""
         config = _make_config(
             post_fill_wait_sec=0.05,
@@ -91,20 +107,18 @@ class TestSellHoldPeriodExtension:
         measurer = PnlMeasurer(config)
         get_mid = _make_mid_price_mock()
 
-        t0 = time.monotonic()
-        await measurer.measure(
+        result = await measurer.measure(
             filled=True,
             fill_price=10_000_000.0,
             side="buy",
             get_mid_price=get_mid,
         )
-        elapsed = time.monotonic() - t0
 
-        # buy は 0.05s (sell の 0.15s ではない)
-        assert elapsed < 0.12, f"buy should wait ~0.05s, got {elapsed:.3f}s"
+        assert result.actual_measurement_sec is not None
+        assert result.actual_measurement_sec == pytest.approx(0.05, abs=1e-9)
 
     @pytest.mark.asyncio
-    async def test_sell_pnl_computed_correctly(self) -> None:
+    async def test_sell_pnl_computed_correctly(self, fake_pnl_clock: _FakeClock) -> None:
         """sell 保持期間延長時の PnL 計算が正しいことを検証."""
         fill_price = 10_000_000.0
         # 価格が下がる → sell は利益
@@ -153,7 +167,7 @@ class TestSellHoldWithEarlyExit:
     """168# sell 保持 + early exit の組合せテスト."""
 
     @pytest.mark.asyncio
-    async def test_sell_early_exit_uses_sell_wait(self) -> None:
+    async def test_sell_early_exit_uses_sell_wait(self, fake_pnl_clock: _FakeClock) -> None:
         """early exit 有効時も sell 用の wait_sec が適用される."""
         config = _make_config(
             post_fill_wait_sec=0.05,
@@ -165,18 +179,15 @@ class TestSellHoldWithEarlyExit:
         measurer = PnlMeasurer(config)
         get_mid = _make_mid_price_mock(10_000_000.0)
 
-        t0 = time.monotonic()
         result = await measurer.measure(
             filled=True,
             fill_price=10_000_000.0,
             side="sell",
             get_mid_price=get_mid,
         )
-        elapsed = time.monotonic() - t0
 
-        # sell は 0.15s 待機 (early exit 未トリガー)
-        assert elapsed >= 0.12, f"sell should wait ~0.15s, got {elapsed:.3f}s"
         assert result.early_exit_triggered is False
+        assert result.actual_measurement_sec == pytest.approx(0.15, abs=1e-9)
 
 
 class TestFillTestConfigSellHold:
