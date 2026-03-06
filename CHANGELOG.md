@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 307# perf+dry: YAML setup再利用 + WF multi-window負荷の追加圧縮 (2026-03-06)
+
+### Changed
+- **テスト負荷軽減（追加横展開）**
+  - `tests/unit/v460/test_189_alt_horizon_macro_integration.py`
+    - `TestYAMLIntegrity` の `yaml_config` fixture を class-scope 化
+    - `fill_test.yaml` の反復ロードをクラス内再利用に変更
+  - `tests/unit/v460/test_retrain_hot_reload.py`
+    - `TestMultiWindowWF` の補助ケースを軽量化 (`n=260 -> 220`)
+    - `wf_max_windows` 回帰テストを維持しつつ計算量を削減
+
+### Verification
+- 変更対象回帰:
+  - `251 passed, 4 warnings in 7.00s`
+- v460 全体:
+  - `3992 passed, 19 warnings in 37.50s`（`--no-cov --durations=20`）
+
+### Performance Notes
+- `test_189_alt_horizon_macro_integration` の YAML setup コストが縮小。
+- `test_retrain_hot_reload::TestMultiWindowWF` は機能検証を維持しつつ実行時間を圧縮。
+
 ## 306# perf+core+test: WF評価上限制御 + integration負荷削減 + source検証高速化 (2026-03-06)
 
 ### Changed

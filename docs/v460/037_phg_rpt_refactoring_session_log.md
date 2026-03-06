@@ -565,3 +565,30 @@
 1. `test_189_alt_horizon_macro_integration.py` の setup 負荷（YAML 読込/fixture 初期化）を分解して削減
 2. `test_pnl_monte_carlo.py` の乱数試行数と感度グリッドを検証意図維持で段階縮小
 3. `fill_test.yaml` 直読残件の fixture 化を継続（`test_166_hotfixes.py`, `test_197_boost_optimization_gate_integration.py`）
+
+---
+
+## 2026-03-06 / Session 037-016
+
+### 実施
+- テストセットアップ最適化
+  - `test_189_alt_horizon_macro_integration.py`
+    - `TestYAMLIntegrity` の YAML fixture を class-scope 化
+    - `fill_test.yaml` 読込をテスト毎からクラス内再利用へ変更
+- multi-window WF 追加軽量化
+  - `test_retrain_hot_reload.py`
+    - `TestMultiWindowWF` の補助ケース入力サイズを `260 -> 220` に調整
+    - `wf_max_windows` 上限検証は維持
+
+### 結果
+- 変更対象テスト:
+  - `251 passed, 4 warnings in 7.00s`
+- v460 全体:
+  - `3992 passed, 19 warnings in 37.50s`（`--no-cov --durations=20`）
+- 補足:
+  - 上位 setup ボトルネックは `test_190_ev_weighted_safety` / `test_enricher_skip_gate` に集約
+
+### 次アクション
+1. `test_190_ev_weighted_safety.py` の setup を fixture 再利用（session/class）へ寄せる
+2. `test_gate_judgment.py::TestLoadAllRecords` の実ファイル読込経路をサブセット化できるか検証
+3. `test_pnl_monte_carlo.py` の試行回数とグリッドを段階縮小し、統計意図の維持を確認

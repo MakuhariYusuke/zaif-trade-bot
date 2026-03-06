@@ -1145,7 +1145,7 @@ class TestMultiWindowWF:
         }
 
         result = _evaluate_wf_multi(X, y, enriched, cfg)
-        assert result is not None, "Should return result for n=300"
+        assert result is not None, "Should return result for n=180"
         assert result["n_windows"] >= 2, f"Expected >= 2 windows, got {result['n_windows']}"
         assert "fold_pnl30" in result
         assert "fold_pnl120" in result
@@ -1156,7 +1156,7 @@ class TestMultiWindowWF:
     def test_evaluate_wf_multi_respects_wf_max_windows(self) -> None:
         """wf_max_windows 指定時は評価 window 数が上限で切られる."""
 
-        n = 260
+        n = 220
         rng = np.random.RandomState(42)
         X = pd.DataFrame(
             rng.randn(n, 4),

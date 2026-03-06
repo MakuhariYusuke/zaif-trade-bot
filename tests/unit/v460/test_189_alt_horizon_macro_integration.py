@@ -506,14 +506,10 @@ class TestHotReloadMacroKeys:
 class TestYAMLIntegrity:
     """189# YAML 更新の整合性検証."""
 
-    @pytest.fixture()
-    def yaml_config(self) -> dict:
-        """fill_test.yaml をロードして dict で返す."""
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        if not yaml_path.exists():
-            pytest.skip("fill_test.yaml not found")
-        with open(yaml_path, encoding="utf-8") as f:
-            return yaml.safe_load(f)
+    @pytest.fixture(scope="class")
+    def yaml_config(self, v460_fill_test_yaml_base: dict[str, object]) -> dict:
+        """fill_test.yaml を class 単位で再利用してロードコストを削減."""
+        return copy.deepcopy(v460_fill_test_yaml_base)
 
     def test_ev_weighted_model_paths_in_yaml(self, yaml_config: dict) -> None:
         """YAML に ev_weighted の alt モデルパスが存在."""
