@@ -791,3 +791,34 @@
 1. `test_fill_quality.py::TestAtomicLock` を lock manager 直テストへ寄せ、`FillTestRunner` 初期化依存を外す
 2. `TestE2ERetrainHotReload` の save/load 経路を維持したまま、再学習前処理をさらに縮退できるか確認
 3. 別件として `maker_price.py` の `_last_sigma` 欠落を修正し、v460 全体ベンチを再開する
+
+---
+
+## 2026-03-06 / Session 037-022
+
+### 実施
+- `AtomicLock` テスト粒度の修正
+  - `test_fill_quality.py`
+    - `TestAtomicLock` を `FillTestRunner` 経由から `LockManager` 直テストへ変更
+    - lock 専用テストから maker price / runner 初期化依存を除去
+- `maker_price` 汚染の切り分け
+  - `test_102_structural_fixes.py` / `test_143_regime_utilization.py` を単独実行
+  - `test_093_side_params.py` / `test_094_stale_order.py` / `test_ml_pipeline.py` / `test_enricher_skip_gate.py`
+    を加えた小束でも実行
+  - いずれも再現せず、`_last_sigma` 問題は広い組み合わせ時のみ発生することを確認
+
+### 結果
+- 変更対象テスト:
+  - `test_fill_quality.py -k "AtomicLock"` → `3 passed`
+- durations:
+  - `TestAtomicLock::test_acquire_creates_lockfile` call `0.01s`
+
+### 補足
+- `maker_price.py` は単体初期化自体は成功する
+- 現時点の仮説は「単独バグ」ではなく「他テストによる module/class 汚染」
+- ただし汚染源はまだ未特定
+
+### 次アクション
+1. `maker_price` 汚染源の二分探索を続け、再現する最小ファイル集合を特定する
+2. `TestE2ERetrainHotReload` の 1 秒級コストをさらに削る
+3. `test_fill_quality.py` の残る status/cancel race 周辺を継続削減する

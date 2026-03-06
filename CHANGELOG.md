@@ -3758,3 +3758,12 @@ python scripts/unified_trainer.py \
 
 ### Notes
 - A broader `tests/unit/v460/` run excluding `test_260_compute_extract_regime_split.py` still surfaced unrelated unstaged `scripts/v460/lib/maker_price.py` breakage (`_last_sigma` missing), affecting `test_102_structural_fixes.py` and `test_143_regime_utilization.py`.
+
+### Changed
+- Refactored `tests/unit/v460/test_fill_quality.py` so `TestAtomicLock` exercises `LockManager` directly instead of constructing `FillTestRunner`, removing unrelated maker-price initialization from a lock-specific test.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_fill_quality.py -q --no-cov --tb=short --durations=10 -k "AtomicLock"`
+
+### Notes
+- `tests/unit/v460/test_102_structural_fixes.py` and `tests/unit/v460/test_143_regime_utilization.py` both pass in isolation and in small early-file bundles, so the current `maker_price.py` failure appears to be broader test interaction rather than a standalone construction bug.
