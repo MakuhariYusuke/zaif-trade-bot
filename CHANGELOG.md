@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 308# perf+dry+core: YAML I/O集約の横展開 + live_trader source検証軽量化 + MC定数経路最適化 (2026-03-06)
+
+### Changed
+- **テストI/O重複削減（fixture 再利用）**
+  - `tests/unit/v460/test_169_c1_c3_c4_config.py`
+    - `config_from_yaml` を module-scope 化し、`v460_fill_test_yaml_base` を再利用
+  - `tests/unit/v460/test_190_ev_weighted_safety.py`
+    - `TestYAMLIntegrity190.yaml_config` を class-scope 化（session YAML deepcopy）
+  - `tests/unit/v460/test_292_observability.py`
+    - 3クラスの本番YAML検証を `v460_fill_test_yaml_base` 再利用へ置換
+    - autouse fixture を class-scope 化
+  - `tests/unit/v460/test_fill_quality.py`
+    - `Test052` / `Test107` の `fill_test.yaml` 直読 12 箇所をクラス fixture に集約
+    - `yaml` import を削除
+- **DRY 改善（method import 集約）**
+  - `tests/unit/v460/test_202_log_improvements.py`
+    - method 内 import をモジュール先頭へ集約
+    - YAML 存在確認テストを `v460_fill_test_yaml_base` 利用へ変更
+- **重い setup の除去**
+  - `tests/unit/v460/test_212_live_trader_config.py`
+    - `inspect.getsource + module import` を廃止
+    - ファイル直接読込 + AST で `LiveTrader` クラス source 抽出へ変更
+- **本体コード最適化（挙動互換）**
+  - `ztb/risk/pnl_monte_carlo.py`
+    - `_extract_filled_pnl_bps()` を単一パス抽出へ整理
+    - `_simulate_monthly_pnls()` に定数 PnL 配列の fast-path を追加（sampling 省略）
+
+### Verification
+- 変更対象回帰:
+  - `354 passed, 8 warnings in 7.96s`
+  - `301 passed, 8 warnings in 6.95s`
+- v460 全体:
+  - `3992 passed, 19 warnings in 36.87s`（`--no-cov --durations=20`）
+
+### Performance Notes
+- `test_212_live_trader_config` の setup は `--durations` 上位から外れる水準まで低下。
+- method 内 import 総数（v460）は `634 -> 614` に減少。
+- 全体時間は 35–37 秒帯で推移（実行環境揺らぎあり）。
+
 ## 307# perf+dry: YAML setup再利用 + WF multi-window負荷の追加圧縮 (2026-03-06)
 
 ### Changed

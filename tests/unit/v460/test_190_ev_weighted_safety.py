@@ -19,7 +19,6 @@ from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
-import yaml
 from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
@@ -351,13 +350,9 @@ class TestHotReload190Keys:
 class TestYAMLIntegrity190:
     """190# YAML 更新の整合性検証."""
 
-    @pytest.fixture()
-    def yaml_config(self) -> dict:
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        if not yaml_path.exists():
-            pytest.skip("fill_test.yaml not found")
-        with open(yaml_path, encoding="utf-8") as f:
-            return yaml.safe_load(f)
+    @pytest.fixture(scope="class")
+    def yaml_config(self, v460_fill_test_yaml_base: dict[str, object]) -> dict:
+        return copy.deepcopy(v460_fill_test_yaml_base)
 
     def test_min_spread_jpy_reduced(self, yaml_config: dict) -> None:
         """190# C: min_spread_jpy が 1200→1000 に更新."""

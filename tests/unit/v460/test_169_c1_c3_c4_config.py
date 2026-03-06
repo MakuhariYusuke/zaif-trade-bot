@@ -9,23 +9,14 @@ YAML パース経由で設定値が正しく反映されることを検証。
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
-import yaml
 
 from scripts.v460.lib.fill_config import FillTestConfig as FillConfig
 
-YAML_PATH = Path("configs/v460/fill_test.yaml")
-
-
-@pytest.fixture()
-def config_from_yaml() -> FillConfig:
-    """fill_test.yaml から dict ロード → FillConfig 構築."""
-    assert YAML_PATH.exists(), f"YAML not found: {YAML_PATH}"
-    with open(YAML_PATH, encoding="utf-8") as f:
-        raw = yaml.safe_load(f)
-    return FillConfig.from_yaml(raw)
+@pytest.fixture(scope="module")
+def config_from_yaml(v460_fill_test_yaml_base: dict[str, object]) -> FillConfig:
+    """fill_test.yaml から FillConfig を構築（module 再利用で高速化）."""
+    return FillConfig.from_yaml(v460_fill_test_yaml_base)
 
 
 # ================================================================

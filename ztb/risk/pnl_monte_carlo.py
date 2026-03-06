@@ -174,13 +174,14 @@ class PnLMonteCarloSimulator:
 
     def _extract_filled_pnl_bps(self) -> np.ndarray:
         """約定済みレコードから PnL(bps) 配列を抽出する."""
-        filled = [r for r in self.records if r.filled]
-        pnl_bps = np.array(
-            [r.post_fill_30s_pnl for r in filled if r.post_fill_30s_pnl is not None]
-        )
-        if len(pnl_bps) == 0:
+        pnl_values = [
+            float(r.post_fill_30s_pnl)
+            for r in self.records
+            if r.filled and r.post_fill_30s_pnl is not None
+        ]
+        if not pnl_values:
             return np.array([0.0], dtype=np.float64)
-        return pnl_bps.astype(np.float64, copy=False)
+        return np.asarray(pnl_values, dtype=np.float64)
 
     def _simulate_monthly_pnls(
         self,
@@ -197,6 +198,10 @@ class PnLMonteCarloSimulator:
             fill_rate,
             size=self.config.n_simulations,
         )
+        # PnL 値が定数のときは sampling を省いて高速化できる。
+        if pnl_bps.size == 1:
+            return fills_per_sim.astype(np.float64) * float(pnl_bps[0]) * jpy_per_bps
+
         for i, fills_this_month in enumerate(fills_per_sim):
             fills_this_month = int(fills_this_month)
             if fills_this_month <= 0:

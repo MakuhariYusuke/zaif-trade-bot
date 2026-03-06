@@ -1,12 +1,27 @@
 """212# §7.1: LiveTraderConfig magic number config 化テスト."""
 
 import ast
-import inspect
 import re
+from pathlib import Path
 
 import pytest
 
 from ztb.trading.live_trader.config import LiveTraderConfig
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_LIVE_TRADER_PATH = _PROJECT_ROOT / "ztb" / "trading" / "live_trader" / "live_trader.py"
+
+
+def _extract_class_source(module_source: str, class_name: str) -> str:
+    """モジュールソースから対象クラス定義のみを抽出する."""
+    tree = ast.parse(module_source)
+    lines = module_source.splitlines()
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef) and node.name == class_name:
+            if node.end_lineno is None:
+                raise AssertionError(f"Class {class_name} has no end_lineno")
+            return "\n".join(lines[node.lineno - 1:node.end_lineno])
+    raise AssertionError(f"Class not found: {class_name}")
 
 
 class TestLiveTraderConfigDefaults:
@@ -50,10 +65,11 @@ class TestLiveTraderConfigDefaults:
 class TestNoMagicNumbersInLiveTrader:
     """live_trader.py にマジックナンバーが残っていないことを検証."""
 
-    @pytest.fixture(autouse=True)
-    def _load_source(self) -> None:
-        from ztb.trading.live_trader import live_trader
-        self.source = inspect.getsource(live_trader.LiveTrader)
+    @pytest.fixture(scope="class", autouse=True)
+    def _load_source(self, request: pytest.FixtureRequest) -> None:
+        module_source = _LIVE_TRADER_PATH.read_text(encoding="utf-8-sig")
+        request.cls.source = _extract_class_source(module_source, "LiveTrader")
+        request.cls.module_source = module_source
 
     def test_no_raw_timeout_5(self) -> None:
         """timeout=5 が self.trader_config.ticker_timeout に置換済み."""
@@ -104,6 +120,4 @@ class TestNoMagicNumbersInLiveTrader:
 
     def test_import_exists(self) -> None:
         """LiveTraderConfig が import されていることを確認."""
-        from ztb.trading.live_trader import live_trader
-        module_source = inspect.getsource(live_trader)
-        assert "LiveTraderConfig" in module_source
+        assert "LiveTraderConfig" in self.module_source

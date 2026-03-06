@@ -18,7 +18,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import numpy as np
 import pytest
 import scripts.v460.lib.fill_test_cli as cli_mod
-import yaml  # type: ignore[import-untyped]
 from scripts.v460.analysis.vg_and_trend import (
     _match_vg_to_records,
     _parse_vg_activations,
@@ -2820,6 +2819,14 @@ class Test051MonitorExtensions:
 class Test052AdaptSellOffsetSync:
     """052# 方策AがSell offsetも比例調整する."""
 
+    @pytest.fixture(scope="class", autouse=True)
+    def _yaml_config(
+        self,
+        request: pytest.FixtureRequest,
+        v460_fill_test_yaml_base: dict[str, object],
+    ) -> None:
+        request.cls.yaml_cfg = v460_fill_test_yaml_base
+
     def test_adapt_syncs_sell_offset_in_code(self) -> None:
         """AdaptationEngine.try_auto_adapt に sell offset 比例調整コードが含まれる.
 
@@ -2834,31 +2841,19 @@ class Test052AdaptSellOffsetSync:
 
     def test_yaml_sell_offset_updated(self) -> None:
         """121# A2 で sell offset が 0.18 に更新されている."""
-
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
-        assert cfg["side_offset"]["sell"] == 0.18
+        assert self.yaml_cfg["side_offset"]["sell"] == 0.18
 
     def test_yaml_skip_utc_hours_buy_includes_12(self) -> None:
         """163# Step2: time_filter buy=[16]のみ。旧 UTC08/18 は regime_adaptive で復元."""
-
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
         # 169# time_filter 全廃: 全リスト空 (条件ベースフィルタに完全移行)
-        assert cfg["time_filter"]["skip_utc_hours_buy"] == []
-        assert cfg["time_filter"]["skip_utc_hours_sell"] == []
-        assert cfg["time_filter"]["regime_adaptive_extra_buy"] == []
-        assert cfg["time_filter"]["regime_adaptive_extra_sell"] == []
+        assert self.yaml_cfg["time_filter"]["skip_utc_hours_buy"] == []
+        assert self.yaml_cfg["time_filter"]["skip_utc_hours_sell"] == []
+        assert self.yaml_cfg["time_filter"]["regime_adaptive_extra_buy"] == []
+        assert self.yaml_cfg["time_filter"]["regime_adaptive_extra_sell"] == []
 
     def test_yaml_deadzone_updated(self) -> None:
         """052# で deadzone が 2.5 に更新されている."""
-
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
-        assert cfg["as_deadzone_bps"] == 2.5
+        assert self.yaml_cfg["as_deadzone_bps"] == 2.5
 
     def test_dynamic_lot_shrink_in_balance_check(self) -> None:
         """052# BalanceChecker にロット自動縮小が含まれる (121# 抽出)."""
@@ -2873,17 +2868,13 @@ class Test052AdaptSellOffsetSync:
 
     def test_yaml_skip_utc_hours_side_specific_089(self) -> None:
         """169# time_filter全廃: 条件ベースフィルタに完全移行."""
-
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
-        buy_skip = cfg["time_filter"]["skip_utc_hours_buy"]
-        sell_skip = cfg["time_filter"]["skip_utc_hours_sell"]
+        buy_skip = self.yaml_cfg["time_filter"]["skip_utc_hours_buy"]
+        sell_skip = self.yaml_cfg["time_filter"]["skip_utc_hours_sell"]
         # 169# time_filter 全廃: 全リスト空 (B1' + SkipGate + VG + sell_dynamic_kill が根本対策)
         assert buy_skip == [], f"Expected [], got {buy_skip}"
         assert sell_skip == [], f"Expected [], got {sell_skip}"
         # 169# regime_adaptive リストも空 (VG が high_vol を直接処理)
-        tf = cfg["time_filter"]
+        tf = self.yaml_cfg["time_filter"]
         assert tf["regime_adaptive_extra_buy"] == []
         assert tf["regime_adaptive_extra_sell"] == []
 
@@ -2905,11 +2896,7 @@ class Test052AdaptSellOffsetSync:
 
     def test_yaml_trending_offset_boost(self) -> None:
         """052# で trending_offset_boost が YAML に設定されている."""
-
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
-        assert cfg["regime"]["trending_offset_boost"] == 1.5
+        assert self.yaml_cfg["regime"]["trending_offset_boost"] == 1.5
 
     def test_balance_shrink_uses_min_order_btc(self) -> None:
         """052# balance_shrink の最低ロットが min_order_btc を使用する (121# YAML 外部化)."""
@@ -2926,32 +2913,28 @@ class Test052AdaptSellOffsetSync:
 class Test107TimeFilterDynamicGating:
     """107# time_filter 改善 + Volatility Guard テスト."""
 
+    @pytest.fixture(scope="class", autouse=True)
+    def _yaml_config(
+        self,
+        request: pytest.FixtureRequest,
+        v460_fill_test_yaml_base: dict[str, object],
+    ) -> None:
+        request.cls.yaml_cfg = v460_fill_test_yaml_base
+
     def test_yaml_sell_utc17_unblocked(self) -> None:
         """107# SELL UTC17 は +0.65 bps なのでブロック解除済み."""
-
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
-        sell_skip = cfg["time_filter"]["skip_utc_hours_sell"]
+        sell_skip = self.yaml_cfg["time_filter"]["skip_utc_hours_sell"]
         assert 17 not in sell_skip, "UTC17 SELL is +0.65 bps, should NOT be blocked"
 
     def test_yaml_skip_gate_target_rates_raised(self) -> None:
         """107# SkipGate target_skip_rate が引き上げられている."""
-
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
-        sg = cfg["skip_gate"]
+        sg = self.yaml_cfg["skip_gate"]
         assert sg["target_skip_rate_buy"] == 0.15, "buy rate should be 0.15"
         assert sg["target_skip_rate_sell"] == 0.25, "165# AS-R1: sell rate 0.20→0.25"
 
     def test_yaml_volatility_guard_section(self) -> None:
         """107# volatility_guard セクションが YAML に存在する."""
-
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
-        vg = cfg["volatility_guard"]
+        vg = self.yaml_cfg["volatility_guard"]
         assert vg["enabled"] is True
         assert vg["velocity_window_sec"] == 60
         assert vg["velocity_threshold_bps"] == 12.0   # 183# 15.0→12.0 (AS28%対策: VG感度引上げ)
@@ -2989,11 +2972,7 @@ class Test107TimeFilterDynamicGating:
 
     def test_vg_inv_skew_damping_yaml_mapping(self) -> None:
         """168# YAML 'inv_skew_damping_enabled' が VG セクションで読み込まれる."""
-
-        yaml_path = Path("configs/v460/fill_test.yaml")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
-        vg = cfg["volatility_guard"]
+        vg = self.yaml_cfg["volatility_guard"]
         assert "inv_skew_damping_enabled" in vg
         assert vg["inv_skew_damping_enabled"] is True
 
@@ -3094,20 +3073,14 @@ class Test107TimeFilterDynamicGating:
 
     def test_p2c1_sell_guard_max_spread_yaml(self) -> None:
         """168# P2-C1: sell_guard max_spread_jpy が 5000 に更新済み."""
-
-        with open(Path("configs/v460/fill_test.yaml")) as f:
-            cfg = yaml.safe_load(f)
-        sg = cfg["sell_guard"]
+        sg = self.yaml_cfg["sell_guard"]
         assert sg["max_spread_jpy"] == 5000.0, (
             f"168# P2-C1: expected 5000, got {sg['max_spread_jpy']}"
         )
 
     def test_p2c2_reprice_tighten_yaml(self) -> None:
         """168# P2-C2: stale_order.reprice_tighten が YAML に設定済み."""
-
-        with open(Path("configs/v460/fill_test.yaml")) as f:
-            cfg = yaml.safe_load(f)
-        so = cfg["stale_order"]
+        so = self.yaml_cfg["stale_order"]
         assert "reprice_tighten" in so, "168# P2-C2: reprice_tighten not in YAML"
         assert so["reprice_tighten"] == 0.85
 
@@ -3119,10 +3092,7 @@ class Test107TimeFilterDynamicGating:
 
     def test_p2c3_reprice_skip_gate_offset_yaml(self) -> None:
         """168# P2-C3: stale_order.reprice_skip_gate_offset が YAML に設定済み."""
-
-        with open(Path("configs/v460/fill_test.yaml")) as f:
-            cfg = yaml.safe_load(f)
-        so = cfg["stale_order"]
+        so = self.yaml_cfg["stale_order"]
         assert "reprice_skip_gate_offset" in so, (
             "168# P2-C3: reprice_skip_gate_offset not in YAML"
         )

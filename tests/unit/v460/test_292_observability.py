@@ -135,16 +135,18 @@ class TestRepriceDeadbandYAML:
 
     def test_production_yaml_has_reprice_deadband(self) -> None:
         """本番 YAML に reprice_min_delta_jpy が設定されている."""
-        yaml_path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
-        if not yaml_path.exists():
-            pytest.skip("fill_test.yaml not found")
-        import yaml as _yaml  # type: ignore[import-untyped]
-
-        with open(yaml_path) as f:
-            y = _yaml.safe_load(f)
+        y = self._yaml_config
         so = y.get("stale_order", {})
         assert "reprice_min_delta_jpy" in so
         assert so["reprice_min_delta_jpy"] > 0
+
+    @pytest.fixture(scope="class", autouse=True)
+    def _inject_yaml_config(
+        self,
+        request: pytest.FixtureRequest,
+        v460_fill_test_yaml_base: dict[str, object],
+    ) -> None:
+        request.cls._yaml_config = v460_fill_test_yaml_base
 
 
 # =====================================================================
@@ -195,16 +197,18 @@ class TestForcedBuyDelayRegimeYAML:
 
     def test_production_yaml_has_ranging_threshold(self) -> None:
         """本番 YAML に velocity_threshold_ranging_bps が設定されている."""
-        yaml_path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
-        if not yaml_path.exists():
-            pytest.skip("fill_test.yaml not found")
-        import yaml as _yaml  # type: ignore[import-untyped]
-
-        with open(yaml_path) as f:
-            y = _yaml.safe_load(f)
+        y = self._yaml_config
         fbd = y.get("loss_control", {}).get("forced_buy_delay", {})
         assert "velocity_threshold_ranging_bps" in fbd
         assert fbd["velocity_threshold_ranging_bps"] == pytest.approx(-3.0)
+
+    @pytest.fixture(scope="class", autouse=True)
+    def _inject_yaml_config(
+        self,
+        request: pytest.FixtureRequest,
+        v460_fill_test_yaml_base: dict[str, object],
+    ) -> None:
+        request.cls._yaml_config = v460_fill_test_yaml_base
 
 
 # =====================================================================
@@ -261,16 +265,18 @@ class TestForcedBuyDelayMaxConsecutive:
         assert cfg.forced_buy_delay_max_consecutive == 8
 
     def test_production_yaml_has_max_consecutive(self) -> None:
-        yaml_path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
-        if not yaml_path.exists():
-            pytest.skip("fill_test.yaml not found")
-        import yaml as _yaml  # type: ignore[import-untyped]
-
-        with open(yaml_path) as f:
-            y = _yaml.safe_load(f)
+        y = self._yaml_config
         fbd = y.get("loss_control", {}).get("forced_buy_delay", {})
         assert "max_consecutive" in fbd
         assert fbd["max_consecutive"] == 10
+
+    @pytest.fixture(scope="class", autouse=True)
+    def _inject_yaml_config(
+        self,
+        request: pytest.FixtureRequest,
+        v460_fill_test_yaml_base: dict[str, object],
+    ) -> None:
+        request.cls._yaml_config = v460_fill_test_yaml_base
 
 
 # =====================================================================

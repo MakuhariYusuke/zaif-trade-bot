@@ -592,3 +592,46 @@
 1. `test_190_ev_weighted_safety.py` の setup を fixture 再利用（session/class）へ寄せる
 2. `test_gate_judgment.py::TestLoadAllRecords` の実ファイル読込経路をサブセット化できるか検証
 3. `test_pnl_monte_carlo.py` の試行回数とグリッドを段階縮小し、統計意図の維持を確認
+
+---
+
+## 2026-03-06 / Session 037-017
+
+### 実施
+- テストI/O重複の横展開削減
+  - `test_169_c1_c3_c4_config.py`
+    - `config_from_yaml` を module-scope fixture 化し、`v460_fill_test_yaml_base` を再利用
+  - `test_190_ev_weighted_safety.py`
+    - `TestYAMLIntegrity190` の YAML fixture を class-scope 化（deepcopy 再利用）
+  - `test_292_observability.py`
+    - YAML 直読 3 箇所を `v460_fill_test_yaml_base` 参照へ置換
+    - autouse fixture を class-scope 化
+  - `test_fill_quality.py`
+    - `Test052` / `Test107` の `fill_test.yaml` 直読 12 箇所をクラス fixture 集約
+- DRY 改善（method 内 import 集約）
+  - `test_202_log_improvements.py`
+    - method 内 import を先頭集約
+    - YAML 検証を共通 fixture 利用へ変更
+- setup 負荷の削減
+  - `test_212_live_trader_config.py`
+    - `inspect.getsource + module import` を廃止
+    - ファイル直接読込 + AST 抽出で `LiveTrader` クラスソースを検証
+- 本体コードの軽量化
+  - `ztb/risk/pnl_monte_carlo.py`
+    - filled PnL 抽出を単一パス化
+    - 定数 PnL 配列時の monthly simulation に fast-path 追加
+
+### 結果
+- 変更対象テスト:
+  - `354 passed, 8 warnings in 7.96s`
+  - `301 passed, 8 warnings in 6.95s`
+- v460 全体:
+  - `3992 passed, 19 warnings in 36.87s`（`--no-cov --durations=20`）
+- 補足:
+  - `test_212_live_trader_config` setup は durations 上位から離脱
+  - method 内 import 総数は `634 -> 614` に減少
+
+### 次アクション
+1. `test_145_s13_boundary_guards.py` / `test_013_fixes.py` など method 内 import 上位の集約を継続
+2. `test_166_hotfixes.py` / `test_197_boost_optimization_gate_integration.py` の `fill_test.yaml` 直読を fixture 化
+3. `test_enricher_skip_gate.py` setup の `0.5s` 級スパイク要因（実データ準備）を分解して平準化
