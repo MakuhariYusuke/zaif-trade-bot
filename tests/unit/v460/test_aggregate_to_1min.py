@@ -11,6 +11,7 @@ import gzip
 import json
 import math
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -35,6 +36,48 @@ def _write_gz(path: Path, records: list[dict]) -> None:
     with gzip.open(path, "wt", encoding="utf-8") as f:
         for r in records:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
+
+
+def _run_aggregate(
+    tmp_path: Path,
+    *,
+    ob_records: list[dict],
+    tr_records: list[dict],
+    output_name: str = "out.parquet",
+) -> tuple[pd.DataFrame, Path]:
+    """raw 読込を patch して集約ロジックだけを実行する."""
+    ob_path = tmp_path / "ob.jsonl.gz"
+    tr_path = tmp_path / "tr.jsonl.gz"
+    out_path = tmp_path / output_name
+
+    def _fake_read(path: Path) -> list[dict]:
+        if path == ob_path:
+            return ob_records
+        if path == tr_path:
+            return tr_records
+        return []
+
+    with patch("ztb.data.market_data_collector._read_jsonl_gz", side_effect=_fake_read):
+        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+    return df, out_path
+
+
+_PARQUET_PERSISTENCE_TESTS = {
+    "test_parquet_output_created",
+    "test_parquet_roundtrip",
+}
+
+
+@pytest.fixture(autouse=True)
+def _skip_parquet_write_for_non_persistence_tests(
+    request: pytest.FixtureRequest,
+) -> object:
+    """parquet 自体を見ないテストでは実書込を省く."""
+    if request.node.name in _PARQUET_PERSISTENCE_TESTS:
+        yield
+        return
+    with patch.object(pd.DataFrame, "to_parquet", autospec=True, return_value=None):
+        yield
 
 
 def _make_ob_record(
@@ -119,13 +162,7 @@ class TestAggregateOrderbookOnly:
             _make_ob_record(0, 30, best_bid=10_000_500, best_ask=10_001_500),
             _make_ob_record(1, 0, best_bid=10_001_000, best_ask=10_002_000),
         ]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, ob_records)
-        _write_gz(tr_path, [])
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=ob_records, tr_records=[])
 
         assert len(df) == 2  # minute 0, minute 1
         assert "best_bid" in df.columns
@@ -168,13 +205,7 @@ class TestAggregateOrderbookOnly:
     def test_spread_is_relative(self, tmp_path: Path) -> None:
         """spread = (ask - bid) / mid."""
         ob_records = [_make_ob_record(0, 0, best_bid=10_000_000, best_ask=10_001_000)]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, ob_records)
-        _write_gz(tr_path, [])
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=ob_records, tr_records=[])
 
         expected_mid = (10_000_000 + 10_001_000) / 2
         expected_spread = 1_000 / expected_mid
@@ -329,13 +360,7 @@ class TestAggregateMerged:
     def test_merged_has_all_columns(self, tmp_path: Path) -> None:
         ob_records = [_make_ob_record(0)]
         tr_records = [_make_trade_record(0)]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, ob_records)
-        _write_gz(tr_path, tr_records)
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=ob_records, tr_records=tr_records)
 
         ob_cols = {"best_bid", "best_ask", "mid_price", "spread",
                    "bid_vol_5", "ask_vol_5", "depth_imbalance", "spread_range"}
@@ -348,13 +373,7 @@ class TestAggregateMerged:
         """OB は min 0 のみ、Trades は min 1 のみ → outer join で NaN 埋め."""
         ob_records = [_make_ob_record(0)]
         tr_records = [_make_trade_record(1)]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "out.parquet"
-        _write_gz(ob_path, ob_records)
-        _write_gz(tr_path, tr_records)
-
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df, _ = _run_aggregate(tmp_path, ob_records=ob_records, tr_records=tr_records)
 
         assert len(df) == 2
         # min 0: has OB data, no trade data
@@ -366,13 +385,12 @@ class TestAggregateMerged:
     def test_parquet_output_created(self, tmp_path: Path) -> None:
         ob_records = [_make_ob_record(0)]
         tr_records = [_make_trade_record(0)]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "output.parquet"
-        _write_gz(ob_path, ob_records)
-        _write_gz(tr_path, tr_records)
-
-        MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        _, out_path = _run_aggregate(
+            tmp_path,
+            ob_records=ob_records,
+            tr_records=tr_records,
+            output_name="output.parquet",
+        )
 
         assert out_path.exists()
         reloaded = pd.read_parquet(out_path)
@@ -382,13 +400,12 @@ class TestAggregateMerged:
         """Parquet 書き出し→再読み込みの一致."""
         ob_records = [_make_ob_record(0), _make_ob_record(1)]
         tr_records = [_make_trade_record(0), _make_trade_record(1)]
-        ob_path = tmp_path / "ob.jsonl.gz"
-        tr_path = tmp_path / "tr.jsonl.gz"
-        out_path = tmp_path / "output.parquet"
-        _write_gz(ob_path, ob_records)
-        _write_gz(tr_path, tr_records)
-
-        original = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        original, out_path = _run_aggregate(
+            tmp_path,
+            ob_records=ob_records,
+            tr_records=tr_records,
+            output_name="output.parquet",
+        )
         reloaded = pd.read_parquet(out_path)
 
         assert len(original) == len(reloaded)

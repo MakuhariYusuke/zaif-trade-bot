@@ -754,3 +754,40 @@
 1. `test_aggregate_to_1min.py` は依然として上位。gzip/parquet 実 I/O を伴うため、fixture 再利用または path 単位の共通 helper 化余地がある
 2. `test_retrain_hot_reload.py` が再び最上位級。multi-window 成立条件を維持したうえで学習器構成をさらに段階縮小できるか確認
 3. `test_fill_quality.py::TestAtomicLock` は lock manager 初期化コストが残る。portalocker/lockfile の検証責務を整理してテスト粒度を見直す余地がある
+
+---
+
+## 2026-03-06 / Session 037-021
+
+### 実施
+- `retrain_hot_reload` の重い学習器をテスト側で置換
+  - `test_retrain_hot_reload.py`
+    - `_FastRegressor` / `_FastBooster` を追加
+    - `TestE2ERetrainHotReload` / `TestMultiWindowWF` で
+      `retrain_scheduler._build_lgbm_regressor` を patch
+    - テスト意図を「WF/E2E の配線検証」に限定し、重い LightGBM 学習を回避
+- `aggregate_to_1min` テストの raw I/O を分離
+  - `test_aggregate_to_1min.py`
+    - `_run_aggregate()` helper を追加
+    - 集約ロジック系テストは `_read_jsonl_gz` を patch して raw record を直接注入
+    - parquet 実書込は `test_parquet_output_created` / `test_parquet_roundtrip` のみ維持
+
+### 結果
+- 変更対象テスト:
+  - `107 passed, 4 warnings in 8.11s`
+- 主要 durations 変化:
+  - `test_retrain_hot_reload.py::TestMultiWindowWF::test_evaluate_wf_multi_returns_fold_data` `0.62s -> 0.36s`
+  - `test_aggregate_to_1min.py::TestAggregateMerged::test_parquet_output_created` `0.62s -> 0.13s`
+  - `test_aggregate_to_1min.py::TestAggregateMerged::test_merged_has_all_columns` `0.33s -> 0.04s`
+
+### 補足
+- より広い `v460` 実行では、今回差分ではない `scripts/v460/lib/maker_price.py` の未コミット変更が
+  `_last_sigma` 欠落を起こしており、以下をブロックしている
+  - `test_102_structural_fixes.py`
+  - `test_143_regime_utilization.py`
+- このため、全体性能の再集計は maker_price 系の別件修正と分離して扱うのが妥当
+
+### 次アクション
+1. `test_fill_quality.py::TestAtomicLock` を lock manager 直テストへ寄せ、`FillTestRunner` 初期化依存を外す
+2. `TestE2ERetrainHotReload` の save/load 経路を維持したまま、再学習前処理をさらに縮退できるか確認
+3. 別件として `maker_price.py` の `_last_sigma` 欠落を修正し、v460 全体ベンチを再開する

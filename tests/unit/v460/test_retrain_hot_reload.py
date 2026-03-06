@@ -113,6 +113,52 @@ def _identity_enrich(fill_df: pd.DataFrame, **_: object) -> pd.DataFrame:
     return enriched
 
 
+class _FastBooster:
+    """LightGBM 依存を避ける最小 booster スタブ."""
+
+    def __init__(self, n_trees: int) -> None:
+        self._n_trees = max(1, n_trees)
+
+    def num_trees(self) -> int:
+        return self._n_trees
+
+
+class _FastRegressor:
+    """WF/E2E 配線検証用の軽量 regressor."""
+
+    def __init__(self, n_estimators: int = 4) -> None:
+        self.n_estimators = max(1, n_estimators)
+        self.feature_importances_ = np.empty(0, dtype=int)
+        self.booster_ = _FastBooster(self.n_estimators)
+        self._prediction = 0.0
+
+    def fit(self, X: object, y: object, **_: object) -> "_FastRegressor":
+        x_arr = np.asarray(X)
+        n_features = int(x_arr.shape[1]) if x_arr.ndim > 1 else 1
+        self.feature_importances_ = np.ones(n_features, dtype=int)
+        y_arr = np.asarray(y, dtype=np.float64)
+        self._prediction = float(np.mean(y_arr)) if y_arr.size > 0 else 0.0
+        self.booster_ = _FastBooster(self.n_estimators)
+        return self
+
+    def predict(self, X: object) -> np.ndarray:
+        return np.full(len(X), self._prediction, dtype=np.float64)
+
+
+def _build_fast_regressor(
+    cfg: dict[str, object],
+    *,
+    n_estimators_override: int | None = None,
+) -> _FastRegressor:
+    """retrain_scheduler._build_lgbm_regressor 互換の高速スタブ."""
+    n_estimators = (
+        n_estimators_override
+        if n_estimators_override is not None
+        else int(cfg.get("lgbm_n_estimators", 4))
+    )
+    return _FastRegressor(n_estimators=n_estimators)
+
+
 # =====================================================================
 # Hot-Reload テスト
 # =====================================================================
@@ -554,6 +600,14 @@ class TestRetrainModel:
 @pytest.mark.skipif(not _HAS_LIGHTGBM, reason="lightgbm not installed")
 class TestE2ERetrainHotReload:
     """127# M3: 再学習→配置→hot-reload→評価の統合テスト."""
+
+    @pytest.fixture(autouse=True)
+    def _fast_regressor(self) -> object:
+        with patch(
+            "scripts.v460.ml.retrain_scheduler._build_lgbm_regressor",
+            side_effect=_build_fast_regressor,
+        ):
+            yield
 
     def test_retrain_deploy_and_hot_reload(self) -> None:
         """E2E: 十分なデータで retrain → deploy → SkipGateEvaluator が hot-reload."""
@@ -1115,6 +1169,14 @@ class TestPostDeployVerification:
 @pytest.mark.skipif(not _HAS_LIGHTGBM, reason="lightgbm not installed")
 class TestMultiWindowWF:
     """131# C1: WalkForwardSplitter を使った multi-window WF 評価テスト."""
+
+    @pytest.fixture(autouse=True)
+    def _fast_regressor(self) -> object:
+        with patch(
+            "scripts.v460.ml.retrain_scheduler._build_lgbm_regressor",
+            side_effect=_build_fast_regressor,
+        ):
+            yield
 
     def test_evaluate_wf_multi_returns_fold_data(self) -> None:
         """multi-window WF がfold-level PnL データを返す."""

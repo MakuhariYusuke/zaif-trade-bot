@@ -3716,3 +3716,13 @@ python scripts/unified_trainer.py \
 
 ### Notes
 - A full `tests/unit/v460/` run in the current working tree is blocked by an unrelated unstaged `scripts/v460/lib/maker_price.py` line-count failure reported by `tests/unit/v460/test_260_compute_extract_regime_split.py`.
+
+### Changed
+- Reworked `tests/unit/v460/test_retrain_hot_reload.py` to patch heavy LightGBM construction with a fast regressor stub for WF/E2E wiring tests where model quality itself is not under test.
+- Reworked `tests/unit/v460/test_aggregate_to_1min.py` so aggregation tests patch raw JSONL loading directly and hit real parquet persistence only in the dedicated roundtrip/output cases.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_aggregate_to_1min.py -q --no-cov --tb=short --durations=30`
+
+### Notes
+- A broader `tests/unit/v460/` run excluding `test_260_compute_extract_regime_split.py` still surfaced unrelated unstaged `scripts/v460/lib/maker_price.py` breakage (`_last_sigma` missing), affecting `test_102_structural_fixes.py` and `test_143_regime_utilization.py`.
