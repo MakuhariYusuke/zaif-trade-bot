@@ -23,6 +23,10 @@ _CREDENTIAL_ENV_MAP: dict[str, tuple[str, str]] = {
     "coincheck": ("COINCHECK_API_KEY", "COINCHECK_API_SECRET"),
     "bitflyer": ("BITFLYER_API_KEY", "BITFLYER_API_SECRET"),
 }
+_DEFAULT_BROKERS: dict[str, type[IBroker]] = {
+    "coincheck": CoincheckAdapter,
+    "bitflyer": BitFlyerAdapter,
+}
 
 class BrokerRegistry:
     """Registry of available exchange adapters.
@@ -33,14 +37,8 @@ class BrokerRegistry:
     """
 
     def __init__(self) -> None:
-        self._brokers: dict[str, type[IBroker]] = {}
+        self._brokers: dict[str, type[IBroker]] = dict(_DEFAULT_BROKERS)
         self._credential_env: dict[str, tuple[str, str]] = dict(_CREDENTIAL_ENV_MAP)
-        self._register_default_brokers()
-
-    def _register_default_brokers(self) -> None:
-        """Register built-in exchange adapters."""
-        self.register_broker("coincheck", CoincheckAdapter)
-        self.register_broker("bitflyer", BitFlyerAdapter)
 
     def register_broker(
         self,

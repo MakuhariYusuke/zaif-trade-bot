@@ -947,3 +947,57 @@
 1. `test_enricher_skip_gate.py` の setup/call を raw sample 数・cache invalidation 条件の観点でさらに絞る
 2. `test_aggregate_to_1min.py` の persistence 必須ケースと pure aggregation ケースをもう一段分離する
 3. `test_fill_quality.py` の `compute_maker_price` / `GateCheckG11` 周辺で runner 初期化を外せる箇所を探す
+
+---
+
+## 2026-03-07 / Session 037-026
+
+### 実施
+- 本体コードの既存 cache を横展開
+  - `scripts/v460/ml/retrain_scheduler.py`
+    - `load_retrain_config()` を手書き `yaml.safe_load()` から `config_loader.load_fill_test_config()` に切替
+    - file-signature cache をそのまま再利用する構成へ整理
+- `BrokerRegistry` 初期化の軽量化
+  - `ztb/trading/live/registry/broker_registry.py`
+    - built-in broker 登録を module-level 定数化
+    - `BrokerRegistry()` ごとの `register_broker()` 呼出しとログ出力を回避
+- test 側の残件整理
+  - `test_regime_detector.py`
+    - `fill_test.yaml` 直読を fixture に統合
+    - `inspect.getsource()` を `_source()` cache helper に集約
+  - `test_fill_quality.py`
+    - 31 箇所の `inspect.getsource()` を `_source()` cache helper に集約
+  - `test_166_remaining_tasks.py`
+    - `SkipGate` / `SkipGateConfig` の method 内 import を module-level へ集約
+  - `test_277_magic_number_grounding.py`
+    - `fill_test.yaml` 直読を fixture 化
+  - `test_157_regime_features.py`
+    - `load_retrain_config()` 呼出しで shared YAML path fixture を使用
+
+### 結果
+- 対象回帰:
+  - `test_fill_quality.py` + `test_regime_detector.py` + `test_retrain_hot_reload.py` + `test_166_remaining_tasks.py` + `test_146_multi_exchange.py::TestBrokerRegistry` + `test_157_regime_features.py` + `test_277_magic_number_grounding.py`
+  - `500 passed, 9 warnings in 7.94s`
+- broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` 除外、`test_yaml_has_microprice_side` deselect）
+  - `4068 passed, 1 deselected, 19 warnings in 39.57s`
+
+### 主要 durations 変化
+- broad wall time: `44.22s -> 39.57s`
+- `test_retrain_hot_reload.py::TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload` は相対的上位に残るが、他の source/YAML 系が後退したことで実計算パスだけが前面化
+- `test_fill_quality.py::TestGateCheckG11::test_g1_1_with_data` は `0.18s`
+- `test_regime_detector.py::TestPhaseD18RangingYaml::test_yaml_has_ranging_discount` は `0.07s`
+- `test_146_multi_exchange.py::TestBrokerRegistry::test_no_skeleton_or_sim` は `0.20s`（初期化コスト削減後の再測定）
+
+### 補足
+- broad 上位はほぼ実 I/O / 実データ経路に集約された
+  - `test_aggregate_to_1min.py`
+  - `test_enricher_skip_gate.py`
+  - `test_237_phantom_position_guard.py`
+  - `test_102_structural_fixes.py`
+- つまり、残りは「簡単な重複除去」より「責務を保ったまま実 I/O をどこまで削れるか」の段階に入っている
+
+### 次アクション
+1. `test_aggregate_to_1min.py` の persistence 必須ケースを最小件数まで縮小し、非 persistence 系をさらに patch 化する
+2. `test_enricher_skip_gate.py` の real-data / cache invalidation 系で sample_rows と file-touch 戦略を見直す
+3. `test_102_structural_fixes.py` / `test_237_phantom_position_guard.py` の runtime-heavy 単発テストを、制御フロー検証に必要な最小状態へ落とす
