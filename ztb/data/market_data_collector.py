@@ -37,6 +37,51 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_RAW_DIR = _PROJECT_ROOT / "data" / "v460" / "raw"
 DEFAULT_AGG_DIR = _PROJECT_ROOT / "data" / "v460" / "features"
 
+
+def _extract_orderbook_top_features(
+    ob_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """板の top-of-book / top-5 depth を単一パスで抽出する."""
+    bids_list = ob_df["bids"].tolist()
+    asks_list = ob_df["asks"].tolist()
+    n_rows = len(ob_df)
+
+    best_bid = np.empty(n_rows, dtype=np.float64)
+    best_ask = np.empty(n_rows, dtype=np.float64)
+    bid_vol_5 = np.empty(n_rows, dtype=np.float64)
+    ask_vol_5 = np.empty(n_rows, dtype=np.float64)
+
+    for idx, (bids, asks) in enumerate(zip(bids_list, asks_list)):
+        if bids:
+            best_bid[idx] = float(bids[0][0])
+            bid_vol_5[idx] = float(sum(size for _, size in bids[:5]))
+        else:
+            best_bid[idx] = np.nan
+            bid_vol_5[idx] = 0.0
+
+        if asks:
+            best_ask[idx] = float(asks[0][0])
+            ask_vol_5[idx] = float(sum(size for _, size in asks[:5]))
+        else:
+            best_ask[idx] = np.nan
+            ask_vol_5[idx] = 0.0
+
+    top = pd.DataFrame(index=ob_df.index)
+    top["best_bid"] = best_bid
+    top["best_ask"] = best_ask
+    top["bid_vol_5"] = bid_vol_5
+    top["ask_vol_5"] = ask_vol_5
+    top["mid_price"] = (best_bid + best_ask) / 2.0
+    top["spread"] = (best_ask - best_bid) / top["mid_price"]
+    denom = bid_vol_5 + ask_vol_5
+    top["depth_imbalance"] = np.divide(
+        bid_vol_5 - ask_vol_5,
+        denom,
+        out=np.full(n_rows, np.nan, dtype=np.float64),
+        where=denom != 0.0,
+    )
+    return top
+
 class MarketDataCollector:
     """Tick raw 収集 + 1分集約の二層保存を行うデータ収集サービス.
 
@@ -185,29 +230,8 @@ class MarketDataCollector:
             ob_df = pd.DataFrame(ob_records)
             ob_df["dt"] = pd.to_datetime(ob_df["ts"], unit="s", utc=True)
             ob_df = ob_df.set_index("dt")
-
-            # Extract top-of-book features
-            ob_df["best_bid"] = ob_df["bids"].apply(
-                lambda b: b[0][0] if b else np.nan
-            )
-            ob_df["best_ask"] = ob_df["asks"].apply(
-                lambda a: a[0][0] if a else np.nan
-            )
-            ob_df["mid_price"] = (ob_df["best_bid"] + ob_df["best_ask"]) / 2
-            ob_df["spread"] = (
-                (ob_df["best_ask"] - ob_df["best_bid"]) / ob_df["mid_price"]
-            )
-
-            # Depth top-5
-            ob_df["bid_vol_5"] = ob_df["bids"].apply(
-                lambda b: sum(s for _, s in b[:5])
-            )
-            ob_df["ask_vol_5"] = ob_df["asks"].apply(
-                lambda a: sum(s for _, s in a[:5])
-            )
-            ob_df["depth_imbalance"] = (ob_df["bid_vol_5"] - ob_df["ask_vol_5"]) / (
-                ob_df["bid_vol_5"] + ob_df["ask_vol_5"]
-            ).replace(0, np.nan)
+            top = _extract_orderbook_top_features(ob_df)
+            ob_df = ob_df.join(top)
 
             # Resample to 1min — last snapshot of each minute
             ob_1m = (
@@ -215,13 +239,10 @@ class MarketDataCollector:
                        "bid_vol_5", "ask_vol_5", "depth_imbalance"]]
                 .resample("1min")
                 .last()
-                .dropna(how="all")
             )
-            # Also add spread range within the minute
-            ob_1m["spread_range"] = (
-                ob_df["spread"].resample("1min").max()
-                - ob_df["spread"].resample("1min").min()
-            )
+            spread_stats = ob_df["spread"].resample("1min").agg(["min", "max"])
+            ob_1m["spread_range"] = spread_stats["max"] - spread_stats["min"]
+            ob_1m = ob_1m.dropna(how="all")
         else:
             ob_1m = pd.DataFrame()
 

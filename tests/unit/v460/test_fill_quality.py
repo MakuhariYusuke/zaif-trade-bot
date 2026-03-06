@@ -29,6 +29,7 @@ from scripts.v460.lib.adaptation_engine import AdaptationEngine
 from scripts.v460.lib.balance_checker import BalanceChecker, MIN_ORDER_BTC
 from scripts.v460.lib.batch_persistence import BatchPersistence
 from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
+from scripts.v460.lib.lock_manager import LockManager
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from scripts.v460.lib.order_monitor import OrderMonitor
 from scripts.v460.lib.pnl_measurer import PnlMeasurer
@@ -68,6 +69,36 @@ from ztb.metrics.fill_quality import (
 )
 
 _FAST_STATUS_UNKNOWN_RETRY_DELAYS = [0.0, 0.0, 0.0]
+_FAST_CYCLE_ORDER_TIMEOUT_SEC = 0.002
+_FAST_CYCLE_POLL_INTERVAL_SEC = 0.001
+_FAST_CYCLE_POST_FILL_WAIT_SEC = 0.0
+
+
+def _make_fast_cycle_runner(
+    tmp_path: Path,
+    *,
+    order_id: str,
+) -> "FillTestRunner":
+    """status/cancel race テスト向けの最小待機 runner."""
+
+    adapter = AsyncMock()
+    ob_mock = MagicMock()
+    ob_mock.bids = [(15000000.0, 0.1)]
+    ob_mock.asks = [(15001000.0, 0.1)]
+    adapter.get_orderbook.return_value = ob_mock
+
+    order_mock = MagicMock()
+    order_mock.order_id = order_id
+    adapter.place_order.return_value = order_mock
+
+    config = FillTestConfig(
+        results_dir=str(tmp_path / "results"),
+        order_timeout_sec=_FAST_CYCLE_ORDER_TIMEOUT_SEC,
+        poll_interval_sec=_FAST_CYCLE_POLL_INTERVAL_SEC,
+        post_fill_wait_sec=_FAST_CYCLE_POST_FILL_WAIT_SEC,
+        status_unknown_retry_delays=_FAST_STATUS_UNKNOWN_RETRY_DELAYS,
+    )
+    return FillTestRunner(adapter, config)
 
 
 # =====================================================================
@@ -1723,27 +1754,7 @@ class TestUnknownFillHandling:
 
     def _make_runner(self, tmp_path: Path) -> "FillTestRunner":
         """テスト用の FillTestRunner を作成 (adapter は AsyncMock)."""
-
-        adapter = AsyncMock()
-        # get_orderbook の戻り値を設定
-        ob_mock = MagicMock()
-        ob_mock.bids = [(15000000.0, 0.1)]
-        ob_mock.asks = [(15001000.0, 0.1)]
-        adapter.get_orderbook.return_value = ob_mock
-        # place_order の戻り値
-        order_mock = MagicMock()
-        order_mock.order_id = "test_order_123"
-        adapter.place_order.return_value = order_mock
-
-        config = FillTestConfig(
-            results_dir=str(tmp_path / "results"),
-            order_timeout_sec=10.0,
-            poll_interval_sec=0.01,
-            post_fill_wait_sec=0.01,
-            status_unknown_retry_delays=_FAST_STATUS_UNKNOWN_RETRY_DELAYS,
-        )
-        runner = FillTestRunner(adapter, config)
-        return runner
+        return _make_fast_cycle_runner(tmp_path, order_id="test_order_123")
 
     @pytest.mark.asyncio
     async def test_status_none_twice_becomes_cancelled_status_unknown(
@@ -1809,24 +1820,7 @@ class TestBug11CancelRaceCondition:
     """047# Bug11: cancel_order 失敗時に get_order_status で fill を再確認."""
 
     def _make_runner(self, tmp_path: Path) -> "FillTestRunner":
-
-        adapter = AsyncMock()
-        ob_mock = MagicMock()
-        ob_mock.bids = [(15000000.0, 0.1)]
-        ob_mock.asks = [(15001000.0, 0.1)]
-        adapter.get_orderbook.return_value = ob_mock
-        order_mock = MagicMock()
-        order_mock.order_id = "test_order_bug11"
-        adapter.place_order.return_value = order_mock
-
-        config = FillTestConfig(
-            results_dir=str(tmp_path / "results"),
-            order_timeout_sec=10.0,
-            poll_interval_sec=0.01,
-            post_fill_wait_sec=0.01,
-            status_unknown_retry_delays=_FAST_STATUS_UNKNOWN_RETRY_DELAYS,
-        )
-        return FillTestRunner(adapter, config)
+        return _make_fast_cycle_runner(tmp_path, order_id="test_order_bug11")
 
     @pytest.mark.asyncio
     async def test_cancel_fail_detects_fill(self, tmp_path: Path) -> None:
@@ -2222,6 +2216,12 @@ class TestExitCodeJudgmentType:
 
 class TestAtomicLock:
     """047# A4: _acquire_lock が OS-level exclusive create を使用."""
+
+    @pytest.fixture(autouse=True)
+    def _disable_os_lock(self) -> object:
+        """logic lock 検証では portalocker の取得コストを外す."""
+        with patch.object(LockManager, "_acquire_os_lock", return_value=None):
+            yield
 
     def test_acquire_creates_lockfile(self, tmp_path: Path) -> None:
         """ロックファイルが作成される."""

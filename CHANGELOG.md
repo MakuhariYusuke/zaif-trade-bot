@@ -3705,3 +3705,14 @@ python scripts/unified_trainer.py \
 - `python -m pytest tests/unit/v460/test_build_features_pipeline.py tests/unit/v460/test_013_fixes.py tests/unit/v460/test_pnl_monte_carlo.py tests/unit/v460/test_retrain_hot_reload.py -q --no-cov --tb=short --durations=20`
 - `python -m pytest tests/unit/v460/test_gate_judgment.py tests/unit/v460/test_ml_pipeline.py -q --no-cov --tb=short --durations=20`
 - `python -m pytest tests/unit/v460/ -q --no-cov --durations=20`
+
+### Changed
+- Reduced `tests/unit/v460/test_enricher_skip_gate.py` real-data sample cap from `220` to `120` after confirming skip-gate training still retains `n_samples > 30`.
+- Added a shared fast-cycle runner helper in `tests/unit/v460/test_fill_quality.py` to remove duplicated async runner setup and shrink polling/wait overhead in unknown-status and cancel-race tests.
+- Optimized `ztb/data/market_data_collector.py` by extracting orderbook top-of-book and top-5 depth in a single pass and collapsing repeated spread resampling in `aggregate_to_1min()`.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_fill_quality.py tests/unit/v460/test_aggregate_to_1min.py -q --no-cov --tb=short --durations=30`
+
+### Notes
+- A full `tests/unit/v460/` run in the current working tree is blocked by an unrelated unstaged `scripts/v460/lib/maker_price.py` line-count failure reported by `tests/unit/v460/test_260_compute_extract_regime_split.py`.

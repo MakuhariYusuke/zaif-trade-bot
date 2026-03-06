@@ -719,3 +719,38 @@
 1. `test_enricher_skip_gate.py` の real-data setup を fixture 分解し、前処理済み入力の再利用余地を確認
 2. `test_aggregate_to_1min.py` / `test_158_order_manager_integration.py` の実ファイル・実オブジェクト初期化をサブセット化できるか検証
 3. `test_fill_quality.py` の 0.15s 級ケースを時刻依存・lockfile I/O・設定読込に分解し、共通 fixture へ寄せる
+
+---
+
+## 2026-03-06 / Session 037-020
+
+### 実施
+- 実データ統合 setup の再圧縮
+  - `test_enricher_skip_gate.py`
+    - `_REAL_DATA_SAMPLE_ROWS` を `220 -> 120` に縮小
+    - 事前実測で `matched=90`, `skip_gate n_samples=35` を確認し、学習成立条件 (`> 30`) を維持
+- `fill_quality` の重複除去 + 待機削減
+  - `test_fill_quality.py`
+    - `TestUnknownFillHandling` / `TestBug11CancelRaceCondition` の runner 初期化を `_make_fast_cycle_runner()` に集約
+    - `order_timeout_sec`, `poll_interval_sec`, `post_fill_wait_sec` をテスト最小構成へ縮小
+- 本体コード最適化
+  - `ztb/data/market_data_collector.py`
+    - `aggregate_to_1min()` の板特徴抽出を `_extract_orderbook_top_features()` へ集約
+    - `best_bid` / `best_ask` / top-5 depth / `depth_imbalance` を単一パスで算出
+    - `spread_range` の算出で重複 resample を削減
+
+### 結果
+- 変更対象テスト:
+  - `302 passed, 5 warnings in 8.83s`
+- 部分 durations 変化:
+  - `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.43s -> 0.15s`
+  - `test_fill_quality.py::TestUnknownFillHandling::*` / `TestBug11CancelRaceCondition::*` は `0.10s` 前後まで低下
+- 全体 run 補足:
+  - `tests/unit/v460/` 実行時、`test_260_compute_extract_regime_split.py` が
+    `scripts/v460/lib/maker_price.py` の line-count 制約で失敗
+  - これは現在の working tree に存在する別件未コミット変更の影響で、今回の差分には含めていない
+
+### 残課題
+1. `test_aggregate_to_1min.py` は依然として上位。gzip/parquet 実 I/O を伴うため、fixture 再利用または path 単位の共通 helper 化余地がある
+2. `test_retrain_hot_reload.py` が再び最上位級。multi-window 成立条件を維持したうえで学習器構成をさらに段階縮小できるか確認
+3. `test_fill_quality.py::TestAtomicLock` は lock manager 初期化コストが残る。portalocker/lockfile の検証責務を整理してテスト粒度を見直す余地がある
