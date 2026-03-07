@@ -213,7 +213,7 @@ class TestTrendingSellSoftConfig:
 
     def test_default_trending_sell_offset_boost_factor(self):
         cfg = FillTestConfig()
-        assert cfg.trending_sell_offset_boost_factor == 2.0
+        assert cfg.trending_sell_offset_boost_factor == 1.5
 
 
 class TestTrendingSellSoftGate:
@@ -513,7 +513,7 @@ class TestConfigYamlParse196:
         assert cfg.velocity_offset_boost_factor == 1.5
         assert cfg.velocity_offset_max_mult == 4.0
         assert cfg.trending_sell_as_offset_enabled is False
-        assert cfg.trending_sell_offset_boost_factor == 2.0
+        assert cfg.trending_sell_offset_boost_factor == 1.5
         # 253# 削除済み: balance_forced_apply_trending_offset
 
 

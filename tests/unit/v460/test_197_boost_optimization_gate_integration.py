@@ -128,9 +128,9 @@ class TestTrendingBoostOptimization:
     """197# trending boost YAML 3.0→2.0: regime boost 1.8x との累積修正."""
 
     def test_default_trending_boost_is_2_0(self):
-        """FillTestConfig デフォルトは 2.0 (197# 最適化, YAML と整合)."""
+        """FillTestConfig デフォルトは 1.5 (336# drift fix, YAML と整合)."""
         cfg = FillTestConfig()
-        assert cfg.trending_sell_offset_boost_factor == 2.0
+        assert cfg.trending_sell_offset_boost_factor == 1.5
 
     def test_yaml_trending_boost_is_3_0(self, v460_fill_test_yaml: dict[str, object]):
         """320# live YAML が 1.5 (C-1 解消: sell pipeline 復活)."""

@@ -154,7 +154,7 @@ class TestFillConfigBuyDynamicKill:
         cfg = FillTestConfig()
         assert cfg.buy_dynamic_kill_enabled is False
         assert cfg.buy_dynamic_kill_window == 50
-        assert cfg.buy_dynamic_kill_threshold_bps == -0.8
+        assert cfg.buy_dynamic_kill_threshold_bps == -1.5
         assert cfg.buy_dynamic_kill_resume_window == 10
 
     def test_yaml_buy_dynamic_kill_parsing(self) -> None:

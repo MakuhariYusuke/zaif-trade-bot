@@ -265,30 +265,30 @@ class TestUnknownRegimeConsecutiveBypass:
             r = gate.evaluate(**_default_ctx(side=side, regime="unknown"))
             assert r.blocked
 
-        # per-side では buy=5, sell=5 — MAX=10 未到達なのでまだブロック
-        assert gate._consecutive_unknown_blocks["buy"] == 5
-        assert gate._consecutive_unknown_blocks["sell"] == 5
+        # per-side では buy=3, sell=2 — MAX=5 未到達なのでまだブロック
+        assert gate._consecutive_unknown_blocks["buy"] == 3
+        assert gate._consecutive_unknown_blocks["sell"] == 2
         r = gate.evaluate(**_default_ctx(side="buy", regime="unknown"))
-        assert r.blocked, "per-side: buy=5 < MAX=10, should still block"
+        assert r.blocked, "per-side: buy=3 < MAX=5, should still block"
 
     def test_counter_increments_when_unknown_blocked_with_balance_forced(self) -> None:
         """234#: balance_forced でも unknown regime はブロック → カウンタ増加."""
         gate = _make_gate()
 
-        # 5回ブロック
-        for _ in range(5):
+        # 4回ブロック (MAX=5 未満)
+        for _ in range(4):
             gate.evaluate(**_default_ctx(side="buy", regime="unknown"))
-        assert gate._consecutive_unknown_blocks["buy"] == 5
+        assert gate._consecutive_unknown_blocks["buy"] == 4
 
-        # 234#: balance_forced でも Gate1 はブロック → カウンタ 6 に
+        # 234#: balance_forced でも Gate1 はブロック → カウンタ 5 に
         gate.evaluate(**_default_ctx(
             side="buy", regime="unknown", balance_forced=True,
         ))
-        assert gate._consecutive_unknown_blocks["buy"] == 6
+        assert gate._consecutive_unknown_blocks["buy"] == 5
 
     def test_max_consecutive_class_attr(self) -> None:
         """クラス属性の閾値が正しい."""
-        assert CycleGateAggregator.UNKNOWN_REGIME_MAX_CONSECUTIVE == 10
+        assert CycleGateAggregator.UNKNOWN_REGIME_MAX_CONSECUTIVE == 5
 
 
 # ═══════════════════════════════════════════════════════════════════════

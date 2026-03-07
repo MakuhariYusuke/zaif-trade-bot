@@ -149,7 +149,8 @@ class CycleGateAggregator:
     #: 219# unknown regime 連続ブロックのバイパス閾値
     #: 277# config 化 → config.unknown_regime_max_consecutive で外部設定可能
     #: 後方互換: クラス属性として残す (テストが参照)
-    UNKNOWN_REGIME_MAX_CONSECUTIVE: int = 10
+    #: 336# drift fix: fill_config デフォルト 5 に合わせる
+    UNKNOWN_REGIME_MAX_CONSECUTIVE: int = 5
 
     def __init__(self, config: FillTestConfig) -> None:
         self._config = config
