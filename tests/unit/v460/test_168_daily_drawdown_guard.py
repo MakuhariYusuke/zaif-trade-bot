@@ -1288,3 +1288,73 @@ class TestDayResetTimezone:
         guard2.import_state(state2)
         assert guard2._state.halted is False  # stale → 未復元
 
+
+# ======================================================================
+# 326# warmup_from_records encapsulation テスト
+# ======================================================================
+
+
+class TestWarmupFromRecords326:
+    """326# DailyDrawdownGuard.warmup_from_records() のユニットテスト."""
+
+    def test_warmup_basic_pnl_aggregation(self) -> None:
+        """当日分のみ集計する."""
+        guard = DailyDrawdownGuard(enabled=True, hard_limit_bps=-50.0)
+        today_str = guard._today()
+        now = time.time()
+        yesterday = now - 86400 * 2  # 2 days ago (definitely different day)
+
+        records = [
+            (now, -10.0, "buy"),
+            (now, -5.0, "sell"),
+            (yesterday, -100.0, "buy"),  # 前日 → 除外
+        ]
+        count = guard.warmup_from_records(records)
+        assert count == 2
+        assert guard.state.daily_pnl_bps == pytest.approx(-15.0)
+        assert guard.state.daily_fill_count == 2
+        assert guard.state.daily_pnl_bps_buy == pytest.approx(-10.0)
+        assert guard.state.daily_pnl_bps_sell == pytest.approx(-5.0)
+
+    def test_warmup_triggers_hard_halt(self) -> None:
+        """warmup で hard limit を超過すると halted=True."""
+        guard = DailyDrawdownGuard(enabled=True, hard_limit_bps=-20.0)
+        now = time.time()
+        records = [(now, -25.0, "buy")]
+        guard.warmup_from_records(records)
+        assert guard.state.halted is True
+
+    def test_warmup_triggers_soft(self) -> None:
+        """warmup で soft limit を超過すると _soft_triggered_today=True."""
+        guard = DailyDrawdownGuard(
+            enabled=True, soft_limit_bps=-10.0, hard_limit_bps=-50.0,
+        )
+        now = time.time()
+        records = [(now, -15.0, "sell")]
+        guard.warmup_from_records(records)
+        assert guard._soft_triggered_today is True
+        assert guard.state.halted is False
+
+    def test_warmup_per_side_halt(self) -> None:
+        """per-side halt が warmup で発動する."""
+        guard = DailyDrawdownGuard(
+            enabled=True,
+            hard_limit_bps=-100.0,
+            per_side_enabled=True,
+            per_side_hard_limit_bps=-20.0,
+            per_side_halt_cycles=3,
+        )
+        now = time.time()
+        records = [(now, -25.0, "sell")]
+        guard.warmup_from_records(records)
+        assert guard.state.side_halted_sell is True
+        assert guard.state.side_halt_remaining_sell == 3
+        assert guard.state.side_halted_buy is False
+
+    def test_warmup_empty_records_returns_zero(self) -> None:
+        """空リストでは 0 を返し state は変更しない."""
+        guard = DailyDrawdownGuard(enabled=True)
+        count = guard.warmup_from_records([])
+        assert count == 0
+        assert guard.state.daily_fill_count == 0
+

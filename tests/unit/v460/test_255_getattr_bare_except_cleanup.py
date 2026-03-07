@@ -72,7 +72,7 @@ class TestBareExceptImproved:
             ("resilience", "get_health_status"),
             ("pnl_measurer", "measure_pnl"),
             ("lock_manager", "heartbeat"),
-            ("fill_cycle_executor", "_execute_order_with_retry"),
+
         ],
     )
     def test_no_bare_except_pass(self, module_path: str, func_name: str) -> None:

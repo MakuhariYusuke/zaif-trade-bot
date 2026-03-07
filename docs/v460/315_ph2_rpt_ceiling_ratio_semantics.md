@@ -1,6 +1,10 @@
-# 314# Phase 1: Ceiling / Ratio Semantics 調査報告
+# 315# rpt: Ceiling / Ratio Semantics 調査報告
 
-**実施日**: 2026-03-07
+> **種別**: rpt (調査報告)  
+> **フェーズ**: ph2 (G1.1-exec)  
+> **注記**: 314# §6 実行計画の「Phase 1 (T1: 調査)」成果物。000# §2 の ph1 (G1-info) とは異なる。
+
+**実施日**: 2026-03-07  
 **対象Issue**: 312# B2 (ceiling不適用疑惑), 313# R2 (ratio意味不一致), 314# B1 (ratio方向二重性)
 
 ---
@@ -173,7 +177,7 @@ B1 の方向修正（全 boost を ratio↓ 方向に反転）は理論的には
 
 #### sell_offset_floor (0.30) vs offset_ceiling_ratio (0.15) の矛盾
 
-**315# 追加発見**: YAML で `sell_guard.offset_floor: 0.30`、`offset_ceiling_ratio: 0.15`。
+**316# 追加発見**: YAML で `sell_guard.offset_floor: 0.30`、`offset_ceiling_ratio: 0.15`。
 パイプライン順序は floor → ... → ceiling のため、ceiling が常に勝ち **floor は死んだ設定**。
 
 - sell_floor (246#): ratio ≥ 0.30 を保証（最低限のアグレッシブさ確保）

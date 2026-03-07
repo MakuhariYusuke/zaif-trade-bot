@@ -1054,7 +1054,7 @@ class FillLoopOrchestratorMixin(
             # 133# P0-08 / 154# C-1/C-2: balance_forced スキップ + deadlock 防止
             if _balance_forced and self.config.skip_balance_forced:
                 # 154# C-1: 両側残高判定
-                original_side = "buy" if next_side == "sell" else "sell"
+                original_side = self._opposite_side(next_side)
                 original_also_insufficient = await self._check_balance_for_side(
                     original_side, regime_mult=_regime_mult
                 )

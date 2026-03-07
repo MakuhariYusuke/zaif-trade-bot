@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_loop_orchestrator import RunSessionState
+    from scripts.v460.lib.resilience import FillTestState
     from ztb.metrics.fill_quality import FillRecord
 
 logger = logging.getLogger(__name__)
@@ -37,52 +38,15 @@ class OrchestratorLifecycleMixin:
 
         state file が stale/missing の場合のセーフティネット。
 
-        277# fix (B1): warmup は DD guard と同一 TZ で日付境界を判定する。
+        326# 修正: ロジックを DailyDrawdownGuard.warmup_from_records() に委譲し、
+        private 属性への直接アクセス (10+箇所) を排除。
         """
-        guard = self._daily_drawdown_guard
-        today_str = guard._today()
-        day_reset_tz = guard._day_reset_tz
-        daily_pnl_sum = 0.0
-        daily_fill_count = 0
-        daily_pnl_buy = 0.0
-        daily_pnl_sell = 0.0
-        for r in records:
-            if not r.filled or r.post_fill_30s_pnl is None:
-                continue
-            r_date = datetime.fromtimestamp(r.timestamp, tz=day_reset_tz).strftime("%Y%m%d")
-            if r_date != today_str:
-                continue
-            daily_pnl_sum += r.post_fill_30s_pnl
-            daily_fill_count += 1
-            if r.side == "buy":
-                daily_pnl_buy += r.post_fill_30s_pnl
-            elif r.side == "sell":
-                daily_pnl_sell += r.post_fill_30s_pnl
-
-        if daily_fill_count > 0:
-            guard.state.daily_pnl_bps = daily_pnl_sum
-            guard.state.daily_fill_count = daily_fill_count
-            guard.state.current_day = today_str
-            guard.state.daily_pnl_bps_buy = daily_pnl_buy
-            guard.state.daily_pnl_bps_sell = daily_pnl_sell
-            if guard._per_side_enabled:
-                if daily_pnl_buy <= guard._per_side_hard_limit_bps:
-                    guard.state.side_halted_buy = True
-                    guard.state.side_halt_remaining_buy = guard._per_side_halt_cycles
-                if daily_pnl_sell <= guard._per_side_hard_limit_bps:
-                    guard.state.side_halted_sell = True
-                    guard.state.side_halt_remaining_sell = guard._per_side_halt_cycles
-            if daily_pnl_sum <= guard._soft_limit_bps:
-                guard._soft_triggered_today = True
-            if daily_pnl_sum <= guard._hard_limit_bps:
-                guard.state.halted = True
-                guard.state.halt_triggered_at = time.time()
-            logger.warning(
-                f"[203# F] DD warmup from fill records: {daily_fill_count} fills today, "
-                f"daily_pnl={daily_pnl_sum:+.2f}bps, "
-                f"buy={daily_pnl_buy:+.2f}bps, sell={daily_pnl_sell:+.2f}bps, "
-                f"halted={guard.state.halted}"
-            )
+        tuples = [
+            (r.timestamp, r.post_fill_30s_pnl, r.side)
+            for r in records
+            if r.filled and r.post_fill_30s_pnl is not None
+        ]
+        self._daily_drawdown_guard.warmup_from_records(tuples)
 
     # ------------------------------------------------------------------
     # 209# H4: DynamicKillManager warmup
@@ -129,7 +93,7 @@ class OrchestratorLifecycleMixin:
         total_count: int,
         filled_count: int,
         cumulative_pnl_jpy: float,
-    ) -> object:
+    ) -> "FillTestState":
         """現在の状態から FillTestState スナップショットを構築."""
         from scripts.v460.lib.resilience import FillTestState
 
@@ -198,7 +162,7 @@ class OrchestratorLifecycleMixin:
     # ------------------------------------------------------------------
     # 216# §6 DRY: State 復元共通ヘルパー
     # ------------------------------------------------------------------
-    def _restore_common_state(self, saved_state: object | None) -> None:
+    def _restore_common_state(self, saved_state: "FillTestState | None") -> None:
         """DD / toxic_veto / one-sided / guard_fire_counts の共通復元."""
         if saved_state is None:
             return

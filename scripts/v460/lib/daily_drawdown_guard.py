@@ -599,6 +599,65 @@ class DailyDrawdownGuard:
     # Internal
     # ------------------------------------------------------------------
 
+    def warmup_from_records(
+        self,
+        records: list[tuple[float, float, str]],
+    ) -> int:
+        """326# fill records から当日分の PnL を当ガードに投入 (encapsulation fix).
+
+        Args:
+            records: [(timestamp, pnl_bps, side), ...] のリスト。
+                timestamp は epoch float, side は "buy"/"sell"/""。
+
+        Returns:
+            当日分としてカウントした fill 数。
+
+        277# fix (B1): warmup は DD guard と同一 TZ で日付境界を判定する。
+        """
+        today_str = self._today()
+        daily_pnl_sum = 0.0
+        daily_fill_count = 0
+        daily_pnl_buy = 0.0
+        daily_pnl_sell = 0.0
+        for ts, pnl_bps, side in records:
+            r_date = datetime.fromtimestamp(ts, tz=self._day_reset_tz).strftime(
+                "%Y%m%d"
+            )
+            if r_date != today_str:
+                continue
+            daily_pnl_sum += pnl_bps
+            daily_fill_count += 1
+            if side == "buy":
+                daily_pnl_buy += pnl_bps
+            elif side == "sell":
+                daily_pnl_sell += pnl_bps
+
+        if daily_fill_count > 0:
+            self._state.daily_pnl_bps = daily_pnl_sum
+            self._state.daily_fill_count = daily_fill_count
+            self._state.current_day = today_str
+            self._state.daily_pnl_bps_buy = daily_pnl_buy
+            self._state.daily_pnl_bps_sell = daily_pnl_sell
+            if self._per_side_enabled:
+                if daily_pnl_buy <= self._per_side_hard_limit_bps:
+                    self._state.side_halted_buy = True
+                    self._state.side_halt_remaining_buy = self._per_side_halt_cycles
+                if daily_pnl_sell <= self._per_side_hard_limit_bps:
+                    self._state.side_halted_sell = True
+                    self._state.side_halt_remaining_sell = self._per_side_halt_cycles
+            if daily_pnl_sum <= self._soft_limit_bps:
+                self._soft_triggered_today = True
+            if daily_pnl_sum <= self._hard_limit_bps:
+                self._state.halted = True
+                self._state.halt_triggered_at = time.time()
+            logger.warning(
+                f"[203# F] DD warmup from fill records: {daily_fill_count} fills today, "
+                f"daily_pnl={daily_pnl_sum:+.2f}bps, "
+                f"buy={daily_pnl_buy:+.2f}bps, sell={daily_pnl_sell:+.2f}bps, "
+                f"halted={self._state.halted}"
+            )
+        return daily_fill_count
+
     def _today(self) -> str:
         """Current date in configured timezone as YYYYMMDD string.
 

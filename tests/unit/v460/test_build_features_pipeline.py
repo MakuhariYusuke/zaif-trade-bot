@@ -7,10 +7,9 @@ MarketDataCollector.aggregate_to_1min → add_microstructure_features → V460_F
 
 from __future__ import annotations
 
-import gzip
-import json
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -144,16 +143,8 @@ def _ts(minute: int, second: int = 0) -> float:
     return 1767225600.0 + minute * 60 + second
 
 
-def _write_gz(path: Path, records: list[dict]) -> None:
-    """JSONL gzip を書き出す."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with gzip.open(path, "wt", encoding="utf-8") as f:
-        for r in records:
-            f.write(json.dumps(r, ensure_ascii=False) + "\n")
-
-
-def _make_raw_data(tmp_path: Path, n_minutes: int = 30) -> tuple[Path, Path, Path]:
-    """raw orderbook + trades JSONL.gz を生成し、ファイルパスを返す."""
+def _make_raw_records(n_minutes: int = 30) -> tuple[list[dict], list[dict]]:
+    """raw orderbook + trades レコードを生成."""
     rng = np.random.RandomState(42)
 
     ob_records = []
@@ -184,28 +175,46 @@ def _make_raw_data(tmp_path: Path, n_minutes: int = 30) -> tuple[Path, Path, Pat
                 "side": "buy" if rng.random() < 0.5 else "sell",
             })
 
+    return ob_records, tr_records
+
+
+def _aggregate_raw_records(
+    tmp_path: Path,
+    *,
+    ob_records: list[dict],
+    tr_records: list[dict],
+) -> pd.DataFrame:
+    """raw 読込と parquet 書込を patch して集約ロジックだけを見る."""
     ob_path = tmp_path / "ob.jsonl.gz"
     tr_path = tmp_path / "tr.jsonl.gz"
     out_path = tmp_path / "out.parquet"
-    _write_gz(ob_path, ob_records)
-    _write_gz(tr_path, tr_records)
-    return ob_path, tr_path, out_path
+
+    def _fake_read(path: Path) -> list[dict]:
+        if path == ob_path:
+            return ob_records
+        if path == tr_path:
+            return tr_records
+        return []
+
+    with patch("ztb.data.market_data_collector._read_jsonl_gz", side_effect=_fake_read):
+        with patch.object(pd.DataFrame, "to_parquet", autospec=True, return_value=None):
+            return MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
 
 
 @pytest.fixture(scope="class")
 def real_mode_aggregate_30(tmp_path_factory: pytest.TempPathFactory) -> pd.DataFrame:
     """30分相当の aggregate 出力を再利用する."""
     tmp_path = tmp_path_factory.mktemp("build_features_agg_30")
-    ob_path, tr_path, out_path = _make_raw_data(tmp_path, 30)
-    return MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+    ob_records, tr_records = _make_raw_records(30)
+    return _aggregate_raw_records(tmp_path, ob_records=ob_records, tr_records=tr_records)
 
 
 @pytest.fixture(scope="class")
 def real_mode_micro_40(tmp_path_factory: pytest.TempPathFactory) -> pd.DataFrame:
     """microstructure 追加済みの real-mode 出力を再利用する."""
     tmp_path = tmp_path_factory.mktemp("build_features_micro_40")
-    ob_path, tr_path, out_path = _make_raw_data(tmp_path, 40)
-    agg = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+    ob_records, tr_records = _make_raw_records(40)
+    agg = _aggregate_raw_records(tmp_path, ob_records=ob_records, tr_records=tr_records)
     if "close" not in agg.columns and "mid_price" in agg.columns:
         agg["close"] = agg["mid_price"]
     return add_microstructure_features(agg)

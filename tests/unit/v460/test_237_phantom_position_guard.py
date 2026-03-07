@@ -273,10 +273,16 @@ class TestReconcileBalanceDelta:
             "order_001", "buy", 0.001, 1e7,
             balance_btc=0.100,
         )
-        adapter = _make_adapter(
-            order_status=None,
-            get_balance_raises=True,
-        )
+        class _Adapter:
+            async def get_order_status(self, order_id: str) -> _MockOrderStatus | None:
+                del order_id
+                return None
+
+            async def get_balance(self, currency: str) -> list[_MockBalance]:
+                del currency
+                raise Exception("Balance API error")
+
+        adapter = _Adapter()
         result = await guard.reconcile(adapter)
         assert len(result) == 0
 
