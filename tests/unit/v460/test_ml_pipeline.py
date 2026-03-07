@@ -274,8 +274,15 @@ class Test057ASClassifier:
         X = X.head(24)
         y = y.loc[X.index]
         pnl = synthetic_fill_df.loc[X.index, "post_fill_30s_pnl"].astype(float)
-        _, model, scaler, oof_probs = train_as_classifier(X, y, model_type="lr", n_splits=2)
-        result = evaluate_skip_policy(X, y, pnl, model, scaler, oof_probs=oof_probs)
+        oof_probs = np.linspace(0.2, 0.8, len(X), dtype=np.float64)
+        result = evaluate_skip_policy(
+            X,
+            y,
+            pnl,
+            model=object(),
+            scaler=object(),
+            oof_probs=oof_probs,
+        )
         assert isinstance(result, pd.DataFrame)
         assert "threshold" in result.columns
         assert "pnl_improvement_bps" in result.columns

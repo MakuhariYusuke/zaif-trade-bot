@@ -16,6 +16,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from ztb.trading.live_trader.price_utils import resolve_current_price
 from ztb.utils.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,
@@ -315,41 +316,33 @@ class TestRiskManagerFailureModes:
 class TestPriceFallbackChain:
     """LiveTrader._get_current_price のフォールバック挙動."""
 
-    def _make_trader(self) -> MagicMock:
-        from ztb.trading.live_trader.live_trader import LiveTrader
-
-        trader = LiveTrader.__new__(LiveTrader)
-        trader.demo_mode = True
-        trader.dry_run = True
-        trader._last_valid_price = 14_500_000.0
-        trader.exchange_adapter = AsyncMock()
-        trader.notifier = MagicMock()
-        return trader
+    def _resolve_price(self, adapter_result: Optional[float]) -> tuple[float, float]:
+        adapter = AsyncMock()
+        adapter.get_current_price.return_value = adapter_result
+        return resolve_current_price(
+            exchange_adapter=adapter,
+            last_valid_price=14_500_000.0,
+        )
 
     def test_valid_price_updates_last(self) -> None:
-        trader = self._make_trader()
-        with patch("asyncio.run", return_value=15_000_000.0):
-            price = trader._get_current_price()
+        price, last_valid_price = self._resolve_price(15_000_000.0)
         assert price == 15_000_000.0
+        assert last_valid_price == 15_000_000.0
 
     def test_zero_falls_back_to_last_valid(self) -> None:
-        trader = self._make_trader()
-        with patch("asyncio.run", return_value=0.0):
-            price = trader._get_current_price()
-        # Should use _last_valid_price as fallback
+        price, last_valid_price = self._resolve_price(0.0)
         assert price == 14_500_000.0
+        assert last_valid_price == 14_500_000.0
 
     def test_none_falls_back_to_last_valid(self) -> None:
-        trader = self._make_trader()
-        with patch("asyncio.run", return_value=None):
-            price = trader._get_current_price()
+        price, last_valid_price = self._resolve_price(None)
         assert price == 14_500_000.0
+        assert last_valid_price == 14_500_000.0
 
     def test_negative_price_falls_back(self) -> None:
-        trader = self._make_trader()
-        with patch("asyncio.run", return_value=-100.0):
-            price = trader._get_current_price()
+        price, last_valid_price = self._resolve_price(-100.0)
         assert price == 14_500_000.0
+        assert last_valid_price == 14_500_000.0
 
 
 # ===================================================================

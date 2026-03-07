@@ -29,6 +29,7 @@ except ImportError:
 from scripts.v460.ml.skip_gate import (
     SkipGate,
     SkipGateConfig,
+    get_gate_feature_cols,
 )
 from scripts.v460.ml.feature_enricher import enrich_fill_records
 from scripts.v460.ml.retrain_scheduler import (
@@ -183,6 +184,50 @@ def _identity_enrich(fill_df: pd.DataFrame, **_: object) -> pd.DataFrame:
             continue
         enriched[col] = pd.to_numeric(enriched[col], errors="coerce").fillna(value)
     return enriched
+
+
+def _build_fast_preorder_as_features(
+    fill_df: pd.DataFrame,
+    require_spread: bool = True,
+) -> tuple[pd.DataFrame, pd.Series]:
+    """retrain_model() 向けの最小特徴量を高速構築する."""
+    mask = fill_df["filled"].astype(bool)
+    if require_spread:
+        if "spread_at_order" in fill_df.columns:
+            mask &= fill_df["spread_at_order"].notna()
+        if "spread_offset_ratio" in fill_df.columns:
+            mask &= fill_df["spread_offset_ratio"].notna()
+
+    subset = fill_df.loc[mask].copy()
+    feature_cols = list(get_gate_feature_cols(use_ob=False))
+    X = pd.DataFrame(0.0, index=subset.index, columns=feature_cols)
+
+    if "spread_jpy" in X.columns and "spread_at_order" in subset.columns:
+        X["spread_jpy"] = pd.to_numeric(
+            subset["spread_at_order"],
+            errors="coerce",
+        ).fillna(0.0)
+    if "offset_ratio" in X.columns and "spread_offset_ratio" in subset.columns:
+        X["offset_ratio"] = pd.to_numeric(
+            subset["spread_offset_ratio"],
+            errors="coerce",
+        ).fillna(0.0)
+    if "queue_wait_sec" in X.columns:
+        if "queue_wait_sec" in subset.columns:
+            X["queue_wait_sec"] = pd.to_numeric(
+                subset["queue_wait_sec"],
+                errors="coerce",
+            ).fillna(0.0)
+        else:
+            X["queue_wait_sec"] = 0.0
+    if "side_buy" in X.columns and "side" in subset.columns:
+        X["side_buy"] = subset["side"].eq("buy").astype(float)
+
+    y = pd.to_numeric(
+        subset.get("adverse_selected_raw", 0),
+        errors="coerce",
+    ).fillna(0).astype(int)
+    return X, y
 
 
 def _make_retrain_records_df(
@@ -639,6 +684,14 @@ class TestBuildFullFeatures:
 class TestRetrainModel:
     """126# retrain_model() テスト."""
 
+    @pytest.fixture(autouse=True)
+    def _fast_preorder_features(self) -> object:
+        with patch(
+            "scripts.v460.ml.retrain_scheduler.build_preorder_as_features",
+            side_effect=_build_fast_preorder_as_features,
+        ):
+            yield
+
     def test_skip_when_no_fill_records(self) -> None:
         """fill_records が存在しない場合スキップ."""
 
@@ -747,6 +800,14 @@ class TestE2ERetrainHotReload:
         ):
             yield
 
+    @pytest.fixture(autouse=True)
+    def _fast_preorder_features(self) -> object:
+        with patch(
+            "scripts.v460.ml.retrain_scheduler.build_preorder_as_features",
+            side_effect=_build_fast_preorder_as_features,
+        ):
+            yield
+
     def test_retrain_deploy_and_hot_reload(self) -> None:
         """E2E: 十分なデータで retrain → deploy → SkipGateEvaluator が hot-reload."""
 
@@ -776,7 +837,7 @@ class TestE2ERetrainHotReload:
             cfg["quality_gate_enabled"] = False  # E2E テストでは品質ゲート無効
             cfg["latest_run_only"] = False
             cfg["exclude_missing_run_id"] = False
-            cfg["lgbm_n_estimators"] = 4
+            cfg["lgbm_n_estimators"] = 1
             cfg["lgbm_max_depth"] = 2
             cfg["lgbm_num_leaves"] = 4
             cfg["lgbm_min_child_samples"] = 2
@@ -785,6 +846,9 @@ class TestE2ERetrainHotReload:
             cfg["early_stopping_rounds"] = 0
             cfg["bootstrap_threshold"] = 10
             cfg["enriched_cache_enabled"] = False
+            cfg["feature_pruning_enabled"] = False
+            cfg["redundancy_pruning_enabled"] = False
+            cfg["warm_start_enabled"] = False
 
             gate_v1 = _make_picklable_gate(n_samples=10, version="verified")
             with patch(
@@ -854,6 +918,14 @@ class TestBalanceForcedSwitchFilter:
         ):
             yield
 
+    @pytest.fixture(autouse=True)
+    def _fast_preorder_features(self) -> object:
+        with patch(
+            "scripts.v460.ml.retrain_scheduler.build_preorder_as_features",
+            side_effect=_build_fast_preorder_as_features,
+        ):
+            yield
+
     def test_balance_forced_records_excluded(self) -> None:
         """balance_forced_switch=True のレコードが学習データから除外される."""
 
@@ -881,8 +953,11 @@ class TestBalanceForcedSwitchFilter:
             cfg["quality_gate_enabled"] = False
             cfg["latest_run_only"] = False
             cfg["exclude_missing_run_id"] = False
-            cfg["lgbm_n_estimators"] = 4
+            cfg["lgbm_n_estimators"] = 1
             cfg["enriched_cache_enabled"] = False
+            cfg["feature_pruning_enabled"] = False
+            cfg["redundancy_pruning_enabled"] = False
+            cfg["warm_start_enabled"] = False
 
             with patch(
                 "scripts.v460.ml.retrain_scheduler.load_fill_records",

@@ -49,6 +49,7 @@ from ztb.trading.live.action_mask_provider import ActionMaskConfig, ActionMaskPr
 from ztb.trading.live.registry.broker_registry import get_broker_registry
 from ztb.trading.live_trader.components.order_manager import OrderManager
 from ztb.trading.live_trader.config import LiveTraderConfig, LiveTradingOptions
+from ztb.trading.live_trader.price_utils import resolve_current_price
 from ztb.trading.risk.compat import ensure_risk_manager_protocol
 from ztb.utils.logging_utils import create_structured_logger, get_logger
 from ztb.utils.safety import safe_divide, safe_get_nested_value, safe_to_int
@@ -92,7 +93,7 @@ from ztb.utils.cache_utils import TTLCache
 
 # Import configuration management
 from ztb.utils.config import ZTBConfig
-from ztb.utils.errors import ValidationError, validate_price
+from ztb.utils.errors import ValidationError
 
 # Import Discord notifier
 from ztb.utils.notify.discord import DiscordNotifier
@@ -736,34 +737,13 @@ class LiveTrader:
         Returns:
             Current price as float
         """
-        import asyncio
-
-        async def _async_get_price():
-            if self.exchange_adapter is not None:
-                try:
-                    price = await self.exchange_adapter.get_current_price("btc_jpy")
-                    if price is not None:
-                        self._last_valid_price = price
-                        return price
-                except Exception as e:
-                    logger = get_logger(__name__)
-                    logger.warning(f"Failed to get price from adapter: {e}")
-            return None
-
-        # Run async function synchronously
-        try:
-            price = asyncio.run(_async_get_price())
-            if price is not None:
-                validate_price(price, "price")
-                return price
-        except Exception as e:
-            logger = get_logger(__name__)
-            logger.error(f"Failed to get current price: {e}")
-
-        # Fallback to last valid price or mock price
-        if self._last_valid_price > 0:
-            return self._last_valid_price
-        return 5000000.0
+        price, updated_last_valid_price = resolve_current_price(
+            exchange_adapter=self.exchange_adapter,
+            last_valid_price=self._last_valid_price,
+            symbol="btc_jpy",
+        )
+        self._last_valid_price = updated_last_valid_price
+        return price
 
     def _compute_features(self) -> NDArray[np.float32]:
         """Compute features for model prediction using full feature engine when available."""

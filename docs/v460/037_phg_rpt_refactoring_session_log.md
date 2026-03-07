@@ -1763,3 +1763,64 @@
 1. `test_enricher_skip_gate.py` の real-data setup を fixture snapshot 化でさらに落とす
 2. `test_fill_quality.py::TestFillRecordIO` の real file/glob path を切り分け、pure loader contract と persistence を分離する
 3. `test_v460_core.py::TestG0HashPrefix::*` と `test_retrain_hot_reload.py` の上位 call を継続圧縮する
+
+---
+
+## 2026-03-08 / Session 037-041
+
+### 実施
+- production
+  - `ztb/trading/live_trader/price_utils.py` を新設し、現在価格の取得 + validation + fallback を pure helper `resolve_current_price()` へ抽出
+  - `ztb/trading/live_trader/live_trader.py`
+    - `LiveTrader._get_current_price()` を helper 委譲へ変更
+    - invalid adapter 値（0/負値）で前回 valid 価格を保持する形へ整理
+- テスト高速化
+  - `test_158_failure_modes.py`
+    - `TestPriceFallbackChain` を `LiveTrader` 直 import から外し、helper + async adapter stub ベースへ変更
+  - `test_ml_pipeline.py`
+    - `Test057ASClassifier::test_evaluate_skip_policy` で学習済み classifier を作らず、deterministic OOF probabilities に直接差し替え
+  - `test_retrain_hot_reload.py`
+    - `build_preorder_as_features()` を fast stub 化する fixture を追加
+    - `TestRetrainModel`, `TestE2ERetrainHotReload`, `TestBalanceForcedSwitchFilter` に横展開
+    - E2E / balance-forced の retrain cfg で `feature_pruning_enabled=False`, `redundancy_pruning_enabled=False`, `warm_start_enabled=False`, `lgbm_n_estimators=1` を明示し、非本質経路を削除
+
+### 結果
+- focused 回帰 1:
+  - `test_158_failure_modes.py::TestPriceFallbackChain`
+  - `test_ml_pipeline.py::Test057ASClassifier::test_evaluate_skip_policy`
+  - `5 passed in 3.54s`
+- focused 回帰 2:
+  - `test_retrain_hot_reload.py::TestRetrainModel::test_skip_when_insufficient_new_samples`
+  - `test_retrain_hot_reload.py::TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload`
+  - `test_retrain_hot_reload.py::TestBalanceForcedSwitchFilter::test_balance_forced_records_excluded`
+  - `3 passed in 2.86s`
+- production 関連回帰:
+  - `tests/unit/trading/test_live_trader_validation.py`
+  - `8 passed, 3 warnings in 4.45s`
+- 最終 broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` と `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - `4060 passed, 1 deselected, 11 warnings in 29.19s`
+
+### 主要改善
+- `test_158_failure_modes.py::TestPriceFallbackChain::test_valid_price_updates_last`
+  - `3.60s -> 0.01s`
+- `test_ml_pipeline.py::Test057ASClassifier::test_evaluate_skip_policy`
+  - `0.10s -> 0.02s`
+- `test_retrain_hot_reload.py::TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload`
+  - `1.06s -> 0.04s`
+- `test_retrain_hot_reload.py::TestBalanceForcedSwitchFilter::test_balance_forced_records_excluded`
+  - `0.03s`
+
+### 補足
+- filtered broad の上位は、ほぼ real-data / real-I/O / pure compute に再集中した。
+  - `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.93s`
+  - `test_microstructure_features.py::TestEdgeCases::test_zero_volume` call `0.14s`
+  - `test_ml_pipeline.py::Test057Integration::test_load_real_data` call `0.14s`
+  - `test_v460_core.py::TestConfigLoader::*`
+  - `test_aggregate_to_1min.py` の parquet/edge cases
+- このバッチで broad 総時間は `36.17s -> 29.19s` まで低下した。
+
+### 次アクション
+1. `test_enricher_skip_gate.py` の real-data integration setup を snapshot/cache 前提でさらに詰める
+2. `test_microstructure_features.py` と `test_v460_core.py::TestConfigLoader` の data/config loader 上位を切り分ける
+3. `test_aggregate_to_1min.py` の残 persistence edge と `test_gate_judgment.py` の Monte Carlo 残件を継続圧縮する

@@ -4095,3 +4095,23 @@ python scripts/unified_trainer.py \
 ### Notes
 - The filtered broad rerun completed at `4060 passed, 1 deselected, 15 warnings in 36.17s` after the split-layout fixes were brought back into sync with the current orchestrator module layout.
 - The remaining top costs are now dominated by real-data integration and true persistence paths rather than import/source-inspection churn: `test_enricher_skip_gate.py` real-data setup, `test_fill_quality.py` fill-record I/O, `test_retrain_hot_reload.py` E2E reload, and a small number of parquet / hash / ML integration cases.
+
+### Changed
+- Extracted current-price resolution into `ztb/trading/live_trader/price_utils.py` and rewired `LiveTrader._get_current_price()` to delegate to the helper. This keeps the fallback logic reusable, preserves the last valid price on invalid adapter values, and avoids importing the full `live_trader.py` stack from the v460 failure-mode tests.
+- Reworked `tests/unit/v460/test_158_failure_modes.py::TestPriceFallbackChain` to exercise the new price helper directly with an async adapter stub instead of constructing `LiveTrader`.
+- Replaced the training-heavy path in `tests/unit/v460/test_ml_pipeline.py::Test057ASClassifier::test_evaluate_skip_policy` with deterministic OOF probabilities so the test only validates policy-evaluation behavior.
+- Added a fast `build_preorder_as_features()` stub in `tests/unit/v460/test_retrain_hot_reload.py` and disabled non-essential pruning/warm-start paths in the hot-reload retrain tests, shrinking the E2E/balance-forced cases without changing the deployment/reload assertions.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_158_failure_modes.py::TestPriceFallbackChain tests/unit/v460/test_ml_pipeline.py::Test057ASClassifier::test_evaluate_skip_policy -q --no-cov --tb=short --durations=10`
+- `python -m pytest tests/unit/v460/test_retrain_hot_reload.py::TestRetrainModel::test_skip_when_insufficient_new_samples tests/unit/v460/test_retrain_hot_reload.py::TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload tests/unit/v460/test_retrain_hot_reload.py::TestBalanceForcedSwitchFilter::test_balance_forced_records_excluded -q --no-cov --tb=short --durations=10`
+- `python -m pytest tests/unit/trading/test_live_trader_validation.py -q --no-cov --tb=short --durations=10`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- Focused timings dropped materially:
+  - `test_158_failure_modes.py::TestPriceFallbackChain::test_valid_price_updates_last`: `3.60s -> 0.01s`
+  - `test_ml_pipeline.py::Test057ASClassifier::test_evaluate_skip_policy`: `0.10s -> 0.02s`
+  - `test_retrain_hot_reload.py::TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload`: `1.06s -> 0.04s`
+- The latest filtered broad rerun completed at `4060 passed, 1 deselected, 11 warnings in 29.19s`.
+- Remaining broad-top costs are now mostly true real-data / persistence paths: `test_enricher_skip_gate.py` real-data setup, `test_microstructure_features.py::TestEdgeCases::test_zero_volume`, a handful of config-loader / parquet cases, and a small number of regime/gate integration calls.
