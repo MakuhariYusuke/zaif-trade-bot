@@ -21,7 +21,7 @@ import collections
 import logging
 import math
 import time
-from typing import Final, NamedTuple, Protocol, Sequence
+from typing import Final, NamedTuple, Protocol
 
 from scripts.v460.lib.fast_fill_defense import FastFillDefense
 from scripts.v460.lib.fill_config import FillTestConfig

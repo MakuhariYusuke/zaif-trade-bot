@@ -8,13 +8,16 @@ WARNING -- AI Coding Agent / 人間開発者への注意:
     責務: 1 取引サイクルの実行 (OB取得, SkipGate, 発注, 約定監視, PnL計測)
     run_continuous のループ制御ロジックを追加しないこと。
     side kill / time filter / balance forced 判定は fill_loop_orchestrator に属する。
+
+323# God Object 分割:
+    FillRecordBuilderMixin → fill_record_builder.py (FillRecord 構築)
+    PreOrderAdjustmentsMixin → pre_order_adjustments.py (offset/price 調整)
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import time
 from typing import TYPE_CHECKING, cast
 
@@ -24,30 +27,32 @@ from scripts.v460.lib.fill_config import (
     FillMonitorResult as _FillMonitorResult,
     PnlMeasurement as _PnlMeasurement,
 )
+from scripts.v460.lib.fill_record_builder import FillRecordBuilderMixin
 from scripts.v460.lib.maker_price import InfeasibleQuoteError
 from scripts.v460.lib.ob_utils import best_bid_ask  # 200# 10-C: module-level import
+from scripts.v460.lib.pre_order_adjustments import PreOrderAdjustmentsMixin
 
 if TYPE_CHECKING:
     from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
     from scripts.v460.lib.fill_config import FillTestConfig
     from scripts.v460.lib.order_monitor import OrderLike
     from scripts.v460.lib.phantom_position_guard import PhantomPositionGuard
-    from scripts.v460.lib.resilience import CircuitState
     from ztb.metrics.fill_quality import FillRecord
 
 logger = logging.getLogger(__name__)
 
 
-class FillCycleExecutorMixin:
+class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
     """run_single_cycle + OB/SkipGate/Fill/PnL ヘルパー (Mixin).
 
     ────────────────────────────────────────────────────
     責務境界 (Single Responsibility):
       OK: 1 取引サイクル実行, OB ラッパー, SkipGate, Fill 監視, PnL 計測
       NG: ループ制御, side kill, time filter, balance forced
-    MAX LINES: 750 (超えたら _build_fill_record を別モジュールに分離せよ)
+    MAX LINES: 1100
     ────────────────────────────────────────────────────
     188# _build_fill_record() 抽出済み
+    323# FillRecordBuilderMixin / PreOrderAdjustmentsMixin 分離済み
     """
 
     # 201# review: 動的属性のクラスレベル宣言 (mypy 検出 + IDE 補完)
@@ -192,213 +197,6 @@ class FillCycleExecutorMixin:
             )
         return True
 
-    @staticmethod
-    def _recalc_price_with_new_offset(
-        side: str,
-        order_price: float,
-        spread_at_order: float | None,
-        old_ratio: float,
-        new_ratio: float,
-    ) -> float:
-        """304# DRY: offset 変更後の maker 価格再計算.
-
-        mid を逆算し、新しい offset ratio で price を再算出する。
-        spread 不明時は order_price をそのまま返す。
-        """
-        if spread_at_order is None or spread_at_order <= 0:
-            return order_price
-        # mid を逆推定: order_price = mid ∓ spread * old_ratio / 2
-        if side == "buy":
-            mid_est = order_price + spread_at_order * old_ratio / 2
-            return round(mid_est - spread_at_order * new_ratio / 2)
-        else:
-            mid_est = order_price - spread_at_order * old_ratio / 2
-            return round(mid_est + spread_at_order * new_ratio / 2)
-
-    def _resolve_fill_cancel_reason(
-        self,
-        *,
-        filled: bool,
-        queue_wait: float,
-        cancel_reason_poll: str | None,
-        effective_timeout: float | None,
-    ) -> str | None:
-        """約定結果に応じた cancel_reason を一元解決."""
-        if cancel_reason_poll:
-            return cancel_reason_poll
-        if filled:
-            return None
-        timeout_limit = effective_timeout or self.config.order_timeout_sec
-        return "timeout" if queue_wait >= timeout_limit else "unknown"
-
-    def _compute_fill_spread_bps(
-        self,
-        *,
-        spread_at_order: float | None,
-        mid_at_fill: float | None,
-    ) -> float | None:
-        """FillRecord 用 spread_bps を安全に算出."""
-        if spread_at_order is None or mid_at_fill is None or mid_at_fill <= 0:
-            return None
-        return spread_at_order / mid_at_fill * self._BPS_FACTOR
-
-    def _build_fill_measurement_fields(
-        self,
-        *,
-        fill_price: float | None,
-        filled: bool,
-        queue_wait: float,
-        cancel_reason_poll: str | None,
-        effective_timeout: float | None,
-        pnl: _PnlMeasurement,
-    ) -> dict[str, object]:
-        """FillRecord の約定/計測系フィールドを構築."""
-        return {
-            "fill_price": fill_price,
-            "filled": filled,
-            "cancelled": not filled,
-            "queue_wait_sec": queue_wait,
-            "mid_at_fill": pnl.mid_at_fill,
-            "mid_30s_after": pnl.mid_30s_after,
-            "mid_60s_after": pnl.mid_60s_after,
-            "mid_120s_after": pnl.mid_120s_after,
-            "post_fill_30s_pnl": pnl.post_fill_pnl,
-            "post_fill_60s_pnl": pnl.post_fill_60s_pnl,
-            "post_fill_120s_pnl": pnl.post_fill_120s_pnl,
-            "adverse_selected": pnl.adverse_selected,
-            "adverse_selected_raw": pnl.adverse_selected_raw,
-            "cancel_reason": self._resolve_fill_cancel_reason(
-                filled=filled,
-                queue_wait=queue_wait,
-                cancel_reason_poll=cancel_reason_poll,
-                effective_timeout=effective_timeout,
-            ),
-            "actual_measurement_sec": pnl.actual_measurement_sec if filled else None,
-            "early_exit_triggered": pnl.early_exit_triggered if filled else None,
-            "pnl_at_exit_bps": pnl.pnl_at_exit_bps if filled else None,
-        }
-
-    def _build_fill_market_fields(
-        self,
-        *,
-        side: str,
-        spread_at_order: float | None,
-        effective_offset_ratio: float,
-        reprice_count: int,
-        reprice_drift_bps: float | None,
-        sg_skipped: bool,
-        sg_score: float,
-        sg_reason: str,
-        sg_model_used: str,
-        sg_as_prob: float | None,
-        sg_threshold_used: float | None,
-        sg_hour_offset: float | None,
-        sg_velocity_bps: float | None,
-        regime_str: str | None,
-        regime_conf: float | None,
-        regime_stab: int | None,
-        regime_trend_pct: float | None,
-        regime_vol_ratio: float | None,
-        balance_forced_switch: bool,
-        confidence_factor: float,
-        regime_lot: float,
-        order_lot: float,
-        cancel_failed_likely_filled: bool,
-        mid_at_fill: float | None,
-        ev_score_pretrade: float | None = None,
-        ev_offset_mult_applied: float | None = None,
-        decision_path: str | None = None,
-    ) -> dict[str, object]:
-        """FillRecord の市場観測/実行メタ系フィールドを構築."""
-        return {
-            "spread_at_order": spread_at_order,
-            "spread_offset_ratio": effective_offset_ratio,
-            "regime": regime_str,
-            "regime_confidence": regime_conf,
-            "regime_stability": regime_stab,
-            "regime_trend_pct": regime_trend_pct,
-            "regime_volatility_ratio": regime_vol_ratio,
-            "orderbook_imbalance": self._maker_price._last_imbalance,
-            "bid_depth_total": self._maker_price._last_bid_depth,
-            "ask_depth_total": self._maker_price._last_ask_depth,
-            "mid_price_trend_5s": self._maker_price._last_mid_trend_bps,
-            "spread_bps": self._compute_fill_spread_bps(
-                spread_at_order=spread_at_order,
-                mid_at_fill=mid_at_fill,
-            ),
-            "effective_offset_used": effective_offset_ratio,
-            "skip_gate_skipped": sg_skipped,
-            "skip_gate_score": sg_score,
-            "skip_gate_reason": sg_reason,
-            "skip_gate_model_used": sg_model_used,
-            "skip_gate_as_prob": sg_as_prob,
-            "skip_gate_threshold_used": sg_threshold_used,
-            "skip_gate_hour_offset": sg_hour_offset,
-            "reprice_count": reprice_count,
-            "reprice_drift_bps": reprice_drift_bps if reprice_count > 0 else None,
-            "ffd_boost_active": self._fast_fill_defense.is_boost_active(side),
-            "vg_triggered": self._maker_price.last_vg_triggered,
-            "vg_velocity_bps": self._maker_price.last_vg_velocity_bps,
-            "vg_vpin": self._maker_price.last_vg_vpin,
-            "vg_boost_factor": self._maker_price.last_vg_boost_factor,
-            "price_velocity_bps": sg_velocity_bps,
-            "balance_forced_switch": balance_forced_switch or None,
-            "confidence_lot_factor": (
-                confidence_factor if self.config.enable_confidence_lot else None
-            ),
-            "order_lot_regime": regime_lot,
-            "order_lot_effective": order_lot,
-            "confidence_lot_mode": (
-                self.config.confidence_lot_mode if self.config.enable_confidence_lot else None
-            ),
-            "ab_test_variant": self.config.ab_test_variant or None,
-            "cancel_failed_likely_filled": cancel_failed_likely_filled or None,
-            # 292# P0: ev_weighted 可観測性強化 (290#/291# review)
-            "ev_score_pretrade": ev_score_pretrade,
-            "ev_offset_mult_applied": ev_offset_mult_applied,
-            "decision_path": decision_path,
-        }
-
-    def _build_fill_strategy_fields(
-        self,
-        *,
-        post_fill_pnl: float | None,
-        post_fill_120s_pnl: float | None,
-        regime_str: str | None,
-        regime_conf: float | None,
-        macro_trend: str | None,
-        macro_slope_5m: float | None,
-        macro_slope_15m: float | None,
-        macro_aligned: bool | None,
-    ) -> dict[str, object]:
-        """FillRecord の strategy/macro 系フィールドを構築."""
-        ev_weighted = self._compute_ev_weighted(
-            post_fill_pnl,
-            post_fill_120s_pnl,
-            w30=self._cycle_strategy.policy.ev_weighted_w30,
-            w120=self._cycle_strategy.policy.ev_weighted_w120,
-        ) if self._cycle_strategy is not None else self._compute_ev_weighted(
-            post_fill_pnl,
-            post_fill_120s_pnl,
-        )
-        return {
-            "ev_weighted_pnl": ev_weighted,
-            "gated_regime": (
-                self._cycle_strategy.gated_regime(regime_str, regime_conf)
-                if self._cycle_strategy is not None and regime_str is not None
-                else None
-            ),
-            "effective_cycle_interval": (
-                self._cycle_strategy.effective_interval(regime_str)
-                if self._cycle_strategy is not None
-                else None
-            ),
-            "macro_trend": macro_trend,
-            "macro_slope_5m": macro_slope_5m,
-            "macro_slope_15m": macro_slope_15m,
-            "macro_aligned": macro_aligned,
-        }
-
     # ==================================================================
     # 113# R1: run_single_cycle から抽出したサブメソッド
     # ==================================================================
@@ -496,205 +294,9 @@ class FillCycleExecutorMixin:
         )
 
     # ------------------------------------------------------------------
-    # 181# EV_weighted: pnl30/pnl120 加重平均 (178# §1.3)
-    # ------------------------------------------------------------------
-    @staticmethod
-    def _compute_ev_weighted(
-        pnl30: float | None,
-        pnl120: float | None,
-        *,
-        w30: float = 0.4,
-        w120: float = 0.6,
-    ) -> float | None:
-        """30s/120s PnL の加重平均を計算.
-
-        pnl120 が None (E3 サンプリング外) の場合は pnl30 単独値を返す。
-        """
-        if pnl30 is None:
-            return None
-        if pnl120 is None:
-            return pnl30  # 120s 未計測時は 30s 単独
-        return w30 * pnl30 + w120 * pnl120
-
-    @staticmethod
-    def _apply_offset_multiplier(
-        *,
-        side: str,
-        order_price: float,
-        spread_at_order: float | None,
-        effective_offset_ratio: float,
-        offset_mult: float | None,
-        aggressive_when_multiplier_gt_one: bool = False,
-    ) -> tuple[float, float, float | None, float | None]:
-        """offset 倍率を安全に適用し、更新後の価格・倍率を返す.
-
-        `aggressive_when_multiplier_gt_one=False`:
-          multiplier>1.0 で mid から遠ざける (195/196 の保守的発注)
-        `aggressive_when_multiplier_gt_one=True`:
-          multiplier>1.0 で mid に近づける (193 の EV 前向き調整)
-        """
-        if (
-            offset_mult is None
-            or offset_mult <= 0.0
-            or spread_at_order is None
-            or spread_at_order <= 0
-            or order_price <= 0
-        ):
-            return order_price, effective_offset_ratio, None, None
-        if offset_mult == 1.0:
-            return order_price, effective_offset_ratio, None, None
-        if not aggressive_when_multiplier_gt_one and offset_mult < 1.0:
-            return order_price, effective_offset_ratio, None, None
-
-        old_offset = spread_at_order * effective_offset_ratio
-        new_offset = old_offset * offset_mult
-        delta = new_offset - old_offset
-        if aggressive_when_multiplier_gt_one:
-            if side == "buy":
-                order_price = round(order_price + delta)
-            else:
-                order_price = round(order_price - delta)
-        else:
-            if side == "buy":
-                order_price = round(order_price - delta)
-            else:
-                order_price = round(order_price + delta)
-        return order_price, effective_offset_ratio * offset_mult, offset_mult, delta
-
-    # ------------------------------------------------------------------
     # 188# FillRecord 構築 (run_single_cycle からの抽出)
+    # 323# → fill_record_builder.py (FillRecordBuilderMixin)
     # ------------------------------------------------------------------
-    def _build_fill_record(
-        self,
-        *,
-        cycle_id: str,
-        t_submit: float,
-        side: str,
-        order_price: float,
-        order_lot: float,
-        fill_price: float | None,
-        filled: bool,
-        spread_at_order: float | None,
-        effective_offset_ratio: float,
-        queue_wait: float,
-        cancel_reason_poll: str | None,
-        reprice_count: int,
-        reprice_drift_bps: float | None,
-        effective_timeout: float | None,
-        cancel_failed_likely_filled: bool,
-        pnl: _PnlMeasurement,
-        sg_skipped: bool,
-        sg_score: float,
-        sg_reason: str,
-        sg_model_used: str,
-        sg_as_prob: float | None,
-        sg_threshold_used: float | None,
-        sg_hour_offset: float | None,
-        sg_velocity_bps: float | None,
-        regime_str: str | None,
-        regime_conf: float | None,
-        regime_stab: int | None,
-        regime_trend_pct: float | None,
-        regime_vol_ratio: float | None,
-        balance_forced_switch: bool,
-        confidence_factor: float,
-        regime_lot: float,
-        macro_trend: str | None = None,
-        macro_slope_5m: float | None = None,
-        macro_slope_15m: float | None = None,
-        macro_aligned: bool | None = None,
-        ev_score_pretrade: float | None = None,
-        ev_offset_mult_applied: float | None = None,
-        decision_path: str | None = None,
-        queue_depth_ahead: float | None = None,
-        queue_fill_prob_est: float | None = None,
-        regime_at_order: str | None = None,
-        regime_observation_count: int | None = None,
-        mid_at_order: float | None = None,
-    ) -> FillRecord:
-        """188# FillRecord を組み立てる.
-
-        run_single_cycle の末尾から抽出。self 経由のセンサー値 +
-        サイクル変数を統合して 1 レコードを構築する。
-        """
-        from ztb.metrics.fill_quality import build_fill_record
-
-        payload: dict[str, object] = {
-            "cycle_id": cycle_id,
-            "timestamp": t_submit,
-            "side": side,
-            "order_price": order_price,
-            "order_quantity": order_lot,
-            "run_id": self._run_id,
-            "git_sha": self._git_sha,
-            "pid": os.getpid(),  # 285# 283# P0-1: Split-Brain 検知用
-            # 306# O1: queue position estimation
-            "queue_depth_ahead": queue_depth_ahead,
-            "queue_fill_prob_est": queue_fill_prob_est,
-            # 306# E1: offset stage recording
-            "offset_stages": self._maker_price.last_offset_stages,
-            # 306# L2: microprice bias
-            "microprice_bias_bps": self._maker_price.compute_microprice_bias_bps(),
-            # 318# F5-3: none regime 可観測性 (307# F5)
-            "regime_at_order": regime_at_order,
-            "regime_observation_count": regime_observation_count,
-            # 319# S-3: mid_at_order (316# S-3: spread capture 精度向上)
-            "mid_at_order": mid_at_order,
-        }
-        payload.update(
-            self._build_fill_measurement_fields(
-                fill_price=fill_price,
-                filled=filled,
-                queue_wait=queue_wait,
-                cancel_reason_poll=cancel_reason_poll,
-                effective_timeout=effective_timeout,
-                pnl=pnl,
-            )
-        )
-        payload.update(
-            self._build_fill_market_fields(
-                side=side,
-                spread_at_order=spread_at_order,
-                effective_offset_ratio=effective_offset_ratio,
-                reprice_count=reprice_count,
-                reprice_drift_bps=reprice_drift_bps,
-                sg_skipped=sg_skipped,
-                sg_score=sg_score,
-                sg_reason=sg_reason,
-                sg_model_used=sg_model_used,
-                sg_as_prob=sg_as_prob,
-                sg_threshold_used=sg_threshold_used,
-                sg_hour_offset=sg_hour_offset,
-                sg_velocity_bps=sg_velocity_bps,
-                regime_str=regime_str,
-                regime_conf=regime_conf,
-                regime_stab=regime_stab,
-                regime_trend_pct=regime_trend_pct,
-                regime_vol_ratio=regime_vol_ratio,
-                balance_forced_switch=balance_forced_switch,
-                confidence_factor=confidence_factor,
-                regime_lot=regime_lot,
-                order_lot=order_lot,
-                cancel_failed_likely_filled=cancel_failed_likely_filled,
-                mid_at_fill=pnl.mid_at_fill,
-                ev_score_pretrade=ev_score_pretrade,
-                ev_offset_mult_applied=ev_offset_mult_applied,
-                decision_path=decision_path,
-            )
-        )
-        payload.update(
-            self._build_fill_strategy_fields(
-                post_fill_pnl=pnl.post_fill_pnl,
-                post_fill_120s_pnl=pnl.post_fill_120s_pnl,
-                regime_str=regime_str,
-                regime_conf=regime_conf,
-                macro_trend=macro_trend,
-                macro_slope_5m=macro_slope_5m,
-                macro_slope_15m=macro_slope_15m,
-                macro_aligned=macro_aligned,
-            )
-        )
-        return build_fill_record(**payload)
 
     async def _measure_post_fill_pnl(
         self,
@@ -728,20 +330,6 @@ class FillCycleExecutorMixin:
         if pnl.early_exit_triggered:
             self._side_selector.set_rapid_exit(side)
         return pnl
-
-    @staticmethod
-    def _derive_decision_path(
-        *,
-        ev_score_pretrade: float | None,
-        skip_gate_reason: str,
-        ev_offset_applied: bool,
-    ) -> str:
-        """292# P0: FillRecord.decision_path を一元導出する."""
-        if ev_score_pretrade is None:
-            return "primary_only"
-        if "emergency_skip" in skip_gate_reason:
-            return "ev_emergency_skip"
-        return "ev_offset" if ev_offset_applied else "ev_no_change"
 
     def _log_cycle_result(
         self,

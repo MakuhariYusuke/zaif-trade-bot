@@ -18,9 +18,10 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 _FILL_TEST_RUNNER_SOURCES: list[Path] = [
     _PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py",
-    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_record_builder.py",
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_record_helpers.py",
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_cycle_executor.py",
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_record_builder.py",
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "pre_order_adjustments.py",
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_loop_orchestrator.py",
 ]
 
@@ -33,9 +34,6 @@ FILL_CYCLE_EXECUTOR = (
 )
 FILL_RECORD_HELPERS = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_record_helpers.py"
-)
-FILL_RECORD_BUILDER = (
-    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_record_builder.py"
 )
 FILL_RECORD_BUILDER = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_record_builder.py"
