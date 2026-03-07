@@ -1473,3 +1473,39 @@
 1. `test_148_fill_test_events.py` の TeeWriter 系を調べ、実 writer 例外経路の成立条件を保ったまま軽量化できるか確認する
 2. `test_pnl_monte_carlo.py::TestLoadFillRecords::test_load_from_directory` と `test_152_parallel_tasks.py::TestReproduceMetrics::test_main_with_output` の I/O 経路を詰める
 3. `test_enricher_skip_gate.py` の real-data setup と `test_aggregate_to_1min.py` の parquet persistence を、snapshot fixture / schema-level validation でさらに下げられるか確認する
+
+---
+
+## 2026-03-07 / Session 037-035
+
+### 実施
+- `tests/unit/v460/_fill_test_source.py`
+  - cached source index の対象へ `orchestrator_guards.py` / `orchestrator_lifecycle.py` / `orchestrator_post_cycle.py` を追加
+- `tests/unit/v460/test_145_structural_fixes.py`
+  - `resume_from_existing` / `_finalize_run` の検証対象を現行 split file に揃えた
+  - `run_continuous` の source 検証を shared helper 経由に統一した
+- `tests/unit/v460/test_256_recent_records_fix.py`
+  - `_recent_records.append(record)` の検証対象を `orchestrator_post_cycle.py` に更新した
+- `scripts/v460/lib/orchestrator_guards.py`
+  - `_track_side_pnl()` docstring に Ho & Stoll 在庫リスク理論を追記した
+
+### 結果
+- 対象回帰:
+  - `test_145_structural_fixes.py` + `test_256_recent_records_fix.py` + `test_275_dry_separation_and_theory.py`
+  - `90 passed in 3.75s`
+- broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` と `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - `4051 passed, 1 deselected, 15 warnings in 41.03s`
+
+### 補足
+- mixin 分割後も source-inspection テストが現行コード配置を直接見るように揃ったため、`inspect.getsource(...)` 依存の揺れを 1 段減らせた
+- この時点の上位 durations は以下へ集中している
+  - `test_enricher_skip_gate.py` の real-data setup
+  - `test_148_fill_test_events.py` の writer 例外系
+  - `test_pnl_monte_carlo.py::TestLoadFillRecords::test_load_from_directory`
+  - `test_152_parallel_tasks.py::TestReproduceMetrics::test_main_with_output`
+
+### 次アクション
+1. `test_148_fill_test_events.py` の TeeWriter 例外経路を、契約を保ったまま軽量化できるか確認する
+2. `test_pnl_monte_carlo.py` と `test_152_parallel_tasks.py` の実ファイル I/O を patch/stub で分離できるか詰める
+3. `test_enricher_skip_gate.py` の real-data setup を再利用可能な fixture cache に寄せる

@@ -3990,3 +3990,16 @@ python scripts/unified_trainer.py \
 ### Notes
 - The current filtered broad rerun completed at `4051 passed, 1 deselected, 19 warnings in 43.03s`.
 - During this batch, filtered broad reruns varied from roughly `39.01s` to `43.03s`; the remaining variance is concentrated in real-data integration (`test_enricher_skip_gate.py`) and parquet / aggregation paths (`test_aggregate_to_1min.py`).
+
+### Changed
+- Extended `tests/unit/v460/_fill_test_source.py` so the cached source index covers the live orchestrator split files (`orchestrator_guards.py`, `orchestrator_lifecycle.py`, `orchestrator_post_cycle.py`), keeping source-inspection tests aligned with the refactored runtime layout.
+- Updated `tests/unit/v460/test_145_structural_fixes.py` and `tests/unit/v460/test_256_recent_records_fix.py` to assert against the current orchestrator split files instead of brittle legacy file paths or method extraction.
+- Strengthened `scripts/v460/lib/orchestrator_guards.py::_track_side_pnl()` documentation with the Ho & Stoll inventory-risk rationale required by the theory checks.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_145_structural_fixes.py tests/unit/v460/test_256_recent_records_fix.py tests/unit/v460/test_275_dry_separation_and_theory.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=20 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- The latest filtered broad rerun completed at `4051 passed, 1 deselected, 15 warnings in 41.03s`.
+- Remaining top costs are concentrated in real-data enrichment (`test_enricher_skip_gate.py`), writer exception handling (`test_148_fill_test_events.py`), directory JSONL loading (`test_pnl_monte_carlo.py`), and the metrics reproduction CLI path (`test_152_parallel_tasks.py`).
