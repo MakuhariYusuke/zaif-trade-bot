@@ -2887,8 +2887,9 @@ class Test052AdaptSellOffsetSync:
         """052# MakerPriceCalculator.compute にトレンディングブーストが含まれる.
 
         120#: maker_price.py に抽出済み。
+        322# God Object 分割: regime boost は RegimeBoostMixin に移管。
         """
-        source = _source(MakerPriceCalculator)  # 163# mixin split: compute→class全体
+        source = _source(MakerPriceCalculator._resolve_trending_boost)
         assert "trending" in source
         assert "regime_trending_offset_boost" in source
 
@@ -2961,8 +2962,9 @@ class Test107TimeFilterDynamicGating:
         """107# MakerPriceCalculator.compute に volatility_guard ロジックが含まれる.
 
         120#: maker_price.py に抽出済み。
+        322# God Object 分割: VG は RiskGuardsMixin に移管。
         """
-        source = _source(MakerPriceCalculator)  # 163# mixin split: compute→class全体
+        source = _source(MakerPriceCalculator._apply_volatility_guard)
         assert "volatility_guard" in source
         assert "velocity_threshold_bps" in source or "vpin_threshold" in source
 
@@ -2982,8 +2984,11 @@ class Test107TimeFilterDynamicGating:
         assert vg["inv_skew_damping_enabled"] is True
 
     def test_vg_inv_skew_damping_code_present(self) -> None:
-        """168# InvSkew/VG damping ロジックがソースに含まれる."""
-        source = _source(MakerPriceCalculator)
+        """168# InvSkew/VG damping ロジックがソースに含まれる.
+
+        322# God Object 分割: VG は RiskGuardsMixin に移管。
+        """
+        source = _source(MakerPriceCalculator._apply_volatility_guard)
         assert "vg_inv_skew_damping_enabled" in source
         assert "_last_inv_skew_factor" in source
         assert "vg_damping" in source  # ログラベル

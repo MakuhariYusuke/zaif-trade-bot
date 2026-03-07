@@ -726,7 +726,7 @@ class TestSellHourOffsetBoost:
         from datetime import datetime, timezone
         mp = _make_maker_price(sell_hour_offset_boost={8: 1.5, 16: 1.5})
         mock_dt = datetime(2025, 1, 1, 8, 0, tzinfo=timezone.utc)
-        with patch("scripts.v460.lib.maker_price.datetime") as mock_datetime:
+        with patch("scripts.v460.lib.maker_risk_guards.datetime") as mock_datetime:
             mock_datetime.now.return_value = mock_dt
             mock_datetime.side_effect = lambda *a, **k: datetime(*a, **k)
             result = mp._apply_sell_hour_boost("sell", 0.05)

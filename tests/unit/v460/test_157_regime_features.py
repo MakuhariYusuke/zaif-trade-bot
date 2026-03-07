@@ -256,7 +256,8 @@ class TestTrendingOffsetAsymmetry:
 
     def test_maker_price_source_has_side_specific_boost(self) -> None:
         """maker_price のソースに side 別 boost ロジックが存在."""
-        source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
+        # 322# God Object 分割: regime boost は RegimeBoostMixin に移管
+        source = inspect.getsource(MakerPriceCalculator._resolve_trending_boost)
         assert "regime_trending_offset_boost_buy" in source
         assert "regime_trending_offset_boost_sell" in source
 

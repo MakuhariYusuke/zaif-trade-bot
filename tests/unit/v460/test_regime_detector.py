@@ -1143,14 +1143,21 @@ class TestPhaseD18EnumConsistency:
     """156# §18: maker_price.py の enum 直接比較テスト."""
 
     def test_maker_price_imports_fill_test_regime(self) -> None:
-        """maker_price.py が FillTestRegime をインポートしている."""
-        mod = importlib.import_module("scripts.v460.lib.maker_price")
+        """maker_price.py が FillTestRegime をインポートしている.
+
+        322# God Object 分割: FillTestRegime は maker_regime_boost.py 経由。
+        """
+        mod = importlib.import_module("scripts.v460.lib.maker_regime_boost")
         assert hasattr(mod, "FillTestRegime")
 
     def test_high_vol_uses_enum_comparison(self) -> None:
-        """maker_price.py の high_vol ロジックが enum 比較を使用."""
+        """maker_price.py の high_vol ロジックが enum 比較を使用.
 
-        source = _maker_price_source()
+        322# God Object 分割: regime boost は maker_regime_boost.py に移管。
+        """
+        source = read_source_text(
+            Path("scripts") / "v460" / "lib" / "maker_regime_boost.py"
+        )
         assert "FillTestRegime.HIGH_VOL" in source
         assert "FillTestRegime.RANGING" in source
         assert "FillTestRegime.UNKNOWN" in source
