@@ -83,7 +83,7 @@ class TestNewConfigFields:
         assert data["halt_persist_interval"] == 10
         assert data["stop_condition_check_interval"] == 30
         assert data["fallback_duration_sec"] == 3600.0
-        assert data["unknown_regime_max_consecutive"] == 10
+        assert data["unknown_regime_max_consecutive"] == 5  # 321# M-3: 10→5
 
 
 # =====================================================================

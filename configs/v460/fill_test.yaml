@@ -24,7 +24,8 @@ stop_condition_check_interval: 30
 # 277#: 停止条件発動時の fallback 持続時間 (秒, Kyle 1985 price discovery 収束)
 fallback_duration_sec: 3600.0
 # 277#: unknown regime 連続ブロックのバイパス閾値 (Hamilton 1989)
-unknown_regime_max_consecutive: 10
+# 321# M-3: 10→5 (10=20分停止は過剰、buy/sell混合カウントで実質2.5サイクル/side)
+unknown_regime_max_consecutive: 5
 order_timeout_sec: 90.0       # 096#: 300→90 (stale order + reprice で早期対応)
 order_timeout_sec_sell: 75.0  # 155# S-3: sell は速い撤退が有利 (90→75, -16.7%)
 poll_interval_sec: 5.0        # ポーリング間隔 (秒)
@@ -338,7 +339,7 @@ skip_gate:
   # 088# 動的閾値較正: 目標 skip 率ベースで閾値を自動調整
   adaptive_threshold: true     # P(AS) 分位点から閾値を動的設定
   target_skip_rate_buy: 0.15   # 107# 0.10→0.15 (time_filter 代替強化: buy 7h遮断→SG に委譲)
-  target_skip_rate_sell: 0.250  # 124# 0.25→0.20 (sell再有効化に伴い保守化, 逆選別なし前提)
+  target_skip_rate_sell: 0.20   # 321# H-1: 値・コメント矛盾修正 (0.25→0.20, sell 側の逆選別防御強化)
   adaptive_window: 50          # 較正ウィンドウ (直近 N サイクル)
   adaptive_min_samples: 20     # ウォームアップ期間 (最初の N 件は静的閾値)
   adaptive_step: 0.05          # 100# P0-2: 0.02→0.05 (収束ラグ低減)
@@ -470,7 +471,7 @@ sigma_parkinson:
 # ※ 旧実装は "none" のみチェック → FillTestRegime に "none" 値は存在せず事実上無効だった
 none_regime:
   passive_mm_enabled: true         # 306# 有効化 (303# で実装済、303# 時点では false)
-  fixed_offset_bps: 2.0           # 固定 offset (bps of mid_price)
+  fixed_offset_bps: 1.0           # 321# M-5: 2.0→1.0 (2.0bpsぎtypical spread超過でspread guard常時発動→best ask/bid退化を防止)
 
 # ---- 303# DD Guard soft lot side 分離 (302# 盲点3) ----
 # sell 損失で buy lot まで縮小する致命的シナジーを防止

@@ -362,6 +362,26 @@ class TestSideSpecificCeiling:
         # 共通値が使用される (コード上の挙動を間接検証)
         assert cfg.offset_ceiling_ratio == 0.15
 
+    def test_side_specific_ceiling_yaml_parse(self) -> None:
+        """321# CRITICAL fix: from_yaml() がサイド別 ceiling をパース."""
+        yaml_cfg: dict = {
+            "offset_ceiling_ratio": 0.15,
+            "offset_ceiling_ratio_buy": 0.15,
+            "offset_ceiling_ratio_sell": 0.50,
+        }
+        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        assert cfg.offset_ceiling_ratio == 0.15
+        assert cfg.offset_ceiling_ratio_buy == 0.15
+        assert cfg.offset_ceiling_ratio_sell == 0.50
+
+    def test_side_specific_ceiling_yaml_absent_stays_none(self) -> None:
+        """321#: YAML にサイド別 ceiling がない場合 None のまま."""
+        yaml_cfg: dict = {"offset_ceiling_ratio": 0.20}
+        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        assert cfg.offset_ceiling_ratio == 0.20
+        assert cfg.offset_ceiling_ratio_buy is None
+        assert cfg.offset_ceiling_ratio_sell is None
+
 
 # ======================================================================
 # B/C: hot-reload 登録テスト
@@ -377,3 +397,10 @@ class TestHotReloadRegistration:
         assert "daily_drawdown_soft_lot_side_aware" in _HOT_RELOADABLE_FIELDS
         assert "none_regime_passive_mm_enabled" in _HOT_RELOADABLE_FIELDS
         assert "none_regime_fixed_offset_bps" in _HOT_RELOADABLE_FIELDS
+
+    def test_side_specific_ceiling_hot_reloadable(self) -> None:
+        """321#: サイド別 ceiling が hot-reload 対象."""
+        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
+
+        assert "offset_ceiling_ratio_buy" in _HOT_RELOADABLE_FIELDS
+        assert "offset_ceiling_ratio_sell" in _HOT_RELOADABLE_FIELDS

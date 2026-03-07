@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-07 (320# C-1 サイド別 ceiling 根本対策)
+> 最終更新: 2026-03-07 (321# CRITICAL sell ceiling 未パース修正 + M-3/M-5/H-1)
 
 ---
 
@@ -311,6 +311,7 @@
 | 318 | fix | [318_ph2_fix_307_f5_none_regime.md](318_ph2_fix_307_f5_none_regime.md) | 307# F5 none レジーム問題修正: Passive MM 死亡バグ修正 + regime_at_order/observation_count 追加 + 分析スクリプト改善 |
 | 319 | fix/rpt | [319_ph2_fix_deep_analysis_and_s1_s3_s5_s7.md](319_ph2_fix_deep_analysis_and_s1_s3_s5_s7.md) | 深層分析: sell パイプライン全死 C-1 発見 + S-1 修正版 (boost 3.0→4.0) + S-3 mid_at_order + S-5 YAML 整合 + S-7 テール分析 |
 | 320 | fix | [320_ph2_fix_c1_side_specific_ceiling.md](320_ph2_fix_c1_side_specific_ceiling.md) | C-1 根本対策: サイド別 ceiling (sell 0.15→0.50) + executor ×4.0→×1.5 + パイプライン 12+ パラメータ復活 + dcc3064 暫定評価 |
+| 321 | fix | [321_ph2_fix_critical_yaml_parse_and_tasks.md](321_ph2_fix_critical_yaml_parse_and_tasks.md) | CRITICAL: 320# sell ceiling YAML 未パース修正 + M-3 consecutive 10→5 + M-5 offset_bps 2→1 + H-1 skip_rate 矛盾 + God Object 分割検討 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

@@ -1419,10 +1419,11 @@ class FillCycleExecutorMixin:
                     if not _macro_aligned:
                         _action = self.config.macro_regime_conflict_action
                         if _action == "downgrade":
+                            _original_regime = regime_str  # 321# M-5b: ログ用に上書き前の値を保存
                             regime_str = "ranging"
                             logger.info(
                                 "[macro_regime] micro/macro conflict → ranging downgrade "
-                                "(micro=%s, macro=%s)", regime_str, _macro_trend,
+                                "(micro=%s, macro=%s)", _original_regime, _macro_trend,
                             )
                         else:
                             logger.debug(

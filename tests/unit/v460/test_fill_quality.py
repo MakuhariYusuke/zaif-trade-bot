@@ -2935,7 +2935,7 @@ class Test107TimeFilterDynamicGating:
         """107# SkipGate target_skip_rate が引き上げられている."""
         sg = self.yaml_cfg["skip_gate"]
         assert sg["target_skip_rate_buy"] == 0.15, "buy rate should be 0.15"
-        assert sg["target_skip_rate_sell"] == 0.25, "165# AS-R1: sell rate 0.20→0.25"
+        assert sg["target_skip_rate_sell"] == 0.20, "321# H-1: sell rate 0.25→0.20"
 
     def test_yaml_volatility_guard_section(self) -> None:
         """107# volatility_guard セクションが YAML に存在する."""

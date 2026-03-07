@@ -1922,6 +1922,11 @@ class FillTestConfig:
         # Offset ceiling
         if "offset_ceiling_ratio" in yaml_cfg:
             kwargs["offset_ceiling_ratio"] = float(yaml_cfg["offset_ceiling_ratio"])
+        # 321# CRITICAL fix: 320# で追加したサイド別 ceiling が未パースだった
+        if "offset_ceiling_ratio_buy" in yaml_cfg:
+            kwargs["offset_ceiling_ratio_buy"] = float(yaml_cfg["offset_ceiling_ratio_buy"])
+        if "offset_ceiling_ratio_sell" in yaml_cfg:
+            kwargs["offset_ceiling_ratio_sell"] = float(yaml_cfg["offset_ceiling_ratio_sell"])
 
         return cls(**kwargs)
 

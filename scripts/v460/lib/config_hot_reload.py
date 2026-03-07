@@ -467,6 +467,9 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "offset_stage_recording_enabled",
     # 306# Offset ceiling (300# 構造的矛盾 #2)
     "offset_ceiling_ratio",
+    # 320# サイド別 ceiling (321# hot-reload 追加)
+    "offset_ceiling_ratio_buy",
+    "offset_ceiling_ratio_sell",
 })
 
 # 構造体再構築が必要なコンポーネントのマッピング
