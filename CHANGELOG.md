@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 336# buy_dynamic_kill 緩和 + ドリフト修正 + 分析基盤整備 (2026-03-08)
+
+### Changed
+- **336# T-1: buy_dynamic_kill 閾値緩和** — カスケード増幅 (3層, ~1.9×) の root cause 解消 (`114a0f056`)
+  - `threshold_bps`: -0.8 → -1.5
+  - `regime_thresholds.ranging`: 新設 -2.0
+  - `regime_thresholds.trending_down`: -0.5 → -1.0
+  - `regime_thresholds.high_vol`: -0.5 → -1.0
+- **336# T-2: inv_relaxation 上限緩和** — `max_bps`: 0.3 → 0.5
+- **336# drift fix: 12 コードデフォルトを YAML に整合** (`a3e2750`)
+  - `unknown_regime_max_consecutive`: 10→5, `sell_dynamic_kill_threshold_bps`: -0.5→-0.3
+  - `sell/buy max_stale_cycles`: 10→0, `sell/buy max_force_probes`: 5→0
+  - `sell/buy max_duration_sec`: 0→1800, `trending_sell_offset_boost_factor`: 2.0→1.5 等
+
+### Added
+- **336# YAML↔Code ドリフト防止テスト** — 125 フィールド allowlist で将来のドリフトを自動検出 (`0cbf7b9`)
+  - `test_no_unexpected_drift`: 新規ドリフト検出
+  - `test_allowlist_is_clean`: stale allowlist 除去促進
+- **336# SHA 分析スクリプト promotion** — `temp/sha_*.py` → `analysis/333_sha_isolated_analysis.py` (`31883c0`)
+  - CLI 引数 (`--sha`, `--json`)、`evaluate_ab_variant` 統合
+
+### Documentation
+- `336_ph2_rev_334_335_claims_validation_and_measures.md`: 334#/335# 全主張検証 + T-1〜T-5 施策策定 (`610e9b3`)
+
+### Verification
+- v460: 4109 passed (4105 + 4 drift prevention tests)
+
+## 333# dcc3064 SHA 分離分析 (2026-03-08)
+
+### Added
+- **SHA 分離 deep dive**: dcc3064 (24h, n=637/100 fills) — PnL +63.56bps, AB FAIL
+  - buy fill_rate 9.3% (壊滅) → buy_dynamic_kill cascade amplification が root cause
+  - sell p10 = -4.94 bps (PASS 僅差), buy AS rate 12.2%
+- `docs/v460/333_ph2_rpt_dcc3064_sha_isolated_deep_dive.md`
+
+## 332# run_continuous Phase 4 リファクタリング (2026-03-07)
+
+### Changed
+- **Balance/MidCycle Mixin 抽出** — `run_continuous.py` 1228→407 行, Phase 4 完了
+
+## 331# self-audit 329-330 (2026-03-07)
+
+### Fixed
+- MCB/SAD feed 修正、CycleContext cleanup、validation 強化
+
+## 330# run_continuous pre-cycle 抽出 (2026-03-07)
+
+### Changed
+- `run_continuous.py` 1595→1223 行 — pre-cycle ロジックを Mixin に分離
+- σ floor (`1e-6`) + vol_ratio ゼロ除算ガード追加
+
+## 329# fill_config.py God Object 分割 (2026-03-07)
+
+### Changed
+- `fill_config.py` 2046→724 行 — 4 ファイルに分割 (`fill_config_parser.py`, `fill_config_validation.py`, `fill_config_defaults.py`, `fill_config_sections.py`)
+
 ## 310# 設計面改修: 307#/308# 残課題の構造的解消 (2026-03-07)
 
 ### Added
