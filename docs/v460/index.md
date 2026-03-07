@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-08 (336# drift fix + 333# script promotion)
+> 最終更新: 2026-03-08 (336# drift fix + cleanup + tools promotion)
 
 ---
 
@@ -326,7 +326,10 @@
 | 335 | rev | [335_ph2_gemini_31_pro_review_314_334_comprehensive_audit.md](335_ph2_gemini_31_pro_review_314_334_comprehensive_audit.md) | Gemini 3.1 Pro 総括レビュー: 生存者バイアス警告→自己訂正, buy kill -0.8bps=過敏スプリンクラー, P0 緩和必須 |
 | 336 | rev | [336_ph2_rev_334_335_claims_validation_and_measures.md](336_ph2_rev_334_335_claims_validation_and_measures.md) | 334#/335# 主張検証: カスケード増幅メカニズム解明, T-1〜T-5 施策策定, YAML-only Phase 1 即時実行計画 |
 | 336 | fix | — | drift fix: fill_config.py 12コードデフォルトをYAML値に整合 (`a3e2750`) |
+| 336 | fix | — | drift fix: CycleGateAggregator.UNKNOWN_REGIME_MAX_CONSECUTIVE + test_157/196/197/220 assertions (`a35e881`) |
 | 336 | impl | [analysis/333_sha_isolated_analysis.py](../../analysis/333_sha_isolated_analysis.py) | 333# SHA分析スクリプト promotion (334# P1-5): CLI汎用化 + JSON出力 (`31883c0`) |
+| 336 | test | — | YAML↔Code drift prevention test: 125-field allowlist, God Object growth monitor (`0cbf7b9`) |
+| 336 | cleanup | — | temp/ 36ファイル整理: 11→archived/, 5→tools/, 残り削除; root txt 11件削除 (`f468711`) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
