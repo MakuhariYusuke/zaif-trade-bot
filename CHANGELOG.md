@@ -4022,3 +4022,17 @@ python scripts/unified_trainer.py \
 ### Notes
 - `tests/unit/v460/test_enricher_skip_gate.py` improved from `70 passed in 4.92s` to `70 passed in 3.42s` in focused reruns.
 - Filtered broad reruns landed at `4052 passed, 1 deselected, 14 warnings in 32.21s` and `33.78s`; the remaining top costs are now concentrated in the real-data integration setup for `test_enricher_skip_gate.py`, a handful of hot-reload / warm-start tests, and a few source/YAML inspections.
+
+### Changed
+- Reworked the warm-start tests in `tests/unit/v460/test_skip_gate_d8.py` to patch `list_fill_record_files()` / `iter_jsonl_objects()` directly instead of creating temporary JSONL files for each case, and replaced the `MagicMock` pipeline/scaler/model fixtures with lightweight stubs.
+- Hoisted the structural imports in `tests/unit/v460/test_146_multi_exchange.py` to module scope and cached the `run_daily_health_check()` signature once, removing repeated import/signature work from the individual structural tests.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_skip_gate_d8.py -q --no-cov --tb=short --durations=25`
+- `python -m pytest tests/unit/v460/test_skip_gate_d8.py tests/unit/v460/test_146_multi_exchange.py tests/unit/v460/test_169_config_hot_reload.py -q --no-cov --tb=short --durations=30`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=20 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- `tests/unit/v460/test_skip_gate_d8.py` completed in `41 passed in 2.81s` after removing warm-start file I/O and `MagicMock` pipeline overhead.
+- The focused hotspot bundle (`test_skip_gate_d8.py` + `test_146_multi_exchange.py` + `test_169_config_hot_reload.py`) completed in `111 passed in 3.30s`.
+- The latest filtered broad rerun completed at `4060 passed, 1 deselected, 15 warnings in 30.49s`; remaining top costs are concentrated in real-data enrichment setup, a few source-inspection tests, and the residual parquet/hot-reload cases.

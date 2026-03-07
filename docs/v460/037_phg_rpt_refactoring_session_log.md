@@ -1576,3 +1576,52 @@
 1. `test_enricher_skip_gate.py` の real-data integration setup を fixture cache / snapshot 化でさらに詰める
 2. `test_skip_gate_d8.py` と `test_retrain_hot_reload.py` の warm-start / hot-reload 上位ケースをもう一段 stub 化できるか確認する
 3. `test_146_multi_exchange.py` と `test_169_config_hot_reload.py` の source/YAML/config reload 系を cached read に寄せられるか洗う
+
+---
+
+## 2026-03-07 / Session 037-037
+
+### 実施
+- `test_skip_gate_d8.py`
+  - warm-start 系テストの実ファイル書込を廃止し、`list_fill_record_files()` / `iter_jsonl_objects()` patch ベースへ移行
+  - `SkipGate` fixture の `MagicMock` pipeline/scaler/model を軽量 stub に置換
+  - broad 上位だった `test_as_mode_decision_fields` / warm-start 系の固定費を削減
+- `test_146_multi_exchange.py`
+  - 主要 import を module scope へ集約
+  - `run_daily_health_check()` の signature を module load 時に 1 回だけ解決するように変更
+- `test_169_config_hot_reload.py`
+  - 再計測のみ実施
+  - `mtime` 更新を sleep なしで行う現実装が既に軽量で、追加修正は不要と判断
+
+### 結果
+- 対象回帰 1:
+  - `test_skip_gate_d8.py`
+  - `41 passed in 2.81s`
+- 対象回帰 2:
+  - `test_skip_gate_d8.py` + `test_146_multi_exchange.py` + `test_169_config_hot_reload.py`
+  - `111 passed in 3.30s`
+- broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` と `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - `4060 passed, 1 deselected, 15 warnings in 30.49s`
+
+### 主要改善
+- `test_skip_gate_d8.py`
+  - warm-start 群から temp file I/O を除去
+  - focused file が `41 passed in 2.81s`
+- `test_146_multi_exchange.py` + `test_169_config_hot_reload.py` 束
+  - focused で上位 durations が `0.03s` 帯以下に収束
+- filtered broad
+  - `42.55s` 測定から `30.49s` まで短縮
+
+### 補足
+- 今回の broad 上位は以下へ集中している
+  - `test_enricher_skip_gate.py` の real-data integration setup
+  - `test_stopgap_health.py::TestGetDay::test_none_timestamp`
+  - `test_255_getattr_bare_except_cleanup.py` の source-inspection
+  - `test_aggregate_to_1min.py` の parquet persistence
+  - `test_retrain_hot_reload.py` の E2E / balance_forced 系
+
+### 次アクション
+1. `test_stopgap_health.py` と `test_255_getattr_bare_except_cleanup.py` の source/time 系固定費を確認する
+2. `test_enricher_skip_gate.py` の real-data setup を fixture cache/snapshot 化できるか詰める
+3. `test_aggregate_to_1min.py` と `test_retrain_hot_reload.py` の残単発上位をさらに圧縮する

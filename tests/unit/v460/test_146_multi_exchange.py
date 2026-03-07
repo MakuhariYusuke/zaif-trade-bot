@@ -27,6 +27,16 @@ from scripts.v460.daily_health_check import (
     _run_trades_health,
     run_daily_health_check,
 )
+import ztb.trading.live.broker_interfaces as live_broker_interfaces_module
+import ztb.trading.live.exchanges as live_exchanges
+import ztb.trading.live.exchanges.base.broker_interfaces as base_broker_interfaces_module
+import ztb.trading.live.registry.broker_registry as broker_registry_module
+from ztb.trading.live.exchanges.base import (
+    BaseExchangeConfig,
+    MarketDataNotSupported,
+    OrderBookSnapshot,
+    TradeRecord,
+)
 from ztb.trading.live.exchanges.base.adapter import BaseExchangeAdapter
 from ztb.trading.live.exchanges.base.broker_interfaces import (
     Balance,
@@ -35,11 +45,15 @@ from ztb.trading.live.exchanges.base.broker_interfaces import (
     Position,
     normalize_symbol,
 )
+from ztb.trading.live.exchanges.bitflyer import BitflyerConfig
 from ztb.trading.live.exchanges.bitflyer.adapter import BitFlyerAdapter
+from ztb.trading.live.exchanges.coincheck import CoincheckConfig
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+from ztb.trading.live.registry import get_broker_registry
 from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_RUN_DAILY_HEALTH_CHECK_PARAMS = tuple(inspect.signature(run_daily_health_check).parameters)
 
 
 @lru_cache(maxsize=None)
@@ -195,38 +209,27 @@ class TestPackageInit:
     """__init__.py が存在し、主要クラスが公開されている."""
 
     def test_exchanges_init(self) -> None:
-        import ztb.trading.live.exchanges
-        assert hasattr(ztb.trading.live.exchanges, "__doc__")
+        assert hasattr(live_exchanges, "__doc__")
 
     def test_base_init_exports(self) -> None:
-        from ztb.trading.live.exchanges.base import (
-            BaseExchangeAdapter,
-            BaseExchangeConfig,
-            IBroker,
-            Order,
-            Balance,
-            Position,
-            OrderBookSnapshot,
-            TradeRecord,
-            MarketDataNotSupported,
-            normalize_symbol,
-        )
         assert BaseExchangeAdapter is not None
+        assert BaseExchangeConfig is not None
         assert IBroker is not None
+        assert Order is not None
+        assert Balance is not None
+        assert Position is not None
+        assert OrderBookSnapshot is not None
+        assert TradeRecord is not None
+        assert MarketDataNotSupported is not None
+        assert normalize_symbol is not None
 
     def test_coincheck_init_exports(self) -> None:
-        from ztb.trading.live.exchanges.coincheck import (
-            CoincheckAdapter,
-            CoincheckConfig,
-        )
         assert CoincheckAdapter is not None
+        assert CoincheckConfig is not None
 
     def test_bitflyer_init_exports(self) -> None:
-        from ztb.trading.live.exchanges.bitflyer import (
-            BitFlyerAdapter,
-            BitflyerConfig,
-        )
         assert BitFlyerAdapter is not None
+        assert BitflyerConfig is not None
 
 # ---------------------------------------------------------------------------
 # ZaifAdapter / CoincheckSkeletonBroker 除去
@@ -237,27 +240,19 @@ class TestLegacyCleanup:
 
     def test_no_zaif_adapter_in_broker_interfaces(self) -> None:
         """ZaifAdapter が broker_interfaces.py から除去されている."""
-        import ztb.trading.live.exchanges.base.broker_interfaces as bi
-
-        assert not hasattr(bi, "ZaifAdapter")
+        assert not hasattr(base_broker_interfaces_module, "ZaifAdapter")
 
     def test_no_zaif_in_reexport(self) -> None:
         """再エクスポートモジュールに ZaifAdapter がない."""
-        import ztb.trading.live.broker_interfaces as bi
-
-        assert "ZaifAdapter" not in dir(bi)
+        assert "ZaifAdapter" not in dir(live_broker_interfaces_module)
 
     def test_no_skeleton_in_registry(self) -> None:
         """CoincheckSkeletonBroker が registry から除去."""
-        import ztb.trading.live.registry.broker_registry as br
-
-        assert not hasattr(br, "CoincheckSkeletonBroker")
+        assert not hasattr(broker_registry_module, "CoincheckSkeletonBroker")
 
     def test_no_broker_protocol_in_registry(self) -> None:
         """旧 BrokerProtocol (同期/非同期不整合) が除去."""
-        import ztb.trading.live.registry.broker_registry as br
-
-        assert not hasattr(br, "BrokerProtocol")
+        assert not hasattr(broker_registry_module, "BrokerProtocol")
 
 # ---------------------------------------------------------------------------
 # 両アダプタ共通: BaseExchangeAdapter 継承
@@ -462,8 +457,6 @@ class TestRegistryInit:
     """registry パッケージの __init__.py が正しくエクスポートする."""
 
     def test_registry_importable(self) -> None:
-        from ztb.trading.live.registry import BrokerRegistry, get_broker_registry
-
         assert BrokerRegistry is not None
         assert callable(get_broker_registry)
 
@@ -539,12 +532,10 @@ class TestDailyHealthCheck:
 
     def test_run_daily_health_check_signature(self) -> None:
         """run_daily_health_check の引数シグネチャ."""
-        sig = inspect.signature(run_daily_health_check)
-        params = list(sig.parameters.keys())
-        assert "results_dir" in params
-        assert "skip_monte_carlo" in params
-        assert "skip_oracle" in params
-        assert "output_path" in params
+        assert "results_dir" in _RUN_DAILY_HEALTH_CHECK_PARAMS
+        assert "skip_monte_carlo" in _RUN_DAILY_HEALTH_CHECK_PARAMS
+        assert "skip_oracle" in _RUN_DAILY_HEALTH_CHECK_PARAMS
+        assert "output_path" in _RUN_DAILY_HEALTH_CHECK_PARAMS
 
     def test_trades_health_integration(self) -> None:
         """_run_trades_health が呼び出し可能."""

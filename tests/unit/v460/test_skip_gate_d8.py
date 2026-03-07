@@ -10,10 +10,9 @@ D8: SkipGate evaluate / warm_start テストカバレッジ強化 — 122#.
 
 from __future__ import annotations
 
-import json
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -32,6 +31,31 @@ class _PickleStub:
 
     def __init__(self, name: str) -> None:
         self.name = name
+
+
+class _CallableStub:
+    """`return_value` を持つ軽量 callable."""
+
+    def __init__(self, return_value: np.ndarray) -> None:
+        self.return_value = return_value
+
+    def __call__(self, *_args: object, **_kwargs: object) -> np.ndarray:
+        return self.return_value
+
+
+class _PipelineStub:
+    """SkipGate evaluate 用の最小 pipeline stub."""
+
+    steps: list[tuple[str, object]] = []
+
+    def __init__(self, predict_prob: float) -> None:
+        self.predict_proba = _CallableStub(
+            np.array([[1.0 - predict_prob, predict_prob]], dtype=float)
+        )
+        self.predict = _CallableStub(np.array([0.5], dtype=float))
+
+    def set_output(self, **_kwargs: object) -> "_PipelineStub":
+        return self
 
 
 # ---------------------------------------------------------------------------
@@ -69,14 +93,10 @@ def _make_gate(
         adaptive_min_samples=adaptive_min_samples,
         adaptive_step=adaptive_step,
     )
-    mock_pipeline = MagicMock()
-    mock_pipeline.predict_proba.return_value = np.array(
-        [[1.0 - predict_prob, predict_prob]]
-    )
-    mock_pipeline.predict.return_value = np.array([0.5])  # PnL mode fallback
+    mock_pipeline = _PipelineStub(predict_prob)
     gate = SkipGate(
-        model=MagicMock(),
-        scaler=MagicMock(),
+        model=_PickleStub("model"),
+        scaler=_PickleStub("scaler"),
         feature_cols=["spread_jpy", "offset_ratio", "regime_trending"],
         config=config,
         pipeline=mock_pipeline,
@@ -91,6 +111,55 @@ def _make_features() -> dict[str, float]:
         "offset_ratio": 0.05,
         "regime_trending": 0.0,
     }
+
+
+def _make_fill_records(
+    *,
+    n_buy: int = 30,
+    n_sell: int = 30,
+    buy_probs: list[float] | None = None,
+    sell_probs: list[float] | None = None,
+    base_timestamp: float = 1770975573.0,
+) -> list[dict[str, object]]:
+    """warm_start 用の fill record dict を生成."""
+    records: list[dict[str, object]] = []
+    buy_p = buy_probs or [0.45 + i * 0.005 for i in range(n_buy)]
+    sell_p = sell_probs or [0.50 + i * 0.005 for i in range(n_sell)]
+    for i, p in enumerate(buy_p):
+        records.append({
+            "cycle_id": f"buy_{i:03d}",
+            "side": "buy",
+            "skip_gate_as_prob": p,
+            "filled": True,
+            "timestamp": base_timestamp + i * 120,
+        })
+    for i, p in enumerate(sell_p):
+        records.append({
+            "cycle_id": f"sell_{i:03d}",
+            "side": "sell",
+            "skip_gate_as_prob": p,
+            "filled": True,
+            "timestamp": base_timestamp + (n_buy + i) * 120,
+        })
+    return records
+
+
+def _run_warm_start(
+    gate: SkipGate,
+    records: list[dict[str, object]],
+    *,
+    window: int,
+) -> None:
+    """warm_start を file I/O なしで実行する."""
+    fake_file = Path("fill_records_20260220.jsonl")
+    with patch(
+        "scripts.v460.ml.skip_gate.list_fill_record_files",
+        return_value=[fake_file] if records else [],
+    ), patch(
+        "scripts.v460.ml.skip_gate.iter_jsonl_objects",
+        return_value=iter(records),
+    ):
+        warm_start_skip_gate_thresholds(gate, Path("."), window=window)
 
 
 # =====================================================================
@@ -164,35 +233,6 @@ class TestSideEnableDisable:
 class TestWarmStartImmediateConvergence:
     """118# A2: warm_start_skip_gate_thresholds の即収束テスト."""
 
-    def _write_fill_records(
-        self, tmpdir: Path, n_buy: int = 30, n_sell: int = 30,
-        buy_probs: list[float] | None = None,
-        sell_probs: list[float] | None = None,
-    ) -> None:
-        """テスト用 fill_records_*.jsonl を書き出す."""
-        records: list[str] = []
-        buy_p = buy_probs or [0.45 + i * 0.005 for i in range(n_buy)]
-        sell_p = sell_probs or [0.50 + i * 0.005 for i in range(n_sell)]
-        for i, p in enumerate(buy_p):
-            records.append(json.dumps({
-                "cycle_id": f"buy_{i:03d}",
-                "side": "buy",
-                "skip_gate_as_prob": p,
-                "filled": True,
-                "timestamp": 1770975573.0 + i * 120,
-            }))
-        for i, p in enumerate(sell_p):
-            records.append(json.dumps({
-                "cycle_id": f"sell_{i:03d}",
-                "side": "sell",
-                "skip_gate_as_prob": p,
-                "filled": True,
-                "timestamp": 1770975573.0 + (n_buy + i) * 120,
-            }))
-        (tmpdir / "fill_records_20260220.jsonl").write_text(
-            "\n".join(records), encoding="utf-8",
-        )
-
     def test_immediate_threshold_convergence(self) -> None:
         """warm_start 後、閾値が YAML 初期値ではなく分位点に即座に設定される."""
         gate = _make_gate(
@@ -203,48 +243,44 @@ class TestWarmStartImmediateConvergence:
             target_skip_rate_sell=0.20,
             adaptive_min_samples=20,
         )
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            self._write_fill_records(
-                tmpdir_path, n_buy=30, n_sell=30,
+        _run_warm_start(
+            gate,
+            _make_fill_records(
+                n_buy=30,
+                n_sell=30,
                 buy_probs=[0.42 + i * 0.005 for i in range(30)],
                 sell_probs=[0.48 + i * 0.005 for i in range(30)],
-            )
-            warm_start_skip_gate_thresholds(gate, tmpdir_path, window=50)
+            ),
+            window=50,
+        )
 
-            # buy: P(AS) range [0.42, 0.565], target 10% → 90th percentile
-            # q_idx = min(int(30 * 0.90), 29) = 27 → sorted[27] = 0.42 + 27*0.005 = 0.555
-            assert gate.config.as_threshold_buy != 0.65  # 初期値から変更されている
-            assert gate.config.as_threshold_buy is not None
-            assert gate.config.as_threshold_buy == pytest.approx(0.555, abs=1e-6)
+        # buy: P(AS) range [0.42, 0.565], target 10% → 90th percentile
+        # q_idx = min(int(30 * 0.90), 29) = 27 → sorted[27] = 0.42 + 27*0.005 = 0.555
+        assert gate.config.as_threshold_buy != 0.65  # 初期値から変更されている
+        assert gate.config.as_threshold_buy is not None
+        assert gate.config.as_threshold_buy == pytest.approx(0.555, abs=1e-6)
 
-            # sell: P(AS) range [0.48, 0.625], target 20% → 80th percentile
-            # q_idx = min(int(30 * 0.80), 29) = 24 → sorted[24] = 0.48 + 24*0.005 = 0.600
-            assert gate.config.as_threshold_sell != 0.65
-            assert gate.config.as_threshold_sell is not None
-            assert gate.config.as_threshold_sell == pytest.approx(0.600, abs=1e-6)
+        # sell: P(AS) range [0.48, 0.625], target 20% → 80th percentile
+        # q_idx = min(int(30 * 0.80), 29) = 24 → sorted[24] = 0.48 + 24*0.005 = 0.600
+        assert gate.config.as_threshold_sell != 0.65
+        assert gate.config.as_threshold_sell is not None
+        assert gate.config.as_threshold_sell == pytest.approx(0.600, abs=1e-6)
 
     def test_warm_start_restores_history(self) -> None:
         """warm_start が P(AS) 履歴を正しく復元する."""
         gate = _make_gate(adaptive_threshold=True)
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            self._write_fill_records(tmpdir_path, n_buy=12, n_sell=12)
-            warm_start_skip_gate_thresholds(gate, tmpdir_path, window=50)
+        _run_warm_start(gate, _make_fill_records(n_buy=12, n_sell=12), window=50)
 
-            assert len(gate._pas_history_buy) == 12
-            assert len(gate._pas_history_sell) == 12
+        assert len(gate._pas_history_buy) == 12
+        assert len(gate._pas_history_sell) == 12
 
     def test_warm_start_window_truncation(self) -> None:
         """window パラメータがヒストリーサイズを制限."""
         gate = _make_gate(adaptive_threshold=True)
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            self._write_fill_records(tmpdir_path, n_buy=30, n_sell=30)
-            warm_start_skip_gate_thresholds(gate, tmpdir_path, window=20)
+        _run_warm_start(gate, _make_fill_records(n_buy=30, n_sell=30), window=20)
 
-            assert len(gate._pas_history_buy) <= 20
-            assert len(gate._pas_history_sell) <= 20
+        assert len(gate._pas_history_buy) <= 20
+        assert len(gate._pas_history_sell) <= 20
 
     def test_warm_start_insufficient_samples_no_calibration(self) -> None:
         """サンプル不足時は閾値を変更しない."""
@@ -254,22 +290,18 @@ class TestWarmStartImmediateConvergence:
             adaptive_threshold=True,
             adaptive_min_samples=50,  # 高い要件
         )
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            self._write_fill_records(tmpdir_path, n_buy=10, n_sell=10)
-            warm_start_skip_gate_thresholds(gate, tmpdir_path, window=50)
+        _run_warm_start(gate, _make_fill_records(n_buy=10, n_sell=10), window=50)
 
-            # 10 < 50 → 閾値は変更されない
-            assert gate.config.as_threshold_buy == 0.65
-            assert gate.config.as_threshold_sell == 0.65
+        # 10 < 50 → 閾値は変更されない
+        assert gate.config.as_threshold_buy == 0.65
+        assert gate.config.as_threshold_sell == 0.65
 
     def test_warm_start_empty_directory(self) -> None:
         """空ディレクトリでもクラッシュしない."""
         gate = _make_gate(adaptive_threshold=True)
-        with tempfile.TemporaryDirectory() as tmpdir:
-            warm_start_skip_gate_thresholds(gate, Path(tmpdir), window=50)
-            assert gate._pas_history_buy == []
-            assert gate._pas_history_sell == []
+        _run_warm_start(gate, [], window=50)
+        assert gate._pas_history_buy == []
+        assert gate._pas_history_sell == []
 
     def test_warm_start_non_adaptive_is_noop(self) -> None:
         """adaptive_threshold=False では閾値変更なし."""
@@ -278,14 +310,11 @@ class TestWarmStartImmediateConvergence:
             as_threshold_buy=0.65,
             as_threshold_sell=0.65,
         )
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            self._write_fill_records(tmpdir_path, n_buy=12, n_sell=12)
-            warm_start_skip_gate_thresholds(gate, tmpdir_path, window=50)
+        _run_warm_start(gate, _make_fill_records(n_buy=12, n_sell=12), window=50)
 
-            # 履歴は復元されるが閾値は変更されない
-            assert len(gate._pas_history_buy) > 0
-            assert gate.config.as_threshold_buy == 0.65
+        # 履歴は復元されるが閾値は変更されない
+        assert len(gate._pas_history_buy) > 0
+        assert gate.config.as_threshold_buy == 0.65
 
     def test_warm_start_filters_stale_records_by_trained_at(self) -> None:
         """124# モデル交代時: trained_at 以前のレコードが除外される."""
@@ -305,69 +334,54 @@ class TestWarmStartImmediateConvergence:
             "trained_at": trained_at_str,
         }
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            old_ts = boundary_ts - 100000.0  # clearly before trained_at
-            new_ts = boundary_ts + 100000.0  # clearly after trained_at
-            records: list[str] = []
-            # 旧レコード 20件 (trained_at 前 → フィルタされるべき)
-            for i in range(20):
-                records.append(json.dumps({
-                    "side": "buy",
-                    "skip_gate_as_prob": 0.45 + i * 0.005,
-                    "timestamp": old_ts + i * 120,
-                }))
-            # 新レコード 5件 (trained_at 後 → 使用されるべき)
-            for i in range(5):
-                records.append(json.dumps({
-                    "side": "buy",
-                    "skip_gate_as_prob": 0.30 + i * 0.01,
-                    "timestamp": new_ts + i * 120,
-                }))
-            (tmpdir_path / "fill_records_20260220.jsonl").write_text(
-                "\n".join(records), encoding="utf-8",
-            )
+        old_ts = boundary_ts - 100000.0  # clearly before trained_at
+        new_ts = boundary_ts + 100000.0  # clearly after trained_at
+        records = [
+            {
+                "side": "buy",
+                "skip_gate_as_prob": 0.45 + i * 0.005,
+                "timestamp": old_ts + i * 120,
+            }
+            for i in range(20)
+        ] + [
+            {
+                "side": "buy",
+                "skip_gate_as_prob": 0.30 + i * 0.01,
+                "timestamp": new_ts + i * 120,
+            }
+            for i in range(5)
+        ]
+        _run_warm_start(gate, records, window=50)
 
-            warm_start_skip_gate_thresholds(gate, tmpdir_path, window=50)
-
-            # 旧 20件がフィルタされ、新 5件のみ復元
-            assert len(gate._pas_history_buy) == 5
-            # 新レコードの値は 0.30〜0.34
-            assert all(0.29 <= p <= 0.35 for p in gate._pas_history_buy)
+        # 旧 20件がフィルタされ、新 5件のみ復元
+        assert len(gate._pas_history_buy) == 5
+        # 新レコードの値は 0.30〜0.34
+        assert all(0.29 <= p <= 0.35 for p in gate._pas_history_buy)
 
     def test_warm_start_no_trained_at_uses_all_records(self) -> None:
         """metadata に trained_at がないモデルでは全レコードを使用 (後方互換)."""
         gate = _make_gate(adaptive_threshold=True, adaptive_min_samples=5)
         gate.metadata = {}  # trained_at なし
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            self._write_fill_records(tmpdir_path, n_buy=6, n_sell=6)
-            warm_start_skip_gate_thresholds(gate, tmpdir_path, window=12)
+        _run_warm_start(gate, _make_fill_records(n_buy=6, n_sell=6), window=12)
 
-            # 全レコードが使用される (後方互換)
-            assert len(gate._pas_history_buy) == 6
-            assert len(gate._pas_history_sell) == 6
+        # 全レコードが使用される (後方互換)
+        assert len(gate._pas_history_buy) == 6
+        assert len(gate._pas_history_sell) == 6
 
     def test_warm_start_ignores_malformed_timestamp(self) -> None:
         """timestamp が壊れた行を含んでも warm_start が継続する."""
         gate = _make_gate(adaptive_threshold=True, adaptive_min_samples=3)
         gate.metadata = {"trained_at": "2026-02-01T00:00:00"}
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            records = [
-                json.dumps({"side": "buy", "skip_gate_as_prob": 0.40, "timestamp": "bad"}),
-                json.dumps({"side": "buy", "skip_gate_as_prob": 0.45, "timestamp": 1771451000.0}),
-                json.dumps({"side": "buy", "skip_gate_as_prob": 0.50, "timestamp": 1771451200.0}),
-            ]
-            (tmpdir_path / "fill_records_20260220.jsonl").write_text(
-                "\n".join(records), encoding="utf-8",
-            )
+        records = [
+            {"side": "buy", "skip_gate_as_prob": 0.40, "timestamp": "bad"},
+            {"side": "buy", "skip_gate_as_prob": 0.45, "timestamp": 1771451000.0},
+            {"side": "buy", "skip_gate_as_prob": 0.50, "timestamp": 1771451200.0},
+        ]
+        _run_warm_start(gate, records, window=50)
 
-            warm_start_skip_gate_thresholds(gate, tmpdir_path, window=50)
-
-            assert len(gate._pas_history_buy) == 2
+        assert len(gate._pas_history_buy) == 2
 
 
 # =====================================================================
@@ -450,7 +464,6 @@ class TestBuildFeaturesFromMarketState:
     def test_hour_features_sin_cos(self) -> None:
         """market_timestamp から hour_sin / hour_cos が計算される."""
         # 2026-02-20 12:00:00 (UTC) → hour=12 → sin(2π*12/24)=0, cos(2π*12/24)=1
-        import time
         # Use explicit timestamp for noon
         features = build_features_from_market_state(
             side="buy", spread_jpy=3000.0, offset_ratio=0.05, regime="ranging",
