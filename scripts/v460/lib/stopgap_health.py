@@ -268,9 +268,16 @@ def compute_daily_metrics(
     """
     # Group by (day, regime, side)
     groups: dict[tuple[str, str, str], _DailyAggregate] = defaultdict(_DailyAggregate)
+    day_cache: dict[int | None, str] = {}
 
     for r in records:
-        day = _get_day(r)
+        ts_value = safe_to_finite(r.get("timestamp"))
+        day_bucket = int(ts_value // 86400) if ts_value is not None else None
+        cached_day = day_cache.get(day_bucket)
+        if cached_day is None:
+            cached_day = _get_day(r)
+            day_cache[day_bucket] = cached_day
+        day = cached_day
         regime = str(r.get("regime") or "unknown")
         side = str(r.get("side") or "unknown")
 

@@ -9,14 +9,37 @@
 from __future__ import annotations
 
 import ast
-import inspect
-import textwrap
+from functools import lru_cache
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
 _LIB = Path(__file__).resolve().parents[3] / "scripts" / "v460" / "lib"
+_SKIP_GATE_EVALUATOR_SOURCE = (_LIB / "skip_gate_evaluator.py").read_text(encoding="utf-8-sig")
+_ORDER_MONITOR_SOURCE = (_LIB / "order_monitor.py").read_text(encoding="utf-8-sig")
+
+
+@lru_cache(maxsize=None)
+def _read_lib_source(module_path: str) -> str:
+    return (_LIB / f"{module_path}.py").read_text(encoding="utf-8-sig")
+
+
+@lru_cache(maxsize=None)
+def _parse_lib_source(module_path: str) -> ast.AST:
+    return ast.parse(_read_lib_source(module_path))
+
+
+def _get_class_method_source(source: str, class_name: str, method_name: str) -> str:
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and node.name == class_name:
+            for child in node.body:
+                if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name == method_name:
+                    segment = ast.get_source_segment(source, child)
+                    if segment is None:
+                        raise AssertionError(f"Failed to extract {class_name}.{method_name}")
+                    return segment
+    raise AssertionError(f"{class_name}.{method_name} not found")
 
 
 def _code_lines(source: str) -> list[str]:
@@ -33,15 +56,21 @@ class TestGetAttrRemoval:
 
     def test_select_gate_for_side_no_getattr(self) -> None:
         """_select_gate_for_side が getattr を使っていない."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        src = inspect.getsource(SkipGateEvaluator._select_gate_for_side)
+        src = _get_class_method_source(
+            _SKIP_GATE_EVALUATOR_SOURCE,
+            "SkipGateEvaluator",
+            "_select_gate_for_side",
+        )
         code = _code_lines(src)
         assert not any("getattr" in ln for ln in code)
 
     def test_evaluate_no_gate_getattr(self) -> None:
         """evaluate() 内の _gate_buy/_gate_sell 参照が getattr でない."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        src = inspect.getsource(SkipGateEvaluator.evaluate)
+        src = _get_class_method_source(
+            _SKIP_GATE_EVALUATOR_SOURCE,
+            "SkipGateEvaluator",
+            "evaluate",
+        )
         code = _code_lines(src)
         gate_lines = [ln for ln in code if "_gate_buy" in ln or "_gate_sell" in ln]
         assert gate_lines  # gate 参照行が存在
@@ -49,16 +78,22 @@ class TestGetAttrRemoval:
 
     def test_hot_reload_no_getattr(self) -> None:
         """_check_and_reload_model が hot_reload_check_interval_sec の getattr を使わない."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        src = inspect.getsource(SkipGateEvaluator._check_and_reload_model)
+        src = _get_class_method_source(
+            _SKIP_GATE_EVALUATOR_SOURCE,
+            "SkipGateEvaluator",
+            "_check_and_reload_model",
+        )
         code = _code_lines(src)
         interval_lines = [ln for ln in code if "hot_reload" in ln or "interval" in ln]
         assert not any("getattr" in ln for ln in interval_lines)
 
     def test_order_monitor_reprice_no_getattr(self) -> None:
         """_should_block_reprice_with_skip_gate が config getattr を使わない."""
-        from scripts.v460.lib.order_monitor import OrderMonitor
-        src = inspect.getsource(OrderMonitor._should_block_reprice_with_skip_gate)
+        src = _get_class_method_source(
+            _ORDER_MONITOR_SOURCE,
+            "OrderMonitor",
+            "_should_block_reprice_with_skip_gate",
+        )
         code = _code_lines(src)
         assert not any("getattr" in ln and "stale_reprice" in ln for ln in code)
 
@@ -77,9 +112,8 @@ class TestBareExceptImproved:
     )
     def test_no_bare_except_pass(self, module_path: str, func_name: str) -> None:
         """except Exception: の直後が pass でなく logger.debug を含む."""
-        src_path = _LIB / f"{module_path}.py"
-        source = src_path.read_text(encoding="utf-8-sig")
-        tree = ast.parse(source)
+        source = _read_lib_source(module_path)
+        tree = _parse_lib_source(module_path)
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == func_name:
                 func_src = ast.get_source_segment(source, node)
@@ -106,9 +140,8 @@ class TestBareExceptImproved:
     )
     def test_ob_utils_no_bare_except(self, module_path: str, func_name: str) -> None:
         """ob_utils の depth_volume 系が bare except pass でない."""
-        src_path = _LIB / f"{module_path}.py"
-        source = src_path.read_text(encoding="utf-8-sig")
-        tree = ast.parse(source)
+        source = _read_lib_source(module_path)
+        tree = _parse_lib_source(module_path)
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == func_name:
                 func_src = ast.get_source_segment(source, node)

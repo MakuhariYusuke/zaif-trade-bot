@@ -4036,3 +4036,15 @@ python scripts/unified_trainer.py \
 - `tests/unit/v460/test_skip_gate_d8.py` completed in `41 passed in 2.81s` after removing warm-start file I/O and `MagicMock` pipeline overhead.
 - The focused hotspot bundle (`test_skip_gate_d8.py` + `test_146_multi_exchange.py` + `test_169_config_hot_reload.py`) completed in `111 passed in 3.30s`.
 - The latest filtered broad rerun completed at `4060 passed, 1 deselected, 15 warnings in 30.49s`; remaining top costs are concentrated in real-data enrichment setup, a few source-inspection tests, and the residual parquet/hot-reload cases.
+
+### Changed
+- Added a per-day bucket cache inside `scripts/v460/lib/stopgap_health.py::compute_daily_metrics()` so repeated records from the same UTC day no longer re-run the full day-string conversion path.
+- Reworked `tests/unit/v460/test_255_getattr_bare_except_cleanup.py` to use cached file-text + AST extraction for `SkipGateEvaluator` / `OrderMonitor` source-inspection checks instead of repeated `inspect.getsource(...)` calls.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_stopgap_health.py tests/unit/v460/test_255_getattr_bare_except_cleanup.py -q --no-cov --tb=short --durations=25`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=20 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- `tests/unit/v460/test_stopgap_health.py` + `tests/unit/v460/test_255_getattr_bare_except_cleanup.py` completed in `65 passed in 0.94s`.
+- The latest filtered broad rerun completed at `4060 passed, 1 deselected, 15 warnings in 31.01s`; top remaining costs are concentrated in real-data enrichment setup, retrain hot-reload E2E/balance-forced paths, config hot-reload field updates, and a handful of structural/regime integration tests.

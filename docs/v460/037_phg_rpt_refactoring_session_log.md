@@ -1625,3 +1625,44 @@
 1. `test_stopgap_health.py` と `test_255_getattr_bare_except_cleanup.py` の source/time 系固定費を確認する
 2. `test_enricher_skip_gate.py` の real-data setup を fixture cache/snapshot 化できるか詰める
 3. `test_aggregate_to_1min.py` と `test_retrain_hot_reload.py` の残単発上位をさらに圧縮する
+
+---
+
+## 2026-03-08 / Session 037-038
+
+### 実施
+- production
+  - `scripts/v460/lib/stopgap_health.py`
+    - `compute_daily_metrics()` に UTC day bucket cache を追加し、同一日レコードの `YYYYMMDD` 変換を再利用する形へ整理
+- テスト側
+  - `test_255_getattr_bare_except_cleanup.py`
+    - `inspect.getsource(...)` をやめ、cached file-text + AST で `SkipGateEvaluator` / `OrderMonitor` の source-inspection を行うように変更
+  - `test_stopgap_health.py`
+    - 回帰確認のみ実施
+
+### 結果
+- 対象回帰:
+  - `test_stopgap_health.py` + `test_255_getattr_bare_except_cleanup.py`
+  - `65 passed in 0.94s`
+- broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` と `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - `4060 passed, 1 deselected, 15 warnings in 31.01s`
+
+### 主要改善
+- `test_255_getattr_bare_except_cleanup.py`
+  - source-inspection の固定費を cached file-text / AST へ移行
+- `stopgap_health.py`
+  - 本体側で同日レコードの day 変換重複を削減
+
+### 補足
+- broad 上位は引き続き以下へ集中している
+  - `test_enricher_skip_gate.py` の real-data integration setup
+  - `test_retrain_hot_reload.py` の E2E / balance_forced / hot-reload 系
+  - `test_169_config_hot_reload.py::TestConfigFieldUpdate::test_do_reload_updates_reloadable_fields`
+  - `test_aggregate_to_1min.py::TestAggregateEdgeCases::test_many_minutes`
+  - `test_145_structural_fixes.py::TestMakeSkipRecord::test_auto_cycle_id`
+
+### 次アクション
+1. `test_retrain_hot_reload.py` の `no_reload_when_unchanged` / `balance_forced` / E2E をさらに stub 化できるか詰める
+2. `test_enricher_skip_gate.py` の real-data integration setup を fixture cache/snapshot 化でさらに落とす
+3. `test_169_config_hot_reload.py` と `test_145_structural_fixes.py` の source/config 更新系を再度洗う
