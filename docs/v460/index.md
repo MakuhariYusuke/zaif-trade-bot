@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-15 (331# self-review 329-330 — MCB/SAD feed fix, CycleContext cleanup, validation)
+> 最終更新: 2026-03-16 (332# Phase 4 — run_continuous Balance/MidCycle Mixin 抽出, 1228→407 行)
 
 ---
 
@@ -321,6 +321,7 @@
 | 328 | rpt | [328_phg_rpt_task_audit_and_god_object_analysis.md](328_phg_rpt_task_audit_and_god_object_analysis.md) | タスク棚卸し 47 件 + fill_config.py / orchestrator God Object 分割戦略 |
 | 329 | refactor | [329_phg_refactor_fill_config_god_object_split.md](329_phg_refactor_fill_config_god_object_split.md) | fill_config.py 2046→724 行 God Object 分割 (4 ファイル) |
 | 330 | refactor | [330_phg_refactor_orchestrator_pre_cycle_and_bugfixes.md](330_phg_refactor_orchestrator_pre_cycle_and_bugfixes.md) | run_continuous pre-cycle 抽出 (1595→1223 行) + σ floor + ゼロ除算ガード |
+| 333 | rpt | [333_ph2_rpt_dcc3064_sha_isolated_deep_dive.md](333_ph2_rpt_dcc3064_sha_isolated_deep_dive.md) | dcc3064 SHA 分離分析: 24h n=100 fills, PnL +63.56bps, AB FAIL (sell p10 僅差 + buy fill_rate 壊滅), buy_dynamic_kill T-1 提起 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
@@ -363,6 +364,7 @@
 | 167 | fix | [167_phg_fix_sell_loop_dl4_dl5.md](167_phg_fix_sell_loop_dl4_dl5.md) | sell ループ構造修正 (DL-4/DL-5) + カウンタ永続化: 166# §11.5 全提案を汎用原則で解消 |
 | 168 | rpt | [168_phg_rpt_comprehensive_improvement_hodl_vs_trading.md](168_phg_rpt_comprehensive_improvement_hodl_vs_trading.md) | HODL vs Trading 定量比較 + 未検討提案棚卸し + 既存資産活用計画 |
 | 331 | rev | [331_phg_review_329_330_self_audit.md](331_phg_review_329_330_self_audit.md) | Self-Review: 329#/330# 自己監査 — BUG-1/2 修正, CycleContext cleanup, validation 追加 |
+| 332 | refactor | [332_phg_refactor_run_continuous_phase4.md](332_phg_refactor_run_continuous_phase4.md) | run_continuous Phase 4: Balance/MidCycle Mixin 抽出 (1228→407 行, 908→~80 行) |
 
 ---
 
