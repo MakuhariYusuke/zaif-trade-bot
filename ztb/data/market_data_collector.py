@@ -82,6 +82,26 @@ def _extract_orderbook_top_features(
     )
     return top
 
+
+def _aggregate_orderbook_1min(
+    ob_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """板特徴量を 1 分集約する."""
+    top = _extract_orderbook_top_features(ob_df)
+    ob_1m = top.resample("1min").agg(
+        best_bid=("best_bid", "last"),
+        best_ask=("best_ask", "last"),
+        mid_price=("mid_price", "last"),
+        spread=("spread", "last"),
+        bid_vol_5=("bid_vol_5", "last"),
+        ask_vol_5=("ask_vol_5", "last"),
+        depth_imbalance=("depth_imbalance", "last"),
+        spread_min=("spread", "min"),
+        spread_max=("spread", "max"),
+    )
+    ob_1m["spread_range"] = ob_1m.pop("spread_max") - ob_1m.pop("spread_min")
+    return ob_1m.dropna(how="all")
+
 class MarketDataCollector:
     """Tick raw 収集 + 1分集約の二層保存を行うデータ収集サービス.
 
@@ -230,19 +250,7 @@ class MarketDataCollector:
             ob_df = pd.DataFrame(ob_records)
             ob_df["dt"] = pd.to_datetime(ob_df["ts"], unit="s", utc=True)
             ob_df = ob_df.set_index("dt")
-            top = _extract_orderbook_top_features(ob_df)
-            ob_df = ob_df.join(top)
-
-            # Resample to 1min — last snapshot of each minute
-            ob_1m = (
-                ob_df[["best_bid", "best_ask", "mid_price", "spread",
-                       "bid_vol_5", "ask_vol_5", "depth_imbalance"]]
-                .resample("1min")
-                .last()
-            )
-            spread_stats = ob_df["spread"].resample("1min").agg(["min", "max"])
-            ob_1m["spread_range"] = spread_stats["max"] - spread_stats["min"]
-            ob_1m = ob_1m.dropna(how="all")
+            ob_1m = _aggregate_orderbook_1min(ob_df)
         else:
             ob_1m = pd.DataFrame()
 

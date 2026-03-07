@@ -15,6 +15,7 @@ from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 import pytest
 
 from ztb.data.market_data_collector import MarketDataCollector, _read_jsonl_gz
@@ -345,11 +346,11 @@ class TestAggregateMerged:
             tr_records=tr_records,
             output_name="output.parquet",
         )
-        reloaded = pd.read_parquet(out_path)
+        reloaded = pq.read_table(out_path)
 
-        assert len(original) == len(reloaded)
+        assert len(original) == reloaded.num_rows
         for col in original.columns:
-            assert col in reloaded.columns
+            assert col in reloaded.column_names
 
 
 # =====================================================================

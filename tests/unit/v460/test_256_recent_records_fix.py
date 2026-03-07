@@ -7,15 +7,11 @@
 
 from __future__ import annotations
 
-import ast
 import inspect
 from collections import deque
-from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
-
-_LIB = Path(__file__).resolve().parents[3] / "scripts" / "v460" / "lib"
+from tests.unit.v460._fill_test_source import ORCHESTRATOR_POST_CYCLE, read_source_text
 
 
 class TestRecentRecordsDeque:
@@ -34,7 +30,7 @@ class TestRecentRecordsDeque:
 
     def test_batch_append_also_appends_recent_records(self) -> None:
         """batch.append(record) 直後に self._recent_records.append(record) がある."""
-        src = (_LIB / "fill_loop_orchestrator.py").read_text(encoding="utf-8-sig")
+        src = read_source_text(ORCHESTRATOR_POST_CYCLE)
         # batch.append(record) の直後数行に _recent_records.append(record) があること
         lines = src.splitlines()
         found = False

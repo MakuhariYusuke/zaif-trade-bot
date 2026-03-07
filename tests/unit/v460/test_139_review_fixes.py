@@ -425,12 +425,8 @@ class TestIntegrationRegimeKillFlow:
 class TestFeatureFreshnessDefault:
     """trigger_check_feature_freshness が YAML で true."""
 
-    def test_yaml_has_true(self) -> None:
-        yaml_path = Path(__file__).resolve().parents[3] / "configs" / "v460" / "fill_test.yaml"
-        if not yaml_path.exists():
-            pytest.skip("fill_test.yaml not found")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
+    def test_yaml_has_true(self, v460_fill_test_yaml: dict[str, object]) -> None:
+        cfg = v460_fill_test_yaml
         retrain = cfg.get("retrain", {})
         assert retrain.get("trigger_check_feature_freshness") is True
 
@@ -453,7 +449,7 @@ class TestRunContinuousBranchExecution:
 
     def test_preflight_pause_uses_batch_append(self) -> None:
         """preflight_pause ブロック内で batch.append + maybe_flush が使われている."""
-        source = inspect.getsource(rft.FillTestRunner.run_continuous)
+        source = read_source_text(FILL_LOOP_ORCHESTRATOR)
         # 145# §9-#5: CR.PREFLIGHT_PAUSE 定数 + _make_skip_record に移行済み
         # 265# extract: batch → st.batch に変更
         assert "CR.PREFLIGHT_PAUSE" in source
@@ -461,13 +457,13 @@ class TestRunContinuousBranchExecution:
 
     def test_time_filter_both_sides_generates_record(self) -> None:
         """140# §8.1-#2: 両 side time_filter で FillRecord が生成される."""
-        source = inspect.getsource(rft.FillTestRunner.run_continuous)
+        source = read_source_text(FILL_LOOP_ORCHESTRATOR)
         # 145# §9-#6: CR 定数に移行済み
         assert "CR.TIME_FILTER_BOTH_SIDES" in source
 
     def test_preflight_insufficient_generates_record(self) -> None:
         """140# §8.1-#2: preflight 残高不足で FillRecord が生成される."""
-        source = inspect.getsource(rft.FillTestRunner.run_continuous)
+        source = read_source_text(FILL_LOOP_ORCHESTRATOR)
         # 145# §9-#6: CR 定数に移行済み
         assert "CR.PREFLIGHT_INSUFFICIENT" in source
 
@@ -478,7 +474,7 @@ class TestRunContinuousBranchExecution:
         194#: A10-A14 は CycleGateAggregator に移行。
              orchestrator に残る CR 定数のみチェック。
         """
-        source = inspect.getsource(rft.FillTestRunner.run_continuous)
+        source = read_source_text(FILL_LOOP_ORCHESTRATOR)
         # orchestrator に残る CR 定数 (system-level halt + balance)
         expected_cr_constants = [
             "CR.TIME_FILTER_BOTH_SIDES",

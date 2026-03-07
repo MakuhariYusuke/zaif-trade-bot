@@ -12,7 +12,8 @@ from __future__ import annotations
 import math
 import time
 from collections import deque
-from unittest.mock import AsyncMock, MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -62,11 +63,17 @@ def _mock_regime(regime_val: FillTestRegime) -> MagicMock:
 async def _compute_with_ob(mp: MakerPrice, side: str, mid: float = 14_000_000) -> tuple:
     """OB付きcompute。"""
     half_spread = 500
-    ob = MagicMock()
-    ob.bids = [(mid - half_spread, 0.1)]
-    ob.asks = [(mid + half_spread, 0.1)]
-    adapter = AsyncMock()
-    adapter.get_orderbook.return_value = ob
+    ob = SimpleNamespace(
+        bids=[(mid - half_spread, 0.1)],
+        asks=[(mid + half_spread, 0.1)],
+    )
+
+    class _Adapter:
+        async def get_orderbook(self, _symbol: str, depth: int = 1) -> SimpleNamespace:
+            del depth
+            return ob
+
+    adapter = _Adapter()
     return await mp.compute(side, adapter, "btc_jpy")
 
 
@@ -193,16 +200,18 @@ class TestVelocityEma:
 
         # 1st call: set prev values
         mp._prev_mid_price = 14_000_000
-        mp._prev_mid_time = time.time() - 60
+        mp._prev_mid_time = 1_000_000.0
 
-        await _compute_with_ob(mp, "buy", mid=14_010_000)  # ~+7.14 bps
-        v1 = mp._smoothed_velocity_bps
+        with patch("scripts.v460.lib.maker_price.time.time", side_effect=[1_000_060.0, 1_000_061.0]):
+            await _compute_with_ob(mp, "buy", mid=14_010_000)  # ~+7.14 bps
+            v1 = mp._smoothed_velocity_bps
 
-        # 2nd call: EMA kicks in
-        await _compute_with_ob(mp, "buy", mid=14_000_000)  # ~-7.14 bps raw
-        v2 = mp._smoothed_velocity_bps
+            # 2nd call: EMA kicks in
+            await _compute_with_ob(mp, "buy", mid=14_000_000)  # ~-7.14 bps raw
+            v2 = mp._smoothed_velocity_bps
 
         # smoothed should be closer to 0 than raw -7.14 bps
+        assert v1 is not None
         assert v2 is not None
         assert abs(v2) < 7.14  # dampened
 
@@ -213,9 +222,10 @@ class TestVelocityEma:
         mp = _make_mp(cfg)
 
         mp._prev_mid_price = 14_000_000
-        mp._prev_mid_time = time.time() - 60
+        mp._prev_mid_time = 1_000_000.0
 
-        await _compute_with_ob(mp, "buy", mid=14_010_000)
+        with patch("scripts.v460.lib.maker_price.time.time", return_value=1_000_060.0):
+            await _compute_with_ob(mp, "buy", mid=14_010_000)
         # smoothed_velocity should be None when alpha=1.0
         assert mp._smoothed_velocity_bps is None
 
@@ -226,9 +236,10 @@ class TestVelocityEma:
         mp = _make_mp(cfg)
 
         mp._prev_mid_price = 14_000_000
-        mp._prev_mid_time = time.time() - 60
+        mp._prev_mid_time = 1_000_000.0
 
-        await _compute_with_ob(mp, "buy", mid=14_010_000)
+        with patch("scripts.v460.lib.maker_price.time.time", return_value=1_000_060.0):
+            await _compute_with_ob(mp, "buy", mid=14_010_000)
         v1 = mp._smoothed_velocity_bps
 
         # First sample: no prior smoothed value → raw value is stored

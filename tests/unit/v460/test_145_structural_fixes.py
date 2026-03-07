@@ -28,8 +28,9 @@ from scripts.v460.lib.ob_utils import best_bid_ask, depth_volume, extract_price,
 from scripts.v460.run_fill_test import FillTestRunner
 from tests.unit.v460._fill_test_source import (
     FILL_CYCLE_EXECUTOR,
+    FILL_LOOP_ORCHESTRATOR,
     FILL_RECORD_BUILDER,
-    read_fill_test_method_source,
+    ORCHESTRATOR_LIFECYCLE,
     read_source_text,
 )
 from ztb.metrics import fill_quality
@@ -601,10 +602,11 @@ class TestFillRecordBuilderIntegration:
 
     def test_resume_and_reload_use_iter_glob(self) -> None:
         # 265# extract: iter_fill_records_glob は _finalize_run に分離
-        resume_source = read_fill_test_method_source("resume_from_existing")
-        finalize_source = read_fill_test_method_source("_finalize_run")
-        assert "iter_fill_records_glob(" in resume_source
-        assert "iter_fill_records_glob(" in finalize_source
+        lifecycle_source = read_source_text(ORCHESTRATOR_LIFECYCLE)
+        loop_source = read_source_text(FILL_LOOP_ORCHESTRATOR)
+        assert "existing_records = self.resume_from_existing()" in lifecycle_source
+        assert "iter_fill_records_glob(" in lifecycle_source
+        assert "return await self._finalize_run(st, heartbeat_task)" in loop_source
 
 
 class TestCheckBalanceAcceptsRegimeMult:
@@ -618,7 +620,7 @@ class TestCheckBalanceAcceptsRegimeMult:
 
     def test_run_continuous_passes_regime_mult(self) -> None:
         """run_continuous 内で regime_mult= が preflight に渡されていることを確認."""
-        source = read_fill_test_method_source("run_continuous")
+        source = read_source_text(FILL_LOOP_ORCHESTRATOR)
         assert "_regime_lot_multiplier()" in source
         assert "regime_mult=_regime_mult" in source
 

@@ -3953,6 +3953,26 @@ python scripts/unified_trainer.py \
 - The latest filtered broad run completed at `4051 passed, 1 deselected, 15 warnings in 35.21s`, improving from the earlier `43.03s` filtered baseline in this workspace.
 
 ### Changed
+- Optimized `ztb/data/market_data_collector.py::aggregate_to_1min()` by extracting a single-pass `_aggregate_orderbook_1min()` helper, eliminating the extra join and duplicate spread resample while preserving the same 1-minute output schema.
+- Switched `tests/unit/v460/test_aggregate_to_1min.py::test_parquet_roundtrip` from `pandas.read_parquet()` to `pyarrow.parquet.read_table()` because the test only validates row count and column names, not a full pandas reconstruction.
+- Replaced `AsyncMock` orderbook adapters in `tests/unit/v460/test_227_ranging_obi_velocity_ema_import_fix.py` with a lightweight async stub and fixed the EMA tests to patch `maker_price.time.time()`, removing Windows clock-resolution flakiness from the smoothing assertions.
+- Updated `tests/unit/v460/test_145_structural_fixes.py`, `tests/unit/v460/test_139_review_fixes.py`, `tests/unit/v460/test_154_deadlock_prevention.py`, and `tests/unit/v460/test_256_recent_records_fix.py` to use the shared cached source-file helpers instead of brittle `inspect.getsource(FillTestRunner.run_continuous)` or outdated file paths after the orchestrator mixin split.
+- Extended `tests/unit/v460/_fill_test_source.py` to index the current orchestrator split files (`orchestrator_guards.py`, `orchestrator_lifecycle.py`, `orchestrator_post_cycle.py`) so source-inspection tests match the live code layout.
+- Added Ho & Stoll inventory-risk rationale to `scripts/v460/lib/orchestrator_guards.py::_track_side_pnl()` so the theory/documentation checks stay aligned with the extracted mixin.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_aggregate_to_1min.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_aggregate_to_1min.py tests/unit/v460/test_227_ranging_obi_velocity_ema_import_fix.py tests/unit/v460/test_145_structural_fixes.py -q --no-cov --tb=short --durations=30`
+- `python -m pytest tests/unit/v460/test_145_structural_fixes.py tests/unit/v460/test_256_recent_records_fix.py tests/unit/v460/test_275_dry_separation_and_theory.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_139_review_fixes.py tests/unit/v460/test_154_deadlock_prevention.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=20 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- `tests/unit/v460/test_aggregate_to_1min.py` kept a similar focused file wall time (`26 passed in 3.31s`), but the persistence-heavy cases dropped to `0.12s/0.11s` in the mixed hotspot bundle; the gain here was reducing hot-case and broad top-duration pressure rather than whole-file wall time.
+- `tests/unit/v460/test_145_structural_fixes.py` dropped to `57 passed in 2.86s`, and the `resume_and_reload_use_iter_glob` assertion fell out of the hot path after moving to the lifecycle source file.
+- The latest filtered broad run completed at `4051 passed, 1 deselected, 15 warnings in 41.03s`; after the source-inspection fixes, the top remaining costs re-concentrated in real-data enrichment, event-writer tests, Parquet persistence, and a handful of ML/retrain cases.
+
+### Changed
 - Reworked `tests/unit/v460/_fill_test_source.py` to build a cached method-source index once per process instead of AST-walking every FillTestRunner source file on each lookup.
 - Switched the remaining source-inspection assertions in `tests/unit/v460/test_145_structural_fixes.py` and `tests/unit/v460/test_fill_test_config.py` from repeated `inspect.getsource()` or per-method extraction to cached direct file-text reads where exact slicing is unnecessary.
 - Simplified `tests/unit/v460/test_212_live_trader_config.py` to validate the cached module source directly, removing the AST class-extraction setup step.

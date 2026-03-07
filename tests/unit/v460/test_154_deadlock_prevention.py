@@ -17,6 +17,11 @@ import pytest
 
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import FillTestConfig
+from tests.unit.v460._fill_test_source import (
+    FILL_CYCLE_EXECUTOR,
+    FILL_LOOP_ORCHESTRATOR,
+    read_source_text,
+)
 
 
 # ======================================================================
@@ -226,17 +231,13 @@ class TestBalanceForcedRescueLogic:
 
     def test_rescue_offset_in_run_single_cycle(self) -> None:
         """run_single_cycle に rescue offset 調整ロジックがある."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        source = read_source_text(FILL_CYCLE_EXECUTOR)
         assert "balance_forced_rescue" in source
         assert "balance_forced_rescue_offset_mult" in source
 
     def test_rescue_mode_in_run_continuous(self) -> None:
         """run_continuous に rescue フラグの初期化と受け渡しがある."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_continuous)
+        source = read_source_text(FILL_LOOP_ORCHESTRATOR)
         assert "_is_rescue" in source
         assert "balance_forced_rescue_enabled" in source
 

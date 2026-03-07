@@ -1400,3 +1400,76 @@
 1. `test_aggregate_to_1min.py` の上位 2 ケースを、persistence 契約と resample 契約にさらに分離する
 2. `test_227_ranging_obi_velocity_ema_import_fix.py` と `test_145_structural_fixes.py::test_resume_and_reload_use_iter_glob` の単発重ケースを調べる
 3. production 側は `feature_enricher` / `aggregate_to_1min` / EMA 周辺の実計測を取り、再利用できる cache と単一パス化の余地を確認する
+
+---
+
+## 2026-03-07 / Session 037-034
+
+### 実施
+- production
+  - `ztb/data/market_data_collector.py`
+    - 板集約を `_aggregate_orderbook_1min()` に抽出
+    - `aggregate_to_1min()` 内の join + 2 回 resample を、単一 resample へ整理
+  - `scripts/v460/lib/orchestrator_guards.py`
+    - `_track_side_pnl()` の docstring に Ho & Stoll (1981) の在庫リスク理論を明記
+- テスト側
+  - `test_aggregate_to_1min.py`
+    - parquet roundtrip の再読込を `pd.read_parquet()` から `pyarrow.parquet.read_table()` へ変更
+  - `test_227_ranging_obi_velocity_ema_import_fix.py`
+    - `AsyncMock` orderbook adapter を軽量 async stub に置換
+    - EMA テストで `maker_price.time.time()` を patch し、Windows の clock resolution 依存を除去
+  - `test_145_structural_fixes.py`
+    - `resume_from_existing` / `_finalize_run` の検証対象を現行 split 構成 (`orchestrator_lifecycle.py` + `fill_loop_orchestrator.py`) に更新
+    - `run_continuous` の source 検証を direct file-text read に統一
+  - `test_139_review_fixes.py`
+    - `run_continuous` の source 検証を `inspect.getsource(FillTestRunner.run_continuous)` から shared source helper に変更
+  - `test_154_deadlock_prevention.py`
+    - `run_single_cycle` / `run_continuous` の source 検証を現行 split file へ移行
+  - `test_256_recent_records_fix.py`
+    - `_recent_records.append(record)` の検証対象を `orchestrator_post_cycle.py` に更新
+  - `_fill_test_source.py`
+    - `orchestrator_guards.py` / `orchestrator_lifecycle.py` / `orchestrator_post_cycle.py` を index 対象へ追加
+
+### 結果
+- 対象回帰 1:
+  - `test_aggregate_to_1min.py`
+  - `26 passed in 3.31s`
+- 対象回帰 2:
+  - `test_aggregate_to_1min.py` + `test_227_ranging_obi_velocity_ema_import_fix.py` + `test_145_structural_fixes.py`
+  - `104 passed in 4.28s`
+- 対象回帰 3:
+  - `test_145_structural_fixes.py` + `test_256_recent_records_fix.py` + `test_275_dry_separation_and_theory.py`
+  - `90 passed in 3.75s`
+- 対象回帰 4:
+  - `test_139_review_fixes.py` + `test_154_deadlock_prevention.py`
+  - `75 passed in 4.99s`
+- broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` と `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - `4051 passed, 1 deselected, 15 warnings in 41.03s`
+
+### 主要 durations 変化
+- `test_aggregate_to_1min.py::TestAggregateMerged::test_parquet_roundtrip`
+  - 3 ファイル束で `0.18s級 -> 0.08s`
+  - broad でも `0.25s級 -> 0.16s〜0.28s` 帯
+- `test_aggregate_to_1min.py::TestAggregateMerged::test_parquet_output_created`
+  - 3 ファイル束で `0.14s級 -> 0.04s`
+- `test_145_structural_fixes.py::TestFillRecordBuilderIntegration::test_resume_and_reload_use_iter_glob`
+  - `0.07s級 -> 0.01s`
+- `test_227_ranging_obi_velocity_ema_import_fix.py`
+  - 単体 `21 passed in 1.16s`
+  - EMA 3 ケースは fake clock 化後も broad から上位離脱
+
+### 補足
+- broad 途中で `inspect.getsource(FillTestRunner.run_continuous)` 依存の source-inspection テストが複数壊れることを確認した
+  - 原因は mixin 分割後の現構造と `inspect` の参照先不安定化
+  - 対応として shared source helper へ統一し、現行 split file を直接検証する形へ揃えた
+- 現時点の broad 上位は以下へ集中している
+  - `test_enricher_skip_gate.py` の real-data setup
+  - `test_148_fill_test_events.py` の writer 例外系
+  - `test_aggregate_to_1min.py` の parquet persistence
+  - `test_pnl_monte_carlo.py` / `test_ml_pipeline.py` / `test_retrain_hot_reload.py` の一部ケース
+
+### 次アクション
+1. `test_148_fill_test_events.py` の TeeWriter 系を調べ、実 writer 例外経路の成立条件を保ったまま軽量化できるか確認する
+2. `test_pnl_monte_carlo.py::TestLoadFillRecords::test_load_from_directory` と `test_152_parallel_tasks.py::TestReproduceMetrics::test_main_with_output` の I/O 経路を詰める
+3. `test_enricher_skip_gate.py` の real-data setup と `test_aggregate_to_1min.py` の parquet persistence を、snapshot fixture / schema-level validation でさらに下げられるか確認する
