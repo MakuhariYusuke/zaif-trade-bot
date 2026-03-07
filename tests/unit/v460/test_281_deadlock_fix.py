@@ -54,13 +54,18 @@ class TestUntickRemoval:
         )
 
     def test_no_untick_in_both_sides_halted(self) -> None:
-        """per_side_dd_both_halt パスに untick_side_halt() 呼出しがない."""
-        src = self._get_source()
+        """per_side_dd_both_halt パスに untick_side_halt() 呼出しがない.
+
+        330#: run_continuous → _resolve_side_vetos に抽出。
+        continue → return True に変更。
+        """
+        from scripts.v460.lib.orchestrator_pre_cycle import OrchestratorPreCycleMixin
+        src = inspect.getsource(OrchestratorPreCycleMixin._resolve_side_vetos)
         # per_side_dd_both_halt セクションを抽出
         block_start = src.index("per_side_dd_both_halt")
         block_section = src[block_start:block_start + 1000]
-        continue_idx = block_section.index("continue")
-        both_halt_region = block_section[:continue_idx]
+        return_idx = block_section.index("return True")
+        both_halt_region = block_section[:return_idx]
         # コメント行を除外して実際のメソッド呼出しを検証
         code_lines = [
             line for line in both_halt_region.split("\n")

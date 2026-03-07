@@ -177,9 +177,14 @@ class TestOppositeSideReuse:
         assert FillLoopOrchestratorMixin._opposite_side("sell") == "buy"
 
     def test_opposite_side_used_in_source(self) -> None:
-        """_opposite_side が複数箇所で呼ばれていること (DRY 活用確認)."""
+        """_opposite_side が複数箇所で呼ばれていること (DRY 活用確認).
+
+        330#: orchestrator_pre_cycle にも抽出されたため両方カウント。
+        """
+        from tests.unit.v460._fill_test_source import read_fill_test_runner_source
+        combined = read_fill_test_runner_source()
         # _opposite_side の呼び出し回数をカウント (定義行を除く)
-        call_count = _FILL_LOOP_ORCHESTRATOR_SOURCE.count("self._opposite_side(") + _FILL_LOOP_ORCHESTRATOR_SOURCE.count(
+        call_count = combined.count("self._opposite_side(") + combined.count(
             "cls._opposite_side("
         )
         assert call_count >= 3, (

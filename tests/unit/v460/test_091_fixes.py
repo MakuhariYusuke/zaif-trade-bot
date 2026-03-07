@@ -26,8 +26,9 @@ class TestAltSideBatchFlush:
 
     def test_alt_side_branch_has_batch_flush(self) -> None:
         """alt_side == self._last_side 分岐内に batch flush がある."""
+        # 330# extract: time filter ロジックは orchestrator_pre_cycle.py に移動
         src = Path(
-            _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_loop_orchestrator.py"  # 163# mixin 分割
+            _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_pre_cycle.py"
         )
         content = src.read_text(encoding="utf-8")
 
@@ -52,8 +53,9 @@ class TestAltSideBatchFlush:
 
     def test_alt_side_branch_has_091_comment(self) -> None:
         """107# R1 で flush ロジックが _maybe_flush_batch に統合されている."""
+        # 330# extract: time filter ロジックは orchestrator_pre_cycle.py に移動
         src = Path(
-            _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_loop_orchestrator.py"  # 163# mixin 分割
+            _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_pre_cycle.py"
         )
         content = src.read_text(encoding="utf-8")
         # 107# R1: 重複 flush → _maybe_flush_batch 統合

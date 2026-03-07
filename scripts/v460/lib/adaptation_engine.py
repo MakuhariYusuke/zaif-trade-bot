@@ -360,7 +360,8 @@ class AdaptationEngine:
                     new_base = adapt_result.new_offset
                     new_sell = base_offset_ratio_sell
                     if new_sell is not None and base_offset_ratio > 0:
-                        ratio = new_base / base_offset_ratio
+                        # 330# B2: 浮動小数精度で極小正値→0 に丸まるケースをガード
+                        ratio = new_base / max(base_offset_ratio, 1e-8)
                         new_sell = min(
                             new_sell * ratio, cfg.max_offset_ratio,
                         )

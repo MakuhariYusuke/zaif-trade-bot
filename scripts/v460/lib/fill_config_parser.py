@@ -912,6 +912,11 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
         kwargs["sigma_parkinson_enabled"] = sp["enabled"]
     if "window_sec" in sp:
         kwargs["sigma_parkinson_window_sec"] = float(sp["window_sec"])
+    # 330# σ / vol_ratio floor (sigma_parkinson セクション配下)
+    if "sigma_floor" in sp:
+        kwargs["sigma_floor"] = float(sp["sigma_floor"])
+    if "vol_ratio_floor" in sp:
+        kwargs["vol_ratio_floor"] = float(sp["vol_ratio_floor"])
     # none レジーム Passive MM
     nr = yaml_cfg.get("none_regime", {})
     if nr.get("passive_mm_enabled") is not None:

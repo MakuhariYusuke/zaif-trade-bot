@@ -457,7 +457,8 @@ class TestRunContinuousBranchExecution:
 
     def test_time_filter_both_sides_generates_record(self) -> None:
         """140# §8.1-#2: 両 side time_filter で FillRecord が生成される."""
-        source = read_source_text(FILL_LOOP_ORCHESTRATOR)
+        # 330# extract: time filter は orchestrator_pre_cycle.py に移動
+        source = read_fill_test_runner_source()
         # 145# §9-#6: CR 定数に移行済み
         assert "CR.TIME_FILTER_BOTH_SIDES" in source
 
@@ -474,7 +475,8 @@ class TestRunContinuousBranchExecution:
         194#: A10-A14 は CycleGateAggregator に移行。
              orchestrator に残る CR 定数のみチェック。
         """
-        source = read_source_text(FILL_LOOP_ORCHESTRATOR)
+        # 330# extract: 一部の CR 定数は orchestrator_pre_cycle.py に移動
+        source = read_fill_test_runner_source()
         # orchestrator に残る CR 定数 (system-level halt + balance)
         expected_cr_constants = [
             "CR.TIME_FILTER_BOTH_SIDES",

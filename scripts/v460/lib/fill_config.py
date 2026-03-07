@@ -632,6 +632,11 @@ class FillTestConfig:
     # AS δ*, inv_skew, VG, Kyle λ の全段精度を向上させる。
     sigma_parkinson_enabled: bool = False     # True で Parkinson σ を使用 (False: Roll proxy)
     sigma_parkinson_window_sec: float = 300.0 # high/low 追跡ウィンドウ (秒)
+    # 330# σ floor: σ=0 は AS δ*/Kyle λ/Amihud ILLIQ を完全無効化するシステミックリスク。
+    # spread=0 (tight book) は AS 理論上 maker が最も vulnerable なタイミング。
+    sigma_floor: float = 1e-6               # σ 推定の最小下限 (0 防止)
+    # 330# vol_ratio floor: vol_ratio が極小正値の場合に σ が膨張するのを防止。
+    vol_ratio_floor: float = 0.1            # RegimeDetector vol_ratio の下限
     # ---- 286# 283# P1-6: Buy-side AS Guard — microprice 急落時の buy offset 拡大 ----
     # Glosten-Milgrom (1985): 価格急落時は情報非対称性リスクが急上昇し、
     # buy 側 maker は逆選択を被りやすい。velocity が閾値を超えたら

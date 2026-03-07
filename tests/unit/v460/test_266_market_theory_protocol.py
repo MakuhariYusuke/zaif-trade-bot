@@ -95,10 +95,13 @@ class TestEstimateSigma:
         assert vol_ratio == 2.0
 
     def test_zero_mid_price(self) -> None:
-        """mid_price=0 で σ=0."""
+        """mid_price=0 で σ=sigma_floor (330# T4: ゼロ除算防止).
+
+        330#: sigma_floor=1e-6 を導入。σ が 0 に落ちないよう保証。
+        """
         mp = _make_mp()
         sigma, _ = mp._estimate_sigma(spread=100.0, mid_price=0.0)
-        assert sigma == 0.0
+        assert sigma == mp._config.sigma_floor
 
     def test_source_reused_in_as_reservation(self) -> None:
         """_apply_as_reservation_shift が _estimate_sigma を呼び出す."""

@@ -89,10 +89,13 @@ class MicrostructureMixin:
             _apply_kyle_lambda, _apply_amihud_illiq は depth ベースで独自推定。
         """
         vol_ratio = 1.0
-        if self._regime_detector is not None:
-            vol_ratio = max(self._regime_detector.last_volatility_ratio, 0.1)
-
         cfg = self._config
+        if self._regime_detector is not None:
+            vol_ratio = max(
+                self._regime_detector.last_volatility_ratio,
+                cfg.vol_ratio_floor,
+            )
+
         # 305# Parkinson σ: rolling high/low から Parkinson estimator で σ を推定
         if cfg.sigma_parkinson_enabled and mid_price > 0:
             now = time.time()
@@ -119,6 +122,9 @@ class MicrostructureMixin:
             sigma = spread / (2.0 * mid_price) if mid_price > 0 else 0.0
 
         sigma *= vol_ratio
+        # 330# σ floor: σ=0 は AS δ* / Kyle λ / Amihud を完全無効化するため、
+        # 最小フロアを設ける。spread=0 (tight book) はむしろ AS 上最も脆弱。
+        sigma = max(sigma, cfg.sigma_floor)
         # 306# L1: cache for dynamic cycle interval
         self._last_sigma = sigma
         return sigma, vol_ratio

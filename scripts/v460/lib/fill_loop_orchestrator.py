@@ -50,6 +50,7 @@ from scripts.v460.lib.micro_circuit_breaker import MCBLevel
 from scripts.v460.lib.orchestrator_guards import OrchestratorGuardsMixin
 from scripts.v460.lib.orchestrator_lifecycle import OrchestratorLifecycleMixin
 from scripts.v460.lib.orchestrator_post_cycle import OrchestratorPostCycleMixin
+from scripts.v460.lib.orchestrator_pre_cycle import CycleContext, OrchestratorPreCycleMixin
 from scripts.v460.lib.spread_anomaly_detector import SADLevel
 
 if TYPE_CHECKING:
@@ -92,6 +93,7 @@ class FillLoopOrchestratorMixin(
     OrchestratorGuardsMixin,
     OrchestratorLifecycleMixin,
     OrchestratorPostCycleMixin,
+    OrchestratorPreCycleMixin,
 ):
     """run_continuous + side kill / filter / adaptation / cleanup (Mixin).
 
@@ -345,124 +347,19 @@ class FillLoopOrchestratorMixin(
         self._last_state_save_time = time.monotonic()
 
         while time.time() < end_time and not self._kill_switch.is_killed():
-            # 200# 10-A: 日替わり時に soft_drawdown_interval_multiplier をリセット
-            # P0-2 で追加した multiplier が日次境界で reset されないバグの修正
-            if self._daily_drawdown_guard.maybe_reset_day():
-                _old_mult = self._soft_drawdown_interval_multiplier
-                if _old_mult != 1.0:
-                    logger.info(
-                        f"[daily_drawdown] Day reset → soft_drawdown_interval_multiplier "
-                        f"{_old_mult:.1f} → 1.0"
-                    )
-                    self._soft_drawdown_interval_multiplier = 1.0
-                # 303# B: side-aware soft lot scale も日替わりリセット
-                if self._dd_soft_lot_scale_buy < 1.0 or self._dd_soft_lot_scale_sell < 1.0:
-                    logger.info(
-                        f"[daily_drawdown] Day reset → dd_soft_lot_scale "
-                        f"buy={self._dd_soft_lot_scale_buy:.2f} → 1.0, "
-                        f"sell={self._dd_soft_lot_scale_sell:.2f} → 1.0"
-                    )
-                    self._dd_soft_lot_scale_buy = 1.0
-                    self._dd_soft_lot_scale_sell = 1.0
-                # 207# §4: toxic veto も日替わりでクリア
-                if self._toxic_veto:
-                    logger.info(
-                        f"[daily_drawdown] Day reset → toxic veto cleared: {self._toxic_veto}"
-                    )
-                    self._toxic_veto = {}
-                # 209# M-3: one-sided 連続カウンタも日替わりでリセット
-                if self._one_sided_consecutive_count > 0:
-                    logger.info(
-                        f"[daily_drawdown] Day reset → one_sided_consecutive_count "
-                        f"{self._one_sided_consecutive_count} → 0"
-                    )
-                    self._one_sided_consecutive_count = 0
-                # 224# B2: 日替わりリセット × dynamic kill 矛盾検出
-                # maybe_reset_day() は per-side halt/PnL を全クリアするが、
-                # DynamicKillManager の rolling window は cross-day で残存。
-                # kill がアクティブなまま halt が解除されると矛盾が生じるため警告。
-                for _km_label, _km in [
-                    ("sell", self._sell_kill_mgr),
-                    ("buy", self._buy_kill_mgr),
-                ]:
-                    _k_active, _k_mean, _k_count = _km.is_kill_active()
-                    if _k_active:
-                        logger.warning(
-                            f"[224# B2] Day reset but {_km_label}_dynamic_kill still active: "
-                            f"rolling_mean={_k_mean}, "
-                            f"rolling_count={_k_count} — "
-                            f"resetting kill state for clean day start"
-                        )
-                        _km.reset()
-                        self._inc_guard_fire("day_reset_kill_conflict")
+            # ── 330# Phase 1: 日替わりリセット ──
+            self._process_daily_reset()
 
-            # 168# §4.1 #3: 日次ドローダウンガード — halt 中はスキップ
-            # 276# config 化: halt 系 sleep 倍率を YAML 設定から取得
-            _halt_mult = self.config.halt_sleep_multiplier
-            if self._daily_drawdown_guard.is_halted():
-                # 日次 PnL 超過 → UTC 日替わりまでスキップ
-                # 200# K: halt record 削減 — 開始/終了 + N回毎のみ記録
-                # 203# G: _halt_iter_count で正確にカウント (_cycle_count は halt 中不変)
-                _halt_entering = self._halt_start_cycle is None
-                if _halt_entering:
-                    self._inc_guard_fire("dd_halt")
-                    self._halt_start_cycle = self._cycle_count
-                    self._halt_iter_count = 0
-                else:
-                    self._halt_iter_count = self._halt_iter_count + 1
-                # 211# fix: halt 中は progress_log_interval(50) ではなく
-                # 専用間隔 halt_persist_interval で state/record を保存。
-                # 277# config 化: halt_sleep(600s) × N 回毎に state save。
-                _should_record_halt = (
-                    _halt_entering  # 開始時
-                    or self._halt_iter_count % self.config.halt_persist_interval == 0
-                )
-                if _should_record_halt:
-                    st.batch.append(self._make_loop_skip_record(
-                        side="none",
-                        cancel_reason=CR.DAILY_DRAWDOWN_HALT,
-                        order_quantity=0.0,
-                    ))
-                    st.total_count += 1
-                    st.batch = self._batch_persistence.maybe_flush(st.batch, "daily_drawdown_halt")
-                self._update_lock_heartbeat()
-                # 203# E: HALT 開始時は必ず state 保存 + 以降は N iter 毎
-                # 211# fix: halt 専用間隔に統一 (旧: progress_log_interval=50 → 8.3h)
-                if _should_record_halt:
-                    self._state_persistence.save(self._build_state_snapshot(
-                        total_count=st.total_count,
-                        filled_count=st.filled_count,
-                        cumulative_pnl_jpy=st.cumulative_pnl_jpy,
-                    ))
-                    self._last_state_save_time = time.monotonic()  # 223#
-                # 211#: halt サイクル可視化ログ (entering + halt_persist_interval 毎)
-                if _should_record_halt:
-                    logger.info(
-                        f"[daily_drawdown] Halt cycle #{self._halt_iter_count}"
-                        f" (next log @+{self.config.halt_persist_interval} iters)"
-                    )
-                # 226# S5: halt 中も MCB/SAD に price/spread をフィードし続ける。
-                # halt 解除直後に陳腐化した σ で誤判定するのを防止。
-                # ※ check() は呼ばない (halt 中の二重ガードは不要)。
-                self._feed_mcb_sad()
-                await self._effective_sleep(multiplier=_halt_mult)  # 179# S1: halt 中は Nx 間隔
+            # ── 330# Phase 2: DD halt チェック ──
+            if await self._handle_dd_halt(st):
                 continue
-
-            # 200# K: halt 終了時の記録 (前サイクルが halt だった場合)
-            if self._halt_start_cycle is not None:
-                _halt_iters = self._halt_iter_count
-                logger.info(
-                    f"[daily_drawdown] Halt ended after {_halt_iters} iterations"
-                )
-                self._halt_start_cycle = None
-                self._halt_iter_count = 0
 
             # 215# P0-C: alert_mode.json — オペレータ緊急介入チェック
             _alert = load_alert_mode(self._results_dir)
             if _alert.halt:
                 await self._execute_skip(
                     st, side="none", cancel_reason=CR.OPERATOR_HALT,
-                    heartbeat=True, multiplier=_halt_mult,
+                    heartbeat=True, multiplier=self.config.halt_sleep_multiplier,
                 )
                 continue
             # 215# P0-C: 非 halt オーバーライドをインスタンス変数に保存
@@ -471,131 +368,26 @@ class FillLoopOrchestratorMixin(
             self._alert_lot_mult = _alert.lot_mult
             self._alert_interval_mult = _alert.interval_mult
 
-            # 211# P1-B: Micro Circuit Breaker — 短期価格急変の自動防御
-            _mcb_warning = False
-            if self._mcb is not None and self._mcb.config.enabled:
-                _mcb_mid = self._maker_price.last_mid_price
-                if _mcb_mid is not None and _mcb_mid > 0:
-                    self._mcb.update(_mcb_mid, time.time())
-                _mcb_result = self._mcb.check(time.time())
-                if _mcb_result.level == MCBLevel.HALT:
-                    self._inc_guard_fire("mcb_halt")
-                    await self._execute_skip(
-                        st, side="none", cancel_reason=CR.MCB_HALT,
-                        heartbeat=True, multiplier=_halt_mult,
-                    )
-                    continue
-                if _mcb_result.level == MCBLevel.WARNING:
-                    _mcb_warning = True
-                    self._inc_guard_fire("mcb_warning")
-                    # WARNING: offset/interval を拡大 (alert_mode との積算)
-                    self._alert_offset_mult *= _mcb_result.offset_mult
-                    self._alert_interval_mult *= _mcb_result.interval_mult
-
-            # 211# P1-C: Spread Anomaly Detector — 流動性枯渇検知
-            _sad_warning = False
-            if self._sad is not None and self._sad.config.enabled:
-                # 217# fix: last_spread は 60s staleness guard 付き (210# M5)。
-                # cycle 間隔 120s では常に stale → None になるため、
-                # staleness guard なしの last_spread_raw を使用する。
-                _sad_spread = self._maker_price.last_spread_raw
-                if _sad_spread is not None and _sad_spread > 0:
-                    self._sad.update(_sad_spread, time.time())
-                _sad_result = self._sad.check(time.time())
-                if _sad_result.level == SADLevel.FROZEN:
-                    self._inc_guard_fire("sad_frozen")
-                    await self._execute_skip(
-                        st, side="none", cancel_reason=CR.SAD_FROZEN,
-                        heartbeat=True, multiplier=_halt_mult,
-                    )
-                    continue
-                if _sad_result.level == SADLevel.DRY:
-                    _sad_warning = True
-                    self._inc_guard_fire("sad_dry")
-                    self._alert_offset_mult *= _sad_result.offset_mult
-                    self._alert_interval_mult *= _sad_result.interval_mult
-                    self._alert_lot_mult *= _sad_result.lot_mult
-                elif _sad_result.level == SADLevel.WIDE:
-                    _sad_warning = True
-                    self._inc_guard_fire("sad_wide")
-                    self._alert_offset_mult *= _sad_result.offset_mult
-
-            # 211# P1-D: MCB×SAD AND Escalation
-            # 両方が同時に WARNING 以上 → 即 HALT (false positive 抑制)
-            if _mcb_warning and _sad_warning:
-                self._inc_guard_fire("mcb_sad_escalation")
-                await self._execute_skip(
-                    st, side="none", cancel_reason=CR.MCB_SAD_ESCALATION,
-                    heartbeat=True, multiplier=_halt_mult,
-                )
+            # ── 330# Phase 3: Circuit Breakers (MCB + SAD + Escalation) ──
+            if await self._check_circuit_breakers(st):
                 continue
 
-            # 205# §9.4: 時間帯 Hard Skip (Kyle proxy)
-            # soft offset (158# P1-6) では抑制不十分な最悪時間帯はサイクル全停止
-            if self.config.hard_skip_utc_hours:
-                _utc_h = datetime.now(timezone.utc).hour
-                if _utc_h in self.config.hard_skip_utc_hours:
-                    # 初回のみ skip record を記録
-                    _hard_skip_entering = not self._in_hard_skip_hour
-                    self._in_hard_skip_hour = True
-                    if _hard_skip_entering:
-                        self._inc_guard_fire("hard_skip_utc")
-                        st.batch.append(self._make_loop_skip_record(
-                            side="none",
-                            cancel_reason=CR.HARD_SKIP_UTC_HOUR,
-                            order_quantity=0.0,
-                        ))
-                        st.total_count += 1
-                        st.batch = self._batch_persistence.maybe_flush(st.batch, "hard_skip_utc_hour")
-                        logger.info(
-                            f"[205# §9.4] Hard skip: UTC {_utc_h}h is in "
-                            f"hard_skip_utc_hours={self.config.hard_skip_utc_hours}"
-                        )
-                    self._update_lock_heartbeat()
-                    await self._effective_sleep()
-                    continue
-                else:
-                    if self._in_hard_skip_hour:
-                        logger.info(f"[205# §9.4] Hard skip ended (UTC {_utc_h}h)")
-                        self._in_hard_skip_hour = False
+            # ── 330# Phase 4: Hard Skip UTC ──
+            if await self._check_hard_skip_utc(st):
+                continue
 
-            # ────────────────────────────────────────────────────
-            # 237# Phantom Position Guard: 前サイクルの status_unknown を遅延再照合
-            # 238# S-2: side veto カウンタ tick + reconcile
-            # ────────────────────────────────────────────────────
-            if self._phantom_guard is not None:
-                self._phantom_guard.tick_veto()  # 238# S-2: veto デクリメント
-                if self._phantom_guard.has_pending:
-                    try:
-                        _phantom_detections = await self._phantom_guard.reconcile(self.adapter)
-                        if _phantom_detections:
-                            self._inc_guard_fire("phantom_position_detected")
-                            for _pd in _phantom_detections:
-                                logger.critical(
-                                    f"[237# PHANTOM] Inventory mismatch: "
-                                    f"{_pd.side} {_pd.quantity:.6f} BTC @ {_pd.price:.0f} "
-                                    f"(method={_pd.detection_method}) — "
-                                    f"cautious mode activated, side veto={self._phantom_guard._PHANTOM_VETO_CYCLES} cycles"
-                                )
-                            # ファントム検出時: 安全側バイアス — interval 延長 (277# config 化)
-                            await self._effective_sleep(
-                                multiplier=self.config.phantom_detection_sleep_multiplier,
-                            )
-                    except Exception as _pg_err:
-                        logger.warning(f"[237# phantom_guard] Reconcile error: {_pg_err}")
+            # ── 330# Phase 5: Phantom Guard ──
+            await self._process_phantom_guard()
 
             # 205# §9.5: 片側 DD Halt のサイクルカウンタ更新
             self._daily_drawdown_guard.tick_side_halt()
 
-            # 205# §9.2: Toxic Fill 同一サイド拒否 — 初期化のみ (デクリメントはサイクル末尾)
+            # 205# §9.2: Toxic Fill 同一サイド拒否 — 初期化のみ
             if self._toxic_veto is None:
                 self._toxic_veto = {}
 
-            # 129# D.2: 残高制約による side 強制切替追跡
-            _balance_forced = False
-            _is_rescue = False  # 158# P1-1: balance_forced rescue フラグ
-            _one_sided_balance = False  # 190# B: 片側 balance フラグ (ev_weighted threshold 緩和用)
-            _inventory_escape = False  # 269# P0: Inventory Escape Mode
+            # 330# CycleContext 初期化
+            ctx = CycleContext(next_side=self._next_side())
 
             # 310# D: None regime observability (307# F5)
             self._total_regime_cycle_count += 1
@@ -603,183 +395,20 @@ class FillLoopOrchestratorMixin(
             if _current_regime_str == "none":
                 self._none_regime_cycle_count += 1
 
-            # 073# side 別時間帯フィルター: side 決定後にフィルタリング
-            # side 別リスト未設定時はグローバルリスト (041# 互換)
-            next_side = self._next_side()
+            # ── 330# Phase 6: Side Veto 解決 ──
+            if await self._resolve_side_vetos(st, ctx):
+                continue
 
-            # 205# §9.5: 片側 DD Halt チェック — 封鎖されたサイドは回避
-            if self._daily_drawdown_guard.is_side_halted(next_side):
-                _alt = self._opposite_side(next_side)
-                if self._daily_drawdown_guard.is_side_halted(_alt):
-                    # 両サイド封鎖 → 集約 halt と同等扱い
-                    self._inc_guard_fire("per_side_dd_both_halt")  # 223#
-                    # 281# fix: 273# I3 の untick_side_halt() を除去
-                    # untick は halt カウントダウンを永久停止させ、
-                    # 日替わりリセットまでの長時間デッドロックの原因となる。
-                    # halt を自然満了させ、reanchor (269#) で解除後の
-                    # PnL 基準をリセットして安全に取引再開する。
-                    await self._execute_skip(
-                        st, side="none", cancel_reason=CR.PER_SIDE_DD_HALT,
-                        flush_context="per_side_dd_both_halt",
-                        heartbeat=True, multiplier=_halt_mult,
-                    )
-                    continue
-                else:
-                    # 223# P0: per-side halt switch を guard_fire_counts に記録
-                    self._inc_guard_fire("per_side_halt_switch")
-                    logger.info(
-                        f"[205# §9.5] Per-side DD halt: {next_side} blocked, "
-                        f"switching to {_alt}"
-                    )
-                    next_side = _alt
+            # ── 330# Phase 7: Time Filter ──
+            if await self._apply_time_filter(st, ctx):
+                continue
 
-            # 205# §9.2: Toxic Fill 同一サイド拒否 — 封鎖されたサイドは反対に切替
-            # 207# §5b: alt_side が per_side_dd で封鎖されている場合も考慮
-            if self._toxic_veto and next_side in self._toxic_veto:
-                _alt = self._opposite_side(next_side)
-                _alt_blocked = (
-                    _alt in self._toxic_veto
-                    or self._daily_drawdown_guard.is_side_halted(_alt)
-                )
-                if _alt_blocked:
-                    # 両サイド封鎖 (veto + per_side_dd 含む) → スキップ
-                    # 209# H-1: デッドロック防止 — skip 時も veto カウンタを減算
-                    self._inc_guard_fire("toxic_veto_block")
-                    self._tick_toxic_veto("both-blocked")
-                    await self._execute_skip(
-                        st, side="none", cancel_reason=CR.TOXIC_FILL_SIDE_VETO,
-                        flush_context="toxic_veto_both",
-                    )
-                    continue
-                else:
-                    logger.info(
-                        f"[205# §9.2] Toxic veto: {next_side} blocked "
-                        f"(remaining={self._toxic_veto[next_side]}), "
-                        f"switching to {_alt}"
-                    )
-                    next_side = _alt
-
-            # 238# S-2: Phantom side veto — phantom 検出後の同 side 一時拒否
-            if (
-                self._phantom_guard is not None
-                and self._phantom_guard.is_side_vetoed(next_side)
-            ):
-                _alt = self._opposite_side(next_side)
-                if (
-                    self._phantom_guard.is_side_vetoed(_alt)
-                    or self._daily_drawdown_guard.is_side_halted(_alt)
-                ):
-                    # 両サイド封鎖 → スキップ
-                    self._inc_guard_fire("phantom_veto_block")
-                    await self._execute_skip(
-                        st, side="none", cancel_reason=CR.PHANTOM_SIDE_VETO,
-                        flush_context="phantom_veto_both",
-                    )
-                    continue
-                else:
-                    logger.info(
-                        f"[238# phantom_veto] {next_side} blocked → "
-                        f"switching to {_alt}"
-                    )
-                    next_side = _alt
-
-            # side 別チェック (073#): side固有リストがあれば side 別判定
-            side_filtered = self._is_time_filtered(side=next_side)
-            if side_filtered:
-                # 反対 side でもフィルタされるか確認
-                alt_side = self._opposite_side(next_side)
-                alt_filtered = self._is_time_filtered(side=alt_side)
-                if alt_filtered:
-                    # 両 side ともフィルタ → スリープ
-                    # 225# 5.1: fire count 記録
-                    self._inc_guard_fire("time_filter_both_sides")
-                    # 140# §8.1-#2: skip record を生成し可観測性確保 (132# F4)
-                    if not self._time_filter.in_filter:
-                        self._time_filter.on_enter()
-                        st.batch.append(self._make_loop_skip_record(
-                            side=next_side,
-                            cancel_reason=CR.TIME_FILTER_BOTH_SIDES,
-                            order_quantity=0.0,
-                        ))
-                    else:
-                        # 079# heartbeat: 長時間抑制中にプロセス生存を定期ログ
-                        now_ts = time.time()
-                        if now_ts - self._time_filter.last_heartbeat_time >= self.config.heartbeat_interval_sec:
-                            utc_h = datetime.now(timezone.utc).hour
-                            try:
-                                import psutil  # lazy import
-                                proc = psutil.Process()
-                                mem_mb = proc.memory_info().rss / (1024 * 1024)
-                                mem_info = f"mem={mem_mb:.1f}MB, "
-                            except Exception as e:
-                                # 254# bare except → debug log (psutil 不在/権限エラー可観測化)
-                                logger.debug("psutil memory check unavailable: %s", e, exc_info=True)
-                                mem_info = ""
-                            logger.info(
-                                f"[heartbeat] Still in time_filter zone "
-                                f"(UTC {utc_h}h), "
-                                f"{mem_info}"
-                                f"unsaved_batch={len(st.batch)}, "
-                                f"cycles={self._cycle_count}"
-                            )
-                            self._time_filter.last_heartbeat_time = now_ts
-                            # 129# lock heartbeat 更新
-                            self._update_lock_heartbeat()
-                        # 107# R1: 重複 flush → _maybe_flush_batch 統合
-                        st.batch = self._batch_persistence.maybe_flush(st.batch, "time_filter")
-                    await self._effective_sleep()  # 179# S1
-                    continue
-                else:
-                    # 反対 side は通過 → side 切り替え
-                    # 086# Bug: alt_side が _last_side と同じ場合、片側蓄積が発生する
-                    # (例: _last_side=buy, next=sell がブロック, alt=buy → double buy)
-                    # この場合は両方ブロックと同じ扱いにして待機する
-                    if alt_side == self._last_side:
-                        self._time_filter.consecutive_086_wait += 1
-                        max_wait = self.config.max_086_consecutive_wait
-                        utc_h = datetime.now(timezone.utc).hour
-                        # 110# デッドロック解除: 連続待機が上限を超えたら alt_side を許可
-                        if max_wait > 0 and self._time_filter.consecutive_086_wait > max_wait:
-                            logger.info(
-                                f"[time_filter] 086# deadlock break: "
-                                f"{self._time_filter.consecutive_086_wait} consecutive waits "
-                                f"exceeded max={max_wait}, allowing {alt_side} "
-                                f"(110# デッドロック解除)"
-                            )
-                            self._time_filter.consecutive_086_wait = 0
-                            next_side = alt_side
-                            # ↓ alt_side 許可 → 通常フローに合流
-                        else:
-                            logger.info(
-                                f"[time_filter] {next_side} filtered at UTC {utc_h}h, "
-                                f"alt={alt_side} would repeat last side → "
-                                f"treating as both-filtered "
-                                f"(086# 片側蓄積防止, wait={self._time_filter.consecutive_086_wait}/{max_wait})"
-                            )
-                            if not self._time_filter.in_filter:
-                                self._time_filter.on_enter()
-                                # 140# §8.1-#2: 086 deadlock 進入時も record 生成
-                                st.batch.append(self._make_loop_skip_record(
-                                    side=next_side,
-                                    cancel_reason=CR.TIME_FILTER_086_DEADLOCK,
-                                    order_quantity=0.0,
-                                ))
-                            # 107# R1: 重複 flush → _maybe_flush_batch 統合
-                            st.batch = self._batch_persistence.maybe_flush(st.batch, "alt_side==last_side wait")
-                            await self._effective_sleep()  # 179# S1
-                            continue
-                    else:
-                        # 086# ではない通常の side 切り替え → カウンタリセット
-                        self._time_filter.consecutive_086_wait = 0
-                    utc_h = datetime.now(timezone.utc).hour
-                    logger.debug(
-                        f"[time_filter] {next_side} filtered at UTC {utc_h}h, "
-                        f"switching to {alt_side}"
-                    )
-                    next_side = alt_side
-
-            # 047# Issue12: 離脱時のみログ出力
-            self._time_filter.on_exit()
+            # 330# CycleContext → local vars (下流互換)
+            next_side = ctx.next_side
+            _balance_forced = False
+            _is_rescue = False
+            _one_sided_balance = False
+            _inventory_escape = False
 
             # 158# §20-A: skip パスでも regime 遷移保証 (fallback price 投入)
             if self._regime_detector is not None:

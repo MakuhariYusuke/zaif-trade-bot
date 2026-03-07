@@ -105,12 +105,13 @@ class TestBareExceptImproved:
     """254# P1-5: heartbeat bare except → logger.debug."""
 
     def test_heartbeat_psutil_except_has_logging(self) -> None:
-        """psutil except ブロックに logger.debug が含まれること."""
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-        # run_continuous は巨大なので、全ソースから該当箇所を検索
-        src_path = inspect.getfile(FillLoopOrchestratorMixin)
+        """psutil except ブロックに logger.debug が含まれること.
+
+        330#: heartbeat logic は orchestrator_pre_cycle に抽出済み。
+        """
+        from scripts.v460.lib import orchestrator_pre_cycle as mod
         from pathlib import Path
-        full_src = Path(src_path).read_text(encoding="utf-8")
+        full_src = Path(inspect.getfile(mod)).read_text(encoding="utf-8")
         # "psutil" の except ブロック付近に logger.debug があること
         idx = full_src.find("psutil memory check unavailable")
         assert idx > 0, "logger.debug message not found near psutil except"

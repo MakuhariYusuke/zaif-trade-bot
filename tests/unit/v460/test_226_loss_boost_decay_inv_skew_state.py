@@ -369,16 +369,19 @@ class TestHaltMCBSADFeedContinuation:
     """226# S5: DD halt ループ内で MCB/SAD の update が呼ばれる."""
 
     def test_orchestrator_source_has_halt_mcb_update(self) -> None:
-        """halt 中の continue 前に MCB/SAD feed が存在する (ソースコード検証)."""
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-        src = inspect.getsource(FillLoopOrchestratorMixin.run_continuous)
+        """halt 中の return True 前に MCB/SAD feed が存在する (ソースコード検証).
+
+        330#: run_continuous → _handle_dd_halt に抽出。
+        """
+        from scripts.v460.lib.orchestrator_pre_cycle import OrchestratorPreCycleMixin
+        src = inspect.getsource(OrchestratorPreCycleMixin._handle_dd_halt)
         assert "226# S5" in src
         # "is_halted" → MCB/SAD feed が halt ブロック内にある
         halted_section = src[src.index("daily_drawdown_guard.is_halted()"):]
-        # halt ブロックの continue 前に _feed_mcb_sad がある (272# DRY 抽出済)
-        continue_idx = halted_section.index("continue")
-        feed_in_halt = "self._feed_mcb_sad()" in halted_section[:continue_idx]
-        assert feed_in_halt, "_feed_mcb_sad() should appear before continue in halt block"
+        # halt ブロックの return True 前に _feed_mcb_sad がある (272# DRY 抽出済)
+        return_idx = halted_section.index("return True")
+        feed_in_halt = "self._feed_mcb_sad()" in halted_section[:return_idx]
+        assert feed_in_halt, "_feed_mcb_sad() should appear before return True in halt block"
 
     def test_orchestrator_source_has_halt_sad_update(self) -> None:
         """halt 中の continue 前に SAD update が存在する (272# _feed_mcb_sad に統合済)."""

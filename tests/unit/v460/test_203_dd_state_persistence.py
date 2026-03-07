@@ -153,16 +153,18 @@ class TestHaltElapsedCounter:
     def test_halt_end_resets_iter_count(self) -> None:
         """halt終了時に _halt_iter_count がリセットされる."""
         import inspect
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-        src = inspect.getsource(FillLoopOrchestratorMixin.run_continuous)
+        # 330# extract: DD halt ロジックは _handle_dd_halt に移動
+        from scripts.v460.lib.orchestrator_pre_cycle import OrchestratorPreCycleMixin
+        src = inspect.getsource(OrchestratorPreCycleMixin._handle_dd_halt)
         assert "_halt_iter_count = 0" in src, \
             "halt終了時に _halt_iter_count がリセットされるべき"
 
     def test_halt_entering_saves_state(self) -> None:
         """halt開始時のstate保存コードが存在する."""
         import inspect
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-        src = inspect.getsource(FillLoopOrchestratorMixin.run_continuous)
+        # 330# extract: DD halt ロジックは _handle_dd_halt に移動
+        from scripts.v460.lib.orchestrator_pre_cycle import OrchestratorPreCycleMixin
+        src = inspect.getsource(OrchestratorPreCycleMixin._handle_dd_halt)
         assert "_halt_entering" in src, \
             "203# E halt開始フラグが存在するべき"
         # 216# §7: _halt_entering は _should_record_halt に統合された
@@ -172,8 +174,9 @@ class TestHaltElapsedCounter:
     def test_no_old_cycle_count_modulo_in_halt(self) -> None:
         """旧実装の self._cycle_count % progress_log_interval (halt内) が除去された."""
         import inspect
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-        src = inspect.getsource(FillLoopOrchestratorMixin.run_continuous)
+        # 330# extract: DD halt ロジックは _handle_dd_halt に移動
+        from scripts.v460.lib.orchestrator_pre_cycle import OrchestratorPreCycleMixin
+        src = inspect.getsource(OrchestratorPreCycleMixin._handle_dd_halt)
         # halt ブロック内に旧条件がないことを確認
         # "200# P0-3: HALT 中も" コメントが 203# E に置換されているか
         assert "200# P0-3" not in src, \

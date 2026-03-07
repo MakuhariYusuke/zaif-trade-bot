@@ -71,9 +71,14 @@ class TestSkipCeremonyMigration:
 
     @pytest.fixture(autouse=True)
     def _setup(self) -> None:
-        self.src = Path(
+        # 330#: pre_cycle 抽出分も含めて検証
+        src1 = Path(
             "scripts/v460/lib/fill_loop_orchestrator.py"
         ).read_text(encoding="utf-8")
+        src2 = Path(
+            "scripts/v460/lib/orchestrator_pre_cycle.py"
+        ).read_text(encoding="utf-8")
+        self.src = src1 + "\n" + src2
 
     def test_execute_skip_call_count(self) -> None:
         """_execute_skip 呼出が 14 箇所以上存在する."""
@@ -160,9 +165,14 @@ class TestHaltMultiplierConfigified:
 
     @pytest.fixture(autouse=True)
     def _setup(self) -> None:
-        self.src = Path(
+        # 330#: pre_cycle 抽出分も含めて検証
+        src1 = Path(
             "scripts/v460/lib/fill_loop_orchestrator.py"
         ).read_text(encoding="utf-8")
+        src2 = Path(
+            "scripts/v460/lib/orchestrator_pre_cycle.py"
+        ).read_text(encoding="utf-8")
+        self.src = src1 + "\n" + src2
 
     def test_no_hardcoded_multiplier_5(self) -> None:
         """run_continuous 内で multiplier=5.0 が残っていないこと.

@@ -939,9 +939,12 @@ class TestBug086TimeFilterPositionAccumulation:
     """086# time_filter の side 切替が片側蓄積を引き起こすバグの修正検証."""
 
     def test_source_has_position_accumulation_guard(self) -> None:
-        """run_continuous に片側蓄積防止ガードが含まれる."""
+        """orchestrator mixin に片側蓄積防止ガードが含まれる.
 
-        source = _source(FillTestRunner.run_continuous)
+        330#: 時間フィルタは orchestrator_pre_cycle._apply_time_filter に抽出済み。
+        """
+        from scripts.v460.lib.orchestrator_pre_cycle import OrchestratorPreCycleMixin
+        source = _source(OrchestratorPreCycleMixin._apply_time_filter)
         assert "alt_side == self._last_side" in source, (
             "086# 片側蓄積防止ガードが必要"
         )

@@ -311,3 +311,18 @@ def validate_fill_config(config: FillTestConfig) -> None:
             "(282# 実証済)。halt_cycles >= 1 にするか "
             "inventory_escape_enabled=True にしてください"
         )
+    # 330# B4: kyle_lambda / amihud_illiq は compute_imbalance で depth が
+    # 更新されるため、imbalance_enabled=False だと depth が永久 0 のまま
+    # サイレント無効になる。設定ミスを早期検出。
+    import warnings as _w
+    if (
+        (config.kyle_lambda_enabled or config.amihud_illiq_enabled)
+        and not config.imbalance_enabled
+    ):
+        _w.warn(
+            "kyle_lambda_enabled / amihud_illiq_enabled が True ですが "
+            "imbalance_enabled=False のため depth キャッシュが更新されず、"
+            "Kyle λ / Amihud ILLIQ が常にスキップされます。"
+            "imbalance_enabled=True を推奨します。",
+            stacklevel=2,
+        )

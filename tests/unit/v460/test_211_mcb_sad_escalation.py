@@ -45,9 +45,9 @@ class TestOrchestratorEscalationCode:
 
     @pytest.fixture(autouse=True)
     def _load_source(self) -> None:
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+        from scripts.v460.lib.orchestrator_pre_cycle import OrchestratorPreCycleMixin
 
-        self.src = inspect.getsource(FillLoopOrchestratorMixin.run_continuous)
+        self.src = inspect.getsource(OrchestratorPreCycleMixin._check_circuit_breakers)
 
     def test_mcb_warning_flag_initialized(self) -> None:
         """_mcb_warning フラグが False で初期化されること."""
@@ -100,21 +100,25 @@ class TestOrchestratorEscalationCode:
         """escalation 時に guard fire が記録されること."""
         assert 'self._inc_guard_fire("mcb_sad_escalation")' in self.src
 
-    def test_escalation_triggers_continue(self) -> None:
-        """AND escalation ブロック内で continue (cycle skip) されること."""
+    def test_escalation_triggers_return_true(self) -> None:
+        """AND escalation ブロック内で return True (cycle skip) されること.
+
+        330#: run_continuous から _check_circuit_breakers に抽出。
+        continue → return True に変更。
+        """
         lines = self.src.split("\n")
         in_escalation = False
         for line in lines:
             if "_mcb_warning and _sad_warning" in line:
                 in_escalation = True
-            if in_escalation and "continue" in line.strip():
+            if in_escalation and "return True" in line.strip():
                 return  # OK
             # escalation ブロック外に出たら失敗
-            if in_escalation and "§9.4" in line:
+            if in_escalation and "return False" in line:
                 break
         if not in_escalation:
             pytest.fail("AND escalation block not found")
-        pytest.fail("continue not found in AND escalation block")
+        pytest.fail("return True not found in AND escalation block")
 
     def test_escalation_sleep_multiplier(self) -> None:
         """AND escalation で halt_sleep_multiplier が適用されること.
@@ -129,7 +133,7 @@ class TestOrchestratorEscalationCode:
                 in_escalation = True
             if in_escalation and ("multiplier=5.0" in line or "multiplier=_halt_mult" in line):
                 return  # OK
-            if in_escalation and "§9.4" in line:
+            if in_escalation and "return False" in line:
                 break
         pytest.fail("halt multiplier not found in escalation block")
 

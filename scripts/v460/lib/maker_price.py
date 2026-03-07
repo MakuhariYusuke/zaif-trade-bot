@@ -541,7 +541,10 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
             updated = max(updated, min_ratio)
         if max_ratio is not None:
             updated = min(updated, max_ratio)
-        return updated, (updated / effective_offset_ratio)
+        # 330# B1: ゼロ除算ガード — effective_offset_ratio が極小値で
+        # multiplier 適用後の updated が 0 になるケースを安全側に倒す
+        applied = updated / effective_offset_ratio if effective_offset_ratio != 0 else 1.0
+        return updated, applied
 
     @staticmethod
     def _finalize_price_with_spread_guard(

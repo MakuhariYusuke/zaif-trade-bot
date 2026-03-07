@@ -18,6 +18,7 @@ from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
 from tests.unit.v460._fill_test_source import (
     FILL_CYCLE_EXECUTOR,
     FILL_LOOP_ORCHESTRATOR,
+    read_fill_test_runner_source,
     read_source_text,
 )
 from ztb.metrics.fill_quality import (
@@ -1119,16 +1120,19 @@ class Test110DeadlockBreak:
         assert cfg.max_086_consecutive_wait == 0
 
     def test_deadlock_break_logic_in_source(self) -> None:
-        """run_continuous 内に 110# デッドロック解除ロジックが存在."""
-        source = read_source_text(FILL_LOOP_ORCHESTRATOR)
+        """orchestrator mixin 内に 110# デッドロック解除ロジックが存在.
+
+        330#: 時間フィルタが orchestrator_pre_cycle に抽出済み。
+        """
+        source = read_fill_test_runner_source()
         assert "consecutive_086_wait" in source, (
-            "run_continuous must reference consecutive_086_wait counter"
+            "orchestrator mixins must reference consecutive_086_wait counter"
         )
         assert "110#" in source, (
-            "run_continuous must contain 110# deadlock break comment"
+            "orchestrator mixins must contain 110# deadlock break comment"
         )
         assert "max_086_consecutive_wait" in source, (
-            "run_continuous must reference max_086_consecutive_wait config"
+            "orchestrator mixins must reference max_086_consecutive_wait config"
         )
 
     def test_is_time_filtered_unchanged(self) -> None:

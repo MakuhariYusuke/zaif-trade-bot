@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-12 (329# fill_config.py God Object 分割)
+> 最終更新: 2026-03-13 (330# run_continuous pre-cycle 抽出 + σ floor + ゼロ除算ガード)
 
 ---
 
@@ -320,6 +320,7 @@
 | 327 | fix | [327_phg_fix_proactive_bug_hunt.md](327_phg_fix_proactive_bug_hunt.md) | Proactive bug fix: loss_cap_ratio ZeroDivisionError 防止 + ファイルハンドルリーク修正 |
 | 328 | rpt | [328_phg_rpt_task_audit_and_god_object_analysis.md](328_phg_rpt_task_audit_and_god_object_analysis.md) | タスク棚卸し 47 件 + fill_config.py / orchestrator God Object 分割戦略 |
 | 329 | refactor | [329_phg_refactor_fill_config_god_object_split.md](329_phg_refactor_fill_config_god_object_split.md) | fill_config.py 2046→724 行 God Object 分割 (4 ファイル) |
+| 330 | refactor | [330_phg_refactor_orchestrator_pre_cycle_and_bugfixes.md](330_phg_refactor_orchestrator_pre_cycle_and_bugfixes.md) | run_continuous pre-cycle 抽出 (1595→1223 行) + σ floor + ゼロ除算ガード |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

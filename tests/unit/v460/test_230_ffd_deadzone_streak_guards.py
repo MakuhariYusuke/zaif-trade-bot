@@ -379,45 +379,61 @@ class TestMCBSADNoneGuard:
     """H-3: _mcb/_sad is None 時に AttributeError しない."""
 
     def test_orchestrator_mcb_none_attribute(self) -> None:
-        """fill_loop_orchestrator に 'self._mcb is not None and' パターンがある."""
-        from scripts.v460.lib import fill_loop_orchestrator as mod
+        """orchestrator mixin に 'self._mcb is not None and' パターンがある.
+
+        330#: MCB/SAD check は orchestrator_pre_cycle に抽出済み。
+        """
+        from scripts.v460.lib import orchestrator_pre_cycle as mod
 
         src = inspect.getsource(mod)
         # _mcb.config.enabled の前に None check がある
         assert "self._mcb is not None and self._mcb.config.enabled" in src
 
     def test_orchestrator_sad_none_attribute(self) -> None:
-        """fill_loop_orchestrator に 'self._sad is not None and' パターンがある."""
-        from scripts.v460.lib import fill_loop_orchestrator as mod
+        """orchestrator mixin に 'self._sad is not None and' パターンがある.
+
+        330#: MCB/SAD check は orchestrator_pre_cycle に抽出済み。
+        """
+        from scripts.v460.lib import orchestrator_pre_cycle as mod
 
         src = inspect.getsource(mod)
         assert "self._sad is not None and self._sad.config.enabled" in src
 
     def test_no_bare_mcb_config_access(self) -> None:
-        """None guard なしの self._mcb.config.enabled が残っていない."""
-        from scripts.v460.lib import fill_loop_orchestrator as mod
+        """None guard なしの self._mcb.config.enabled が残っていない.
 
-        src = inspect.getsource(mod)
-        lines = src.split("\n")
-        for line in lines:
-            stripped = line.strip()
-            if "self._mcb.config.enabled" in stripped:
-                assert "self._mcb is not None" in stripped, (
-                    f"Unguarded _mcb access: {stripped}"
-                )
+        330#: orchestrator_pre_cycle + fill_loop_orchestrator 両方を検査。
+        """
+        from scripts.v460.lib import fill_loop_orchestrator as mod1
+        from scripts.v460.lib import orchestrator_pre_cycle as mod2
+
+        for mod in (mod1, mod2):
+            src = inspect.getsource(mod)
+            lines = src.split("\n")
+            for line in lines:
+                stripped = line.strip()
+                if "self._mcb.config.enabled" in stripped:
+                    assert "self._mcb is not None" in stripped, (
+                        f"Unguarded _mcb access: {stripped}"
+                    )
 
     def test_no_bare_sad_config_access(self) -> None:
-        """None guard なしの self._sad.config.enabled が残っていない."""
-        from scripts.v460.lib import fill_loop_orchestrator as mod
+        """None guard なしの self._sad.config.enabled が残っていない.
 
-        src = inspect.getsource(mod)
-        lines = src.split("\n")
-        for line in lines:
-            stripped = line.strip()
-            if "self._sad.config.enabled" in stripped:
-                assert "self._sad is not None" in stripped, (
-                    f"Unguarded _sad access: {stripped}"
-                )
+        330#: orchestrator_pre_cycle + fill_loop_orchestrator 両方を検査。
+        """
+        from scripts.v460.lib import fill_loop_orchestrator as mod1
+        from scripts.v460.lib import orchestrator_pre_cycle as mod2
+
+        for mod in (mod1, mod2):
+            src = inspect.getsource(mod)
+            lines = src.split("\n")
+            for line in lines:
+                stripped = line.strip()
+                if "self._sad.config.enabled" in stripped:
+                    assert "self._sad is not None" in stripped, (
+                        f"Unguarded _sad access: {stripped}"
+                    )
 
 
 # ======================================================================

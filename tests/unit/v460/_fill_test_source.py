@@ -25,6 +25,7 @@ _FILL_TEST_RUNNER_SOURCES: list[Path] = [
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_guards.py",
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_lifecycle.py",
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_post_cycle.py",
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_pre_cycle.py",
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_loop_orchestrator.py",
 ]
 
