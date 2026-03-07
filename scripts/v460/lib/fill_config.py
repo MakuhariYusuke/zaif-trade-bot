@@ -291,6 +291,10 @@ class FillTestConfig:
     # ---- 306# T1-3: Max Offset Ratio 天井 (300# §2.1 構造的矛盾 #2) ----
     # 全ステージが offset を拡大する方向にのみ作用 → 天井で toxic fill only trap を防止
     offset_ceiling_ratio: float = 0.0  # 0.0=無効, >0 で offset 上限 (e.g. 0.15)
+    # 320# C-1: サイド別 ceiling (sell floor(0.30) > ceiling(0.15) 矛盾解消)
+    # None=共通値(offset_ceiling_ratio)使用、>0 でサイド別上限
+    offset_ceiling_ratio_buy: float | None = None
+    offset_ceiling_ratio_sell: float | None = None
     # 054# S3: テール損失カット (post-fill早期監視)
     early_exit_enabled: bool = False
     early_exit_threshold_bps: float = 5.0  # 損失閾値 (bps)

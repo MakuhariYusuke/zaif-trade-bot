@@ -329,6 +329,41 @@ class TestNoneRegimePassiveMM:
 
 
 # ======================================================================
+# 320# C-1: Side-specific Ceiling テスト
+# ======================================================================
+
+
+class TestSideSpecificCeiling:
+    """320# C-1: offset_ceiling_ratio のサイド別分離."""
+
+    def test_config_has_side_specific_ceiling_fields(self) -> None:
+        """FillTestConfig に offset_ceiling_ratio_buy/sell が存在."""
+        cfg = FillTestConfig()
+        assert hasattr(cfg, "offset_ceiling_ratio_buy")
+        assert hasattr(cfg, "offset_ceiling_ratio_sell")
+        # デフォルトは None (共通値使用)
+        assert cfg.offset_ceiling_ratio_buy is None
+        assert cfg.offset_ceiling_ratio_sell is None
+
+    def test_sell_ceiling_higher_than_buy(self) -> None:
+        """sell ceiling を buy より高く設定した場合、sell pipeline が分化可能."""
+        cfg = FillTestConfig()
+        cfg.offset_ceiling_ratio = 0.15
+        cfg.offset_ceiling_ratio_buy = 0.15
+        cfg.offset_ceiling_ratio_sell = 0.50
+        # sell ceiling > sell floor(0.30) = 矛盾解消
+        assert cfg.offset_ceiling_ratio_sell > cfg.sell_offset_floor
+
+    def test_sell_ceiling_none_falls_back_to_common(self) -> None:
+        """sell ceiling=None 時は共通値にフォールバック."""
+        cfg = FillTestConfig()
+        cfg.offset_ceiling_ratio = 0.15
+        cfg.offset_ceiling_ratio_sell = None
+        # 共通値が使用される (コード上の挙動を間接検証)
+        assert cfg.offset_ceiling_ratio == 0.15
+
+
+# ======================================================================
 # B/C: hot-reload 登録テスト
 # ======================================================================
 

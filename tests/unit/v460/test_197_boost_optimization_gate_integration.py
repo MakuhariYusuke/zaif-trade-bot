@@ -119,9 +119,9 @@ class TestTrendingBoostOptimization:
         assert cfg.trending_sell_offset_boost_factor == 2.0
 
     def test_yaml_trending_boost_is_3_0(self, v460_fill_test_yaml: dict[str, object]):
-        """246# live YAML が 3.0 に強化されていること."""
+        """320# live YAML が 1.5 (C-1 解消: sell pipeline 復活)."""
         raw = v460_fill_test_yaml
-        assert raw["loss_control"]["trending_sell_offset_boost_factor"] == 3.0
+        assert raw["loss_control"]["trending_sell_offset_boost_factor"] == 1.5
 
 
 # =================================================================

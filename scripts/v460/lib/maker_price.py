@@ -1658,7 +1658,12 @@ class MakerPriceCalculator:
             _stages["final"] = effective_offset_ratio
 
         # 306# E1: offset ceiling — 300# T1-3 指摘の上限制御
+        # 320# C-1: サイド別 ceiling — sell floor(0.30) > ceiling(0.15) 矛盾解消
         _ceil = cfg.offset_ceiling_ratio
+        if side == "buy" and cfg.offset_ceiling_ratio_buy is not None:
+            _ceil = cfg.offset_ceiling_ratio_buy
+        elif side == "sell" and cfg.offset_ceiling_ratio_sell is not None:
+            _ceil = cfg.offset_ceiling_ratio_sell
         if _ceil > 0 and effective_offset_ratio > _ceil:
             logger.info(
                 f"[306# ceiling] offset {effective_offset_ratio:.4f} "

@@ -491,7 +491,7 @@ class TestConfigYamlParse196:
         """live YAML に trending_sell_as_offset_enabled が含まれること."""
         lc = v460_fill_test_yaml["loss_control"]
         assert lc["trending_sell_as_offset_enabled"] is True
-        assert lc["trending_sell_offset_boost_factor"] == 3.0  # 246# 2.0→3.0 sell 防御強化
+        assert lc["trending_sell_offset_boost_factor"] == 1.5  # 320# 4.0→1.5 (C-1: sell ceiling 0.50 でパイプライン復活)
         # 253# 削除済み: balance_forced_apply_trending_offset
 
     def test_config_from_yaml_round_trip(self, v460_fill_test_yaml: dict[str, object]):
