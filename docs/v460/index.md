@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-16 (332# Phase 4 — run_continuous Balance/MidCycle Mixin 抽出, 1228→407 行)
+> 最終更新: 2026-03-08 (336# 334#/335# 主張検証・施策策定)
 
 ---
 
@@ -322,6 +322,9 @@
 | 329 | refactor | [329_phg_refactor_fill_config_god_object_split.md](329_phg_refactor_fill_config_god_object_split.md) | fill_config.py 2046→724 行 God Object 分割 (4 ファイル) |
 | 330 | refactor | [330_phg_refactor_orchestrator_pre_cycle_and_bugfixes.md](330_phg_refactor_orchestrator_pre_cycle_and_bugfixes.md) | run_continuous pre-cycle 抽出 (1595→1223 行) + σ floor + ゼロ除算ガード |
 | 333 | rpt | [333_ph2_rpt_dcc3064_sha_isolated_deep_dive.md](333_ph2_rpt_dcc3064_sha_isolated_deep_dive.md) | dcc3064 SHA 分離分析: 24h n=100 fills, PnL +63.56bps, AB FAIL (sell p10 僅差 + buy fill_rate 壊滅), buy_dynamic_kill T-1 提起 |
+| 334 | rev | [334_ph2_rev_313_333_profitability_design_market_review.md](334_ph2_rev_313_333_profitability_design_market_review.md) | 313#–333# 横断レビュー: 収益性最優先で buy suppressor 過剰, side-specific ceiling 評価, refactor 凍結線引き, ranging/trending 分離を整理 |
+| 335 | rev | [335_ph2_gemini_31_pro_review_314_334_comprehensive_audit.md](335_ph2_gemini_31_pro_review_314_334_comprehensive_audit.md) | Gemini 3.1 Pro 総括レビュー: 生存者バイアス警告→自己訂正, buy kill -0.8bps=過敏スプリンクラー, P0 緩和必須 |
+| 336 | rev | [336_ph2_rev_334_335_claims_validation_and_measures.md](336_ph2_rev_334_335_claims_validation_and_measures.md) | 334#/335# 主張検証: カスケード増幅メカニズム解明, T-1〜T-5 施策策定, YAML-only Phase 1 即時実行計画 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
