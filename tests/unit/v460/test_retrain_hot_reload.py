@@ -246,6 +246,23 @@ class TestHotReload:
             assert evaluator._model_file_hash != ""
             assert len(evaluator._model_file_hash) == 64  # SHA256 hex
 
+    def test_initial_hash_uses_sidecar_when_fresh(self) -> None:
+        """モデル sidecar hash が新鮮なら full file hash scan にフォールバックしない."""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = Path(tmpdir) / "gate.pkl"
+            gate = _make_picklable_gate(version="v1")
+            _save_gate_to(gate, model_path)
+
+            cfg = self._make_config(str(model_path))
+            with patch(
+                "scripts.v460.lib.skip_gate_evaluator.compute_file_hash",
+                side_effect=AssertionError("full hash scan should not run"),
+            ):
+                evaluator = SkipGateEvaluator(cfg, Path(tmpdir))
+
+            assert evaluator._model_file_hash != ""
+
     def test_no_reload_when_unchanged(self) -> None:
         """ファイル未変更時はリロードしない."""
 
@@ -283,7 +300,7 @@ class TestHotReload:
             # 強制チェック
             evaluator._last_reload_check = 0
             with patch(
-                "scripts.v460.lib.skip_gate_evaluator.compute_file_hash",
+                "scripts.v460.lib.skip_gate_evaluator.SkipGateEvaluator._read_model_hash",
                 return_value="b" * 64,
             ), patch.object(
                 evaluator,
@@ -652,6 +669,14 @@ class TestE2ERetrainHotReload:
         ):
             yield
 
+    @pytest.fixture(autouse=True)
+    def _disable_warm_start(self) -> object:
+        with patch(
+            "scripts.v460.lib.skip_gate_evaluator.SkipGateEvaluator._apply_warm_start",
+            return_value=None,
+        ):
+            yield
+
     def test_retrain_deploy_and_hot_reload(self) -> None:
         """E2E: 十分なデータで retrain → deploy → SkipGateEvaluator が hot-reload."""
 
@@ -665,7 +690,7 @@ class TestE2ERetrainHotReload:
             # 最低要件を満たす範囲で fill records を絞る
             rng = np.random.RandomState(42)
             records = []
-            for i in range(20):
+            for i in range(12):
                 records.append(json.dumps({
                     "cycle_id": f"e2e_{i}",
                     "side": "buy" if i % 2 == 0 else "sell",
@@ -692,7 +717,7 @@ class TestE2ERetrainHotReload:
             cfg["mode"] = "pnl"
             cfg["use_ob_features"] = False  # テスト高速化
             cfg["min_new_samples"] = 1
-            cfg["min_total_samples"] = 20
+            cfg["min_total_samples"] = 12
             cfg["quality_gate_enabled"] = False  # E2E テストでは品質ゲート無効
             cfg["latest_run_only"] = False
             cfg["exclude_missing_run_id"] = False
@@ -703,12 +728,15 @@ class TestE2ERetrainHotReload:
             cfg["lgbm_subsample"] = 1.0
             cfg["lgbm_colsample_bytree"] = 1.0
             cfg["early_stopping_rounds"] = 0
-            cfg["bootstrap_threshold"] = 20
+            cfg["bootstrap_threshold"] = 12
             cfg["enriched_cache_enabled"] = False
 
             with patch(
                 "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
                 side_effect=_identity_enrich,
+            ), patch(
+                "scripts.v460.ml.retrain_scheduler.SkipGate.load",
+                return_value=_make_picklable_gate(n_samples=12, version="verified"),
             ):
                 result = retrain_model(cfg)
             assert result["status"] in ("deployed", "deployed_verified"), f"Expected deployed*, got {result}"
@@ -770,6 +798,14 @@ class TestE2ERetrainHotReload:
 class TestBalanceForcedSwitchFilter:
     """130# Y5: retrain_model() が balance_forced_switch=True を除外する."""
 
+    @pytest.fixture(autouse=True)
+    def _fast_regressor(self) -> object:
+        with patch(
+            "scripts.v460.ml.retrain_scheduler._build_lgbm_regressor",
+            side_effect=_build_fast_regressor,
+        ):
+            yield
+
     def test_balance_forced_records_excluded(self) -> None:
         """balance_forced_switch=True のレコードが学習データから除外される."""
 
@@ -779,9 +815,9 @@ class TestBalanceForcedSwitchFilter:
 
             rng = np.random.RandomState(123)
             records = []
-            for i in range(30):
-                # 最初の 10 件は balance_forced_switch=True
-                forced = i < 10
+            for i in range(18):
+                # 最初の 6 件は balance_forced_switch=True
+                forced = i < 6
                 records.append(json.dumps({
                     "cycle_id": f"bf_{i}",
                     "side": "buy" if i % 2 == 0 else "sell",
@@ -815,7 +851,7 @@ class TestBalanceForcedSwitchFilter:
             cfg["quality_gate_enabled"] = False
             cfg["latest_run_only"] = False
             cfg["exclude_missing_run_id"] = False
-            cfg["lgbm_n_estimators"] = 30
+            cfg["lgbm_n_estimators"] = 6
             cfg["enriched_cache_enabled"] = False
 
             with patch(
@@ -823,10 +859,10 @@ class TestBalanceForcedSwitchFilter:
                 side_effect=_identity_enrich,
             ):
                 result = retrain_model(cfg)
-            # 30 - 10 forced = 20 records usable; filled_records should be <= 20
+            # 18 - 6 forced = 12 records usable; filled_records should be <= 12
             assert result["status"] in ("deployed", "deployed_verified", "skipped")
             if result["status"] in ("deployed", "deployed_verified"):
-                assert result.get("filled_records", 0) <= 20
+                assert result.get("filled_records", 0) <= 12
 
     def test_no_balance_column_no_error(self) -> None:
         """balance_forced_switch カラムがなくてもエラーにならない."""

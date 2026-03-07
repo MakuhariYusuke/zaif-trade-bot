@@ -132,6 +132,13 @@ def base_config() -> FillTestConfig:
     )
 
 
+@pytest.fixture(autouse=True)
+def _stub_git_sha() -> Iterator[None]:
+    """Reload tests do not need a real git subprocess."""
+    with patch("ztb.utils.git_utils.get_git_sha", return_value="abc123"):
+        yield
+
+
 def _make_mock_runner(config: FillTestConfig) -> MagicMock:
     """Create a mock runner with required attributes."""
     runner = MagicMock()

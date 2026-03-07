@@ -1516,18 +1516,18 @@ class TestGateCheckG11:
             records = []
             base_ts = 1700000000.0
             for day in range(3):
-                for i in range(100):
+                for i in range(20):
                     records.append(FillRecord(
                         cycle_id=f"d{day}_{i}",
                         timestamp=base_ts + day * 86400 + i * 120,
                         side="buy" if i % 2 == 0 else "sell",
                         order_price=15000000.0,
                         order_quantity=0.001,
-                        filled=(i < 95),  # 95% fill rate
-                        cancelled=(i >= 95),
-                        queue_wait_sec=15.0 if i < 95 else 0.0,
-                        post_fill_30s_pnl=0.5 if i < 95 else None,
-                        adverse_selected=False if i < 95 else None,
+                        filled=(i < 19),  # 95% fill rate
+                        cancelled=(i >= 19),
+                        queue_wait_sec=15.0 if i < 19 else 0.0,
+                        post_fill_30s_pnl=0.5 if i < 19 else None,
+                        adverse_selected=False if i < 19 else None,
                     ))
             save_fill_records(
                 records,

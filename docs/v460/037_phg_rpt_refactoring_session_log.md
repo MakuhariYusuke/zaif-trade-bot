@@ -1147,3 +1147,68 @@
 1. `test_retrain_hot_reload.py` の `TestE2ERetrainHotReload` をさらに分解し、save/load 経路だけを残して学習コストを削る
 2. `test_fill_quality.py` と `test_102_structural_fixes.py` の重い runner 初期化テストで、価格計算や git 情報の不要依存を個別 stub へ寄せる
 3. 本体コード側では `run_fill_test.py` 周辺の巨大メソッド分解候補を見て、test_113 系の line-count 圧迫と初期化コストの両面を確認する
+
+---
+
+## 2026-03-07 / Session 037-030
+
+### 実施
+- 本体コード
+  - `ztb/utils/run_manifest.py`
+    - `compute_file_hash()` を stat-signature (`mtime_ns`, `size`) ベースの cache 化
+  - `scripts/v460/lib/skip_gate_evaluator.py`
+    - モデル hash 読み出しで fresh な `.sha256` sidecar を優先
+    - stale sidecar の場合のみ full file hash にフォールバック
+- テストコード
+  - `test_169_config_hot_reload.py`
+    - `get_git_sha()` を autouse patch し、reload 差分テストから実 git subprocess を排除
+  - `test_fill_quality.py`
+    - `TestGateCheckG11::test_g1_1_with_data` の synthetic records を `300 -> 60` に削減
+  - `test_retrain_hot_reload.py`
+    - `TestBalanceForcedSwitchFilter` に fast regressor patch を横展開
+    - sidecar hash fast-path の回帰テストを追加
+    - `TestE2ERetrainHotReload` は warm-start 経路を通さない形にし、配線確認へ責務を限定
+  - `test_enricher_skip_gate.py`
+    - real-data fixture を `120 -> 220 -> 320` の guarded fallback 化
+    - 実行中に伸びうる newest `fill_records_*.jsonl` を除外して入力を安定化
+  - `tests/unit/v460/_fill_test_source.py`
+    - `fill_record_builder.py` を source-inspection 対象に追加
+
+### 結果
+- 対象回帰 1:
+  - `test_run_manifest.py` + `test_169_config_hot_reload.py`
+  - `31 passed in 4.35s`
+- 対象回帰 2:
+  - `test_retrain_hot_reload.py` + `test_169_config_hot_reload.py` + `test_fill_quality.py` + `test_run_manifest.py`
+  - `319 passed in 8.97s`
+- 対象回帰 3:
+  - `test_enricher_skip_gate.py` + `test_145_structural_fixes.py`
+  - `127 passed in 6.09s`
+- `test_enricher_skip_gate.py` 単体:
+  - `70 passed in 4.50s`
+- broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` と `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - rerun 1: `4051 passed, 1 deselected, 18 warnings in 40.52s`
+  - rerun 2: `4051 passed, 1 deselected, 18 warnings in 40.76s`
+
+### 主要 durations 変化
+- `test_169_config_hot_reload.py::TestConfigFieldUpdate::test_do_reload_updates_reloadable_fields`
+  - `0.34s級 -> 0.01s`
+- `test_fill_quality.py::TestGateCheckG11::test_g1_1_with_data`
+  - `0.16s級 -> 0.07s〜0.08s`
+- `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data`
+  - focused run setup `0.58s`
+  - filtered broad setup `0.69s`
+- `test_retrain_hot_reload.py::TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload`
+  - filtered broad では `0.17s`
+
+### 補足
+- broad の壁時計そのものは前段の最速値より高めだが、今回の主目的は以下の 2 点だった
+  - `test_enricher_skip_gate.py` の real-data fixture の broad-run flake 解消
+  - `config_hot_reload` / `run_manifest` / model hash 読み出しの実 I/O / subprocess 依存除去
+- `test_145_structural_fixes.py::TestFillRecordBuilderIntegration::test_build_fill_record_is_used` は、production code の不具合ではなく source-inspection helper が `fill_record_builder.py` を見ていなかったのが原因
+
+### 次アクション
+1. `test_212_live_trader_config.py` と `test_145_structural_fixes.py::TestSkipGateLotConsistency` の source-inspection / import cost を個別に削る
+2. `test_aggregate_to_1min.py` の parquet roundtrip 必須ケースをさらに最小化する
+3. broad 上位に残る `test_microstructure_features.py` / `test_ml_pipeline.py` の単発重ケースを stub 注入で分離できるか確認する

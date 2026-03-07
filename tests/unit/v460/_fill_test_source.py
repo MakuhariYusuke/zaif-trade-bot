@@ -1,6 +1,6 @@
 """FillTestRunner ソースファイル読込ヘルパー.
 
-mixin 分割 (163#) 後、FillTestRunner のロジックは 4 ファイルに分散している。
+mixin 分割 (163#, 323#) 後、FillTestRunner のロジックは 6 ファイルに分散している。
 ソース解析テストで全体を検索する場合はこのヘルパーを使用すること。
 
 WARNING (God Object 防止):
@@ -18,6 +18,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 _FILL_TEST_RUNNER_SOURCES: list[Path] = [
     _PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py",
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_record_builder.py",
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_record_helpers.py",
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_cycle_executor.py",
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_loop_orchestrator.py",
@@ -32,6 +33,15 @@ FILL_CYCLE_EXECUTOR = (
 )
 FILL_RECORD_HELPERS = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_record_helpers.py"
+)
+FILL_RECORD_BUILDER = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_record_builder.py"
+)
+FILL_RECORD_BUILDER = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_record_builder.py"
+)
+PRE_ORDER_ADJUSTMENTS = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "pre_order_adjustments.py"
 )
 FILL_TEST_RUNNER_MAIN = (
     _PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py"

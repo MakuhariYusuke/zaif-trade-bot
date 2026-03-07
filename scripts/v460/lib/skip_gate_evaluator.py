@@ -185,7 +185,7 @@ class SkipGateEvaluator:
                 apply_warm_start=True,
             )
             self._skip_gate = skip_gate
-            self._model_file_hash = compute_file_hash(gate_path)
+            self._model_file_hash = self._read_model_hash(gate_path)
             self._last_reload_check = time.monotonic()
 
             # 141# P1-01: side 別モデルロード
@@ -201,6 +201,22 @@ class SkipGateEvaluator:
         if not path.is_absolute():
             path = self._project_root / path
         return path
+
+    @staticmethod
+    def _read_model_hash(path: Path) -> str:
+        """Prefer a fresh sidecar hash before falling back to a full file scan."""
+        hash_path = path.with_suffix(path.suffix + ".sha256")
+        try:
+            model_stat = path.stat()
+            if hash_path.exists():
+                hash_stat = hash_path.stat()
+                if hash_stat.st_mtime_ns >= model_stat.st_mtime_ns:
+                    digest = hash_path.read_text(encoding="utf-8").strip().lower()
+                    if len(digest) == 64 and all(c in "0123456789abcdef" for c in digest):
+                        return digest
+        except OSError:
+            pass
+        return compute_file_hash(path)
 
     @staticmethod
     def _compute_velocity_offset_multiplier(
@@ -522,7 +538,7 @@ class SkipGateEvaluator:
                 side_gate = self._load_gate_from_path(skip_gate_cls, gate_path)
                 setattr(self, attr_gate, side_gate)
                 setattr(self, attr_path, gate_path)
-                setattr(self, attr_hash, compute_file_hash(gate_path))
+                setattr(self, attr_hash, self._read_model_hash(gate_path))
                 n_features = len(side_gate.feature_cols)
                 target = side_gate.metadata.get("target", "?")
                 logger.info(
@@ -557,7 +573,7 @@ class SkipGateEvaluator:
                 alt_gate = self._load_gate_from_path(skip_gate_cls, gate_path)
                 setattr(self, attr_gate, alt_gate)
                 setattr(self, attr_path, gate_path)
-                setattr(self, attr_hash, compute_file_hash(gate_path))
+                setattr(self, attr_hash, self._read_model_hash(gate_path))
                 n_features = len(alt_gate.feature_cols)
                 target = alt_gate.metadata.get("target", "?")
                 logger.info(
@@ -806,7 +822,7 @@ class SkipGateEvaluator:
         if self._gate_path is None or not self._gate_path.exists():
             return
 
-        new_hash = compute_file_hash(self._gate_path)
+        new_hash = self._read_model_hash(self._gate_path)
         if new_hash == self._model_file_hash or not new_hash:
             return
 
@@ -868,7 +884,7 @@ class SkipGateEvaluator:
                     new_gate = self._load_gate_from_path(skip_gate_cls, gate_path)
                     setattr(self, attr_gate, new_gate)
                     setattr(self, attr_path, gate_path)
-                    setattr(self, attr_hash, compute_file_hash(gate_path))
+                    setattr(self, attr_hash, self._read_model_hash(gate_path))
                     logger.info(f"[skip_gate] 141# {side} model first load via hot-reload: {gate_path}")
                 except Exception as e:
                     logger.warning(f"[skip_gate] 141# {side} model first load failed: {e}")
@@ -877,7 +893,7 @@ class SkipGateEvaluator:
             if not gate_path.exists():
                 continue
             old_hash = getattr(self, attr_hash, "")
-            new_hash = compute_file_hash(gate_path)
+            new_hash = self._read_model_hash(gate_path)
             if new_hash == old_hash or not new_hash:
                 continue
             try:

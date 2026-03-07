@@ -3897,3 +3897,22 @@ python scripts/unified_trainer.py \
 ### Notes
 - The latest filtered broad run for the current patch completed at `4043 passed, 1 deselected, 18 warnings in 37.13s` when excluding the unrelated line-count guard in `tests/unit/v460/test_113_resilience.py`.
 - The unrelated failure is `TestR1MethodExtraction::test_run_single_cycle_under_400_lines`, currently reporting `run_single_cycle is 732 lines (> 725)` in the working tree.
+
+### Changed
+- Added a stat-signature cache to `ztb/utils/run_manifest.py::compute_file_hash()` and reused fresh `.sha256` sidecars in `scripts/v460/lib/skip_gate_evaluator.py`, cutting repeated model-hash scans during hot-reload checks and manifest generation while preserving invalidation when the file changes.
+- Stubbed `ztb.utils.git_utils.get_git_sha()` across `tests/unit/v460/test_169_config_hot_reload.py`, removing real git subprocess work from `_do_reload()` tests that only validate field-diff application.
+- Reduced `tests/unit/v460/test_fill_quality.py::TestGateCheckG11::test_g1_1_with_data` from `300` synthetic records to `60`, preserving the quick-gate integration path while trimming JSONL write/read overhead.
+- Tightened `tests/unit/v460/test_retrain_hot_reload.py` by reusing the fast regressor in `TestBalanceForcedSwitchFilter`, adding a sidecar-hash regression test, and keeping the E2E hot-reload test off the warm-start path that is already covered elsewhere.
+- Stabilized `tests/unit/v460/test_enricher_skip_gate.py` real-data selection with a guarded 3-stage fallback (`120 -> 220 -> 320`) and by excluding the newest mutable `fill_records_*.jsonl` from the integration fixture, reducing broad-run flakiness caused by in-process result growth.
+- Updated `tests/unit/v460/_fill_test_source.py` to include `scripts/v460/lib/fill_record_builder.py`, so AST/source-inspection tests follow the current FillTestRunner split layout.
+
+### Verified
+- `python -m pytest tests/unit/utils/test_run_manifest.py tests/unit/v460/test_169_config_hot_reload.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_169_config_hot_reload.py tests/unit/v460/test_fill_quality.py tests/unit/utils/test_run_manifest.py -q --no-cov --tb=short --durations=25`
+- `python -m pytest tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_145_structural_fixes.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_enricher_skip_gate.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=20 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- The latest filtered broad reruns completed at `4051 passed, 1 deselected, 18 warnings in 40.52s` and `40.76s` in the current Windows workspace.
+- `tests/unit/v460/test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` settled around `0.58s` setup in the focused file run and `0.69s` in the filtered broad run after excluding the mutable newest fill-record file.

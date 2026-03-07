@@ -8,6 +8,7 @@ about training runs, including git state, configuration, and data fingerprints.
 import hashlib
 import json
 from dataclasses import asdict, is_dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import cast
 
@@ -83,6 +84,26 @@ def get_git_dirty_status() -> bool:
     # Manifest generation is called frequently; tracked changes are sufficient.
     return _get_git_dirty_status(include_untracked=False)
 
+
+def _file_signature(file_path: Path) -> tuple[int, int]:
+    stat = file_path.stat()
+    return stat.st_mtime_ns, stat.st_size
+
+
+@lru_cache(maxsize=256)
+def _compute_file_hash_cached(
+    path_str: str,
+    mtime_ns: int,
+    size: int,
+) -> str:
+    del mtime_ns, size  # cache key only
+    sha256 = hashlib.sha256()
+    with open(path_str, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            sha256.update(chunk)
+    return sha256.hexdigest()
+
+
 def compute_file_hash(file_path: Path) -> str:
     """
     Compute SHA256 hash of a file.
@@ -93,14 +114,9 @@ def compute_file_hash(file_path: Path) -> str:
     Returns:
         Hex string of SHA256 hash
     """
-    sha256 = hashlib.sha256()
-
-    with open(file_path, "rb") as f:
-        # Read in chunks to handle large files
-        for chunk in iter(lambda: f.read(8192), b""):
-            sha256.update(chunk)
-
-    return sha256.hexdigest()
+    path = Path(file_path)
+    mtime_ns, size = _file_signature(path)
+    return _compute_file_hash_cached(str(path), mtime_ns, size)
 
 def compute_dataset_metadata(dataset_path: Path) -> dict[str, object]:
     """

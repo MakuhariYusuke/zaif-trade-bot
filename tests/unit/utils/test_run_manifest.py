@@ -54,6 +54,12 @@ def test_compute_file_hash(tmp_path):
 
     assert file_hash == file_hash2
 
+    # Same path with changed content should invalidate the stat-signature cache
+    test_file.write_text("Hello, World! updated")
+    file_hash_updated = compute_file_hash(test_file)
+
+    assert file_hash_updated != file_hash
+
     # Different content should produce different hash
     test_file3 = tmp_path / "test3.txt"
     test_file3.write_text("Different content")

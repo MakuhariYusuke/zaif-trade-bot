@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import gzip
 import json
 import tempfile
@@ -42,6 +43,9 @@ from scripts.v460.ml.skip_gate import (
 from scripts.v460.ml.data_loader import build_as_features, load_fill_records as load_fill_records_df
 
 _REAL_DATA_SAMPLE_ROWS = 120
+_REAL_DATA_FALLBACK_SAMPLE_ROWS = 220
+_REAL_DATA_EXPANDED_SAMPLE_ROWS = 320
+_REAL_DATA_MIN_TRAIN_SAMPLES = 31
 
 
 def _write_jsonl_gz(path: Path, rows: list[dict[str, Any]]) -> None:
@@ -60,6 +64,9 @@ def _load_recent_fill_records_df(
     files = sorted(results_dir.glob("fill_records_*.jsonl"))
     if not files:
         return pd.DataFrame()
+    if len(files) > 1:
+        # 実行中に伸びうる最新日のファイルを外し、real-data integration を安定化する。
+        files = files[:-1]
 
     chunks: list[pd.DataFrame] = []
     remaining = sample_rows
@@ -89,13 +96,31 @@ def _load_recent_fill_records_df(
         return pd.DataFrame()
 
 
-# ======================================================================
-# Fixtures
-# ======================================================================
+def _select_real_enriched_training_df(
+    *,
+    initial_rows: int = _REAL_DATA_SAMPLE_ROWS,
+    fallback_rows: int = _REAL_DATA_FALLBACK_SAMPLE_ROWS,
+    expanded_rows: int = _REAL_DATA_EXPANDED_SAMPLE_ROWS,
+    min_train_samples: int = _REAL_DATA_MIN_TRAIN_SAMPLES,
+) -> pd.DataFrame:
+    """学習成立条件を満たす最小限の real enriched_df を選ぶ."""
+    last_enriched = pd.DataFrame()
+    for sample_rows in (initial_rows, fallback_rows, expanded_rows):
+        fill_df = _load_recent_fill_records_df(sample_rows=sample_rows)
+        if fill_df.empty:
+            continue
+        enriched = enrich_fill_records(fill_df)
+        last_enriched = enriched
+        try:
+            X_train, _ = build_pnl_features(enriched)
+        except ValueError:
+            continue
+        if len(X_train) >= min_train_samples:
+            return enriched
+    return last_enriched
 
 
-@pytest.fixture
-def synthetic_fill_df() -> pd.DataFrame:
+def _make_synthetic_fill_df() -> pd.DataFrame:
     """合成 fill records: 100件のテストデータ."""
     rng = np.random.RandomState(42)
     n = 100
@@ -139,6 +164,16 @@ def synthetic_fill_df() -> pd.DataFrame:
         rows.append(row)
 
     return pd.DataFrame(rows)
+
+
+# ======================================================================
+# Fixtures
+# ======================================================================
+
+
+@pytest.fixture
+def synthetic_fill_df() -> pd.DataFrame:
+    return _make_synthetic_fill_df()
 
 
 @pytest.fixture
@@ -454,11 +489,10 @@ class Test058RawLoadCache:
 class Test058SkipGate:
     """Skip Gate のテスト."""
 
-    @pytest.fixture
-    def trained_gate(self, synthetic_fill_df: pd.DataFrame) -> SkipGate:
-        """合成データで学習した SkipGate."""
-
-        df = synthetic_fill_df.copy()
+    @pytest.fixture(scope="class")
+    def trained_gate_template(self) -> SkipGate:
+        """合成データで学習した SkipGate テンプレート."""
+        df = _make_synthetic_fill_df()
         for col in MICRO_FEATURE_COLS:
             df[col] = np.random.RandomState(42).randn(len(df))
 
@@ -474,6 +508,10 @@ class Test058SkipGate:
             feature_cols=X_pnl.columns.tolist(),
             config=SkipGateConfig(threshold_bps=0.0),
         )
+
+    @pytest.fixture
+    def trained_gate(self, trained_gate_template: SkipGate) -> SkipGate:
+        return copy.deepcopy(trained_gate_template)
 
     def test_evaluate_returns_decision(self, trained_gate: SkipGate) -> None:
         """evaluate が SkipDecision を返す."""
@@ -533,11 +571,10 @@ class Test058SkipGate:
 class Test061SkipGateASMode:
     """061# AS 分類器モードの SkipGate テスト."""
 
-    @pytest.fixture
-    def as_gate(self, synthetic_fill_df: pd.DataFrame) -> SkipGate:
-        """合成データで AS モードの SkipGate を構築."""
-
-        df = synthetic_fill_df.copy()
+    @pytest.fixture(scope="class")
+    def as_gate_template(self) -> SkipGate:
+        """合成データで AS モードの SkipGate テンプレートを構築."""
+        df = _make_synthetic_fill_df()
         for col in MICRO_FEATURE_COLS:
             df[col] = np.random.RandomState(42).randn(len(df))
 
@@ -555,6 +592,10 @@ class Test061SkipGateASMode:
             feature_cols=X_as.columns.tolist(),
             config=SkipGateConfig(mode="as", as_threshold=0.6),
         )
+
+    @pytest.fixture
+    def as_gate(self, as_gate_template: SkipGate) -> SkipGate:
+        return copy.deepcopy(as_gate_template)
 
     def test_as_mode_returns_decision(self, as_gate: SkipGate) -> None:
         """AS モードで SkipDecision を返す."""
@@ -978,7 +1019,8 @@ class Test058Integration:
     ) -> pd.DataFrame:
         if not real_data_available:
             pytest.skip("No real data")
-        return enrich_fill_records(real_fill_df)
+        del real_fill_df
+        return _select_real_enriched_training_df()
 
     def test_enrichment_with_real_data(
         self,
