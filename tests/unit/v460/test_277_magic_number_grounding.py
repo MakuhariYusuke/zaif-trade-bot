@@ -303,7 +303,7 @@ class TestGateAggregatorConfigIntegration:
         # バイパス後は blocked=False (unknown_regime ゲートのみ評価)
         # 他のゲートがブロックしなければ通過
         # 少なくともバイパスログが出力されたはず (実装依存)
-        assert gate._consecutive_unknown_blocks >= 3
+        assert gate._consecutive_unknown_blocks["buy"] >= 3
 
 
 # =====================================================================

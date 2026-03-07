@@ -155,7 +155,9 @@ class CycleGateAggregator:
         self._config = config
         # 277#: config から実際の閾値を取得 (YAML 上書き対応)
         self.UNKNOWN_REGIME_MAX_CONSECUTIVE = config.unknown_regime_max_consecutive
-        self._consecutive_unknown_blocks: int = 0  # 219# unknown regime 連続カウンタ
+        # 324# M-2: per-side 分離 (321# §5 M-2/319# M-6)
+        # buy/sell 交互呼出しで混合カウントされる問題を解消
+        self._consecutive_unknown_blocks: dict[str, int] = {"buy": 0, "sell": 0}
 
     def evaluate(
         self,
@@ -203,13 +205,15 @@ class CycleGateAggregator:
 
         # 219# unknown regime 連続バイパス: N サイクル連続 unknown で強制通過
         # 277# config 化: config.unknown_regime_max_consecutive
+        # 324# M-2: per-side カウンタ参照
+        _side_count = self._consecutive_unknown_blocks.get(side, 0)
         _unknown_bypass = (
             _regime == "unknown"
-            and self._consecutive_unknown_blocks >= self.UNKNOWN_REGIME_MAX_CONSECUTIVE
+            and _side_count >= self.UNKNOWN_REGIME_MAX_CONSECUTIVE
         )
         if _unknown_bypass:
             logger.warning(
-                f"[219#] unknown regime bypass: {self._consecutive_unknown_blocks} "
+                f"[219#] unknown regime bypass: {_side_count} "
                 f"consecutive blocks — forcing through (side={side})"
             )
 
@@ -219,13 +223,14 @@ class CycleGateAggregator:
         if g1.blocked and not halt_recovery_active:  # 273# recovery grace
             result.blocked = True
             result.blocking_reason = g1.reason
-            self._consecutive_unknown_blocks += 1
+            self._consecutive_unknown_blocks[side] = _side_count + 1  # 324# M-2
             return result
 
         # 229# M-5 fix: Gate 1 通過かつ非 unknown → カウンタリセット
         # Gate 2-6 の early return で reset 漏れを防ぐ
+        # 324# M-2: per-side リセット
         if _regime != "unknown":
-            self._consecutive_unknown_blocks = 0
+            self._consecutive_unknown_blocks[side] = 0
 
         # --- Gate 2: B1' ranging_buy_low_vol ---
         g2 = self._check_ranging_buy_low_vol(side, _regime, vol_ratio)
@@ -342,7 +347,7 @@ class CycleGateAggregator:
         if g7.blocked and not halt_recovery_active:  # 273# recovery grace
             result.blocked = True
             result.blocking_reason = g7.reason
-            self._consecutive_unknown_blocks += 1
+            self._consecutive_unknown_blocks[side] = _side_count + 1  # 324# M-2
             return result
 
         # 229# M-5: non-unknown リセットは Gate 1 直後で実施済み

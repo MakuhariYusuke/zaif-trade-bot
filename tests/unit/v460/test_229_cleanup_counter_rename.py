@@ -249,12 +249,12 @@ class TestUnknownCounterResetOnGate2:
         # Step 1: unknown regime で Gate 1 ブロック (buy side, skip_buy_unknown=True)
         r1 = gate.evaluate(**_default_ctx(side="buy", regime="unknown", vol_ratio=1.0))
         assert r1.blocked
-        assert gate._consecutive_unknown_blocks == 1
+        assert gate._consecutive_unknown_blocks["buy"] == 1
 
         # Step 2: もう1回 unknown
         r2 = gate.evaluate(**_default_ctx(side="buy", regime="unknown", vol_ratio=1.0))
         assert r2.blocked
-        assert gate._consecutive_unknown_blocks == 2
+        assert gate._consecutive_unknown_blocks["buy"] == 2
 
         # Step 3: regime=ranging, vol_ratio=0.5 (< threshold=0.75) → Gate 2 ブロック
         r3 = gate.evaluate(**_default_ctx(
@@ -263,12 +263,12 @@ class TestUnknownCounterResetOnGate2:
         assert r3.blocked
         assert r3.blocking_reason == "ranging_low_vol_skip"
         # 229# M-5 fix: カウンタは 0 にリセットされているはず
-        assert gate._consecutive_unknown_blocks == 0
+        assert gate._consecutive_unknown_blocks["buy"] == 0
 
         # Step 4: unknown に戻る → カウンタは 1 から (修正前は 3 だった)
         r4 = gate.evaluate(**_default_ctx(side="buy", regime="unknown", vol_ratio=1.0))
         assert r4.blocked
-        assert gate._consecutive_unknown_blocks == 1
+        assert gate._consecutive_unknown_blocks["buy"] == 1
 
     def test_trending_gate3_resets_counter(self):
         """unknown→trending(Gate 3 block)→unknown: カウンタリセット確認."""
@@ -276,7 +276,7 @@ class TestUnknownCounterResetOnGate2:
 
         # Step 1: unknown ブロック
         gate.evaluate(**_default_ctx(side="buy", regime="unknown"))
-        assert gate._consecutive_unknown_blocks == 1
+        assert gate._consecutive_unknown_blocks["buy"] == 1
 
         # Step 2: trending_up → sell → Gate 3 ブロック (trending_sell_skip)
         r2 = gate.evaluate(**_default_ctx(
@@ -286,7 +286,7 @@ class TestUnknownCounterResetOnGate2:
         assert r2.blocked
         assert r2.blocking_reason == "trending_sell_skip"
         # 229# M-5: カウンタリセット
-        assert gate._consecutive_unknown_blocks == 0
+        assert gate._consecutive_unknown_blocks["sell"] == 0
 
     def test_unknown_blocked_counter_increments_with_balance_forced(self):
         """234#: unknown + balance_forced → Gate 1 ブロック → カウンタ増加."""
@@ -294,25 +294,25 @@ class TestUnknownCounterResetOnGate2:
 
         # Step 1: unknown ブロック
         gate.evaluate(**_default_ctx(side="buy", regime="unknown"))
-        assert gate._consecutive_unknown_blocks == 1
+        assert gate._consecutive_unknown_blocks["buy"] == 1
 
         # Step 2: 234# balance_forced でも Gate 1 はブロック → カウンタ増加
         r2 = gate.evaluate(**_default_ctx(
             side="buy", regime="unknown", balance_forced=True,
         ))
         assert r2.blocked
-        assert gate._consecutive_unknown_blocks == 2
+        assert gate._consecutive_unknown_blocks["buy"] == 2
 
     def test_non_unknown_always_resets(self):
         """non-unknown regime は Gate 1 通過時にカウンタリセット."""
         gate = _make_gate()
-        gate._consecutive_unknown_blocks = 5  # 手動設定
+        gate._consecutive_unknown_blocks["sell"] = 5  # 手動設定
 
         # ranging, vol_ratio=1.0 (Gate 2 通過) → カウンタリセット
         r = gate.evaluate(**_default_ctx(
             side="sell", regime="ranging", vol_ratio=1.0,
         ))
-        assert gate._consecutive_unknown_blocks == 0
+        assert gate._consecutive_unknown_blocks["sell"] == 0
 
     def test_bypass_threshold_not_falsely_triggered(self):
         """unknown→ranging→unknown の遷移でバイパス閾値に偽到達しない.
@@ -327,18 +327,18 @@ class TestUnknownCounterResetOnGate2:
         # unknown 5回
         for _ in range(5):
             gate.evaluate(**_default_ctx(side="buy", regime="unknown"))
-        assert gate._consecutive_unknown_blocks == 5
+        assert gate._consecutive_unknown_blocks["buy"] == 5
 
         # ranging で Gate 2 ブロック → リセット
         gate.evaluate(**_default_ctx(
             side="buy", regime="ranging", vol_ratio=0.5,
         ))
-        assert gate._consecutive_unknown_blocks == 0
+        assert gate._consecutive_unknown_blocks["buy"] == 0
 
         # unknown 5回 → カウンタは 5 (修正前は 10 でバイパス発動)
         for _ in range(5):
             gate.evaluate(**_default_ctx(side="buy", regime="unknown"))
-        assert gate._consecutive_unknown_blocks == 5
+        assert gate._consecutive_unknown_blocks["buy"] == 5
 
 
 # ===========================================================================

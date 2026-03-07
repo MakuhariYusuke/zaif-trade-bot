@@ -255,6 +255,9 @@ safety:
 
 # ---- 054# S1: Orderbook Imbalance ベース AS 予測フィルター ----
 # 071# 板情報無視: 価格ベースのみで判断
+# 324# L-4 Feature Graveyard: 以下 3 セクション (imbalance/smart_side/early_exit) は
+#   071# / 120# で無効化済み。コード参照が残存するため YAML は温存。
+#   削除条件: FillTestConfig/from_yaml() の対応フィールドも同時削除すること。
 imbalance:
   enabled: false               # 071# 無効化
   depth: 5
@@ -490,6 +493,10 @@ microprice_side:
 # ---- 306# Dynamic Cycle Interval (305# L1) ----
 # 309# 修正: cycle_interval ∝ σ: 高σ時に長周期 (Cooldown/AS防御), 低σ時に短周期 (積極捕捉)
 # Avellaneda-Stoikov: maker は高ボラ時にスプレッド拡大+頻度低下が最適
+# 324# L-3: regime_policy.dynamic_cycle（固定マップ）との関係:
+#   1. regime_policy.dynamic_cycle が regime 別のベース interval を決定
+#   2. 本設定が σ でそのベースをスケーリング
+#   即ち両者は不競合: regime→base, σ→adjustment の 2段構成
 dynamic_cycle_interval:
   enabled: true                    # 306# 有効化 → 309# 数式反転済 (σ/σ_ref)
   min_sec: 60.0                   # interval 下限 (秒)

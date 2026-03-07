@@ -108,6 +108,12 @@ class RegimeConfig:
     velocity_modulation: bool = False
     velocity_window_ratio: float = 0.25  # window の何割を velocity 計算に使うか
 
+    # 324# RSI 補強 (opt-in) — ztb 既存実装の活用
+    # RSI がトレンド方向を確認 → confidence +0.10
+    # RSI がトレンド方向と不一致 → confidence -0.15 (反転兆候)
+    rsi_modulation: bool = True   # ztb/analysis/regime の RSI 計算を再利用
+    rsi_period: int = 14          # Wilder RSI 標準期間
+
 
 @dataclass
 class RegimeResult:
@@ -283,6 +289,62 @@ class FillTestRegimeDetector:
         returns = diff[valid] / prev[valid]
         return returns[np.isfinite(returns)]
 
+    def _apply_rsi_modulation(
+        self, confidence: float, trend_pct: float,
+    ) -> float:
+        """324# RSI による confidence 補強 — ztb 既存実装の活用.
+
+        ztb/analysis/regime/advanced_regime_detector.py の
+        TechnicalIndicators.calculate_rsi() と同一アルゴリズム (Wilder RSI)。
+        DRY: 3 行の核心計算で inline 化し import 依存を回避。
+
+        市場理論:
+          J. Welles Wilder Jr. (1978) "New Concepts in Technical Trading Systems"
+          RSI は相対的な上昇・下降の勢いを 0-100 で定量化。
+          RSI > 50: 上昇モメンタム優勢 → trending_up の確信材料
+          RSI < 50: 下降モメンタム優勢 → trending_down の確信材料
+          RSI がトレンド方向と不一致 → 反転兆候 (divergence)
+
+        Args:
+            confidence: 現在の confidence (0.0-1.0)
+            trend_pct: 価格変化率 (%) — 正=up, 負=down
+
+        Returns:
+            調整後の confidence
+        """
+        prices = np.array([p[1] for p in self._prices], dtype=float)
+        period = self.config.rsi_period
+        if prices.size < period + 1:
+            return confidence
+
+        # Wilder RSI core (ztb advanced_regime_detector 互換)
+        deltas = np.diff(prices[-period - 1:])
+        avg_gain = float(np.mean(np.maximum(deltas, 0.0)))
+        avg_loss = float(np.mean(np.maximum(-deltas, 0.0)))
+        if avg_loss < 1e-12:
+            rsi = 100.0
+        else:
+            rs = avg_gain / avg_loss
+            rsi = 100.0 - (100.0 / (1.0 + rs))
+
+        # RSI とトレンド方向の一致/不一致で confidence を調整
+        _trending_up = trend_pct > 0
+        if _trending_up and rsi >= 55.0:
+            # RSI がトレンド方向を確認 → confidence +0.10
+            confidence = min(1.0, confidence + 0.10)
+        elif _trending_up and rsi < 45.0:
+            # RSI がトレンドと不一致 (bearish divergence) → confidence -0.15
+            confidence = max(0.0, confidence - 0.15)
+        elif not _trending_up and rsi <= 45.0:
+            # RSI がトレンド方向を確認 → confidence +0.10
+            confidence = min(1.0, confidence + 0.10)
+        elif not _trending_up and rsi > 55.0:
+            # RSI がトレンドと不一致 (bullish divergence) → confidence -0.15
+            confidence = max(0.0, confidence - 0.15)
+        # RSI 45-55 (中立) → 変更なし
+
+        return confidence
+
     def _classify(
         self, trend_pct: float, vol_ratio: float
     ) -> tuple[FillTestRegime, float]:
@@ -322,6 +384,9 @@ class FillTestRegimeDetector:
                 elif _vel_sign == -_trend_sign:
                     # 不一致: confidence を最大 -0.20 弱化 (反転兆候)
                     confidence = max(0.0, confidence - 0.20 * min(1.0, abs(_vel) / max(threshold, 0.01)))
+            # 324# RSI modulation — ztb 既存実装の活用
+            if self.config.rsi_modulation:
+                confidence = self._apply_rsi_modulation(confidence, trend_pct)
             return regime, confidence
 
         # レンジ: トレンドも高ボラもない
