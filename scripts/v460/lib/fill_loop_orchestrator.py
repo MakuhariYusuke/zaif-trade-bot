@@ -46,12 +46,12 @@ from typing import TYPE_CHECKING
 
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.alert_mode import load_alert_mode
-from scripts.v460.lib.micro_circuit_breaker import MCBLevel
+# 330# MCBLevel は orchestrator_pre_cycle に移管済み (331# dead import 削除)
 from scripts.v460.lib.orchestrator_guards import OrchestratorGuardsMixin
 from scripts.v460.lib.orchestrator_lifecycle import OrchestratorLifecycleMixin
 from scripts.v460.lib.orchestrator_post_cycle import OrchestratorPostCycleMixin
 from scripts.v460.lib.orchestrator_pre_cycle import CycleContext, OrchestratorPreCycleMixin
-from scripts.v460.lib.spread_anomaly_detector import SADLevel
+# 330# SADLevel は orchestrator_pre_cycle に移管済み (331# dead import 削除)
 
 if TYPE_CHECKING:
     from scripts.v460.lib.micro_circuit_breaker import MicroCircuitBreaker

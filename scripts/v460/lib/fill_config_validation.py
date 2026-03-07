@@ -314,15 +314,25 @@ def validate_fill_config(config: FillTestConfig) -> None:
     # 330# B4: kyle_lambda / amihud_illiq は compute_imbalance で depth が
     # 更新されるため、imbalance_enabled=False だと depth が永久 0 のまま
     # サイレント無効になる。設定ミスを早期検出。
-    import warnings as _w
     if (
         (config.kyle_lambda_enabled or config.amihud_illiq_enabled)
         and not config.imbalance_enabled
     ):
-        _w.warn(
+        import warnings
+        warnings.warn(
             "kyle_lambda_enabled / amihud_illiq_enabled が True ですが "
             "imbalance_enabled=False のため depth キャッシュが更新されず、"
             "Kyle λ / Amihud ILLIQ が常にスキップされます。"
             "imbalance_enabled=True を推奨します。",
-            stacklevel=2,
+            stacklevel=3,
+        )
+
+    # 331# M-1: sigma_floor / vol_ratio_floor 値域チェック
+    if config.sigma_floor < 0:
+        raise ValueError(
+            f"sigma_floor must be >= 0, got {config.sigma_floor}"
+        )
+    if config.vol_ratio_floor <= 0:
+        raise ValueError(
+            f"vol_ratio_floor must be > 0, got {config.vol_ratio_floor}"
         )

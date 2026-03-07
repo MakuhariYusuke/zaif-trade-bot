@@ -314,14 +314,20 @@ class TestImportOptimization:
         assert hasattr(orch_mod, 'timezone')
 
     def test_orchestrator_has_mcblevel_at_module_level(self):
-        """fill_loop_orchestrator に MCBLevel が file-level import されている。"""
-        import scripts.v460.lib.fill_loop_orchestrator as orch_mod
-        assert hasattr(orch_mod, 'MCBLevel')
+        """orchestrator_pre_cycle に MCBLevel が file-level import されている.
+
+        331# review: MCB/SAD ロジックは orchestrator_pre_cycle に移管済み。
+        """
+        import scripts.v460.lib.orchestrator_pre_cycle as pre_mod
+        assert hasattr(pre_mod, 'MCBLevel')
 
     def test_orchestrator_has_sadlevel_at_module_level(self):
-        """fill_loop_orchestrator に SADLevel が file-level import されている。"""
-        import scripts.v460.lib.fill_loop_orchestrator as orch_mod
-        assert hasattr(orch_mod, 'SADLevel')
+        """orchestrator_pre_cycle に SADLevel が file-level import されている.
+
+        331# review: MCB/SAD ロジックは orchestrator_pre_cycle に移管済み。
+        """
+        import scripts.v460.lib.orchestrator_pre_cycle as pre_mod
+        assert hasattr(pre_mod, 'SADLevel')
 
     def test_orchestrator_has_load_alert_mode_at_module_level(self):
         """fill_loop_orchestrator に load_alert_mode が file-level import されている。"""

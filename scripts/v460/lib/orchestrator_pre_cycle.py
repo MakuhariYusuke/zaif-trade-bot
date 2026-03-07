@@ -47,14 +47,13 @@ class CycleContext:
 
     RunSessionState (ループ間共有) とは異なり、CycleContext は
     while ループの 1 回分のみ有効。毎イテレーション冒頭で再生成する。
+
+    331# review: balance_forced 等は run_continuous 内のインラインロジック
+    (balance preflight) で決定されるため、Phase 4 抽出まで CycleContext に
+    含めず next_side のみとする。
     """
 
     next_side: str = ""
-    balance_forced: bool = False
-    is_rescue: bool = False
-    one_sided_balance: bool = False
-    inventory_escape: bool = False
-    regime_mult: float = 1.0
 
 
 class OrchestratorPreCycleMixin:
@@ -219,7 +218,14 @@ class OrchestratorPreCycleMixin:
         330# extract from run_continuous L479-L538.
         MCB HALT / SAD FROZEN / MCB×SAD ESCALATION → True (continue)。
         MCB WARNING / SAD DRY/WIDE → alert_* を乗算して False。
+
+        331# review BUG-1: MCB HALT 時も SAD baseline を維持するため
+        先に _feed_mcb_sad() で両方の update を実行してから check する。
         """
+        # 331# BUG-1 fix: update を先行一括実行 (MCB HALT early return で
+        # SAD.update が skipped になるのを防止)
+        self._feed_mcb_sad()
+
         _halt_mult = self.config.halt_sleep_multiplier
         _mcb_warning = False
         _sad_warning = False
