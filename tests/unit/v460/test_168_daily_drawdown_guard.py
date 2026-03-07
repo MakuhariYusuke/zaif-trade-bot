@@ -690,6 +690,21 @@ class TestConfigValidation209:
         with pytest.raises(ValueError, match="max_cycle_sleep_sec"):
             FillTestConfig(max_cycle_sleep_sec=-1.0)
 
+    def test_loss_cap_ratio_zero_raises(self) -> None:
+        """327# loss_cap_ratio <= 0 で ValueError (ZeroDivisionError 防止)。"""
+        with pytest.raises(ValueError, match="loss_cap_ratio"):
+            FillTestConfig(loss_cap_ratio=0.0)
+
+    def test_loss_cap_ratio_negative_raises(self) -> None:
+        """327# loss_cap_ratio < 0 で ValueError。"""
+        with pytest.raises(ValueError, match="loss_cap_ratio"):
+            FillTestConfig(loss_cap_ratio=-0.01)
+
+    def test_soft_loss_cap_ratio_negative_raises(self) -> None:
+        """327# soft_loss_cap_ratio < 0 で ValueError。"""
+        with pytest.raises(ValueError, match="soft_loss_cap_ratio"):
+            FillTestConfig(soft_loss_cap_ratio=-0.01)
+
 
 class TestSleepClampLogic209:
     """209# M4: sleep 乗数上限キャップロジックのテスト。"""

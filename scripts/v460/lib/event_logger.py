@@ -110,6 +110,7 @@ class TeeWriter:
 
 def setup_stderr_mirror(results_dir: str | Path) -> None:
     """148# P1: stderr をファイルにもミラーリング."""
+    stderr_file = None
     try:
         stderr_path = Path(results_dir) / "logs" / "fill_test_stderr.log"
         stderr_path.parent.mkdir(parents=True, exist_ok=True)
@@ -117,4 +118,7 @@ def setup_stderr_mirror(results_dir: str | Path) -> None:
         sys.stderr = TeeWriter(sys.__stderr__, stderr_file)  # type: ignore[assignment]
         logger.info(f"[148#] stderr mirroring to {stderr_path}")
     except Exception as e:
+        # 327# セットアップ失敗時にファイルハンドルをリークさせない
+        if stderr_file is not None:
+            stderr_file.close()
         logger.warning(f"[148#] Failed to setup stderr mirror: {e}")

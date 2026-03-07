@@ -859,6 +859,15 @@ class FillTestConfig:
             raise ValueError(
                 f"loss_boost_decay_tau_sec must be > 0, got {self.loss_boost_decay_tau_sec}"
             )
+        # 327# loss_cap_ratio ゼロ除算防止 — 被除数として使用されるため > 0 必須
+        if self.loss_cap_ratio <= 0:
+            raise ValueError(
+                f"loss_cap_ratio must be > 0, got {self.loss_cap_ratio}"
+            )
+        if self.soft_loss_cap_ratio < 0:
+            raise ValueError(
+                f"soft_loss_cap_ratio must be >= 0, got {self.soft_loss_cap_ratio}"
+            )
         if not (0.0 <= self.ranging_obi_asymmetry_factor <= 1.0):
             raise ValueError(
                 f"ranging_obi_asymmetry_factor must be in [0, 1], "

@@ -191,6 +191,10 @@ def _start_retrain_scheduler(
                     )
                     retrain_proc = None
             except Exception as e:
+                # 327# セットアップ失敗時にファイルハンドルをリークさせない
+                if retrain_stderr_fh is not None:
+                    retrain_stderr_fh.close()
+                    retrain_stderr_fh = None
                 logger.warning(f"[126#] retrain_scheduler start failed: {e}")
     return retrain_proc, retrain_stderr_fh
 
