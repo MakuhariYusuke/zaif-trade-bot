@@ -327,7 +327,7 @@ class TestNarrowSpreadPauseActualWait:
 
     def test_run_fill_test_calls_asyncio_sleep(self) -> None:
         """run_fill_test.py の narrow_spread_pause ブロックに asyncio.sleep がある."""
-        source = read_fill_test_runner_source()  # 332# Phase 4: mixin 全体を検索
+        source = read_source_text(FILL_LOOP_ORCHESTRATOR)  # 163# mixin 分割
         # narrow_spread_pause の分岐内に asyncio.sleep が存在することを確認
         # 139# §9-#3 で追加
         assert "await asyncio.sleep(pause_sec)" in source
@@ -449,7 +449,7 @@ class TestRunContinuousBranchExecution:
 
     def test_preflight_pause_uses_batch_append(self) -> None:
         """preflight_pause ブロック内で batch.append + maybe_flush が使われている."""
-        source = read_fill_test_runner_source()  # 332# Phase 4: balance Mixin に移管
+        source = read_source_text(FILL_LOOP_ORCHESTRATOR)
         # 145# §9-#5: CR.PREFLIGHT_PAUSE 定数 + _make_skip_record に移行済み
         # 265# extract: batch → st.batch に変更
         assert "CR.PREFLIGHT_PAUSE" in source
@@ -464,7 +464,7 @@ class TestRunContinuousBranchExecution:
 
     def test_preflight_insufficient_generates_record(self) -> None:
         """140# §8.1-#2: preflight 残高不足で FillRecord が生成される."""
-        source = read_fill_test_runner_source()  # 332# Phase 4: balance Mixin に移管
+        source = read_source_text(FILL_LOOP_ORCHESTRATOR)
         # 145# §9-#6: CR 定数に移行済み
         assert "CR.PREFLIGHT_INSUFFICIENT" in source
 

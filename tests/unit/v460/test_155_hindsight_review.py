@@ -34,6 +34,7 @@ from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from tests.unit.v460._fill_test_source import (
     FILL_CYCLE_EXECUTOR,
+    FILL_LOOP_ORCHESTRATOR,
     read_fill_test_runner_source,
     read_source_text,
 )
@@ -369,16 +370,17 @@ class TestBalanceForcedTrendingBypass:
     """balance_forced=True 時に skip_sell_trending をバイパスすることの検証."""
 
     def test_trending_sell_skip_code_has_balance_forced_check(self) -> None:
-        """mixin 群に 'not *.balance_forced' 条件が含まれていること."""
-        src = read_fill_test_runner_source()  # 332# Phase 4: mixin に移管
+        """run_fill_test.py の trending sell skip ブロックに
+        'not _balance_forced' 条件が含まれていること."""
+        src = read_source_text(FILL_LOOP_ORCHESTRATOR)
         tree = ast.parse(src)
         found = False
         for node in ast.walk(tree):
             if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
-                if isinstance(node.operand, ast.Attribute) and node.operand.attr == "balance_forced":
+                if isinstance(node.operand, ast.Name) and node.operand.id == "_balance_forced":
                     found = True
                     break
-        assert found, "balance_forced skip must check 'not *.balance_forced'"
+        assert found, "trending sell skip must check 'not _balance_forced'"
 
     def test_skip_sell_trending_config_still_exists(self) -> None:
         """skip_sell_trending 設定フィールドは維持されていること."""
