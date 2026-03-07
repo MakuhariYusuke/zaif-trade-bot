@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import dataclasses
 import os
-import tempfile
 import time
 from pathlib import Path
 from typing import Iterator
@@ -103,15 +102,11 @@ regime:
 
 
 @pytest.fixture
-def temp_yaml(yaml_content_base: str) -> Iterator[Path]:
+def temp_yaml(tmp_path: Path, yaml_content_base: str) -> Path:
     """Temporary YAML file that can be modified."""
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yaml", delete=False, encoding="utf-8",
-    ) as f:
-        f.write(yaml_content_base)
-        f.flush()
-        yield Path(f.name)
-    os.unlink(f.name)
+    path = tmp_path / "fill_test.yaml"
+    path.write_text(yaml_content_base, encoding="utf-8")
+    return path
 
 
 @pytest.fixture
@@ -430,7 +425,8 @@ class TestReloadErrorHandling:
         _write_yaml_with_updated_mtime(temp_yaml, "invalid: [yaml: {broken")
 
         reloader._last_check_time = 0.0
-        result = reloader.maybe_reload(runner)
+        with patch("scripts.v460.lib.config_hot_reload.logger.error"):
+            result = reloader.maybe_reload(runner)
 
         # エラーでもクラッシュしない
         assert result is False

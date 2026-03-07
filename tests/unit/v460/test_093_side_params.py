@@ -9,7 +9,6 @@
 
 from __future__ import annotations
 
-import inspect
 from pathlib import Path
 
 import pytest
@@ -20,6 +19,11 @@ import sys
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from scripts.v460.run_fill_test import FillTestConfig
+from tests.unit.v460._fill_test_source import (
+    MAKER_PRICE,
+    read_fill_test_method_source,
+    read_source_text,
+)
 
 
 # =====================================================================
@@ -198,15 +202,13 @@ class TestSpreadAdaptiveSideLogic:
 
         120#: _compute_maker_price は maker_price.py に抽出済み.
         """
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-        source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
+        source = read_source_text(MAKER_PRICE)
         assert "narrow_spread_boost_buy" in source
         assert "narrow_spread_boost_sell" in source
 
     def test_sa_boost_variable_name(self) -> None:
         """093# で sa_boost 変数を使ってサイド別分岐している."""
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-        source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
+        source = read_source_text(MAKER_PRICE)
         assert "sa_boost" in source
 
 
@@ -252,8 +254,7 @@ class TestFastFillDefenseSideLogic:
         265# extract: post-cycle 処理は _process_post_cycle に分離されたため、
         そちらのソースコードを検査する。
         """
-        from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner._process_post_cycle)
+        source = read_fill_test_method_source("_process_post_cycle")
         assert "fast_fill_defense" in source
         assert "evaluate_fill" in source
 

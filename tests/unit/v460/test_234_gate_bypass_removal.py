@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import ast
 import inspect
-import textwrap
 
 import pytest
 
@@ -23,6 +22,11 @@ from scripts.v460.lib.cycle_gate_aggregator import (
     CycleGateResult,
 )
 from scripts.v460.lib import cancel_reasons as CR
+from tests.unit.v460._fill_test_source import (
+    CYCLE_GATE_AGGREGATOR,
+    parse_source_tree,
+    read_source_text,
+)
 
 
 # ─── ヘルパー ──────────────────────────────────────────────────────────
@@ -81,8 +85,7 @@ class TestBalanceForcedBypassEradication:
 
     def test_no_balance_forced_in_gate_check_conditions(self) -> None:
         """全 _check_* メソッドの gate 条件で `not balance_forced` がないこと."""
-        src = inspect.getsource(CycleGateAggregator)
-        tree = ast.parse(textwrap.dedent(src))
+        tree = parse_source_tree(CYCLE_GATE_AGGREGATOR)
 
         violations: list[str] = []
         for node in ast.walk(tree):
@@ -370,7 +373,7 @@ class TestDualKillConditionFix:
 
     def test_dual_kill_source_no_balance_forced(self) -> None:
         """evaluate() のソースに `not balance_forced` が _dual_kill 式にないこと."""
-        src = inspect.getsource(CycleGateAggregator.evaluate)
+        src = read_source_text(CYCLE_GATE_AGGREGATOR)
         # dual_kill 計算行を取得
         for line in src.splitlines():
             if "_dual_kill" in line and "is_buy_killed" in line:
@@ -478,5 +481,5 @@ class TestDeadConfigDeprecation:
 
     def test_field_not_used_in_gate_aggregator(self) -> None:
         """Gate aggregator のソースで直接参照されていないこと."""
-        src = inspect.getsource(CycleGateAggregator)
+        src = read_source_text(CYCLE_GATE_AGGREGATOR)
         assert "balance_forced_apply_trending_offset" not in src

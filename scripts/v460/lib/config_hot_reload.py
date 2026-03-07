@@ -18,6 +18,7 @@ import dataclasses
 import logging
 import os
 import time
+from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
@@ -27,6 +28,14 @@ if TYPE_CHECKING:
     from scripts.v460.lib.time_filter import TimeFilter
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _fill_config_field_names() -> tuple[str, ...]:
+    """FillTestConfig field names resolved once for repeated hot-reload checks."""
+    from scripts.v460.lib.fill_config import FillTestConfig
+
+    return tuple(f.name for f in dataclasses.fields(FillTestConfig))
 
 
 class _HotReloadableRunner(Protocol):
@@ -560,47 +569,40 @@ class ConfigHotReloader:
     def _do_reload(self, runner: _HotReloadableRunner) -> bool:
         """実際のリロード処理."""
         from scripts.v460.lib.config_loader import load_fill_test_config
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         if self._yaml_path is None:
             return False
 
         # 新 YAML 読込 + FillTestConfig 構築 (バリデーション含む)
         new_yaml_cfg = load_fill_test_config(self._yaml_path)
-        new_config = FillTestConfig.from_yaml(new_yaml_cfg)
+        new_config = type(self._config).from_yaml(new_yaml_cfg)
 
         # 差分検出 & 適用
         changed_fields: list[str] = []
         skipped_fields: list[str] = []
         rebuild_needed: set[str] = set()
+        current_values = vars(self._config)
+        new_values = vars(new_config)
 
-        for f in dataclasses.fields(self._config):
-            if f.name not in _HOT_RELOADABLE_FIELDS:
+        for field_name in _fill_config_field_names():
+            old_val = current_values[field_name]
+            new_val = new_values[field_name]
+            if old_val == new_val:
                 continue
 
-            old_val = getattr(self._config, f.name)
-            new_val = getattr(new_config, f.name)
-
-            if old_val != new_val:
-                setattr(self._config, f.name, new_val)
-                changed_fields.append(f.name)
+            if field_name in _HOT_RELOADABLE_FIELDS:
+                current_values[field_name] = new_val
+                changed_fields.append(field_name)
                 logger.info(
-                    f"[config_hot_reload]   {f.name}: {old_val!r} → {new_val!r}"
+                    f"[config_hot_reload]   {field_name}: {old_val!r} → {new_val!r}"
                 )
 
                 # コンポーネント再構築が必要か判定
                 for prefix, callback_name in _COMPONENT_REBUILD_PREFIXES.items():
-                    if f.name.startswith(prefix):
+                    if field_name.startswith(prefix):
                         rebuild_needed.add(callback_name)
-
-        # ホットリロード対象外だが変更されたフィールドを通知
-        for f in dataclasses.fields(self._config):
-            if f.name in _HOT_RELOADABLE_FIELDS:
-                continue
-            old_val = getattr(self._config, f.name)
-            new_val = getattr(new_config, f.name)
-            if old_val != new_val:
-                skipped_fields.append(f.name)
+            else:
+                skipped_fields.append(field_name)
 
         if not changed_fields:
             logger.info("[config_hot_reload] No hot-reloadable fields changed")

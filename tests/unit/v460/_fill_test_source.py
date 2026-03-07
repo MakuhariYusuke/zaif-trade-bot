@@ -68,6 +68,15 @@ ORCHESTRATOR_BALANCE = (
 FILL_TEST_RUNNER_MAIN = (
     _PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py"
 )
+CYCLE_GATE_AGGREGATOR = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "cycle_gate_aggregator.py"
+)
+FILL_TEST_CLI = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_test_cli.py"
+)
+MAKER_PRICE = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "maker_price.py"
+)
 
 
 @lru_cache(maxsize=None)

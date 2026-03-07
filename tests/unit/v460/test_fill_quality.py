@@ -38,6 +38,7 @@ from scripts.v460.monitor_fill_test import _check_cumulative_loss, print_report,
 from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
 from scripts.v460.run_gate_check import run_g1_1
 from tests.unit.v460._fill_test_source import (
+    MAKER_PRICE,
     ORCHESTRATOR_BALANCE,
     read_fill_test_runner_source,
     read_source_text,
@@ -2415,7 +2416,7 @@ class Test049SideOffset:
         base_offset_ratio_buy/sell を参照する設計に変更。
         120#: maker_price.py に抽出済み。
         """
-        source = _source(MakerPriceCalculator)  # 163# mixin split: compute→class全体
+        source = read_source_text(MAKER_PRICE)
         # 096# 状態分離: base_offset_ratio* を使用
         assert "base_offset_ratio" in source
         assert "effective_offset_ratio" in source
@@ -2531,7 +2532,7 @@ class Test050EffectiveOffsetRecord:
 
         120#: maker_price.py に抽出済み。MakerPriceResult NamedTuple で返却。
         """
-        source = _source(MakerPriceCalculator)  # 163# mixin split: compute→class全体
+        source = read_source_text(MAKER_PRICE)
         assert "effective_offset_ratio" in source
         # MakerPriceResult に price, spread, effective_offset_ratio を格納
         assert "MakerPriceResult" in source

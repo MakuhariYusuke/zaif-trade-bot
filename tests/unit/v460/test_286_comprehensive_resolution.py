@@ -26,6 +26,12 @@ from scripts.v460.lib.guard_reason_classifier import classify_guard, GuardCatego
 from scripts.v460.lib.lock_manager import LockConflictError, LockManager, _HAS_PORTALOCKER
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin, RunSessionState
+from tests.unit.v460._fill_test_source import (
+    FILL_TEST_CLI,
+    parse_source_tree,
+    read_fill_test_method_source,
+    read_source_text,
+)
 from ztb.metrics.fill_quality import FillRecord, detect_split_brain
 from ztb.risk.sell_dynamic_kill import DynamicKillConfig, DynamicKillManager
 
@@ -158,9 +164,8 @@ class TestEventsStartStopGuarantee:
 
     def test_stop_event_logged_on_crash(self):
         """crash 時も stop イベントが記録されること (コード検査)."""
-        cli_path = Path("scripts/v460/lib/fill_test_cli.py")
-        source = cli_path.read_text(encoding="utf-8")
-        ast.parse(source)  # syntax check
+        source = read_source_text(FILL_TEST_CLI)
+        parse_source_tree(FILL_TEST_CLI)  # syntax check
 
         assert 'not stop_reason.startswith("crash:")' not in source, (
             "286# fix: crash 時も stop イベントを記録するべき"
@@ -242,8 +247,7 @@ class TestForcedBuyKpiTracking:
 
     def test_process_post_cycle_uses_balance_forced_switch(self):
         """_process_post_cycle のソースが balance_forced_switch を使用していること."""
-        import inspect
-        source = inspect.getsource(FillLoopOrchestratorMixin._process_post_cycle)
+        source = read_fill_test_method_source("_process_post_cycle")
         # 修正前の誤った属性名が含まれていないこと
         assert "record.balance_forced:" not in source
         assert "record.balance_forced\n" not in source

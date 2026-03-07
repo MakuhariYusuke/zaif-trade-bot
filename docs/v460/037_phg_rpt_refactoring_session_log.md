@@ -1940,3 +1940,93 @@
 1. `ztb/features/microstructure.py` の rolling 系を共通化し、`build_proxy_features()` 側にも横展開する
 2. `test_enricher_skip_gate.py` の real-data setup をさらに分解し、production/test のどちらが支配的か切り分ける
 3. `test_286_comprehensive_resolution.py` と `test_234_gate_bypass_removal.py` の本体依存 call を精査する
+
+---
+
+## 2026-03-08 / Session 037-044
+
+### 実施
+- production
+  - `ztb/features/microstructure.py`
+    - `add_microstructure_features()` を derived-columns 分離型へ変更
+    - 入力 DataFrame 全体の copy / ffill / fillna をやめ、microstructure 列だけを補完して join する形へ整理
+  - `scripts/v460/lib/config_hot_reload.py`
+    - `FillTestConfig` field name 解決を `lru_cache` 化
+    - `_do_reload()` を 2-pass から 1-pass の差分走査へ整理
+    - `FillTestConfig` の再 import をやめ、`type(self._config).from_yaml(...)` へ置換
+- test helper
+  - `tests/unit/v460/_fill_test_source.py`
+    - `CYCLE_GATE_AGGREGATOR`
+    - `FILL_TEST_CLI`
+    - `MAKER_PRICE`
+    - を追加
+- test
+  - `tests/unit/v460/test_234_gate_bypass_removal.py`
+    - `cycle_gate_aggregator.py` の AST / source 検査を shared helper に統一
+  - `tests/unit/v460/test_286_comprehensive_resolution.py`
+    - `fill_test_cli.py` / `_process_post_cycle` の source 検査を cached helper 化
+  - `tests/unit/v460/test_303_review_implementations.py`
+    - summary 文言確認から重い `evaluate_ab_variant()` を除去
+    - `none` regime inclusion テストは sample-count 比較に必要な最小 fixture へ縮小
+  - `tests/unit/v460/test_169_config_hot_reload.py`
+    - `NamedTemporaryFile` をやめて `tmp_path` ベースへ変更
+    - invalid YAML ケースは config 保持だけを見ているため log sink を patch
+  - `tests/unit/v460/test_fill_quality.py`
+    - `maker_price.py` source 検査を cached file read に置換
+  - `tests/unit/v460/test_093_side_params.py`
+    - `MakerPriceCalculator` / `FillTestRunner` の source 検査を shared helper に統一
+
+### 結果
+- focused 回帰 1:
+  - `test_286_comprehensive_resolution.py::TestEventsStartStopGuarantee::test_stop_event_logged_on_crash`
+  - `test_234_gate_bypass_removal.py::TestBalanceForcedBypassEradication::test_no_balance_forced_in_gate_check_conditions`
+  - `test_286_comprehensive_resolution.py::TestForcedBuyKpiTracking::test_process_post_cycle_uses_balance_forced_switch`
+  - `3 passed in 0.99s`
+- focused 回帰 2:
+  - `test_microstructure_features.py` + `test_build_features_pipeline.py`
+  - `43 passed in 4.09s`
+- focused 回帰 3:
+  - `test_234_gate_bypass_removal.py` + `test_286_comprehensive_resolution.py`
+  - `79 passed in 1.25s`
+- focused 回帰 4:
+  - `test_303_review_implementations.py` + `test_169_config_hot_reload.py`
+  - `41 passed in 2.20s`
+- focused 回帰 5:
+  - `test_fill_quality.py::Test049SideOffset::test_side_offset_used_in_price_calc`
+  - `test_fill_quality.py::Test050EffectiveOffsetRecord::test_compute_maker_price_returns_3_values`
+  - `test_093_side_params.py::TestSpreadAdaptiveSideLogic::test_compute_maker_price_uses_side_boost`
+  - `test_093_side_params.py::TestSpreadAdaptiveSideLogic::test_sa_boost_variable_name`
+  - `4 passed in 3.10s`
+- broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` と `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - `4060 passed, 1 deselected, 11 warnings in 35.74s`
+
+### 主要改善
+- `test_303_review_implementations.py`
+  - 文字列サマリ確認から block bootstrap / Mann-Whitney / Cliff's delta を切り離した
+  - filtered broad の top 25 から離脱
+- `test_169_config_hot_reload.py`
+  - Windows で重い temp file 作成を `tmp_path` へ寄せた
+  - `ConfigHotReloader` 本体も single-pass diff に整理したため、production/test の両面で無駄が減った
+- `maker_price.py` source inspection 群
+  - `inspect.getsource(MakerPriceCalculator)` を cached file read に横展開した
+  - broad 上位に出ていた class-source 取得コストを除去
+- `microstructure.py`
+  - feature 追加時に入力フレーム全体を再 copy / 全列 fill しない構成へ変更
+  - 実運用でも aggregated feature build の repeated call に効く
+
+### 補足
+- broad の wall time は依然として揺れるが、今回消えたホットスポットは明確:
+  - `test_303_review_implementations.py`
+  - `test_169_config_hot_reload.py`
+  - `inspect.getsource(MakerPriceCalculator)` 依存の source 検査
+- 現在の broad 上位は real-data / parquet / 実統合寄りに再集中している:
+  - `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data`
+  - `test_gate_check.py::TestRunG1Judgment::test_g1_low_ic`
+  - `test_aggregate_to_1min.py` parquet / merged edge cases
+  - `test_retrain_hot_reload.py::TestRedundancyPruning::test_highly_correlated_features_detected`
+
+### 次アクション
+1. `test_enricher_skip_gate.py` の real-data setup を fixture snapshot / class-scope cache に寄せられないか洗う
+2. `test_aggregate_to_1min.py` の parquet / merged edge を pure aggregation と persistence 契約へさらに分離する
+3. `test_gate_check.py` / `test_retrain_hot_reload.py` の統合寄り上位 call を、成立条件を崩さず lightweight stub へ寄せる

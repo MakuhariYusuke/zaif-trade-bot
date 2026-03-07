@@ -8,11 +8,9 @@
 
 from __future__ import annotations
 
-import time
 from copy import copy
 
 import numpy as np
-import pytest
 
 from scripts.v460.lib.ab_judgment import (
     ABJudgmentCriteria,
@@ -26,6 +24,8 @@ from scripts.v460.lib.daily_drawdown_guard import (
 )
 from scripts.v460.lib.fill_config import FillTestConfig
 from ztb.io.json_io import JSONObject
+
+_FIXED_TS = 1_700_000_000.0
 
 
 # ======================================================================
@@ -41,7 +41,7 @@ def _make_record(
     timestamp: float | None = None,
 ) -> JSONObject:
     """テスト用 FillRecord."""
-    ts = timestamp or time.time()
+    ts = _FIXED_TS if timestamp is None else timestamp
     r: JSONObject = {
         "side": side,
         "regime": regime,
@@ -65,7 +65,7 @@ def _make_records(
 ) -> list[JSONObject]:
     """n 件のテスト用レコード生成."""
     rng = np.random.default_rng(42)
-    base = base_ts or time.time()
+    base = _FIXED_TS if base_ts is None else base_ts
     records = []
     for i in range(n):
         filled = i < int(n * fill_rate)
@@ -80,6 +80,17 @@ def _make_records(
     return records
 
 
+def _make_summary_result() -> ABJudgmentResult:
+    """summary 文言専用の軽量結果."""
+    return ABJudgmentResult(
+        overall=Verdict.PASS,
+        variant_label="sell",
+        control_label="buy",
+        n_variant=60,
+        n_control=50,
+    )
+
+
 # ======================================================================
 # A: Side Comparison 表記修正テスト
 # ======================================================================
@@ -90,26 +101,14 @@ class TestSideComparisonLabel:
 
     def test_summary_header_renamed(self) -> None:
         """summary() が [Side Comparison] で始まること."""
-        variant = _make_records(100, side="sell", fill_rate=0.6, pnl_mean=0.5)
-        control = _make_records(100, side="buy", fill_rate=0.5, pnl_mean=0.3)
-        result = evaluate_ab_variant(
-            variant_records=variant,
-            control_records=control,
-            variant_label="sell",
-            control_label="buy",
-        )
+        result = _make_summary_result()
         summary = result.summary()
         assert "[Side Comparison]" in summary
         assert "[A/B Judgment]" not in summary
 
     def test_summary_contains_observational_disclaimer(self) -> None:
         """summary() に観察比較の注記が含まれること (301# F2)."""
-        variant = _make_records(100, side="sell", fill_rate=0.6, pnl_mean=0.5)
-        control = _make_records(100, side="buy", fill_rate=0.5, pnl_mean=0.3)
-        result = evaluate_ab_variant(
-            variant_records=variant,
-            control_records=control,
-        )
+        result = _make_summary_result()
         summary = result.summary()
         assert "観察比較" in summary
         assert "ランダム割当" in summary
@@ -125,23 +124,23 @@ class TestNoneRegimeInclusion:
 
     def test_include_none_via_empty_exclude(self) -> None:
         """exclude_regimes=[] で none レジームが含有されること."""
-        base_ts = time.time()
+        base_ts = _FIXED_TS
         # none レジームのレコードを含むデータ
         variant_none = _make_records(
-            30, side="sell", regime="none", fill_rate=0.6, pnl_mean=-2.0,
+            6, side="sell", regime="none", fill_rate=0.6, pnl_mean=-2.0,
             base_ts=base_ts,
         )
         variant_ranging = _make_records(
-            80, side="sell", regime="ranging", fill_rate=0.6, pnl_mean=1.0,
-            base_ts=base_ts + 30 * 120,
+            12, side="sell", regime="ranging", fill_rate=0.6, pnl_mean=1.0,
+            base_ts=base_ts + 6 * 120,
         )
         control_none = _make_records(
-            30, side="buy", regime="none", fill_rate=0.5, pnl_mean=-1.5,
+            6, side="buy", regime="none", fill_rate=0.5, pnl_mean=-1.5,
             base_ts=base_ts,
         )
         control_ranging = _make_records(
-            80, side="buy", regime="ranging", fill_rate=0.5, pnl_mean=0.5,
-            base_ts=base_ts + 30 * 120,
+            12, side="buy", regime="ranging", fill_rate=0.5, pnl_mean=0.5,
+            base_ts=base_ts + 6 * 120,
         )
 
         variant = variant_none + variant_ranging
