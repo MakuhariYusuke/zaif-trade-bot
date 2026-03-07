@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-09 (324# 未達事項消化 + Regime RSI 統合)
+> 最終更新: 2026-03-10 (325# orchestrator God Object 分割)
 
 ---
 
@@ -315,6 +315,7 @@
 | 322 | refactor | [322_phg_refactor_maker_price_god_object_split.md](322_phg_refactor_maker_price_god_object_split.md) | God Object 分割: maker_price.py 1,692→996 行 (3 Mixin 抽出) |
 | 323 | refactor | [323_executor_split_improvements.md](323_executor_split_improvements.md) | God Object 分割: fill_cycle_executor.py 1,502→1,090 行 (2 Mixin 抽出) |
 | 324 | fix | [324_phg_fix_residual_tasks_and_regime_reuse.md](324_phg_fix_residual_tasks_and_regime_reuse.md) | 未達事項消化: M-2 per-side counter + L-3/L-4 YAML 文書化 + Regime RSI 統合 |
+| 325 | refactor | [325_orchestrator_god_object_split.md](325_orchestrator_god_object_split.md) | God Object 分割: fill_loop_orchestrator.py 2,849→1,594 行 (3 Mixin 抽出) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
