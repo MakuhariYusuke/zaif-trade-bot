@@ -116,6 +116,40 @@ def _identity_enrich(fill_df: pd.DataFrame, **_: object) -> pd.DataFrame:
     return enriched
 
 
+def _make_retrain_records_df(
+    n: int,
+    *,
+    seed: int,
+    cycle_prefix: str,
+    run_id: str,
+    regimes: tuple[str, ...] = ("ranging",),
+    balance_forced_first: int = 0,
+) -> pd.DataFrame:
+    """retrain_model() 向けの最小 fill records DataFrame を構築する."""
+    rng = np.random.RandomState(seed)
+    rows: list[dict[str, object]] = []
+    for i in range(n):
+        row: dict[str, object] = {
+            "cycle_id": f"{cycle_prefix}_{i}",
+            "side": "buy" if i % 2 == 0 else "sell",
+            "filled": True,
+            "timestamp": 1771502400.0 + i * 120,
+            "order_price": 15_000_000.0 + rng.randn() * 10_000,
+            "order_quantity": 0.001,
+            "spread_at_order": 2500.0 + rng.randn() * 500,
+            "spread_offset_ratio": 0.05 + rng.randn() * 0.01,
+            "adverse_selected_raw": int(rng.random() > 0.5),
+            "post_fill_30s_pnl": float(rng.randn() * 2),
+            "post_fill_120s_pnl": float(rng.randn() * 3),
+            "regime": regimes[i % len(regimes)],
+            "run_id": run_id,
+        }
+        if balance_forced_first > 0:
+            row["balance_forced_switch"] = i < balance_forced_first
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
 class _FastBooster:
     """LightGBM 依存を避ける最小 booster スタブ."""
 
@@ -565,25 +599,12 @@ class TestRetrainModel:
         """サンプル不足時はスキップ."""
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            # 少数の fill records を作成
             records_dir = Path(tmpdir)
-            records = []
-            for i in range(5):
-                records.append(json.dumps({
-                    "cycle_id": f"test_{i}",
-                    "side": "buy",
-                    "filled": True,
-                    "timestamp": 1771502400.0 + i * 120,
-                    "order_price": 15_000_000.0,
-                    "order_quantity": 0.001,
-                    "spread_at_order": 3000.0,
-                    "spread_offset_ratio": 0.05,
-                    "adverse_selected_raw": i % 2,
-                    "post_fill_120s_pnl": 0.5 * (i - 2),
-                    "run_id": "test_run",
-                }))
-            (records_dir / "fill_records_20260220.jsonl").write_text(
-                "\n".join(records), encoding="utf-8",
+            records_df = _make_retrain_records_df(
+                5,
+                seed=7,
+                cycle_prefix="test",
+                run_id="test_run",
             )
 
             cfg = dict(_DEFAULT_CONFIG)
@@ -594,43 +615,31 @@ class TestRetrainModel:
             cfg["min_total_samples"] = 100  # 5 < 100
             cfg["latest_run_only"] = False
             cfg["exclude_missing_run_id"] = False
-            result = retrain_model(cfg)
+            with patch(
+                "scripts.v460.ml.retrain_scheduler.load_fill_records",
+                side_effect=lambda *args, **kwargs: records_df.copy(deep=True),
+            ):
+                result = retrain_model(cfg)
             assert result["status"] == "skipped"
 
     def test_skip_when_insufficient_new_samples(self) -> None:
         """新規サンプル不足時はスキップ."""
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            # 十分な fill records を作成
             records_dir = Path(tmpdir) / "results"
             records_dir.mkdir()
             model_dir = Path(tmpdir) / "models"
             model_dir.mkdir()
-
-            records = []
-            for i in range(40):
-                records.append(json.dumps({
-                    "cycle_id": f"test_{i}",
-                    "side": "buy" if i % 2 == 0 else "sell",
-                    "filled": True,
-                    "timestamp": 1771502400.0 + i * 120,
-                    "order_price": 15_000_000.0,
-                    "order_quantity": 0.001,
-                    "spread_at_order": 3000.0,
-                    "spread_offset_ratio": 0.05,
-                    "adverse_selected_raw": i % 3,
-                    "post_fill_30s_pnl": 0.5 * (i - 20),
-                    "post_fill_120s_pnl": 0.8 * (i - 20),
-                    "regime": "ranging",
-                    "run_id": "test_run",
-                }))
-            (records_dir / "fill_records_20260220.jsonl").write_text(
-                "\n".join(records), encoding="utf-8",
+            records_df = _make_retrain_records_df(
+                12,
+                seed=11,
+                cycle_prefix="test",
+                run_id="test_run",
             )
 
-            # 既存モデルを配置 (n_samples=40 → 新規 0 件)
+            # 既存モデルを配置 (n_samples=12 → 新規 0 件)
             model_path = model_dir / "gate.pkl"
-            gate = _make_picklable_gate(n_samples=40)
+            gate = _make_picklable_gate(n_samples=12)
             _save_gate_to(gate, model_path)
 
             cfg = dict(_DEFAULT_CONFIG)
@@ -638,13 +647,18 @@ class TestRetrainModel:
             cfg["model_path"] = str(model_path)
             cfg["mode"] = "pnl"
             cfg["use_ob_features"] = True
-            cfg["min_new_samples"] = 30
+            cfg["min_new_samples"] = 5
             cfg["min_total_samples"] = 10
+            cfg["bootstrap_min_total_samples"] = 10
+            cfg["bootstrap_min_new_samples"] = 5
             cfg["latest_run_only"] = False
             cfg["exclude_missing_run_id"] = False
             cfg["lgbm_n_estimators"] = 30
             cfg["enriched_cache_enabled"] = False
             with patch(
+                "scripts.v460.ml.retrain_scheduler.load_fill_records",
+                side_effect=lambda *args, **kwargs: records_df.copy(deep=True),
+            ), patch(
                 "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
                 side_effect=_identity_enrich,
             ):
@@ -687,27 +701,12 @@ class TestE2ERetrainHotReload:
             model_dir.mkdir()
             model_path = model_dir / "gate.pkl"
 
-            # 最低要件を満たす範囲で fill records を絞る
-            rng = np.random.RandomState(42)
-            records = []
-            for i in range(12):
-                records.append(json.dumps({
-                    "cycle_id": f"e2e_{i}",
-                    "side": "buy" if i % 2 == 0 else "sell",
-                    "filled": True,
-                    "timestamp": 1771502400.0 + i * 120,
-                    "order_price": 15_000_000.0 + rng.randn() * 10000,
-                    "order_quantity": 0.001,
-                    "spread_at_order": 2500.0 + rng.randn() * 500,
-                    "spread_offset_ratio": 0.05 + rng.randn() * 0.01,
-                    "adverse_selected_raw": int(rng.random() > 0.5),
-                    "post_fill_30s_pnl": float(rng.randn() * 2),
-                    "post_fill_120s_pnl": float(rng.randn() * 3),
-                    "regime": rng.choice(["trending", "ranging", "high_vol"]),
-                    "run_id": "e2e_run",
-                }))
-            (records_dir / "fill_records_20260220.jsonl").write_text(
-                "\n".join(records), encoding="utf-8",
+            records_df = _make_retrain_records_df(
+                10,
+                seed=42,
+                cycle_prefix="e2e",
+                run_id="e2e_run",
+                regimes=("trending", "ranging", "high_vol"),
             )
 
             # retrain_model 実行
@@ -717,7 +716,7 @@ class TestE2ERetrainHotReload:
             cfg["mode"] = "pnl"
             cfg["use_ob_features"] = False  # テスト高速化
             cfg["min_new_samples"] = 1
-            cfg["min_total_samples"] = 12
+            cfg["min_total_samples"] = 10
             cfg["quality_gate_enabled"] = False  # E2E テストでは品質ゲート無効
             cfg["latest_run_only"] = False
             cfg["exclude_missing_run_id"] = False
@@ -728,15 +727,18 @@ class TestE2ERetrainHotReload:
             cfg["lgbm_subsample"] = 1.0
             cfg["lgbm_colsample_bytree"] = 1.0
             cfg["early_stopping_rounds"] = 0
-            cfg["bootstrap_threshold"] = 12
+            cfg["bootstrap_threshold"] = 10
             cfg["enriched_cache_enabled"] = False
 
             with patch(
+                "scripts.v460.ml.retrain_scheduler.load_fill_records",
+                side_effect=lambda *args, **kwargs: records_df.copy(deep=True),
+            ), patch(
                 "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
                 side_effect=_identity_enrich,
             ), patch(
                 "scripts.v460.ml.retrain_scheduler.SkipGate.load",
-                return_value=_make_picklable_gate(n_samples=12, version="verified"),
+                return_value=_make_picklable_gate(n_samples=10, version="verified"),
             ):
                 result = retrain_model(cfg)
             assert result["status"] in ("deployed", "deployed_verified"), f"Expected deployed*, got {result}"
@@ -812,30 +814,12 @@ class TestBalanceForcedSwitchFilter:
         with tempfile.TemporaryDirectory() as tmpdir:
             records_dir = Path(tmpdir) / "results"
             records_dir.mkdir()
-
-            rng = np.random.RandomState(123)
-            records = []
-            for i in range(18):
-                # 最初の 6 件は balance_forced_switch=True
-                forced = i < 6
-                records.append(json.dumps({
-                    "cycle_id": f"bf_{i}",
-                    "side": "buy" if i % 2 == 0 else "sell",
-                    "filled": True,
-                    "timestamp": 1771502400.0 + i * 120,
-                    "order_price": 15_000_000.0 + rng.randn() * 10000,
-                    "order_quantity": 0.001,
-                    "spread_at_order": 2500.0 + rng.randn() * 300,
-                    "spread_offset_ratio": 0.05,
-                    "adverse_selected_raw": int(rng.random() > 0.5),
-                    "post_fill_30s_pnl": float(rng.randn() * 2),
-                    "post_fill_120s_pnl": float(rng.randn() * 3),
-                    "regime": "ranging",
-                    "run_id": "bf_run",
-                    "balance_forced_switch": forced,
-                }))
-            (records_dir / "fill_records_20260220.jsonl").write_text(
-                "\n".join(records), encoding="utf-8",
+            records_df = _make_retrain_records_df(
+                12,
+                seed=123,
+                cycle_prefix="bf",
+                run_id="bf_run",
+                balance_forced_first=2,
             )
 
             cfg = dict(_DEFAULT_CONFIG)
@@ -855,14 +839,17 @@ class TestBalanceForcedSwitchFilter:
             cfg["enriched_cache_enabled"] = False
 
             with patch(
+                "scripts.v460.ml.retrain_scheduler.load_fill_records",
+                side_effect=lambda *args, **kwargs: records_df.copy(deep=True),
+            ), patch(
                 "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
                 side_effect=_identity_enrich,
             ):
                 result = retrain_model(cfg)
-            # 18 - 6 forced = 12 records usable; filled_records should be <= 12
+            # 12 - 2 forced = 10 records usable; filled_records should be <= 10
             assert result["status"] in ("deployed", "deployed_verified", "skipped")
             if result["status"] in ("deployed", "deployed_verified"):
-                assert result.get("filled_records", 0) <= 12
+                assert result.get("filled_records", 0) <= 10
 
     def test_no_balance_column_no_error(self) -> None:
         """balance_forced_switch カラムがなくてもエラーにならない."""
@@ -870,23 +857,12 @@ class TestBalanceForcedSwitchFilter:
         with tempfile.TemporaryDirectory() as tmpdir:
             records_dir = Path(tmpdir) / "results"
             records_dir.mkdir()
-
-            records = []
-            for i in range(5):
-                records.append(json.dumps({
-                    "cycle_id": f"no_bf_{i}",
-                    "side": "buy",
-                    "filled": True,
-                    "timestamp": 1771502400.0 + i * 120,
-                    "order_price": 15_000_000.0,
-                    "order_quantity": 0.001,
-                    "spread_at_order": 3000.0,
-                    "spread_offset_ratio": 0.05,
-                    "run_id": "no_bf_run",
-                }))
-            (records_dir / "fill_records_20260220.jsonl").write_text(
-                "\n".join(records), encoding="utf-8",
-            )
+            records_df = _make_retrain_records_df(
+                5,
+                seed=5,
+                cycle_prefix="no_bf",
+                run_id="no_bf_run",
+            ).drop(columns=["balance_forced_switch"], errors="ignore")
 
             cfg = dict(_DEFAULT_CONFIG)
             cfg["results_dir"] = str(records_dir)
@@ -898,6 +874,9 @@ class TestBalanceForcedSwitchFilter:
             cfg["enriched_cache_enabled"] = False
             # Should not raise
             with patch(
+                "scripts.v460.ml.retrain_scheduler.load_fill_records",
+                side_effect=lambda *args, **kwargs: records_df.copy(deep=True),
+            ), patch(
                 "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
                 side_effect=_identity_enrich,
             ):

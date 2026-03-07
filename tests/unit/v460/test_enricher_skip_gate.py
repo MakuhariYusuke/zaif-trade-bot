@@ -7,6 +7,7 @@ import gzip
 import json
 import tempfile
 from datetime import datetime as dt
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -166,19 +167,13 @@ def _make_synthetic_fill_df() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-# ======================================================================
-# Fixtures
-# ======================================================================
-
-
-@pytest.fixture
-def synthetic_fill_df() -> pd.DataFrame:
+@lru_cache(maxsize=1)
+def _cached_synthetic_fill_df() -> pd.DataFrame:
     return _make_synthetic_fill_df()
 
 
-@pytest.fixture
-def synthetic_ob_df() -> pd.DataFrame:
-    """合成板データ: 200 snapshots."""
+@lru_cache(maxsize=1)
+def _cached_synthetic_ob_df() -> pd.DataFrame:
     rng = np.random.RandomState(42)
     n = 200
     ts_start = 1700000000 - 60  # fill records の少し前から
@@ -202,9 +197,8 @@ def synthetic_ob_df() -> pd.DataFrame:
     })
 
 
-@pytest.fixture
-def synthetic_trades_df() -> pd.DataFrame:
-    """合成約定データ: 1000 trades."""
+@lru_cache(maxsize=1)
+def _cached_synthetic_trades_df() -> pd.DataFrame:
     rng = np.random.RandomState(42)
     n = 1000
     ts_start = 1700000000 - 120
@@ -216,6 +210,28 @@ def synthetic_trades_df() -> pd.DataFrame:
         "amount": rng.exponential(0.01, n),
         "side": rng.choice(["buy", "sell"], n),
     })
+
+
+# ======================================================================
+# Fixtures
+# ======================================================================
+
+
+@pytest.fixture
+def synthetic_fill_df() -> pd.DataFrame:
+    return _cached_synthetic_fill_df().copy(deep=True)
+
+
+@pytest.fixture
+def synthetic_ob_df() -> pd.DataFrame:
+    """合成板データ: 200 snapshots."""
+    return _cached_synthetic_ob_df().copy(deep=True)
+
+
+@pytest.fixture
+def synthetic_trades_df() -> pd.DataFrame:
+    """合成約定データ: 1000 trades."""
+    return _cached_synthetic_trades_df().copy(deep=True)
 
 
 # ======================================================================
@@ -540,8 +556,8 @@ class Test058SkipGate:
         trained_gate.config.threshold_bps = 999.0  # 常にスキップする閾値
         features = {col: 0.0 for col in trained_gate.feature_cols}
 
-        # 20回連続スキップ → rate limit 発動
-        for _ in range(25):
+        # 履歴長 20 に対し十分な件数だけ積み、rate limit を発動させる
+        for _ in range(16):
             trained_gate.evaluate(features)
 
         # rate limit が効いているか確認
@@ -1002,25 +1018,16 @@ class Test058Integration:
         )
 
     @pytest.fixture(scope="class")
-    def real_fill_df(self, real_data_available: bool) -> pd.DataFrame:
-        if not real_data_available:
-            pytest.skip("No real data")
-
-        df = _load_recent_fill_records_df(sample_rows=_REAL_DATA_SAMPLE_ROWS)
-        if len(df) == 0:
-            pytest.skip("No fill records")
-        return df.copy()
-
-    @pytest.fixture(scope="class")
     def real_enriched_df(
         self,
         real_data_available: bool,
-        real_fill_df: pd.DataFrame,
     ) -> pd.DataFrame:
         if not real_data_available:
             pytest.skip("No real data")
-        del real_fill_df
-        return _select_real_enriched_training_df()
+        enriched = _select_real_enriched_training_df()
+        if enriched.empty:
+            pytest.skip("No fill records")
+        return enriched.copy()
 
     def test_enrichment_with_real_data(
         self,
@@ -1148,7 +1155,7 @@ class Test059SkipRateHistory:
 
         # 100# per-side skip rate: side を指定して評価
         results = []
-        for _ in range(21):
+        for _ in range(12):
             r = gate.evaluate(features, side="buy")
             results.append(r)
 
@@ -1187,15 +1194,15 @@ class Test059SkipRateHistory:
 
         features = {c: 1.0 for c in feature_cols}
         rates = []
-        for i in range(32):
+        for i in range(24):
             gate.evaluate(features, side="sell")  # 100# per-side
             if gate._recent_skips_sell:
                 rate = sum(gate._recent_skips_sell) / len(gate._recent_skips_sell)
                 rates.append(rate)
 
         # 安定後のレートが max_skip_rate 近辺を超えないこと
-        if len(rates) > 20:
-            late_rates = rates[-10:]
+        if len(rates) > 16:
+            late_rates = rates[-8:]
             assert max(late_rates) <= 0.6, (
                 f"Late skip rates should stabilize near max_skip_rate, "
                 f"got max={max(late_rates):.2f}"

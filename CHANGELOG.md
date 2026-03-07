@@ -3936,6 +3936,23 @@ python scripts/unified_trainer.py \
 - During this batch, filtered broad reruns varied from roughly `39.01s` to `43.03s`; the remaining variance is concentrated in real-data integration (`test_enricher_skip_gate.py`) and parquet / aggregation paths (`test_aggregate_to_1min.py`).
 
 ### Changed
+- Simplified `tests/unit/v460/test_retrain_hot_reload.py` by introducing a shared synthetic `retrain_model()` input builder and patching `load_fill_records()` in the hot-reload and balance-filter tests, so those cases keep the deploy/hot-reload path while dropping redundant JSONL write/read setup.
+- Reduced the synthetic sample counts in the retrain tests where only gating or new-sample thresholds are asserted, including the insufficient-new-samples and balance-forced-switch scenarios.
+- Cached the synthetic fill/orderbook/trades fixtures in `tests/unit/v460/test_enricher_skip_gate.py`, removed the redundant `real_fill_df` fixture reload, and shortened the skip-rate history loops to the minimum needed to exercise the 20-sample limiter.
+- Cached the synthetic ML input frame in `tests/unit/v460/test_ml_pipeline.py` and tightened the AS/Fill classifier tests to smaller training slices (`24` rows) with lower non-quality-sensitive GB estimator counts.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_retrain_hot_reload.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_ml_pipeline.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_ml_pipeline.py -q --no-cov --tb=short --durations=25`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=20 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- `tests/unit/v460/test_retrain_hot_reload.py` improved to `82 passed in 4.08s` from the previous `4.74s` focused run; `TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload` remained the dominant single case but dropped to `0.84s` in the focused rerun and `0.16s` in the filtered broad run.
+- `tests/unit/v460/test_enricher_skip_gate.py` + `tests/unit/v460/test_ml_pipeline.py` completed in `92 passed in 4.89s`, and the combined hotspot bundle (`retrain_hot_reload` + `enricher_skip_gate` + `ml_pipeline`) completed in `174 passed in 7.22s`.
+- The latest filtered broad run completed at `4051 passed, 1 deselected, 15 warnings in 35.21s`, improving from the earlier `43.03s` filtered baseline in this workspace.
+
+### Changed
 - Reworked `tests/unit/v460/_fill_test_source.py` to build a cached method-source index once per process instead of AST-walking every FillTestRunner source file on each lookup.
 - Switched the remaining source-inspection assertions in `tests/unit/v460/test_145_structural_fixes.py` and `tests/unit/v460/test_fill_test_config.py` from repeated `inspect.getsource()` or per-method extraction to cached direct file-text reads where exact slicing is unnecessary.
 - Simplified `tests/unit/v460/test_212_live_trader_config.py` to validate the cached module source directly, removing the AST class-extraction setup step.

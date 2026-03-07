@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections import deque
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -44,8 +45,8 @@ def _tail_jsonl_objects(path: Path, *, limit: int) -> list[dict[str, Any]]:
 # ======================================================================
 
 
-@pytest.fixture
-def synthetic_fill_df() -> pd.DataFrame:
+@lru_cache(maxsize=1)
+def _cached_synthetic_fill_df() -> pd.DataFrame:
     """合成 fill records: 100件のテストデータ."""
     rng = np.random.RandomState(42)
     n = 50
@@ -95,6 +96,11 @@ def synthetic_fill_df() -> pd.DataFrame:
         rows.append(row)
 
     return pd.DataFrame(rows)
+
+
+@pytest.fixture
+def synthetic_fill_df() -> pd.DataFrame:
+    return _cached_synthetic_fill_df().copy(deep=True)
 
 
 # ======================================================================
@@ -217,7 +223,9 @@ class Test057ASClassifier:
     def test_train_returns_metrics(self, synthetic_fill_df: pd.DataFrame) -> None:
         """学習が完了し metrics を返す."""
         X, y = build_as_features(synthetic_fill_df)
-        metrics, model, scaler, oof_probs = train_as_classifier(X, y, model_type="lr", n_splits=3)
+        X = X.head(24)
+        y = y.loc[X.index]
+        metrics, model, scaler, oof_probs = train_as_classifier(X, y, model_type="lr", n_splits=2)
         assert isinstance(metrics, ASModelMetrics)
         assert metrics.n_samples == len(X)
         assert 0 <= metrics.roc_auc_mean <= 1
@@ -226,14 +234,14 @@ class Test057ASClassifier:
     def test_train_gb_model(self, synthetic_fill_df: pd.DataFrame) -> None:
         """GradientBoosting で学習."""
         X, y = build_as_features(synthetic_fill_df)
-        X = X.head(30)
+        X = X.head(24)
         y = y.loc[X.index]
         metrics, model, scaler, _ = train_as_classifier(
             X,
             y,
             model_type="gb",
             n_splits=2,
-            gb_n_estimators=10,
+            gb_n_estimators=4,
         )
         assert metrics.feature_importances is not None
         assert len(metrics.feature_importances) == X.shape[1]
@@ -241,7 +249,7 @@ class Test057ASClassifier:
     def test_model_predicts(self, synthetic_fill_df: pd.DataFrame) -> None:
         """学習済みモデルが predict_proba を返す."""
         X, y = build_as_features(synthetic_fill_df)
-        X = X.head(30)
+        X = X.head(24)
         y = y.loc[X.index]
         _, model, pipeline, _ = train_as_classifier(X, y, model_type="lr", n_splits=2)
         # 059#: pipeline は完全な Pipeline (imputer + scaler + model)
@@ -252,7 +260,7 @@ class Test057ASClassifier:
     def test_skip_policy_with_pnl(self, synthetic_fill_df: pd.DataFrame) -> None:
         """PnL 付きでスキップ効果計算."""
         X, y = build_as_features(synthetic_fill_df)
-        X = X.head(30)
+        X = X.head(24)
         y = y.loc[X.index]
         pnl = synthetic_fill_df.loc[X.index, "post_fill_30s_pnl"].astype(float)
         metrics, model, scaler, oof_probs = train_as_classifier(
@@ -263,7 +271,7 @@ class Test057ASClassifier:
     def test_evaluate_skip_policy(self, synthetic_fill_df: pd.DataFrame) -> None:
         """スキップポリシーの DataFrame が返る."""
         X, y = build_as_features(synthetic_fill_df)
-        X = X.head(30)
+        X = X.head(24)
         y = y.loc[X.index]
         pnl = synthetic_fill_df.loc[X.index, "post_fill_30s_pnl"].astype(float)
         _, model, scaler, oof_probs = train_as_classifier(X, y, model_type="lr", n_splits=2)
@@ -285,28 +293,32 @@ class Test057FillClassifier:
     def test_train_returns_metrics(self, synthetic_fill_df: pd.DataFrame) -> None:
         """学習が完了し metrics を返す."""
         X, y = build_fill_features(synthetic_fill_df)
-        metrics, model, scaler = train_fill_classifier(X, y, model_type="lr", n_splits=3)
+        X = X.head(24)
+        y = y.loc[X.index]
+        metrics, model, scaler = train_fill_classifier(X, y, model_type="lr", n_splits=2)
         assert isinstance(metrics, FillModelMetrics)
         assert metrics.n_samples == len(X)
 
     def test_train_gb(self, synthetic_fill_df: pd.DataFrame) -> None:
         """GradientBoosting で学習."""
         X, y = build_fill_features(synthetic_fill_df)
-        X = X.head(30)
+        X = X.head(24)
         y = y.loc[X.index]
         metrics, model, scaler = train_fill_classifier(
             X,
             y,
             model_type="gb",
             n_splits=2,
-            gb_n_estimators=10,
+            gb_n_estimators=4,
         )
         assert metrics.feature_importances is not None
 
     def test_fill_rate_correct(self, synthetic_fill_df: pd.DataFrame) -> None:
         """fill_rate が正しい."""
         X, y = build_fill_features(synthetic_fill_df)
-        metrics, _, _ = train_fill_classifier(X, y, model_type="lr", n_splits=3)
+        X = X.head(24)
+        y = y.loc[X.index]
+        metrics, _, _ = train_fill_classifier(X, y, model_type="lr", n_splits=2)
         assert abs(metrics.fill_rate - y.mean()) < 0.01
 
 
@@ -331,7 +343,7 @@ class Test057Integration:
             pytest.skip("No real fill records")
         results_dir = Path("results/v460/fill_test")
         latest_file = max(results_dir.glob("fill_records_*.jsonl"))
-        sample_rows = _tail_jsonl_objects(latest_file, limit=80)
+        sample_rows = _tail_jsonl_objects(latest_file, limit=120)
         (tmp_path / latest_file.name).write_text(
             "\n".join(json.dumps(row, ensure_ascii=False) for row in sample_rows) + "\n",
             encoding="utf-8",

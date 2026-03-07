@@ -1340,3 +1340,63 @@
 1. `test_aggregate_to_1min.py` の persistence 必須ケースと pure aggregation ケースの責務をさらに切り分ける
 2. `test_ml_pipeline.py` の品質非依存ケースを、軽量 estimator と cached input へ寄せる
 3. `test_enricher_skip_gate.py` の real-data integration を snapshot fixture 化できるか確認する
+
+---
+
+## 2026-03-07 / Session 037-033
+
+### 実施
+- `test_retrain_hot_reload.py`
+  - `retrain_model()` 向けの synthetic DataFrame builder を追加
+  - `TestRetrainModel` / `TestE2ERetrainHotReload` / `TestBalanceForcedSwitchFilter` の JSONL 実書込をやめ、`load_fill_records()` patch で DataFrame を直接注入
+  - 品質評価そのものが主目的でないケースはサンプル数を必要最小限まで削減
+- `test_enricher_skip_gate.py`
+  - synthetic fill / orderbook / trades DataFrame を `@lru_cache` 化し、各 fixture では deep copy を返す形へ統一
+  - real-data integration で使われていなかった `real_fill_df` fixture を削除し、`real_enriched_df` の重複読込を除去
+  - skip-rate limiter の履歴テストを、内部履歴長 20 を踏まえた最小ループ数へ短縮
+- `test_ml_pipeline.py`
+  - synthetic fill DataFrame を `@lru_cache` 化
+  - AS/Fill classifier の品質非依存ケースを `24` 行学習に縮小
+  - GB 系の `gb_n_estimators` を `4` に削減
+
+### 結果
+- 対象回帰 1:
+  - `test_retrain_hot_reload.py`
+  - `82 passed in 4.08s`
+- 対象回帰 2:
+  - `test_enricher_skip_gate.py` + `test_ml_pipeline.py`
+  - `92 passed in 4.89s`
+- 対象回帰 3:
+  - `test_retrain_hot_reload.py` + `test_enricher_skip_gate.py` + `test_ml_pipeline.py`
+  - `174 passed in 7.22s`
+- broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` と `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - `4051 passed, 1 deselected, 15 warnings in 35.21s`
+
+### 主要 durations 変化
+- `test_retrain_hot_reload.py::TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload`
+  - focused `0.90s級 -> 0.84s`
+  - filtered broad `0.29s級 -> 0.16s`
+- `test_retrain_hot_reload.py::TestRetrainModel::test_skip_when_insufficient_new_samples`
+  - `0.11s -> 0.09s`
+- `test_retrain_hot_reload.py::TestBalanceForcedSwitchFilter::test_balance_forced_records_excluded`
+  - `0.10s -> 0.06s`
+- `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data`
+  - focused setup `0.50s級 -> 0.47s`
+  - filtered broad setup `0.38s`
+- `test_ml_pipeline.py`
+  - focused / bundle ともに GB / LR 学習ケースが `0.04s〜0.09s` 帯へ縮小
+
+### 補足
+- broad の上位は今回の変更後も以下へ集中している
+  - `test_enricher_skip_gate.py` の real-data setup
+  - `test_aggregate_to_1min.py` の parquet / aggregation
+  - `test_227_ranging_obi_velocity_ema_import_fix.py` の EMA 単発ケース
+  - `test_145_structural_fixes.py::TestFillRecordBuilderIntegration::test_resume_and_reload_use_iter_glob`
+- 今回は本体コードへの追加変更は入れていない
+  - 安全に効く production-side の改善候補は別途 `aggregate_to_1min` / `feature_enricher` / `EMA` 周辺のプロファイルを見た上で切るのが妥当
+
+### 次アクション
+1. `test_aggregate_to_1min.py` の上位 2 ケースを、persistence 契約と resample 契約にさらに分離する
+2. `test_227_ranging_obi_velocity_ema_import_fix.py` と `test_145_structural_fixes.py::test_resume_and_reload_use_iter_glob` の単発重ケースを調べる
+3. production 側は `feature_enricher` / `aggregate_to_1min` / EMA 周辺の実計測を取り、再利用できる cache と単一パス化の余地を確認する
