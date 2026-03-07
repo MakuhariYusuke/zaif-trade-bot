@@ -401,8 +401,8 @@ class TestConfigWiring:
         cfg = FillTestConfig()
         assert hasattr(cfg, "sell_dynamic_kill_max_duration_sec")
         assert hasattr(cfg, "buy_dynamic_kill_max_duration_sec")
-        assert cfg.sell_dynamic_kill_max_duration_sec == 0.0
-        assert cfg.buy_dynamic_kill_max_duration_sec == 0.0
+        assert cfg.sell_dynamic_kill_max_duration_sec == 1800.0  # 336# drift fix
+        assert cfg.buy_dynamic_kill_max_duration_sec == 1800.0  # 336# drift fix
 
     def test_dynamic_kill_config_has_max_duration(self) -> None:
         """DynamicKillConfig に max_kill_duration_sec フィールドがある."""

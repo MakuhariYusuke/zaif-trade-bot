@@ -318,17 +318,17 @@ class TestUnknownCounterResetOnGate2:
     def test_bypass_threshold_not_falsely_triggered(self):
         """unknown→ranging→unknown の遷移でバイパス閾値に偽到達しない.
 
-        UNKNOWN_REGIME_MAX_CONSECUTIVE=10 に対し、
-        unknown 5回 → ranging 1回(Gate 2 block) → unknown 5回 で
-        合計10回にならないことを確認。
+        UNKNOWN_REGIME_MAX_CONSECUTIVE=5 に対し、
+        unknown 3回 → ranging 1回(Gate 2 block) → unknown 3回 で
+        合計6回にならないことを確認。
         """
         gate = _make_gate()
-        assert gate.UNKNOWN_REGIME_MAX_CONSECUTIVE == 10
+        assert gate.UNKNOWN_REGIME_MAX_CONSECUTIVE == 5
 
-        # unknown 5回
-        for _ in range(5):
+        # unknown 3回
+        for _ in range(3):
             gate.evaluate(**_default_ctx(side="buy", regime="unknown"))
-        assert gate._consecutive_unknown_blocks["buy"] == 5
+        assert gate._consecutive_unknown_blocks["buy"] == 3
 
         # ranging で Gate 2 ブロック → リセット
         gate.evaluate(**_default_ctx(
@@ -336,10 +336,10 @@ class TestUnknownCounterResetOnGate2:
         ))
         assert gate._consecutive_unknown_blocks["buy"] == 0
 
-        # unknown 5回 → カウンタは 5 (修正前は 10 でバイパス発動)
-        for _ in range(5):
+        # unknown 3回 → カウンタは 3 (MAX=5 に到達しない)
+        for _ in range(3):
             gate.evaluate(**_default_ctx(side="buy", regime="unknown"))
-        assert gate._consecutive_unknown_blocks["buy"] == 5
+        assert gate._consecutive_unknown_blocks["buy"] == 3
 
 
 # ===========================================================================

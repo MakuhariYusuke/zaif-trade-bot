@@ -517,7 +517,7 @@ class FillTestConfig:
     # 277# unknown regime 連続ブロックのバイパス閾値 (Hamilton 1989 regime-switching)
     # unknown が N 回連続したら regime 判定不能として gate を強制バイパス。
     # 10 × cycle_interval(120s) = 20 分 — regime 再評価の猶予期間。
-    unknown_regime_max_consecutive: int = 10
+    unknown_regime_max_consecutive: int = 5   # 336# drift fix: YAML=5 (321# M-3)
     # ---- 133# P0-09: unknown レジームでの buy スキップ ----
     skip_buy_unknown_regime: bool = False  # True で unknown レジーム時 buy もスキップ (-1.384bps)
     # ---- 155# §9: trending レジームでの sell 抑制 ----
@@ -532,7 +532,7 @@ class FillTestConfig:
     # 196# trending_sell ソフト化: hard skip → offset boost
     # enabled 時、trending sell をスキップせず offset を boost して保守的価格で sell 発注
     trending_sell_as_offset_enabled: bool = False
-    trending_sell_offset_boost_factor: float = 2.0  # live YAML 既定値と整合
+    trending_sell_offset_boost_factor: float = 1.5  # 336# drift fix: YAML=1.5 (320# C-1)
     # 253# 削除完了: balance_forced_apply_trending_offset (234# dead config → 235# TODO 解消)
     # 158# §20-B: 連続 trending sell skip 安全弁 — N 回超過で sell を強制許可 (0=無制限)
     max_consecutive_trending_sell_skip: int = 30
@@ -542,35 +542,35 @@ class FillTestConfig:
     # ---- 133# P0-10: sell 動的 kill (rolling PnL ベースの自動停止) ----
     sell_dynamic_kill_enabled: bool = False  # True で sell rolling PnL 監視有効
     sell_dynamic_kill_window: int = 50       # rolling ウィンドウ (fill 数)
-    sell_dynamic_kill_threshold_bps: float = -0.5  # この値以下で sell 停止
-    sell_dynamic_kill_resume_window: int = 20     # 停止後、N サイクル後に再評価
+    sell_dynamic_kill_threshold_bps: float = -0.3  # 336# drift fix: YAML=-0.3 (246#)
+    sell_dynamic_kill_resume_window: int = 10     # 336# drift fix: YAML=10 (156# D-5)
     # 139# §9-#2: レジーム別閾値 (regime_name -> threshold_bps)
     sell_dynamic_kill_regime_thresholds: dict[str, float] = field(default_factory=dict)
     # 243# 242# YAML 配線: toxic_kill_stale_multiplier
     sell_dynamic_kill_toxic_stale_mult: int = 10   # 242# probe interval 延長倍率
     # 269# probe/force-release YAML 露出 (250# 廃止検討対応)
-    sell_dynamic_kill_max_stale_cycles: int = 10   # 0=probe無効 (No Trade=正常)
-    sell_dynamic_kill_max_force_probes: int = 5    # 0=force-release無効
+    sell_dynamic_kill_max_stale_cycles: int = 0    # 336# drift fix: YAML=0 (269# probe無効)
+    sell_dynamic_kill_max_force_probes: int = 0    # 336# drift fix: YAML=0 (269# force-release無効)
     # 273# kill 時間上限 (268# I5: Pattern B kill↔halt 相互ロック防止)
-    sell_dynamic_kill_max_duration_sec: float = 0.0  # 0=無制限 (従来互換)
+    sell_dynamic_kill_max_duration_sec: float = 1800.0  # 336# drift fix: YAML=1800 (273#)
     # ---- 157# §19: buy 動的 kill (rolling PnL ベースの自動停止 — sell との対称性) ----
     buy_dynamic_kill_enabled: bool = False   # True で buy rolling PnL 監視有効
     buy_dynamic_kill_window: int = 50        # rolling ウィンドウ (fill 数)
-    buy_dynamic_kill_threshold_bps: float = -0.8  # buy は sell より寛容 (157#: 構造的に buy のほうが AS リスクが低い)
+    buy_dynamic_kill_threshold_bps: float = -1.5  # 336# T-1 + drift fix: YAML=-1.5
     buy_dynamic_kill_resume_window: int = 10      # 停止後、N サイクル後に再評価
     buy_dynamic_kill_regime_thresholds: dict[str, float] = field(default_factory=dict)
     buy_dynamic_kill_toxic_stale_mult: int = 10    # 242# probe interval 延長倍率
-    buy_dynamic_kill_max_stale_cycles: int = 10    # 269# 0=probe無効
-    buy_dynamic_kill_max_force_probes: int = 5     # 269# 0=force-release無効
+    buy_dynamic_kill_max_stale_cycles: int = 0     # 336# drift fix: YAML=0 (269# probe無効)
+    buy_dynamic_kill_max_force_probes: int = 0     # 336# drift fix: YAML=0 (269# force-release無効)
     # 273# kill 時間上限 (268# I5)
-    buy_dynamic_kill_max_duration_sec: float = 0.0  # 0=無制限
+    buy_dynamic_kill_max_duration_sec: float = 1800.0  # 336# drift fix: YAML=1800 (273#)
     # 286# 283# P1-4: 在庫連動の buy_dynamic_kill 閾値緩和 (Ho & Stoll 1981)
     # 在庫偏重時 (BTC 不足) に buy kill を緩和して在庫リバランスを促進。
     # 閾値オフセット = min(|imbalance| × scale, max_bps)
     # 例: imbalance=-0.5 (buy寄り=BTC不足), scale=0.5, max=0.3 → offset=+0.25bps → 緩和
     buy_dynamic_kill_inv_relaxation_enabled: bool = False  # True で在庫連動緩和を有効化
     buy_dynamic_kill_inv_relaxation_scale: float = 0.5     # |imbalance| → offset 変換スケール
-    buy_dynamic_kill_inv_relaxation_max_bps: float = 0.3   # 緩和の上限 (bps)
+    buy_dynamic_kill_inv_relaxation_max_bps: float = 0.5   # 336# T-2 + drift fix: YAML=0.5
     # 286# 283# P1-5: 強制買い KPI 分離
     # balance_forced の fill を通常 buy とは別に集計し、品質低下の原因特定を可能にする。
     forced_buy_kpi_tracking_enabled: bool = True  # True で強制買い PnL を分離ログ

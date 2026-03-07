@@ -55,9 +55,9 @@ class TestNewConfigFields:
         assert cfg.fallback_duration_sec == 3600.0
 
     def test_unknown_regime_max_consecutive_default(self) -> None:
-        """unknown_regime_max_consecutive のデフォルト値 = 10."""
+        """unknown_regime_max_consecutive のデフォルト値 = 5 (336# drift fix)."""
         cfg = FillTestConfig()
-        assert cfg.unknown_regime_max_consecutive == 10
+        assert cfg.unknown_regime_max_consecutive == 5
 
     def test_from_yaml_reads_new_fields(self) -> None:
         """from_yaml が 5 つの新規 flat_keys を読み込むこと."""
@@ -270,12 +270,12 @@ class TestGateAggregatorConfigIntegration:
         assert gate.UNKNOWN_REGIME_MAX_CONSECUTIVE == 5
 
     def test_default_threshold_matches(self) -> None:
-        """デフォルト config で UNKNOWN_REGIME_MAX_CONSECUTIVE = 10."""
+        """デフォルト config で UNKNOWN_REGIME_MAX_CONSECUTIVE = 5 (336# drift fix)."""
         from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         cfg = FillTestConfig()
         gate = CycleGateAggregator(cfg)
-        assert gate.UNKNOWN_REGIME_MAX_CONSECUTIVE == 10
+        assert gate.UNKNOWN_REGIME_MAX_CONSECUTIVE == 5
 
     def test_bypass_with_custom_threshold(self) -> None:
         """カスタム閾値でバイパスが正しく機能すること."""
