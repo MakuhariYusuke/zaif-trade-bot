@@ -452,12 +452,13 @@ class TestNewCycleId:
 class TestMakeSkipRecord:
     """_make_skip_record() ヘルパのフィールド検証."""
 
-    def _make_runner_mock(self) -> MagicMock:
-        runner = MagicMock()
+    def _make_runner_mock(self) -> object:
+        runner = types.SimpleNamespace()
         runner._run_id = "test_run_001"
         runner._git_sha = "abc1234"
         runner._current_lot = 0.005
         runner._regime_detector = None
+        runner.config = types.SimpleNamespace(ab_test_variant=None)
         runner._make_skip_record = types.MethodType(
             FillTestRunner._make_skip_record, runner,
         )

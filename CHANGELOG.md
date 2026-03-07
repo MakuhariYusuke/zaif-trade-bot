@@ -3894,6 +3894,19 @@ python scripts/unified_trainer.py \
 - `python -m pytest tests/unit/v460/test_regime_detector.py tests/unit/v460/test_aggregate_to_1min.py -q --no-cov --tb=short --durations=20`
 - `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=20 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
 
+### Changed
+- Reworked `tests/unit/v460/test_retrain_hot_reload.py` so the no-reload, balance-forced, and E2E hot-reload paths use a shared `SkipGateEvaluator` config helper plus lightweight placeholder/stub model artifacts instead of repeated real gate serialization and heavyweight mock objects.
+- Patched the retrain-side hot-reload tests to stub `SkipGate.save()` / `SkipGate.load()` directly where model quality is irrelevant, trimming duplicate pickle/hash work while preserving deploy/reload control-flow coverage.
+- Replaced the `MagicMock`-based runner object in `tests/unit/v460/test_145_structural_fixes.py::TestMakeSkipRecord` with a minimal `SimpleNamespace` runner carrying only the fields `_make_skip_record()` actually consumes, keeping the structural assertions while removing unnecessary mock/config overhead.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_145_structural_fixes.py -q --no-cov --tb=short --durations=30`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=20 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- The focused retrain/structural bundle completed at `139 passed in 5.04s`; within that run, `TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload` fell to `0.74s`, `TestBalanceForcedSwitchFilter::test_balance_forced_records_excluded` to `0.08s`, and the no-reload hot-reload checks to `0.01s`.
+- The latest filtered broad rerun completed at `4060 passed, 1 deselected, 15 warnings in 32.19s`; the remaining hottest cases have shifted toward `test_v460_core::TestCliffsD::test_no_dominance`, `test_102_structural_fixes.py`, `test_215_dd_fix_alert_mode.py`, and a handful of loader/source-inspection cases.
+
 ### Notes
 - The latest filtered broad run for the current patch completed at `4043 passed, 1 deselected, 18 warnings in 37.13s` when excluding the unrelated line-count guard in `tests/unit/v460/test_113_resilience.py`.
 - The unrelated failure is `TestR1MethodExtraction::test_run_single_cycle_under_400_lines`, currently reporting `run_single_cycle is 732 lines (> 725)` in the working tree.

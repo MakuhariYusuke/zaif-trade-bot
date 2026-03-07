@@ -67,6 +67,75 @@ class _PickleStub:
     def __init__(self, name: str) -> None:
         self.name = name
 
+
+def _write_placeholder_model(path: Path) -> None:
+    """SkipGateEvaluator 初期化向けの最小ファイルを配置する."""
+    path.write_bytes(b"placeholder-model")
+
+
+def _write_stub_gate_artifact(_gate: object, path: Path) -> None:
+    """SkipGate.save の代替: 最小 deploy artifact と sidecar hash を生成する."""
+    payload = b"stub-gate"
+    path.write_bytes(payload)
+    path.with_suffix(path.suffix + ".sha256").write_text(
+        hashlib.sha256(payload).hexdigest(),
+        encoding="utf-8",
+    )
+
+
+def _make_skip_gate_eval_config(
+    *,
+    model_path: str,
+    results_dir: str,
+) -> SimpleNamespace:
+    """SkipGateEvaluator が直接参照する属性を満たす軽量 config."""
+    return SimpleNamespace(
+        skip_gate_enabled=True,
+        skip_gate_model_path=model_path,
+        skip_gate_mode="pnl",
+        skip_gate_as_threshold=0.50,
+        skip_gate_pnl_threshold=0.0,
+        skip_gate_max_skip_rate=0.3,
+        skip_gate_buy_enabled=True,
+        skip_gate_sell_enabled=True,
+        skip_gate_as_threshold_buy=0.50,
+        skip_gate_as_threshold_sell=0.50,
+        skip_gate_use_ob_features=False,
+        skip_gate_adaptive_threshold=False,
+        skip_gate_target_skip_rate_buy=0.15,
+        skip_gate_target_skip_rate_sell=0.20,
+        skip_gate_adaptive_window=50,
+        skip_gate_adaptive_min_samples=20,
+        skip_gate_adaptive_step=0.05,
+        skip_gate_adaptive_floor=0.35,
+        skip_gate_adaptive_ceiling=0.80,
+        skip_gate_regime_thresholds={},
+        skip_gate_score_calibration=False,
+        skip_gate_calibrator_path="",
+        skip_gate_recent_trades_limit=200,
+        skip_gate_ob_depth=5,
+        skip_gate_hour_offsets={},
+        skip_gate_narrow_spread_threshold_jpy=0.0,
+        skip_gate_narrow_spread_offset=0.0,
+        skip_gate_offset_floor=-10.0,
+        skip_gate_offset_ceil=10.0,
+        skip_gate_ev_weighted_enabled=False,
+        skip_gate_ev_w30=0.5,
+        skip_gate_ev_w120=0.5,
+        skip_gate_ev_as_offset_enabled=False,
+        skip_gate_ev_one_sided_threshold_shift=0.0,
+        skip_gate_ev_max_consecutive_skip=0,
+        skip_gate_ev_emergency_skip_threshold=1.0,
+        skip_gate_ev_offset_sensitivity=1.0,
+        skip_gate_ev_offset_min_mult=1.0,
+        skip_gate_ev_offset_max_mult=1.0,
+        skip_gate_ev_warning_threshold=1.0,
+        skip_gate_ev_warning_offset_factor=1.0,
+        skip_sell_unknown_regime=False,
+        results_dir=results_dir,
+        hot_reload_check_interval_sec=120.0,
+    )
+
 def _make_picklable_gate(
     *,
     n_samples: int = 100,
@@ -238,33 +307,12 @@ def _make_splitter_module(windows: list[SimpleNamespace]) -> SimpleNamespace:
 class TestHotReload:
     """126# SkipGateEvaluator hot-reload テスト."""
 
-    def _make_config(self, model_path: str) -> MagicMock:
+    def _make_config(self, model_path: str) -> SimpleNamespace:
         """テスト用 FillTestConfig モック."""
-        cfg = MagicMock()
-        cfg.skip_gate_enabled = True
-        cfg.skip_gate_model_path = model_path
-        cfg.skip_gate_mode = "pnl"
-        cfg.skip_gate_as_threshold = 0.50
-        cfg.skip_gate_pnl_threshold = 0.0
-        cfg.skip_gate_max_skip_rate = 0.3
-        cfg.skip_gate_buy_enabled = True
-        cfg.skip_gate_sell_enabled = True
-        cfg.skip_gate_as_threshold_buy = 0.50
-        cfg.skip_gate_as_threshold_sell = 0.50
-        cfg.skip_gate_use_ob_features = False
-        cfg.skip_gate_adaptive_threshold = False
-        cfg.skip_gate_target_skip_rate_buy = 0.15
-        cfg.skip_gate_target_skip_rate_sell = 0.20
-        cfg.skip_gate_adaptive_window = 50
-        cfg.skip_gate_adaptive_min_samples = 20
-        cfg.skip_gate_adaptive_step = 0.05
-        cfg.skip_gate_adaptive_floor = 0.35
-        cfg.skip_gate_adaptive_ceiling = 0.80
-        cfg.skip_sell_unknown_regime = False
-        cfg.results_dir = "results/v460/fill_test"
-        # 255# getattr 排除対応: _check_and_reload_model で直接参照
-        cfg.hot_reload_check_interval_sec = 120.0
-        return cfg
+        return _make_skip_gate_eval_config(
+            model_path=model_path,
+            results_dir="results/v460/fill_test",
+        )
 
     def test_initial_hash_stored(self) -> None:
         """初期ロード時にモデルファイルのハッシュが保存される."""
@@ -303,16 +351,24 @@ class TestHotReload:
         with tempfile.TemporaryDirectory() as tmpdir:
             model_path = Path(tmpdir) / "gate.pkl"
             gate = _make_picklable_gate(version="v1")
-            _save_gate_to(gate, model_path)
+            _write_placeholder_model(model_path)
 
             cfg = self._make_config(str(model_path))
-            evaluator = SkipGateEvaluator(cfg, Path(tmpdir))
-            original_gate = evaluator._skip_gate
-            original_hash = evaluator._model_file_hash
+            with patch(
+                "scripts.v460.ml.skip_gate.SkipGate.load",
+                return_value=gate,
+            ), patch(
+                "scripts.v460.lib.skip_gate_evaluator.SkipGateEvaluator._read_model_hash",
+                return_value="a" * 64,
+            ):
+                evaluator = SkipGateEvaluator(cfg, Path(tmpdir))
+                original_gate = evaluator._skip_gate
+                original_hash = evaluator._model_file_hash
 
-            # 即座にチェックを強制 (interval を 0 に)
-            evaluator._last_reload_check = 0
-            evaluator._check_and_reload_model()
+                # 即座にチェックを強制 (interval を 0 に)
+                evaluator._last_reload_check = 0
+                with patch.object(evaluator, "_check_and_reload_side_models", return_value=None):
+                    evaluator._check_and_reload_model()
 
             assert evaluator._skip_gate is original_gate
             assert evaluator._model_file_hash == original_hash
@@ -740,53 +796,38 @@ class TestE2ERetrainHotReload:
             ), patch(
                 "scripts.v460.ml.retrain_scheduler.SkipGate.load",
                 return_value=gate_v1,
+            ), patch(
+                "scripts.v460.ml.retrain_scheduler.SkipGate.save",
+                autospec=True,
+                side_effect=_write_stub_gate_artifact,
             ):
                 result = retrain_model(cfg)
             assert result["status"] in ("deployed", "deployed_verified"), f"Expected deployed*, got {result}"
             assert model_path.exists()
 
             # SkipGateEvaluator で hot-reload テスト
-            eval_cfg = MagicMock()
-            eval_cfg.skip_gate_enabled = True
-            eval_cfg.skip_gate_model_path = str(model_path)
-            eval_cfg.skip_gate_mode = "pnl"
-            eval_cfg.skip_gate_as_threshold = 0.50
-            eval_cfg.skip_gate_pnl_threshold = 0.0
-            eval_cfg.skip_gate_max_skip_rate = 0.3
-            eval_cfg.skip_gate_buy_enabled = True
-            eval_cfg.skip_gate_sell_enabled = True
-            eval_cfg.skip_gate_as_threshold_buy = 0.50
-            eval_cfg.skip_gate_as_threshold_sell = 0.50
-            eval_cfg.skip_gate_use_ob_features = False
-            eval_cfg.skip_gate_adaptive_threshold = False
-            eval_cfg.skip_gate_target_skip_rate_buy = 0.15
-            eval_cfg.skip_gate_target_skip_rate_sell = 0.20
-            eval_cfg.skip_gate_adaptive_window = 50
-            eval_cfg.skip_gate_adaptive_min_samples = 20
-            eval_cfg.skip_gate_adaptive_step = 0.05
-            eval_cfg.skip_gate_adaptive_floor = 0.35
-            eval_cfg.skip_gate_adaptive_ceiling = 0.80
-            eval_cfg.skip_sell_unknown_regime = False
-            eval_cfg.results_dir = str(records_dir)
-            # 257# 255# getattr 排除: hot_reload_check_interval_sec 直接参照のため明示設定
-            eval_cfg.hot_reload_check_interval_sec = 120.0
+            eval_cfg = _make_skip_gate_eval_config(
+                model_path=str(model_path),
+                results_dir=str(records_dir),
+            )
 
             gate_v2 = _make_picklable_gate(n_samples=45, version="e2e_v2")
             gate_v2.metadata["retrained"] = True
             with patch(
                 "scripts.v460.ml.skip_gate.SkipGate.load",
                 side_effect=[gate_v1, gate_v2],
+            ), patch(
+                "scripts.v460.lib.skip_gate_evaluator.SkipGateEvaluator._read_model_hash",
+                side_effect=["a" * 64, "b" * 64],
             ):
                 evaluator = SkipGateEvaluator(eval_cfg, Path(tmpdir))
                 assert evaluator._skip_gate is not None
                 initial_hash = evaluator._model_file_hash
 
-                # hot-reload 検証用に v2 モデルへ差し替え
-                _save_gate_to(gate_v2, model_path)
-
                 # hot-reload トリガー (interval リセット)
                 evaluator._last_reload_check = 0
-                evaluator._check_and_reload_model()
+                with patch.object(evaluator, "_check_and_reload_side_models", return_value=None):
+                    evaluator._check_and_reload_model()
 
                 # モデルが更新されていること
                 assert evaluator._model_file_hash != initial_hash
@@ -820,11 +861,11 @@ class TestBalanceForcedSwitchFilter:
             records_dir = Path(tmpdir) / "results"
             records_dir.mkdir()
             records_df = _make_retrain_records_df(
-                12,
+                11,
                 seed=123,
                 cycle_prefix="bf",
                 run_id="bf_run",
-                balance_forced_first=2,
+                balance_forced_first=1,
             )
 
             cfg = dict(_DEFAULT_CONFIG)
@@ -840,7 +881,7 @@ class TestBalanceForcedSwitchFilter:
             cfg["quality_gate_enabled"] = False
             cfg["latest_run_only"] = False
             cfg["exclude_missing_run_id"] = False
-            cfg["lgbm_n_estimators"] = 6
+            cfg["lgbm_n_estimators"] = 4
             cfg["enriched_cache_enabled"] = False
 
             with patch(
@@ -849,9 +890,16 @@ class TestBalanceForcedSwitchFilter:
             ), patch(
                 "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
                 side_effect=_identity_enrich,
+            ), patch(
+                "scripts.v460.ml.retrain_scheduler.SkipGate.load",
+                return_value=_make_picklable_gate(n_samples=10, version="verified"),
+            ), patch(
+                "scripts.v460.ml.retrain_scheduler.SkipGate.save",
+                autospec=True,
+                side_effect=_write_stub_gate_artifact,
             ):
                 result = retrain_model(cfg)
-            # 12 - 2 forced = 10 records usable; filled_records should be <= 10
+            # 11 - 1 forced = 10 records usable; filled_records should be <= 10
             assert result["status"] in ("deployed", "deployed_verified", "skipped")
             if result["status"] in ("deployed", "deployed_verified"):
                 assert result.get("filled_records", 0) <= 10

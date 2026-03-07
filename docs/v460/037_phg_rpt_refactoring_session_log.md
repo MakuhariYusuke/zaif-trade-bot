@@ -1666,3 +1666,41 @@
 1. `test_retrain_hot_reload.py` の `no_reload_when_unchanged` / `balance_forced` / E2E をさらに stub 化できるか詰める
 2. `test_enricher_skip_gate.py` の real-data integration setup を fixture cache/snapshot 化でさらに落とす
 3. `test_169_config_hot_reload.py` と `test_145_structural_fixes.py` の source/config 更新系を再度洗う
+
+---
+
+## 2026-03-08 / Session 037-039
+
+### 実施
+- `test_retrain_hot_reload.py`
+  - `SkipGateEvaluator` 用の共通 config helper を追加し、`no_reload_when_unchanged` / `balance_forced` / E2E hot-reload で散在していた設定組立を統一
+  - placeholder/stub model artifact writer を追加し、`SkipGate.save()` / `SkipGate.load()` / hash 読込を patch ベースへ寄せて、不要な gate serialize / deserialize を削減
+  - `balance_forced` 系は最小サンプル数へ調整しつつ、`enrich_fill_records` と gate load/save を stub 化して control-flow 検証へ縮退
+- `test_145_structural_fixes.py`
+  - `TestMakeSkipRecord` の runner mock を `SimpleNamespace` ベースの最小オブジェクトへ置換
+  - `_make_skip_record()` が参照する属性だけを明示的に持たせ、`MagicMock` 由来の余計な config/mock 解決コストを除去
+
+### 結果
+- 対象回帰:
+  - `test_retrain_hot_reload.py` + `test_145_structural_fixes.py`
+  - `139 passed in 5.04s`
+- broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` と `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - `4060 passed, 1 deselected, 15 warnings in 32.19s`
+
+### 主要改善
+- `test_retrain_hot_reload.py`
+  - `TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload` が focused で `0.74s`
+  - `TestBalanceForcedSwitchFilter::test_balance_forced_records_excluded` が `0.08s`
+  - `TestHotReload::test_no_reload_when_unchanged` / `test_initial_hash_stored` が `0.01s`
+- `test_145_structural_fixes.py`
+  - `_make_skip_record()` 系で不要な mock/config 解決を外し、構造確認テストを軽量 runner へ整理
+
+### 補足
+- 作業中にブランチ先頭は別コミットで進んでいたため、今回の変更は対象 2 ファイルと記録更新だけを現在の HEAD 上へ積む前提で扱った。
+- broad の上位は、`test_enricher_skip_gate.py` の real-data setup よりも、`test_v460_core::TestCliffsD::test_no_dominance`、`test_102_structural_fixes.py`、`test_215_dd_fix_alert_mode.py`、loader/source-inspection 系へ移りつつある。
+
+### 次アクション
+1. `test_v460_core.py::TestCliffsD::test_no_dominance` の計算条件を保ったままサンプル/実装経路を見直す
+2. `test_102_structural_fixes.py` と `test_215_dd_fix_alert_mode.py` の runtime 初期化/実データ依存を stub 化できるか詰める
+3. loader/source-inspection 上位（`test_stopgap_health.py`, `test_gate_judgment.py`, `test_197_boost_optimization_gate_integration.py`）を cached read へ寄せる余地を洗う
