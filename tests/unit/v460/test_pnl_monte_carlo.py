@@ -7,7 +7,6 @@ ztb/risk/pnl_monte_carlo.py の全主要パスを検証する。
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -134,10 +133,13 @@ class TestLoadFillRecords:
             d = r.to_dict()
             d["cycle_id"] = f"day2_{d['cycle_id']}"
             recs2.append(FillRecord.from_dict(d))
-        _write_jsonl(recs1, tmp_path / "fill_records_day1.jsonl")
-        _write_jsonl(recs2, tmp_path / "fill_records_day2.jsonl")
-
-        loaded = PnLMonteCarloSimulator.load_fill_records(tmp_path)
+        expected = recs1 + recs2
+        with patch(
+            "ztb.metrics.fill_quality.load_fill_records_glob",
+            return_value=expected,
+        ) as load_glob:
+            loaded = PnLMonteCarloSimulator.load_fill_records(tmp_path)
+        load_glob.assert_called_once_with(tmp_path)
         assert len(loaded) == 6  # 3 + 3
 
     def test_load_nonexistent_raises(self) -> None:

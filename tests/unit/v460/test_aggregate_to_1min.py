@@ -298,6 +298,19 @@ class TestAggregateTradesOnly:
 class TestAggregateMerged:
     """Orderbook + Trades の結合テスト."""
 
+    @pytest.fixture(scope="class")
+    def persisted_aggregate(
+        self,
+        tmp_path_factory: pytest.TempPathFactory,
+    ) -> tuple[pd.DataFrame, Path]:
+        tmp_path = tmp_path_factory.mktemp("aggregate_merged")
+        return _run_aggregate(
+            tmp_path,
+            ob_records=[_make_ob_record(0)],
+            tr_records=[_make_trade_record(0)],
+            output_name="output.parquet",
+        )
+
     def test_merged_has_all_columns(self, tmp_path: Path) -> None:
         ob_records = [_make_ob_record(0)]
         tr_records = [_make_trade_record(0)]
@@ -323,29 +336,21 @@ class TestAggregateMerged:
         # min 1: has trade data, no OB data
         assert np.isnan(df["best_bid"].iloc[1])
 
-    def test_parquet_output_created(self, tmp_path: Path) -> None:
-        ob_records = [_make_ob_record(0)]
-        tr_records = [_make_trade_record(0)]
-        _, out_path = _run_aggregate(
-            tmp_path,
-            ob_records=ob_records,
-            tr_records=tr_records,
-            output_name="output.parquet",
-        )
+    def test_parquet_output_created(
+        self,
+        persisted_aggregate: tuple[pd.DataFrame, Path],
+    ) -> None:
+        _, out_path = persisted_aggregate
 
         assert out_path.exists()
         assert out_path.stat().st_size > 0
 
-    def test_parquet_roundtrip(self, tmp_path: Path) -> None:
+    def test_parquet_roundtrip(
+        self,
+        persisted_aggregate: tuple[pd.DataFrame, Path],
+    ) -> None:
         """Parquet 書き出し→再読み込みの一致."""
-        ob_records = [_make_ob_record(0)]
-        tr_records = [_make_trade_record(0)]
-        original, out_path = _run_aggregate(
-            tmp_path,
-            ob_records=ob_records,
-            tr_records=tr_records,
-            output_name="output.parquet",
-        )
+        original, out_path = persisted_aggregate
         reloaded = pq.read_table(out_path)
 
         assert len(original) == reloaded.num_rows

@@ -4003,3 +4003,22 @@ python scripts/unified_trainer.py \
 ### Notes
 - The latest filtered broad rerun completed at `4051 passed, 1 deselected, 15 warnings in 41.03s`.
 - Remaining top costs are concentrated in real-data enrichment (`test_enricher_skip_gate.py`), writer exception handling (`test_148_fill_test_events.py`), directory JSONL loading (`test_pnl_monte_carlo.py`), and the metrics reproduction CLI path (`test_152_parallel_tasks.py`).
+
+### Changed
+- Replaced the `MagicMock`-based `_TeeWriter` tests in `tests/unit/v460/test_148_fill_test_events.py` with lightweight writer stubs so the exception-suppression path is still covered without mock overhead.
+- Simplified `tests/unit/v460/test_pnl_monte_carlo.py::TestLoadFillRecords::test_load_from_directory` to patch `load_fill_records_glob()` directly, keeping the directory-dispatch contract while dropping redundant JSONL write/read setup.
+- Fixed `scripts/v460/analysis/reproduce_152_metrics.py::_as_float_or_zero()` so non-quiet report rendering no longer crashes on the `safe_to_finite()` helper call, and updated `tests/unit/v460/test_152_parallel_tasks.py` to patch record loading, add a non-quiet regression test, and hoist repeated per-method imports to module scope.
+- Cached source-file reads in `tests/unit/v460/test_253_hot_reload_dead_config_getattr_bare_except.py` instead of using repeated `inspect.getsource(...)`, keeping the source-inspection assertions aligned with the live files at lower setup cost.
+- Reused a class-scoped persisted parquet aggregate in `tests/unit/v460/test_aggregate_to_1min.py` so the output-created and roundtrip tests share a single real parquet write.
+- Tightened `tests/unit/v460/test_retrain_hot_reload.py` by trimming the insufficient-new-samples fixture size and patching the evaluator-side `SkipGate.load()` calls inside the E2E hot-reload test, preserving deploy/reload behavior while reducing duplicate pickle loads.
+- Refactored `tests/unit/v460/test_enricher_skip_gate.py` to reuse cached micro-feature DataFrames, avoid repeated real-data reloads during fallback selection, and shorten skip-rate history loops to the minimum needed to exercise the limiter.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_148_fill_test_events.py tests/unit/v460/test_pnl_monte_carlo.py tests/unit/v460/test_152_parallel_tasks.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_aggregate_to_1min.py tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_253_hot_reload_dead_config_getattr_bare_except.py tests/unit/v460/test_152_parallel_tasks.py -q --no-cov --tb=short --durations=30`
+- `python -m pytest tests/unit/v460/test_enricher_skip_gate.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=20 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- `tests/unit/v460/test_enricher_skip_gate.py` improved from `70 passed in 4.92s` to `70 passed in 3.42s` in focused reruns.
+- Filtered broad reruns landed at `4052 passed, 1 deselected, 14 warnings in 32.21s` and `33.78s`; the remaining top costs are now concentrated in the real-data integration setup for `test_enricher_skip_gate.py`, a handful of hot-reload / warm-start tests, and a few source/YAML inspections.

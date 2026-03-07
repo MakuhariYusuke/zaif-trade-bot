@@ -105,12 +105,14 @@ def _select_real_enriched_training_df(
     min_train_samples: int = _REAL_DATA_MIN_TRAIN_SAMPLES,
 ) -> pd.DataFrame:
     """学習成立条件を満たす最小限の real enriched_df を選ぶ."""
+    max_rows = max(initial_rows, fallback_rows, expanded_rows)
+    recent_fill_df = _load_recent_fill_records_df(sample_rows=max_rows)
+    if recent_fill_df.empty:
+        return pd.DataFrame()
+
     last_enriched = pd.DataFrame()
     for sample_rows in (initial_rows, fallback_rows, expanded_rows):
-        fill_df = _load_recent_fill_records_df(sample_rows=sample_rows)
-        if fill_df.empty:
-            continue
-        enriched = enrich_fill_records(fill_df)
+        enriched = enrich_fill_records(recent_fill_df.tail(sample_rows).copy())
         last_enriched = enriched
         try:
             X_train, _ = build_pnl_features(enriched)
@@ -172,6 +174,20 @@ def _cached_synthetic_fill_df() -> pd.DataFrame:
     return _make_synthetic_fill_df()
 
 
+def _make_micro_feature_fill_df() -> pd.DataFrame:
+    df = _make_synthetic_fill_df()
+    for i, col in enumerate(MICRO_FEATURE_COLS):
+        df[col] = np.random.RandomState(42 + i).randn(len(df))
+    df["bid_vol_5_ob"] = np.random.RandomState(43).randn(len(df))
+    df["ask_vol_5_ob"] = np.random.RandomState(44).randn(len(df))
+    return df
+
+
+@lru_cache(maxsize=1)
+def _cached_micro_feature_fill_df() -> pd.DataFrame:
+    return _make_micro_feature_fill_df()
+
+
 @lru_cache(maxsize=1)
 def _cached_synthetic_ob_df() -> pd.DataFrame:
     rng = np.random.RandomState(42)
@@ -220,6 +236,11 @@ def _cached_synthetic_trades_df() -> pd.DataFrame:
 @pytest.fixture
 def synthetic_fill_df() -> pd.DataFrame:
     return _cached_synthetic_fill_df().copy(deep=True)
+
+
+@pytest.fixture
+def synthetic_micro_fill_df() -> pd.DataFrame:
+    return _cached_micro_feature_fill_df().copy(deep=True)
 
 
 @pytest.fixture
@@ -325,30 +346,18 @@ class Test058EnrichFillRecords:
         assert "vpin_60s" in enriched.columns
         assert len(enriched) == len(synthetic_fill_df)
 
-    def test_enriched_as_features_shape(self, synthetic_fill_df: pd.DataFrame) -> None:
+    def test_enriched_as_features_shape(self, synthetic_micro_fill_df: pd.DataFrame) -> None:
         """enriched AS 特徴量の shape."""
-        # 直接エンリッチメントカラムを追加 (raw data なしでテスト)
-        df = synthetic_fill_df.copy()
-        for col in MICRO_FEATURE_COLS:
-            df[col] = np.random.RandomState(42).randn(len(df))
-        df["bid_vol_5_ob"] = np.random.RandomState(43).randn(len(df))
-        df["ask_vol_5_ob"] = np.random.RandomState(44).randn(len(df))
-
-        X, y = build_enriched_as_features(df)
+        X, y = build_enriched_as_features(synthetic_micro_fill_df)
         # base(10) + micro(8) + interaction(3) = 21
         assert X.shape[1] >= 18  # base + micro
 
     def test_enriched_as_features_preserves_nan(
-        self, synthetic_fill_df: pd.DataFrame
+        self, synthetic_micro_fill_df: pd.DataFrame
     ) -> None:
         """059# P0-1: enriched AS 特徴量が NaN を保持 (CV内補完のため)."""
-        df = synthetic_fill_df.copy()
-        for col in MICRO_FEATURE_COLS:
-            vals = np.random.RandomState(42).randn(len(df))
-            vals[0] = np.nan  # 意図的に NaN を入れる
-            df[col] = vals
-        df["bid_vol_5_ob"] = np.random.RandomState(43).randn(len(df))
-        df["ask_vol_5_ob"] = np.random.RandomState(44).randn(len(df))
+        df = synthetic_micro_fill_df.copy()
+        df.loc[df.index[0], MICRO_FEATURE_COLS] = np.nan
 
         X, y = build_enriched_as_features(df)
         # micro特徴量由来の NaN がそのまま残る (interaction は fillna(0) だが micro は保持)
@@ -358,12 +367,10 @@ class Test058EnrichFillRecords:
                 "Micro features should preserve NaN for CV-internal imputation"
 
     def test_enriched_as_require_spread_filters(
-        self, synthetic_fill_df: pd.DataFrame
+        self, synthetic_micro_fill_df: pd.DataFrame
     ) -> None:
         """060# fix: require_spread=True でスプレッド欠損行を除外."""
-        df = synthetic_fill_df.copy()
-        for col in MICRO_FEATURE_COLS:
-            df[col] = np.random.RandomState(42).randn(len(df))
+        df = synthetic_micro_fill_df.copy()
 
         # 一部の行でスプレッドを NaN にする
         nan_mask = df.index[:20]  # 最初の 20 行を NaN に
@@ -382,13 +389,9 @@ class Test058EnrichFillRecords:
         assert X_false["spread_jpy"].isna().sum() > 0, \
             "require_spread=False should preserve NaN in spread_jpy"
 
-    def test_pnl_features_shape(self, synthetic_fill_df: pd.DataFrame) -> None:
+    def test_pnl_features_shape(self, synthetic_micro_fill_df: pd.DataFrame) -> None:
         """PnL 特徴量の shape と labels."""
-        df = synthetic_fill_df.copy()
-        for col in MICRO_FEATURE_COLS:
-            df[col] = np.random.RandomState(42).randn(len(df))
-
-        X, y = build_pnl_features(df)
+        X, y = build_pnl_features(synthetic_micro_fill_df)
         assert len(X) > 0
         assert len(X) == len(y)
         # 059# P0-1: NaN は CV 内で補完されるため、ここでは保持されうる
@@ -396,15 +399,11 @@ class Test058EnrichFillRecords:
         assert y.dtype == float
 
     def test_pnl_features_more_samples_than_as(
-        self, synthetic_fill_df: pd.DataFrame
+        self, synthetic_micro_fill_df: pd.DataFrame
     ) -> None:
         """PnL 特徴量は AS ラベル不要なのでサンプル数が多い."""
-        df = synthetic_fill_df.copy()
-        for col in MICRO_FEATURE_COLS:
-            df[col] = np.random.RandomState(42).randn(len(df))
-
-        X_pnl, _ = build_pnl_features(df)
-        X_as, _ = build_enriched_as_features(df)
+        X_pnl, _ = build_pnl_features(synthetic_micro_fill_df)
+        X_as, _ = build_enriched_as_features(synthetic_micro_fill_df)
         # PnL は filled & pnl_notna, AS は filled & as_notna
         # 同じ合成データだがサンプル数は同等以上
         assert len(X_pnl) >= len(X_as) * 0.8
@@ -508,9 +507,7 @@ class Test058SkipGate:
     @pytest.fixture(scope="class")
     def trained_gate_template(self) -> SkipGate:
         """合成データで学習した SkipGate テンプレート."""
-        df = _make_synthetic_fill_df()
-        for col in MICRO_FEATURE_COLS:
-            df[col] = np.random.RandomState(42).randn(len(df))
+        df = _cached_micro_feature_fill_df().copy(deep=True)
 
         X_pnl, y_pnl = build_pnl_features(df)
         scaler = StandardScaler()
@@ -556,14 +553,10 @@ class Test058SkipGate:
         trained_gate.config.threshold_bps = 999.0  # 常にスキップする閾値
         features = {col: 0.0 for col in trained_gate.feature_cols}
 
-        # 履歴長 20 に対し十分な件数だけ積み、rate limit を発動させる
-        for _ in range(16):
-            trained_gate.evaluate(features)
-
-        # rate limit が効いているか確認
-        result = trained_gate.evaluate(features)
-        # 直近の skip_rate > 0.5 なので rate limit が発動しうる
-        # (実際の判定は predicted_pnl に依存)
+        first = trained_gate.evaluate(features, side="buy")
+        result = trained_gate.evaluate(features, side="buy")
+        assert first.reason == "skip"
+        assert "skip_rate_limit" in result.reason
         assert result.features_used > 0
 
     def test_save_load_roundtrip(self, trained_gate: SkipGate) -> None:
@@ -590,9 +583,7 @@ class Test061SkipGateASMode:
     @pytest.fixture(scope="class")
     def as_gate_template(self) -> SkipGate:
         """合成データで AS モードの SkipGate テンプレートを構築."""
-        df = _make_synthetic_fill_df()
-        for col in MICRO_FEATURE_COLS:
-            df[col] = np.random.RandomState(42).randn(len(df))
+        df = _cached_micro_feature_fill_df().copy(deep=True)
 
         X_as, y_as = build_enriched_as_features(df)
         scaler = StandardScaler()
@@ -1109,14 +1100,11 @@ class Test059LeakDetection:
             "offset_ratio NaN should be preserved for CV-internal imputation"
 
     def test_pnl_features_preserve_nan_in_micro(
-        self, synthetic_fill_df: pd.DataFrame
+        self, synthetic_micro_fill_df: pd.DataFrame
     ) -> None:
         """build_pnl_features が micro 特徴量の NaN を保持."""
-        df = synthetic_fill_df.copy()
-        for col in MICRO_FEATURE_COLS:
-            vals = np.random.RandomState(42).randn(len(df))
-            vals[:5] = np.nan
-            df[col] = vals
+        df = synthetic_micro_fill_df.copy()
+        df.loc[df.index[:5], MICRO_FEATURE_COLS] = np.nan
 
         X, y = build_pnl_features(df)
         micro_cols = [c for c in X.columns if c in MICRO_FEATURE_COLS]
@@ -1155,7 +1143,7 @@ class Test059SkipRateHistory:
 
         # 100# per-side skip rate: side を指定して評価
         results = []
-        for _ in range(12):
+        for _ in range(6):
             r = gate.evaluate(features, side="buy")
             results.append(r)
 
@@ -1194,15 +1182,15 @@ class Test059SkipRateHistory:
 
         features = {c: 1.0 for c in feature_cols}
         rates = []
-        for i in range(24):
+        for i in range(12):
             gate.evaluate(features, side="sell")  # 100# per-side
             if gate._recent_skips_sell:
                 rate = sum(gate._recent_skips_sell) / len(gate._recent_skips_sell)
                 rates.append(rate)
 
         # 安定後のレートが max_skip_rate 近辺を超えないこと
-        if len(rates) > 16:
-            late_rates = rates[-8:]
+        if len(rates) > 8:
+            late_rates = rates[-4:]
             assert max(late_rates) <= 0.6, (
                 f"Late skip rates should stabilize near max_skip_rate, "
                 f"got max={max(late_rates):.2f}"

@@ -9,11 +9,30 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
 from scripts.v460.lib.event_logger import log_event as _log_event, setup_stderr_mirror as _setup_stderr_mirror, TeeWriter as _TeeWriter
+
+
+class _RecordingWriter:
+    def __init__(self) -> None:
+        self.writes: list[str] = []
+        self.flushed = 0
+
+    def write(self, text: str) -> None:
+        self.writes.append(text)
+
+    def flush(self) -> None:
+        self.flushed += 1
+
+
+class _FailingWriter:
+    def write(self, _text: str) -> None:
+        raise IOError("disk full")
+
+    def flush(self) -> None:
+        raise IOError("disk full")
 
 
 # ======================================================================
@@ -87,41 +106,40 @@ class TestTeeWriter:
 
     def test_writes_to_all_writers(self) -> None:
         """全 writer に書き込まれる."""
-        w1 = MagicMock()
-        w2 = MagicMock()
+        w1 = _RecordingWriter()
+        w2 = _RecordingWriter()
         tee = _TeeWriter(w1, w2)
         tee.write("hello")
-        w1.write.assert_called_once_with("hello")
-        w2.write.assert_called_once_with("hello")
+        assert w1.writes == ["hello"]
+        assert w2.writes == ["hello"]
 
     def test_flush_all_writers(self) -> None:
         """全 writer が flush される."""
-        w1 = MagicMock()
-        w2 = MagicMock()
+        w1 = _RecordingWriter()
+        w2 = _RecordingWriter()
         tee = _TeeWriter(w1, w2)
         tee.flush()
-        w1.flush.assert_called_once()
-        w2.flush.assert_called_once()
+        assert w1.flushed == 1
+        assert w2.flushed == 1
 
     def test_write_returns_length(self) -> None:
         """write() が文字数を返す."""
-        w = MagicMock()
+        w = _RecordingWriter()
         tee = _TeeWriter(w)
         assert tee.write("abc") == 3
+        assert w.writes == ["abc"]
 
     def test_writer_exception_suppressed(self) -> None:
         """writer の例外が抑制される."""
-        w_bad = MagicMock()
-        w_bad.write.side_effect = IOError("disk full")
-        w_good = MagicMock()
+        w_bad = _FailingWriter()
+        w_good = _RecordingWriter()
         tee = _TeeWriter(w_bad, w_good)
         tee.write("test")  # should not raise
-        w_good.write.assert_called_once_with("test")
+        assert w_good.writes == ["test"]
 
     def test_flush_exception_suppressed(self) -> None:
         """flush の例外が抑制される."""
-        w_bad = MagicMock()
-        w_bad.flush.side_effect = IOError("disk full")
+        w_bad = _FailingWriter()
         tee = _TeeWriter(w_bad)
         tee.flush()  # should not raise
 

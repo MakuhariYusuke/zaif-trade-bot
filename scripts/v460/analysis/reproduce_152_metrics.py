@@ -209,7 +209,8 @@ def _as_int(value: object) -> int:
 
 
 def _as_float_or_zero(value: object) -> float:
-    return safesafe_to_finite(value, 0.0)
+    finite = safe_to_finite(value)
+    return finite if finite is not None else 0.0
 
 
 def _print_report(metrics: MetricsMap, params: dict[str, object]) -> None:

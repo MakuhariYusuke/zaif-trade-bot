@@ -4,12 +4,24 @@ from __future__ import annotations
 
 import json
 import logging
-import tempfile
-from collections import Counter
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import pytest
+
+from scripts.v460.analysis.compare_regime_ab import (
+    OldFillTestRegimeDetector,
+    _evaluate_gates,
+    _print_report,
+    _simulate,
+)
+from scripts.v460.analysis.reproduce_152_metrics import _compute_metrics, main as reproduce_152_main
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.regime_detector import (
+    FillTestRegime,
+    FillTestRegimeDetector,
+    RegimeConfig,
+)
 
 
 # ======================================================================
@@ -40,8 +52,6 @@ class TestReproduceMetrics:
 
     def test_compute_metrics_basic(self) -> None:
         """基本的なメトリクス計算が正しいこと."""
-        from scripts.v460.analysis.reproduce_152_metrics import _compute_metrics
-
         records = self._make_records(12)
         metrics = _compute_metrics(records)
 
@@ -56,8 +66,6 @@ class TestReproduceMetrics:
 
     def test_compute_metrics_regime_distribution(self) -> None:
         """レジーム分布が正しいこと."""
-        from scripts.v460.analysis.reproduce_152_metrics import _compute_metrics
-
         records = self._make_records(12)
         metrics = _compute_metrics(records)
 
@@ -69,8 +77,6 @@ class TestReproduceMetrics:
 
     def test_compute_metrics_side_regime_crosstab(self) -> None:
         """side × regime クロス集計 (P0-3 寄与分解) が含まれること."""
-        from scripts.v460.analysis.reproduce_152_metrics import _compute_metrics
-
         records = self._make_records(12)
         metrics = _compute_metrics(records)
 
@@ -79,25 +85,19 @@ class TestReproduceMetrics:
 
     def test_main_with_output(self, tmp_path: Path) -> None:
         """main() が CLI 経由で JSON 出力できること."""
-        from scripts.v460.analysis.reproduce_152_metrics import main
-
-        # テスト用 JSONL データを作成
         data_dir = tmp_path / "data"
-        data_dir.mkdir()
-        jsonl_path = data_dir / "fill_records_20260213.jsonl"
         records = self._make_records(6)
-        jsonl_path.write_text(
-            "\n".join(json.dumps(r) for r in records),
-            encoding="utf-8",
-        )
         out_json = tmp_path / "output.json"
 
-        # main() を CLI 引数付きで呼び出し
-        metrics = main([
-            "--data-dir", str(data_dir),
-            "--output", str(out_json),
-            "--quiet",
-        ])
+        with patch(
+            "scripts.v460.analysis.reproduce_152_metrics.load_fill_record_objects_glob",
+            return_value=records,
+        ):
+            metrics = reproduce_152_main([
+                "--data-dir", str(data_dir),
+                "--output", str(out_json),
+                "--quiet",
+            ])
 
         assert metrics["total_records"] == 6
         assert out_json.exists()
@@ -105,6 +105,18 @@ class TestReproduceMetrics:
         assert loaded["metrics"]["total_records"] == 6
         assert "regime_distribution" in loaded["metrics"]
         assert "side_regime_pnl" in loaded["metrics"]
+
+    def test_main_prints_report(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """quiet なしでもレポート生成が落ちないこと."""
+        with patch(
+            "scripts.v460.analysis.reproduce_152_metrics.load_fill_record_objects_glob",
+            return_value=self._make_records(4),
+        ):
+            metrics = reproduce_152_main(["--data-dir", "unused"])
+
+        captured = capsys.readouterr()
+        assert metrics["total_records"] == 4
+        assert "152# 集計再現レポート" in captured.out
 
 
 # ======================================================================
@@ -121,13 +133,6 @@ class TestCompareRegimeAB:
         新 detector (A+B) は UNKNOWN→first regime で N-1 回で確定、
         旧 detector は N 回必要 (加速なし)。
         """
-        from scripts.v460.analysis.compare_regime_ab import OldFillTestRegimeDetector
-        from scripts.v460.lib.regime_detector import (
-            FillTestRegime,
-            FillTestRegimeDetector,
-            RegimeConfig,
-        )
-
         config = RegimeConfig(window=3, hysteresis_count=3, min_confidence=0.0)
         old_det = OldFillTestRegimeDetector(config)
         new_det = FillTestRegimeDetector(config)
@@ -157,9 +162,6 @@ class TestCompareRegimeAB:
 
     def test_old_detector_no_majority_fallback(self) -> None:
         """旧 detector が majority fallback を使わないこと."""
-        from scripts.v460.analysis.compare_regime_ab import OldFillTestRegimeDetector
-        from scripts.v460.lib.regime_detector import FillTestRegime, RegimeConfig
-
         config = RegimeConfig(window=3, hysteresis_count=3, min_confidence=0.0)
         det = OldFillTestRegimeDetector(config)
 
@@ -176,11 +178,9 @@ class TestCompareRegimeAB:
 
     def test_simulate_returns_results(self) -> None:
         """_simulate が結果を返すこと."""
-        from scripts.v460.analysis.compare_regime_ab import _simulate
-
         records = []
         base = 10_000_000
-        for i in range(30):
+        for i in range(12):
             records.append({
                 "timestamp": 1739400000 + i * 120,
                 "order_price": base + i * 100,
@@ -190,15 +190,13 @@ class TestCompareRegimeAB:
             })
 
         results, stats = _simulate(records)
-        assert len(results) == 30
+        assert len(results) == 12
         assert all(hasattr(r, "old_regime") for r in results)
         assert all(hasattr(r, "new_regime") for r in results)
         assert "valid_records" in stats
 
     def test_simulate_excludes_price_zero(self) -> None:
         """§12 #2: order_price==0 のレコードが除外されること."""
-        from scripts.v460.analysis.compare_regime_ab import _simulate
-
         records = []
         base = 10_000_000
         for i in range(10):
@@ -225,8 +223,6 @@ class TestCompareRegimeAB:
 
     def test_gate_evaluation(self) -> None:
         """Gate 評価が動作すること."""
-        from scripts.v460.analysis.compare_regime_ab import _simulate, _evaluate_gates
-
         records = []
         base = 10_000_000
         for i in range(50):
@@ -248,8 +244,6 @@ class TestCompareRegimeAB:
 
     def test_print_report_handles_zero_records(self, capsys: pytest.CaptureFixture[str]) -> None:
         """有効レコード 0 件でもレポート出力が落ちないこと."""
-        from scripts.v460.analysis.compare_regime_ab import _evaluate_gates, _print_report
-
         gates = _evaluate_gates([])
         _print_report([], gates)
         captured = capsys.readouterr()
@@ -257,8 +251,6 @@ class TestCompareRegimeAB:
 
     def test_print_report_handles_zero_filled(self, capsys: pytest.CaptureFixture[str]) -> None:
         """filled 0 件でも 0 除算せずレポート出力できること."""
-        from scripts.v460.analysis.compare_regime_ab import _evaluate_gates, _simulate, _print_report
-
         records = []
         base = 10_000_000
         for i in range(8):
@@ -287,8 +279,6 @@ class TestConfidenceLotNoOpGuard:
 
     def test_noop_warning_when_lot_equals_min(self, caplog: pytest.LogCaptureFixture) -> None:
         """order_quantity ≈ min_order_btc の場合に NO-OP 警告が出ること."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         config = FillTestConfig(
             enable_confidence_lot=True,
             confidence_lot_scale=1.0,
@@ -313,8 +303,6 @@ class TestConfidenceLotNoOpGuard:
 
     def test_no_warning_when_lot_above_min(self, caplog: pytest.LogCaptureFixture) -> None:
         """order_quantity > min_order_btc の場合に NO-OP 警告が出ないこと."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         config = FillTestConfig(
             enable_confidence_lot=True,
             confidence_lot_scale=1.0,
@@ -333,8 +321,6 @@ class TestConfidenceLotNoOpGuard:
 
     def test_no_warning_when_disabled(self, caplog: pytest.LogCaptureFixture) -> None:
         """enable_confidence_lot=False の場合にガードが発火しないこと."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         config = FillTestConfig(
             enable_confidence_lot=False,
             order_quantity=0.001,

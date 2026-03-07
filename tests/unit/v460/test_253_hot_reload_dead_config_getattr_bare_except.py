@@ -9,7 +9,6 @@
 
 from __future__ import annotations
 
-import inspect
 import io
 import logging
 from pathlib import Path
@@ -20,6 +19,10 @@ import pytest
 from scripts.v460.lib.fill_config import FillTestConfig
 
 _FILL_CONFIG_SOURCE = Path("scripts/v460/lib/fill_config.py").read_text(encoding="utf-8")
+_FILL_CYCLE_EXECUTOR_SOURCE = Path("scripts/v460/lib/fill_cycle_executor.py").read_text(
+    encoding="utf-8"
+)
+_EVENT_LOGGER_SOURCE = Path("scripts/v460/lib/event_logger.py").read_text(encoding="utf-8")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -110,8 +113,7 @@ class TestGetAttrRemoval:
 
         getattr(order, ...) 等の外部オブジェクト検査は許容。
         """
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
-        src = inspect.getsource(FillCycleExecutorMixin)
+        src = _FILL_CYCLE_EXECUTOR_SOURCE
         import re
         # getattr(self, "...") パターンを検出
         matches = re.findall(r'getattr\(self[,\s]', src)
@@ -154,8 +156,7 @@ class TestTeeWriterLogging:
 
     def test_no_bare_except_pass_in_tee_writer(self) -> None:
         """TeeWriter に bare 'except ... pass' が残存しないこと."""
-        from scripts.v460.lib.event_logger import TeeWriter
-        src = inspect.getsource(TeeWriter)
+        src = _EVENT_LOGGER_SOURCE
         lines = src.split("\n")
         for i, line in enumerate(lines):
             stripped = line.strip()

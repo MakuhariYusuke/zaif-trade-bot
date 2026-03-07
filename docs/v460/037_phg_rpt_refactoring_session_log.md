@@ -1509,3 +1509,70 @@
 1. `test_148_fill_test_events.py` の TeeWriter 例外経路を、契約を保ったまま軽量化できるか確認する
 2. `test_pnl_monte_carlo.py` と `test_152_parallel_tasks.py` の実ファイル I/O を patch/stub で分離できるか詰める
 3. `test_enricher_skip_gate.py` の real-data setup を再利用可能な fixture cache に寄せる
+
+---
+
+## 2026-03-07 / Session 037-036
+
+### 実施
+- production
+  - `scripts/v460/analysis/reproduce_152_metrics.py`
+    - `_as_float_or_zero()` の `safe_to_finite()` 呼び出し契約を修正し、quiet なしのレポート出力で落ちないようにした
+- テスト側
+  - `test_148_fill_test_events.py`
+    - `_TeeWriter` テストの `MagicMock` を軽量 writer stub に置換し、例外抑制パスの mock overhead を削減した
+  - `test_pnl_monte_carlo.py`
+    - `load_fill_records_glob()` patch ベースへ切り替え、directory dispatch だけを検証する形に整理した
+  - `test_152_parallel_tasks.py`
+    - `reproduce_152_metrics` の loader を patch して入力 JSONL I/O を除去
+    - quiet なしの `main()` 回帰テストを追加
+    - `compare_regime_ab` / `reproduce_152_metrics` / `FillTestConfig` / `RegimeConfig` の per-method import を module scope へ集約
+    - `_simulate()` の成立条件に不要だった 30 レコードを 12 レコードへ圧縮
+  - `test_253_hot_reload_dead_config_getattr_bare_except.py`
+    - `inspect.getsource(...)` をやめ、cached file-text read に統一した
+  - `test_aggregate_to_1min.py`
+    - parquet persistence 2 ケースで class-scope の実出力を共有し、重複書込を除去した
+  - `test_retrain_hot_reload.py`
+    - `insufficient_new_samples` の最小データ量を整理した
+    - E2E hot-reload で evaluator 側 `SkipGate.load()` を patch し、deploy/reload 配線は維持したまま duplicate pickle load を削減した
+  - `test_enricher_skip_gate.py`
+    - micro feature 付き DataFrame を cache して `build_enriched_as_features()` / `build_pnl_features()` 系で再利用
+    - real-data fallback 選択時の再読込をやめ、最大件数を一度読む形に整理
+    - `skip_rate` 系のループ回数を limiter 成立に必要な最小構成まで短縮
+
+### 結果
+- 対象回帰 1:
+  - `test_148_fill_test_events.py` + `test_pnl_monte_carlo.py` + `test_152_parallel_tasks.py`
+  - `65 passed, 3 warnings in 1.94s`
+- 対象回帰 2:
+  - `test_aggregate_to_1min.py` + `test_retrain_hot_reload.py` + `test_253_hot_reload_dead_config_getattr_bare_except.py` + `test_152_parallel_tasks.py`
+  - `144 passed in 6.40s`
+- 対象回帰 3:
+  - `test_enricher_skip_gate.py`
+  - `70 passed in 3.42s`
+- broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` と `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - `4052 passed, 1 deselected, 14 warnings in 32.21s`
+  - rerun: `4052 passed, 1 deselected, 14 warnings in 33.78s`
+
+### 主要改善
+- `test_enricher_skip_gate.py`
+  - focused file が `4.92s -> 3.42s`
+  - `Test058Integration::test_enrichment_with_real_data` setup が `0.65s級 -> 0.49s〜0.52s`
+  - `test_enriched_as_require_spread_filters` / `test_pnl_features_more_samples_than_as` / `test_skip_rate_limit` が broad 上位から後退
+- `test_retrain_hot_reload.py::TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload`
+  - broad で `0.83s -> 0.12s〜0.22s`
+- `test_aggregate_to_1min.py`
+  - parquet roundtrip / output_created の重複 write を解消
+- `test_152_parallel_tasks.py::TestReproduceMetrics::test_main_with_output`
+  - 入力 JSONL I/O を除去し、focused で `0.02s` 帯へ収束
+
+### 補足
+- filtered broad の最速値は `32.21s`、rerun は `33.78s` だった
+  - 残る揺れは real-data integration と一部 hot-reload / warm-start 系に集中している
+- quiet なしの `reproduce_152_metrics.main()` が今回初めてテストで実行され、helper 契約ずれの production バグを修正した
+
+### 次アクション
+1. `test_enricher_skip_gate.py` の real-data integration setup を fixture cache / snapshot 化でさらに詰める
+2. `test_skip_gate_d8.py` と `test_retrain_hot_reload.py` の warm-start / hot-reload 上位ケースをもう一段 stub 化できるか確認する
+3. `test_146_multi_exchange.py` と `test_169_config_hot_reload.py` の source/YAML/config reload 系を cached read に寄せられるか洗う

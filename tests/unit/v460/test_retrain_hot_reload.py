@@ -631,15 +631,15 @@ class TestRetrainModel:
             model_dir = Path(tmpdir) / "models"
             model_dir.mkdir()
             records_df = _make_retrain_records_df(
-                12,
+                10,
                 seed=11,
                 cycle_prefix="test",
                 run_id="test_run",
             )
 
-            # 既存モデルを配置 (n_samples=12 → 新規 0 件)
+            # 既存モデルを配置 (n_samples=10 → 新規 0 件)
             model_path = model_dir / "gate.pkl"
-            gate = _make_picklable_gate(n_samples=12)
+            gate = _make_picklable_gate(n_samples=10)
             _save_gate_to(gate, model_path)
 
             cfg = dict(_DEFAULT_CONFIG)
@@ -730,6 +730,7 @@ class TestE2ERetrainHotReload:
             cfg["bootstrap_threshold"] = 10
             cfg["enriched_cache_enabled"] = False
 
+            gate_v1 = _make_picklable_gate(n_samples=10, version="verified")
             with patch(
                 "scripts.v460.ml.retrain_scheduler.load_fill_records",
                 side_effect=lambda *args, **kwargs: records_df.copy(deep=True),
@@ -738,7 +739,7 @@ class TestE2ERetrainHotReload:
                 side_effect=_identity_enrich,
             ), patch(
                 "scripts.v460.ml.retrain_scheduler.SkipGate.load",
-                return_value=_make_picklable_gate(n_samples=10, version="verified"),
+                return_value=gate_v1,
             ):
                 result = retrain_model(cfg)
             assert result["status"] in ("deployed", "deployed_verified"), f"Expected deployed*, got {result}"
@@ -770,26 +771,30 @@ class TestE2ERetrainHotReload:
             # 257# 255# getattr 排除: hot_reload_check_interval_sec 直接参照のため明示設定
             eval_cfg.hot_reload_check_interval_sec = 120.0
 
-            evaluator = SkipGateEvaluator(eval_cfg, Path(tmpdir))
-            assert evaluator._skip_gate is not None
-            initial_hash = evaluator._model_file_hash
-
-            # hot-reload 検証用に v2 モデルへ差し替え
             gate_v2 = _make_picklable_gate(n_samples=45, version="e2e_v2")
             gate_v2.metadata["retrained"] = True
-            _save_gate_to(gate_v2, model_path)
+            with patch(
+                "scripts.v460.ml.skip_gate.SkipGate.load",
+                side_effect=[gate_v1, gate_v2],
+            ):
+                evaluator = SkipGateEvaluator(eval_cfg, Path(tmpdir))
+                assert evaluator._skip_gate is not None
+                initial_hash = evaluator._model_file_hash
 
-            # hot-reload トリガー (interval リセット)
-            evaluator._last_reload_check = 0
-            evaluator._check_and_reload_model()
+                # hot-reload 検証用に v2 モデルへ差し替え
+                _save_gate_to(gate_v2, model_path)
 
-            # モデルが更新されていること
-            assert evaluator._model_file_hash != initial_hash
-            assert evaluator._skip_gate is not None
-            # retrain されたモデルのメタデータ確認
-            meta = evaluator._skip_gate.metadata  # type: ignore[union-attr]
-            assert meta.get("retrained") is True
-            assert meta.get("n_samples", 0) > 0
+                # hot-reload トリガー (interval リセット)
+                evaluator._last_reload_check = 0
+                evaluator._check_and_reload_model()
+
+                # モデルが更新されていること
+                assert evaluator._model_file_hash != initial_hash
+                assert evaluator._skip_gate is not None
+                # retrain されたモデルのメタデータ確認
+                meta = evaluator._skip_gate.metadata  # type: ignore[union-attr]
+                assert meta.get("retrained") is True
+                assert meta.get("n_samples", 0) > 0
 
 
 # =====================================================================
