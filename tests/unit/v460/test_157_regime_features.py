@@ -393,7 +393,7 @@ class TestYAMLConsistency:
         buy_kill = data.get("loss_control", {}).get("buy_dynamic_kill", {})
         assert buy_kill.get("enabled") is True
         assert buy_kill.get("window") == 50
-        assert buy_kill.get("threshold_bps") == -0.8
+        assert buy_kill.get("threshold_bps") == -1.5  # 336# T-1: -0.8→-1.5
         assert buy_kill.get("resume_window") == 10
 
     def test_trending_offset_asymmetry_yaml(self, v460_fill_test_yaml: dict[str, object]) -> None:
