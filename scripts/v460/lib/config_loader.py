@@ -21,6 +21,7 @@ from ztb.io.yaml_io import read_yaml
 from ztb.types.common import ConfigSection, is_config_dict
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+_IMMUTABLE_CONFIG_TYPES = (str, int, float, bool, bytes, type(None))
 
 
 def _coerce_config_section(raw: object) -> ConfigSection:
@@ -28,6 +29,23 @@ def _coerce_config_section(raw: object) -> ConfigSection:
     if isinstance(raw, dict):
         return cast(ConfigSection, raw)
     return {}
+
+
+def _clone_config_value(value: object) -> object:
+    """Clone config payloads while keeping immutable scalars zero-copy."""
+    if isinstance(value, _IMMUTABLE_CONFIG_TYPES):
+        return value
+    if isinstance(value, list):
+        return [_clone_config_value(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_clone_config_value(item) for item in value)
+    if isinstance(value, dict):
+        return {
+            str(k): _clone_config_value(v)
+            for k, v in value.items()
+            if isinstance(k, str)
+        }
+    return copy.deepcopy(value)
 
 
 def _yaml_file_signature(path: Path) -> tuple[int, int]:
@@ -52,14 +70,15 @@ def _read_config_section_cached(
 def _read_config_section(path: Path) -> ConfigSection:
     """Read YAML with file-signature cache while keeping caller isolation."""
     mtime_ns, size = _yaml_file_signature(path)
-    return copy.deepcopy(
-        _read_config_section_cached(str(path), mtime_ns, size)
+    return cast(
+        ConfigSection,
+        _clone_config_value(_read_config_section_cached(str(path), mtime_ns, size)),
     )
 
 
 def _deep_merge(base: ConfigSection, override: ConfigSection) -> ConfigSection:
     """Recursively merge override into base (base is not mutated)."""
-    merged: ConfigSection = copy.deepcopy(base)
+    merged = cast(ConfigSection, _clone_config_value(base))
     for key, val in override.items():
         if key.startswith("_"):
             continue  # skip meta keys (_base, _gate, etc.)
@@ -67,7 +86,7 @@ def _deep_merge(base: ConfigSection, override: ConfigSection) -> ConfigSection:
         if is_config_dict(val) and isinstance(existing, dict):
             merged[key] = _deep_merge(cast(ConfigSection, existing), val)
         else:
-            merged[key] = copy.deepcopy(val)
+            merged[key] = _clone_config_value(val)
     return merged
 
 

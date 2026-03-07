@@ -1880,3 +1880,63 @@
 1. `ztb/features/microstructure.py` の repeated rolling/path をまとめてベクトル化できるか洗う
 2. `scripts/v460/lib/config_loader.py` と `test_v460_core.py::TestConfigLoader` の小さな I/O / deepcopy を削る
 3. `scripts/v460/build_features.py` / `test_build_features_pipeline.py` の aggregate + microstructure 経路を production/test 両面で詰める
+
+---
+
+## 2026-03-08 / Session 037-043
+
+### 実施
+- production
+  - `scripts/v460/lib/config_loader.py`
+    - `_clone_config_value()` を追加
+    - `_read_config_section()` / `_deep_merge()` の blanket `copy.deepcopy()` を config-aware clone へ置換
+    - immutable scalar は zero-copy、list/tuple/dict のみ再帰 clone
+  - `ztb/data/market_data_collector.py`
+    - `aggregate_to_1min()` を `output_path: Path | None = None` 対応に変更
+    - DataFrame だけ欲しい呼び出しでは parquet 書込を完全に省略可能
+  - `scripts/v460/build_features.py`
+    - `build_real_features()` で日次 aggregate ごとの temporary parquet 作成/削除を廃止
+    - `MarketDataCollector.aggregate_to_1min(..., output_path=None)` を使い、最終出力だけを保存
+
+### 結果
+- focused 回帰 1:
+  - `test_v460_core.py::TestConfigLoader`
+  - `test_v460_core.py::TestConfigLoaderTaskPreservation`
+  - `5 passed in 3.00s`
+  - 個別 durations は各 `0.02s`
+- focused 回帰 2:
+  - `test_aggregate_to_1min.py` + `test_build_features_pipeline.py`
+  - `40 passed in 6.11s`
+- focused 回帰 3:
+  - `test_microstructure_features.py::TestCanonicalList::test_all_generated_by_function`
+  - `test_build_features_pipeline.py::TestRealModePipeline::test_microstructure_on_aggregated`
+  - `2 passed in 4.43s`
+- broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` と `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - `4060 passed, 1 deselected, 11 warnings`
+  - wall time は rerun で `34.16s` / `45.56s` と大きく揺れた
+
+### 主要改善
+- `config_loader.py`
+  - validation/load 系の focused ケースは `0.02s` 級まで低下
+  - 本体側でも YAML merge/load の一般経路から generic deepcopy を外した
+- `build_features.py`
+  - real-mode build は日付ごとの temp parquet roundtrip をしなくなった
+  - 実運用で日付数が増えるほど効く変更
+- `market_data_collector.py`
+  - aggregate-only caller 向けに persistence を opt-in 化
+
+### 補足
+- このバッチは global broad よりも production hot path の整理が主目的。
+- broad の wall time は明確に揺れており、今回の reliable signal は focused loader/build-path 改善のほうにある。
+- broad 上位は引き続き以下:
+  - `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data`
+  - `test_286_comprehensive_resolution.py::TestEventsStartStopGuarantee::test_stop_event_logged_on_crash`
+  - `test_234_gate_bypass_removal.py::TestBalanceForcedBypassEradication::test_no_balance_forced_in_gate_check_conditions`
+  - `test_microstructure_features.py::TestEdgeCases::test_zero_volume`
+  - `test_aggregate_to_1min.py` edge/persistence
+
+### 次アクション
+1. `ztb/features/microstructure.py` の rolling 系を共通化し、`build_proxy_features()` 側にも横展開する
+2. `test_enricher_skip_gate.py` の real-data setup をさらに分解し、production/test のどちらが支配的か切り分ける
+3. `test_286_comprehensive_resolution.py` と `test_234_gate_bypass_removal.py` の本体依存 call を精査する

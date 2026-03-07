@@ -4131,3 +4131,19 @@ python scripts/unified_trainer.py \
 - `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup improved from the prior broad `0.93s` to `0.39s`.
 - `test_microstructure_features.py::TestEdgeCases::test_zero_volume` reduced from `0.14s` to `0.07s` in focused measurement.
 - The latest filtered broad rerun completed at `4060 passed, 1 deselected, 11 warnings in 29.15s`.
+
+### Changed
+- Optimized [config_loader.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/config_loader.py) by replacing blanket `copy.deepcopy()` cloning with a config-aware clone helper that reuses immutable scalars and only recursively copies mutable containers. `_read_config_section()` and `_deep_merge()` now avoid the slow generic deepcopy path for common YAML payloads.
+- Extended [market_data_collector.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/data/market_data_collector.py)::`aggregate_to_1min()` so persistence is optional (`output_path=None`). This lets callers aggregate raw orderbook/trades entirely in memory when they only need the DataFrame.
+- Updated [build_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/build_features.py)::`build_real_features()` to use the new in-memory aggregation path and remove the per-date temporary parquet file churn.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_v460_core.py::TestConfigLoader tests/unit/v460/test_v460_core.py::TestConfigLoaderTaskPreservation -q --no-cov --tb=short --durations=10`
+- `python -m pytest tests/unit/v460/test_aggregate_to_1min.py tests/unit/v460/test_build_features_pipeline.py -q --no-cov --tb=short --durations=15`
+- `python -m pytest tests/unit/v460/test_microstructure_features.py::TestCanonicalList::test_all_generated_by_function tests/unit/v460/test_build_features_pipeline.py::TestRealModePipeline::test_microstructure_on_aggregated -q --no-cov --tb=short --durations=10`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- `test_v460_core.py::TestConfigLoader::*` focused timings dropped to `0.02s` per validation/load case.
+- `build_real_features()` no longer performs an aggregate-temp-parquet roundtrip for each target date; only the final output parquet is written.
+- The filtered broad reruns stayed green (`4060 passed, 1 deselected, 11 warnings`) but wall time was noisy on this batch (`34.16s`, `45.56s`), so the reliable signal here is the targeted loader/build-path improvement rather than a stable end-to-end delta.

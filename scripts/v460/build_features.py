@@ -225,7 +225,6 @@ def build_real_features(
     logger.info(f"Target dates: {target_dates} (available: {all_dates})")
 
     # Aggregate each date
-    import tempfile
     dfs: list[pd.DataFrame] = []
     for d in target_dates:
         ob_path = raw / "orderbook" / f"{d}.jsonl.gz"
@@ -235,19 +234,12 @@ def build_real_features(
             logger.warning(f"No data for date {d}, skipping")
             continue
 
-        # aggregate_to_1min needs output path — use temp
-        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as tmp:
-            tmp_path = Path(tmp.name)
-
-        try:
-            agg_df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, tmp_path)
-            if not agg_df.empty:
-                dfs.append(agg_df)
-                logger.info(f"  {d}: {len(agg_df)} rows aggregated")
-            else:
-                logger.warning(f"  {d}: empty aggregation result")
-        finally:
-            tmp_path.unlink(missing_ok=True)
+        agg_df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, output_path=None)
+        if not agg_df.empty:
+            dfs.append(agg_df)
+            logger.info(f"  {d}: {len(agg_df)} rows aggregated")
+        else:
+            logger.warning(f"  {d}: empty aggregation result")
 
     if not dfs:
         raise ValueError("No data aggregated from any date")

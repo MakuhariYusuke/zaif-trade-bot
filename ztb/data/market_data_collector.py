@@ -238,7 +238,9 @@ class MarketDataCollector:
 
     @staticmethod
     def aggregate_to_1min(
-        ob_path: Path, tr_path: Path, output_path: Path
+        ob_path: Path,
+        tr_path: Path,
+        output_path: Path | None = None,
     ) -> pd.DataFrame:
         """Read raw JSONL gzips and produce 1-min aggregated Parquet.
 
@@ -294,7 +296,7 @@ class MarketDataCollector:
         else:
             merged = pd.DataFrame()
 
-        if not merged.empty:
+        if not merged.empty and output_path is not None:
             output_path.parent.mkdir(parents=True, exist_ok=True)
             merged.to_parquet(output_path, engine="pyarrow")
             logger.info(f"Aggregated {len(merged)} 1-min rows → {output_path}")
