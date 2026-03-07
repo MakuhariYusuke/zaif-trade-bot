@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-10 (325# orchestrator God Object 分割)
+> 最終更新: 2026-03-12 (329# fill_config.py God Object 分割)
 
 ---
 
@@ -315,7 +315,11 @@
 | 322 | refactor | [322_phg_refactor_maker_price_god_object_split.md](322_phg_refactor_maker_price_god_object_split.md) | God Object 分割: maker_price.py 1,692→996 行 (3 Mixin 抽出) |
 | 323 | refactor | [323_executor_split_improvements.md](323_executor_split_improvements.md) | God Object 分割: fill_cycle_executor.py 1,502→1,090 行 (2 Mixin 抽出) |
 | 324 | fix | [324_phg_fix_residual_tasks_and_regime_reuse.md](324_phg_fix_residual_tasks_and_regime_reuse.md) | 未達事項消化: M-2 per-side counter + L-3/L-4 YAML 文書化 + Regime RSI 統合 |
-| 325 | refactor | [325_orchestrator_god_object_split.md](325_orchestrator_god_object_split.md) | God Object 分割: fill_loop_orchestrator.py 2,849→1,594 行 (3 Mixin 抽出) |
+| 325 | refactor | [325_phg_refactor_orchestrator_god_object_split.md](325_phg_refactor_orchestrator_god_object_split.md) | God Object 分割: fill_loop_orchestrator.py 2,849→1,594 行 (3 Mixin 抽出) |
+| 326 | fix | [326_phg_fix_mixin_audit_and_encapsulation.md](326_phg_fix_mixin_audit_and_encapsulation.md) | 325# Mixin Audit: 型安全修正 + DD guard warmup 委譲 + DRY + 未使用 import 削除 |
+| 327 | fix | [327_phg_fix_proactive_bug_hunt.md](327_phg_fix_proactive_bug_hunt.md) | Proactive bug fix: loss_cap_ratio ZeroDivisionError 防止 + ファイルハンドルリーク修正 |
+| 328 | rpt | [328_phg_rpt_task_audit_and_god_object_analysis.md](328_phg_rpt_task_audit_and_god_object_analysis.md) | タスク棚卸し 47 件 + fill_config.py / orchestrator God Object 分割戦略 |
+| 329 | refactor | [329_phg_refactor_fill_config_god_object_split.md](329_phg_refactor_fill_config_god_object_split.md) | fill_config.py 2046→724 行 God Object 分割 (4 ファイル) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

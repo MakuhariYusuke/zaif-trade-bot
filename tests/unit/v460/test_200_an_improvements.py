@@ -376,7 +376,8 @@ class TestSoftDrawdownIntervalConfig:
         assert cfg.soft_drawdown_interval_multiplier == 3.0
 
     def test_yaml_parsing(self) -> None:
-        kwargs = FillTestConfig._parse_stopgap_section({
+        from scripts.v460.lib.fill_config_parser import _parse_stopgap_section
+        kwargs = _parse_stopgap_section({
             "止血": {
                 "daily_drawdown": {
                     "enabled": True,
@@ -422,7 +423,8 @@ class TestCooldownYamlWiring:
     """201# review: balance_forced_cooldown_sec YAML 配線."""
 
     def test_cooldown_parsed_from_yaml(self) -> None:
-        kwargs = FillTestConfig._parse_stopgap_section({
+        from scripts.v460.lib.fill_config_parser import _parse_stopgap_section
+        kwargs = _parse_stopgap_section({
             "止血": {
                 "balance_forced_cooldown_sec": 30.0,
             }

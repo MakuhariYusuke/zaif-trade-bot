@@ -606,7 +606,8 @@ class TestFallbackStaleSecConfig:
 
     def test_from_yaml_maps_field(self) -> None:
         """from_yaml の flat_keys に fallback_stale_sec が含まれること."""
-        src = Path("scripts/v460/lib/fill_config.py").read_text(encoding="utf-8")
+        # 329# parser 分離後は fill_config_parser.py を参照
+        src = Path("scripts/v460/lib/fill_config_parser.py").read_text(encoding="utf-8")
         assert '"fallback_stale_sec"' in src
 
 

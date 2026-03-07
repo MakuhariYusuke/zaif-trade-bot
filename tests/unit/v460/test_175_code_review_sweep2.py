@@ -98,17 +98,19 @@ class TestYAMLInvDiscountBinding:
     """sell_offset_floor_inv_discount が YAML からパース可能."""
 
     def test_parse_from_yaml(self) -> None:
+        from scripts.v460.lib.fill_config_parser import _parse_stale_vg_section
         yaml_cfg = {
             "sell_guard": {
                 "offset_floor_inv_discount": 0.3,
             },
         }
-        kwargs = FillTestConfig._parse_stale_vg_section(yaml_cfg)
+        kwargs = _parse_stale_vg_section(yaml_cfg)
         assert kwargs.get("sell_offset_floor_inv_discount") == 0.3
 
     def test_parse_none_skipped(self) -> None:
+        from scripts.v460.lib.fill_config_parser import _parse_stale_vg_section
         yaml_cfg = {"sell_guard": {}}
-        kwargs = FillTestConfig._parse_stale_vg_section(yaml_cfg)
+        kwargs = _parse_stale_vg_section(yaml_cfg)
         assert "sell_offset_floor_inv_discount" not in kwargs
 
 
