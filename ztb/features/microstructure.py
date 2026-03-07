@@ -82,12 +82,15 @@ def add_microstructure_features(
 
     # ---- 6. order_flow_toxicity (VPIN approximation) ----
     if total_vol is not None and buy_volume is not None and sell_volume is not None:
-        abs_imbalance = (buy_volume - sell_volume).abs()
-        # VPIN = rolling mean of |buy - sell| / total_volume
-        df["order_flow_toxicity"] = (
-            abs_imbalance.rolling(window, min_periods=1).sum()
-            / (total_vol.rolling(window, min_periods=1).sum() + eps)
-        )
+        if bool(total_vol.eq(0).all()):
+            df["order_flow_toxicity"] = 0.0
+        else:
+            abs_imbalance = (buy_volume - sell_volume).abs()
+            # VPIN = rolling mean of |buy - sell| / total_volume
+            df["order_flow_toxicity"] = (
+                abs_imbalance.rolling(window, min_periods=1).sum()
+                / (total_vol.rolling(window, min_periods=1).sum() + eps)
+            )
 
     # ---- 7. price_impact ----
     if close is not None:

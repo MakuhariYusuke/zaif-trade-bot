@@ -1038,11 +1038,15 @@ class TestTradesIOFallback:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             with patch(
-                "scripts.v460.ml.feature_enricher.load_raw_trades",
-                side_effect=_tracking_load,
+                "scripts.v460.ml.feature_enricher._load_raw_trades_entry",
+                side_effect=lambda raw_dir=None, date_filter=None: SimpleNamespace(
+                    df=_tracking_load(raw_dir=raw_dir, date_filter=date_filter),
+                    sorted_ts=None,
+                    context=None,
+                ),
             ), patch(
-                "scripts.v460.ml.feature_enricher.load_raw_orderbook",
-                return_value=pd.DataFrame(),
+                "scripts.v460.ml.feature_enricher._load_raw_orderbook_entry",
+                return_value=SimpleNamespace(df=pd.DataFrame(), sorted_ts=None, context=None),
             ):
                 # raw_dir を空ディレクトリに固定し、実ファイル走査コストを回避
                 enrich_fill_records(fill_df, raw_dir=Path(tmpdir))

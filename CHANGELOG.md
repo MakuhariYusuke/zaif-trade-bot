@@ -4115,3 +4115,19 @@ python scripts/unified_trainer.py \
   - `test_retrain_hot_reload.py::TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload`: `1.06s -> 0.04s`
 - The latest filtered broad rerun completed at `4060 passed, 1 deselected, 11 warnings in 29.19s`.
 - Remaining broad-top costs are now mostly true real-data / persistence paths: `test_enricher_skip_gate.py` real-data setup, `test_microstructure_features.py::TestEdgeCases::test_zero_volume`, a handful of config-loader / parquet cases, and a small number of regime/gate integration calls.
+
+### Changed
+- Optimized [feature_enricher.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/feature_enricher.py) so the raw orderbook/trade caches now retain their precomputed `sorted_ts` / context objects alongside the DataFrame payload. `enrich_fill_records()` now reuses those cached contexts instead of rebuilding `searchsorted` inputs and cumulative arrays on every call.
+- Added a zero-volume fast-path to [microstructure.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/features/microstructure.py) so `order_flow_toxicity` avoids rolling-sum work when both buy/sell volume are identically zero.
+- Updated [test_retrain_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_retrain_hot_reload.py) fallback I/O test to patch the new internal raw-load hook points while keeping the existing fallback-chain assertion.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data -q --no-cov --tb=short --durations=10`
+- `python -m pytest tests/unit/v460/test_microstructure_features.py::TestEdgeCases::test_zero_volume -q --no-cov --tb=short --durations=10`
+- `python -m pytest tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_microstructure_features.py -q --no-cov --tb=short --durations=15`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup improved from the prior broad `0.93s` to `0.39s`.
+- `test_microstructure_features.py::TestEdgeCases::test_zero_volume` reduced from `0.14s` to `0.07s` in focused measurement.
+- The latest filtered broad rerun completed at `4060 passed, 1 deselected, 11 warnings in 29.15s`.

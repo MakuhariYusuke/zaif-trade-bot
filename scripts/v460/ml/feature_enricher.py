@@ -37,6 +37,8 @@ class _RawLoadCacheEntry:
 
     file_signature: tuple[tuple[str, int, int], ...]
     df: pd.DataFrame
+    sorted_ts: np.ndarray | None = None
+    context: object | None = None
 
 
 _RAW_ORDERBOOK_CACHE: dict[tuple[str, tuple[str, ...] | None], _RawLoadCacheEntry] = {}
@@ -83,31 +85,144 @@ def _build_file_signature(files: list[Path]) -> tuple[tuple[str, int, int], ...]
     return tuple(signature)
 
 
-def _load_cached_raw_df(
+def _load_cached_raw_entry(
     cache: dict[tuple[str, tuple[str, ...] | None], _RawLoadCacheEntry],
     cache_key: tuple[str, tuple[str, ...] | None],
     file_signature: tuple[tuple[str, int, int], ...],
-) -> pd.DataFrame | None:
-    """シグネチャ一致時のみ shallow copy を返す."""
+) -> _RawLoadCacheEntry | None:
+    """シグネチャ一致時のみキャッシュエントリを返す."""
     cached = cache.get(cache_key)
     if cached is None or cached.file_signature != file_signature:
         return None
-    return cached.df.copy(deep=False)
+    return cached
 
 
 def _store_raw_cache(
     cache: dict[tuple[str, tuple[str, ...] | None], _RawLoadCacheEntry],
     cache_key: tuple[str, tuple[str, ...] | None],
-    file_signature: tuple[tuple[str, int, int], ...],
-    df: pd.DataFrame,
+    entry: _RawLoadCacheEntry,
 ) -> None:
     """キャッシュ保存。サイズ上限超過時は最古エントリを破棄."""
-    cache[cache_key] = _RawLoadCacheEntry(file_signature=file_signature, df=df)
+    cache[cache_key] = entry
     if len(cache) <= _RAW_LOAD_CACHE_MAX_ENTRIES:
         return
     oldest = next(iter(cache))
     if oldest != cache_key:
         cache.pop(oldest, None)
+
+
+def _load_raw_orderbook_entry(
+    raw_dir: Optional[Path] = None,
+    date_filter: Optional[set[str]] = None,
+) -> _RawLoadCacheEntry:
+    """板 raw と派生 context をまとめてロードする."""
+    d = raw_dir or _DEFAULT_RAW_DIR
+    ob_dir = d / "orderbook"
+    if not ob_dir.exists():
+        return _RawLoadCacheEntry(file_signature=(), df=pd.DataFrame())
+
+    target_files = _select_raw_files(ob_dir, date_filter)
+    date_filter_key = _normalize_date_filter(date_filter)
+    cache_key = (str(ob_dir.resolve()), date_filter_key)
+    file_signature = _build_file_signature(target_files)
+    cached = _load_cached_raw_entry(_RAW_ORDERBOOK_CACHE, cache_key, file_signature)
+    if cached is not None:
+        return cached
+
+    if not target_files:
+        empty_entry = _RawLoadCacheEntry(file_signature=file_signature, df=pd.DataFrame())
+        _store_raw_cache(_RAW_ORDERBOOK_CACHE, cache_key, empty_entry)
+        return empty_entry
+
+    rows: list[dict[str, float]] = []
+    for f in target_files:
+        for r in read_jsonl_gz(f):
+            bids = r.get("bids", [])
+            asks = r.get("asks", [])
+            if not bids or not asks:
+                continue
+            best_bid = bids[0][0]
+            best_ask = asks[0][0]
+            mid = (best_bid + best_ask) / 2
+            if mid <= 0:
+                continue
+            bid_vol_5 = sum(s for _, s in bids[:5])
+            ask_vol_5 = sum(s for _, s in asks[:5])
+            total_depth = bid_vol_5 + ask_vol_5
+            rows.append({
+                "ts": r["ts"],
+                "best_bid": best_bid,
+                "best_ask": best_ask,
+                "mid_price": mid,
+                "spread_bps": (best_ask - best_bid) / mid * 10000,
+                "bid_vol_5": bid_vol_5,
+                "ask_vol_5": ask_vol_5,
+                "depth_imbalance": (
+                    (bid_vol_5 - ask_vol_5) / total_depth
+                    if total_depth > 0 else 0.0
+                ),
+            })
+
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        df = df.sort_values("ts").reset_index(drop=True)
+
+    entry = _RawLoadCacheEntry(
+        file_signature=file_signature,
+        df=df,
+        sorted_ts=df["ts"].to_numpy(dtype=np.float64, copy=False) if not df.empty else None,
+        context=_build_orderbook_feature_context(df),
+    )
+    logger.info(f"Loaded {len(df)} orderbook snapshots")
+    _store_raw_cache(_RAW_ORDERBOOK_CACHE, cache_key, entry)
+    return entry
+
+
+def _load_raw_trades_entry(
+    raw_dir: Optional[Path] = None,
+    date_filter: Optional[set[str]] = None,
+) -> _RawLoadCacheEntry:
+    """約定 raw と派生 context をまとめてロードする."""
+    d = raw_dir or _DEFAULT_RAW_DIR
+    tr_dir = d / "trades"
+    if not tr_dir.exists():
+        return _RawLoadCacheEntry(file_signature=(), df=pd.DataFrame())
+
+    target_files = _select_raw_files(tr_dir, date_filter)
+    date_filter_key = _normalize_date_filter(date_filter)
+    cache_key = (str(tr_dir.resolve()), date_filter_key)
+    file_signature = _build_file_signature(target_files)
+    cached = _load_cached_raw_entry(_RAW_TRADES_CACHE, cache_key, file_signature)
+    if cached is not None:
+        return cached
+
+    if not target_files:
+        empty_entry = _RawLoadCacheEntry(file_signature=file_signature, df=pd.DataFrame())
+        _store_raw_cache(_RAW_TRADES_CACHE, cache_key, empty_entry)
+        return empty_entry
+
+    all_records: list[dict[str, object]] = []
+    for f in target_files:
+        all_records.extend(read_jsonl_gz(f))
+
+    df = pd.DataFrame(all_records)
+    sorted_ts: np.ndarray | None = None
+    context: _TradeFeatureContext | None = None
+    if not df.empty:
+        df = df.sort_values("ts").reset_index(drop=True)
+        sorted_ts = df["ts"].to_numpy(dtype=np.float64, copy=False)
+        context = _build_trade_feature_context(df, sorted_ts=sorted_ts)
+
+    entry = _RawLoadCacheEntry(
+        file_signature=file_signature,
+        df=df,
+        sorted_ts=sorted_ts,
+        context=context,
+    )
+    n_days = len(date_filter) if date_filter else "all"
+    logger.info(f"Loaded {len(df)} trades (days={n_days})")
+    _store_raw_cache(_RAW_TRADES_CACHE, cache_key, entry)
+    return entry
 
 
 @dataclass(frozen=True)
@@ -343,59 +458,7 @@ def load_raw_orderbook(
         columns: ts, best_bid, best_ask, mid_price, spread_bps,
                  bid_vol_5, ask_vol_5, depth_imbalance
     """
-    d = raw_dir or _DEFAULT_RAW_DIR
-    ob_dir = d / "orderbook"
-    if not ob_dir.exists():
-        return pd.DataFrame()
-
-    target_files = _select_raw_files(ob_dir, date_filter)
-    date_filter_key = _normalize_date_filter(date_filter)
-    cache_key = (str(ob_dir.resolve()), date_filter_key)
-    file_signature = _build_file_signature(target_files)
-    cached_df = _load_cached_raw_df(_RAW_ORDERBOOK_CACHE, cache_key, file_signature)
-    if cached_df is not None:
-        return cached_df
-
-    if not target_files:
-        empty = pd.DataFrame()
-        _store_raw_cache(_RAW_ORDERBOOK_CACHE, cache_key, file_signature, empty)
-        return empty.copy(deep=False)
-
-    rows: list[dict[str, float]] = []
-    for f in target_files:
-        for r in read_jsonl_gz(f):
-            bids = r.get("bids", [])
-            asks = r.get("asks", [])
-            if not bids or not asks:
-                continue
-            best_bid = bids[0][0]
-            best_ask = asks[0][0]
-            mid = (best_bid + best_ask) / 2
-            if mid <= 0:
-                continue
-            bid_vol_5 = sum(s for _, s in bids[:5])
-            ask_vol_5 = sum(s for _, s in asks[:5])
-            total_depth = bid_vol_5 + ask_vol_5
-            rows.append({
-                "ts": r["ts"],
-                "best_bid": best_bid,
-                "best_ask": best_ask,
-                "mid_price": mid,
-                "spread_bps": (best_ask - best_bid) / mid * 10000,
-                "bid_vol_5": bid_vol_5,
-                "ask_vol_5": ask_vol_5,
-                "depth_imbalance": (
-                    (bid_vol_5 - ask_vol_5) / total_depth
-                    if total_depth > 0 else 0.0
-                ),
-            })
-
-    df = pd.DataFrame(rows)
-    if not df.empty:
-        df = df.sort_values("ts").reset_index(drop=True)
-    logger.info(f"Loaded {len(df)} orderbook snapshots")
-    _store_raw_cache(_RAW_ORDERBOOK_CACHE, cache_key, file_signature, df)
-    return df.copy(deep=False)
+    return _load_raw_orderbook_entry(raw_dir, date_filter).df.copy(deep=False)
 
 
 def load_raw_trades(
@@ -412,35 +475,7 @@ def load_raw_trades(
     Returns:
         columns: ts, price, amount, side
     """
-    d = raw_dir or _DEFAULT_RAW_DIR
-    tr_dir = d / "trades"
-    if not tr_dir.exists():
-        return pd.DataFrame()
-
-    target_files = _select_raw_files(tr_dir, date_filter)
-    date_filter_key = _normalize_date_filter(date_filter)
-    cache_key = (str(tr_dir.resolve()), date_filter_key)
-    file_signature = _build_file_signature(target_files)
-    cached_df = _load_cached_raw_df(_RAW_TRADES_CACHE, cache_key, file_signature)
-    if cached_df is not None:
-        return cached_df
-
-    if not target_files:
-        empty = pd.DataFrame()
-        _store_raw_cache(_RAW_TRADES_CACHE, cache_key, file_signature, empty)
-        return empty.copy(deep=False)
-
-    all_records: list[dict[str, object]] = []
-    for f in target_files:
-        all_records.extend(read_jsonl_gz(f))
-
-    df = pd.DataFrame(all_records)
-    if not df.empty:
-        df = df.sort_values("ts").reset_index(drop=True)
-    n_days = len(date_filter) if date_filter else "all"
-    logger.info(f"Loaded {len(df)} trades (days={n_days})")
-    _store_raw_cache(_RAW_TRADES_CACHE, cache_key, file_signature, df)
-    return df.copy(deep=False)
+    return _load_raw_trades_entry(raw_dir, date_filter).df.copy(deep=False)
 
 
 def _compute_trade_features(
@@ -661,11 +696,13 @@ def enrich_fill_records(
             d += timedelta(days=1)
         logger.info(f"130# Date filter: {sorted(date_filter)} ({len(date_filter)} days)")
 
-    ob_df = load_raw_orderbook(raw_dir, date_filter=date_filter)
+    ob_entry = _load_raw_orderbook_entry(raw_dir, date_filter=date_filter)
+    ob_df = ob_entry.df.copy(deep=False)
     # 130# trades は date_filter 適用後にデータが空の場合は全量にフォールバック.
     # OB recorder は板情報のみ記録し trades ファイルは別系統のため、
     # 当日分の trades ファイルが存在しないケースがある.
-    trades_df = load_raw_trades(raw_dir, date_filter=date_filter)
+    trades_entry = _load_raw_trades_entry(raw_dir, date_filter=date_filter)
+    trades_df = trades_entry.df.copy(deep=False)
     if trades_df.empty and date_filter is not None:
         # 130# F7 + D.1 Q3: ±N日にフォールバック (デフォルト ±1日)。
         # 特徴量 window は 60s/300s なので、大きな窓は I/O の無駄。
@@ -681,7 +718,8 @@ def enrich_fill_records(
             f"130# F7: trades empty with date_filter, "
             f"falling back to recent ±{_fallback_days} days: {sorted(_fb_filter)}"
         )
-        trades_df = load_raw_trades(raw_dir, date_filter=_fb_filter)
+        trades_entry = _load_raw_trades_entry(raw_dir, date_filter=_fb_filter)
+        trades_df = trades_entry.df.copy(deep=False)
         if trades_df.empty:
             # 139# §9-#5: 全量フォールバックを廃止 (I/O爆発 + 時間整合リスク)。
             # 代わりに WARNING で検知可能にし、trades_df は空のまま進める。
@@ -692,17 +730,17 @@ def enrich_fill_records(
             )
 
     # 059# P1-7: 事前ソート + searchsorted で O(N_fill × log N_trades)
-    if not trades_df.empty and "ts" in trades_df.columns:
-        trades_df = trades_df.sort_values("ts").reset_index(drop=True)
-        sorted_ts = trades_df["ts"].values
-        trade_context = _build_trade_feature_context(trades_df, sorted_ts=sorted_ts)
-    else:
-        sorted_ts = None
-        trade_context = None
-
-    ob_context = _build_orderbook_feature_context(ob_df)
-    # 060#: OB ts も事前準備 (multi-timeframe momentum 計算用)
-    ob_sorted_ts = ob_df["ts"].values if not ob_df.empty else None
+    trade_context = (
+        trades_entry.context
+        if isinstance(trades_entry.context, _TradeFeatureContext)
+        else None
+    )
+    ob_context = (
+        ob_entry.context
+        if isinstance(ob_entry.context, _OrderbookFeatureContext)
+        else None
+    )
+    ob_sorted_ts = ob_entry.sorted_ts
 
     timestamps = fill_df["timestamp"].to_numpy(dtype=np.float64, copy=False)
     enriched_rows: list[dict[str, float]] = []

@@ -1824,3 +1824,59 @@
 1. `test_enricher_skip_gate.py` の real-data integration setup を snapshot/cache 前提でさらに詰める
 2. `test_microstructure_features.py` と `test_v460_core.py::TestConfigLoader` の data/config loader 上位を切り分ける
 3. `test_aggregate_to_1min.py` の残 persistence edge と `test_gate_judgment.py` の Monte Carlo 残件を継続圧縮する
+
+---
+
+## 2026-03-08 / Session 037-042
+
+### 実施
+- production
+  - `scripts/v460/ml/feature_enricher.py`
+    - raw load cache entry に `sorted_ts` / precomputed context を保持するよう変更
+    - `enrich_fill_records()` は cached DataFrame に加えて cached trade/orderbook context を再利用する形へ整理
+    - これにより `searchsorted` 用配列と cumulative volume の再構築を毎回繰り返さない
+  - `ztb/features/microstructure.py`
+    - `buy_volume == 0` かつ `sell_volume == 0` の全ゼロ系列では `order_flow_toxicity = 0.0` の fast-path を追加
+- テスト追随
+  - `test_retrain_hot_reload.py::TestTradesIOFallback`
+    - public `load_raw_trades()` patch ではなく、新しい internal raw-load helper patch へ追随
+    - fallback chain の呼び出し回数・7日 window 検証は維持
+
+### 結果
+- focused 回帰 1:
+  - `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data`
+  - `1 passed in 10.91s`
+  - 単独起動の wall time は pytest 起動オーバーヘッドが支配的だが、durations 上の setup は bundle/broad で改善を確認
+- focused 回帰 2:
+  - `test_microstructure_features.py::TestEdgeCases::test_zero_volume`
+  - `1 passed in 9.65s`
+  - call `0.07s`
+- focused 回帰 3:
+  - `test_enricher_skip_gate.py` + `test_retrain_hot_reload.py` + `test_microstructure_features.py`
+  - `181 passed in 6.98s`
+- 最終 broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` と `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - `4060 passed, 1 deselected, 11 warnings in 29.15s`
+
+### 主要改善
+- `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data`
+  - filtered broad setup `0.93s -> 0.39s`
+- `test_microstructure_features.py::TestEdgeCases::test_zero_volume`
+  - focused `0.14s -> 0.07s`
+- `feature_enricher.py`
+  - production 側で raw cache の value を DataFrame-only から `DataFrame + derived context` に拡張
+  - 同一 raw セットへの repeated enrich で実利が出る構成へ変更
+
+### 補足
+- 今回の broad 総時間改善は `29.19s -> 29.15s` と小幅だが、実質的には本物の production 側 hot path を改善している。
+- broad 上位は現在以下に再集中している:
+  - `test_microstructure_features.py::TestCanonicalList::test_all_generated_by_function`
+  - `test_234_gate_bypass_removal.py::TestBalanceForcedBypassEradication::test_no_balance_forced_in_gate_check_conditions`
+  - `test_v460_core.py::TestConfigLoader::*`
+  - `test_build_features_pipeline.py` の microstructure/aggregate setup
+  - `test_retrain_hot_reload.py::TestRedundancyPruning::test_highly_correlated_features_detected`
+
+### 次アクション
+1. `ztb/features/microstructure.py` の repeated rolling/path をまとめてベクトル化できるか洗う
+2. `scripts/v460/lib/config_loader.py` と `test_v460_core.py::TestConfigLoader` の小さな I/O / deepcopy を削る
+3. `scripts/v460/build_features.py` / `test_build_features_pipeline.py` の aggregate + microstructure 経路を production/test 両面で詰める
