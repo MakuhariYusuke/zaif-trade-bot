@@ -7,6 +7,8 @@ add_microstructure_features() が real 板/約定データから正しく特徴�
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -36,35 +38,42 @@ def _make_1min_df(
         depth_bias: depth_imbalance に加算 (-1~+1)
         trade_bias: trade_flow_imbalance に加算 (-1~+1)
     """
-    np.random.seed(42)
-    mid = 10_300_000 + np.cumsum(np.random.randn(n) * 500)
+    return _make_1min_df_cached(n, spread_bps, depth_bias, trade_bias).copy(deep=True)
+
+
+@lru_cache(maxsize=None)
+def _make_1min_df_cached(
+    n: int,
+    spread_bps: float,
+    depth_bias: float,
+    trade_bias: float,
+) -> pd.DataFrame:
+    rng = np.random.RandomState(42)
+    mid = 10_300_000 + np.cumsum(rng.randn(n) * 500)
     half_spread = mid * spread_bps * 1e-4 / 2
-
     idx = pd.date_range("2026-02-13 10:00", periods=n, freq="1min", tz="UTC")
-
-    df = pd.DataFrame(
+    return pd.DataFrame(
         {
             "best_bid": mid - half_spread,
             "best_ask": mid + half_spread,
             "mid_price": mid,
             "spread": spread_bps * 1e-4 * np.ones(n),
-            "bid_vol_5": np.random.uniform(0.05, 0.5, n) + depth_bias * 0.1,
-            "ask_vol_5": np.random.uniform(0.05, 0.5, n) - depth_bias * 0.1,
+            "bid_vol_5": rng.uniform(0.05, 0.5, n) + depth_bias * 0.1,
+            "ask_vol_5": rng.uniform(0.05, 0.5, n) - depth_bias * 0.1,
             "depth_imbalance": np.clip(
-                np.random.uniform(-0.5, 0.5, n) + depth_bias, -1, 1
+                rng.uniform(-0.5, 0.5, n) + depth_bias, -1, 1
             ),
-            "buy_volume": np.random.uniform(0.1, 2.0, n) + max(trade_bias, 0) * 0.5,
-            "sell_volume": np.random.uniform(0.1, 2.0, n) + max(-trade_bias, 0) * 0.5,
-            "trade_count": np.random.randint(5, 50, n).astype(float),
-            "vwap": mid + np.random.randn(n) * 100,
+            "buy_volume": rng.uniform(0.1, 2.0, n) + max(trade_bias, 0) * 0.5,
+            "sell_volume": rng.uniform(0.1, 2.0, n) + max(-trade_bias, 0) * 0.5,
+            "trade_count": rng.randint(5, 50, n).astype(float),
+            "vwap": mid + rng.randn(n) * 100,
             "trade_flow_imbalance": np.clip(
-                np.random.uniform(-0.5, 0.5, n) + trade_bias, -1, 1
+                rng.uniform(-0.5, 0.5, n) + trade_bias, -1, 1
             ),
             "close": mid,
         },
         index=idx,
     )
-    return df
 
 
 # =====================================================================

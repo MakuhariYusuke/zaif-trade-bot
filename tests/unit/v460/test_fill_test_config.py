@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import inspect
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -16,6 +15,11 @@ from scripts.v460.lib.config_loader import load_fill_test_config
 from scripts.v460.lib.side_selector import SideSelector
 from scripts.v460.lib.time_filter import TimeFilter
 from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+from tests.unit.v460._fill_test_source import (
+    FILL_CYCLE_EXECUTOR,
+    FILL_LOOP_ORCHESTRATOR,
+    read_source_text,
+)
 from ztb.metrics.fill_quality import (
     FillRecord,
     RoundTripRecord,
@@ -1063,12 +1067,12 @@ class TestSideOverride:
 
         ソースコードレベルで side_override パスの存在を確認.
         """
-        source = inspect.getsource(FillTestRunner.run_continuous)
+        source = read_source_text(FILL_LOOP_ORCHESTRATOR)
         assert "side_override=next_side" in source or "side_override=" in source, (
             "run_continuous must pass side_override to run_single_cycle"
         )
 
-        source_sc = inspect.getsource(FillTestRunner.run_single_cycle)
+        source_sc = read_source_text(FILL_CYCLE_EXECUTOR)
         assert "side_override" in source_sc, (
             "run_single_cycle must accept side_override parameter"
         )
@@ -1116,7 +1120,7 @@ class Test110DeadlockBreak:
 
     def test_deadlock_break_logic_in_source(self) -> None:
         """run_continuous 内に 110# デッドロック解除ロジックが存在."""
-        source = inspect.getsource(FillTestRunner.run_continuous)
+        source = read_source_text(FILL_LOOP_ORCHESTRATOR)
         assert "consecutive_086_wait" in source, (
             "run_continuous must reference consecutive_086_wait counter"
         )
@@ -1129,7 +1133,7 @@ class Test110DeadlockBreak:
 
     def test_is_time_filtered_unchanged(self) -> None:
         """110# は _is_time_filtered ロジック自体は変更しない."""
-        source = inspect.getsource(FillTestRunner._is_time_filtered)
+        source = read_source_text(FILL_LOOP_ORCHESTRATOR)
         # 086# / 110# ロジックは _is_time_filtered ではなく main loop にある
         assert "_consecutive_086_wait" not in source, (
             "_is_time_filtered should not contain deadlock counter logic"

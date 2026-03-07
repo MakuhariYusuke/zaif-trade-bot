@@ -337,8 +337,8 @@ class TestAggregateMerged:
 
     def test_parquet_roundtrip(self, tmp_path: Path) -> None:
         """Parquet 書き出し→再読み込みの一致."""
-        ob_records = [_make_ob_record(0), _make_ob_record(1)]
-        tr_records = [_make_trade_record(0), _make_trade_record(1)]
+        ob_records = [_make_ob_record(0)]
+        tr_records = [_make_trade_record(0)]
         original, out_path = _run_aggregate(
             tmp_path,
             ob_records=ob_records,

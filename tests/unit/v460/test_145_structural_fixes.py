@@ -16,6 +16,7 @@ import inspect
 import time
 import types
 from dataclasses import dataclass
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -25,7 +26,12 @@ from scripts.v460.lib.balance_checker import BalanceChecker
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.ob_utils import best_bid_ask, depth_volume, extract_price, extract_size
 from scripts.v460.run_fill_test import FillTestRunner
-from tests.unit.v460._fill_test_source import read_fill_test_method_source
+from tests.unit.v460._fill_test_source import (
+    FILL_CYCLE_EXECUTOR,
+    FILL_RECORD_BUILDER,
+    read_fill_test_method_source,
+    read_source_text,
+)
 from ztb.metrics import fill_quality
 from ztb.metrics.fill_quality import FillRecord
 
@@ -196,7 +202,7 @@ class TestCancelReasons:
 
     def test_fill_quality_uses_shared_constants(self) -> None:
         """fill_quality.py が cancel_reasons.AUDIT_CANCEL_REASONS を使っていることを確認."""
-        source = inspect.getsource(fill_quality)
+        source = read_source_text(Path(fill_quality.__file__))
         assert "AUDIT_CANCEL_REASONS" in source
         assert "cancel_reasons" in source
 
@@ -574,7 +580,7 @@ class TestSkipGateLotConsistency:
 
         151# P3-03: regime_lot を1回算出し、SkipGate/発注/記録へ共通引き回し.
         """
-        source = read_fill_test_method_source("run_single_cycle")
+        source = read_source_text(FILL_CYCLE_EXECUTOR)
         # 151# P3-03: 単一算出した _regime_lot を SkipGate に渡す
         assert "order_lot=_regime_lot" in source, (
             "SkipGate call should pass pre-computed _regime_lot (151# §10 #4)"
@@ -585,15 +591,13 @@ class TestFillRecordBuilderIntegration:
     """FillRecord 組み立てが共通 builder に寄っていることを確認."""
 
     def test_build_fill_record_is_used(self) -> None:
-        source = read_fill_test_method_source("_build_fill_record")
+        source = read_source_text(FILL_RECORD_BUILDER)
         assert "build_fill_record(" in source
         assert "_build_fill_measurement_fields(" in source
         assert "_build_fill_market_fields(" in source
         assert "_build_fill_strategy_fields(" in source
-        measurement_source = read_fill_test_method_source("_build_fill_measurement_fields")
-        market_source = read_fill_test_method_source("_build_fill_market_fields")
-        assert "_resolve_fill_cancel_reason(" in measurement_source
-        assert "_compute_fill_spread_bps(" in market_source
+        assert "_resolve_fill_cancel_reason(" in source
+        assert "_compute_fill_spread_bps(" in source
 
     def test_resume_and_reload_use_iter_glob(self) -> None:
         # 265# extract: iter_fill_records_glob は _finalize_run に分離
@@ -628,13 +632,13 @@ class TestSkipGateObFormat:
     """skip_gate_evaluator.py が ob_utils を使っていることを確認."""
 
     def test_uses_extract_price(self) -> None:
-        source = inspect.getsource(skip_gate_evaluator)
+        source = read_source_text(Path(skip_gate_evaluator.__file__))
         assert "extract_price" in source
         assert "depth_volume" in source
 
     def test_no_dot_price_access(self) -> None:
         """OB レベルに .price でアクセスしていないことを確認."""
-        source = inspect.getsource(skip_gate_evaluator)
+        source = read_source_text(Path(skip_gate_evaluator.__file__))
         # _build_ob_features 内で .price/.quantity を直接使わない
         # (extract_price / depth_volume 経由のみ)
         lines = source.split("\n")

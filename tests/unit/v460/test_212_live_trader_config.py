@@ -1,7 +1,7 @@
 """212# §7.1: LiveTraderConfig magic number config 化テスト."""
 
-import ast
 import re
+from functools import lru_cache
 from pathlib import Path
 
 import pytest
@@ -12,16 +12,9 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _LIVE_TRADER_PATH = _PROJECT_ROOT / "ztb" / "trading" / "live_trader" / "live_trader.py"
 
 
-def _extract_class_source(module_source: str, class_name: str) -> str:
-    """モジュールソースから対象クラス定義のみを抽出する."""
-    tree = ast.parse(module_source)
-    lines = module_source.splitlines()
-    for node in tree.body:
-        if isinstance(node, ast.ClassDef) and node.name == class_name:
-            if node.end_lineno is None:
-                raise AssertionError(f"Class {class_name} has no end_lineno")
-            return "\n".join(lines[node.lineno - 1:node.end_lineno])
-    raise AssertionError(f"Class not found: {class_name}")
+@lru_cache(maxsize=None)
+def _load_live_trader_source() -> str:
+    return _LIVE_TRADER_PATH.read_text(encoding="utf-8-sig")
 
 
 class TestLiveTraderConfigDefaults:
@@ -67,8 +60,8 @@ class TestNoMagicNumbersInLiveTrader:
 
     @pytest.fixture(scope="class", autouse=True)
     def _load_source(self, request: pytest.FixtureRequest) -> None:
-        module_source = _LIVE_TRADER_PATH.read_text(encoding="utf-8-sig")
-        request.cls.source = _extract_class_source(module_source, "LiveTrader")
+        module_source = _load_live_trader_source()
+        request.cls.source = module_source
         request.cls.module_source = module_source
 
     def test_no_raw_timeout_5(self) -> None:

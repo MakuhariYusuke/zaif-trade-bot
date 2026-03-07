@@ -58,6 +58,26 @@ def parse_source_tree(path: Path) -> ast.AST:
     return ast.parse(read_source_text(path))
 
 
+@lru_cache(maxsize=None)
+def _method_source_index() -> dict[str, str]:
+    """FillTestRunner 本体 + mixin 群の method source を一括 index 化する."""
+    index: dict[str, str] = {}
+    for path in _FILL_TEST_RUNNER_SOURCES:
+        source = read_source_text(path)
+        lines = source.splitlines()
+        tree = parse_source_tree(path)
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if not hasattr(node, "lineno") or not hasattr(node, "end_lineno"):
+                continue
+            index.setdefault(
+                node.name,
+                "\n".join(lines[node.lineno - 1:node.end_lineno]),
+            )
+    return index
+
+
 def read_fill_test_runner_source() -> str:
     """FillTestRunner 全ソース (本体 + 3 mixin) を連結して返す.
 
@@ -71,16 +91,7 @@ def read_fill_test_runner_source() -> str:
 @lru_cache(maxsize=None)
 def read_fill_test_method_source(method_name: str) -> str:
     """FillTestRunner 本体または mixin 群からメソッド source を返す."""
-    for path in _FILL_TEST_RUNNER_SOURCES:
-        source = read_source_text(path)
-        lines = source.splitlines()
-        tree = parse_source_tree(path)
-        for node in ast.walk(tree):
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                continue
-            if node.name != method_name:
-                continue
-            if not hasattr(node, "lineno") or not hasattr(node, "end_lineno"):
-                continue
-            return "\n".join(lines[node.lineno - 1:node.end_lineno])
-    raise KeyError(f"FillTestRunner method not found: {method_name}")
+    try:
+        return _method_source_index()[method_name]
+    except KeyError as exc:
+        raise KeyError(f"FillTestRunner method not found: {method_name}") from exc

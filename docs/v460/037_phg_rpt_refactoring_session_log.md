@@ -1212,3 +1212,68 @@
 1. `test_212_live_trader_config.py` と `test_145_structural_fixes.py::TestSkipGateLotConsistency` の source-inspection / import cost を個別に削る
 2. `test_aggregate_to_1min.py` の parquet roundtrip 必須ケースをさらに最小化する
 3. broad 上位に残る `test_microstructure_features.py` / `test_ml_pipeline.py` の単発重ケースを stub 注入で分離できるか確認する
+
+---
+
+## 2026-03-07 / Session 037-031
+
+### 実施
+- 共通 helper
+  - `tests/unit/v460/_fill_test_source.py`
+    - FillTestRunner/mixin source を method 名 → source の index に一括キャッシュ
+- テスト側
+  - `test_145_structural_fixes.py`
+    - `fill_quality.py` / `skip_gate_evaluator.py` / `fill_cycle_executor.py` / `fill_record_builder.py` の source-inspection を cached file-text read へ置換
+  - `test_fill_test_config.py`
+    - `run_continuous` / `run_single_cycle` / `_is_time_filtered` の確認を cached file-text read へ置換
+  - `test_212_live_trader_config.py`
+    - AST class extraction を廃止し、cached module source 直接検証へ簡素化
+  - `test_microstructure_features.py`
+    - synthetic 1-min DataFrame 生成を cache 化し、各テストでは deep copy を利用
+  - `test_aggregate_to_1min.py`
+    - parquet roundtrip を 1-row fixture へ縮小
+- 本体コード
+  - `ztb/features/microstructure.py`
+    - `close` / `buy_volume` / `sell_volume` / `total_vol` の再利用で rolling 特徴量前処理の重複を削減
+
+### 結果
+- 対象回帰 1:
+  - `test_145_structural_fixes.py` + `test_212_live_trader_config.py`
+  - `70 passed in 3.75s`
+- 対象回帰 2:
+  - `test_microstructure_features.py` + `test_aggregate_to_1min.py` + `test_fill_test_config.py`
+  - `138 passed in 4.58s`
+- 対象回帰 3:
+  - `test_145_structural_fixes.py` + `test_fill_test_config.py` + `test_212_live_trader_config.py` + `test_microstructure_features.py` + `test_aggregate_to_1min.py`
+  - `208 passed in 8.24s`
+- gate-counter 交差確認:
+  - `test_220_deadlock_fixes.py` + `test_229_cleanup_counter_rename.py` + `test_277_magic_number_grounding.py`
+  - `81 passed in 1.56s`
+- broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` と `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - rerun 1: `4051 passed, 1 deselected, 18 warnings in 39.01s`
+  - rerun 2: `4051 passed, 1 deselected, 19 warnings in 43.03s`
+
+### 主要 durations 変化
+- `test_145_structural_fixes.py::TestSkipGateLotConsistency::test_skip_gate_call_passes_regime_lot`
+  - `0.18s級 -> broad から上位離脱`
+- `test_fill_test_config.py::TestSideOverride::test_run_continuous_passes_side_override`
+  - targeted `0.15s`（method extraction 初回コストを回避）
+- `test_aggregate_to_1min.py::TestAggregateMerged::test_parquet_roundtrip`
+  - targeted `0.14s -> 0.11s〜0.13s`
+- `test_microstructure_features.py`
+  - cached synthetic frame 化後、top durations は `0.02s〜0.09s` 帯に収束
+
+### 補足
+- `test_277_magic_number_grounding.py::TestGateAggregatorConfigIntegration::test_bypass_with_custom_threshold` は一度だけ filtered broad で型不整合を出したが、単体・ファイル全体・関連 gate-counter 束では再現しなかった
+- 現時点では deterministic な再現条件を特定できていないため、記録のみ残し、rerun green を採用
+- broad の残上位は以下に再集中している
+  - `test_enricher_skip_gate.py` real-data setup
+  - `test_aggregate_to_1min.py` 実集約/実 parquet
+  - `test_retrain_hot_reload.py` E2E hot-reload
+  - `test_ml_pipeline.py` の一部 data-loader / GB 学習ケース
+
+### 次アクション
+1. `test_aggregate_to_1min.py` の non-persistence 上位ケースを、resample の成立条件を維持したままさらに最小化する
+2. `test_ml_pipeline.py` の data-loader / GB 系ケースを、品質非依存のものから軽量 estimator / fixture cache へ寄せる
+3. `test_enricher_skip_gate.py` の real-data integration を、固定 sample tail ではなく snapshot fixture 化できるか確認する

@@ -47,6 +47,14 @@ def add_microstructure_features(
     """
     df = df.copy()
     eps = 1e-10
+    close = df["close"] if "close" in df.columns else None
+    buy_volume = df["buy_volume"] if "buy_volume" in df.columns else None
+    sell_volume = df["sell_volume"] if "sell_volume" in df.columns else None
+    total_vol = (
+        buy_volume + sell_volume
+        if buy_volume is not None and sell_volume is not None
+        else None
+    )
 
     # ---- 1. bid_ask_spread ----
     # If already present from aggregation, keep it; otherwise compute
@@ -73,9 +81,8 @@ def add_microstructure_features(
         df["trade_intensity"] = df["trade_count"] / (tc_mean + eps)
 
     # ---- 6. order_flow_toxicity (VPIN approximation) ----
-    if "buy_volume" in df.columns and "sell_volume" in df.columns:
-        total_vol = df["buy_volume"] + df["sell_volume"]
-        abs_imbalance = (df["buy_volume"] - df["sell_volume"]).abs()
+    if total_vol is not None and buy_volume is not None and sell_volume is not None:
+        abs_imbalance = (buy_volume - sell_volume).abs()
         # VPIN = rolling mean of |buy - sell| / total_volume
         df["order_flow_toxicity"] = (
             abs_imbalance.rolling(window, min_periods=1).sum()
@@ -83,19 +90,17 @@ def add_microstructure_features(
         )
 
     # ---- 7. price_impact ----
-    if "close" in df.columns:
-        total_vol = (
-            (df["buy_volume"] + df["sell_volume"])
-            if "buy_volume" in df.columns
-            else df.get("volume", pd.Series(1.0, index=df.index))
-        )
-        delta_price = df["close"].diff().abs()
-        raw_impact = delta_price / (total_vol + eps)
+    if close is not None:
+        volume_for_impact = total_vol
+        if volume_for_impact is None:
+            volume_for_impact = df.get("volume", pd.Series(1.0, index=df.index))
+        delta_price = close.diff().abs()
+        raw_impact = delta_price / (volume_for_impact + eps)
         df["price_impact"] = raw_impact.rolling(window, min_periods=1).mean()
 
     # ---- 8. micro_return_vol ----
-    if "close" in df.columns:
-        log_ret = np.log(df["close"] / df["close"].shift(1))
+    if close is not None:
+        log_ret = np.log(close / close.shift(1))
         df["micro_return_vol"] = log_ret.rolling(window, min_periods=1).std()
 
     # ---- 9 & 10. bid/ask depth slope ----

@@ -3916,3 +3916,21 @@ python scripts/unified_trainer.py \
 ### Notes
 - The latest filtered broad reruns completed at `4051 passed, 1 deselected, 18 warnings in 40.52s` and `40.76s` in the current Windows workspace.
 - `tests/unit/v460/test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` settled around `0.58s` setup in the focused file run and `0.69s` in the filtered broad run after excluding the mutable newest fill-record file.
+
+### Changed
+- Reworked `tests/unit/v460/_fill_test_source.py` to build a cached method-source index once per process instead of AST-walking every FillTestRunner source file on each lookup.
+- Switched remaining source-inspection assertions in `tests/unit/v460/test_145_structural_fixes.py` and `tests/unit/v460/test_fill_test_config.py` from repeated `inspect.getsource()`/method extraction to direct cached file-text reads where exact method slicing is unnecessary.
+- Simplified `tests/unit/v460/test_212_live_trader_config.py` to validate the cached module source directly, removing the AST class-extraction setup step.
+- Cached synthetic 1-minute input generation in `tests/unit/v460/test_microstructure_features.py` and reused the cached frame via deep copies so repeated feature tests no longer rebuild the same random dataset.
+- Tightened `tests/unit/v460/test_aggregate_to_1min.py::test_parquet_roundtrip` to a single-row persistence roundtrip, keeping the parquet contract check while trimming redundant synthetic data.
+- Reduced repeated Series construction in `ztb/features/microstructure.py` by reusing `close`, `buy_volume`, `sell_volume`, and `total_vol` across toxicity / price-impact / return-vol calculations.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_145_structural_fixes.py tests/unit/v460/test_212_live_trader_config.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_microstructure_features.py tests/unit/v460/test_aggregate_to_1min.py tests/unit/v460/test_fill_test_config.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_220_deadlock_fixes.py tests/unit/v460/test_229_cleanup_counter_rename.py tests/unit/v460/test_277_magic_number_grounding.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=20 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- The current filtered broad rerun completed at `4051 passed, 1 deselected, 19 warnings in 43.03s`.
+- During this batch, filtered broad reruns varied from roughly `39.01s` to `43.03s`; the remaining variance is concentrated in real-data integration (`test_enricher_skip_gate.py`) and parquet / aggregation paths (`test_aggregate_to_1min.py`).
