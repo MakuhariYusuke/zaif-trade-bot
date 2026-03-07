@@ -23,6 +23,7 @@ from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
 from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator as MakerPrice
+from tests.unit.v460._fill_test_source import ORCHESTRATOR_MID_CYCLE, read_source_text
 
 _FAST_FILL_DEFENSE_SOURCE = Path(
     inspect.getsourcefile(FastFillDefense) or "",
@@ -391,9 +392,8 @@ class TestConsumeRecoveryCycleRename:
         assert "get_recovery_lot_scale" not in doc
 
     def test_orchestrator_calls_new_name(self):
-        """fill_loop_orchestrator のソースが consume_recovery_cycle を呼んでいる."""
-        import scripts.v460.lib.fill_loop_orchestrator as orch_mod
-        src = inspect.getsource(orch_mod)
+        """orchestrator_mid_cycle のソースが consume_recovery_cycle を呼んでいる."""
+        src = read_source_text(ORCHESTRATOR_MID_CYCLE)
         assert "consume_recovery_cycle" in src
         assert "get_recovery_lot_scale" not in src
 

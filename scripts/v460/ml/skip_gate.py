@@ -39,16 +39,16 @@ from scripts.v460.ml.model_protocols import (
     ProbabilisticEstimator,
     RegressorEstimator,
 )
+from scripts.v460.ml.skip_gate_features import (
+    FEATURE_NAME_MIGRATION as _FEATURE_NAME_MIGRATION,
+    build_skip_gate_feature_index,
+    build_skip_gate_feature_vector,
+    migrate_skip_gate_feature_cols,
+)
 
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MODEL_PATH = Path("models/v460/skip_gate.pkl")
-
-# 216# §6: 旧→新 特徴量名マイグレーション (pickle 互換)
-_FEATURE_NAME_MIGRATION: dict[str, str] = {
-    "price_velocity_60s": "price_velocity_bps",
-}
-
 
 def _migrate_pipeline_feature_names(pipeline: Pipeline) -> None:
     """Pipeline 内の各 step の feature_names_in_ を _FEATURE_NAME_MIGRATION で更新.
@@ -301,14 +301,10 @@ class SkipGate:
         self.model = model
         self.scaler = scaler
         # 216# §6: pickle 互換 — 旧特徴量名を現行名にマイグレーション
-        self.feature_cols = [
-            _FEATURE_NAME_MIGRATION.get(c, c) for c in feature_cols
-        ]
+        self.feature_cols = migrate_skip_gate_feature_cols(feature_cols)
         self.config = config or SkipGateConfig()
         self.metadata = metadata or {}
-        self._feature_index = {
-            col: idx for idx, col in enumerate(self.feature_cols)
-        }
+        self._feature_index = build_skip_gate_feature_index(self.feature_cols)
         # 100# P1-1: per-side skip 履歴 (cross-side 干渉を排除)
         self._recent_skips_buy: list[bool] = []
         self._recent_skips_sell: list[bool] = []
@@ -331,18 +327,11 @@ class SkipGate:
         features: dict[str, object],
     ) -> tuple[np.ndarray, int]:
         """入力特徴量をモデル入力ベクトルへ詰め替える."""
-        x = np.full(len(self.feature_cols), np.nan, dtype=np.float64)
-        n_used = 0
-        for name, raw_value in features.items():
-            idx = self._feature_index.get(name)
-            if idx is None:
-                continue
-            value = _coerce_finite_float(raw_value)
-            if value is None:
-                continue
-            x[idx] = value
-            n_used += 1
-        return x, n_used
+        return build_skip_gate_feature_vector(
+            self.feature_cols,
+            self._feature_index,
+            features,
+        )
 
     def evaluate(
         self,

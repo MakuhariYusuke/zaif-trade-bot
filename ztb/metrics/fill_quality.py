@@ -1452,8 +1452,14 @@ def iter_fill_records_glob(
 
     101# §5: cross-file 重複排除 (emergency dump との重複対策)."""
     d = Path(directory)
+    files = list_fill_record_files(d, include_emergency=include_emergency)
+    if not files:
+        return
+    if len(files) == 1:
+        yield from iter_fill_records(files[0])
+        return
     seen_ids: set[str] = set()
-    for path in _iter_fill_record_files(d, include_emergency=include_emergency):
+    for path in files:
         for record in iter_fill_records(path):
             if record.cycle_id in seen_ids:
                 continue

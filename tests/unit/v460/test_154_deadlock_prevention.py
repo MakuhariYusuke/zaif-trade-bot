@@ -19,7 +19,7 @@ from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import FillTestConfig
 from tests.unit.v460._fill_test_source import (
     FILL_CYCLE_EXECUTOR,
-    FILL_LOOP_ORCHESTRATOR,
+    read_fill_test_runner_source,
     read_source_text,
 )
 
@@ -237,8 +237,8 @@ class TestBalanceForcedRescueLogic:
 
     def test_rescue_mode_in_run_continuous(self) -> None:
         """run_continuous に rescue フラグの初期化と受け渡しがある."""
-        source = read_source_text(FILL_LOOP_ORCHESTRATOR)
-        assert "_is_rescue" in source
+        source = read_fill_test_runner_source()  # 332# Phase 4: mixin に移管
+        assert "is_rescue" in source
         assert "balance_forced_rescue_enabled" in source
 
     def test_config_fields_in_dataclass(self) -> None:

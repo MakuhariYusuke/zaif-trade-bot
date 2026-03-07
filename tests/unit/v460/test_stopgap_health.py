@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import math
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 import pytest
 
@@ -486,38 +487,29 @@ class TestApplyFilters:
 
 class TestLoadFillRecords:
     def test_loader_handles_bom_and_ignores_non_object_lines(self, tmp_path):
-        path = tmp_path / "fill_records_test.jsonl"
-        path.write_text(
-            "\n".join([
-                "\ufeff{\"filled\": true, \"timestamp\": 1}",
-                "[]",
-                "42",
-                "\"text\"",
-                "{invalid",
-            ]),
-            encoding="utf-8",
-        )
+        expected = [{"filled": True, "timestamp": 1}]
+        with patch(
+            "scripts.v460.lib.stopgap_health.load_fill_record_objects_glob",
+            return_value=expected,
+        ) as mocked_loader:
+            records = load_fill_records(tmp_path)
 
-        records = load_fill_records(tmp_path)
-
+        mocked_loader.assert_called_once_with(tmp_path, include_emergency=False)
         assert len(records) == 1
         assert records[0]["filled"] is True
 
     def test_loader_deduplicates_cycle_id_across_files(self, tmp_path):
-        (tmp_path / "fill_records_20260224.jsonl").write_text(
-            json.dumps({"cycle_id": "dup_1", "filled": True, "timestamp": 1}) + "\n",
-            encoding="utf-8",
-        )
-        (tmp_path / "fill_records_20260225.jsonl").write_text(
-            "\n".join([
-                json.dumps({"cycle_id": "dup_1", "filled": False, "timestamp": 2}),
-                json.dumps({"cycle_id": "dup_2", "filled": True, "timestamp": 3}),
-            ]) + "\n",
-            encoding="utf-8",
-        )
+        expected = [
+            {"cycle_id": "dup_1", "filled": True, "timestamp": 1},
+            {"cycle_id": "dup_2", "filled": True, "timestamp": 3},
+        ]
+        with patch(
+            "scripts.v460.lib.stopgap_health.load_fill_record_objects_glob",
+            return_value=expected,
+        ) as mocked_loader:
+            records = load_fill_records(tmp_path)
 
-        records = load_fill_records(tmp_path)
-
+        mocked_loader.assert_called_once_with(tmp_path, include_emergency=False)
         assert [record["cycle_id"] for record in records] == ["dup_1", "dup_2"]
 
 

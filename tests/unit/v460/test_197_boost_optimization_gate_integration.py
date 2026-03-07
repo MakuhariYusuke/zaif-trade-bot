@@ -13,18 +13,32 @@
 from __future__ import annotations
 
 import inspect
+from functools import lru_cache
+from pathlib import Path
+from unittest.mock import MagicMock
+
 import pytest
 
-from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.cycle_gate_aggregator import (
     CycleGateAggregator,
     CycleGateResult,
     GateCheckResult,
     _GATE_TO_CANCEL_REASON,
 )
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.maker_price import MakerPriceCalculator
+from tests.unit.v460._fill_test_source import ORCHESTRATOR_MID_CYCLE, read_source_text
 
 
 # ─── ヘルパー ──────────────────────────────────────────────────────────
+
+
+@lru_cache(maxsize=None)
+def _read_lib_source(module_name: str) -> str:
+    project_root = Path(__file__).resolve().parents[3]
+    return (project_root / "scripts" / "v460" / "lib" / f"{module_name}.py").read_text(
+        encoding="utf-8-sig"
+    )
 
 
 def _make_config(**overrides: object) -> FillTestConfig:
@@ -364,15 +378,10 @@ class TestMakerPriceSpreadCache:
 
     def test_last_spread_slot_exists(self):
         """MakerPriceCalculator に _last_spread スロットが存在."""
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-
         assert "_last_spread" in MakerPriceCalculator.__slots__
 
     def test_last_spread_initial_none(self):
         """初期値は None."""
-        from unittest.mock import MagicMock
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-
         cfg = FillTestConfig()
         calc = MakerPriceCalculator(
             cfg,
@@ -384,16 +393,12 @@ class TestMakerPriceSpreadCache:
 
     def test_last_spread_in_source(self):
         """compute() 内で _last_spread が更新されること (ソースコード検証)."""
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-
-        source = inspect.getsource(MakerPriceCalculator.compute)
+        source = _read_lib_source("maker_price")
         assert "_last_spread" in source
         assert "self._last_spread = spread" in source
 
     def test_last_spread_property(self):
         """last_spread プロパティが公開されていること."""
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-
         assert hasattr(MakerPriceCalculator, "last_spread")
         assert isinstance(
             getattr(MakerPriceCalculator, "last_spread"), property,
@@ -401,8 +406,6 @@ class TestMakerPriceSpreadCache:
 
     def test_last_mid_price_property(self):
         """last_mid_price プロパティが公開されていること."""
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-
         assert hasattr(MakerPriceCalculator, "last_mid_price")
         assert isinstance(
             getattr(MakerPriceCalculator, "last_mid_price"), property,
@@ -515,9 +518,7 @@ class TestDesignConsistency197:
 
     def test_orchestrator_passes_spread_and_mid_price(self):
         """orchestrator が evaluate() に spread_jpy/mid_price を渡すこと."""
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-
-        source = inspect.getsource(FillLoopOrchestratorMixin.run_continuous)
+        source = read_source_text(ORCHESTRATOR_MID_CYCLE)
         assert "spread_jpy" in source
         assert "mid_price" in source
         assert "last_spread" in source
@@ -531,5 +532,5 @@ class TestDesignConsistency197:
 
     def test_cycle_gate_aggregator_source_mentions_197(self):
         """cycle_gate_aggregator.py に 197# コメントが存在."""
-        source = inspect.getsource(CycleGateAggregator)
+        source = _read_lib_source("cycle_gate_aggregator")
         assert "197#" in source

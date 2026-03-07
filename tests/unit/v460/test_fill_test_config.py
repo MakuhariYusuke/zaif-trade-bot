@@ -18,6 +18,7 @@ from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
 from tests.unit.v460._fill_test_source import (
     FILL_CYCLE_EXECUTOR,
     FILL_LOOP_ORCHESTRATOR,
+    ORCHESTRATOR_MID_CYCLE,
     read_fill_test_runner_source,
     read_source_text,
 )
@@ -1068,7 +1069,7 @@ class TestSideOverride:
 
         ソースコードレベルで side_override パスの存在を確認.
         """
-        source = read_source_text(FILL_LOOP_ORCHESTRATOR)
+        source = read_source_text(ORCHESTRATOR_MID_CYCLE)
         assert "side_override=next_side" in source or "side_override=" in source, (
             "run_continuous must pass side_override to run_single_cycle"
         )

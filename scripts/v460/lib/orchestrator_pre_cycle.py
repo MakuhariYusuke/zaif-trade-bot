@@ -48,12 +48,21 @@ class CycleContext:
     RunSessionState (ループ間共有) とは異なり、CycleContext は
     while ループの 1 回分のみ有効。毎イテレーション冒頭で再生成する。
 
-    331# review: balance_forced 等は run_continuous 内のインラインロジック
-    (balance preflight) で決定されるため、Phase 4 抽出まで CycleContext に
-    含めず next_side のみとする。
+    332# Phase 4: balance_forced 等を復活 — 抽出メソッド間の
+    受渡しに実際に使用される (331# 時点ではインライン変数だったため除外)。
     """
 
     next_side: str = ""
+    #: 残高不足で反対 side に強制切替されたか
+    balance_forced: bool = False
+    #: balance_forced + rescue_enabled → rescue モード
+    is_rescue: bool = False
+    #: 片方のみ残高あり → degraded one-sided 実行
+    one_sided_balance: bool = False
+    #: 269# Inventory Escape: per-side halt 貫通モード
+    inventory_escape: bool = False
+    #: レジームベースの lot 倍率 (preflight-lot alignment 用)
+    regime_mult: float = 1.0
 
 
 class OrchestratorPreCycleMixin:
@@ -568,3 +577,85 @@ class OrchestratorPreCycleMixin:
         ctx.next_side = alt_side
         self._time_filter.on_exit()
         return False
+
+    # ------------------------------------------------------------------
+    # 332# Phase 4: Alert mode チェック
+    # ------------------------------------------------------------------
+    async def _check_alert_mode(self, st: RunSessionState) -> bool:
+        """215# P0-C: alert_mode.json オペレータ緊急介入チェック.
+
+        332# extract from run_continuous.
+        halt 時はスキップ→ True (continue)。
+        非 halt 時は offset/lot/interval mult をインスタンス変数に保存→ False。
+        """
+        from scripts.v460.lib.alert_mode import load_alert_mode
+
+        _alert = load_alert_mode(self._results_dir)
+        if _alert.halt:
+            await self._execute_skip(
+                st, side="none", cancel_reason=CR.OPERATOR_HALT,
+                heartbeat=True, multiplier=self.config.halt_sleep_multiplier,
+            )
+            return True
+        # 非 halt オーバーライド → fill_cycle_executor から参照
+        self._alert_offset_mult = _alert.offset_mult
+        self._alert_lot_mult = _alert.lot_mult
+        self._alert_interval_mult = _alert.interval_mult
+        return False
+
+    # ------------------------------------------------------------------
+    # 332# Phase 4: CycleContext 初期化 + pre-execution セットアップ
+    # ------------------------------------------------------------------
+    def _prepare_cycle_context(self) -> CycleContext:
+        """332# extract: tick_side_halt + toxic_veto + ctx + regime observability.
+
+        run_continuous の while ループで CycleContext を構築する前の
+        共通セットアップを一元化。
+        """
+        # 205# §9.5: 片側 DD Halt のサイクルカウンタ更新
+        self._daily_drawdown_guard.tick_side_halt()
+
+        # 205# §9.2: Toxic Fill 同一サイド拒否 — 初期化のみ
+        if self._toxic_veto is None:
+            self._toxic_veto = {}
+
+        ctx = CycleContext(
+            next_side=self._next_side(),
+            regime_mult=self._regime_lot_multiplier(),
+        )
+
+        # 310# D: None regime observability (307# F5)
+        self._total_regime_cycle_count += 1
+        if self._current_regime_value() == "none":
+            self._none_regime_cycle_count += 1
+
+        return ctx
+
+    # ------------------------------------------------------------------
+    # 332# Phase 4: Regime detector fallback price update
+    # ------------------------------------------------------------------
+    def _update_regime_fallback(self) -> None:
+        """158# §20-A: skip パスでも regime 遷移保証.
+
+        332# extract from run_continuous.
+        regime_detector に fallback price を投入し、遷移を検出する。
+        """
+        if self._regime_detector is None:
+            return
+        _fb_price, _fb_time = self._maker_price.get_fallback_price()
+        if _fb_price is None:
+            return
+        _pre_regime = self._regime_detector.current_regime
+        _regime_result = self._regime_detector.update(
+            time.time(), _fb_price,
+        )
+        # 182# confidence キャッシュ (Trend Mode 厳格化)
+        if self._cycle_strategy is not None:
+            self._cycle_strategy.update_confidence(_regime_result.confidence)
+        if _regime_result.regime != _pre_regime:
+            logger.info(
+                f"[158# §20-A] Regime transition in main loop: "
+                f"{_pre_regime.value} → {_regime_result.regime.value} "
+                f"(stability={_regime_result.stability}, "
+                f"trend_pct={_regime_result.trend_pct:.4f})"
+            )

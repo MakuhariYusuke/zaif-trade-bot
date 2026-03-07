@@ -4061,3 +4061,37 @@ python scripts/unified_trainer.py \
 ### Notes
 - `tests/unit/v460/test_stopgap_health.py` + `tests/unit/v460/test_255_getattr_bare_except_cleanup.py` completed in `65 passed in 0.94s`.
 - The latest filtered broad rerun completed at `4060 passed, 1 deselected, 15 warnings in 31.01s`; top remaining costs are concentrated in real-data enrichment setup, retrain hot-reload E2E/balance-forced paths, config hot-reload field updates, and a handful of structural/regime integration tests.
+
+## 2026-03-08
+
+### Changed
+- Extracted pure SkipGate feature-name/vector helpers into [scripts/v460/ml/skip_gate_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/skip_gate_features.py) and updated [skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/skip_gate.py) to reuse them, so feature migration tests no longer need to import the full sklearn-heavy SkipGate stack just to validate name mapping and vector packing.
+- Added exact fast-paths to [ztb/metrics/gate_checks.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/gate_checks.py) for identical / trivially dominant Cliff's Delta inputs, and added a single-file fast-path to [ztb/metrics/fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py)::`iter_fill_records_glob()` to avoid unnecessary cross-file dedup scaffolding on the common one-file path.
+- Reduced heavy runner/config setup in [test_102_structural_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_102_structural_fixes.py) by routing the `FillTestRunner` initialization checks through a helper with `enable_regime=False`, keeping the assertions on soft-cap / balance state while dropping unnecessary detector boot.
+- Converted wrapper-only loader tests in [test_gate_judgment.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_gate_judgment.py) and [test_stopgap_health.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_stopgap_health.py) to patch their delegated loaders instead of exercising lower-level JSONL I/O a second time.
+- Updated the remaining split-layout source-inspection tests to read the current orchestrator modules (`orchestrator_balance.py`, `orchestrator_mid_cycle.py`, `orchestrator_pre_cycle.py`, `orchestrator_guards.py`) via the shared cached helpers in [tests/unit/v460/_fill_test_source.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_fill_test_source.py), including:
+  - [test_158_regime_deadlock_fix.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_158_regime_deadlock_fix.py)
+  - [test_166_remaining_tasks.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_166_remaining_tasks.py)
+  - [test_196_velocity_proportional_trending_soft.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_196_velocity_proportional_trending_soft.py)
+  - [test_197_boost_optimization_gate_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_197_boost_optimization_gate_integration.py)
+  - [test_226_loss_boost_decay_inv_skew_state.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py)
+  - [test_227_ranging_obi_velocity_ema_import_fix.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_227_ranging_obi_velocity_ema_import_fix.py)
+  - [test_229_cleanup_counter_rename.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_229_cleanup_counter_rename.py)
+  - [test_240_toxicity_budget.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_240_toxicity_budget.py)
+  - [test_275_dry_separation_and_theory.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_275_dry_separation_and_theory.py)
+  - [test_276_blocking_policy_dry.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_276_blocking_policy_dry.py)
+  - [test_281_deadlock_fix.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_281_deadlock_fix.py)
+  - [test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py)
+  - [test_fill_test_config.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_test_config.py)
+
+### Verified
+- `python -m pytest tests/unit/v460/test_102_structural_fixes.py tests/unit/v460/test_215_dd_fix_alert_mode.py tests/unit/v460/test_gate_judgment.py tests/unit/v460/test_stopgap_health.py tests/unit/v460/test_197_boost_optimization_gate_integration.py tests/unit/v460/test_v460_core.py -q --no-cov --tb=short --durations=30`
+- `python -m pytest tests/unit/v460/test_158_regime_deadlock_fix.py tests/unit/v460/test_166_remaining_tasks.py tests/unit/v460/test_197_boost_optimization_gate_integration.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_196_velocity_proportional_trending_soft.py tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py tests/unit/v460/test_227_ranging_obi_velocity_ema_import_fix.py tests/unit/v460/test_229_cleanup_counter_rename.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_240_toxicity_budget.py tests/unit/v460/test_275_dry_separation_and_theory.py tests/unit/v460/test_276_blocking_policy_dry.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_281_deadlock_fix.py tests/unit/v460/test_fill_quality.py::Test051BalanceAutoShrink tests/unit/v460/test_fill_test_config.py::TestSideOverride -q --no-cov --tb=short --durations=15`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- The filtered broad rerun completed at `4060 passed, 1 deselected, 15 warnings in 36.17s` after the split-layout fixes were brought back into sync with the current orchestrator module layout.
+- The remaining top costs are now dominated by real-data integration and true persistence paths rather than import/source-inspection churn: `test_enricher_skip_gate.py` real-data setup, `test_fill_quality.py` fill-record I/O, `test_retrain_hot_reload.py` E2E reload, and a small number of parquet / hash / ML integration cases.

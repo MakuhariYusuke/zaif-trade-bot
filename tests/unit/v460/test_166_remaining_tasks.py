@@ -19,6 +19,8 @@ import numpy as np
 import pandas as pd
 import pytest
 from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
+from tests.unit.v460._fill_test_source import read_fill_test_runner_source
+from tests.unit.v460._fill_test_source import ORCHESTRATOR_MID_CYCLE, read_source_text
 
 
 class _SetOutputRecorder:
@@ -169,16 +171,17 @@ class TestDeadlockSideAlternation:
 
         276# DRY: _execute_skip(update_last_side=True) 経由に移行。
         """
-        code = Path("scripts/v460/lib/fill_loop_orchestrator.py").read_text(
-            encoding="utf-8"
-        )
+        code = read_source_text(ORCHESTRATOR_MID_CYCLE)
         # 194# 統合ゲート: gate_result.blocked → _execute_skip(update_last_side=True)
         assert '_gate_result.blocked' in code
         idx = code.index('_gate_result.blocked')
-        nearby = code[idx:idx + 1500]
+        nearby = code[idx:idx + 2500]
         # 276#: _execute_skip 内で update_last_side=True が _last_side 更新を担う
         has_direct = 'self._last_side = next_side' in nearby
-        has_via_helper = 'update_last_side=True' in nearby
+        has_via_helper = (
+            '_handle_gate_block(st, ctx, _gate_result)' in nearby
+            and 'update_last_side=True' in nearby
+        )
         assert has_direct or has_via_helper, (
             "unified gate blocked path missing _last_side update "
             "(either direct or via _execute_skip(update_last_side=True))"

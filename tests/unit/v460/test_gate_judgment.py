@@ -11,6 +11,7 @@ import json
 import tempfile
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -330,16 +331,24 @@ class TestLoadAllRecords:
     def test_empty_directory(self) -> None:
         """空ディレクトリでは空リスト返却."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            records = _load_all_records(Path(tmpdir))
+            with patch(
+                "scripts.v460.gate_judgment.load_fill_records_glob",
+                return_value=[],
+            ) as mocked_loader:
+                records = _load_all_records(Path(tmpdir))
+            mocked_loader.assert_called_once_with(Path(tmpdir), include_emergency=False)
             assert records == []
 
     def test_load_single_file(self) -> None:
         """JSONL 1 ファイルからの読み込み."""
         with tempfile.TemporaryDirectory() as tmpdir:
             recs = _make_records_mixed(n_filled=10, n_cancelled=2, days=1)
-            _write_records_jsonl(Path(tmpdir) / "fill_records_20260220.jsonl", recs)
-
-            loaded = _load_all_records(Path(tmpdir))
+            with patch(
+                "scripts.v460.gate_judgment.load_fill_records_glob",
+                return_value=recs,
+            ) as mocked_loader:
+                loaded = _load_all_records(Path(tmpdir))
+            mocked_loader.assert_called_once_with(Path(tmpdir), include_emergency=False)
             assert len(loaded) == len(recs)
 
     def test_load_multiple_files(self) -> None:
@@ -350,10 +359,12 @@ class TestLoadAllRecords:
                 replace(record, cycle_id=f"alt_{record.cycle_id}")
                 for record in _make_records_mixed(n_filled=5, n_cancelled=1, days=1)
             ]
-            _write_records_jsonl(Path(tmpdir) / "fill_records_20260220.jsonl", recs1)
-            _write_records_jsonl(Path(tmpdir) / "fill_records_20260221.jsonl", recs2)
-
-            loaded = _load_all_records(Path(tmpdir))
+            with patch(
+                "scripts.v460.gate_judgment.load_fill_records_glob",
+                return_value=recs1 + recs2,
+            ) as mocked_loader:
+                loaded = _load_all_records(Path(tmpdir))
+            mocked_loader.assert_called_once_with(Path(tmpdir), include_emergency=False)
             assert len(loaded) == len(recs1) + len(recs2)
 
 

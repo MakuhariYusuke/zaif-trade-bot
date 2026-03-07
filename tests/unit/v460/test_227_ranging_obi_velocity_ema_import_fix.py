@@ -9,6 +9,7 @@ M1: Config validation (loss_boost_decay_tau_sec, ranging_obi_*, velocity_ema_alp
 
 from __future__ import annotations
 
+import inspect
 import math
 import time
 from collections import deque
@@ -308,8 +309,8 @@ class TestImportOptimization:
         assert hasattr(mp_mod, 'math')
 
     def test_orchestrator_has_datetime_at_module_level(self):
-        """fill_loop_orchestrator に datetime が file-level import されている。"""
-        import scripts.v460.lib.fill_loop_orchestrator as orch_mod
+        """orchestrator_lifecycle に datetime/timezone が file-level import されている。"""
+        import scripts.v460.lib.orchestrator_lifecycle as orch_mod
         assert hasattr(orch_mod, 'datetime')
         assert hasattr(orch_mod, 'timezone')
 
@@ -330,9 +331,10 @@ class TestImportOptimization:
         assert hasattr(pre_mod, 'SADLevel')
 
     def test_orchestrator_has_load_alert_mode_at_module_level(self):
-        """fill_loop_orchestrator に load_alert_mode が file-level import されている。"""
-        import scripts.v460.lib.fill_loop_orchestrator as orch_mod
-        assert hasattr(orch_mod, 'load_alert_mode')
+        """orchestrator_pre_cycle が alert_mode 経路を保持している。"""
+        import scripts.v460.lib.orchestrator_pre_cycle as pre_mod
+        source = inspect.getsource(pre_mod)
+        assert 'load_alert_mode' in source
 
 
 # ===========================================================================

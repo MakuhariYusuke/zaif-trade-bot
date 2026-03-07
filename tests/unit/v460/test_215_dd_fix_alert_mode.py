@@ -7,10 +7,20 @@ import os
 import tempfile
 from pathlib import Path
 
+import numpy as np
 import pytest
 
+import scripts.v460.lib.alert_mode as alert_mode_module
 from scripts.v460.lib.alert_mode import AlertModeOverride, load_alert_mode
 from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
+from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+from scripts.v460.lib.resilience import FillTestState, FillTestStatePersistence
+from scripts.v460.ml.skip_gate_features import (
+    build_skip_gate_feature_index,
+    build_skip_gate_feature_vector,
+    migrate_skip_gate_feature_cols,
+)
+from ztb.metrics.fill_quality import FillRecord
 
 
 # ======================================================================
@@ -132,8 +142,7 @@ class TestAlertMode:
     def setup_method(self) -> None:
         self._tmpdir = tempfile.mkdtemp()
         # Reset module-level cache
-        import scripts.v460.lib.alert_mode as am
-        am._last_logged_state = None
+        alert_mode_module._last_logged_state = None
 
     def teardown_method(self) -> None:
         import shutil
@@ -177,8 +186,7 @@ class TestAlertMode:
         assert result.lot_mult == 1.0
         path.write_text(json.dumps({"lot_mult": 0.001}))
         # Reset cache
-        import scripts.v460.lib.alert_mode as am
-        am._last_logged_state = None
+        alert_mode_module._last_logged_state = None
         result = load_alert_mode(self._tmpdir)
         assert result.lot_mult == 0.01
 
@@ -246,12 +254,10 @@ class TestGuardFireCountsPersistence:
     """216# E: guard_fire_counts の FillTestState round-trip."""
 
     def test_field_default(self) -> None:
-        from scripts.v460.lib.resilience import FillTestState
         s = FillTestState()
         assert s.guard_fire_counts is None
 
     def test_round_trip(self) -> None:
-        from scripts.v460.lib.resilience import FillTestState, FillTestStatePersistence
         with tempfile.TemporaryDirectory() as td:
             p = FillTestStatePersistence(Path(td))
             counts = {"dd_halt": 3, "toxic_veto_set": 1, "hard_skip_utc": 7}
@@ -263,8 +269,6 @@ class TestGuardFireCountsPersistence:
 
     def test_inc_guard_fire_helper(self) -> None:
         """_inc_guard_fire がカウンタを正しくインクリメントする."""
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-
         class Stub(FillLoopOrchestratorMixin):
             pass
 
@@ -289,30 +293,28 @@ class Test217SkipGateFeatureMigration:
 
     def test_old_feature_name_migrated(self) -> None:
         """price_velocity_60s → price_velocity_bps に自動変換される."""
-        from scripts.v460.ml.skip_gate import SkipGate
-
         old_cols = ["spread_jpy", "price_velocity_60s", "vpin_60s"]
-        gate = SkipGate(model=None, scaler=None, feature_cols=old_cols)
-        assert gate.feature_cols == ["spread_jpy", "price_velocity_bps", "vpin_60s"]
-        assert "price_velocity_bps" in gate._feature_index
-        assert "price_velocity_60s" not in gate._feature_index
+        migrated = migrate_skip_gate_feature_cols(old_cols)
+        feature_index = build_skip_gate_feature_index(migrated)
+        assert migrated == ["spread_jpy", "price_velocity_bps", "vpin_60s"]
+        assert "price_velocity_bps" in feature_index
+        assert "price_velocity_60s" not in feature_index
 
     def test_new_feature_name_unchanged(self) -> None:
         """既にリネーム済みの名前はそのまま."""
-        from scripts.v460.ml.skip_gate import SkipGate
-
         new_cols = ["spread_jpy", "price_velocity_bps", "vpin_60s"]
-        gate = SkipGate(model=None, scaler=None, feature_cols=new_cols)
-        assert gate.feature_cols == new_cols
+        assert migrate_skip_gate_feature_cols(new_cols) == new_cols
 
     def test_migrated_model_accepts_new_feature_key(self) -> None:
         """旧モデルでも price_velocity_bps キーで正しくマッチする."""
-        from scripts.v460.ml.skip_gate import SkipGate
-        import numpy as np
-
         old_cols = ["spread_jpy", "price_velocity_60s", "vpin_60s"]
-        gate = SkipGate(model=None, scaler=None, feature_cols=old_cols)
-        vec, n_used = gate._build_feature_vector({"price_velocity_bps": 5.0})
+        migrated = migrate_skip_gate_feature_cols(old_cols)
+        feature_index = build_skip_gate_feature_index(migrated)
+        vec, n_used = build_skip_gate_feature_vector(
+            migrated,
+            feature_index,
+            {"price_velocity_bps": 5.0},
+        )
         assert n_used == 1
         assert vec[1] == 5.0  # index 1 = price_velocity_bps (migrated)
         assert np.isnan(vec[0])  # spread_jpy not provided
@@ -328,8 +330,6 @@ class Test217FillRecordFieldAlias:
 
     def test_old_field_name_mapped(self) -> None:
         """price_velocity_60s → price_velocity_bps に自動変換."""
-        from ztb.metrics.fill_quality import FillRecord
-
         data = {
             "cycle_id": "test",
             "timestamp": 1772400000.0,
@@ -343,8 +343,6 @@ class Test217FillRecordFieldAlias:
 
     def test_new_field_name_preferred(self) -> None:
         """両方存在する場合は新名優先、旧名は無視."""
-        from ztb.metrics.fill_quality import FillRecord
-
         data = {
             "cycle_id": "test",
             "timestamp": 1772400000.0,
@@ -367,8 +365,7 @@ class TestAlertModeInvalidValues217:
     """217# alert_mode.json の不正値が fail-safe でデフォルトに戻る."""
 
     def setup_method(self) -> None:
-        import scripts.v460.lib.alert_mode as _am
-        _am._last_logged_state = None
+        alert_mode_module._last_logged_state = None
         self._tmpdir = tempfile.mkdtemp()
 
     def test_invalid_float_returns_inactive(self) -> None:

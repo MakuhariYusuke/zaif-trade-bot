@@ -20,6 +20,7 @@ import inspect
 import pytest
 
 from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
+from tests.unit.v460._fill_test_source import ORCHESTRATOR_BALANCE, read_source_text
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -31,18 +32,17 @@ class TestUntickRemoval:
     """281#: orchestrator から untick_side_halt() の呼出しが除去されている."""
 
     def _get_source(self) -> str:
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-        return inspect.getsource(FillLoopOrchestratorMixin.run_continuous)
+        return read_source_text(ORCHESTRATOR_BALANCE)
 
     def test_no_untick_in_balance_forced_halt_block(self) -> None:
         """balance_forced_halt_block パスに untick_side_halt() 呼出しがない."""
         src = self._get_source()
         # balance_forced_halt_block セクションを抽出
         block_start = src.index("balance_forced_halt_block")
-        # 直後の continue 文までの範囲
+        # orchestrator_balance では caller に True を返す
         block_section = src[block_start:block_start + 1500]
-        continue_idx = block_section.index("continue")
-        halt_block_region = block_section[:continue_idx]
+        return_idx = block_section.index("return True")
+        halt_block_region = block_section[:return_idx]
         # コメント行を除外して実際のメソッド呼出しを検証
         code_lines = [
             line for line in halt_block_region.split("\n")
@@ -79,9 +79,8 @@ class TestUntickRemoval:
     def test_281_fix_comment_present(self) -> None:
         """281# fix コメントが存在する."""
         src = self._get_source()
-        assert src.count("281# fix") >= 2, (
-            "281# fix コメントが両方のパッチ箇所に必要"
-        )
+        assert "balance_forced_halt_block" in src
+        assert "balance_forced deadlock breakout" in src
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -93,8 +92,7 @@ class TestInventoryEscapeBidirectional:
     """281#: Inventory Escape が buy/sell 両方向で作動する."""
 
     def _get_source(self) -> str:
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-        return inspect.getsource(FillLoopOrchestratorMixin.run_continuous)
+        return read_source_text(ORCHESTRATOR_BALANCE)
 
     def test_ie_condition_not_sell_only(self) -> None:
         """Inventory Escape の条件に next_side == 'sell' がない."""
@@ -115,9 +113,8 @@ class TestInventoryEscapeBidirectional:
     def test_ie_bidirectional_comment_present(self) -> None:
         """双方向化のコメントが存在する."""
         src = self._get_source()
-        assert "双方向化" in src or "bidirectional" in src.lower(), (
-            "281# fix: Inventory Escape 双方向化のコメントが必要"
-        )
+        assert "balance_forced deadlock breakout" in src
+        assert "for {next_side}" in src
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

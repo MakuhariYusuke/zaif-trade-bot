@@ -20,6 +20,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from tests.unit.v460._fill_test_source import read_fill_test_runner_source
 
 
 # =====================================================================
@@ -71,14 +72,7 @@ class TestSkipCeremonyMigration:
 
     @pytest.fixture(autouse=True)
     def _setup(self) -> None:
-        # 330#: pre_cycle 抽出分も含めて検証
-        src1 = Path(
-            "scripts/v460/lib/fill_loop_orchestrator.py"
-        ).read_text(encoding="utf-8")
-        src2 = Path(
-            "scripts/v460/lib/orchestrator_pre_cycle.py"
-        ).read_text(encoding="utf-8")
-        self.src = src1 + "\n" + src2
+        self.src = read_fill_test_runner_source()
 
     def test_execute_skip_call_count(self) -> None:
         """_execute_skip 呼出が 14 箇所以上存在する."""
@@ -165,14 +159,9 @@ class TestHaltMultiplierConfigified:
 
     @pytest.fixture(autouse=True)
     def _setup(self) -> None:
-        # 330#: pre_cycle 抽出分も含めて検証
-        src1 = Path(
-            "scripts/v460/lib/fill_loop_orchestrator.py"
-        ).read_text(encoding="utf-8")
-        src2 = Path(
-            "scripts/v460/lib/orchestrator_pre_cycle.py"
-        ).read_text(encoding="utf-8")
-        self.src = src1 + "\n" + src2
+        # 332# Phase 4: mixin 分割により全ソースを連結して検証
+        from tests.unit.v460._fill_test_source import read_fill_test_runner_source  # 332# Phase 4
+        self.src = read_fill_test_runner_source()  # 332# Phase 4
 
     def test_no_hardcoded_multiplier_5(self) -> None:
         """run_continuous 内で multiplier=5.0 が残っていないこと.
@@ -371,25 +360,26 @@ class TestGateBlockLastSideUpdate:
 
     @pytest.fixture(autouse=True)
     def _setup(self) -> None:
-        self.src = Path(
-            "scripts/v460/lib/fill_loop_orchestrator.py"
-        ).read_text(encoding="utf-8")
+        self.src = read_fill_test_runner_source()
 
     def test_gate_block_has_update_last_side(self) -> None:
         """gate_result.blocked パスに update_last_side=True がある."""
         idx = self.src.find("_gate_result.blocked")
         assert idx >= 0
-        nearby = self.src[idx:idx + 1500]
+        nearby = self.src[idx:idx + 2500]
         has_direct = "self._last_side = next_side" in nearby
-        has_via_helper = "update_last_side=True" in nearby
+        has_via_helper = (
+            "_handle_gate_block(st, ctx, _gate_result)" in nearby
+            and "update_last_side=True" in nearby
+        )
         assert has_direct or has_via_helper, (
             "gate_result.blocked path missing _last_side update"
         )
 
     def test_gate_block_sleep_false(self) -> None:
         """gate_block の _execute_skip は sleep=False（別途 quiescence 処理）."""
-        idx = self.src.find("_gate_result.cancel_reason")
+        idx = self.src.find("gate_result.cancel_reason")
         assert idx >= 0
-        nearby = self.src[max(0, idx - 300):idx + 500]
+        nearby = self.src[max(0, idx - 600):idx + 800]
         assert "_execute_skip" in nearby, "gate_block path should use _execute_skip"
         assert "sleep=False" in nearby, "gate_block _execute_skip should have sleep=False"

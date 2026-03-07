@@ -1704,3 +1704,62 @@
 1. `test_v460_core.py::TestCliffsD::test_no_dominance` の計算条件を保ったままサンプル/実装経路を見直す
 2. `test_102_structural_fixes.py` と `test_215_dd_fix_alert_mode.py` の runtime 初期化/実データ依存を stub 化できるか詰める
 3. loader/source-inspection 上位（`test_stopgap_health.py`, `test_gate_judgment.py`, `test_197_boost_optimization_gate_integration.py`）を cached read へ寄せる余地を洗う
+
+---
+
+## 2026-03-08 / Session 037-040
+
+### 実施
+- production
+  - `scripts/v460/ml/skip_gate_features.py` を新設し、SkipGate の feature name migration / feature index / dense vector 生成を pure helper に分離
+  - `scripts/v460/ml/skip_gate.py` は上記 helper を再利用する形へ整理
+  - `ztb/metrics/gate_checks.py`
+    - `cliffs_delta()` に identical / strict-dominance の exact fast-path を追加
+  - `ztb/metrics/fill_quality.py`
+    - `iter_fill_records_glob()` に single-file fast-path を追加
+- テスト負荷軽減
+  - `test_102_structural_fixes.py`
+    - `FillTestRunner` 初期化 helper を導入し、`enable_regime=False` の最小 config へ整理
+  - `test_215_dd_fix_alert_mode.py`
+    - SkipGate 本体 import を避け、pure helper ベースの feature migration 検証へ整理
+  - `test_gate_judgment.py` / `test_stopgap_health.py`
+    - wrapper-only loader テストを patch ベースへ変更し、重複 JSONL I/O を除去
+- split-layout 追随
+  - `tests/unit/v460/_fill_test_source.py` に orchestrator split file 定数を追加
+  - `test_158`, `166`, `196`, `197`, `226`, `227`, `229`, `240`, `275`, `276`, `281`, `test_fill_quality.py`, `test_fill_test_config.py`
+    - `fill_loop_orchestrator.py` 直参照を `orchestrator_balance.py` / `orchestrator_mid_cycle.py` / `orchestrator_pre_cycle.py` / `orchestrator_guards.py` の現行責務へ追随
+
+### 結果
+- 対象回帰 1:
+  - `test_102_structural_fixes.py` + `test_215_dd_fix_alert_mode.py` + `test_gate_judgment.py` + `test_stopgap_health.py` + `test_197_boost_optimization_gate_integration.py` + `test_v460_core.py`
+  - `216 passed, 1 warning in 6.91s`
+- 対象回帰 2:
+  - `test_158_regime_deadlock_fix.py` + `test_166_remaining_tasks.py` + `test_197_boost_optimization_gate_integration.py`
+  - `79 passed in 5.01s`
+- 対象回帰 3:
+  - `test_240_toxicity_budget.py` + `test_275_dry_separation_and_theory.py` + `test_276_blocking_policy_dry.py`
+  - `119 passed in 1.44s`
+- 最終 broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` と `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - `4060 passed, 1 deselected, 15 warnings in 36.17s`
+
+### 主要改善
+- `test_102_structural_fixes.py::TestSoftLossCapResume::test_soft_cap_snapshot_set_on_init`
+  - focused file `1.53s -> 0.12s` まで低下
+- `test_215_dd_fix_alert_mode.py::Test217SkipGateFeatureMigration`
+  - sklearn-heavy `SkipGate` import 依存を外し、feature migration 検証を pure helper に縮退
+- broad 中断の主因だった source-inspection 追随漏れを解消
+  - 79%/83%/97% 付近で止まっていた split-layout mismatch 群が現在の orchestrator 分割へ揃った
+
+### 補足
+- このバッチ中に broad を複数回流し、split-layout mismatch を段階的に追随した。
+- 現在の filtered broad 上位は以下に再集中している:
+  - `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup
+  - `test_fill_quality.py::TestFillRecordIO::*`
+  - `test_retrain_hot_reload.py::TestE2ERetrainHotReload::test_retrain_deploy_and_hot_reload`
+  - `test_v460_core.py::TestG0HashPrefix::*`
+
+### 次アクション
+1. `test_enricher_skip_gate.py` の real-data setup を fixture snapshot 化でさらに落とす
+2. `test_fill_quality.py::TestFillRecordIO` の real file/glob path を切り分け、pure loader contract と persistence を分離する
+3. `test_v460_core.py::TestG0HashPrefix::*` と `test_retrain_hot_reload.py` の上位 call を継続圧縮する

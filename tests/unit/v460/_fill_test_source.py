@@ -26,6 +26,8 @@ _FILL_TEST_RUNNER_SOURCES: list[Path] = [
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_lifecycle.py",
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_post_cycle.py",
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_pre_cycle.py",
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_balance.py",      # 332#
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_mid_cycle.py",    # 332#
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_loop_orchestrator.py",
 ]
 
@@ -53,6 +55,15 @@ ORCHESTRATOR_LIFECYCLE = (
 )
 ORCHESTRATOR_POST_CYCLE = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_post_cycle.py"
+)
+ORCHESTRATOR_PRE_CYCLE = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_pre_cycle.py"
+)
+ORCHESTRATOR_MID_CYCLE = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_mid_cycle.py"
+)
+ORCHESTRATOR_BALANCE = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_balance.py"
 )
 FILL_TEST_RUNNER_MAIN = (
     _PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py"

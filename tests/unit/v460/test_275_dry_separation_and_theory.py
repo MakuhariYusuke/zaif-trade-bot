@@ -21,10 +21,9 @@ import scripts.v460.lib.side_selector as side_selector_mod
 import scripts.v460.lib.spread_anomaly_detector as spread_anomaly_detector_mod
 import scripts.v460.lib.velocity_math as velocity_math_mod
 from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+from tests.unit.v460._fill_test_source import ORCHESTRATOR_MID_CYCLE, read_source_text
 
-_FILL_LOOP_ORCHESTRATOR_SOURCE = Path(
-    inspect.getsourcefile(FillLoopOrchestratorMixin) or "",
-).read_text(encoding="utf-8")
+_FILL_LOOP_ORCHESTRATOR_SOURCE = read_source_text(ORCHESTRATOR_MID_CYCLE)
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

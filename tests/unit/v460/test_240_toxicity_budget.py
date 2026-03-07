@@ -14,6 +14,7 @@ import textwrap
 from pathlib import Path
 
 import pytest
+from tests.unit.v460._fill_test_source import ORCHESTRATOR_MID_CYCLE, read_source_text
 
 from ztb.risk.sell_dynamic_kill import (
     BuyDynamicKillManager,
@@ -29,6 +30,7 @@ _FILL_LOOP_ORCHESTRATOR_SOURCE = Path(
 _FILL_CYCLE_EXECUTOR_SOURCE = Path(
     "scripts/v460/lib/fill_cycle_executor.py",
 ).read_text(encoding="utf-8")
+_ORCHESTRATOR_MID_CYCLE_SOURCE = read_source_text(ORCHESTRATOR_MID_CYCLE)
 
 
 # ═══════════════════════════════════════════════════════
@@ -566,19 +568,19 @@ class TestOrchestratorToxicityAssess:
 
     def test_toxicity_passed_to_gate_evaluate(self) -> None:
         """gate_aggregator.evaluate() に buy_toxicity/sell_toxicity を渡している."""
-        src = _FILL_LOOP_ORCHESTRATOR_SOURCE
+        src = _ORCHESTRATOR_MID_CYCLE_SOURCE
         assert "buy_toxicity=" in src
         assert "sell_toxicity=" in src
 
     def test_participation_skip_in_orchestrator(self) -> None:
         """participation_rate による確率的スキップロジックが存在."""
-        src = _FILL_LOOP_ORCHESTRATOR_SOURCE
+        src = _ORCHESTRATOR_MID_CYCLE_SOURCE
         assert "participation_rate" in src
         assert "toxicity_participation_skip" in src
 
     def test_evaluation_order_toxicity_before_check_kill(self) -> None:
         """241# C-2 fix: assess_toxicity が check_kill より先に評価される."""
-        src = _FILL_LOOP_ORCHESTRATOR_SOURCE
+        src = _ORCHESTRATOR_MID_CYCLE_SOURCE
         # _assess_buy_toxicity() の呼び出しが _is_side_killed("buy") の前にある
         tox_pos = src.find("_assess_buy_toxicity()")
         # 275# DRY: _is_buy_killed() → _is_side_killed("buy") に統一

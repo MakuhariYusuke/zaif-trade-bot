@@ -29,6 +29,22 @@ def cliffs_delta(x: list[float], y: list[float]) -> float:
     n1, n2 = len(x), len(y)
     if n1 == 0 or n2 == 0:
         return 0.0
+    if x is y or x == y:
+        return 0.0
+    if n1 == n2 == 1:
+        if x[0] > y[0]:
+            return 1.0
+        if x[0] < y[0]:
+            return -1.0
+        return 0.0
+    x_min = min(x)
+    x_max = max(x)
+    y_min = min(y)
+    y_max = max(y)
+    if x_min > y_max:
+        return 1.0
+    if y_min > x_max:
+        return -1.0
     # Mann-Whitney U gives count of x[i] > y[j] pairs (+ 0.5 for ties)
     # Cliff's delta = 2U / (n1*n2) - 1
     u_stat, _ = mannwhitneyu(x, y, alternative="two-sided")

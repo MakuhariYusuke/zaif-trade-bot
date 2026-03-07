@@ -26,6 +26,7 @@ from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
 from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from scripts.v460.run_fill_test import FillTestRunner
+from tests.unit.v460._fill_test_source import ORCHESTRATOR_MID_CYCLE, read_source_text
 
 
 def _make_config(**overrides):
@@ -590,5 +591,5 @@ class TestDesignConsistency196:
 
     def test_orchestrator_passes_trending_offset(self):
         """orchestrator が trending_offset_mult を run_single_cycle に渡すこと."""
-        source = inspect.getsource(FillLoopOrchestratorMixin.run_continuous)
+        source = read_source_text(ORCHESTRATOR_MID_CYCLE)
         assert "trending_offset_mult" in source

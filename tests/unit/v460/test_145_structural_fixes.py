@@ -31,6 +31,7 @@ from tests.unit.v460._fill_test_source import (
     FILL_LOOP_ORCHESTRATOR,
     FILL_RECORD_BUILDER,
     ORCHESTRATOR_LIFECYCLE,
+    read_fill_test_runner_source,
     read_source_text,
 )
 from ztb.metrics import fill_quality
@@ -621,9 +622,9 @@ class TestCheckBalanceAcceptsRegimeMult:
 
     def test_run_continuous_passes_regime_mult(self) -> None:
         """run_continuous 内で regime_mult= が preflight に渡されていることを確認."""
-        source = read_source_text(FILL_LOOP_ORCHESTRATOR)
+        source = read_fill_test_runner_source()  # 332# Phase 4: pre_cycle Mixin に移管
         assert "_regime_lot_multiplier()" in source
-        assert "regime_mult=_regime_mult" in source
+        assert "regime_mult=" in source
 
 
 # ======================================================================

@@ -27,13 +27,25 @@ from scripts.v460.lib.regime_detector import (
     RegimeConfig,
 )
 from scripts.v460.run_fill_test import FillTestRunner
+from tests.unit.v460._fill_test_source import (
+    ORCHESTRATOR_MID_CYCLE,
+    ORCHESTRATOR_PRE_CYCLE,
+    read_fill_test_method_source,
+    read_fill_test_runner_source,
+    read_source_text,
+)
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 from ztb.utils.errors import NetworkError
 
-_RUN_CONTINUOUS_SOURCE = inspect.getsource(FillTestRunner.run_continuous)
-_RUN_SINGLE_CYCLE_SOURCE = inspect.getsource(FillTestRunner.run_single_cycle)
-_RUNNER_INIT_SOURCE = inspect.getsource(FillTestRunner.__init__)
+_RUN_CONTINUOUS_SOURCE = read_fill_test_runner_source()
+_RUN_SINGLE_CYCLE_SOURCE = read_fill_test_method_source("run_single_cycle")
+_RUNNER_INIT_SOURCE = read_fill_test_method_source("__init__")
 _CANCEL_ORDER_REAL_SOURCE = inspect.getsource(CoincheckAdapter._cancel_order_real)
+_PRE_CYCLE_SOURCE = read_source_text(ORCHESTRATOR_PRE_CYCLE)
+_MID_CYCLE_SOURCE = read_source_text(ORCHESTRATOR_MID_CYCLE)
+_CYCLE_GATE_AGGREGATOR_SOURCE = Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(
+    encoding="utf-8-sig"
+)
 
 
 # =====================================================================
@@ -46,8 +58,8 @@ class TestRegimeUpdateDuringSkip:
 
     def test_run_fill_test_has_regime_update_in_main_loop(self) -> None:
         """メインループ (run メソッド) に §20-A のレジーム更新コードが存在."""
-
-        source = _RUN_CONTINUOUS_SOURCE
+        # 332# Phase 4: mixin に移管
+        source = read_fill_test_runner_source()
         # §20-A: main loop regime update
         assert "§20-A" in source
         assert "_maker_price.get_fallback_price()" in source
@@ -59,7 +71,8 @@ class TestRegimeUpdateDuringSkip:
         194#: skip chain は CycleGateAggregator に集約。
         orchestrator 内で §20-A が _cycle_gate.evaluate() より前にあることを確認。
         """
-        source = _RUN_CONTINUOUS_SOURCE
+        # 332# Phase 4: mixin に移管 (pre_cycle → mid_cycle の順で連結)
+        source = read_fill_test_runner_source()
         idx_regime_update = source.find("§20-A")
         idx_gate_evaluate = source.find("_cycle_gate.evaluate(")
         idx_balance_forced = source.find("skip_balance_forced")
@@ -118,7 +131,7 @@ class TestRegimeUpdateLogging:
 
     def test_transition_log_format(self) -> None:
         """ソースに遷移ログフォーマットが含まれる."""
-        source = inspect.getsource(FillTestRunner.run_continuous)
+        source = read_fill_test_runner_source()  # 332# Phase 4: mixin に移管
         assert "Regime transition in main loop" in source
 
 
@@ -165,15 +178,15 @@ class TestMaxConsecutiveTrendingSellSkip:
 
     def test_safety_valve_code_in_run(self) -> None:
         """run メソッドに §20-B 安全弁ロジックが含まれる."""
-        source = _RUN_CONTINUOUS_SOURCE
+        source = _CYCLE_GATE_AGGREGATOR_SOURCE
         assert "§20-B" in source
         assert "safety valve" in source.lower() or "安全弁" in source
-        assert "_trending_sell_skip_count" in source
+        assert "trending_sell_skip_count" in source
         assert "max_consecutive_trending_sell_skip" in source
 
     def test_counter_reset_on_cycle_execution(self) -> None:
         """run_single_cycle 実行後に trending_sell_skip_count がリセットされるコードが存在."""
-        source = _RUN_CONTINUOUS_SOURCE
+        source = _MID_CYCLE_SOURCE
         # カウンタリセットが run_single_cycle 後に存在
         idx_run_single = source.rfind("run_single_cycle(")
         idx_reset = source.find("_trending_sell_skip_count = 0", idx_run_single)
@@ -182,7 +195,7 @@ class TestMaxConsecutiveTrendingSellSkip:
 
     def test_consecutive_log_format(self) -> None:
         """skip ログに consecutive カウント情報が含まれる."""
-        source = _RUN_CONTINUOUS_SOURCE
+        source = _MID_CYCLE_SOURCE
         assert "consecutive=" in source
 
 
@@ -308,7 +321,7 @@ class TestIntegrationConsistency:
 
     def test_all_skip_paths_covered_by_regime_update(self) -> None:
         """§20-A のレジーム更新がすべてのスキップパスの前に配置されている."""
-        source = _RUN_CONTINUOUS_SOURCE
+        source = read_fill_test_runner_source()  # 332# Phase 4
 
         # §20-A の位置
         idx_regime_update = source.find("§20-A")

@@ -37,6 +37,11 @@ from scripts.v460.lib.pnl_measurer import PnlMeasurer
 from scripts.v460.monitor_fill_test import _check_cumulative_loss, print_report, run_monitor
 from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
 from scripts.v460.run_gate_check import run_g1_1
+from tests.unit.v460._fill_test_source import (
+    ORCHESTRATOR_BALANCE,
+    read_fill_test_runner_source,
+    read_source_text,
+)
 from ztb.data.market_data_collector import MarketDataCollector
 from ztb.trading.live.exchanges.base.broker_interfaces import TradeRecord
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
@@ -2769,8 +2774,8 @@ class Test051BalanceAutoShrink:
         265# extract: loss_cap 処理は _process_post_cycle に分離。
         """
 
-        # balance_shrink は run_continuous 内 (guard chain)
-        rc_source = _source(FillTestRunner.run_continuous)
+        # 332# balance_forced/preflight は orchestrator_balance に抽出済み
+        rc_source = read_source_text(ORCHESTRATOR_BALANCE)
         assert "balance_shrink" in rc_source
         # 121# pre_shrink_lot は _process_post_cycle 内 (_balance_checker 経由)
         post_source = _source(FillTestRunner._process_post_cycle)
@@ -2907,7 +2912,7 @@ class Test052AdaptSellOffsetSync:
     def test_balance_shrink_uses_min_order_btc(self) -> None:
         """052# balance_shrink の最低ロットが min_order_btc を使用する (121# YAML 外部化)."""
 
-        source = _source(FillTestRunner.run_continuous)
+        source = read_source_text(ORCHESTRATOR_BALANCE)
         assert "min_order_btc" in source
 
 
@@ -3130,7 +3135,7 @@ class Test107TimeFilterDynamicGating:
     def test_batch_persistence_used_in_run_continuous(self) -> None:
         """119# run_continuous 内で BatchPersistence.maybe_flush が使用されている."""
 
-        source = _source(FillTestRunner.run_continuous)
+        source = read_fill_test_runner_source()
         assert "_batch_persistence.maybe_flush" in source
 
     def test_vpin_caching_in_code(self) -> None:

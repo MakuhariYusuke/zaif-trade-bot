@@ -19,6 +19,13 @@ from typing import Optional
 from unittest.mock import MagicMock
 
 import pytest
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.regime_detector import (
+    FillTestRegime,
+    FillTestRegimeDetector,
+    RegimeConfig,
+)
+from scripts.v460.run_fill_test import FillTestRunner
 
 from ztb.metrics.fill_quality import (
     FillRecord,
@@ -52,6 +59,14 @@ def _make_record(
         run_id="test_run",
         git_sha="abc123",
     )
+
+
+def _make_runner(*, order_quantity: float = 0.001) -> FillTestRunner:
+    config = FillTestConfig(
+        order_quantity=order_quantity,
+        enable_regime=False,
+    )
+    return FillTestRunner(MagicMock(), config)
 
 
 # =====================================================================
@@ -128,20 +143,12 @@ class TestSoftLossCapResume:
 
     def test_soft_cap_snapshot_set_on_init(self) -> None:
         """_soft_cap_jpy_snapshot が初期化される."""
-        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
-
-        config = FillTestConfig()
-        adapter = MagicMock()
-        runner = FillTestRunner(adapter, config)
+        runner = _make_runner()
         assert runner._soft_cap_jpy_snapshot is None  # run_continuous で設定
 
     def test_soft_loss_cap_triggered_starts_false(self) -> None:
         """初期状態は False."""
-        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
-
-        config = FillTestConfig()
-        adapter = MagicMock()
-        runner = FillTestRunner(adapter, config)
+        runner = _make_runner()
         assert runner._soft_loss_cap_triggered is False
 
 
@@ -155,11 +162,7 @@ class TestPreShrinkLotSync:
 
     def test_pre_shrink_lot_initialized(self) -> None:
         """_pre_shrink_lot が order_quantity で初期化される (121# BalanceChecker に委譲)."""
-        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
-
-        config = FillTestConfig(order_quantity=0.005)
-        adapter = MagicMock()
-        runner = FillTestRunner(adapter, config)
+        runner = _make_runner(order_quantity=0.005)
         assert runner._balance_checker.pre_shrink_lot == 0.005
 
 
@@ -173,11 +176,7 @@ class TestLotRestoration:
 
     def test_lot_shrink_preserves_pre_shrink(self) -> None:
         """ロット縮小時に _pre_shrink_lot に元のロットが保存される."""
-        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
-
-        config = FillTestConfig(order_quantity=0.005)
-        adapter = MagicMock()
-        runner = FillTestRunner(adapter, config)
+        runner = _make_runner(order_quantity=0.005)
 
         # balance_shrink_active でないとき、縮小前のロットが pre_shrink_lot に保存される
         runner._current_lot = 0.005
@@ -202,11 +201,6 @@ class TestRegimeWarmup:
 
     def test_warmup_feeds_prices(self) -> None:
         """warm-up で既存レコードの mid_at_fill が投入される."""
-        from scripts.v460.lib.regime_detector import (
-            FillTestRegimeDetector,
-            RegimeConfig,
-        )
-
         detector = FillTestRegimeDetector(RegimeConfig(window=5))
         assert detector.observation_count == 0
 
@@ -217,18 +211,12 @@ class TestRegimeWarmup:
 
         assert detector.observation_count == 5
         # unknown ではなくなっているはず
-        from scripts.v460.lib.regime_detector import FillTestRegime
         # window に到達したので判定可能
         result = detector.update(time.time() + 5, base_price + 500)
         assert result.regime != FillTestRegime.UNKNOWN or result.confidence > 0
 
     def test_warmup_window_limit(self) -> None:
         """warm-up は window*3 件に制限される."""
-        from scripts.v460.lib.regime_detector import (
-            FillTestRegimeDetector,
-            RegimeConfig,
-        )
-
         config = RegimeConfig(window=5)
         detector = FillTestRegimeDetector(config)
 

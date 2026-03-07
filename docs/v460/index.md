@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-15 (331# self-review 329-330 — MCB/SAD feed fix, CycleContext cleanup, validation)
+> 最終更新: 2026-03-16 (332# Phase 4 — run_continuous Balance/MidCycle Mixin 抽出, 1228→407 行)
 
 ---
 
@@ -363,6 +363,7 @@
 | 167 | fix | [167_phg_fix_sell_loop_dl4_dl5.md](167_phg_fix_sell_loop_dl4_dl5.md) | sell ループ構造修正 (DL-4/DL-5) + カウンタ永続化: 166# §11.5 全提案を汎用原則で解消 |
 | 168 | rpt | [168_phg_rpt_comprehensive_improvement_hodl_vs_trading.md](168_phg_rpt_comprehensive_improvement_hodl_vs_trading.md) | HODL vs Trading 定量比較 + 未検討提案棚卸し + 既存資産活用計画 |
 | 331 | rev | [331_phg_review_329_330_self_audit.md](331_phg_review_329_330_self_audit.md) | Self-Review: 329#/330# 自己監査 — BUG-1/2 修正, CycleContext cleanup, validation 追加 |
+| 332 | refactor | [332_phg_refactor_run_continuous_phase4.md](332_phg_refactor_run_continuous_phase4.md) | run_continuous Phase 4: Balance/MidCycle Mixin 抽出 (1228→407 行, 908→~80 行) |
 
 ---
 
