@@ -56,6 +56,11 @@ from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from ztb.metrics.fill_quality import FillRecord
 from ztb.utils.run_manifest import compute_file_hash
 
+try:
+    _REDUNDANCY_MODULE = _safe_import_ztb_module("ztb.analysis.redundancy")
+except ImportError:
+    _REDUNDANCY_MODULE = None
+
 
 # ---------------------------------------------------------------------------
 # Fixture helpers
@@ -515,6 +520,19 @@ class TestHotReload:
 class TestRetrainConfig:
     """126# retrain 設定ロードテスト."""
 
+    def _load_config_from_yaml_data(
+        self,
+        tmp_path: Path,
+        yaml_data: dict[str, object],
+    ) -> dict[str, object]:
+        yaml_path = tmp_path / "test.yaml"
+        yaml_path.touch()
+        with patch(
+            "scripts.v460.lib.config_loader.load_fill_test_config",
+            return_value=yaml_data,
+        ):
+            return load_retrain_config(yaml_path)
+
     def test_default_config(self) -> None:
         """デフォルト設定が正しく読み込まれる."""
         cfg = load_retrain_config(Path("/nonexistent.yaml"))
@@ -531,62 +549,61 @@ class TestRetrainConfig:
         # 127# H2
         assert cfg["latest_run_only"] is True
 
-    def test_yaml_override(self) -> None:
+    def test_yaml_override(self, tmp_path: Path) -> None:
         """YAML の retrain + skip_gate セクションが統合される."""
+        cfg = self._load_config_from_yaml_data(
+            tmp_path,
+            {
+                "results_dir": "/tmp/test_results",
+                "skip_gate": {
+                    "mode": "pnl",
+                    "model_path": "/tmp/test_model.pkl",
+                    "use_ob_features": False,
+                },
+                "retrain": {
+                    "interval_sec": 7200,
+                    "min_new_samples": 50,
+                },
+            },
+        )
+        assert cfg["interval_sec"] == 7200
+        assert cfg["min_new_samples"] == 50
+        # 127# C1: skip_gate から継承
+        assert cfg["model_path"] == "/tmp/test_model.pkl"
+        assert cfg["mode"] == "pnl"
+        assert cfg["use_ob_features"] is False
+        assert cfg["results_dir"] == "/tmp/test_results"
+        # 未指定のキーはデフォルト
+        assert cfg["target"] == "pnl120"
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yaml_path = Path(tmpdir) / "test.yaml"
-            yaml_path.write_text(
-                "results_dir: /tmp/test_results\n"
-                "skip_gate:\n"
-                "  mode: pnl\n"
-                "  model_path: /tmp/test_model.pkl\n"
-                "  use_ob_features: false\n"
-                "retrain:\n"
-                "  interval_sec: 7200\n"
-                "  min_new_samples: 50\n",
-                encoding="utf-8",
-            )
-            cfg = load_retrain_config(yaml_path)
-            assert cfg["interval_sec"] == 7200
-            assert cfg["min_new_samples"] == 50
-            # 127# C1: skip_gate から継承
-            assert cfg["model_path"] == "/tmp/test_model.pkl"
-            assert cfg["mode"] == "pnl"
-            assert cfg["use_ob_features"] is False
-            assert cfg["results_dir"] == "/tmp/test_results"
-            # 未指定のキーはデフォルト
-            assert cfg["target"] == "pnl120"
-
-    def test_validation_rejects_non_pnl_mode(self) -> None:
+    def test_validation_rejects_non_pnl_mode(self, tmp_path: Path) -> None:
         """127# C1: mode != pnl なら起動拒否."""
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yaml_path = Path(tmpdir) / "test.yaml"
-            yaml_path.write_text(
-                "skip_gate:\n"
-                "  mode: as\n"
-                "  model_path: /tmp/model.pkl\n",
-                encoding="utf-8",
+        with pytest.raises(ValueError, match="requires skip_gate.mode='pnl'"):
+            self._load_config_from_yaml_data(
+                tmp_path,
+                {
+                    "skip_gate": {
+                        "mode": "as",
+                        "model_path": "/tmp/model.pkl",
+                    },
+                },
             )
-            with pytest.raises(ValueError, match="requires skip_gate.mode='pnl'"):
-                load_retrain_config(yaml_path)
 
-    def test_validation_rejects_bad_target(self) -> None:
+    def test_validation_rejects_bad_target(self, tmp_path: Path) -> None:
         """127# M2: 不正な target は拒否."""
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yaml_path = Path(tmpdir) / "test.yaml"
-            yaml_path.write_text(
-                "skip_gate:\n"
-                "  mode: pnl\n"
-                "  model_path: /tmp/model.pkl\n"
-                "retrain:\n"
-                "  target: as30\n",
-                encoding="utf-8",
+        with pytest.raises(ValueError, match="pnl120.*pnl30"):
+            self._load_config_from_yaml_data(
+                tmp_path,
+                {
+                    "skip_gate": {
+                        "mode": "pnl",
+                        "model_path": "/tmp/model.pkl",
+                    },
+                    "retrain": {
+                        "target": "as30",
+                    },
+                },
             )
-            with pytest.raises(ValueError, match="pnl120.*pnl30"):
-                load_retrain_config(yaml_path)
 
     def test_retrain_model_forwards_fill_records_max_files(self) -> None:
         """fill_records_max_files が load_fill_records に伝播する."""
@@ -1790,23 +1807,18 @@ class TestRedundancyPruning:
 
     def test_highly_correlated_features_detected(self) -> None:
         """高相関ペアが正しく検出される."""
-
-        try:
-            _red = _safe_import_ztb_module("ztb.analysis.redundancy")
-        except ImportError:
+        if _REDUNDANCY_MODULE is None:
             pytest.skip("ztb.analysis.redundancy not importable (circular import)")
 
-        calculate_feature_correlations = _red.calculate_feature_correlations
-        find_highly_correlated_features = _red.find_highly_correlated_features
+        calculate_feature_correlations = _REDUNDANCY_MODULE.calculate_feature_correlations
+        find_highly_correlated_features = _REDUNDANCY_MODULE.find_highly_correlated_features
 
-        rng = np.random.RandomState(42)
-        n = 100
-        base = rng.randn(n)
+        base = np.linspace(-1.0, 1.0, 48, dtype=float)
         df = pd.DataFrame({
             "f1": base,
-            "f2": base + rng.randn(n) * 0.01,  # f1 と高相関
-            "f3": rng.randn(n),  # 独立
-            "f4": rng.randn(n),  # 独立
+            "f2": base * 1.001,  # f1 と高相関
+            "f3": np.sin(base * np.pi),  # 独立寄り
+            "f4": np.cos(base * np.pi),  # 独立寄り
         })
         corr = calculate_feature_correlations(df)
         pairs = find_highly_correlated_features(corr, threshold=0.9)

@@ -44,12 +44,13 @@ def _run_aggregate(
     *,
     ob_records: list[dict],
     tr_records: list[dict],
-    output_name: str = "out.parquet",
+    output_name: str | None = None,
 ) -> tuple[pd.DataFrame, Path]:
     """raw 読込を patch して集約ロジックだけを実行する."""
     ob_path = tmp_path / "ob.jsonl.gz"
     tr_path = tmp_path / "tr.jsonl.gz"
-    out_path = tmp_path / output_name
+    out_path = tmp_path / (output_name or "out.parquet")
+    output_path = out_path if output_name is not None else None
 
     def _fake_read(path: Path) -> list[dict]:
         if path == ob_path:
@@ -59,26 +60,8 @@ def _run_aggregate(
         return []
 
     with patch("ztb.data.market_data_collector._read_jsonl_gz", side_effect=_fake_read):
-        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, output_path)
     return df, out_path
-
-
-_PARQUET_PERSISTENCE_TESTS = {
-    "test_parquet_output_created",
-    "test_parquet_roundtrip",
-}
-
-
-@pytest.fixture(autouse=True)
-def _skip_parquet_write_for_non_persistence_tests(
-    request: pytest.FixtureRequest,
-) -> object:
-    """parquet 自体を見ないテストでは実書込を省く."""
-    if request.node.name in _PARQUET_PERSISTENCE_TESTS:
-        yield
-        return
-    with patch.object(pd.DataFrame, "to_parquet", autospec=True, return_value=None):
-        yield
 
 
 def _make_ob_record(

@@ -4247,3 +4247,20 @@ python scripts/unified_trainer.py \
 - The latest filtered broad rerun completed at `4060 passed, 1 deselected, 11 warnings in 35.74s`.
 - `test_303_review_implementations.py` and `test_169_config_hot_reload.py` dropped out of the filtered broad top 25 after the source/statistics/temp-file reductions; the broad top is now re-centered on true real-data and persistence paths such as `test_enricher_skip_gate.py` setup and `aggregate_to_1min` parquet cases.
 - The broad wall time remains noisy, but the expensive `inspect.getsource(MakerPriceCalculator)` / ad-hoc file-read churn is materially lower and the production-side `ConfigHotReloader` / `add_microstructure_features()` paths now do less repeated work per call.
+
+### Changed
+- Optimized [test_gate_check.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_gate_check.py) `TestRunG1Judgment` so the G1 judgment tests patch `_load_results_payload()` directly instead of writing temporary JSON files. The tests still exercise `run_g1_judgment()` threshold logic, but no longer spend time on temporary file I/O.
+- Optimized [test_retrain_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_retrain_hot_reload.py) `TestRetrainConfig` by patching `load_fill_test_config()` with in-memory YAML payloads and switching from temp-directory YAML writes to `tmp_path.touch()` + mocked loader data. The redundancy test now uses deterministic synthetic arrays and a module-level cached redundancy import.
+- Optimized [test_aggregate_to_1min.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_aggregate_to_1min.py) so non-persistence cases call `aggregate_to_1min(..., output_path=None)` directly instead of passing a dummy parquet path and patching `DataFrame.to_parquet()`.
+- Optimized [redundancy.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/analysis/redundancy.py) `find_highly_correlated_features()` by replacing the `DataFrame.where() -> stack() -> Python loop` path with a vectorized `numpy.where()` scan over the upper triangle of the correlation matrix.
+- Optimized [jsonl_gz.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/io/jsonl_gz.py) `append_jsonl_gz()` so it serializes the JSONL payload once and writes it in a single `gzip.write()` call instead of writing one line at a time.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_gate_check.py::TestRunG1Judgment tests/unit/v460/test_retrain_hot_reload.py::TestRetrainConfig tests/unit/v460/test_retrain_hot_reload.py::TestRedundancyPruning tests/unit/v460/test_aggregate_to_1min.py::TestAggregateMerged -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_135_trades_and_gate.py::TestAppendJsonlGz tests/unit/v460/test_gate_check.py::TestRunG1Judgment tests/unit/v460/test_retrain_hot_reload.py::TestRetrainConfig tests/unit/v460/test_retrain_hot_reload.py::TestRedundancyPruning tests/unit/v460/test_aggregate_to_1min.py::TestAggregateMerged -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- The latest filtered broad rerun completed at `4161 passed, 1 deselected, 11 warnings in 36.76s`.
+- The targeted hotspots removed from the filtered broad top 25 in this batch were `test_gate_check.py::TestRunG1Judgment::test_g1_low_ic`, `test_retrain_hot_reload.py::TestRetrainConfig::test_yaml_override`, and `test_135_trades_and_gate.py::TestAppendJsonlGz::test_append_multiple_calls`.
+- The remaining broad top is now centered on real-data setup and parser/integration paths: `test_enricher_skip_gate.py` real-data setup, `test_v460_core.py::TestConfigLoader::*`, `test_336_fill_config_parser.py` production-YAML round trips, and the persistence cases that intentionally still hit parquet.

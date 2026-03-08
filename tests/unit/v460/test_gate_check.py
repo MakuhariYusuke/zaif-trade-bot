@@ -298,17 +298,19 @@ class TestRunG1Judgment:
             }
         return result
 
+    def _run_g1_judgment(self, payload: dict) -> dict:
+        with patch(
+            "scripts.v460.run_gate_check._load_results_payload",
+            return_value=payload,
+        ):
+            return run_g1_judgment("dummy.json")
+
     @patch("scripts.v460.run_gate_check.load_gate_thresholds")
     def test_g1_pass(self, mock_thresh) -> None:
         """G1 全パス."""
 
         mock_thresh.return_value = {"g1_info": _default_thresholds_g1()}
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
-            json.dump(self._make_g1_results(), f)
-            f.flush()
-            result = run_g1_judgment(f.name)
+        result = self._run_g1_judgment(self._make_g1_results())
 
         assert result["gate"] == "G1-info"
         assert result["gate_result"] == "PASS"
@@ -318,12 +320,7 @@ class TestRunG1Judgment:
         """g1_judgment_cache が FAIL → 全体 FAIL."""
 
         mock_thresh.return_value = {"g1_info": _default_thresholds_g1()}
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
-            json.dump(self._make_g1_results(g1_pass=False), f)
-            f.flush()
-            result = run_g1_judgment(f.name)
+        result = self._run_g1_judgment(self._make_g1_results(g1_pass=False))
 
         assert result["gate_result"] == "FAIL"
 
@@ -333,12 +330,7 @@ class TestRunG1Judgment:
 
         mock_thresh.return_value = {"g1_info": _default_thresholds_g1()}
         data = self._make_g1_results(ic_mean=0.005)  # below 0.02
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
-            json.dump(data, f)
-            f.flush()
-            result = run_g1_judgment(f.name)
+        result = self._run_g1_judgment(data)
 
         tc = result["threshold_checks"]["target_5m"]
         assert tc["ic_pass"] is False
@@ -350,12 +342,7 @@ class TestRunG1Judgment:
 
         mock_thresh.return_value = {"g1_info": _default_thresholds_g1()}
         data = self._make_g1_results(acc_mean=0.48)  # below 0.51
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
-            json.dump(data, f)
-            f.flush()
-            result = run_g1_judgment(f.name)
+        result = self._run_g1_judgment(data)
 
         tc = result["threshold_checks"]["target_5m"]
         assert tc["accuracy_pass"] is False
@@ -367,12 +354,7 @@ class TestRunG1Judgment:
 
         mock_thresh.return_value = {"g1_info": _default_thresholds_g1()}
         data = self._make_g1_results(sig_count=1)  # below 2
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
-            json.dump(data, f)
-            f.flush()
-            result = run_g1_judgment(f.name)
+        result = self._run_g1_judgment(data)
 
         tc = result["threshold_checks"]["target_5m"]
         assert tc["sig_folds_pass"] is False
@@ -393,12 +375,7 @@ class TestRunG1Judgment:
             },
             "fold_results": {"target_5m": {"ic_mean": 0.05}},  # stats dict, not raw
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
-            json.dump(data, f)
-            f.flush()
-            result = run_g1_judgment(f.name)
+        result = self._run_g1_judgment(data)
 
         # judgment g1_pass = False (stats-only fallback)
         assert result["gate_result"] == "FAIL"
@@ -412,12 +389,7 @@ class TestRunG1Judgment:
             "xgboost": {},
             "g1_judgment_cache": {"g1_pass": True, "passed_targets": [], "details": {}},
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as f:
-            json.dump(data, f)
-            f.flush()
-            result = run_g1_judgment(f.name)
+        result = self._run_g1_judgment(data)
 
         assert result["gate_result"] == "FAIL"
 

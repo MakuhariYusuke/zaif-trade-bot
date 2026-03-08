@@ -50,29 +50,21 @@ def find_highly_correlated_features(
     """
     if corr_matrix.empty:
         return []
+    corr_values = corr_matrix.to_numpy(dtype=float, copy=False)
+    upper_mask = np.triu(np.ones_like(corr_values, dtype=bool), k=1)
+    hit_rows, hit_cols = np.where(upper_mask & (np.abs(corr_values) > threshold))
+    if len(hit_rows) == 0:
+        return []
 
-    correlated_pairs = []
-
-    # Get upper triangle of correlation matrix
-    corr_upper = corr_matrix.where(np.triu(np.ones_like(corr_matrix), k=1).astype(bool))
-
-    # Find correlations above threshold
-    high_corr = corr_upper.abs() > threshold
-    high_corr_pairs = high_corr.stack()
-
-    for idx, flag in high_corr_pairs.items():
-        # 値は通常 bool（相関判定）か NaN。型安全にフィルタ。
-        if not isinstance(flag, (bool, np.bool_)):
-            continue  # NaN や想定外型は無視
-        if not flag:
-            continue
-        if isinstance(idx, tuple) and len(idx) == 2:
-            feature1, feature2 = idx
-            correlation = corr_matrix.loc[feature1, feature2]
-            correlated_pairs.append((feature1, feature2, correlation))
-        # それ以外は無視（想定外フォーマット対策）
-
-    return correlated_pairs  # type: ignore[return-value]
+    feature_names = list(corr_matrix.columns)
+    return [
+        (
+            feature_names[row_idx],
+            feature_names[col_idx],
+            float(corr_values[row_idx, col_idx]),
+        )
+        for row_idx, col_idx in zip(hit_rows, hit_cols)
+    ]
 
 def cluster_features_by_correlation(
     feature_df: pd.DataFrame, distance_threshold: float = 0.3

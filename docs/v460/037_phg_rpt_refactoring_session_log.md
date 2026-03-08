@@ -2030,3 +2030,71 @@
 1. `test_enricher_skip_gate.py` の real-data setup を fixture snapshot / class-scope cache に寄せられないか洗う
 2. `test_aggregate_to_1min.py` の parquet / merged edge を pure aggregation と persistence 契約へさらに分離する
 3. `test_gate_check.py` / `test_retrain_hot_reload.py` の統合寄り上位 call を、成立条件を崩さず lightweight stub へ寄せる
+
+---
+
+## 2026-03-08 / Session 037-045
+
+### 実施
+- production
+  - `ztb/analysis/redundancy.py`
+    - `find_highly_correlated_features()` を `DataFrame.where() + stack()` から `numpy.where()` ベースの upper-triangle scan へ置換
+  - `ztb/io/jsonl_gz.py`
+    - `append_jsonl_gz()` を 1 行ずつ `write()` する方式から、JSONL payload をまとめて 1 回で書く方式へ変更
+- test
+  - `tests/unit/v460/test_gate_check.py`
+    - `TestRunG1Judgment` の temp JSON 書込を廃止
+    - `_load_results_payload()` patch ベースで `run_g1_judgment()` を直接検証
+  - `tests/unit/v460/test_retrain_hot_reload.py`
+    - `TestRetrainConfig` を temp YAML 実 parse から mocked loader data へ変更
+    - `TestRedundancyPruning` の import/setup を module-level cache 化し、データ生成を deterministic 縮小
+  - `tests/unit/v460/test_aggregate_to_1min.py`
+    - non-persistence ケースは `output_path=None` で集約のみ実行する形へ変更
+
+### 結果
+- focused 回帰 1:
+  - `test_gate_check.py::TestRunG1Judgment`
+  - `test_retrain_hot_reload.py::TestRetrainConfig`
+  - `test_retrain_hot_reload.py::TestRedundancyPruning`
+  - `test_aggregate_to_1min.py::TestAggregateMerged`
+  - `20 passed in 4.54s`
+- focused 回帰 2:
+  - `test_135_trades_and_gate.py::TestAppendJsonlGz`
+  - `test_gate_check.py::TestRunG1Judgment`
+  - `test_retrain_hot_reload.py::TestRetrainConfig`
+  - `test_retrain_hot_reload.py::TestRedundancyPruning`
+  - `test_aggregate_to_1min.py::TestAggregateMerged`
+  - `24 passed in 4.22s`
+- broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` と `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - `4161 passed, 1 deselected, 11 warnings in 36.76s`
+
+### 主要改善
+- `test_gate_check.py`
+  - G1 judgment の pure threshold logic テストから temp JSON I/O を除去した
+  - broad 上位にいた `test_g1_low_ic` は top 25 から離脱
+- `test_retrain_hot_reload.py`
+  - `test_yaml_override` の temp YAML parse を mocked loader data へ置換
+  - `TestRedundancyPruning` は import/setup を duration から外し、実際の correlation 判定だけを測る構成へ整理
+- `test_aggregate_to_1min.py`
+  - non-persistence ケースは parquet path 自体を渡さない構成に変更
+  - merged/edge の non-parquet ケースがさらに軽くなった
+- `ztb/io/jsonl_gz.py`
+  - gzip append の write 呼び出し回数を 1 回へ削減
+  - `TestAppendJsonlGz::test_append_multiple_calls` は focused で `0.02s` 級まで低下
+
+### 補足
+- 今回 broad 上位から外れた項目:
+  - `test_gate_check.py::TestRunG1Judgment::test_g1_low_ic`
+  - `test_retrain_hot_reload.py::TestRetrainConfig::test_yaml_override`
+  - `test_135_trades_and_gate.py::TestAppendJsonlGz::test_append_multiple_calls`
+- 現在の broad 上位は real-data / parser / persistence に再集中している:
+  - `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data`
+  - `test_v460_core.py::TestConfigLoader::test_load_config_validation_error`
+  - `test_336_fill_config_parser.py::TestProductionYamlRoundTrip::*`
+  - `test_aggregate_to_1min.py` の parquet persistence
+
+### 次アクション
+1. `test_enricher_skip_gate.py` の real-data setup を fixture snapshot / pre-enriched cache へ寄せられないか確認
+2. `test_v460_core.py::TestConfigLoader::*` と `test_336_fill_config_parser.py` の parser/YAML round-trip を DRY 化して I/O を減らす
+3. parquet を本当に必要とするケースだけに絞れているか `test_aggregate_to_1min.py` と `test_build_features_pipeline.py` を再点検

@@ -34,9 +34,12 @@ def append_jsonl_gz(
     """
     if not records:
         return 0
+    payload = "".join(
+        json.dumps(record, ensure_ascii=False) + "\n"
+        for record in records
+    )
     with gzip.open(path, "at", encoding="utf-8") as f:
-        for r in records:
-            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        f.write(payload)
     return len(records)
 
 def read_jsonl_gz(path: Path) -> list[dict[str, object]]:
