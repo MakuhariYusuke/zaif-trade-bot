@@ -86,9 +86,9 @@ ASTベースの自動スクリプトを使用して、10 クラス全体削除�
 | W-2 | lot_sizer 有効化に必要な最低残高がコメント未記載 (347# L-4) | LotSizingConfig docstring に目安追記 |
 | W-3 | test_158 に `BALANCE_FORCED_SKIP` デッドコード参照 | コメント化 |
 
-### 未対処 (Coincheck 検証待ち)
+### 対処不要 (確定)
 
-- **347# L-3**: `min_order_btc: 0.001 → 0.0005` — Coincheck 板取引の最小注文量要確認
+- **347# L-3**: `min_order_btc: 0.001 → 0.0005` — Coincheck 板取引の最小注文量が **1 mBTC (0.001 BTC)** のため引き下げ不可。現行値が下限。
 
 ### 後方互換性確認
 
