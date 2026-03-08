@@ -122,15 +122,20 @@ class CircuitBreaker:
             # CLOSED state: no action needed
 
     def _on_success_sync(self) -> None:
-        """Handle successful operation (synchronous version)."""
-        # Create a new event loop for synchronous execution
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(self._on_success())
-        finally:
-            loop.close()
-            asyncio.set_event_loop(None)
+        """Handle successful operation (synchronous version).
+
+        345# Py3.12+: asyncio.new_event_loop()/set_event_loop() を排除。
+        同期コンテキストでは asyncio.Lock の保護は不要 (GIL で十分)。
+        _on_success() のロジック直接実装で async overhead を回避。
+        """
+        self.failure_count = 0
+        if self.state == CircuitState.HALF_OPEN:
+            self.success_count += 1
+            if self.success_count >= self.config.success_threshold:
+                self.state = CircuitState.CLOSED
+                logger.info(
+                    f"Circuit breaker '{self.name}' closed after successful recovery"
+                )
 
     async def _on_failure(self) -> None:
         """Handle failed operation."""
@@ -153,15 +158,25 @@ class CircuitBreaker:
                 )
 
     def _on_failure_sync(self) -> None:
-        """Handle failed operation (synchronous version)."""
-        # Create a new event loop for synchronous execution
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(self._on_failure())
-        finally:
-            loop.close()
-            asyncio.set_event_loop(None)
+        """Handle failed operation (synchronous version).
+
+        345# Py3.12+: asyncio.new_event_loop()/set_event_loop() を排除。
+        """
+        self.failure_count += 1
+        self.last_failure_time = time.time()
+        if self.state == CircuitState.HALF_OPEN:
+            self.state = CircuitState.OPEN
+            logger.warning(
+                f"Circuit breaker '{self.name}' reopened after failure in half-open"
+            )
+        elif (
+            self.state == CircuitState.CLOSED
+            and self.failure_count >= self.config.failure_threshold
+        ):
+            self.state = CircuitState.OPEN
+            logger.warning(
+                f"Circuit breaker '{self.name}' opened after {self.failure_count} failures"
+            )
 
     def get_state(self) -> CircuitState:
         """Get current circuit breaker state."""

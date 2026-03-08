@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-08 (344# 改善: パラメータ有効化 / inv_bypass gradual 化 / EWMA mode)
+> 最終更新: 2026-03-09 (345# proactive fixes: warmup downweight 整合 / CircuitBreaker Py3.12+)
 
 ---
 
@@ -338,6 +338,7 @@
 | 342 | rpt | [342_ph2_design_and_market_theory_deep_investigation.md](342_ph2_design_and_market_theory_deep_investigation.md) | 設計・市場理論面の深掘り調査: forced PnL 処理, inv_bypass 不連続, skip_gate/kill 二重抑制, EWMA 化, sell wait 非対称 |
 | 343 | impl | [343_ph2_impl_p1_improvements.md](343_ph2_impl_p1_improvements.md) | (A) forced fill downweight 0.5, (B) sell forced KPI 分離, (C) skip_gate/kill release grace window, (D) regime_min_confidence default sync, (E) getattr→直接参照 |
 | 344 | impl | [344_ph2_impl_improvements.md](344_ph2_impl_improvements.md) | (A) velocity_ema_alpha 0.3, (B) ranging_obi_asymmetry 0.3, (C) inv_decay_tau 1800, (D) inv_bypass gradual 化, (E) EWMA mode |
+| 345 | fix | [345_proactive_fixes.md](345_proactive_fixes.md) | (A) warmup forced_fill_pnl_downweight 整合, (B) CircuitBreaker sync Py3.12+ 互換, (C) 324# M-1/L-2 完了反映 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

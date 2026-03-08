@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 345# プロアクティブ修正: warmup downweight 整合 / CircuitBreaker Py3.12+ (2026-03-09)
+
+### Fixed
+- **345# A: warmup downweight 整合** — `_warmup_kill_managers_from_records()` が 343# `forced_fill_pnl_downweight` を適用せず、再起動後の kill 判定が歪む不整合を修正
+- **345# B: CircuitBreaker Py3.12+** — `_on_success_sync()` / `_on_failure_sync()` の `asyncio.new_event_loop()` / `set_event_loop()` を排除。sync ロジック直接実装で async overhead 回避
+
+### Documentation
+- 324# §5 M-1/L-2: velocity_ema_alpha ステータスを「✅ 344# で完了」に更新
+- docs/v460/345_proactive_fixes.md 新規作成
+
 ## 344# 改善: パラメータ有効化 / inv_bypass gradual 化 / EWMA mode (2026-03-08)
 
 ### Changed

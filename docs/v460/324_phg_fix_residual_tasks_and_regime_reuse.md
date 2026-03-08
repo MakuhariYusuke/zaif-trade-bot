@@ -90,7 +90,7 @@ trending regime の confidence を適切にモデレートする。
 | ID | 内容 | 判定 |
 |---|---|---|
 | M-3b | offset_mult < 1.0 無視 | **意図的設計** — conservative モードで aggressive 動作を防止 |
-| M-1/L-2 | velocity_ema_alpha = 1.0 | **保留** — 321# 記載通り「データ蓄積後に 0.6 有効化」 |
+| M-1/L-2 | velocity_ema_alpha = 1.0 | **✅ 344# で完了** — α=0.3 に変更 |
 | S-2 | Sell Hour Boost | **保留** — post-310# データ分析が前提 |
 | S-6 | buy ev_offset | **保留** — 分析先行 |
 
