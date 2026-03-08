@@ -3,7 +3,7 @@
 Print a human-friendly summary of AB or parameter-search results.
 
 Usage:
-  python tools/analysis/print_ab_summary.py --file reports/ab_search_balance_shaping.json --top 5
+  python -m scripts.v460.analysis.print_ab_summary --file reports/ab_search_balance_shaping.json --top 5
 
 It reads the JSON file written by `tools/ab_param_search.py` or `ab_test_runner` summary
 and prints the top-N candidates with key metrics.

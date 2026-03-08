@@ -57,6 +57,13 @@ class _HotReloadableRunner(Protocol):
     def _rebuild_cycle_strategy(self) -> None: ...  # 179#
 
 
+@lru_cache(maxsize=1)
+def _resolve_time_filter_cls() -> type[object]:
+    """Resolve TimeFilter lazily and cache the class object."""
+    from scripts.v460.lib.time_filter import TimeFilter
+    return TimeFilter
+
+
 # ======================================================================
 # 安全にホットリロード可能なフィールドの定義
 # ======================================================================
@@ -640,8 +647,7 @@ class ConfigHotReloader:
         # TimeFilter 再構築 (config から直接読み取るため再構築が必要)
         if any(f.startswith(("enable_time_filter", "skip_utc_hours", "regime_adaptive_")) for f in changed_fields):
             try:
-                from scripts.v460.lib.time_filter import TimeFilter
-                runner._time_filter = TimeFilter(self._config)
+                runner._time_filter = _resolve_time_filter_cls()(self._config)
                 logger.info("[config_hot_reload]   TimeFilter rebuilt")
             except Exception as e:
                 logger.error(f"[config_hot_reload]   TimeFilter rebuild FAILED: {e}")

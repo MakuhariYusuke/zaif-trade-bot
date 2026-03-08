@@ -1,11 +1,11 @@
 """Fill Test ログ統合分析スクリプト (162# P0 再現可能分析).
 
 Usage:
-    python tools/analysis/analyze_fill_logs.py
-    python tools/analysis/analyze_fill_logs.py --date-from 2026-02-20 --date-to 2026-02-24
-    python tools/analysis/analyze_fill_logs.py --git-sha d9874bbee12a
-    python tools/analysis/analyze_fill_logs.py --run-id 1771932882_97af3a30
-    python tools/analysis/analyze_fill_logs.py --date-from 2026-02-22 --git-sha 5c65ef925 --output report.txt
+    python -m scripts.v460.analysis.analyze_fill_logs
+    python -m scripts.v460.analysis.analyze_fill_logs --date-from 2026-02-20 --date-to 2026-02-24
+    python -m scripts.v460.analysis.analyze_fill_logs --git-sha d9874bbee12a
+    python -m scripts.v460.analysis.analyze_fill_logs --run-id 1771932882_97af3a30
+    python -m scripts.v460.analysis.analyze_fill_logs --date-from 2026-02-22 --git-sha 5c65ef925 --output report.txt
 
 Replaces: temp/analyze_logs.py + temp/analyze_logs2.py
 Purpose: 因果混在排除のためフィルタ条件を明示して再現可能な分析を行う

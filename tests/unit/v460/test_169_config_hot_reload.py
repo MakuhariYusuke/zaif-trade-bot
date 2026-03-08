@@ -14,6 +14,7 @@ import pytest
 from scripts.v460.lib.config_hot_reload import (
     ConfigHotReloader,
     _HOT_RELOADABLE_FIELDS,
+    _resolve_time_filter_cls,
 )
 from scripts.v460.lib.fill_config import FillTestConfig
 
@@ -131,6 +132,16 @@ def base_config() -> FillTestConfig:
 def _stub_git_sha() -> Iterator[None]:
     """Reload tests do not need a real git subprocess."""
     with patch("ztb.utils.git_utils.get_git_sha", return_value="abc123"):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _stub_time_filter() -> Iterator[None]:
+    """Hot-reload tests do not need the real TimeFilter import graph."""
+    with patch(
+        "scripts.v460.lib.config_hot_reload._resolve_time_filter_cls",
+        return_value=MagicMock,
+    ):
         yield
 
 

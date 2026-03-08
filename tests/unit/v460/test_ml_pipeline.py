@@ -52,7 +52,10 @@ def _write_real_fill_sample(
         last_df = df
         if len(df) < min_rows:
             continue
-        X, _ = build_as_features(df)
+        try:
+            X, _ = build_as_features(df)
+        except ValueError:
+            continue
         if len(X) >= min_feature_rows:
             return df
     return last_df
