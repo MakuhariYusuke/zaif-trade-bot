@@ -17,6 +17,8 @@ from scripts.v460.lib.cycle_gate_aggregator import (
     CycleGateResult,
 )
 
+from tests.unit.v460.conftest import make_gate_config
+
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # ヘルパー
@@ -25,28 +27,8 @@ from scripts.v460.lib.cycle_gate_aggregator import (
 
 def _make_config(**overrides: object) -> FillTestConfig:
     """全ゲート有効のテスト用 FillTestConfig."""
-    defaults: dict[str, object] = {
-        "skip_buy_unknown_regime": True,
-        "skip_ranging_buy_low_vol": True,
-        "low_vol_threshold": 0.75,
-        "skip_sell_trending": True,
-        "skip_sell_trending_up_only": False,
-        "max_consecutive_trending_sell_skip": 30,
-        "sell_guard_inv_bypass_threshold": 0.3,
-        "buy_dynamic_kill_enabled": True,
-        "sell_dynamic_kill_enabled": True,
-        "buy_dynamic_kill_threshold_bps": -5.0,
-        "sell_dynamic_kill_threshold_bps": -5.0,
-        "sell_velocity_skip_enabled": True,
-        "sell_velocity_skip_threshold_bps": 8.0,
-        "buy_velocity_skip_enabled": True,
-        "buy_velocity_skip_threshold_bps": -8.0,
-        "skip_sell_unknown_regime": True,
-        # 234# degraded liquidation
-        "degraded_liquidation_enabled": True,
-    }
-    defaults.update(overrides)
-    return FillTestConfig(**defaults)
+    merged = {"degraded_liquidation_enabled": True, **overrides}
+    return make_gate_config(**merged)
 
 
 def _make_gate(**overrides: object) -> CycleGateAggregator:

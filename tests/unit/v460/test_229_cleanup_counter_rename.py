@@ -24,6 +24,10 @@ from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseC
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator as MakerPrice
 from tests.unit.v460._fill_test_source import ORCHESTRATOR_MID_CYCLE, read_source_text
+from tests.unit.v460.conftest import (
+    make_gate_config as _make_gate_config,
+    make_maker_price_config as _make_fill_config,
+)
 
 _FAST_FILL_DEFENSE_SOURCE = Path(
     inspect.getsourcefile(FastFillDefense) or "",
@@ -36,40 +40,6 @@ _MAKER_PRICE_SOURCE = Path(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _make_fill_config(**overrides) -> FillTestConfig:
-    """テスト用 FillTestConfig を生成."""
-    defaults = dict(
-        max_offset_ratio=0.02,
-        min_offset_ratio=0.001,
-    )
-    defaults.update(overrides)
-    return FillTestConfig(**defaults)
-
-
-def _make_gate_config(**overrides) -> FillTestConfig:
-    """CycleGateAggregator テスト用 FillTestConfig."""
-    defaults: dict = {
-        "skip_buy_unknown_regime": True,
-        "skip_ranging_buy_low_vol": True,
-        "low_vol_threshold": 0.75,
-        "skip_sell_trending": True,
-        "skip_sell_trending_up_only": False,
-        "max_consecutive_trending_sell_skip": 30,
-        "sell_guard_inv_bypass_threshold": 0.3,
-        "buy_dynamic_kill_enabled": True,
-        "sell_dynamic_kill_enabled": True,
-        "buy_dynamic_kill_threshold_bps": -5.0,
-        "sell_dynamic_kill_threshold_bps": -5.0,
-        "sell_velocity_skip_enabled": True,
-        "sell_velocity_skip_threshold_bps": 8.0,
-        "buy_velocity_skip_enabled": True,
-        "buy_velocity_skip_threshold_bps": -8.0,
-        "skip_sell_unknown_regime": True,
-    }
-    defaults.update(overrides)
-    return FillTestConfig(**defaults)
 
 
 def _make_gate(**overrides) -> CycleGateAggregator:

@@ -22,20 +22,12 @@ from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseC
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator as MakerPrice
 from scripts.v460.lib.regime_detector import FillTestRegime
+from tests.unit.v460.conftest import make_maker_price_config as _make_config
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _make_config(**overrides) -> FillTestConfig:
-    """テスト用 FillTestConfig を生成。max > min offset 保証。"""
-    defaults = dict(
-        max_offset_ratio=0.02,
-        min_offset_ratio=0.001,
-    )
-    defaults.update(overrides)
-    return FillTestConfig(**defaults)
 
 
 def _make_mp(config: FillTestConfig | None = None, regime=None) -> MakerPrice:

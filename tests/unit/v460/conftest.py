@@ -13,6 +13,51 @@ from scripts.v460.lib.maker_price import MakerPriceCalculator
 from ztb.metrics.fill_quality import FillRecord
 
 
+# ─── 共通ヘルパー (非-fixture) ─────────────────────────────────────────
+# テスト中に任意の overrides で呼べるためヘルパー関数として公開。
+# pytest fixture から使ってもよいし、テスト本文から直接呼んでもよい。
+
+
+def make_gate_config(**overrides: object) -> FillTestConfig:
+    """CycleGateAggregator テスト用の FillTestConfig.
+
+    全ゲート有効状態をデフォルトとし、overrides で任意フィールドを差し替え可能。
+    """
+    defaults: dict[str, object] = {
+        "skip_buy_unknown_regime": True,
+        "skip_ranging_buy_low_vol": True,
+        "low_vol_threshold": 0.75,
+        "skip_sell_trending": True,
+        "skip_sell_trending_up_only": False,
+        "max_consecutive_trending_sell_skip": 30,
+        "sell_guard_inv_bypass_threshold": 0.3,
+        "buy_dynamic_kill_enabled": True,
+        "sell_dynamic_kill_enabled": True,
+        "buy_dynamic_kill_threshold_bps": -5.0,
+        "sell_dynamic_kill_threshold_bps": -5.0,
+        "sell_velocity_skip_enabled": True,
+        "sell_velocity_skip_threshold_bps": 8.0,
+        "buy_velocity_skip_enabled": True,
+        "buy_velocity_skip_threshold_bps": -8.0,
+        "skip_sell_unknown_regime": True,
+    }
+    defaults.update(overrides)
+    return FillTestConfig(**defaults)
+
+
+def make_maker_price_config(**overrides: object) -> FillTestConfig:
+    """MakerPriceCalculator テスト用の最小 FillTestConfig.
+
+    max > min offset を保証するデフォルト値を持つ。
+    """
+    defaults: dict[str, object] = {
+        "max_offset_ratio": 0.02,
+        "min_offset_ratio": 0.001,
+    }
+    defaults.update(overrides)
+    return FillTestConfig(**defaults)
+
+
 @pytest.fixture(scope="session")
 def v460_fill_test_yaml_path() -> Path:
     """fill_test.yaml の絶対パス."""
