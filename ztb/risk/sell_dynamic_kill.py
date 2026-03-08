@@ -395,7 +395,7 @@ class DynamicKillManager:
             regime: 現在のマーケットレジーム名。
                 regime_thresholds にキーがあれば、その閾値を使用。
             threshold_offset_bps: 286# 283# P1-4: 在庫連動の閾値調整 (bps)。
-                正値 → 緩和 (kill されにくくなる)、負値 → 厳格化。
+                正値 → 緩和 (閾値をより負側へ、kill されにくくなる)、負値 → 厳格化。
                 Ho & Stoll (1981) 在庫リスクモデルに基づき、在庫偏重度に
                 応じて動的 kill 閾値を段階的に緩和する。
 
@@ -507,10 +507,11 @@ class DynamicKillManager:
             threshold = self._config.regime_thresholds[regime]
 
         # 286# 283# P1-4: 在庫連動の閾値緩和 (Ho & Stoll 1981)
-        # threshold_offset_bps > 0 は閾値を less negative にする (kill されにくくなる)
-        # 例: threshold=-0.8, offset=+0.3 → effective=-0.5 (緩和)
+        # 340# 符号修正: threshold_offset_bps > 0 は閾値をより負方向に動かす (kill されにくくなる)
+        # kill 条件: rolling_mean < threshold
+        # 例: threshold=-1.0, offset=+0.3 → effective=-1.3 (緩和: より深い損失まで許容)
         if threshold_offset_bps != 0.0:
-            threshold += threshold_offset_bps
+            threshold -= threshold_offset_bps
 
         if rolling_mean < threshold:
             self._cooldown = self._config.resume_window

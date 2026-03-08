@@ -181,7 +181,11 @@ class TestBuyDynamicKillInvRelaxation:
     """286# 283# P1-4: 在庫連動の kill 閾値緩和テスト."""
 
     def test_threshold_offset_relaxes_kill(self):
-        """threshold_offset_bps > 0 で kill 閾値が緩和されること."""
+        """threshold_offset_bps > 0 で kill 閾値が緩和されること.
+
+        340# 符号修正: offset>0 は threshold をより負側に動かす (kill されにくくなる)。
+        例: threshold=-0.5, offset=+0.3 → effective=-0.8 → rolling=-0.6 < -0.8 は False
+        """
         cfg = DynamicKillConfig(enabled=True, window=3, threshold_bps=-0.5, resume_window=1)
         mgr = DynamicKillManager(cfg, side="buy")
         for _ in range(3):
@@ -190,13 +194,17 @@ class TestBuyDynamicKillInvRelaxation:
         assert killed_normal is True
 
     def test_threshold_offset_prevents_kill(self):
-        """十分な threshold_offset_bps で kill が防止されること."""
+        """340# 十分な threshold_offset_bps で kill が防止されること.
+
+        threshold=-0.5, offset=+0.2 → effective=-0.7
+        rolling=-0.6 < -0.7 は False → kill 防止
+        """
         cfg = DynamicKillConfig(enabled=True, window=3, threshold_bps=-0.5, resume_window=1)
         mgr = DynamicKillManager(cfg, side="buy")
         for _ in range(3):
             mgr.track(-0.6)
-        killed_partial, _ = mgr.check_kill(threshold_offset_bps=0.2)
-        assert killed_partial is True
+        killed_relaxed, _ = mgr.check_kill(threshold_offset_bps=0.2)
+        assert killed_relaxed is False  # 340# 符号修正: offset>0 で緩和→killされない
 
         mgr2 = DynamicKillManager(
             DynamicKillConfig(enabled=True, window=3, threshold_bps=-0.5, resume_window=1),
@@ -387,13 +395,22 @@ class TestDynamicKillThresholdOffset:
         assert killed is False
 
     def test_negative_offset_tightens_threshold(self):
-        """負の offset は閾値を厳格化する (kill されやすくなる)."""
+        """340# 負の offset は閾値を厳格化する (kill されやすくなる).
+
+        threshold=-1.0, offset=-0.5 → effective=-1.0-(-0.5)=-0.5
+        rolling=-0.5 < -0.5 は False (境界) → kill なし。
+        しかし threshold=0 方向に近づくため、より kill されやすい。
+        """
         cfg = DynamicKillConfig(enabled=True, window=2, threshold_bps=-1.0, resume_window=1)
         mgr = DynamicKillManager(cfg, side="sell")
-        mgr.track(-0.5)
-        mgr.track(-0.5)
-        killed, _ = mgr.check_kill(threshold_offset_bps=-0.5)
-        assert killed is False
+        mgr.track(-0.8)
+        mgr.track(-0.8)
+        # offset=0: effective=-1.0, rolling=-0.8 < -1.0 は False
+        killed_base, _ = mgr.check_kill(threshold_offset_bps=0.0)
+        assert killed_base is False
+        # offset=-0.5: effective=-1.0-(-0.5)=-0.5, rolling=-0.8 < -0.5 は True
+        killed_tight, _ = mgr.check_kill(threshold_offset_bps=-0.5)
+        assert killed_tight is True  # 340# 符号修正: 負offsetで厳格化
 
     def test_disabled_manager_ignores_offset(self):
         """disabled 時は offset 無視."""
