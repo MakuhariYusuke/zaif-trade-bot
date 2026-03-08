@@ -42,6 +42,7 @@ from scripts.v460.ml.skip_gate import (
     warm_start_skip_gate_thresholds,
 )
 from scripts.v460.ml.data_loader import build_as_features, load_fill_records as load_fill_records_df
+from ztb.io.jsonl import read_tail_jsonl_objects
 
 _REAL_DATA_SAMPLE_ROWS = 120
 _REAL_DATA_FALLBACK_SAMPLE_ROWS = 220
@@ -74,12 +75,10 @@ def _load_recent_fill_records_df(
     for path in reversed(files):
         if remaining <= 0:
             break
-        try:
-            frame = pd.read_json(path, lines=True, convert_dates=False)
-        except ValueError:
+        rows = read_tail_jsonl_objects(path, limit=remaining)
+        if not rows:
             continue
-        if frame.empty:
-            continue
+        frame = pd.DataFrame(rows)
         if len(frame) > remaining:
             chunks.append(frame.tail(remaining))
             remaining = 0

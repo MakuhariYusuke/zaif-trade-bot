@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from collections import deque
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -11,6 +10,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import pytest
+from ztb.io.jsonl import read_tail_jsonl_objects
 
 from scripts.v460.ml.as_classifier import (
     ASModelMetrics,
@@ -23,21 +23,10 @@ from scripts.v460.ml.fill_classifier import FillModelMetrics, train_fill_classif
 
 def _tail_jsonl_objects(path: Path, *, limit: int) -> list[dict[str, Any]]:
     """JSONL の末尾 limit 行ぶんだけを object として読む."""
-    tail_lines: deque[str] = deque(maxlen=limit)
-    with path.open(encoding="utf-8") as f:
-        for line in f:
-            if line.strip():
-                tail_lines.append(line)
-
-    rows: list[dict[str, Any]] = []
-    for line in tail_lines:
-        try:
-            obj = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(obj, dict):
-            rows.append(obj)
-    return rows
+    return [
+        row for row in read_tail_jsonl_objects(path, limit=limit)
+        if isinstance(row, dict)
+    ]
 
 
 def _write_real_fill_sample(

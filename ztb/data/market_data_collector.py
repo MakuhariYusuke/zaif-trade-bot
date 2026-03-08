@@ -102,6 +102,39 @@ def _aggregate_orderbook_1min(
     ob_1m["spread_range"] = ob_1m.pop("spread_max") - ob_1m.pop("spread_min")
     return ob_1m.dropna(how="all")
 
+
+def _aggregate_trades_1min(
+    tr_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """約定特徴量を 1 分集約する."""
+    side_lower = tr_df["side"].astype("string").str.lower()
+    amount = tr_df["amount"].astype(np.float64, copy=False)
+    price = tr_df["price"].astype(np.float64, copy=False)
+    buy_mask = side_lower.eq("buy").to_numpy(dtype=bool, na_value=False)
+    amount_arr = amount.to_numpy(copy=False)
+    price_arr = price.to_numpy(copy=False)
+
+    tr_features = pd.DataFrame(index=tr_df.index)
+    tr_features["buy_vol"] = np.where(buy_mask, amount_arr, 0.0)
+    tr_features["sell_vol"] = np.where(buy_mask, 0.0, amount_arr)
+    tr_features["_pv"] = price_arr * amount_arr
+    tr_features["_amount"] = amount_arr
+
+    tr_1m = tr_features.resample("1min").agg(
+        buy_volume=("buy_vol", "sum"),
+        sell_volume=("sell_vol", "sum"),
+        trade_count=("buy_vol", "size"),
+        _sum_pv=("_pv", "sum"),
+        _sum_amount=("_amount", "sum"),
+    )
+    tr_1m["vwap"] = tr_1m["_sum_pv"] / tr_1m["_sum_amount"].replace(0, np.nan)
+    tr_1m = tr_1m.drop(columns=["_sum_pv", "_sum_amount"])
+    denom = (tr_1m["buy_volume"] + tr_1m["sell_volume"]).replace(0, np.nan)
+    tr_1m["trade_flow_imbalance"] = (
+        (tr_1m["buy_volume"] - tr_1m["sell_volume"]) / denom
+    )
+    return tr_1m.dropna(how="all")
+
 class MarketDataCollector:
     """Tick raw 収集 + 1分集約の二層保存を行うデータ収集サービス.
 
@@ -262,27 +295,7 @@ class MarketDataCollector:
             tr_df = pd.DataFrame(tr_records)
             tr_df["dt"] = pd.to_datetime(tr_df["ts"], unit="s", utc=True)
             tr_df = tr_df.set_index("dt")
-
-            buy_mask = tr_df["side"].str.lower() == "buy"
-            tr_df["buy_vol"] = tr_df["amount"].where(buy_mask, 0)
-            tr_df["sell_vol"] = tr_df["amount"].where(~buy_mask, 0)
-            # price × amount for VWAP calculation
-            tr_df["_pv"] = tr_df["price"] * tr_df["amount"]
-
-            tr_1m = tr_df.resample("1min").agg(
-                buy_volume=("buy_vol", "sum"),
-                sell_volume=("sell_vol", "sum"),
-                trade_count=("price", "count"),
-                _sum_pv=("_pv", "sum"),
-                _sum_amount=("amount", "sum"),
-            )
-            # VWAP = sum(price * amount) / sum(amount)
-            tr_1m["vwap"] = tr_1m["_sum_pv"] / tr_1m["_sum_amount"].replace(0, np.nan)
-            tr_1m = tr_1m.drop(columns=["_sum_pv", "_sum_amount"])
-            tr_1m["trade_flow_imbalance"] = (
-                (tr_1m["buy_volume"] - tr_1m["sell_volume"])
-                / (tr_1m["buy_volume"] + tr_1m["sell_volume"]).replace(0, np.nan)
-            )
+            tr_1m = _aggregate_trades_1min(tr_df)
         else:
             tr_1m = pd.DataFrame()
 

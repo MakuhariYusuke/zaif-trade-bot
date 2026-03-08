@@ -10,6 +10,7 @@ from __future__ import annotations
 import gzip
 import json
 import math
+from functools import lru_cache
 from pathlib import Path
 from unittest.mock import patch
 
@@ -52,6 +53,13 @@ def _run_aggregate(
     out_path = tmp_path / (output_name or "out.parquet")
     output_path = out_path if output_name is not None else None
 
+    if output_name is None:
+        cached = _run_aggregate_cached(
+            tuple(json.dumps(r, sort_keys=True, ensure_ascii=False) for r in ob_records),
+            tuple(json.dumps(r, sort_keys=True, ensure_ascii=False) for r in tr_records),
+        )
+        return cached.copy(deep=True), out_path
+
     def _fake_read(path: Path) -> list[dict]:
         if path == ob_path:
             return ob_records
@@ -62,6 +70,27 @@ def _run_aggregate(
     with patch("ztb.data.market_data_collector._read_jsonl_gz", side_effect=_fake_read):
         df = MarketDataCollector.aggregate_to_1min(ob_path, tr_path, output_path)
     return df, out_path
+
+
+@lru_cache(maxsize=128)
+def _run_aggregate_cached(
+    ob_records_json: tuple[str, ...],
+    tr_records_json: tuple[str, ...],
+) -> pd.DataFrame:
+    ob_records = [json.loads(item) for item in ob_records_json]
+    tr_records = [json.loads(item) for item in tr_records_json]
+    ob_path = Path("__cached_ob__.jsonl.gz")
+    tr_path = Path("__cached_tr__.jsonl.gz")
+
+    def _fake_read(path: Path) -> list[dict]:
+        if path == ob_path:
+            return ob_records
+        if path == tr_path:
+            return tr_records
+        return []
+
+    with patch("ztb.data.market_data_collector._read_jsonl_gz", side_effect=_fake_read):
+        return MarketDataCollector.aggregate_to_1min(ob_path, tr_path, output_path=None)
 
 
 def _make_ob_record(

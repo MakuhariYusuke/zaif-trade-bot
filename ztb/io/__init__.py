@@ -13,6 +13,7 @@ _LAZY_MODULE_ATTRS: dict[str, tuple[str, str]] = {
     "append_jsonl": ("ztb.io.jsonl", "append_jsonl"),
     "iter_jsonl_objects": ("ztb.io.jsonl", "iter_jsonl_objects"),
     "read_jsonl_objects": ("ztb.io.jsonl", "read_jsonl_objects"),
+    "read_tail_jsonl_objects": ("ztb.io.jsonl", "read_tail_jsonl_objects"),
     "append_jsonl_gz": ("ztb.io.jsonl_gz", "append_jsonl_gz"),
     "read_jsonl_gz": ("ztb.io.jsonl_gz", "read_jsonl_gz"),
     "write_state_payload": ("ztb.io.state_persistence", "write_state_payload"),

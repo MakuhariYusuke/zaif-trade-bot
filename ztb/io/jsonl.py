@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections import deque
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
@@ -74,6 +75,39 @@ def read_jsonl_objects(
             warn_malformed=warn_malformed,
         )
     )
+
+
+def read_tail_jsonl_objects(
+    path: PathLike,
+    *,
+    limit: int,
+    encoding: str = "utf-8",
+    errors: str = "replace",
+    warn_malformed: bool = False,
+) -> list[dict[str, object]]:
+    """Read up to the last ``limit`` JSON object rows from a JSONL file."""
+    if limit <= 0:
+        return []
+    source = _to_path(path)
+    tail_lines: deque[tuple[int, str]] = deque(maxlen=limit)
+    with open(source, "r", encoding=encoding, errors=errors) as f:
+        for line_no, line in enumerate(f, 1):
+            if line_no == 1 and line.startswith("\ufeff"):
+                line = line.removeprefix("\ufeff")
+            if line.strip():
+                tail_lines.append((line_no, line))
+
+    rows: list[dict[str, object]] = []
+    for line_no, line in tail_lines:
+        parsed = _parse_jsonl_object_line(
+            line,
+            source=source,
+            line_no=line_no,
+            warn_malformed=warn_malformed,
+        )
+        if parsed is not None:
+            rows.append(parsed)
+    return rows
 
 def append_jsonl(
     path: PathLike,

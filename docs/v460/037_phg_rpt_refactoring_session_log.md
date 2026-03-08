@@ -2436,3 +2436,58 @@
 1. `test_aggregate_to_1min.py` の trades-only / merged setup を class-scope fixture へ寄せる
 2. `test_v460_core.py` と `test_ml_pipeline.py` の real-data / parquet top をさらに揃える
 3. `config_hot_reload` / `aggregate_to_1min` の broad 上位 call を引き続き削る
+
+---
+
+## 2026-03-09 / Session 037-053
+
+### 実施
+- production
+  - `ztb/io/jsonl.py`
+    - `read_tail_jsonl_objects()` を追加
+    - plain JSONL の末尾 N 行取得ロジックを共通化
+  - `ztb/io/__init__.py`
+    - 上記 helper を export
+  - `ztb/data/market_data_collector.py`
+    - trades 側 1 分集約を `_aggregate_trades_1min()` として分離
+    - `aggregate_to_1min()` 本体は OB / trades の各 helper を呼ぶ形へ整理
+- test
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - real-data tail 読込を shared JSONL helper に統一
+  - `tests/unit/v460/test_ml_pipeline.py`
+    - 重複していた `_tail_jsonl_objects()` の実装を shared helper 利用へ変更
+  - `tests/unit/v460/test_aggregate_to_1min.py`
+    - non-persistence 経路を input payload keyed cache 化
+    - 同一 raw payload に対する aggregate 再計算を回避
+
+### 結果
+- focused:
+  - `test_aggregate_to_1min.py`
+  - `test_enricher_skip_gate.py::Test058Integration`
+  - `test_ml_pipeline.py::Test057Integration`
+  - `29 passed in 3.95s`
+  - durations:
+    - `Test058Integration::test_enrichment_with_real_data` setup: `0.35s`
+    - `Test057Integration::test_load_real_data`: `0.19s`
+    - `TestAggregateEdgeCases::test_many_minutes`: `0.03s`
+- filtered broad:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` / `test_113_resilience.py` を除外、`test_306_proposals.py::...::test_yaml_has_microprice_side` を deselect）
+  - `4154 passed, 13 warnings in 40.99s`
+
+### 主要改善
+- plain JSONL の tail 読込が `test_enricher_skip_gate.py` と `test_ml_pipeline.py` で重複していたため、`ztb.io` に寄せて DRY 化した。今後 real-data integration 系で同じ helper を横展開できる。
+- `aggregate_to_1min()` は板集約だけ helper 化されていて、trades 側の集約は本体に残っていた。今回の分離で責務を揃え、今後の本体最適化や単体検証をしやすくした。
+- `test_aggregate_to_1min.py` は output persistence を確認しないケースまで毎回 aggregate を再計算していたため、pure aggregation path を cache 再利用に切り替えた。
+
+### 補足
+- broad wall time 自体はこの rerun では悪化したが、対象 hotspot は改善している。
+- 最新の broad top は次へ移っている:
+  - `test_141_side_specific_models.py`
+  - `test_169_config_hot_reload.py`
+  - `test_fill_quality.py::TestInterimJudgment`
+  - 一部 YAML / config parse / dashboard integration
+
+### 次アクション
+1. `test_169_config_hot_reload.py` の reload path を production helper 再利用で削る
+2. `test_141_side_specific_models.py` の regime threshold integration を stub/cached fixture 化する
+3. `test_fill_quality.py::TestInterimJudgment` の大量 record 構築を共通 builder へ寄せる

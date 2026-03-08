@@ -4431,3 +4431,26 @@ python scripts/unified_trainer.py \
 - `test_fill_quality.py::TestBug11CancelRaceCondition::test_cancel_fail_detects_fill` dropped from `0.17s` focused to `0.12s` focused, and the remaining status-unknown case fell to `0.01s`.
 - The latest filtered broad rerun completed at `4154 passed, 13 warnings in 34.47s`.
 - Broad top has now shifted toward `test_aggregate_to_1min.py`, `test_v460_core.py::TestDataLoader::test_load_parquet`, and `test_ml_pipeline.py::Test057Integration::test_load_real_data`.
+
+## Session 037-053 (2026-03-09)
+
+### Changed
+- Added a reusable plain-JSONL tail reader in [ztb/io/jsonl.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/io/jsonl.py) and exported it from [ztb/io/__init__.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/io/__init__.py). This consolidates the “read the last N nonblank JSONL objects” pattern instead of keeping file-tail logic duplicated in tests.
+- Updated [tests/unit/v460/test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py) and [tests/unit/v460/test_ml_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ml_pipeline.py) to reuse the shared JSONL-tail helper instead of separate ad-hoc implementations.
+- Refactored [ztb/data/market_data_collector.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/data/market_data_collector.py) to extract trade aggregation into `_aggregate_trades_1min()`, matching the existing `_aggregate_orderbook_1min()` split and removing repeated intermediate-column setup from the main `aggregate_to_1min()` path.
+- Optimized [tests/unit/v460/test_aggregate_to_1min.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_aggregate_to_1min.py) so non-persistence cases reuse a cached aggregate result keyed by the raw input payload. Persistence tests still execute the real parquet path.
+
+### Verified
+- `python -m py_compile ztb/io/jsonl.py ztb/io/__init__.py ztb/data/market_data_collector.py tests/unit/v460/test_aggregate_to_1min.py tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_ml_pipeline.py`
+- `python -m pytest tests/unit/v460/test_aggregate_to_1min.py tests/unit/v460/test_enricher_skip_gate.py::Test058Integration tests/unit/v460/test_ml_pipeline.py::Test057Integration -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py --deselect=tests/unit/v460/test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+
+### Notes
+- Focused results improved where targeted:
+  - `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup: `0.35s`
+  - `test_ml_pipeline.py::Test057Integration::test_load_real_data`: `0.19s`
+  - `test_aggregate_to_1min.py::TestAggregateEdgeCases::test_many_minutes`: `0.03s`
+- The latest filtered broad rerun completed at `4154 passed, 13 warnings in 40.99s`. Wall time regressed on that single rerun due noise elsewhere, but the targeted hotspots moved down:
+  - `Test058Integration` setup reached `0.28s`
+  - `Test057Integration::test_load_real_data` reached `0.16s`
+  - `aggregate_to_1min` dropped out of the top few broad offenders
