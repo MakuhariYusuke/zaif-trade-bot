@@ -60,7 +60,14 @@ class KellyEstimate:
 
 @dataclass
 class LotSizingConfig:
-    """動的ロットサイジングの設定."""
+    """動的ロットサイジングの設定.
+
+    347# 有効化必要残高目安:
+    - confidence_lot: 最低 3 mBTC (min_lot切下げ後 0.0005 BTC shrink が機能)
+    - lot_sizer (step-based): 最低 5 mBTC (0.002 lot で運用開始)
+    - Kelly Criterion: 最低 5 mBTC (kelly_equity_btc 設定必須)
+    - regime_lot_multiplier: 最低 3 mBTC (0.5x が min_lot 以上)
+    """
 
     # 現在のロットサイズ
     current_lot: float = 0.001

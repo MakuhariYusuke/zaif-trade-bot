@@ -57,6 +57,8 @@ class TestClassifyGuard244:
             ("dynamic_kill_force_release_sell", GuardCategory.RECOVERY),
             ("dual_kill_bypass", GuardCategory.RECOVERY),
             ("per_side_halt_recovery_active", GuardCategory.RECOVERY),
+            # 348# balance_forced_halt_block → per_side_halt_block リネーム
+            ("per_side_halt_block", GuardCategory.RECOVERY),
         ],
     )
     def test_known_guards(self, guard_name: str, expected: GuardCategory) -> None:

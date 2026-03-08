@@ -326,7 +326,7 @@ class TestIntegrationConsistency:
 
         # 各スキップパスの位置 (すべて §20-A より後)
         skip_patterns = [
-            "BALANCE_FORCED_SKIP",
+            # 348# balance_forced 撤廃: BALANCE_FORCED_SKIP 削除
             "UNKNOWN_REGIME_BUY_SKIP",
             "TRENDING_SELL_SKIP",
             "BUY_DYNAMIC_KILL",

@@ -69,6 +69,8 @@ _CLASSIFICATION: Final[dict[str, GuardCategory]] = {
     # 以下は system 起因のブロックだが、デッドロック回避・在庫管理の
     # リカバリ動作であるため RECOVERY に分類。system カテゴリの過大計上を是正する。
     # 348# balance_forced 撤廃: balance_forced_halt_block, forced_buy_delay を削除
+    # 348# balance_forced_halt_block → per_side_halt_block にリネーム
+    "per_side_halt_block": GuardCategory.RECOVERY,
     "one_sided_freeze_skip": GuardCategory.RECOVERY,
     "one_sided_cooldown_skip": GuardCategory.RECOVERY,
     "degraded_liquidation_duty_skip": GuardCategory.RECOVERY,

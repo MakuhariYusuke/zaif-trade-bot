@@ -74,10 +74,32 @@ ASTベースの自動スクリプトを使用して、10 クラス全体削除�
 - `balance_forced_switch` FillRecord フィールド: 過去のレコード互換性のため FillRecord dataclass に残存
 - Guard fire 名 `balance_forced_halt_block` → `per_side_halt_block` にリネーム
 
+## セルフレビュー結果
+
+### BUG: 0件
+
+### WARN → 修正済み (3件)
+
+| # | 内容 | 対処 |
+|---|---|---|
+| W-1 | `per_side_halt_block` が guard_reason_classifier に未登録 | RECOVERY として登録 + test_244 にテスト追加 |
+| W-2 | lot_sizer 有効化に必要な最低残高がコメント未記載 (347# L-4) | LotSizingConfig docstring に目安追記 |
+| W-3 | test_158 に `BALANCE_FORCED_SKIP` デッドコード参照 | コメント化 |
+
+### 未対処 (Coincheck 検証待ち)
+
+- **347# L-3**: `min_order_btc: 0.001 → 0.0005` — Coincheck 板取引の最小注文量要確認
+
+### 後方互換性確認
+
+- `FillRecord.balance_forced_switch`: ztb/metrics/fill_quality.py に残存 (設計通り)
+- 分析ツール (tail_loss_analysis, retrain_scheduler): 既存データ遡及分析のため参照を維持
+- 新規レコードでは常に `False`/`None` が設定される
+
 ## テスト結果
 
 ```
-4208 passed, 0 failed (test_ml_pipeline 除外: 既知のデータ不足)
+4209 passed, 0 failed (test_ml_pipeline 除外: 既知のデータ不足)
 ```
 
 ## ドキュメント命名規則
