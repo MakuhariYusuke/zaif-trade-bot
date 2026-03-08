@@ -12,6 +12,7 @@ PnlMeasurement, compute_ev_offset_multiplier) を fill_config_results.py に分�
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 # 329# re-export: 既存の import パスを維持
 from scripts.v460.lib.fill_config_results import (  # noqa: F401
@@ -25,6 +26,14 @@ from scripts.v460.lib.fill_config_results import (  # noqa: F401
 # ======================================================================
 # Configuration
 # ======================================================================
+
+
+@lru_cache(maxsize=1)
+def _resolve_fill_config_yaml_parser():
+    """Resolve the split YAML parser once while keeping circular imports lazy."""
+    from scripts.v460.lib.fill_config_parser import parse_fill_config_yaml
+
+    return parse_fill_config_yaml
 
 @dataclass
 class FillTestConfig:
@@ -741,6 +750,4 @@ class FillTestConfig:
     @classmethod
     def from_yaml(cls, yaml_cfg: dict) -> "FillTestConfig":
         """YAML dict から FillTestConfig を構築 (parser に委譲)."""
-        from scripts.v460.lib.fill_config_parser import parse_fill_config_yaml
-
-        return parse_fill_config_yaml(yaml_cfg)
+        return _resolve_fill_config_yaml_parser()(yaml_cfg)

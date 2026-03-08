@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import copy
 from pathlib import Path
 
 import pytest
@@ -282,41 +283,53 @@ class TestParseInfraSection:
 class TestProductionYamlRoundTrip:
     """実 YAML ファイルのパース成功確認."""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def yaml_cfg(self) -> dict:
         """configs/v460/fill_test.yaml をロード."""
         with open(YAML_PATH, encoding="utf-8") as f:
             return yaml.safe_load(f)
 
-    def test_parse_succeeds(self, yaml_cfg: dict) -> None:
-        """実 YAML の parse がエラーなく完了する."""
-        cfg = parse_fill_config_yaml(yaml_cfg)
-        assert isinstance(cfg, FillTestConfig)
+    @pytest.fixture(scope="class")
+    def direct_cfg(self, yaml_cfg: dict) -> FillTestConfig:
+        return parse_fill_config_yaml(copy.deepcopy(yaml_cfg))
 
-    def test_critical_fields_match_yaml(self, yaml_cfg: dict) -> None:
+    @pytest.fixture(scope="class")
+    def from_yaml_cfg(self, yaml_cfg: dict) -> FillTestConfig:
+        return FillTestConfig.from_yaml(copy.deepcopy(yaml_cfg))
+
+    def test_parse_succeeds(self, direct_cfg: FillTestConfig) -> None:
+        """実 YAML の parse がエラーなく完了する."""
+        assert isinstance(direct_cfg, FillTestConfig)
+
+    def test_critical_fields_match_yaml(
+        self,
+        yaml_cfg: dict,
+        direct_cfg: FillTestConfig,
+    ) -> None:
         """336# で変更した critical fields が YAML 値と一致."""
-        cfg = parse_fill_config_yaml(yaml_cfg)
         loss_control = yaml_cfg.get("止血", yaml_cfg.get("loss_control", {}))
         # buy_dynamic_kill — 336# T-1
-        assert cfg.buy_dynamic_kill_threshold_bps == loss_control["buy_dynamic_kill"]["threshold_bps"]
+        assert direct_cfg.buy_dynamic_kill_threshold_bps == loss_control["buy_dynamic_kill"]["threshold_bps"]
         # buy_dynamic_kill_inv_relaxation — 336# T-2
-        assert cfg.buy_dynamic_kill_inv_relaxation_max_bps == loss_control["buy_dynamic_kill_inv_relaxation"]["max_bps"]
+        assert direct_cfg.buy_dynamic_kill_inv_relaxation_max_bps == loss_control["buy_dynamic_kill_inv_relaxation"]["max_bps"]
         # 337# sell_dynamic_kill threshold 緩和
-        assert cfg.sell_dynamic_kill_threshold_bps == loss_control["sell_dynamic_kill"]["threshold_bps"]
+        assert direct_cfg.sell_dynamic_kill_threshold_bps == loss_control["sell_dynamic_kill"]["threshold_bps"]
         # 337# sell_dynamic_kill_inv_relaxation
         sell_inv = loss_control["sell_dynamic_kill_inv_relaxation"]
-        assert cfg.sell_dynamic_kill_inv_relaxation_enabled == sell_inv["enabled"]
-        assert cfg.sell_dynamic_kill_inv_relaxation_scale == sell_inv["scale"]
-        assert cfg.sell_dynamic_kill_inv_relaxation_max_bps == sell_inv["max_bps"]
+        assert direct_cfg.sell_dynamic_kill_inv_relaxation_enabled == sell_inv["enabled"]
+        assert direct_cfg.sell_dynamic_kill_inv_relaxation_scale == sell_inv["scale"]
+        assert direct_cfg.sell_dynamic_kill_inv_relaxation_max_bps == sell_inv["max_bps"]
 
-    def test_from_yaml_matches_direct_parse(self, yaml_cfg: dict) -> None:
+    def test_from_yaml_matches_direct_parse(
+        self,
+        direct_cfg: FillTestConfig,
+        from_yaml_cfg: FillTestConfig,
+    ) -> None:
         """FillTestConfig.from_yaml() と直接呼び出しの結果が同一."""
-        cfg1 = parse_fill_config_yaml(yaml_cfg)
-        cfg2 = FillTestConfig.from_yaml(yaml_cfg)
         # dataclass の全フィールドが一致
         from dataclasses import fields
 
-        for f in fields(cfg1):
-            v1 = getattr(cfg1, f.name)
-            v2 = getattr(cfg2, f.name)
+        for f in fields(direct_cfg):
+            v1 = getattr(direct_cfg, f.name)
+            v2 = getattr(from_yaml_cfg, f.name)
             assert v1 == v2, f"{f.name}: {v1!r} != {v2!r}"

@@ -2098,3 +2098,54 @@
 1. `test_enricher_skip_gate.py` の real-data setup を fixture snapshot / pre-enriched cache へ寄せられないか確認
 2. `test_v460_core.py::TestConfigLoader::*` と `test_336_fill_config_parser.py` の parser/YAML round-trip を DRY 化して I/O を減らす
 3. parquet を本当に必要とするケースだけに絞れているか `test_aggregate_to_1min.py` と `test_build_features_pipeline.py` を再点検
+
+---
+
+## 2026-03-09 / Session 037-046
+
+### 実施
+- production
+  - `scripts/v460/lib/fill_config.py`
+    - `FillTestConfig.from_yaml()` の split parser 解決を cached lazy resolver 化
+- test
+  - `tests/unit/v460/test_336_fill_config_parser.py`
+    - production YAML を class-scope fixture 化
+    - direct parse 結果 / `from_yaml()` 結果を class-scope で再利用
+  - `tests/unit/v460/test_v460_core.py`
+    - `TestConfigLoader` / `TestConfigLoaderTaskPreservation` の temp YAML 生成を `yaml.dump()` から literal YAML 書込へ変更
+    - loader 自体は引き続き end-to-end で通す構成を維持
+
+### 結果
+- focused 回帰:
+  - `test_336_fill_config_parser.py::TestProductionYamlRoundTrip`
+  - `test_v460_core.py::TestConfigLoader`
+  - `test_v460_core.py::TestConfigLoaderTaskPreservation`
+  - `8 passed in 2.25s`
+  - durations:
+    - `TestConfigLoader::test_load_config_validation_error` `0.02s`
+    - `TestConfigLoader::test_load_config_valid` `0.02s`
+    - `TestProductionYamlRoundTrip` setup `0.06s`
+- broad 測定:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` と `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - `4182 passed, 1 deselected, 11 warnings in 29.97s`
+
+### 主要改善
+- `fill_config.py`
+  - split parser の local import 解決を cache したため、`from_yaml()` 呼び出しの常時 overhead を削減
+- `test_336_fill_config_parser.py`
+  - production YAML を 3 回読み直し / 3 回 parse し直す構成をやめ、class-scope 再利用へ変更
+- `test_v460_core.py`
+  - config loader テストは YAML dumper を踏まず、loader/validator 本体だけを測る構成へ整理
+
+### 補足
+- この batch で broad は `36.76s -> 29.97s` まで低下した。
+- 現在の broad 上位は以下に再集中している:
+  - `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data`
+  - `test_aggregate_to_1min.py::TestAggregateMerged::test_parquet_roundtrip`
+  - `test_158_failure_modes.py` の setup
+  - いくつかの source-contract / integration 系単発ケース
+
+### 次アクション
+1. `test_enricher_skip_gate.py` の real-data setup を pre-enriched cache / snapshot fixture へ寄せられるか確認
+2. `test_aggregate_to_1min.py` の parquet persistence を最小ケースだけにさらに局所化できるか確認
+3. `test_158_failure_modes.py` setup と `test_234_gate_bypass_removal.py` の source 契約テストを軽量 helper に寄せる

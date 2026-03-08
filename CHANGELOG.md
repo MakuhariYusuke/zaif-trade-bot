@@ -4286,3 +4286,17 @@ python scripts/unified_trainer.py \
 - The latest filtered broad rerun completed at `4161 passed, 1 deselected, 11 warnings in 36.76s`.
 - The targeted hotspots removed from the filtered broad top 25 in this batch were `test_gate_check.py::TestRunG1Judgment::test_g1_low_ic`, `test_retrain_hot_reload.py::TestRetrainConfig::test_yaml_override`, and `test_135_trades_and_gate.py::TestAppendJsonlGz::test_append_multiple_calls`.
 - The remaining broad top is now centered on real-data setup and parser/integration paths: `test_enricher_skip_gate.py` real-data setup, `test_v460_core.py::TestConfigLoader::*`, `test_336_fill_config_parser.py` production-YAML round trips, and the persistence cases that intentionally still hit parquet.
+
+### Changed
+- Optimized [fill_config.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config.py) `FillTestConfig.from_yaml()` by resolving `parse_fill_config_yaml()` through a cached lazy resolver instead of re-importing the split parser on every call.
+- Optimized [test_336_fill_config_parser.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_336_fill_config_parser.py) `TestProductionYamlRoundTrip` so the production YAML payload is loaded once per class and both `parse_fill_config_yaml()` / `FillTestConfig.from_yaml()` results are reused across the three assertions.
+- Optimized [test_v460_core.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_v460_core.py) config-loader tests by replacing `yaml.dump()`-driven temporary file generation with direct literal YAML writes. The tests still exercise `load_config()` end-to-end, but no longer spend time constructing YAML through the dumper.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_336_fill_config_parser.py::TestProductionYamlRoundTrip tests/unit/v460/test_v460_core.py::TestConfigLoader tests/unit/v460/test_v460_core.py::TestConfigLoaderTaskPreservation -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- The latest filtered broad rerun completed at `4182 passed, 1 deselected, 11 warnings in 29.97s`.
+- The config-loader/parser hotspots were materially reduced: `TestConfigLoader::*` focused calls dropped to `0.02s`, and `TestProductionYamlRoundTrip` setup fell to `0.06s` in the subsequent broad run.
+- The remaining broad top is now dominated by real-data and intentional persistence/integration paths: `test_enricher_skip_gate.py` real-data setup, `test_aggregate_to_1min.py` parquet roundtrip, and a small number of integration/source-contract checks.

@@ -168,39 +168,49 @@ class TestConfigLoader:
         assert "_meta" not in merged
 
     def test_load_config_validation_error(self, tmp_path: Path) -> None:
-
-        base = {"data": {"train_end_index": None}, "features": {"selected": None}}
         base_path = tmp_path / "base.yaml"
-        with open(base_path, "w") as f:
-            yaml.dump(base, f)
+        base_path.write_text(
+            "data:\n"
+            "  train_end_index: null\n"
+            "features:\n"
+            "  selected: null\n",
+            encoding="utf-8",
+        )
 
-        exp = {"_base": str(base_path)}
         exp_path = tmp_path / "exp.yaml"
-        with open(exp_path, "w") as f:
-            yaml.dump(exp, f)
+        exp_path.write_text(
+            f"_base: {base_path}\n",
+            encoding="utf-8",
+        )
 
         with pytest.raises(ValueError, match="features.selected is null"):
             load_config(exp_path, base_path=base_path)
 
     def test_load_config_valid(self, tmp_path: Path) -> None:
-
-        base = {
-            "data": {"train_end_index": None, "ohlcv_path": "test.parquet"},
-            "features": {"selected": None, "candidates": ["a", "b"]},
-        }
         base_path = tmp_path / "base.yaml"
-        with open(base_path, "w") as f:
-            yaml.dump(base, f)
-
-        exp = {
-            "_base": str(base_path),
-            "_gate": "G1-info",
-            "data": {"train_end_index": 1000},
-            "features": {"selected": ["a", "b"]},
-        }
+        base_path.write_text(
+            "data:\n"
+            "  train_end_index: null\n"
+            "  ohlcv_path: test.parquet\n"
+            "features:\n"
+            "  selected: null\n"
+            "  candidates:\n"
+            "    - a\n"
+            "    - b\n",
+            encoding="utf-8",
+        )
         exp_path = tmp_path / "exp.yaml"
-        with open(exp_path, "w") as f:
-            yaml.dump(exp, f)
+        exp_path.write_text(
+            f"_base: {base_path}\n"
+            "_gate: G1-info\n"
+            "data:\n"
+            "  train_end_index: 1000\n"
+            "features:\n"
+            "  selected:\n"
+            "    - a\n"
+            "    - b\n",
+            encoding="utf-8",
+        )
 
         cfg = load_config(exp_path, base_path=base_path)
         assert cfg["data"]["train_end_index"] == 1000
@@ -856,17 +866,23 @@ class TestConfigLoaderTaskPreservation:
         """実験 YAML の _task が load_config 結果に含まれる."""
 
         base_yaml = tmp_path / "base.yaml"
-        base_yaml.write_text(yaml.dump({
-            "data": {"train_end_index": 1000, "ohlcv_path": "test.parquet"},
-            "features": {"selected": ["feat_a"]},
-        }))
+        base_yaml.write_text(
+            "data:\n"
+            "  train_end_index: 1000\n"
+            "  ohlcv_path: test.parquet\n"
+            "features:\n"
+            "  selected:\n"
+            "    - feat_a\n",
+            encoding="utf-8",
+        )
 
         exp_yaml = tmp_path / "exp.yaml"
-        exp_yaml.write_text(yaml.dump({
-            "_base": str(base_yaml),
-            "_gate": "G1-info",
-            "_task": "sac_train",
-        }))
+        exp_yaml.write_text(
+            f"_base: {base_yaml}\n"
+            "_gate: G1-info\n"
+            "_task: sac_train\n",
+            encoding="utf-8",
+        )
 
         cfg = load_config(str(exp_yaml))
         assert cfg["_task"] == "sac_train"
@@ -875,16 +891,22 @@ class TestConfigLoaderTaskPreservation:
         """_task 未指定時はデフォルト feature_info."""
 
         base_yaml = tmp_path / "base.yaml"
-        base_yaml.write_text(yaml.dump({
-            "data": {"train_end_index": 1000, "ohlcv_path": "test.parquet"},
-            "features": {"selected": ["feat_a"]},
-        }))
+        base_yaml.write_text(
+            "data:\n"
+            "  train_end_index: 1000\n"
+            "  ohlcv_path: test.parquet\n"
+            "features:\n"
+            "  selected:\n"
+            "    - feat_a\n",
+            encoding="utf-8",
+        )
 
         exp_yaml = tmp_path / "exp.yaml"
-        exp_yaml.write_text(yaml.dump({
-            "_base": str(base_yaml),
-            "_gate": "G1-info",
-        }))
+        exp_yaml.write_text(
+            f"_base: {base_yaml}\n"
+            "_gate: G1-info\n",
+            encoding="utf-8",
+        )
 
         cfg = load_config(str(exp_yaml))
         assert cfg["_task"] == "feature_info"
