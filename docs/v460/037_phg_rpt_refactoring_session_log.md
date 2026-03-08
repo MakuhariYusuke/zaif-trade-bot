@@ -2491,3 +2491,34 @@
 1. `test_169_config_hot_reload.py` の reload path を production helper 再利用で削る
 2. `test_141_side_specific_models.py` の regime threshold integration を stub/cached fixture 化する
 3. `test_fill_quality.py::TestInterimJudgment` の大量 record 構築を共通 builder へ寄せる
+
+---
+
+## 2026-03-09 / Session 037-054
+
+### 実施
+- test
+  - `tests/unit/v460/test_fill_quality.py`
+    - `_make_uniform_daily_records()` helper を追加
+    - `test_sample_sufficient_true`
+    - `test_sample_sufficient_false_n`
+    - `TestInterimJudgment::test_interim_3_days_200_samples`
+    - `TestInterimJudgment::test_final_7_days`
+    - を共通 builder 利用へ変更
+
+### 結果
+- `python -m py_compile tests/unit/v460/test_fill_quality.py`
+  - pass
+
+### 主要改善
+- `fill_quality` の日次サンプル生成は同型の二重ループが複数箇所に散っていたため、記録構築責務を helper に寄せた。
+- 日付境界を跨ぐテストデータ生成ロジックを 1 箇所にまとめたことで、将来 sample size や timestamp policy を調整するときの変更面積を減らした。
+
+### 補足
+- この batch は主に DRY / 横展開であり、測定上の大きい wall time 改善を狙ったものではない。
+- この環境では `test_fill_quality.py` 単体の direct collection が `scripts.v460.analysis.vg_and_trend` import で不安定だったため、focused pytest の数値は記録していない。変更範囲は test-side builder のみ。
+
+### 次アクション
+1. `test_169_config_hot_reload.py` の reload path を production helper 再利用で削る
+2. `test_141_side_specific_models.py` の regime threshold integration を stub/cached fixture 化する
+3. `test_fill_quality.py` の残る大量 record 構築箇所を同 helper へ横展開する

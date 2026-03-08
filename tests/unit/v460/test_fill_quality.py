@@ -113,6 +113,37 @@ async def _run_single_cycle_without_sleep(runner: "FillTestRunner") -> FillRecor
         return await runner.run_single_cycle()
 
 
+def _make_uniform_daily_records(
+    *,
+    prefix: str,
+    days: int,
+    per_day: int,
+    base_ts: float,
+    side: str = "buy",
+    order_price: float = 100.0,
+    order_quantity: float = 0.001,
+    filled: bool = True,
+    queue_wait_sec: float | None = None,
+    post_fill_30s_pnl: float | None = None,
+    adverse_selected: bool | None = None,
+) -> list[FillRecord]:
+    records: list[FillRecord] = []
+    for day in range(days):
+        for i in range(per_day):
+            records.append(FillRecord(
+                cycle_id=f"{prefix}_d{day}_{i}",
+                timestamp=base_ts + day * 86400 + i * 120,
+                side=side,
+                order_price=order_price,
+                order_quantity=order_quantity,
+                filled=filled,
+                queue_wait_sec=0.0 if queue_wait_sec is None else queue_wait_sec,
+                post_fill_30s_pnl=post_fill_30s_pnl,
+                adverse_selected=adverse_selected,
+            ))
+    return records
+
+
 def _make_fast_cycle_runner(
     tmp_path: Path,
     *,
@@ -508,23 +539,15 @@ class TestComputeFillMetrics:
 
     def test_sample_sufficient_true(self) -> None:
         """047# Finding3: n>=200 & 7暦日 → sample_sufficient=True (FINAL)."""
-
-        records = []
-        # UTC midnight-aligned timestamp to avoid date-boundary issues
-        base_ts = 1700006400.0  # 2023-11-15 00:00:00 UTC
-        for day in range(7):
-            for i in range(30):
-                records.append(FillRecord(
-                    cycle_id=f"ss_d{day}_{i}",
-                    timestamp=base_ts + day * 86400 + i * 120,
-                    side="buy",
-                    order_price=100.0,
-                    order_quantity=0.001,
-                    filled=True,
-                    queue_wait_sec=10.0,
-                    post_fill_30s_pnl=0.5,
-                    adverse_selected=False,
-                ))
+        records = _make_uniform_daily_records(
+            prefix="ss",
+            days=7,
+            per_day=30,
+            base_ts=1700006400.0,  # 2023-11-15 00:00:00 UTC
+            queue_wait_sec=10.0,
+            post_fill_30s_pnl=0.5,
+            adverse_selected=False,
+        )
         m = compute_fill_metrics(records)
         assert m.total_orders == 210
         assert m.measurement_days >= 7
@@ -532,19 +555,12 @@ class TestComputeFillMetrics:
 
     def test_sample_sufficient_false_n(self) -> None:
         """020# O1: n<200 → sample_sufficient=False."""
-
-        records = []
-        base_ts = 1700000000.0
-        for day in range(3):
-            for i in range(30):
-                records.append(FillRecord(
-                    cycle_id=f"ssf_d{day}_{i}",
-                    timestamp=base_ts + day * 86400 + i * 120,
-                    side="buy",
-                    order_price=100.0,
-                    order_quantity=0.001,
-                    filled=True,
-                ))
+        records = _make_uniform_daily_records(
+            prefix="ssf",
+            days=3,
+            per_day=30,
+            base_ts=1700000000.0,
+        )
         m = compute_fill_metrics(records)
         assert m.total_orders == 90
         assert m.sample_sufficient is False
@@ -1913,22 +1929,15 @@ class TestInterimJudgment:
 
     def test_interim_3_days_200_samples(self) -> None:
         """n>=200 & 3日 → INTERIM (not FINAL)."""
-
-        records = []
-        base_ts = 1700006400.0
-        for day in range(3):
-            for i in range(70):
-                records.append(FillRecord(
-                    cycle_id=f"interim_d{day}_{i}",
-                    timestamp=base_ts + day * 86400 + i * 120,
-                    side="buy",
-                    order_price=100.0,
-                    order_quantity=0.001,
-                    filled=True,
-                    queue_wait_sec=10.0,
-                    post_fill_30s_pnl=0.5,
-                    adverse_selected=False,
-                ))
+        records = _make_uniform_daily_records(
+            prefix="interim",
+            days=3,
+            per_day=70,
+            base_ts=1700006400.0,
+            queue_wait_sec=10.0,
+            post_fill_30s_pnl=0.5,
+            adverse_selected=False,
+        )
         metrics = compute_fill_metrics(records)
         assert metrics.sample_sufficient is False  # 7日未満
         judgment = g1_1_judgment(metrics, {})
@@ -1936,22 +1945,15 @@ class TestInterimJudgment:
 
     def test_final_7_days(self) -> None:
         """n>=200 & 7日 → FINAL."""
-
-        records = []
-        base_ts = 1700006400.0
-        for day in range(7):
-            for i in range(30):
-                records.append(FillRecord(
-                    cycle_id=f"final_d{day}_{i}",
-                    timestamp=base_ts + day * 86400 + i * 120,
-                    side="buy",
-                    order_price=100.0,
-                    order_quantity=0.001,
-                    filled=True,
-                    queue_wait_sec=10.0,
-                    post_fill_30s_pnl=0.5,
-                    adverse_selected=False,
-                ))
+        records = _make_uniform_daily_records(
+            prefix="final",
+            days=7,
+            per_day=30,
+            base_ts=1700006400.0,
+            queue_wait_sec=10.0,
+            post_fill_30s_pnl=0.5,
+            adverse_selected=False,
+        )
         metrics = compute_fill_metrics(records)
         assert metrics.sample_sufficient is True
         judgment = g1_1_judgment(metrics, {})

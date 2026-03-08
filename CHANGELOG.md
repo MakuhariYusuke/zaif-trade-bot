@@ -4454,3 +4454,15 @@ python scripts/unified_trainer.py \
   - `Test058Integration` setup reached `0.28s`
   - `Test057Integration::test_load_real_data` reached `0.16s`
   - `aggregate_to_1min` dropped out of the top few broad offenders
+
+## Session 037-054 (2026-03-09)
+
+### Changed
+- Added a shared daily-record builder in [test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py) and used it across the `sample_sufficient_*` and `TestInterimJudgment` cases. This removes duplicated nested `for day / for i` loops and keeps the date-boundary assumptions centralized in one helper.
+
+### Verified
+- `python -m py_compile tests/unit/v460/test_fill_quality.py`
+
+### Notes
+- This batch is primarily DRY cleanup and horizontal reuse, not a major runtime change.
+- Focused execution of `test_fill_quality.py` itself was not reliable in this environment because direct collection raised `ModuleNotFoundError: scripts.v460.analysis.vg_and_trend`, while broader suites continue to import the module correctly. The code change is limited to test-side record construction.
