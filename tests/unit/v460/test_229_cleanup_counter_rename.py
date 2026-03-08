@@ -159,7 +159,7 @@ class TestInvDecayTauDirectAccess:
         assert hasattr(cfg, "inv_decay_tau_sec")
 
     def test_default_value(self):
-        """343#P2: デフォルト値は 1800.0 (30分減衰)."""
+        """344#: デフォルト値は 1800.0 (30分減衰)."""
         cfg = _make_fill_config()
         assert cfg.inv_decay_tau_sec == 1800.0
 

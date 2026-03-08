@@ -5,7 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 343# P1 改善: forced downweight / sell KPI 分離 / skip_gate kill 連携 (2026-03-08)
+## 344# 改善: パラメータ有効化 / inv_bypass gradual 化 / EWMA mode (2026-03-08)
+
+### Changed
+- **344# A: velocity_ema_alpha** — `1.0→0.3` bid-ask bounce による velocity spike 平滑化
+- **344# B: ranging_obi_asymmetry_factor** — `0.0→0.3` ranging 市場での OBI 方向シグナル有効化
+- **344# C: inv_decay_tau_sec** — `0.0→1800` 古い fill 履歴の指数時間減衰 (30分 τ)
+- **344# D: inv_bypass gradual 化** (342#B) — ステップ関数廃止 (`0.3→0.0`) + inv_relaxation max_bps 拡大 (`0.3→0.5`)
+
+### Added
+- **344# E: DynamicKillManager EWMA mode** (342#D) — count-based rolling mean に加えて EWMA 選択可
+  - `ewma_alpha: 0.05` (effective window ≈ 39 fills, RiskMetrics 1996)
+  - `_get_rolling_mean()` ヘルパーで 3 判定箇所を統一
+- **344# テスト** — test_344_improvements.py (21 test cases)
+
+### Fixed
+- test_169, test_229, test_337: P1→P2 のデフォルト値変更に追従
+
+### Documentation
+- docs/v460/344_ph2_impl_improvements.md 新規作成
+- docs/v460/index.md: 344# エントリ追加
+- docs/v460/343_ph2_impl_p1_improvements.md §5: 344# で完了した項目を反映
+
+## 343# 改善: forced downweight / sell KPI 分離 / skip_gate kill 連携 (2026-03-08)
 
 ### Changed
 - **343# A: forced fill PnL downweight** — 337# の完全除外→0.5倍重み付け投入に改善

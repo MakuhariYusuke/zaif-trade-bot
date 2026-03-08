@@ -1,4 +1,4 @@
-﻿"""
+"""
 FillTestConfig — fill_test 設定データクラス.
 
 119# God Object 分割: run_fill_test.py から設定定義を分離.
@@ -171,7 +171,7 @@ class FillTestConfig:
     none_regime_fixed_offset_bps: float = 2.0  # 固定 offset (bps of mid_price)
     # 227# C1: Ranging × OBI (Order Book Imbalance) 方向別非対称 offset
     # AS理論: ranging市場ではOBIがmean-reversion方向を予測
-    ranging_obi_asymmetry_factor: float = 0.3  # 343#P2: 0.0→0.3 (ranging OBI方向シグナル)
+    ranging_obi_asymmetry_factor: float = 0.3  # 344#: 0.0→0.3 (ranging OBI方向シグナル)
     ranging_obi_threshold: float = 0.1         # |imbalance| がこの値以下では中立扱い
     # 168# §9.10: 低ボラティリティ offset boost (time_filter 根本対策)
     # vol_ratio < threshold 時に offset を拡大し、低ボラ環境での過剰アグレッシブ発注を抑制
@@ -542,7 +542,7 @@ class FillTestConfig:
     # 158# §20-B: 連続 trending sell skip 安全弁 — N 回超過で sell を強制許可 (0=無制限)
     max_consecutive_trending_sell_skip: int = 30
     # 171# Guard Paradox 対策: 在庫偏重時に sell ガードを自動緩和
-    # 343#P2 342#B: 0.3→0.0 ステップ関数廃止 → inv_relaxation max_bps拡大で gradual 化
+    # 344# 342#B: 0.3→0.0 ステップ関数廃止 → inv_relaxation max_bps拡大で gradual 化
     sell_guard_inv_bypass_threshold: float = 0.0
     # ---- 133# P0-10: sell 動的 kill (rolling PnL ベースの自動停止) ----
     sell_dynamic_kill_enabled: bool = False  # True で sell rolling PnL 監視有効
@@ -558,7 +558,7 @@ class FillTestConfig:
     sell_dynamic_kill_max_force_probes: int = 0    # 336# drift fix: YAML=0 (269# force-release無効)
     # 273# kill 時間上限 (268# I5: Pattern B kill↔halt 相互ロック防止)
     sell_dynamic_kill_max_duration_sec: float = 1800.0  # 336# drift fix: YAML=1800 (273#)
-    sell_dynamic_kill_ewma_alpha: float = 0.05  # 343#P2 342#D: EWMA α (0=無効)
+    sell_dynamic_kill_ewma_alpha: float = 0.05  # 344# 342#D: EWMA α (0=無効)
     # ---- 157# §19: buy 動的 kill (rolling PnL ベースの自動停止 — sell との対称性) ----
     buy_dynamic_kill_enabled: bool = False   # True で buy rolling PnL 監視有効
     buy_dynamic_kill_window: int = 50        # rolling ウィンドウ (fill 数)
@@ -570,7 +570,7 @@ class FillTestConfig:
     buy_dynamic_kill_max_force_probes: int = 0     # 336# drift fix: YAML=0 (269# force-release無効)
     # 273# kill 時間上限 (268# I5)
     buy_dynamic_kill_max_duration_sec: float = 1800.0  # 336# drift fix: YAML=1800 (273#)
-    buy_dynamic_kill_ewma_alpha: float = 0.05  # 343#P2 342#D: EWMA α (0=無効)
+    buy_dynamic_kill_ewma_alpha: float = 0.05  # 344# 342#D: EWMA α (0=無効)
     # 286# 283# P1-4: 在庫連動の buy_dynamic_kill 閾値緩和 (Ho & Stoll 1981)
     # 在庫偏重時 (BTC 不足) に buy kill を緩和して在庫リバランスを促進。
     # 閾値オフセット = min(|imbalance| × scale, max_bps)
@@ -581,7 +581,7 @@ class FillTestConfig:
     # 337# 在庫連動 sell_dynamic_kill 緩和 (Ho & Stoll 1981 対称性)
     sell_dynamic_kill_inv_relaxation_enabled: bool = False  # True で在庫連動緩和を有効化
     sell_dynamic_kill_inv_relaxation_scale: float = 0.4     # buy(0.5)より保守的
-    sell_dynamic_kill_inv_relaxation_max_bps: float = 0.5   # 343#P2 342#B: 0.3→0.5 inv_bypass廃止補完
+    sell_dynamic_kill_inv_relaxation_max_bps: float = 0.5   # 344# 342#B: 0.3→0.5 inv_bypass廃止補完
     # 343# forced fill downweight: 337#の完全除外→0.5倍重みで投入
     # 完全除外は kill 判定から forced fill の情報を遮断し、kill 解除判定を鈍らせる。
     # downweight=0.5 で「通常取引ほど信頼しないが情報は活用する」ように変更。
@@ -617,7 +617,7 @@ class FillTestConfig:
     # 249# Regime-aware inv skewing: trending 時は在庫偏重補正を無効化
     inv_skew_regime_gate_enabled: bool = False  # True で trending 時の inv_skew を停止
     # 228# C2: 在庫偏重の時間減衰 — 古い fill 履歴の影響を指数関数的に減衰
-    inv_decay_tau_sec: float = 1800.0          # 343#P2: 0→1800 (30分 τ 古いfill履歴減衰)
+    inv_decay_tau_sec: float = 1800.0          # 344#: 0→1800 (30分 τ 古いfill履歴減衰)
     # ---- 257# AS Reservation Price: Avellaneda-Stoikov 在庫×ボラ連動 offset ----
     # 在庫リスクをボラティリティに応じて非対称 offset 補正する理論的基盤。
     # 既存 inv_skew (線形) を σ²·τ で補完し、高ボラ時に在庫リバランスを加速。
@@ -683,7 +683,7 @@ class FillTestConfig:
     mid_trend_validity_sec: float = 300.0
     # 227# C3: velocity EMA smoothing — bid-ask bounce noise filter
     # α=1.0 でフィルタなし (raw velocity), α=0.3 で適度な平滑化
-    velocity_ema_alpha: float = 0.3  # 343#P2: 1.0→0.3 (bid-ask bounce 抑制)
+    velocity_ema_alpha: float = 0.3  # 344#: 1.0→0.3 (bid-ask bounce 抑制)
     balance_margin_ratio: float = 1.01
     balance_shrink_consecutive: int = 3
     balance_shrink_divisor: int = 2

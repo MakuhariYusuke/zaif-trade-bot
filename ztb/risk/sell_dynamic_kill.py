@@ -131,7 +131,7 @@ class DynamicKillConfig:
     #: 市場理論的根拠: kill が長期化すると rolling PnL ウィンドウが stale 化し、
     #: 市場条件が変化しても反映されない。時間上限は情報の鮮度を保証する。
     max_kill_duration_sec: float = 0.0
-    # ---- 343#P2 342#D: EWMA モード (RiskMetrics 1996) ----
+    # ---- 344# 342#D: EWMA モード (RiskMetrics 1996) ----
     #: EWMA α ∈ (0, 1]。0.0 = 無効 (count-based rolling mean を使用)。
     #: α=0.05 で effective window ≈ 20、レジーム遷移への高速応答。
     #: 市場理論的根拠: J.P.Morgan RiskMetrics — 新しい情報ほど重要。
@@ -182,7 +182,7 @@ class DynamicKillConfig:
                     f"DynamicKillConfig.toxicity_caution_min_participation "
                     f"must be in (0, 1.0], got {self.toxicity_caution_min_participation}"
                 )
-        # 343#P2 342#D: EWMA α バリデーション
+        # 344# 342#D: EWMA α バリデーション
         if not (0.0 <= self.ewma_alpha <= 1.0):
             raise ValueError(
                 f"DynamicKillConfig.ewma_alpha must be in [0, 1], "
@@ -231,7 +231,7 @@ class DynamicKillManager:
         "_consecutive_probes",  # 219#
         "_force_released",       # 219#
         "_kill_activated_at",    # 273# kill 発動タイムスタンプ
-        "_ewma_value",           # 343#P2 342#D EWMA 状態
+        "_ewma_value",           # 344# 342#D EWMA 状態
     )
 
     def __init__(self, config: DynamicKillConfig | None = None, *, side: str = "sell") -> None:
@@ -246,7 +246,7 @@ class DynamicKillManager:
         self._consecutive_probes: int = 0  # 219# progressive probe
         self._force_released: bool = False  # 219# force release active
         self._kill_activated_at: float | None = None  # 273# kill 発動時刻
-        self._ewma_value: float | None = None  # 343#P2 342#D EWMA 累積値
+        self._ewma_value: float | None = None  # 344# 342#D EWMA 累積値
 
     @property
     def config(self) -> DynamicKillConfig:
@@ -255,7 +255,7 @@ class DynamicKillManager:
     def track(self, pnl_bps: float) -> None:
         """fill の PnL (bps) を追跡."""
         self._pnl_history.append(pnl_bps)
-        # 343#P2 342#D: EWMA 更新
+        # 344# 342#D: EWMA 更新
         alpha = self._config.ewma_alpha
         if alpha > 0:
             if self._ewma_value is None:
@@ -276,7 +276,7 @@ class DynamicKillManager:
             self._pnl_history = self._pnl_history[-max_keep:]
 
     def _get_rolling_mean(self) -> float | None:
-        """343#P2 342#D: EWMA or count-based rolling mean を返す.
+        """344# 342#D: EWMA or count-based rolling mean を返す.
 
         EWMA モード (ewma_alpha > 0): _ewma_value を返す (window 未満でも可)。
         Count-based モード (ewma_alpha == 0): 従来の直近 window 件の算術平均。

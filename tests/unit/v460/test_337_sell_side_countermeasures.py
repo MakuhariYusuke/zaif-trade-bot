@@ -40,7 +40,7 @@ class TestSellInvRelaxationConfig:
         assert hasattr(cfg, "sell_dynamic_kill_inv_relaxation_max_bps")
 
     def test_defaults_are_conservative(self) -> None:
-        """343#P2 342#B: inv_bypass 廃止に伴い max_bps を 0.5 に引上げ."""
+        """344# 342#B: inv_bypass 廃止に伴い max_bps を 0.5 に引上げ."""
         cfg = FillTestConfig()
         assert cfg.sell_dynamic_kill_inv_relaxation_enabled is False
         assert cfg.sell_dynamic_kill_inv_relaxation_scale == 0.4
@@ -52,7 +52,7 @@ class TestSellInvRelaxationConfig:
         assert cfg.sell_dynamic_kill_inv_relaxation_scale < cfg.buy_dynamic_kill_inv_relaxation_scale
 
     def test_sell_max_bps_compensates_bypass_removal(self) -> None:
-        """343#P2 342#B: sell は inv_bypass 廃止に伴い buy より広い relaxation を持つ."""
+        """344# 342#B: sell は inv_bypass 廃止に伴い buy より広い relaxation を持つ."""
         cfg = FillTestConfig()
         assert cfg.sell_dynamic_kill_inv_relaxation_max_bps >= cfg.buy_dynamic_kill_inv_relaxation_max_bps
 

@@ -115,7 +115,7 @@ class TestC3TrendingUpSellThreshold:
     def test_sell_guard_inv_bypass_threshold(
         self, config_from_yaml: FillConfig
     ) -> None:
-        """343#P2 342#B: inv_bypass 廃止 → 0.0 (gradual 化)."""
+        """344# 342#B: inv_bypass 廃止 → 0.0 (gradual 化)."""
         assert config_from_yaml.sell_guard_inv_bypass_threshold == pytest.approx(0.0)
 
 

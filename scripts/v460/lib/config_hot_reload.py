@@ -402,7 +402,7 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "buy_dynamic_kill_inv_relaxation_enabled",
     "buy_dynamic_kill_inv_relaxation_scale",
     "buy_dynamic_kill_inv_relaxation_max_bps",
-    # 343#P2 342#D: EWMA α + 342#B inv_relaxation max_bps
+    # 344# 342#D: EWMA α + 342#B inv_relaxation max_bps
     "sell_dynamic_kill_ewma_alpha",
     "buy_dynamic_kill_ewma_alpha",
     "sell_dynamic_kill_inv_relaxation_max_bps",

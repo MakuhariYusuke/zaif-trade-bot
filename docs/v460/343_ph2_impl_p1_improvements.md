@@ -1,4 +1,4 @@
-# 343# P1 改善: forced downweight / sell KPI 分離 / skip_gate kill 連携
+# 343# 改善: forced downweight / sell KPI 分離 / skip_gate kill 連携
 
 > **種別**: impl  
 > **日付**: 2026-03-08  
@@ -181,21 +181,23 @@ regime 判定が過剰に保守的になる。
 
 ## §5 残課題 (342# アクションリストの残り)
 
-### P2 (中期検討)
+→ **344# で B/D + パラメータ有効化 3 件を実施済み。** 以下は 344# §5 に引き継ぎ。
+
+### 344# で完了
+
+| 342# | 内容 | 対応 |
+|------|------|------|
+| B | inv_bypass 不連続性 (0→full jump) | ✅ 344# (D): bypass 廃止 + relaxation max_bps 0.3→0.5 |
+| D | EWMA 化 (rolling mean → EWMA) | ✅ 344# (E): DynamicKillManager EWMA mode α=0.05 |
+| — | `velocity_ema_alpha=1.0` (無効) | ✅ 344# (A): 0.3 に有効化 |
+| — | `ranging_obi_asymmetry_factor=0.0` (無効) | ✅ 344# (B): 0.3 に有効化 |
+| — | `inv_decay_tau_sec=0.0` (無効) | ✅ 344# (C): 1800.0 に有効化 |
+
+### 残 (344# §5 参照)
 
 | 342# | 内容 | 状態 |
 |------|------|------|
-| B | inv_bypass 不連続性 (0→full jump) | 未着手。テーパリング導入の検討が必要 |
-| D | EWMA 化 (rolling mean → EWMA) | 未着手。全体的なリファクタが必要 |
 | E | sell post_fill_wait_sec 非対称化 | 未着手。YAML パラメータ追加のみ |
 | F | velocity ルールの AS-aware 化 | 未着手。skip_gate 制御の複雑さ増加リスク |
 | G | preflight 差分対称性 | 未着手。低優先度 |
-
-### 作業中に発見した改善候補
-
-| 優先度 | 内容 | 詳細 |
-|--------|------|------|
-| P1 | `velocity_ema_alpha=1.0` (無効) | 0.3推奨。bid-ask bounce による誤 velocity spike を抑制可能 |
-| P1 | `ranging_obi_asymmetry_factor=0.0` (無効) | 0.3推奨。ranging 市場での OBI 方向シグナル活用 |
-| P2 | `inv_decay_tau_sec=0.0` (無効) | 1800推奨。古い fill 履歴の影響を時間減衰 |
-| P2 | `skip_gate_score_calibration=False` | Isotonic regression による score 校正 |
+| — | `skip_gate_score_calibration=False` | 未着手。Isotonic regression による score 校正 |

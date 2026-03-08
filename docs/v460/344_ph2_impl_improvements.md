@@ -1,23 +1,23 @@
-# 343# P2 改善: パラメータ有効化 / inv_bypass gradual 化 / EWMA mode
+# 344# 改善: パラメータ有効化 / inv_bypass gradual 化 / EWMA mode
 
 > **種別**: impl  
 > **日付**: 2026-03-08  
-> **前提**: 343# P1 (`6195f1515`) + 342# 設計・市場理論深掘り調査 (Finding B/D)  
+> **前提**: 343# (`6195f1515`) + 342# 設計・市場理論深掘り調査 (Finding B/D)  
 > **テスト**: v460 unit 4227 passed, +21 new test cases  
 
 ---
 
 ## §1 概要
 
-343# P1 の §5 残課題から P2 タスク 5 件を一括実施。
+343# の §5 残課題から 5 件を一括実施。
 休眠パラメータ 3 件の有効化、inv_bypass のステップ関数廃止と gradual 化、
 DynamicKillManager の EWMA mode 追加を行った。
 
 | # | 施策 | 参照 | 概要 |
 |---|------|------|------|
-| A | velocity_ema_alpha 有効化 | 343#P1 §5 発見 | `1.0 → 0.3`: bid-ask bounce 抑制 |
-| B | ranging_obi_asymmetry_factor 有効化 | 343#P1 §5 発見 | `0.0 → 0.3`: OBI 方向シグナル活用 |
-| C | inv_decay_tau_sec 有効化 | 343#P1 §5 発見 | `0.0 → 1800.0`: 古い fill 履歴の時間減衰 |
+| A | velocity_ema_alpha 有効化 | 343# §5 発見 | `1.0 → 0.3`: bid-ask bounce 抑制 |
+| B | ranging_obi_asymmetry_factor 有効化 | 343# §5 発見 | `0.0 → 0.3`: OBI 方向シグナル活用 |
+| C | inv_decay_tau_sec 有効化 | 343# §5 発見 | `0.0 → 1800.0`: 古い fill 履歴の時間減衰 |
 | D | inv_bypass gradual 化 | 342#B | ステップ関数廃止 + inv_relaxation 拡大 |
 | E | DynamicKillManager EWMA mode | 342#D | count-based rolling mean → EWMA 選択可 |
 
@@ -214,7 +214,7 @@ def _get_rolling_mean(self) -> float | None:
 | `scripts/v460/run_fill_test.py` | E | DynamicKillConfig 構築に ewma_alpha |
 | `scripts/v460/lib/config_hot_reload.py` | D, E | hot-reload 対象追加 |
 | `ztb/risk/sell_dynamic_kill.py` | E | EWMA core: config, state, track(), _get_rolling_mean() |
-| `tests/unit/v460/test_343_p2_improvements.py` | new | 21 test cases |
+| `tests/unit/v460/test_344_improvements.py` | new | 21 test cases |
 | `tests/unit/v460/test_169_c1_c3_c4_config.py` | fix | inv_bypass assertion 修正 |
 | `tests/unit/v460/test_229_cleanup_counter_rename.py` | fix | inv_decay_tau assertion 修正 |
 | `tests/unit/v460/test_337_sell_side_countermeasures.py` | fix | relaxation max_bps assertion 修正 |

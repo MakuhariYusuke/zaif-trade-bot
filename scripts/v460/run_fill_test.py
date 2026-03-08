@@ -298,7 +298,7 @@ class FillTestRunner(
             max_stale_kill_cycles=config.sell_dynamic_kill_max_stale_cycles,  # 269#
             max_force_release_probes=config.sell_dynamic_kill_max_force_probes,  # 269#
             max_kill_duration_sec=config.sell_dynamic_kill_max_duration_sec,  # 273#
-            ewma_alpha=config.sell_dynamic_kill_ewma_alpha,  # 343#P2 342#D
+            ewma_alpha=config.sell_dynamic_kill_ewma_alpha,  # 344# 342#D
         ))
 
         # 157# §19: buy 動的 kill — sell との対称性確保
@@ -312,7 +312,7 @@ class FillTestRunner(
             max_stale_kill_cycles=config.buy_dynamic_kill_max_stale_cycles,  # 269#
             max_force_release_probes=config.buy_dynamic_kill_max_force_probes,  # 269#
             max_kill_duration_sec=config.buy_dynamic_kill_max_duration_sec,  # 273#
-            ewma_alpha=config.buy_dynamic_kill_ewma_alpha,  # 343#P2 342#D
+            ewma_alpha=config.buy_dynamic_kill_ewma_alpha,  # 344# 342#D
         ))
 
         # 194# CycleGateAggregator: per-cycle skip 判定の一元化 (192# §3 対応)
