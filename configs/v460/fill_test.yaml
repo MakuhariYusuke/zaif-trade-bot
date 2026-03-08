@@ -394,6 +394,9 @@ skip_gate:
   # 187# clamp: offset 合計の上下限 (hot-reload 対応)
   offset_floor: -0.3   # 最大緩和
   offset_ceil: 0.5     # 最大厳格化
+  # 343# skip_gate/kill 連携: kill 解除直後の skip_gate 緩和
+  kill_release_grace_cycles: 3   # kill 解除後の緩和サイクル数
+  kill_release_offset: -0.1     # 緩和 offset (負=緩和)
 
 # ---- 107# Volatility Guard (リアルタイム急変検知) ----
 # time_filter の静的遮断では対応不能な「時間帯内の急変」に対応
@@ -638,6 +641,10 @@ loss_control:
     max_bps: 0.3                   # buy(0.5)より保守的。340#修正後: effective -0.3-0.3=-0.6 (properly relaxed)
   # 286# 283# P1-5: 強制買い KPI 分離 (balance_forced fill の品質個別追跡)
   forced_buy_kpi_tracking: true    # 286# 有効化 (デフォルト True)
+  forced_sell_kpi_tracking: true   # 343# sell 側も分離トラッキング
+  # 343# forced fill downweight: 337#の完全除外→重み付け投入に改善
+  # 完全除外は kill 解除判定を鈍らせるため、0.5倍の重みで情報を活用
+  forced_fill_pnl_downweight: 0.5  # 0.0=完全除外(旧), 1.0=通常扱い
   # 286# 284# P1: 強制買い遅延実行 (Glosten-Milgrom 1985)
   # balance_forced + buy + 急落中 → N サイクル待機 (逆選択回避の「待つ勇気」)
   forced_buy_delay:

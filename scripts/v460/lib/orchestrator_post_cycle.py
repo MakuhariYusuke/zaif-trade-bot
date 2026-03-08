@@ -114,6 +114,18 @@ class OrchestratorPostCycleMixin:
                 else:
                     st.normal_buy_fill_count += 1
                     st.normal_buy_pnl_sum_bps += record.post_fill_30s_pnl
+            # 343# 強制売り KPI 分離トラッキング (buy と対称)
+            if (
+                self.config.forced_sell_kpi_tracking_enabled
+                and next_side == "sell"
+                and record.post_fill_30s_pnl is not None
+            ):
+                if record.balance_forced_switch:
+                    st.forced_sell_fill_count += 1
+                    st.forced_sell_pnl_sum_bps += record.post_fill_30s_pnl
+                else:
+                    st.normal_sell_fill_count += 1
+                    st.normal_sell_pnl_sum_bps += record.post_fill_30s_pnl
             # 168# §4.1: daily drawdown PnL update
             if record.post_fill_30s_pnl is not None:
                 dd_result = self._daily_drawdown_guard.update_pnl(
@@ -301,6 +313,25 @@ class OrchestratorPostCycleMixin:
                     f"({_fb_mean:+.2f}bps avg), "
                     f"normal={st.normal_buy_fill_count} fills "
                     f"({_nb_mean:+.2f}bps avg)"
+                )
+            # 343# 強制売り KPI 分離ログ (buy と対称)
+            if self.config.forced_sell_kpi_tracking_enabled and (
+                st.forced_sell_fill_count > 0 or st.normal_sell_fill_count > 0
+            ):
+                _fs_mean = (
+                    st.forced_sell_pnl_sum_bps / st.forced_sell_fill_count
+                    if st.forced_sell_fill_count > 0 else 0.0
+                )
+                _ns_mean = (
+                    st.normal_sell_pnl_sum_bps / st.normal_sell_fill_count
+                    if st.normal_sell_fill_count > 0 else 0.0
+                )
+                logger.info(
+                    f"[343#] Sell KPI split: "
+                    f"forced={st.forced_sell_fill_count} fills "
+                    f"({_fs_mean:+.2f}bps avg), "
+                    f"normal={st.normal_sell_fill_count} fills "
+                    f"({_ns_mean:+.2f}bps avg)"
                 )
 
         # 113# resilience: HealthMonitor + GC

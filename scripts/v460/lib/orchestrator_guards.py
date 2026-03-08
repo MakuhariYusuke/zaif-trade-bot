@@ -39,6 +39,9 @@ class OrchestratorGuardsMixin:
 
         286# 283# P1-4: buy 側に在庫連動緩和を追加 (Ho & Stoll 1981)。
         在庫偏重時に buy kill 閾値を段階的に緩和し、在庫リバランスを促進。
+
+        343# kill リリース追跡: kill→非kill 遷移時にサイクル番号を記録し、
+        skip_gate が kill 直後の過剰抑制を回避できるようにする。
         """
         mgr = self._sell_kill_mgr if side == "sell" else self._buy_kill_mgr
         regime: str | None = None
@@ -97,6 +100,25 @@ class OrchestratorGuardsMixin:
                 f"threshold_used={telemetry.threshold_used}, "
                 f"cooldown_remaining={telemetry.cooldown_remaining}"
             )
+        # 343# kill リリース追跡 — kill(True)→非kill(False) 遷移を検出
+        if side == "buy":
+            was_active = self._kill_was_active_buy
+            if was_active and not killed:
+                self._kill_released_at_cycle_buy = self._cycle_count
+                logger.info(
+                    "[343#] buy kill released at cycle %d",
+                    self._kill_released_at_cycle_buy,
+                )
+            self._kill_was_active_buy = killed
+        else:
+            was_active = self._kill_was_active_sell
+            if was_active and not killed:
+                self._kill_released_at_cycle_sell = self._cycle_count
+                logger.info(
+                    "[343#] sell kill released at cycle %d",
+                    self._kill_released_at_cycle_sell,
+                )
+            self._kill_was_active_sell = killed
         return killed
 
     def _track_side_pnl(self, record: "FillRecord") -> None:
@@ -107,18 +129,23 @@ class OrchestratorGuardsMixin:
 
         286# 283# P2-7: 評価窓二重化の基盤。
         337# §6.3: balance_forced_switch の PnL を rolling window から除外。
-        強制取引はスプレッド回収を意図しない即時約定であり、rolling PnL を
-        構造的に汚染して kill 閾値到達を早める。
+        343# 除外→downweight: 完全除外は kill 解除判定を鈍らせるため、
+        forced_fill_pnl_downweight (default 0.5) で重み付け投入に変更。
         """
         if not (record.filled and record.post_fill_30s_pnl is not None):
             return
-        # 337# §6.3: 強制取引は rolling PnL から除外 (MM 能力の指標として不適切)
+        pnl = record.post_fill_30s_pnl
+        # 343# 強制取引は downweight (337# の完全除外から改善)
+        # record は外部オブジェクト (古い FillRecord に属性欠落の可能性あり)
         if getattr(record, "balance_forced_switch", False):
-            return
+            weight = self.config.forced_fill_pnl_downweight
+            if weight <= 0.0:
+                return  # 0.0 = 旧挙動 (完全除外)
+            pnl = pnl * weight
         if record.side == "sell":
-            self._sell_kill_mgr.track(record.post_fill_30s_pnl)
+            self._sell_kill_mgr.track(pnl)
         elif record.side == "buy":
-            self._buy_kill_mgr.track(record.post_fill_30s_pnl)
+            self._buy_kill_mgr.track(pnl)
 
     # ------------------------------------------------------------------
     # 240# Toxicity Budget — assess_toxicity (副作用なし)

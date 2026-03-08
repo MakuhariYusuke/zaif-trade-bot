@@ -177,6 +177,7 @@ class TestForcedSwitchFilter:
         mixin = OrchestratorGuardsMixin.__new__(OrchestratorGuardsMixin)
         mixin._sell_kill_mgr = MagicMock()
         mixin._buy_kill_mgr = MagicMock()
+        mixin.config = FillTestConfig()  # 343# downweight 参照用
         return mixin
 
     def _make_record(
@@ -207,19 +208,27 @@ class TestForcedSwitchFilter:
         mixin._track_side_pnl(record)
         mixin._buy_kill_mgr.track.assert_called_once_with(1.5)
 
-    def test_forced_sell_excluded(self) -> None:
-        """balance_forced_switch=True の sell は追跡されない."""
+    def test_forced_sell_downweighted(self) -> None:
+        """343# balance_forced_switch=True の sell は downweight で追跡."""
         mixin = self._build_mixin()
         record = self._make_record(side="sell", forced=True, pnl=-10.0)
         mixin._track_side_pnl(record)
-        mixin._sell_kill_mgr.track.assert_not_called()
+        mixin._sell_kill_mgr.track.assert_called_once_with(-10.0 * mixin.config.forced_fill_pnl_downweight)
 
-    def test_forced_buy_excluded(self) -> None:
-        """balance_forced_switch=True の buy は追跡されない."""
+    def test_forced_buy_downweighted(self) -> None:
+        """343# balance_forced_switch=True の buy は downweight で追跡."""
         mixin = self._build_mixin()
         record = self._make_record(side="buy", forced=True, pnl=-8.0)
         mixin._track_side_pnl(record)
-        mixin._buy_kill_mgr.track.assert_not_called()
+        mixin._buy_kill_mgr.track.assert_called_once_with(-8.0 * mixin.config.forced_fill_pnl_downweight)
+
+    def test_forced_excluded_when_weight_zero(self) -> None:
+        """343# downweight=0.0 で完全除外 (旧挙動互換)."""
+        mixin = self._build_mixin()
+        mixin.config = FillTestConfig(forced_fill_pnl_downweight=0.0)
+        record = self._make_record(side="sell", forced=True, pnl=-10.0)
+        mixin._track_side_pnl(record)
+        mixin._sell_kill_mgr.track.assert_not_called()
 
     def test_unfilled_not_tracked(self) -> None:
         """filled=False のレコードは追跡されない."""

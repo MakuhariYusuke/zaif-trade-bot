@@ -223,6 +223,12 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
             else None
         )
         _lot = order_lot if order_lot is not None else self._current_lot
+        # 343# kill 解除直後の skip_gate 緩和 offset を計算
+        _kill_rel_offset = 0.0
+        _rc = self._kill_released_at_cycle_buy if side == "buy" else self._kill_released_at_cycle_sell
+        if _rc is not None and self.config.skip_gate_kill_release_grace_cycles > 0:
+            if 0 <= self._cycle_count - _rc < self.config.skip_gate_kill_release_grace_cycles:
+                _kill_rel_offset = self.config.skip_gate_kill_release_offset
         return await self._skip_gate_evaluator.evaluate(
             side=side,
             cycle_id=cycle_id,
@@ -241,6 +247,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
             imbalance_enabled=self.config.imbalance_enabled,
             maker_price_vpin_setter=lambda v: setattr(self._maker_price, '_last_vpin', v),
             one_sided_balance=one_sided_balance,
+            kill_release_offset=_kill_rel_offset,
         )
 
     async def _monitor_fill_polling(

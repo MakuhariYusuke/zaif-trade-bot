@@ -953,6 +953,7 @@ class SkipGateEvaluator:
         maker_price_vpin_setter: object | None = None,
         *,
         one_sided_balance: bool = False,
+        kill_release_offset: float = 0.0,
     ) -> SkipGateResult:
         """062# SkipGate ML 判定.
 
@@ -1193,7 +1194,12 @@ class SkipGateEvaluator:
                         spread_at_order, _ns_thr, _spread_offset,
                     )
 
-            _total_offset = _hour_offset + _spread_offset
+            _total_offset = _hour_offset + _spread_offset + kill_release_offset
+            if kill_release_offset != 0.0:
+                logger.info(
+                    "[skip_gate] 343# kill release grace: offset %+.2f applied",
+                    kill_release_offset,
+                )
 
             # 186# strictness clamp: 過剰な厳格化/緩和を防止 (187# YAML外部化)
             _OFFSET_FLOOR = self._config.skip_gate_offset_floor

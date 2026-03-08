@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 343# P1 改善: forced downweight / sell KPI 分離 / skip_gate kill 連携 (2026-03-08)
+
+### Changed
+- **343# A: forced fill PnL downweight** — 337# の完全除外→0.5倍重み付け投入に改善
+  - kill 解除判定が forced fill の情報を活用できるように変更
+  - `forced_fill_pnl_downweight`: 0.0=完全除外(旧), 0.5=半額, 1.0=通常扱い
+- **343# D: regime_min_confidence default sync** — コードデフォルト 0.3→0.2 (YAML一致)
+- **343# E: getattr→直接参照** — orchestrator_guards/fill_cycle_executor の型安全性向上
+
+### Added
+- **343# B: sell forced KPI 分離** — buy 側と対称な forced_sell KPI トラッキング
+  - `forced_sell_fill_count`, `forced_sell_pnl_sum_bps`, 進捗ログ出力
+- **343# C: skip_gate/kill release grace window** — kill 解除直後の skip_gate 過剰抑制を防止
+  - `skip_gate_kill_release_grace_cycles`: 3 (kill 解除後の緩和サイクル数)
+  - `skip_gate_kill_release_offset`: -0.1 (緩和 offset)
+  - kill→非kill 遷移検出 + サイクル番号記録
+- **343# テスト** — test_343_p1_improvements.py (25 test cases)
+- **337# テスト更新** — test_337 を downweight 対応に修正
+
+### Documentation
+- docs/v460/index.md 更新: 343# エントリ追加
+
 ## 336# buy_dynamic_kill 緩和 + ドリフト修正 + 分析基盤整備 (2026-03-08)
 
 ### Changed

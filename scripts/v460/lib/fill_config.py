@@ -143,7 +143,7 @@ class FillTestConfig:
     regime_trend_threshold_pct: float = 0.5
     regime_high_vol_multiplier: float = 2.0
     regime_hysteresis_count: int = 3
-    regime_min_confidence: float = 0.3  # 052# 0.4→0.3
+    regime_min_confidence: float = 0.2  # 052# 0.4→0.3, 152# 0.3→0.2, 343# default sync
     # 052#: トレンディング時のオフセットブースト (PnL -1.2bps)
     regime_trending_offset_boost: float = 1.5  # トレンディング検出時に offset × 1.5
     # 157# §19: trending offset boost の buy/sell 非対称化
@@ -408,6 +408,11 @@ class FillTestConfig:
     # 187# clamp YAML外部化: skip_gate offset の上下限
     skip_gate_offset_floor: float = -0.3   # 最大緩和
     skip_gate_offset_ceil: float = 0.5     # 最大厳格化
+    # 343# skip_gate/kill 連携: kill 解除直後は skip_gate を緩和して過剰抑制を防止
+    # kill 中は skip_gate が実行されず adaptive data が stale になるため、
+    # 解除後 N サイクルは offset を負方向 (緩和) にシフトする。
+    skip_gate_kill_release_grace_cycles: int = 3    # kill 解除後の緩和サイクル数
+    skip_gate_kill_release_offset: float = -0.1     # 緩和 offset (負=緩和)
     # 156# §16: OB エラー fallback 価格の鮮度閾値 (秒)
     fallback_stale_sec: float = 120.0
     # 094# stale order 検出 & cancel-replace (価格乖離した注文を再発注)
@@ -575,9 +580,15 @@ class FillTestConfig:
     sell_dynamic_kill_inv_relaxation_enabled: bool = False  # True で在庫連動緩和を有効化
     sell_dynamic_kill_inv_relaxation_scale: float = 0.4     # buy(0.5)より保守的
     sell_dynamic_kill_inv_relaxation_max_bps: float = 0.3   # buy(0.5)より保守的
+    # 343# forced fill downweight: 337#の完全除外→0.5倍重みで投入
+    # 完全除外は kill 判定から forced fill の情報を遮断し、kill 解除判定を鈍らせる。
+    # downweight=0.5 で「通常取引ほど信頼しないが情報は活用する」ように変更。
+    forced_fill_pnl_downweight: float = 0.5  # 0.0=完全除外(旧), 1.0=通常扱い
     # 286# 283# P1-5: 強制買い KPI 分離
     # balance_forced の fill を通常 buy とは別に集計し、品質低下の原因特定を可能にする。
     forced_buy_kpi_tracking_enabled: bool = True  # True で強制買い PnL を分離ログ
+    # 343# 強制売り KPI 分離 (buy と対称)
+    forced_sell_kpi_tracking_enabled: bool = True  # True で強制売り PnL を分離ログ
     # 286# 284# P1: 強制買い遅延実行 (Glosten-Milgrom 1985)
     # balance_forced 時に microprice 急落中なら N サイクル待機して逆選択回避。
     forced_buy_delay_enabled: bool = False          # True で遅延実行を有効化

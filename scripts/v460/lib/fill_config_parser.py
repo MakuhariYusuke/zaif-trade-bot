@@ -192,6 +192,9 @@ def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
         # 187# clamp YAML外部化
         "offset_floor": "skip_gate_offset_floor",
         "offset_ceil": "skip_gate_offset_ceil",
+        # 343# skip_gate/kill 連携
+        "kill_release_grace_cycles": "skip_gate_kill_release_grace_cycles",
+        "kill_release_offset": "skip_gate_kill_release_offset",
     }
     for yaml_key, config_key in sg_map.items():
         if yaml_key in sg and sg[yaml_key] is not None:
@@ -478,6 +481,12 @@ def _parse_stopgap_section(yaml_cfg: dict) -> dict:
     # 286# 283# P1-5: 強制買い KPI 分離
     if 止血.get("forced_buy_kpi_tracking") is not None:
         kwargs["forced_buy_kpi_tracking_enabled"] = bool(止血["forced_buy_kpi_tracking"])
+    # 343# forced fill downweight
+    if 止血.get("forced_fill_pnl_downweight") is not None:
+        kwargs["forced_fill_pnl_downweight"] = float(止血["forced_fill_pnl_downweight"])
+    # 343# 強制売り KPI 分離
+    if 止血.get("forced_sell_kpi_tracking") is not None:
+        kwargs["forced_sell_kpi_tracking_enabled"] = bool(止血["forced_sell_kpi_tracking"])
 
     # 286# 284# P1: 強制買い遅延実行 (Glosten-Milgrom 1985)
     fbd = 止血.get("forced_buy_delay", {})

@@ -83,6 +83,11 @@ class RunSessionState:
     forced_buy_pnl_sum_bps: float = 0.0
     normal_buy_fill_count: int = 0
     normal_buy_pnl_sum_bps: float = 0.0
+    # 343# 強制売り KPI 分離トラッキング (buy 側と対称)
+    forced_sell_fill_count: int = 0
+    forced_sell_pnl_sum_bps: float = 0.0
+    normal_sell_fill_count: int = 0
+    normal_sell_pnl_sum_bps: float = 0.0
     batch: list[FillRecord] = field(default_factory=list)
     batch_size: int = 10
 
@@ -140,6 +145,11 @@ class FillLoopOrchestratorMixin(
     # 234# one-sided エスカレーション: cooldown 残サイクル
     _one_sided_cooldown_remaining: int = 0
     _one_sided_freeze_remaining: int = 0
+    # 343# kill release 追跡 (skip_gate/kill 連携)
+    _kill_was_active_buy: bool = False
+    _kill_was_active_sell: bool = False
+    _kill_released_at_cycle_buy: int | None = None
+    _kill_released_at_cycle_sell: int | None = None
     # 286# 284# P1: 強制買い遅延実行 (Glosten-Milgrom 1985)
     _forced_buy_delay_remaining: int = 0
     # 294# P0: 連続ブロックカウンタ (デッドロック防止)
@@ -147,6 +157,8 @@ class FillLoopOrchestratorMixin(
     # 303# B: DD soft lot side 分離 — side 別 lot 倍率 (1.0 = 通常)
     _dd_soft_lot_scale_buy: float = 1.0
     _dd_soft_lot_scale_sell: float = 1.0
+    # 343# クラスレベル宣言 (run_fill_test.__init__ で初期化)
+    _cycle_count: int = 0
     # 310# D: None regime observability (307# F5)
     _none_regime_cycle_count: int = 0
     _total_regime_cycle_count: int = 0

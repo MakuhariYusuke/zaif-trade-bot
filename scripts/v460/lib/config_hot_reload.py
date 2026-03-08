@@ -449,7 +449,12 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "preflight_max_pauses",
     "max_preflight_skip",
     # --- misc operational ---
+    "forced_fill_pnl_downweight",
     "forced_buy_kpi_tracking_enabled",
+    "forced_sell_kpi_tracking_enabled",
+    # 343# skip_gate/kill 連携
+    "skip_gate_kill_release_grace_cycles",
+    "skip_gate_kill_release_offset",
     "dust_sweep_enabled",
     "phantom_detection_sleep_multiplier",
     "max_086_consecutive_wait",
