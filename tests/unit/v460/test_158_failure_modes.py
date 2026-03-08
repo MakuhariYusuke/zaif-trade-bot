@@ -220,19 +220,20 @@ class TestRiskManagerFailureModes:
     def risk_mgr(self):
         from ztb.trading.live_trader.components.risk_manager import RiskManager
 
-        lt = MagicMock()
-        lt.config = {
-            "max_daily_loss": 5000.0,
-            "max_daily_trades": 10,
-            "max_trades_per_hour": 3,
-            "emergency_stop_loss": 0.05,
-        }
-        lt.daily_start_pnl = 0.0
-        lt.daily_trades = 0
-        lt.total_pnl = 0.0
-        lt.position = 0
-        lt.entry_price = 0.0
-        lt._send_notification = MagicMock()
+        lt = SimpleNamespace(
+            config={
+                "max_daily_loss": 5000.0,
+                "max_daily_trades": 10,
+                "max_trades_per_hour": 3,
+                "emergency_stop_loss": 0.05,
+            },
+            daily_start_pnl=0.0,
+            daily_trades=0,
+            total_pnl=0.0,
+            position=0,
+            entry_price=0.0,
+            _send_notification=MagicMock(),
+        )
 
         rm = RiskManager(lt)
         return rm, lt

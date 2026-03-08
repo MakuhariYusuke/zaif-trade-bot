@@ -2149,3 +2149,70 @@
 1. `test_enricher_skip_gate.py` の real-data setup を pre-enriched cache / snapshot fixture へ寄せられるか確認
 2. `test_aggregate_to_1min.py` の parquet persistence を最小ケースだけにさらに局所化できるか確認
 3. `test_158_failure_modes.py` setup と `test_234_gate_bypass_removal.py` の source 契約テストを軽量 helper に寄せる
+
+---
+
+## 2026-03-09 / Session 037-047
+
+### 実施
+- 共通 helper
+  - `tests/unit/v460/_fill_test_source.py`
+    - 任意ファイルの class method source をキャッシュ付きで返す `read_class_method_source()` を追加
+- source-contract / source-read 軽量化
+  - `tests/unit/v460/test_155_hindsight_review.py`
+    - `order_monitor` / `cycle_gate_aggregator` / `fill_config_parser` / `hindsight_filter` の直読を shared helper に統一
+  - `tests/unit/v460/test_211_mcb_sad_escalation.py`
+    - `_check_circuit_breakers()` source を autouse fixture ごとに取り直す構成をやめ、module-level cache に変更
+  - `tests/unit/v460/test_255_getattr_bare_except_cleanup.py`
+    - `SkipGateEvaluator` / `OrderMonitor` の method source 取得を cached helper 化
+  - `tests/unit/v460/test_234_gate_bypass_removal.py`
+    - 不要 import を整理
+- fixture / setup 軽量化
+  - `tests/unit/v460/test_158_failure_modes.py`
+    - risk manager fixture の live trader stub を `MagicMock` から最小 `SimpleNamespace` へ変更
+  - `tests/unit/v460/test_141_side_specific_models.py`
+    - `test_history_written` の `retrain_model()` を deterministic stub に差し替え
+  - `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
+    - production YAML config / code-default config を cache して drift 比較で再利用
+- deterministic 化 / persistence 縮小
+  - `tests/unit/v460/test_259_as_vol_ratio_adaptation_hasattr.py`
+    - `inv_decay_tau_sec=0.0` を test-local default に追加し、wall-clock 依存の微差を除去
+  - `tests/unit/v460/test_aggregate_to_1min.py`
+    - `test_parquet_roundtrip` を full read-back から parquet metadata/schema 確認へ縮小
+
+### 結果
+- focused 回帰:
+  - `test_158_failure_modes.py` + `test_155_hindsight_review.py` + `test_234_gate_bypass_removal.py` + `test_aggregate_to_1min.py::TestAggregateMerged::test_parquet_roundtrip`
+    - `39 passed in 9.31s`
+  - `test_259_as_vol_ratio_adaptation_hasattr.py`
+    - `10 passed in 1.47s`
+  - `test_211_mcb_sad_escalation.py` + `test_255_getattr_bare_except_cleanup.py`
+    - `30 passed in 0.81s`
+  - `test_141_side_specific_models.py::TestRetrainSideSpecificFunction::test_history_written` + `test_336_yaml_code_drift_prevention.py`
+    - `5 passed in 2.79s`
+- filtered broad:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` / `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - 1回目: `4153 passed, 1 deselected, 13 warnings in 34.34s`
+  - 2回目: `4153 passed, 1 deselected, 13 warnings in 45.97s`
+
+### 主要改善
+- `test_259` の `vol_ratio=1.0` 同値性は、実装差ではなく inventory decay の時刻差でブレていた。test-local で decay を切り、volatility path だけを見る形に整理した。
+- `test_211` / `test_255` のような source-contract テスト群は、`inspect.getsource()` / 毎回 `ast.parse()` を行うより shared helper に寄せたほうが安定して効くことを確認した。
+- `test_141` `test_history_written` は retrain 自体を通す必要がなく、history persistence の責務に絞ることで broad 上位から離脱した。
+- `test_336` の drift 比較は file read と `FillTestConfig()` 構築の重複を落としても検査意図を維持できた。
+
+### 補足
+- wall time は broad rerun 間で依然ぶれるが、top 25 から以下が落ちたことを改善指標として扱うのが妥当:
+  - `test_211_mcb_sad_escalation.py`
+  - `test_255_getattr_bare_except_cleanup.py`
+  - `test_141_side_specific_models.py::TestRetrainSideSpecificFunction::test_history_written`
+- 現在の broad 上位は、ほぼ本物の計算/real-data/persistence 経路に再集中している:
+  - `test_enricher_skip_gate.py` real-data setup
+  - `test_pnl_monte_carlo.py` sensitivity / simulation
+  - `test_gate_judgment.py` Monte Carlo
+  - `test_fill_quality.py` unknown fill 系
+
+### 次アクション
+1. `test_enricher_skip_gate.py` の real-data setup を pre-enriched fixture / snapshot に寄せられるか再確認
+2. `test_pnl_monte_carlo.py` と `test_gate_judgment.py` の Monte Carlo heavy case を deterministic stub または試行数最小化へ寄せる
+3. `test_fill_quality.py` の `UnknownFillHandling` / `CancelRaceCondition` を time/polling 依存からさらに切り離せないか確認

@@ -265,7 +265,16 @@ class TestRetrainSideSpecificFunction:
             "min_new_samples": 10,
             "min_total_samples": 30,
         }
-        _retrain_side_specific(cfg, history_path)
+        def _mock_retrain(side_cfg: dict[str, Any]) -> dict[str, Any]:
+            return {
+                "status": "ok",
+                "target": side_cfg["target"],
+                "side_filter": side_cfg["side_filter"],
+            }
+
+        with patch("scripts.v460.ml.retrain_scheduler.retrain_model", side_effect=_mock_retrain):
+            _retrain_side_specific(cfg, history_path)
+
         assert history_path.exists()
         lines = history_path.read_text().strip().split("\n")
         assert len(lines) == 2

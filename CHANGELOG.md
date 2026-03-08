@@ -4310,3 +4310,32 @@ python scripts/unified_trainer.py \
 - The latest filtered broad rerun completed at `4182 passed, 1 deselected, 11 warnings in 29.97s`.
 - The config-loader/parser hotspots were materially reduced: `TestConfigLoader::*` focused calls dropped to `0.02s`, and `TestProductionYamlRoundTrip` setup fell to `0.06s` in the subsequent broad run.
 - The remaining broad top is now dominated by real-data and intentional persistence/integration paths: `test_enricher_skip_gate.py` real-data setup, `test_aggregate_to_1min.py` parquet roundtrip, and a small number of integration/source-contract checks.
+
+## Session 037-047 (2026-03-09)
+
+### Changed
+- Optimized [tests/unit/v460/_fill_test_source.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_fill_test_source.py) by adding a cached `read_class_method_source()` helper for class-method source extraction. This lets source-contract tests reuse the same file text / AST instead of repeating `inspect.getsource()` or `ast.parse()` work.
+- Reworked [tests/unit/v460/test_155_hindsight_review.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_155_hindsight_review.py) to use the shared cached source helpers for `order_monitor`, `cycle_gate_aggregator`, `fill_config_parser`, and `hindsight_filter` checks instead of ad-hoc `Path.read_text()` calls.
+- Reworked [tests/unit/v460/test_158_failure_modes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_158_failure_modes.py) so the risk-manager fixture uses a minimal `SimpleNamespace` live-trader stub plus a single mocked notifier instead of a heavier `MagicMock` tree.
+- Reworked [tests/unit/v460/test_211_mcb_sad_escalation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_211_mcb_sad_escalation.py) to cache `_check_circuit_breakers()` source once at module load instead of reloading it through an autouse fixture for every assertion.
+- Reworked [tests/unit/v460/test_255_getattr_bare_except_cleanup.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_255_getattr_bare_except_cleanup.py) so the `SkipGateEvaluator` / `OrderMonitor` source-contract checks use cached class-method extraction rather than reparsing the source per test.
+- Stabilized [tests/unit/v460/test_259_as_vol_ratio_adaptation_hasattr.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_259_as_vol_ratio_adaptation_hasattr.py) by disabling inventory time-decay in the test-local config defaults (`inv_decay_tau_sec=0.0`). This keeps the `vol_ratio=1.0` vs `regime_detector=None` equivalence assertion focused on the volatility path instead of wall-clock skew.
+- Reworked [tests/unit/v460/test_141_side_specific_models.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_141_side_specific_models.py) `test_history_written` to patch `retrain_model()` with a deterministic stub. The test still verifies history persistence, but no longer pays for full retrain setup.
+- Reworked [tests/unit/v460/test_336_yaml_code_drift_prevention.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_336_yaml_code_drift_prevention.py) so both the parsed production YAML config and the plain code-default config are cached and reused across drift assertions.
+- Trimmed [tests/unit/v460/test_aggregate_to_1min.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_aggregate_to_1min.py) `test_parquet_roundtrip` to validate parquet persistence through `ParquetFile` metadata/schema instead of reloading the full table.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_158_failure_modes.py::TestRiskManagerFailureModes tests/unit/v460/test_155_hindsight_review.py::TestCancelReasonNormalization tests/unit/v460/test_155_hindsight_review.py::TestBalanceForcedBypassRemoved tests/unit/v460/test_155_hindsight_review.py::TestFallbackStaleSecConfig tests/unit/v460/test_155_hindsight_review.py::TestHindsightFilterLogger tests/unit/v460/test_234_gate_bypass_removal.py tests/unit/v460/test_aggregate_to_1min.py::TestAggregateMerged::test_parquet_roundtrip -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_259_as_vol_ratio_adaptation_hasattr.py -q --no-cov --tb=short --durations=10`
+- `python -m pytest tests/unit/v460/test_211_mcb_sad_escalation.py tests/unit/v460/test_255_getattr_bare_except_cleanup.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_141_side_specific_models.py::TestRetrainSideSpecificFunction::test_history_written tests/unit/v460/test_336_yaml_code_drift_prevention.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- Focused verification stayed green:
+  - `39 passed in 9.31s`
+  - `10 passed in 1.47s`
+  - `30 passed in 0.81s`
+  - `5 passed in 2.79s`
+- The filtered broad reruns stayed green at `4153 passed, 1 deselected, 13 warnings`, with wall time varying between `34.34s` and `45.97s` on rerun. The reliable signal is that `test_211_mcb_sad_escalation.py`, `test_255_getattr_bare_except_cleanup.py`, and `test_141_side_specific_models.py::test_history_written` dropped out of the top 25 after the cache/stub changes.
+- The remaining top costs are now concentrated in true real-data / Monte Carlo / persistence paths such as `test_enricher_skip_gate.py` real-data setup, `test_pnl_monte_carlo.py`, `test_gate_judgment.py`, and a few intentional parquet/integration cases.

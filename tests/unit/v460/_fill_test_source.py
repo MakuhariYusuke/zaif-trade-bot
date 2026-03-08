@@ -77,6 +77,15 @@ FILL_TEST_CLI = (
 MAKER_PRICE = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "maker_price.py"
 )
+ORDER_MONITOR = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "order_monitor.py"
+)
+FILL_CONFIG_PARSER = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_config_parser.py"
+)
+HINDSIGHT_FILTER = (
+    _PROJECT_ROOT / "scripts" / "v460" / "analysis" / "hindsight_filter.py"
+)
 
 
 @lru_cache(maxsize=None)
@@ -128,3 +137,21 @@ def read_fill_test_method_source(method_name: str) -> str:
         return _method_source_index()[method_name]
     except KeyError as exc:
         raise KeyError(f"FillTestRunner method not found: {method_name}") from exc
+
+
+@lru_cache(maxsize=None)
+def read_class_method_source(path: Path, class_name: str, method_name: str) -> str:
+    """任意ファイルから class method source を返す."""
+    source = read_source_text(path)
+    lines = source.splitlines()
+    tree = parse_source_tree(path)
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef) or node.name != class_name:
+            continue
+        for child in node.body:
+            if not isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if child.name != method_name:
+                continue
+            return "\n".join(lines[child.lineno - 1:child.end_lineno])
+    raise KeyError(f"{class_name}.{method_name} not found in {path}")

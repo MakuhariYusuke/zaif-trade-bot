@@ -12,7 +12,6 @@ P0-C: no_feasible_quote 早期検出 (制約集合崩壊)
 from __future__ import annotations
 
 import ast
-import inspect
 
 import pytest
 

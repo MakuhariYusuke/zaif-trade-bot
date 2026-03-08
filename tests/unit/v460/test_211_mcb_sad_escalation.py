@@ -7,7 +7,6 @@ MCB.WARNING かつ SAD.WIDE/DRY → MCB_SAD_ESCALATION で cycle skip。
 from __future__ import annotations
 
 import ast
-import inspect
 import textwrap
 
 import pytest
@@ -18,6 +17,17 @@ from scripts.v460.lib.cancel_reasons import (
 )
 from scripts.v460.lib.micro_circuit_breaker import MCBLevel
 from scripts.v460.lib.spread_anomaly_detector import SADLevel
+from tests.unit.v460._fill_test_source import (
+    ORCHESTRATOR_PRE_CYCLE,
+    read_class_method_source,
+)
+
+
+_CHECK_CIRCUIT_BREAKERS_SOURCE = read_class_method_source(
+    ORCHESTRATOR_PRE_CYCLE,
+    "OrchestratorPreCycleMixin",
+    "_check_circuit_breakers",
+)
 
 
 # =====================================================================
@@ -43,23 +53,17 @@ class TestCancelReasonRegistration:
 class TestOrchestratorEscalationCode:
     """fill_loop_orchestrator に AND escalation ロジックが正しく組み込まれているか."""
 
-    @pytest.fixture(autouse=True)
-    def _load_source(self) -> None:
-        from scripts.v460.lib.orchestrator_pre_cycle import OrchestratorPreCycleMixin
-
-        self.src = inspect.getsource(OrchestratorPreCycleMixin._check_circuit_breakers)
-
     def test_mcb_warning_flag_initialized(self) -> None:
         """_mcb_warning フラグが False で初期化されること."""
-        assert "_mcb_warning = False" in self.src
+        assert "_mcb_warning = False" in _CHECK_CIRCUIT_BREAKERS_SOURCE
 
     def test_sad_warning_flag_initialized(self) -> None:
         """_sad_warning フラグが False で初期化されること."""
-        assert "_sad_warning = False" in self.src
+        assert "_sad_warning = False" in _CHECK_CIRCUIT_BREAKERS_SOURCE
 
     def test_mcb_warning_flag_set_on_warning(self) -> None:
         """MCB WARNING 時に _mcb_warning = True が設定されること."""
-        lines = self.src.split("\n")
+        lines = _CHECK_CIRCUIT_BREAKERS_SOURCE.split("\n")
         for i, line in enumerate(lines):
             if "MCBLevel.WARNING" in line:
                 # WARNING 分岐内で _mcb_warning = True が設定されるか
@@ -70,7 +74,7 @@ class TestOrchestratorEscalationCode:
 
     def test_sad_warning_flag_set_on_dry(self) -> None:
         """SAD DRY 時に _sad_warning = True が設定されること."""
-        lines = self.src.split("\n")
+        lines = _CHECK_CIRCUIT_BREAKERS_SOURCE.split("\n")
         for i, line in enumerate(lines):
             if "SADLevel.DRY" in line:
                 block = "\n".join(lines[i : i + 5])
@@ -80,7 +84,7 @@ class TestOrchestratorEscalationCode:
 
     def test_sad_warning_flag_set_on_wide(self) -> None:
         """SAD WIDE 時に _sad_warning = True が設定されること."""
-        lines = self.src.split("\n")
+        lines = _CHECK_CIRCUIT_BREAKERS_SOURCE.split("\n")
         for i, line in enumerate(lines):
             if "SADLevel.WIDE" in line:
                 block = "\n".join(lines[i : i + 5])
@@ -90,15 +94,15 @@ class TestOrchestratorEscalationCode:
 
     def test_and_escalation_condition(self) -> None:
         """AND 条件 (_mcb_warning and _sad_warning) が存在すること."""
-        assert "_mcb_warning and _sad_warning" in self.src
+        assert "_mcb_warning and _sad_warning" in _CHECK_CIRCUIT_BREAKERS_SOURCE
 
     def test_escalation_uses_correct_cancel_reason(self) -> None:
         """escalation 時に CR.MCB_SAD_ESCALATION が使用されること."""
-        assert "CR.MCB_SAD_ESCALATION" in self.src
+        assert "CR.MCB_SAD_ESCALATION" in _CHECK_CIRCUIT_BREAKERS_SOURCE
 
     def test_escalation_fires_guard(self) -> None:
         """escalation 時に guard fire が記録されること."""
-        assert 'self._inc_guard_fire("mcb_sad_escalation")' in self.src
+        assert 'self._inc_guard_fire("mcb_sad_escalation")' in _CHECK_CIRCUIT_BREAKERS_SOURCE
 
     def test_escalation_triggers_return_true(self) -> None:
         """AND escalation ブロック内で return True (cycle skip) されること.
@@ -106,7 +110,7 @@ class TestOrchestratorEscalationCode:
         330#: run_continuous から _check_circuit_breakers に抽出。
         continue → return True に変更。
         """
-        lines = self.src.split("\n")
+        lines = _CHECK_CIRCUIT_BREAKERS_SOURCE.split("\n")
         in_escalation = False
         for line in lines:
             if "_mcb_warning and _sad_warning" in line:
@@ -126,7 +130,7 @@ class TestOrchestratorEscalationCode:
         276# DRY: _execute_skip(multiplier=_halt_mult) 経由に移行。
         276# config化: 5.0 → config.halt_sleep_multiplier (_halt_mult)。
         """
-        lines = self.src.split("\n")
+        lines = _CHECK_CIRCUIT_BREAKERS_SOURCE.split("\n")
         in_escalation = False
         for line in lines:
             if "_mcb_warning and _sad_warning" in line:
@@ -139,9 +143,9 @@ class TestOrchestratorEscalationCode:
 
     def test_escalation_after_both_checks(self) -> None:
         """AND escalation が MCB と SAD の両チェックの後に配置されていること."""
-        mcb_pos = self.src.find("MCBLevel.HALT")
-        sad_pos = self.src.find("SADLevel.FROZEN")
-        esc_pos = self.src.find("_mcb_warning and _sad_warning")
+        mcb_pos = _CHECK_CIRCUIT_BREAKERS_SOURCE.find("MCBLevel.HALT")
+        sad_pos = _CHECK_CIRCUIT_BREAKERS_SOURCE.find("SADLevel.FROZEN")
+        esc_pos = _CHECK_CIRCUIT_BREAKERS_SOURCE.find("_mcb_warning and _sad_warning")
         assert mcb_pos > 0
         assert sad_pos > 0
         assert esc_pos > 0

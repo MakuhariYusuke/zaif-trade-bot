@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import ast
 import inspect
-from pathlib import Path
 
 import pytest
 
@@ -33,7 +32,11 @@ from scripts.v460.lib.cycle_gate_aggregator import CycleGateResult
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from tests.unit.v460._fill_test_source import (
+    CYCLE_GATE_AGGREGATOR,
+    FILL_CONFIG_PARSER,
     FILL_CYCLE_EXECUTOR,
+    HINDSIGHT_FILTER,
+    ORDER_MONITOR,
     read_fill_test_runner_source,
     read_source_text,
 )
@@ -388,8 +391,7 @@ class TestCancelReasonNormalization:
 
     def test_order_monitor_uses_post_only_reject(self) -> None:
         """order_monitor.py が 'post_only_reject' を出力すること."""
-        src_path = "scripts/v460/lib/order_monitor.py"
-        src = Path(src_path).read_text(encoding="utf-8")
+        src = read_source_text(ORDER_MONITOR)
         assert '"post_only_reject"' in src
         # 旧表記が残っていないこと
         assert 'reason = "postonly_reject"' not in src
@@ -521,7 +523,7 @@ class TestBalanceForcedBypassRemoved:
 
     def _get_source(self) -> str:
         """194#: CycleGateAggregator のソースを返す."""
-        return Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8-sig")
+        return read_source_text(CYCLE_GATE_AGGREGATOR)
 
     def test_no_balance_forced_bypass_in_gates(self) -> None:
         """234# Gate 条件に 'not balance_forced' が存在しないこと."""
@@ -593,7 +595,7 @@ class TestFallbackStaleSecConfig:
     def test_from_yaml_maps_field(self) -> None:
         """from_yaml の flat_keys に fallback_stale_sec が含まれること."""
         # 329# parser 分離後は fill_config_parser.py を参照
-        src = Path("scripts/v460/lib/fill_config_parser.py").read_text(encoding="utf-8")
+        src = read_source_text(FILL_CONFIG_PARSER)
         assert '"fallback_stale_sec"' in src
 
 
@@ -619,17 +621,13 @@ class TestHindsightFilterLogger:
 
     def test_logger_defined(self) -> None:
         """モジュールレベルで logger が定義されていること."""
-        src = Path("scripts/v460/analysis/hindsight_filter.py").read_text(
-            encoding="utf-8"
-        )
+        src = read_source_text(HINDSIGHT_FILTER)
         assert "import logging" in src
         assert "logger = logging.getLogger" in src
 
     def test_invalid_side_counter_logged(self) -> None:
         """除外カウンターがログ出力されるコードが存在すること."""
-        src = Path("scripts/v460/analysis/hindsight_filter.py").read_text(
-            encoding="utf-8"
-        )
+        src = read_source_text(HINDSIGHT_FILTER)
         assert "_skipped_invalid_side" in src
         assert "Excluded" in src
 

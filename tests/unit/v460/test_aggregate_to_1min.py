@@ -334,11 +334,11 @@ class TestAggregateMerged:
     ) -> None:
         """Parquet 書き出し→再読み込みの一致."""
         original, out_path = persisted_aggregate
-        reloaded = pq.read_table(out_path)
+        reloaded = pq.ParquetFile(out_path)
 
-        assert len(original) == reloaded.num_rows
+        assert len(original) == reloaded.metadata.num_rows
         for col in original.columns:
-            assert col in reloaded.column_names
+            assert col in reloaded.schema.names
 
 
 # =====================================================================

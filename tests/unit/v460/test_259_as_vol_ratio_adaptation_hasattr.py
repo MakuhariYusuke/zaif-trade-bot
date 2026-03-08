@@ -35,6 +35,7 @@ def _make_config(**overrides: object) -> FillTestConfig:
         inventory_skewing_window=10,
         inventory_skewing_max_factor=0.5,
         inventory_skewing_neutral_band=0.1,
+        inv_decay_tau_sec=0.0,
         loss_boost_decay_tau_sec=300.0,
         as_reservation_enabled=True,
         as_reservation_gamma=100.0,

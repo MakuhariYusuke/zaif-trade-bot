@@ -22,6 +22,7 @@ YAML 値の乖離を監視するテスト。
 from __future__ import annotations
 
 import dataclasses
+from functools import lru_cache
 from pathlib import Path
 
 import yaml
@@ -162,13 +163,23 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
 })
 
 
+@lru_cache(maxsize=1)
+def _load_yaml_config() -> FillTestConfig:
+    with open(_YAML_PATH) as f:
+        raw = yaml.safe_load(f)
+    return FillTestConfig.from_yaml(raw)
+
+
+@lru_cache(maxsize=1)
+def _load_code_config() -> FillTestConfig:
+    return FillTestConfig()
+
+
 class TestYamlCodeDefaultDrift:
     """336# YAML↔Code デフォルト値ドリフト検出."""
 
     def _load_yaml_config(self) -> FillTestConfig:
-        with open(_YAML_PATH) as f:
-            raw = yaml.safe_load(f)
-        return FillTestConfig.from_yaml(raw)
+        return _load_yaml_config()
 
     def test_no_unexpected_drift(self) -> None:
         """KNOWN_YAML_OVERRIDES 外のフィールドでドリフトが無いことを検証.
@@ -178,7 +189,7 @@ class TestYamlCodeDefaultDrift:
         2. または KNOWN_YAML_OVERRIDES に追加する (意図的オーバーライドの場合)
         """
         from_yaml = self._load_yaml_config()
-        from_code = FillTestConfig()
+        from_code = _load_code_config()
 
         drifted: list[str] = []
         for fld in dataclasses.fields(from_yaml):
@@ -205,7 +216,7 @@ class TestYamlCodeDefaultDrift:
         コードデフォルトが YAML と一致したフィールドの除去を促す。
         """
         from_yaml = self._load_yaml_config()
-        from_code = FillTestConfig()
+        from_code = _load_code_config()
 
         stale: list[str] = []
         for name in KNOWN_YAML_OVERRIDES:
