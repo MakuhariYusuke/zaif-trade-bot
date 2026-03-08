@@ -2391,3 +2391,48 @@
 1. `test_enricher_skip_gate.py` の real-data setup を raw snapshot/cache 再利用でもう一段詰める
 2. `test_fill_quality.py` の `Bug11` / save-resilience / `FillRecordIO` 残件を production helper で再確認する
 3. `retrain_hot_reload` / `config_hot_reload` の integration call を引き続き削る
+
+---
+
+## 2026-03-09 / Session 037-052
+
+### 実施
+- test
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - real-data integration の sample size 判定を raw fill-record ベースへ変更
+    - `120 / 220 / 320` の各候補で `enrich_fill_records()` を回す構造をやめ、必要 tail サイズを先に決めてから enrich を 1 回だけ実行
+  - `tests/unit/v460/test_fill_quality.py`
+    - `_run_single_cycle_without_sleep()` に advancing fake clock を追加
+    - `fill_cycle_executor.time.time` と `order_monitor.time.time` を同じ fake clock に差し替え
+    - 既存の `run_single_cycle()` / `OrderMonitor` 経路は維持しつつ、patched sleep 後にも残っていた busy-loop timeout コストを除去
+
+### 結果
+- focused:
+  - `test_enricher_skip_gate.py::Test058Integration`
+  - `test_fill_quality.py::TestBug11CancelRaceCondition`
+  - `test_fill_quality.py::TestUnknownFillHandling`
+  - `7 passed in 4.19s`
+  - durations:
+    - `Test058Integration::test_enrichment_with_real_data` setup: `0.38s`
+    - `TestBug11CancelRaceCondition::test_cancel_fail_detects_fill`: `0.12s`
+    - `TestUnknownFillHandling::test_status_none_twice_becomes_cancelled_status_unknown`: `0.01s`
+- filtered broad:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` / `test_113_resilience.py` を除外、`test_306_proposals.py::...::test_yaml_has_microprice_side` を deselect）
+  - `4154 passed, 13 warnings in 34.47s`
+
+### 主要改善
+- `test_enricher_skip_gate.py` の setup は「成立条件確認のためだけに enrich を複数回回す」構造が残っていた。trainable row 数は raw fill records の `filled` / `post_fill_30s_pnl` だけで決まるので、そこを使って sample size を先決めする形へ修正した。
+- `test_fill_quality.py` の Unknown/Bug11 系は patched sleep 後も loop が `time.time()` ベースで CPU を回していた。fake clock を入れることで、待機ではなく時間経過条件そのものをテスト側で前進させ、既存 helper を壊さずにコストだけ削った。
+- `retrain_hot_reload` は focused で `0.05s` だったため、この batch では追加変更せずに据え置いた。現時点での低リスク改善余地は薄い。
+
+### 補足
+- broad の top は今回で以下へ再集中:
+  - `test_aggregate_to_1min.py`
+  - `test_v460_core.py::TestDataLoader::test_load_parquet`
+  - `test_ml_pipeline.py::Test057Integration::test_load_real_data`
+  - `test_fill_quality.py::TestBug11CancelRaceCondition::test_cancel_fail_detects_fill`
+
+### 次アクション
+1. `test_aggregate_to_1min.py` の trades-only / merged setup を class-scope fixture へ寄せる
+2. `test_v460_core.py` と `test_ml_pipeline.py` の real-data / parquet top をさらに揃える
+3. `config_hot_reload` / `aggregate_to_1min` の broad 上位 call を引き続き削る

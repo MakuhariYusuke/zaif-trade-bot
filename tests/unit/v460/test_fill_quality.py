@@ -90,8 +90,26 @@ async def _instant_async_sleep(_delay: float) -> None:
     return None
 
 
+class _AdvancingClock:
+    def __init__(self, *, start: float = 1_700_000_000.0, step: float = 0.01) -> None:
+        self._current = start
+        self._step = step
+
+    def __call__(self) -> float:
+        value = self._current
+        self._current += self._step
+        return value
+
+
 async def _run_single_cycle_without_sleep(runner: "FillTestRunner") -> FillRecord:
-    with patch("asyncio.sleep", new=_instant_async_sleep):
+    fake_time = _AdvancingClock()
+    with patch("asyncio.sleep", new=_instant_async_sleep), patch(
+        "scripts.v460.lib.fill_cycle_executor.time.time",
+        new=fake_time,
+    ), patch(
+        "scripts.v460.lib.order_monitor.time.time",
+        new=fake_time,
+    ):
         return await runner.run_single_cycle()
 
 

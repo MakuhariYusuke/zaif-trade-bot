@@ -110,17 +110,17 @@ def _select_real_enriched_training_df(
     if recent_fill_df.empty:
         return pd.DataFrame()
 
-    last_enriched = pd.DataFrame()
+    selected_rows = expanded_rows
     for sample_rows in (initial_rows, fallback_rows, expanded_rows):
-        enriched = enrich_fill_records(recent_fill_df.tail(sample_rows).copy())
-        last_enriched = enriched
+        candidate = recent_fill_df.tail(sample_rows)
         trainable_rows = int(np.count_nonzero(
-            enriched["filled"].astype(bool).to_numpy(copy=False)
-            & enriched["post_fill_30s_pnl"].notna().to_numpy(copy=False)
+            candidate["filled"].astype(bool).to_numpy(copy=False)
+            & candidate["post_fill_30s_pnl"].notna().to_numpy(copy=False)
         ))
+        selected_rows = sample_rows
         if trainable_rows >= min_train_samples:
-            return enriched
-    return last_enriched
+            break
+    return enrich_fill_records(recent_fill_df.tail(selected_rows).copy())
 
 
 def _make_synthetic_fill_df() -> pd.DataFrame:

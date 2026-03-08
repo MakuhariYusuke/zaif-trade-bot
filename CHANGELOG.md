@@ -4414,3 +4414,20 @@ python scripts/unified_trainer.py \
 - `tests/unit/v460/test_v460_core.py::TestDataLoader::test_load_parquet` dropped from `0.46s` on the cold rerun to `0.05s` after the schema-cache + shared-fixture changes.
 - `tests/unit/v460/test_ml_pipeline.py::Test057Integration::test_load_real_data` is no longer brittle against the current tail slice of production fill records and stayed green at `0.19s` in the filtered broad run.
 - The latest filtered broad rerun completed at `4154 passed, 13 warnings in 36.63s`. The remaining broad top is now dominated by real-data setup and a few integration-style runtime paths rather than parquet/schema overhead.
+
+## Session 037-052 (2026-03-09)
+
+### Changed
+- Optimized [tests/unit/v460/test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py) `real_enriched_df` selection so it now decides the minimal required tail size from raw fill-record fields first, then calls `enrich_fill_records()` exactly once. The previous version could re-run the full enrich path up to three times while probing `120/220/320` rows.
+- Optimized [tests/unit/v460/test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py) `TestUnknownFillHandling` / `TestBug11CancelRaceCondition` further by patching `fill_cycle_executor.time.time` and `order_monitor.time.time` with a small advancing fake clock in addition to the existing no-op `asyncio.sleep`. This removes the busy-loop timeout cost while keeping the original `run_single_cycle()` / `OrderMonitor` path intact.
+
+### Verified
+- `python -m py_compile tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_fill_quality.py`
+- `python -m pytest tests/unit/v460/test_enricher_skip_gate.py::Test058Integration tests/unit/v460/test_fill_quality.py::TestBug11CancelRaceCondition tests/unit/v460/test_fill_quality.py::TestUnknownFillHandling -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py --deselect=tests/unit/v460/test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+
+### Notes
+- `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup dropped from `0.66s` focused / `0.69s` broad class to `0.38s` focused and `0.32s` in the latest filtered broad run.
+- `test_fill_quality.py::TestBug11CancelRaceCondition::test_cancel_fail_detects_fill` dropped from `0.17s` focused to `0.12s` focused, and the remaining status-unknown case fell to `0.01s`.
+- The latest filtered broad rerun completed at `4154 passed, 13 warnings in 34.47s`.
+- Broad top has now shifted toward `test_aggregate_to_1min.py`, `test_v460_core.py::TestDataLoader::test_load_parquet`, and `test_ml_pipeline.py::Test057Integration::test_load_real_data`.
