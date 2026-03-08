@@ -1,13 +1,13 @@
 """Compatibility wrapper for the preflight validation script.
 
 Some tests import preflight_schema_scaler_check directly from the scripts
-module; the original was moved to archived/scripts. Re-export the key
-functions here for tests.
+module; the original lives in scripts/validation/preflight/. Re-export the
+key functions here for tests.
 """
 
 from __future__ import annotations
 
-from archived.scripts.preflight_schema_scaler_check import (
+from scripts.validation.preflight.preflight_schema_scaler_check import (
     check_config_fingerprint,
     check_feature_schema,
     check_normalization_stats,
