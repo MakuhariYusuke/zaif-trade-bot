@@ -336,7 +336,7 @@
 | 340 | resp | [340_ph2_resp_338_339_sign_fix_and_finding_review.md](340_ph2_resp_338_339_sign_fix_and_finding_review.md) | CRITICAL: threshold_offset_bps 符号逆転修正 (286#以降), テスト assertion 逆転修正, 全7 Finding 妥当性判定 |
 | 341 | impl | [341_ph2_threshold_revert_and_horizontal_analysis.md](341_ph2_threshold_revert_and_horizontal_analysis.md) | 閾値復元: 336#/337# calibration は符号バグ前提→sell/buy とも pre-336# 値に revert, 横展開チェック |
 | 342 | rpt | [342_ph2_design_and_market_theory_deep_investigation.md](342_ph2_design_and_market_theory_deep_investigation.md) | 設計・市場理論面の深掘り調査: forced PnL 処理, inv_bypass 不連続, skip_gate/kill 二重抑制, EWMA 化, sell wait 非対称 |
-| 343 | impl | — | P1 実装: (A) forced fill downweight 0.5, (B) sell forced KPI 分離, (C) skip_gate/kill release grace window, (D) regime_min_confidence default sync, (E) getattr→直接参照 |
+| 343 | impl | [343_ph2_impl_p1_improvements.md](343_ph2_impl_p1_improvements.md) | P1 実装: (A) forced fill downweight 0.5, (B) sell forced KPI 分離, (C) skip_gate/kill release grace window, (D) regime_min_confidence default sync, (E) getattr→直接参照 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
