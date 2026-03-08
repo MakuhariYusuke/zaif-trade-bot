@@ -517,7 +517,7 @@ def _save_enriched_cache(
         # tmp ファイル残留を防止
         try:
             tmp_path.unlink(missing_ok=True)  # type: ignore[possibly-undefined]
-        except Exception:
+        except Exception:  # noqa: R-18 cleanup best-effort
             pass
 
 

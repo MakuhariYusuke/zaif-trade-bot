@@ -157,8 +157,8 @@ def _evaluate_gate(gate: str, results: dict, cfg: dict) -> str:
                 g1_cfg = gate_cfg.get("g1_info", {})
                 alpha = g1_cfg.get("p_alpha", 0.05)
                 min_effect = g1_cfg.get("min_cliff_d", 0.33)
-            except Exception:
-                logger.warning("gate_thresholds.yaml not found, using defaults")
+            except Exception as e:
+                logger.warning("gate_thresholds.yaml not found, using defaults: %s", e)
                 alpha = 0.05
                 min_effect = 0.33
                 g1_cfg = {}

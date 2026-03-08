@@ -333,8 +333,8 @@ def run_daily_health_check(
             else:
                 _fields[name] = "OK"
         _notifier.notify_daily_health(now.strftime("%Y-%m-%d"), report["overall_healthy"], _fields)
-    except Exception:
-        logger.debug("Discord notification skipped", exc_info=True)
+    except Exception as e:
+        logger.debug("Discord notification skipped: %s", e, exc_info=True)
 
     # Save
     if output_path:

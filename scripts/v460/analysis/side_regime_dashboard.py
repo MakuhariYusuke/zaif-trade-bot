@@ -17,11 +17,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TypedDict, cast
+
+logger = logging.getLogger(__name__)
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _SCRIPT_DIR.parent.parent.parent
@@ -461,7 +464,8 @@ def _load_judgment_config(
         if "trending_down_sell" in judgment:
             trending = TrendingEvalCriteria.from_dict(judgment["trending_down_sell"])
         return ab, trending
-    except Exception:
+    except Exception as e:
+        logger.debug("Failed to parse judgment: %s", e)
         return None, None
 
 
