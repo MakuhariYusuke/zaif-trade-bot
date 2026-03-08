@@ -158,10 +158,10 @@ class TestInvDecayTauDirectAccess:
         cfg = _make_fill_config()
         assert hasattr(cfg, "inv_decay_tau_sec")
 
-    def test_default_value_is_zero(self):
-        """デフォルト値は 0.0 (disabled)."""
+    def test_default_value(self):
+        """343#P2: デフォルト値は 1800.0 (30分減衰)."""
         cfg = _make_fill_config()
-        assert cfg.inv_decay_tau_sec == 0.0
+        assert cfg.inv_decay_tau_sec == 1800.0
 
     def test_maker_price_source_no_getattr_inv_decay(self):
         """maker_price に getattr(..., "inv_decay_tau_sec", ...) が残っていない."""

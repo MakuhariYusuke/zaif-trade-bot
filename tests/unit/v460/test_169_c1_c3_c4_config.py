@@ -115,8 +115,8 @@ class TestC3TrendingUpSellThreshold:
     def test_sell_guard_inv_bypass_threshold(
         self, config_from_yaml: FillConfig
     ) -> None:
-        """171# Guard Paradox: 在庫偏重バイパス閾値が 0.3."""
-        assert config_from_yaml.sell_guard_inv_bypass_threshold == pytest.approx(0.3)
+        """343#P2 342#B: inv_bypass 廃止 → 0.0 (gradual 化)."""
+        assert config_from_yaml.sell_guard_inv_bypass_threshold == pytest.approx(0.0)
 
 
 # ================================================================

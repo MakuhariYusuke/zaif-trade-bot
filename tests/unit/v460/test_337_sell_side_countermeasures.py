@@ -40,21 +40,21 @@ class TestSellInvRelaxationConfig:
         assert hasattr(cfg, "sell_dynamic_kill_inv_relaxation_max_bps")
 
     def test_defaults_are_conservative(self) -> None:
-        """コードデフォルトは無効 (False) で保守的な値."""
+        """343#P2 342#B: inv_bypass 廃止に伴い max_bps を 0.5 に引上げ."""
         cfg = FillTestConfig()
         assert cfg.sell_dynamic_kill_inv_relaxation_enabled is False
         assert cfg.sell_dynamic_kill_inv_relaxation_scale == 0.4
-        assert cfg.sell_dynamic_kill_inv_relaxation_max_bps == 0.3
+        assert cfg.sell_dynamic_kill_inv_relaxation_max_bps == 0.5
 
     def test_sell_scale_lt_buy_scale(self) -> None:
         """337# Glosten-Milgrom: sell は buy より保守的."""
         cfg = FillTestConfig()
         assert cfg.sell_dynamic_kill_inv_relaxation_scale < cfg.buy_dynamic_kill_inv_relaxation_scale
 
-    def test_sell_max_bps_le_buy_max_bps(self) -> None:
-        """337# sell の max_bps は buy 以下 (341# revert で buy=0.3 に復帰、sell=0.3 と同値)."""
+    def test_sell_max_bps_compensates_bypass_removal(self) -> None:
+        """343#P2 342#B: sell は inv_bypass 廃止に伴い buy より広い relaxation を持つ."""
         cfg = FillTestConfig()
-        assert cfg.sell_dynamic_kill_inv_relaxation_max_bps <= cfg.buy_dynamic_kill_inv_relaxation_max_bps
+        assert cfg.sell_dynamic_kill_inv_relaxation_max_bps >= cfg.buy_dynamic_kill_inv_relaxation_max_bps
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -434,6 +434,9 @@ def _parse_stopgap_section(yaml_cfg: dict) -> dict:
     # 273# kill 時間上限 YAML 配線
     if "max_kill_duration_sec" in sell_kill:
         kwargs["sell_dynamic_kill_max_duration_sec"] = float(sell_kill["max_kill_duration_sec"])
+    # 343#P2 342#D: EWMA α
+    if "ewma_alpha" in sell_kill:
+        kwargs["sell_dynamic_kill_ewma_alpha"] = float(sell_kill["ewma_alpha"])
 
     # 157# §19: buy 動的 kill
     buy_kill = 止血.get("buy_dynamic_kill", {})
@@ -459,6 +462,9 @@ def _parse_stopgap_section(yaml_cfg: dict) -> dict:
     # 273# kill 時間上限 YAML 配線
     if "max_kill_duration_sec" in buy_kill:
         kwargs["buy_dynamic_kill_max_duration_sec"] = float(buy_kill["max_kill_duration_sec"])
+    # 343#P2 342#D: EWMA α
+    if "ewma_alpha" in buy_kill:
+        kwargs["buy_dynamic_kill_ewma_alpha"] = float(buy_kill["ewma_alpha"])
 
     # 286# 283# P1-4: 在庫連動 buy_dynamic_kill 緩和 (Ho & Stoll 1981)
     inv_relax = 止血.get("buy_dynamic_kill_inv_relaxation", {})

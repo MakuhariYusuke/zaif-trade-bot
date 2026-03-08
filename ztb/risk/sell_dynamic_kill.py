@@ -131,6 +131,11 @@ class DynamicKillConfig:
     #: 市場理論的根拠: kill が長期化すると rolling PnL ウィンドウが stale 化し、
     #: 市場条件が変化しても反映されない。時間上限は情報の鮮度を保証する。
     max_kill_duration_sec: float = 0.0
+    # ---- 343#P2 342#D: EWMA モード (RiskMetrics 1996) ----
+    #: EWMA α ∈ (0, 1]。0.0 = 無効 (count-based rolling mean を使用)。
+    #: α=0.05 で effective window ≈ 20、レジーム遷移への高速応答。
+    #: 市場理論的根拠: J.P.Morgan RiskMetrics — 新しい情報ほど重要。
+    ewma_alpha: float = 0.0
 
     def __post_init__(self) -> None:
         """173# バリデーション + 241# S-4 toxicity config 制約チェック."""
@@ -177,6 +182,12 @@ class DynamicKillConfig:
                     f"DynamicKillConfig.toxicity_caution_min_participation "
                     f"must be in (0, 1.0], got {self.toxicity_caution_min_participation}"
                 )
+        # 343#P2 342#D: EWMA α バリデーション
+        if not (0.0 <= self.ewma_alpha <= 1.0):
+            raise ValueError(
+                f"DynamicKillConfig.ewma_alpha must be in [0, 1], "
+                f"got {self.ewma_alpha}"
+            )
 
 # 後方互換エイリアス
 SellKillConfig = DynamicKillConfig
@@ -220,6 +231,7 @@ class DynamicKillManager:
         "_consecutive_probes",  # 219#
         "_force_released",       # 219#
         "_kill_activated_at",    # 273# kill 発動タイムスタンプ
+        "_ewma_value",           # 343#P2 342#D EWMA 状態
     )
 
     def __init__(self, config: DynamicKillConfig | None = None, *, side: str = "sell") -> None:
@@ -234,6 +246,7 @@ class DynamicKillManager:
         self._consecutive_probes: int = 0  # 219# progressive probe
         self._force_released: bool = False  # 219# force release active
         self._kill_activated_at: float | None = None  # 273# kill 発動時刻
+        self._ewma_value: float | None = None  # 343#P2 342#D EWMA 累積値
 
     @property
     def config(self) -> DynamicKillConfig:
@@ -242,6 +255,13 @@ class DynamicKillManager:
     def track(self, pnl_bps: float) -> None:
         """fill の PnL (bps) を追跡."""
         self._pnl_history.append(pnl_bps)
+        # 343#P2 342#D: EWMA 更新
+        alpha = self._config.ewma_alpha
+        if alpha > 0:
+            if self._ewma_value is None:
+                self._ewma_value = pnl_bps  # 初回: seed
+            else:
+                self._ewma_value = alpha * pnl_bps + (1.0 - alpha) * self._ewma_value
         self._stale_counter = 0  # 218# 新データ投入 → stale リセット
         self._consecutive_probes = 0  # 219# 新データ → probe 連続カウンタリセット
         if self._force_released:
@@ -254,6 +274,21 @@ class DynamicKillManager:
         max_keep = self._config.window * 3
         if len(self._pnl_history) > max_keep:
             self._pnl_history = self._pnl_history[-max_keep:]
+
+    def _get_rolling_mean(self) -> float | None:
+        """343#P2 342#D: EWMA or count-based rolling mean を返す.
+
+        EWMA モード (ewma_alpha > 0): _ewma_value を返す (window 未満でも可)。
+        Count-based モード (ewma_alpha == 0): 従来の直近 window 件の算術平均。
+        データ不足時は None。
+        """
+        if self._config.ewma_alpha > 0:
+            return self._ewma_value
+        window = self._config.window
+        if len(self._pnl_history) < window:
+            return None
+        recent = self._pnl_history[-window:]
+        return sum(recent) / len(recent)
 
     def is_kill_active(self) -> tuple[bool, float | None, int]:
         """224# B2: 副作用なしで kill 状態を検査.
@@ -268,11 +303,9 @@ class DynamicKillManager:
             return False, None, len(self._pnl_history)
         if self._cooldown > 0:
             return True, None, len(self._pnl_history)
-        window = self._config.window
-        if len(self._pnl_history) < window:
+        rolling_mean = self._get_rolling_mean()
+        if rolling_mean is None:
             return False, None, len(self._pnl_history)
-        recent = self._pnl_history[-window:]
-        rolling_mean = sum(recent) / len(recent)
         threshold = self._config.threshold_bps
         return rolling_mean < threshold, rolling_mean, len(self._pnl_history)
 
@@ -313,16 +346,13 @@ class DynamicKillManager:
                 threshold_used=threshold, rolling_mean=None,
             )
 
-        window = cfg.window
-        if len(self._pnl_history) < window:
+        rolling_mean = self._get_rolling_mean()
+        if rolling_mean is None:
             return ToxicityAssessment(
                 level=ToxicityLevel.GREEN, score=0.0,
                 offset_mult=1.0, participation_rate=1.0,
                 threshold_used=threshold, rolling_mean=None,
             )
-
-        recent = self._pnl_history[-window:]
-        rolling_mean = sum(recent) / len(recent)
 
         # 正規化スコア: 0=安全, 1.0=kill 閾値
         # threshold は負なので rolling_mean/threshold → 正の値が危険
@@ -493,13 +523,11 @@ class DynamicKillManager:
             )
 
         window = self._config.window
-        if len(self._pnl_history) < window:
+        rolling_mean = self._get_rolling_mean()
+        if rolling_mean is None:
             return False, self._make_telemetry(
                 killed=False, rolling_mean=None, threshold=self._config.threshold_bps, regime=regime
             )
-
-        recent = self._pnl_history[-window:]
-        rolling_mean = sum(recent) / len(recent)
 
         # レジーム別閾値
         threshold = self._config.threshold_bps
