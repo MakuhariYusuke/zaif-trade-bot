@@ -51,92 +51,6 @@ def sample_market_data():
 
 
 @pytest.fixture
-def small_market_data():
-    """Create small market data for quick testing"""
-    np.random.seed(42)
-    n_samples = 100
-
-    data = []
-    for i in range(n_samples):
-        price = 100.0 + i * 0.1  # Simple trend
-        data.append({
-            'timestamp': pd.Timestamp('2023-01-01') + pd.Timedelta(minutes=i),
-            'open': price,
-            'high': price * 1.01,
-            'low': price * 0.99,
-            'close': price,
-            'volume': 1000.0
-        })
-
-    return pd.DataFrame(data)
-
-
-@pytest.fixture
-def noisy_market_data():
-    """Create market data with added noise"""
-    np.random.seed(42)
-    n_samples = 500
-
-    # Clean data
-    base_price = 100.0
-    prices = []
-    current_price = base_price
-
-    for i in range(n_samples):
-        change = np.random.normal(0, 0.005)
-        current_price *= (1 + change)
-        prices.append(current_price)
-
-    # Add noise
-    data = []
-    for i in range(n_samples):
-        price = prices[i]
-        noise_level = 0.02  # 2% noise
-
-        data.append({
-            'timestamp': pd.Timestamp('2023-01-01') + pd.Timedelta(minutes=i),
-            'open': price * (1 + np.random.normal(0, noise_level)),
-            'high': price * (1 + abs(np.random.normal(0, noise_level))),
-            'low': price * (1 - abs(np.random.normal(0, noise_level))),
-            'close': price * (1 + np.random.normal(0, noise_level)),
-            'volume': np.random.lognormal(10, 0.5)
-        })
-
-    return pd.DataFrame(data)
-
-
-@pytest.fixture
-def anomalous_market_data():
-    """Create market data with anomalies"""
-    np.random.seed(42)
-    n_samples = 500
-
-    # Normal data
-    data = []
-    for i in range(n_samples):
-        price = 100.0 + np.sin(i * 0.1) * 5  # Sine wave pattern
-        data.append({
-            'timestamp': pd.Timestamp('2023-01-01') + pd.Timedelta(minutes=i),
-            'open': price,
-            'high': price * 1.005,
-            'low': price * 0.995,
-            'close': price,
-            'volume': 1000.0
-        })
-
-    # Add anomalies at specific points
-    anomaly_indices = [100, 200, 300, 400]
-    for idx in anomaly_indices:
-        if idx < len(data):
-            # Extreme price movement
-            data[idx]['close'] *= 2.0  # Double the price
-            data[idx]['high'] *= 2.5
-            data[idx]['volume'] *= 10  # 10x volume
-
-    return pd.DataFrame(data)
-
-
-@pytest.fixture
 def large_market_data():
     """Create large dataset for performance testing"""
     np.random.seed(42)
@@ -195,26 +109,6 @@ def sample_features():
 
 
 @pytest.fixture
-def sample_training_data():
-    """Create sample training data with features and targets"""
-    np.random.seed(42)
-    n_samples = 1000
-
-    features = pd.DataFrame({
-        'feature1': np.random.randn(n_samples),
-        'feature2': np.random.randn(n_samples),
-        'feature3': np.random.randn(n_samples),
-        'feature4': np.random.randn(n_samples),
-        'feature5': np.random.randn(n_samples)
-    })
-
-    # Create target (simplified: positive when feature1 > 0)
-    targets = (features['feature1'] > 0).astype(int)
-
-    return features, targets
-
-
-@pytest.fixture
 def mock_unified_feature_engineer():
     """Mock UnifiedFeatureEngineer for testing"""
     from unittest.mock import Mock
@@ -270,28 +164,3 @@ def config_dict():
             'epochs': 100
         }
     }
-
-
-@pytest.fixture
-def temp_directory(tmp_path):
-    """Temporary directory for file operations"""
-    return tmp_path
-
-
-@pytest.fixture
-def sample_csv_file(temp_directory, sample_market_data):
-    """Create a temporary CSV file with sample data"""
-    csv_path = temp_directory / "sample_data.csv"
-    sample_market_data.to_csv(csv_path, index=False)
-    return csv_path
-
-
-@pytest.fixture
-def sample_json_config(temp_directory, config_dict):
-    """Create a temporary JSON config file"""
-    import json
-
-    json_path = temp_directory / "config.json"
-    with open(json_path, 'w') as f:
-        json.dump(config_dict, f, indent=2)
-    return json_path
