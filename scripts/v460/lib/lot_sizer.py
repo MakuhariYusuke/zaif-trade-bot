@@ -68,7 +68,7 @@ class LotSizingConfig:
     # ロット制約 (Coincheck BTC 最小= 0.001)
     min_lot: float = 0.001
     max_lot: float = 0.005  # 保守的上限: 5 mBTC
-    lot_step: float = 0.001  # 1 mBTC 刻み
+    lot_step: float = 0.00000001  # 348# satoshi 精度 (1e-8 BTC)
 
     # 増量条件 (全て満たす必要あり)
     min_fill_rate: float = 0.70  # 約定率下限
@@ -262,12 +262,12 @@ def compute_lot_size(
 def clamp_lot(value: float, config: LotSizingConfig | None = None) -> float:
     """ロットサイズをハードリミット内に制限.
 
-    Coincheck BTC の精度に合わせて小数第4位で丸める。
+    348# satoshi 精度: 小数第8位で丸める (1 satoshi = 1e-8 BTC)。
     """
     if config is None:
         config = LotSizingConfig()
     clamped = max(config.min_lot, min(config.max_lot, value))
-    return round(clamped, 4)
+    return round(clamped, 8)
 
 
 def compute_cumulative_pnl_jpy(

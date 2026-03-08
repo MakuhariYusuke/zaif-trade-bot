@@ -344,5 +344,3 @@ class TestOrchestratorClassLevelAttrs:
         assert FillLoopOrchestratorMixin._in_hard_skip_hour is False
         assert FillLoopOrchestratorMixin._halt_iter_count == 0
         assert FillLoopOrchestratorMixin._alert_interval_mult == 1.0
-        assert FillLoopOrchestratorMixin._last_balance_forced_time == 0.0
-        assert FillLoopOrchestratorMixin._balance_forced_freq_count == 0

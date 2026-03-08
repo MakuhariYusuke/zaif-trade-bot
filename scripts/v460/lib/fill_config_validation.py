@@ -140,11 +140,7 @@ def validate_fill_config(config: FillTestConfig) -> None:
             f"low_vol_boost_min ({config.low_vol_boost_min}) must be <= "
             f"low_vol_offset_boost ({config.low_vol_offset_boost})"
         )
-    if config.balance_forced_cooldown_sec < 0:
-        raise ValueError(
-            f"balance_forced_cooldown_sec must be >= 0, "
-            f"got {config.balance_forced_cooldown_sec}"
-        )
+    # 348# balance_forced 撤廃: balance_forced_cooldown_sec バリデーションを削除
     # 202# A: loss_cooldown_interval_mult は 1.0 以上
     if config.loss_cooldown_interval_mult < 1.0:
         raise ValueError(
@@ -297,8 +293,7 @@ def validate_fill_config(config: FillTestConfig) -> None:
             f"got {config.unknown_regime_max_consecutive}"
         )
     # 285# 283# P0-2: per-side halt + IE 相互制約
-    # halt_cycles=0 (日替わりまで永続封鎖) かつ IE 無効だと
-    # balance_forced + per-side halt で永久デッドロックが再発する (282# 実証済)。
+    # 348# balance_forced 撤廃: デッドロックリスクは低減したが IE 必須バリデーションは安全策として保持
     if (
         config.per_side_dd_enabled
         and config.per_side_dd_halt_cycles == 0
@@ -307,7 +302,7 @@ def validate_fill_config(config: FillTestConfig) -> None:
         raise ValueError(
             "per_side_dd_halt_cycles=0 (永続封鎖) と "
             "inventory_escape_enabled=False の組合せは禁止。"
-            "balance_forced + per-side halt の永久デッドロックが発生する "
+            "per-side halt の永久デッドロックが発生する "
             "(282# 実証済)。halt_cycles >= 1 にするか "
             "inventory_escape_enabled=True にしてください"
         )

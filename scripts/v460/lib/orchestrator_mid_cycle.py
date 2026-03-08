@@ -98,170 +98,6 @@ class OrchestratorMidCycleMixin:
         return False
 
     # ------------------------------------------------------------------
-    # 133# / 154# Balance forced skip 判定
-    # ------------------------------------------------------------------
-    async def _handle_balance_forced_skip(
-        self, st: RunSessionState, ctx: CycleContext,
-    ) -> bool:
-        """133# P0-08 / 154# C-1/C-2: balance_forced skip + deadlock 防止.
-
-        332# extract from run_continuous.
-        True = スキップ (caller: continue)
-        False = 実行パスへ進む (rescue / one_sided_balance / skip 不要)
-        ctx.is_rescue, ctx.one_sided_balance が更新される。
-        """
-        if not ctx.balance_forced or not self.config.skip_balance_forced:
-            return False
-
-        next_side = ctx.next_side
-        _regime_mult = ctx.regime_mult
-
-        # 154# C-1: 両側残高判定
-        original_side = self._opposite_side(next_side)
-        original_also_insufficient = await self._check_balance_for_side(
-            original_side, regime_mult=_regime_mult,
-        )
-        # 154# C-2 + 182# regime 別緩和
-        _r = self._current_regime_value()
-        _deadlock_limit = (
-            self._cycle_strategy.policy.deadlock_limit_trending
-            if _r and _r.startswith("trending") and self._cycle_strategy is not None
-            else self.config.balance_forced_deadlock_limit
-        )
-        _over_deadlock_limit = (
-            _deadlock_limit > 0
-            and self._balance_forced_skip_count >= _deadlock_limit
-        )
-
-        if original_also_insufficient or _over_deadlock_limit:
-            # 片側のみ or デッドロック上限超過 → 実行許可
-            _reason = (
-                "one_sided_balance" if original_also_insufficient
-                else f"deadlock_limit({self._balance_forced_skip_count})"
-            )
-            logger.info(
-                f"[154# C-1] balance_forced but {_reason} — "
-                f"proceeding with {next_side} (original_side={original_side} "
-                f"insufficient={original_also_insufficient})"
-            )
-            self._balance_forced_skip_count = 0
-            ctx.one_sided_balance = original_also_insufficient
-            # 202# B: 片側残高枯渇時は rescue offset で保護
-            if (
-                original_also_insufficient
-                and self.config.one_sided_balance_rescue_offset
-            ):
-                ctx.is_rescue = True
-                logger.info(
-                    f"[202# B] one_sided_balance rescue: offset ×"
-                    f"{self.config.balance_forced_rescue_offset_mult:.1f}"
-                )
-            return False
-
-        if self.config.balance_forced_rescue_enabled:
-            # 158# P1-1: rescue モード
-            _prev_skip_count = self._balance_forced_skip_count
-            self._balance_forced_skip_count = 0
-            ctx.is_rescue = True
-            logger.info(
-                f"[158# P1-1] balance_forced rescue mode: "
-                f"executing {next_side} with offset ×"
-                f"{self.config.balance_forced_rescue_offset_mult:.1f} "
-                f"(was consecutive skip={_prev_skip_count})"
-            )
-            return False
-
-        # 両方残高 OK → スキップ (forced switch は損失回避のため)
-        self._balance_forced_skip_count += 1
-        logger.info(
-            f"[133# P0-08] Skipping cycle — balance_forced_switch=True. "
-            f"side={next_side}, "
-            f"consecutive={self._balance_forced_skip_count}"
-        )
-        await self._execute_skip(
-            st, side=next_side,
-            cancel_reason=CR.BALANCE_FORCED_SKIP,
-            order_quantity=self._current_lot,
-            balance_forced_switch=True,
-            balance_forced_consecutive=self._balance_forced_skip_count,
-            update_last_side=True,
-        )
-        return True
-
-    # ------------------------------------------------------------------
-    # 286# Forced buy delay (Glosten-Milgrom 1985)
-    # ------------------------------------------------------------------
-    async def _handle_forced_buy_delay(
-        self, st: RunSessionState, ctx: CycleContext,
-    ) -> bool:
-        """286# 284# P1: 強制買い遅延実行.
-
-        332# extract from run_continuous.
-        balance_forced で buy 方向に切り替わった際、microprice が
-        急落中なら N サイクル待機。逆選択リスクが高い局面での
-        即時買いは損失を拡大するだけ (「待つ勇気」)。
-        """
-        next_side = ctx.next_side
-
-        # delay 評価: balance_forced + buy + 設定有効時のみ
-        if (
-            ctx.balance_forced
-            and next_side == "buy"
-            and self.config.forced_buy_delay_enabled
-        ):
-            _vel = self._maker_price.last_mid_trend_bps
-            _thr = self.config.forced_buy_delay_velocity_threshold_bps
-            # 292# P1: ranging/trending_down では緩い閾値
-            _ranging_thr = self.config.forced_buy_delay_velocity_threshold_ranging_bps
-            if _ranging_thr is not None and self._regime_detector is not None:
-                _cur_regime = self._regime_detector.current_regime.value
-                if _cur_regime in ("ranging", "trending_down"):
-                    _thr = _ranging_thr
-            # 294# P0: 連続ブロック上限チェック — デッドロック防止
-            _max_consec = self.config.forced_buy_delay_max_consecutive
-            if (
-                _vel is not None
-                and _vel <= _thr
-                and self._forced_buy_delay_consecutive < _max_consec
-            ):
-                self._forced_buy_delay_remaining = max(
-                    self._forced_buy_delay_remaining,
-                    self.config.forced_buy_delay_cycles,
-                )
-                logger.info(
-                    f"[286# GM delay] Forced buy delayed: "
-                    f"velocity={_vel:.2f}bps <= {_thr:.1f}bps, "
-                    f"waiting {self._forced_buy_delay_remaining} cycles "
-                    f"(consec={self._forced_buy_delay_consecutive}/{_max_consec})"
-                )
-            elif self._forced_buy_delay_consecutive >= _max_consec:
-                self._forced_buy_delay_remaining = 0
-                logger.warning(
-                    f"[294# GM deadlock break] Forced buy delay exceeded "
-                    f"max_consecutive={_max_consec}, forcing through. "
-                    f"velocity={_vel}bps, regime="
-                    f"{getattr(getattr(self._regime_detector, 'current_regime', None), 'value', 'N/A')}"
-                )
-
-        # delay 消化
-        if self._forced_buy_delay_remaining > 0 and next_side == "buy":
-            self._forced_buy_delay_remaining -= 1
-            self._forced_buy_delay_consecutive += 1
-            self._inc_guard_fire("forced_buy_delay")
-            await self._execute_skip(
-                st, side=next_side,
-                cancel_reason=CR.FORCED_BUY_DELAY,
-                order_quantity=self._current_lot,
-                balance_forced_switch=ctx.balance_forced,
-                update_last_side=True,
-            )
-            return True
-
-        # delay 通過 → 連続カウンタリセット
-        self._forced_buy_delay_consecutive = 0
-        return False
-
-    # ------------------------------------------------------------------
     # 194# CycleGateAggregator 評価 + ブロック処理
     # ------------------------------------------------------------------
     async def _evaluate_and_handle_cycle_gate(
@@ -280,7 +116,6 @@ class OrchestratorMidCycleMixin:
         if (
             self.config.skip_sell_trending
             and next_side == "sell"
-            and not ctx.balance_forced
             and self._regime_detector is not None
             and self._regime_detector.current_regime.is_trending
         ):
@@ -307,7 +142,6 @@ class OrchestratorMidCycleMixin:
                 self._regime_detector.last_volatility_ratio
                 if self._regime_detector is not None else None
             ),
-            balance_forced=ctx.balance_forced,
             inv_net_imbalance=self._maker_price.inv_net_imbalance,
             is_buy_killed=self._is_side_killed("buy"),
             is_sell_killed=self._is_side_killed("sell"),
@@ -548,8 +382,6 @@ class OrchestratorMidCycleMixin:
 
             record = await self.run_single_cycle(
                 side_override=next_side,
-                balance_forced_switch=ctx.balance_forced,
-                balance_forced_rescue=ctx.is_rescue,
                 one_sided_balance=ctx.one_sided_balance,
                 trending_offset_mult=gate_result.trending_offset_mult,
                 degraded_liquidation=(
@@ -557,8 +389,7 @@ class OrchestratorMidCycleMixin:
                 ),
                 toxicity_offset_mult=gate_result.toxicity_offset_mult,
             )
-            # 154# C-2: 実サイクル実行 → forced skip カウンタリセット
-            self._balance_forced_skip_count = 0
+            # 154# C-2: 実サイクル実行 → skip カウンタリセット
             self._trending_sell_skip_count = 0
 
             # 207# §4: one-sided 連続実行追跡 + 234# エスカレーション

@@ -341,17 +341,6 @@ class TestFFDStatePersistence:
 # ======================================================================
 
 
-class TestToxicVetoHaltBlockDecrement:
-    """226# S2: balance_forced + per_side_halt のパスで toxic_veto を減算."""
-
-    def test_orchestrator_source_decrements_in_halt_block(self) -> None:
-        """balance_forced halt_block パス内に toxic_veto 減算コードがある."""
-        src = read_source_text(ORCHESTRATOR_GUARDS)
-        # balance_forced_halt_block 付近に toxic_veto 減算がある
-        assert "226# S2" in src
-        assert "Toxic veto expired" in src
-
-
 # ======================================================================
 # S5: halt 中 MCB/SAD フィード継続
 # ======================================================================

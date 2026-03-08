@@ -55,7 +55,6 @@ def _default_ctx(**overrides: object) -> dict:
         "side": "buy",
         "regime": "ranging",
         "vol_ratio": 1.0,
-        "balance_forced": False,
         "inv_net_imbalance": 0.0,
         "is_buy_killed": False,
         "is_sell_killed": False,

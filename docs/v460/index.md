@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-09 (345# proactive fixes: warmup downweight 整合 / CircuitBreaker Py3.12+)
+> 最終更新: 2026-03-09 (348# satoshi化 + balance_forced 撤廃)
 
 ---
 
@@ -339,6 +339,9 @@
 | 343 | impl | [343_ph2_impl_p1_improvements.md](343_ph2_impl_p1_improvements.md) | (A) forced fill downweight 0.5, (B) sell forced KPI 分離, (C) skip_gate/kill release grace window, (D) regime_min_confidence default sync, (E) getattr→直接参照 |
 | 344 | impl | [344_ph2_impl_improvements.md](344_ph2_impl_improvements.md) | (A) velocity_ema_alpha 0.3, (B) ranging_obi_asymmetry 0.3, (C) inv_decay_tau 1800, (D) inv_bypass gradual 化, (E) EWMA mode |
 | 345 | fix | [345_proactive_fixes.md](345_proactive_fixes.md) | (A) warmup forced_fill_pnl_downweight 整合, (B) CircuitBreaker sync Py3.12+ 互換, (C) 324# M-1/L-2 完了反映 |
+| 346 | rpt | [346_phg_rpt_test_coverage_and_tail_loss_analysis.md](346_phg_rpt_test_coverage_and_tail_loss_analysis.md) | テストカバレッジ拡充 (fill_config_validation 67 + pre_order_adjustments 18) + S-7 テール損失分析スクリプト (33) = 118 tests |
+| 347 | rpt | [347_ph2_rpt_min_lot_constraint_analysis.md](347_ph2_rpt_min_lot_constraint_analysis.md) | 1mBTC 最低ロット制約分析: 6 死蔵メカニズム, satoshi 精度, Phase 0-4 ロードマップ |
+| 348 | impl | [348_ph2_impl_satoshi_and_balance_forced_removal.md](348_ph2_impl_satoshi_and_balance_forced_removal.md) | Satoshi 精度化 (lot_step 1e-8) + balance_forced 全面撤廃 (~20 ソース, ~30 テスト) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

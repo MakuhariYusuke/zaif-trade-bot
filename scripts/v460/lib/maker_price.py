@@ -80,9 +80,6 @@ class ImbalanceResult(NamedTuple):
 
 from scripts.v460.lib.constants import BPS_FACTOR as _BPS_FACTOR
 
-# 定数
-_MIN_ORDER_BTC: Final[float] = 0.001
-
 
 class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixin):
     """maker limit 価格計算 — FillTestRunner から分割.

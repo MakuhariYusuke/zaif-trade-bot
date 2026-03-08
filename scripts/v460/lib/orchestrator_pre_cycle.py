@@ -48,15 +48,11 @@ class CycleContext:
     RunSessionState (ループ間共有) とは異なり、CycleContext は
     while ループの 1 回分のみ有効。毎イテレーション冒頭で再生成する。
 
-    332# Phase 4: balance_forced 等を復活 — 抽出メソッド間の
-    受渡しに実際に使用される (331# 時点ではインライン変数だったため除外)。
+    332# Phase 4: 抽出メソッド間の受渡しに使用される。
+    348# balance_forced 概念を全廃。残高不足時の side 切替は通常のサイドセレクションとして扱う。
     """
 
     next_side: str = ""
-    #: 残高不足で反対 side に強制切替されたか
-    balance_forced: bool = False
-    #: balance_forced + rescue_enabled → rescue モード
-    is_rescue: bool = False
     #: 片方のみ残高あり → degraded one-sided 実行
     one_sided_balance: bool = False
     #: 269# Inventory Escape: per-side halt 貫通モード

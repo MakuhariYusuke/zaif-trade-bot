@@ -27,105 +27,13 @@ _GUARDS_SOURCE = read_source_text(ORCHESTRATOR_GUARDS)
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# A. Forced fill PnL downweight
+# A. 348# balance_forced 撤廃: TestForcedFillDownweight 削除
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 
-class TestForcedFillDownweight:
-    """343# forced fill downweight: 337# 完全除外→重み付け投入."""
-
-    def _build_mixin(
-        self, *, downweight: float = 0.5
-    ) -> OrchestratorGuardsMixin:
-        mixin = OrchestratorGuardsMixin.__new__(OrchestratorGuardsMixin)
-        mixin._sell_kill_mgr = MagicMock()
-        mixin._buy_kill_mgr = MagicMock()
-        mixin.config = FillTestConfig(forced_fill_pnl_downweight=downweight)
-        return mixin
-
-    def _make_record(
-        self,
-        side: str = "sell",
-        pnl: float = -5.0,
-        forced: bool = False,
-    ) -> SimpleNamespace:
-        return SimpleNamespace(
-            side=side,
-            filled=True,
-            post_fill_30s_pnl=pnl,
-            balance_forced_switch=forced,
-        )
-
-    def test_config_field_exists(self) -> None:
-        cfg = FillTestConfig()
-        assert hasattr(cfg, "forced_fill_pnl_downweight")
-
-    def test_default_value(self) -> None:
-        """コードデフォルト = 0.5 (YAML と一致)."""
-        cfg = FillTestConfig()
-        assert cfg.forced_fill_pnl_downweight == 0.5
-
-    def test_downweight_half(self) -> None:
-        """downweight=0.5 で PnL が半分の重みで追跡される."""
-        mixin = self._build_mixin(downweight=0.5)
-        record = self._make_record(side="sell", pnl=-10.0, forced=True)
-        mixin._track_side_pnl(record)
-        mixin._sell_kill_mgr.track.assert_called_once_with(-5.0)
-
-    def test_downweight_one(self) -> None:
-        """downweight=1.0 では通常扱い."""
-        mixin = self._build_mixin(downweight=1.0)
-        record = self._make_record(side="buy", pnl=-4.0, forced=True)
-        mixin._track_side_pnl(record)
-        mixin._buy_kill_mgr.track.assert_called_once_with(-4.0)
-
-    def test_downweight_zero_excludes(self) -> None:
-        """downweight=0.0 は旧挙動と同じ完全除外."""
-        mixin = self._build_mixin(downweight=0.0)
-        record = self._make_record(side="sell", pnl=-10.0, forced=True)
-        mixin._track_side_pnl(record)
-        mixin._sell_kill_mgr.track.assert_not_called()
-
-    def test_normal_fill_unaffected(self) -> None:
-        """forced=False の通常 fill は downweight 設定に関係なく等倍."""
-        mixin = self._build_mixin(downweight=0.1)
-        record = self._make_record(side="sell", pnl=-3.0, forced=False)
-        mixin._track_side_pnl(record)
-        mixin._sell_kill_mgr.track.assert_called_once_with(-3.0)
-
-
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# B. 強制売り KPI 分離
+# B. 348# balance_forced 撤廃: TestSellForcedKpiConfig / TestForcedFillDownweight 削除
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-
-class TestSellForcedKpiConfig:
-    """343# forced_sell_kpi_tracking config/parser."""
-
-    def test_config_field_exists(self) -> None:
-        cfg = FillTestConfig()
-        assert hasattr(cfg, "forced_sell_kpi_tracking_enabled")
-        assert cfg.forced_sell_kpi_tracking_enabled is True
-
-    def test_parser_parses_forced_sell_kpi(self) -> None:
-        result = _parse_stopgap_section({
-            "止血": {"forced_sell_kpi_tracking": False},
-        })
-        assert result["forced_sell_kpi_tracking_enabled"] is False
-
-    def test_parser_absent_field_no_error(self) -> None:
-        result = _parse_stopgap_section({"止血": {}})
-        assert "forced_sell_kpi_tracking_enabled" not in result
-
-    def test_session_state_fields_exist(self) -> None:
-        """RunSessionState に sell KPI フィールドが存在."""
-        from scripts.v460.lib.fill_loop_orchestrator import RunSessionState
-
-        st = RunSessionState()
-        assert st.forced_sell_fill_count == 0
-        assert st.forced_sell_pnl_sum_bps == 0.0
-        assert st.normal_sell_fill_count == 0
-        assert st.normal_sell_pnl_sum_bps == 0.0
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -280,19 +188,7 @@ class TestKillReleaseTracking:
 # D. Config / Parser / Hot-reload 整合性
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-
-class TestParserDownweight:
-    """343# forced_fill_pnl_downweight parser テスト."""
-
-    def test_parser_parses_downweight(self) -> None:
-        result = _parse_stopgap_section({
-            "止血": {"forced_fill_pnl_downweight": 0.3},
-        })
-        assert result["forced_fill_pnl_downweight"] == pytest.approx(0.3)
-
-    def test_parser_absent_no_error(self) -> None:
-        result = _parse_stopgap_section({"止血": {}})
-        assert "forced_fill_pnl_downweight" not in result
+# 348# balance_forced 撤廃: TestParserDownweight 削除
 
 
 class TestHotReloadFields:
@@ -302,8 +198,7 @@ class TestHotReloadFields:
         from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
 
         expected = {
-            "forced_fill_pnl_downweight",
-            "forced_sell_kpi_tracking_enabled",
+            # 348# balance_forced 撤廃: forced_fill_pnl_downweight, forced_sell_kpi 削除
             "skip_gate_kill_release_grace_cycles",
             "skip_gate_kill_release_offset",
         }
@@ -319,8 +214,7 @@ class TestOrchestratorGuardsSourceReferences:
     def test_343_reference_exists(self) -> None:
         assert "343#" in _GUARDS_SOURCE
 
-    def test_downweight_logic_in_track_side_pnl(self) -> None:
-        assert "forced_fill_pnl_downweight" in _GUARDS_SOURCE
+    # 348# balance_forced 撤廃: forced_fill_pnl_downweight ソースチェック削除
 
     def test_kill_release_tracking_in_is_side_killed(self) -> None:
         assert "_kill_was_active_buy" in _GUARDS_SOURCE

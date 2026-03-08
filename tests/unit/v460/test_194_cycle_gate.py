@@ -31,7 +31,6 @@ def _default_ctx(**overrides: object) -> dict:
         "side": "buy",
         "regime": "ranging",
         "vol_ratio": 1.0,
-        "balance_forced": False,
         "inv_net_imbalance": 0.0,
         "is_buy_killed": False,
         "is_sell_killed": False,
@@ -63,13 +62,6 @@ class TestUnknownRegimeBuy:
         r = gate.evaluate(**_default_ctx(side="sell", regime="unknown"))
         assert not r.blocked
 
-    def test_balance_forced_does_not_bypass(self) -> None:
-        """234# balance_forced でも Gate は block する (gate bypass 廃止)."""
-        gate = _make_gate()
-        r = gate.evaluate(**_default_ctx(side="buy", regime="unknown", balance_forced=True))
-        assert r.blocked
-        assert r.blocking_reason == "unknown_regime_buy_skip"
-
     def test_disabled_config(self) -> None:
         gate = _make_gate(skip_buy_unknown_regime=False)
         r = gate.evaluate(**_default_ctx(side="buy", regime="unknown"))
@@ -98,15 +90,6 @@ class TestRangingBuyLowVol:
         r = gate.evaluate(**_default_ctx(side="buy", regime="trending", vol_ratio=0.5))
         assert not r.blocked
 
-    def test_balance_forced_does_not_bypass(self) -> None:
-        """234# balance_forced でも Gate は block する (gate bypass 廃止)."""
-        gate = _make_gate()
-        r = gate.evaluate(**_default_ctx(
-            side="buy", regime="ranging", vol_ratio=0.5, balance_forced=True,
-        ))
-        assert r.blocked
-        assert r.blocking_reason == "ranging_low_vol_skip"
-
 
 # ─── 3. Gate 3: trending_sell ────────────────────────────────────────
 
@@ -129,15 +112,6 @@ class TestTrendingSell:
         gate = _make_gate()
         r = gate.evaluate(**_default_ctx(side="buy", regime="trending"))
         assert not r.blocked
-
-    def test_balance_forced_does_not_bypass(self) -> None:
-        """234# balance_forced でも Gate は block する (gate bypass 廃止)."""
-        gate = _make_gate()
-        r = gate.evaluate(**_default_ctx(
-            side="sell", regime="trending_up", balance_forced=True,
-        ))
-        assert r.blocked
-        assert r.blocking_reason == "trending_sell_skip"
 
     def test_trending_up_only_allows_trending_down(self) -> None:
         """176# A: trending_up_only モード."""
@@ -202,15 +176,6 @@ class TestBuyDynamicKill:
         r = gate.evaluate(**_default_ctx(side="buy", is_buy_killed=False))
         assert not r.blocked
 
-    def test_balance_forced_degraded_liquidation(self) -> None:
-        """234# balance_forced + kill gate → degraded liquidation モード."""
-        gate = _make_gate(degraded_liquidation_enabled=True)
-        r = gate.evaluate(**_default_ctx(
-            side="buy", is_buy_killed=True, balance_forced=True,
-        ))
-        assert not r.blocked
-        assert r.degraded_liquidation
-        assert r.degraded_reason == "buy_dynamic_kill"
 
 
 # ─── 5. Gate 5: sell_dynamic_kill ────────────────────────────────────
@@ -234,16 +199,6 @@ class TestSellDynamicKill:
         ))
         assert not r.blocked
 
-    def test_balance_forced_degraded_liquidation(self) -> None:
-        """234# balance_forced + kill gate → degraded liquidation モード."""
-        gate = _make_gate(degraded_liquidation_enabled=True)
-        r = gate.evaluate(**_default_ctx(
-            side="sell", regime="ranging",
-            is_sell_killed=True, balance_forced=True,
-        ))
-        assert not r.blocked
-        assert r.degraded_liquidation
-        assert r.degraded_reason == "sell_dynamic_kill"
 
 
 # ─── 6. Gate 6: velocity_skip ────────────────────────────────────────

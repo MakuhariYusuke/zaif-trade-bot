@@ -477,13 +477,12 @@ class TestRunContinuousBranchExecution:
         """
         # 330# extract: 一部の CR 定数は orchestrator_pre_cycle.py に移動
         source = read_fill_test_runner_source()
-        # orchestrator に残る CR 定数 (system-level halt + balance)
+        # orchestrator に残る CR 定数 (system-level halt)
         expected_cr_constants = [
             "CR.TIME_FILTER_BOTH_SIDES",
             "CR.TIME_FILTER_086_DEADLOCK",
             "CR.PREFLIGHT_INSUFFICIENT",
             "CR.PREFLIGHT_PAUSE",
-            "CR.BALANCE_FORCED_SKIP",
         ]
         for cr_const in expected_cr_constants:
             assert cr_const in source, \

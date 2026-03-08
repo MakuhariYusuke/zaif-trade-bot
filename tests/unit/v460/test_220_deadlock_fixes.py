@@ -30,7 +30,6 @@ def _default_ctx(**overrides: object) -> dict:
         "side": "buy",
         "regime": "ranging",
         "vol_ratio": 1.0,
-        "balance_forced": False,
         "inv_net_imbalance": 0.0,
         "is_buy_killed": False,
         "is_sell_killed": False,
@@ -63,7 +62,7 @@ class TestGate7BalanceForcedBypassRemoved:
         """234#: balance_forced=True でも sell はブロック."""
         gate = _make_gate()
         r = gate.evaluate(**_default_ctx(
-            side="sell", regime="unknown", balance_forced=True,
+            side="sell", regime="unknown",
         ))
         assert r.blocked
         assert r.blocking_reason == "rule_skip_unknown_sell"
@@ -72,7 +71,7 @@ class TestGate7BalanceForcedBypassRemoved:
         """234#: balance_forced=True でも buy はブロック."""
         gate = _make_gate()
         r = gate.evaluate(**_default_ctx(
-            side="buy", regime="unknown", balance_forced=True,
+            side="buy", regime="unknown",
         ))
         assert r.blocked
         assert r.blocking_reason == "unknown_regime_buy_skip"
@@ -89,11 +88,11 @@ class TestGate7BalanceForcedBypassRemoved:
         """234# 対称性: balance_forced=True でも両方ブロック."""
         gate = _make_gate()
         r_buy = gate.evaluate(**_default_ctx(
-            side="buy", regime="unknown", balance_forced=True,
+            side="buy", regime="unknown",
         ))
         assert r_buy.blocked
         r_sell = gate.evaluate(**_default_ctx(
-            side="sell", regime="unknown", balance_forced=True,
+            side="sell", regime="unknown",
         ))
         assert r_sell.blocked
 
@@ -145,34 +144,11 @@ class TestDualKillBreaker:
         gate = _make_gate()
         r = gate.evaluate(**_default_ctx(
             side="buy", is_buy_killed=True, is_sell_killed=True,
-            balance_forced=True,
         ))
         assert not r.blocked
         assert r.dual_kill_bypassed is True  # 234# dual_kill now detected
 
-    def test_single_kill_balance_forced_degraded(self) -> None:
-        """234#: 片方 kill + balance_forced → degraded liquidation mode."""
-        gate = _make_gate()
-        r = gate.evaluate(**_default_ctx(
-            side="buy", is_buy_killed=True, is_sell_killed=False,
-            balance_forced=True,
-        ))
-        assert not r.blocked  # degraded liquidation: not fully blocked
-        assert r.degraded_liquidation is True  # 234# degraded mode
-        assert r.degraded_reason == "buy_dynamic_kill"
 
-    def test_dual_kill_balance_forced_dual_kill_detected(self) -> None:
-        """234#: balance_forced + dual kill → dual_kill_bypassed=True.
-
-        234# で `not balance_forced` を _dual_kill 条件から削除したため、
-        balance_forced=True でも dual_kill が検出される。"""
-        gate = _make_gate()
-        r = gate.evaluate(**_default_ctx(
-            side="sell", is_buy_killed=True, is_sell_killed=True,
-            balance_forced=True,
-        ))
-        assert not r.blocked
-        assert r.dual_kill_bypassed is True  # 234# dual kill now detected
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -259,7 +235,7 @@ class TestUnknownRegimeConsecutiveBypass:
 
         # 234#: balance_forced でも Gate1 はブロック → カウンタ 5 に
         gate.evaluate(**_default_ctx(
-            side="buy", regime="unknown", balance_forced=True,
+            side="buy", regime="unknown",
         ))
         assert gate._consecutive_unknown_blocks["buy"] == 5
 

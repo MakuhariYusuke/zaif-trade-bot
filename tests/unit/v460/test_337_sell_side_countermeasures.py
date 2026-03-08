@@ -115,10 +115,6 @@ class TestGuardsStructure:
         """buy 側は imbalance < 0 (BTC 不足) で緩和される (既存)."""
         assert "imbalance < 0" in _GUARDS_SOURCE
 
-    def test_balance_forced_filter_in_track_side_pnl(self) -> None:
-        """337# §6.3: _track_side_pnl に balance_forced_switch フィルタがある."""
-        assert "balance_forced_switch" in _GUARDS_SOURCE
-
     def test_is_side_killed_docstring_mentions_337(self) -> None:
         """_is_side_killed の docstring に 337# 参照がない場合は本体コメント確認."""
         # 337# のロジック追加はコード内コメントで参照される
@@ -164,95 +160,3 @@ class TestHoStollSymmetry:
             )
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 5. balance_forced_switch フィルタの意味論テスト
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-
-class TestForcedSwitchFilter:
-    """337# §6.3: _track_side_pnl が balance_forced_switch を除外する."""
-
-    def _build_mixin(self) -> OrchestratorGuardsMixin:
-        """最小限のモック mixin を構築."""
-        mixin = OrchestratorGuardsMixin.__new__(OrchestratorGuardsMixin)
-        mixin._sell_kill_mgr = MagicMock()
-        mixin._buy_kill_mgr = MagicMock()
-        mixin.config = FillTestConfig()  # 343# downweight 参照用
-        return mixin
-
-    def _make_record(
-        self,
-        side: str = "sell",
-        filled: bool = True,
-        pnl: float = -5.0,
-        forced: bool = False,
-    ) -> SimpleNamespace:
-        return SimpleNamespace(
-            side=side,
-            filled=filled,
-            post_fill_30s_pnl=pnl,
-            balance_forced_switch=forced,
-        )
-
-    def test_normal_sell_tracked(self) -> None:
-        """通常の sell fill は追跡される."""
-        mixin = self._build_mixin()
-        record = self._make_record(side="sell", forced=False, pnl=-2.0)
-        mixin._track_side_pnl(record)
-        mixin._sell_kill_mgr.track.assert_called_once_with(-2.0)
-
-    def test_normal_buy_tracked(self) -> None:
-        """通常の buy fill は追跡される."""
-        mixin = self._build_mixin()
-        record = self._make_record(side="buy", forced=False, pnl=1.5)
-        mixin._track_side_pnl(record)
-        mixin._buy_kill_mgr.track.assert_called_once_with(1.5)
-
-    def test_forced_sell_downweighted(self) -> None:
-        """343# balance_forced_switch=True の sell は downweight で追跡."""
-        mixin = self._build_mixin()
-        record = self._make_record(side="sell", forced=True, pnl=-10.0)
-        mixin._track_side_pnl(record)
-        mixin._sell_kill_mgr.track.assert_called_once_with(-10.0 * mixin.config.forced_fill_pnl_downweight)
-
-    def test_forced_buy_downweighted(self) -> None:
-        """343# balance_forced_switch=True の buy は downweight で追跡."""
-        mixin = self._build_mixin()
-        record = self._make_record(side="buy", forced=True, pnl=-8.0)
-        mixin._track_side_pnl(record)
-        mixin._buy_kill_mgr.track.assert_called_once_with(-8.0 * mixin.config.forced_fill_pnl_downweight)
-
-    def test_forced_excluded_when_weight_zero(self) -> None:
-        """343# downweight=0.0 で完全除外 (旧挙動互換)."""
-        mixin = self._build_mixin()
-        mixin.config = FillTestConfig(forced_fill_pnl_downweight=0.0)
-        record = self._make_record(side="sell", forced=True, pnl=-10.0)
-        mixin._track_side_pnl(record)
-        mixin._sell_kill_mgr.track.assert_not_called()
-
-    def test_unfilled_not_tracked(self) -> None:
-        """filled=False のレコードは追跡されない."""
-        mixin = self._build_mixin()
-        record = self._make_record(filled=False, pnl=-5.0)
-        mixin._track_side_pnl(record)
-        mixin._sell_kill_mgr.track.assert_not_called()
-
-    def test_none_pnl_not_tracked(self) -> None:
-        """post_fill_30s_pnl=None のレコードは追跡されない."""
-        mixin = self._build_mixin()
-        record = self._make_record()
-        record.post_fill_30s_pnl = None
-        mixin._track_side_pnl(record)
-        mixin._sell_kill_mgr.track.assert_not_called()
-
-    def test_missing_forced_attr_treated_as_false(self) -> None:
-        """balance_forced_switch 属性が無い古いレコードは通常扱い."""
-        mixin = self._build_mixin()
-        record = SimpleNamespace(
-            side="sell",
-            filled=True,
-            post_fill_30s_pnl=-3.0,
-        )
-        # balance_forced_switch 属性を持たない
-        mixin._track_side_pnl(record)
-        mixin._sell_kill_mgr.track.assert_called_once_with(-3.0)

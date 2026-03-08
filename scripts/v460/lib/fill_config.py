@@ -483,15 +483,7 @@ class FillTestConfig:
     sell_offset_floor: float = 0.0         # 0 = 無制限, >0 で sell offset 最低保証
     # 173# 動的フロア: 在庫 buy 偏重時にフロアを割引 (1.0=割引なし, 0.5=半減, 0.0=フロア無効化)
     sell_offset_floor_inv_discount: float = 0.5
-    # ---- 133# P0-08: 残高制約による強制 side 切替時の発注抑制 ----
-    skip_balance_forced: bool = False      # True で強制切替時スキップ (平均 -1.98bps の損失回避)
-    # 154# C-1/C-2: deadlock 防止 — 片側残高枯渇時は forced でも実行を許可
-    balance_forced_deadlock_limit: int = 3  # 連続 forced skip が N 回超過 → 強制実行 (0=無制限)
-    # 158# P1-1: balance_forced 救済モード — offset 倍増で安全にポジション解消
-    balance_forced_rescue_enabled: bool = False    # True で rescue モード有効 (skip の代わりに高 offset で実行)
-    balance_forced_rescue_offset_mult: float = 2.0  # rescue 時の offset 倍率 (2.0 = 通常の 2 倍)
-    # 200# E: balance_forced 時間ベースクールダウン (短時間連発検出)
-    balance_forced_cooldown_sec: float = 0.0  # 0.0=無効, >0 で時間ベース検出
+    # 348# balance_forced 撤廃: skip_balance_forced 以下の関連設定を削除
     # 202# A: 単一サイクル大損失クールダウン — 大損後の即連鎖を防止
     loss_cooldown_threshold_bps: float = -10.0  # この PnL 以下で次サイクルの interval を延長
     loss_cooldown_interval_mult: float = 2.0    # 損失後のインターバル乗数 (1サイクル限定)
@@ -516,14 +508,14 @@ class FillTestConfig:
     one_sided_escalation_cooldown_cycles: int = 2   # cooldown 時スキップするサイクル数
     one_sided_escalation_freeze_offset: int = 4     # limit+N で freeze (当該side N cycles凍結)
     one_sided_escalation_freeze_cycles: int = 3     # freeze 時のサイクル数
-    # 234# 縮退清算モード — balance_forced + kill gate blocked 時の安全実行
-    # Kill Gate は絶対権限だが、balance_forced 時は完全停止ではなく
+    # 234# 縮退清算モード — kill gate blocked 時の安全実行
+    # 348# balance_forced 撤廃: inventory_escape 経由でのみ縮退清算を発動
     # min lot + wide offset で安全に縮退清算する (Gemini 233# / Codex 232# 共同提言)
     degraded_liquidation_enabled: bool = True       # 縮退清算モードの有効/無効
     degraded_liquidation_lot_mult: float = 0.2      # 通常 lot の 20% (min lot 相当)
     degraded_liquidation_offset_mult: float = 3.0   # offset を通常の 3 倍 (wide offset)
     degraded_liquidation_duty_cycle: int = 3        # N サイクルに 1 回のみ実行 (dutyCycle=3 → 33%)
-    # 269# P0: Inventory Escape Mode — balance_forced + per-side halt 時のデッドロック解消
+    # 269# P0: Inventory Escape Mode — per-side halt 時のデッドロック解消
     # Codex 269# §4.1 / Gemini 270# Action A: 在庫過多で JPY 不足、反対 side は halt
     # → 完全停止ではなく、halt を一時的に貫通して縮退清算 (degraded liquidation パラメータを流用)
     inventory_escape_enabled: bool = True           # Inventory Escape の有効/無効
@@ -591,25 +583,7 @@ class FillTestConfig:
     sell_dynamic_kill_inv_relaxation_enabled: bool = False  # True で在庫連動緩和を有効化
     sell_dynamic_kill_inv_relaxation_scale: float = 0.4     # buy(0.5)より保守的
     sell_dynamic_kill_inv_relaxation_max_bps: float = 0.5   # 344# 342#B: 0.3→0.5 inv_bypass廃止補完
-    # 343# forced fill downweight: 337#の完全除外→0.5倍重みで投入
-    # 完全除外は kill 判定から forced fill の情報を遮断し、kill 解除判定を鈍らせる。
-    # downweight=0.5 で「通常取引ほど信頼しないが情報は活用する」ように変更。
-    forced_fill_pnl_downweight: float = 0.5  # 0.0=完全除外(旧), 1.0=通常扱い
-    # 286# 283# P1-5: 強制買い KPI 分離
-    # balance_forced の fill を通常 buy とは別に集計し、品質低下の原因特定を可能にする。
-    forced_buy_kpi_tracking_enabled: bool = True  # True で強制買い PnL を分離ログ
-    # 343# 強制売り KPI 分離 (buy と対称)
-    forced_sell_kpi_tracking_enabled: bool = True  # True で強制売り PnL を分離ログ
-    # 286# 284# P1: 強制買い遅延実行 (Glosten-Milgrom 1985)
-    # balance_forced 時に microprice 急落中なら N サイクル待機して逆選択回避。
-    forced_buy_delay_enabled: bool = False          # True で遅延実行を有効化
-    forced_buy_delay_velocity_threshold_bps: float = -5.0  # velocity がこの値以下で遅延発動
-    forced_buy_delay_cycles: int = 3                # 遅延サイクル数
-    # 292# P1: ranging/trending_down 時の緩和閾値 (None=共通値使用)
-    forced_buy_delay_velocity_threshold_ranging_bps: float | None = None
-    # 294# P0: 連続ブロック上限 — デッドロック防止
-    # velocity が閾値以下を維持すると delay が毎サイクル再アームされ永久ブロックする問題への対策
-    forced_buy_delay_max_consecutive: int = 10  # 連続 N サイクルブロック後は強制突破
+    # 348# balance_forced 撤廃: forced_fill_pnl_downweight, forced KPI/delay 設定を削除
     # 249# dual_kill_bypass → quiescence: 両方 kill 時は休止 (242# "No Trade = normal")
     dual_kill_quiescence_enabled: bool = False  # True で dual_kill_bypass を無効化 → 静観
     # ---- 137# P1-08: spread 狭小時の「休む」判定 ----

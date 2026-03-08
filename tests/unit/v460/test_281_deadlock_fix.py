@@ -34,25 +34,6 @@ class TestUntickRemoval:
     def _get_source(self) -> str:
         return read_source_text(ORCHESTRATOR_BALANCE)
 
-    def test_no_untick_in_balance_forced_halt_block(self) -> None:
-        """balance_forced_halt_block パスに untick_side_halt() 呼出しがない."""
-        src = self._get_source()
-        # balance_forced_halt_block セクションを抽出
-        block_start = src.index("balance_forced_halt_block")
-        # orchestrator_balance では caller に True を返す
-        block_section = src[block_start:block_start + 1500]
-        return_idx = block_section.index("return True")
-        halt_block_region = block_section[:return_idx]
-        # コメント行を除外して実際のメソッド呼出しを検証
-        code_lines = [
-            line for line in halt_block_region.split("\n")
-            if line.strip() and not line.strip().startswith("#")
-        ]
-        code_only = "\n".join(code_lines)
-        assert "untick_side_halt" not in code_only, (
-            "281# fix: balance_forced_halt_block 内に untick_side_halt 呼出しが残存"
-        )
-
     def test_no_untick_in_both_sides_halted(self) -> None:
         """per_side_dd_both_halt パスに untick_side_halt() 呼出しがない.
 
@@ -76,45 +57,10 @@ class TestUntickRemoval:
             "281# fix: per_side_dd_both_halt 内に untick_side_halt 呼出しが残存"
         )
 
-    def test_281_fix_comment_present(self) -> None:
-        """281# fix コメントが存在する."""
-        src = self._get_source()
-        assert "balance_forced_halt_block" in src
-        assert "balance_forced deadlock breakout" in src
-
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # §2: Inventory Escape 双方向化の検証
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-
-class TestInventoryEscapeBidirectional:
-    """281#: Inventory Escape が buy/sell 両方向で作動する."""
-
-    def _get_source(self) -> str:
-        return read_source_text(ORCHESTRATOR_BALANCE)
-
-    def test_ie_condition_not_sell_only(self) -> None:
-        """Inventory Escape の条件に next_side == 'sell' がない."""
-        src = self._get_source()
-        # balance_forced 後の Inventory Escape セクションを抽出
-        # (複数の "Inventory Escape Mode" があるので balance_forced_halt_block 手前を特定)
-        ie_anchor = src.index("balance_forced deadlock breakout")
-        ie_section = src[max(0, ie_anchor - 1500):ie_anchor]
-        # 旧条件: `_ie_enabled and next_side == "sell"` が存在しないこと
-        assert 'next_side == "sell"' not in ie_section, (
-            "281# fix: Inventory Escape が sell 限定のままになっている"
-        )
-        # 新条件: `if _ie_enabled:` が存在すること
-        assert "if _ie_enabled:" in ie_section, (
-            "281# fix: Inventory Escape の条件が _ie_enabled のみであるべき"
-        )
-
-    def test_ie_bidirectional_comment_present(self) -> None:
-        """双方向化のコメントが存在する."""
-        src = self._get_source()
-        assert "balance_forced deadlock breakout" in src
-        assert "for {next_side}" in src
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

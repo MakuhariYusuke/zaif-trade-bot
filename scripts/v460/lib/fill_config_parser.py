@@ -377,16 +377,7 @@ def _parse_stopgap_section(yaml_cfg: dict) -> dict:
     kwargs: dict = {}
     # 133# P0-08/09/10: 止血施策
     止血: dict = yaml_cfg.get("止血", yaml_cfg.get("loss_control", {}))
-    if 止血.get("skip_balance_forced") is not None:
-        kwargs["skip_balance_forced"] = 止血["skip_balance_forced"]
-    # 154# C-1/C-2: deadlock 防止の連続 forced skip 上限
-    if 止血.get("balance_forced_deadlock_limit") is not None:
-        kwargs["balance_forced_deadlock_limit"] = 止血["balance_forced_deadlock_limit"]
-    # 158# P1-1: balance_forced 救済モード
-    if 止血.get("balance_forced_rescue_enabled") is not None:
-        kwargs["balance_forced_rescue_enabled"] = 止血["balance_forced_rescue_enabled"]
-    if 止血.get("balance_forced_rescue_offset_mult") is not None:
-        kwargs["balance_forced_rescue_offset_mult"] = float(止血["balance_forced_rescue_offset_mult"])
+    # 348# balance_forced 撤廃: skip_balance_forced, balance_forced_* のパースを削除
     if 止血.get("skip_buy_unknown_regime") is not None:
         kwargs["skip_buy_unknown_regime"] = 止血["skip_buy_unknown_regime"]
     # 155# §9: trending sell 抑制
@@ -484,30 +475,7 @@ def _parse_stopgap_section(yaml_cfg: dict) -> dict:
     if "max_bps" in sell_inv_relax:
         kwargs["sell_dynamic_kill_inv_relaxation_max_bps"] = float(sell_inv_relax["max_bps"])
 
-    # 286# 283# P1-5: 強制買い KPI 分離
-    if 止血.get("forced_buy_kpi_tracking") is not None:
-        kwargs["forced_buy_kpi_tracking_enabled"] = bool(止血["forced_buy_kpi_tracking"])
-    # 343# forced fill downweight
-    if 止血.get("forced_fill_pnl_downweight") is not None:
-        kwargs["forced_fill_pnl_downweight"] = float(止血["forced_fill_pnl_downweight"])
-    # 343# 強制売り KPI 分離
-    if 止血.get("forced_sell_kpi_tracking") is not None:
-        kwargs["forced_sell_kpi_tracking_enabled"] = bool(止血["forced_sell_kpi_tracking"])
-
-    # 286# 284# P1: 強制買い遅延実行 (Glosten-Milgrom 1985)
-    fbd = 止血.get("forced_buy_delay", {})
-    if fbd.get("enabled") is not None:
-        kwargs["forced_buy_delay_enabled"] = bool(fbd["enabled"])
-    if "velocity_threshold_bps" in fbd:
-        kwargs["forced_buy_delay_velocity_threshold_bps"] = float(fbd["velocity_threshold_bps"])
-    if "cycles" in fbd:
-        kwargs["forced_buy_delay_cycles"] = int(fbd["cycles"])
-    if "velocity_threshold_ranging_bps" in fbd:
-        kwargs["forced_buy_delay_velocity_threshold_ranging_bps"] = float(
-            fbd["velocity_threshold_ranging_bps"]
-        )
-    if "max_consecutive" in fbd:
-        kwargs["forced_buy_delay_max_consecutive"] = int(fbd["max_consecutive"])
+    # 348# balance_forced 撤廃: forced KPI/delay/downweight のパースを削除
 
     # 249# dual_kill_quiescence
     _dkq = 止血.get("dual_kill_quiescence_enabled")
@@ -554,9 +522,7 @@ def _parse_stopgap_section(yaml_cfg: dict) -> dict:
     # 200# 10-A/10-E: soft_drawdown_interval_multiplier YAML 外部化
     if "soft_drawdown_interval_multiplier" in dd_guard:
         kwargs["soft_drawdown_interval_multiplier"] = float(dd_guard["soft_drawdown_interval_multiplier"])
-    # 201# review: balance_forced_cooldown_sec YAML 配線
-    if "balance_forced_cooldown_sec" in 止血:
-        kwargs["balance_forced_cooldown_sec"] = float(止血["balance_forced_cooldown_sec"])
+    # 348# balance_forced 撤廃: balance_forced_cooldown_sec のパースを削除
     # 202# A: 単一サイクル大損失クールダウン
     if "loss_cooldown_threshold_bps" in 止血:
         kwargs["loss_cooldown_threshold_bps"] = float(止血["loss_cooldown_threshold_bps"])

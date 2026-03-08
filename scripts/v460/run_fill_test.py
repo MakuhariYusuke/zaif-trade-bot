@@ -377,8 +377,7 @@ class FillTestRunner(
         # 138# P1-10: preflight pause カウンタ (run 内の累積 pause 回数)
         self._preflight_pause_count: int = 0
 
-        # 154# C-2: balance_forced_skip 連続カウンタ (deadlock 防止)
-        self._balance_forced_skip_count: int = 0
+        # 348# balance_forced 撤廃: _balance_forced_skip_count を削除
 
         # 158# §20-B: trending_sell_skip 連続カウンタ (安全弁)
         self._trending_sell_skip_count: int = 0

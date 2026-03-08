@@ -123,7 +123,6 @@ class FillRecordBuilderMixin:
         regime_stab: int | None,
         regime_trend_pct: float | None,
         regime_vol_ratio: float | None,
-        balance_forced_switch: bool,
         confidence_factor: float,
         regime_lot: float,
         order_lot: float,
@@ -166,7 +165,6 @@ class FillRecordBuilderMixin:
             "vg_vpin": self._maker_price.last_vg_vpin,
             "vg_boost_factor": self._maker_price.last_vg_boost_factor,
             "price_velocity_bps": sg_velocity_bps,
-            "balance_forced_switch": balance_forced_switch or None,
             "confidence_lot_factor": (
                 confidence_factor if self.config.enable_confidence_lot else None
             ),
@@ -279,7 +277,6 @@ class FillRecordBuilderMixin:
         regime_stab: int | None,
         regime_trend_pct: float | None,
         regime_vol_ratio: float | None,
-        balance_forced_switch: bool,
         confidence_factor: float,
         regime_lot: float,
         macro_trend: str | None = None,
@@ -354,7 +351,6 @@ class FillRecordBuilderMixin:
                 regime_stab=regime_stab,
                 regime_trend_pct=regime_trend_pct,
                 regime_vol_ratio=regime_vol_ratio,
-                balance_forced_switch=balance_forced_switch,
                 confidence_factor=confidence_factor,
                 regime_lot=regime_lot,
                 order_lot=order_lot,

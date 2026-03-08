@@ -14,7 +14,7 @@ WARNING -- AI Coding Agent / 人間開発者への注意:
 **Inventory Risk Management** (Stoll 1978, Ho & Stoll 1981):
     MM のオーケストレーションは「在庫リスクの動的管理」に帰結する。
     side 選択 (buy/sell alternation) は在庫中立化のための基本操作であり、
-    balance_forced_switch は在庫偏重を強制的に修正するオーバーライド。
+    side 選択 (buy/sell alternation) は在庫中立化のための基本操作。
     Ho-Stoll の最適スプレッドモデルでは、在庫保有量に応じて
     bid/ask を非対称に調整する。本 orchestrator の side 選択は
     この理論の離散的近似に相当する。
@@ -78,16 +78,7 @@ class RunSessionState:
     cumulative_btc_delta: float = 0.0
     cumulative_adverse_count: int = 0
     cumulative_adverse_bps: float = 0.0
-    # 286# 283# P1-5: 強制買い KPI 分離トラッキング
-    forced_buy_fill_count: int = 0
-    forced_buy_pnl_sum_bps: float = 0.0
-    normal_buy_fill_count: int = 0
-    normal_buy_pnl_sum_bps: float = 0.0
-    # 343# 強制売り KPI 分離トラッキング (buy 側と対称)
-    forced_sell_fill_count: int = 0
-    forced_sell_pnl_sum_bps: float = 0.0
-    normal_sell_fill_count: int = 0
-    normal_sell_pnl_sum_bps: float = 0.0
+    # 348# balance_forced 撤廃: forced KPI 分離フィールドを削除
     batch: list[FillRecord] = field(default_factory=list)
     batch_size: int = 10
 
@@ -114,8 +105,6 @@ class FillLoopOrchestratorMixin(
     # 201# review: 動的属性のクラスレベル宣言 (mypy 検出 + IDE 補完)
     _soft_drawdown_interval_multiplier: float = 1.0
     _halt_start_cycle: int | None = None
-    _last_balance_forced_time: float = 0.0
-    _balance_forced_freq_count: int = 0
     # 209# M6: 動的生成されていた属性をクラスレベルに宣言
     _in_hard_skip_hour: bool = False
     _halt_iter_count: int = 0
@@ -137,7 +126,6 @@ class FillLoopOrchestratorMixin(
     _consecutive_gate_blocks: int = 0
     # 236# hasattr 排除: クラスレベルデフォルトで属性存在を保証
     _trending_sell_skip_count: int = 0
-    _balance_forced_skip_count: int = 0
     # 234# 縮退清算モード duty cycle カウンタ
     _degraded_liquidation_duty_counter: int = 0
     # 269# Inventory Escape Mode duty cycle カウンタ
@@ -150,10 +138,7 @@ class FillLoopOrchestratorMixin(
     _kill_was_active_sell: bool = False
     _kill_released_at_cycle_buy: int | None = None
     _kill_released_at_cycle_sell: int | None = None
-    # 286# 284# P1: 強制買い遅延実行 (Glosten-Milgrom 1985)
-    _forced_buy_delay_remaining: int = 0
-    # 294# P0: 連続ブロックカウンタ (デッドロック防止)
-    _forced_buy_delay_consecutive: int = 0
+    # 348# balance_forced 撤廃: forced_buy_delay 関連属性を削除
     # 303# B: DD soft lot side 分離 — side 別 lot 倍率 (1.0 = 通常)
     _dd_soft_lot_scale_buy: float = 1.0
     _dd_soft_lot_scale_sell: float = 1.0
@@ -227,7 +212,6 @@ class FillLoopOrchestratorMixin(
         order_price: float = 0.0,
         spread_at_order: float | None = None,
         spread_offset_ratio: float | None = None,
-        balance_forced_switch: bool = False,
         **extra: object,
     ) -> FillRecord:
         """run_continuous 系 skip record の共通 wrapper.
@@ -244,7 +228,6 @@ class FillLoopOrchestratorMixin(
             spread_at_order=spread_at_order,
             spread_offset_ratio=spread_offset_ratio,
             regime=self._current_regime_value(),
-            balance_forced_switch=balance_forced_switch,
             **extra,
         )
 
@@ -393,10 +376,6 @@ class FillLoopOrchestratorMixin(
 
             # ── 332# Phase 4: Mid-cycle 判定 ──
             if await self._handle_one_sided_skip(st, ctx):
-                continue
-            if await self._handle_balance_forced_skip(st, ctx):
-                continue
-            if await self._handle_forced_buy_delay(st, ctx):
                 continue
 
             # ── 332# Phase 4: Gate 評価 ──

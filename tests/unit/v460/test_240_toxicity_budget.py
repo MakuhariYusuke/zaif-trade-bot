@@ -402,8 +402,7 @@ class TestGateAggregatorGradedResponse:
             threshold_used=-0.5, rolling_mean=-0.25,
         )
         result = gate.evaluate(
-            side="buy", regime="ranging", vol_ratio=1.0,
-            balance_forced=False, inv_net_imbalance=0.0,
+            side="buy", regime="ranging", vol_ratio=1.0, inv_net_imbalance=0.0,
             is_buy_killed=False, is_sell_killed=False,
             buy_toxicity=yellow,
         )
@@ -420,8 +419,7 @@ class TestGateAggregatorGradedResponse:
             threshold_used=-0.5, rolling_mean=-0.425,
         )
         result = gate.evaluate(
-            side="sell", regime="ranging", vol_ratio=1.0,
-            balance_forced=False, inv_net_imbalance=0.0,
+            side="sell", regime="ranging", vol_ratio=1.0, inv_net_imbalance=0.0,
             is_buy_killed=False, is_sell_killed=False,
             sell_toxicity=orange,
         )
@@ -438,8 +436,7 @@ class TestGateAggregatorGradedResponse:
             threshold_used=-0.5, rolling_mean=-0.6,
         )
         result = gate.evaluate(
-            side="buy", regime="ranging", vol_ratio=1.0,
-            balance_forced=False, inv_net_imbalance=0.0,
+            side="buy", regime="ranging", vol_ratio=1.0, inv_net_imbalance=0.0,
             is_buy_killed=True, is_sell_killed=False,
             buy_toxicity=kill,
         )
@@ -450,8 +447,7 @@ class TestGateAggregatorGradedResponse:
         """toxicity=None → 従来の blocked 動作."""
         gate = self._make_gate()
         result = gate.evaluate(
-            side="buy", regime="ranging", vol_ratio=1.0,
-            balance_forced=False, inv_net_imbalance=0.0,
+            side="buy", regime="ranging", vol_ratio=1.0, inv_net_imbalance=0.0,
             is_buy_killed=True, is_sell_killed=False,
             buy_toxicity=None,
         )
@@ -466,8 +462,7 @@ class TestGateAggregatorGradedResponse:
             threshold_used=-0.5, rolling_mean=-0.05,
         )
         result = gate.evaluate(
-            side="buy", regime="ranging", vol_ratio=1.0,
-            balance_forced=False, inv_net_imbalance=0.0,
+            side="buy", regime="ranging", vol_ratio=1.0, inv_net_imbalance=0.0,
             is_buy_killed=False, is_sell_killed=False,
             buy_toxicity=green,
         )
@@ -475,31 +470,7 @@ class TestGateAggregatorGradedResponse:
         assert result.toxicity_offset_mult == 1.0
         assert result.participation_rate == 1.0
 
-    def test_killed_but_degraded_liquidation(self) -> None:
-        """241# is_buy_killed=True + balance_forced → degraded liquidation."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
-        cfg = FillTestConfig(
-            buy_dynamic_kill_enabled=True,
-            sell_dynamic_kill_enabled=True,
-            degraded_liquidation_enabled=True,
-        )
-        gate = CycleGateAggregator(cfg)
-        orange = ToxicityAssessment(
-            level=ToxicityLevel.ORANGE, score=0.85,
-            offset_mult=2.5, participation_rate=0.5,
-            threshold_used=-0.5, rolling_mean=-0.425,
-        )
-        result = gate.evaluate(
-            side="buy", regime="ranging", vol_ratio=1.0,
-            balance_forced=True, inv_net_imbalance=0.0,
-            is_buy_killed=True, is_sell_killed=False,
-            buy_toxicity=orange,
-        )
-        # killed → degraded liquidation (toxicity は elif 分岐のため適用されない)
-        assert not result.blocked
-        assert result.degraded_liquidation
 
 
 # ═══════════════════════════════════════════════════════

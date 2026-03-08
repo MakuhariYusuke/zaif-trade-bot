@@ -57,15 +57,12 @@ class OrchestratorLifecycleMixin:
         """209# H4: fill records から sell/buy kill manager の PnL 履歴を復元.
 
         225# F1: 当日分のみ replay — B2 日替わり kill reset との矛盾を防止。
-        345# 343# forced_fill_pnl_downweight を warmup にも適用。
-        ライブ (_track_fill_pnl) と warmup で forced fill の重みが
-        不一致だと、再起動後に kill 判定が歪む。
+        348# balance_forced 撤廃: forced downweight 論理を削除。
         """
         utc_today = datetime.now(timezone.utc).strftime("%Y%m%d")
         sell_count = 0
         buy_count = 0
         skipped_old = 0
-        skipped_forced = 0
         for r in records:
             if not r.filled or r.post_fill_30s_pnl is None:
                 continue
@@ -76,13 +73,6 @@ class OrchestratorLifecycleMixin:
                 skipped_old += 1
                 continue
             pnl = r.post_fill_30s_pnl
-            # 345# forced fill を live と同じ重みで投入 (343# downweight)
-            if getattr(r, "balance_forced_switch", False):
-                weight = self.config.forced_fill_pnl_downweight
-                if weight <= 0.0:
-                    skipped_forced += 1
-                    continue  # 0.0 = 完全除外 (旧挙動)
-                pnl = pnl * weight
             if r.side == "sell":
                 self._sell_kill_mgr.track(pnl)
                 sell_count += 1
@@ -93,7 +83,7 @@ class OrchestratorLifecycleMixin:
             logger.info(
                 f"[209# H4] Kill manager warmup from fill records (today only): "
                 f"sell={sell_count}, buy={buy_count}, "
-                f"skipped_old={skipped_old}, skipped_forced={skipped_forced}"
+                f"skipped_old={skipped_old}"
             )
 
     # ------------------------------------------------------------------

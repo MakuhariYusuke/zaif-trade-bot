@@ -37,7 +37,7 @@ class BalanceAdapterProtocol(Protocol):
     async def get_balance(self, currency: str) -> Sequence[_BalanceLike] | None: ...
     async def get_current_price(self, symbol: str) -> float | None: ...
 
-# Coincheck 板取引 BTC 最小注文数量
+# Coincheck 板取引 BTC 最小注文数量 (348# satoshi化: config.min_order_btc 優先)
 MIN_ORDER_BTC: float = 0.001  # フォールバック定数 (config 優先)
 
 

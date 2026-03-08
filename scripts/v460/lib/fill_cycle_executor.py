@@ -142,7 +142,6 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
         order_price: float = 0.0,
         spread_at_order: float | None = None,
         spread_offset_ratio: float | None = None,
-        balance_forced_switch: bool = False,
         **extra: object,
     ) -> FillRecord:
         """run_single_cycle 系 skip record の共通 wrapper."""
@@ -156,7 +155,6 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
             spread_at_order=spread_at_order,
             spread_offset_ratio=spread_offset_ratio,
             regime=self._current_regime_value(),
-            balance_forced_switch=balance_forced_switch,
             **extra,
         )
 
@@ -359,8 +357,6 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
     async def run_single_cycle(
         self,
         side_override: str | None = None,
-        balance_forced_switch: bool = False,
-        balance_forced_rescue: bool = False,
         one_sided_balance: bool = False,
         trending_offset_mult: float | None = None,
         degraded_liquidation: bool = False,
@@ -480,23 +476,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
             )
 
         # 113# R1: SkipGate 判定を _evaluate_skip_gate() に委譲
-        # 158# P1-1: balance_forced rescue → offset 倍増で安全にポジション解消
-        if balance_forced_rescue and effective_offset_ratio > 0:
-            _rescue_mult = self.config.balance_forced_rescue_offset_mult
-            _pre_rescue_offset = effective_offset_ratio
-            effective_offset_ratio = min(
-                effective_offset_ratio * _rescue_mult,
-                self.config.max_offset_ratio,
-            )
-            order_price = self._recalc_price_with_new_offset(
-                side, order_price, spread_at_order,
-                _pre_rescue_offset, effective_offset_ratio,
-            )
-            logger.info(
-                f"[158# P1-1] balance_forced_rescue: offset "
-                f"{_pre_rescue_offset:.4f}→{effective_offset_ratio:.4f} "
-                f"(×{_rescue_mult:.1f}), price={order_price:.0f}"
-            )
+        # 348# balance_forced 撤廃: rescue offset 論理を削除
 
         # 234# 縮退清算モード: Kill Gate blocked + balance_forced
         # min lot + wide offset で安全に在庫清算
@@ -1063,7 +1043,6 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
             regime_stab=regime_stab,
             regime_trend_pct=regime_trend_pct,
             regime_vol_ratio=regime_vol_ratio,
-            balance_forced_switch=balance_forced_switch,
             confidence_factor=_confidence_factor,
             regime_lot=_regime_lot,
             macro_trend=_macro_trend,

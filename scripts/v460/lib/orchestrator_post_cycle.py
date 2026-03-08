@@ -102,30 +102,7 @@ class OrchestratorPostCycleMixin:
                 st.cumulative_adverse_count += 1
                 if record.post_fill_30s_pnl is not None:
                     st.cumulative_adverse_bps += record.post_fill_30s_pnl
-            # 286# 283# P1-5: 強制買い KPI 分離トラッキング
-            if (
-                self.config.forced_buy_kpi_tracking_enabled
-                and next_side == "buy"
-                and record.post_fill_30s_pnl is not None
-            ):
-                if record.balance_forced_switch:
-                    st.forced_buy_fill_count += 1
-                    st.forced_buy_pnl_sum_bps += record.post_fill_30s_pnl
-                else:
-                    st.normal_buy_fill_count += 1
-                    st.normal_buy_pnl_sum_bps += record.post_fill_30s_pnl
-            # 343# 強制売り KPI 分離トラッキング (buy と対称)
-            if (
-                self.config.forced_sell_kpi_tracking_enabled
-                and next_side == "sell"
-                and record.post_fill_30s_pnl is not None
-            ):
-                if record.balance_forced_switch:
-                    st.forced_sell_fill_count += 1
-                    st.forced_sell_pnl_sum_bps += record.post_fill_30s_pnl
-                else:
-                    st.normal_sell_fill_count += 1
-                    st.normal_sell_pnl_sum_bps += record.post_fill_30s_pnl
+            # 348# balance_forced 撤廃: forced buy/sell KPI 分離トラッキングを削除
             # 168# §4.1: daily drawdown PnL update
             if record.post_fill_30s_pnl is not None:
                 dd_result = self._daily_drawdown_guard.update_pnl(
@@ -295,44 +272,7 @@ class OrchestratorPostCycleMixin:
                     f"system={_cat_totals['system']}, "
                     f"recovery={_cat_totals['recovery']}"
                 )
-            # 286# 283# P1-5: 強制買い KPI 分離ログ
-            if self.config.forced_buy_kpi_tracking_enabled and (
-                st.forced_buy_fill_count > 0 or st.normal_buy_fill_count > 0
-            ):
-                _fb_mean = (
-                    st.forced_buy_pnl_sum_bps / st.forced_buy_fill_count
-                    if st.forced_buy_fill_count > 0 else 0.0
-                )
-                _nb_mean = (
-                    st.normal_buy_pnl_sum_bps / st.normal_buy_fill_count
-                    if st.normal_buy_fill_count > 0 else 0.0
-                )
-                logger.info(
-                    f"[286# P1-5] Buy KPI split: "
-                    f"forced={st.forced_buy_fill_count} fills "
-                    f"({_fb_mean:+.2f}bps avg), "
-                    f"normal={st.normal_buy_fill_count} fills "
-                    f"({_nb_mean:+.2f}bps avg)"
-                )
-            # 343# 強制売り KPI 分離ログ (buy と対称)
-            if self.config.forced_sell_kpi_tracking_enabled and (
-                st.forced_sell_fill_count > 0 or st.normal_sell_fill_count > 0
-            ):
-                _fs_mean = (
-                    st.forced_sell_pnl_sum_bps / st.forced_sell_fill_count
-                    if st.forced_sell_fill_count > 0 else 0.0
-                )
-                _ns_mean = (
-                    st.normal_sell_pnl_sum_bps / st.normal_sell_fill_count
-                    if st.normal_sell_fill_count > 0 else 0.0
-                )
-                logger.info(
-                    f"[343#] Sell KPI split: "
-                    f"forced={st.forced_sell_fill_count} fills "
-                    f"({_fs_mean:+.2f}bps avg), "
-                    f"normal={st.normal_sell_fill_count} fills "
-                    f"({_ns_mean:+.2f}bps avg)"
-                )
+            # 348# balance_forced 撤廃: forced buy/sell KPI 分離ログを削除
 
         # 113# resilience: HealthMonitor + GC
         health_status = self._health_monitor.maybe_check(self._cycle_count)

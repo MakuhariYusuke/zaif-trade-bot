@@ -193,18 +193,9 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "trending_sell_as_offset_enabled",
     "trending_sell_offset_boost_factor",
     # 253# 削除済み: balance_forced_apply_trending_offset (234# dead config)
+    # 348# balance_forced 撤廃: skip_balance_forced, balance_forced_*, forced_buy_delay_* 削除
     "max_consecutive_trending_sell_skip",
     "sell_guard_inv_bypass_threshold",  # 171# Guard Paradox 対策
-    "skip_balance_forced",
-    "balance_forced_deadlock_limit",
-    "balance_forced_rescue_enabled",
-    "balance_forced_rescue_offset_mult",
-    # 292# forced_buy_delay (286# 初期実装 + 292# regime 強化)
-    "forced_buy_delay_enabled",
-    "forced_buy_delay_velocity_threshold_bps",
-    "forced_buy_delay_cycles",
-    "forced_buy_delay_velocity_threshold_ranging_bps",
-    "forced_buy_delay_max_consecutive",     # 294# deadlock prevention
     # --- velocity skip ---
     "sell_velocity_skip_enabled",
     "sell_velocity_skip_threshold_bps",
@@ -280,7 +271,6 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "kyle_lambda_impact_mult",
     "kyle_lambda_max_add_ratio",
     # --- balance / inventory ---
-    "balance_forced_cooldown_sec",
     "balance_freeze_cycles",
     "balance_margin_ratio",
     "balance_shrink_consecutive",
@@ -453,9 +443,7 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "preflight_max_pauses",
     "max_preflight_skip",
     # --- misc operational ---
-    "forced_fill_pnl_downweight",
-    "forced_buy_kpi_tracking_enabled",
-    "forced_sell_kpi_tracking_enabled",
+    # 348# balance_forced 撤廃: forced_fill_pnl_downweight, forced_buy/sell_kpi_tracking 削除
     # 343# skip_gate/kill 連携
     "skip_gate_kill_release_grace_cycles",
     "skip_gate_kill_release_offset",

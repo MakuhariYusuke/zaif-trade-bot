@@ -1,4 +1,4 @@
-﻿"""200# A-N 実装の単体テスト.
+"""200# A-N 実装の単体テスト.
 
 10-A: soft_drawdown_interval_multiplier 日次リセット
 B/I: postonly_guard crossing → skip
@@ -98,15 +98,6 @@ class TestLowVolBoostProportional:
         ratio = 1.0 - vol_ratio / threshold
         boost = boost_min + (boost_max - boost_min) * ratio
         assert abs(boost - boost_max) < 0.001
-
-
-class TestBalanceForcedCooldown:
-    """E: balance_forced_cooldown_sec config."""
-
-    def test_config_field_exists(self) -> None:
-        cfg = FillTestConfig()
-        assert hasattr(cfg, "balance_forced_cooldown_sec")
-        assert cfg.balance_forced_cooldown_sec == 0.0  # default: disabled
 
 
 class TestSellPnlWaitDynamic:
@@ -414,23 +405,6 @@ class TestPostInitValidation201:
         with pytest.raises(ValueError, match="low_vol_boost_min.*must be <=.*low_vol_offset_boost"):
             FillTestConfig(low_vol_boost_min=2.0, low_vol_offset_boost=1.4)
 
-    def test_balance_forced_cooldown_negative_raises(self) -> None:
-        with pytest.raises(ValueError, match="balance_forced_cooldown_sec must be >= 0"):
-            FillTestConfig(balance_forced_cooldown_sec=-1.0)
-
-
-class TestCooldownYamlWiring:
-    """201# review: balance_forced_cooldown_sec YAML 配線."""
-
-    def test_cooldown_parsed_from_yaml(self) -> None:
-        from scripts.v460.lib.fill_config_parser import _parse_stopgap_section
-        kwargs = _parse_stopgap_section({
-            "止血": {
-                "balance_forced_cooldown_sec": 30.0,
-            }
-        })
-        assert kwargs["balance_forced_cooldown_sec"] == 30.0
-
 
 class TestPostonlyCrossingStreak:
     """201# review: crossing 連続発生カウンタ."""
@@ -450,6 +424,3 @@ class TestOrchestratorClassAttrs:
     def test_mixin_declares_halt_start_cycle(self) -> None:
         assert FillLoopOrchestratorMixin._halt_start_cycle is None
 
-    def test_mixin_declares_balance_forced_attrs(self) -> None:
-        assert FillLoopOrchestratorMixin._last_balance_forced_time == 0.0
-        assert FillLoopOrchestratorMixin._balance_forced_freq_count == 0

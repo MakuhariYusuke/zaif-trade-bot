@@ -223,44 +223,7 @@ class TestBuyDynamicKillInvRelaxation:
         assert cfg.buy_dynamic_kill_inv_relaxation_max_bps == 0.3  # 341# revert: 340#符号修正後の正常値
 
 
-# ======================================================================
-# 5. 強制買い KPI 分離トラッキング
-# ======================================================================
 
-class TestForcedBuyKpiTracking:
-    """286# 283# P1-5: 強制買い KPI 分離テスト."""
-
-    def test_config_kpi_tracking_enabled_default(self):
-        assert FillTestConfig().forced_buy_kpi_tracking_enabled is True
-
-    def test_session_state_has_kpi_fields(self):
-        """RunSessionState に強制買い KPI フィールドがあること."""
-        st = RunSessionState()
-        assert st.forced_buy_fill_count == 0
-        assert st.forced_buy_pnl_sum_bps == 0.0
-        assert st.normal_buy_fill_count == 0
-        assert st.normal_buy_pnl_sum_bps == 0.0
-
-    def test_fill_record_balance_forced_switch_attribute(self):
-        """FillRecord が balance_forced_switch 属性を持つこと (balance_forced ではない)."""
-        rec = FillRecord(
-            cycle_id="test", timestamp=0.0, side="buy",
-            order_price=100.0, order_quantity=0.001,
-            balance_forced_switch=True,
-        )
-        # 正しい属性名でアクセスできること
-        assert rec.balance_forced_switch is True
-        # 旧名 balance_forced は存在しないこと (AttributeError 回帰防止)
-        assert not hasattr(rec, "balance_forced")
-
-    def test_process_post_cycle_uses_balance_forced_switch(self):
-        """_process_post_cycle のソースが balance_forced_switch を使用していること."""
-        source = read_fill_test_method_source("_process_post_cycle")
-        # 修正前の誤った属性名が含まれていないこと
-        assert "record.balance_forced:" not in source
-        assert "record.balance_forced\n" not in source
-        # 正しい属性名が使用されていること
-        assert "record.balance_forced_switch" in source
 
 
 # ======================================================================
@@ -329,29 +292,12 @@ class TestBuyAsGuard:
 # 7. 強制買い遅延実行 (Glosten-Milgrom 1985)
 # ======================================================================
 
-class TestForcedBuyDelay:
-    """286# 284# P1: 強制買い遅延実行テスト."""
-
-    def test_config_delay_fields_exist(self):
-        cfg = FillTestConfig()
-        assert cfg.forced_buy_delay_enabled is False
-        assert cfg.forced_buy_delay_velocity_threshold_bps == -5.0
-        assert cfg.forced_buy_delay_cycles == 3
-
-    def test_delay_counter_attribute_exists(self):
-        """FillLoopOrchestratorMixin に _forced_buy_delay_remaining があること."""
-        assert FillLoopOrchestratorMixin._forced_buy_delay_remaining == 0
-
-
 # ======================================================================
 # 8. guard_reason_classifier 再分類 (283# MEDIUM-4)
 # ======================================================================
 
 class TestGuardReclassification:
     """286# 283# MEDIUM-4: guard dominance 改善 — SYSTEM→RECOVERY 再分類."""
-
-    def test_balance_forced_halt_block_is_recovery(self):
-        assert classify_guard("balance_forced_halt_block") == GuardCategory.RECOVERY
 
     def test_one_sided_freeze_skip_is_recovery(self):
         assert classify_guard("one_sided_freeze_skip") == GuardCategory.RECOVERY
@@ -366,10 +312,6 @@ class TestGuardReclassification:
     def test_inventory_escape_is_recovery(self):
         assert classify_guard("inventory_escape_duty_skip") == GuardCategory.RECOVERY
         assert classify_guard("inventory_escape_active") == GuardCategory.RECOVERY
-
-    def test_forced_buy_delay_is_market(self):
-        """286# forced_buy_delay は市場都合 (GM逆選択回避)."""
-        assert classify_guard("forced_buy_delay") == GuardCategory.MARKET
 
     def test_system_guards_remain_system(self):
         """dd_halt, phantom 等は SYSTEM のまま."""

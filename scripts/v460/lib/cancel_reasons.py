@@ -25,7 +25,7 @@ PREFLIGHT_INSUFFICIENT = "preflight_insufficient"
 TIME_FILTER_BOTH_SIDES = "time_filter_both_sides"
 TIME_FILTER_086_DEADLOCK = "time_filter_086_deadlock"
 NARROW_SPREAD_PAUSE = "narrow_spread_pause"
-BALANCE_FORCED_SKIP = "balance_forced_skip"
+# 348# balance_forced 撤廃: BALANCE_FORCED_SKIP を削除
 UNKNOWN_REGIME_BUY_SKIP = "unknown_regime_buy_skip"
 UNKNOWN_REGIME_SELL_SKIP = "unknown_regime_sell_skip"  # 156# §16: buy側と対称化
 SELL_DYNAMIC_KILL = "sell_dynamic_kill"
@@ -65,7 +65,7 @@ DEGRADED_LIQUIDATION_DUTY_SKIP = "degraded_liquidation_duty_skip"
 ONE_SIDED_COOLDOWN_SKIP = "one_sided_cooldown_skip"
 ONE_SIDED_FREEZE_SKIP = "one_sided_freeze_skip"
 # 294# forced_buy_delay (regime-aware 購入遅延)
-FORCED_BUY_DELAY = "forced_buy_delay"
+# 348# balance_forced 撤廃: FORCED_BUY_DELAY を削除
 # 296# skip_gate_rule: unknown regime sell skip
 SKIP_GATE_RULE_UNKNOWN_SELL = "skip_gate_rule_unknown_sell"
 
@@ -76,7 +76,6 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     TIME_FILTER_BOTH_SIDES,
     TIME_FILTER_086_DEADLOCK,
     NARROW_SPREAD_PAUSE,
-    BALANCE_FORCED_SKIP,
     UNKNOWN_REGIME_BUY_SKIP,
     UNKNOWN_REGIME_SELL_SKIP,
     SELL_DYNAMIC_KILL,
@@ -102,7 +101,6 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     DEGRADED_LIQUIDATION_DUTY_SKIP,
     ONE_SIDED_COOLDOWN_SKIP,
     ONE_SIDED_FREEZE_SKIP,
-    FORCED_BUY_DELAY,
     SKIP_GATE_RULE_UNKNOWN_SELL,
 })
 
@@ -146,7 +144,6 @@ CancelReason = Literal[
     "time_filter_both_sides",
     "time_filter_086_deadlock",
     "narrow_spread_pause",
-    "balance_forced_skip",
     "unknown_regime_buy_skip",
     "unknown_regime_sell_skip",
     "sell_dynamic_kill",
@@ -192,8 +189,6 @@ CancelReason = Literal[
     "degraded_liquidation_duty_skip",
     "one_sided_cooldown_skip",
     "one_sided_freeze_skip",
-    # 294# forced_buy_delay
-    "forced_buy_delay",
     # 296# skip_gate_rule: unknown regime sell
     "skip_gate_rule_unknown_sell",
 ]

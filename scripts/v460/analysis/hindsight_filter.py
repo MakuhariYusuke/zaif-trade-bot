@@ -387,7 +387,8 @@ class CategoryAnalysis:
 _DIRECT_CATEGORY_BY_REASON: dict[str, str] = {
     CR.SKIP_GATE: "H1_skip_gate",
     CR.TIMEOUT: "H2_timeout",
-    CR.BALANCE_FORCED_SKIP: "H5_balance_forced",
+    # 348# balance_forced 撤廃: CR.BALANCE_FORCED_SKIP を削除 (旧 H5)
+    "balance_forced_skip": "H5_balance_forced",  # 後方互換: 既存レコード用
     CR.DAILY_DRAWDOWN_HALT: "H9_daily_drawdown",  # 173#
     CR.HARD_SKIP_UTC_HOUR: "H10_hard_skip_hour",   # 205# §9.4
     CR.TOXIC_FILL_SIDE_VETO: "H11_toxic_veto",     # 205# §9.2

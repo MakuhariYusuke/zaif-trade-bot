@@ -376,11 +376,6 @@ class TestMiscParams:
         with pytest.raises(ValueError, match="inventory_skewing_window"):
             validate_fill_config(cfg)
 
-    def test_balance_forced_cooldown_negative(self, cfg: FillTestConfig) -> None:
-        cfg.balance_forced_cooldown_sec = -1
-        with pytest.raises(ValueError, match="balance_forced_cooldown_sec"):
-            validate_fill_config(cfg)
-
     def test_loss_cooldown_interval_mult_below_one(self, cfg: FillTestConfig) -> None:
         cfg.loss_cooldown_interval_mult = 0.99
         with pytest.raises(ValueError, match="loss_cooldown_interval_mult"):

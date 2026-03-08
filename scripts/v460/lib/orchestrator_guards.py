@@ -128,20 +128,11 @@ class OrchestratorGuardsMixin:
         対称に追跡して kill / relaxation 判定へ渡す。
 
         286# 283# P2-7: 評価窓二重化の基盤。
-        337# §6.3: balance_forced_switch の PnL を rolling window から除外。
-        343# 除外→downweight: 完全除外は kill 解除判定を鈍らせるため、
-        forced_fill_pnl_downweight (default 0.5) で重み付け投入に変更。
+        348# balance_forced 撤廃: forced downweight 論理を削除。
         """
         if not (record.filled and record.post_fill_30s_pnl is not None):
             return
         pnl = record.post_fill_30s_pnl
-        # 343# 強制取引は downweight (337# の完全除外から改善)
-        # record は外部オブジェクト (古い FillRecord に属性欠落の可能性あり)
-        if getattr(record, "balance_forced_switch", False):
-            weight = self.config.forced_fill_pnl_downweight
-            if weight <= 0.0:
-                return  # 0.0 = 旧挙動 (完全除外)
-            pnl = pnl * weight
         if record.side == "sell":
             self._sell_kill_mgr.track(pnl)
         elif record.side == "buy":

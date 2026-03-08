@@ -52,7 +52,6 @@ def _default_ctx(**overrides) -> dict:
         "side": "buy",
         "regime": "ranging",
         "vol_ratio": 1.0,
-        "balance_forced": False,
         "inv_net_imbalance": 0.0,
         "is_buy_killed": False,
         "is_sell_killed": False,
@@ -269,7 +268,7 @@ class TestUnknownCounterResetOnGate2:
 
         # Step 2: 234# balance_forced でも Gate 1 はブロック → カウンタ増加
         r2 = gate.evaluate(**_default_ctx(
-            side="buy", regime="unknown", balance_forced=True,
+            side="buy", regime="unknown",
         ))
         assert r2.blocked
         assert gate._consecutive_unknown_blocks["buy"] == 2

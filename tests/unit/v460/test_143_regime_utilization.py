@@ -461,7 +461,7 @@ class TestQuarantineBypassNarrowed:
 
         for reason in [
             "circuit_breaker_open", "preflight_pause", "preflight_insufficient",
-            "time_filter_both_sides", "narrow_spread_pause", "balance_forced_skip",
+            "time_filter_both_sides", "narrow_spread_pause",
         ]:
             r = FillRecord(
                 cycle_id=f"audit_{reason}",

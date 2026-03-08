@@ -6,16 +6,14 @@ OrchestratorBalanceMixin に分離。
 
 責務:
   - 残高 pre-flight check (current side + opposite side 試行)
-  - balance_forced スイッチ (129# D.2)
   - Inventory Escape Mode (269#)
   - Preflight failure handling (balance_shrink, pause, safe_stop)
-  - Balance forced frequency detection (200# E)
 
 市場理論的位置づけ:
   **Inventory Risk Management** (Stoll 1978, Ho & Stoll 1981):
     残高確認は在庫管理の第一段階。資金不足による片側偏重は
-    マーケットメイカーの基本原則に反する。balance_forced は
-    在庫中立化のための強制修正操作。
+    マーケットメイカーの基本原則に反する。348# balance_forced 概念を
+    全廃し、残高不足時の side 切替は通常のサイドセレクションとして扱う。
 """
 
 from __future__ import annotations
@@ -54,7 +52,7 @@ class OrchestratorBalanceMixin:
         True = サイクルスキップ (caller: continue)
         False = preflight 成功、実行パスに進む
 
-        ctx.next_side, ctx.balance_forced, ctx.inventory_escape が更新される。
+        ctx.next_side, ctx.inventory_escape が更新される。
         """
         next_side = ctx.next_side
         _regime_mult = ctx.regime_mult
@@ -85,9 +83,8 @@ class OrchestratorBalanceMixin:
             self._last_side = opposite
             self._preflight_skip_count = 0
             tried_opposite = True
-            ctx.balance_forced = True
 
-            # 223# P0: balance_forced 後に per-side halt を再チェック
+            # 348# per-side halt 再チェック (balance_forced 撤廃)
             if self._daily_drawdown_guard.is_side_halted(next_side):
                 skip = await self._handle_inventory_escape_or_halt(
                     st, ctx, next_side,
@@ -95,9 +92,6 @@ class OrchestratorBalanceMixin:
                 if skip:
                     return True
                 # skip=False → inventory_escape 成功、実行パスへ fallthrough
-
-            # 200# E: balance_forced 頻度検出
-            self._track_balance_forced_frequency()
 
         if not tried_opposite:
             # 両 side とも残高不足 → preflight failure handling
@@ -118,8 +112,9 @@ class OrchestratorBalanceMixin:
         ctx: CycleContext,
         next_side: str,
     ) -> bool:
-        """269# balance_forced + per-side halt → Inventory Escape or halt block.
+        """269# per-side halt → Inventory Escape or halt block.
 
+        348# balance_forced 撤廃: side 切替後の halt チェックとして機能。
         True = サイクルスキップ (caller: continue)
         False = inventory_escape 成功、実行パスへ進む
         """
@@ -138,7 +133,7 @@ class OrchestratorBalanceMixin:
             else:
                 logger.warning(
                     f"[269#] INVENTORY ESCAPE: bypassing per-side halt "
-                    f"for {next_side} (balance_forced deadlock breakout, "
+                    f"for {next_side} (deadlock breakout, "
                     f"cycle {self._inventory_escape_duty_counter}/{_ie_duty})"
                 )
                 self._inc_guard_fire("inventory_escape_active")
@@ -151,42 +146,21 @@ class OrchestratorBalanceMixin:
 
         # halt 貫通不可 → スキップ
         logger.warning(
-            f"[223#] balance_forced → {next_side} is per-side halted — "
+            f"[348#] {next_side} is per-side halted — "
             f"refusing to bypass halt (safety > liveness)"
         )
-        self._inc_guard_fire("balance_forced_halt_block")
+        self._inc_guard_fire("per_side_halt_block")
         self._tick_toxic_veto("halt_block")
         await self._execute_skip(
             st, side=next_side,
             cancel_reason=CR.PER_SIDE_DD_HALT,
             order_quantity=self._current_lot,
-            balance_forced_switch=True,
-            flush_context="balance_forced_halt_recheck",
+            flush_context="halt_recheck",
             state_save=True,
-            state_save_context="balance_forced_halt_block",
+            state_save_context="halt_block",
             update_last_side=True,
         )
         return True
-
-    # ------------------------------------------------------------------
-    # 200# E: balance_forced 頻度検出
-    # ------------------------------------------------------------------
-    def _track_balance_forced_frequency(self) -> None:
-        """200# E: 短時間で連続 balance_forced が発生した場合の警告."""
-        _now = time.time()
-        _last_bf_time = self._last_balance_forced_time
-        _bf_cooldown = self.config.balance_forced_cooldown_sec
-        if _bf_cooldown > 0 and (_now - _last_bf_time) < _bf_cooldown:
-            _bf_freq_count = self._balance_forced_freq_count + 1
-            self._balance_forced_freq_count = _bf_freq_count
-            logger.warning(
-                f"[200# E] balance_forced high frequency: "
-                f"{_bf_freq_count} events within {_bf_cooldown:.0f}s "
-                f"(interval={_now - _last_bf_time:.1f}s)"
-            )
-        else:
-            self._balance_forced_freq_count = 0
-        self._last_balance_forced_time = _now
 
     # ------------------------------------------------------------------
     # Preflight failure handling (both sides insufficient)

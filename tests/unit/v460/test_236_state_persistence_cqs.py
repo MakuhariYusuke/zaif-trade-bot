@@ -155,10 +155,6 @@ class TestHasattrRemoval236:
         src = inspect.getsource(fill_record_helpers_mod)
         assert 'hasattr(self, "_trending_sell_skip_count")' not in src
 
-    def test_no_hasattr_balance_forced_skip(self) -> None:
-        src = inspect.getsource(fill_record_helpers_mod)
-        assert 'hasattr(self, "_balance_forced_skip_count")' not in src
-
     def test_no_hasattr_current_regime_value_in_executor(self) -> None:
         src = inspect.getsource(fill_cycle_executor_mod)
         assert 'hasattr(self, "_current_regime_value")' not in src
@@ -166,9 +162,7 @@ class TestHasattrRemoval236:
     def test_class_level_defaults_exist(self) -> None:
         """orchestrator にクラスレベルデフォルトが存在."""
         assert hasattr(FillLoopOrchestratorMixin, "_trending_sell_skip_count")
-        assert hasattr(FillLoopOrchestratorMixin, "_balance_forced_skip_count")
         assert FillLoopOrchestratorMixin._trending_sell_skip_count == 0
-        assert FillLoopOrchestratorMixin._balance_forced_skip_count == 0
 
     def test_skip_gate_evaluator_last_reload_check(self) -> None:
         """SkipGateEvaluator._last_reload_check がクラスレベルで宣言."""

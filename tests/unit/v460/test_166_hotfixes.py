@@ -143,22 +143,8 @@ class TestInsufficientCooldown:
 
 
 # ======================================================================
-# HF1: balance_forced_rescue config tests
+# HF1: balance_forced_rescue config — 348# 撤廃
 # ======================================================================
-
-
-class TestRescueConfig:
-    """166# HF1: rescue 設定が YAML から正しく読み込まれる."""
-
-    def test_default_rescue_disabled(self):
-        cfg = FillTestConfig()
-        assert cfg.balance_forced_rescue_enabled is False
-        assert cfg.balance_forced_rescue_offset_mult == 2.0
-
-    def test_yaml_rescue_enabled(self, hotfix_yaml: dict[str, object]):
-        cfg = FillTestConfig.from_yaml(hotfix_yaml)
-        assert cfg.balance_forced_rescue_enabled is True
-        assert cfg.balance_forced_rescue_offset_mult == 1.3  # 171# 2.0→1.3
 
 
 # ======================================================================

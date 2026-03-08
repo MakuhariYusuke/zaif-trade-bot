@@ -153,7 +153,6 @@ class TestCancelReasons:
             CR.TIME_FILTER_BOTH_SIDES,
             CR.TIME_FILTER_086_DEADLOCK,
             CR.NARROW_SPREAD_PAUSE,
-            CR.BALANCE_FORCED_SKIP,
             CR.UNKNOWN_REGIME_BUY_SKIP,
             CR.UNKNOWN_REGIME_SELL_SKIP,
             CR.SELL_DYNAMIC_KILL,
@@ -179,7 +178,6 @@ class TestCancelReasons:
             CR.DEGRADED_LIQUIDATION_DUTY_SKIP, # 234# 縮退清算
             CR.ONE_SIDED_COOLDOWN_SKIP,        # 234# one-sided
             CR.ONE_SIDED_FREEZE_SKIP,          # 234# one-sided
-            CR.FORCED_BUY_DELAY,               # 294# forced_buy_delay
             CR.SKIP_GATE_RULE_UNKNOWN_SELL,    # 296# unknown sell
         }
         assert CR.AUDIT_CANCEL_REASONS == expected

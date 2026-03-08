@@ -95,8 +95,8 @@ class CycleGateResult:
     - blocking_reason: skip の最初の理由
     - checks: 全ゲートの判定結果チェーン (audit trail)
     - trending_offset_mult: 196# trending sell soft mode offset 乗数
-    - degraded_liquidation: 234# balance_forced が Kill Gate に阻まれた場合、
-      min lot + wide offset の縮退清算モードで実行を許可する
+    - degraded_liquidation: 234# Kill Gate 阻止時の縮退清算モード
+      (348# balance_forced 撤廃により現在は inventory_escape 経由のみ)
     """
 
     blocked: bool = False
@@ -166,7 +166,6 @@ class CycleGateAggregator:
         side: str,
         regime: str | None,
         vol_ratio: float | None,
-        balance_forced: bool,
         inv_net_imbalance: float,
         is_buy_killed: bool,
         is_sell_killed: bool,
@@ -188,7 +187,6 @@ class CycleGateAggregator:
             side: "buy" or "sell"
             regime: 現在の market regime (None = unknown)
             vol_ratio: 直近のボラティリティ比率
-            balance_forced: balance_forced_switch が発動中
             inv_net_imbalance: 在庫偏重 [-1, +1]
             is_buy_killed: buy_dynamic_kill が発動中
             is_sell_killed: sell_dynamic_kill が発動中
@@ -259,27 +257,16 @@ class CycleGateAggregator:
         # --- Gate 4: buy_dynamic_kill ---
         # 219# dual-kill deadlock breaker: buy+sell 両方 kill 時、
         # PnL が良い方を強制通過させてデッドロックを回避。
-        # 234# balance_forced 時も dual kill 検出を行う (gate bypass 廃止)
+        # 234# dual kill 検出 (348# balance_forced 撤廃: quiescence が専ら機能)
         _dual_kill = is_buy_killed and is_sell_killed
         _dual_kill_bypass = False
         if _dual_kill:
             # 249# quiescence mode: dual_kill_bypass を無効化 — 両方 toxic なら静観
             if self._config.dual_kill_quiescence_enabled:
-                # 250# deadlock 防御: balance_forced + degraded 有効時は quiescence を
-                # 緩和し、degraded liquidation での縮退清算を許容する。
-                # 完全静観は「取引の意思がない」=正常だが、balance_forced は
-                # ポジションリバランスの強い要求を示すため、安全弁を提供。
-                if balance_forced and self._config.degraded_liquidation_enabled:
-                    logger.info(
-                        f"[250#] DUAL KILL quiescence + balance_forced: "
-                        f"allowing degraded liquidation (side={side})"
-                    )
-                    # bypass しない (各 kill gate で block) → degraded で救済
-                else:
-                    logger.info(
-                        f"[249#] DUAL KILL quiescence: both buy/sell killed — "
-                        f"resting (side={side}, no bypass)"
-                    )
+                logger.info(
+                    f"[249#] DUAL KILL quiescence: both buy/sell killed — "
+                    f"resting (side={side}, no bypass)"
+                )
                 # bypass しない → 各 kill gate が個別にブロック判定
             else:
                 # 旧挙動 (219#): 両方 kill なら全て通過させてデッドロック回避
@@ -293,19 +280,10 @@ class CycleGateAggregator:
         g4 = self._check_buy_dynamic_kill(side, is_buy_killed, _dual_kill_bypass)
         result.checks.append(g4)
         if g4.blocked:
-            # 234# 縮退清算モード: balance_forced + kill gate blocked
-            # → 完全 block ではなく min lot + wide offset で安全に縮退清算
-            if balance_forced and self._config.degraded_liquidation_enabled:
-                result.degraded_liquidation = True
-                result.degraded_reason = g4.reason
-                logger.warning(
-                    f"[234#] buy_dynamic_kill + balance_forced → "
-                    f"degraded liquidation mode (min lot, wide offset)"
-                )
-            else:
-                result.blocked = True
-                result.blocking_reason = g4.reason
-                return result
+            # 348# balance_forced 撤廃: 縮退清算は inventory_escape 経由でのみ
+            result.blocked = True
+            result.blocking_reason = g4.reason
+            return result
         elif buy_toxicity is not None:
             # 241# C-1 fix: pre-kill ゾーンで段階的応答を適用
             # (gate 非 block 時に YELLOW/ORANGE → offset 拡大 + 参加率制限)
@@ -318,18 +296,10 @@ class CycleGateAggregator:
         )
         result.checks.append(g5)
         if g5.blocked:
-            # 234# 縮退清算モード: balance_forced + kill gate blocked
-            if balance_forced and self._config.degraded_liquidation_enabled:
-                result.degraded_liquidation = True
-                result.degraded_reason = g5.reason
-                logger.warning(
-                    f"[234#] sell_dynamic_kill + balance_forced → "
-                    f"degraded liquidation mode (min lot, wide offset)"
-                )
-            else:
-                result.blocked = True
-                result.blocking_reason = g5.reason
-                return result
+            # 348# balance_forced 撤廃: 縮退清算は inventory_escape 経由のみ
+            result.blocked = True
+            result.blocking_reason = g5.reason
+            return result
         elif sell_toxicity is not None:
             # 241# C-1 fix: pre-kill ゾーンで段階的応答を適用
             self._apply_toxicity_graded(result, sell_toxicity, g5, side)

@@ -42,7 +42,6 @@ class TestClassifyGuard244:
             ("dd_halt", GuardCategory.SYSTEM),
             ("per_side_dd_both_halt", GuardCategory.SYSTEM),
             # 286# 283# MEDIUM-4: SYSTEM → RECOVERY 再分類
-            ("balance_forced_halt_block", GuardCategory.RECOVERY),
             ("preflight_insufficient", GuardCategory.SYSTEM),
             ("one_sided_freeze_skip", GuardCategory.RECOVERY),
             ("hard_skip_utc", GuardCategory.SYSTEM),
@@ -50,7 +49,6 @@ class TestClassifyGuard244:
             ("phantom_veto_block", GuardCategory.SYSTEM),
             ("degraded_liquidation_active", GuardCategory.RECOVERY),
             # 286# 新規 guard reasons
-            ("forced_buy_delay", GuardCategory.MARKET),
             # 244# SR-1: toxic_veto_set は市場都合
             ("toxic_veto_set", GuardCategory.MARKET),
             # Recovery guards

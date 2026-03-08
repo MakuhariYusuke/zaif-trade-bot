@@ -285,7 +285,6 @@ class TestHaltRecoveryGraceInGate:
             side="sell",
             regime="trending_up",
             vol_ratio=None,
-            balance_forced=False,
             inv_net_imbalance=0.0,
             is_buy_killed=False,
             is_sell_killed=False,
@@ -301,7 +300,6 @@ class TestHaltRecoveryGraceInGate:
             side="sell",
             regime="trending_up",
             vol_ratio=None,
-            balance_forced=False,
             inv_net_imbalance=0.0,
             is_buy_killed=False,
             is_sell_killed=False,
@@ -322,7 +320,6 @@ class TestHaltRecoveryGraceInGate:
             side="sell",
             regime="ranging",
             vol_ratio=None,
-            balance_forced=False,
             inv_net_imbalance=0.0,
             is_buy_killed=False,
             is_sell_killed=True,  # sell kill active

@@ -40,7 +40,6 @@ def _default_ctx(**overrides: object) -> dict:
         "side": "buy",
         "regime": "ranging",
         "vol_ratio": 1.0,
-        "balance_forced": False,
         "inv_net_imbalance": 0.0,
         "is_buy_killed": False,
         "is_sell_killed": False,
@@ -60,47 +59,6 @@ class TestPatternCTripleDeadlock:
     dual-kill (buy+sell 両方 kill) + per-side halt + balance_forced が
     同時に発生した場合のシステム挙動を検証する。
     """
-
-    def test_dual_kill_plus_balance_forced_degraded(self) -> None:
-        """dual-kill + balance_forced → degraded liquidation で通過."""
-        gate = _make_gate()
-        r = gate.evaluate(**_default_ctx(
-            side="buy",
-            is_buy_killed=True,
-            is_sell_killed=True,
-            balance_forced=True,
-        ))
-        # dual-kill + balance_forced → dual_kill_bypassed or degraded
-        assert not r.blocked
-
-    def test_single_kill_balance_forced_halt_recovery(self) -> None:
-        """kill + balance_forced + halt_recovery → recovery grace + degraded."""
-        gate = _make_gate()
-        r = gate.evaluate(**_default_ctx(
-            side="buy",
-            regime="unknown",  # unknown → soft gate blocks normally
-            is_buy_killed=True,
-            is_sell_killed=False,
-            balance_forced=True,
-            halt_recovery_active=True,
-        ))
-        # unknown regime gate はバイパス (recovery)
-        # buy kill + balance_forced → degraded liquidation
-        assert not r.blocked
-        assert r.degraded_liquidation is True
-
-    def test_dual_kill_balance_forced_halt_recovery(self) -> None:
-        """dual-kill + balance_forced + halt_recovery → dual_kill_bypassed + soft gate バイパス."""
-        gate = _make_gate()
-        r = gate.evaluate(**_default_ctx(
-            side="sell",
-            regime="trending_up",  # soft gate: trending_sell_skip
-            is_buy_killed=True,
-            is_sell_killed=True,
-            balance_forced=True,
-            halt_recovery_active=True,
-        ))
-        assert not r.blocked
 
     def test_per_side_halt_with_untick_during_pattern_c(self) -> None:
         """Pattern C: per-side halt + untick で halt カウンタ保持."""
@@ -146,7 +104,6 @@ class TestPatternCTripleDeadlock:
         r = gate.evaluate(**_default_ctx(
             is_buy_killed=True,
             is_sell_killed=True,
-            balance_forced=True,
         ))
         assert not r.blocked
 

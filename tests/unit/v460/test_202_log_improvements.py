@@ -144,29 +144,6 @@ class TestLossCooldownLogic:
 # 202# B: One-sided rescue offset logic
 # ============================================================
 
-class TestOneSidedRescueLogic:
-    """202# B: 片側残高枯渇時にも rescue offset が適用されること."""
-
-    def test_rescue_mult_from_config(self) -> None:
-        """rescue_offset_mult が config から取得可能."""
-        cfg = FillTestConfig(
-            balance_forced_rescue_offset_mult=1.5,
-            one_sided_balance_rescue_offset=True,
-        )
-        assert cfg.balance_forced_rescue_offset_mult == 1.5
-        assert cfg.one_sided_balance_rescue_offset is True
-
-    def test_disabled_no_rescue(self) -> None:
-        """one_sided_balance_rescue_offset=False の場合は rescue 無効."""
-        cfg = FillTestConfig(one_sided_balance_rescue_offset=False)
-        # ロジック: original_also_insufficient=True だが rescue=False
-        original_also_insufficient = True
-        _is_rescue = False
-        if original_also_insufficient and cfg.one_sided_balance_rescue_offset:
-            _is_rescue = True
-        assert _is_rescue is False
-
-
 # ============================================================
 # Cross-cutting: YAML fill_test.yaml に設定が存在すること
 # ============================================================

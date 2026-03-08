@@ -290,14 +290,12 @@ class TestGateAggregatorConfigIntegration:
         # 3 回の unknown block → バイパス
         for _ in range(3):
             gate.evaluate(
-                side="buy", regime=None, vol_ratio=None,
-                balance_forced=False, inv_net_imbalance=0.0,
+                side="buy", regime=None, vol_ratio=None, inv_net_imbalance=0.0,
                 is_buy_killed=False, is_sell_killed=False,
             )
         # 4 回目はバイパスされるべき
         result = gate.evaluate(
-            side="buy", regime=None, vol_ratio=None,
-            balance_forced=False, inv_net_imbalance=0.0,
+            side="buy", regime=None, vol_ratio=None, inv_net_imbalance=0.0,
             is_buy_killed=False, is_sell_killed=False,
         )
         # バイパス後は blocked=False (unknown_regime ゲートのみ評価)

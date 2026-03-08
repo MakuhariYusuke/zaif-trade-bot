@@ -169,7 +169,7 @@ class TestComputeLotSize:
         assert "サンプル不足" in result.reason
 
     def test_default_config(self) -> None:
-        """設定なし (デフォルト) でも動作する."""
+        """設定なし (デフォルト) でも動作する. 348# lot_step=1satoshi."""
         result = compute_lot_size(
             fill_rate=0.80,
             as_ratio=0.10,
@@ -178,7 +178,8 @@ class TestComputeLotSize:
             sample_count=100,
         )
         assert result.action == "increase"
-        assert result.new_lot == 0.002
+        # 348# lot_step=0.00000001 (satoshi): 0.001 + 1e-8
+        assert result.new_lot == pytest.approx(0.00100001)
 
     def test_step_increments(self) -> None:
         """複数回連続で増量すると段階的に上がる."""
@@ -216,9 +217,11 @@ class TestClampLot:
         assert clamp_lot(0.003, config) == 0.003
 
     def test_clamp_rounding(self) -> None:
-        """浮動小数点の丸めが正しい."""
+        """浮動小数点の丸めが正しい. 348# satoshi 精度 (8桁)."""
         config = LotSizingConfig(min_lot=0.001, max_lot=0.005)
-        assert clamp_lot(0.00299999, config) == 0.003
+        assert clamp_lot(0.00299999, config) == 0.00299999
+        # 9桁以上は丸められる
+        assert clamp_lot(0.001000005, config) == 0.001
 
     def test_default_config(self) -> None:
         """デフォルト設定でも動作."""

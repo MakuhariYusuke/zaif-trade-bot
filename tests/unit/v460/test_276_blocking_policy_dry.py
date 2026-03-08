@@ -122,12 +122,6 @@ class TestSkipCeremonyMigration:
         nearby = self.src[idx:idx + 500]
         assert "_execute_skip" in nearby
 
-    def test_balance_forced_skip_uses_execute_skip(self) -> None:
-        """balance_forced_skip パスが _execute_skip を使用."""
-        idx = self.src.find("BALANCE_FORCED_SKIP")
-        nearby = self.src[max(0, idx - 200):idx + 300]
-        assert "_execute_skip" in nearby
-
     def test_toxicity_participation_uses_execute_skip(self) -> None:
         """toxicity_participation_skip パスが _execute_skip を使用."""
         idx = self.src.find("toxicity_participation_skip")

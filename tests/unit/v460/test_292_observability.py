@@ -153,64 +153,6 @@ class TestRepriceDeadbandYAML:
 # C. Config — 292# P1: forced_buy_delay regime-aware
 # =====================================================================
 
-class TestForcedBuyDelayRegimeConfig:
-    """292# P1: forced_buy_delay_velocity_threshold_ranging_bps 設定."""
-
-    def test_default_none(self) -> None:
-        cfg = FillTestConfig()
-        assert cfg.forced_buy_delay_velocity_threshold_ranging_bps is None
-
-    def test_explicit_value(self) -> None:
-        cfg = FillTestConfig(
-            forced_buy_delay_velocity_threshold_ranging_bps=-3.0,
-        )
-        assert cfg.forced_buy_delay_velocity_threshold_ranging_bps == pytest.approx(-3.0)
-
-
-class TestForcedBuyDelayRegimeYAML:
-    """292# P1: YAML パースで velocity_threshold_ranging_bps を読み込む."""
-
-    def test_from_yaml_ranging_threshold(self) -> None:
-        yaml_data = {
-            "止血": {
-                "forced_buy_delay": {
-                    "enabled": True,
-                    "velocity_threshold_bps": -5.0,
-                    "velocity_threshold_ranging_bps": -3.0,
-                    "cycles": 3,
-                }
-            }
-        }
-        cfg = FillTestConfig.from_yaml(yaml_data)
-        assert cfg.forced_buy_delay_velocity_threshold_ranging_bps == pytest.approx(-3.0)
-
-    def test_from_yaml_ranging_threshold_absent(self) -> None:
-        yaml_data = {
-            "止血": {
-                "forced_buy_delay": {
-                    "enabled": True,
-                }
-            }
-        }
-        cfg = FillTestConfig.from_yaml(yaml_data)
-        assert cfg.forced_buy_delay_velocity_threshold_ranging_bps is None
-
-    def test_production_yaml_has_ranging_threshold(self) -> None:
-        """本番 YAML に velocity_threshold_ranging_bps が設定されている."""
-        y = self._yaml_config
-        fbd = y.get("loss_control", {}).get("forced_buy_delay", {})
-        assert "velocity_threshold_ranging_bps" in fbd
-        assert fbd["velocity_threshold_ranging_bps"] == pytest.approx(-3.0)
-
-    @pytest.fixture(scope="class", autouse=True)
-    def _inject_yaml_config(
-        self,
-        request: pytest.FixtureRequest,
-        v460_fill_test_yaml_base: dict[str, object],
-    ) -> None:
-        request.cls._yaml_config = v460_fill_test_yaml_base
-
-
 # =====================================================================
 # D. Hot-Reload — 292# v3: 新フィールドがリロード対象
 # =====================================================================
@@ -226,58 +168,10 @@ class TestHotReloadFieldCoverage:
     def test_stale_reprice_min_delta_jpy_in_hot_reload(self) -> None:
         assert "stale_reprice_min_delta_jpy" in self.fields
 
-    def test_forced_buy_delay_fields_in_hot_reload(self) -> None:
-        expected = {
-            "forced_buy_delay_enabled",
-            "forced_buy_delay_velocity_threshold_bps",
-            "forced_buy_delay_cycles",
-            "forced_buy_delay_velocity_threshold_ranging_bps",
-            "forced_buy_delay_max_consecutive",
-        }
-        assert expected.issubset(self.fields)
-
 
 # =====================================================================
 # E. Config — 294# P0: forced_buy_delay_max_consecutive
 # =====================================================================
-
-class TestForcedBuyDelayMaxConsecutive:
-    """294# P0: forced_buy_delay_max_consecutive によるデッドロック防止."""
-
-    def test_default_value(self) -> None:
-        cfg = FillTestConfig()
-        assert cfg.forced_buy_delay_max_consecutive == 10
-
-    def test_explicit_value(self) -> None:
-        cfg = FillTestConfig(forced_buy_delay_max_consecutive=5)
-        assert cfg.forced_buy_delay_max_consecutive == 5
-
-    def test_from_yaml(self) -> None:
-        yaml_data = {
-            "止血": {
-                "forced_buy_delay": {
-                    "enabled": True,
-                    "max_consecutive": 8,
-                }
-            }
-        }
-        cfg = FillTestConfig.from_yaml(yaml_data)
-        assert cfg.forced_buy_delay_max_consecutive == 8
-
-    def test_production_yaml_has_max_consecutive(self) -> None:
-        y = self._yaml_config
-        fbd = y.get("loss_control", {}).get("forced_buy_delay", {})
-        assert "max_consecutive" in fbd
-        assert fbd["max_consecutive"] == 10
-
-    @pytest.fixture(scope="class", autouse=True)
-    def _inject_yaml_config(
-        self,
-        request: pytest.FixtureRequest,
-        v460_fill_test_yaml_base: dict[str, object],
-    ) -> None:
-        request.cls._yaml_config = v460_fill_test_yaml_base
-
 
 # =====================================================================
 # F. Hot-Reload — 295# 包括的カバレッジ検証
@@ -313,7 +207,6 @@ class TestHotReloadComprehensiveCoverage:
         """Inventory skewing / balance."""
         expected = {
             "inventory_skewing_enabled", "inventory_skewing_window",
-            "balance_forced_cooldown_sec", "balance_margin_ratio",
         }
         assert expected.issubset(self.fields)
 

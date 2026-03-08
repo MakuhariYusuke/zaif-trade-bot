@@ -86,7 +86,6 @@ def _default_ctx(**overrides: object) -> dict:
         "side": "sell",
         "regime": "ranging",
         "vol_ratio": 1.0,
-        "balance_forced": False,
         "inv_net_imbalance": 0.0,
         "is_buy_killed": False,
         "is_sell_killed": False,
@@ -161,7 +160,7 @@ class TestBalanceForcedTrendingOffset:
             trending_sell_as_offset_enabled=True,
         )
         r = gate.evaluate(**_default_ctx(
-            side="sell", regime="trending_up", balance_forced=True,
+            side="sell", regime="trending_up",
         ))
         assert r.blocked is False
         # 234#: soft mode は常に offset を適用
@@ -174,7 +173,7 @@ class TestBalanceForcedTrendingOffset:
             trending_sell_offset_boost_factor=2.0,
         )
         r = gate.evaluate(**_default_ctx(
-            side="sell", regime="trending_up", balance_forced=True,
+            side="sell", regime="trending_up",
         ))
         assert r.blocked is False
         assert r.trending_offset_mult == 2.0
@@ -186,7 +185,7 @@ class TestBalanceForcedTrendingOffset:
             trending_sell_offset_boost_factor=3.0,
         )
         r = gate.evaluate(**_default_ctx(
-            side="sell", regime="trending_up", balance_forced=True,
+            side="sell", regime="trending_up",
         ))
         assert r.blocked is False
 
@@ -197,7 +196,7 @@ class TestBalanceForcedTrendingOffset:
             skip_sell_trending_up_only=True,
         )
         r = gate.evaluate(**_default_ctx(
-            side="sell", regime="trending_down", balance_forced=True,
+            side="sell", regime="trending_down",
         ))
         assert r.blocked is False
         assert r.trending_offset_mult is None
@@ -208,7 +207,7 @@ class TestBalanceForcedTrendingOffset:
             trending_sell_as_offset_enabled=True,
         )
         r = gate.evaluate(**_default_ctx(
-            side="buy", regime="trending_up", balance_forced=True,
+            side="buy", regime="trending_up",
         ))
         assert r.blocked is False
         assert r.trending_offset_mult is None
@@ -220,7 +219,7 @@ class TestBalanceForcedTrendingOffset:
             trending_sell_offset_boost_factor=2.5,
         )
         r = gate.evaluate(**_default_ctx(
-            side="sell", regime="trending_up", balance_forced=True,
+            side="sell", regime="trending_up",
         ))
         trending_check = [c for c in r.checks if c.gate_name == "trending_sell"]
         assert len(trending_check) == 1

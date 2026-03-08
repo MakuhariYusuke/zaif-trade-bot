@@ -75,15 +75,12 @@ class TestRegimeUpdateDuringSkip:
         source = read_fill_test_runner_source()
         idx_regime_update = source.find("§20-A")
         idx_gate_evaluate = source.find("_cycle_gate.evaluate(")
-        idx_balance_forced = source.find("skip_balance_forced")
 
         assert idx_regime_update > 0
         assert idx_gate_evaluate > 0, "_cycle_gate.evaluate() not found in run_continuous"
         # main loop の §20-A は gateway 評価より前
         assert idx_regime_update < idx_gate_evaluate, \
             "§20-A must appear before _cycle_gate.evaluate()"
-        assert idx_regime_update < idx_balance_forced, \
-            "§20-A must appear before skip_balance_forced"
 
     def test_regime_detector_update_with_fallback_price(self) -> None:
         """FillTestRegimeDetector.update() が fallback price で正常動作."""
@@ -356,4 +353,3 @@ class TestIntegrationConsistency:
         """デフォルト設定で安全弁が有効 (0 ではない)."""
         config = FillTestConfig()
         assert config.max_consecutive_trending_sell_skip > 0
-        assert config.balance_forced_deadlock_limit > 0

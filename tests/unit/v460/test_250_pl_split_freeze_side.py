@@ -273,44 +273,6 @@ class TestQuiescenceDeadlockDefense250:
             side="buy",
             regime="ranging",
             vol_ratio=0.5,
-            balance_forced=False,
-            inv_net_imbalance=0.0,
-            is_buy_killed=True,
-            is_sell_killed=True,
-        )
-        assert result.blocked
-        assert not result.dual_kill_bypassed
-
-    def test_quiescence_balance_forced_degraded_allows_cycle(self) -> None:
-        """balance_forced=True + degraded=True → quiescence 緩和.
-
-        kill gate が block するが、degraded_liquidation=True で
-        result.blocked=False (縮退清算パスで通過)。
-        """
-        gate = self._make_gate(quiescence=True, degraded=True)
-        result = gate.evaluate(
-            side="buy",
-            regime="ranging",
-            vol_ratio=0.5,
-            balance_forced=True,
-            inv_net_imbalance=0.0,
-            is_buy_killed=True,
-            is_sell_killed=True,
-        )
-        # degraded_liquidation が有効なので blocked=False (縮退清算パス)
-        assert not result.blocked
-        assert not result.dual_kill_bypassed
-        # degraded_liquidation が True になることを確認
-        assert result.degraded_liquidation
-
-    def test_quiescence_balance_forced_no_degraded(self) -> None:
-        """balance_forced=True + degraded=False → pure quiescence (no degraded available)."""
-        gate = self._make_gate(quiescence=True, degraded=False)
-        result = gate.evaluate(
-            side="buy",
-            regime="ranging",
-            vol_ratio=0.5,
-            balance_forced=True,
             inv_net_imbalance=0.0,
             is_buy_killed=True,
             is_sell_killed=True,
@@ -325,46 +287,12 @@ class TestQuiescenceDeadlockDefense250:
             side="sell",
             regime="ranging",
             vol_ratio=0.5,
-            balance_forced=True,
             inv_net_imbalance=0.0,
             is_buy_killed=True,
             is_sell_killed=True,
         )
         assert not result.blocked
         assert result.dual_kill_bypassed
-
-    def test_single_kill_unaffected(self) -> None:
-        """sell killed + balance_forced → degraded 縮退清算で通過."""
-        gate = self._make_gate(quiescence=True, degraded=True)
-        result = gate.evaluate(
-            side="sell",
-            regime="ranging",
-            vol_ratio=0.5,
-            balance_forced=True,
-            inv_net_imbalance=0.0,
-            is_buy_killed=False,
-            is_sell_killed=True,
-        )
-        # sell killed + balance_forced + degraded → degraded で blocked=False
-        assert not result.blocked
-        assert not result.dual_kill_bypassed
-        assert result.degraded_liquidation
-
-    def test_single_kill_no_balance_forced(self) -> None:
-        """sell killed + balance_forced=False → blocked (no degraded rescue)."""
-        gate = self._make_gate(quiescence=True, degraded=True)
-        result = gate.evaluate(
-            side="sell",
-            regime="ranging",
-            vol_ratio=0.5,
-            balance_forced=False,
-            inv_net_imbalance=0.0,
-            is_buy_killed=False,
-            is_sell_killed=True,
-        )
-        assert result.blocked
-        assert not result.dual_kill_bypassed
-        assert not result.degraded_liquidation
 
 
 # =============================================================

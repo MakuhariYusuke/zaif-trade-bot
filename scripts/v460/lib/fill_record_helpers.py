@@ -75,7 +75,6 @@ class FillRecordHelpersMixin:
         spread_at_order: float | None = None,
         spread_offset_ratio: float | None = None,
         regime: str | None = None,
-        balance_forced_switch: bool = False,
         **extra: object,
     ) -> FillRecord:
         """145# §9-#5: skip/監査系 FillRecord 一元生成.
@@ -97,7 +96,6 @@ class FillRecordHelpersMixin:
             spread_at_order=spread_at_order,
             spread_offset_ratio=spread_offset_ratio,
             regime=regime,
-            balance_forced_switch=balance_forced_switch,
             ab_test_variant=self.config.ab_test_variant or None,  # 158# P1-5
             pid=os.getpid(),  # 285# 283# P0-1: Split-Brain 検知用
             **extra,
@@ -281,15 +279,14 @@ class FillRecordHelpersMixin:
         # 167# DL-4/P2: 末尾連続 skip カウンタを復元 (再起動耐性)
         # 175# 各カウンタを独立したループで計算 (交互出現時の過大計上を防止)
         _tss_count = self._count_trailing_cancel_reason(existing, "trending_sell_skip")
-        _bfs_count = self._count_trailing_cancel_reason(existing, "balance_forced_skip")
+        # 348# balance_forced 撤廃: _bfs_count 復元を削除
         # 236# hasattr 排除: クラスレベルデフォルトで属性存在を保証済み
         self._trending_sell_skip_count = _tss_count
-        self._balance_forced_skip_count = _bfs_count
 
         logger.info(
             f"Resumed from existing records: n={len(existing)}, "
             f"last_side={self._last_side}, cycle_count={self._cycle_count}, "
-            f"trailing_tss={_tss_count}, trailing_bfs={_bfs_count}"
+            f"trailing_tss={_tss_count}"
         )
         return existing
 
