@@ -4358,3 +4358,22 @@ python scripts/unified_trainer.py \
   - `test_gate_judgment.py::TestGateJudgmentMonteCarlo::test_monte_carlo_custom_lot`: `0.40s級 -> 0.05s〜0.06s`
 - The combined Monte Carlo bundle completed at `53 passed, 4 warnings in 1.98s`.
 - The latest filtered broad rerun completed at `4153 passed, 1 deselected, 13 warnings in 36.25s`, and the `test_gate_judgment.py` Monte Carlo cases dropped out of the top 25. The remaining broad top is now led by real-data setup and a few persistence-heavy tests.
+
+## Session 037-049 (2026-03-09)
+
+### Changed
+- Optimized [scripts/v460/ml/feature_enricher.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/feature_enricher.py) so `enrich_fill_records()` now caches the computed feature bundle per timestamp within a call. When multiple fill records share the same timestamp, orderbook lookup, trade-window aggregation, and return-momentum calculation are reused instead of recomputed.
+- Extracted [scripts/v460/ml/feature_enricher.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/feature_enricher.py) timestamp-range to UTC-date-filter conversion into a reusable helper. This removes the ad-hoc `while` loop from `enrich_fill_records()` and makes the date-filter path more direct.
+- Optimized [scripts/v460/run_pnl_monte_carlo.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/run_pnl_monte_carlo.py) so `--sensitivity` computes `sim.sensitivity_analysis()` once and reuses the same result for console output and optional JSON output, avoiding duplicate Monte Carlo work in the CLI path.
+
+### Verified
+- `python -m py_compile scripts/v460/ml/feature_enricher.py scripts/v460/run_pnl_monte_carlo.py`
+- `python -m pytest tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_build_features_pipeline.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_pnl_monte_carlo.py tests/unit/v460/test_gate_judgment.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- `test_enricher_skip_gate.py` + `test_build_features_pipeline.py` stayed green at `84 passed in 5.43s`.
+- The latest filtered broad rerun completed at `4153 passed, 1 deselected, 13 warnings in 34.65s`.
+- The real-data setup in `test_enricher_skip_gate.py` remains the dominant setup cost, so the timestamp-cache is primarily a reuse improvement for repeated timestamps and downstream callers rather than a large change to the current broad wall time.
+- The remaining broad top is now centered on `test_enricher_skip_gate.py` real-data setup, `test_fill_quality.py` unknown-fill handling, and a few config/parquet paths.

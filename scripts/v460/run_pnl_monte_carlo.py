@@ -90,19 +90,19 @@ def main() -> None:
 
     sim = PnLMonteCarloSimulator(records, config)
     result = sim.run()
+    sensitivity_result = sim.sensitivity_analysis() if args.sensitivity else None
 
     # Print report
     sim.print_report(result)
 
     # Sensitivity analysis
-    if args.sensitivity:
+    if sensitivity_result is not None:
         print("\n" + "=" * 60)
         print("  Sensitivity Analysis")
         print("=" * 60)
-        sens = sim.sensitivity_analysis()
         print(f"\n{'fill_rate':>10} {'pnl_adj':>8} {'E[PnL]':>12} {'VaR95':>12} {'P(loss)':>8}")
         print("-" * 54)
-        for s in sens:
+        for s in sensitivity_result:
             print(
                 f"{s['fill_rate']:>10.0%} "
                 f"{s['pnl_adj_bps']:>+7.1f} "
@@ -116,8 +116,8 @@ def main() -> None:
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         result_dict = result.to_dict()
-        if args.sensitivity:
-            result_dict["sensitivity"] = sim.sensitivity_analysis()
+        if sensitivity_result is not None:
+            result_dict["sensitivity"] = sensitivity_result
 
         # 169# B0: 3-series fill rate を構造化出力 (R2 分母混在解消)
         all_metrics = compute_fill_metrics(records)

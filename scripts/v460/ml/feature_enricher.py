@@ -54,6 +54,24 @@ def _normalize_date_filter(
     return tuple(sorted(date_filter))
 
 
+def _build_date_filter_from_timestamp_bounds(
+    ts_min: float,
+    ts_max: float,
+    *,
+    margin_sec: int,
+) -> set[str]:
+    """タイムスタンプ範囲から UTC 日付フィルタを生成する."""
+    from datetime import datetime, timedelta, timezone
+
+    d_start = datetime.fromtimestamp(ts_min - margin_sec, tz=timezone.utc).date()
+    d_end = datetime.fromtimestamp(ts_max + margin_sec, tz=timezone.utc).date()
+    day_count = (d_end - d_start).days
+    return {
+        (d_start + timedelta(days=offset)).strftime("%Y%m%d")
+        for offset in range(day_count + 1)
+    }
+
+
 def _select_raw_files(
     data_dir: Path,
     date_filter: Optional[set[str]],
@@ -680,20 +698,15 @@ def enrich_fill_records(
     # 130# 日付限定ロード: fill records のタイムスタンプから必要日を算出
     date_filter: set[str] | None = None
     if "timestamp" in fill_df.columns and len(fill_df) > 0:
-        from datetime import datetime, timezone
         ts_min = float(fill_df["timestamp"].min())
         ts_max = float(fill_df["timestamp"].max())
         # 前後 trade_window_sec 分のマージンを確保
         margin = max(trade_window_sec, 300)
-        d_start = datetime.fromtimestamp(ts_min - margin, tz=timezone.utc)
-        d_end = datetime.fromtimestamp(ts_max + margin, tz=timezone.utc)
-        # 日付セットを生成
-        from datetime import timedelta
-        date_filter = set()
-        d = d_start.date()
-        while d <= d_end.date():
-            date_filter.add(d.strftime("%Y%m%d"))
-            d += timedelta(days=1)
+        date_filter = _build_date_filter_from_timestamp_bounds(
+            ts_min,
+            ts_max,
+            margin_sec=margin,
+        )
         logger.info(f"130# Date filter: {sorted(date_filter)} ({len(date_filter)} days)")
 
     ob_entry = _load_raw_orderbook_entry(raw_dir, date_filter=date_filter)
@@ -741,10 +754,15 @@ def enrich_fill_records(
         else None
     )
     ob_sorted_ts = ob_entry.sorted_ts
+    feature_cache: dict[float, dict[str, float]] = {}
 
     timestamps = fill_df["timestamp"].to_numpy(dtype=np.float64, copy=False)
     enriched_rows: list[dict[str, float]] = []
     for ts in timestamps:
+        cached = feature_cache.get(float(ts))
+        if cached is not None:
+            enriched_rows.append(cached)
+            continue
 
         # Orderbook features (nearest snapshot)
         ob_features = _find_nearest_ob(
@@ -768,10 +786,9 @@ def enrich_fill_records(
             sorted_ts=ob_sorted_ts,
             _context=ob_context,
         )
-
-        enriched_rows.append(
-            {**ob_features, **trade_features, **multi_tf, **momentum}
-        )
+        features = {**ob_features, **trade_features, **multi_tf, **momentum}
+        feature_cache[float(ts)] = features
+        enriched_rows.append(features)
 
     enriched = pd.DataFrame(enriched_rows, index=fill_df.index)
     n_ob_matched = enriched["spread_bps_ob"].notna().sum()

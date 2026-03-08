@@ -2260,3 +2260,44 @@
 1. `feature_enricher` / `build_features_pipeline` の real-data setup を production 側 cache 再利用でさらに詰める
 2. `test_fill_quality.py` の unknown-fill / cancel-race 系で polling/time 依存をさらに切り離す
 3. `test_v460_core.py` の config loader / parquet パスで production helper 再利用の余地を確認する
+
+---
+
+## 2026-03-09 / Session 037-049
+
+### 実施
+- production
+  - `scripts/v460/ml/feature_enricher.py`
+    - `enrich_fill_records()` 内に timestamp 単位の feature bundle cache を追加
+    - 同一 timestamp の fill record 群では orderbook 最近傍探索 / trade window 集計 / return momentum を再計算せず再利用
+    - timestamp 範囲から UTC 日付フィルタを作る処理を helper 化
+  - `scripts/v460/run_pnl_monte_carlo.py`
+    - `--sensitivity` 時の `sim.sensitivity_analysis()` を 1 回だけ実行し、console 出力と JSON 出力で共有
+
+### 結果
+- focused 回帰:
+  - `test_enricher_skip_gate.py` + `test_build_features_pipeline.py`
+    - `84 passed in 5.43s`
+  - `test_pnl_monte_carlo.py` + `test_gate_judgment.py`
+    - `53 passed, 4 warnings in 2.10s`
+- filtered broad:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` / `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - `4153 passed, 1 deselected, 13 warnings in 34.65s`
+
+### 主要改善
+- `feature_enricher` は raw cache だけでなく、呼び出し単位でも「同一 ts なら同一特徴量」という再利用余地があった。今回の cache は downstream の学習/分析コードでもそのまま効く。
+- `run_pnl_monte_carlo.py` は `--sensitivity --output` のとき感度分析を 2 回回していたため、CLI 実行では不要な Monte Carlo が残っていた。これは純粋な重複計算だったので 1 回に統合した。
+- 今回の `feature_enricher` 変更は broad wall time を大きく動かす類ではないが、実装としてはより筋がよい。real-data setup の本丸は raw 読込と日別 aggregate 側に残っている。
+
+### 補足
+- filtered broad の top は引き続き以下:
+  - `test_enricher_skip_gate.py` real-data setup
+  - `test_fill_quality.py` unknown-fill 系
+  - `test_v460_core.py` config/parquet 系
+  - `test_build_features_pipeline.py` real-mode aggregate setup
+- `test_gate_judgment.py` / `test_pnl_monte_carlo.py` は前 batch の本体最適化を維持しており、今回も focused では低コストで安定している。
+
+### 次アクション
+1. `feature_enricher` / `build_real_features()` の raw 読込・日別 aggregate を跨ぐ cache 再利用余地を確認
+2. `test_fill_quality.py` の unknown-fill / cancel-race 系を本体 helper 分離で軽量化できないか確認
+3. `test_v460_core.py` の config/parquet 上位を production helper 側から詰める
