@@ -4377,3 +4377,18 @@ python scripts/unified_trainer.py \
 - The latest filtered broad rerun completed at `4153 passed, 1 deselected, 13 warnings in 34.65s`.
 - The real-data setup in `test_enricher_skip_gate.py` remains the dominant setup cost, so the timestamp-cache is primarily a reuse improvement for repeated timestamps and downstream callers rather than a large change to the current broad wall time.
 - The remaining broad top is now centered on `test_enricher_skip_gate.py` real-data setup, `test_fill_quality.py` unknown-fill handling, and a few config/parquet paths.
+
+## Session 037-050 (2026-03-09)
+
+### Changed
+- Reworked [tests/unit/v460/test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py) `TestUnknownFillHandling` / `TestBug11CancelRaceCondition` so the tests still execute `run_single_cycle()` end-to-end, but patch `asyncio.sleep` to a no-op helper during the focused assertions. This preserves the existing `OrderMonitor` / `run_single_cycle` logic while removing real wait time from the polling-oriented test cases.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_fill_quality.py::TestUnknownFillHandling tests/unit/v460/test_fill_quality.py::TestBug11CancelRaceCondition -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py --deselect=tests/unit/v460/test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+
+### Notes
+- The five focused fill-quality cases stayed green at `5 passed in 8.28s`.
+- Four of the five targeted calls dropped to `0.01s`; the remaining heavy case is `test_status_none_twice_becomes_cancelled_status_unknown` at `0.30s`, which is still dominated by the status-unknown decision path itself rather than actual sleep time.
+- The latest filtered broad rerun completed at `4154 passed, 13 warnings in 34.32s`.
+- The broad top is now led by `test_enricher_skip_gate.py` real-data setup and a handful of config/parquet/source-contract cases rather than the status/cancel-race group.

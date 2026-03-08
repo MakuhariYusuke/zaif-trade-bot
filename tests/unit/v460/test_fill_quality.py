@@ -86,6 +86,15 @@ def _source(obj: object) -> str:
     return inspect.getsource(obj)
 
 
+async def _instant_async_sleep(_delay: float) -> None:
+    return None
+
+
+async def _run_single_cycle_without_sleep(runner: "FillTestRunner") -> FillRecord:
+    with patch("asyncio.sleep", new=_instant_async_sleep):
+        return await runner.run_single_cycle()
+
+
 def _make_fast_cycle_runner(
     tmp_path: Path,
     *,
@@ -1777,7 +1786,7 @@ class TestUnknownFillHandling:
         # 初回も retry も None
         runner.adapter.get_order_status.return_value = None
 
-        record = await runner.run_single_cycle()
+        record = await _run_single_cycle_without_sleep(runner)
 
         assert record.filled is False
         assert record.cancelled is True
@@ -1799,7 +1808,7 @@ class TestUnknownFillHandling:
         # 1 回目 None, 2 回目 filled
         runner.adapter.get_order_status.side_effect = [None, filled_order]
 
-        record = await runner.run_single_cycle()
+        record = await _run_single_cycle_without_sleep(runner)
 
         assert record.filled is True
         assert record.fill_price == 15000500.0
@@ -1817,7 +1826,7 @@ class TestUnknownFillHandling:
         filled_order.price = 15000200.0
         runner.adapter.get_order_status.return_value = filled_order
 
-        record = await runner.run_single_cycle()
+        record = await _run_single_cycle_without_sleep(runner)
 
         assert record.filled is True
         assert record.fill_price == 15000200.0
@@ -1859,7 +1868,7 @@ class TestBug11CancelRaceCondition:
 
         runner.adapter.get_order_status = side_effect_status  # type: ignore[assignment]
 
-        record = await runner.run_single_cycle()
+        record = await _run_single_cycle_without_sleep(runner)
         assert record.filled is True
         assert record.fill_price == 15000500.0
 
@@ -1872,7 +1881,7 @@ class TestBug11CancelRaceCondition:
             'body={"success":false,"error":"Failed to cancel the order."}'
         )
 
-        record = await runner.run_single_cycle()
+        record = await _run_single_cycle_without_sleep(runner)
         assert record.filled is False
         assert record.cancelled is True
 

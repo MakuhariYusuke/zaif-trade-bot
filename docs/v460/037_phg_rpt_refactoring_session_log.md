@@ -2301,3 +2301,42 @@
 1. `feature_enricher` / `build_real_features()` の raw 読込・日別 aggregate を跨ぐ cache 再利用余地を確認
 2. `test_fill_quality.py` の unknown-fill / cancel-race 系を本体 helper 分離で軽量化できないか確認
 3. `test_v460_core.py` の config/parquet 上位を production helper 側から詰める
+
+---
+
+## 2026-03-09 / Session 037-050
+
+### 実施
+- test
+  - `tests/unit/v460/test_fill_quality.py`
+    - `TestUnknownFillHandling` / `TestBug11CancelRaceCondition` に `asyncio.sleep` no-op helper を適用
+    - `run_single_cycle()` と `OrderMonitor` の既存責務境界は維持しつつ、polling テストの実待機だけを外す構成へ変更
+
+### 結果
+- focused 回帰:
+  - `test_fill_quality.py::TestUnknownFillHandling` + `TestBug11CancelRaceCondition`
+    - `5 passed in 8.28s`
+    - durations:
+      - `test_status_none_twice_becomes_cancelled_status_unknown`: `0.30s`
+      - 残り 4 ケース: `0.01s`
+- filtered broad:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` / `test_113_resilience.py` を除外、`test_306_proposals.py::...::test_yaml_has_microprice_side` を deselect）
+  - `4154 passed, 13 warnings in 34.32s`
+
+### 主要改善
+- この batch では、本体 helper を壊さずに `run_single_cycle()` の end-to-end 経路を維持することを優先した。
+- `asyncio.sleep` だけを no-op 化することで、状態判定・cancel race・record 生成の既存ロジックはそのまま通し、実待機のみ除去した。
+- `status_none_twice...` がまだ単発で残るため、真の残コストは sleep ではなく status-unknown 分岐内の状態遷移・再照合にあると切り分けられた。
+
+### 補足
+- broad の top 25 では、status/cancel-race 群は主要ボトルネックではなくなった。
+- 現在の broad 上位は以下に再集中している:
+  - `test_enricher_skip_gate.py` real-data setup
+  - `test_v460_core.py` config loader / parquet
+  - `test_fill_quality.py::TestFillTestRunnerSaveResilience::*`
+  - 一部の YAML/source-contract / ML integration ケース
+
+### 次アクション
+1. `feature_enricher` / `build_real_features()` の raw 読込・aggregate 再利用を production 側でさらに詰める
+2. `test_v460_core.py` の config/parquet 上位を production helper 再利用で削る
+3. `fill_quality` の残上位は save-resilience / G1 判定周辺へ移っているため、その責務分離を確認する
