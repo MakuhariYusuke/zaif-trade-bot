@@ -466,6 +466,15 @@ def _parse_stopgap_section(yaml_cfg: dict) -> dict:
     if "max_bps" in inv_relax:
         kwargs["buy_dynamic_kill_inv_relaxation_max_bps"] = float(inv_relax["max_bps"])
 
+    # 337# 在庫連動 sell_dynamic_kill 緩和 (Ho & Stoll 1981 対称性)
+    sell_inv_relax = 止血.get("sell_dynamic_kill_inv_relaxation", {})
+    if sell_inv_relax.get("enabled") is not None:
+        kwargs["sell_dynamic_kill_inv_relaxation_enabled"] = bool(sell_inv_relax["enabled"])
+    if "scale" in sell_inv_relax:
+        kwargs["sell_dynamic_kill_inv_relaxation_scale"] = float(sell_inv_relax["scale"])
+    if "max_bps" in sell_inv_relax:
+        kwargs["sell_dynamic_kill_inv_relaxation_max_bps"] = float(sell_inv_relax["max_bps"])
+
     # 286# 283# P1-5: 強制買い KPI 分離
     if 止血.get("forced_buy_kpi_tracking") is not None:
         kwargs["forced_buy_kpi_tracking_enabled"] = bool(止血["forced_buy_kpi_tracking"])

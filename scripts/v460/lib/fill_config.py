@@ -571,6 +571,10 @@ class FillTestConfig:
     buy_dynamic_kill_inv_relaxation_enabled: bool = False  # True で在庫連動緩和を有効化
     buy_dynamic_kill_inv_relaxation_scale: float = 0.5     # |imbalance| → offset 変換スケール
     buy_dynamic_kill_inv_relaxation_max_bps: float = 0.5   # 336# T-2 + drift fix: YAML=0.5
+    # 337# 在庫連動 sell_dynamic_kill 緩和 (Ho & Stoll 1981 対称性)
+    sell_dynamic_kill_inv_relaxation_enabled: bool = False  # True で在庫連動緩和を有効化
+    sell_dynamic_kill_inv_relaxation_scale: float = 0.4     # buy(0.5)より保守的
+    sell_dynamic_kill_inv_relaxation_max_bps: float = 0.3   # buy(0.5)より保守的
     # 286# 283# P1-5: 強制買い KPI 分離
     # balance_forced の fill を通常 buy とは別に集計し、品質低下の原因特定を可能にする。
     forced_buy_kpi_tracking_enabled: bool = True  # True で強制買い PnL を分離ログ

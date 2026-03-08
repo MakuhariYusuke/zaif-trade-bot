@@ -229,6 +229,21 @@ class TestParseStopgapSection:
         })
         assert result["buy_dynamic_kill_inv_relaxation_max_bps"] == 0.5
 
+    def test_sell_dynamic_kill_inv_relaxation(self) -> None:
+        """337# sell_dynamic_kill_inv_relaxation は 止血 セクション配下."""
+        result = _parse_stopgap_section({
+            "止血": {
+                "sell_dynamic_kill_inv_relaxation": {
+                    "enabled": True,
+                    "scale": 0.4,
+                    "max_bps": 0.3,
+                },
+            },
+        })
+        assert result["sell_dynamic_kill_inv_relaxation_enabled"] is True
+        assert result["sell_dynamic_kill_inv_relaxation_scale"] == 0.4
+        assert result["sell_dynamic_kill_inv_relaxation_max_bps"] == 0.3
+
 
 class TestParseStaleVgSection:
     """_parse_stale_vg_section: stale order, VG."""
@@ -286,6 +301,13 @@ class TestProductionYamlRoundTrip:
         assert cfg.buy_dynamic_kill_threshold_bps == loss_control["buy_dynamic_kill"]["threshold_bps"]
         # buy_dynamic_kill_inv_relaxation — 336# T-2
         assert cfg.buy_dynamic_kill_inv_relaxation_max_bps == loss_control["buy_dynamic_kill_inv_relaxation"]["max_bps"]
+        # 337# sell_dynamic_kill threshold 緩和
+        assert cfg.sell_dynamic_kill_threshold_bps == loss_control["sell_dynamic_kill"]["threshold_bps"]
+        # 337# sell_dynamic_kill_inv_relaxation
+        sell_inv = loss_control["sell_dynamic_kill_inv_relaxation"]
+        assert cfg.sell_dynamic_kill_inv_relaxation_enabled == sell_inv["enabled"]
+        assert cfg.sell_dynamic_kill_inv_relaxation_scale == sell_inv["scale"]
+        assert cfg.sell_dynamic_kill_inv_relaxation_max_bps == sell_inv["max_bps"]
 
     def test_from_yaml_matches_direct_parse(self, yaml_cfg: dict) -> None:
         """FillTestConfig.from_yaml() と直接呼び出しの結果が同一."""

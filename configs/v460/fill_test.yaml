@@ -598,7 +598,7 @@ loss_control:
   sell_dynamic_kill:
     enabled: true
     window: 50                     # rolling ウィンドウ (sell fill 数)
-    threshold_bps: -0.3            # 246# -0.5→-0.3 (245#分析: sell累積損失が-0.5到達前に大量損失蓄積。早期kill で防御)
+    threshold_bps: -1.0            # 337# T-1: -0.3→-1.0 (Ho-Stoll対称性: buy(-1.5)との比率1.5xに改善。rolling-50最悪=-0.888で-0.3は正常ノイズで発動)
     resume_window: 10              # 156# D-5: 20→10 (40分→約20分へ半減)
     # 269# probe/force-release YAML 露出 (250# 思想: No Trade=正常)
     # live 本番: 0 (probe 無効) — kill 中の強制取引は情報優位者への無防備な流動性供給
@@ -608,9 +608,9 @@ loss_control:
     max_kill_duration_sec: 1800      # 30分で自動解除 (268#: 92分持続事例への対策)
     # 139# §9-#2: レジーム別閾値 (regime_name -> threshold_bps)
     regime_thresholds:
-      trending_up: -0.3            # 171#: -0.1→-0.3 (Guard Paradox対策: -0.1はほぼ全sell kill、在庫偏重の正フィードバック原因)
-      trending_down: -1.0          # 下降トレンド時は sell に寛容
-      ranging: -0.5                # レンジ時はデフォルト同等
+      trending_up: -0.8            # 337# T-1: -0.3→-0.8 (sell不利だが-0.3は過敏。Glosten-Milgrom的非対称性1.9x)
+      trending_down: -1.5          # 337# T-1: -1.0→-1.5 (下降トレンドで sell≒順張り、最大限寛容)
+      ranging: -1.5                # 337# T-1: -0.5→-1.5 (MM主戦場。buy ranging=-2.0の75%)
   # 157# §19: buy 動的 kill (rolling PnL ベースの自動停止 — sell との対称性)
   buy_dynamic_kill:
     enabled: true
@@ -630,7 +630,13 @@ loss_control:
   buy_dynamic_kill_inv_relaxation:
     enabled: true                  # 286# 有効化
     scale: 0.5                     # |imbalance| → offset 変換係数
-    max_bps: 0.5                   # 336# T-2: 0.3→0.5 (BTC枯渇時 effective threshold -1.5+0.5=-1.0 で sell base(-0.3)寄りに緩和)
+    max_bps: 0.5                   # 336# T-2: 0.3→0.5 (BTC枯渇時 effective threshold -1.5+0.5=-1.0 で sell base(-1.0)寄りに緩和)
+  # 337# 在庫連動 sell_dynamic_kill 緩和 (Ho & Stoll 1981 対称性)
+  # BTC 過剰 (inv_net_imbalance > 0) 時に kill 閾値を offset して在庫均衡 sell を許容
+  sell_dynamic_kill_inv_relaxation:
+    enabled: true                  # 337# 有効化
+    scale: 0.4                     # buy(0.5)より保守的 (Glosten-Milgrom sell側AS高リスク)
+    max_bps: 0.3                   # buy(0.5)より保守的。effective threshold -1.0+0.3=-0.7
   # 286# 283# P1-5: 強制買い KPI 分離 (balance_forced fill の品質個別追跡)
   forced_buy_kpi_tracking: true    # 286# 有効化 (デフォルト True)
   # 286# 284# P1: 強制買い遅延実行 (Glosten-Milgrom 1985)

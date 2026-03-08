@@ -45,7 +45,7 @@ class OrchestratorGuardsMixin:
         if self._regime_detector is not None:
             regime = self._regime_detector.current_regime.value
 
-        # 286# 283# P1-4: 在庫連動の kill 閾値緩和
+        # 286# 283# P1-4 / 337#: 在庫連動の kill 閾値緩和 (Ho & Stoll 1981 対称)
         threshold_offset_bps = 0.0
         if (
             side == "buy"
@@ -61,6 +61,23 @@ class OrchestratorGuardsMixin:
                 if threshold_offset_bps > 0.01:
                     logger.debug(
                         f"[286# P1-4] buy kill threshold relaxed by "
+                        f"+{threshold_offset_bps:.3f}bps "
+                        f"(imbalance={imbalance:.3f})"
+                    )
+        elif (
+            side == "sell"
+            and self.config.sell_dynamic_kill_inv_relaxation_enabled
+        ):
+            imbalance = self._maker_price.inv_net_imbalance
+            if imbalance > 0:  # sell 偏重 = BTC 過剰
+                raw_offset = abs(imbalance) * self.config.sell_dynamic_kill_inv_relaxation_scale
+                threshold_offset_bps = min(
+                    raw_offset,
+                    self.config.sell_dynamic_kill_inv_relaxation_max_bps,
+                )
+                if threshold_offset_bps > 0.01:
+                    logger.debug(
+                        f"[337#] sell kill threshold relaxed by "
                         f"+{threshold_offset_bps:.3f}bps "
                         f"(imbalance={imbalance:.3f})"
                     )
@@ -89,8 +106,14 @@ class OrchestratorGuardsMixin:
         対称に追跡して kill / relaxation 判定へ渡す。
 
         286# 283# P2-7: 評価窓二重化の基盤。
+        337# §6.3: balance_forced_switch の PnL を rolling window から除外。
+        強制取引はスプレッド回収を意図しない即時約定であり、rolling PnL を
+        構造的に汚染して kill 閾値到達を早める。
         """
         if not (record.filled and record.post_fill_30s_pnl is not None):
+            return
+        # 337# §6.3: 強制取引は rolling PnL から除外 (MM 能力の指標として不適切)
+        if getattr(record, "balance_forced_switch", False):
             return
         if record.side == "sell":
             self._sell_kill_mgr.track(record.post_fill_30s_pnl)
