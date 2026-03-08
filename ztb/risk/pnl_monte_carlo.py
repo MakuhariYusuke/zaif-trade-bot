@@ -228,6 +228,49 @@ class PnLMonteCarloSimulator:
             monthly_pnls[i] = float(np.sum(sampled_pnl * jpy_per_bps))
         return monthly_pnls
 
+    def _sample_monthly_pnl_bps(
+        self,
+        *,
+        fill_rate: float,
+        pnl_bps: np.ndarray,
+        cycles_per_month: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """月次 PnL(bps) と fill count を同時にサンプリングする."""
+        fills_per_sim = self._rng.binomial(
+            cycles_per_month,
+            fill_rate,
+            size=self.config.n_simulations,
+        )
+        monthly_pnl_bps = np.zeros(self.config.n_simulations, dtype=np.float64)
+        if pnl_bps.size == 1:
+            monthly_pnl_bps = fills_per_sim.astype(np.float64) * float(pnl_bps[0])
+            return monthly_pnl_bps, fills_per_sim
+
+        max_fills = int(fills_per_sim.max(initial=0))
+        if (
+            max_fills > 0
+            and self.config.n_simulations * max_fills <= _VECTORIZED_MC_MAX_SAMPLES
+        ):
+            sampled = self._rng.choice(
+                pnl_bps,
+                size=(self.config.n_simulations, max_fills),
+                replace=True,
+            )
+            sampled_cumsum = np.cumsum(sampled, axis=1, dtype=np.float64)
+            positive = fills_per_sim > 0
+            if np.any(positive):
+                fill_idx = fills_per_sim[positive] - 1
+                monthly_pnl_bps[positive] = sampled_cumsum[positive, fill_idx]
+            return monthly_pnl_bps, fills_per_sim
+
+        for i, fills_this_month in enumerate(fills_per_sim):
+            fills_this_month = int(fills_this_month)
+            if fills_this_month <= 0:
+                continue
+            sampled_pnl = self._rng.choice(pnl_bps, size=fills_this_month, replace=True)
+            monthly_pnl_bps[i] = float(np.sum(sampled_pnl))
+        return monthly_pnl_bps, fills_per_sim
+
     @staticmethod
     def _compute_breakeven(
         *,
@@ -382,12 +425,6 @@ class PnLMonteCarloSimulator:
 
         cfg = self.config
         pnl_bps = self._extract_filled_pnl_bps()
-        adjusted_pnl_by_adj: dict[float, np.ndarray] = {}
-        for adj in pnl_adjustments_bps:
-            adj_value = float(adj)
-            adjusted_pnl_by_adj[adj_value] = (
-                pnl_bps if adj_value == 0.0 else (pnl_bps + adj_value)
-            )
 
         notional = cfg.lot_size_btc * cfg.btc_price_jpy
         jpy_per_bps = 1e-4 * notional
@@ -395,15 +432,18 @@ class PnLMonteCarloSimulator:
         results: list[dict[str, Any]] = []
 
         for fr in fill_rates:
+            base_monthly_bps, fills_per_sim = self._sample_monthly_pnl_bps(
+                fill_rate=float(fr),
+                pnl_bps=pnl_bps,
+                cycles_per_month=cycles_per_month,
+            )
+            fills_per_sim_f = fills_per_sim.astype(np.float64, copy=False)
             for adj in pnl_adjustments_bps:
                 adj_value = float(adj)
-                adjusted_pnl = adjusted_pnl_by_adj[adj_value]
-                monthly = self._simulate_monthly_pnls(
-                    fill_rate=fr,
-                    pnl_bps=adjusted_pnl,
-                    cycles_per_month=cycles_per_month,
-                    jpy_per_bps=jpy_per_bps,
-                )
+                if adj_value == 0.0:
+                    monthly = base_monthly_bps * jpy_per_bps
+                else:
+                    monthly = (base_monthly_bps + fills_per_sim_f * adj_value) * jpy_per_bps
 
                 results.append({
                     "fill_rate": fr,

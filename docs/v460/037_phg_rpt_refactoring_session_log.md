@@ -2216,3 +2216,47 @@
 1. `test_enricher_skip_gate.py` の real-data setup を pre-enriched fixture / snapshot に寄せられるか再確認
 2. `test_pnl_monte_carlo.py` と `test_gate_judgment.py` の Monte Carlo heavy case を deterministic stub または試行数最小化へ寄せる
 3. `test_fill_quality.py` の `UnknownFillHandling` / `CancelRaceCondition` を time/polling 依存からさらに切り離せないか確認
+
+---
+
+## 2026-03-09 / Session 037-048
+
+### 実施
+- production
+  - `ztb/risk/pnl_monte_carlo.py`
+    - `sensitivity_analysis()` を再構成
+    - fill_rate ごとに `fills_per_sim` と base monthly PnL(bps) を 1 回だけサンプリングし、`pnl_adj_bps` は `fills_per_sim × adj` の解析的シフトとして後掛けする形に変更
+    - 内部 helper `_sample_monthly_pnl_bps()` を追加し、既存の vectorized sampling / constant-PnL fast path をそのまま再利用
+
+### 結果
+- focused 回帰:
+  - `test_pnl_monte_carlo.py::TestSensitivityAnalysis` + `TestSimulationRun::test_var_cvar_relationship`
+    - `5 passed in 1.14s`
+  - `test_gate_judgment.py::TestGateJudgmentMonteCarlo`
+    - `6 passed, 1 warning in 1.35s`
+  - `test_pnl_monte_carlo.py` + `test_gate_judgment.py`
+    - `53 passed, 4 warnings in 1.98s`
+- filtered broad:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` / `test_113_resilience.py` を除外、`test_yaml_has_microprice_side` deselect）
+  - `4153 passed, 1 deselected, 13 warnings in 36.25s`
+
+### 主要改善
+- `sensitivity_analysis()` は従来、`fill_rate × pnl_adj_bps` の全グリッドで毎回 full Monte Carlo を回していた。今回は「base monthly PnL + fill count × adjustment」の分解により、意味を変えずに重複計算を削減した。
+- `pnl_adj_bps` は各 fill に対する定数加算なので、同一 `fills_per_sim` に対するシフトで厳密に表現できる。このため、adj 別の再サンプリングは不要だった。
+- `test_gate_judgment.py` の Monte Carlo 統合ケースは本体最適化だけで上位から外れた。
+
+### 補足
+- focused 計測では以下の改善を確認:
+  - `test_positive_adjustment_increases_pnl`: `0.47s級 -> 0.03s`
+  - `test_monte_carlo_custom_lot`: `0.40s級 -> 0.05s〜0.06s`
+- filtered broad top 25 から `test_gate_judgment.py` の Monte Carlo 群は離脱した。
+- 現在の broad 上位は主に以下へ再集中している:
+  - `test_enricher_skip_gate.py` real-data setup
+  - `test_v460_core.py` config loader / parquet
+  - `test_fill_quality.py` unknown fill 系
+  - `test_build_features_pipeline.py` real-mode aggregate setup
+
+### 次アクション
+1. `feature_enricher` / `build_features_pipeline` の real-data setup を production 側 cache 再利用でさらに詰める
+2. `test_fill_quality.py` の unknown-fill / cancel-race 系で polling/time 依存をさらに切り離す
+3. `test_v460_core.py` の config loader / parquet パスで production helper 再利用の余地を確認する

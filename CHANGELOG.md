@@ -4339,3 +4339,22 @@ python scripts/unified_trainer.py \
   - `5 passed in 2.79s`
 - The filtered broad reruns stayed green at `4153 passed, 1 deselected, 13 warnings`, with wall time varying between `34.34s` and `45.97s` on rerun. The reliable signal is that `test_211_mcb_sad_escalation.py`, `test_255_getattr_bare_except_cleanup.py`, and `test_141_side_specific_models.py::test_history_written` dropped out of the top 25 after the cache/stub changes.
 - The remaining top costs are now concentrated in true real-data / Monte Carlo / persistence paths such as `test_enricher_skip_gate.py` real-data setup, `test_pnl_monte_carlo.py`, `test_gate_judgment.py`, and a few intentional parquet/integration cases.
+
+## Session 037-048 (2026-03-09)
+
+### Changed
+- Optimized [ztb/risk/pnl_monte_carlo.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/risk/pnl_monte_carlo.py) `sensitivity_analysis()` by factoring the simulation into a base monthly PnL draw plus `fills_per_sim × pnl_adj_bps` adjustment. The method now samples fill counts and base PnL once per fill-rate, then applies each PnL adjustment analytically instead of rerunning a full Monte Carlo path for every grid cell.
+- Added a shared internal helper in [ztb/risk/pnl_monte_carlo.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/risk/pnl_monte_carlo.py) to sample monthly PnL in bps together with per-simulation fill counts. This keeps the fast path exact for constant-PnL cases and reuses the existing vectorized sampling path for mixed distributions.
+
+### Verified
+- `python -m pytest tests/unit/v460/test_pnl_monte_carlo.py::TestSensitivityAnalysis tests/unit/v460/test_pnl_monte_carlo.py::TestSimulationRun::test_var_cvar_relationship -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_gate_judgment.py::TestGateJudgmentMonteCarlo -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_pnl_monte_carlo.py tests/unit/v460/test_gate_judgment.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py -k 'not test_yaml_has_microprice_side'`
+
+### Notes
+- Focused timings dropped materially:
+  - `test_pnl_monte_carlo.py::TestSensitivityAnalysis::test_positive_adjustment_increases_pnl`: `0.47s級 -> 0.03s`
+  - `test_gate_judgment.py::TestGateJudgmentMonteCarlo::test_monte_carlo_custom_lot`: `0.40s級 -> 0.05s〜0.06s`
+- The combined Monte Carlo bundle completed at `53 passed, 4 warnings in 1.98s`.
+- The latest filtered broad rerun completed at `4153 passed, 1 deselected, 13 warnings in 36.25s`, and the `test_gate_judgment.py` Monte Carlo cases dropped out of the top 25. The remaining broad top is now led by real-data setup and a few persistence-heavy tests.
