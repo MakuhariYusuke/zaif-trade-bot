@@ -23,6 +23,7 @@ try:
     HAS_REQUESTS = True
 except ImportError:
     HAS_REQUESTS = False
+    requests = None
 
 def load_alerts(
     jsonl_path: Path, since_seconds: int, min_level: str
@@ -38,32 +39,58 @@ def send_webhook(
     title: str,
     correlation_id: str,
     alerts: list[AlertRecord],
-    platform: str = "slack",
+    platform: str = "discord",
 ) -> bool:
-    """Send alerts to webhook. Supports Slack and Discord."""
+    """Send alerts to webhook. Supports Slack and Discord with embeds."""
     if not HAS_REQUESTS:
         print("requests not available, cannot send webhook", file=sys.stderr)
         return False
 
     if platform.lower() == "discord":
-        # Discord webhook format
-        content_lines = [f"**{title}**", f"Correlation ID: `{correlation_id}`", ""]
-        for alert in alerts[:10]:  # Limit to 10 alerts to avoid message length limits
-            level = alert.get("level", "INFO")
-            message = alert.get("message", "No message")
-            timestamp = alert.get("timestamp", "Unknown time")
-            content_lines.append(f"• **{level}**: {message} ({timestamp})")
+        # Discord webhook format with embeds
+        embed = {
+            "title": title,
+            "color": (
+                0xFF0000
+                if any(a.get("level") in ["ERROR", "CRITICAL"] for a in alerts)
+                else 0xFFFF00
+            ),  # Red for errors, yellow for warnings
+            "fields": [
+                {
+                    "name": "Correlation ID",
+                    "value": f"`{correlation_id}`",
+                    "inline": True,
+                },
+                {"name": "Alert Count", "value": str(len(alerts)), "inline": True},
+            ],
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "footer": {"text": "Zaif Trade Bot"},
+        }
 
-        if len(alerts) > 10:
-            content_lines.append(f"... and {len(alerts) - 10} more alerts")
+        # Add recent alerts as fields (limit to avoid embed size limits)
+        for i, alert in enumerate(alerts[:5]):
+            level = alert.get("level", "INFO")
+            message = alert.get("message", "No message")[:200]  # Truncate long messages
+            embed["fields"].append(  # type: ignore[union-attr]
+                {"name": f"{level} #{i + 1}", "value": message, "inline": False}
+            )
+
+        if len(alerts) > 5:
+            embed["fields"].append(  # type: ignore[union-attr]
+                {
+                    "name": "Additional Alerts",
+                    "value": f"... and {len(alerts) - 5} more",
+                    "inline": False,
+                }
+            )
 
         payload = {
-            "content": "\n".join(content_lines),
+            "embeds": [embed],
             "username": os.getenv("ZTB_DISCORD_USERNAME", "Zaif Trade Bot"),
             "avatar_url": os.getenv("ZTB_DISCORD_AVATAR_URL", ""),
         }
     else:
-        # Slack webhook format (default)
+        # Slack webhook format (fallback)
         payload = {"title": title, "correlation_id": correlation_id, "alerts": alerts}
 
     max_retries = 3
@@ -71,13 +98,16 @@ def send_webhook(
         try:
             response = requests.post(webhook_url, json=payload, timeout=10)
             if response.status_code == 429:
-                # Rate limited, retry with exponential backoff
-                retry_after = response.headers.get("Retry-After", "1")
-                try:
-                    wait_seconds = int(retry_after)
-                except ValueError:
-                    wait_seconds = 1
-                wait_seconds = min(wait_seconds, 60)  # Cap at 60 seconds
+                # Rate limited, respect Retry-After header
+                retry_after = response.headers.get("Retry-After")
+                if retry_after:
+                    try:
+                        wait_seconds = float(retry_after)
+                    except (ValueError, TypeError):
+                        wait_seconds = 1.0
+                else:
+                    wait_seconds = 1.0
+                wait_seconds = min(wait_seconds, 60.0)  # Cap at 60 seconds
                 print(
                     f"Rate limited, retrying in {wait_seconds} seconds...",
                     file=sys.stderr,
@@ -119,8 +149,12 @@ def main() -> int:
     parser.add_argument(
         "--platform",
         choices=["slack", "discord"],
-        default="slack",
+        default="discord",
         help="Webhook platform",
+    )
+    parser.add_argument(
+        "--discord-webhook",
+        help="Discord webhook URL (overrides ZTB_DISCORD_WEBHOOK env)",
     )
 
     args = parser.parse_args()
@@ -135,15 +169,22 @@ def main() -> int:
         print("No alerts to send")
         return 0
 
-    webhook_url = os.getenv("ZTB_ALERT_WEBHOOK")
+    # Use Discord webhook as primary
+    webhook_url = (
+        args.discord_webhook
+        or os.getenv("ZTB_DISCORD_WEBHOOK")
+        or os.getenv("ZTB_ALERT_WEBHOOK")
+    )
     title = os.getenv(
         "ZTB_ALERT_TITLE", f"Zaif Trade Bot Alert - {args.correlation_id}"
     )
     platform = args.platform
 
     # Auto-detect platform if not specified
-    if platform == "slack" and webhook_url and "discord.com" in webhook_url:
+    if webhook_url and "discord.com" in webhook_url:
         platform = "discord"
+    if webhook_url and "hooks.slack.com" in webhook_url:
+        platform = "slack"
 
     if webhook_url:
         success = send_webhook(
@@ -159,6 +200,7 @@ def main() -> int:
             "title": title,
             "correlation_id": args.correlation_id,
             "alerts": alerts,
+            "platform": platform,
         }
         print("DRY-RUN PAYLOAD:")
         print(json.dumps(payload, indent=2))
@@ -166,4 +208,4 @@ def main() -> int:
     return 0
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main() or 0)
