@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import json
 import tempfile
+from functools import lru_cache
 from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
 import pytest
+from scripts.v460.build_features import V460_FEATURES, build_proxy_features
 from scripts.v460.lib.config_loader import _deep_merge, load_config
 from scripts.v460.lib.data_loader import (
     check_nan_ratio,
@@ -24,6 +26,10 @@ from scripts.v460.lib.data_loader import (
 )
 from scripts.v460.lib.manifest import ManifestWriter, compute_config_hash
 from scripts.v460.run_gate_check import run_g0, run_g1_judgment
+from ztb.features.microstructure import (
+    MICROSTRUCTURE_FEATURES,
+    add_microstructure_features,
+)
 from ztb.metrics.gate_checks import (
     cliffs_delta,
     g1_judgment,
@@ -38,6 +44,27 @@ try:
 except ImportError:
     _HAS_XGBOOST = False
 import yaml
+
+
+@lru_cache(maxsize=1)
+def _cached_microstructure_sample_df() -> pd.DataFrame:
+    rng = np.random.RandomState(42)
+    n = 100
+    return pd.DataFrame({
+        "close": rng.uniform(100, 110, n),
+        "best_bid": rng.uniform(99, 105, n),
+        "best_ask": rng.uniform(105, 110, n),
+        "mid_price": rng.uniform(102, 108, n),
+        "spread": rng.uniform(0.001, 0.01, n),
+        "bid_vol_5": rng.uniform(1, 10, n),
+        "ask_vol_5": rng.uniform(1, 10, n),
+        "depth_imbalance": rng.uniform(-1, 1, n),
+        "buy_volume": rng.uniform(0, 5, n),
+        "sell_volume": rng.uniform(0, 5, n),
+        "trade_count": rng.randint(0, 50, n).astype(float),
+        "vwap": rng.uniform(100, 110, n),
+        "trade_flow_imbalance": rng.uniform(-1, 1, n),
+    })
 
 
 # =====================================================================
@@ -225,23 +252,25 @@ class TestConfigLoader:
 class TestDataLoader:
     """data_loader のテスト."""
 
-    def test_load_parquet(self, tmp_path: Path) -> None:
+    @pytest.fixture(scope="class")
+    def basic_parquet_path(self, tmp_path_factory: pytest.TempPathFactory) -> Path:
+        p = tmp_path_factory.mktemp("v460_core_data_loader") / "basic.parquet"
+        pd.DataFrame({"close": [100, 101, 102], "feature_a": [1, 2, 3]}).to_parquet(p)
+        return p
 
-        df = pd.DataFrame({"close": [100, 101, 102], "feature_a": [1, 2, 3]})
-        p = tmp_path / "test.parquet"
-        df.to_parquet(p)
+    @pytest.fixture(scope="class")
+    def selective_parquet_path(self, tmp_path_factory: pytest.TempPathFactory) -> Path:
+        p = tmp_path_factory.mktemp("v460_core_data_loader") / "selective.parquet"
+        pd.DataFrame({"close": [100], "a": [1], "b": [2], "c": [3]}).to_parquet(p)
+        return p
 
-        loaded = load_parquet(p)
+    def test_load_parquet(self, basic_parquet_path: Path) -> None:
+        loaded = load_parquet(basic_parquet_path)
         assert len(loaded) == 3
         assert "close" in loaded.columns
 
-    def test_load_parquet_select_cols(self, tmp_path: Path) -> None:
-
-        df = pd.DataFrame({"close": [100], "a": [1], "b": [2], "c": [3]})
-        p = tmp_path / "test.parquet"
-        df.to_parquet(p)
-
-        loaded = load_parquet(p, feature_cols=["a", "b"])
+    def test_load_parquet_select_cols(self, selective_parquet_path: Path) -> None:
+        loaded = load_parquet(selective_parquet_path, feature_cols=["a", "b"])
         assert "a" in loaded.columns
         assert "close" in loaded.columns  # always kept
 
@@ -359,28 +388,9 @@ class TestMicrostructure:
     """microstructure.py のテスト."""
 
     def _make_sample_df(self) -> pd.DataFrame:
-        # 003# #20: seed fixation
-        rng = np.random.RandomState(42)
-        n = 100
-        return pd.DataFrame({
-            "close": rng.uniform(100, 110, n),
-            "best_bid": rng.uniform(99, 105, n),
-            "best_ask": rng.uniform(105, 110, n),
-            "mid_price": rng.uniform(102, 108, n),
-            "spread": rng.uniform(0.001, 0.01, n),
-            "bid_vol_5": rng.uniform(1, 10, n),
-            "ask_vol_5": rng.uniform(1, 10, n),
-            "depth_imbalance": rng.uniform(-1, 1, n),
-            "buy_volume": rng.uniform(0, 5, n),
-            "sell_volume": rng.uniform(0, 5, n),
-            "trade_count": rng.randint(0, 50, n).astype(float),
-            "vwap": rng.uniform(100, 110, n),
-            "trade_flow_imbalance": rng.uniform(-1, 1, n),
-        })
+        return _cached_microstructure_sample_df().copy(deep=True)
 
     def test_feature_generation(self) -> None:
-        from ztb.features.microstructure import MICROSTRUCTURE_FEATURES, add_microstructure_features
-
         df = self._make_sample_df()
         result = add_microstructure_features(df, window=10)
 
@@ -392,8 +402,6 @@ class TestMicrostructure:
             assert result[feat].isna().sum() == 0, f"NaN in {feat}"
 
     def test_no_mutation(self) -> None:
-        from ztb.features.microstructure import add_microstructure_features
-
         df = self._make_sample_df()
         original_cols = set(df.columns)
         _ = add_microstructure_features(df)
@@ -492,6 +500,18 @@ class TestEvaluatorFactories:
 class TestDataLoaderEdgeCases:
     """003# #12/#13/#14: data_loader 異常系テスト."""
 
+    @pytest.fixture(scope="class")
+    def ordered_parquet_path(self, tmp_path_factory: pytest.TempPathFactory) -> Path:
+        p = tmp_path_factory.mktemp("v460_core_data_loader_edge") / "ordered.parquet"
+        pd.DataFrame({"close": [100], "z": [1], "a": [2], "m": [3]}).to_parquet(p)
+        return p
+
+    @pytest.fixture(scope="class")
+    def missing_col_parquet_path(self, tmp_path_factory: pytest.TempPathFactory) -> Path:
+        p = tmp_path_factory.mktemp("v460_core_data_loader_edge") / "missing.parquet"
+        pd.DataFrame({"close": [100], "a": [1]}).to_parquet(p)
+        return p
+
     def test_direction_nan_preserved(self) -> None:
         """003# #12: NaN in returns should produce NaN direction, not 0."""
 
@@ -502,25 +522,16 @@ class TestDataLoaderEdgeCases:
         # Last row (h=1) should be NaN (no future data)
         assert pd.isna(result["target_direction_h1"].iloc[-1])
 
-    def test_column_order_deterministic(self, tmp_path: Path) -> None:
+    def test_column_order_deterministic(self, ordered_parquet_path: Path) -> None:
         """003# #13: column order is stable across calls."""
 
-        df = pd.DataFrame({"close": [100], "z": [1], "a": [2], "m": [3]})
-        p = tmp_path / "test.parquet"
-        df.to_parquet(p)
-
-        cols1 = list(load_parquet(p, feature_cols=["z", "a", "m"]).columns)
-        cols2 = list(load_parquet(p, feature_cols=["m", "z", "a"]).columns)
+        cols1 = list(load_parquet(ordered_parquet_path, feature_cols=["z", "a", "m"]).columns)
+        cols2 = list(load_parquet(ordered_parquet_path, feature_cols=["m", "z", "a"]).columns)
         assert cols1 == cols2  # Same order regardless of input
 
-    def test_missing_column_raises(self, tmp_path: Path) -> None:
-
-        df = pd.DataFrame({"close": [100], "a": [1]})
-        p = tmp_path / "test.parquet"
-        df.to_parquet(p)
-
+    def test_missing_column_raises(self, missing_col_parquet_path: Path) -> None:
         with pytest.raises(KeyError, match="Missing columns"):
-            load_parquet(p, feature_cols=["nonexistent"])
+            load_parquet(missing_col_parquet_path, feature_cols=["nonexistent"])
 
 
 class TestGateCheckG0FeatureColumns:
@@ -553,8 +564,6 @@ class TestBuildFeatures:
 
     def test_proxy_features_generation(self) -> None:
         """OHLCV から 10 特徴量が生成されること."""
-        from scripts.v460.build_features import V460_FEATURES, build_proxy_features
-
         rng = np.random.RandomState(42)
         n = 200
         close = 5000000.0 + np.cumsum(rng.normal(0, 1000, n))
@@ -577,8 +586,6 @@ class TestBuildFeatures:
 
     def test_all_features_nontrivial(self) -> None:
         """生成された特徴量が定数でないこと（標準偏差 > 0）."""
-        from scripts.v460.build_features import V460_FEATURES, build_proxy_features
-
         rng = np.random.RandomState(123)
         n = 500
         close = 5000000.0 + np.cumsum(rng.normal(0, 1000, n))

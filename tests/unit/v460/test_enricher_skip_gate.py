@@ -114,11 +114,11 @@ def _select_real_enriched_training_df(
     for sample_rows in (initial_rows, fallback_rows, expanded_rows):
         enriched = enrich_fill_records(recent_fill_df.tail(sample_rows).copy())
         last_enriched = enriched
-        try:
-            X_train, _ = build_pnl_features(enriched)
-        except ValueError:
-            continue
-        if len(X_train) >= min_train_samples:
+        trainable_rows = int(np.count_nonzero(
+            enriched["filled"].astype(bool).to_numpy(copy=False)
+            & enriched["post_fill_30s_pnl"].notna().to_numpy(copy=False)
+        ))
+        if trainable_rows >= min_train_samples:
             return enriched
     return last_enriched
 

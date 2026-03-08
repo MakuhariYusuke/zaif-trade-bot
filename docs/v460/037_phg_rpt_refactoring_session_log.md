@@ -2340,3 +2340,54 @@
 1. `feature_enricher` / `build_real_features()` の raw 読込・aggregate 再利用を production 側でさらに詰める
 2. `test_v460_core.py` の config/parquet 上位を production helper 再利用で削る
 3. `fill_quality` の残上位は save-resilience / G1 判定周辺へ移っているため、その責務分離を確認する
+
+---
+
+## 2026-03-09 / Session 037-051
+
+### 実施
+- production
+  - `scripts/v460/lib/data_loader.py`
+    - `load_parquet(..., feature_cols=...)` の schema 読込に file-signature cache を追加
+    - 既存の `pyarrow` 経路は維持しつつ、同一 parquet への repeated `read_schema()` を削減
+  - `ztb/metrics/fill_quality.py`
+    - `save_fill_records()` を batch payload の一括 serialize + 一括 write へ変更
+    - 既存の tempfile + fsync + append の atomic path は維持
+  - `scripts/v460/lib/batch_persistence.py`
+    - `_save_batch_by_date()` に batch-local の UTC day cache を追加
+- test
+  - `tests/unit/v460/test_v460_core.py`
+    - `microstructure` / `build_features` の method 内 import を module scope へ集約
+    - microstructure 入力 DataFrame を cache 化
+    - `TestDataLoader` / `TestDataLoaderEdgeCases` の parquet を class-scope fixture へ集約
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - real-data integration の成立判定を `build_pnl_features()` 実行から trainable row count 判定へ変更
+  - `tests/unit/v460/test_ml_pipeline.py`
+    - real-data integration を `120 -> 220 -> 320` の guarded fallback へ変更
+    - `build_as_features()` の有効サンプル数不足による flaky を解消
+
+### 結果
+- focused:
+  - `test_v460_core.py` + `test_enricher_skip_gate.py` + `test_fill_quality.py`
+    - `331 passed, 5 warnings in 10.00s`
+  - `test_ml_pipeline.py::Test057Integration::test_load_real_data`
+    - `1 passed in 2.74s`
+- filtered broad:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` / `test_113_resilience.py` を除外、`test_306_proposals.py::...::test_yaml_has_microprice_side` を deselect）
+  - `4154 passed, 13 warnings in 36.63s`
+
+### 主要改善
+- `load_parquet()` は selective read のたびに schema を引き直していたため、小さい parquet でも call 単位の固定費が残っていた。file-signature cache を入れたことで、同一 parquet を複数回見る経路の固定費を削減した。
+- `save_fill_records()` は per-record write が残っていたため、`BatchPersistence` と `FillRecordIO` 系の保存テスト・本体保存の両方で無駄な Python write loop があった。今回の変更で durability はそのまま、文字列生成と write 回数だけ減らした。
+- `test_enricher_skip_gate.py` の real-data setup は、学習成立判定のために重い feature builder を先に回していた。必要なのは trainable row 数だけなので、判定を最小化して setup を軽くした。
+- `test_ml_pipeline.py` の実データ integration は固定 `120` 行前提が現在の実データ tail に対して脆かった。`test_enricher_skip_gate.py` と同じ fallback へ揃え、real-data 系の安定性を横展開した。
+
+### 補足
+- `test_v460_core.py::TestDataLoader::test_load_parquet` は focused rerun で `0.46s -> 0.05s` まで低下した。
+- broad の top は引き続き `test_enricher_skip_gate.py` real-data setup、`fill_quality` の一部 integration、`retrain_hot_reload` などの実経路寄りへ再集中している。
+- 今回の broad wall time は `36.63s` で、主な効果は flaky 解消と parquet/schema/save 系の固定費削減。
+
+### 次アクション
+1. `test_enricher_skip_gate.py` の real-data setup を raw snapshot/cache 再利用でもう一段詰める
+2. `test_fill_quality.py` の `Bug11` / save-resilience / `FillRecordIO` 残件を production helper で再確認する
+3. `retrain_hot_reload` / `config_hot_reload` の integration call を引き続き削る

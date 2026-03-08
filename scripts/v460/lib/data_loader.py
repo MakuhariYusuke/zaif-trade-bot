@@ -12,16 +12,33 @@ v460 Data loader — Parquet 読込 + train/eval 分割.
 from __future__ import annotations
 
 import logging
+from functools import lru_cache
 from pathlib import Path
 from typing import TypedDict
 
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 from ztb.utils.run_manifest import compute_file_hash as _compute_shared_file_hash
 
 logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+
+
+@lru_cache(maxsize=256)
+def _read_schema_names_cached(
+    path_str: str,
+    mtime_ns: int,
+    size: int,
+) -> tuple[str, ...]:
+    del mtime_ns, size
+    return tuple(pq.read_schema(path_str).names)
+
+
+def _read_schema_names(path: Path) -> tuple[str, ...]:
+    stat = path.stat()
+    return _read_schema_names_cached(str(path), stat.st_mtime_ns, stat.st_size)
 
 
 def load_parquet(
@@ -50,8 +67,7 @@ def load_parquet(
         keep = sorted(set(feature_cols + ["close"]))
 
         # Peek at available columns for timestamp detection
-        import pyarrow.parquet as pq
-        schema_cols = pq.read_schema(str(p)).names
+        schema_cols = _read_schema_names(p)
         for c in ["timestamp", "datetime", "dt"]:
             if c in schema_cols and c not in keep:
                 keep.append(c)

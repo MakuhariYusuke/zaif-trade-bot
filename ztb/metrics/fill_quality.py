@@ -1061,15 +1061,18 @@ def save_fill_records(records: Iterable[FillRecord], path: str | Path) -> None:
 
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
+    payload_parts: list[str] = []
+    count = 0
+    for record in records:
+        payload_parts.append(json.dumps(record.to_dict(), ensure_ascii=False))
+        payload_parts.append("\n")
+        count += 1
+    payload = "".join(payload_parts)
     # Atomic batch: write to temp, fsync, then append to target
     tmp_fd, tmp_path = tempfile.mkstemp(dir=str(p.parent), suffix=".tmp")
-    count = 0
     try:
         with os.fdopen(tmp_fd, "w", encoding="utf-8") as tmp_f:
-            for record in records:
-                tmp_f.write(json.dumps(record.to_dict(), ensure_ascii=False))
-                tmp_f.write("\n")
-                count += 1
+            tmp_f.write(payload)
             tmp_f.flush()
             os.fsync(tmp_f.fileno())
         with open(p, "a", encoding="utf-8") as f:

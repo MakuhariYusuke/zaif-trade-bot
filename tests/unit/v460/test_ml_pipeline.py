@@ -40,6 +40,35 @@ def _tail_jsonl_objects(path: Path, *, limit: int) -> list[dict[str, Any]]:
     return rows
 
 
+def _write_real_fill_sample(
+    *,
+    latest_file: Path,
+    tmp_path: Path,
+    min_rows: int = 30,
+    min_feature_rows: int = 15,
+    candidate_limits: tuple[int, ...] = (120, 220, 320),
+) -> pd.DataFrame:
+    """実データ統合テスト向けに成立条件を満たす最小限サンプルを選ぶ."""
+    last_df = pd.DataFrame()
+    for limit in candidate_limits:
+        sample_rows = _tail_jsonl_objects(latest_file, limit=limit)
+        if not sample_rows:
+            continue
+        sample_path = tmp_path / latest_file.name
+        sample_path.write_text(
+            "\n".join(json.dumps(row, ensure_ascii=False) for row in sample_rows) + "\n",
+            encoding="utf-8",
+        )
+        df = load_fill_records(tmp_path, max_files=1)
+        last_df = df
+        if len(df) < min_rows:
+            continue
+        X, _ = build_as_features(df)
+        if len(X) >= min_feature_rows:
+            return df
+    return last_df
+
+
 # ======================================================================
 # Fixtures
 # ======================================================================
@@ -350,13 +379,7 @@ class Test057Integration:
             pytest.skip("No real fill records")
         results_dir = Path("results/v460/fill_test")
         latest_file = max(results_dir.glob("fill_records_*.jsonl"))
-        sample_rows = _tail_jsonl_objects(latest_file, limit=120)
-        (tmp_path / latest_file.name).write_text(
-            "\n".join(json.dumps(row, ensure_ascii=False) for row in sample_rows) + "\n",
-            encoding="utf-8",
-        )
-
-        df = load_fill_records(tmp_path, max_files=1)
+        df = _write_real_fill_sample(latest_file=latest_file, tmp_path=tmp_path)
         assert len(df) >= 30
         X, y = build_as_features(df)
         assert len(X) >= 15

@@ -4392,3 +4392,25 @@ python scripts/unified_trainer.py \
 - Four of the five targeted calls dropped to `0.01s`; the remaining heavy case is `test_status_none_twice_becomes_cancelled_status_unknown` at `0.30s`, which is still dominated by the status-unknown decision path itself rather than actual sleep time.
 - The latest filtered broad rerun completed at `4154 passed, 13 warnings in 34.32s`.
 - The broad top is now led by `test_enricher_skip_gate.py` real-data setup and a handful of config/parquet/source-contract cases rather than the status/cancel-race group.
+
+## Session 037-051 (2026-03-09)
+
+### Changed
+- Reused the existing `pyarrow`-based schema path in [scripts/v460/lib/data_loader.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/data_loader.py), but added a file-signature cache around schema-name reads so repeated `load_parquet(..., feature_cols=...)` calls no longer pay a fresh `read_schema()` cost for the same file.
+- Optimized [ztb/metrics/fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py) `save_fill_records()` to serialize the batch once and write the payload in one shot to the temp file before the existing atomic append path. This keeps the same durability semantics while reducing per-record Python write overhead.
+- Optimized [scripts/v460/lib/batch_persistence.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/batch_persistence.py) `_save_batch_by_date()` with a per-batch UTC-day cache so repeated `format_utc_day()` / `datetime.fromtimestamp()` work is not redone for records that fall on the same day.
+- Refactored [tests/unit/v460/test_v460_core.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_v460_core.py) to hoist `microstructure` / `build_features` imports to module scope, cache the synthetic microstructure input DataFrame, and reuse class-scope parquet fixtures instead of rewriting the same tiny parquet files per test.
+- Stabilized [tests/unit/v460/test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py) real-data selection by replacing the heavy `build_pnl_features()` gate with the actual PnL-trainable row count check that `train_skip_gate_real` needs.
+- Stabilized [tests/unit/v460/test_ml_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ml_pipeline.py) real-data integration using the same guarded fallback pattern as `test_enricher_skip_gate.py`: start with `120` rows and widen to `220` / `320` only if `build_as_features()` still yields too few labeled samples.
+
+### Verified
+- `python -m py_compile tests/unit/v460/test_v460_core.py tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_ml_pipeline.py ztb/metrics/fill_quality.py scripts/v460/lib/batch_persistence.py scripts/v460/lib/data_loader.py`
+- `python -m pytest tests/unit/v460/test_v460_core.py tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_fill_quality.py -q --no-cov --tb=short --durations=20`
+- `python -m pytest tests/unit/v460/test_ml_pipeline.py::Test057Integration::test_load_real_data -q --no-cov --tb=short --durations=10`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py --deselect=tests/unit/v460/test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+
+### Notes
+- The focused `test_v460_core.py` / `test_enricher_skip_gate.py` / `test_fill_quality.py` bundle completed at `331 passed, 5 warnings in 10.00s`.
+- `tests/unit/v460/test_v460_core.py::TestDataLoader::test_load_parquet` dropped from `0.46s` on the cold rerun to `0.05s` after the schema-cache + shared-fixture changes.
+- `tests/unit/v460/test_ml_pipeline.py::Test057Integration::test_load_real_data` is no longer brittle against the current tail slice of production fill records and stayed green at `0.19s` in the filtered broad run.
+- The latest filtered broad rerun completed at `4154 passed, 13 warnings in 36.63s`. The remaining broad top is now dominated by real-data setup and a few integration-style runtime paths rather than parquet/schema overhead.

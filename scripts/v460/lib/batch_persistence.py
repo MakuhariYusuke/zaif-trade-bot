@@ -123,10 +123,15 @@ class BatchPersistence:
     def _save_batch_by_date(self, batch: list[FillRecord]) -> None:
         """024# R4: record.timestamp 由来の日付でファイル分割保存."""
         by_date: dict[str, list[FillRecord]] = {}
+        day_cache: dict[int, str] = {}
         for record in batch:
-            day_str = format_utc_day(record.timestamp) or datetime.fromtimestamp(
-                record.timestamp, tz=timezone.utc
-            ).strftime("%Y%m%d")
+            day_key = int(record.timestamp // 86_400)
+            day_str = day_cache.get(day_key)
+            if day_str is None:
+                day_str = format_utc_day(record.timestamp) or datetime.fromtimestamp(
+                    record.timestamp, tz=timezone.utc
+                ).strftime("%Y%m%d")
+                day_cache[day_key] = day_str
             by_date.setdefault(day_str, []).append(record)
 
         for day_str, day_records in by_date.items():
