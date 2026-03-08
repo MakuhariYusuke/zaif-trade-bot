@@ -154,7 +154,7 @@ class TestFillConfigBuyDynamicKill:
         cfg = FillTestConfig()
         assert cfg.buy_dynamic_kill_enabled is False
         assert cfg.buy_dynamic_kill_window == 50
-        assert cfg.buy_dynamic_kill_threshold_bps == -1.5
+        assert cfg.buy_dynamic_kill_threshold_bps == -0.8  # 341# revert
         assert cfg.buy_dynamic_kill_resume_window == 10
 
     def test_yaml_buy_dynamic_kill_parsing(self) -> None:
@@ -393,7 +393,7 @@ class TestYAMLConsistency:
         buy_kill = data.get("loss_control", {}).get("buy_dynamic_kill", {})
         assert buy_kill.get("enabled") is True
         assert buy_kill.get("window") == 50
-        assert buy_kill.get("threshold_bps") == -1.5  # 336# T-1: -0.8→-1.5
+        assert buy_kill.get("threshold_bps") == -0.8  # 341# revert: 340#符号修正後復元
         assert buy_kill.get("resume_window") == 10
 
     def test_trending_offset_asymmetry_yaml(self, v460_fill_test_yaml: dict[str, object]) -> None:

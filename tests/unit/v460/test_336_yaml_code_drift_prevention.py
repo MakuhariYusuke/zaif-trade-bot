@@ -122,7 +122,6 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "regime_trending_offset_boost_buy",
     "regime_trending_offset_boost_sell",
     "sell_dynamic_kill_regime_thresholds",
-    "sell_dynamic_kill_threshold_bps",
     "sell_hour_offset_boost",
     "sell_max_spread_jpy",
     "sell_offset_floor",

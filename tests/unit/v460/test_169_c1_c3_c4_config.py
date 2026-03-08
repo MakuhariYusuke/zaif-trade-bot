@@ -81,30 +81,30 @@ class TestC3TrendingUpSellThreshold:
     """C3: trending_up 閾値強化 + 安全弁調整.
 
     171# Guard Paradox 対策で閾値を緩和 (-0.1→-0.3), 安全弁を早期化 (20→10).
-    337# sell-side 対策でさらに緩和 (-0.3→-0.8, ranging -0.5→-1.5, trending_down -1.0→-1.5).
+    341# 340#符号修正に伴い337#変更を復元 (inv_relaxationが正常動作するため元閾値で運用).
     """
 
     def test_regime_threshold_trending_up(self, config_from_yaml: FillConfig) -> None:
-        """trending_up の sell_dynamic_kill 閾値が -0.8 (337# sell-side 対策)."""
+        """trending_up の sell_dynamic_kill 閾値が -0.3 (341# revert: 340#符号修正)."""
         thresholds = config_from_yaml.sell_dynamic_kill_regime_thresholds
         assert thresholds is not None
-        assert thresholds.get("trending_up") == pytest.approx(-0.8)
+        assert thresholds.get("trending_up") == pytest.approx(-0.3)
 
     def test_regime_threshold_trending_down_unchanged(
         self, config_from_yaml: FillConfig
     ) -> None:
-        """trending_down の閾値は -1.5 (337# sell-side 対策で緩和)."""
+        """trending_down の閾値は -1.0 (341# revert: 順張り寛容)."""
         thresholds = config_from_yaml.sell_dynamic_kill_regime_thresholds
         assert thresholds is not None
-        assert thresholds.get("trending_down") == pytest.approx(-1.5)
+        assert thresholds.get("trending_down") == pytest.approx(-1.0)
 
     def test_regime_threshold_ranging_unchanged(
         self, config_from_yaml: FillConfig
     ) -> None:
-        """ranging の閾値は -1.5 (337# sell-side 対策で緩和)."""
+        """ranging の閾値は -0.5 (341# revert: MM主戦場)."""
         thresholds = config_from_yaml.sell_dynamic_kill_regime_thresholds
         assert thresholds is not None
-        assert thresholds.get("ranging") == pytest.approx(-1.5)
+        assert thresholds.get("ranging") == pytest.approx(-0.5)
 
     def test_max_consecutive_trending_sell_skip(
         self, config_from_yaml: FillConfig

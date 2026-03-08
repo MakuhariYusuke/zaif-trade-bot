@@ -556,7 +556,7 @@ class FillTestConfig:
     # ---- 157# §19: buy 動的 kill (rolling PnL ベースの自動停止 — sell との対称性) ----
     buy_dynamic_kill_enabled: bool = False   # True で buy rolling PnL 監視有効
     buy_dynamic_kill_window: int = 50        # rolling ウィンドウ (fill 数)
-    buy_dynamic_kill_threshold_bps: float = -1.5  # 336# T-1 + drift fix: YAML=-1.5
+    buy_dynamic_kill_threshold_bps: float = -0.8  # 341# revert: 340#符号修正後の正常値
     buy_dynamic_kill_resume_window: int = 10      # 停止後、N サイクル後に再評価
     buy_dynamic_kill_regime_thresholds: dict[str, float] = field(default_factory=dict)
     buy_dynamic_kill_toxic_stale_mult: int = 10    # 242# probe interval 延長倍率
@@ -570,7 +570,7 @@ class FillTestConfig:
     # 例: imbalance=-0.5 (buy寄り=BTC不足), scale=0.5, max=0.3 → offset=+0.25bps → 緩和
     buy_dynamic_kill_inv_relaxation_enabled: bool = False  # True で在庫連動緩和を有効化
     buy_dynamic_kill_inv_relaxation_scale: float = 0.5     # |imbalance| → offset 変換スケール
-    buy_dynamic_kill_inv_relaxation_max_bps: float = 0.5   # 336# T-2 + drift fix: YAML=0.5
+    buy_dynamic_kill_inv_relaxation_max_bps: float = 0.3   # 341# revert: 340#符号修正後の正常値
     # 337# 在庫連動 sell_dynamic_kill 緩和 (Ho & Stoll 1981 対称性)
     sell_dynamic_kill_inv_relaxation_enabled: bool = False  # True で在庫連動緩和を有効化
     sell_dynamic_kill_inv_relaxation_scale: float = 0.4     # buy(0.5)より保守的

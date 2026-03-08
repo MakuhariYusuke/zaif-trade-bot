@@ -598,7 +598,7 @@ loss_control:
   sell_dynamic_kill:
     enabled: true
     window: 50                     # rolling ウィンドウ (sell fill 数)
-    threshold_bps: -1.0            # 337# T-1: -0.3→-1.0 (Ho-Stoll対称性: buy(-1.5)との比率1.5xに改善。rolling-50最悪=-0.888で-0.3は正常ノイズで発動)
+    threshold_bps: -0.3            # 341# revert: 340#符号修正でinv_relaxationが正常動作→-0.3復元 (effective -0.6 at max relaxation)
     resume_window: 10              # 156# D-5: 20→10 (40分→約20分へ半減)
     # 269# probe/force-release YAML 露出 (250# 思想: No Trade=正常)
     # live 本番: 0 (probe 無効) — kill 中の強制取引は情報優位者への無防備な流動性供給
@@ -608,35 +608,34 @@ loss_control:
     max_kill_duration_sec: 1800      # 30分で自動解除 (268#: 92分持続事例への対策)
     # 139# §9-#2: レジーム別閾値 (regime_name -> threshold_bps)
     regime_thresholds:
-      trending_up: -0.8            # 337# T-1: -0.3→-0.8 (sell不利だが-0.3は過敏。Glosten-Milgrom的非対称性1.9x)
-      trending_down: -1.5          # 337# T-1: -1.0→-1.5 (下降トレンドで sell≒順張り、最大限寛容)
-      ranging: -1.5                # 337# T-1: -0.5→-1.5 (MM主戦場。buy ranging=-2.0の75%)
+      trending_up: -0.3            # 341# revert: 340#符号修正に伴い復元 (sell逆行リスク→厳しめ据置)
+      trending_down: -1.0          # 341# revert: 下降トレンドで sell≒順張り (寛容)
+      ranging: -0.5                # 341# revert: MM主戦場。inv_relaxationで最大-0.8
   # 157# §19: buy 動的 kill (rolling PnL ベースの自動停止 — sell との対称性)
   buy_dynamic_kill:
     enabled: true
     window: 50                     # rolling ウィンドウ (buy fill 数)
-    threshold_bps: -1.5            # 336# T-1: -0.8→-1.5 (MM noise margin 確保。カスケード増幅の root cause 緩和)
+    threshold_bps: -0.8            # 341# revert: 340#符号修正でinv_relaxation正常化→-0.8復元 (effective -1.1 at max relaxation)
     resume_window: 10              # 停止後、N サイクル後に再評価
     max_stale_kill_cycles: 0         # 269# 0=probe無効
     max_force_release_probes: 0      # 269# 0=force-release無効
     max_kill_duration_sec: 1800      # 273# 30分で自動解除
     regime_thresholds:
-      ranging: -2.0                # 336# T-5: NEW — MM 主戦場で大幅緩和 (333# buy kill の大部分は ranging 発生)
-      trending_down: -1.0          # 336# T-1: -0.5→-1.0 (sell trending_down=-1.0 と同水準に)
-      trending_up: -1.5            # 上昇トレンド時は buy に寛容 (順張り) — 据え置き
-      high_vol: -1.0               # 336# T-1: -0.5→-1.0 (高ボラ時も在庫均衡に一定の buy 参加必要)
+      trending_down: -0.5          # 341# revert: 下降トレンド時buyは逆張り→厳しめ
+      trending_up: -1.5            # 上昇トレンド時は buy に寛容 (順張り) — 据置き
+      high_vol: -0.5               # 341# revert: 高ボラ時は慎重に
   # 286# 283# P1-4: 在庫連動 buy_dynamic_kill 緩和 (Ho & Stoll 1981)
   # BTC 不足 (inv_net_imbalance < 0) 時に kill 閾値を offset して在庫補充 buy を許容
   buy_dynamic_kill_inv_relaxation:
     enabled: true                  # 286# 有効化
     scale: 0.5                     # |imbalance| → offset 変換係数
-    max_bps: 0.5                   # 336# T-2: 0.3→0.5 (BTC枯渇時 effective threshold -1.5+0.5=-1.0 で sell base(-1.0)寄りに緩和)
+    max_bps: 0.3                   # 341# revert: 340#符号修正後 effective -0.8-0.3=-1.1 (properly relaxed)
   # 337# 在庫連動 sell_dynamic_kill 緩和 (Ho & Stoll 1981 対称性)
   # BTC 過剰 (inv_net_imbalance > 0) 時に kill 閾値を offset して在庫均衡 sell を許容
   sell_dynamic_kill_inv_relaxation:
     enabled: true                  # 337# 有効化
     scale: 0.4                     # buy(0.5)より保守的 (Glosten-Milgrom sell側AS高リスク)
-    max_bps: 0.3                   # buy(0.5)より保守的。effective threshold -1.0+0.3=-0.7
+    max_bps: 0.3                   # buy(0.5)より保守的。340#修正後: effective -0.3-0.3=-0.6 (properly relaxed)
   # 286# 283# P1-5: 強制買い KPI 分離 (balance_forced fill の品質個別追跡)
   forced_buy_kpi_tracking: true    # 286# 有効化 (デフォルト True)
   # 286# 284# P1: 強制買い遅延実行 (Glosten-Milgrom 1985)

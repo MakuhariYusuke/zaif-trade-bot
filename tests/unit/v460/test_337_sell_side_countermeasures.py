@@ -51,10 +51,10 @@ class TestSellInvRelaxationConfig:
         cfg = FillTestConfig()
         assert cfg.sell_dynamic_kill_inv_relaxation_scale < cfg.buy_dynamic_kill_inv_relaxation_scale
 
-    def test_sell_max_bps_lt_buy_max_bps(self) -> None:
-        """337# sell の max_bps は buy より保守的."""
+    def test_sell_max_bps_le_buy_max_bps(self) -> None:
+        """337# sell の max_bps は buy 以下 (341# revert で buy=0.3 に復帰、sell=0.3 と同値)."""
         cfg = FillTestConfig()
-        assert cfg.sell_dynamic_kill_inv_relaxation_max_bps < cfg.buy_dynamic_kill_inv_relaxation_max_bps
+        assert cfg.sell_dynamic_kill_inv_relaxation_max_bps <= cfg.buy_dynamic_kill_inv_relaxation_max_bps
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -152,7 +152,7 @@ class TestHoStollSymmetry:
         コードデフォルト値を検証。
         YAML 値は drift prevention test がカバー。
         buy=-1.5, sell=-0.3 (code defaults) → ratio=5.0x。
-        337# YAML では sell=-1.0 に緩和 (ratio=1.5x) だが、
+        341# revert: 340#符号修正でinv_relaxation正常化→YAML sell=-0.3復元。
         コードデフォルトのガードレールは 6x 以下とする。
         """
         buy_t = abs(cfg.buy_dynamic_kill_threshold_bps)

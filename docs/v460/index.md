@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-08 (336# drift fix + cleanup + tools promotion)
+> 最終更新: 2026-03-08 (341# 閾値復元 + 342# 設計・市場理論深掘り調査)
 
 ---
 
@@ -330,6 +330,12 @@
 | 336 | impl | [analysis/333_sha_isolated_analysis.py](../../analysis/333_sha_isolated_analysis.py) | 333# SHA分析スクリプト promotion (334# P1-5): CLI汎用化 + JSON出力 (`31883c0`) |
 | 336 | test | — | YAML↔Code drift prevention test: 125-field allowlist, God Object growth monitor (`0cbf7b9`) |
 | 336 | cleanup | — | temp/ 36ファイル整理: 11→archived/, 5→tools/, 残り削除; root txt 11件削除 (`f468711`) |
+| 337 | rpt | [337_ph2_rpt_sell_side_degradation_countermeasures.md](337_ph2_rpt_sell_side_degradation_countermeasures.md) | Sell-side 損益悪化分析 & 対策設計: buy 緩和後の sell 崩壊仮説, rolling-50 自己強化ループ, threshold/relaxation 提案 |
+| 338 | rev | [338_ph2_rev_337_sell_side_countermeasure_audit.md](338_ph2_rev_337_sell_side_countermeasure_audit.md) | 337# レビュー: inv_relaxation 符号逆転, metric 混在, sell relief 重複, filter stack 過小評価, threshold overfit を指摘 |
+| 339 | rev | [339_ph2_gemini_31_pro_review_337_338_critical_audit.md](339_ph2_gemini_31_pro_review_337_338_critical_audit.md) | Gemini 3.1 Pro: 338# 符号逆転バグ全面同意, 二重緩和ルート整理要請, forced 完全除外ロールバック提案 |
+| 340 | resp | [340_ph2_resp_338_339_sign_fix_and_finding_review.md](340_ph2_resp_338_339_sign_fix_and_finding_review.md) | CRITICAL: threshold_offset_bps 符号逆転修正 (286#以降), テスト assertion 逆転修正, 全7 Finding 妥当性判定 |
+| 341 | impl | [341_ph2_threshold_revert_and_horizontal_analysis.md](341_ph2_threshold_revert_and_horizontal_analysis.md) | 閾値復元: 336#/337# calibration は符号バグ前提→sell/buy とも pre-336# 値に revert, 横展開チェック |
+| 342 | rpt | [342_ph2_design_and_market_theory_deep_investigation.md](342_ph2_design_and_market_theory_deep_investigation.md) | 設計・市場理論面の深掘り調査: forced PnL 処理, inv_bypass 不連続, skip_gate/kill 二重抑制, EWMA 化, sell wait 非対称 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

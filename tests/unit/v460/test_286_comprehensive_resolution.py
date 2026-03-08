@@ -220,7 +220,7 @@ class TestBuyDynamicKillInvRelaxation:
         cfg = FillTestConfig()
         assert cfg.buy_dynamic_kill_inv_relaxation_enabled is False
         assert cfg.buy_dynamic_kill_inv_relaxation_scale == 0.5
-        assert cfg.buy_dynamic_kill_inv_relaxation_max_bps == 0.5  # 336# drift fix
+        assert cfg.buy_dynamic_kill_inv_relaxation_max_bps == 0.3  # 341# revert: 340#符号修正後の正常値
 
 
 # ======================================================================
