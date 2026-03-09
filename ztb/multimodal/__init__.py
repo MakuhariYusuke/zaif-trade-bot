@@ -25,10 +25,12 @@ from .config import MultimodalConfig
 # 主要コンポーネントのインポート
 from .core import *
 from .data import *
-from .evaluation import *
 from .features import *
 from .models import *
 from .training import *
+
+# NOTE: evaluation submodule does not exist yet — removed to fix ImportError
+# from .evaluation import *  # TODO: 365# add when evaluation module is created
 
 # デフォルト設定の読み込み
 def get_default_config() -> MultimodalConfig:

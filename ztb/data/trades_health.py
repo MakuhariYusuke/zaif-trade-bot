@@ -234,7 +234,7 @@ if __name__ == "__main__":
     parser.add_argument("--max-missing", type=int, default=0, help="Max missing days to tolerate")
     args = parser.parse_args()
 
-    raw = Path(args.raw_dir) if args.raw_dir else None
+    raw = resolve_raw_dir(Path(args.raw_dir)) if args.raw_dir else None
     result = check_trades_health(raw_dir=raw, lookback_days=args.days,
                                 max_missing_days=args.max_missing)
     print(result.message)
