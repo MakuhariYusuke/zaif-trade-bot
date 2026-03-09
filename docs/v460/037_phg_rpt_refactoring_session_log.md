@@ -3583,3 +3583,35 @@
 - `config_hot_reload` は reload path 実行 helper ができ、`_do_reload` 直叩きケースをこれ以上増やしても setup 重複が増えにくくなった。
 - `157` / `138` の YAML parse テストは payload を定数化し、意図の違う assertion だけを残す形へ整理した。
 - 統合テストの「結合」自体は今回は見送った。既存ケースは失敗時の切り分け粒度を持っており、helper 化のほうが利得が大きかった。
+
+## 2026-03-10 / Session 037-084
+
+### 実施
+- `tests/unit/v460/test_157_regime_features.py`
+  - `inspect.getsource(...)` と `__import__(...)` ベースの source inspection をやめ、`_fill_test_source.py` の cached helper に統一
+  - `MakerPriceCalculator._resolve_trending_boost` は split 後の実体 `maker_regime_boost.py::RegimeBoostMixin` を参照する形へ修正
+- `tests/unit/v460/test_215_dd_fix_alert_mode.py`
+  - `_alert_mode_path()` / `_write_alert_mode(...)` を追加
+  - `alert_mode.json` の repeated file write を helper 経由に寄せた
+- 横断確認
+  - `tests/unit/v460/test_261_protocol_type_safety.py` も同時に回し、split-source helper 化との整合性を確認
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_157_regime_features.py`
+  - `tests/unit/v460/test_215_dd_fix_alert_mode.py`
+  - `tests/unit/v460/test_261_protocol_type_safety.py`
+  - `81 passed in 4.65s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4218 passed, 13 warnings in 50.24s`
+
+### 主要改善
+- 今回は「runtime 直接短縮」ではなく、「source inspection の cached 化」と「file setup helper 化」という別系統の改善を適用した。
+- `test_157_regime_features.py` は split-file 構成に対して壊れにくい source 契約になり、今後の monolith 依存回帰を抑えやすくなった。
+- `test_215_dd_fix_alert_mode.py` は runtime には大差ないが、`alert_mode.json` を使う追加ケースを入れても setup 重複が増えにくい形になった。
+- この探索で、`test_261_protocol_type_safety.py` は現時点で追加の大きい無駄が少ないことも確認できた。

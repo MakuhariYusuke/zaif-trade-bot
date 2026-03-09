@@ -4847,3 +4847,9 @@ python scripts/unified_trainer.py \
 - Simplified `test_build_features_pipeline.py` real-mode fixtures to aggregate once with `output_path=None`, then reuse that aggregate for both the 30-minute schema checks and the microstructure pipeline checks.
 - Trimmed `test_enricher_skip_gate.py` real-data setup by lowering the guarded upper bound from 320 to 280 rows and removing an extra DataFrame copy before `enrich_fill_records(...)`.
 - Lowered `HeavyTradingEnv` / `RewardCalculator` reward-parameter dumps from unconditional WARNING logs to DEBUG-only logs, avoiding repeated `dataclasses.asdict(...)` work and noisy log capture during normal runs.
+- Explored another low-risk improvement path centered on source-inspection and file-setup reuse instead of raw runtime tuning:
+  - replaced direct `inspect.getsource(...)` / dynamic module import reads in [tests/unit/v460/test_157_regime_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_157_regime_features.py) with cached [_fill_test_source.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_fill_test_source.py) helpers targeting the current split files (`maker_regime_boost.py`, `skip_gate_evaluator.py`, `fill_test_cli.py`)
+  - added `_alert_mode_path()` / `_write_alert_mode(...)` helpers in [tests/unit/v460/test_215_dd_fix_alert_mode.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_215_dd_fix_alert_mode.py) to collapse repeated `alert_mode.json` setup while keeping each assertion separate
+- Verified the helper-oriented cleanup with:
+  - focused: `81 passed in 4.65s` for `test_157_regime_features.py`, `test_215_dd_fix_alert_mode.py`, `test_261_protocol_type_safety.py`
+  - filtered broad: `4218 passed, 13 warnings in 50.24s`
