@@ -67,11 +67,6 @@ def _cached_microstructure_sample_df() -> pd.DataFrame:
     })
 
 
-@lru_cache(maxsize=1)
-def _cached_microstructure_result_df() -> pd.DataFrame:
-    return add_microstructure_features(_cached_microstructure_sample_df().copy(deep=True), window=10)
-
-
 # =====================================================================
 # gate_checks
 # =====================================================================
@@ -395,11 +390,9 @@ class TestMicrostructure:
     def _make_sample_df(self) -> pd.DataFrame:
         return _cached_microstructure_sample_df().copy(deep=True)
 
-    def _make_result_df(self) -> pd.DataFrame:
-        return _cached_microstructure_result_df().copy(deep=False)
-
     def test_feature_generation(self) -> None:
-        result = self._make_result_df()
+        df = self._make_sample_df()
+        result = add_microstructure_features(df, window=10)
 
         for feat in MICROSTRUCTURE_FEATURES:
             assert feat in result.columns, f"Missing feature: {feat}"

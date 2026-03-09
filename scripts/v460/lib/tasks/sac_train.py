@@ -52,6 +52,12 @@ class SACTrainModelProtocol(Protocol):
     def save(self, path: str) -> None:
         ...
 
+    def save_replay_buffer(self, path: str) -> None:
+        ...
+
+    def load_replay_buffer(self, path: str) -> None:
+        ...
+
 
 def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
     """G2 SAC training task.
@@ -134,9 +140,31 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
         env, env_info = _create_training_env(train_df, cfg)
         logger.info(f"Training env: obs_dim={env_info['obs_dim']}, action_dim={env_info['action_dim']}")
 
-        # ── Model creation ──
-        model = _create_sac_model(env, sac_params, seed)
-        logger.info("SAC model created")
+        # ── Model creation (or warm-start from pretrained) ──
+        # 365# P1: Warm-start incremental training with replay buffer
+        pretrained_path_raw = training_cfg.get("pretrained_model_path")
+        pretrained_buffer_raw = training_cfg.get("pretrained_buffer_path")
+        pretrained_path = str(pretrained_path_raw) if pretrained_path_raw else ""
+        pretrained_buffer = str(pretrained_buffer_raw) if pretrained_buffer_raw else ""
+
+        if pretrained_path and Path(pretrained_path).exists():
+            from stable_baselines3 import SAC as SB3_SAC
+
+            model = SB3_SAC.load(pretrained_path, env=env)
+            logger.info(f"Warm-start: loaded pretrained model from {pretrained_path}")
+
+            if pretrained_buffer and Path(pretrained_buffer).exists():
+                model.load_replay_buffer(pretrained_buffer)
+                logger.info(f"Warm-start: loaded replay buffer from {pretrained_buffer}")
+
+            # Use incremental timesteps for warm-start (default: total_timesteps)
+            incremental_raw = training_cfg.get("incremental_timesteps")
+            if incremental_raw is not None:
+                total_timesteps = as_int(incremental_raw, total_timesteps)
+                logger.info(f"Warm-start: incremental training for {total_timesteps} steps")
+        else:
+            model = _create_sac_model(env, sac_params, seed)
+        logger.info("SAC model ready")
 
         # ── Training ──
         start_time = time.time()
@@ -157,6 +185,14 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
         model_path = model_dir / f"sac_v460_seed{seed}.zip"
         model.save(str(model_path))
         logger.info(f"Model saved: {model_path}")
+
+        # ── 365# P1: Save replay buffer for warm-start ──
+        buffer_path = model_dir / f"sac_v460_seed{seed}.buffer.pkl"
+        try:
+            model.save_replay_buffer(str(buffer_path))
+            logger.info(f"Replay buffer saved: {buffer_path}")
+        except Exception as e:
+            logger.warning(f"Replay buffer save failed (non-critical): {e}")
 
         # ── Save schema metadata alongside model ──
         _save_model_schema(model, env, env_info, cfg, seed)

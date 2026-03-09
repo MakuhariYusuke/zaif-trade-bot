@@ -203,16 +203,25 @@ class SACAlgorithm(BaseRLAlgorithm):
         # Handle activation function
         activation = policy_kwargs.get("activation_fn")
         if isinstance(activation, str):
-            activation_map: dict[str, Callable[[], nn.Module]] = {
-                "relu": nn.ReLU,
-                "leaky_relu": nn.LeakyReLU,
-                "elu": nn.ELU,
-                "selu": nn.SELU,
-                "gelu": nn.GELU,
-                "tanh": nn.Tanh,
-                "sigmoid": nn.Sigmoid,
-                "softplus": nn.Softplus,
-            }
+            # 365#: Lazy import to handle torch DLL load failures gracefully
+            try:
+                activation_map: dict[str, Callable[[], nn.Module]] = {
+                    "relu": nn.ReLU,
+                    "leaky_relu": nn.LeakyReLU,
+                    "elu": nn.ELU,
+                    "selu": nn.SELU,
+                    "gelu": nn.GELU,
+                    "tanh": nn.Tanh,
+                    "sigmoid": nn.Sigmoid,
+                    "softplus": nn.Softplus,
+                }
+            except AttributeError:
+                # torch.nn stub (DLL not loaded) — fall back to string mapping
+                logger.warning(
+                    "torch.nn activation classes unavailable; "
+                    "activation_fn left as string"
+                )
+                return policy_kwargs
             key = activation.strip().lower()
             if key not in activation_map:
                 raise ValueError(
@@ -223,7 +232,8 @@ class SACAlgorithm(BaseRLAlgorithm):
 
         return policy_kwargs
 
-    def get_default_config(self) -> ConfigMap:
+    @classmethod
+    def get_default_config(cls) -> ConfigMap:
         """
         Get the default SAC configuration.
 
@@ -237,7 +247,8 @@ class SACAlgorithm(BaseRLAlgorithm):
         """
         return DEFAULT_SAC_CONFIG.copy()
 
-    def validate_config(self, config: ConfigMap) -> bool:
+    @classmethod
+    def validate_config(cls, config: ConfigMap) -> bool:
         """
         Validate a SAC configuration dictionary.
 
@@ -995,9 +1006,16 @@ class SACAlgorithm(BaseRLAlgorithm):
             model: Model to save
             save_path: Path where the model will be saved
 
+        Raises:
+            OSError: If the save operation fails
+
         Example:
             >>> sac.save(model, "models/sac_v395a.zip")
         """
+        from pathlib import Path as _Path
+
+        save_dir = _Path(save_path).parent
+        save_dir.mkdir(parents=True, exist_ok=True)
         model.save(save_path)
         logger.info(f"SAC model saved to {save_path}")
 
@@ -1012,12 +1030,76 @@ class SACAlgorithm(BaseRLAlgorithm):
         Returns:
             The loaded model
 
+        Raises:
+            FileNotFoundError: If the model file does not exist
+
         Example:
             >>> model = SACAlgorithm.load("models/sac_v395a.zip", env=vec_env)
         """
+        from pathlib import Path as _Path
+
+        # SB3 adds .zip automatically, check both
+        p = _Path(load_path)
+        if not p.exists() and not p.with_suffix(".zip").exists():
+            raise FileNotFoundError(f"SAC model not found: {load_path}")
         model = SAC.load(load_path, env=env)
         logger.info(f"SAC model loaded from {load_path}")
         return model
+
+    @staticmethod
+    def save_replay_buffer(
+        model: BaseAlgorithm, buffer_path: str
+    ) -> None:
+        """Save replay buffer to disk for warm-start training.
+
+        365# P1: Replay buffer persistence enables incremental training
+        without catastrophic forgetting.
+
+        Args:
+            model: Trained SAC model with populated replay buffer
+            buffer_path: Path where the buffer will be saved (pickle format)
+
+        Raises:
+            RuntimeError: If the model has no replay buffer
+        """
+        from pathlib import Path as _Path
+
+        if not hasattr(model, "save_replay_buffer"):
+            raise RuntimeError(
+                "Model does not support replay buffer persistence. "
+                "Requires SB3 OffPolicyAlgorithm (SAC/TD3/DQN)."
+            )
+        buf_dir = _Path(buffer_path).parent
+        buf_dir.mkdir(parents=True, exist_ok=True)
+        model.save_replay_buffer(buffer_path)
+        logger.info(f"Replay buffer saved to {buffer_path}")
+
+    @staticmethod
+    def load_replay_buffer(
+        model: BaseAlgorithm, buffer_path: str
+    ) -> None:
+        """Load a previously saved replay buffer into the model.
+
+        365# P1: Enables warm-start by restoring past experiences.
+
+        Args:
+            model: SAC model to load the buffer into
+            buffer_path: Path to the saved buffer file
+
+        Raises:
+            FileNotFoundError: If the buffer file does not exist
+            RuntimeError: If the model does not support replay buffers
+        """
+        from pathlib import Path as _Path
+
+        if not _Path(buffer_path).exists():
+            raise FileNotFoundError(f"Replay buffer not found: {buffer_path}")
+        if not hasattr(model, "load_replay_buffer"):
+            raise RuntimeError(
+                "Model does not support replay buffer persistence."
+            )
+        model.load_replay_buffer(buffer_path)
+        logger.info(f"Replay buffer loaded from {buffer_path}")
 
     def _initialize_explainability_analyzer(self, config: ConfigMap) -> None:
         """Initialize the explainability analyzer using provided config.

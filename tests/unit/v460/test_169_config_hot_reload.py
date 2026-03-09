@@ -207,16 +207,6 @@ def _prepare_reload_context(
     return reloader, runner
 
 
-def _run_do_reload_with_content(
-    config: FillTestConfig,
-    yaml_path: Path,
-    content: str,
-) -> tuple[ConfigHotReloader, MagicMock, bool]:
-    """updated YAML を書いたうえで _do_reload まで実行する."""
-    reloader, runner = _prepare_reload_context(config, yaml_path, content)
-    return reloader, runner, reloader._do_reload(runner)
-
-
 def _write_yaml_with_updated_mtime(path: Path, content: str) -> None:
     """mtime 差分を sleep なしで保証して YAML を更新する."""
     path.write_text(content, encoding="utf-8")
@@ -309,11 +299,13 @@ class TestConfigFieldUpdate:
         yaml_content_updated: str,
     ) -> None:
         """_do_reload がホットリロード対象フィールドを更新する."""
-        reloader, runner, result = _run_do_reload_with_content(
+        reloader, runner = _prepare_reload_context(
             base_config,
             temp_yaml,
             yaml_content_updated,
         )
+
+        result = reloader._do_reload(runner)
         assert result is True
 
         # 更新された値を確認
@@ -340,11 +332,13 @@ symbol: btc_jpy
 results_dir: results/different_dir
 spread_offset_ratio: 0.05
 """
-        reloader, runner, _ = _run_do_reload_with_content(
+        reloader, runner = _prepare_reload_context(
             base_config,
             temp_yaml,
             updated_yaml,
         )
+
+        reloader._do_reload(runner)
 
         # results_dir は変更されない (非リロード対象)
         assert base_config.results_dir == original_results_dir
@@ -366,11 +360,13 @@ class TestComponentRebuild:
         yaml_content_updated: str,
     ) -> None:
         """sell_dynamic_kill 設定変更でマネージャが再構築される."""
-        reloader, runner, _ = _run_do_reload_with_content(
+        reloader, runner = _prepare_reload_context(
             base_config,
             temp_yaml,
             yaml_content_updated,
         )
+
+        reloader._do_reload(runner)
 
         # sell_dynamic_kill_enabled changed → rebuild callback called
         runner._rebuild_sell_kill_mgr.assert_called_once()
@@ -382,11 +378,13 @@ class TestComponentRebuild:
         yaml_content_updated: str,
     ) -> None:
         """daily_drawdown 設定変更でガードが再構築される."""
-        reloader, runner, _ = _run_do_reload_with_content(
+        reloader, runner = _prepare_reload_context(
             base_config,
             temp_yaml,
             yaml_content_updated,
         )
+
+        reloader._do_reload(runner)
 
         runner._rebuild_daily_drawdown_guard.assert_called_once()
 
@@ -397,11 +395,13 @@ class TestComponentRebuild:
         yaml_content_updated: str,
     ) -> None:
         """offset 変更で MakerPriceCalculator のオフセットが更新される."""
-        reloader, runner, _ = _run_do_reload_with_content(
+        reloader, runner = _prepare_reload_context(
             base_config,
             temp_yaml,
             yaml_content_updated,
         )
+
+        reloader._do_reload(runner)
 
         # MakerPriceCalculator の offset が更新されたことを確認
         assert runner._maker_price.base_offset_ratio == 0.08

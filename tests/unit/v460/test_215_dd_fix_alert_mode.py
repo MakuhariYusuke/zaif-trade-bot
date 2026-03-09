@@ -148,15 +148,6 @@ class TestAlertMode:
         import shutil
         shutil.rmtree(self._tmpdir, ignore_errors=True)
 
-    def _alert_mode_path(self) -> Path:
-        return Path(self._tmpdir) / "alert_mode.json"
-
-    def _write_alert_mode(self, payload: object | str) -> Path:
-        path = self._alert_mode_path()
-        content = payload if isinstance(payload, str) else json.dumps(payload)
-        path.write_text(content)
-        return path
-
     def test_no_file_returns_inactive(self) -> None:
         result = load_alert_mode(self._tmpdir)
         assert not result.is_active
@@ -166,18 +157,20 @@ class TestAlertMode:
         assert result.interval_mult == 1.0
 
     def test_halt_mode(self) -> None:
-        path = self._write_alert_mode({"halt": True, "reason": "test"})
+        path = Path(self._tmpdir) / "alert_mode.json"
+        path.write_text(json.dumps({"halt": True, "reason": "test"}))
         result = load_alert_mode(self._tmpdir)
         assert result.halt is True
         assert result.reason == "test"
         assert result.is_active
 
     def test_degraded_mode(self) -> None:
-        path = self._write_alert_mode({
+        path = Path(self._tmpdir) / "alert_mode.json"
+        path.write_text(json.dumps({
             "offset_mult": 2.0,
             "lot_mult": 0.5,
             "interval_mult": 3.0,
-        })
+        }))
         result = load_alert_mode(self._tmpdir)
         assert not result.halt
         assert result.offset_mult == 2.0
@@ -187,7 +180,8 @@ class TestAlertMode:
 
     def test_lot_mult_clamped(self) -> None:
         """lot_mult は 0.01~1.0 にクランプ."""
-        path = self._write_alert_mode({"lot_mult": 5.0})
+        path = Path(self._tmpdir) / "alert_mode.json"
+        path.write_text(json.dumps({"lot_mult": 5.0}))
         result = load_alert_mode(self._tmpdir)
         assert result.lot_mult == 1.0
         path.write_text(json.dumps({"lot_mult": 0.001}))
@@ -198,27 +192,32 @@ class TestAlertMode:
 
     def test_interval_mult_floor(self) -> None:
         """interval_mult は 1.0 以上."""
-        path = self._write_alert_mode({"interval_mult": 0.5})
+        path = Path(self._tmpdir) / "alert_mode.json"
+        path.write_text(json.dumps({"interval_mult": 0.5}))
         result = load_alert_mode(self._tmpdir)
         assert result.interval_mult == 1.0
 
     def test_invalid_json_returns_inactive(self) -> None:
-        path = self._write_alert_mode("{invalid json")
+        path = Path(self._tmpdir) / "alert_mode.json"
+        path.write_text("{invalid json")
         result = load_alert_mode(self._tmpdir)
         assert not result.is_active
 
     def test_empty_file_returns_inactive(self) -> None:
-        path = self._write_alert_mode("")
+        path = Path(self._tmpdir) / "alert_mode.json"
+        path.write_text("")
         result = load_alert_mode(self._tmpdir)
         assert not result.is_active
 
     def test_non_dict_json_returns_inactive(self) -> None:
-        path = self._write_alert_mode("[1, 2, 3]")
+        path = Path(self._tmpdir) / "alert_mode.json"
+        path.write_text("[1, 2, 3]")
         result = load_alert_mode(self._tmpdir)
         assert not result.is_active
 
     def test_file_removal_clears_override(self) -> None:
-        path = self._write_alert_mode({"halt": True})
+        path = Path(self._tmpdir) / "alert_mode.json"
+        path.write_text(json.dumps({"halt": True}))
         r1 = load_alert_mode(self._tmpdir)
         assert r1.halt is True
         os.remove(path)
@@ -369,27 +368,25 @@ class TestAlertModeInvalidValues217:
         alert_mode_module._last_logged_state = None
         self._tmpdir = tempfile.mkdtemp()
 
-    def _write_alert_mode(self, payload: object) -> Path:
-        path = Path(self._tmpdir) / "alert_mode.json"
-        path.write_text(json.dumps(payload))
-        return path
-
     def test_invalid_float_returns_inactive(self) -> None:
         """offset_mult に文字列 → fail-safe でデフォルト返却."""
-        path = self._write_alert_mode({"offset_mult": "abc"})
+        path = Path(self._tmpdir) / "alert_mode.json"
+        path.write_text(json.dumps({"offset_mult": "abc"}))
         result = load_alert_mode(self._tmpdir)
         assert not result.is_active
 
     def test_invalid_lot_mult_returns_inactive(self) -> None:
         """lot_mult に None → fail-safe でデフォルト返却."""
-        path = self._write_alert_mode({"lot_mult": None})
+        path = Path(self._tmpdir) / "alert_mode.json"
+        path.write_text(json.dumps({"lot_mult": None}))
         result = load_alert_mode(self._tmpdir)
         # None は float(None) → TypeError
         assert not result.is_active
 
     def test_valid_values_still_work(self) -> None:
         """正常な値は問題なくパースされる."""
-        path = self._write_alert_mode({"offset_mult": 2.0, "lot_mult": 0.5})
+        path = Path(self._tmpdir) / "alert_mode.json"
+        path.write_text(json.dumps({"offset_mult": 2.0, "lot_mult": 0.5}))
         result = load_alert_mode(self._tmpdir)
         assert result.is_active
         assert result.offset_mult == 2.0

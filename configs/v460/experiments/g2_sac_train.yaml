@@ -39,6 +39,15 @@ features:
     - realized_volatility
 
 # ---- 環境 (EnvironmentConfig フィールド準拠) ----
+# 365# §3.2: 以下の市場理論機構は明示的に無設定 = 無効:
+#   - curriculum_learning / curriculum_stage → "simple" fallback (報酬非定常化を回避)
+#   - hybrid_config → entry/exit override 無効 (SACのcredit assignment保護)
+#   - domain_randomization → 無効 (Q値variance削減)
+#   - advanced_market_regime → 無効 (報酬スケール安定化)
+#   - signal_guidance_enabled → False (reward hacking回避)
+#   - adaptive_threshold_mode → False (閾値非定常化回避)
+#   - enable_forced_diversity → False (行動分布制約なし)
+# ★ これらを有効化する場合は 365# §3.5 の注意事項を必ず参照
 environment:
   transaction_cost: 0.001          # 0.1% (Coincheck Maker)
   max_position_size: 0.01          # 0.01 BTC
@@ -66,6 +75,10 @@ training:
   total_timesteps: 50000           # G2 gate 基準
   checkpoint_interval: 5000        # 10 チェックポイント (convergence 計算用)
   val_ratio: 0.2                   # 363# A3: holdout 20% for OOS evaluation
+  # 365# P1: Warm-start (2回目以降に有効化)
+  # pretrained_model_path: "models/v460/sac_v460_seed42.zip"
+  # pretrained_buffer_path: "models/v460/sac_v460_seed42.buffer.pkl"
+  # incremental_timesteps: 15000   # warm-start 時の追加ステップ数
 
 # ---- 評価 ----
 evaluation:

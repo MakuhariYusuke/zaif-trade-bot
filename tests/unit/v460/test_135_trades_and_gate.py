@@ -30,26 +30,6 @@ from ztb.metrics.fill_quality import FillRecord
 from ztb.io.jsonl_gz import append_jsonl_gz, read_jsonl_gz
 
 
-def _read_single_jsonl_gz(directory: Path) -> list[dict]:
-    """単一 raw gzip を読み出す."""
-    files = list(directory.glob("*.jsonl.gz"))
-    assert len(files) == 1
-    return read_jsonl_gz(files[0])
-
-
-def _record_ob_snapshot(
-    recorder: OBRecorder,
-    *,
-    bid_price: float,
-    bid_size: float,
-    ask_price: float,
-    ask_size: float,
-    timestamp: float,
-) -> None:
-    """OBRecorder へ単一スナップショットを追加."""
-    recorder.record([[bid_price, bid_size]], [[ask_price, ask_size]], timestamp=timestamp)
-
-
 # =====================================================================
 # §1 ztb/io/jsonl_gz.py — 共通 JSONL.gz ユーティリティ
 # =====================================================================
@@ -320,43 +300,25 @@ class TestOBRecorderRefactored:
 
     def test_flush_creates_jsonl_gz(self, tmp_path: Path) -> None:
         rec = OBRecorder(raw_dir=tmp_path, enabled=True)
-        _record_ob_snapshot(
-            rec,
-            bid_price=14500000.0,
-            bid_size=0.1,
-            ask_price=14501000.0,
-            ask_size=0.1,
-            timestamp=1000.5,
-        )
+        rec.record([[14500000, 0.1]], [[14501000, 0.1]], timestamp=1000.5)
         n = rec.flush()
         assert n == 1
         ob_dir = tmp_path / "orderbook"
-        data = _read_single_jsonl_gz(ob_dir)[0]
+        files = list(ob_dir.glob("*.jsonl.gz"))
+        assert len(files) == 1
+        with gzip.open(files[0], "rt", encoding="utf-8") as f:
+            data = json.loads(f.readline())
         assert data["ts"] == 1000.5
         assert data["exchange"] == "coincheck"
 
     def test_append_to_existing(self, tmp_path: Path) -> None:
         rec = OBRecorder(raw_dir=tmp_path, enabled=True)
-        _record_ob_snapshot(
-            rec,
-            bid_price=100.0,
-            bid_size=1.0,
-            ask_price=101.0,
-            ask_size=1.0,
-            timestamp=1000.0,
-        )
+        rec.record([[100, 1.0]], [[101, 1.0]], timestamp=1000.0)
         rec.flush()
-        _record_ob_snapshot(
-            rec,
-            bid_price=100.0,
-            bid_size=2.0,
-            ask_price=101.0,
-            ask_size=2.0,
-            timestamp=1001.0,
-        )
+        rec.record([[100, 2.0]], [[101, 2.0]], timestamp=1001.0)
         rec.flush()
         ob_dir = tmp_path / "orderbook"
-        records = _read_single_jsonl_gz(ob_dir)
+        records = read_jsonl_gz(list(ob_dir.glob("*.jsonl.gz"))[0])
         assert len(records) == 2
 
 

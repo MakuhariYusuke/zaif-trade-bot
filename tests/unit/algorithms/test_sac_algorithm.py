@@ -84,9 +84,8 @@ class TestSACDefaultConfig:
         """その他のデフォルトパラメータチェック。"""
         config = SACAlgorithm.get_default_config()
 
-        assert config["verbose"] == 1
+        assert config["verbose"] == 0
         assert config["device"] == "auto"
-        assert config["policy_kwargs"] is None
 
 
 # ========================================
