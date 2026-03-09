@@ -4811,6 +4811,9 @@ python scripts/unified_trainer.py \
 - `TestHeavyTradingEnvIntegration` setup moved from repeated multi-second parquet reads to a single cached load, dropping the dominant setup cost from the prior ~5-6 second band to ~1.4 seconds once per class in the broad profile.
 ## 2026-03-10
 
+- Reused cached `HeavyTradingEnv` fixtures inside [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py) so instantiation/reset/step validation cases share the same environment setup instead of rebuilding it per test.
+- Added a cached real-data enriched fixture path in [tests/unit/v460/test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py) and removed the remaining deep copy from the `real_enriched_df` class fixture.
+- Added [scripts/v460/run_v460_unit_tests.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/run_v460_unit_tests.py) as a dedicated `tests/unit/v460/` runner that forces `--no-cov --tb=short`, avoiding the repository-wide coverage gate for this subset.
 - Relaxed `daily_drawdown.per_side_*` defaults and production YAML in `configs/v460/fill_test.yaml` / `scripts/v460/lib/fill_config.py`:
   - `per_side_hard_limit_bps: -30.0 -> -50.0`
   - `per_side_halt_cycles: 15 -> 10` in YAML and `0 -> 10` in code defaults

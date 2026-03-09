@@ -3377,3 +3377,31 @@
 - `per_side_reanchor_budget_bps` も hard limit に合わせて `-25bps` へ比例調整した。
 - `TUNE-4` は実際に BDK bottleneck が出ていないため、閾値は動かさず YAML コメントだけで判断根拠を残した。
 - drift prevention allowlist を同時に掃除し、設定変更で stale allowlist を増やさない状態へ戻した。
+
+## 2026-03-10 / Session 037-078
+
+### 実施
+- `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `HeavyTradingEnv` を共有する `shared_env` fixture を追加
+  - `_create_training_env(...)` 検証を `training_env_bundle` fixture へ寄せた
+  - 単純な instantiation/reset/step 系は重い env 構築を毎回やり直さない形へ整理
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - `_cached_real_enriched_training_df()` を追加
+  - `real_enriched_df` class fixture を cached DataFrame + `copy(deep=False)` に変更
+- `scripts/v460/run_v460_unit_tests.py`
+  - `tests/unit/v460/` を `--no-cov --tb=short -q` で実行する専用ランナーを追加
+  - `pytest.ini` の repository-wide coverage gate を `v460` subset 実行から切り離した
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py::Test058Integration`
+  - `44 passed in 11.37s`
+- smoke:
+  - `scripts/v460/run_v460_unit_tests.py --help`
+  - 正常に pytest help を透過表示
+
+### 主要改善
+- `HeavyTradingEnv` integration の基本ケースが shared fixture に乗り、毎回の env 構築固定費を減らした。
+- `real_enriched_df` は class-scope での再利用時に deep copy を避け、real-data fixture の最後の無駄コピーを削った。
+- `v460` 専用ランナーを追加したことで、subset 実行時に毎回 `--no-cov` を明示しなくても coverage gate を回避できる入口ができた。

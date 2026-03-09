@@ -583,87 +583,92 @@ class TestHeavyTradingEnvIntegration:
             config=dataclasses.replace(env_config),
         )
 
-    def test_env_instantiation(
-        self, real_df: "pd.DataFrame", env_config: "EnvironmentConfig"
-    ) -> None:
-        """HeavyTradingEnv が実データ + feature_names で例外なく生成できる."""
+    @pytest.fixture(scope="class")
+    def shared_env(
+        self,
+        real_df: "pd.DataFrame",
+        env_config: "EnvironmentConfig",
+    ) -> "HeavyTradingEnv":
         env = self._create_env(real_df, env_config)
         try:
-            assert env is not None
-            assert hasattr(env, "observation_space")
-            assert hasattr(env, "action_space")
+            yield env
         finally:
             env.close()
 
-    def test_obs_dim_matches_feature_count(
-        self, real_df: "pd.DataFrame", env_config: "EnvironmentConfig"
-    ) -> None:
-        """observation_space の次元が注入した feature 数 (12) と一致."""
-        env = self._create_env(real_df, env_config)
-        try:
-            obs_dim = env.observation_space.shape[0]
-            assert obs_dim == len(self.SELECTED_FEATURES), (
-                f"obs_dim={obs_dim} != expected={len(self.SELECTED_FEATURES)}"
-            )
-        finally:
-            env.close()
-
-    def test_feature_names_synced(
-        self, real_df: "pd.DataFrame", env_config: "EnvironmentConfig"
-    ) -> None:
-        """env.feature_names が注入した特徴量リストと一致."""
-        env = self._create_env(real_df, env_config)
-        try:
-            assert env.feature_names == self.SELECTED_FEATURES
-        finally:
-            env.close()
-
-    def test_reset_returns_valid_obs(
-        self, real_df: "pd.DataFrame", env_config: "EnvironmentConfig"
-    ) -> None:
-        """reset() が正しい shape の observation を返す."""
-        env = self._create_env(real_df, env_config)
-        try:
-            obs, info = env.reset()
-            assert obs.shape == (len(self.SELECTED_FEATURES),)
-            assert not np.any(np.isnan(obs)), "Observation contains NaN"
-        finally:
-            env.close()
-
-    def test_step_returns_valid_tuple(
-        self, real_df: "pd.DataFrame", env_config: "EnvironmentConfig"
-    ) -> None:
-        """step() が (obs, reward, terminated, truncated, info) を正しく返す."""
-        env = self._create_env(real_df, env_config)
-        try:
-            obs, _ = env.reset()
-            # 連続行動空間: [-1, 1] の中間値 (HOLD に近い)
-            action = np.array([0.0], dtype=np.float32)
-            result = env.step(action)
-            assert len(result) == 5, f"step() returned {len(result)} elements, expected 5"
-            obs2, reward, terminated, truncated, info = result
-            assert obs2.shape == (len(self.SELECTED_FEATURES),)
-            assert isinstance(reward, (int, float))
-            assert isinstance(terminated, bool)
-            assert isinstance(truncated, bool)
-        finally:
-            env.close()
-
-    def test_create_training_env_pipeline(self, real_df: "pd.DataFrame") -> None:
-        """_create_training_env が YAML 相当の cfg で正常に環境を構築."""
-        yaml_path = _G2_SAC_YAML_PATH
-        if not yaml_path.exists():
-            pytest.skip(f"YAML not found: {yaml_path}")
-
+    @pytest.fixture(scope="class")
+    def training_env_bundle(
+        self,
+        real_df: "pd.DataFrame",
+    ) -> tuple["HeavyTradingEnv", dict[str, int | str | bool]]:
         cfg = dict(_load_g2_sac_yaml())
         env, env_info = _create_training_env(real_df, cfg)
         try:
-            assert env_info["obs_dim"] == len(self.SELECTED_FEATURES)
-            assert env_info["feature_columns_injected"] is True
-            assert env_info["feature_columns_count"] == len(self.SELECTED_FEATURES)
-            assert env_info["env_type"] == "HeavyTradingEnv"
+            yield env, env_info
         finally:
             env.close()
+
+    def test_env_instantiation(
+        self,
+        shared_env: "HeavyTradingEnv",
+    ) -> None:
+        """HeavyTradingEnv が実データ + feature_names で例外なく生成できる."""
+        assert shared_env is not None
+        assert hasattr(shared_env, "observation_space")
+        assert hasattr(shared_env, "action_space")
+
+    def test_obs_dim_matches_feature_count(
+        self,
+        shared_env: "HeavyTradingEnv",
+    ) -> None:
+        """observation_space の次元が注入した feature 数 (12) と一致."""
+        obs_dim = shared_env.observation_space.shape[0]
+        assert obs_dim == len(self.SELECTED_FEATURES), (
+            f"obs_dim={obs_dim} != expected={len(self.SELECTED_FEATURES)}"
+        )
+
+    def test_feature_names_synced(
+        self,
+        shared_env: "HeavyTradingEnv",
+    ) -> None:
+        """env.feature_names が注入した特徴量リストと一致."""
+        assert shared_env.feature_names == self.SELECTED_FEATURES
+
+    def test_reset_returns_valid_obs(
+        self,
+        shared_env: "HeavyTradingEnv",
+    ) -> None:
+        """reset() が正しい shape の observation を返す."""
+        obs, info = shared_env.reset()
+        assert obs.shape == (len(self.SELECTED_FEATURES),)
+        assert not np.any(np.isnan(obs)), "Observation contains NaN"
+
+    def test_step_returns_valid_tuple(
+        self,
+        shared_env: "HeavyTradingEnv",
+    ) -> None:
+        """step() が (obs, reward, terminated, truncated, info) を正しく返す."""
+        obs, _ = shared_env.reset()
+        # 連続行動空間: [-1, 1] の中間値 (HOLD に近い)
+        action = np.array([0.0], dtype=np.float32)
+        result = shared_env.step(action)
+        assert len(result) == 5, f"step() returned {len(result)} elements, expected 5"
+        obs2, reward, terminated, truncated, info = result
+        assert obs2.shape == (len(self.SELECTED_FEATURES),)
+        assert isinstance(reward, (int, float))
+        assert isinstance(terminated, bool)
+        assert isinstance(truncated, bool)
+
+    def test_create_training_env_pipeline(
+        self,
+        training_env_bundle: tuple["HeavyTradingEnv", dict[str, int | str | bool]],
+    ) -> None:
+        """_create_training_env が YAML 相当の cfg で正常に環境を構築."""
+        env, env_info = training_env_bundle
+        assert env is not None
+        assert env_info["obs_dim"] == len(self.SELECTED_FEATURES)
+        assert env_info["feature_columns_injected"] is True
+        assert env_info["feature_columns_count"] == len(self.SELECTED_FEATURES)
+        assert env_info["env_type"] == "HeavyTradingEnv"
 
 
 # ======================================================================

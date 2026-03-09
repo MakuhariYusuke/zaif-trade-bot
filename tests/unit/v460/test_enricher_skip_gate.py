@@ -122,6 +122,11 @@ def _select_real_enriched_training_df(
     return enrich_fill_records(recent_fill_df.tail(selected_rows))
 
 
+@lru_cache(maxsize=1)
+def _cached_real_enriched_training_df() -> pd.DataFrame:
+    return _select_real_enriched_training_df()
+
+
 def _make_synthetic_fill_df() -> pd.DataFrame:
     """合成 fill records: 100件のテストデータ."""
     rng = np.random.RandomState(42)
@@ -1014,10 +1019,10 @@ class Test058Integration:
     ) -> pd.DataFrame:
         if not real_data_available:
             pytest.skip("No real data")
-        enriched = _select_real_enriched_training_df()
+        enriched = _cached_real_enriched_training_df()
         if enriched.empty:
             pytest.skip("No fill records")
-        return enriched.copy()
+        return enriched.copy(deep=False)
 
     def test_enrichment_with_real_data(
         self,
