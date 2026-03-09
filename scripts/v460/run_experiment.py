@@ -23,6 +23,7 @@ import argparse
 import logging
 import sys
 from pathlib import Path
+from typing import cast
 
 # Project root
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -96,7 +97,12 @@ def run(config_path: str, seed_override: int | None = None) -> dict:
         if task_fn is None:
             raise ValueError(f"Unknown task: {task_name}")
 
-        results = task_fn(cfg)
+        # 356a# B4: G2 multi-seed execution
+        seeds = cfg.get("seeds", [])
+        if "G2" in gate and len(seeds) > 1:
+            results = _run_multi_seed(cfg, seeds, task_fn)
+        else:
+            results = task_fn(cfg)
 
         # Determine gate result using thresholds from config
         # 007# F5: Must run BEFORE save so g1_judgment_cache is included in JSON
@@ -187,7 +193,170 @@ def _evaluate_gate(gate: str, results: dict, cfg: dict) -> str:
 
             final_pass = judgment["g1_pass"] and extra_any_pass
             return "PASS" if final_pass else "FAIL"
+
+    # 356a# B4: G2 gate evaluation
+    if "G2" in gate:
+        seed_results = results.get("seed_results", [])
+        if seed_results:
+            from scripts.v460.run_gate_check import run_g2_judgment
+
+            # run_g2_judgment expects a file path — use dict-based evaluation
+            try:
+                gate_cfg = load_gate_thresholds()
+                thresholds = gate_cfg.get("g2_train", {})
+            except Exception as e:
+                logger.warning("gate_thresholds.yaml not found for G2: %s", e)
+                thresholds = {}
+
+            judgment = _evaluate_g2_from_results(results, thresholds)
+            results["g2_judgment_cache"] = judgment
+            return "PASS" if judgment["gate_result"] == "PASS" else "FAIL"
+
     return "PENDING"
+
+
+# ======================================================================
+# G2 Multi-seed Helpers (356a# B4)
+# ======================================================================
+
+
+def _run_multi_seed(
+    cfg: dict,
+    seeds: list[int],
+    task_fn: object,
+) -> dict:
+    """Run SAC training across multiple seeds and aggregate for G2 gate.
+
+    356a# B4: 4-seed 訓練実行 + 結果集約.
+    """
+    from statistics import stdev
+    from typing import Callable
+
+    task_callable = cast(Callable[[dict], dict], task_fn)
+    seed_results: list[dict[str, object]] = []
+    all_checkpoint_metrics: list[list[dict[str, int]]] = []
+    raw_results: dict[int, dict[str, object]] = {}
+
+    for i, seed in enumerate(seeds):
+        logger.info(f"=== Multi-seed [{i + 1}/{len(seeds)}] seed={seed} ===")
+        seed_cfg = dict(cfg)
+        seed_cfg["seed"] = seed
+
+        result = task_callable(seed_cfg)
+
+        # Extract eval metrics
+        eval_metrics = result.get("eval_metrics", {})
+        if isinstance(eval_metrics, dict):
+            gross_roi = float(eval_metrics.get("gross_roi", eval_metrics.get("mean_reward", 0.0)))
+            ic_mean = float(eval_metrics.get("ic_mean", 0.0))
+        else:
+            gross_roi = 0.0
+            ic_mean = 0.0
+
+        seed_results.append({
+            "seed": seed,
+            "gross_roi": gross_roi,
+            "ic_mean": ic_mean,
+        })
+
+        checkpoint_metrics = result.get("checkpoint_metrics", [])
+        all_checkpoint_metrics.append(
+            checkpoint_metrics if isinstance(checkpoint_metrics, list) else []
+        )
+        raw_results[seed] = result
+
+    # Convergence 計算: 30K step 以降の ROI 変動
+    convergence = _compute_convergence(all_checkpoint_metrics, window_start=30000)
+
+    aggregated: dict[str, object] = {
+        "seed_results": seed_results,
+        "convergence": convergence,
+        "raw_results": raw_results,
+        "seeds": seeds,
+        "algorithm": "sac",
+    }
+
+    return aggregated
+
+
+def _compute_convergence(
+    all_checkpoint_metrics: list[list[dict[str, int]]],
+    window_start: int = 30000,
+) -> dict[str, float]:
+    """30K step 以降の ROI 変動を算出.
+
+    356a# §5.2: convergence 計算.
+    """
+    roi_values: list[float] = []
+    for cp_list in all_checkpoint_metrics:
+        for cp in cp_list:
+            timestep = cp.get("timesteps", 0)
+            if isinstance(timestep, (int, float)) and timestep >= window_start:
+                roi = cp.get("roi", cp.get("mean_reward", 0.0))
+                if isinstance(roi, (int, float)):
+                    roi_values.append(float(roi))
+
+    if len(roi_values) < 2:
+        return {"roi_variance_pct_after_30k": 0.0}
+
+    roi_range = max(roi_values) - min(roi_values)
+    return {"roi_variance_pct_after_30k": round(roi_range * 100, 4)}
+
+
+def _evaluate_g2_from_results(
+    results: dict,
+    thresholds: dict,
+) -> dict[str, object]:
+    """G2 gate evaluation from in-memory results (dict-based).
+
+    356a# B4: run_g2_judgment のロジックを dict 入力で再現.
+    """
+    from statistics import stdev
+
+    seed_results = results.get("seed_results", [])
+    if not seed_results:
+        return {"gate": "G2-train", "gate_result": "FAIL", "checks": {}, "reason": "no seed_results"}
+
+    checks: dict[str, dict[str, object]] = {}
+
+    # E1: gross > 0 の seed 比率 >= 75%
+    min_ratio = float(thresholds.get("min_positive_seed_ratio", 0.75))
+    positive_seeds = sum(1 for s in seed_results if float(s.get("gross_roi", 0)) > 0)
+    ratio = positive_seeds / len(seed_results)
+    checks["positive_seed_ratio"] = {
+        "value": ratio, "threshold": min_ratio, "pass": ratio >= min_ratio,
+    }
+
+    # E2: IC の seed 間標準偏差 <= 0.03
+    max_ic_std = float(thresholds.get("max_ic_seed_std", 0.03))
+    ic_values = [float(s.get("ic_mean", 0)) for s in seed_results]
+    ic_std = stdev(ic_values) if len(ic_values) >= 2 else 0.0
+    checks["ic_seed_std"] = {
+        "value": ic_std, "threshold": max_ic_std, "pass": ic_std <= max_ic_std,
+    }
+
+    # E3: 30K以降の ROI 変動 <= 5%
+    max_roi_var = float(thresholds.get("max_roi_variance_pct", 5.0))
+    convergence = results.get("convergence", {})
+    roi_var = float(convergence.get("roi_variance_pct_after_30k", 0.0)) if isinstance(convergence, dict) else 0.0
+    checks["convergence"] = {
+        "value": roi_var, "threshold": max_roi_var, "pass": roi_var <= max_roi_var,
+    }
+
+    # E4: worst-seed ROI > -2%
+    worst_min = float(thresholds.get("worst_seed_min_roi", -0.02))
+    roi_list = [float(s.get("gross_roi", 0)) for s in seed_results]
+    worst_roi = min(roi_list) if roi_list else 0.0
+    checks["worst_seed_roi"] = {
+        "value": worst_roi, "threshold": worst_min, "pass": worst_roi > worst_min,
+    }
+
+    all_pass = all(c["pass"] for c in checks.values())
+    return {
+        "gate": "G2-train",
+        "gate_result": "PASS" if all_pass else "FAIL",
+        "checks": checks,
+    }
 
 
 # ======================================================================

@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-09 (356# ph3 SAC 訓練計画 — vXXX 資産活用)
+> 最終更新: 2026-03-09 (357# ph3 G2 SAC ブロッカー実装 B1/B3/B4)
 
 ---
 
@@ -243,7 +243,8 @@
 | 250 | impl | [250_ph2_impl_pl_split_freeze_side_probe.md](250_ph2_impl_pl_split_freeze_side_probe.md) | P/L 3分離・freeze side紐付け・quiescence deadlock防御・probe廃止基盤 |
 | 251 | rev | [251_ph2_pre_impl_review_report.md](251_ph2_pre_impl_review_report.md) | Pre-Implementation Review: 247#/248# 残 P1/P2 項目の実装準備レビュー |
 | 252 | impl | [252_ph2_impl_sell_asymmetric_phantom_ternary.md](252_ph2_impl_sell_asymmetric_phantom_ternary.md) | Sell Asymmetric Gate + PhantomGuard 三値化 + 型安全化 |
-| 253 | rev+impl | [253_phg_rev_pre_impl_codebase_sweep.md](253_phg_rev_pre_impl_codebase_sweep.md) / [253_ph2_impl_hot_reload_dead_config_getattr_bare_except.md](253_ph2_impl_hot_reload_dead_config_getattr_bare_except.md) | 252# self-review sweep + hot_reload 配線漏れ, dead config 削除, getattr 排除, bare except 改善 |
+| 253a | rev | [253_phg_rev_pre_impl_codebase_sweep.md](253_phg_rev_pre_impl_codebase_sweep.md) | 252# self-review sweep: hot_reload 配線漏れ, dead config 削除, getattr 排除, bare except 改善 |
+| 253b | impl | [253_ph2_impl_hot_reload_dead_config_getattr_bare_except.md](253_ph2_impl_hot_reload_dead_config_getattr_bare_except.md) | 253a# 指摘の実装: hot_reload, dead config, getattr, bare except |
 | 254 | impl | — | frozen_side 永続化, orchestrator getattr 排除, bare except 改善 |
 | 255 | impl | [255_phg_rev_codebase_sweep.md](255_phg_rev_codebase_sweep.md) | skip_gate_evaluator/order_monitor getattr 排除, bare except → debug log |
 | 256 | impl | [256_phg_impl_recent_records_fix_self_review.md](256_phg_impl_recent_records_fix_self_review.md) | _recent_records 累積バグ修正, セルフレビュー |
@@ -324,12 +325,12 @@
 | 333 | rpt | [333_ph2_rpt_dcc3064_sha_isolated_deep_dive.md](333_ph2_rpt_dcc3064_sha_isolated_deep_dive.md) | dcc3064 SHA 分離分析: 24h n=100 fills, PnL +63.56bps, AB FAIL (sell p10 僅差 + buy fill_rate 壊滅), buy_dynamic_kill T-1 提起 |
 | 334 | rev | [334_ph2_rev_313_333_profitability_design_market_review.md](334_ph2_rev_313_333_profitability_design_market_review.md) | 313#–333# 横断レビュー: 収益性最優先で buy suppressor 過剰, side-specific ceiling 評価, refactor 凍結線引き, ranging/trending 分離を整理 |
 | 335 | rev | [335_ph2_gemini_31_pro_review_314_334_comprehensive_audit.md](335_ph2_gemini_31_pro_review_314_334_comprehensive_audit.md) | Gemini 3.1 Pro 総括レビュー: 生存者バイアス警告→自己訂正, buy kill -0.8bps=過敏スプリンクラー, P0 緩和必須 |
-| 336 | rev | [336_ph2_rev_334_335_claims_validation_and_measures.md](336_ph2_rev_334_335_claims_validation_and_measures.md) | 334#/335# 主張検証: カスケード増幅メカニズム解明, T-1〜T-5 施策策定, YAML-only Phase 1 即時実行計画 |
-| 336 | fix | — | drift fix: fill_config.py 12コードデフォルトをYAML値に整合 (`a3e2750`) |
-| 336 | fix | — | drift fix: CycleGateAggregator.UNKNOWN_REGIME_MAX_CONSECUTIVE + test_157/196/197/220 assertions (`a35e881`) |
-| 336 | impl | [analysis/333_sha_isolated_analysis.py](../../analysis/333_sha_isolated_analysis.py) | 333# SHA分析スクリプト promotion (334# P1-5): CLI汎用化 + JSON出力 (`31883c0`) |
-| 336 | test | — | YAML↔Code drift prevention test: 125-field allowlist, God Object growth monitor (`0cbf7b9`) |
-| 336 | cleanup | — | temp/ 36ファイル整理: 11→archived/, 5→tools/, 残り削除; root txt 11件削除 (`f468711`) |
+| 336a | rev | [336_ph2_rev_334_335_claims_validation_and_measures.md](336_ph2_rev_334_335_claims_validation_and_measures.md) | 334#/335# 主張検証: カスケード増幅メカニズム解明, T-1〜T-5 施策策定, YAML-only Phase 1 即時実行計画 |
+| 336b | fix | — | drift fix: fill_config.py 12コードデフォルトをYAML値に整合 (`a3e2750`) |
+| 336c | fix | — | drift fix: CycleGateAggregator.UNKNOWN_REGIME_MAX_CONSECUTIVE + test_157/196/197/220 assertions (`a35e881`) |
+| 336d | impl | [analysis/333_sha_isolated_analysis.py](../../analysis/333_sha_isolated_analysis.py) | 333# SHA分析スクリプト promotion (334# P1-5): CLI汎用化 + JSON出力 (`31883c0`) |
+| 336e | test | — | YAML↔Code drift prevention test: 125-field allowlist, God Object growth monitor (`0cbf7b9`) |
+| 336f | cleanup | — | temp/ 36ファイル整理: 11→archived/, 5→tools/, 残り削除; root txt 11件削除 (`f468711`) |
 | 337 | rpt | [337_ph2_rpt_sell_side_degradation_countermeasures.md](337_ph2_rpt_sell_side_degradation_countermeasures.md) | Sell-side 損益悪化分析 & 対策設計: buy 緩和後の sell 崩壊仮説, rolling-50 自己強化ループ, threshold/relaxation 提案 |
 | 338 | rev | [338_ph2_rev_337_sell_side_countermeasure_audit.md](338_ph2_rev_337_sell_side_countermeasure_audit.md) | 337# レビュー: inv_relaxation 符号逆転, metric 混在, sell relief 重複, filter stack 過小評価, threshold overfit を指摘 |
 | 339 | rev | [339_ph2_gemini_31_pro_review_337_338_critical_audit.md](339_ph2_gemini_31_pro_review_337_338_critical_audit.md) | Gemini 3.1 Pro: 338# 符号逆転バグ全面同意, 二重緩和ルート整理要請, forced 完全除外ロールバック提案 |
@@ -349,7 +350,9 @@
 | 353 | impl | [353_ph2_impl_vpin_asymmetric_buy_boost.md](353_ph2_impl_vpin_asymmetric_buy_boost.md) | VPIN 非対称 buy boost + EWMA 時間減衰 (351# 盲点1-2) + buy 防御パラメータ調整, テスト 25→29+25 |
 | 354 | fix | [354_phg_fix_code_quality_sweep.md](354_phg_fix_code_quality_sweep.md) | コード品質改善: 型安全性 (mypy 12→0), DRY (parser 共通化), サイレント例外修正, hot-reload drift 修正 |
 | 355 | impl | [355_ph2_impl_api_dedup_and_ph3_blockers.md](355_ph2_impl_api_dedup_and_ph3_blockers.md) | SkipGate API 呼出し重複排除 (OB+Trades prefetch 共有, 200-500ms/cycle 削減) + ph3 ブロッカー 5 件特定 |
-| 356 | plan | [356_ph3_plan_sac_training_with_vxxx_assets.md](356_ph3_plan_sac_training_with_vxxx_assets.md) | ph3 SAC 訓練計画: vXXX 資産活用 + B1-B5 ブロッカー解消 + 4-7 日ロードマップ |
+| 356a | plan | [356_ph3_plan_sac_training.md](356_ph3_plan_sac_training.md) | ph3 SAC 訓練計画: vXXX 資産活用 + B1-B5 ブロッカー解消 + 4-7 日ロードマップ |
+| 356b | rpt | [356_ph3_rpt_sac_asset_inventory.md](356_ph3_rpt_sac_asset_inventory.md) | ph3 SAC 資産インベントリ: v430-v459 設定・モデル・特徴量・環境の網羅的棚卸し |
+| 357 | impl | [357_ph3_impl_g2_sac_blockers.md](357_ph3_impl_g2_sac_blockers.md) | G2 SAC ブロッカー実装: B1 YAML + B3 feature_columns 注入 + B4 multi-seed + G2 gate 判定 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

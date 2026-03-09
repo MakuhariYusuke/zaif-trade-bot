@@ -1,0 +1,79 @@
+# G2: SAC 4-seed Training — Microstructure Edge
+# 356a# B1: ph3 SAC 訓練用実験 YAML
+#
+# 使用方法:
+#   python scripts/v460/run_experiment.py \
+#     --config configs/v460/experiments/g2_sac_train.yaml
+#
+# G2-train Gate 条件 (gate_thresholds.yaml):
+#   E1: positive_seed_ratio ≥ 0.75
+#   E2: ic_seed_std ≤ 0.03
+#   E3: convergence (30K以降 ROI変動 ≤ 5%)
+#   E4: worst_seed_roi > -0.02
+
+_base: configs/v460/base.yaml
+_gate: G2-train
+_task: sac_train
+
+# ---- データ ----
+data:
+  ohlcv_path: "data/btc_jpy_1m_v451_optimized_features.parquet"
+
+# ---- 特徴量 (FeatureRegistry 系統) ----
+# 356a# §4.3: OHLCV ベースの FeatureRegistry 特徴量を使用
+# v460 microstructure features は ph4 で統合
+features:
+  selected:
+    - price_velocity
+    - micro_trend
+    - price_acceleration
+    - volume_surge
+    - momentum_divergence
+    - tick_volume_ratio
+    - order_flow_imbalance
+    - micro_volatility
+    - spread_pressure
+    - momentum_burst
+    - liquidity_surge
+    - realized_volatility
+
+# ---- 環境 (EnvironmentConfig フィールド準拠) ----
+environment:
+  transaction_cost: 0.001          # 0.1% (Coincheck Maker)
+  max_position_size: 0.01          # 0.01 BTC
+  initial_portfolio_value: 10000000.0  # 1000万円 (v459 踏襲)
+  use_continuous_actions: true     # SAC 用連続行動空間
+  action_space_type: "continuous_1d"
+  exchange: coincheck
+  timeframe: "1m"
+
+# ---- SAC ハイパーパラメータ ----
+# v459 短期指向チューニングを踏襲 (111# / 356a# §2.3)
+sac_hyperparameters:
+  gamma: 0.80                      # 短期スキャルピング (v451 由来)
+  ent_coef: "auto"
+  learning_rate: 3.0e-4
+  batch_size: 256
+  buffer_size: 100000              # v459 踏襲 (50K steps では十分)
+  learning_starts: 100             # 早期学習開始
+  tau: 0.005
+  train_freq: 1
+  gradient_steps: 1
+
+# ---- 訓練 ----
+training:
+  total_timesteps: 50000           # G2 gate 基準
+  checkpoint_interval: 5000        # 10 チェックポイント (convergence 計算用)
+
+# ---- 評価 ----
+evaluation:
+  n_episodes: 3
+
+# ---- Multi-seed (G2 gate: 4 seed) ----
+seeds: [42, 123, 456, 789]
+
+# ---- 出力 ----
+output:
+  results_dir: "results/v460"
+  model_dir: "models/v460"
+  manifest_path: "results/v460/manifest.jsonl"
