@@ -25,13 +25,9 @@ def calculate_base_features(df: pd.DataFrame, copy: bool = True) -> pd.DataFrame
         return np.concatenate((np.zeros(n - 1), ret[n - 1:] / n))
 
     def _ema(arr: np.ndarray, n: int) -> np.ndarray:
-        alpha = 2 / (n + 1)
-        res = np.zeros_like(arr)
-        if len(arr) > 0:
-            res[0] = arr[0]
-        for i in range(1, len(arr)):
-            res[i] = alpha * arr[i] + (1 - alpha) * res[i - 1]
-        return res
+        if len(arr) == 0:
+            return np.zeros_like(arr)
+        return pd.Series(arr, copy=False).ewm(span=n, adjust=False).mean().to_numpy()
 
     def _rsi(arr: np.ndarray, n: int) -> np.ndarray:
         if len(arr) <= n:
@@ -65,12 +61,10 @@ def calculate_base_features(df: pd.DataFrame, copy: bool = True) -> pd.DataFrame
 
         plus_dm = np.zeros(len(close))
         minus_dm = np.zeros(len(close))
-
-        for i in range(len(up_move)):
-            if up_move[i] > down_move[i] and up_move[i] > 0:
-                plus_dm[i + 1] = up_move[i]
-            if down_move[i] > up_move[i] and down_move[i] > 0:
-                minus_dm[i + 1] = down_move[i]
+        plus_mask = (up_move > down_move) & (up_move > 0)
+        minus_mask = (down_move > up_move) & (down_move > 0)
+        plus_dm[1:] = np.where(plus_mask, up_move, 0.0)
+        minus_dm[1:] = np.where(minus_mask, down_move, 0.0)
 
         tr = np.maximum(
             high - low,

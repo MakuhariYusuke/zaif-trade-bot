@@ -43,16 +43,7 @@ def _collect_available_days(trades_dir: Path) -> list[str]:
     """trades ディレクトリから YYYYMMDD 日付キーを抽出して昇順返却."""
     if not trades_dir.exists():
         return []
-    available: list[str] = []
-    for path in trades_dir.iterdir():
-        name = path.name
-        if not name.endswith(".jsonl.gz"):
-            continue
-        day = name[:-9]  # strip ".jsonl.gz"
-        if len(day) == 8 and day.isdigit():
-            available.append(day)
-    available.sort()
-    return available
+    return sorted(path.stem[:-6] for path in trades_dir.glob("????????.jsonl.gz"))
 
 def check_trades_health(
     raw_dir: Path | None = None,

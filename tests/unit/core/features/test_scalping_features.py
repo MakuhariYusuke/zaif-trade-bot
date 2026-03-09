@@ -9,10 +9,16 @@ import numpy as np
 import pandas as pd
 
 from ztb.features.scalping import (
+    liquidity_surge,
+    micro_trend,
     micro_volatility,
+    momentum_burst,
+    price_acceleration,
+    price_velocity,
     realized_volatility,
+    order_flow_imbalance,
     tick_volume_ratio,
-    order_flow_imbalance
+    volume_surge,
 )
 
 
@@ -179,6 +185,76 @@ class TestScalpingFeatures:
         valid_results = result.dropna()
         assert len(valid_results) >= 1, "Should have at least one valid result"
         assert result.iloc[0] == 0.0
+
+    def test_price_velocity_handles_zero_previous_close(self):
+        """previous close が 0 の点だけ 0.0 扱いを維持する."""
+        df = pd.DataFrame({"close": [100.0, 0.0, 10.0, 15.0]})
+
+        result = price_velocity(df)
+
+        assert result.iloc[0] == 0.0
+        assert result.iloc[1] == pytest.approx(-1.0)
+        assert result.iloc[2] == 0.0
+        assert result.iloc[3] == pytest.approx(0.5)
+
+    def test_micro_trend_basic_window_behavior(self):
+        """window 本前との比率差分を返す."""
+        df = pd.DataFrame({"close": [100.0, 110.0, 121.0, 133.1]})
+
+        result = micro_trend(df, window=2)
+
+        assert result.iloc[0] == 0.0
+        assert result.iloc[1] == 0.0
+        assert result.iloc[2] == pytest.approx(0.21)
+        assert result.iloc[3] == pytest.approx(0.21)
+
+    def test_price_acceleration_matches_velocity_delta_mean(self):
+        """window 区間の velocity 差分平均と一致する."""
+        df = pd.DataFrame({"close": [100.0, 110.0, 132.0, 171.6]})
+
+        result = price_acceleration(df, window=3)
+
+        assert result.iloc[0] == 0.0
+        assert result.iloc[1] == 0.0
+        assert result.iloc[2] == 0.0
+        assert result.iloc[3] == pytest.approx(0.1)
+
+    def test_volume_surge_keeps_zero_when_prior_std_is_zero(self):
+        """直前 window の標準偏差が 0 なら誤検知しない."""
+        df = pd.DataFrame({"volume": [10.0, 10.0, 10.0, 30.0]})
+
+        result = volume_surge(df, window=3, threshold=2.0)
+
+        assert result.iloc[3] == 0.0
+
+    def test_momentum_burst_uses_previous_window_volume_average(self):
+        """price change と直前 volume 平均の両方を使う."""
+        df = pd.DataFrame(
+            {
+                "close": [100.0, 100.0, 110.0, 121.0],
+                "volume": [10.0, 10.0, 10.0, 20.0],
+            }
+        )
+
+        result = momentum_burst(df, window=2)
+
+        expected_first = 0.1 * np.log(2.0)
+        expected = 0.21 * np.log(3.0)
+        assert result.iloc[0] == 0.0
+        assert result.iloc[1] == 0.0
+        assert result.iloc[2] == pytest.approx(expected_first)
+        assert result.iloc[3] == pytest.approx(expected)
+
+    def test_liquidity_surge_uses_previous_window_max(self):
+        """直前 window の最大 volume に対する比率を返す."""
+        df = pd.DataFrame({"volume": [1.0, 2.0, 4.0, 1.0]})
+
+        result = liquidity_surge(df, window=2)
+
+        assert result.iloc[0] == 0.0
+        assert result.iloc[1] == 0.0
+        assert result.iloc[2] == pytest.approx(2.0)
+        assert result.iloc[3] == pytest.approx(0.25)
 
     def test_micro_volatility_basic(self, sample_dataframe):
         """Test basic micro volatility calculation"""
