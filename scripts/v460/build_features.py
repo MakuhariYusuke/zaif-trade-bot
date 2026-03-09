@@ -209,7 +209,7 @@ def build_real_features(
     Returns:
         メタデータ dict
     """
-    raw = resolve_raw_dir(Path(raw_dir))
+    raw = resolve_raw_dir(raw_dir)
     out = Path(output_path)
     if not out.is_absolute():
         out = _PROJECT_ROOT / out

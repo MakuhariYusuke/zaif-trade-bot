@@ -23,6 +23,7 @@ from ztb.io.jsonl_gz import read_jsonl_gz
 logger = logging.getLogger(__name__)
 
 _DEFAULT_RAW_DIR = Path("data/v460/raw")
+RawDirLike = str | Path | None
 
 # 特徴量ウィンドウ (秒)
 _TRADE_WINDOW_SEC = 60  # 直近 60 秒の約定統計
@@ -45,11 +46,12 @@ _RAW_ORDERBOOK_CACHE: dict[tuple[str, tuple[str, ...] | None], _RawLoadCacheEntr
 _RAW_TRADES_CACHE: dict[tuple[str, tuple[str, ...] | None], _RawLoadCacheEntry] = {}
 
 
-def resolve_raw_dir(raw_dir: Optional[Path] = None) -> Path:
+def resolve_raw_dir(raw_dir: RawDirLike = None) -> Path:
     """raw data ルートを絶対パスで返す."""
     if raw_dir is None:
         return _DEFAULT_RAW_DIR
-    return raw_dir if raw_dir.is_absolute() else (Path.cwd() / raw_dir).resolve()
+    raw_path = Path(raw_dir)
+    return raw_path if raw_path.is_absolute() else (Path.cwd() / raw_path).resolve()
 
 
 def _normalize_date_filter(
@@ -99,7 +101,7 @@ def _select_raw_files(
 
 
 def discover_raw_daily_inputs(
-    raw_dir: Optional[Path] = None,
+    raw_dir: RawDirLike = None,
 ) -> dict[str, tuple[Path | None, Path | None]]:
     """利用可能な raw 入力を date -> (orderbook, trades) で返す."""
     resolved_root = resolve_raw_dir(raw_dir)
@@ -154,7 +156,7 @@ def _store_raw_cache(
 
 
 def _load_raw_orderbook_entry(
-    raw_dir: Optional[Path] = None,
+    raw_dir: RawDirLike = None,
     date_filter: Optional[set[str]] = None,
 ) -> _RawLoadCacheEntry:
     """板 raw と派生 context をまとめてロードする."""
@@ -221,7 +223,7 @@ def _load_raw_orderbook_entry(
 
 
 def _load_raw_trades_entry(
-    raw_dir: Optional[Path] = None,
+    raw_dir: RawDirLike = None,
     date_filter: Optional[set[str]] = None,
 ) -> _RawLoadCacheEntry:
     """約定 raw と派生 context をまとめてロードする."""
@@ -487,7 +489,7 @@ def _compute_trade_feature_bundle(
 
 
 def load_raw_orderbook(
-    raw_dir: Optional[Path] = None,
+    raw_dir: RawDirLike = None,
     date_filter: Optional[set[str]] = None,
 ) -> pd.DataFrame:
     """板スナップショットを読み込み.
@@ -504,7 +506,7 @@ def load_raw_orderbook(
 
 
 def load_raw_trades(
-    raw_dir: Optional[Path] = None,
+    raw_dir: RawDirLike = None,
     date_filter: Optional[set[str]] = None,
 ) -> pd.DataFrame:
     """約定データを読み込み.
@@ -697,7 +699,7 @@ def _compute_return_momentum(
 
 def enrich_fill_records(
     fill_df: pd.DataFrame,
-    raw_dir: Optional[Path] = None,
+    raw_dir: RawDirLike = None,
     ob_tolerance_sec: int = _OB_MATCH_TOLERANCE_SEC,
     trade_window_sec: int = _TRADE_WINDOW_SEC,
     trades_fallback_recent_days: int = 1,

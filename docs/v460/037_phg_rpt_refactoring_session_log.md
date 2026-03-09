@@ -2815,3 +2815,30 @@
 - `stale_order` の source-contract は他の split-source テストと同じ helper 経路に揃った。`inspect.getsource()` のローカルキャッシュ実装が1つ減った。
 - `fill_quality` の `run_g1_1` integration も日次 fill-count builder に揃ったので、日次サンプル生成の修正点がさらに集中した。
 - production 側は `feature_enricher` と `build_features` の raw path/date 解決が 1 箇所にまとまり、今後の raw layout 変更や日付解決ロジック変更を片側だけ直して齟齬が出るリスクを下げた。
+
+---
+
+## 2026-03-09 / Session 037-064
+
+### 実施
+- `scripts/v460/ml/feature_enricher.py`
+  - `RawDirLike = str | Path | None` を導入
+  - `resolve_raw_dir()`, `discover_raw_daily_inputs()`, raw loader 群, `enrich_fill_records()` の `raw_dir` 引数を共通型へ拡張
+- `scripts/v460/build_features.py`
+  - `build_real_features()` が `raw_dir` を直接 `resolve_raw_dir()` に渡すよう整理
+- `tests/unit/v460/test_154_deadlock_prevention.py`
+  - `OrderMonitor.monitor` の source assertion を `read_class_method_source()` へ変更
+- `tests/unit/v460/test_262_protocol_cancel_recheck.py`
+  - `OrderMonitor.monitor` の source assertion を `read_class_method_source()` へ変更
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_154_deadlock_prevention.py`
+  - `tests/unit/v460/test_262_protocol_cancel_recheck.py`
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `57 passed in 7.90s`
+
+### 主要改善
+- `resolve_raw_dir()` は `str | Path | None` を直接受けるようになったので、CLI 呼び出しとライブラリ呼び出しで余分な `Path(...)` 包装が不要になった。再利用境界として扱いやすくなった。
+- `OrderMonitor.monitor` を読む source-contract テストは `_fill_test_source.py` にさらに寄った。split-source 系の参照経路が揃い、`inspect.getsource(...)` の局所実装がまた減った。
+- 今回追加した helper のうち、production-wide に昇格させる価値があるのは raw path/date helper 側で、`_save_daily_fill_count_records()` は現時点では test-local helper のままが適切と判断した。

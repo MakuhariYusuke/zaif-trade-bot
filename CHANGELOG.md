@@ -4582,3 +4582,21 @@ python scripts/unified_trainer.py \
 - The stale-order source checks still passed focused at `66 passed in 8.15s` together with the build-features pipeline bundle.
 - The focused `fill_quality.py` selector completed at `8 passed, 198 deselected in 7.43s`.
 - This batch is mostly reuse consolidation on the production side: `build_features.py` now depends on the same raw discovery helpers that `feature_enricher.py` already uses, which reduces duplicate path/date handling and keeps future changes in one place.
+
+## Session 037-064 (2026-03-09)
+
+### Changed
+- Widened [feature_enricher.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/feature_enricher.py) raw-path helper signatures from `Optional[Path]` to `str | Path | None`, making `resolve_raw_dir()` and the raw loaders reusable from CLI / library call sites without extra `Path(...)` wrapping.
+- Simplified [build_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/build_features.py) to pass `raw_dir` directly into the shared resolver, so the raw path canonicalization now has a single implementation.
+- Extended shared source-helper reuse to [test_154_deadlock_prevention.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_154_deadlock_prevention.py) and [test_262_protocol_cancel_recheck.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_262_protocol_cancel_recheck.py), replacing local `inspect.getsource(OrderMonitor.monitor)` reads with [_fill_test_source.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_fill_test_source.py) lookups.
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile scripts/v460/ml/feature_enricher.py scripts/v460/build_features.py tests/unit/v460/test_154_deadlock_prevention.py tests/unit/v460/test_262_protocol_cancel_recheck.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_154_deadlock_prevention.py tests/unit/v460/test_262_protocol_cancel_recheck.py tests/unit/v460/test_build_features_pipeline.py -q --no-cov --tb=short --durations=20`
+
+### Notes
+- The focused bundle completed at `57 passed in 7.90s`.
+- Reuse assessment for the newly added helpers:
+  - `resolve_raw_dir()` and `discover_raw_daily_inputs()` have production-wide reuse value and are now on the correct side of the boundary.
+  - `read_class_method_source()` remains the right shared test helper for split-source assertions and still has additional horizontal rollout potential.
+  - `_save_daily_fill_count_records()` is currently only worth keeping test-local; moving it to `conftest.py` would be premature until another file needs the same record shape.
