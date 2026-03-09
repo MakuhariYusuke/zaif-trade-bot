@@ -4601,6 +4601,23 @@ python scripts/unified_trainer.py \
   - `read_class_method_source()` remains the right shared test helper for split-source assertions and still has additional horizontal rollout potential.
   - `_save_daily_fill_count_records()` is currently only worth keeping test-local; moving it to `conftest.py` would be premature until another file needs the same record shape.
 
+## Session 037-067 (2026-03-09)
+
+### Changed
+- Moved more split-source assertions onto the shared helper path in [test_236_state_persistence_cqs.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_236_state_persistence_cqs.py) and [test_230_ffd_deadzone_streak_guards.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_230_ffd_deadzone_streak_guards.py), replacing local `inspect.getsource(...)` style lookups with `_fill_test_source.py` readers and current split-file constants.
+- Hoisted the remaining method-local imports out of [test_306_proposals.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_306_proposals.py), consolidating AB-judgment, adaptation, maker-price, config-hot-reload, and `FillRecord` imports at module scope.
+- Introduced [raw_paths.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/data/raw_paths.py) and reused it from [feature_enricher.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/feature_enricher.py), [build_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/build_features.py), [market_data_collector.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/data/market_data_collector.py), [trades_health.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/data/trades_health.py), and [trades_recorder.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/data/trades_recorder.py) so raw-dir normalization and available-date resolution live on the `ztb` side instead of being reimplemented.
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile tests/unit/v460/_fill_test_source.py tests/unit/v460/test_236_state_persistence_cqs.py tests/unit/v460/test_230_ffd_deadzone_streak_guards.py tests/unit/v460/test_306_proposals.py ztb/data/raw_paths.py ztb/data/market_data_collector.py ztb/data/trades_health.py ztb/data/trades_recorder.py scripts/v460/ml/feature_enricher.py scripts/v460/build_features.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_236_state_persistence_cqs.py tests/unit/v460/test_230_ffd_deadzone_streak_guards.py tests/unit/v460/test_306_proposals.py -q --no-cov --tb=short --durations=25`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_build_features_pipeline.py tests/unit/v460/test_158_oracle_test.py tests/unit/v460/test_ob_recorder.py -q --no-cov --tb=short --durations=25`
+
+### Notes
+- The split-source bundle completed at `139 passed in 5.44s`.
+- The raw-path reuse bundle completed at `40 passed in 6.23s`.
+- The `_restore_common_state` assertions in `test_236_state_persistence_cqs.py` now follow the real split target, `OrchestratorLifecycleMixin`, instead of the legacy monolithic file path.
+
 ## Session 037-065 (2026-03-09)
 
 ### Changed

@@ -18,12 +18,10 @@ import numpy as np
 import pandas as pd
 
 from scripts.v460.ml.frame_utils import compute_local_hour_cyclic
+from ztb.data.raw_paths import RawDirLike, resolve_raw_dir
 from ztb.io.jsonl_gz import read_jsonl_gz
 
 logger = logging.getLogger(__name__)
-
-_DEFAULT_RAW_DIR = Path("data/v460/raw")
-RawDirLike = str | Path | None
 
 # 特徴量ウィンドウ (秒)
 _TRADE_WINDOW_SEC = 60  # 直近 60 秒の約定統計
@@ -44,15 +42,6 @@ class _RawLoadCacheEntry:
 
 _RAW_ORDERBOOK_CACHE: dict[tuple[str, tuple[str, ...] | None], _RawLoadCacheEntry] = {}
 _RAW_TRADES_CACHE: dict[tuple[str, tuple[str, ...] | None], _RawLoadCacheEntry] = {}
-
-
-def resolve_raw_dir(raw_dir: RawDirLike = None) -> Path:
-    """raw data ルートを絶対パスで返す."""
-    if raw_dir is None:
-        return _DEFAULT_RAW_DIR
-    raw_path = Path(raw_dir)
-    return raw_path if raw_path.is_absolute() else (Path.cwd() / raw_path).resolve()
-
 
 def _normalize_date_filter(
     date_filter: Optional[set[str]],
@@ -116,25 +105,6 @@ def discover_raw_daily_inputs(
         daily_inputs[date_str] = (orderbook_path, trades_path)
     return daily_inputs
 
-
-def resolve_available_raw_dates(
-    daily_inputs: dict[str, tuple[Path | None, Path | None]],
-    dates: list[str] | None = None,
-) -> list[str]:
-    """利用可能な日付集合から対象日付を一意化して返す."""
-    all_dates = sorted(daily_inputs)
-    if dates is None:
-        return all_dates
-
-    resolved: list[str] = []
-    seen: set[str] = set()
-    for date_str in dates:
-        if date_str in seen:
-            continue
-        seen.add(date_str)
-        if date_str in daily_inputs:
-            resolved.append(date_str)
-    return resolved
 
 
 def _build_file_signature(files: list[Path]) -> tuple[tuple[str, int, int], ...]:

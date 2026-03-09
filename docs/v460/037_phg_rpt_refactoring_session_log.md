@@ -2893,3 +2893,47 @@
 - `fill_quality` の日次 builder は「日ごと×件数」の共通ループだけを統合した。wrapper 名と各レコードの意味は維持しているので、DRY と可読性のバランスは保てている。
 - `OrderMonitor` の split-source helper 再利用は `_resolve_regime_name` にも広がった。`inspect.getsource(...)` のローカル参照がまた 1 つ減った。
 - raw-reader 系については今回追加で見たが、現状は `feature_enricher` 側の helper 境界で十分で、これ以上の統合は別責務まで巻き込みやすいので見送った。
+
+---
+
+## 2026-03-09 / Session 037-067
+
+### 実施
+- `tests/unit/v460/test_236_state_persistence_cqs.py`
+  - split-source の参照先を `_fill_test_source.py` ベースに整理
+  - `_build_state_snapshot()` / `_restore_common_state()` の source 参照を現行 split 先 (`OrchestratorLifecycleMixin`) に追随
+- `tests/unit/v460/test_230_ffd_deadzone_streak_guards.py`
+  - `inspect.getsource(...)` ベースの module source 検査を `read_source_text(...)` に統一
+  - `_SideState` import を module scope へ集約
+- `tests/unit/v460/test_306_proposals.py`
+  - AB judgment / adaptation / config hot reload / maker price / `FillRecord` 関連の method 内 import を module scope に集約
+- `ztb/data/raw_paths.py`
+  - `resolve_raw_dir()`, `resolve_available_raw_dates()`, `RawDirLike` を新設
+- `scripts/v460/ml/feature_enricher.py`
+  - raw dir 正規化 helper を `ztb.data.raw_paths` 再利用へ変更
+- `scripts/v460/build_features.py`
+  - raw dir / available date 解決を shared helper 再利用へ変更
+- `ztb/data/market_data_collector.py`
+  - `raw_dir` 解決を shared helper 再利用へ変更
+- `ztb/data/trades_health.py`
+  - raw dir 解決を shared helper 再利用へ変更
+- `ztb/data/trades_recorder.py`
+  - raw dir 解決を shared helper 再利用へ変更
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_236_state_persistence_cqs.py`
+  - `tests/unit/v460/test_230_ffd_deadzone_streak_guards.py`
+  - `tests/unit/v460/test_306_proposals.py`
+  - `139 passed in 5.44s`
+- focused:
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `tests/unit/v460/test_158_oracle_test.py`
+  - `tests/unit/v460/test_ob_recorder.py`
+  - `40 passed in 6.23s`
+
+### 主要改善
+- split-source assertion は local `inspect.getsource(...)` 実装を増やす流れから外し、`_fill_test_source.py` の shared helper と split-file 定数へ寄せた。今後の分割追随は helper 側の責務として扱える。
+- `test_306_proposals.py` の method 内 import は 0 にできた。追加ケースでも import が散らばりにくい形になった。
+- raw path/date 解決は `ztb.data.raw_paths` に移したので、`scripts` 側 helper を `ztb` から逆参照する不自然な境界を作らずに、production 側の再利用点を 1 箇所へ集約できた。
+- `test_236_state_persistence_cqs.py` の `_restore_common_state` は現行 split layout では `OrchestratorLifecycleMixin` にあるため、その実体に合わせて source 契約を修正した。

@@ -11,7 +11,6 @@
 
 from __future__ import annotations
 
-import inspect
 import time
 
 import pytest
@@ -19,9 +18,17 @@ import pytest
 from scripts.v460.lib.fast_fill_defense import (
     FastFillDefense,
     FastFillDefenseConfig,
+    _SideState,
 )
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.regime_detector import FillTestRegimeDetector, RegimeConfig
+from tests.unit.v460._fill_test_source import (
+    FILL_CYCLE_EXECUTOR,
+    FILL_LOOP_ORCHESTRATOR,
+    ORCHESTRATOR_PRE_CYCLE,
+    REGIME_DETECTOR,
+    read_source_text,
+)
 
 
 # ======================================================================
@@ -383,9 +390,7 @@ class TestMCBSADNoneGuard:
 
         330#: MCB/SAD check は orchestrator_pre_cycle に抽出済み。
         """
-        from scripts.v460.lib import orchestrator_pre_cycle as mod
-
-        src = inspect.getsource(mod)
+        src = read_source_text(ORCHESTRATOR_PRE_CYCLE)
         # _mcb.config.enabled の前に None check がある
         assert "self._mcb is not None and self._mcb.config.enabled" in src
 
@@ -394,9 +399,7 @@ class TestMCBSADNoneGuard:
 
         330#: MCB/SAD check は orchestrator_pre_cycle に抽出済み。
         """
-        from scripts.v460.lib import orchestrator_pre_cycle as mod
-
-        src = inspect.getsource(mod)
+        src = read_source_text(ORCHESTRATOR_PRE_CYCLE)
         assert "self._sad is not None and self._sad.config.enabled" in src
 
     def test_no_bare_mcb_config_access(self) -> None:
@@ -404,11 +407,10 @@ class TestMCBSADNoneGuard:
 
         330#: orchestrator_pre_cycle + fill_loop_orchestrator 両方を検査。
         """
-        from scripts.v460.lib import fill_loop_orchestrator as mod1
-        from scripts.v460.lib import orchestrator_pre_cycle as mod2
-
-        for mod in (mod1, mod2):
-            src = inspect.getsource(mod)
+        for src in (
+            read_source_text(FILL_LOOP_ORCHESTRATOR),
+            read_source_text(ORCHESTRATOR_PRE_CYCLE),
+        ):
             lines = src.split("\n")
             for line in lines:
                 stripped = line.strip()
@@ -422,11 +424,10 @@ class TestMCBSADNoneGuard:
 
         330#: orchestrator_pre_cycle + fill_loop_orchestrator 両方を検査。
         """
-        from scripts.v460.lib import fill_loop_orchestrator as mod1
-        from scripts.v460.lib import orchestrator_pre_cycle as mod2
-
-        for mod in (mod1, mod2):
-            src = inspect.getsource(mod)
+        for src in (
+            read_source_text(FILL_LOOP_ORCHESTRATOR),
+            read_source_text(ORCHESTRATOR_PRE_CYCLE),
+        ):
             lines = src.split("\n")
             for line in lines:
                 stripped = line.strip()
@@ -446,9 +447,7 @@ class TestRegimeDetectorInit:
 
     def test_no_hasattr_in_source(self) -> None:
         """regime_detector.py のソースに hasattr() 呼び出しが含まれない."""
-        from scripts.v460.lib import regime_detector as mod
-
-        src = inspect.getsource(mod)
+        src = read_source_text(REGIME_DETECTOR)
         # コメント中の "hasattr" は許容、実際の呼び出しのみ検出
         lines = src.split("\n")
         for line in lines:
@@ -461,9 +460,7 @@ class TestRegimeDetectorInit:
 
     def test_no_getattr_fallback_in_source(self) -> None:
         """regime_detector.py に getattr(..., default) のフォールバックがない."""
-        from scripts.v460.lib import regime_detector as mod
-
-        src = inspect.getsource(mod)
+        src = read_source_text(REGIME_DETECTOR)
         # _last_velocity_pct の getattr パターンが除去されている
         assert 'getattr(self, "_last_velocity_pct"' not in src
 
@@ -496,23 +493,17 @@ class TestFillCycleExecutorHasattr:
 
     def test_no_hasattr_cycle_strategy(self) -> None:
         """hasattr(self, '_cycle_strategy') が排除されている."""
-        from scripts.v460.lib import fill_cycle_executor as mod
-
-        src = inspect.getsource(mod)
+        src = read_source_text(FILL_CYCLE_EXECUTOR)
         assert 'hasattr(self, "_cycle_strategy")' not in src
 
     def test_no_hasattr_regime_detector(self) -> None:
         """hasattr(self, '_regime_detector') が排除されている."""
-        from scripts.v460.lib import fill_cycle_executor as mod
-
-        src = inspect.getsource(mod)
+        src = read_source_text(FILL_CYCLE_EXECUTOR)
         assert 'hasattr(self, "_regime_detector")' not in src
 
     def test_no_hasattr_macro_regime_detector(self) -> None:
         """hasattr(self, '_macro_regime_detector') が排除されている."""
-        from scripts.v460.lib import fill_cycle_executor as mod
-
-        src = inspect.getsource(mod)
+        src = read_source_text(FILL_CYCLE_EXECUTOR)
         assert 'hasattr(self, "_macro_regime_detector")' not in src
 
     def test_hasattr_current_regime_value_removed(self) -> None:
@@ -521,9 +512,7 @@ class TestFillCycleExecutorHasattr:
         _current_regime_value は fill_record_helpers Mixin で定義されており、
         Mixin 合成で常に利用可能。hasattr ガードは不要。
         """
-        from scripts.v460.lib import fill_cycle_executor as mod
-
-        src = inspect.getsource(mod)
+        src = read_source_text(FILL_CYCLE_EXECUTOR)
         assert 'hasattr(self, "_current_regime_value")' not in src
 
 
@@ -585,7 +574,5 @@ class TestFFDConfigDefaults:
         assert cfg.boost_release_streak == 3
 
     def test_side_state_normal_fill_streak_default(self) -> None:
-        from scripts.v460.lib.fast_fill_defense import _SideState
-
         s = _SideState()
         assert s.normal_fill_streak == 0

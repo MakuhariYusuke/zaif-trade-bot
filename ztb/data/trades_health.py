@@ -25,9 +25,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+from ztb.data.raw_paths import resolve_raw_dir
 
-_DEFAULT_RAW_DIR = Path("data/v460/raw")
+logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class TradesHealthResult:
@@ -77,7 +77,7 @@ def check_trades_health(
     Returns:
         TradesHealthResult: 結果オブジェクト.
     """
-    d = raw_dir or _DEFAULT_RAW_DIR
+    d = resolve_raw_dir(raw_dir)
     tr_dir = d / "trades"
     now_utc = datetime.now(timezone.utc)
     now_ts = now_utc.timestamp()
@@ -186,7 +186,7 @@ def check_feature_freshness(
     Returns:
         FeatureFreshnessResult
     """
-    d = raw_dir or _DEFAULT_RAW_DIR
+    d = resolve_raw_dir(raw_dir)
     now_ts = datetime.now(timezone.utc).timestamp()
 
     tr_hours = _latest_mtime_hours(d / "trades", now_ts=now_ts)

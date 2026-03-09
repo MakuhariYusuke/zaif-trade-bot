@@ -83,6 +83,15 @@ ORDER_MONITOR = (
 FILL_CONFIG_PARSER = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_config_parser.py"
 )
+CONFIG_HOT_RELOAD = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "config_hot_reload.py"
+)
+FAST_FILL_DEFENSE = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fast_fill_defense.py"
+)
+REGIME_DETECTOR = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "regime_detector.py"
+)
 HINDSIGHT_FILTER = (
     _PROJECT_ROOT / "scripts" / "v460" / "analysis" / "hindsight_filter.py"
 )

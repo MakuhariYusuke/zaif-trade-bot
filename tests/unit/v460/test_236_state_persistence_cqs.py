@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import inspect
 import json
 import time
 from dataclasses import asdict
@@ -11,18 +10,22 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from scripts.v460.lib import (
-    config_hot_reload as config_hot_reload_mod,
-    fill_cycle_executor as fill_cycle_executor_mod,
-    fill_loop_orchestrator as fill_loop_orchestrator_mod,
-    fill_record_helpers as fill_record_helpers_mod,
-    maker_price as maker_price_mod,
-)
 from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
 from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
 from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.resilience import FillTestState
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+from tests.unit.v460._fill_test_source import (
+    CONFIG_HOT_RELOAD,
+    FAST_FILL_DEFENSE,
+    FILL_CYCLE_EXECUTOR,
+    FILL_LOOP_ORCHESTRATOR,
+    FILL_RECORD_HELPERS,
+    MAKER_PRICE,
+    ORCHESTRATOR_LIFECYCLE,
+    read_class_method_source,
+    read_source_text,
+)
 
 if TYPE_CHECKING:
     pass
@@ -81,20 +84,28 @@ class TestStatePersistenceFields:
 class TestBuildStateSnapshotIncludes236:
     """_build_state_snapshot のソースに 236# フィールド参照がある."""
 
+    @staticmethod
+    def _snapshot_source() -> str:
+        return read_class_method_source(
+            ORCHESTRATOR_LIFECYCLE,
+            "OrchestratorLifecycleMixin",
+            "_build_state_snapshot",
+        )
+
     def test_snapshot_references_degraded_duty(self) -> None:
-        src = inspect.getsource(fill_loop_orchestrator_mod.FillLoopOrchestratorMixin._build_state_snapshot)
+        src = self._snapshot_source()
         assert "degraded_liquidation_duty_counter" in src
 
     def test_snapshot_references_cooldown(self) -> None:
-        src = inspect.getsource(fill_loop_orchestrator_mod.FillLoopOrchestratorMixin._build_state_snapshot)
+        src = self._snapshot_source()
         assert "one_sided_cooldown_remaining" in src
 
     def test_snapshot_references_freeze(self) -> None:
-        src = inspect.getsource(fill_loop_orchestrator_mod.FillLoopOrchestratorMixin._build_state_snapshot)
+        src = self._snapshot_source()
         assert "one_sided_freeze_remaining" in src
 
     def test_snapshot_references_no_feasible(self) -> None:
-        src = inspect.getsource(fill_loop_orchestrator_mod.FillLoopOrchestratorMixin._build_state_snapshot)
+        src = self._snapshot_source()
         assert "consecutive_no_feasible" in src
 
 
@@ -106,20 +117,28 @@ class TestBuildStateSnapshotIncludes236:
 class TestRestoreCommonStateIncludes236:
     """_restore_common_state のソースに 236# 復元ロジックがある."""
 
+    @staticmethod
+    def _restore_source() -> str:
+        return read_class_method_source(
+            ORCHESTRATOR_LIFECYCLE,
+            "OrchestratorLifecycleMixin",
+            "_restore_common_state",
+        )
+
     def test_restore_references_degraded_duty(self) -> None:
-        src = inspect.getsource(fill_loop_orchestrator_mod.FillLoopOrchestratorMixin._restore_common_state)
+        src = self._restore_source()
         assert "degraded_liquidation_duty_counter" in src
 
     def test_restore_references_cooldown(self) -> None:
-        src = inspect.getsource(fill_loop_orchestrator_mod.FillLoopOrchestratorMixin._restore_common_state)
+        src = self._restore_source()
         assert "one_sided_cooldown_remaining" in src
 
     def test_restore_references_freeze(self) -> None:
-        src = inspect.getsource(fill_loop_orchestrator_mod.FillLoopOrchestratorMixin._restore_common_state)
+        src = self._restore_source()
         assert "one_sided_freeze_remaining" in src
 
     def test_restore_references_no_feasible(self) -> None:
-        src = inspect.getsource(fill_loop_orchestrator_mod.FillLoopOrchestratorMixin._restore_common_state)
+        src = self._restore_source()
         assert "consecutive_no_feasible" in src
 
 
@@ -138,7 +157,7 @@ class TestNoFeasiblePerSide:
 
     def test_source_uses_side_key(self) -> None:
         """per-side のキーとして side が使用されている."""
-        src = inspect.getsource(fill_cycle_executor_mod)
+        src = read_source_text(FILL_CYCLE_EXECUTOR)
         # side をキーに使用 (旧: self._consecutive_no_feasible += 1)
         assert ".get(side, 0)" in src
 
@@ -152,11 +171,11 @@ class TestHasattrRemoval236:
     """236# hasattr パターンの排除."""
 
     def test_no_hasattr_trending_sell_skip(self) -> None:
-        src = inspect.getsource(fill_record_helpers_mod)
+        src = read_source_text(FILL_RECORD_HELPERS)
         assert 'hasattr(self, "_trending_sell_skip_count")' not in src
 
     def test_no_hasattr_current_regime_value_in_executor(self) -> None:
-        src = inspect.getsource(fill_cycle_executor_mod)
+        src = read_source_text(FILL_CYCLE_EXECUTOR)
         assert 'hasattr(self, "_current_regime_value")' not in src
 
     def test_class_level_defaults_exist(self) -> None:
@@ -180,7 +199,11 @@ class TestFFDCQSSeparation:
 
     def test_get_boost_multiplier_is_pure_getter(self) -> None:
         """get_boost_multiplier() にはstate変更ロジックが無い."""
-        src = inspect.getsource(FastFillDefense.get_boost_multiplier)
+        src = read_class_method_source(
+            FAST_FILL_DEFENSE,
+            "FastFillDefense",
+            "get_boost_multiplier",
+        )
         # 旧: state.boost_active = False / state.boost_multiplier = 1.0 があった
         assert "boost_active = False" not in src
         assert "boost_multiplier = 1.0" not in src
@@ -188,7 +211,11 @@ class TestFFDCQSSeparation:
 
     def test_maybe_expire_boost_has_side_effects(self) -> None:
         """maybe_expire_boost() に TTL decay ロジックがある."""
-        src = inspect.getsource(FastFillDefense.maybe_expire_boost)
+        src = read_class_method_source(
+            FAST_FILL_DEFENSE,
+            "FastFillDefense",
+            "maybe_expire_boost",
+        )
         assert "boost_active = False" in src
         assert "boost_multiplier = 1.0" in src
 
@@ -223,7 +250,7 @@ class TestFFDCQSSeparation:
 
     def test_maker_price_calls_expire_before_get(self) -> None:
         """maker_price のソースで maybe_expire_boost が get_boost_multiplier 前に呼ばれる."""
-        src = inspect.getsource(maker_price_mod)
+        src = read_source_text(MAKER_PRICE)
         idx_expire = src.index("maybe_expire_boost")
         idx_get = src.index("get_boost_multiplier")
         assert idx_expire < idx_get
@@ -238,7 +265,7 @@ class TestDeadImportRemoval:
     """236# 未使用 import の排除."""
 
     def test_no_import_sys_in_config_hot_reload(self) -> None:
-        src = inspect.getsource(config_hot_reload_mod)
+        src = read_source_text(CONFIG_HOT_RELOAD)
         # "import sys" が単独行で存在しないこと
         for line in src.splitlines():
             stripped = line.strip()
@@ -246,6 +273,6 @@ class TestDeadImportRemoval:
                 pytest.fail("Dead import 'import sys' found in config_hot_reload")
 
     def test_no_optional_in_orchestrator(self) -> None:
-        src = inspect.getsource(fill_loop_orchestrator_mod)
+        src = read_source_text(FILL_LOOP_ORCHESTRATOR)
         # Optional は未使用 (from __future__ import annotations で X | None を使用)
         assert "Optional" not in src
