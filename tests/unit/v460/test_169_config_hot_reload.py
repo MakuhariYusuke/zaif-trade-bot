@@ -177,6 +177,25 @@ def _make_reloader(
     )
 
 
+def _make_reload_context(
+    config: FillTestConfig,
+    yaml_path: Path | str | None,
+    *,
+    yaml_cfg: dict[str, object] | None = None,
+    check_interval_sec: float = 0.0,
+) -> tuple[ConfigHotReloader, MagicMock]:
+    """標準の reloader + runner 組を返す."""
+    return (
+        _make_reloader(
+            config,
+            yaml_path,
+            yaml_cfg=yaml_cfg,
+            check_interval_sec=check_interval_sec,
+        ),
+        _make_mock_runner(config),
+    )
+
+
 def _write_yaml_with_updated_mtime(path: Path, content: str) -> None:
     """mtime 差分を sleep なしで保証して YAML を更新する."""
     path.write_text(content, encoding="utf-8")
@@ -197,8 +216,11 @@ class TestConfigHotReloaderBasic:
         self, base_config: FillTestConfig, temp_yaml: Path,
     ) -> None:
         """check_interval_sec 未満ではリロードしない."""
-        reloader = _make_reloader(base_config, temp_yaml, check_interval_sec=300.0)
-        runner = _make_mock_runner(base_config)
+        reloader, runner = _make_reload_context(
+            base_config,
+            temp_yaml,
+            check_interval_sec=300.0,
+        )
 
         # すぐに呼んでもリロードされない
         result = reloader.maybe_reload(runner)
@@ -208,8 +230,7 @@ class TestConfigHotReloaderBasic:
         self, base_config: FillTestConfig, temp_yaml: Path,
     ) -> None:
         """mtime が変わらなければリロードしない."""
-        reloader = _make_reloader(base_config, temp_yaml)
-        runner = _make_mock_runner(base_config)
+        reloader, runner = _make_reload_context(base_config, temp_yaml)
 
         # mtime 変更なし → no reload
         reloader._last_check_time = 0.0  # force check
@@ -223,8 +244,7 @@ class TestConfigHotReloaderBasic:
         yaml_content_updated: str,
     ) -> None:
         """mtime 変更 + フィールド差分ありでリロード実行."""
-        reloader = _make_reloader(base_config, temp_yaml)
-        runner = _make_mock_runner(base_config)
+        reloader, runner = _make_reload_context(base_config, temp_yaml)
 
         # YAML を更新
         _write_yaml_with_updated_mtime(temp_yaml, yaml_content_updated)
@@ -246,8 +266,7 @@ class TestConfigHotReloaderBasic:
         self, base_config: FillTestConfig,
     ) -> None:
         """YAML パスが None ならリロードしない."""
-        reloader = _make_reloader(base_config, None)
-        runner = _make_mock_runner(base_config)
+        reloader, runner = _make_reload_context(base_config, None)
         reloader._last_check_time = 0.0
         result = reloader.maybe_reload(runner)
         assert result is False
@@ -268,8 +287,7 @@ class TestConfigFieldUpdate:
         yaml_content_updated: str,
     ) -> None:
         """_do_reload がホットリロード対象フィールドを更新する."""
-        reloader = _make_reloader(base_config, temp_yaml)
-        runner = _make_mock_runner(base_config)
+        reloader, runner = _make_reload_context(base_config, temp_yaml)
 
         # YAML を更新して直接 _do_reload
         _write_yaml_with_updated_mtime(temp_yaml, yaml_content_updated)
@@ -301,8 +319,7 @@ symbol: btc_jpy
 results_dir: results/different_dir
 spread_offset_ratio: 0.05
 """
-        reloader = _make_reloader(base_config, temp_yaml)
-        runner = _make_mock_runner(base_config)
+        reloader, runner = _make_reload_context(base_config, temp_yaml)
 
         _write_yaml_with_updated_mtime(temp_yaml, updated_yaml)
 
@@ -328,8 +345,7 @@ class TestComponentRebuild:
         yaml_content_updated: str,
     ) -> None:
         """sell_dynamic_kill 設定変更でマネージャが再構築される."""
-        reloader = _make_reloader(base_config, temp_yaml)
-        runner = _make_mock_runner(base_config)
+        reloader, runner = _make_reload_context(base_config, temp_yaml)
 
         _write_yaml_with_updated_mtime(temp_yaml, yaml_content_updated)
 
@@ -345,8 +361,7 @@ class TestComponentRebuild:
         yaml_content_updated: str,
     ) -> None:
         """daily_drawdown 設定変更でガードが再構築される."""
-        reloader = _make_reloader(base_config, temp_yaml)
-        runner = _make_mock_runner(base_config)
+        reloader, runner = _make_reload_context(base_config, temp_yaml)
 
         _write_yaml_with_updated_mtime(temp_yaml, yaml_content_updated)
 
@@ -361,8 +376,7 @@ class TestComponentRebuild:
         yaml_content_updated: str,
     ) -> None:
         """offset 変更で MakerPriceCalculator のオフセットが更新される."""
-        reloader = _make_reloader(base_config, temp_yaml)
-        runner = _make_mock_runner(base_config)
+        reloader, runner = _make_reload_context(base_config, temp_yaml)
 
         _write_yaml_with_updated_mtime(temp_yaml, yaml_content_updated)
 
@@ -410,8 +424,7 @@ class TestReloadErrorHandling:
         base_config: FillTestConfig,
     ) -> None:
         """YAML ファイルが存在しなくてもクラッシュしない."""
-        reloader = _make_reloader(base_config, "/nonexistent/path.yaml")
-        runner = _make_mock_runner(base_config)
+        reloader, runner = _make_reload_context(base_config, "/nonexistent/path.yaml")
         reloader._last_check_time = 0.0
         # mtime が 0.0 で固定 → リロードしない
         result = reloader.maybe_reload(runner)
@@ -424,8 +437,7 @@ class TestReloadErrorHandling:
     ) -> None:
         """_do_reload が例外を投げても旧設定を維持."""
         original_offset = base_config.spread_offset_ratio
-        reloader = _make_reloader(base_config, temp_yaml)
-        runner = _make_mock_runner(base_config)
+        reloader, runner = _make_reload_context(base_config, temp_yaml)
 
         # mtime を人為的に変更して _do_reload を発動
         _write_yaml_with_updated_mtime(temp_yaml, "spread_offset_ratio: 0.10")

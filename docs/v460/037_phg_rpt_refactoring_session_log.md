@@ -2636,3 +2636,30 @@
 - `config_hot_reload` テストは setup の入口を 1 箇所に揃えたので、今後の reload case 追加でも差分が散りにくい。
 - `fill_quality` の outcome 系テストは fill / skip / timeout / reject / unknown の構築パターンを共通化できた。まだ同型の attempted/cancel 系に横展開余地がある。
 - `build_real_features()` は全日付処理時に raw path の探索を 1 回で済ませるようになり、実データディレクトリに対する無駄な `exists()` 呼び出しを減らした。
+
+---
+
+## 2026-03-09 / Session 037-058
+
+### 実施
+- `tests/unit/v460/test_169_config_hot_reload.py`
+  - `_make_reload_context()` を追加
+  - `reloader` と `runner` の組生成をこの helper に寄せた
+- `tests/unit/v460/test_fill_quality.py`
+  - `test_no_skip_gate_records` も `_make_outcome_records()` 利用へ統一
+- `scripts/v460/build_features.py`
+  - 前バッチの `_discover_daily_inputs()` ルートを維持したまま focused pipeline で再確認
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_169_config_hot_reload.py`
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `30 passed in 4.58s`
+- focused selector:
+  - `tests/unit/v460/test_fill_quality.py -k 'skip_gate_fields_populated or no_skip_gate_records or cancel_reason_breakdown'`
+  - `3 passed, 203 deselected in 3.36s`
+
+### 主要改善
+- `config_hot_reload` テストは「reloader だけ」ではなく「reloader + runner」まで共通化できたので、今後の hot-reload 回帰追加でも setup の重複が増えにくい。
+- `fill_quality` の attempted 系は all-fill / mixed outcomes の両方が同じ builder 系に乗った。残りも同じ方向で崩せる。
+- 追加の production 変更は小さいが、`build_features` の input 解決整理が focused pipeline で維持されることを確認した。

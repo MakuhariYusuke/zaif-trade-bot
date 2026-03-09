@@ -1092,14 +1092,11 @@ class TestComputeFillMetricsAttempted:
     def test_no_skip_gate_records(self) -> None:
         """skip_gate なし → attempted = total."""
         base_ts = time.time()
-        records = [
-            FillRecord(
-                cycle_id=f"r_{i}", timestamp=base_ts + i * 120,
-                side="buy", order_price=100.0, order_quantity=0.001,
-                filled=True,
-            )
-            for i in range(5)
-        ]
+        records = _make_outcome_records(
+            prefix="attempted_all_fill",
+            counts={"fill": 5},
+            base_ts=base_ts,
+        )
         m = compute_fill_metrics(records)
         assert m.skip_gate_count == 0
         assert m.attempted_orders == 5

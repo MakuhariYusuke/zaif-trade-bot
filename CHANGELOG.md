@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Session 037-058 Context Helper Expansion and Outcome Builder Reuse (2026-03-09)
+
+### Changed
+- Added `_make_reload_context()` in `tests/unit/v460/test_169_config_hot_reload.py` so hot-reload tests reuse a common `(reloader, runner)` setup path.
+- Expanded `_make_outcome_records()` reuse in `tests/unit/v460/test_fill_quality.py` to cover the all-fill attempted-metrics case as well.
+- Kept `scripts/v460/build_features.py` on the single-pass daily input discovery path introduced in the previous batch and verified it against the real-mode pipeline tests.
+
 ## 349# 分析ツール整理 + 重複コード削減 + EWMA 3バグ修正 (2026-03-09)
 
 ### Fixed
