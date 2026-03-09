@@ -209,11 +209,14 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
         *,
         order_lot: float | None = None,
         one_sided_balance: bool = False,
+        prefetched_ob: object | None = None,
+        prefetched_trades: object | None = None,
     ) -> _SkipGateResult:
         """SkipGate ML 判定 — 121# SkipGateEvaluator に委譲.
 
         145# §9-#4: order_lot を渡してレジーム倍率適用後のロットで記録.
         190# B: one_sided_balance を渡して片側 balance 時の threshold 緩和.
+        355# L-1/L-2: prefetched_ob / prefetched_trades で API 呼出し削減.
         """
         regime_value = (
             self._regime_detector.current_regime.value
@@ -246,6 +249,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
             maker_price_vpin_setter=lambda v: setattr(self._maker_price, '_last_vpin', v),
             one_sided_balance=one_sided_balance,
             kill_release_offset=_kill_rel_offset,
+            prefetched_ob=prefetched_ob,
+            prefetched_trades=prefetched_trades,
         )
 
     async def _monitor_fill_polling(
@@ -400,11 +405,14 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
             # フォールバック: 前回値を維持
 
         # 135# P0-04: trades recorder — OB とは独立した try で障害分離 (§9.1 #3)
+        # 355# L-2: SkipGate への prefetch 共有用に結果を保持
+        _prefetched_trades: object | None = None
         try:
             recent = await self.adapter.get_recent_trades(
                 self.config.symbol, limit=self.config.trades_recorder_fetch_limit,
             )
             self._trades_recorder.record_from_adapter(recent)
+            _prefetched_trades = recent
         except Exception as te:
             logger.debug(f"Trades fetch for recording skipped: {te}")
 
@@ -554,6 +562,9 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
             side, cycle_id, order_price, spread_at_order, effective_offset_ratio,
             order_lot=_regime_lot,
             one_sided_balance=one_sided_balance,
+            # 355# L-1/L-2: サイクル先頭で取得済みの OB/Trades を再利用
+            prefetched_ob=self._maker_price._last_ob_snapshot,
+            prefetched_trades=_prefetched_trades,
         )
         skip_gate_skipped = sg.skipped
         skip_gate_score = sg.score

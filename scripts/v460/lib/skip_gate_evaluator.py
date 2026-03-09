@@ -954,11 +954,19 @@ class SkipGateEvaluator:
         *,
         one_sided_balance: bool = False,
         kill_release_offset: float = 0.0,
+        prefetched_ob: OrderBookSnapshot | None = None,
+        prefetched_trades: object | None = None,
     ) -> SkipGateResult:
         """062# SkipGate ML 判定.
 
         Args:
             maker_price_vpin_setter: callable(vpin) — MakerPriceCalculator._last_vpin を設定
+            prefetched_ob: 355# L-1 OB prefetch 共有 — サイクル先頭の
+                imbalance pre-fetch で取得済みの depth=5 OB を再利用。
+                None の場合は従来通り adapter から fetch。
+            prefetched_trades: 355# L-2 Trades prefetch 共有 — サイクル先頭の
+                trades recorder 向け fetch (limit=100) の結果を再利用。
+                None の場合は従来通り adapter から fetch。
         """
         result = SkipGateResult()
         # 143# A.1 #2: unified 不在でも side モデルが使える場合は続行
@@ -1030,13 +1038,17 @@ class SkipGateEvaluator:
             market_ts = time.time()
 
             # 直近約定データ取得
+            # 355# L-2: prefetched_trades があればAPI呼出しをスキップ
             recent_trades_data: list[dict[str, object]] | None = None
             try:
-                # 265# Protocol 型安全化: getattr → 直接呼び出し
-                trades = await adapter.get_recent_trades(
-                    symbol,
-                    limit=self._config.skip_gate_recent_trades_limit,
-                )
+                if prefetched_trades is not None:
+                    trades = prefetched_trades
+                else:
+                    # 265# Protocol 型安全化: getattr → 直接呼び出し
+                    trades = await adapter.get_recent_trades(
+                        symbol,
+                        limit=self._config.skip_gate_recent_trades_limit,
+                    )
                 recent_trades_data = self._normalize_recent_trades(
                     trades,
                     fallback_timestamp=market_ts,
@@ -1055,11 +1067,15 @@ class SkipGateEvaluator:
                 self._ob_fetch_total_count += 1
                 try:
                     from scripts.v460.lib.ob_utils import extract_price, depth_volume
-                    # 265# Protocol 型安全化: getattr → 直接呼び出し
-                    ob = await adapter.get_orderbook(
-                        symbol,
-                        depth=self._config.skip_gate_ob_depth,
-                    )
+                    # 355# L-1: prefetched_ob があればAPI呼出しをスキップ
+                    if prefetched_ob is not None:
+                        ob = prefetched_ob
+                    else:
+                        # 265# Protocol 型安全化: getattr → 直接呼び出し
+                        ob = await adapter.get_orderbook(
+                            symbol,
+                            depth=self._config.skip_gate_ob_depth,
+                        )
                     if ob and hasattr(ob, "bids") and hasattr(ob, "asks"):
                         # 266# type:ignore 排除: OrderBookSnapshot Protocol 型安全化
                         bids = ob.bids
