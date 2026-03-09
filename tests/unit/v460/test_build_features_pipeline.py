@@ -199,28 +199,24 @@ def _aggregate_raw_records(
         return MarketDataCollector.aggregate_to_1min(ob_path, tr_path, output_path=None)
 
 
-_REAL_MODE_AGG_MINUTES = 32
-_REAL_MODE_AGG_SLICE_ROWS = 30
-
-
 @pytest.fixture(scope="module")
-def real_mode_aggregate_base(tmp_path_factory: pytest.TempPathFactory) -> pd.DataFrame:
-    """real-mode aggregate の共有ベース出力."""
-    tmp_path = tmp_path_factory.mktemp("build_features_agg_base")
-    ob_records, tr_records = _make_raw_records(_REAL_MODE_AGG_MINUTES)
+def real_mode_aggregate_40(tmp_path_factory: pytest.TempPathFactory) -> pd.DataFrame:
+    """40分相当の aggregate 出力を 1 回だけ再利用する."""
+    tmp_path = tmp_path_factory.mktemp("build_features_agg_40")
+    ob_records, tr_records = _make_raw_records(40)
     return _aggregate_raw_records(tmp_path, ob_records=ob_records, tr_records=tr_records)
 
 
 @pytest.fixture(scope="module")
-def real_mode_aggregate_30(real_mode_aggregate_base: pd.DataFrame) -> pd.DataFrame:
-    """共有 aggregate から 30 分相当だけを切り出して再利用する."""
-    return real_mode_aggregate_base.iloc[:_REAL_MODE_AGG_SLICE_ROWS]
+def real_mode_aggregate_30(real_mode_aggregate_40: pd.DataFrame) -> pd.DataFrame:
+    """40分 aggregate から 30 分相当だけを切り出して再利用する."""
+    return real_mode_aggregate_40.head(30).copy()
 
 
 @pytest.fixture(scope="module")
-def real_mode_micro_base(real_mode_aggregate_base: pd.DataFrame) -> pd.DataFrame:
+def real_mode_micro_40(real_mode_aggregate_40: pd.DataFrame) -> pd.DataFrame:
     """microstructure 追加済みの real-mode 出力を再利用する."""
-    agg = real_mode_aggregate_base
+    agg = real_mode_aggregate_40
     if "close" not in agg.columns and "mid_price" in agg.columns:
         return add_microstructure_features(agg.assign(close=agg["mid_price"]))
     return add_microstructure_features(agg)
@@ -237,20 +233,20 @@ class TestRealModePipeline:
         for col in ["best_bid", "best_ask", "mid_price"]:
             assert col in real_mode_aggregate_30.columns, f"Missing column: {col}"
 
-    def test_microstructure_on_aggregated(self, real_mode_micro_base: pd.DataFrame) -> None:
+    def test_microstructure_on_aggregated(self, real_mode_micro_40: pd.DataFrame) -> None:
         """aggregate_to_1min 出力 → add_microstructure_features で特徴量追加."""
         # microstructure features が追加される
         for feat in MICROSTRUCTURE_FEATURES:
-            assert feat in real_mode_micro_base.columns, f"Missing microstructure feature: {feat}"
+            assert feat in real_mode_micro_40.columns, f"Missing microstructure feature: {feat}"
 
-    def test_v460_features_coverage(self, real_mode_micro_base: pd.DataFrame) -> None:
+    def test_v460_features_coverage(self, real_mode_micro_40: pd.DataFrame) -> None:
         """V460_FEATURES 10 種がすべて生成される (real mode 相当)."""
-        missing = [f for f in V460_FEATURES if f not in real_mode_micro_base.columns]
+        missing = [f for f in V460_FEATURES if f not in real_mode_micro_40.columns]
         assert not missing, f"Missing V460 features: {missing}"
 
-    def test_pipeline_no_inf(self, real_mode_micro_base: pd.DataFrame) -> None:
+    def test_pipeline_no_inf(self, real_mode_micro_40: pd.DataFrame) -> None:
         """パイプライン出力に Inf がない."""
-        numeric = real_mode_micro_base.select_dtypes(include=[np.number])
+        numeric = real_mode_micro_40.select_dtypes(include=[np.number])
         assert not np.isinf(numeric.values).any()
 
     def test_pipeline_row_count(self, real_mode_aggregate_30: pd.DataFrame) -> None:

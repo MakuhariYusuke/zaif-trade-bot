@@ -172,7 +172,7 @@ F7 制約 (361#): `ewma_alpha`, `ewma_time_decay_tau_sec` は **変更しない*
 | TUNE-4 | BDK threshold 緩和 | ⏳ skip (0件 BDK) | codex 038 (C-5 note) |
 | B2 | current-SHA 再集計→K1/K2 判定 | ✅ §1 で実施 | copilot 038 |
 | P1-1 | buy_ranging deep dive | ⏳ pending | codex |
-| B4/P1-3 | ph3 sidecar 設計文書 | ⏳ pending | codex |
+| B4/P1-3 | ph3 sidecar 設計文書 | ✅ 365# で作成 | copilot 038 |
 
 ### P2 (Week3+)
 | ID | 説明 | ステータス | 担当 |

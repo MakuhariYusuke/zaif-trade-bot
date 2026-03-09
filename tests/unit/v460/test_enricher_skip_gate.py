@@ -122,11 +122,6 @@ def _select_real_enriched_training_df(
     return enrich_fill_records(recent_fill_df.tail(selected_rows))
 
 
-@lru_cache(maxsize=1)
-def _cached_real_enriched_training_df() -> pd.DataFrame:
-    return _select_real_enriched_training_df()
-
-
 def _make_synthetic_fill_df() -> pd.DataFrame:
     """合成 fill records: 100件のテストデータ."""
     rng = np.random.RandomState(42)
@@ -190,15 +185,6 @@ def _make_micro_feature_fill_df() -> pd.DataFrame:
 @lru_cache(maxsize=1)
 def _cached_micro_feature_fill_df() -> pd.DataFrame:
     return _make_micro_feature_fill_df()
-
-
-def _save_and_load_gate(
-    gate: SkipGate,
-    path: Path,
-) -> SkipGate:
-    """SkipGate の save/load roundtrip を共通化."""
-    gate.save(path)
-    return SkipGate.load(path)
 
 
 @lru_cache(maxsize=1)
@@ -576,8 +562,10 @@ class Test058SkipGate:
         """save → load で復元."""
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "test_gate.pkl"
-            loaded = _save_and_load_gate(trained_gate, path)
+            trained_gate.save(path)
             assert path.exists()
+
+            loaded = SkipGate.load(path)
             assert loaded.feature_cols == trained_gate.feature_cols
             assert loaded.config.threshold_bps == trained_gate.config.threshold_bps
 
@@ -638,7 +626,9 @@ class Test061SkipGateASMode:
         """AS モードの save → load roundtrip."""
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "test_as_gate.pkl"
-            loaded = _save_and_load_gate(as_gate, path)
+            as_gate.save(path)
+
+            loaded = SkipGate.load(path)
             assert loaded.config.mode == "as"
             assert loaded.config.as_threshold == 0.6
 
@@ -1024,10 +1014,10 @@ class Test058Integration:
     ) -> pd.DataFrame:
         if not real_data_available:
             pytest.skip("No real data")
-        enriched = _cached_real_enriched_training_df()
+        enriched = _select_real_enriched_training_df()
         if enriched.empty:
             pytest.skip("No fill records")
-        return enriched.copy(deep=False)
+        return enriched.copy()
 
     def test_enrichment_with_real_data(
         self,
@@ -1331,7 +1321,7 @@ class Test059PickleHash:
 
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "gate.pkl"
-            _save_and_load_gate(gate, path)
+            gate.save(path)
             # ハッシュファイルを削除
             hash_path = path.with_suffix(".pkl.sha256")
             hash_path.unlink()

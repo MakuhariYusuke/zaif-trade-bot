@@ -281,7 +281,8 @@ class MarketDataCollector:
         ob_records = _read_jsonl_gz(ob_path)
         if ob_records:
             ob_df = pd.DataFrame(ob_records)
-            ob_df.index = pd.to_datetime(ob_df["ts"], unit="s", utc=True)
+            ob_df["dt"] = pd.to_datetime(ob_df["ts"], unit="s", utc=True)
+            ob_df = ob_df.set_index("dt")
             ob_1m = _aggregate_orderbook_1min(ob_df)
         else:
             ob_1m = pd.DataFrame()
@@ -290,7 +291,8 @@ class MarketDataCollector:
         tr_records = _read_jsonl_gz(tr_path)
         if tr_records:
             tr_df = pd.DataFrame(tr_records)
-            tr_df.index = pd.to_datetime(tr_df["ts"], unit="s", utc=True)
+            tr_df["dt"] = pd.to_datetime(tr_df["ts"], unit="s", utc=True)
+            tr_df = tr_df.set_index("dt")
             tr_1m = _aggregate_trades_1min(tr_df)
         else:
             tr_1m = pd.DataFrame()
