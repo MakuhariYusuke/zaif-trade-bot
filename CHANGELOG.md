@@ -4811,6 +4811,27 @@ python scripts/unified_trainer.py \
 - `TestHeavyTradingEnvIntegration` setup moved from repeated multi-second parquet reads to a single cached load, dropping the dominant setup cost from the prior ~5-6 second band to ~1.4 seconds once per class in the broad profile.
 ## 2026-03-10
 
+- Reduced repeated setup in the remaining `retrain/ml/core` hotspots:
+  - added `_save_and_load_gate(...)` to [tests/unit/v460/test_retrain_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_retrain_hot_reload.py) and reused it in the post-deploy verification roundtrip
+  - added shared `as_training_data_small` / `fill_training_data_small` fixtures to [tests/unit/v460/test_ml_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ml_pipeline.py) and trimmed GB tests to `gb_n_estimators=3`
+  - cached the computed microstructure result in [tests/unit/v460/test_v460_core.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_v460_core.py) so the feature-generation assertion path no longer recomputes the full DataFrame
+- Extended the latest production/test optimizations across remaining hotspots:
+  - added a single-day fast-path to [ztb/metrics/fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py) `_resolve_fill_record_files_by_date_range(...)` so exact-day lookups avoid the generic day loop
+  - reduced [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py) cached real-data slice from `128` to `96` rows while keeping `HeavyTradingEnv` integration valid
+  - introduced `_save_and_load_gate(...)` in [tests/unit/v460/test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py) and reused it across the roundtrip tests
+  - introduced `_save_dated_linear_record(...)` in [tests/unit/v460/test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py) and reused it across the date-range/listing I/O tests
+- Optimized production hot paths used by the remaining `v460` hotspots:
+  - added `shallow_asdict(...)` to [ztb/utils/dataclass_utils.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/utils/dataclass_utils.py) and switched `HeavyTradingEnv` / `RewardCalculator` reward-settings logging+merge paths to avoid `dataclasses.asdict(...)` deep copies on env initialization
+  - changed [scripts/v460/ml/skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/skip_gate.py) save/load to use `pickle.HIGHEST_PROTOCOL`, `Path.write_bytes()`, and `Path.read_bytes()` for lower persistence overhead
+  - simplified [ztb/data/market_data_collector.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/data/market_data_collector.py) timestamp indexing to avoid temporary `dt` columns before `aggregate_to_1min(...)` resampling
+  - added [test_dataclass_utils.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/utils/test_dataclass_utils.py) to cover the new shallow dataclass helper
+- Trimmed remaining setup overhead in `v460` test hotspots:
+  - kept `tests/unit/v460/test_enricher_skip_gate.py` real-data integration on the guarded `120/220/280` sample ladder after verifying smaller ladders broke the `n_samples > 30` contract
+  - refactored `tests/unit/v460/test_retrain_hot_reload.py::TestHotReload` to share model/evaluator construction through `_create_evaluator(...)`
+  - reduced `tests/unit/v460/test_build_features_pipeline.py` real-mode aggregate fixture from 40 synthetic minutes to 32 and reused the same base DataFrame for both 30-row schema checks and microstructure checks
+- Reused cached `HeavyTradingEnv` fixtures inside [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py) so instantiation/reset/step validation cases share the same environment setup instead of rebuilding it per test.
+- Added a cached real-data enriched fixture path in [tests/unit/v460/test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py) and removed the remaining deep copy from the `real_enriched_df` class fixture.
+- Added [scripts/v460/run_v460_unit_tests.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/run_v460_unit_tests.py) as a dedicated `tests/unit/v460/` runner that forces `--no-cov --tb=short`, avoiding the repository-wide coverage gate for this subset.
 - Relaxed `daily_drawdown.per_side_*` defaults and production YAML in `configs/v460/fill_test.yaml` / `scripts/v460/lib/fill_config.py`:
   - `per_side_hard_limit_bps: -30.0 -> -50.0`
   - `per_side_halt_cycles: 15 -> 10` in YAML and `0 -> 10` in code defaults
