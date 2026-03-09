@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 349# 分析ツール整理 + 重複コード削減 (2026-03-09)
+
+### Changed
+- **analyze_fill_logs.py**: 手動 JSONL 読み込み → `load_fill_record_objects_glob()` + `apply_fill_record_filters()` に委譲 (DRY)
+- **fill_quality.py**: `iter_fill_records()` の独自パースを `iter_jsonl_objects()` に委譲
+- **tests/test_analyze_fill_logs.py**: import パスを `tools.analysis.` → `scripts.v460.analysis.` に修正
+
+### Removed
+- **regime_evaluation.py**: deprecated (DeprecationWarning 発行済み, import 0件) → 削除 (-341行)
+- 分析ツール整理: `tools/analysis/` → `scripts/v460/analysis/` 一元化、one-off スクリプトを archived
+
+### Documentation
+- docs/v460/349_phg_refactor_analysis_dedup.md 新規作成
+- docs/evaluation/extended_evaluation.md: regime_evaluation → 後継モジュール案内に更新
+
 ## Session 037-057 Test Helper Consolidation and Real Build Input Reuse (2026-03-09)
 
 ### Changed
