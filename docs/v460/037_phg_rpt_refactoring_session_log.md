@@ -2749,3 +2749,230 @@
 - `inspect.getsource(...)` の残件はこの 3 ファイルで cached helper に置換できた。source-contract テストの重複パターンがかなり減った。
 - `gate_thresholds.yaml` の consistency テストは typed fixture に寄せたので、今後の閾値追加でも読み込み boilerplate を増やさずに済む。
 - focused durations の上位は source read ではなく実際の behavioral test に寄っており、今後は真に重い call 側を見やすい状態になった。
+
+---
+
+## 2026-03-09 / Session 037-062
+
+### 実施
+- `tests/unit/v460/test_094_stale_order.py`
+  - cached `_source()` helper を追加
+  - `OrderMonitor`, `MakerPriceCalculator`, `SkipGate`, `FillMonitorResult`, `SkipGateResult` の repeated import を module scope に集約
+  - `OrderMonitor.monitor` の source assertion を helper 経由へ統一
+- `tests/unit/v460/test_137_p1_features.py`
+  - `FillTestConfig`, `PnlMeasurer`, `RetrainTriggerConfig` の method 内 import を module scope に集約
+- `tests/unit/v460/test_138_p1_preflight_calibration.py`
+  - `FillTestConfig`, `ScoreCalibrator`, `ScoreCalibratorConfig` の method 内 import を module scope に集約
+  - bare `dict` の一部を具体的な union 型注釈へ変更
+- `tests/unit/v460/test_fill_quality.py`
+  - `TestFillRecordIO` の roundtrip / glob / date-range ケースを `_save_linear_records()` に横展開
+  - `load_corrupt_lines_skipped` も `_make_linear_records()` ベースへ寄せて単発 `FillRecord(...)` 構築を削減
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_094_stale_order.py`
+  - `tests/unit/v460/test_137_p1_features.py`
+  - `tests/unit/v460/test_138_p1_preflight_calibration.py`
+  - `79 passed in 3.64s`
+- focused selector:
+  - `tests/unit/v460/test_fill_quality.py -k 'save_load_roundtrip or iter_load_roundtrip or glob_load or iter_glob_load_roundtrip or load_corrupt_lines_skipped'`
+  - `7 passed, 199 deselected in 3.37s`
+
+### 主要改善
+- `test_094_stale_order.py` の source-contract テストは cached source 参照に揃ったので、同じ `OrderMonitor.monitor` text を何度も取り直さなくなった。
+- `test_137_p1_features.py` と `test_138_p1_preflight_calibration.py` は method 内 import をかなり削り、型注釈も少し締めたので、以後の横展開がしやすい状態になった。
+- `test_fill_quality.py` の `TestFillRecordIO` は JSONL I/O helper の再利用範囲が広がり、1件/2件保存ケースの boilerplate がさらに減った。
+
+---
+
+## 2026-03-09 / Session 037-063
+
+### 実施
+- `tests/unit/v460/test_094_stale_order.py`
+  - ローカル `_source()` を廃止
+  - [_fill_test_source.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_fill_test_source.py) の `read_class_method_source()` と `ORDER_MONITOR` を使う形に変更
+- `tests/unit/v460/test_fill_quality.py`
+  - `_save_daily_fill_count_records()` を追加
+  - `TestGateCheckG11::test_g1_1_with_data` を helper 再利用へ変更
+- `scripts/v460/ml/feature_enricher.py`
+  - `resolve_raw_dir()` を追加
+  - `discover_raw_daily_inputs()` を追加
+  - raw orderbook/trades loader が同 helper を使うよう整理
+- `scripts/v460/build_features.py`
+  - raw dir 解決と日次 raw 入力 discovery を `feature_enricher` 側 helper の再利用へ寄せた
+  - `_discover_daily_inputs()` の重複実装を削除
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_094_stale_order.py`
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `66 passed in 8.15s`
+- focused selector:
+  - `tests/unit/v460/test_fill_quality.py -k 'g1_1_with_data or save_load_roundtrip or iter_load_roundtrip or glob_load or iter_glob_load_roundtrip or load_corrupt_lines_skipped'`
+  - `8 passed, 198 deselected in 7.43s`
+
+### 主要改善
+- `stale_order` の source-contract は他の split-source テストと同じ helper 経路に揃った。`inspect.getsource()` のローカルキャッシュ実装が1つ減った。
+- `fill_quality` の `run_g1_1` integration も日次 fill-count builder に揃ったので、日次サンプル生成の修正点がさらに集中した。
+- production 側は `feature_enricher` と `build_features` の raw path/date 解決が 1 箇所にまとまり、今後の raw layout 変更や日付解決ロジック変更を片側だけ直して齟齬が出るリスクを下げた。
+
+---
+
+## 2026-03-09 / Session 037-064
+
+### 実施
+- `scripts/v460/ml/feature_enricher.py`
+  - `RawDirLike = str | Path | None` を導入
+  - `resolve_raw_dir()`, `discover_raw_daily_inputs()`, raw loader 群, `enrich_fill_records()` の `raw_dir` 引数を共通型へ拡張
+- `scripts/v460/build_features.py`
+  - `build_real_features()` が `raw_dir` を直接 `resolve_raw_dir()` に渡すよう整理
+- `tests/unit/v460/test_154_deadlock_prevention.py`
+  - `OrderMonitor.monitor` の source assertion を `read_class_method_source()` へ変更
+- `tests/unit/v460/test_262_protocol_cancel_recheck.py`
+  - `OrderMonitor.monitor` の source assertion を `read_class_method_source()` へ変更
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_154_deadlock_prevention.py`
+  - `tests/unit/v460/test_262_protocol_cancel_recheck.py`
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `57 passed in 7.90s`
+
+### 主要改善
+- `resolve_raw_dir()` は `str | Path | None` を直接受けるようになったので、CLI 呼び出しとライブラリ呼び出しで余分な `Path(...)` 包装が不要になった。再利用境界として扱いやすくなった。
+- `OrderMonitor.monitor` を読む source-contract テストは `_fill_test_source.py` にさらに寄った。split-source 系の参照経路が揃い、`inspect.getsource(...)` の局所実装がまた減った。
+- 今回追加した helper のうち、production-wide に昇格させる価値があるのは raw path/date helper 側で、`_save_daily_fill_count_records()` は現時点では test-local helper のままが適切と判断した。
+
+---
+
+## 2026-03-09 / Session 037-065
+
+### 実施
+- `tests/unit/v460/test_fill_quality.py`
+  - `_save_generated_records()` を追加
+  - `_save_linear_records()` と `_save_daily_fill_count_records()` を thin wrapper 化
+- `scripts/v460/ml/feature_enricher.py`
+  - `resolve_available_raw_dates()` を追加
+- `scripts/v460/build_features.py`
+  - `_resolve_target_dates()` を削除
+  - `resolve_available_raw_dates()` を再利用する形へ変更
+
+### 結果
+- focused selector:
+  - `tests/unit/v460/test_fill_quality.py -k 'g1_1_with_data or save_load_roundtrip or glob_load or iter_glob_load_roundtrip'`
+  - `6 passed, 200 deselected in 3.49s`
+- focused:
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `14 passed in 3.32s`
+
+### 主要改善
+- `fill_quality` の helper は「builder ごとの差」は残しつつ、「保存処理そのもの」は 1 箇所へ統合した。可読性を落とさずに重複だけ削れている。
+- production 側は raw path 解決だけでなく target date 解決も `feature_enricher` 側へ寄せたので、`build_features.py` から raw 入力発見系 helper がさらに 1 つ減った。
+- helper 統合の判断としては、「builder 名がテスト意図を伝えるもの」は wrapper を残し、「内部で同じことをするだけ」の層だけを畳むのが妥当だった。
+
+---
+
+## 2026-03-09 / Session 037-066
+
+### 実施
+- `tests/unit/v460/test_fill_quality.py`
+  - `_build_daily_records()` を追加
+  - `_make_uniform_daily_records()` と `_make_daily_fill_count_records()` の day/index 二重ループを共通化
+- `tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py`
+  - `OrderMonitor._resolve_regime_name` の source 参照を `read_class_method_source()` へ変更
+
+### 結果
+- focused selector:
+  - `tests/unit/v460/test_fill_quality.py -k 'daily_fill_rates or g1_1_with_data or save_load_roundtrip or glob_load'`
+  - `7 passed, 199 deselected in 3.97s`
+- focused:
+  - `tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py`
+  - `29 passed in 1.14s`
+
+### 主要改善
+- `fill_quality` の日次 builder は「日ごと×件数」の共通ループだけを統合した。wrapper 名と各レコードの意味は維持しているので、DRY と可読性のバランスは保てている。
+- `OrderMonitor` の split-source helper 再利用は `_resolve_regime_name` にも広がった。`inspect.getsource(...)` のローカル参照がまた 1 つ減った。
+- raw-reader 系については今回追加で見たが、現状は `feature_enricher` 側の helper 境界で十分で、これ以上の統合は別責務まで巻き込みやすいので見送った。
+
+---
+
+## 2026-03-09 / Session 037-067
+
+### 実施
+- `tests/unit/v460/test_236_state_persistence_cqs.py`
+  - split-source の参照先を `_fill_test_source.py` ベースに整理
+  - `_build_state_snapshot()` / `_restore_common_state()` の source 参照を現行 split 先 (`OrchestratorLifecycleMixin`) に追随
+- `tests/unit/v460/test_230_ffd_deadzone_streak_guards.py`
+  - `inspect.getsource(...)` ベースの module source 検査を `read_source_text(...)` に統一
+  - `_SideState` import を module scope へ集約
+- `tests/unit/v460/test_306_proposals.py`
+  - AB judgment / adaptation / config hot reload / maker price / `FillRecord` 関連の method 内 import を module scope に集約
+- `ztb/data/raw_paths.py`
+  - `resolve_raw_dir()`, `resolve_available_raw_dates()`, `RawDirLike` を新設
+- `scripts/v460/ml/feature_enricher.py`
+  - raw dir 正規化 helper を `ztb.data.raw_paths` 再利用へ変更
+- `scripts/v460/build_features.py`
+  - raw dir / available date 解決を shared helper 再利用へ変更
+- `ztb/data/market_data_collector.py`
+  - `raw_dir` 解決を shared helper 再利用へ変更
+- `ztb/data/trades_health.py`
+  - raw dir 解決を shared helper 再利用へ変更
+- `ztb/data/trades_recorder.py`
+  - raw dir 解決を shared helper 再利用へ変更
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_236_state_persistence_cqs.py`
+  - `tests/unit/v460/test_230_ffd_deadzone_streak_guards.py`
+  - `tests/unit/v460/test_306_proposals.py`
+  - `139 passed in 5.44s`
+- focused:
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `tests/unit/v460/test_158_oracle_test.py`
+  - `tests/unit/v460/test_ob_recorder.py`
+  - `40 passed in 6.23s`
+
+### 主要改善
+- split-source assertion は local `inspect.getsource(...)` 実装を増やす流れから外し、`_fill_test_source.py` の shared helper と split-file 定数へ寄せた。今後の分割追随は helper 側の責務として扱える。
+- `test_306_proposals.py` の method 内 import は 0 にできた。追加ケースでも import が散らばりにくい形になった。
+- raw path/date 解決は `ztb.data.raw_paths` に移したので、`scripts` 側 helper を `ztb` から逆参照する不自然な境界を作らずに、production 側の再利用点を 1 箇所へ集約できた。
+- `test_236_state_persistence_cqs.py` の `_restore_common_state` は現行 split layout では `OrchestratorLifecycleMixin` にあるため、その実体に合わせて source 契約を修正した。
+
+---
+
+## 2026-03-09 / Session 037-068
+
+### 実施
+- `tests/unit/v460/_fill_test_source.py`
+  - `OB_UTILS`, `SKIP_GATE_EVALUATOR`, `MAKER_REGIME_BOOST`, `MAKER_MICROSTRUCTURE` を追加
+- `tests/unit/v460/test_260_compute_extract_regime_split.py`
+  - `MakerPrice` source 契約を shared helper 化
+  - `compute/_apply_loss_boost/_apply_ffd_boost` は `maker_price.py`
+  - `regime_boost` 群は `maker_regime_boost.py` の実体へ追随
+- `tests/unit/v460/test_266_market_theory_protocol.py`
+  - `MakerPrice`/`ob_utils`/`skip_gate_evaluator`/`fill_cycle_executor` の source 検査を shared helper 化
+  - `_apply_as_reservation_shift`, `_apply_kyle_lambda`, `_apply_amihud_illiq` は `maker_microstructure.py` の実体へ追随
+  - `OrderBookSnapshot`, `SkipGateAdapter`, `typing` の method 内 import を整理
+- `tests/unit/v460/test_277_magic_number_grounding.py`
+  - orchestrator / regime_policy / cycle_gate_aggregator / micro_circuit_breaker / DD guard の method 内 import を module scope に集約
+- `tests/unit/v460/test_237_phantom_position_guard.py`
+  - `FillRecord`, `FillMonitorResult`, `FillTestState`, `BalanceChecker`, `FillTestConfig`, cancel reason 定数の method 内 import を module scope に集約
+- `tests/unit/v460/test_183_log_analysis_improvements.py`
+  - inline `yaml.safe_load(...)` を parsed module constants + fixture 再利用へ変更
+  - `_HOT_RELOADABLE_FIELDS` import も module scope に集約
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_260_compute_extract_regime_split.py`
+  - `tests/unit/v460/test_266_market_theory_protocol.py`
+  - `56 passed in 2.64s`
+- focused:
+  - `tests/unit/v460/test_277_magic_number_grounding.py`
+  - `tests/unit/v460/test_237_phantom_position_guard.py`
+  - `tests/unit/v460/test_183_log_analysis_improvements.py`
+  - `91 passed in 2.15s`
+
+### 主要改善
+- `MakerPrice` source-contract は monolith 前提の `inspect.getsource(...)` から抜けて、現行 split layout の実体ファイルを直接読む形に揃った。今後 `maker_price.py` / `maker_regime_boost.py` / `maker_microstructure.py` の責務分離を維持しやすい。
+- `test_277_magic_number_grounding.py` と `test_237_phantom_position_guard.py` は、追加ケースを積んでも import boilerplate が再増殖しにくい形になった。
+- `test_183_log_analysis_improvements.py` は YAML 断片を 1 回 parse して fixture で複製する方式に変えたので、同じ literal を何度も parse しない。シナリオ名は維持しているので意図も崩れていない。

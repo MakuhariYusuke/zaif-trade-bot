@@ -10,17 +10,30 @@
 """
 from __future__ import annotations
 
-import inspect
 import math
+import typing
 from unittest.mock import MagicMock
 
 import pytest
 
 from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import FillTestConfig
-from scripts.v460.lib.maker_price import MakerPriceCalculator as MakerPrice
-from scripts.v460.lib.ob_utils import OrderBookSnapshot
+from scripts.v460.lib.maker_price import (
+    MakerPriceCalculator as MakerPrice,
+    OrderBookSnapshot as MakerPriceOrderBookSnapshot,
+)
+from scripts.v460.lib.ob_utils import OrderBookSnapshot, best_bid_ask
 from scripts.v460.lib.regime_detector import FillTestRegime
+from scripts.v460.lib.skip_gate_evaluator import SkipGateAdapter
+from tests.unit.v460._fill_test_source import (
+    FILL_CYCLE_EXECUTOR,
+    MAKER_MICROSTRUCTURE,
+    MAKER_PRICE,
+    OB_UTILS,
+    SKIP_GATE_EVALUATOR,
+    read_class_method_source,
+    read_source_text,
+)
 
 
 # ======================================================================
@@ -69,6 +82,18 @@ def _make_regime_detector(vol_ratio: float = 1.0) -> MagicMock:
     return det
 
 
+def _maker_price_source(method_name: str) -> str:
+    return read_class_method_source(MAKER_PRICE, "MakerPriceCalculator", method_name)
+
+
+def _maker_microstructure_source(method_name: str) -> str:
+    return read_class_method_source(
+        MAKER_MICROSTRUCTURE,
+        "MicrostructureMixin",
+        method_name,
+    )
+
+
 # ======================================================================
 # _estimate_sigma: 共有 σ 推定ヘルパー
 # ======================================================================
@@ -105,7 +130,7 @@ class TestEstimateSigma:
 
     def test_source_reused_in_as_reservation(self) -> None:
         """_apply_as_reservation_shift が _estimate_sigma を呼び出す."""
-        src = inspect.getsource(MakerPrice._apply_as_reservation_shift)
+        src = _maker_microstructure_source("_apply_as_reservation_shift")
         assert "_estimate_sigma" in src
 
 
@@ -290,7 +315,7 @@ class TestKyleLambda:
 
     def test_pipeline_has_kyle_lambda(self) -> None:
         """compute() パイプラインに _apply_kyle_lambda が組込まれている."""
-        src = inspect.getsource(MakerPrice.compute)
+        src = _maker_price_source("compute")
         assert "_apply_kyle_lambda" in src
 
 
@@ -374,7 +399,7 @@ class TestAmihudILLIQ:
 
     def test_pipeline_has_amihud_illiq(self) -> None:
         """compute() パイプラインに _apply_amihud_illiq が組込まれている."""
-        src = inspect.getsource(MakerPrice.compute)
+        src = _maker_price_source("compute")
         assert "_apply_amihud_illiq" in src
 
 
@@ -388,19 +413,15 @@ class TestOrderBookSnapshotProtocol:
 
     def test_importable_from_ob_utils(self) -> None:
         """ob_utils から OrderBookSnapshot がインポート可能."""
-        from scripts.v460.lib.ob_utils import OrderBookSnapshot as OBS
-        assert OBS is not None
+        assert OrderBookSnapshot is not None
 
     def test_importable_from_maker_price(self) -> None:
         """maker_price.py 経由でも使用可能 (元の定義場所)."""
-        from scripts.v460.lib.maker_price import OrderBookSnapshot as OBS
         # 実際は ob_utils から re-import されている
-        assert OBS is not None
+        assert MakerPriceOrderBookSnapshot is not None
 
     def test_skip_gate_adapter_returns_snapshot(self) -> None:
         """SkipGateAdapter.get_orderbook の戻り値型が OrderBookSnapshot | None."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateAdapter
-        import typing
         hints = typing.get_type_hints(SkipGateAdapter.get_orderbook)
         ret = hints.get("return")
         # OrderBookSnapshot | None の Union 型
@@ -417,8 +438,7 @@ class TestTypeIgnoreReduction:
 
     def test_skip_gate_evaluator_no_attr_defined_ignore(self) -> None:
         """skip_gate_evaluator.py に attr-defined type:ignore がない."""
-        import scripts.v460.lib.skip_gate_evaluator as mod
-        src = inspect.getsource(mod)
+        src = read_source_text(SKIP_GATE_EVALUATOR)
         # 1042-1043 の ob.bids / ob.asks の type:ignore が除去されている
         lines = src.splitlines()
         attr_defined_count = sum(
@@ -431,15 +451,14 @@ class TestTypeIgnoreReduction:
 
     def test_ob_utils_no_getattr_for_bids_asks(self) -> None:
         """ob_utils.py の best_bid_ask / depth 系で getattr(ob, 'bids'/'asks') を使わない."""
-        from scripts.v460.lib.ob_utils import best_bid_ask
-        src = inspect.getsource(best_bid_ask)
+        assert best_bid_ask is not None
+        src = read_source_text(OB_UTILS)
         assert 'getattr(ob, "bids"' not in src
         assert 'getattr(ob, "asks"' not in src
 
     def test_fill_cycle_executor_no_current_regime_value_class_var(self) -> None:
         """fill_cycle_executor の _current_regime_value class-level 宣言が除去されている."""
-        import scripts.v460.lib.fill_cycle_executor as mod
-        src = inspect.getsource(mod.FillCycleExecutorMixin)
+        src = read_source_text(FILL_CYCLE_EXECUTOR)
         # class body に _current_regime_value: object = None がない
         assert '_current_regime_value: object = None' not in src
 
@@ -466,12 +485,12 @@ class TestGetDepthHelper:
 
     def test_kyle_lambda_uses_get_depth(self) -> None:
         """_apply_kyle_lambda が _get_depth を使用している."""
-        src = inspect.getsource(MakerPrice._apply_kyle_lambda)
+        src = _maker_microstructure_source("_apply_kyle_lambda")
         assert "_get_depth" in src
 
     def test_amihud_illiq_uses_get_depth(self) -> None:
         """_apply_amihud_illiq が _get_depth を使用している."""
-        src = inspect.getsource(MakerPrice._apply_amihud_illiq)
+        src = _maker_microstructure_source("_apply_amihud_illiq")
         assert "_get_depth" in src
 
 
@@ -480,7 +499,7 @@ class TestDeltaStarRatioConversion:
 
     def test_delta_star_ratio_parenthesized(self) -> None:
         """δ* ratio 変換が delta_star_jpy / spread の形式であること (267# 修正)."""
-        src = inspect.getsource(MakerPrice._apply_as_reservation_shift)
+        src = _maker_microstructure_source("_apply_as_reservation_shift")
         # 267# 絶対価格ベース: δ*(JPY) / spread
         assert "delta_star_jpy / spread" in src
 

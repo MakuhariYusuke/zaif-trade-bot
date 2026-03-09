@@ -10,10 +10,96 @@ Changes:
 
 from __future__ import annotations
 
+import copy
+
 import pytest
 import yaml
 
+from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
 from scripts.v460.lib.fill_config import FillTestConfig
+
+_BUY_VELOCITY_SKIP_YAML = yaml.safe_load("""
+skip_gate:
+  enabled: true
+  mode: pnl
+  buy_velocity_skip_enabled: true
+  buy_velocity_skip_threshold_bps: -6.0
+  sell_velocity_skip_enabled: true
+  sell_velocity_skip_threshold_bps: 6.0
+""")
+
+_HOUR_OFFSETS_YAML = yaml.safe_load("""
+skip_gate:
+  enabled: true
+  mode: pnl
+  hour_offsets:
+    14: 0.3
+    16: 0.5
+    18: 0.3
+    21: 0.3
+    23: 0.2
+""")
+
+_NARROW_SPREAD_GUARD_YAML = yaml.safe_load("""
+skip_gate:
+  enabled: true
+  mode: pnl
+  skip_gate_narrow_spread_threshold_jpy: 2000.0
+  skip_gate_narrow_spread_offset: 0.2
+""")
+
+_VOLATILITY_GUARD_YAML = yaml.safe_load("""
+volatility_guard:
+  enabled: true
+  velocity_threshold_bps: 12.0
+  vpin_threshold: 0.60
+  offset_boost_factor: 2.0
+""")
+
+_VOLATILITY_GUARD_TIGHT_YAML = yaml.safe_load("""
+volatility_guard:
+  enabled: true
+  velocity_threshold_bps: 12.0
+  vpin_threshold: 0.60
+""")
+
+_SPREAD_ADAPTIVE_YAML = yaml.safe_load("""
+spread_adaptive:
+  enabled: true
+  narrow_spread_bps: 2.5
+  narrow_spread_boost_buy: 2.0
+  narrow_spread_boost_sell: 2.5
+""")
+
+
+@pytest.fixture
+def buy_velocity_skip_yaml() -> dict[str, object]:
+    return copy.deepcopy(_BUY_VELOCITY_SKIP_YAML)
+
+
+@pytest.fixture
+def hour_offsets_yaml() -> dict[str, object]:
+    return copy.deepcopy(_HOUR_OFFSETS_YAML)
+
+
+@pytest.fixture
+def narrow_spread_guard_yaml() -> dict[str, object]:
+    return copy.deepcopy(_NARROW_SPREAD_GUARD_YAML)
+
+
+@pytest.fixture
+def volatility_guard_yaml() -> dict[str, object]:
+    return copy.deepcopy(_VOLATILITY_GUARD_YAML)
+
+
+@pytest.fixture
+def volatility_guard_tight_yaml() -> dict[str, object]:
+    return copy.deepcopy(_VOLATILITY_GUARD_TIGHT_YAML)
+
+
+@pytest.fixture
+def spread_adaptive_yaml() -> dict[str, object]:
+    return copy.deepcopy(_SPREAD_ADAPTIVE_YAML)
 
 
 # =====================================================================
@@ -26,17 +112,8 @@ class TestBuyVelocitySkipEnable:
         cfg = FillTestConfig()
         assert cfg.buy_velocity_skip_enabled is False
 
-    def test_buy_velocity_skip_from_yaml(self) -> None:
-        data = yaml.safe_load("""
-skip_gate:
-  enabled: true
-  mode: pnl
-  buy_velocity_skip_enabled: true
-  buy_velocity_skip_threshold_bps: -6.0
-  sell_velocity_skip_enabled: true
-  sell_velocity_skip_threshold_bps: 6.0
-""")
-        cfg = FillTestConfig.from_yaml(data)
+    def test_buy_velocity_skip_from_yaml(self, buy_velocity_skip_yaml: dict[str, object]) -> None:
+        cfg = FillTestConfig.from_yaml(buy_velocity_skip_yaml)
         assert cfg.buy_velocity_skip_enabled is True
         assert cfg.buy_velocity_skip_threshold_bps == pytest.approx(-6.0)
         assert cfg.sell_velocity_skip_enabled is True
@@ -61,19 +138,8 @@ skip_gate:
 class TestHourOffsetsYAML:
     """183# 時間帯別閾値オフセットの YAML → Config 統合テスト."""
 
-    def test_hour_offsets_from_full_yaml(self) -> None:
-        data = yaml.safe_load("""
-skip_gate:
-  enabled: true
-  mode: pnl
-  hour_offsets:
-    14: 0.3
-    16: 0.5
-    18: 0.3
-    21: 0.3
-    23: 0.2
-""")
-        cfg = FillTestConfig.from_yaml(data)
+    def test_hour_offsets_from_full_yaml(self, hour_offsets_yaml: dict[str, object]) -> None:
+        cfg = FillTestConfig.from_yaml(hour_offsets_yaml)
         assert cfg.skip_gate_hour_offsets[14] == pytest.approx(0.3)
         assert cfg.skip_gate_hour_offsets[16] == pytest.approx(0.5)
         assert cfg.skip_gate_hour_offsets[18] == pytest.approx(0.3)
@@ -83,37 +149,15 @@ skip_gate:
         assert cfg.skip_gate_hour_offsets.get(0, 0.0) == 0.0
         assert cfg.skip_gate_hour_offsets.get(12, 0.0) == 0.0
 
-    def test_hour_offsets_worst_hour_highest(self) -> None:
+    def test_hour_offsets_worst_hour_highest(self, hour_offsets_yaml: dict[str, object]) -> None:
         """183# 最悪時間帯 (01h JST=16 UTC) が最高オフセット."""
-        data = yaml.safe_load("""
-skip_gate:
-  enabled: true
-  mode: pnl
-  hour_offsets:
-    14: 0.3
-    16: 0.5
-    18: 0.3
-    21: 0.3
-    23: 0.2
-""")
-        cfg = FillTestConfig.from_yaml(data)
+        cfg = FillTestConfig.from_yaml(hour_offsets_yaml)
         max_hour = max(cfg.skip_gate_hour_offsets, key=cfg.skip_gate_hour_offsets.get)  # type: ignore[arg-type]
         assert max_hour == 16  # 01h JST = 16h UTC (AS 64%)
 
-    def test_all_offsets_positive(self) -> None:
+    def test_all_offsets_positive(self, hour_offsets_yaml: dict[str, object]) -> None:
         """183# 厳格化方向 (正) のみであること."""
-        data = yaml.safe_load("""
-skip_gate:
-  enabled: true
-  mode: pnl
-  hour_offsets:
-    14: 0.3
-    16: 0.5
-    18: 0.3
-    21: 0.3
-    23: 0.2
-""")
-        cfg = FillTestConfig.from_yaml(data)
+        cfg = FillTestConfig.from_yaml(hour_offsets_yaml)
         for h, offset in cfg.skip_gate_hour_offsets.items():
             assert offset > 0, f"Hour {h} has non-positive offset {offset}"
 
@@ -137,15 +181,8 @@ class TestNarrowSpreadAdverseGuard:
         assert cfg.skip_gate_narrow_spread_threshold_jpy == pytest.approx(2000.0)
         assert cfg.skip_gate_narrow_spread_offset == pytest.approx(0.2)
 
-    def test_yaml_parsing(self) -> None:
-        data = yaml.safe_load("""
-skip_gate:
-  enabled: true
-  mode: pnl
-  skip_gate_narrow_spread_threshold_jpy: 2000.0
-  skip_gate_narrow_spread_offset: 0.2
-""")
-        cfg = FillTestConfig.from_yaml(data)
+    def test_yaml_parsing(self, narrow_spread_guard_yaml: dict[str, object]) -> None:
+        cfg = FillTestConfig.from_yaml(narrow_spread_guard_yaml)
         assert cfg.skip_gate_narrow_spread_threshold_jpy == pytest.approx(2000.0)
         assert cfg.skip_gate_narrow_spread_offset == pytest.approx(0.2)
 
@@ -160,7 +197,6 @@ skip_gate:
 
     def test_hot_reload_includes_narrow_spread(self) -> None:
         """183# hot-reload 対象に narrow_spread パラメータが含まれる."""
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         assert "skip_gate_narrow_spread_threshold_jpy" in _HOT_RELOADABLE_FIELDS
         assert "skip_gate_narrow_spread_offset" in _HOT_RELOADABLE_FIELDS
 
@@ -171,28 +207,18 @@ skip_gate:
 class TestVolatilityGuardTuning:
     """183# VG/VPIN 感度引上げテスト (YAML → Config)."""
 
-    def test_vg_threshold_from_yaml(self) -> None:
-        data = yaml.safe_load("""
-volatility_guard:
-  enabled: true
-  velocity_threshold_bps: 12.0
-  vpin_threshold: 0.60
-  offset_boost_factor: 2.0
-""")
-        cfg = FillTestConfig.from_yaml(data)
+    def test_vg_threshold_from_yaml(self, volatility_guard_yaml: dict[str, object]) -> None:
+        cfg = FillTestConfig.from_yaml(volatility_guard_yaml)
         assert cfg.volatility_guard_velocity_threshold_bps == pytest.approx(12.0)
         assert cfg.volatility_guard_vpin_threshold == pytest.approx(0.60)
         assert cfg.volatility_guard_offset_boost_factor == pytest.approx(2.0)
 
-    def test_vg_threshold_tighter_than_previous(self) -> None:
+    def test_vg_threshold_tighter_than_previous(
+        self,
+        volatility_guard_tight_yaml: dict[str, object],
+    ) -> None:
         """183# VG 閾値が以前の 15.0 より厳しい (低い)."""
-        data = yaml.safe_load("""
-volatility_guard:
-  enabled: true
-  velocity_threshold_bps: 12.0
-  vpin_threshold: 0.60
-""")
-        cfg = FillTestConfig.from_yaml(data)
+        cfg = FillTestConfig.from_yaml(volatility_guard_tight_yaml)
         assert cfg.volatility_guard_velocity_threshold_bps < 15.0  # prev: 15.0
         assert cfg.volatility_guard_vpin_threshold < 0.63           # prev: 0.63
 
@@ -203,15 +229,8 @@ volatility_guard:
 class TestNarrowSpreadBoostTuning:
     """183# spread_adaptive boost 強化テスト."""
 
-    def test_spread_adaptive_boost_from_yaml(self) -> None:
-        data = yaml.safe_load("""
-spread_adaptive:
-  enabled: true
-  narrow_spread_bps: 2.5
-  narrow_spread_boost_buy: 2.0
-  narrow_spread_boost_sell: 2.5
-""")
-        cfg = FillTestConfig.from_yaml(data)
+    def test_spread_adaptive_boost_from_yaml(self, spread_adaptive_yaml: dict[str, object]) -> None:
+        cfg = FillTestConfig.from_yaml(spread_adaptive_yaml)
         assert cfg.narrow_spread_boost_buy == pytest.approx(2.0)
         assert cfg.narrow_spread_boost_sell == pytest.approx(2.5)
 

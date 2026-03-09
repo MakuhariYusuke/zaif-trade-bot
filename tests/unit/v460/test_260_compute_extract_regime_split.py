@@ -5,11 +5,14 @@ P2-3: _apply_regime_boosts() → 5 sub-method 分割
 """
 from __future__ import annotations
 
-import inspect
-
 import pytest
 
 from scripts.v460.lib.maker_price import MakerPriceCalculator as MakerPrice
+from tests.unit.v460._fill_test_source import (
+    MAKER_PRICE,
+    MAKER_REGIME_BOOST,
+    read_class_method_source,
+)
 
 
 # ======================================================================
@@ -20,36 +23,40 @@ from scripts.v460.lib.maker_price import MakerPriceCalculator as MakerPrice
 class TestComputeExtractMethod:
     """260# P2-2: loss_boost / FFD boost のパイプラインステージ抽出."""
 
+    @staticmethod
+    def _maker_price_source(method_name: str) -> str:
+        return read_class_method_source(MAKER_PRICE, "MakerPriceCalculator", method_name)
+
     def test_compute_calls_apply_loss_boost(self) -> None:
         """compute() が _apply_loss_boost() を呼び出す."""
-        src = inspect.getsource(MakerPrice.compute)
+        src = self._maker_price_source("compute")
         assert "_apply_loss_boost(" in src
 
     def test_compute_calls_apply_ffd_boost(self) -> None:
         """compute() が _apply_ffd_boost() を呼び出す."""
-        src = inspect.getsource(MakerPrice.compute)
+        src = self._maker_price_source("compute")
         assert "_apply_ffd_boost(" in src
 
     def test_compute_no_inline_exp(self) -> None:
         """compute() 内に直接 math.exp() が存在しない (抽出済み)."""
-        src = inspect.getsource(MakerPrice.compute)
+        src = self._maker_price_source("compute")
         assert "exp(" not in src, "math.exp() should be in _apply_loss_boost(), not compute()"
 
     def test_compute_no_inline_boost_mult(self) -> None:
         """compute() 内に直接 boost_mult が存在しない (抽出済み)."""
-        src = inspect.getsource(MakerPrice.compute)
+        src = self._maker_price_source("compute")
         assert "boost_mult" not in src, "boost_mult should be in _apply_ffd_boost(), not compute()"
 
     def test_apply_loss_boost_has_decay(self) -> None:
         """_apply_loss_boost() に指数減衰ロジックが含まれる."""
-        src = inspect.getsource(MakerPrice._apply_loss_boost)
+        src = self._maker_price_source("_apply_loss_boost")
         assert "exp(" in src
         assert "_loss_boost_mult" in src
         assert "_loss_boost_set_time" in src
 
     def test_apply_ffd_boost_has_clamp(self) -> None:
         """_apply_ffd_boost() に max_offset_ratio クランプが含まれる."""
-        src = inspect.getsource(MakerPrice._apply_ffd_boost)
+        src = self._maker_price_source("_apply_ffd_boost")
         assert "_scale_offset_ratio" in src
         assert "max_ratio" in src
 
@@ -61,7 +68,7 @@ class TestComputeExtractMethod:
 
     def test_compute_line_count_reduced(self) -> None:
         """compute() が 295 行以下に維持されている (214→180→192, 266# pipeline, 303# C passive MM, 305# OB cache, 306# stage recording + ceiling, 310# sell_hour_boost, 320# C-1 side-specific ceiling)."""
-        src = inspect.getsource(MakerPrice.compute)
+        src = self._maker_price_source("compute")
         line_count = len(src.strip().splitlines())
         assert line_count <= 295, (
             f"compute() should be <= 295 lines (was 214, now {line_count})"
@@ -76,9 +83,13 @@ class TestComputeExtractMethod:
 class TestRegimeBoostsSplit:
     """260# P2-3: _apply_regime_boosts() → 5 sub-method 分割."""
 
+    @staticmethod
+    def _maker_price_source(method_name: str) -> str:
+        return read_class_method_source(MAKER_REGIME_BOOST, "RegimeBoostMixin", method_name)
+
     def test_regime_boosts_is_dispatcher(self) -> None:
         """_apply_regime_boosts() が 5 sub-method を呼び出すディスパッチャー."""
-        src = inspect.getsource(MakerPrice._apply_regime_boosts)
+        src = self._maker_price_source("_apply_regime_boosts")
         assert "_regime_boost_trending(" in src
         assert "_regime_boost_high_vol(" in src
         assert "_regime_boost_ranging(" in src
@@ -87,39 +98,39 @@ class TestRegimeBoostsSplit:
 
     def test_regime_boosts_line_count(self) -> None:
         """_apply_regime_boosts() が 30 行以下のディスパッチャー."""
-        src = inspect.getsource(MakerPrice._apply_regime_boosts)
+        src = self._maker_price_source("_apply_regime_boosts")
         line_count = len(src.strip().splitlines())
         assert line_count <= 30, f"Dispatcher should be <= 30 lines, got {line_count}"
 
     def test_trending_method_exists(self) -> None:
         """_regime_boost_trending() が存在し is_trending チェックを含む."""
         assert hasattr(MakerPrice, "_regime_boost_trending")
-        src = inspect.getsource(MakerPrice._regime_boost_trending)
+        src = self._maker_price_source("_regime_boost_trending")
         assert "is_trending" in src
 
     def test_high_vol_method_exists(self) -> None:
         """_regime_boost_high_vol() が存在し HIGH_VOL チェックを含む."""
         assert hasattr(MakerPrice, "_regime_boost_high_vol")
-        src = inspect.getsource(MakerPrice._regime_boost_high_vol)
+        src = self._maker_price_source("_regime_boost_high_vol")
         assert "HIGH_VOL" in src
 
     def test_ranging_method_exists(self) -> None:
         """_regime_boost_ranging() が存在し RANGING + OBI ロジックを含む."""
         assert hasattr(MakerPrice, "_regime_boost_ranging")
-        src = inspect.getsource(MakerPrice._regime_boost_ranging)
+        src = self._maker_price_source("_regime_boost_ranging")
         assert "RANGING" in src
         assert "obi" in src.lower()
 
     def test_low_vol_method_exists(self) -> None:
         """_regime_boost_low_vol() が存在し last_volatility_ratio を使用."""
         assert hasattr(MakerPrice, "_regime_boost_low_vol")
-        src = inspect.getsource(MakerPrice._regime_boost_low_vol)
+        src = self._maker_price_source("_regime_boost_low_vol")
         assert "last_volatility_ratio" in src
 
     def test_unknown_buy_method_exists(self) -> None:
         """_regime_boost_unknown_buy() が存在し UNKNOWN + buy ガードを含む."""
         assert hasattr(MakerPrice, "_regime_boost_unknown_buy")
-        src = inspect.getsource(MakerPrice._regime_boost_unknown_buy)
+        src = self._maker_price_source("_regime_boost_unknown_buy")
         assert "UNKNOWN" in src
         assert 'side == "buy"' in src
 
@@ -133,6 +144,6 @@ class TestRegimeBoostsSplit:
             "_regime_boost_unknown_buy",
         ]
         for name in methods:
-            src = inspect.getsource(getattr(MakerPrice, name))
+            src = self._maker_price_source(name)
             lines = len(src.strip().splitlines())
             assert lines <= 50, f"{name} should be <= 50 lines, got {lines}"
