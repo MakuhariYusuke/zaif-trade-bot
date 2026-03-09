@@ -4616,3 +4616,19 @@ python scripts/unified_trainer.py \
 - `test_fill_quality.py` focused selector completed at `6 passed, 200 deselected in 3.49s`.
 - `test_build_features_pipeline.py` completed at `14 passed in 3.32s`.
 - The helper boundary is cleaner now: builder-specific wrappers remain for readability, while the actual persistence step is centralized once.
+
+## Session 037-066 (2026-03-09)
+
+### Changed
+- Integrated the two daily record builders in [test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py) behind a shared `_build_daily_records()` loop, so the wrappers now differ only in per-record semantics instead of duplicating the day/index nesting.
+- Extended split-source helper reuse to [test_258_as_reservation_vpin_continuous_protocol.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py), replacing the local `inspect.getsource(OrderMonitor._resolve_regime_name)` call with `read_class_method_source(...)`.
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile tests/unit/v460/test_fill_quality.py tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_fill_quality.py -q --no-cov --tb=short -k 'daily_fill_rates or g1_1_with_data or save_load_roundtrip or glob_load' --durations=20`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py -q --no-cov --tb=short --durations=20`
+
+### Notes
+- The focused `fill_quality.py` selector completed at `7 passed, 199 deselected in 3.97s`.
+- `test_258_as_reservation_vpin_continuous_protocol.py` completed at `29 passed in 1.14s`.
+- Further helper unification inside `test_fill_quality.py` would start obscuring test intent, so this batch stops at the shared loop boundary.

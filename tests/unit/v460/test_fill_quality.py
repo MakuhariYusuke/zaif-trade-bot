@@ -114,6 +114,20 @@ async def _run_single_cycle_without_sleep(runner: "FillTestRunner") -> FillRecor
         return await runner.run_single_cycle()
 
 
+def _build_daily_records(
+    *,
+    days: int,
+    per_day: int,
+    build_record: Callable[[int, int], FillRecord],
+) -> list[FillRecord]:
+    """日次×件数の共通ループで FillRecord 群を構築する."""
+    return [
+        build_record(day, i)
+        for day in range(days)
+        for i in range(per_day)
+    ]
+
+
 def _make_uniform_daily_records(
     *,
     prefix: str,
@@ -128,21 +142,21 @@ def _make_uniform_daily_records(
     post_fill_30s_pnl: float | None = None,
     adverse_selected: bool | None = None,
 ) -> list[FillRecord]:
-    records: list[FillRecord] = []
-    for day in range(days):
-        for i in range(per_day):
-            records.append(FillRecord(
-                cycle_id=f"{prefix}_d{day}_{i}",
-                timestamp=base_ts + day * 86400 + i * 120,
-                side=side,
-                order_price=order_price,
-                order_quantity=order_quantity,
-                filled=filled,
-                queue_wait_sec=0.0 if queue_wait_sec is None else queue_wait_sec,
-                post_fill_30s_pnl=post_fill_30s_pnl,
-                adverse_selected=adverse_selected,
-            ))
-    return records
+    return _build_daily_records(
+        days=days,
+        per_day=per_day,
+        build_record=lambda day, i: FillRecord(
+            cycle_id=f"{prefix}_d{day}_{i}",
+            timestamp=base_ts + day * 86400 + i * 120,
+            side=side,
+            order_price=order_price,
+            order_quantity=order_quantity,
+            filled=filled,
+            queue_wait_sec=0.0 if queue_wait_sec is None else queue_wait_sec,
+            post_fill_30s_pnl=post_fill_30s_pnl,
+            adverse_selected=adverse_selected,
+        ),
+    )
 
 
 def _make_daily_fill_count_records(
@@ -158,23 +172,26 @@ def _make_daily_fill_count_records(
     adverse_selected: bool | None = None,
     alternate_side: bool = False,
 ) -> list[FillRecord]:
-    records: list[FillRecord] = []
-    for day, filled_count in enumerate(filled_counts):
-        for i in range(per_day):
-            filled = i < filled_count
-            records.append(FillRecord(
-                cycle_id=f"{prefix}_d{day}_{i}",
-                timestamp=base_ts + day * 86400 + i * 120,
-                side="buy" if (not alternate_side or i % 2 == 0) else "sell",
-                order_price=order_price,
-                order_quantity=order_quantity,
-                filled=filled,
-                cancelled=not filled,
-                queue_wait_sec=queue_wait_sec if filled and queue_wait_sec is not None else 0.0,
-                post_fill_30s_pnl=post_fill_30s_pnl if filled else None,
-                adverse_selected=adverse_selected if filled else None,
-            ))
-    return records
+    return _build_daily_records(
+        days=len(filled_counts),
+        per_day=per_day,
+        build_record=lambda day, i: FillRecord(
+            cycle_id=f"{prefix}_d{day}_{i}",
+            timestamp=base_ts + day * 86400 + i * 120,
+            side="buy" if (not alternate_side or i % 2 == 0) else "sell",
+            order_price=order_price,
+            order_quantity=order_quantity,
+            filled=i < filled_counts[day],
+            cancelled=i >= filled_counts[day],
+            queue_wait_sec=(
+                queue_wait_sec
+                if i < filled_counts[day] and queue_wait_sec is not None
+                else 0.0
+            ),
+            post_fill_30s_pnl=post_fill_30s_pnl if i < filled_counts[day] else None,
+            adverse_selected=adverse_selected if i < filled_counts[day] else None,
+        ),
+    )
 
 
 def _make_outcome_records(

@@ -2869,3 +2869,27 @@
 - `fill_quality` の helper は「builder ごとの差」は残しつつ、「保存処理そのもの」は 1 箇所へ統合した。可読性を落とさずに重複だけ削れている。
 - production 側は raw path 解決だけでなく target date 解決も `feature_enricher` 側へ寄せたので、`build_features.py` から raw 入力発見系 helper がさらに 1 つ減った。
 - helper 統合の判断としては、「builder 名がテスト意図を伝えるもの」は wrapper を残し、「内部で同じことをするだけ」の層だけを畳むのが妥当だった。
+
+---
+
+## 2026-03-09 / Session 037-066
+
+### 実施
+- `tests/unit/v460/test_fill_quality.py`
+  - `_build_daily_records()` を追加
+  - `_make_uniform_daily_records()` と `_make_daily_fill_count_records()` の day/index 二重ループを共通化
+- `tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py`
+  - `OrderMonitor._resolve_regime_name` の source 参照を `read_class_method_source()` へ変更
+
+### 結果
+- focused selector:
+  - `tests/unit/v460/test_fill_quality.py -k 'daily_fill_rates or g1_1_with_data or save_load_roundtrip or glob_load'`
+  - `7 passed, 199 deselected in 3.97s`
+- focused:
+  - `tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py`
+  - `29 passed in 1.14s`
+
+### 主要改善
+- `fill_quality` の日次 builder は「日ごと×件数」の共通ループだけを統合した。wrapper 名と各レコードの意味は維持しているので、DRY と可読性のバランスは保てている。
+- `OrderMonitor` の split-source helper 再利用は `_resolve_regime_name` にも広がった。`inspect.getsource(...)` のローカル参照がまた 1 つ減った。
+- raw-reader 系については今回追加で見たが、現状は `feature_enricher` 側の helper 境界で十分で、これ以上の統合は別責務まで巻き込みやすいので見送った。
