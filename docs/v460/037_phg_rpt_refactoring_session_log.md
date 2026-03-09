@@ -3753,3 +3753,130 @@
   - `ztb/features/base_features_v456.py`: rolling 系の Python loop
   - `ztb/data/v433_feature_engineering.py`: 一部の per-row / per-window loop
 - これらは今後も触れる余地があるが、今回の shallow 化は low-risk で先に入れられる改善として適用した。
+
+## 2026-03-10 / Session 037-089
+
+### 実施
+- `ztb/features/scalping.py`
+  - 残っていた短期特徴量の Python loop を整理し、以下を vectorize 化
+    - `price_velocity(...)`
+    - `micro_trend(...)`
+    - `price_acceleration(...)`
+    - `volume_surge(...)`
+    - `tick_volume_ratio(...)`
+    - `spread_pressure(...)`
+    - `momentum_burst(...)`
+    - `liquidity_surge(...)`
+- `tests/unit/core/features/test_scalping_features.py`
+  - 上記 vectorize 箇所の known-value / zero-divisor / rolling 境界テストを追加
+- `ztb/data/trades_health.py`
+  - raw trades 日付探索を `iterdir()` + 手動 suffix 判定から `glob("????????.jsonl.gz")` に変更
+- `ztb/features/base_features_v456.py`
+  - `_ema(...)` を `pandas.Series(...).ewm(adjust=False)` へ置換
+  - `_adx_di(...)` の `plus_dm` / `minus_dm` 生成を vectorized mask 化
+- `tests/unit/features/test_base_features_v456.py`
+  - base feature 計算の focused regression test を新設
+
+### 結果
+- focused:
+  - `tests/unit/core/features/test_scalping_features.py`
+  - `tests/unit/features/test_base_features_v456.py`
+  - `tests/unit/v460/test_135_trades_and_gate.py`
+  - `tests/unit/v460/test_136_p1_retrain_kill.py`
+  - `87 passed in 4.81s`
+- extractor subset:
+  - `tests/unit/core/features/test_v4_feature_extractor.py -k 'realized_volatility or order_flow_imbalance or tick_volume_ratio'`
+  - `3 passed, 12 deselected in 8.89s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4241 passed, 13 warnings in 45.11s`
+
+### 主要改善
+- `scalping.py` は `366#` で触れた 3 関数だけでなく、残っていた短期特徴量もほぼ一掃できた。rolling の前窓参照は `shift(1)` を使って旧仕様を維持している。
+- `trades_health.py` は大きいアルゴリズム変更ではないが、raw ディレクトリ内の不要ファイルまで毎回舐めない形になった。
+- `base_features_v456.py` は `RSI` smoothing のような挙動差が出やすい箇所は触らず、`EMA` と `DM` 判定だけを low-risk で vectorize した。
+
+## 2026-03-10 / Session 037-090
+
+### 実施
+- `ztb/features/scalping.py`
+  - `momentum_divergence(...)` の残存 loop を vectorize 化
+  - fast / slow 変化率を slice ベースで一括計算し、`divergence[slow_window:]` に直接代入する形へ整理
+- `tests/unit/core/features/test_scalping_features.py`
+  - `momentum_divergence(...)` の known-value regression test を追加
+
+### 結果
+- focused subset:
+  - `tests/unit/core/features/test_scalping_features.py`
+  - `tests/unit/core/features/test_v4_feature_extractor.py -k 'momentum_divergence or realized_volatility or order_flow_imbalance or tick_volume_ratio'`
+  - `12 passed, 24 deselected in 6.40s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4241 passed, 13 warnings in 40.84s`
+
+### 主要改善
+- `scalping.py` 側の Python loop は `momentum_divergence(...)` まで含めて解消した。
+- これで `366#` 系の短期特徴量は、境界条件を残したままほぼ全て vectorized path に寄った。
+
+## 2026-03-10 / Session 037-091
+
+### 実施
+- `ztb/data/v433_feature_engineering.py`
+  - `MarketRegimeDetector._classify_regime(...)` を vectorize 化
+  - `MarketRegimeDetector._calculate_regime_confidence(...)` を vectorize 化
+- `tests/unit/features/test_v433_feature_engineering.py`
+  - レジーム分類 5 パターンの regression test を追加
+  - confidence の NaN-safe / `[0,1]` 範囲テストを追加
+
+### 結果
+- focused:
+  - `tests/unit/features/test_v433_feature_engineering.py`
+  - `2 passed in 9.40s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4270 passed, 13 warnings in 51.93s`
+
+### 主要改善
+- `v433_feature_engineering.py` は `df.loc[idx, ...]` を row ごとに繰り返していた箇所をまとめて落とした。
+- 判定式自体は変えず、`fillna(0.0)` + mask の形に置換しているので、仕様差を入れずに計算量だけ下げている。
+- `base_features_v456.py` の `RSI` smoothing は依然として高リスクなので、このバッチでは意図的に見送った。
+
+## 2026-03-10 / Session 037-092
+
+### 実施
+- `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `_G2_REAL_ROWS` を `96 -> 80` に削減
+  - `TestHeavyTradingEnvIntegration.env_config` に `random_start=False` を追加
+- `tests/unit/v460/test_197_boost_optimization_gate_integration.py`
+  - read-only YAML 検証 3 件を `v460_fill_test_yaml` から `v460_fill_test_yaml_base` に切替
+  - per-test `deepcopy` を回避
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `tests/unit/v460/test_197_boost_optimization_gate_integration.py`
+  - `92 passed in 7.58s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4284 passed, 13 warnings in 46.15s`
+
+### 主要改善
+- `HeavyTradingEnv` integration は「環境を重くする要因」を production 側でいじるのではなく、テスト側の入力量と `random_start` だけを絞って軽くした。
+- `test_197...` は call 上位だったが、実体は read-only YAML 確認で deepcopy が無駄だった。session-cached fixture へ寄せるだけで固定費を落とせた。
+- この batch は `v460` に近いホットスポットを優先し、`base_features_v456.py` の高リスク変更にはまだ踏み込んでいない。
