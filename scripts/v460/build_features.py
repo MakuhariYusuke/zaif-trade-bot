@@ -177,19 +177,25 @@ def compute_sha256(path: Path) -> str:
 
 def _discover_dates(raw_dir: Path) -> list[str]:
     """raw_dir 内の日付ファイルを検出して日付文字列リストを返す."""
+    return sorted(_discover_daily_inputs(raw_dir))
+
+
+def _discover_daily_inputs(raw_dir: Path) -> dict[str, tuple[Path | None, Path | None]]:
+    """利用可能な日次 raw 入力を date -> (orderbook, trades) で返す."""
     ob_dir = raw_dir / "orderbook"
-    dates: set[str] = set()
+    daily_inputs: dict[str, tuple[Path | None, Path | None]] = {}
     if ob_dir.is_dir():
         for f in ob_dir.glob("*.jsonl.gz"):
-            # stem of "20260213.jsonl.gz" is "20260213.jsonl" → strip .jsonl
             date_str = f.name.replace(".jsonl.gz", "")
-            dates.add(date_str)
+            _, tr_path = daily_inputs.get(date_str, (None, None))
+            daily_inputs[date_str] = (f, tr_path)
     tr_dir = raw_dir / "trades"
     if tr_dir.is_dir():
         for f in tr_dir.glob("*.jsonl.gz"):
             date_str = f.name.replace(".jsonl.gz", "")
-            dates.add(date_str)
-    return sorted(dates)
+            ob_path, _ = daily_inputs.get(date_str, (None, None))
+            daily_inputs[date_str] = (ob_path, f)
+    return daily_inputs
 
 
 def build_real_features(
@@ -216,8 +222,9 @@ def build_real_features(
     if not out.is_absolute():
         out = _PROJECT_ROOT / out
 
-    # Discover dates
-    all_dates = _discover_dates(raw)
+    # Discover dates and reuse resolved daily inputs to avoid repeated exists/stat checks.
+    daily_inputs = _discover_daily_inputs(raw)
+    all_dates = sorted(daily_inputs)
     if not all_dates:
         raise FileNotFoundError(f"No raw data found in {raw}")
 
@@ -227,10 +234,8 @@ def build_real_features(
     # Aggregate each date
     dfs: list[pd.DataFrame] = []
     for d in target_dates:
-        ob_path = raw / "orderbook" / f"{d}.jsonl.gz"
-        tr_path = raw / "trades" / f"{d}.jsonl.gz"
-
-        if not ob_path.exists() and not tr_path.exists():
+        ob_path, tr_path = daily_inputs.get(d, (None, None))
+        if ob_path is None and tr_path is None:
             logger.warning(f"No data for date {d}, skipping")
             continue
 

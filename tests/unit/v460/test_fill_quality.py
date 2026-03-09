@@ -176,6 +176,48 @@ def _make_daily_fill_count_records(
     return records
 
 
+def _make_outcome_records(
+    *,
+    prefix: str,
+    counts: dict[str, int],
+    base_ts: float,
+    side: str = "buy",
+    order_price: float = 100.0,
+    order_quantity: float = 0.001,
+) -> list[FillRecord]:
+    """fill / cancel outcome 別の均一レコードを生成."""
+    records: list[FillRecord] = []
+    offset = 0
+    for outcome, count in counts.items():
+        for i in range(count):
+            record = FillRecord(
+                cycle_id=f"{prefix}_{outcome}_{i}",
+                timestamp=base_ts + (offset + i) * 120,
+                side=side,
+                order_price=order_price,
+                order_quantity=order_quantity,
+            )
+            if outcome == "fill":
+                record.filled = True
+            elif outcome == "skip_gate":
+                record.cancelled = True
+                record.cancel_reason = "skip_gate"
+                record.skip_gate_skipped = True
+            elif outcome == "timeout":
+                record.cancelled = True
+                record.cancel_reason = "timeout"
+            elif outcome == "postonly_reject":
+                record.cancelled = True
+                record.cancel_reason = "postonly_reject"
+            elif outcome == "unknown_cancel":
+                record.cancelled = True
+            else:
+                raise ValueError(f"unsupported outcome: {outcome}")
+            records.append(record)
+        offset += count
+    return records
+
+
 def _make_fast_cycle_runner(
     tmp_path: Path,
     *,
@@ -1032,29 +1074,11 @@ class TestComputeFillMetricsAttempted:
     def test_skip_gate_fields_populated(self) -> None:
         """skip_gate_skipped=True のレコードが正しく除外される."""
         base_ts = time.time()
-        records = []
-        # 10 filled
-        for i in range(10):
-            records.append(FillRecord(
-                cycle_id=f"fill_{i}", timestamp=base_ts + i * 120,
-                side="buy", order_price=100.0, order_quantity=0.001,
-                filled=True, skip_gate_skipped=False,
-            ))
-        # 3 skip_gate
-        for i in range(3):
-            records.append(FillRecord(
-                cycle_id=f"skip_{i}", timestamp=base_ts + (10 + i) * 120,
-                side="buy", order_price=100.0, order_quantity=0.001,
-                filled=False, cancelled=True, cancel_reason="skip_gate",
-                skip_gate_skipped=True,
-            ))
-        # 2 timeout
-        for i in range(2):
-            records.append(FillRecord(
-                cycle_id=f"timeout_{i}", timestamp=base_ts + (13 + i) * 120,
-                side="buy", order_price=100.0, order_quantity=0.001,
-                filled=False, cancelled=True, cancel_reason="timeout",
-            ))
+        records = _make_outcome_records(
+            prefix="attempted",
+            counts={"fill": 10, "skip_gate": 3, "timeout": 2},
+            base_ts=base_ts,
+        )
 
         m = compute_fill_metrics(records)
         assert m.total_orders == 15
@@ -1085,41 +1109,19 @@ class TestComputeFillMetricsAttempted:
     def test_cancel_reason_breakdown(self) -> None:
         """117# cancel reason 内訳が正しく集計される."""
         base_ts = time.time()
-        records = []
-        # 5 filled
-        for i in range(5):
-            records.append(FillRecord(
-                cycle_id=f"fill_{i}", timestamp=base_ts + i * 120,
-                side="buy", order_price=100.0, order_quantity=0.001,
-                filled=True,
-            ))
-        # 3 timeout
-        for i in range(3):
-            records.append(FillRecord(
-                cycle_id=f"timeout_{i}", timestamp=base_ts + (5 + i) * 120,
-                side="buy", order_price=100.0, order_quantity=0.001,
-                filled=False, cancelled=True, cancel_reason="timeout",
-            ))
-        # 2 skip_gate
-        for i in range(2):
-            records.append(FillRecord(
-                cycle_id=f"skip_{i}", timestamp=base_ts + (8 + i) * 120,
-                side="buy", order_price=100.0, order_quantity=0.001,
-                filled=False, cancelled=True, cancel_reason="skip_gate",
-                skip_gate_skipped=True,
-            ))
-        # 1 postonly_reject
-        records.append(FillRecord(
-            cycle_id="reject_0", timestamp=base_ts + 10 * 120,
-            side="sell", order_price=100.0, order_quantity=0.001,
-            filled=False, cancelled=True, cancel_reason="postonly_reject",
-        ))
-        # 1 unknown (cancel_reason=None)
-        records.append(FillRecord(
-            cycle_id="unk_0", timestamp=base_ts + 11 * 120,
-            side="sell", order_price=100.0, order_quantity=0.001,
-            filled=False, cancelled=True,
-        ))
+        records = _make_outcome_records(
+            prefix="reasons",
+            counts={
+                "fill": 5,
+                "timeout": 3,
+                "skip_gate": 2,
+                "postonly_reject": 1,
+                "unknown_cancel": 1,
+            },
+            base_ts=base_ts,
+        )
+        records[-2].side = "sell"
+        records[-1].side = "sell"
 
         m = compute_fill_metrics(records)
         assert m.cancel_reason_breakdown["timeout"] == 3

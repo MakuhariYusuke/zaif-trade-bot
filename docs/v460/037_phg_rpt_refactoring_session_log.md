@@ -2608,3 +2608,31 @@
 ### 補足
 - 今回は本筋の runtime 改善 batch ではなく、重複排除と fixture 再利用の整理が主眼。
 - 作業中に別ファイルの未コミット差分を確認したが、ユーザー指示どおり今回のコミット対象から除外している。
+
+---
+
+## 2026-03-09 / Session 037-057
+
+### 実施
+- `tests/unit/v460/test_169_config_hot_reload.py`
+  - `_make_reloader()` を追加し、`ConfigHotReloader(...)` の重複生成を共通化
+- `tests/unit/v460/test_fill_quality.py`
+  - `_make_outcome_records()` を追加
+  - attempted 指標と cancel reason 内訳の outcome ベース生成を helper へ移した
+- `scripts/v460/build_features.py`
+  - `_discover_daily_inputs()` を追加
+  - `build_real_features()` が日次 raw input を 1 回解決し、その後の `exists()` / path 再構築を避けるよう整理
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_169_config_hot_reload.py`
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `30 passed in 5.03s`
+- focused selector:
+  - `tests/unit/v460/test_fill_quality.py -k 'skip_gate_fields_populated or cancel_reason_breakdown'`
+  - `2 passed, 204 deselected in 3.86s`
+
+### 主要改善
+- `config_hot_reload` テストは setup の入口を 1 箇所に揃えたので、今後の reload case 追加でも差分が散りにくい。
+- `fill_quality` の outcome 系テストは fill / skip / timeout / reject / unknown の構築パターンを共通化できた。まだ同型の attempted/cancel 系に横展開余地がある。
+- `build_real_features()` は全日付処理時に raw path の探索を 1 回で済ませるようになり、実データディレクトリに対する無駄な `exists()` 呼び出しを減らした。

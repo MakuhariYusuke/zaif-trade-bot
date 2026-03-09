@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Session 037-057 Test Helper Consolidation and Real Build Input Reuse (2026-03-09)
+
+### Changed
+- Added a shared `_make_reloader()` helper in `tests/unit/v460/test_169_config_hot_reload.py` and rewired repeated `ConfigHotReloader(...)` construction through it.
+- Added `_make_outcome_records()` in `tests/unit/v460/test_fill_quality.py` and reused it for attempted-order / cancel-reason breakdown scenarios.
+- Refactored `scripts/v460/build_features.py` so `build_real_features()` discovers daily raw inputs once and reuses the resolved `(orderbook, trades)` paths instead of rebuilding and re-checking them on every date iteration.
+
 ## Session 037-056 Test DRY Cleanup (2026-03-09)
 
 ### Changed
