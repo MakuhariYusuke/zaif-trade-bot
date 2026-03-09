@@ -198,13 +198,13 @@ class TestParseStopgapSection:
                 "sell_dynamic_kill": {
                     "enabled": True,
                     "window": 100,
-                    "threshold_bps": -0.3,
+                    "threshold_bps": -0.5,
                 },
             },
         })
         assert result["sell_dynamic_kill_enabled"] is True
         assert result["sell_dynamic_kill_window"] == 100
-        assert result["sell_dynamic_kill_threshold_bps"] == -0.3
+        assert result["sell_dynamic_kill_threshold_bps"] == -0.5  # 364# TUNE-3
 
     def test_buy_dynamic_kill(self) -> None:
         """buy_dynamic_kill は 止血 セクション配下."""

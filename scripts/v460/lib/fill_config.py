@@ -551,7 +551,7 @@ class FillTestConfig:
     # ---- 133# P0-10: sell 動的 kill (rolling PnL ベースの自動停止) ----
     sell_dynamic_kill_enabled: bool = False  # True で sell rolling PnL 監視有効
     sell_dynamic_kill_window: int = 50       # rolling ウィンドウ (fill 数)
-    sell_dynamic_kill_threshold_bps: float = -0.3  # 336# drift fix: YAML=-0.3 (246#)
+    sell_dynamic_kill_threshold_bps: float = -0.5  # 364# TUNE-3: -0.3→-0.5 (SDK kill主因, 361# F7制約: ewma据置)
     sell_dynamic_kill_resume_window: int = 10     # 336# drift fix: YAML=10 (156# D-5)
     # 139# §9-#2: レジーム別閾値 (regime_name -> threshold_bps)
     sell_dynamic_kill_regime_thresholds: dict[str, float] = field(default_factory=dict)

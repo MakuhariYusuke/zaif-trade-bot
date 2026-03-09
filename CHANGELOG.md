@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Session 038 SHA Analysis and TUNE-3 SDK Threshold Relaxation (2026-03-10)
+
+### Added
+- `docs/v460/364_ph2_sha_analysis_tune3.md` — SHA 819ec73b2081 current-SHA analysis + TUNE-3 rationale
+- `temp/sha_deep_analysis.py` — SHA deep analysis helper (cancel/regime/PnL breakdown)
+
+### Changed
+- **364# TUNE-3**: Relaxed `sell_dynamic_kill` thresholds to reduce K1-blocking SDK cancels (39件, sell side最大要因):
+  - `threshold_bps`: -0.3 → -0.5 (default, effective -1.0 at max inv_relax)
+  - `regime_thresholds.trending_up`: -0.3 → -0.5 (16 SDK kills in trending_up)
+  - `regime_thresholds.ranging`: -0.5 → -0.7 (23 SDK kills in ranging, largest bucket)
+  - F7 constraint respected: `ewma_alpha` and `ewma_time_decay_tau_sec` unchanged
+- Updated `scripts/v460/lib/fill_config.py` default to match YAML (-0.3 → -0.5)
+- Updated test assertions in `test_169_c1_c3_c4_config.py` and `test_336_fill_config_parser.py`
+
 ## Session 037-074 Exit Diagnostics and Tail Reader Optimization (2026-03-10)
 
 ### Changed

@@ -85,10 +85,10 @@ class TestC3TrendingUpSellThreshold:
     """
 
     def test_regime_threshold_trending_up(self, config_from_yaml: FillConfig) -> None:
-        """trending_up の sell_dynamic_kill 閾値が -0.3 (341# revert: 340#符号修正)."""
+        """trending_up の sell_dynamic_kill 閾値が -0.5 (364# TUNE-3: SDK kill解消)."""
         thresholds = config_from_yaml.sell_dynamic_kill_regime_thresholds
         assert thresholds is not None
-        assert thresholds.get("trending_up") == pytest.approx(-0.3)
+        assert thresholds.get("trending_up") == pytest.approx(-0.5)
 
     def test_regime_threshold_trending_down_unchanged(
         self, config_from_yaml: FillConfig
@@ -98,13 +98,13 @@ class TestC3TrendingUpSellThreshold:
         assert thresholds is not None
         assert thresholds.get("trending_down") == pytest.approx(-1.0)
 
-    def test_regime_threshold_ranging_unchanged(
+    def test_regime_threshold_ranging(
         self, config_from_yaml: FillConfig
     ) -> None:
-        """ranging の閾値は -0.5 (341# revert: MM主戦場)."""
+        """ranging の閾値は -0.7 (364# TUNE-3: 23 SDK kill解消)."""
         thresholds = config_from_yaml.sell_dynamic_kill_regime_thresholds
         assert thresholds is not None
-        assert thresholds.get("ranging") == pytest.approx(-0.5)
+        assert thresholds.get("ranging") == pytest.approx(-0.7)
 
     def test_max_consecutive_trending_sell_skip(
         self, config_from_yaml: FillConfig
