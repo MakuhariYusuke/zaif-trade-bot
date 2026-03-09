@@ -67,29 +67,25 @@ def momentum_divergence(
     df: pd.DataFrame, fast_window: int = 3, slow_window: int = 8
 ) -> pd.Series:
     """Momentum divergence between fast and slow moving averages"""
-    close = df["close"].values
-    divergence = np.zeros_like(close, dtype=np.float64)
+    close = df["close"].values.astype(np.float64, copy=False)
+    divergence = np.zeros(len(close), dtype=np.float64)
+    if slow_window > 0 and len(close) > slow_window:
+        fast_base = close[:-fast_window]
+        slow_base = close[:-slow_window]
 
-    for i in range(slow_window, len(close)):
-        # Fast momentum (recent trend)
-        fast_start = max(0, i - fast_window)
-        fast_change = (
-            (close[i] - close[fast_start]) / close[fast_start]
-            if close[fast_start] != 0
-            else 0.0
-        )
+        fast_change = np.zeros(len(close) - fast_window, dtype=np.float64)
+        slow_change = np.zeros(len(close) - slow_window, dtype=np.float64)
 
-        # Slow momentum (longer trend)
-        slow_start = max(0, i - slow_window)
-        slow_change = (
-            (close[i] - close[slow_start]) / close[slow_start]
-            if close[slow_start] != 0
-            else 0.0
-        )
+        valid_fast = fast_base != 0
+        valid_slow = slow_base != 0
+        fast_change[valid_fast] = (
+            close[fast_window:][valid_fast] - fast_base[valid_fast]
+        ) / fast_base[valid_fast]
+        slow_change[valid_slow] = (
+            close[slow_window:][valid_slow] - slow_base[valid_slow]
+        ) / slow_base[valid_slow]
 
-        # Divergence: fast minus slow
-        divergence[i] = fast_change - slow_change
-
+        divergence[slow_window:] = fast_change[slow_window - fast_window :] - slow_change
     return pd.Series(divergence, index=df.index, name="momentum_divergence")
 
 @register("tick_volume_ratio")

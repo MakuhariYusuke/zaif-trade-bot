@@ -4883,3 +4883,18 @@ python scripts/unified_trainer.py \
 - Verified the latest shallow-serialization cleanup with:
   - focused: `89 passed in 3.33s` for `test_stopgap_health.py`, `test_health_monitor_resilience.py`, and `test_215_dd_fix_alert_mode.py`
   - filtered broad: `4241 passed, 13 warnings in 40.36s`
+- Reduced additional computational overhead in core feature paths:
+  - vectorized the remaining loop-heavy short-horizon features in [ztb/features/scalping.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/features/scalping.py): `price_velocity`, `micro_trend`, `price_acceleration`, `volume_surge`, `tick_volume_ratio`, `spread_pressure`, `momentum_burst`, and `liquidity_surge`
+  - added regression coverage in [tests/unit/core/features/test_scalping_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/core/features/test_scalping_features.py) for zero-divisor behavior, rolling-window boundaries, and exact known-value outputs of the newly vectorized functions
+  - narrowed [ztb/data/trades_health.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/data/trades_health.py) raw-day discovery from full `iterdir()` scanning to `glob(\"????????.jsonl.gz\")`, avoiding unnecessary filename filtering
+  - replaced the remaining `_ema(...)` recursion and `+DM/-DM` branch loop in [ztb/features/base_features_v456.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/features/base_features_v456.py) with `ewm(adjust=False)` and vectorized masks
+  - added focused regression coverage in [tests/unit/features/test_base_features_v456.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/features/test_base_features_v456.py)
+- Verified the latest computational cleanup with:
+  - focused: `87 passed in 4.81s` for `test_scalping_features.py`, `test_base_features_v456.py`, `test_135_trades_and_gate.py`, and `test_136_p1_retrain_kill.py`
+  - extractor subset: `3 passed, 12 deselected in 8.89s` for `test_v4_feature_extractor.py -k 'realized_volatility or order_flow_imbalance or tick_volume_ratio'`
+  - filtered broad: `4241 passed, 13 warnings in 45.11s`
+- Removed the last Python loop from [ztb/features/scalping.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/features/scalping.py) by vectorizing `momentum_divergence(...)` with aligned fast/slow base slices instead of per-row recomputation.
+- Extended [tests/unit/core/features/test_scalping_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/core/features/test_scalping_features.py) with an exact-value regression for `momentum_divergence(...)`.
+- Verified the final scalping cleanup with:
+  - focused subset: `12 passed, 24 deselected in 6.40s`
+  - filtered broad: `4241 passed, 13 warnings in 40.84s`
