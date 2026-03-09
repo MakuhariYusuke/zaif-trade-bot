@@ -5,7 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 349# 分析ツール整理 + 重複コード削減 (2026-03-09)
+## 349# 分析ツール整理 + 重複コード削減 + EWMA 3バグ修正 (2026-03-09)
+
+### Fixed
+- **349# P0: EWMA 状態永続化** — `DynamicKillManager.export_state()`/`import_state()` に `ewma_value` が欠落、再起動後に EWMA=None → 単一 fill でシード → -10.71bps 固定で kill 無限ループ
+- **349# P1: EWMA シード安定化** — 初回シードを単一観測値から `pnl_history` 算術平均に変更
+- **349# P2: TIME LIMIT EWMA リセット** — 解除時に EWMA を `threshold * 0.8` にリセット（従来は変更なしで即再 kill）
 
 ### Changed
 - **analyze_fill_logs.py**: 手動 JSONL 読み込み → `load_fill_record_objects_glob()` + `apply_fill_record_filters()` に委譲 (DRY)
@@ -17,8 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 分析ツール整理: `tools/analysis/` → `scripts/v460/analysis/` 一元化、one-off スクリプトを archived
 
 ### Documentation
-- docs/v460/349_phg_refactor_analysis_dedup.md 新規作成
+- docs/v460/349_phg_refactor_analysis_dedup.md 新規作成 → EWMA 深堀り追記
 - docs/evaluation/extended_evaluation.md: regime_evaluation → 後継モジュール案内に更新
+
+### Tests
+- tests/unit/v460/test_349_ewma_fixes.py 新規 (13 tests: 永続化・シード・decay・reset)
 
 ## Session 037-057 Test Helper Consolidation and Real Build Input Reuse (2026-03-09)
 

@@ -86,7 +86,78 @@ CLI レポート出力形式との差異が大きく、p10/p90 メソッド追�
 - ~30分 kill → TIME LIMIT 解除 → 1 trade → 即 kill の繰り返し
 - JPY 残高 ¥1,342 < 最低必要額 ~¥10,500 → buy 永久ブロック
 
-## 4. 付随修正
+## 4. dynamic_kill EWMA 深堀り分析
+
+### 発見した問題
+
+再起動後ログで `sell_dynamic_kill` の rolling mean が **-10.710bps**（05:17 の sell fill PnL そのまま）に
+固定され、30分ごとの TIME LIMIT → 即再 kill を 24 回繰り返す異常パターンを確認。
+
+根本原因を 3 つ特定:
+
+#### P0 (Critical Bug): EWMA 状態が永続化されていない
+
+`export_state()` / `import_state()` に `_ewma_value` が含まれていなかった。
+
+**影響チェーン:**
+1. 再起動 → `import_state()` で状態復元 → `_ewma_value = None`
+2. `_get_rolling_mean()` が EWMA モードで `None` を返す → kill 判定スキップ
+3. ガード無しで 1 trade 許可 → fill の PnL がそのまま EWMA seed に（α=1.0 相当）
+4. 05:17 sell -10.71bps が seed → EWMA = -10.710 固定
+5. threshold -0.5bps を大幅に下回る → 即 kill → TIME LIMIT 30分 → 解除 → 再 kill の無限ループ
+
+**修正:** `export_state()` に `ewma_value` を追加、`import_state()` で復元。
+欠落時は `_rebuild_ewma_from_history()` で pnl_history から再構築。
+
+#### P1: EWMA シードが単一観測値で脆弱
+
+EWMA の初回シードが `pnl_bps`（単一値）で行われていた。
+α=0.05 の場合、この単一値が EWMA に残留する影響は 0.95^n で指数減衰するが、
+-10.71bps のような外れ値では ~45 fills で threshold に収束 — 事実上、回復不能。
+
+**修正:** 初回シードを `pnl_history` の算術平均に変更。
+複数データがあれば外れ値の影響が希釈され、安定起動が可能に。
+
+#### P2: TIME LIMIT 解除が EWMA をリセットしない
+
+273# の TIME LIMIT は cooldown と kill_activated_at をリセットするが、
+EWMA 値はそのまま維持されるため、次の `check_kill()` で即再 kill される。
+
+**実際のログパターン:**
+```
+05:52 sell kill TIME LIMIT expired → auto-releasing
+05:54 sell dynamic kill activated: rolling50 mean=-10.710bps < -0.6bps
+```
+解除後わずか 2 分で再 kill。EWMA が -10.710 のまま変わらないため。
+
+**修正:** TIME LIMIT 解除時に EWMA を `threshold * 0.8` にリセット。
+kill 閾値のすぐ上に置くことで、次の悪い fill では再 kill されるが、
+良い fill なら回復の余地がある。
+
+### ログ実証データ
+
+```
+00:10 warmup: sell=64 records → rolling50 mean=-0.553bps
+00:10 sell kill activated (mean=-0.553 < -0.5)  ← 正常な kill
+
+05:13 RESTART → import_state でEWMAがNullに!
+05:17 sell FILL -10.71bps → EWMA seed = -10.710 (単一値)
+05:22 sell kill activated: mean=-10.710 < -0.5  ← 修復不能
+05:52 TIME LIMIT → release → 05:54 即再kill (EWMA 変わらず)
+07:01 TIME LIMIT → release → 07:02 即再kill
+...以降 24 回繰り返し...
+```
+
+### 修正内容
+
+| 修正 | ファイル | 内容 |
+|------|---------|------|
+| P0 | `sell_dynamic_kill.py` | `export_state()`/`import_state()` に `ewma_value` 追加 + `_rebuild_ewma_from_history()` |
+| P1 | `sell_dynamic_kill.py` | `track()` 初回シードを history 平均に変更 |
+| P2 | `sell_dynamic_kill.py` | TIME LIMIT 解除時に EWMA を `threshold * 0.8` にリセット |
+| テスト | `test_349_ewma_fixes.py` | 13 test cases (永続化・シード・decay・reset) |
+
+## 5. 付随修正
 
 - `tests/test_analyze_fill_logs.py`: import パスを `tools.analysis.` → `scripts.v460.analysis.` に修正
 - `docs/evaluation/extended_evaluation.md`: regime_evaluation セクションを後継モジュールへの案内に更新
@@ -98,7 +169,7 @@ CLI レポート出力形式との差異が大きく、p10/p90 メソッド追�
 | `scripts/v460/analysis/analyze_fill_logs.py` | -84 → +43 (net -41) |
 | `ztb/metrics/fill_quality.py` | -34 → +19 (net -15) |
 | `ztb/analysis/regime/regime_evaluation.py` | **削除** (-341) |
+| `ztb/risk/sell_dynamic_kill.py` | P0/P1/P2 EWMA 修正 (+50) |
+| `tests/unit/v460/test_349_ewma_fixes.py` | **新規** (13 tests) |
 | `tests/test_analyze_fill_logs.py` | import パス修正 |
 | `docs/evaluation/extended_evaluation.md` | deprecated 案内 |
-
-**合計: -445行 / +43行 = net -402行**

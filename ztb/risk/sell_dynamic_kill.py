@@ -256,10 +256,15 @@ class DynamicKillManager:
         """fill の PnL (bps) を追跡."""
         self._pnl_history.append(pnl_bps)
         # 344# 342#D: EWMA 更新
+        # 349# P1: 初回シードを history 平均から算出 (単一外れ値による毒化防止)
         alpha = self._config.ewma_alpha
         if alpha > 0:
             if self._ewma_value is None:
-                self._ewma_value = pnl_bps  # 初回: seed
+                # 初回: history があれば平均でシード、なければ当該値
+                if len(self._pnl_history) > 1:
+                    self._ewma_value = sum(self._pnl_history) / len(self._pnl_history)
+                else:
+                    self._ewma_value = pnl_bps
             else:
                 self._ewma_value = alpha * pnl_bps + (1.0 - alpha) * self._ewma_value
         self._stale_counter = 0  # 218# 新データ投入 → stale リセット
@@ -274,6 +279,25 @@ class DynamicKillManager:
         max_keep = self._config.window * 3
         if len(self._pnl_history) > max_keep:
             self._pnl_history = self._pnl_history[-max_keep:]
+
+    def _rebuild_ewma_from_history(self) -> None:
+        """349# P0: pnl_history から EWMA 値を再構築.
+
+        import_state() で ewma_value が欠落している場合のフォールバック。
+        history を先頭から replay して EWMA を再計算する。
+        """
+        alpha = self._config.ewma_alpha
+        if alpha <= 0 or not self._pnl_history:
+            self._ewma_value = None
+            return
+        ewma = sum(self._pnl_history) / len(self._pnl_history)  # 平均でシード
+        for v in self._pnl_history:
+            ewma = alpha * v + (1.0 - alpha) * ewma
+        self._ewma_value = ewma
+        logger.info(
+            f"[349# P0] {self._side} EWMA rebuilt from {len(self._pnl_history)} records: "
+            f"ewma={ewma:.4f}"
+        )
 
     def _get_rolling_mean(self) -> float | None:
         """344# 342#D: EWMA or count-based rolling mean を返す.
@@ -453,6 +477,23 @@ class DynamicKillManager:
             and self._kill_activated_at is not None
             and (time.time() - self._kill_activated_at) >= _max_dur
         ):
+            # 349# P2: TIME LIMIT 解除時に EWMA を decay して即再 kill を防止
+            # 根拠: kill 中は新データが入らず EWMA が stale 化している。
+            # threshold 付近まで decay させることで、次の fill で改善の余地を与える。
+            old_ewma = self._ewma_value
+            if self._config.ewma_alpha > 0 and self._ewma_value is not None:
+                threshold = self._config.threshold_bps
+                if regime and regime in self._config.regime_thresholds:
+                    threshold = self._config.regime_thresholds[regime]
+                # EWMA を threshold * 0.8 にリセット (kill 閾値の少し上)
+                # これにより即再 kill は避けつつ、次の悪い fill では再 kill される
+                reset_target = threshold * 0.8
+                self._ewma_value = reset_target
+                logger.info(
+                    f"[349# P2] {self._side} EWMA decay on TIME LIMIT: "
+                    f"{old_ewma:.3f} → {reset_target:.3f}bps "
+                    f"(threshold={threshold})"
+                )
             logger.warning(
                 f"[273#] {self._side} kill TIME LIMIT expired: "
                 f"active for {time.time() - self._kill_activated_at:.0f}s "
@@ -629,6 +670,7 @@ class DynamicKillManager:
         self._consecutive_probes = 0
         self._force_released = False
         self._kill_activated_at = None  # 273#
+        self._ewma_value = None  # 349# P0
 
     # ------------------------------------------------------------------
     # 209# H4: 状態永続化 — export / import
@@ -650,6 +692,7 @@ class DynamicKillManager:
             "consecutive_probes": self._consecutive_probes,
             "force_released": self._force_released,
             "kill_activated_at": self._kill_activated_at,  # 273#
+            "ewma_value": self._ewma_value,  # 349# P0: EWMA 状態永続化
         }
 
     def import_state(self, state: dict[str, object]) -> None:
@@ -674,6 +717,14 @@ class DynamicKillManager:
         # 273# kill_activated_at 復元
         _kill_at = state.get("kill_activated_at")
         self._kill_activated_at = float(_kill_at) if _kill_at is not None else None
+        # 349# P0: EWMA 状態復元 — 欠落している場合は history から再構築
+        _ewma = state.get("ewma_value")
+        if _ewma is not None:
+            self._ewma_value = float(_ewma)
+        elif self._config.ewma_alpha > 0 and self._pnl_history:
+            self._rebuild_ewma_from_history()
+        else:
+            self._ewma_value = None
         # side は import しない (コンストラクタで固定)
         # メモリ制限: window*3 に収める
         max_keep = self._config.window * 3
