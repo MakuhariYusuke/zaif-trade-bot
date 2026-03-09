@@ -211,7 +211,9 @@ class TestGateThresholds:
     def test_g2_values(self, thresholds: dict[str, Any]) -> None:
         g2 = thresholds["g2_train"]
         assert 0.5 <= g2["min_positive_seed_ratio"] <= 1.0
-        assert g2["max_ic_seed_std"] > 0
+        max_seed_std = g2.get("max_roi_seed_std", g2.get("max_ic_seed_std"))
+        assert isinstance(max_seed_std, (int, float))
+        assert max_seed_std > 0
 
     def test_g3_values(self, thresholds: dict[str, Any]) -> None:
         g3 = thresholds["g3_pnl"]

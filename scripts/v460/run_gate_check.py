@@ -278,14 +278,20 @@ def run_g2_judgment(results_path: str, thresholds: dict | None = None) -> dict:
         "pass": ratio >= min_ratio,
     }
 
-    # E2: IC の seed 間標準偏差 <= 0.03
-    max_ic_std = thresholds.get("max_ic_seed_std", 0.03)
-    ic_values = [s.get("ic_mean", 0) for s in seed_results]
-    ic_std = _stats.stdev(ic_values) if len(ic_values) >= 2 else 0.0
-    checks["ic_seed_std"] = {
-        "value": ic_std,
-        "threshold": max_ic_std,
-        "pass": ic_std <= max_ic_std,
+    # E2: seed 間標準偏差チェック
+    if "max_roi_seed_std" in thresholds:
+        max_seed_std = thresholds.get("max_roi_seed_std", 0.03)
+        seed_std_values = [s.get("gross_roi", 0) for s in seed_results]
+        check_name = "roi_seed_std"
+    else:
+        max_seed_std = thresholds.get("max_ic_seed_std", 0.03)
+        seed_std_values = [s.get("ic_mean", 0) for s in seed_results]
+        check_name = "ic_seed_std"
+    seed_std = _stats.stdev(seed_std_values) if len(seed_std_values) >= 2 else 0.0
+    checks[check_name] = {
+        "value": seed_std,
+        "threshold": max_seed_std,
+        "pass": seed_std <= max_seed_std,
     }
 
     # E3: 30K以降の ROI 変動 <= 5%

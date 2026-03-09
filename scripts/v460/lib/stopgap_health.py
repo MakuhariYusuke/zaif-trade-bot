@@ -177,6 +177,31 @@ class _DailyAggregate:
             self.velocity_skip_count += 1
 
 
+def _build_daily_metrics_row(
+    day: str,
+    regime: str,
+    side: str,
+    agg: _DailyAggregate,
+) -> DailyMetrics:
+    """集計器から DailyMetrics を構築する."""
+    base = agg.metrics.to_extended_metrics()
+    return DailyMetrics(
+        day=day,
+        regime=regime,
+        side=side,
+        n_total=base["n_total"],
+        n_filled=base["n_filled"],
+        fill_rate=base["fill_rate"],
+        avg_pnl30_bps=base["avg_pnl30_bps"],
+        downside_p10_bps=base["downside_p10_bps"],
+        as_rate=base["as_rate"],
+        avg_as_loss_bps=base["avg_as_loss_bps"],
+        dynamic_kill_count=agg.dynamic_kill_count,
+        unknown_regime_count=agg.unknown_regime_count,
+        velocity_skip_count=agg.velocity_skip_count,
+    )
+
+
 @dataclass
 class AlertItem:
     """退出基準の閾値逸脱アラート (165# 7.5 P0 対応)."""
@@ -266,6 +291,23 @@ def compute_daily_metrics(
 
     162# P1 受入基準のコア実装。
     """
+    if not records:
+        return []
+
+    if len(records) == 1:
+        record = records[0]
+        day = _get_day(record)
+        regime = str(record.get("regime") or "unknown")
+        side = str(record.get("side") or "unknown")
+        agg = _DailyAggregate()
+        agg.add(record)
+        return [
+            _build_daily_metrics_row(day, "all", "all", agg),
+            _build_daily_metrics_row(day, regime, "all", agg),
+            _build_daily_metrics_row(day, "all", side, agg),
+            _build_daily_metrics_row(day, regime, side, agg),
+        ]
+
     # Group by (day, regime, side)
     groups: dict[tuple[str, str, str], _DailyAggregate] = defaultdict(_DailyAggregate)
     day_cache: dict[int | None, str] = {}
@@ -288,23 +330,7 @@ def compute_daily_metrics(
 
     results: list[DailyMetrics] = []
     for (day, regime, side), agg in sorted(groups.items()):
-        base = agg.metrics.to_extended_metrics()
-
-        results.append(DailyMetrics(
-            day=day,
-            regime=regime,
-            side=side,
-            n_total=base["n_total"],
-            n_filled=base["n_filled"],
-            fill_rate=base["fill_rate"],
-            avg_pnl30_bps=base["avg_pnl30_bps"],
-            downside_p10_bps=base["downside_p10_bps"],
-            as_rate=base["as_rate"],
-            avg_as_loss_bps=base["avg_as_loss_bps"],
-            dynamic_kill_count=agg.dynamic_kill_count,
-            unknown_regime_count=agg.unknown_regime_count,
-            velocity_skip_count=agg.velocity_skip_count,
-        ))
+        results.append(_build_daily_metrics_row(day, regime, side, agg))
     return results
 
 

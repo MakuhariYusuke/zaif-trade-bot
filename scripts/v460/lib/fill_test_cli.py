@@ -5,18 +5,24 @@ CLI 引数解析、adapter 構築、config 構築、実行、post-run 判定を�
 """
 from __future__ import annotations
 
+import atexit
 import argparse
 import asyncio
 import json
 import logging
 import logging.handlers
+import math
+import os
 import platform
 import signal as signal_mod
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
+
+import psutil  # type: ignore[import-untyped]
 
 if TYPE_CHECKING:
     from ztb.metrics.fill_quality import FillRecord
@@ -25,6 +31,143 @@ logger = logging.getLogger(__name__)
 
 # Project root
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+
+
+class _ExitDiagnosticsRow(TypedDict):
+    timestamp_utc: str
+    trigger: str
+    run_id: str
+    stop_reason: str | None
+    pid: int
+    rss_mb: float | None
+    vms_mb: float | None
+    lock_heartbeat_age_sec: float | None
+
+
+def _safe_mb_from_bytes(raw_bytes: object) -> float | None:
+    """byte 数を MB に変換する."""
+    if isinstance(raw_bytes, bool):
+        return None
+    if not isinstance(raw_bytes, (int, float)):
+        return None
+    value = float(raw_bytes)
+    if not math.isfinite(value):
+        return None
+    return value / (1024.0 * 1024.0)
+
+
+def _safe_filename_token(value: str | None, *, default: str) -> str:
+    """ファイル名へ使える安全な token へ正規化."""
+    normalized = (value or "").strip() or default
+    return "".join(
+        ch if ch.isalnum() or ch in ("-", "_") else "_"
+        for ch in normalized
+    )[:96]
+
+
+def _resolve_lock_path(results_dir: str | Path, lock_path: Path | None) -> Path:
+    """診断対象の lock path を解決."""
+    if lock_path is not None:
+        return lock_path
+    return Path(results_dir) / "fill_test.lock"
+
+
+def _read_lock_heartbeat_age_sec(
+    results_dir: str | Path,
+    *,
+    lock_path: Path | None = None,
+    now_ts: float | None = None,
+) -> float | None:
+    """fill_test.lock の直近 heartbeat age を返す."""
+    target = _resolve_lock_path(results_dir, lock_path)
+    if not target.exists():
+        return None
+    try:
+        content = target.read_text(encoding="utf-8").strip()
+        parts = content.split("|")
+        if len(parts) < 2:
+            return None
+        heartbeat_raw = parts[3] if len(parts) >= 4 else parts[1]
+        heartbeat_ts = float(heartbeat_raw)
+        reference_now = time.time() if now_ts is None else now_ts
+        age_sec = reference_now - heartbeat_ts
+        if not math.isfinite(age_sec):
+            return None
+        return max(age_sec, 0.0)
+    except (OSError, TypeError, ValueError):
+        return None
+
+
+def _dump_exit_diagnostics(
+    results_dir: str | Path,
+    run_id: str,
+    *,
+    stop_reason: str | None,
+    lock_path: Path | None = None,
+    trigger: str,
+) -> Path | None:
+    """終了時メモリ診断を JSON へダンプする."""
+    target_dir = Path(results_dir) / "diagnostics"
+    now = datetime.now(timezone.utc)
+    heartbeat_age_sec = _read_lock_heartbeat_age_sec(
+        results_dir,
+        lock_path=lock_path,
+        now_ts=now.timestamp(),
+    )
+
+    rss_mb: float | None = None
+    vms_mb: float | None = None
+    pid = os.getpid()
+    try:
+        proc = psutil.Process()
+        pid = int(proc.pid)
+        mem = proc.memory_info()
+        rss_mb = _safe_mb_from_bytes(getattr(mem, "rss", None))
+        vms_mb = _safe_mb_from_bytes(getattr(mem, "vms", None))
+    except Exception as exc:
+        logger.debug("exit diagnostics psutil probe failed: %s", exc, exc_info=True)
+
+    payload: _ExitDiagnosticsRow = {
+        "timestamp_utc": now.isoformat(),
+        "trigger": trigger,
+        "run_id": run_id,
+        "stop_reason": stop_reason,
+        "pid": pid,
+        "rss_mb": rss_mb,
+        "vms_mb": vms_mb,
+        "lock_heartbeat_age_sec": heartbeat_age_sec,
+    }
+
+    dump_name = (
+        f"exit_dump_{_safe_filename_token(run_id, default='unknown')}"
+        f"_{now.strftime('%Y%m%dT%H%M%SZ')}.json"
+    )
+    dump_path = target_dir / dump_name
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        dump_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        heartbeat_label = (
+            f"{heartbeat_age_sec:.1f}s" if heartbeat_age_sec is not None else "n/a"
+        )
+        rss_label = f"{rss_mb:.1f}MB" if rss_mb is not None else "n/a"
+        vms_label = f"{vms_mb:.1f}MB" if vms_mb is not None else "n/a"
+        logger.warning(
+            "[diag] exit dump trigger=%s stop_reason=%s run_id=%s rss=%s vms=%s heartbeat_age=%s path=%s",
+            trigger,
+            stop_reason,
+            run_id,
+            rss_label,
+            vms_label,
+            heartbeat_label,
+            dump_path,
+        )
+        return dump_path
+    except OSError as exc:
+        logger.warning("exit diagnostics dump failed: %s", exc, exc_info=True)
+        return None
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
@@ -308,6 +451,34 @@ def fill_test_main() -> None:
         adapter, config, yaml_cfg=yaml_cfg,
         config_yaml_path=args.config,  # 169# config hot-reload
     )
+    diagnostics_state: dict[str, str | bool | None] = {
+        "stop_reason": None,
+        "dumped": False,
+    }
+
+    def _emit_exit_diagnostics(trigger: str, reason: str | None = None) -> None:
+        if diagnostics_state["dumped"]:
+            return
+        active_stop_reason = reason or (
+            diagnostics_state["stop_reason"]
+            if isinstance(diagnostics_state["stop_reason"], str)
+            else None
+        )
+        lock_manager = getattr(runner, "_lock_manager", None)
+        dump_path = _dump_exit_diagnostics(
+            config.results_dir,
+            runner._run_id,
+            stop_reason=active_stop_reason,
+            lock_path=getattr(lock_manager, "lockfile_path", None),
+            trigger=trigger,
+        )
+        if dump_path is not None:
+            diagnostics_state["dumped"] = True
+
+    def _atexit_hook() -> None:
+        _emit_exit_diagnostics("atexit")
+
+    atexit.register(_atexit_hook)
 
     # 148# P0: start イベント記録
     log_event(
@@ -341,15 +512,18 @@ def fill_test_main() -> None:
 
     # Signal handler
     def _signal_handler(signum: int, frame: object) -> None:
+        signal_reason = f"signal_{signum}"
         logger.info(f"Signal {signum} received — requesting shutdown")
         log_event(
             "signal",
             config.results_dir,
             run_id=runner._run_id,
             git_sha=runner._git_sha,
-            reason=f"signal_{signum}",
+            reason=signal_reason,
         )
-        runner._kill_switch.kill(f"signal_{signum}")
+        diagnostics_state["stop_reason"] = signal_reason
+        _emit_exit_diagnostics("signal", signal_reason)
+        runner._kill_switch.kill(signal_reason)
 
     signal_mod.signal(signal_mod.SIGINT, _signal_handler)
     if platform.system() == "Windows":
@@ -397,6 +571,9 @@ def fill_test_main() -> None:
         logger.error(f"[148#] Unhandled exception: {e}", exc_info=True)
         raise
     finally:
+        diagnostics_state["stop_reason"] = stop_reason
+        _emit_exit_diagnostics("finally", stop_reason)
+        atexit.unregister(_atexit_hook)
         # 168# Discord 通知: fill_test 停止/クラッシュ
         try:
             from ztb.utils.notify import get_notifier

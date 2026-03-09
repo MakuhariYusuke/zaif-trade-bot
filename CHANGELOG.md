@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Session 037-074 Exit Diagnostics and Tail Reader Optimization (2026-03-10)
+
+### Changed
+- Added `_dump_exit_diagnostics()` and related helpers in `scripts/v460/lib/fill_test_cli.py`, then wired the same diagnostic path into `atexit`, the CLI signal handler, and the final shutdown path so fill-test exits now emit RSS/VMS/heartbeat-age JSON dumps under `results_dir/diagnostics/`.
+- Added focused diagnostics coverage in `tests/unit/v460/test_fill_test_cli_diagnostics.py` and source-contract coverage that verifies `fill_test_cli.py` still registers the atexit/signal diagnostic hooks.
+- Reworked `ztb/io/jsonl.py` `read_tail_jsonl_objects()` to use an end-seeking tail reader for the normal path while preserving the old line-numbered forward scan when `warn_malformed=True`.
+- Added `tests/unit/utils/test_jsonl.py` to lock in BOM, blank-line, malformed-line, and last-N behavior for the new JSONL tail reader.
+- Added a single-record fast path and shared row builder in `scripts/v460/lib/stopgap_health.py` so `compute_daily_metrics()` avoids the general grouping path for the hot one-record case.
+- Restored new/old G2 E2 compatibility across `scripts/v460/run_experiment.py`, `scripts/v460/run_gate_check.py`, and `tests/unit/v460/test_config_validation.py` by accepting both `max_roi_seed_std` and legacy `max_ic_seed_std`.
+
 ## Session 037-061 Source Cache Reuse and Gate Threshold Fixture Cleanup (2026-03-09)
 
 ### Changed
@@ -4710,3 +4720,65 @@ python scripts/unified_trainer.py \
 - The focused `fill_quality.py` selector completed at `7 passed, 199 deselected in 3.97s`.
 - `test_258_as_reservation_vpin_continuous_protocol.py` completed at `29 passed in 1.14s`.
 - Further helper unification inside `test_fill_quality.py` would start obscuring test intent, so this batch stops at the shared loop boundary.
+
+## Session 037-072 (2026-03-10)
+
+### Changed
+- Expanded [tests/unit/v460/_fill_test_source.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_fill_test_source.py) with additional shared path constants and a cached `read_function_source()` helper, then reused that helper from:
+  - [tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py)
+  - [tests/unit/v460/test_261_protocol_type_safety.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_261_protocol_type_safety.py)
+  - [tests/unit/v460/test_305_p0_improvements.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_305_p0_improvements.py)
+- Hoisted remaining method-local imports in:
+  - [tests/unit/v460/test_160_ab_judgment.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_160_ab_judgment.py)
+  - [tests/unit/v460/test_168_daily_health_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_168_daily_health_integration.py)
+- Added shared hour-based rule helpers in [scripts/v460/lib/hour_rules.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/hour_rules.py) and reused them from:
+  - [scripts/v460/lib/maker_risk_guards.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/maker_risk_guards.py)
+  - [scripts/v460/lib/time_filter.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/time_filter.py)
+  - [scripts/v460/lib/orchestrator_pre_cycle.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/orchestrator_pre_cycle.py)
+  - [scripts/v460/lib/skip_gate_evaluator.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/skip_gate_evaluator.py)
+- Updated time-filter related tests to patch the new helper boundary instead of patching removed `datetime` module globals:
+  - [tests/unit/v460/test_163_regime_adaptive_gating.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_163_regime_adaptive_gating.py)
+  - [tests/unit/v460/test_306_proposals.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_306_proposals.py)
+  - [tests/unit/v460/test_regime_detector.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_regime_detector.py)
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile tests/unit/v460/_fill_test_source.py tests/unit/v460/test_160_ab_judgment.py tests/unit/v460/test_168_daily_health_integration.py tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py tests/unit/v460/test_261_protocol_type_safety.py tests/unit/v460/test_305_p0_improvements.py scripts/v460/lib/hour_rules.py scripts/v460/lib/maker_risk_guards.py scripts/v460/lib/time_filter.py scripts/v460/lib/orchestrator_pre_cycle.py scripts/v460/lib/skip_gate_evaluator.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_160_ab_judgment.py tests/unit/v460/test_168_daily_health_integration.py tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py tests/unit/v460/test_261_protocol_type_safety.py tests/unit/v460/test_305_p0_improvements.py -q --no-cov --tb=short --durations=25`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_169_config_hot_reload.py tests/unit/v460/test_237_phantom_position_guard.py tests/unit/v460/test_277_magic_number_grounding.py tests/unit/v460/test_306_proposals.py -q --no-cov --tb=short -k 'not test_yaml_has_microprice_side' --durations=25`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_094_stale_order.py tests/unit/v460/test_163_regime_adaptive_gating.py tests/unit/v460/test_169_config_hot_reload.py tests/unit/v460/test_196_velocity_proportional_trending_soft.py tests/unit/v460/test_336_yaml_code_drift_prevention.py tests/unit/v460/test_fill_test_config.py -q --no-cov --tb=short --durations=25`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_regime_detector.py tests/unit/v460/test_163_regime_adaptive_gating.py -q --no-cov --tb=short --durations=20`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_113_resilience.py --ignore=tests/unit/v460/test_152_parallel_tasks.py --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --deselect=tests/unit/v460/test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+
+### Notes
+- The focused source/import bundle completed at `162 passed in 3.33s`.
+- The related hot-reload / phantom / proposals bundle completed at `157 passed, 1 deselected in 3.54s`.
+- The hour-rule regression bundle completed at `213 passed in 7.00s`.
+- The filtered broad run completed at `4206 passed, 13 warnings in 72.82s`.
+
+## Session 037-073 (2026-03-10)
+
+### Changed
+- Reused existing production loaders inside [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py):
+  - added cached `_load_g2_sac_yaml()`
+  - added cached `_load_g2_schema_names()`
+  - added cached `_load_g2_real_df_2000()`
+  - switched real-data loading from raw `pd.read_parquet()` to existing [scripts/v460/lib/data_loader.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/data_loader.py) `load_parquet(...)` with selected feature columns
+- Consolidated `g2_sac_train.yaml` parsing and schema inspection so the file/scheme are loaded once and reused across:
+  - B1 YAML existence/structure tests
+  - training-data integrity tests
+  - HeavyTradingEnv integration test setup
+- Reduced HeavyTradingEnv integration fixture cost by:
+  - changing `real_df` to class scope
+  - changing `env_config` to class scope
+  - centralizing env construction behind `_create_env(...)`
+  - reusing module-scope imports for `EnvironmentConfig`, `HeavyTradingEnv`, `_create_training_env`, `yaml`, and `pyarrow.parquet`
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile tests/unit/v460/test_356_g2_sac_blockers.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_356_g2_sac_blockers.py -q --no-cov --tb=short --durations=20`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_113_resilience.py --ignore=tests/unit/v460/test_152_parallel_tasks.py --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --deselect=tests/unit/v460/test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+
+### Notes
+- `test_356_g2_sac_blockers.py` completed at `38 passed in 5.03s`.
+- In the filtered broad run, the same suite completed at `4206 passed, 13 warnings in 40.62s`.
+- `TestHeavyTradingEnvIntegration` setup moved from repeated multi-second parquet reads to a single cached load, dropping the dominant setup cost from the prior ~5-6 second band to ~1.4 seconds once per class in the broad profile.

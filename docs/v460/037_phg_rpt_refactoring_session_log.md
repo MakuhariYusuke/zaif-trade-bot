@@ -3061,3 +3061,180 @@
 - DD halt / loss_boost / FFD hot-reload の source 契約が shared helper にさらに寄ったので、orchestrator split と `run_fill_test` 分割への追随点が減った。
 - `151/166` の `FillRecord` 周辺は、今後 field 追加が入っても import boilerplate が増えにくい形になった。
 - production 側では `sell_hour_offset_boost` の時間帯判定を pure helper に分離したので、`skip_gate_hour_offsets` など他の time-of-day ルールとの共通化を検討しやすい下地ができた。
+
+---
+
+## 2026-03-10 / Session 037-072
+
+### 実施
+- `tests/unit/v460/_fill_test_source.py`
+  - `ADAPTATION_ENGINE`, `BALANCE_CHECKER`, `OB_RECORDER`, `MAKER_RISK_GUARDS` を追加
+  - cached `read_function_source()` を追加
+- `tests/unit/v460/test_160_ab_judgment.py`
+  - `side_regime_dashboard` import と `json` import を module scope に集約
+- `tests/unit/v460/test_168_daily_health_integration.py`
+  - `daily_health_check` import を module scope に集約
+  - 未使用だった `_import_fn()` と余剰 import を削除
+- `tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py`
+  - `AdaptationEngine.try_auto_adapt`, `MakerPriceCalculator.__init__/compute`, `RiskGuardsMixin._apply_volatility_guard` の source 参照を shared helper 化
+- `tests/unit/v460/test_261_protocol_type_safety.py`
+  - `config_hot_reload`, `balance_checker`, `ob_utils`, `ob_recorder`, `maker_price` の source 参照を shared helper 化
+- `tests/unit/v460/test_305_p0_improvements.py`
+  - `MakerPrice.compute` source と `_HOT_RELOADABLE_FIELDS` を module scope に集約
+- `scripts/v460/lib/hour_rules.py`
+  - `current_utc_hour()`, `utc_hour_from_timestamp()`, `resolve_hour_float()`, `resolve_optional_hour_float()` を追加
+- `scripts/v460/lib/maker_risk_guards.py`
+  - `current_utc_hour` / `resolve_optional_hour_float` を再利用
+- `scripts/v460/lib/time_filter.py`
+  - `current_utc_hour()` 再利用へ変更
+- `scripts/v460/lib/orchestrator_pre_cycle.py`
+  - hard-skip / DD / alert-mode の UTC hour 解決を `current_utc_hour()` に統一
+- `scripts/v460/lib/skip_gate_evaluator.py`
+  - `skip_gate_hour_offsets` 解決を `utc_hour_from_timestamp()` + `resolve_hour_float()` に統一
+- `tests/unit/v460/test_163_regime_adaptive_gating.py`
+  - `datetime` patch を `current_utc_hour` patch に変更
+- `tests/unit/v460/test_306_proposals.py`
+  - sell-hour boost テストを `current_utc_hour` patch ベースへ変更
+- `tests/unit/v460/test_regime_detector.py`
+  - `TimeFilter` 系テストを `current_utc_hour` patch ベースへ変更
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_160_ab_judgment.py`
+  - `tests/unit/v460/test_168_daily_health_integration.py`
+  - `tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py`
+  - `tests/unit/v460/test_261_protocol_type_safety.py`
+  - `tests/unit/v460/test_305_p0_improvements.py`
+  - `162 passed in 3.33s`
+- related focused:
+  - `tests/unit/v460/test_169_config_hot_reload.py`
+  - `tests/unit/v460/test_237_phantom_position_guard.py`
+  - `tests/unit/v460/test_277_magic_number_grounding.py`
+  - `tests/unit/v460/test_306_proposals.py -k 'not test_yaml_has_microprice_side'`
+  - `157 passed, 1 deselected in 3.54s`
+- hour-rule regression:
+  - `tests/unit/v460/test_094_stale_order.py`
+  - `tests/unit/v460/test_163_regime_adaptive_gating.py`
+  - `tests/unit/v460/test_169_config_hot_reload.py`
+  - `tests/unit/v460/test_196_velocity_proportional_trending_soft.py`
+  - `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
+  - `tests/unit/v460/test_fill_test_config.py`
+  - `213 passed in 7.00s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4206 passed, 13 warnings in 72.82s`
+
+### 主要改善
+- source 契約テストは `inspect` / `inspect.getsourcefile` / `Path(...).read_text(...)` の局所実装をさらに減らし、split-file 変更に追随しやすい形へ寄った。
+- production 側の hour-based rule は `maker_risk_guards`, `time_filter`, `orchestrator_pre_cycle`, `skip_gate_evaluator` で同じ helper 境界を共有するようになり、今後の時間帯ルール追加でも patch 点と責務の重複が増えにくくなった。
+- `time_filter` まわりのテスト patch 先も helper 境界に揃えたので、`datetime` 実装詳細に依存せず意図した hour 判定そのものを検証する形になった。
+
+---
+
+## 2026-03-10 / Session 037-073
+
+### 実施
+- `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `yaml`, `pyarrow.parquet`, `load_parquet`, `HeavyTradingEnv`, `EnvironmentConfig`, `_create_training_env` を module scope に集約
+  - cached `_load_g2_sac_yaml()`, `_load_g2_schema_names()`, `_load_g2_real_df_2000()` を追加
+  - B1 YAML 構造テストを shared YAML fixture 再利用へ変更
+  - training-data integrity テストを shared schema fixture 再利用へ変更
+  - `TestHeavyTradingEnvIntegration.real_df` を class-scope 化し、既存 `load_parquet()` で selected features + `close` だけを一度ロードする形に変更
+  - `TestHeavyTradingEnvIntegration.env_config` を class-scope 化
+  - `_create_env()` helper を追加し、env 生成の重複を集約
+  - `test_create_training_env_pipeline` も shared YAML + selected feature loader 再利用へ変更
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `38 passed in 5.03s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4206 passed, 13 warnings in 40.62s`
+
+### 主要改善
+- `356` の実データ integration は raw `pd.read_parquet()` の全列読込をやめ、既存の `scripts.v460.lib.data_loader.load_parquet()` を selected feature ベースで再利用するようになった。
+- これにより `HeavyTradingEnv` integration の支配的 setup が「毎回 parquet を読む」構成から「1 回だけ必要列を読む」構成へ変わり、broad top の 5-6 秒級 setup が大きく後退した。
+- 既存 helper を再利用したので、将来 YAML 側で selected feature が変わっても test 側が別実装で乖離しにくい。
+
+## 2026-03-10 / Session 037-074
+
+### 実施
+- `docs/v460/037_phg_rpt_refactoring_session_log.md` に `§5.2` 見出し自体は存在しないことを再確認し、参照元が [363_ph2_rev_361_362_review_validation.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/363_ph2_rev_361_362_review_validation.md) `### 5.2 Codex プロンプト` であることを特定。
+- `scripts/v460/lib/fill_test_cli.py`
+  - `_read_lock_heartbeat_age_sec()` を追加
+  - `_dump_exit_diagnostics()` を追加
+  - `atexit.register()` と signal handler と finally 経路を同一 helper に統一
+  - 終了時に RSS/VMS/UTC timestamp/run_id/stop_reason/lock heartbeat age を `results_dir/diagnostics/exit_dump_*.json` へ出力するように変更
+- `tests/unit/v460/test_fill_test_cli_diagnostics.py`
+  - JSON dump 構造
+  - heartbeat age 算出
+  - psutil 失敗時フォールバック
+  - atexit/signal hook の source 契約
+  を追加
+- `ztb/io/jsonl.py`
+  - `read_tail_jsonl_objects()` を end-seek ベースの tail 読みへ変更
+  - `warn_malformed=True` のときだけ旧 forward scan を維持
+- `tests/unit/utils/test_jsonl.py`
+  - last-N 読込
+  - BOM/blank 行
+  - malformed line
+  の回帰を追加
+- `scripts/v460/lib/stopgap_health.py`
+  - `_build_daily_metrics_row()` を追加
+  - `compute_daily_metrics()` に single-record fast-path を追加
+- `scripts/v460/run_experiment.py`
+  - G2 E2 を `max_roi_seed_std` / `max_ic_seed_std` 互換で解釈するよう修正
+- `scripts/v460/run_gate_check.py`
+  - 上と同じ互換ロジックに揃えた
+- `tests/unit/v460/test_config_validation.py`
+  - `g2_train` threshold の検証を新旧キー両対応へ修正
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_fill_test_cli_diagnostics.py`
+  - `tests/unit/utils/test_jsonl.py`
+  - `tests/unit/v460/test_stopgap_health.py`
+  - `63 passed in 1.30s`
+- focused:
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_ml_pipeline.py`
+  - `tests/unit/v460/test_fill_test_cli_diagnostics.py`
+  - `tests/unit/utils/test_jsonl.py`
+  - `tests/unit/v460/test_stopgap_health.py`
+  - `193 passed in 9.90s`
+- focused:
+  - `tests/unit/v460/test_config_validation.py`
+  - `tests/unit/v460/test_gate_check.py`
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `115 passed in 9.75s`
+- focused:
+  - `tests/unit/v460/test_fill_test_cli_diagnostics.py`
+  - `tests/unit/utils/test_jsonl.py`
+  - `tests/unit/v460/test_stopgap_health.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_ml_pipeline.py`
+  - `tests/unit/v460/test_v460_core.py`
+  - `210 passed in 11.41s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4214 passed, 13 warnings in 43.33s`
+
+### 主要改善
+- `037` の追加依頼だった OPS-1 は、`363# §5.2` の要求どおり `fill_test_cli.py` に終了時メモリ診断として実装した。
+- `read_tail_jsonl_objects()` の実 tail 読み化により、real-data integration が大きい JSONL を毎回先頭から走査する無駄を削れた。
+- `compute_daily_metrics()` は 1-record ケースで一般 grouping を通らなくなり、broad top に残っていた `test_stopgap_health.py` の小さな固定費を削減した。
+- G2 E2 は `max_roi_seed_std` への移行途中で test/config/runtime が食い違っていたため、runtime は新旧互換、validation は新旧許容に揃えた。
