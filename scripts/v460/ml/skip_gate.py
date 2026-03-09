@@ -49,6 +49,7 @@ from scripts.v460.ml.skip_gate_features import (
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MODEL_PATH = Path("models/v460/skip_gate.pkl")
+_PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
 
 def _migrate_pipeline_feature_names(pipeline: Pipeline) -> None:
     """Pipeline 内の各 step の feature_names_in_ を _FEATURE_NAME_MIGRATION で更新.
@@ -660,13 +661,12 @@ class SkipGate:
             "metadata": self.metadata,
             "pipeline": self._pipeline,  # 059# NEW-02
         }
-        data = pickle.dumps(payload)
+        data = pickle.dumps(payload, protocol=_PICKLE_PROTOCOL)
         digest = hashlib.sha256(data).hexdigest()
-        with open(p, "wb") as f:
-            f.write(data)
+        p.write_bytes(data)
         # ハッシュファイル保存 — 059# P2-8
         hash_path = p.with_suffix(p.suffix + ".sha256")
-        hash_path.write_text(digest)
+        hash_path.write_text(digest, encoding="utf-8")
         logger.info(f"SkipGate saved to {p} (sha256={digest[:12]}...)")
         return p
 
@@ -674,12 +674,11 @@ class SkipGate:
     def load(cls, path: Optional[Path] = None) -> "SkipGate":
         """pickle からロード (ハッシュ検証付き)."""
         p = path or _DEFAULT_MODEL_PATH
-        with open(p, "rb") as f:
-            data = f.read()
+        data = p.read_bytes()
         # 059# P2-8: ハッシュ検証
         hash_path = p.with_suffix(p.suffix + ".sha256")
         if hash_path.exists():
-            expected = hash_path.read_text().strip()
+            expected = hash_path.read_text(encoding="utf-8").strip()
             actual = hashlib.sha256(data).hexdigest()
             if actual != expected:
                 raise ValueError(

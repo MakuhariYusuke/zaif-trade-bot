@@ -3438,3 +3438,43 @@
 - `build_features_pipeline` は 40 分ぶんの synthetic raw を作る必要がなくなり、real-mode fixture の無駄を削った。
 - `enricher_skip_gate` は最小 ladder を探ったが、学習成立条件を守るには `220/280` fallback が必要と確認できた。
 - broad 上位は `HeavyTradingEnv` と `SkipGate save/load` 側へ再集中し、今回触った setup 系での回帰は出ていない。
+
+## 2026-03-10 / Session 037-080
+
+### 実施
+- `ztb/utils/dataclass_utils.py`
+  - `shallow_asdict(...)` を追加
+- `ztb/trading/environment/heavy_env/core.py`
+  - `RewardSettings` merge と debug logging を `shallow_asdict(...)` ベースへ変更
+- `ztb/trading/environment/components/calculators/reward_calculator.py`
+  - reward settings debug dump を `shallow_asdict(...)` に変更
+- `scripts/v460/ml/skip_gate.py`
+  - `pickle.HIGHEST_PROTOCOL`
+  - `Path.write_bytes()`
+  - `Path.read_bytes()`
+  に切り替えて save/load の固定費を削減
+- `ztb/data/market_data_collector.py`
+  - `aggregate_to_1min()` の index 構築で一時 `dt` 列を作らない形へ整理
+- `tests/unit/utils/test_dataclass_utils.py`
+  - `shallow_asdict(...)` の unit test を追加
+
+### 結果
+- focused:
+  - `tests/unit/utils/test_dataclass_utils.py`
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `tests/unit/v460/test_aggregate_to_1min.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `141 passed in 10.66s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4218 passed, 13 warnings in 40.52s`
+
+### 主要改善
+- `HeavyTradingEnv` integration setup は broad で `2.40s -> 1.59s` まで低下した。
+- `SkipGate` save/load roundtrip は broad 上位に残るが、I/O 経路は production 側でより軽い実装に置き換わった。
+- `aggregate_to_1min()` は列追加→`set_index()` の一時オブジェクトを減らし、集約テストの hot path を少し軽くした。
+- broad 全体は `53.07s -> 40.52s` まで改善した。

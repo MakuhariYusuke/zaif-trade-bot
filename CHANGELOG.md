@@ -4811,6 +4811,11 @@ python scripts/unified_trainer.py \
 - `TestHeavyTradingEnvIntegration` setup moved from repeated multi-second parquet reads to a single cached load, dropping the dominant setup cost from the prior ~5-6 second band to ~1.4 seconds once per class in the broad profile.
 ## 2026-03-10
 
+- Optimized production hot paths used by the remaining `v460` hotspots:
+  - added `shallow_asdict(...)` to [ztb/utils/dataclass_utils.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/utils/dataclass_utils.py) and switched `HeavyTradingEnv` / `RewardCalculator` reward-settings logging+merge paths to avoid `dataclasses.asdict(...)` deep copies on env initialization
+  - changed [scripts/v460/ml/skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/skip_gate.py) save/load to use `pickle.HIGHEST_PROTOCOL`, `Path.write_bytes()`, and `Path.read_bytes()` for lower persistence overhead
+  - simplified [ztb/data/market_data_collector.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/data/market_data_collector.py) timestamp indexing to avoid temporary `dt` columns before `aggregate_to_1min(...)` resampling
+  - added [test_dataclass_utils.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/utils/test_dataclass_utils.py) to cover the new shallow dataclass helper
 - Trimmed remaining setup overhead in `v460` test hotspots:
   - kept `tests/unit/v460/test_enricher_skip_gate.py` real-data integration on the guarded `120/220/280` sample ladder after verifying smaller ladders broke the `n_samples > 30` contract
   - refactored `tests/unit/v460/test_retrain_hot_reload.py::TestHotReload` to share model/evaluator construction through `_create_evaluator(...)`

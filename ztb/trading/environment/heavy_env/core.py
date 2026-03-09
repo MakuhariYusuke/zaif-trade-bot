@@ -87,6 +87,7 @@ from ztb.utils.exceptions.custom_exceptions import ConfigurationError, Validatio
 from ztb.utils.fee_model import ExchangeFeeModel
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.type_validation import TypeValidator
+from ztb.utils.dataclass_utils import shallow_asdict
 
 if TYPE_CHECKING:
     from ztb.adaptation.adaptive_selection import AdaptiveFeatureSelector
@@ -452,9 +453,9 @@ class HeavyTradingEnv(
         if getattr(self.config, "reward_settings", None):
             reward_settings_dict: RewardSettings | None = self.config.reward_settings
             if reward_settings_dict is not None:
-                reward_settings_dict_as_dict = dataclasses.asdict(reward_settings_dict)
+                reward_settings_dict_as_dict = shallow_asdict(reward_settings_dict)
                 merged = deep_merge_dict(
-                    dataclasses.asdict(self.reward_settings),
+                    shallow_asdict(self.reward_settings),
                     reward_settings_dict_as_dict,
                 )
                 self.reward_settings = RewardSettings.from_dict(merged)
@@ -470,7 +471,7 @@ class HeavyTradingEnv(
                 )
                 self.logger.debug("========== REWARD PARAMS (ENV INIT) ==========")
                 self.logger.debug(
-                    "reward_settings: %s", dataclasses.asdict(self.reward_settings)
+                    "reward_settings: %s", shallow_asdict(self.reward_settings)
                 )
                 if custom_params:
                     self.logger.debug("custom_reward_params: %s", custom_params)

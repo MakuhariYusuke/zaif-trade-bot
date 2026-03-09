@@ -24,3 +24,19 @@ def filter_known_dataclass_fields(
         for key, value in values.items()
         if key in known_fields
     }
+
+
+def shallow_asdict(instance: object) -> dict[str, object]:
+    """Return a shallow dict view of a dataclass instance.
+
+    Unlike `dataclasses.asdict`, nested dict/list values are not deep-copied.
+    This is useful on hot paths where the dataclass mostly contains immutable
+    scalars plus already-owned mapping objects.
+    """
+    field_map = getattr(type(instance), "__dataclass_fields__", None)
+    if not isinstance(field_map, Mapping):
+        raise TypeError(f"{instance!r} is not a dataclass instance")
+    return {
+        str(name): getattr(instance, name)
+        for name in field_map.keys()
+    }
