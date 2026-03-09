@@ -21,7 +21,7 @@ from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
 
 _G2_SAC_YAML_PATH = Path("configs/v460/experiments/g2_sac_train.yaml")
-_G2_REAL_ROWS = 80
+_G2_REAL_ROWS = 96
 
 
 @lru_cache(maxsize=1)
@@ -576,7 +576,6 @@ class TestHeavyTradingEnvIntegration:
             exchange="coincheck",
             timeframe="1m",
             feature_names=self.SELECTED_FEATURES,
-            random_start=False,
             # 相関低減は schema 指定時に不要 → 無効化で安定
             correlation_reduction=False,
         )

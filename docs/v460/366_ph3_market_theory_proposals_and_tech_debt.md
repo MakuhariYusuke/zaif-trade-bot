@@ -19,7 +19,7 @@
 | # | 提案 | 既存基盤 | 追加工数 | 収益インパクト | Codex 委任 | 状態 |
 |---|---|---|---|---|---|---|
 | M1 | Microprice L1→L5 拡張 | ★★★★★ (90%) | 2-4h | **高** — AS 低減直結 | ✅ 候補 | ✅ **完了** `265e768de` |
-| M2 | Bayesian Regime Detection | ★★★☆☆ (50%) | 1-2d | **高** — 遷移予測 | ⚠ 一部可 | ⏳ 未着手 (emission分布設計必要) |
+| M2 | Bayesian Regime Detection | ★★★☆☆ (50%) | 1-2d | **高** — 遷移予測 | ⚠ 一部可 | ✅ **完了** (Phase A) |
 | M3 | σ-Clustering (Vol Regime) | ★★★★☆ (70%) | 4-8h | **中** — offset 適応精度↑ | ✅ 候補 | ✅ **完了** `1b8d8e55f` |
 | M4 | GLFT Fill Probability Model | ★★★★☆ (80%) | 4-8h | **高** — fill 最適化 | ⚠ 設計依存 | ✅ **完了** `59a30956c` |
 | M5 | Volume-Sync VPIN | ★★★☆☆ (60%) | 4-8h | **中** — toxicity 精度↑ | ✅ 候補 | ✅ **完了** `cf28375b7` |
@@ -507,3 +507,4 @@ def _calculate_kama_numba(
 | 2026-03-10 | 1.0 | 初版 (M1-M5 市場理論提案 + T1-T10 技術負債 + 計算高速化) |
 | 2026-03-10 | 1.1 | M1✅ T4✅ T5✅ T9✅ 完了。T1 は既に修正済みと判明 |
 | 2026-03-10 | 1.2 | M3✅ M4✅ M5✅ 完了。残り M2 のみ (emission分布設計必要) |
+| 2026-03-10 | 1.3 | M2✅ Phase A 完了 (BayesianRegimeFilter 単体実装 42テスト)。M1-M5 全完了 |

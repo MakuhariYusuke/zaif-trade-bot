@@ -107,9 +107,9 @@ class TestVelocityBoostOptimization:
         cfg = FillTestConfig()
         assert cfg.velocity_offset_boost_factor == 1.5
 
-    def test_yaml_velocity_boost_is_1_5(self, v460_fill_test_yaml_base: dict[str, object]):
+    def test_yaml_velocity_boost_is_1_5(self, v460_fill_test_yaml: dict[str, object]):
         """live YAML が 1.5 に設定されていること."""
-        raw = v460_fill_test_yaml_base
+        raw = v460_fill_test_yaml
         assert raw["skip_gate"]["velocity_offset_boost_factor"] == 1.5
 
     def test_config_accepts_custom_velocity_boost(self):
@@ -131,9 +131,9 @@ class TestTrendingBoostOptimization:
         cfg = FillTestConfig()
         assert cfg.trending_sell_offset_boost_factor == 1.5
 
-    def test_yaml_trending_boost_is_3_0(self, v460_fill_test_yaml_base: dict[str, object]):
+    def test_yaml_trending_boost_is_3_0(self, v460_fill_test_yaml: dict[str, object]):
         """320# live YAML が 1.5 (C-1 解消: sell pipeline 復活)."""
-        raw = v460_fill_test_yaml_base
+        raw = v460_fill_test_yaml
         assert raw["loss_control"]["trending_sell_offset_boost_factor"] == 1.5
 
 
@@ -498,10 +498,10 @@ class TestYamlNewFields197:
 
     def test_yaml_balance_forced_trending_offset_removed_253(
         self,
-        v460_fill_test_yaml_base: dict[str, object],
+        v460_fill_test_yaml: dict[str, object],
     ):
         """253# YAML から balance_forced_apply_trending_offset が削除済."""
-        raw = v460_fill_test_yaml_base
+        raw = v460_fill_test_yaml
         lc = raw["loss_control"]
         assert "balance_forced_apply_trending_offset" not in lc
 
