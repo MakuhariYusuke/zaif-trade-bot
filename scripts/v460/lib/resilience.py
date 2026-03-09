@@ -10,11 +10,11 @@ from __future__ import annotations
 import gc
 import logging
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, TypedDict
 
-from ztb.utils.dataclass_utils import filter_known_dataclass_fields
+from ztb.utils.dataclass_utils import filter_known_dataclass_fields, shallow_asdict
 
 logger = logging.getLogger(__name__)
 
@@ -294,7 +294,7 @@ class FillTestStatePersistence:
         state.saved_at = time.time()
         state.saved_at_iso = time.strftime("%Y-%m-%dT%H:%M:%S%z")
         try:
-            write_state_payload(self._state_file, asdict(state))
+            write_state_payload(self._state_file, shallow_asdict(state))
             logger.debug(f"[state] Saved: cycle={state.cycle_count}, pnl={state.cumulative_pnl_jpy:.1f}")
         except Exception as e:
             logger.warning(f"[state] Failed to save: {e}")

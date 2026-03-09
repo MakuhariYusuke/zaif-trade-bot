@@ -3721,3 +3721,35 @@
 - `test_v460_core.py` は YAML setup の編集点が 1 箇所に集まり、今後の config-loader ケース追加時の重複が減った。
 - `test_retrain_hot_reload.py` は corrupt artifact の準備が共通化され、atomic/post-deploy 周辺テストの意図が読みやすくなった。
 - focused では `test_v460_core.py` + `test_retrain_hot_reload.py` が `7.89s -> 4.77s` まで低下した。
+
+## 2026-03-10 / Session 037-088
+
+### 実施
+- `scripts/v460/lib/stopgap_health.py`
+  - `serialize_health_report(...)` を `asdict(...)` から `shallow_asdict(...)` へ変更
+- `scripts/v460/lib/resilience.py`
+  - `FillTestStatePersistence.save(...)` を `asdict(...)` から `shallow_asdict(...)` へ変更
+- 探索
+  - `ztb/features` / `ztb/data` / `scripts/v460/lib` を広く検索し、残る計算量改善候補を洗い出した
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_stopgap_health.py`
+  - `tests/unit/v460/test_health_monitor_resilience.py`
+  - `tests/unit/v460/test_215_dd_fix_alert_mode.py`
+  - `89 passed in 3.33s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4241 passed, 13 warnings in 40.36s`
+
+### 主要改善
+- `stopgap_health` と `resilience` はどちらも「JSON に落とす直前の dataclass」を shallow 化しただけで十分だった。nested dict/list は既に構築済みなので deep copy の利得がない。
+- 追加探索で、次の計算量候補を確認した:
+  - `ztb/data/trades_health.py`: `for i in range(lookback_days)` ベースの日付探索
+  - `ztb/features/base_features_v456.py`: rolling 系の Python loop
+  - `ztb/data/v433_feature_engineering.py`: 一部の per-row / per-window loop
+- これらは今後も触れる余地があるが、今回の shallow 化は low-risk で先に入れられる改善として適用した。

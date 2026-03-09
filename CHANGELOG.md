@@ -4877,3 +4877,9 @@ python scripts/unified_trainer.py \
 - Verified the latest changes with:
   - focused: `137 passed in 4.77s` for `test_v460_core.py` and `test_retrain_hot_reload.py`
   - filtered broad: `4241 passed, 13 warnings in 55.03s`
+- Reduced more avoidable deep-copy work on hot serialization paths:
+  - changed [scripts/v460/lib/stopgap_health.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/stopgap_health.py) `serialize_health_report(...)` from `asdict(...)` to `shallow_asdict(...)`
+  - changed [scripts/v460/lib/resilience.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/resilience.py) `FillTestStatePersistence.save(...)` to use `shallow_asdict(...)` before `write_state_payload(...)`
+- Verified the latest shallow-serialization cleanup with:
+  - focused: `89 passed in 3.33s` for `test_stopgap_health.py`, `test_health_monitor_resilience.py`, and `test_215_dd_fix_alert_mode.py`
+  - filtered broad: `4241 passed, 13 warnings in 40.36s`
