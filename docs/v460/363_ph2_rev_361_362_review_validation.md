@@ -129,9 +129,9 @@
 |---|-----------|------|-------------|------|
 | A1 | **OPS-5**: 本番 Task Scheduler 設定が repo XML と一致しているか確認 | 361# F6 | 本番サーバー | 10min |
 | A2 | **OPS-1**: atexit hook で RSS/状態ダンプ追加 | 360# §2, S1 | `scripts/v460/lib/fill_test_cli.py` | 30min |
-| A3 | **F1 修正**: `sac_train.py` に train/val 時系列分割追加 | 361# F1, 362# G1 (合意 C1) | `scripts/v460/lib/tasks/sac_train.py` | 2h |
-| A4 | **F2 修正**: E2 `ic_seed_std` → `roi_seed_std` に置換 | 361# F2 (合意 C2) | `sac_train.py`, `run_experiment.py` | 1h |
-| A5 | **current-SHA 再集計スクリプト** 作成 | 361# P0-1 (合意 C5) | 新規スクリプト | 1h |
+| A3 | ✅ **F1 修正**: `sac_train.py` に train/val 時系列分割追加 | 361# F1, 362# G1 (合意 C1) | `scripts/v460/lib/tasks/sac_train.py` | ✅ `3bbc30459` |
+| A4 | ✅ **F2 修正**: E2 `ic_seed_std` → `roi_seed_std` に置換 | 361# F2 (合意 C2) | `sac_train.py`, `run_experiment.py` | ✅ `3bbc30459` |
+| A5 | ✅ **current-SHA 再集計スクリプト** 作成 | 361# P0-1 (合意 C5) | `tools/reaggregate_by_sha.py` | ✅ `3bbc30459` |
 
 ### 4.2 P1: 短期 (Week 2)
 
