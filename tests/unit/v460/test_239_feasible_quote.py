@@ -11,16 +11,26 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import re
 from dataclasses import dataclass
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from scripts.v460.lib.fast_fill_defense import FastFillDefense
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
 from scripts.v460.lib.maker_price import (
     InfeasibleQuoteError,
     MakerPriceCalculator,
     MakerPriceResult,
+)
+from tests.unit.v460._fill_test_source import (
+    FILL_CYCLE_EXECUTOR,
+    MAKER_PRICE,
+    read_class_method_source,
+    read_source_text,
 )
 
 
@@ -31,8 +41,6 @@ from scripts.v460.lib.maker_price import (
 
 def _make_config(**overrides: Any) -> Any:
     """テスト用 FillTestConfig を生成."""
-    from scripts.v460.lib.fill_config import FillTestConfig
-
     return FillTestConfig(**overrides)
 
 
@@ -52,8 +60,6 @@ def _make_adapter(best_bid: float = 10_000_000.0, best_ask: float = 10_005_000.0
 
 def _make_calculator(**cfg_overrides: Any) -> MakerPriceCalculator:
     """テスト用 MakerPriceCalculator を最小構成で生成."""
-    from scripts.v460.lib.fast_fill_defense import FastFillDefense
-
     cfg = _make_config(**cfg_overrides)
     ffd = FastFillDefense(cfg, base_offset_ratio=cfg.spread_offset_ratio)
     return MakerPriceCalculator(
@@ -169,17 +175,16 @@ class TestSellGuardSingleLocation:
 
     def test_sell_guard_raise_count_in_compute_source(self) -> None:
         """compute() ソース内で sell_guard の raise は 1 箇所のみ."""
-        source = inspect.getsource(MakerPriceCalculator.compute)
+        source = read_class_method_source(MAKER_PRICE, "MakerPriceCalculator", "compute")
         # InfeasibleQuoteError で sell_guard_reject を raise する箇所 (複数行にまたがる)
-        import re
         matches = re.findall(r'raise\s+InfeasibleQuoteError', source)
         sell_guard_count = sum(1 for m in re.finditer(r'sell_guard_reject', source))
+        assert len(matches) >= 1
         assert sell_guard_count == 1, f"Expected 1 sell_guard_reject, found {sell_guard_count}"
 
     def test_no_old_valueerror_sell_guard_in_compute(self) -> None:
         """compute() に旧 ValueError("sell_guard: ...") が残っていないこと."""
-        source = inspect.getsource(MakerPriceCalculator.compute)
-        import re
+        source = read_class_method_source(MAKER_PRICE, "MakerPriceCalculator", "compute")
         # ValueError(...sell_guard...) パターンが存在しないこと
         old_pattern = re.findall(r'raise\s+ValueError[^)]*sell_guard', source, re.DOTALL)
         assert len(old_pattern) == 0, "Old ValueError sell_guard still present"
@@ -197,23 +202,25 @@ class TestExecutorInfeasibleCatch:
 
     def test_infeasible_catch_in_source(self) -> None:
         """FillCycleExecutorMixin に except InfeasibleQuoteError が存在."""
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
-
-        source = inspect.getsource(FillCycleExecutorMixin)
+        source = read_source_text(FILL_CYCLE_EXECUTOR)
         assert "except InfeasibleQuoteError" in source
 
     def test_no_string_match_sell_guard_in_executor(self) -> None:
         """executor に旧 string match ("sell_guard" in err_msg) が残っていないこと."""
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
-
-        source = inspect.getsource(FillCycleExecutorMixin.run_single_cycle)
+        source = read_class_method_source(
+            FILL_CYCLE_EXECUTOR,
+            "FillCycleExecutorMixin",
+            "run_single_cycle",
+        )
         assert '"sell_guard" in err_msg' not in source
 
     def test_no_string_match_spread_narrow_in_executor(self) -> None:
         """executor に旧 string match ("spread too narrow" in err_msg) が残っていないこと."""
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
-
-        source = inspect.getsource(FillCycleExecutorMixin.run_single_cycle)
+        source = read_class_method_source(
+            FILL_CYCLE_EXECUTOR,
+            "FillCycleExecutorMixin",
+            "run_single_cycle",
+        )
         assert '"spread too narrow" in err_msg' not in source
 
     def test_infeasible_import_exists(self) -> None:
@@ -233,14 +240,10 @@ class TestMakePriceErrorSkipHelper:
 
     def test_method_exists(self) -> None:
         """FillCycleExecutorMixin に _make_price_error_skip が存在."""
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
-
         assert hasattr(FillCycleExecutorMixin, "_make_price_error_skip")
 
     def test_method_signature(self) -> None:
         """キーワード引数 side, cancel_reason, cycle_id, error を取ること."""
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
-
         sig = inspect.signature(FillCycleExecutorMixin._make_price_error_skip)
         params = list(sig.parameters.keys())
         assert "side" in params
@@ -250,9 +253,11 @@ class TestMakePriceErrorSkipHelper:
 
     def test_fallback_dedup_no_duplicate_in_run_single_cycle(self) -> None:
         """run_single_cycle の except ブロックが _make_price_error_skip を呼び出していること."""
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
-
-        source = inspect.getsource(FillCycleExecutorMixin.run_single_cycle)
+        source = read_class_method_source(
+            FILL_CYCLE_EXECUTOR,
+            "FillCycleExecutorMixin",
+            "run_single_cycle",
+        )
         assert "_make_price_error_skip" in source, (
             "run_single_cycle should call _make_price_error_skip for error handling"
         )
@@ -298,7 +303,7 @@ class TestFeasibleQuoteTheory:
 
     def test_early_bailout_before_offset_keyword(self) -> None:
         """sell_max_spread check が offset 計算より前にあること (ソース順序)."""
-        source = inspect.getsource(MakerPriceCalculator.compute)
+        source = read_class_method_source(MAKER_PRICE, "MakerPriceCalculator", "compute")
         # sell_guard の InfeasibleQuoteError raise 位置
         sell_guard_pos = source.find("sell_guard_reject")
         # offset 決定ロジック開始位置

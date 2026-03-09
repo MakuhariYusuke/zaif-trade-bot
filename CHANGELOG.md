@@ -4549,3 +4549,134 @@ python scripts/unified_trainer.py \
 - `test_169_config_hot_reload.py::TestConfigFieldUpdate::test_do_reload_updates_reloadable_fields` dropped from `1.48s` to `1.10s` in the focused YAML/config bundle, and to `0.02s` once executed inside the combined targeted run after the import graph was stubbed.
 - The guarded fallback fix kept `test_ml_pipeline.py::Test057Integration::test_load_real_data` stable at `0.17s` focused and `0.18s` in the filtered broad run.
 - The latest filtered broad rerun completed at `4139 passed, 13 warnings in 35.43s` with `test_152_parallel_tasks.py` ignored due an unrelated `scripts.v460.analysis.compare_regime_ab` import error.
+
+## Session 037-062 (2026-03-09)
+
+### Changed
+- Consolidated `test_094_stale_order.py` source-contract checks behind a cached `_source()` helper and hoisted repeated `OrderMonitor`, `MakerPriceCalculator`, `SkipGate`, `FillMonitorResult`, and `SkipGateResult` imports to module scope.
+- Removed remaining method-local imports from `test_137_p1_features.py` and `test_138_p1_preflight_calibration.py`, and tightened a few local YAML dict annotations to concrete union types instead of bare `dict`.
+- Extended `test_fill_quality.py` record-builder reuse by routing more JSONL roundtrip / glob / date-range cases through `_save_linear_records()` and `_make_linear_records()`, reducing duplicated one-off `FillRecord(...)` construction in `TestFillRecordIO`.
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile tests/unit/v460/test_094_stale_order.py tests/unit/v460/test_137_p1_features.py tests/unit/v460/test_138_p1_preflight_calibration.py tests/unit/v460/test_fill_quality.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_094_stale_order.py tests/unit/v460/test_137_p1_features.py tests/unit/v460/test_138_p1_preflight_calibration.py -q --no-cov --tb=short --durations=20`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_fill_quality.py -q --no-cov --tb=short -k 'save_load_roundtrip or iter_load_roundtrip or glob_load or iter_glob_load_roundtrip or load_corrupt_lines_skipped' --durations=20`
+
+### Notes
+- The targeted bundle completed at `79 passed in 3.64s`; the `test_fill_quality.py` I/O subset completed at `7 passed, 199 deselected in 3.37s`.
+- The main gain in this batch is maintainability and reduced repeated import/source work, not a broad-suite wall-time step change.
+
+## Session 037-063 (2026-03-09)
+
+### Changed
+- Switched `test_094_stale_order.py` from its local `inspect.getsource()` cache to the shared [_fill_test_source.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_fill_test_source.py) helper, so `OrderMonitor.monitor` source-contract checks now use the same AST/file cache path as the other split-source tests.
+- Added `_save_daily_fill_count_records()` in `test_fill_quality.py` and reused it in the `run_g1_1` integration case, continuing the JSONL builder consolidation.
+- Refactored [scripts/v460/ml/feature_enricher.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/feature_enricher.py) to expose reusable raw-path/date discovery helpers, and updated [scripts/v460/build_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/build_features.py) to reuse them instead of maintaining a second copy of raw input discovery logic.
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile tests/unit/v460/test_094_stale_order.py tests/unit/v460/test_fill_quality.py scripts/v460/ml/feature_enricher.py scripts/v460/build_features.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_094_stale_order.py tests/unit/v460/test_build_features_pipeline.py -q --no-cov --tb=short --durations=20`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_fill_quality.py -q --no-cov --tb=short -k 'g1_1_with_data or save_load_roundtrip or iter_load_roundtrip or glob_load or iter_glob_load_roundtrip or load_corrupt_lines_skipped' --durations=20`
+
+### Notes
+- The stale-order source checks still passed focused at `66 passed in 8.15s` together with the build-features pipeline bundle.
+- The focused `fill_quality.py` selector completed at `8 passed, 198 deselected in 7.43s`.
+- This batch is mostly reuse consolidation on the production side: `build_features.py` now depends on the same raw discovery helpers that `feature_enricher.py` already uses, which reduces duplicate path/date handling and keeps future changes in one place.
+
+## Session 037-064 (2026-03-09)
+
+### Changed
+- Widened [feature_enricher.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/feature_enricher.py) raw-path helper signatures from `Optional[Path]` to `str | Path | None`, making `resolve_raw_dir()` and the raw loaders reusable from CLI / library call sites without extra `Path(...)` wrapping.
+- Simplified [build_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/build_features.py) to pass `raw_dir` directly into the shared resolver, so the raw path canonicalization now has a single implementation.
+- Extended shared source-helper reuse to [test_154_deadlock_prevention.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_154_deadlock_prevention.py) and [test_262_protocol_cancel_recheck.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_262_protocol_cancel_recheck.py), replacing local `inspect.getsource(OrderMonitor.monitor)` reads with [_fill_test_source.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_fill_test_source.py) lookups.
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile scripts/v460/ml/feature_enricher.py scripts/v460/build_features.py tests/unit/v460/test_154_deadlock_prevention.py tests/unit/v460/test_262_protocol_cancel_recheck.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_154_deadlock_prevention.py tests/unit/v460/test_262_protocol_cancel_recheck.py tests/unit/v460/test_build_features_pipeline.py -q --no-cov --tb=short --durations=20`
+
+### Notes
+- The focused bundle completed at `57 passed in 7.90s`.
+- Reuse assessment for the newly added helpers:
+  - `resolve_raw_dir()` and `discover_raw_daily_inputs()` have production-wide reuse value and are now on the correct side of the boundary.
+  - `read_class_method_source()` remains the right shared test helper for split-source assertions and still has additional horizontal rollout potential.
+  - `_save_daily_fill_count_records()` is currently only worth keeping test-local; moving it to `conftest.py` would be premature until another file needs the same record shape.
+
+## Session 037-067 (2026-03-09)
+
+### Changed
+- Moved more split-source assertions onto the shared helper path in [test_236_state_persistence_cqs.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_236_state_persistence_cqs.py) and [test_230_ffd_deadzone_streak_guards.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_230_ffd_deadzone_streak_guards.py), replacing local `inspect.getsource(...)` style lookups with `_fill_test_source.py` readers and current split-file constants.
+- Hoisted the remaining method-local imports out of [test_306_proposals.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_306_proposals.py), consolidating AB-judgment, adaptation, maker-price, config-hot-reload, and `FillRecord` imports at module scope.
+- Introduced [raw_paths.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/data/raw_paths.py) and reused it from [feature_enricher.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/feature_enricher.py), [build_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/build_features.py), [market_data_collector.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/data/market_data_collector.py), [trades_health.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/data/trades_health.py), and [trades_recorder.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/data/trades_recorder.py) so raw-dir normalization and available-date resolution live on the `ztb` side instead of being reimplemented.
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile tests/unit/v460/_fill_test_source.py tests/unit/v460/test_236_state_persistence_cqs.py tests/unit/v460/test_230_ffd_deadzone_streak_guards.py tests/unit/v460/test_306_proposals.py ztb/data/raw_paths.py ztb/data/market_data_collector.py ztb/data/trades_health.py ztb/data/trades_recorder.py scripts/v460/ml/feature_enricher.py scripts/v460/build_features.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_236_state_persistence_cqs.py tests/unit/v460/test_230_ffd_deadzone_streak_guards.py tests/unit/v460/test_306_proposals.py -q --no-cov --tb=short --durations=25`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_build_features_pipeline.py tests/unit/v460/test_158_oracle_test.py tests/unit/v460/test_ob_recorder.py -q --no-cov --tb=short --durations=25`
+
+### Notes
+- The split-source bundle completed at `139 passed in 5.44s`.
+- The raw-path reuse bundle completed at `40 passed in 6.23s`.
+- The `_restore_common_state` assertions in `test_236_state_persistence_cqs.py` now follow the real split target, `OrchestratorLifecycleMixin`, instead of the legacy monolithic file path.
+
+## Session 037-068 (2026-03-09)
+
+### Changed
+- Extended split-source helper reuse to [test_260_compute_extract_regime_split.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_260_compute_extract_regime_split.py) and [test_266_market_theory_protocol.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_266_market_theory_protocol.py), switching `MakerPrice`-related source assertions from `inspect.getsource(...)` to `_fill_test_source.py` readers and updating them to the real split targets (`maker_regime_boost.py`, `maker_microstructure.py`, `ob_utils.py`, `skip_gate_evaluator.py`).
+- Hoisted the remaining method-local imports out of [test_277_magic_number_grounding.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_277_magic_number_grounding.py) and [test_237_phantom_position_guard.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_237_phantom_position_guard.py), consolidating orchestrator, MCB, balance-checker, phantom-guard, and `FillRecord` dependencies at module scope.
+- Replaced repeated inline YAML parsing in [test_183_log_analysis_improvements.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_183_log_analysis_improvements.py) with parsed module constants plus copy-on-read fixtures, removing repeated `yaml.safe_load(...)` calls from the tests themselves while keeping each scenario readable.
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile tests/unit/v460/_fill_test_source.py tests/unit/v460/test_183_log_analysis_improvements.py tests/unit/v460/test_237_phantom_position_guard.py tests/unit/v460/test_260_compute_extract_regime_split.py tests/unit/v460/test_266_market_theory_protocol.py tests/unit/v460/test_277_magic_number_grounding.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_260_compute_extract_regime_split.py tests/unit/v460/test_266_market_theory_protocol.py -q --no-cov --tb=short --durations=25`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_277_magic_number_grounding.py tests/unit/v460/test_237_phantom_position_guard.py tests/unit/v460/test_183_log_analysis_improvements.py -q --no-cov --tb=short --durations=25`
+
+### Notes
+- The split-source `MakerPrice` bundle completed at `56 passed in 2.64s`.
+- The import/YAML cleanup bundle completed at `91 passed in 2.15s`.
+- The remaining source-contract work is now mostly in the other split-source files, not in the old `MakerPrice`/`OrderMonitor` hotspots.
+
+## Session 037-069 (2026-03-09)
+
+### Changed
+- Replaced the remaining monolithic source checks in [test_239_feasible_quote.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_239_feasible_quote.py) with `_fill_test_source.py` lookups for `MakerPriceCalculator.compute` and `FillCycleExecutorMixin.run_single_cycle`, while hoisting `FillTestConfig`, `FastFillDefense`, and `FillCycleExecutorMixin` imports to module scope.
+- Replaced the remaining `inspect.getsource(...)` / `inspect.getfile(...)` assertions in [test_254_frozen_side_persist_getattr_cleanup.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_254_frozen_side_persist_getattr_cleanup.py) with split-source helper lookups targeting `orchestrator_lifecycle.py`, `orchestrator_guards.py`, `orchestrator_post_cycle.py`, and `orchestrator_pre_cycle.py`.
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile tests/unit/v460/test_239_feasible_quote.py tests/unit/v460/test_254_frozen_side_persist_getattr_cleanup.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_239_feasible_quote.py tests/unit/v460/test_254_frozen_side_persist_getattr_cleanup.py -q --no-cov --tb=short --durations=25`
+
+### Notes
+- The focused bundle completed at `32 passed in 1.36s`.
+- `test_230_ffd_deadzone_streak_guards.py` was rechecked during this pass and had no remaining `inspect.getsource(...)` or method-local import cleanup worth touching.
+
+## Session 037-065 (2026-03-09)
+
+### Changed
+- Integrated the `test_fill_quality.py` save helpers behind a single `_save_generated_records()` entry point, keeping `_save_linear_records()` and `_save_daily_fill_count_records()` as thin readable wrappers instead of duplicating `save_fill_records(builder(...), path)`.
+- Promoted date-resolution reuse by adding `resolve_available_raw_dates()` to [feature_enricher.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/feature_enricher.py) and reusing it from [build_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/build_features.py), removing another near-duplicate helper from the production path.
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile tests/unit/v460/test_fill_quality.py scripts/v460/ml/feature_enricher.py scripts/v460/build_features.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_fill_quality.py -q --no-cov --tb=short -k 'g1_1_with_data or save_load_roundtrip or glob_load or iter_glob_load_roundtrip' --durations=20`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_build_features_pipeline.py -q --no-cov --tb=short --durations=20`
+
+### Notes
+- `test_fill_quality.py` focused selector completed at `6 passed, 200 deselected in 3.49s`.
+- `test_build_features_pipeline.py` completed at `14 passed in 3.32s`.
+- The helper boundary is cleaner now: builder-specific wrappers remain for readability, while the actual persistence step is centralized once.
+
+## Session 037-066 (2026-03-09)
+
+### Changed
+- Integrated the two daily record builders in [test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py) behind a shared `_build_daily_records()` loop, so the wrappers now differ only in per-record semantics instead of duplicating the day/index nesting.
+- Extended split-source helper reuse to [test_258_as_reservation_vpin_continuous_protocol.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py), replacing the local `inspect.getsource(OrderMonitor._resolve_regime_name)` call with `read_class_method_source(...)`.
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile tests/unit/v460/test_fill_quality.py tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_fill_quality.py -q --no-cov --tb=short -k 'daily_fill_rates or g1_1_with_data or save_load_roundtrip or glob_load' --durations=20`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py -q --no-cov --tb=short --durations=20`
+
+### Notes
+- The focused `fill_quality.py` selector completed at `7 passed, 199 deselected in 3.97s`.
+- `test_258_as_reservation_vpin_continuous_protocol.py` completed at `29 passed in 1.14s`.
+- Further helper unification inside `test_fill_quality.py` would start obscuring test intent, so this batch stops at the shared loop boundary.
