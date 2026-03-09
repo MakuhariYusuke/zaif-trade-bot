@@ -58,7 +58,7 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
 
     000# §3.4 Go条件:
       - gross > 0 の seed 比率 ≥ 3/4 (75%)
-      - IC の seed 間 σ ≤ 0.03
+      - ROI の seed 間 σ ≤ 0.03  (363# A4: ic → roi)
       - 30K 以降で ROI 変動 ≤ 5%
       - worst-seed ROI > −2%
 
@@ -99,6 +99,21 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
     df = load_parquet(data_path)
     logger.info(f"Loaded {len(df)} rows from {data_path}")
 
+    # ── 363# A3: Time-series train/val split ──
+    # 361# F1 / 362# G1: 同一データで train+eval は in-sample 過学習
+    val_ratio_raw = training_cfg.get("val_ratio", 0.2)
+    val_ratio = max(0.0, min(float(val_ratio_raw), 0.5))
+    split_idx = int(len(df) * (1.0 - val_ratio))
+    train_df = df.iloc[:split_idx].copy()
+    val_df = df.iloc[split_idx:].copy()
+    train_size = len(train_df)
+    val_size = len(val_df)
+    del df  # 全体 DataFrame を早期解放
+    logger.info(
+        f"Train/Val split: {train_size} / {val_size} rows "
+        f"(val_ratio={val_ratio:.2f})"
+    )
+
     # ── H4: Replay buffer を total_timesteps に合わせて動的調整 ──
     # デフォルト 1M は 50K 訓練で 20 倍過剰 → obs_dim × buffer_size でメモリ浪費
     raw_buffer_value = sac_cfg.get("buffer_size", 1_000_000)
@@ -113,10 +128,11 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
         )
 
     env: TrainingEnvProtocol | None = None
+    eval_env: TrainingEnvProtocol | None = None
     try:
-        # ── Environment setup ──
-        env, env_info = _create_training_env(df, cfg)
-        logger.info(f"Environment created: obs_dim={env_info['obs_dim']}, action_dim={env_info['action_dim']}")
+        # ── Training environment (in-sample) ──
+        env, env_info = _create_training_env(train_df, cfg)
+        logger.info(f"Training env: obs_dim={env_info['obs_dim']}, action_dim={env_info['action_dim']}")
 
         # ── Model creation ──
         model = _create_sac_model(env, sac_params, seed)
@@ -128,8 +144,10 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
         elapsed = time.time() - start_time
         logger.info(f"Training completed in {elapsed:.1f}s")
 
-        # ── Evaluation ──
-        eval_metrics = _evaluate_trained_model(model, env, cfg)
+        # ── 363# A3: Out-of-sample evaluation ──
+        eval_env, _ = _create_training_env(val_df, cfg)
+        logger.info(f"Validation env: {val_size} rows (out-of-sample)")
+        eval_metrics = _evaluate_trained_model(model, eval_env, cfg)
 
         # ── Save model ──
         output_cfg = section(cfg, "output")
@@ -145,14 +163,14 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
 
     finally:
         # C2: 環境を確実にクローズしてメモリ解放
-        if env is not None:
-            try:
-                env.close()
-                logger.debug("Environment closed")
-            except Exception as e:
-                logger.warning(f"Failed to close environment: {e}")
+        for _env in (eval_env, env):
+            if _env is not None:
+                try:
+                    _env.close()
+                except Exception as e:
+                    logger.warning(f"Failed to close environment: {e}")
         # DataFrame 参照を明示的に解放
-        del df
+        del train_df, val_df
 
     # ── Results ──
     results: dict[str, object] = {
@@ -164,6 +182,11 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
         "env_info": env_info,
         "checkpoint_metrics": checkpoint_metrics,
         "eval_metrics": eval_metrics,
+        "train_val_split": {
+            "val_ratio": val_ratio,
+            "train_rows": train_size,
+            "val_rows": val_size,
+        },
     }
 
     return results
@@ -295,15 +318,16 @@ def _checkpoint_eval_roi(
     model: SACTrainModelProtocol,
     env: TrainingEnvProtocol,
 ) -> float:
-    """1-episode deterministic eval で ROI を算出.
+    """1-episode deterministic eval で ROI を算出 (in-sample convergence 用).
 
     359# L-3: _train_with_checkpoints から各チェックポイントで呼ばれ、
     E3 convergence 判定に必要な ROI 時系列を生成する.
 
     Note:
-        訓練と同一の env を使うため、eval 中の env.reset() が SB3 の
-        内部状態 (_last_obs) と乖離する。影響は 50K steps 中 ~10 遷移
-        (0.02%) と軽微。ph4 で eval 専用 env の分離を検討。
+        363# A3: 訓練と同一の train_env を使う (in-sample convergence monitoring).
+        最終 G2 gate 評価 (E1/E4) は train/val split 済みの val_env で実施.
+        eval 中の env.reset() が SB3 _last_obs と衝突するが、
+        50K steps 中 ~10 遷移 (0.02%) と影響軽微.
     """
     obs, _ = env.reset()
     done = False
@@ -337,11 +361,14 @@ def _evaluate_trained_model(
     env: TrainingEnvProtocol,
     cfg: ConfigSection,
 ) -> dict[str, object]:
-    """訓練済みモデルを評価 (in-sample).
+    """訓練済みモデルを評価.
 
-    G2 判定に必要な指標を収集:
+    363# A3: val_env (out-of-sample) を渡して G2 gate の信頼性を担保.
+    361# F1 / 362# G1: in-sample 評価は過学習を検出できない.
+
+    G2 判定に必要な指標:
+      - gross_roi  (E1/E4)
       - gross_pnl
-      - roi
       - trade_count
     """
     eval_cfg = section(cfg, "evaluation")

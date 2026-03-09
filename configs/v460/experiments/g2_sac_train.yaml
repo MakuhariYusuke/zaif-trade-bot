@@ -7,7 +7,7 @@
 #
 # G2-train Gate 条件 (gate_thresholds.yaml):
 #   E1: positive_seed_ratio ≥ 0.75
-#   E2: ic_seed_std ≤ 0.03
+#   E2: roi_seed_std ≤ 0.03 (363# A4: ic → roi)
 #   E3: convergence (30K以降 ROI変動 ≤ 5%)
 #   E4: worst_seed_roi > -0.02
 
@@ -65,6 +65,7 @@ sac_hyperparameters:
 training:
   total_timesteps: 50000           # G2 gate 基準
   checkpoint_interval: 5000        # 10 チェックポイント (convergence 計算用)
+  val_ratio: 0.2                   # 363# A3: holdout 20% for OOS evaluation
 
 # ---- 評価 ----
 evaluation:

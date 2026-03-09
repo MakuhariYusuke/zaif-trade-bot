@@ -243,7 +243,6 @@ def _run_multi_seed(
             seed_results.append({
                 "seed": seed,
                 "gross_roi": 0.0,
-                "ic_mean": 0.0,
                 "error": str(e),
             })
             continue
@@ -251,15 +250,12 @@ def _run_multi_seed(
         eval_metrics = result.get("eval_metrics", {})
         if isinstance(eval_metrics, dict):
             gross_roi = float(eval_metrics.get("gross_roi", eval_metrics.get("mean_reward", 0.0)))
-            ic_mean = float(eval_metrics.get("ic_mean", 0.0))
         else:
             gross_roi = 0.0
-            ic_mean = 0.0
 
         seed_results.append({
             "seed": seed,
             "gross_roi": gross_roi,
-            "ic_mean": ic_mean,
         })
 
         checkpoint_metrics = result.get("checkpoint_metrics", [])
@@ -330,12 +326,21 @@ def _evaluate_g2_from_results(
         "value": ratio, "threshold": min_ratio, "pass": ratio >= min_ratio,
     }
 
-    # E2: IC の seed 間標準偏差 <= 0.03
-    max_ic_std = float(thresholds.get("max_ic_seed_std", 0.03))
-    ic_values = [float(s.get("ic_mean", 0)) for s in seed_results]
-    ic_std = stdev(ic_values) if len(ic_values) >= 2 else 0.0
-    checks["ic_seed_std"] = {
-        "value": ic_std, "threshold": max_ic_std, "pass": ic_std <= max_ic_std,
+    # E2: seed 間標準偏差チェック
+    # 363# A4 で roi_seed_std へ移行したが、旧 max_ic_seed_std 設定も当面は互換維持。
+    if "max_roi_seed_std" in thresholds:
+        max_seed_std = float(thresholds.get("max_roi_seed_std", 0.03))
+        seed_std_values = [float(s.get("gross_roi", 0)) for s in seed_results]
+        check_name = "roi_seed_std"
+    else:
+        max_seed_std = float(thresholds.get("max_ic_seed_std", 0.03))
+        seed_std_values = [float(s.get("ic_mean", 0)) for s in seed_results]
+        check_name = "ic_seed_std"
+    seed_std = stdev(seed_std_values) if len(seed_std_values) >= 2 else 0.0
+    checks[check_name] = {
+        "value": seed_std,
+        "threshold": max_seed_std,
+        "pass": seed_std <= max_seed_std,
     }
 
     # E3: 30K以降の ROI 変動 <= 5%

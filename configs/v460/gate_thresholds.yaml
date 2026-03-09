@@ -60,7 +60,7 @@ g1_2_full_exec:
 
 g2_train:
   min_positive_seed_ratio: 0.75   # 3/4
-  max_ic_seed_std: 0.03
+  max_roi_seed_std: 0.03          # 363# A4: ic → roi (seed 間 ROI 安定性)
   convergence_window_start: 30000
   max_roi_variance_pct: 5.0
   worst_seed_min_roi: -0.02
