@@ -3478,3 +3478,37 @@
 - `SkipGate` save/load roundtrip は broad 上位に残るが、I/O 経路は production 側でより軽い実装に置き換わった。
 - `aggregate_to_1min()` は列追加→`set_index()` の一時オブジェクトを減らし、集約テストの hot path を少し軽くした。
 - broad 全体は `53.07s -> 40.52s` まで改善した。
+
+## 2026-03-10 / Session 037-081
+
+### 実施
+- `ztb/metrics/fill_quality.py`
+  - `_resolve_fill_record_files_by_date_range(...)` に single-day fast-path を追加
+- `tests/unit/v460/test_fill_quality.py`
+  - `_save_dated_linear_record(...)` を追加
+  - date-range / file listing 系テストの file setup を helper に統一
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - `_save_and_load_gate(...)` を追加
+  - `SkipGate` の roundtrip テストを helper 再利用に統一
+- `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - cached real-data slice を `128 -> 96` に圧縮
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `318 passed, 5 warnings in 9.35s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4218 passed, 13 warnings in 31.21s`
+
+### 主要改善
+- `HeavyTradingEnv` integration setup は focused で `1.37s -> 1.20s`、filtered broad で `1.59s -> 1.41s` まで低下した。
+- `TestFillRecordIO::test_list_fill_record_files_date_range_uses_direct_resolution` は `0.22s -> 0.03s` まで低下した。
+- `fill_quality` の date-range I/O setup は helper 化で今後の横展開先を増やしやすくなった。
+- broad 全体は `40.52s -> 31.21s` まで改善した。

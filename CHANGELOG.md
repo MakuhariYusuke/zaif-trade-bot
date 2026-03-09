@@ -4811,6 +4811,11 @@ python scripts/unified_trainer.py \
 - `TestHeavyTradingEnvIntegration` setup moved from repeated multi-second parquet reads to a single cached load, dropping the dominant setup cost from the prior ~5-6 second band to ~1.4 seconds once per class in the broad profile.
 ## 2026-03-10
 
+- Extended the latest production/test optimizations across remaining hotspots:
+  - added a single-day fast-path to [ztb/metrics/fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py) `_resolve_fill_record_files_by_date_range(...)` so exact-day lookups avoid the generic day loop
+  - reduced [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py) cached real-data slice from `128` to `96` rows while keeping `HeavyTradingEnv` integration valid
+  - introduced `_save_and_load_gate(...)` in [tests/unit/v460/test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py) and reused it across the roundtrip tests
+  - introduced `_save_dated_linear_record(...)` in [tests/unit/v460/test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py) and reused it across the date-range/listing I/O tests
 - Optimized production hot paths used by the remaining `v460` hotspots:
   - added `shallow_asdict(...)` to [ztb/utils/dataclass_utils.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/utils/dataclass_utils.py) and switched `HeavyTradingEnv` / `RewardCalculator` reward-settings logging+merge paths to avoid `dataclasses.asdict(...)` deep copies on env initialization
   - changed [scripts/v460/ml/skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/skip_gate.py) save/load to use `pickle.HIGHEST_PROTOCOL`, `Path.write_bytes()`, and `Path.read_bytes()` for lower persistence overhead

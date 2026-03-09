@@ -1263,6 +1263,16 @@ def _resolve_fill_record_files_by_date_range(
         return None
     if start > end:
         return []
+    if start_date == end_date:
+        files: list[Path] = []
+        fill_path = directory / f"fill_records_{start_date}.jsonl"
+        if fill_path.is_file():
+            files.append(fill_path)
+        if include_emergency:
+            emergency_path = directory / "emergency" / f"emergency_{start_date}.jsonl"
+            if emergency_path.is_file():
+                files.append(emergency_path)
+        return files
     day_count = (end - start).days
     if day_count > 3650:
         return None
