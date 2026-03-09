@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Session 037-059 Reload/YAML Prep Reuse and Linear Record Builders (2026-03-09)
+
+### Changed
+- Added `_prepare_reload_context()` in `tests/unit/v460/test_169_config_hot_reload.py` to unify the common `write YAML -> build reloader -> build runner` path.
+- Added `_make_linear_records()` in `tests/unit/v460/test_fill_quality.py` and reused it across roundtrip / glob I/O tests.
+- Added `_resolve_target_dates()` in `scripts/v460/build_features.py` so real-mode target date selection is centralized, deduplicated, and filtered against discovered raw inputs.
+
 ## Session 037-058 Context Helper Expansion and Outcome Builder Reuse (2026-03-09)
 
 ### Changed

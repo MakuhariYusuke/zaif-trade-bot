@@ -218,6 +218,33 @@ def _make_outcome_records(
     return records
 
 
+def _make_linear_records(
+    *,
+    prefix: str,
+    count: int,
+    base_ts: float,
+    ts_step: float = 120.0,
+    alternating_side: bool = False,
+    side: str = "buy",
+    order_price: float = 100.0,
+    price_step: float = 0.0,
+    order_quantity: float = 0.001,
+    filled: bool = False,
+) -> list[FillRecord]:
+    """単純な連番 FillRecord 群を生成."""
+    records: list[FillRecord] = []
+    for i in range(count):
+        records.append(FillRecord(
+            cycle_id=f"{prefix}_{i}",
+            timestamp=base_ts + i * ts_step,
+            side=side if not alternating_side else ("buy" if i % 2 == 0 else "sell"),
+            order_price=order_price + i * price_step,
+            order_quantity=order_quantity,
+            filled=filled,
+        ))
+    return records
+
+
 def _make_fast_cycle_runner(
     tmp_path: Path,
     *,
@@ -1137,17 +1164,14 @@ class TestFillRecordIO:
 
     def test_save_load_roundtrip(self) -> None:
 
-        records = [
-            FillRecord(
-                cycle_id=f"io_{i}",
-                timestamp=1700000000.0 + i * 120,
-                side="buy" if i % 2 == 0 else "sell",
-                order_price=15000000.0,
-                order_quantity=0.001,
-                filled=True,
-            )
-            for i in range(5)
-        ]
+        records = _make_linear_records(
+            prefix="io",
+            count=5,
+            base_ts=1700000000.0,
+            alternating_side=True,
+            order_price=15000000.0,
+            filled=True,
+        )
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "test.jsonl"
             save_fill_records(records, path)
@@ -1158,16 +1182,13 @@ class TestFillRecordIO:
 
     def test_iter_load_roundtrip(self) -> None:
 
-        records = [
-            FillRecord(
-                cycle_id=f"iter_{i}",
-                timestamp=1700000000.0 + i * 60,
-                side="buy",
-                order_price=12000000.0,
-                order_quantity=0.001,
-            )
-            for i in range(3)
-        ]
+        records = _make_linear_records(
+            prefix="iter",
+            count=3,
+            base_ts=1700000000.0,
+            ts_step=60.0,
+            order_price=12000000.0,
+        )
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "iter.jsonl"
             save_fill_records(records, path)
@@ -1185,16 +1206,12 @@ class TestFillRecordIO:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             for day in ["20260101", "20260102"]:
-                records = [
-                    FillRecord(
-                        cycle_id=f"{day}_{i}",
-                        timestamp=1700000000.0 + i,
-                        side="buy",
-                        order_price=100.0,
-                        order_quantity=0.001,
-                    )
-                    for i in range(3)
-                ]
+                records = _make_linear_records(
+                    prefix=day,
+                    count=3,
+                    base_ts=1700000000.0,
+                    ts_step=1.0,
+                )
                 save_fill_records(records, Path(tmpdir) / f"fill_records_{day}.jsonl")
 
             all_records = load_fill_records_glob(tmpdir)
@@ -1224,28 +1241,18 @@ class TestFillRecordIO:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            save_fill_records(
-                [
-                    FillRecord(
-                        cycle_id="g_1",
-                        timestamp=1700000000.0,
-                        side="buy",
-                        order_price=100.0,
-                        order_quantity=0.001,
-                    ),
-                    FillRecord(
-                        cycle_id="g_2",
-                        timestamp=1700000060.0,
-                        side="sell",
-                        order_price=101.0,
-                        order_quantity=0.001,
-                    ),
-                ],
-                root / "fill_records_20260101.jsonl",
+            records = _make_linear_records(
+                prefix="g",
+                count=2,
+                base_ts=1700000000.0,
+                ts_step=60.0,
+                alternating_side=True,
+                price_step=1.0,
             )
+            save_fill_records(records, root / "fill_records_20260101.jsonl")
 
             loaded = list(iter_fill_records_glob(root))
-            assert [r.cycle_id for r in loaded] == ["g_1", "g_2"]
+            assert [r.cycle_id for r in loaded] == ["g_0", "g_1"]
 
     def test_iter_glob_load_can_exclude_emergency(self) -> None:
 

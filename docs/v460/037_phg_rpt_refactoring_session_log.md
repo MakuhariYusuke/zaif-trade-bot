@@ -2663,3 +2663,32 @@
 - `config_hot_reload` テストは「reloader だけ」ではなく「reloader + runner」まで共通化できたので、今後の hot-reload 回帰追加でも setup の重複が増えにくい。
 - `fill_quality` の attempted 系は all-fill / mixed outcomes の両方が同じ builder 系に乗った。残りも同じ方向で崩せる。
 - 追加の production 変更は小さいが、`build_features` の input 解決整理が focused pipeline で維持されることを確認した。
+
+---
+
+## 2026-03-09 / Session 037-059
+
+### 実施
+- `tests/unit/v460/test_169_config_hot_reload.py`
+  - `_prepare_reload_context()` を追加
+  - YAML 更新済みの `reloader + runner` 準備を helper 化
+- `tests/unit/v460/test_fill_quality.py`
+  - `_make_linear_records()` を追加
+  - save/load / iter / glob 系の単純レコード生成を helper に寄せた
+- `scripts/v460/build_features.py`
+  - `_resolve_target_dates()` を追加
+  - real mode の target date を一意化し、存在する raw input のみに絞る処理を共通化
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_169_config_hot_reload.py`
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `30 passed in 4.20s`
+- focused selector:
+  - `tests/unit/v460/test_fill_quality.py -k 'save_load_roundtrip or iter_load_roundtrip or glob_load or iter_glob_load_roundtrip or skip_gate_fields_populated or no_skip_gate_records or cancel_reason_breakdown'`
+  - `9 passed, 197 deselected in 3.57s`
+
+### 主要改善
+- `config_hot_reload` は「生成 helper」と「更新済み context helper」の二段構成になり、reload テストの重複がさらに減った。
+- `fill_quality` の I/O テストは線形レコード builder へ寄せたことで、単純 roundtrip データの記述がかなり減った。
+- `build_real_features()` は target date 解決が 1 箇所に閉じたので、今後の `--date` / `--all-dates` 条件追加でも分岐を増やしにくい。

@@ -198,6 +198,26 @@ def _discover_daily_inputs(raw_dir: Path) -> dict[str, tuple[Path | None, Path |
     return daily_inputs
 
 
+def _resolve_target_dates(
+    daily_inputs: dict[str, tuple[Path | None, Path | None]],
+    dates: list[str] | None,
+) -> list[str]:
+    """処理対象日付を一意化して返す."""
+    all_dates = sorted(daily_inputs)
+    if dates is None:
+        return all_dates
+
+    resolved: list[str] = []
+    seen: set[str] = set()
+    for date_str in dates:
+        if date_str in seen:
+            continue
+        seen.add(date_str)
+        if date_str in daily_inputs:
+            resolved.append(date_str)
+    return resolved
+
+
 def build_real_features(
     raw_dir: str | Path,
     output_path: str | Path,
@@ -228,7 +248,7 @@ def build_real_features(
     if not all_dates:
         raise FileNotFoundError(f"No raw data found in {raw}")
 
-    target_dates = dates if dates else all_dates
+    target_dates = _resolve_target_dates(daily_inputs, dates)
     logger.info(f"Target dates: {target_dates} (available: {all_dates})")
 
     # Aggregate each date
