@@ -14,6 +14,72 @@ if TYPE_CHECKING:
 
 
 # ================================================================
+# 354# DRY ヘルパ — sell/buy 対称パーサー共通化
+# ================================================================
+
+def _parse_dynamic_kill_block(
+    section: dict, prefix: str, kwargs: dict,
+) -> None:
+    """sell_dynamic_kill / buy_dynamic_kill の共通パース.
+
+    Args:
+        section: YAML の ``sell_dynamic_kill`` or ``buy_dynamic_kill`` dict.
+        prefix: ``"sell_dynamic_kill"`` or ``"buy_dynamic_kill"``.
+        kwargs: 結果を追加する kwargs dict (in-place 更新).
+    """
+    if section.get("enabled") is not None:
+        kwargs[f"{prefix}_enabled"] = section["enabled"]
+    for yk, ck in {
+        "window": f"{prefix}_window",
+        "threshold_bps": f"{prefix}_threshold_bps",
+        "resume_window": f"{prefix}_resume_window",
+    }.items():
+        if yk in section:
+            kwargs[ck] = section[yk]
+    # 139# regime_thresholds
+    if "regime_thresholds" in section:
+        kwargs[f"{prefix}_regime_thresholds"] = section["regime_thresholds"]
+    # 243# toxic_stale_multiplier
+    if "toxic_stale_multiplier" in section:
+        kwargs[f"{prefix}_toxic_stale_mult"] = int(section["toxic_stale_multiplier"])
+    # 269# probe / force-release
+    if "max_stale_kill_cycles" in section:
+        kwargs[f"{prefix}_max_stale_cycles"] = int(section["max_stale_kill_cycles"])
+    if "max_force_release_probes" in section:
+        kwargs[f"{prefix}_max_force_probes"] = int(section["max_force_release_probes"])
+    # 273# kill 時間上限
+    if "max_kill_duration_sec" in section:
+        kwargs[f"{prefix}_max_duration_sec"] = float(section["max_kill_duration_sec"])
+    # 344# EWMA α
+    if "ewma_alpha" in section:
+        kwargs[f"{prefix}_ewma_alpha"] = float(section["ewma_alpha"])
+    # 353# EWMA 時間減衰
+    if "ewma_time_decay_tau_sec" in section:
+        kwargs[f"{prefix}_ewma_time_decay_tau_sec"] = float(
+            section["ewma_time_decay_tau_sec"]
+        )
+
+
+def _parse_inv_relaxation_block(
+    section: dict, prefix: str, kwargs: dict,
+) -> None:
+    """buy/sell dynamic_kill inv_relaxation の共通パース.
+
+    Args:
+        section: YAML の ``*_dynamic_kill_inv_relaxation`` dict.
+        prefix: ``"buy_dynamic_kill_inv_relaxation"``
+                or ``"sell_dynamic_kill_inv_relaxation"``.
+        kwargs: 結果を追加する kwargs dict (in-place 更新).
+    """
+    if section.get("enabled") is not None:
+        kwargs[f"{prefix}_enabled"] = bool(section["enabled"])
+    if "scale" in section:
+        kwargs[f"{prefix}_scale"] = float(section["scale"])
+    if "max_bps" in section:
+        kwargs[f"{prefix}_max_bps"] = float(section["max_bps"])
+
+
+# ================================================================
 # セクションパーサー (163# God Object 分割 — fill_config.py より移動)
 # WARNING: 下記関数は parse_fill_config_yaml() から呼ばれる補助関数。
 #          新設定キーは対応するセクションパーサーに追加すること。
@@ -404,84 +470,25 @@ def _parse_stopgap_section(yaml_cfg: dict) -> dict:
     if 止血.get("sell_guard_inv_bypass_threshold") is not None:
         kwargs["sell_guard_inv_bypass_threshold"] = float(止血["sell_guard_inv_bypass_threshold"])
     sell_kill = 止血.get("sell_dynamic_kill", {})
-    if sell_kill.get("enabled") is not None:
-        kwargs["sell_dynamic_kill_enabled"] = sell_kill["enabled"]
-    for yk, ck in {
-        "window": "sell_dynamic_kill_window",
-        "threshold_bps": "sell_dynamic_kill_threshold_bps",
-        "resume_window": "sell_dynamic_kill_resume_window",
-    }.items():
-        if yk in sell_kill:
-            kwargs[ck] = sell_kill[yk]
-    # 139# §9-#2: regime_thresholds YAML 配線
-    if "regime_thresholds" in sell_kill:
-        kwargs["sell_dynamic_kill_regime_thresholds"] = sell_kill["regime_thresholds"]
-    # 243# 242# toxic_stale_multiplier YAML 配線
-    if "toxic_stale_multiplier" in sell_kill:
-        kwargs["sell_dynamic_kill_toxic_stale_mult"] = int(sell_kill["toxic_stale_multiplier"])
-    # 269# probe/force-release YAML 露出
-    if "max_stale_kill_cycles" in sell_kill:
-        kwargs["sell_dynamic_kill_max_stale_cycles"] = int(sell_kill["max_stale_kill_cycles"])
-    if "max_force_release_probes" in sell_kill:
-        kwargs["sell_dynamic_kill_max_force_probes"] = int(sell_kill["max_force_release_probes"])
-    # 273# kill 時間上限 YAML 配線
-    if "max_kill_duration_sec" in sell_kill:
-        kwargs["sell_dynamic_kill_max_duration_sec"] = float(sell_kill["max_kill_duration_sec"])
-    # 344# 342#D: EWMA α
-    if "ewma_alpha" in sell_kill:
-        kwargs["sell_dynamic_kill_ewma_alpha"] = float(sell_kill["ewma_alpha"])
-    # 353# EWMA 時間減衰
-    if "ewma_time_decay_tau_sec" in sell_kill:
-        kwargs["sell_dynamic_kill_ewma_time_decay_tau_sec"] = float(sell_kill["ewma_time_decay_tau_sec"])
+    _parse_dynamic_kill_block(sell_kill, "sell_dynamic_kill", kwargs)
 
     # 157# §19: buy 動的 kill
     buy_kill = 止血.get("buy_dynamic_kill", {})
-    if buy_kill.get("enabled") is not None:
-        kwargs["buy_dynamic_kill_enabled"] = buy_kill["enabled"]
-    for yk, ck in {
-        "window": "buy_dynamic_kill_window",
-        "threshold_bps": "buy_dynamic_kill_threshold_bps",
-        "resume_window": "buy_dynamic_kill_resume_window",
-    }.items():
-        if yk in buy_kill:
-            kwargs[ck] = buy_kill[yk]
-    if "regime_thresholds" in buy_kill:
-        kwargs["buy_dynamic_kill_regime_thresholds"] = buy_kill["regime_thresholds"]
-    # 243# 242# toxic_stale_multiplier YAML 配線
-    if "toxic_stale_multiplier" in buy_kill:
-        kwargs["buy_dynamic_kill_toxic_stale_mult"] = int(buy_kill["toxic_stale_multiplier"])
-    # 269# probe/force-release YAML 露出
-    if "max_stale_kill_cycles" in buy_kill:
-        kwargs["buy_dynamic_kill_max_stale_cycles"] = int(buy_kill["max_stale_kill_cycles"])
-    if "max_force_release_probes" in buy_kill:
-        kwargs["buy_dynamic_kill_max_force_probes"] = int(buy_kill["max_force_release_probes"])
-    # 273# kill 時間上限 YAML 配線
-    if "max_kill_duration_sec" in buy_kill:
-        kwargs["buy_dynamic_kill_max_duration_sec"] = float(buy_kill["max_kill_duration_sec"])
-    # 344# 342#D: EWMA α
-    if "ewma_alpha" in buy_kill:
-        kwargs["buy_dynamic_kill_ewma_alpha"] = float(buy_kill["ewma_alpha"])
-    # 353# EWMA 時間減衰
-    if "ewma_time_decay_tau_sec" in buy_kill:
-        kwargs["buy_dynamic_kill_ewma_time_decay_tau_sec"] = float(buy_kill["ewma_time_decay_tau_sec"])
+    _parse_dynamic_kill_block(buy_kill, "buy_dynamic_kill", kwargs)
 
     # 286# 283# P1-4: 在庫連動 buy_dynamic_kill 緩和 (Ho & Stoll 1981)
-    inv_relax = 止血.get("buy_dynamic_kill_inv_relaxation", {})
-    if inv_relax.get("enabled") is not None:
-        kwargs["buy_dynamic_kill_inv_relaxation_enabled"] = bool(inv_relax["enabled"])
-    if "scale" in inv_relax:
-        kwargs["buy_dynamic_kill_inv_relaxation_scale"] = float(inv_relax["scale"])
-    if "max_bps" in inv_relax:
-        kwargs["buy_dynamic_kill_inv_relaxation_max_bps"] = float(inv_relax["max_bps"])
+    _parse_inv_relaxation_block(
+        止血.get("buy_dynamic_kill_inv_relaxation", {}),
+        "buy_dynamic_kill_inv_relaxation",
+        kwargs,
+    )
 
     # 337# 在庫連動 sell_dynamic_kill 緩和 (Ho & Stoll 1981 対称性)
-    sell_inv_relax = 止血.get("sell_dynamic_kill_inv_relaxation", {})
-    if sell_inv_relax.get("enabled") is not None:
-        kwargs["sell_dynamic_kill_inv_relaxation_enabled"] = bool(sell_inv_relax["enabled"])
-    if "scale" in sell_inv_relax:
-        kwargs["sell_dynamic_kill_inv_relaxation_scale"] = float(sell_inv_relax["scale"])
-    if "max_bps" in sell_inv_relax:
-        kwargs["sell_dynamic_kill_inv_relaxation_max_bps"] = float(sell_inv_relax["max_bps"])
+    _parse_inv_relaxation_block(
+        止血.get("sell_dynamic_kill_inv_relaxation", {}),
+        "sell_dynamic_kill_inv_relaxation",
+        kwargs,
+    )
 
     # 348# balance_forced 撤廃: forced KPI/delay/downweight のパースを削除
 

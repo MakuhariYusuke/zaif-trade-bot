@@ -29,6 +29,27 @@ logger = logging.getLogger(__name__)
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 354# 型安全ヘルパ — import_state 用
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+def _get_int(state: dict[str, object], key: str, default: int = 0) -> int:
+    """dict[str, object] から int を安全に取り出す."""
+    v = state.get(key, default)
+    if isinstance(v, (int, float, str)):
+        return int(v)
+    return default
+
+
+def _get_float(
+    state: dict[str, object], key: str, default: float | None = None
+) -> float | None:
+    """dict[str, object] から float を安全に取り出す (None 許容)."""
+    v = state.get(key, default)
+    if isinstance(v, (int, float, str)):
+        return float(v)
+    return default
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 240# Toxicity Budget (232# §2.2 Glosten-Milgrom)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -746,23 +767,21 @@ class DynamicKillManager:
             self._pnl_history = [float(v) for v in raw_history]
         else:
             self._pnl_history = []
-        self._cooldown = int(state.get("cooldown", 0))
-        self._total_kills = int(state.get("total_kills", 0))
-        self._total_cooldown_cycles = int(state.get("total_cooldown_cycles", 0))
-        self._stale_counter = int(state.get("stale_counter", 0))
-        self._total_probe_cycles = int(state.get("total_probe_cycles", 0))
-        self._consecutive_probes = int(state.get("consecutive_probes", 0))
+        self._cooldown = _get_int(state, "cooldown")
+        self._total_kills = _get_int(state, "total_kills")
+        self._total_cooldown_cycles = _get_int(state, "total_cooldown_cycles")
+        self._stale_counter = _get_int(state, "stale_counter")
+        self._total_probe_cycles = _get_int(state, "total_probe_cycles")
+        self._consecutive_probes = _get_int(state, "consecutive_probes")
         self._force_released = bool(state.get("force_released", False))
         # 273# kill_activated_at 復元
-        _kill_at = state.get("kill_activated_at")
-        self._kill_activated_at = float(_kill_at) if _kill_at is not None else None
+        self._kill_activated_at = _get_float(state, "kill_activated_at")
         # 353# last_track_time 復元
-        _last_track = state.get("last_track_time")
-        self._last_track_time = float(_last_track) if _last_track is not None else None
+        self._last_track_time = _get_float(state, "last_track_time")
         # 349# P0: EWMA 状態復元 — 欠落している場合は history から再構築
-        _ewma = state.get("ewma_value")
+        _ewma = _get_float(state, "ewma_value")
         if _ewma is not None:
-            self._ewma_value = float(_ewma)
+            self._ewma_value = _ewma
         elif self._config.ewma_alpha > 0 and self._pnl_history:
             self._rebuild_ewma_from_history()
         else:

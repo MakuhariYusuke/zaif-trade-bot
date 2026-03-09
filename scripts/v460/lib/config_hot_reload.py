@@ -58,10 +58,10 @@ class _HotReloadableRunner(Protocol):
 
 
 @lru_cache(maxsize=1)
-def _resolve_time_filter_cls() -> type[object]:
+def _resolve_time_filter_cls() -> type[TimeFilter]:
     """Resolve TimeFilter lazily and cache the class object."""
-    from scripts.v460.lib.time_filter import TimeFilter
-    return TimeFilter
+    from scripts.v460.lib.time_filter import TimeFilter as _TF
+    return _TF  # type: ignore[no-any-return]  # lazy import
 
 
 # ======================================================================
@@ -405,6 +405,8 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     # 353# EWMA 時間減衰
     "sell_dynamic_kill_ewma_time_decay_tau_sec",
     "buy_dynamic_kill_ewma_time_decay_tau_sec",
+    "sell_dynamic_kill_inv_relaxation_enabled",
+    "sell_dynamic_kill_inv_relaxation_scale",
     "sell_dynamic_kill_inv_relaxation_max_bps",
     # --- VG advanced ---
     "volatility_guard_vpin_threshold",

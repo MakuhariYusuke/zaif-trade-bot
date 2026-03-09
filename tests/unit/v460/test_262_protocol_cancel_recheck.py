@@ -26,7 +26,6 @@ from scripts.v460.lib.adaptation_engine import (
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.order_monitor import OrderMonitor, _CancelFillCheck
-from tests.unit.v460._fill_test_source import ORDER_MONITOR, read_class_method_source
 
 
 # ======================================================================
@@ -368,17 +367,13 @@ class TestTryCancelWithFillRecheck:
 class TestOrderMonitorCancelRecheckDRY:
     """262# order_monitor.py のキャンセル-再確認パターン重複排除テスト."""
 
-    @staticmethod
-    def _monitor_source() -> str:
-        return read_class_method_source(ORDER_MONITOR, "OrderMonitor", "monitor")
-
     def test_no_duplicated_cancel_recheck_pattern(self) -> None:
         """'Failed to cancel' 文字列チェックが monitor() 内に残っていないことを確認.
 
         3箇所の重複パターンが _try_cancel_with_fill_recheck に統合されたため、
         monitor() メソッド本体には 'Failed to cancel' の文字列判定が無い。
         """
-        src = self._monitor_source()
+        src = inspect.getsource(OrderMonitor.monitor)
         assert '"Failed to cancel"' not in src
         assert "'Failed to cancel'" not in src
 
@@ -393,7 +388,7 @@ class TestOrderMonitorCancelRecheckDRY:
 
     def test_monitor_uses_helper_for_cancel(self) -> None:
         """monitor() が _try_cancel_with_fill_recheck を使用している."""
-        src = self._monitor_source()
+        src = inspect.getsource(OrderMonitor.monitor)
         assert "_try_cancel_with_fill_recheck" in src
 
     def test_helper_is_static_method(self) -> None:
@@ -418,7 +413,7 @@ class TestOrderMonitorExceptCount:
         262# 後: 5箇所 (poll, mid_at_order, SkipGate, place_order, stale_check)
         ヘルパーに 2箇所 (cancel + recheck)
         """
-        monitor_src = read_class_method_source(ORDER_MONITOR, "OrderMonitor", "monitor")
+        monitor_src = inspect.getsource(OrderMonitor.monitor)
         monitor_count = monitor_src.count("except Exception")
         # 3箇所のcancel-recheck (各2 except = 6) → helper (2) に統合
         # monitor() 本体: 11 - 6 = 5 (poll, mid_at_order, place_order, stale_check, SkipGate含まず)

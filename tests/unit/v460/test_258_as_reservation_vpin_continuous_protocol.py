@@ -20,7 +20,6 @@ from scripts.v460.lib.regime_detector import (
     FillTestRegimeDetector,
     RegimeDetectorLike,
 )
-from tests.unit.v460._fill_test_source import ORDER_MONITOR, read_class_method_source
 
 
 # ======================================================================
@@ -103,11 +102,9 @@ class TestRegimeDetectorProtocol:
 
     def test_resolve_regime_no_getattr_in_source(self) -> None:
         """257# _resolve_regime_name に getattr/hasattr が残っていない."""
-        src = read_class_method_source(
-            ORDER_MONITOR,
-            "OrderMonitor",
-            "_resolve_regime_name",
-        )
+        from scripts.v460.lib.order_monitor import OrderMonitor
+
+        src = inspect.getsource(OrderMonitor._resolve_regime_name)
         assert "getattr" not in src
         assert "hasattr" not in src
 

@@ -10,15 +10,10 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-from scripts.v460.lib.fill_config import FillTestConfig
-from scripts.v460.lib.pnl_measurer import PnlMeasurer
-from ztb.ml.retrain_trigger import RetrainTriggerConfig
 
 
 # ===== P1-11: PnL Fee Deduction =====
@@ -29,6 +24,8 @@ class TestPnlFeeDeduction:
 
     def _make_config(self, *, fee_enabled: bool = True, maker_fee_bps: float = 1.5) -> "FillTestConfig":
         """テスト用 config を簡易生成."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
         return FillTestConfig(
             pnl_fee_deduction_enabled=fee_enabled,
             maker_fee_bps=maker_fee_bps,
@@ -39,6 +36,8 @@ class TestPnlFeeDeduction:
     @pytest.mark.asyncio
     async def test_fee_deducted_from_pnl(self) -> None:
         """fee 有効時に PnL から maker fee が控除される."""
+        from scripts.v460.lib.pnl_measurer import PnlMeasurer
+
         cfg = self._make_config(fee_enabled=True, maker_fee_bps=2.0)
         measurer = PnlMeasurer(cfg)
 
@@ -65,6 +64,8 @@ class TestPnlFeeDeduction:
     @pytest.mark.asyncio
     async def test_no_fee_when_disabled(self) -> None:
         """fee 無効時は PnL がそのまま."""
+        from scripts.v460.lib.pnl_measurer import PnlMeasurer
+
         cfg = self._make_config(fee_enabled=False, maker_fee_bps=2.0)
         measurer = PnlMeasurer(cfg)
 
@@ -88,6 +89,8 @@ class TestPnlFeeDeduction:
     @pytest.mark.asyncio
     async def test_fee_zero_no_change(self) -> None:
         """fee=0 の場合は控除なし（Coincheck maker 現状）."""
+        from scripts.v460.lib.pnl_measurer import PnlMeasurer
+
         cfg = self._make_config(fee_enabled=True, maker_fee_bps=0.0)
         measurer = PnlMeasurer(cfg)
 
@@ -117,14 +120,18 @@ class TestNarrowSpreadPause:
 
     def test_config_defaults(self) -> None:
         """デフォルトは無効."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
         cfg = FillTestConfig()
         assert cfg.narrow_spread_pause_enabled is False
         assert cfg.narrow_spread_pause_bps == 3.0
         assert cfg.narrow_spread_pause_sec == 5.0
         assert cfg.narrow_spread_pause_max_consecutive == 3
 
-    def test_yaml_parsing(self, tmp_path: Path) -> None:
+    def test_yaml_parsing(self, tmp_path: "Path") -> None:
         """YAML から narrow_spread_pause を正しくパース."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
         yaml_content = {
             "loss_control": {
                 "narrow_spread_pause": {
@@ -150,13 +157,17 @@ class TestFeeConfigParsing:
 
     def test_defaults(self) -> None:
         """デフォルトは無効."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
         cfg = FillTestConfig()
         assert cfg.pnl_fee_deduction_enabled is False
         assert cfg.maker_fee_bps == 0.0
         assert cfg.taker_fee_bps == 0.0
 
-    def test_yaml_parsing(self, tmp_path: Path) -> None:
+    def test_yaml_parsing(self, tmp_path: "Path") -> None:
         """YAML から PnL fee 設定をパース."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
         yaml_content = {
             "loss_control": {
                 "pnl_fee_deduction": {
@@ -180,12 +191,16 @@ class TestRepriceSellMax:
 
     def test_sell_max_reprice_default(self) -> None:
         """デフォルト stale_max_reprice_sell は None (共通値使用)."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
         cfg = FillTestConfig()
         assert cfg.stale_max_reprice_sell is None
         assert cfg.stale_max_reprice == 2  # 共通デフォルト
 
-    def test_yaml_sell_reprice_override(self, tmp_path: Path) -> None:
+    def test_yaml_sell_reprice_override(self, tmp_path: "Path") -> None:
         """YAML で sell 側 max_reprice を上書きできる."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
         yaml_content = {
             "stale_order": {
                 "enabled": True,
@@ -204,6 +219,8 @@ class TestTriggerYamlConfig:
 
     def test_all_config_fields_have_defaults(self) -> None:
         """全フィールドにデフォルト値が設定されている."""
+        from ztb.ml.retrain_trigger import RetrainTriggerConfig
+
         cfg = RetrainTriggerConfig()
         assert cfg.backoff_multiplier == 2.0
         assert cfg.backoff_max_interval_sec == 14400
@@ -213,6 +230,8 @@ class TestTriggerYamlConfig:
 
     def test_config_override(self) -> None:
         """フィールドをオーバーライドできる."""
+        from ztb.ml.retrain_trigger import RetrainTriggerConfig
+
         cfg = RetrainTriggerConfig(
             backoff_multiplier=3.0,
             check_feature_freshness=True,

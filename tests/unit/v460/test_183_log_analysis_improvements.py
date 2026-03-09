@@ -234,9 +234,9 @@ class TestFillTestYAMLIntegration:
         data = v460_fill_test_yaml
         cfg = FillTestConfig.from_yaml(data)
 
-        # 183# velocity skip
+        # 183# velocity skip  (353# buy -6→-4)
         assert cfg.buy_velocity_skip_enabled is True
-        assert cfg.buy_velocity_skip_threshold_bps == pytest.approx(-6.0)
+        assert cfg.buy_velocity_skip_threshold_bps == pytest.approx(-4.0)
         assert cfg.sell_velocity_skip_threshold_bps == pytest.approx(6.0)
 
         # 183# hour offsets

@@ -18,10 +18,11 @@ import numpy as np
 import pandas as pd
 
 from scripts.v460.ml.frame_utils import compute_local_hour_cyclic
-from ztb.data.raw_paths import RawDirLike, resolve_raw_dir
 from ztb.io.jsonl_gz import read_jsonl_gz
 
 logger = logging.getLogger(__name__)
+
+_DEFAULT_RAW_DIR = Path("data/v460/raw")
 
 # 特徴量ウィンドウ (秒)
 _TRADE_WINDOW_SEC = 60  # 直近 60 秒の約定統計
@@ -42,6 +43,7 @@ class _RawLoadCacheEntry:
 
 _RAW_ORDERBOOK_CACHE: dict[tuple[str, tuple[str, ...] | None], _RawLoadCacheEntry] = {}
 _RAW_TRADES_CACHE: dict[tuple[str, tuple[str, ...] | None], _RawLoadCacheEntry] = {}
+
 
 def _normalize_date_filter(
     date_filter: Optional[set[str]],
@@ -89,24 +91,6 @@ def _select_raw_files(
     return sorted(data_dir.glob("*.jsonl.gz"))
 
 
-def discover_raw_daily_inputs(
-    raw_dir: RawDirLike = None,
-) -> dict[str, tuple[Path | None, Path | None]]:
-    """利用可能な raw 入力を date -> (orderbook, trades) で返す."""
-    resolved_root = resolve_raw_dir(raw_dir)
-    daily_inputs: dict[str, tuple[Path | None, Path | None]] = {}
-    for orderbook_path in _select_raw_files(resolved_root / "orderbook", date_filter=None):
-        date_str = orderbook_path.name.replace(".jsonl.gz", "")
-        _, trades_path = daily_inputs.get(date_str, (None, None))
-        daily_inputs[date_str] = (orderbook_path, trades_path)
-    for trades_path in _select_raw_files(resolved_root / "trades", date_filter=None):
-        date_str = trades_path.name.replace(".jsonl.gz", "")
-        orderbook_path, _ = daily_inputs.get(date_str, (None, None))
-        daily_inputs[date_str] = (orderbook_path, trades_path)
-    return daily_inputs
-
-
-
 def _build_file_signature(files: list[Path]) -> tuple[tuple[str, int, int], ...]:
     """mtime+size ベースの軽量シグネチャを生成."""
     signature: list[tuple[str, int, int]] = []
@@ -146,11 +130,11 @@ def _store_raw_cache(
 
 
 def _load_raw_orderbook_entry(
-    raw_dir: RawDirLike = None,
+    raw_dir: Optional[Path] = None,
     date_filter: Optional[set[str]] = None,
 ) -> _RawLoadCacheEntry:
     """板 raw と派生 context をまとめてロードする."""
-    d = resolve_raw_dir(raw_dir)
+    d = raw_dir or _DEFAULT_RAW_DIR
     ob_dir = d / "orderbook"
     if not ob_dir.exists():
         return _RawLoadCacheEntry(file_signature=(), df=pd.DataFrame())
@@ -213,11 +197,11 @@ def _load_raw_orderbook_entry(
 
 
 def _load_raw_trades_entry(
-    raw_dir: RawDirLike = None,
+    raw_dir: Optional[Path] = None,
     date_filter: Optional[set[str]] = None,
 ) -> _RawLoadCacheEntry:
     """約定 raw と派生 context をまとめてロードする."""
-    d = resolve_raw_dir(raw_dir)
+    d = raw_dir or _DEFAULT_RAW_DIR
     tr_dir = d / "trades"
     if not tr_dir.exists():
         return _RawLoadCacheEntry(file_signature=(), df=pd.DataFrame())
@@ -479,7 +463,7 @@ def _compute_trade_feature_bundle(
 
 
 def load_raw_orderbook(
-    raw_dir: RawDirLike = None,
+    raw_dir: Optional[Path] = None,
     date_filter: Optional[set[str]] = None,
 ) -> pd.DataFrame:
     """板スナップショットを読み込み.
@@ -496,7 +480,7 @@ def load_raw_orderbook(
 
 
 def load_raw_trades(
-    raw_dir: RawDirLike = None,
+    raw_dir: Optional[Path] = None,
     date_filter: Optional[set[str]] = None,
 ) -> pd.DataFrame:
     """約定データを読み込み.
@@ -689,7 +673,7 @@ def _compute_return_momentum(
 
 def enrich_fill_records(
     fill_df: pd.DataFrame,
-    raw_dir: RawDirLike = None,
+    raw_dir: Optional[Path] = None,
     ob_tolerance_sec: int = _OB_MATCH_TOLERANCE_SEC,
     trade_window_sec: int = _TRADE_WINDOW_SEC,
     trades_fallback_recent_days: int = 1,

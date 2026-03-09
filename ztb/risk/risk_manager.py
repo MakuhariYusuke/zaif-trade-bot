@@ -363,7 +363,10 @@ class RiskManager(RiskManagerProtocol):
         try:
             self.drawdown_controller.update_portfolio_value(self.portfolio_value, 0)
         except Exception:
-            pass
+            logger.warning(
+                "drawdown_controller.update_portfolio_value failed",
+                exc_info=True,
+            )
 
     # Keep existing reset which already exists
 

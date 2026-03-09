@@ -11,7 +11,6 @@ from __future__ import annotations
 import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig
-from tests.unit.v460._fill_test_source import ORDER_MONITOR, read_class_method_source
 
 
 # ======================================================================
@@ -115,7 +114,9 @@ stale_order:
 
     def test_tighten_logic_in_order_monitor(self) -> None:
         """OrderMonitor に tighten ロジックが存在する."""
-        source = read_class_method_source(ORDER_MONITOR, "OrderMonitor", "monitor")
+        import inspect
+        from scripts.v460.lib.order_monitor import OrderMonitor
+        source = inspect.getsource(OrderMonitor.monitor)
         assert "stale_reprice_tighten" in source
         assert "tightened_gap" in source
 

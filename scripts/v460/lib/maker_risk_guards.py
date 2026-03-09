@@ -48,13 +48,14 @@ class RiskGuardsMixin:
     _last_vg_boost_factor: float | None
 
     @staticmethod
-    def _scale_offset_ratio(
+    def _scale_offset_ratio(  # type: ignore[empty-body]  # Protocol stub
         effective_offset_ratio: float,
         multiplier: float,
         *,
         min_ratio: float | None = None,
         max_ratio: float | None = None,
-    ) -> tuple[float, float]: ...
+    ) -> tuple[float, float]:
+        ...
 
     # ------------------------------------------------------------------
     # Risk guard pipeline stages
