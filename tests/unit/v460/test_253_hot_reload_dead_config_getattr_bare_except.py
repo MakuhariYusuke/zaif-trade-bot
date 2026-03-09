@@ -16,13 +16,21 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from scripts.v460.lib import event_logger
+from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
 from scripts.v460.lib.fill_config import FillTestConfig
-
-_FILL_CONFIG_SOURCE = Path("scripts/v460/lib/fill_config.py").read_text(encoding="utf-8")
-_FILL_CYCLE_EXECUTOR_SOURCE = Path("scripts/v460/lib/fill_cycle_executor.py").read_text(
-    encoding="utf-8"
+from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
+from scripts.v460.lib.event_logger import TeeWriter
+from tests.unit.v460._fill_test_source import (
+    EVENT_LOGGER,
+    FILL_CONFIG,
+    FILL_CYCLE_EXECUTOR,
+    read_source_text,
 )
-_EVENT_LOGGER_SOURCE = Path("scripts/v460/lib/event_logger.py").read_text(encoding="utf-8")
+
+_FILL_CONFIG_SOURCE = read_source_text(FILL_CONFIG)
+_FILL_CYCLE_EXECUTOR_SOURCE = read_source_text(FILL_CYCLE_EXECUTOR)
+_EVENT_LOGGER_SOURCE = read_source_text(EVENT_LOGGER)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -35,7 +43,6 @@ class TestSellAsymmetricHotReload:
 
     def test_in_reloadable_fields(self) -> None:
         """_HOT_RELOADABLE_FIELDS に含まれること."""
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         assert "sell_asymmetric_high_vol_enabled" in _HOT_RELOADABLE_FIELDS
 
     def test_yaml_has_field(self, v460_fill_test_yaml: dict[str, object]) -> None:
@@ -73,7 +80,6 @@ class TestDeadConfigRemoval:
 
     def test_not_in_hot_reload(self) -> None:
         """hot_reload 対象フィールドから削除済."""
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         assert "balance_forced_apply_trending_offset" not in _HOT_RELOADABLE_FIELDS
 
     def test_not_in_yaml(self, v460_fill_test_yaml: dict[str, object]) -> None:
@@ -123,7 +129,6 @@ class TestGetAttrRemoval:
 
     def test_class_level_defaults_exist(self) -> None:
         """orchestrator 参照属性のクラスレベルデフォルトが宣言済。"""
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
         # これらは Mixin がクラスレベルで宣言すべき属性
         assert hasattr(FillCycleExecutorMixin, "_alert_offset_mult")
         assert hasattr(FillCycleExecutorMixin, "_alert_lot_mult")
@@ -133,7 +138,6 @@ class TestGetAttrRemoval:
 
     def test_default_values_correct(self) -> None:
         """クラスレベルデフォルト値が正しいこと."""
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
         assert FillCycleExecutorMixin._alert_offset_mult == 1.0
         assert FillCycleExecutorMixin._alert_lot_mult == 1.0
         assert FillCycleExecutorMixin._halt_recovery_lot_mult == 1.0
@@ -168,8 +172,6 @@ class TestTeeWriterLogging:
 
     def test_write_logs_on_error(self, caplog: pytest.LogCaptureFixture) -> None:
         """write() で例外発生時に logger.debug が出力されること."""
-        from scripts.v460.lib.event_logger import TeeWriter
-
         broken = MagicMock()
         broken.write.side_effect = OSError("disk full")
         good = io.StringIO()
@@ -184,8 +186,6 @@ class TestTeeWriterLogging:
 
     def test_flush_logs_on_error(self, caplog: pytest.LogCaptureFixture) -> None:
         """flush() で例外発生時に logger.debug が出力されること."""
-        from scripts.v460.lib.event_logger import TeeWriter
-
         broken = MagicMock()
         broken.flush.side_effect = OSError("closed")
         good = io.StringIO()
@@ -198,8 +198,6 @@ class TestTeeWriterLogging:
 
     def test_tee_writer_still_works_normally(self) -> None:
         """正常動作時は例外なく全 writer に書き込む。"""
-        from scripts.v460.lib.event_logger import TeeWriter
-
         w1 = io.StringIO()
         w2 = io.StringIO()
         tee = TeeWriter(w1, w2)
@@ -219,7 +217,6 @@ class TestRegressionIntegrity:
 
     def test_hot_reload_field_count_stable(self) -> None:
         """hot_reload 対象フィールド数が大幅に減少していないこと."""
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         # 252# 時点で 90 件前後。-1 (dead config 削除), +1 (sell_asymmetric) = ±0
         assert len(_HOT_RELOADABLE_FIELDS) >= 85
 
@@ -233,11 +230,9 @@ class TestRegressionIntegrity:
 
     def test_event_logger_has_logger(self) -> None:
         """event_logger.py にモジュールレベル logger が存在。"""
-        from scripts.v460.lib import event_logger
         assert hasattr(event_logger, "logger")
 
     def test_daily_drawdown_guard_type_annotation(self) -> None:
         """_daily_drawdown_guard のクラスレベル型注釈が存在。"""
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
         annotations = FillCycleExecutorMixin.__annotations__
         assert "_daily_drawdown_guard" in annotations

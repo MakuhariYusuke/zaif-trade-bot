@@ -13,15 +13,20 @@ from functools import lru_cache
 from pathlib import Path
 
 import pytest
-from tests.unit.v460._fill_test_source import read_class_method_source
+from tests.unit.v460._fill_test_source import (
+    OB_UTILS,
+    ORDER_MONITOR,
+    SKIP_GATE_EVALUATOR,
+    read_class_method_source,
+)
 
 _LIB = Path(__file__).resolve().parents[3] / "scripts" / "v460" / "lib"
-_SKIP_GATE_EVALUATOR = _LIB / "skip_gate_evaluator.py"
-_ORDER_MONITOR = _LIB / "order_monitor.py"
 
 
 @lru_cache(maxsize=None)
 def _read_lib_source(module_path: str) -> str:
+    if module_path == "ob_utils":
+        return OB_UTILS.read_text(encoding="utf-8-sig")
     return (_LIB / f"{module_path}.py").read_text(encoding="utf-8-sig")
 
 
@@ -44,7 +49,7 @@ class TestGetAttrRemoval:
     def test_select_gate_for_side_no_getattr(self) -> None:
         """_select_gate_for_side が getattr を使っていない."""
         src = read_class_method_source(
-            _SKIP_GATE_EVALUATOR,
+            SKIP_GATE_EVALUATOR,
             "SkipGateEvaluator",
             "_select_gate_for_side",
         )
@@ -54,7 +59,7 @@ class TestGetAttrRemoval:
     def test_evaluate_no_gate_getattr(self) -> None:
         """evaluate() 内の _gate_buy/_gate_sell 参照が getattr でない."""
         src = read_class_method_source(
-            _SKIP_GATE_EVALUATOR,
+            SKIP_GATE_EVALUATOR,
             "SkipGateEvaluator",
             "evaluate",
         )
@@ -66,7 +71,7 @@ class TestGetAttrRemoval:
     def test_hot_reload_no_getattr(self) -> None:
         """_check_and_reload_model が hot_reload_check_interval_sec の getattr を使わない."""
         src = read_class_method_source(
-            _SKIP_GATE_EVALUATOR,
+            SKIP_GATE_EVALUATOR,
             "SkipGateEvaluator",
             "_check_and_reload_model",
         )
@@ -77,7 +82,7 @@ class TestGetAttrRemoval:
     def test_order_monitor_reprice_no_getattr(self) -> None:
         """_should_block_reprice_with_skip_gate が config getattr を使わない."""
         src = read_class_method_source(
-            _ORDER_MONITOR,
+            ORDER_MONITOR,
             "OrderMonitor",
             "_should_block_reprice_with_skip_gate",
         )

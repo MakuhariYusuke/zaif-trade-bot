@@ -2999,3 +2999,32 @@
 - `test_239_feasible_quote.py` は `MakerPrice` / executor の source 契約を現在の split-source 流儀に合わせた。`inspect.getsource(...)` ベースの古い参照がまた 1 束消えた。
 - `test_254_frozen_side_persist_getattr_cleanup.py` は orchestrator monolith 前提の source 読込をやめ、実際に責務が置かれている lifecycle/guards/post_cycle/pre_cycle へ追随した。今後の orchestrator 分割変更にも追従しやすい。
 - 同時に `test_230_ffd_deadzone_streak_guards.py` も見直したが、この時点では追加で削れる `inspect.getsource(...)` や method 内 import の残件はなかった。
+
+---
+
+## 2026-03-10 / Session 037-070
+
+### 実施
+- `tests/unit/v460/_fill_test_source.py`
+  - `FILL_CONFIG`, `EVENT_LOGGER` を追加
+- `tests/unit/v460/test_253_hot_reload_dead_config_getattr_bare_except.py`
+  - `fill_config.py`, `fill_cycle_executor.py`, `event_logger.py` の source 読込を shared helper 化
+  - `_HOT_RELOADABLE_FIELDS`, `FillCycleExecutorMixin`, `TeeWriter`, `event_logger` の import を module scope に集約
+- `tests/unit/v460/test_255_getattr_bare_except_cleanup.py`
+  - `SKIP_GATE_EVALUATOR`, `ORDER_MONITOR`, `OB_UTILS` の shared path constant を再利用
+  - `ob_utils` source 読込も shared path を優先するよう整理
+- `scripts/v460/lib/ob_recorder.py`
+  - raw dir 解決を `ztb.data.raw_paths.resolve_raw_dir()` 再利用へ変更
+  - local `_DEFAULT_RAW_DIR` を削除
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_253_hot_reload_dead_config_getattr_bare_except.py`
+  - `tests/unit/v460/test_255_getattr_bare_except_cleanup.py`
+  - `tests/unit/v460/test_ob_recorder.py`
+  - `45 passed in 2.09s`
+
+### 主要改善
+- `253/255` は source 読込の流儀がほぼ shared helper に揃った。今後の split-file 変更や UTF-8/BOM 対応は helper 側で吸収できる。
+- `ob_recorder.py` も raw-dir 正規化を共通 helper に寄せたので、`feature_enricher` / `build_features` / `market_data_collector` / `trades_recorder` と同じ境界で扱えるようになった。
+- 今回は性能差分より再利用境界の整理が主成果で、raw path の実装分岐をさらに 1 箇所減らせた。

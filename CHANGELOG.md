@@ -4649,6 +4649,21 @@ python scripts/unified_trainer.py \
 - The focused bundle completed at `32 passed in 1.36s`.
 - `test_230_ffd_deadzone_streak_guards.py` was rechecked during this pass and had no remaining `inspect.getsource(...)` or method-local import cleanup worth touching.
 
+## Session 037-070 (2026-03-10)
+
+### Changed
+- Reused `_fill_test_source.py` path helpers in [test_253_hot_reload_dead_config_getattr_bare_except.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_253_hot_reload_dead_config_getattr_bare_except.py), replacing ad-hoc `Path(...).read_text(...)` source caching with shared readers and hoisting `TeeWriter`, `_HOT_RELOADABLE_FIELDS`, `FillCycleExecutorMixin`, and `event_logger` imports to module scope.
+- Tightened [test_255_getattr_bare_except_cleanup.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_255_getattr_bare_except_cleanup.py) by reusing shared `ORDER_MONITOR`, `SKIP_GATE_EVALUATOR`, and `OB_UTILS` constants instead of duplicating local path construction for those split-source assertions.
+- Reused the production raw-dir resolver in [ob_recorder.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/ob_recorder.py), removing another local `DEFAULT_RAW_DIR` implementation and aligning OB recording with the same raw path normalization used by `feature_enricher`, `build_features`, `market_data_collector`, and `trades_recorder`.
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile tests/unit/v460/_fill_test_source.py tests/unit/v460/test_253_hot_reload_dead_config_getattr_bare_except.py tests/unit/v460/test_255_getattr_bare_except_cleanup.py scripts/v460/lib/ob_recorder.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_253_hot_reload_dead_config_getattr_bare_except.py tests/unit/v460/test_255_getattr_bare_except_cleanup.py tests/unit/v460/test_ob_recorder.py -q --no-cov --tb=short --durations=25`
+
+### Notes
+- The focused bundle completed at `45 passed in 2.09s`.
+- This pass was driven by reuse discovery rather than hotspot timings: it removed another set of duplicated source-loading patterns and one more production-side raw-dir normalization fork.
+
 ## Session 037-065 (2026-03-09)
 
 ### Changed

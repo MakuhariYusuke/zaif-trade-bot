@@ -77,11 +77,38 @@ FILL_TEST_CLI = (
 MAKER_PRICE = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "maker_price.py"
 )
+MAKER_REGIME_BOOST = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "maker_regime_boost.py"
+)
+MAKER_MICROSTRUCTURE = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "maker_microstructure.py"
+)
 ORDER_MONITOR = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "order_monitor.py"
 )
 FILL_CONFIG_PARSER = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_config_parser.py"
+)
+FILL_CONFIG = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_config.py"
+)
+CONFIG_HOT_RELOAD = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "config_hot_reload.py"
+)
+EVENT_LOGGER = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "event_logger.py"
+)
+FAST_FILL_DEFENSE = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fast_fill_defense.py"
+)
+REGIME_DETECTOR = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "regime_detector.py"
+)
+OB_UTILS = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "ob_utils.py"
+)
+SKIP_GATE_EVALUATOR = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "skip_gate_evaluator.py"
 )
 HINDSIGHT_FILTER = (
     _PROJECT_ROOT / "scripts" / "v460" / "analysis" / "hindsight_filter.py"

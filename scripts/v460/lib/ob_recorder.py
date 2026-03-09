@@ -18,11 +18,11 @@ from pathlib import Path
 from typing import TypedDict
 
 from scripts.v460.lib.ob_utils import OrderBookLevelLike
+from ztb.data.raw_paths import resolve_raw_dir
 from ztb.io.jsonl_gz import append_jsonl_gz
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_RAW_DIR = Path("data/v460/raw")
 _FLUSH_INTERVAL_SEC = 60  # 60 秒ごとにバッファ flush
 _BUFFER_CAP = 10_000  # 146# §13: メモリ保護上限 (TradesRecorder と対称)
 
@@ -103,7 +103,7 @@ class OBRecorder:
         *,
         enabled: bool = True,
     ) -> None:
-        self._raw_dir = raw_dir or _DEFAULT_RAW_DIR
+        self._raw_dir = resolve_raw_dir(raw_dir)
         self._flush_interval = flush_interval
         self._enabled = enabled
         self._buffer: list[_OBSnapshot] = []
