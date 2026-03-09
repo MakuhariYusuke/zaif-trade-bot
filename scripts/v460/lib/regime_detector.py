@@ -32,6 +32,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass
 from enum import Enum
 from typing import Protocol, runtime_checkable
@@ -39,6 +40,78 @@ from typing import Protocol, runtime_checkable
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+
+# =====================================================================
+# 366# T5: Welford Online Variance — O(1) per update
+# =====================================================================
+
+class WelfordOnlineVar:
+    """Welford (1962) online variance — sliding window 対応.
+
+    従来の ``np.std(returns)`` は毎回 O(n) で全 window を再計算していたが、
+    新旧サンプルの add/remove で O(1) 更新を実現する。
+
+    数値安定性: Welford 原論文の再帰公式を使用し、
+    catastrophic cancellation を回避。
+
+    References:
+        B. P. Welford (1962) "Note on a Method for Calculating Corrected
+        Sums of Squares and Products". Technometrics 4(3):419-420.
+    """
+
+    __slots__ = ("_count", "_mean", "_m2")
+
+    def __init__(self) -> None:
+        self._count: int = 0
+        self._mean: float = 0.0
+        self._m2: float = 0.0
+
+    def add(self, x: float) -> None:
+        """サンプル追加 — O(1)."""
+        self._count += 1
+        delta = x - self._mean
+        self._mean += delta / self._count
+        delta2 = x - self._mean
+        self._m2 += delta * delta2
+
+    def remove(self, x: float) -> None:
+        """サンプル除去 (sliding window 用) — O(1).
+
+        count=0 へのアンダーフロー時はリセット。
+        """
+        if self._count <= 1:
+            self._count = 0
+            self._mean = 0.0
+            self._m2 = 0.0
+            return
+        delta = x - self._mean
+        self._count -= 1
+        self._mean -= delta / self._count
+        delta2 = x - self._mean
+        self._m2 -= delta * delta2
+        # 数値誤差で M2 が微小負になる場合のガード
+        if self._m2 < 0:
+            self._m2 = 0.0
+
+    @property
+    def count(self) -> int:
+        return self._count
+
+    @property
+    def variance(self) -> float:
+        """母分散 (np.std と同等)."""
+        return self._m2 / self._count if self._count > 0 else 0.0
+
+    @property
+    def std(self) -> float:
+        """母標準偏差."""
+        return math.sqrt(self.variance)
+
+    def reset(self) -> None:
+        self._count = 0
+        self._mean = 0.0
+        self._m2 = 0.0
 
 
 @runtime_checkable
@@ -155,6 +228,10 @@ class FillTestRegimeDetector:
         # 230# H-4: 明示的初期化 (hasattr 排除)
         self._last_result: RegimeResult | None = None
         self._last_velocity_pct: float = 0.0
+        # 366# T5: Welford online variance — O(1) per update
+        self._window_welford = WelfordOnlineVar()   # 直近 window の returns 用
+        self._all_welford = WelfordOnlineVar()       # 全 buffer の returns 用 (baseline)
+        self._last_return: float | None = None       # 直近の return (window sliding 用)
 
     @property
     def current_regime(self) -> FillTestRegime:
@@ -190,12 +267,50 @@ class FillTestRegimeDetector:
         Returns:
             RegimeResult with current regime assessment.
         """
+        # 366# T5: Welford incremental update
+        prev_price = self._prices[-1][1] if self._prices else None
         self._prices.append((timestamp, mid_price))
+
+        # 新しい return を Welford に追加
+        if prev_price is not None and abs(prev_price) > 1e-12:
+            new_ret = (mid_price - prev_price) / prev_price
+            if math.isfinite(new_ret):
+                self._all_welford.add(new_ret)
+                self._window_welford.add(new_ret)
 
         # バッファ上限: window の 3 倍まで保持 (baseline 算出用)
         max_buffer = self.config.window * 3
         if len(self._prices) > max_buffer:
+            # 削除される price pair の return を Welford から除去
+            removed_prices = self._prices[:-max_buffer]
+            for i in range(len(removed_prices) - 1):
+                p0 = removed_prices[i][1]
+                p1 = removed_prices[i + 1][1]
+                if abs(p0) > 1e-12:
+                    old_ret = (p1 - p0) / p0
+                    if math.isfinite(old_ret):
+                        self._all_welford.remove(old_ret)
             self._prices = self._prices[-max_buffer:]
+
+        # window_welford: window サイズを超えた分を除去
+        window = self.config.window
+        n_returns_in_window = len(self._prices) - 1  # returns = prices - 1
+        while self._window_welford.count > max(0, min(n_returns_in_window, window - 1)):
+            # window 外の oldest return を除去
+            idx = len(self._prices) - 1 - self._window_welford.count
+            if idx >= 0 and idx + 1 < len(self._prices):
+                p0 = self._prices[idx][1]
+                p1 = self._prices[idx + 1][1]
+                if abs(p0) > 1e-12:
+                    old_ret = (p1 - p0) / p0
+                    if math.isfinite(old_ret):
+                        self._window_welford.remove(old_ret)
+                    else:
+                        break
+                else:
+                    break
+            else:
+                break
 
         # データ不足 → unknown (confidence=0)
         if len(self._prices) < self.config.window:
@@ -234,6 +349,11 @@ class FillTestRegimeDetector:
     def _compute_indicators(self) -> tuple[float, float]:
         """直近 window の trend% と volatility ratio を算出.
 
+        366# T5: Welford online variance で O(1) 化。
+        _window_welford (window 内 returns の std) と
+        _all_welford (全 buffer returns の std) を使用。
+        np.std() フォールバックは Welford count 不足時のみ。
+
         Returns:
             (trend_pct, volatility_ratio)
         """
@@ -251,14 +371,20 @@ class FillTestRegimeDetector:
         else:
             trend_pct = 0.0
 
-        # returns (隣接比) — zero/invalid denominator は除外して NaN/inf 伝播を防止
-        returns = self._safe_returns(prices)
-        current_vol = float(np.std(returns)) if len(returns) > 1 else 0.0
+        # 366# T5: Welford O(1) variance (primary path)
+        if self._window_welford.count >= 2:
+            current_vol = self._window_welford.std
+        else:
+            # フォールバック: 従来の O(n) 計算
+            returns = self._safe_returns(prices)
+            current_vol = float(np.std(returns)) if len(returns) > 1 else 0.0
 
-        # baseline: 全バッファの returns の std
-        all_prices = np.array([p[1] for p in self._prices], dtype=float)
-        all_returns = self._safe_returns(all_prices)
-        baseline_vol = float(np.std(all_returns)) if len(all_returns) > 1 else current_vol
+        if self._all_welford.count >= 2:
+            baseline_vol = self._all_welford.std
+        else:
+            all_prices = np.array([p[1] for p in self._prices], dtype=float)
+            all_returns = self._safe_returns(all_prices)
+            baseline_vol = float(np.std(all_returns)) if len(all_returns) > 1 else current_vol
 
         vol_ratio = current_vol / baseline_vol if baseline_vol > 1e-12 else 1.0
 

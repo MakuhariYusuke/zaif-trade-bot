@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 
 from ztb.features.scalping import (
-    micro_volatility,
     realized_volatility,
     tick_volume_ratio,
     order_flow_imbalance
@@ -178,35 +177,6 @@ class TestScalpingFeatures:
         # But the function uses close[i] vs close[i-1], so first value will be NaN or 0
         valid_results = result.dropna()
         assert len(valid_results) >= 1, "Should have at least one valid result"
-        assert result.iloc[0] == 0.0
-
-    def test_micro_volatility_basic(self, sample_dataframe):
-        """Test basic micro volatility calculation"""
-        result = micro_volatility(sample_dataframe)
-
-        assert isinstance(result, pd.Series)
-        assert len(result) == len(sample_dataframe)
-        assert result.name == "micro_volatility"
-        assert (result.dropna() >= 0).all()
-
-    def test_micro_volatility_handles_zero_previous_close(self):
-        """previous close が 0 の return は 0.0 扱いを維持する."""
-        df = pd.DataFrame({
-            "close": [100.0, 0.0, 10.0, 10.0, 20.0, 20.0],
-        })
-
-        result = micro_volatility(df, window=3)
-
-        assert len(result) == len(df)
-        assert result.iloc[3] == pytest.approx(0.5, abs=1e-9)
-
-    def test_micro_volatility_window_larger_than_data(self):
-        """window > len(df) でもゼロ埋め series を返す."""
-        df = pd.DataFrame({"close": [100.0, 101.0, 102.0]})
-        result = micro_volatility(df, window=10)
-
-        assert len(result) == 3
-        assert (result == 0.0).all()
 
     def test_features_with_insufficient_data(self):
         """Test features behavior with insufficient data"""

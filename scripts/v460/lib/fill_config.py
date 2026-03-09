@@ -279,6 +279,9 @@ class FillTestConfig:
     # 300# §2.3 Smart Side がレジーム不感症 → microprice で構造的 AS 低減
     microprice_side_enabled: bool = False    # True で microprice ベース side 選択を有効化
     microprice_side_threshold: float = 0.3  # microprice 偏向度 (bps) がこの値以上で side 切替
+    # 366# M1: Multi-level microprice (Gatheral 2018)
+    microprice_depth: int = 5               # microprice で使用する板の段数 (1=従来互換, 最大5)
+    microprice_min_qty: float = 0.0001      # 有効レベルの最小数量 (これ未満の段はスキップ)
     # 310# C: L2 Safety Mode 再有効化ガードレール (308# 盲点1 設計改修)
     # 無条件有効化ではなくスプレッド・レジーム条件付きで制御
     microprice_side_min_spread_bps: float = 15.0  # spread がこの値 (bps) 以上の時のみ有効

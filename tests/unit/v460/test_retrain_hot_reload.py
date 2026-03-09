@@ -170,18 +170,6 @@ def _save_gate_to(gate: SkipGate, path: Path) -> None:
     gate.save(path)
 
 
-def _save_and_load_gate(gate: SkipGate, path: Path) -> SkipGate:
-    """SkipGate の save/load roundtrip helper."""
-    _save_gate_to(gate, path)
-    return SkipGate.load(path)
-
-
-def _write_corrupt_gate(path: Path, *, hash_text: str = "deadbeef") -> None:
-    """壊れた gate 本体 + sidecar hash を共通生成する."""
-    path.write_bytes(b"corrupt data")
-    path.with_suffix(path.suffix + ".sha256").write_text(hash_text)
-
-
 def _identity_enrich(fill_df: pd.DataFrame, **_: object) -> pd.DataFrame:
     """enrich を省略しつつ、学習に必要な最小特徴量を補完する軽量ヘルパー."""
     enriched = fill_df.copy()
@@ -376,37 +364,16 @@ class TestHotReload:
             results_dir="results/v460/fill_test",
         )
 
-    def _create_evaluator(
-        self,
-        tmpdir: str,
-        *,
-        gate: SkipGate,
-        write_placeholder: bool = False,
-        hash_override: str | None = None,
-    ) -> tuple[Path, SkipGateEvaluator]:
-        """共通の model path + evaluator 初期化."""
-        model_path = Path(tmpdir) / "gate.pkl"
-        if write_placeholder:
-            _write_placeholder_model(model_path)
-        else:
-            _save_gate_to(gate, model_path)
-
-        cfg = self._make_config(str(model_path))
-        if hash_override is None:
-            return model_path, SkipGateEvaluator(cfg, Path(tmpdir))
-
-        with patch(
-            "scripts.v460.lib.skip_gate_evaluator.SkipGateEvaluator._read_model_hash",
-            return_value=hash_override,
-        ):
-            return model_path, SkipGateEvaluator(cfg, Path(tmpdir))
-
     def test_initial_hash_stored(self) -> None:
         """初期ロード時にモデルファイルのハッシュが保存される."""
 
         with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = Path(tmpdir) / "gate.pkl"
             gate = _make_picklable_gate(version="v1")
-            _, evaluator = self._create_evaluator(tmpdir, gate=gate)
+            _save_gate_to(gate, model_path)
+
+            cfg = self._make_config(str(model_path))
+            evaluator = SkipGateEvaluator(cfg, Path(tmpdir))
 
             assert evaluator._model_file_hash != ""
             assert len(evaluator._model_file_hash) == 64  # SHA256 hex
@@ -415,12 +382,16 @@ class TestHotReload:
         """モデル sidecar hash が新鮮なら full file hash scan にフォールバックしない."""
 
         with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = Path(tmpdir) / "gate.pkl"
             gate = _make_picklable_gate(version="v1")
+            _save_gate_to(gate, model_path)
+
+            cfg = self._make_config(str(model_path))
             with patch(
                 "scripts.v460.lib.skip_gate_evaluator.compute_file_hash",
                 side_effect=AssertionError("full hash scan should not run"),
             ):
-                _, evaluator = self._create_evaluator(tmpdir, gate=gate)
+                evaluator = SkipGateEvaluator(cfg, Path(tmpdir))
 
             assert evaluator._model_file_hash != ""
 
@@ -428,7 +399,11 @@ class TestHotReload:
         """ファイル未変更時はリロードしない."""
 
         with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = Path(tmpdir) / "gate.pkl"
             gate = _make_picklable_gate(version="v1")
+            _write_placeholder_model(model_path)
+
+            cfg = self._make_config(str(model_path))
             with patch(
                 "scripts.v460.ml.skip_gate.SkipGate.load",
                 return_value=gate,
@@ -436,7 +411,7 @@ class TestHotReload:
                 "scripts.v460.lib.skip_gate_evaluator.SkipGateEvaluator._read_model_hash",
                 return_value="a" * 64,
             ):
-                _, evaluator = self._create_evaluator(tmpdir, gate=gate, write_placeholder=True)
+                evaluator = SkipGateEvaluator(cfg, Path(tmpdir))
                 original_gate = evaluator._skip_gate
                 original_hash = evaluator._model_file_hash
 
@@ -452,8 +427,12 @@ class TestHotReload:
         """ファイル変更時にリロードされる."""
 
         with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = Path(tmpdir) / "gate.pkl"
             gate_v1 = _make_picklable_gate(version="v1", n_samples=100)
-            _, evaluator = self._create_evaluator(tmpdir, gate=gate_v1)
+            _save_gate_to(gate_v1, model_path)
+
+            cfg = self._make_config(str(model_path))
+            evaluator = SkipGateEvaluator(cfg, Path(tmpdir))
             original_hash = evaluator._model_file_hash
 
             gate_v2 = _make_picklable_gate(version="v2", n_samples=200)
@@ -479,8 +458,12 @@ class TestHotReload:
         """リロード失敗時は旧モデルを維持."""
 
         with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = Path(tmpdir) / "gate.pkl"
             gate = _make_picklable_gate(version="v1")
-            model_path, evaluator = self._create_evaluator(tmpdir, gate=gate)
+            _save_gate_to(gate, model_path)
+
+            cfg = self._make_config(str(model_path))
+            evaluator = SkipGateEvaluator(cfg, Path(tmpdir))
             original_gate = evaluator._skip_gate
             original_hash = evaluator._model_file_hash
 
@@ -499,8 +482,12 @@ class TestHotReload:
         """チェック間隔内ではファイル変更を検出しない."""
 
         with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = Path(tmpdir) / "gate.pkl"
             gate = _make_picklable_gate(version="v1")
-            model_path, evaluator = self._create_evaluator(tmpdir, gate=gate)
+            _save_gate_to(gate, model_path)
+
+            cfg = self._make_config(str(model_path))
+            evaluator = SkipGateEvaluator(cfg, Path(tmpdir))
 
             # 内容変更だけ入れる。interval 内なので reload 経路には入らない。
             model_path.write_bytes(b"changed but should not be reloaded yet")
@@ -1351,7 +1338,10 @@ class TestPostDeployVerification:
         with tempfile.TemporaryDirectory() as tmpdir:
             model_path = Path(tmpdir) / "model.pkl"
             gate = _make_picklable_gate(n_samples=42)
-            loaded = _save_and_load_gate(gate, model_path)
+            gate.save(model_path)
+
+            # load で検証 — n_samples が保存・復元される
+            loaded = SkipGate.load(model_path)
             n = loaded.metadata.get("n_samples", 0)
             assert n == 42, f"Expected n_samples=42, got {n}"
 
@@ -1359,7 +1349,9 @@ class TestPostDeployVerification:
         """壊れたモデルでは load が失敗する."""
         with tempfile.TemporaryDirectory() as tmpdir:
             model_path = Path(tmpdir) / "model.pkl"
-            _write_corrupt_gate(model_path)
+            model_path.write_bytes(b"corrupt data")
+            hash_path = model_path.with_suffix(model_path.suffix + ".sha256")
+            hash_path.write_text("deadbeef")
 
             with pytest.raises(Exception):
                 SkipGate.load(model_path)

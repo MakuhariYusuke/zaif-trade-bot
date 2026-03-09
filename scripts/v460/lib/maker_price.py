@@ -441,11 +441,21 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         self._last_ask_depth = ask_volume
         return ImbalanceResult(imbalance, bid_volume, ask_volume)
 
-    def compute_microprice_bias_bps(self) -> float:
-        """306# L2: Microprice vs Mid の偏向を bps で返す.
+    # 366# M1: Gatheral (2018) multi-level microprice の指数減衰重み
+    # w_k = exp(-0.5 * k), k=0..4  — α=0.5 で深い板ほど寄与減衰
+    _MICRO_WEIGHTS: Final = (1.0, 0.6065, 0.3679, 0.2231, 0.1353)
 
-        microprice = (Pb·Qa + Pa·Qb) / (Qa + Qb)
-        bias_bps = (microprice - mid) / mid × 10_000
+    def compute_microprice_bias_bps(self) -> float:
+        """306# L2 → 366# M1: Multi-level Microprice vs Mid の偏向を bps で返す.
+
+        366# M1 拡張: Gatheral (2018) multi-level microprice.
+        L1 のみの単純 microprice から L1-L5 の指数加重 microprice に拡張。
+        OB snapshot (depth=5) は compute_imbalance() でキャッシュ済みなので
+        追加 API 呼出しは不要。
+
+        μ = Σ w_k · (P_k^bid · Q_k^ask + P_k^ask · Q_k^bid)
+            / Σ w_k · (Q_k^ask + Q_k^bid)
+        bias_bps = (μ - mid) / mid × 10_000
 
         正 → 買い圧力 (bid 厚い → microprice > mid)
         負 → 売り圧力 (ask 厚い → microprice < mid)
@@ -458,15 +468,27 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         ob = self._last_ob_snapshot
         if ob is None or not ob.bids or not ob.asks:
             return 0.0
-        best_bid = ob.bids[0][0]
-        best_ask = ob.asks[0][0]
-        bid_qty = ob.bids[0][1]
-        ask_qty = ob.asks[0][1]
-        total_qty = bid_qty + ask_qty
-        if total_qty <= 0 or best_ask <= 0:
+        depth = min(len(ob.bids), len(ob.asks), self._config.microprice_depth)
+        if depth == 0:
             return 0.0
-        microprice = (best_bid * ask_qty + best_ask * bid_qty) / total_qty
-        mid = (best_bid + best_ask) / 2.0
+        # 366# M1: multi-level weighted microprice
+        num = 0.0
+        den = 0.0
+        weights = self._MICRO_WEIGHTS
+        min_qty = self._config.microprice_min_qty
+        for k in range(depth):
+            pb, qb = ob.bids[k]
+            pa, qa = ob.asks[k]
+            # 366# §8.1-1: 薄い板レベルをスキップ (qty < min_qty)
+            if qb < min_qty and qa < min_qty:
+                continue
+            w = weights[k] if k < len(weights) else 0.0
+            num += w * (pb * qa + pa * qb)
+            den += w * (qa + qb)
+        if den <= 0:
+            return 0.0
+        microprice = num / den
+        mid = (ob.bids[0][0] + ob.asks[0][0]) / 2.0
         if mid <= 0:
             return 0.0
         return (microprice - mid) / mid * 10_000.0

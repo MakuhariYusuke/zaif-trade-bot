@@ -25,6 +25,7 @@ from scripts.v460.lib.regime_detector import (
     FillTestRegimeDetector,
     RegimeConfig,
     RegimeResult,
+    WelfordOnlineVar,
 )
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from scripts.v460.lib.time_filter import TimeFilter
@@ -1185,3 +1186,125 @@ class TestPhaseD18RangingYaml:
         assert "ranging_offset_discount" in regime
         discount = regime["ranging_offset_discount"]
         assert 0.5 < discount < 1.0, f"discount should be 0.5-1.0, got {discount}"
+
+
+# =====================================================================
+# 366# T5: Welford Online Variance Tests
+# =====================================================================
+
+class TestWelfordOnlineVar:
+    """366# T5: WelfordOnlineVar の単体テスト."""
+
+    def test_basic_variance(self) -> None:
+        """numpy.std と一致する母分散を計算."""
+        data = [1.0, 2.0, 3.0, 4.0, 5.0]
+        w = WelfordOnlineVar()
+        for x in data:
+            w.add(x)
+        expected = float(np.std(data))
+        assert abs(w.std - expected) < 1e-10, f"Welford std={w.std}, np.std={expected}"
+
+    def test_variance_with_remove(self) -> None:
+        """add then remove → sliding window と等価."""
+        # [1,2,3,4,5] から 1 を除去 → [2,3,4,5]
+        w = WelfordOnlineVar()
+        for x in [1.0, 2.0, 3.0, 4.0, 5.0]:
+            w.add(x)
+        w.remove(1.0)
+        expected = float(np.std([2.0, 3.0, 4.0, 5.0]))
+        assert abs(w.std - expected) < 1e-9, f"Welford std={w.std}, np.std={expected}"
+
+    def test_empty(self) -> None:
+        """空状態で variance/std = 0."""
+        w = WelfordOnlineVar()
+        assert w.variance == 0.0
+        assert w.std == 0.0
+        assert w.count == 0
+
+    def test_single_sample(self) -> None:
+        """1サンプルで variance = 0."""
+        w = WelfordOnlineVar()
+        w.add(42.0)
+        assert w.count == 1
+        assert w.variance == 0.0
+
+    def test_remove_underflow_resets(self) -> None:
+        """count=1 で remove → リセット."""
+        w = WelfordOnlineVar()
+        w.add(5.0)
+        w.remove(5.0)
+        assert w.count == 0
+        assert w.std == 0.0
+
+    def test_reset(self) -> None:
+        """reset() で全てゼロ."""
+        w = WelfordOnlineVar()
+        for x in [1.0, 2.0, 3.0]:
+            w.add(x)
+        w.reset()
+        assert w.count == 0
+        assert w.std == 0.0
+
+    def test_large_dataset_accuracy(self) -> None:
+        """1000 サンプルでも numpy と高精度に一致."""
+        rng = np.random.default_rng(42)
+        data = rng.normal(100.0, 5.0, size=1000).tolist()
+        w = WelfordOnlineVar()
+        for x in data:
+            w.add(x)
+        expected = float(np.std(data))
+        assert abs(w.std - expected) < 1e-6, f"Welford={w.std}, np={expected}"
+
+    def test_m2_negative_guard(self) -> None:
+        """数値誤差で M2 が負になる場合のガード."""
+        w = WelfordOnlineVar()
+        w.add(1.0)
+        w.add(1.0)
+        w.add(1.0)
+        # 全て同値 → variance ≈ 0
+        w.remove(1.0)
+        w.remove(1.0)
+        # M2 が微小負になる可能性があるが 0 にクランプされる
+        assert w.variance >= 0.0
+
+
+class TestWelfordInRegimeDetector:
+    """366# T5: RegimeDetector 内での Welford 統合テスト."""
+
+    def test_welford_matches_numpy_after_warmup(self) -> None:
+        """window 分のデータ投入後、Welford std と numpy std が一致."""
+        cfg = RegimeConfig(window=10)
+        det = FillTestRegimeDetector(cfg)
+        prices = [100.0 + i * 0.1 + np.random.normal(0, 0.05) for i in range(20)]
+        for i, p in enumerate(prices):
+            det.update(float(i * 120), p)
+
+        # Welford の std
+        welford_std = det._window_welford.std
+
+        # numpy で手動計算
+        recent = prices[-10:]
+        returns = [(recent[i] - recent[i - 1]) / recent[i - 1] for i in range(1, len(recent))]
+        numpy_std = float(np.std(returns))
+
+        assert abs(welford_std - numpy_std) < 1e-8, (
+            f"Welford={welford_std}, numpy={numpy_std}"
+        )
+
+    def test_regime_detection_unchanged(self) -> None:
+        """Welford 導入後もレジーム判定結果は変わらない (ranging → trending)."""
+        cfg = RegimeConfig(window=5, hysteresis_count=2, trend_threshold_pct=0.3,
+                           rsi_modulation=False, velocity_modulation=False)
+        det = FillTestRegimeDetector(cfg)
+        base = 100.0
+        # ranging: 微小変動
+        for i in range(10):
+            det.update(float(i * 120), base + 0.01 * (i % 2))
+        result = det.update(10 * 120.0, base)
+        assert result.regime == FillTestRegime.RANGING
+
+        # trending up: 一方向上昇
+        for i in range(10):
+            det.update(float((11 + i) * 120), base + (i + 1) * 0.5)
+        result = det.update(21 * 120.0, base + 10.0)
+        assert result.regime in (FillTestRegime.TRENDING_UP, FillTestRegime.HIGH_VOL)

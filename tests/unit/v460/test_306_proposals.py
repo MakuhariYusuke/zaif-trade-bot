@@ -124,6 +124,95 @@ class TestMicropriceBiasBps:
         assert mp.compute_microprice_bias_bps() == 0.0
 
 
+# =====================================================================
+# 366# M1: Multi-level Microprice (L1→L5)
+# =====================================================================
+
+class TestMicropriceMultiLevel:
+    """366# M1: Gatheral (2018) multi-level microprice テスト."""
+
+    def test_l5_uses_all_levels(self) -> None:
+        """L5 で全5段を使用し、L1 のみとは異なる bias を返す."""
+        mp = _make_maker_price(microprice_depth=5)
+        ob = MagicMock()
+        # L1: balanced, L2-L5: bid thick → positive bias
+        ob.bids = [
+            (100.0, 5.0), (99.0, 10.0), (98.0, 15.0), (97.0, 20.0), (96.0, 25.0),
+        ]
+        ob.asks = [
+            (101.0, 5.0), (102.0, 2.0), (103.0, 1.0), (104.0, 1.0), (105.0, 1.0),
+        ]
+        mp._last_ob_snapshot = ob
+        bias_l5 = mp.compute_microprice_bias_bps()
+
+        # L1 のみの場合: balanced → bias ≈ 0
+        mp2 = _make_maker_price(microprice_depth=1)
+        mp2._last_ob_snapshot = ob
+        bias_l1 = mp2.compute_microprice_bias_bps()
+
+        # L5 は深い板の bid 優勢を反映して L1 より大きい positive bias
+        assert bias_l5 > bias_l1, f"L5={bias_l5} should > L1={bias_l1}"
+
+    def test_l1_backward_compatible(self) -> None:
+        """depth=1 で従来の L1 microprice と一致."""
+        mp = _make_maker_price(microprice_depth=1)
+        ob = MagicMock()
+        ob.bids = [(100.0, 10.0)]
+        ob.asks = [(101.0, 1.0)]
+        mp._last_ob_snapshot = ob
+        bias = mp.compute_microprice_bias_bps()
+        # 手計算: microprice = (100*1 + 101*10) / (1+10) = 1110/11 = 100.909
+        # mid = 100.5
+        # bias = (100.909 - 100.5) / 100.5 * 10000 ≈ 40.7 bps
+        expected = (100 * 1 + 101 * 10) / (1 + 10)
+        expected_bias = (expected - 100.5) / 100.5 * 10_000
+        assert abs(bias - expected_bias) < 0.01
+
+    def test_thin_levels_skipped(self) -> None:
+        """microprice_min_qty 未満のレベルはスキップ."""
+        mp = _make_maker_price(microprice_depth=5, microprice_min_qty=1.0)
+        ob = MagicMock()
+        ob.bids = [
+            (100.0, 5.0), (99.0, 0.001), (98.0, 5.0), (97.0, 0.001), (96.0, 5.0),
+        ]
+        ob.asks = [
+            (101.0, 5.0), (102.0, 0.001), (103.0, 5.0), (104.0, 0.001), (105.0, 5.0),
+        ]
+        mp._last_ob_snapshot = ob
+        bias_filtered = mp.compute_microprice_bias_bps()
+
+        # min_qty=0 (フィルタなし) の場合
+        mp2 = _make_maker_price(microprice_depth=5, microprice_min_qty=0.0)
+        mp2._last_ob_snapshot = ob
+        bias_unfiltered = mp2.compute_microprice_bias_bps()
+
+        # 両方 finite であるが、薄い板のスキップ有無で値が異なる可能性
+        assert math.isfinite(bias_filtered)
+        assert math.isfinite(bias_unfiltered)
+
+    def test_partial_depth(self) -> None:
+        """板が3段しかない場合、3段で計算される."""
+        mp = _make_maker_price(microprice_depth=5)
+        ob = MagicMock()
+        ob.bids = [(100.0, 5.0), (99.0, 10.0), (98.0, 15.0)]
+        ob.asks = [(101.0, 5.0), (102.0, 10.0), (103.0, 15.0)]
+        mp._last_ob_snapshot = ob
+        bias = mp.compute_microprice_bias_bps()
+        assert math.isfinite(bias)
+
+    def test_default_config_depth_is_5(self) -> None:
+        """FillTestConfig のデフォルト microprice_depth が 5."""
+        cfg = FillTestConfig()
+        assert cfg.microprice_depth == 5
+
+    def test_exponential_decay_weights(self) -> None:
+        """重みが指数減衰 — L1 > L2 > L3 > L4 > L5."""
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+        weights = MakerPriceCalculator._MICRO_WEIGHTS
+        for i in range(len(weights) - 1):
+            assert weights[i] > weights[i + 1]
+
+
 class TestMicropriceSideSelector:
     """SideSelector microprice 統合テスト."""
 
