@@ -192,3 +192,88 @@ if existing_records and len(self._sell_kill_mgr._pnl_history) == 0:
 | `tests/unit/v460/test_349_ewma_fixes.py` | **新規** (13 tests) |
 | `tests/test_analyze_fill_logs.py` | import パス修正 |
 | `docs/evaluation/extended_evaluation.md` | deprecated 案内 |
+
+## 7. EWMA 修正後トレード分析 (09:51–15:54 JST)
+
+### 7.1 修正効果の定量比較
+
+| 指標 | 修正前 (05:13–09:50) | 修正後 (09:51–15:54) | 改善 |
+|------|---------------------|---------------------|------|
+| Fills | 5 | 41 | **×8.2** |
+| Win rate | 20% (1/5) | 46.3% (19/41) | **+26.3pp** |
+| Total PnL | -18.54 bps | -7.08 bps | **+11.46 bps** |
+| Avg PnL / fill | -3.71 bps | -0.17 bps | **+3.54 bps** |
+| Worst trade | -10.71 | -15.06 | (外れ値) |
+| Best trade | +6.59 | +25.77 | **+19.18** |
+
+### 7.2 サイド別内訳
+
+| Side | Fills | Sum PnL | WR | 所見 |
+|------|-------|---------|-----|------|
+| sell | 21 | -19.70 bps | 42.9% | 大損失 5 件集中 (§7.3 パターン1) |
+| buy | 20 | +12.62 bps | 50.0% | 安定、長待ち時の逆選択が課題 |
+
+### 7.3 EWMA 修正動作のログ実証
+
+```
+09:50:12 [349# P0] sell EWMA rebuilt from 75 records: ewma=-0.7475
+09:50:12 [349# P0] buy EWMA rebuilt from 150 records: ewma=-0.2173
+10:21:17 [349# P2] sell EWMA decay on TIME LIMIT: -0.748 → -0.400bps (threshold=-0.5)
+12:09:12 [349# P2] sell EWMA decay on TIME LIMIT: -1.073 → -0.240bps (threshold=-0.3)
+12:46:45 [349# P2] sell EWMA decay on TIME LIMIT: -0.863 → -0.400bps (threshold=-0.5)
+13:52:03 [349# P2] sell EWMA decay on TIME LIMIT: -0.515 → -0.400bps (threshold=-0.5)
+```
+
+**P0 効果:** sell EWMA が -0.748bps に正しく再構築された（修正前は -10.710 に毒化）。
+**P2 効果:** TIME LIMIT 解除 4 回すべてで decay が動作し、即再 kill を回避。
+
+### 7.4 損失パターン分析
+
+#### パターン 1: 即約定 + 逆選択 (最重要)
+
+| Cycle | Side | Wait | PnL | 特徴 |
+|-------|------|------|-----|------|
+| 8785 | sell | 6.1s | **-15.06** | VPIN=0.82, ev_score=+0.319 (偽陽性) |
+| 8732 | sell | 5.9s | **-14.73** | EWMA 修正直後、初期調整期 |
+| 8736 | sell | 6.1s | **-12.70** | TIME LIMIT 解除後の 1st trade |
+| 8743 | buy | 5.7s | **-9.07** | ev_score=-0.824, fast_fill_defense 発動 |
+| 8730 | sell | 6.2s | **-7.66** | 短待ち sell 連敗パターン |
+
+**共通特徴:** wait < 7s（即約定）。情報トレーダーが流動性を取っている。
+sell 側に 4/5 集中 → sell offset の下限設定 or VPIN 連動の offset 拡大が必要。
+
+**根本原因:**
+- VPIN が 0.82 と高いにもかかわらず `volatility_guard` が sell offset を 0.3000 に据え置き
+- `ev_score` が +0.319 を返したが実際は -15.06bps → EV モデルの予測精度問題
+- TIME LIMIT 解除直後の最初のトレードが高リスク（market state 変化の遅延反映）
+
+#### パターン 2: レジーム遷移境界
+
+| Cycle | Side | Wait | PnL | 遷移 |
+|-------|------|------|-----|------|
+| 8783 | sell | 6.0s | -4.49 | trending_up → ranging |
+| 8768 | buy | 33.1s | -3.75 | trending_down → ranging |
+
+**原因:** trending regime の offset multiplier (×1.5) が適用された後にレジームが
+ranging に遷移し、over-offset による機会損失ではなく under-offset による逆選択が発生。
+
+#### パターン 3: 長待ち buy 逆選択
+
+| Cycle | Side | Wait | PnL | 特徴 |
+|-------|------|------|-----|------|
+| 8792 | buy | 39.1s | -4.18 | トレンド中の遅延約定 |
+| 8764 | buy | 38.2s | -2.35 | 長待ち→反転 |
+| 8742 | buy | 49.6s | -3.19 | 最長待ち→微損 |
+
+**原因:** buy が長時間待機 → 約定 = その間に価格がさらに下がった（トレンド追従型の逆選択）。
+wait > 30s の buy は勝率が低い。
+
+### 7.5 残存課題と改善方向
+
+| # | 課題 | 深刻度 | 改善案 |
+|---|------|--------|--------|
+| 1 | VPIN 高値時の sell offset 未連動 | **高** | `volatility_guard` に VPIN ≥ 0.7 時の offset boost 追加 |
+| 2 | ev_score 偽陽性 | 中 | EV モデルの特徴量に VPIN / regime を含めるか、高 VPIN 時の EV gate 強化 |
+| 3 | TIME LIMIT 解除直後の高リスク | 中 | 解除後 N cycles は offset を拡大、または cooldown 導入 |
+| 4 | sell 側損失集中 | 中 | sell/buy 非対称 offset tuning、sell VPIN threshold 引き下げ |
+| 5 | 長待ち buy 逆選択 | 低 | wait > 30s 時の position size 縮小 or 成行キャンセル検討 |
