@@ -22,11 +22,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
 
+from ztb.data.raw_paths import resolve_raw_dir
 from ztb.io.jsonl_gz import append_jsonl_gz
 
 logger = logging.getLogger(__name__)
-
-_DEFAULT_RAW_DIR = Path("data/v460/raw")
 _FLUSH_INTERVAL_SEC = 60
 _BUFFER_CAP = 10_000  # メモリ保護: 上限到達で強制 flush
 
@@ -65,7 +64,7 @@ class TradesRecorder:
         *,
         enabled: bool = True,
     ) -> None:
-        self._raw_dir = raw_dir or _DEFAULT_RAW_DIR
+        self._raw_dir = resolve_raw_dir(raw_dir)
         self._flush_interval = flush_interval
         self._enabled = enabled
         self._buffer: list[dict[str, object]] = []

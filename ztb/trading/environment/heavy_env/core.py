@@ -461,21 +461,22 @@ class HeavyTradingEnv(
 
         # Create RewardSettings object for RewardCalculator
         self.reward_settings_obj: RewardSettings = self.reward_settings
-        try:
-            custom_params = (
-                self.reward_settings.custom_reward_params
-                if hasattr(self.reward_settings, "custom_reward_params")
-                else {}
-            )
-            self.logger.warning("========== REWARD PARAMS (ENV INIT) ==========")
-            self.logger.warning(
-                "reward_settings: %s", dataclasses.asdict(self.reward_settings)
-            )
-            if custom_params:
-                self.logger.warning("custom_reward_params: %s", custom_params)
-            self.logger.warning("==============================================")
-        except Exception as e:
-            self.logger.debug("Failed to log reward params at env init: %s", e)
+        if self.logger.isEnabledFor(logging.DEBUG):
+            try:
+                custom_params = (
+                    self.reward_settings.custom_reward_params
+                    if hasattr(self.reward_settings, "custom_reward_params")
+                    else {}
+                )
+                self.logger.debug("========== REWARD PARAMS (ENV INIT) ==========")
+                self.logger.debug(
+                    "reward_settings: %s", dataclasses.asdict(self.reward_settings)
+                )
+                if custom_params:
+                    self.logger.debug("custom_reward_params: %s", custom_params)
+                self.logger.debug("==============================================")
+            except Exception as e:
+                self.logger.debug("Failed to log reward params at env init: %s", e)
 
         # Fee model is now handled via EnvironmentConfig.exchange_profile
         if hasattr(self.config, "exchange_profile") and self.config.exchange_profile:

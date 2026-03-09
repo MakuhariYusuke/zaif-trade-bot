@@ -19,6 +19,7 @@ from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
 
 _G2_SAC_YAML_PATH = Path("configs/v460/experiments/g2_sac_train.yaml")
+_G2_REAL_ROWS = 128
 
 
 @lru_cache(maxsize=1)
@@ -38,13 +39,13 @@ def _load_g2_schema_names() -> tuple[str, ...]:
 
 
 @lru_cache(maxsize=1)
-def _load_g2_real_df_2000() -> pd.DataFrame:
+def _load_g2_real_df() -> pd.DataFrame:
     cfg = _load_g2_sac_yaml()
     data_path = Path(cfg["data"]["ohlcv_path"])
     selected = cfg["features"]["selected"]
     if not isinstance(selected, list):
         raise TypeError("features.selected must be list")
-    return load_parquet(data_path, feature_cols=[str(col) for col in selected]).head(2000).copy()
+    return load_parquet(data_path, feature_cols=[str(col) for col in selected]).head(_G2_REAL_ROWS)
 
 
 # ======================================================================
@@ -554,7 +555,7 @@ class TestHeavyTradingEnvIntegration:
         data_path = Path("data/btc_jpy_1m_full_registry_features.parquet")
         if not data_path.exists():
             pytest.skip(f"Data file not found: {data_path}")
-        return _load_g2_real_df_2000()
+        return _load_g2_real_df()
 
     @pytest.fixture(scope="class")
     def env_config(self) -> "EnvironmentConfig":
@@ -575,8 +576,10 @@ class TestHeavyTradingEnvIntegration:
 
     @staticmethod
     def _create_env(real_df: "pd.DataFrame", env_config: "EnvironmentConfig") -> HeavyTradingEnv:
+        # HeavyTradingEnv 側で DataFrame を前処理用にコピーするため、
+        # ここでは共有済みの軽量 slice をそのまま渡して二重コピーを避ける。
         return HeavyTradingEnv(
-            df=real_df.copy(deep=True),
+            df=real_df,
             config=dataclasses.replace(env_config),
         )
 
@@ -646,21 +649,14 @@ class TestHeavyTradingEnvIntegration:
         finally:
             env.close()
 
-    def test_create_training_env_pipeline(self) -> None:
+    def test_create_training_env_pipeline(self, real_df: "pd.DataFrame") -> None:
         """_create_training_env が YAML 相当の cfg で正常に環境を構築."""
         yaml_path = _G2_SAC_YAML_PATH
         if not yaml_path.exists():
             pytest.skip(f"YAML not found: {yaml_path}")
 
         cfg = dict(_load_g2_sac_yaml())
-
-        data_path = Path(cfg["data"]["ohlcv_path"])
-        if not data_path.exists():
-            pytest.skip(f"Data file not found: {data_path}")
-        selected = cfg["features"]["selected"]
-        df = load_parquet(data_path, feature_cols=[str(col) for col in selected]).head(2000).copy()
-
-        env, env_info = _create_training_env(df, cfg)
+        env, env_info = _create_training_env(real_df, cfg)
         try:
             assert env_info["obs_dim"] == len(self.SELECTED_FEATURES)
             assert env_info["feature_columns_injected"] is True

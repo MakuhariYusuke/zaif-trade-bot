@@ -86,21 +86,22 @@ class RewardCalculator:
         self.structured_logger = StructuredLogger(
             "ztb.trading.environment.reward", json_format=True
         )
-        try:
-            custom_params = (
-                self.reward_settings.custom_reward_params
-                if hasattr(self.reward_settings, "custom_reward_params")
-                else {}
-            )
-            self.logger.warning("========== REWARD PARAMS (REWARD CALC) ==========")
-            self.logger.warning(
-                "reward_settings: %s", dataclasses.asdict(self.reward_settings)
-            )
-            if custom_params:
-                self.logger.warning("custom_reward_params: %s", custom_params)
-            self.logger.warning("=================================================")
-        except Exception as e:
-            self.logger.debug("Failed to log reward params in RewardCalculator: %s", e)
+        if self.logger.isEnabledFor(logging.DEBUG):
+            try:
+                custom_params = (
+                    self.reward_settings.custom_reward_params
+                    if hasattr(self.reward_settings, "custom_reward_params")
+                    else {}
+                )
+                self.logger.debug("========== REWARD PARAMS (REWARD CALC) ==========")
+                self.logger.debug(
+                    "reward_settings: %s", dataclasses.asdict(self.reward_settings)
+                )
+                if custom_params:
+                    self.logger.debug("custom_reward_params: %s", custom_params)
+                self.logger.debug("=================================================")
+            except Exception as e:
+                self.logger.debug("Failed to log reward params in RewardCalculator: %s", e)
 
         # Internal state for tracking
         self._action_counts: list[int] = [0, 0, 0]  # [HOLD, BUY, SELL]

@@ -46,7 +46,7 @@ from ztb.io.jsonl import read_tail_jsonl_objects
 
 _REAL_DATA_SAMPLE_ROWS = 120
 _REAL_DATA_FALLBACK_SAMPLE_ROWS = 220
-_REAL_DATA_EXPANDED_SAMPLE_ROWS = 320
+_REAL_DATA_EXPANDED_SAMPLE_ROWS = 280
 _REAL_DATA_MIN_TRAIN_SAMPLES = 31
 
 
@@ -119,7 +119,7 @@ def _select_real_enriched_training_df(
         selected_rows = sample_rows
         if trainable_rows >= min_train_samples:
             break
-    return enrich_fill_records(recent_fill_df.tail(selected_rows).copy())
+    return enrich_fill_records(recent_fill_df.tail(selected_rows))
 
 
 def _make_synthetic_fill_df() -> pd.DataFrame:

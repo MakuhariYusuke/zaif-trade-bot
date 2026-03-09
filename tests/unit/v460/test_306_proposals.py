@@ -13,20 +13,36 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import Any
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
+from scripts.v460.lib.ab_judgment import (
+    ABJudgmentCriteria,
+    ABJudgmentResult,
+    Verdict,
+    _benjamini_hochberg,
+    _block_bootstrap_mean_diff,
+    _matched_temporal_comparison,
+    _wilcoxon_signed_rank,
+    evaluate_ab_variant,
+)
+from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
 from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.maker_price import MakerPriceCalculator
+from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
+from scripts.v460.lib.side_selector import SideSelector
+from ztb.metrics.fill_quality import FillRecord
 
 
 # =====================================================================
 # Helpers
 # =====================================================================
 
-def _make_config(**overrides):
+def _make_config(**overrides: Any) -> FillTestConfig:
     """FillTestConfig with sensible defaults + overrides."""
-    from scripts.v460.lib.fill_config import FillTestConfig
     defaults = {
         "sigma_parkinson_enabled": True,
         "sigma_parkinson_window_sec": 300.0,
@@ -45,10 +61,11 @@ def _make_config(**overrides):
     return FillTestConfig(**defaults)
 
 
-def _make_maker_price(config=None, **kw):
+def _make_maker_price(
+    config: FillTestConfig | None = None,
+    **kw: Any,
+) -> MakerPriceCalculator:
     """MakerPriceCalculator with minimal deps."""
-    from scripts.v460.lib.maker_price import MakerPriceCalculator
-
     if config is None:
         config = _make_config(**kw)
     ffd = MagicMock()
@@ -112,7 +129,6 @@ class TestMicropriceSideSelector:
 
     def test_microprice_overrides_to_buy(self) -> None:
         """309# Positive bias above threshold → buy (safety mode: buy pressure → buy)."""
-        from scripts.v460.lib.side_selector import SideSelector
         config = _make_config(microprice_side_enabled=True, microprice_side_threshold=0.3)
         ss = SideSelector(config)
         # 310# C: spread + regime guardrails 通過のため引数追加
@@ -121,7 +137,6 @@ class TestMicropriceSideSelector:
 
     def test_microprice_overrides_to_sell(self) -> None:
         """309# Negative bias below -threshold → sell (safety mode: sell pressure → sell)."""
-        from scripts.v460.lib.side_selector import SideSelector
         config = _make_config(microprice_side_enabled=True, microprice_side_threshold=0.3)
         ss = SideSelector(config)
         # last_side=None → base_side="buy", bias < -0.3 → sell
@@ -131,7 +146,6 @@ class TestMicropriceSideSelector:
 
     def test_microprice_within_threshold_no_override(self) -> None:
         """Within threshold → no microprice override (alternation used)."""
-        from scripts.v460.lib.side_selector import SideSelector
         config = _make_config(microprice_side_enabled=True, microprice_side_threshold=0.3)
         ss = SideSelector(config)
         side1 = ss.next(microprice_bias_bps=0.1, spread_bps=20.0, regime="ranging")
@@ -140,7 +154,6 @@ class TestMicropriceSideSelector:
 
     def test_microprice_guardrail_spread_blocks(self) -> None:
         """310# C: spread < min → microprice skipped, fallback to alternation."""
-        from scripts.v460.lib.side_selector import SideSelector
         config = _make_config(
             microprice_side_enabled=True, microprice_side_threshold=0.3,
             microprice_side_min_spread_bps=15.0,
@@ -152,7 +165,6 @@ class TestMicropriceSideSelector:
 
     def test_microprice_guardrail_regime_blocks(self) -> None:
         """310# C: regime not in gate → microprice skipped."""
-        from scripts.v460.lib.side_selector import SideSelector
         config = _make_config(
             microprice_side_enabled=True, microprice_side_threshold=0.3,
         )
@@ -287,7 +299,6 @@ class TestEVBasedAdaptation:
 
     def test_ev_breaks_deadlock(self) -> None:
         """Both AS & fill_rate bad, but EV << 0 → increase offset."""
-        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
         config = AdaptationConfig(
             current_offset_ratio=0.05,
             min_fill_rate=0.80,
@@ -307,7 +318,6 @@ class TestEVBasedAdaptation:
 
     def test_ev_holds_on_normal_deadlock(self) -> None:
         """Both bad but EV not clearly negative → hold."""
-        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
         config = AdaptationConfig(
             current_offset_ratio=0.05,
             min_fill_rate=0.80,
@@ -325,7 +335,6 @@ class TestEVBasedAdaptation:
 
     def test_ev_positive_with_as_margin_decreases(self) -> None:
         """EV positive + AS well within limits → micro-decrease offset."""
-        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
         config = AdaptationConfig(
             current_offset_ratio=0.10,
             min_fill_rate=0.80,
@@ -348,7 +357,6 @@ class TestEVBasedAdaptation:
 
     def test_backward_compat_without_ev(self) -> None:
         """EV args not passed → original behavior."""
-        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
         config = AdaptationConfig(
             current_offset_ratio=0.05,
             min_fill_rate=0.80,
@@ -435,7 +443,6 @@ class TestHotReloadNewFields:
     """306# 新フィールドが HOT_RELOADABLE に登録."""
 
     def test_new_fields_in_hot_reloadable(self) -> None:
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         expected = {
             "microprice_side_enabled",
             "microprice_side_threshold",
@@ -461,7 +468,6 @@ class TestFillRecordNewFields:
     """FillRecord に 306# 新フィールドが存在."""
 
     def test_queue_depth_ahead_field(self) -> None:
-        from ztb.metrics.fill_quality import FillRecord
         r = FillRecord(
             cycle_id="c1", timestamp=1.0, side="buy", order_price=100.0,
             order_quantity=0.001, queue_depth_ahead=5.0,
@@ -469,7 +475,6 @@ class TestFillRecordNewFields:
         assert r.queue_depth_ahead == 5.0
 
     def test_queue_fill_prob_est_field(self) -> None:
-        from ztb.metrics.fill_quality import FillRecord
         r = FillRecord(
             cycle_id="c1", timestamp=1.0, side="buy", order_price=100.0,
             order_quantity=0.001, queue_fill_prob_est=0.8,
@@ -477,7 +482,6 @@ class TestFillRecordNewFields:
         assert r.queue_fill_prob_est == 0.8
 
     def test_offset_stages_field(self) -> None:
-        from ztb.metrics.fill_quality import FillRecord
         r = FillRecord(
             cycle_id="c1", timestamp=1.0, side="buy", order_price=100.0,
             order_quantity=0.001, offset_stages='{"base": 0.05}',
@@ -485,7 +489,6 @@ class TestFillRecordNewFields:
         assert r.offset_stages == '{"base": 0.05}'
 
     def test_microprice_bias_bps_field(self) -> None:
-        from ztb.metrics.fill_quality import FillRecord
         r = FillRecord(
             cycle_id="c1", timestamp=1.0, side="buy", order_price=100.0,
             order_quantity=0.001, microprice_bias_bps=1.5,
@@ -501,17 +504,14 @@ class TestBenjaminiHochberg:
     """BH FDR 多重比較補正テスト."""
 
     def test_all_nonsignificant(self) -> None:
-        from scripts.v460.lib.ab_judgment import _benjamini_hochberg
         result = _benjamini_hochberg([0.5, 0.6, 0.7])
         assert result == [False, False, False]
 
     def test_all_significant(self) -> None:
-        from scripts.v460.lib.ab_judgment import _benjamini_hochberg
         result = _benjamini_hochberg([0.001, 0.002, 0.003])
         assert result == [True, True, True]
 
     def test_partial_significant(self) -> None:
-        from scripts.v460.lib.ab_judgment import _benjamini_hochberg
         # BH: sorted p=[0.01, 0.04, 0.5], thresholds=[0.0167, 0.0333, 0.05]
         # p1=0.01 <= 0.0167 → sig, p2=0.04 > 0.0333 → not sig
         result = _benjamini_hochberg([0.04, 0.01, 0.5])
@@ -523,7 +523,6 @@ class TestBenjaminiHochberg:
         assert result[2] is False
 
     def test_empty(self) -> None:
-        from scripts.v460.lib.ab_judgment import _benjamini_hochberg
         assert _benjamini_hochberg([]) == []
 
 
@@ -531,8 +530,6 @@ class TestBlockBootstrap:
     """Block Bootstrap 平均差 CI テスト."""
 
     def test_identical_distributions(self) -> None:
-        import numpy as np
-        from scripts.v460.lib.ab_judgment import _block_bootstrap_mean_diff
         rng = np.random.default_rng(99)
         x = rng.normal(0.0, 1.0, 200)
         y = rng.normal(0.0, 1.0, 200)
@@ -543,8 +540,6 @@ class TestBlockBootstrap:
         assert 0.0 <= p <= 1.0
 
     def test_distinct_distributions(self) -> None:
-        import numpy as np
-        from scripts.v460.lib.ab_judgment import _block_bootstrap_mean_diff
         x = np.ones(100) * 5.0  # mean=5
         y = np.ones(100) * 0.0  # mean=0
         diff, ci_lo, ci_hi, p = _block_bootstrap_mean_diff(x, y)
@@ -553,8 +548,6 @@ class TestBlockBootstrap:
         assert ci_hi > 4.0
 
     def test_small_sample(self) -> None:
-        import numpy as np
-        from scripts.v460.lib.ab_judgment import _block_bootstrap_mean_diff
         x = np.array([1.0, 2.0, 3.0])
         y = np.array([4.0, 5.0, 6.0])
         diff, ci_lo, ci_hi, p = _block_bootstrap_mean_diff(x, y, block_size=2)
@@ -573,7 +566,6 @@ class TestMatchedTemporalComparison:
         ]
 
     def test_matched_pairs_basic(self) -> None:
-        from scripts.v460.lib.ab_judgment import _matched_temporal_comparison
         # Create 20 temporally close buy/sell pairs
         v_records = self._make_records("sell", [(i * 100.0, 1.0) for i in range(20)])
         c_records = self._make_records("buy", [(i * 100.0 + 10.0, 0.0) for i in range(20)])
@@ -585,7 +577,6 @@ class TestMatchedTemporalComparison:
         assert diff == pytest.approx(1.0)
 
     def test_no_pairs_when_too_far(self) -> None:
-        from scripts.v460.lib.ab_judgment import _matched_temporal_comparison
         v_records = self._make_records("sell", [(0.0, 1.0)])
         c_records = self._make_records("buy", [(10000.0, 0.0)])
         n_pairs, diff, ci_lo, ci_hi, p = _matched_temporal_comparison(
@@ -595,13 +586,11 @@ class TestMatchedTemporalComparison:
         assert diff is None
 
     def test_empty_records(self) -> None:
-        from scripts.v460.lib.ab_judgment import _matched_temporal_comparison
         n_pairs, diff, _, _, _ = _matched_temporal_comparison([], [])
         assert n_pairs == 0
         assert diff is None
 
     def test_insufficient_pairs(self) -> None:
-        from scripts.v460.lib.ab_judgment import _matched_temporal_comparison
         # Only 5 pairs, below minimum of 10
         v_records = self._make_records("sell", [(i * 100.0, 1.0) for i in range(5)])
         c_records = self._make_records("buy", [(i * 100.0 + 5.0, 0.0) for i in range(5)])
@@ -616,24 +605,18 @@ class TestWilcoxonSignedRank:
     """Wilcoxon signed-rank テスト."""
 
     def test_symmetric_differences(self) -> None:
-        import numpy as np
-        from scripts.v460.lib.ab_judgment import _wilcoxon_signed_rank
         diffs = np.array([1.0, -1.0, 2.0, -2.0, 3.0, -3.0, 0.5, -0.5, 1.5, -1.5])
         p = _wilcoxon_signed_rank(diffs)
         # Symmetric → high p-value (non-significant)
         assert p > 0.5
 
     def test_all_positive(self) -> None:
-        import numpy as np
-        from scripts.v460.lib.ab_judgment import _wilcoxon_signed_rank
         diffs = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
         p = _wilcoxon_signed_rank(diffs)
         # All positive → should be significant
         assert p < 0.05
 
     def test_too_few_samples(self) -> None:
-        import numpy as np
-        from scripts.v460.lib.ab_judgment import _wilcoxon_signed_rank
         diffs = np.array([1.0, 2.0])
         p = _wilcoxon_signed_rank(diffs)
         assert p == 1.0
@@ -643,7 +626,6 @@ class TestABJudgmentNewFields:
     """ABJudgmentResult に追加された 306# フィールドのテスト."""
 
     def test_bootstrap_fields_in_summary(self) -> None:
-        from scripts.v460.lib.ab_judgment import ABJudgmentResult, Verdict
         r = ABJudgmentResult(
             overall=Verdict.PASS,
             bootstrap_mean_diff=0.5,
@@ -657,7 +639,6 @@ class TestABJudgmentNewFields:
         assert "95%CI" in s
 
     def test_matched_fields_in_summary(self) -> None:
-        from scripts.v460.lib.ab_judgment import ABJudgmentResult, Verdict
         r = ABJudgmentResult(
             overall=Verdict.PASS,
             matched_n_pairs=50,
@@ -672,7 +653,6 @@ class TestABJudgmentNewFields:
 
     def test_integration_with_evaluate(self) -> None:
         import time
-        from scripts.v460.lib.ab_judgment import evaluate_ab_variant, ABJudgmentCriteria
         # Create enough records for bootstrap + matched comparison
         base_ts = time.time()
         sell_records = [
@@ -722,13 +702,11 @@ class TestSellHourOffsetBoost:
 
     def test_sell_hour_boost_applies_multiplier(self) -> None:
         """Sell side with matching UTC hour → offset multiplied."""
-        from unittest.mock import patch
-        from datetime import datetime, timezone
         mp = _make_maker_price(sell_hour_offset_boost={8: 1.5, 16: 1.5})
-        mock_dt = datetime(2025, 1, 1, 8, 0, tzinfo=timezone.utc)
-        with patch("scripts.v460.lib.maker_risk_guards.datetime") as mock_datetime:
-            mock_datetime.now.return_value = mock_dt
-            mock_datetime.side_effect = lambda *a, **k: datetime(*a, **k)
+        with patch(
+            "scripts.v460.lib.maker_risk_guards.current_utc_hour",
+            return_value=8,
+        ):
             result = mp._apply_sell_hour_boost("sell", 0.05)
         assert result > 0.05  # Should be boosted
 
@@ -762,7 +740,6 @@ class TestDecisionPath:
 
     def test_insufficient_data(self) -> None:
         """少サンプル → decision_path='insufficient_data'."""
-        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
         result = compute_adaptation(
             fill_rate=0.5, as_ratio=0.4, sample_count=5,
             config=AdaptationConfig(min_samples=20),
@@ -771,7 +748,6 @@ class TestDecisionPath:
 
     def test_as_defense_hold(self) -> None:
         """AS+fill両方異常, EV中立 → decision_path='as_defense'."""
-        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
         result = compute_adaptation(
             fill_rate=0.50, as_ratio=0.40, sample_count=30,
             config=AdaptationConfig(min_samples=20, max_as_ratio=0.15),
@@ -782,7 +758,6 @@ class TestDecisionPath:
 
     def test_deadlock_break(self) -> None:
         """AS+fill両方異常, EV<<0, 十分サンプル → decision_path='deadlock_break'."""
-        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
         result = compute_adaptation(
             fill_rate=0.50, as_ratio=0.40, sample_count=50,
             config=AdaptationConfig(min_samples=20, max_as_ratio=0.15),
@@ -793,7 +768,6 @@ class TestDecisionPath:
 
     def test_as_defense_decrease(self) -> None:
         """AS のみ高 → decision_path='as_defense', action='decrease'."""
-        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
         result = compute_adaptation(
             fill_rate=0.90, as_ratio=0.40, sample_count=50,
             config=AdaptationConfig(min_samples=20, max_as_ratio=0.15),
@@ -803,7 +777,6 @@ class TestDecisionPath:
 
     def test_fill_recovery(self) -> None:
         """fill_rate のみ低 → decision_path='fill_recovery'."""
-        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
         result = compute_adaptation(
             fill_rate=0.50, as_ratio=0.05, sample_count=50,
             config=AdaptationConfig(min_samples=20, min_fill_rate=0.80, max_as_ratio=0.15),
@@ -813,7 +786,6 @@ class TestDecisionPath:
 
     def test_ev_optimization(self) -> None:
         """正常+EV正+AS余裕 → decision_path='ev_optimization'."""
-        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
         result = compute_adaptation(
             fill_rate=0.90, as_ratio=0.10, sample_count=100,
             config=AdaptationConfig(
@@ -827,7 +799,6 @@ class TestDecisionPath:
 
     def test_hold_normal(self) -> None:
         """正常範囲 → decision_path='hold'."""
-        from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
         result = compute_adaptation(
             fill_rate=0.90, as_ratio=0.10, sample_count=50,
             config=AdaptationConfig(min_samples=20, min_fill_rate=0.80, max_as_ratio=0.15),

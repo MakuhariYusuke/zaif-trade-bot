@@ -22,10 +22,10 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from scripts.v460.lib import cancel_reasons as CR
+from scripts.v460.lib.hour_rules import current_utc_hour
 from scripts.v460.lib.micro_circuit_breaker import MCBLevel
 from scripts.v460.lib.spread_anomaly_detector import SADLevel
 
@@ -301,7 +301,7 @@ class OrchestratorPreCycleMixin:
         if not self.config.hard_skip_utc_hours:
             return False
 
-        _utc_h = datetime.now(timezone.utc).hour
+        _utc_h = current_utc_hour()
         if _utc_h in self.config.hard_skip_utc_hours:
             _hard_skip_entering = not self._in_hard_skip_hour
             self._in_hard_skip_hour = True
@@ -492,7 +492,7 @@ class OrchestratorPreCycleMixin:
                     now_ts - self._time_filter.last_heartbeat_time
                     >= self.config.heartbeat_interval_sec
                 ):
-                    utc_h = datetime.now(timezone.utc).hour
+                    utc_h = current_utc_hour()
                     try:
                         import psutil  # lazy import
                         proc = psutil.Process()
@@ -523,7 +523,7 @@ class OrchestratorPreCycleMixin:
         if alt_side == self._last_side:
             self._time_filter.consecutive_086_wait += 1
             max_wait = self.config.max_086_consecutive_wait
-            utc_h = datetime.now(timezone.utc).hour
+            utc_h = current_utc_hour()
 
             # 110# デッドロック解除: 連続待機が上限を超えたら alt_side を許可
             if (
@@ -565,7 +565,7 @@ class OrchestratorPreCycleMixin:
             # 086# ではない通常の side 切り替え → カウンタリセット
             self._time_filter.consecutive_086_wait = 0
 
-        utc_h = datetime.now(timezone.utc).hour
+        utc_h = current_utc_hour()
         logger.debug(
             f"[time_filter] {next_side} filtered at UTC {utc_h}h, "
             f"switching to {alt_side}"

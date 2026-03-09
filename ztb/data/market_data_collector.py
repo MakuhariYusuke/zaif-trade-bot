@@ -22,6 +22,7 @@ from typing import Any, cast
 import numpy as np
 import pandas as pd
 
+from ztb.data.raw_paths import resolve_raw_dir
 from ztb.io.jsonl_gz import append_jsonl_gz, read_jsonl_gz
 from ztb.trading.live.exchanges.base.broker_interfaces import (
     IBroker,
@@ -31,10 +32,7 @@ from ztb.trading.live.exchanges.base.broker_interfaces import (
 )
 
 logger = logging.getLogger(__name__)
-
-# Default paths (project root relative)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DEFAULT_RAW_DIR = _PROJECT_ROOT / "data" / "v460" / "raw"
 DEFAULT_AGG_DIR = _PROJECT_ROOT / "data" / "v460" / "features"
 
 
@@ -152,7 +150,7 @@ class MarketDataCollector:
     ) -> None:
         self.adapter = adapter
         self.symbol = symbol
-        self.raw_dir = Path(raw_dir) if raw_dir else DEFAULT_RAW_DIR
+        self.raw_dir = resolve_raw_dir(raw_dir)
         self.agg_dir = Path(agg_dir) if agg_dir else DEFAULT_AGG_DIR
         self.poll_interval_sec = poll_interval_sec
 

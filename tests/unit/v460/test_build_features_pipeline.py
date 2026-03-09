@@ -184,10 +184,9 @@ def _aggregate_raw_records(
     ob_records: list[dict],
     tr_records: list[dict],
 ) -> pd.DataFrame:
-    """raw 読込と parquet 書込を patch して集約ロジックだけを見る."""
+    """raw 読込だけを patch して集約ロジックを見る."""
     ob_path = tmp_path / "ob.jsonl.gz"
     tr_path = tmp_path / "tr.jsonl.gz"
-    out_path = tmp_path / "out.parquet"
 
     def _fake_read(path: Path) -> list[dict]:
         if path == ob_path:
@@ -197,26 +196,29 @@ def _aggregate_raw_records(
         return []
 
     with patch("ztb.data.market_data_collector._read_jsonl_gz", side_effect=_fake_read):
-        with patch.object(pd.DataFrame, "to_parquet", autospec=True, return_value=None):
-            return MarketDataCollector.aggregate_to_1min(ob_path, tr_path, out_path)
+        return MarketDataCollector.aggregate_to_1min(ob_path, tr_path, output_path=None)
 
 
-@pytest.fixture(scope="class")
-def real_mode_aggregate_30(tmp_path_factory: pytest.TempPathFactory) -> pd.DataFrame:
-    """30分相当の aggregate 出力を再利用する."""
-    tmp_path = tmp_path_factory.mktemp("build_features_agg_30")
-    ob_records, tr_records = _make_raw_records(30)
+@pytest.fixture(scope="module")
+def real_mode_aggregate_40(tmp_path_factory: pytest.TempPathFactory) -> pd.DataFrame:
+    """40分相当の aggregate 出力を 1 回だけ再利用する."""
+    tmp_path = tmp_path_factory.mktemp("build_features_agg_40")
+    ob_records, tr_records = _make_raw_records(40)
     return _aggregate_raw_records(tmp_path, ob_records=ob_records, tr_records=tr_records)
 
 
-@pytest.fixture(scope="class")
-def real_mode_micro_40(tmp_path_factory: pytest.TempPathFactory) -> pd.DataFrame:
+@pytest.fixture(scope="module")
+def real_mode_aggregate_30(real_mode_aggregate_40: pd.DataFrame) -> pd.DataFrame:
+    """40分 aggregate から 30 分相当だけを切り出して再利用する."""
+    return real_mode_aggregate_40.head(30).copy()
+
+
+@pytest.fixture(scope="module")
+def real_mode_micro_40(real_mode_aggregate_40: pd.DataFrame) -> pd.DataFrame:
     """microstructure 追加済みの real-mode 出力を再利用する."""
-    tmp_path = tmp_path_factory.mktemp("build_features_micro_40")
-    ob_records, tr_records = _make_raw_records(40)
-    agg = _aggregate_raw_records(tmp_path, ob_records=ob_records, tr_records=tr_records)
+    agg = real_mode_aggregate_40
     if "close" not in agg.columns and "mid_price" in agg.columns:
-        agg["close"] = agg["mid_price"]
+        return add_microstructure_features(agg.assign(close=agg["mid_price"]))
     return add_microstructure_features(agg)
 
 

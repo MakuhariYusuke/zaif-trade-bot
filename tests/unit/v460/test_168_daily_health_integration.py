@@ -6,10 +6,13 @@ _run_stopgap_health / _run_side_regime_dashboard の単体テスト。
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
 
-import pytest
+from scripts.v460.daily_health_check import (
+    _run_side_regime_dashboard,
+    _run_stopgap_health,
+    run_daily_health_check,
+)
 
 
 # ======================================================================
@@ -59,15 +62,8 @@ def _make_dashboard_result(
 class TestRunStopgapHealth:
     """_run_stopgap_health のテスト."""
 
-    @patch("scripts.v460.daily_health_check._run_stopgap_health.__module__", new="scripts.v460.daily_health_check")
-    def _import_fn(self):
-        from scripts.v460.daily_health_check import _run_stopgap_health
-        return _run_stopgap_health
-
     def test_no_records(self):
         """レコードなしのとき skipped を返す."""
-        from scripts.v460.daily_health_check import _run_stopgap_health
-
         with patch("scripts.v460.daily_health_check.Path"):
             with patch(
                 "scripts.v460.lib.stopgap_health.load_fill_records",
@@ -81,8 +77,6 @@ class TestRunStopgapHealth:
 
     def test_basic_report(self):
         """基本的なレポート生成."""
-        from scripts.v460.daily_health_check import _run_stopgap_health
-
         mock_rpt = _make_stopgap_report(
             total_records=100,
             total_filled=40,
@@ -116,8 +110,6 @@ class TestRunStopgapHealth:
 
     def test_breach_detected(self):
         """EXIT BREACH がカウントされる."""
-        from scripts.v460.daily_health_check import _run_stopgap_health
-
         mock_rpt = _make_stopgap_report(
             total_records=50,
             total_filled=10,
@@ -149,8 +141,6 @@ class TestRunStopgapHealth:
 
     def test_exception_handled(self):
         """例外時にerrorフィールドを返す."""
-        from scripts.v460.daily_health_check import _run_stopgap_health
-
         with patch(
             "scripts.v460.lib.stopgap_health.load_fill_records",
             side_effect=FileNotFoundError("no dir"),
@@ -170,8 +160,6 @@ class TestRunSideRegimeDashboard:
 
     def test_basic_dashboard(self):
         """基本的なダッシュボード生成."""
-        from scripts.v460.daily_health_check import _run_side_regime_dashboard
-
         mock_result = _make_dashboard_result(
             total_records=200,
             total_filled=80,
@@ -199,8 +187,6 @@ class TestRunSideRegimeDashboard:
 
     def test_empty_dashboard(self):
         """空のダッシュボード."""
-        from scripts.v460.daily_health_check import _run_side_regime_dashboard
-
         mock_result = {
             "total_records": 0,
             "total_filled": 0,
@@ -219,8 +205,6 @@ class TestRunSideRegimeDashboard:
 
     def test_exception_handled(self):
         """例外時にerrorフィールドを返す."""
-        from scripts.v460.daily_health_check import _run_side_regime_dashboard
-
         with patch(
             "scripts.v460.analysis.side_regime_dashboard.run_dashboard",
             side_effect=RuntimeError("dashboard broke"),
@@ -268,8 +252,6 @@ class TestDailyHealthCheckIntegration:
             "total_records": 100, "overall_fill_rate": 0.35,
         }
 
-        from scripts.v460.daily_health_check import run_daily_health_check
-
         with patch("ztb.utils.notify.get_notifier") as mock_get_notifier:
             mock_get_notifier.return_value = MagicMock()
             report = run_daily_health_check(skip_monte_carlo=True)
@@ -308,8 +290,6 @@ class TestDailyHealthCheckIntegration:
             "check": "side_regime_dashboard",
             "total_records": 50, "overall_fill_rate": 0.2,
         }
-
-        from scripts.v460.daily_health_check import run_daily_health_check
 
         with patch("ztb.utils.notify.get_notifier") as mock_get_notifier:
             mock_get_notifier.return_value = MagicMock()

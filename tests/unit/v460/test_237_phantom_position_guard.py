@@ -27,11 +27,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from scripts.v460.lib import cancel_reasons as CR
+from scripts.v460.lib.balance_checker import BalanceChecker
+from scripts.v460.lib.cancel_reasons import AUDIT_CANCEL_REASONS
+from scripts.v460.lib.fill_config import FillMonitorResult, FillTestConfig
 from scripts.v460.lib.phantom_position_guard import (
     PendingReconciliation,
     PhantomDetection,
     PhantomPositionGuard,
 )
+from scripts.v460.lib.resilience import FillTestState
+from ztb.metrics.fill_quality import FillRecord
 
 
 # ─────────────────────────────────────────────────────
@@ -326,8 +332,6 @@ class TestFillRecordPendingReconciliation:
     """FillRecord に pending_reconciliation フィールドが存在することを検証."""
 
     def test_field_default_none(self):
-        from ztb.metrics.fill_quality import FillRecord
-
         record = FillRecord(
             cycle_id="test", timestamp=0.0, side="buy",
             order_price=1e7, order_quantity=0.001,
@@ -335,8 +339,6 @@ class TestFillRecordPendingReconciliation:
         assert record.pending_reconciliation is None
 
     def test_field_set_true(self):
-        from ztb.metrics.fill_quality import FillRecord
-
         record = FillRecord(
             cycle_id="test", timestamp=0.0, side="buy",
             order_price=1e7, order_quantity=0.001,
@@ -345,8 +347,6 @@ class TestFillRecordPendingReconciliation:
         assert record.pending_reconciliation is True
 
     def test_field_in_to_dict(self):
-        from ztb.metrics.fill_quality import FillRecord
-
         record = FillRecord(
             cycle_id="test", timestamp=0.0, side="buy",
             order_price=1e7, order_quantity=0.001,
@@ -356,8 +356,6 @@ class TestFillRecordPendingReconciliation:
         assert d["pending_reconciliation"] is True
 
     def test_field_from_dict(self):
-        from ztb.metrics.fill_quality import FillRecord
-
         d = {
             "cycle_id": "test", "timestamp": 0.0, "side": "buy",
             "order_price": 1e7, "order_quantity": 0.001,
@@ -375,14 +373,10 @@ class TestFillMonitorResultOrderId:
     """FillMonitorResult に order_id_for_reconciliation が存在することを検証."""
 
     def test_default_none(self):
-        from scripts.v460.lib.fill_config import FillMonitorResult
-
         r = FillMonitorResult()
         assert r.order_id_for_reconciliation is None
 
     def test_set_value(self):
-        from scripts.v460.lib.fill_config import FillMonitorResult
-
         r = FillMonitorResult(order_id_for_reconciliation="order_xyz")
         assert r.order_id_for_reconciliation == "order_xyz"
 
@@ -395,14 +389,10 @@ class TestFillTestStatePhantomMetrics:
     """FillTestState に phantom_guard_metrics が永続化されることを検証."""
 
     def test_field_default_none(self):
-        from scripts.v460.lib.resilience import FillTestState
-
         state = FillTestState()
         assert state.phantom_guard_metrics is None
 
     def test_field_set(self):
-        from scripts.v460.lib.resilience import FillTestState
-
         state = FillTestState(
             phantom_guard_metrics={"pending_count": 0, "phantom_detected_count": 1, "total_reconciled": 2}
         )
@@ -583,18 +573,12 @@ class TestBalanceCheckerCache:
     """238# C-2: BalanceChecker の last_btc_free キャッシュ."""
 
     def test_initial_none(self):
-        from scripts.v460.lib.balance_checker import BalanceChecker
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         config = FillTestConfig()
         bc = BalanceChecker(config)
         assert bc.last_btc_free is None
 
     @pytest.mark.asyncio
     async def test_cached_after_check_sell(self):
-        from scripts.v460.lib.balance_checker import BalanceChecker
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         config = FillTestConfig()
         bc = BalanceChecker(config)
 
@@ -612,11 +596,7 @@ class TestCancelReasonPhantom:
     """238# PHANTOM_SIDE_VETO cancel reason."""
 
     def test_phantom_side_veto_exists(self):
-        from scripts.v460.lib import cancel_reasons as CR
-
         assert CR.PHANTOM_SIDE_VETO == "phantom_side_veto"
 
     def test_phantom_side_veto_in_known(self):
-        from scripts.v460.lib.cancel_reasons import AUDIT_CANCEL_REASONS
-
         assert "phantom_side_veto" in AUDIT_CANCEL_REASONS

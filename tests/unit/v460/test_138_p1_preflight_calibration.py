@@ -9,6 +9,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import numpy as np
 import pytest
 
+from scripts.v460.lib.fill_config import FillTestConfig
+from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
+
 
 # ======================================================================
 # P1-10: preflight pause テスト
@@ -19,8 +22,6 @@ class TestPreflightPause:
 
     def test_config_defaults(self) -> None:
         """デフォルト値が正しく設定されている."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         assert cfg.preflight_pause_enabled is True
         assert cfg.preflight_pause_threshold == 5
@@ -29,9 +30,7 @@ class TestPreflightPause:
 
     def test_yaml_parsing(self) -> None:
         """YAML から preflight_pause 設定が正しくパースされる."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
-        yaml_cfg: dict = {
+        yaml_cfg: dict[str, dict[str, dict[str, float | int | bool]]] = {
             "loss_control": {
                 "preflight_pause": {
                     "enabled": False,
@@ -50,8 +49,6 @@ class TestPreflightPause:
     def test_pause_fires_before_safe_stop(self) -> None:
         """preflight 失敗が threshold に到達すると pause が発動し、
         SAFE_STOP ではなく continue する."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig(
             preflight_pause_enabled=True,
             preflight_pause_threshold=3,
@@ -67,8 +64,6 @@ class TestPreflightPause:
 
     def test_pause_disabled_goes_straight_to_safe_stop(self) -> None:
         """pause 無効時は従来通り SAFE_STOP."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig(
             preflight_pause_enabled=False,
             preflight_pause_threshold=3,
@@ -87,8 +82,6 @@ class TestScoreCalibrator:
 
     def test_uncalibrated_passthrough(self) -> None:
         """未学習時は raw score をそのまま返す."""
-        from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
-
         cal = ScoreCalibrator(ScoreCalibratorConfig(enabled=True))
         assert cal.calibrate(0.5) == 0.5
         assert cal.calibrate(-1.2) == -1.2
@@ -96,8 +89,6 @@ class TestScoreCalibrator:
 
     def test_disabled_passthrough(self) -> None:
         """無効時は raw score をそのまま返す."""
-        from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
-
         cal = ScoreCalibrator(ScoreCalibratorConfig(enabled=False))
         cal.fit(
             raw_scores=list(np.linspace(-5, 5, 50)),
@@ -108,8 +99,6 @@ class TestScoreCalibrator:
 
     def test_fit_and_calibrate(self) -> None:
         """isotonic regression で校正関数が学習される."""
-        from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
-
         np.random.seed(42)
         n = 100
         raw = np.linspace(-5, 5, n)
@@ -132,8 +121,6 @@ class TestScoreCalibrator:
 
     def test_min_samples_guard(self) -> None:
         """最小サンプル数未満では学習しない."""
-        from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
-
         cal = ScoreCalibrator(ScoreCalibratorConfig(
             enabled=True, min_samples=50,
         ))
@@ -146,8 +133,6 @@ class TestScoreCalibrator:
 
     def test_add_observation_auto_refit(self) -> None:
         """add_observation で蓄積し、refit_interval で自動 refit."""
-        from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
-
         cal = ScoreCalibrator(ScoreCalibratorConfig(
             enabled=True,
             min_samples=10,
@@ -165,8 +150,6 @@ class TestScoreCalibrator:
 
     def test_save_load_roundtrip(self, tmp_path: "pytest.TempPathFactory") -> None:
         """save/load の往復で状態が保持される."""
-        from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
-
         cal = ScoreCalibrator(ScoreCalibratorConfig(enabled=True, min_samples=10))
         raw = list(np.linspace(-3, 3, 30))
         actual = list(np.linspace(-2, 2, 30))
@@ -184,8 +167,6 @@ class TestScoreCalibrator:
 
     def test_from_fill_records(self) -> None:
         """FillRecord リストから校正器を学習."""
-        from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
-
         @dataclass
         class FakeRecord:
             filled: bool = True
@@ -215,8 +196,6 @@ class TestScoreCalibrator:
 
     def test_nan_handling(self) -> None:
         """NaN / inf は安全にパススルー."""
-        from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
-
         cal = ScoreCalibrator(ScoreCalibratorConfig(enabled=True))
         assert np.isnan(cal.calibrate(float("nan")))
         # add_observation で NaN は無視
@@ -229,8 +208,6 @@ class TestScoreCalibrationConfig:
     """P1-03: fill_config への設定追加."""
 
     def test_config_defaults(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         assert cfg.skip_gate_score_calibration is False
         assert cfg.skip_gate_calibrator_path is None
@@ -238,9 +215,7 @@ class TestScoreCalibrationConfig:
         assert cfg.skip_gate_calibrator_refit_interval == 100
 
     def test_yaml_parsing(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-
-        yaml_cfg: dict = {
+        yaml_cfg: dict[str, dict[str, bool | str | int]] = {
             "skip_gate": {
                 "score_calibration": True,
                 "calibrator_path": "checkpoints/cal.pkl",
@@ -260,8 +235,6 @@ class TestSkipGateCalibrationIntegration:
 
     def test_skip_gate_with_calibrator(self) -> None:
         """calibrator を渡すと予測値が校正される."""
-        from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
-
         # 校正器を事前学習
         cal = ScoreCalibrator(ScoreCalibratorConfig(enabled=True, min_samples=10))
         raw = list(np.linspace(-5, 5, 30))
@@ -275,7 +248,5 @@ class TestSkipGateCalibrationIntegration:
 
     def test_skip_gate_without_calibrator(self) -> None:
         """calibrator=None の場合はパススルー."""
-        from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
-
         cal = ScoreCalibrator()  # デフォルト = disabled
         assert cal.calibrate(3.14) == 3.14
