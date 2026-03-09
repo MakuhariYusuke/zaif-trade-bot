@@ -93,7 +93,7 @@ class HealthThresholds:
     rss_critical_mb: float = 2500.0   # RSS 危険 (MB) — OOM 回避
     disk_free_warn_gb: float = 2.0    # ディスク空き警告 (GB)
     gc_interval_cycles: int = 100     # GC 実行間隔 (サイクル数)
-    check_interval_sec: float = 300.0  # ヘルスチェック間隔 (秒)
+    check_interval_sec: float = 60.0   # ヘルスチェック間隔 (秒)
 
 
 HealthLevel = Literal["ok", "warning", "critical", "unknown"]
@@ -184,7 +184,7 @@ class FillTestHealthMonitor:
                 status["level"] = "critical"
             elif rss_mb >= self._thresholds.rss_warn_mb:
                 logger.warning(
-                    f"[health] WARNING: RSS={rss_mb:.0f}MB >= "
+                    f"[health] WARNING: RSS {rss_mb:.0f}MB exceeds warn threshold "
                     f"{self._thresholds.rss_warn_mb:.0f}MB"
                 )
                 status["level"] = "warning"

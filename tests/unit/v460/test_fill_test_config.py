@@ -138,6 +138,7 @@ class TestFillTestConfigFromYaml:
         assert config.loss_cap_auto is True
         assert config.loss_cap_ratio == 0.05
         assert config.as_deadzone_bps == 2.5  # 052#: 2.0→2.5
+        assert config.hm_check_interval_sec == 60.0
 
     def test_from_yaml_custom_values(self) -> None:
         """カスタム値が正しくマッピングされる."""
@@ -238,6 +239,7 @@ class TestFillTestYamlFile:
         assert config.order_quantity == cfg["order_quantity"]
         assert config.spread_offset_ratio == cfg["spread_offset_ratio"]
         assert config.loss_cap_jpy == cfg["safety"]["loss_cap_jpy"]
+        assert config.hm_check_interval_sec == cfg["resilience"]["health_monitor"]["check_interval_sec"]
 
     def test_yaml_tuning_roundtrip(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """103# tuning セクションの全 18 キーが FillTestConfig に正しくマッピングされる."""

@@ -3238,3 +3238,53 @@
 - `read_tail_jsonl_objects()` の実 tail 読み化により、real-data integration が大きい JSONL を毎回先頭から走査する無駄を削れた。
 - `compute_daily_metrics()` は 1-record ケースで一般 grouping を通らなくなり、broad top に残っていた `test_stopgap_health.py` の小さな固定費を削減した。
 - G2 E2 は `max_roi_seed_std` への移行途中で test/config/runtime が食い違っていたため、runtime は新旧互換、validation は新旧許容に揃えた。
+
+## 2026-03-10 / Session 037-075
+
+### 実施
+- `configs/v460/fill_test.yaml`
+  - `resilience.health_monitor.check_interval_sec` を `300.0 -> 60.0` に変更
+- `scripts/v460/lib/fill_config.py`
+  - `hm_check_interval_sec` のコードデフォルトを `60.0` に更新
+- `scripts/v460/lib/resilience.py`
+  - `HealthThresholds.check_interval_sec` デフォルトを `60.0` に更新
+  - RSS warning ログ文言を `RSS ... exceeds warn threshold ...` に強化
+- `ops/windows/fill_test_watchdog.ps1`
+  - `restart.lock` stale 判定を `30s -> 120s` に延長
+  - stale 判定コメントを `360# OPS-4` に合わせて更新
+  - `Start-Process` 後に `fill_test.lock` を最大 30 秒、2 秒間隔で poll する OPS-6 起動確認待ちを追加
+- `tests/unit/v460/test_fill_test_config.py`
+  - YAML → `FillTestConfig` roundtrip に `hm_check_interval_sec == 60.0` を追加
+- `tests/unit/v460/test_health_monitor_resilience.py`
+  - default interval 60 秒
+  - RSS warning 文言
+  の focused regression を追加
+- `tests/unit/v460/test_fill_test_watchdog_ops.py`
+  - watchdog source 契約として
+    - `restart.lock` 120 秒 stale
+    - `fill_test.lock` poll loop
+  を追加
+
+### 結果
+- PowerShell syntax:
+  - `powershell.exe -NoProfile -Command '& { [System.Management.Automation.Language.Parser]::ParseFile(...) }'`
+  - parse error なし
+- focused:
+  - `tests/unit/v460/test_fill_test_config.py`
+  - `tests/unit/v460/test_health_monitor_resilience.py`
+  - `tests/unit/v460/test_fill_test_watchdog_ops.py`
+  - `tests/unit/v460/test_stopgap_health.py`
+  - `143 passed in 6.62s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4218 passed, 13 warnings in 40.53s`
+
+### 主要改善
+- OPS-2: 実行中 RSS 膨張の検知間隔を 5 分から 60 秒へ短縮し、OOM 前兆の可観測性を上げた。
+- OPS-4: watchdog 間の `restart.lock` 取り合いを起こしやすかった 30 秒 stale 判定を 120 秒へ伸ばし、high-load 時の dual-spawn リスクを下げた。
+- OPS-6: watchdog は再起動を投げるだけでなく `fill_test.lock` の出現まで確認するようになり、「起動したつもりで実は失敗」の観測漏れを減らした。
+- broad の残ホットスポットは引き続き `test_356_g2_sac_blockers.py` の HeavyTradingEnv integration と `test_enricher_skip_gate.py` の real-data setup に集中している。

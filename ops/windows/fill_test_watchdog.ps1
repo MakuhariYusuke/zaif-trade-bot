@@ -163,9 +163,9 @@ $restartLockAcquired = $false
 
 if ($AutoRestart) {
     if (Test-Path $restartLockPath) {
-        # 30秒以上前の restart.lock は stale とみなす
+        # 120秒以上前の restart.lock は stale とみなす (360# OPS-4)
         $lockAge = ((Get-Date) - (Get-Item $restartLockPath).LastWriteTime).TotalSeconds
-        if ($lockAge -gt 30) {
+        if ($lockAge -gt 120) {
             Remove-Item $restartLockPath -Force -ErrorAction SilentlyContinue
             Write-Host "[watchdog] stale restart.lock removed (${lockAge}s old)"
         } else {
@@ -406,6 +406,22 @@ $newProc = Start-Process -FilePath $pythonExe `
     -PassThru
 
 $newPid = $newProc.Id
+
+# OPS-6: 起動確認 (360# §6.3)
+$lockWaitMax = 30
+$lockWaitInterval = 2
+$lockWaitElapsed = 0
+while ($lockWaitElapsed -lt $lockWaitMax) {
+    if (Test-Path $lockPath) {
+        Write-WatchdogLog "INFO" "[watchdog] fill_test.lock detected after ${lockWaitElapsed}s — startup confirmed"
+        break
+    }
+    Start-Sleep -Seconds $lockWaitInterval
+    $lockWaitElapsed += $lockWaitInterval
+}
+if ($lockWaitElapsed -ge $lockWaitMax) {
+    Write-WatchdogLog "WARN" "[watchdog] fill_test.lock not found after ${lockWaitMax}s — startup may have failed"
+}
 
 # watchdog_restart イベント記録
 Write-EventLog -Event "watchdog_restart" -Reason "auto_restart" -Details @{

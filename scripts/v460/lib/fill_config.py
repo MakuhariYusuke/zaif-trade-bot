@@ -705,7 +705,7 @@ class FillTestConfig:
     hm_rss_critical_mb: float = 2500.0      # RSS 緊急閾値 (MB)
     hm_disk_free_warn_gb: float = 2.0       # ディスク空き警告 (GB)
     hm_gc_interval_cycles: int = 100        # GC 実行間隔 (サイクル数)
-    hm_check_interval_sec: float = 300.0    # ヘルスチェック間隔 (秒)
+    hm_check_interval_sec: float = 60.0     # ヘルスチェック間隔 (秒)
     # ---- 158# YAML 外部化: tuning 追加 ----
     hot_reload_check_interval_sec: float = 120.0   # SkipGate モデル差替チェック間隔
     records_cache_ttl_sec: float = 10.0             # 適応エンジン キャッシュ TTL

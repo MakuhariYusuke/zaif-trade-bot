@@ -15,6 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a single-record fast path and shared row builder in `scripts/v460/lib/stopgap_health.py` so `compute_daily_metrics()` avoids the general grouping path for the hot one-record case.
 - Restored new/old G2 E2 compatibility across `scripts/v460/run_experiment.py`, `scripts/v460/run_gate_check.py`, and `tests/unit/v460/test_config_validation.py` by accepting both `max_roi_seed_std` and legacy `max_ic_seed_std`.
 
+## Session 037-075 Health Monitor and Watchdog Stabilization (2026-03-10)
+
+### Changed
+- Shortened `configs/v460/fill_test.yaml` `resilience.health_monitor.check_interval_sec` from `300.0` to `60.0` for earlier RSS pressure detection.
+- Aligned the code defaults with that YAML change in `scripts/v460/lib/fill_config.py` and `scripts/v460/lib/resilience.py`.
+- Strengthened the RSS warning log in `scripts/v460/lib/resilience.py` so warning-level checks explicitly log `RSS ... exceeds warn threshold ...`.
+- Extended the Windows watchdog `restart.lock` stale threshold from `30` to `120` seconds and documented the OPS-4 rationale in `ops/windows/fill_test_watchdog.ps1`.
+- Added the OPS-6 startup confirmation wait loop after `Start-Process` in `ops/windows/fill_test_watchdog.ps1`, polling `fill_test.lock` for up to 30 seconds and logging either confirmation or timeout.
+- Added focused regression coverage in `tests/unit/v460/test_health_monitor_resilience.py` for the 60-second default interval and RSS warning logging.
+- Added focused source-contract coverage in `tests/unit/v460/test_fill_test_watchdog_ops.py` for the 120-second stale threshold and post-restart `fill_test.lock` polling.
+- Extended `tests/unit/v460/test_fill_test_config.py` so YAML->config roundtrip checks now cover the 60-second health-monitor interval.
+
 ## Session 037-061 Source Cache Reuse and Gate Threshold Fixture Cleanup (2026-03-09)
 
 ### Changed
