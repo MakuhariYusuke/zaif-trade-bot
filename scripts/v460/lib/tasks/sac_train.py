@@ -103,11 +103,12 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
     # デフォルト 1M は 50K 訓練で 20 倍過剰 → obs_dim × buffer_size でメモリ浪費
     raw_buffer_value = sac_cfg.get("buffer_size", 1_000_000)
     raw_buffer = as_int(raw_buffer_value, 1_000_000)
-    sac_cfg = dict(sac_cfg)  # 元 cfg を汚さないようコピー
-    sac_cfg["buffer_size"] = min(raw_buffer, max(total_timesteps * 2, 10_000))
-    if cast(int, sac_cfg["buffer_size"]) != raw_buffer:
+    # S-3: 元 cfg を汚さないようコピー (sac_params で shadowing 回避)
+    sac_params = dict(sac_cfg)
+    sac_params["buffer_size"] = min(raw_buffer, max(total_timesteps * 2, 10_000))
+    if cast(int, sac_params["buffer_size"]) != raw_buffer:
         logger.info(
-            f"Replay buffer adjusted: {raw_buffer:,} → {sac_cfg['buffer_size']:,} "
+            f"Replay buffer adjusted: {raw_buffer:,} → {sac_params['buffer_size']:,} "
             f"(aligned to 2× timesteps)"
         )
 
@@ -118,7 +119,7 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
         logger.info(f"Environment created: obs_dim={env_info['obs_dim']}, action_dim={env_info['action_dim']}")
 
         # ── Model creation ──
-        model = _create_sac_model(env, sac_cfg, seed)
+        model = _create_sac_model(env, sac_params, seed)
         logger.info("SAC model created")
 
         # ── Training ──
@@ -211,7 +212,7 @@ def _create_training_env(
         else int(getattr(env.action_space, "n", 0))
     )
 
-    env_info = {
+    env_info: dict[str, int | str | bool] = {
         "obs_dim": obs_dim,
         "action_dim": action_dim,
         "env_type": "HeavyTradingEnv",
@@ -378,7 +379,7 @@ def _evaluate_trained_model(
 def _save_model_schema(
     model: SACTrainModelProtocol,
     env: TrainingEnvProtocol,
-    env_info: dict[str, int | str],
+    env_info: dict[str, int | str | bool],
     cfg: ConfigSection,
     seed: int,
 ) -> None:
@@ -398,7 +399,8 @@ def _save_model_schema(
         feature_names = [str(col) for col in selected_raw] if isinstance(selected_raw, list) else []
         if not feature_names:
             logger.warning("No feature names in config — schema will be minimal")
-            feature_names = [f"feature_{i}" for i in range(env_info["obs_dim"])]
+            obs_dim = int(env_info["obs_dim"])  # S-2: int 保証
+            feature_names = [f"feature_{i}" for i in range(obs_dim)]
 
         sac_hyperparameters = section(cfg, "sac_hyperparameters")
 

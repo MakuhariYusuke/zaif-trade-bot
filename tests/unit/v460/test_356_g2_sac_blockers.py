@@ -457,3 +457,57 @@ class TestCheckpointAndEvalMetrics:
         assert abs(float(result["gross_roi"]) - 0.03) < 1e-9
         assert result["trade_count"] == 15
         assert result["gross_pnl"] == 3000.0
+
+
+# ======================================================================
+# P3A-1: Training data integrity (359#)
+# ======================================================================
+
+
+class TestTrainingDataIntegrity:
+    """P3A-1: YAML で参照するデータファイルが有効であること."""
+
+    def test_yaml_data_file_exists_and_valid(self) -> None:
+        """g2_sac_train.yaml の ohlcv_path が有効な Parquet ファイルを指す."""
+        import yaml
+        import pyarrow.parquet as pq
+
+        yaml_path = Path("configs/v460/experiments/g2_sac_train.yaml")
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f)
+
+        data_path = Path(cfg["data"]["ohlcv_path"])
+        assert data_path.exists(), f"Data file not found: {data_path}"
+
+        # 有効な Parquet であること (ArrowInvalid で落ちないこと)
+        schema = pq.read_schema(str(data_path))
+        assert len(schema.names) > 0
+
+    def test_yaml_features_present_in_data(self) -> None:
+        """YAML selected features が全てデータファイルに存在する."""
+        import yaml
+        import pyarrow.parquet as pq
+
+        yaml_path = Path("configs/v460/experiments/g2_sac_train.yaml")
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f)
+
+        data_path = Path(cfg["data"]["ohlcv_path"])
+        schema_cols = set(pq.read_schema(str(data_path)).names)
+        selected = cfg["features"]["selected"]
+
+        missing = [f for f in selected if f not in schema_cols]
+        assert not missing, f"Features missing in data: {missing}"
+
+    def test_data_has_close_column(self) -> None:
+        """HeavyTradingEnv が必要とする close カラムの存在確認."""
+        import yaml
+        import pyarrow.parquet as pq
+
+        yaml_path = Path("configs/v460/experiments/g2_sac_train.yaml")
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f)
+
+        data_path = Path(cfg["data"]["ohlcv_path"])
+        schema_cols = set(pq.read_schema(str(data_path)).names)
+        assert "close" in schema_cols

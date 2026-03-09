@@ -17,7 +17,8 @@ _task: sac_train
 
 # ---- データ ----
 data:
-  ohlcv_path: "data/btc_jpy_1m_v451_optimized_features.parquet"
+  # P3A-1: v451 stub → full_registry (77列, 1.2M行, 12特徴量全載)
+  ohlcv_path: "data/btc_jpy_1m_full_registry_features.parquet"
 
 # ---- 特徴量 (FeatureRegistry 系統) ----
 # 356# §4.3: OHLCV ベースの FeatureRegistry 特徴量を使用
