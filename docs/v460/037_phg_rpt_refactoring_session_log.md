@@ -3405,3 +3405,36 @@
 - `HeavyTradingEnv` integration の基本ケースが shared fixture に乗り、毎回の env 構築固定費を減らした。
 - `real_enriched_df` は class-scope での再利用時に deep copy を避け、real-data fixture の最後の無駄コピーを削った。
 - `v460` 専用ランナーを追加したことで、subset 実行時に毎回 `--no-cov` を明示しなくても coverage gate を回避できる入口ができた。
+
+## 2026-03-10 / Session 037-079
+
+### 実施
+- `tests/unit/v460/test_retrain_hot_reload.py`
+  - `TestHotReload` に `_create_evaluator(...)` を追加
+  - tempdir / model path / evaluator 構築の重複を共通化
+- `tests/unit/v460/test_build_features_pipeline.py`
+  - real-mode aggregate の共有 fixture を `32` 分ベースへ圧縮
+  - `30` 行 schema 検証と microstructure 検証を同じ base aggregate から再利用
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - real-data ladder を `120/220/280` の guarded 構成で維持することを再確認
+  - `180/240` では `n_samples > 30` 契約を割るため採用しなかった
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_retrain_hot_reload.py`
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `166 passed in 10.50s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4218 passed, 13 warnings in 53.07s`
+
+### 主要改善
+- `TestHotReload` の setup は helper 化で今後の追加ケースでも重複が増えにくくなった。
+- `build_features_pipeline` は 40 分ぶんの synthetic raw を作る必要がなくなり、real-mode fixture の無駄を削った。
+- `enricher_skip_gate` は最小 ladder を探ったが、学習成立条件を守るには `220/280` fallback が必要と確認できた。
+- broad 上位は `HeavyTradingEnv` と `SkipGate save/load` 側へ再集中し、今回触った setup 系での回帰は出ていない。

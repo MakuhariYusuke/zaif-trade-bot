@@ -4811,6 +4811,10 @@ python scripts/unified_trainer.py \
 - `TestHeavyTradingEnvIntegration` setup moved from repeated multi-second parquet reads to a single cached load, dropping the dominant setup cost from the prior ~5-6 second band to ~1.4 seconds once per class in the broad profile.
 ## 2026-03-10
 
+- Trimmed remaining setup overhead in `v460` test hotspots:
+  - kept `tests/unit/v460/test_enricher_skip_gate.py` real-data integration on the guarded `120/220/280` sample ladder after verifying smaller ladders broke the `n_samples > 30` contract
+  - refactored `tests/unit/v460/test_retrain_hot_reload.py::TestHotReload` to share model/evaluator construction through `_create_evaluator(...)`
+  - reduced `tests/unit/v460/test_build_features_pipeline.py` real-mode aggregate fixture from 40 synthetic minutes to 32 and reused the same base DataFrame for both 30-row schema checks and microstructure checks
 - Reused cached `HeavyTradingEnv` fixtures inside [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py) so instantiation/reset/step validation cases share the same environment setup instead of rebuilding it per test.
 - Added a cached real-data enriched fixture path in [tests/unit/v460/test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py) and removed the remaining deep copy from the `real_enriched_df` class fixture.
 - Added [scripts/v460/run_v460_unit_tests.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/run_v460_unit_tests.py) as a dedicated `tests/unit/v460/` runner that forces `--no-cov --tb=short`, avoiding the repository-wide coverage gate for this subset.
