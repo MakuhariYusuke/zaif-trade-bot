@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-09 (348# satoshi化 + balance_forced 撤廃)
+> 最終更新: 2026-03-09 (351# Gemini 3.1 Pro 340–350 profitability audit)
 
 ---
 
@@ -342,6 +342,9 @@
 | 346 | rpt | [346_phg_rpt_test_coverage_and_tail_loss_analysis.md](346_phg_rpt_test_coverage_and_tail_loss_analysis.md) | テストカバレッジ拡充 (fill_config_validation 67 + pre_order_adjustments 18) + S-7 テール損失分析スクリプト (33) = 118 tests |
 | 347 | rpt | [347_ph2_rpt_min_lot_constraint_analysis.md](347_ph2_rpt_min_lot_constraint_analysis.md) | 1mBTC 最低ロット制約分析: 6 死蔵メカニズム, satoshi 精度, Phase 0-4 ロードマップ |
 | 348 | impl | [348_ph2_impl_satoshi_and_balance_forced_removal.md](348_ph2_impl_satoshi_and_balance_forced_removal.md) | Satoshi 精度化 (lot_step 1e-8) + balance_forced 全面撤廃 (~20 ソース, ~30 テスト) |
+| 349 | rpt | [349_phg_refactor_analysis_dedup.md](349_phg_refactor_analysis_dedup.md) | 分析ツール整理 + 重複削減 + EWMA 永続化/seed/TIME LIMIT 修正 + 再起動後/修正後トレード分析 |
+| 350 | rev | [350_ph2_rev_339_349_bugfix_trade_multifaceted_review.md](350_ph2_rev_339_349_bugfix_trade_multifaceted_review.md) | 339#–349# 総合レビュー: kill 制御正常化の評価, EWMA fallback 数学的不整合, balance_forced 撤廃後の観測課題, buy_ranging 本丸論 |
+| 351 | rev | [351_ph2_gemini_31_pro_review_340_350_profitability_audit.md](351_ph2_gemini_31_pro_review_340_350_profitability_audit.md) | Gemini 3.1 Pro レビュー: EWMA rebuild look-ahead bias, effective_threshold 無視, buy_ranging 市場理論 3 盲点, 時間減衰 EWMA 提案 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
