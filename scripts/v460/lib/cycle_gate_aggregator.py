@@ -48,6 +48,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
+    from scripts.v460.lib.sidecar_types import SidecarSignal
     from ztb.risk.sell_dynamic_kill import ToxicityAssessment
 
 # 241# S-3: ToxicityLevel 値をモジュールレベルでキャッシュ (hot path import 回避)
@@ -109,6 +110,10 @@ class CycleGateResult:
     # 240# Toxicity Budget (232# §2.2)
     toxicity_offset_mult: float = 1.0  # 逆選択リスクに応じた offset 乗数
     participation_rate: float = 1.0    # 確率的参加率 (1.0=全参加, 0.0=全停止)
+    # 365# P5: SAC Sidecar — Asymmetric Maker offset
+    sidecar_offset_bps: float = 0.0    # 正=攻撃的(midに近い), 負=保守的
+    sidecar_direction: str = "neutral"  # buy_bias / sell_bias / neutral
+    sidecar_bias: float = 0.0          # raw bias 値 [-1,+1] (audit用)
 
     @property
     def audit_summary(self) -> str:
@@ -180,6 +185,8 @@ class CycleGateAggregator:
         sell_toxicity: ToxicityAssessment | None = None,
         # 273# I6: halt 解除後 soft gate grace period
         halt_recovery_active: bool = False,
+        # 365# P5: SAC Sidecar signal
+        sidecar_signal: SidecarSignal | None = None,
     ) -> CycleGateResult:
         """全 per-cycle ゲートを順次評価.
 
@@ -340,7 +347,48 @@ class CycleGateAggregator:
             result.blocking_reason = g9.reason
             return result
 
+        # --- 365# P5: Sidecar offset injection ---
+        if sidecar_signal is not None:
+            self._apply_sidecar_offset(result, sidecar_signal, side)
+
         return result
+
+    # ================================================================
+    # 365# P5: SAC Sidecar — offset injection
+    # ================================================================
+
+    def _apply_sidecar_offset(
+        self,
+        result: CycleGateResult,
+        signal: SidecarSignal,
+        side: str,
+    ) -> None:
+        """365# P5: SAC sidecar の directional_bias を offset に注入.
+
+        365# §2.2 フロー:
+          BUY_BIAS:  buy_offset += boost,  sell_offset -= boost
+          SELL_BIAS: sell_offset += boost,  buy_offset -= boost
+          NEUTRAL:   no change
+
+        offset の攻撃性/保守性を非対称に調整し、
+        Asymmetric Maker として機能させる。
+        """
+        from scripts.v460.lib.sidecar_types import compute_sidecar_offset_bps
+
+        offset = compute_sidecar_offset_bps(
+            bias=signal.directional_bias,
+            side=side,
+            confidence=signal.confidence,
+        )
+        result.sidecar_offset_bps = offset
+        result.sidecar_bias = signal.directional_bias
+        result.sidecar_direction = signal.direction.name.lower()
+
+        if offset != 0.0:
+            logger.info(
+                f"[365#] Sidecar {side}: bias={signal.directional_bias:+.3f} "
+                f"→ {result.sidecar_direction} → offset={offset:+.3f}bps"
+            )
 
     # ================================================================
     # 240# Toxicity Budget — 段階的応答ヘルパー

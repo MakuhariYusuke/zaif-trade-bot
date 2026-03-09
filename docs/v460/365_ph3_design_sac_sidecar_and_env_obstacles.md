@@ -472,14 +472,14 @@ fill_test_cli.py 起動
 
 | 優先度 | タスク | 工数 | 依存 | 効果 |
 |---|---|---|---|---|
-| **P1** | replay buffer 永続化 (sac_algorithm.py + sac_train.py) | 2-4h | なし | warm-start 基盤の確立 |
-| **P2** | g2_sac_train.yaml に明示的無効化コメント追加 | 0.5h | なし | 意図の文書化 |
-| **P3** | SAC 出力を directional_bias として定義 (interface 設計) | 2-4h | なし | sidecar interface 確定 |
-| **P4** | sidecar_signal.json writer/reader 実装 | 4-8h | P3 | fill_test 統合基盤 |
-| **P5** | cycle_gate_aggregator.py への sidecar 注入 | 4-8h | P4 | 非対称 maker 実現 |
-| **P6** | sac_retrain_scheduler.py 新規作成 | 1-2d | P1, P3 | 定期再学習の自動化 |
-| **P7** | action_masks の observation 埋め込み | 2-4h | なし | Ghost action 解消 |
-| **P8** | LiteTradingEnv (連続行動空間) 設計 | 1-2d | なし | 根本的な env 改善 |
+| **P1** | replay buffer 永続化 (sac_algorithm.py + sac_train.py) | 2-4h | なし | ✅ **完了** |
+| **P2** | g2_sac_train.yaml に明示的無効化コメント追加 | 0.5h | なし | ✅ **完了** |
+| **P3** | SAC 出力を directional_bias として定義 (interface 設計) | 2-4h | なし | ✅ **完了** — `sidecar_types.py` |
+| **P4** | sidecar_signal.json writer/reader 実装 | 4-8h | P3 | ✅ **完了** — `sidecar_signal_io.py` |
+| **P5** | cycle_gate_aggregator.py への sidecar 注入 | 4-8h | P4 | ✅ **完了** — `_apply_sidecar_offset()` |
+| **P6** | sac_retrain_scheduler.py 新規作成 | 1-2d | P1, P3 | ⏳ 未着手 |
+| **P7** | action_masks の observation 埋め込み | 2-4h | なし | ⏳ 未着手 (低優先) |
+| **P8** | LiteTradingEnv (連続行動空間) 設計 | 1-2d | なし | ⏳ 未着手 (ph4) |
 
 ### クリティカルパス
 
@@ -570,3 +570,4 @@ P1 と P3 は独立なので並行着手可能。
 | 日付 | 版 | 内容 |
 |---|---|---|
 | 2026-03-10 | 1.0 | 初版 (Sidecar 設計 + env 阻害分析 + warm-start + retrain scheduler) |
+| 2026-03-15 | 1.1 | P1/P2 完了マーク, P3-P5 実装完了 (sidecar_types + signal_io + gate injection) |

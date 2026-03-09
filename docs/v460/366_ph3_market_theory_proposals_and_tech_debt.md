@@ -508,3 +508,4 @@ def _calculate_kama_numba(
 | 2026-03-10 | 1.1 | M1✅ T4✅ T5✅ T9✅ 完了。T1 は既に修正済みと判明 |
 | 2026-03-10 | 1.2 | M3✅ M4✅ M5✅ 完了。残り M2 のみ (emission分布設計必要) |
 | 2026-03-10 | 1.3 | M2✅ Phase A 完了 (BayesianRegimeFilter 単体実装 42テスト)。M1-M5 全完了 |
+| 2026-03-15 | 1.4 | 365# SAC ブロッカー P3/P4/P5 完了 (sidecar interface + signal I/O + gate injection) |
