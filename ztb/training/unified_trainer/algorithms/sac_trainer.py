@@ -52,6 +52,7 @@ from ztb.types.common import ConfigDict
 from ztb.utils.checkpoint import TrainingStateManager
 from ztb.utils.logging_utils import StructuredLogger
 from ztb.utils.training_utils import create_checkpoint_callback
+from ztb.utils.dataclass_utils import shallow_asdict
 
 class SACTrainer(BaseAlgorithmTrainer):
     """SAC algorithm trainer with enhanced UI and monitoring."""
@@ -173,7 +174,7 @@ class SACTrainer(BaseAlgorithmTrainer):
             if isinstance(reward_settings, dict):
                 expected.update(reward_settings)
             elif isinstance(reward_settings, RewardSettings):
-                expected.update(dataclasses.asdict(reward_settings))
+                expected.update(shallow_asdict(reward_settings))
         return expected
 
     def _collect_actual_reward_params(self, env: object) -> dict[str, object]:
@@ -182,7 +183,7 @@ class SACTrainer(BaseAlgorithmTrainer):
             return params
         reward_settings = getattr(env, "reward_settings", None)
         if isinstance(reward_settings, RewardSettings):
-            params.update(dataclasses.asdict(reward_settings))
+            params.update(shallow_asdict(reward_settings))
             custom_params = reward_settings.custom_reward_params
             if isinstance(custom_params, dict):
                 params.update(custom_params)
@@ -691,8 +692,11 @@ class SACTrainer(BaseAlgorithmTrainer):
                 
                 # Gate 0 Debug: Log reward_settings after EnvironmentConfig creation  
                 if hasattr(env_config_obj, "reward_settings"):
-                    import dataclasses
-                    rs_dict = dataclasses.asdict(env_config_obj.reward_settings) if env_config_obj.reward_settings else None
+                    rs_dict = (
+                        shallow_asdict(env_config_obj.reward_settings)
+                        if env_config_obj.reward_settings
+                        else None
+                    )
                     self.logger.warning(f"Gate0 Debug: env_config_obj.reward_settings = {rs_dict}")
 
                 # 🔧 CRITICAL FIX: Inject curriculum_learning config if present in training config

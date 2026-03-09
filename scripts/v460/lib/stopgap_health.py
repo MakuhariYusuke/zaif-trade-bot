@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 import math
 from collections import defaultdict
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -28,6 +28,7 @@ from ztb.metrics.fill_quality import (
     format_utc_day,
     load_fill_record_objects_glob,
 )
+from ztb.utils.dataclass_utils import shallow_asdict
 from ztb.utils.safety import safe_to_finite
 
 logger = logging.getLogger(__name__)
@@ -757,7 +758,7 @@ def generate_health_report(
 
 def serialize_health_report(report: DailyHealthReport) -> dict[str, object]:
     """DailyHealthReport を JSON 出力向け dict に変換する."""
-    return asdict(report)
+    return shallow_asdict(report)
 
 
 def print_health_summary(report: DailyHealthReport) -> None:

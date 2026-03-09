@@ -7,7 +7,6 @@ Refactored to follow SOLID principles with component-based architecture.
 
 # mypy: disable-error-code=literal-required
 
-import dataclasses
 import inspect
 import logging
 from typing import Sequence
@@ -23,6 +22,7 @@ from ztb.trading.environment.constants import EPSILON
 from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 # Use the basic analysis regime detector which implements IMarketRegimeDetector
 from ztb.analysis.regime.basic_regime_detector import MarketRegimeDetector
+from ztb.utils.dataclass_utils import shallow_asdict
 from ztb.utils.logging_utils import StructuredLogger
 
 from ..asymmetric_reward_scaler import AsymmetricRewardScaler
@@ -95,7 +95,7 @@ class RewardCalculator:
                 )
                 self.logger.debug("========== REWARD PARAMS (REWARD CALC) ==========")
                 self.logger.debug(
-                    "reward_settings: %s", dataclasses.asdict(self.reward_settings)
+                    "reward_settings: %s", shallow_asdict(self.reward_settings)
                 )
                 if custom_params:
                     self.logger.debug("custom_reward_params: %s", custom_params)
