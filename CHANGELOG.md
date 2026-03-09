@@ -4809,3 +4809,9 @@ python scripts/unified_trainer.py \
 - `test_356_g2_sac_blockers.py` completed at `38 passed in 5.03s`.
 - In the filtered broad run, the same suite completed at `4206 passed, 13 warnings in 40.62s`.
 - `TestHeavyTradingEnvIntegration` setup moved from repeated multi-second parquet reads to a single cached load, dropping the dominant setup cost from the prior ~5-6 second band to ~1.4 seconds once per class in the broad profile.
+## 2026-03-10
+
+- Reduced `test_356_g2_sac_blockers.py` HeavyTradingEnv cost by shrinking the cached real-data slice to 128 rows, reusing the same cached DataFrame in `_create_training_env(...)`, and removing a redundant pre-env deep copy in the test helper.
+- Simplified `test_build_features_pipeline.py` real-mode fixtures to aggregate once with `output_path=None`, then reuse that aggregate for both the 30-minute schema checks and the microstructure pipeline checks.
+- Trimmed `test_enricher_skip_gate.py` real-data setup by lowering the guarded upper bound from 320 to 280 rows and removing an extra DataFrame copy before `enrich_fill_records(...)`.
+- Lowered `HeavyTradingEnv` / `RewardCalculator` reward-parameter dumps from unconditional WARNING logs to DEBUG-only logs, avoiding repeated `dataclasses.asdict(...)` work and noisy log capture during normal runs.

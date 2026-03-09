@@ -3288,3 +3288,50 @@
 - OPS-4: watchdog 間の `restart.lock` 取り合いを起こしやすかった 30 秒 stale 判定を 120 秒へ伸ばし、high-load 時の dual-spawn リスクを下げた。
 - OPS-6: watchdog は再起動を投げるだけでなく `fill_test.lock` の出現まで確認するようになり、「起動したつもりで実は失敗」の観測漏れを減らした。
 - broad の残ホットスポットは引き続き `test_356_g2_sac_blockers.py` の HeavyTradingEnv integration と `test_enricher_skip_gate.py` の real-data setup に集中している。
+
+## 2026-03-10 / Session 037-076
+
+### 実施
+- `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - G2 SAC integration の cached real-data slice を `2000 -> 128` 行へ縮小
+  - `HeavyTradingEnv` helper での `real_df.copy(deep=True)` を廃止
+  - `_create_training_env(...)` でも同じ cached `real_df` を再利用して parquet 再読込を除去
+- `tests/unit/v460/test_build_features_pipeline.py`
+  - real-mode aggregate を `output_path=None` の 1 回集約へ整理
+  - 40分 aggregate を 30分 schema 検証と microstructure 検証で共通再利用
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - real-data integration の上限行数を `320 -> 280`
+  - `enrich_fill_records(...)` 前の余計な `.copy()` を削除
+- `ztb/trading/environment/heavy_env/core.py`
+  - env init の reward-parameter dump を DEBUG 条件付きへ変更
+- `ztb/trading/environment/components/calculators/reward_calculator.py`
+  - RewardCalculator init の reward-parameter dump を DEBUG 条件付きへ変更
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `42 passed in 6.74s`
+- focused:
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `126 passed in 7.45s`
+- full suite:
+  - `pytest tests/unit/v460/ -x -q`
+  - test failure ではなく coverage gate (`TOTAL 12% < fail-under=80`) で停止
+- full suite (functional):
+  - `pytest tests/unit/v460/ -x -q --no-cov`
+  - `4277 passed, 13 warnings in 43.13s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4218 passed, 13 warnings in 37.24s`
+
+### 主要改善
+- `HeavyTradingEnv` integration は focused で setup `0.59s`、real-data broad でも最上位の固定費を大きく削った。
+- `build_features_pipeline` の real-mode setup は 2 本立ての raw 生成/集約をやめ、単一路線化できた。
+- `enricher_skip_gate` の real-data setup は broad で `0.35s` まで低下した。
+- `HeavyTradingEnv` / `RewardCalculator` の WARNING ログ固定費を削除し、通常実行の log capture と `asdict()` コストを減らした。
