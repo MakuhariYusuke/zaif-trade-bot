@@ -285,6 +285,44 @@ def _save_generated_records(
     save_fill_records(builder(**kwargs), path)
 
 
+def _save_dated_linear_record(
+    root: Path,
+    *,
+    day: str,
+    prefix: str,
+    start_index: int,
+    base_ts: float,
+    include_emergency: bool = False,
+    side: str = "buy",
+    order_price: float = 100.0,
+    separator: str = "_",
+) -> None:
+    """日付付き fill/emergency JSONL を 1 件ずつ保存する."""
+    _save_linear_records(
+        root / f"fill_records_{day}.jsonl",
+        prefix=prefix,
+        count=1,
+        start_index=start_index,
+        base_ts=base_ts,
+        side=side,
+        order_price=order_price,
+        separator=separator,
+    )
+    if include_emergency:
+        emergency = root / "emergency"
+        emergency.mkdir(exist_ok=True)
+        _save_linear_records(
+            emergency / f"emergency_{day}.jsonl",
+            prefix=prefix,
+            count=1,
+            start_index=start_index,
+            base_ts=base_ts + 60.0,
+            side="sell",
+            order_price=order_price + 1.0,
+            separator=separator,
+        )
+
+
 def _make_fast_cycle_runner(
     tmp_path: Path,
     *,
@@ -1390,17 +1428,17 @@ class TestFillRecordIO:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            _save_linear_records(
-                root / "fill_records_20260101.jsonl",
+            _save_dated_linear_record(
+                root,
+                day="20260101",
                 prefix="d",
-                count=1,
                 start_index=1,
                 base_ts=1700000000.0,
             )
-            _save_linear_records(
-                root / "fill_records_20260102.jsonl",
+            _save_dated_linear_record(
+                root,
+                day="20260102",
                 prefix="d",
-                count=1,
                 start_index=2,
                 base_ts=1700000060.0,
                 order_price=101.0,
@@ -1418,24 +1456,16 @@ class TestFillRecordIO:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            emergency = root / "emergency"
-            emergency.mkdir()
-            _save_linear_records(
-                root / "fill_records_20260102.jsonl",
+            _save_dated_linear_record(
+                root,
+                day="20260102",
                 prefix="d",
-                count=1,
                 start_index=1,
                 base_ts=1700000000.0,
+                include_emergency=True,
+                order_price=100.0,
             )
-            _save_linear_records(
-                emergency / "emergency_20260102.jsonl",
-                prefix="e",
-                count=1,
-                start_index=1,
-                base_ts=1700000060.0,
-                side="sell",
-                order_price=101.0,
-            )
+            emergency = root / "emergency"
 
             original_iterdir = Path.iterdir
 
@@ -1461,20 +1491,20 @@ class TestFillRecordIO:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            _save_linear_records(
-                root / "fill_records_20260101.jsonl",
+            _save_dated_linear_record(
+                root,
+                day="20260101",
                 prefix="d",
-                count=1,
                 start_index=1,
                 base_ts=1700000000.0,
             )
             before = list_fill_record_files(root, include_emergency=False)
             assert [path.name for path in before] == ["fill_records_20260101.jsonl"]
 
-            _save_linear_records(
-                root / "fill_records_20260102.jsonl",
+            _save_dated_linear_record(
+                root,
+                day="20260102",
                 prefix="d",
-                count=1,
                 start_index=2,
                 base_ts=1700000060.0,
                 order_price=101.0,
@@ -1491,18 +1521,18 @@ class TestFillRecordIO:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            _save_linear_records(
-                root / "fill_records_20260101.jsonl",
+            _save_dated_linear_record(
+                root,
+                day="20260101",
                 prefix="r",
-                count=1,
                 start_index=1,
                 base_ts=1700000000.0,
                 separator="",
             )
-            _save_linear_records(
-                root / "fill_records_20260103.jsonl",
+            _save_dated_linear_record(
+                root,
+                day="20260103",
                 prefix="r",
-                count=1,
                 start_index=2,
                 base_ts=1700000060.0,
                 side="sell",

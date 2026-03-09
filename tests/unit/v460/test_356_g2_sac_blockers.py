@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import inspect
 from functools import lru_cache
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -14,7 +15,8 @@ import pytest
 import yaml
 
 from scripts.v460.lib.data_loader import load_parquet
-from scripts.v460.lib.tasks.sac_train import _create_training_env
+from scripts.v460.lib.tasks.sac_train import SACTrainModelProtocol, _create_training_env
+from ztb.training.algorithms.sac import SACAlgorithm
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
 
@@ -46,6 +48,11 @@ def _load_g2_real_df() -> pd.DataFrame:
     if not isinstance(selected, list):
         raise TypeError("features.selected must be list")
     return load_parquet(data_path, feature_cols=[str(col) for col in selected]).head(_G2_REAL_ROWS)
+
+
+@lru_cache(maxsize=1)
+def _load_g2_yaml_text() -> str:
+    return _G2_SAC_YAML_PATH.read_text(encoding="utf-8")
 
 
 # ======================================================================
@@ -747,8 +754,6 @@ class TestReplayBufferPersistence:
 
     def test_save_replay_buffer_calls_model(self) -> None:
         """save_replay_buffer が model.save_replay_buffer を呼ぶ."""
-        from ztb.training.algorithms.sac import SACAlgorithm
-
         model = MagicMock()
         model.save_replay_buffer = MagicMock()
 
@@ -757,8 +762,6 @@ class TestReplayBufferPersistence:
 
     def test_load_replay_buffer_file_not_found(self) -> None:
         """存在しない buffer ファイルで FileNotFoundError."""
-        from ztb.training.algorithms.sac import SACAlgorithm
-
         model = MagicMock()
         model.load_replay_buffer = MagicMock()
 
@@ -767,8 +770,6 @@ class TestReplayBufferPersistence:
 
     def test_save_replay_buffer_no_support(self) -> None:
         """replay buffer 非対応モデルで RuntimeError."""
-        from ztb.training.algorithms.sac import SACAlgorithm
-
         model = MagicMock(spec=[])  # no save_replay_buffer attr
 
         with pytest.raises(RuntimeError, match="does not support"):
@@ -776,30 +777,25 @@ class TestReplayBufferPersistence:
 
     def test_load_model_file_not_found(self) -> None:
         """存在しない model ファイルで FileNotFoundError."""
-        from ztb.training.algorithms.sac import SACAlgorithm
-
         with pytest.raises(FileNotFoundError, match="SAC model not found"):
             SACAlgorithm.load("totally_nonexistent_model_path_xyz")
 
     def test_sac_train_protocol_has_buffer_methods(self) -> None:
         """SACTrainModelProtocol に buffer メソッドが定義されている."""
-        from scripts.v460.lib.tasks.sac_train import SACTrainModelProtocol
-        import inspect
-
         members = [m[0] for m in inspect.getmembers(SACTrainModelProtocol)]
         assert "save_replay_buffer" in members
         assert "load_replay_buffer" in members
 
     def test_g2_yaml_has_warmstart_comments(self) -> None:
         """g2_sac_train.yaml に warm-start コメントが含まれる."""
-        yaml_text = _G2_SAC_YAML_PATH.read_text(encoding="utf-8")
+        yaml_text = _load_g2_yaml_text()
         assert "pretrained_model_path" in yaml_text
         assert "pretrained_buffer_path" in yaml_text
         assert "incremental_timesteps" in yaml_text
 
     def test_g2_yaml_has_env_safety_comments(self) -> None:
         """365# §3.2: g2_sac_train.yaml に env 安全性コメントが含まれる."""
-        yaml_text = _G2_SAC_YAML_PATH.read_text(encoding="utf-8")
+        yaml_text = _load_g2_yaml_text()
         assert "curriculum_learning" in yaml_text
         assert "hybrid_config" in yaml_text
         assert "reward hacking" in yaml_text.lower() or "reward_hacking" in yaml_text.lower() or "reward hacking" in yaml_text

@@ -124,6 +124,28 @@ def synthetic_fill_df() -> pd.DataFrame:
     return _cached_synthetic_fill_df().copy(deep=True)
 
 
+@pytest.fixture
+def as_training_data_small(
+    synthetic_fill_df: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.Series]:
+    """AS classifier 向けの軽量共有学習データ."""
+    X, y = build_as_features(synthetic_fill_df)
+    X = X.head(20)
+    y = y.loc[X.index]
+    return X, y
+
+
+@pytest.fixture
+def fill_training_data_small(
+    synthetic_fill_df: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.Series]:
+    """Fill classifier 向けの軽量共有学習データ."""
+    X, y = build_fill_features(synthetic_fill_df)
+    X = X.head(20)
+    y = y.loc[X.index]
+    return X, y
+
+
 # ======================================================================
 # Data Loader Tests
 # ======================================================================
@@ -241,59 +263,66 @@ class Test057DataLoader:
 class Test057ASClassifier:
     """AS 分類器のテスト."""
 
-    def test_train_returns_metrics(self, synthetic_fill_df: pd.DataFrame) -> None:
+    def test_train_returns_metrics(
+        self,
+        as_training_data_small: tuple[pd.DataFrame, pd.Series],
+    ) -> None:
         """学習が完了し metrics を返す."""
-        X, y = build_as_features(synthetic_fill_df)
-        X = X.head(24)
-        y = y.loc[X.index]
+        X, y = as_training_data_small
         metrics, model, scaler, oof_probs = train_as_classifier(X, y, model_type="lr", n_splits=2)
         assert isinstance(metrics, ASModelMetrics)
         assert metrics.n_samples == len(X)
         assert 0 <= metrics.roc_auc_mean <= 1
         assert oof_probs is not None
 
-    def test_train_gb_model(self, synthetic_fill_df: pd.DataFrame) -> None:
+    def test_train_gb_model(
+        self,
+        as_training_data_small: tuple[pd.DataFrame, pd.Series],
+    ) -> None:
         """GradientBoosting で学習."""
-        X, y = build_as_features(synthetic_fill_df)
-        X = X.head(24)
-        y = y.loc[X.index]
+        X, y = as_training_data_small
         metrics, model, scaler, _ = train_as_classifier(
             X,
             y,
             model_type="gb",
             n_splits=2,
-            gb_n_estimators=4,
+            gb_n_estimators=3,
         )
         assert metrics.feature_importances is not None
         assert len(metrics.feature_importances) == X.shape[1]
 
-    def test_model_predicts(self, synthetic_fill_df: pd.DataFrame) -> None:
+    def test_model_predicts(
+        self,
+        as_training_data_small: tuple[pd.DataFrame, pd.Series],
+    ) -> None:
         """学習済みモデルが predict_proba を返す."""
-        X, y = build_as_features(synthetic_fill_df)
-        X = X.head(24)
-        y = y.loc[X.index]
+        X, y = as_training_data_small
         _, model, pipeline, _ = train_as_classifier(X, y, model_type="lr", n_splits=2)
         # 059#: pipeline は完全な Pipeline (imputer + scaler + model)
         probs = pipeline.predict_proba(X)
         assert probs.shape == (len(X), 2)
         assert np.all(probs >= 0) and np.all(probs <= 1)
 
-    def test_skip_policy_with_pnl(self, synthetic_fill_df: pd.DataFrame) -> None:
+    def test_skip_policy_with_pnl(
+        self,
+        synthetic_fill_df: pd.DataFrame,
+        as_training_data_small: tuple[pd.DataFrame, pd.Series],
+    ) -> None:
         """PnL 付きでスキップ効果計算."""
-        X, y = build_as_features(synthetic_fill_df)
-        X = X.head(24)
-        y = y.loc[X.index]
+        X, y = as_training_data_small
         pnl = synthetic_fill_df.loc[X.index, "post_fill_30s_pnl"].astype(float)
         metrics, model, scaler, oof_probs = train_as_classifier(
             X, y, pnl, model_type="lr", n_splits=2
         )
         assert isinstance(metrics.skip_top20_pnl_improvement_bps, float)
 
-    def test_evaluate_skip_policy(self, synthetic_fill_df: pd.DataFrame) -> None:
+    def test_evaluate_skip_policy(
+        self,
+        synthetic_fill_df: pd.DataFrame,
+        as_training_data_small: tuple[pd.DataFrame, pd.Series],
+    ) -> None:
         """スキップポリシーの DataFrame が返る."""
-        X, y = build_as_features(synthetic_fill_df)
-        X = X.head(24)
-        y = y.loc[X.index]
+        X, y = as_training_data_small
         pnl = synthetic_fill_df.loc[X.index, "post_fill_30s_pnl"].astype(float)
         oof_probs = np.linspace(0.2, 0.8, len(X), dtype=np.float64)
         result = evaluate_skip_policy(
@@ -318,34 +347,37 @@ class Test057ASClassifier:
 class Test057FillClassifier:
     """Fill 分類器のテスト."""
 
-    def test_train_returns_metrics(self, synthetic_fill_df: pd.DataFrame) -> None:
+    def test_train_returns_metrics(
+        self,
+        fill_training_data_small: tuple[pd.DataFrame, pd.Series],
+    ) -> None:
         """学習が完了し metrics を返す."""
-        X, y = build_fill_features(synthetic_fill_df)
-        X = X.head(24)
-        y = y.loc[X.index]
+        X, y = fill_training_data_small
         metrics, model, scaler = train_fill_classifier(X, y, model_type="lr", n_splits=2)
         assert isinstance(metrics, FillModelMetrics)
         assert metrics.n_samples == len(X)
 
-    def test_train_gb(self, synthetic_fill_df: pd.DataFrame) -> None:
+    def test_train_gb(
+        self,
+        fill_training_data_small: tuple[pd.DataFrame, pd.Series],
+    ) -> None:
         """GradientBoosting で学習."""
-        X, y = build_fill_features(synthetic_fill_df)
-        X = X.head(24)
-        y = y.loc[X.index]
+        X, y = fill_training_data_small
         metrics, model, scaler = train_fill_classifier(
             X,
             y,
             model_type="gb",
             n_splits=2,
-            gb_n_estimators=4,
+            gb_n_estimators=3,
         )
         assert metrics.feature_importances is not None
 
-    def test_fill_rate_correct(self, synthetic_fill_df: pd.DataFrame) -> None:
+    def test_fill_rate_correct(
+        self,
+        fill_training_data_small: tuple[pd.DataFrame, pd.Series],
+    ) -> None:
         """fill_rate が正しい."""
-        X, y = build_fill_features(synthetic_fill_df)
-        X = X.head(24)
-        y = y.loc[X.index]
+        X, y = fill_training_data_small
         metrics, _, _ = train_fill_classifier(X, y, model_type="lr", n_splits=2)
         assert abs(metrics.fill_rate - y.mean()) < 0.01
 

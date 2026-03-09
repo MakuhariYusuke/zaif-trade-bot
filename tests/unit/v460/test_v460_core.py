@@ -67,6 +67,30 @@ def _cached_microstructure_sample_df() -> pd.DataFrame:
     })
 
 
+@lru_cache(maxsize=1)
+def _cached_microstructure_result_df() -> pd.DataFrame:
+    return add_microstructure_features(_cached_microstructure_sample_df().copy(deep=True), window=10)
+
+
+def _write_yaml(path: Path, content: str) -> Path:
+    path.write_text(content, encoding="utf-8")
+    return path
+
+
+def _write_config_pair(
+    tmp_path: Path,
+    *,
+    base_content: str,
+    exp_content: str,
+) -> tuple[Path, Path]:
+    base_path = _write_yaml(tmp_path / "base.yaml", base_content)
+    exp_path = _write_yaml(
+        tmp_path / "exp.yaml",
+        exp_content.format(base_path=base_path),
+    )
+    return base_path, exp_path
+
+
 # =====================================================================
 # gate_checks
 # =====================================================================
@@ -195,27 +219,23 @@ class TestConfigLoader:
         assert "_meta" not in merged
 
     def test_load_config_validation_error(self, tmp_path: Path) -> None:
-        base_path = tmp_path / "base.yaml"
-        base_path.write_text(
+        base_path, exp_path = _write_config_pair(
+            tmp_path,
+            base_content=
             "data:\n"
             "  train_end_index: null\n"
             "features:\n"
             "  selected: null\n",
-            encoding="utf-8",
-        )
-
-        exp_path = tmp_path / "exp.yaml"
-        exp_path.write_text(
-            f"_base: {base_path}\n",
-            encoding="utf-8",
+            exp_content="_base: {base_path}\n",
         )
 
         with pytest.raises(ValueError, match="features.selected is null"):
             load_config(exp_path, base_path=base_path)
 
     def test_load_config_valid(self, tmp_path: Path) -> None:
-        base_path = tmp_path / "base.yaml"
-        base_path.write_text(
+        base_path, exp_path = _write_config_pair(
+            tmp_path,
+            base_content=
             "data:\n"
             "  train_end_index: null\n"
             "  ohlcv_path: test.parquet\n"
@@ -224,11 +244,8 @@ class TestConfigLoader:
             "  candidates:\n"
             "    - a\n"
             "    - b\n",
-            encoding="utf-8",
-        )
-        exp_path = tmp_path / "exp.yaml"
-        exp_path.write_text(
-            f"_base: {base_path}\n"
+            exp_content=
+            "_base: {base_path}\n"
             "_gate: G1-info\n"
             "data:\n"
             "  train_end_index: 1000\n"
@@ -236,7 +253,6 @@ class TestConfigLoader:
             "  selected:\n"
             "    - a\n"
             "    - b\n",
-            encoding="utf-8",
         )
 
         cfg = load_config(exp_path, base_path=base_path)
@@ -390,9 +406,11 @@ class TestMicrostructure:
     def _make_sample_df(self) -> pd.DataFrame:
         return _cached_microstructure_sample_df().copy(deep=True)
 
+    def _make_result_df(self) -> pd.DataFrame:
+        return _cached_microstructure_result_df().copy(deep=False)
+
     def test_feature_generation(self) -> None:
-        df = self._make_sample_df()
-        result = add_microstructure_features(df, window=10)
+        result = self._make_result_df()
 
         for feat in MICROSTRUCTURE_FEATURES:
             assert feat in result.columns, f"Missing feature: {feat}"
@@ -871,24 +889,19 @@ class TestConfigLoaderTaskPreservation:
 
     def test_task_preserved(self, tmp_path: Path) -> None:
         """実験 YAML の _task が load_config 結果に含まれる."""
-
-        base_yaml = tmp_path / "base.yaml"
-        base_yaml.write_text(
+        _, exp_yaml = _write_config_pair(
+            tmp_path,
+            base_content=
             "data:\n"
             "  train_end_index: 1000\n"
             "  ohlcv_path: test.parquet\n"
             "features:\n"
             "  selected:\n"
             "    - feat_a\n",
-            encoding="utf-8",
-        )
-
-        exp_yaml = tmp_path / "exp.yaml"
-        exp_yaml.write_text(
-            f"_base: {base_yaml}\n"
+            exp_content=
+            "_base: {base_path}\n"
             "_gate: G1-info\n"
             "_task: sac_train\n",
-            encoding="utf-8",
         )
 
         cfg = load_config(str(exp_yaml))
@@ -896,23 +909,18 @@ class TestConfigLoaderTaskPreservation:
 
     def test_task_default(self, tmp_path: Path) -> None:
         """_task 未指定時はデフォルト feature_info."""
-
-        base_yaml = tmp_path / "base.yaml"
-        base_yaml.write_text(
+        _, exp_yaml = _write_config_pair(
+            tmp_path,
+            base_content=
             "data:\n"
             "  train_end_index: 1000\n"
             "  ohlcv_path: test.parquet\n"
             "features:\n"
             "  selected:\n"
             "    - feat_a\n",
-            encoding="utf-8",
-        )
-
-        exp_yaml = tmp_path / "exp.yaml"
-        exp_yaml.write_text(
-            f"_base: {base_yaml}\n"
+            exp_content=
+            "_base: {base_path}\n"
             "_gate: G1-info\n",
-            encoding="utf-8",
         )
 
         cfg = load_config(str(exp_yaml))

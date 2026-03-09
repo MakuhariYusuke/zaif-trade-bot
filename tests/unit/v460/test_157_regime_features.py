@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -24,6 +23,13 @@ from scripts.v460.lib.regime_detector import FillTestRegime
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 import scripts.v460.ml.retrain_scheduler as rs
 from scripts.v460.ml.retrain_scheduler import _DEFAULT_CONFIG, load_retrain_config
+from tests.unit.v460._fill_test_source import (
+    FILL_TEST_CLI,
+    MAKER_REGIME_BOOST,
+    SKIP_GATE_EVALUATOR,
+    read_class_method_source,
+    read_source_text,
+)
 from ztb.analysis.regime import MarketRegime, MarketRegimeDetector
 from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
 from ztb.risk.sell_dynamic_kill import (
@@ -159,19 +165,7 @@ class TestFillConfigBuyDynamicKill:
 
     def test_yaml_buy_dynamic_kill_parsing(self) -> None:
         """YAML から buy_dynamic_kill 設定を読み込む."""
-
-        yaml_data = {
-            "loss_control": {
-                "buy_dynamic_kill": {
-                    "enabled": True,
-                    "window": 30,
-                    "threshold_bps": -0.6,
-                    "resume_window": 5,
-                    "regime_thresholds": {"trending_down": -0.3},
-                },
-            },
-        }
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = FillTestConfig.from_yaml(_BUY_DYNAMIC_KILL_YAML)
         assert cfg.buy_dynamic_kill_enabled is True
         assert cfg.buy_dynamic_kill_window == 30
         assert cfg.buy_dynamic_kill_threshold_bps == -0.6
@@ -196,15 +190,7 @@ class TestTrendingOffsetAsymmetry:
 
     def test_yaml_side_specific_boost(self) -> None:
         """YAML から side-specific boost を読み込む."""
-
-        yaml_data = {
-            "regime": {
-                "trending_offset_boost": 1.5,
-                "trending_offset_boost_buy": 1.0,
-                "trending_offset_boost_sell": 1.8,
-            },
-        }
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = FillTestConfig.from_yaml(_TRENDING_OFFSET_BOOST_YAML)
         assert cfg.regime_trending_offset_boost == 1.5
         assert cfg.regime_trending_offset_boost_buy == 1.0
         assert cfg.regime_trending_offset_boost_sell == 1.8
@@ -257,7 +243,11 @@ class TestTrendingOffsetAsymmetry:
     def test_maker_price_source_has_side_specific_boost(self) -> None:
         """maker_price のソースに side 別 boost ロジックが存在."""
         # 322# God Object 分割: regime boost は RegimeBoostMixin に移管
-        source = inspect.getsource(MakerPriceCalculator._resolve_trending_boost)
+        source = read_class_method_source(
+            MAKER_REGIME_BOOST,
+            "RegimeBoostMixin",
+            "_resolve_trending_boost",
+        )
         assert "regime_trending_offset_boost_buy" in source
         assert "regime_trending_offset_boost_sell" in source
 
@@ -367,14 +357,12 @@ class TestRetrainPipelineIntegrity:
         """SkipGateEvaluator に hot-reload メソッドが存在."""
         assert hasattr(SkipGateEvaluator, "_check_and_reload_model")
         # _compute_file_hash は ztb.utils.run_manifest.compute_file_hash へ委譲
-        src = inspect.getsource(SkipGateEvaluator)
+        src = read_source_text(SKIP_GATE_EVALUATOR)
         assert "compute_file_hash" in src
 
     def test_fill_test_retrain_subprocess_integration(self) -> None:
         """fill_test_cli.py に retrain_scheduler 子プロセス起動ロジックが存在."""
-        source = inspect.getsource(
-            __import__("scripts.v460.lib.fill_test_cli", fromlist=["_"])
-        )
+        source = read_source_text(FILL_TEST_CLI)
         assert "retrain_scheduler" in source
         assert "retrain_proc" in source
 
@@ -402,3 +390,22 @@ class TestYAMLConsistency:
         regime = data.get("regime", {})
         assert regime.get("trending_offset_boost_buy") == 1.0
         assert regime.get("trending_offset_boost_sell") == 1.5
+_BUY_DYNAMIC_KILL_YAML: dict[str, object] = {
+    "loss_control": {
+        "buy_dynamic_kill": {
+            "enabled": True,
+            "window": 30,
+            "threshold_bps": -0.6,
+            "resume_window": 5,
+            "regime_thresholds": {"trending_down": -0.3},
+        },
+    },
+}
+
+_TRENDING_OFFSET_BOOST_YAML: dict[str, object] = {
+    "regime": {
+        "trending_offset_boost": 1.5,
+        "trending_offset_boost_buy": 1.0,
+        "trending_offset_boost_sell": 1.8,
+    },
+}
