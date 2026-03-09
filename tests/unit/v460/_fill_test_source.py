@@ -77,14 +77,26 @@ FILL_TEST_CLI = (
 MAKER_PRICE = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "maker_price.py"
 )
+MAKER_RISK_GUARDS = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "maker_risk_guards.py"
+)
 MAKER_REGIME_BOOST = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "maker_regime_boost.py"
 )
 MAKER_MICROSTRUCTURE = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "maker_microstructure.py"
 )
+ADAPTATION_ENGINE = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "adaptation_engine.py"
+)
+BALANCE_CHECKER = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "balance_checker.py"
+)
 ORDER_MONITOR = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "order_monitor.py"
+)
+OB_RECORDER = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "ob_recorder.py"
 )
 FILL_CONFIG_PARSER = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_config_parser.py"
@@ -182,3 +194,18 @@ def read_class_method_source(path: Path, class_name: str, method_name: str) -> s
                 continue
             return "\n".join(lines[child.lineno - 1:child.end_lineno])
     raise KeyError(f"{class_name}.{method_name} not found in {path}")
+
+
+@lru_cache(maxsize=None)
+def read_function_source(path: Path, function_name: str) -> str:
+    """任意ファイルから top-level function source を返す."""
+    source = read_source_text(path)
+    lines = source.splitlines()
+    tree = parse_source_tree(path)
+    for node in tree.body:
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if node.name != function_name:
+            continue
+        return "\n".join(lines[node.lineno - 1:node.end_lineno])
+    raise KeyError(f"{function_name} not found in {path}")

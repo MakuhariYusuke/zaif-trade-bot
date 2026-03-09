@@ -9,6 +9,7 @@ Tests:
 
 from __future__ import annotations
 
+import json
 import math
 import time
 from pathlib import Path
@@ -16,6 +17,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from scripts.v460.analysis.side_regime_dashboard import (
+    _load_all_records,
+    _load_judgment_config,
+    run_dashboard,
+)
 from scripts.v460.lib.ab_judgment import (
     ABJudgmentCriteria,
     ABJudgmentResult,
@@ -568,8 +574,6 @@ class TestDashboardJudgmentIntegration:
 
     def test_run_dashboard_without_judgment(self, tmp_path: Path) -> None:
         """with_judgment=False ではjudgment結果がNone."""
-        from scripts.v460.analysis.side_regime_dashboard import run_dashboard
-
         # 空ディレクトリ
         result = run_dashboard(str(tmp_path), with_judgment=False)
         assert result.get("ab_judgment") is None
@@ -577,10 +581,6 @@ class TestDashboardJudgmentIntegration:
 
     def test_run_dashboard_with_judgment(self, tmp_path: Path) -> None:
         """with_judgment=True でjudgment結果が生成される."""
-        import json as _json
-
-        from scripts.v460.analysis.side_regime_dashboard import run_dashboard
-
         # テスト用 JSONL 作成
         jsonl_path = tmp_path / "fill_records_test.jsonl"
         records = (
@@ -590,7 +590,7 @@ class TestDashboardJudgmentIntegration:
         )
         with open(jsonl_path, "w", encoding="utf-8") as f:
             for r in records:
-                f.write(_json.dumps(r) + "\n")
+                f.write(json.dumps(r) + "\n")
 
         criteria = ABJudgmentCriteria(min_filled_records=5, min_calendar_days=1)
         trending_criteria = TrendingEvalCriteria(min_filled=3, target_filled=10)
@@ -618,8 +618,6 @@ class TestDashboardJudgmentIntegration:
         self, tmp_path: Path,
     ) -> None:
         """read_jsonl_objects 経由で BOM/非object行を安全に処理する."""
-        from scripts.v460.analysis.side_regime_dashboard import _load_all_records
-
         path = tmp_path / "fill_records_test.jsonl"
         path.write_text(
             "\n".join([
@@ -662,8 +660,6 @@ judgment:
 """
         yaml_file = tmp_path / "test_config.yaml"
         yaml_file.write_text(yaml_content, encoding="utf-8")
-
-        from scripts.v460.analysis.side_regime_dashboard import _load_judgment_config
         ab, trending = _load_judgment_config(str(yaml_file))
 
         assert ab is not None
@@ -677,7 +673,6 @@ judgment:
 
     def test_load_missing_file(self) -> None:
         """存在しないファイル → None."""
-        from scripts.v460.analysis.side_regime_dashboard import _load_judgment_config
         ab, trending = _load_judgment_config("/nonexistent/path.yaml")
         assert ab is None
         assert trending is None
@@ -686,8 +681,6 @@ judgment:
         """judgment セクションなし → None."""
         yaml_file = tmp_path / "minimal.yaml"
         yaml_file.write_text("some_key: value\n", encoding="utf-8")
-
-        from scripts.v460.analysis.side_regime_dashboard import _load_judgment_config
         ab, trending = _load_judgment_config(str(yaml_file))
         assert ab is None
         assert trending is None

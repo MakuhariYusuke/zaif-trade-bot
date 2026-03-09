@@ -7,25 +7,30 @@ P2-7: BalanceAdapterProtocol (balance_checker adapter: object → Protocol)
 """
 from __future__ import annotations
 
-import inspect
 import typing
-from pathlib import Path
 
 import pytest
-from scripts.v460.lib import balance_checker
 from scripts.v460.lib.balance_checker import BalanceAdapterProtocol, BalanceChecker, _BalanceLike
-from scripts.v460.lib.config_hot_reload import ConfigHotReloader
-from scripts.v460.lib.maker_price import MakerPriceCalculator, OrderBookSnapshot, OrderbookProvider
-from scripts.v460.lib.ob_recorder import _normalize_levels
+from scripts.v460.lib.maker_price import OrderBookSnapshot, OrderbookProvider
 from scripts.v460.lib.ob_utils import OrderBookLevel, OrderBookLevelLike, extract_price, extract_size
+from tests.unit.v460._fill_test_source import (
+    BALANCE_CHECKER,
+    CONFIG_HOT_RELOAD,
+    MAKER_PRICE,
+    OB_RECORDER,
+    OB_UTILS,
+    read_class_method_source,
+    read_function_source,
+    read_source_text,
+)
 
-_CONFIG_HOT_RELOADER_SOURCE = Path(
-    inspect.getsourcefile(ConfigHotReloader) or "",
-).read_text(encoding="utf-8")
-_BALANCE_CHECKER_SOURCE = Path(
-    inspect.getsourcefile(balance_checker) or "",
-).read_text(encoding="utf-8")
-_MAKER_PRICE_INIT_SOURCE = inspect.getsource(MakerPriceCalculator.__init__)
+_CONFIG_HOT_RELOADER_SOURCE = read_source_text(CONFIG_HOT_RELOAD)
+_BALANCE_CHECKER_SOURCE = read_source_text(BALANCE_CHECKER)
+_MAKER_PRICE_INIT_SOURCE = read_class_method_source(
+    MAKER_PRICE,
+    "MakerPriceCalculator",
+    "__init__",
+)
 
 
 # ======================================================================
@@ -57,12 +62,12 @@ class TestOrderBookLevelLikeProtocol:
 
     def test_extract_price_no_getattr(self) -> None:
         """extract_price に getattr(level, 'price'...) が存在しない."""
-        src = inspect.getsource(extract_price)
+        src = read_function_source(OB_UTILS, "extract_price")
         assert 'getattr(level, "price"' not in src
 
     def test_extract_size_no_nested_getattr(self) -> None:
         """extract_size にネストした getattr(...getattr...) が存在しない."""
-        src = inspect.getsource(extract_size)
+        src = read_function_source(OB_UTILS, "extract_size")
         # 旧: getattr(level, "quantity", getattr(level, "size", 0.0))
         assert 'getattr(level, "quantity", getattr' not in src
 
@@ -100,7 +105,7 @@ class TestOrderBookLevelLikeProtocol:
 
     def test_ob_recorder_uses_protocol_check(self) -> None:
         """ob_recorder._normalize_levels が OrderBookLevelLike isinstance を使用."""
-        src = inspect.getsource(_normalize_levels)
+        src = read_function_source(OB_RECORDER, "_normalize_levels")
         assert "OrderBookLevelLike" in src
         assert "isinstance(level, OrderBookLevelLike)" in src
 
@@ -147,7 +152,11 @@ class TestConfigHotReloadGetattr:
 
     def test_direct_ffd_access(self) -> None:
         """_do_reload 内で runner._fast_fill_defense を直接参照."""
-        src = inspect.getsource(ConfigHotReloader._do_reload)
+        src = read_class_method_source(
+            CONFIG_HOT_RELOAD,
+            "ConfigHotReloader",
+            "_do_reload",
+        )
         assert "runner._fast_fill_defense" in src
 
 

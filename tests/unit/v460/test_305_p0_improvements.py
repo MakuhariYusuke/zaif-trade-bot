@@ -10,15 +10,22 @@
 
 from __future__ import annotations
 
-import inspect
 import math
 from dataclasses import fields
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
 from scripts.v460.lib.fill_config import FillTestConfig, PnlMeasurement
 from scripts.v460.lib.maker_price import MakerPriceCalculator as MakerPrice
+from tests.unit.v460._fill_test_source import MAKER_PRICE, read_class_method_source
+
+_MAKER_PRICE_COMPUTE_SOURCE = read_class_method_source(
+    MAKER_PRICE,
+    "MakerPriceCalculator",
+    "compute",
+)
 
 
 # ======================================================================
@@ -184,9 +191,8 @@ class TestOBCacheReuse:
 
     def test_compute_uses_cached_ob_when_available(self) -> None:
         """_last_ob_snapshot がある場合、追加 API 呼出しをしない."""
-        src = inspect.getsource(MakerPrice.compute)
         # 305# S2 コメントが存在すること
-        assert "305# S2" in src or "OB キャッシュ再利用" in src
+        assert "305# S2" in _MAKER_PRICE_COMPUTE_SOURCE or "OB キャッシュ再利用" in _MAKER_PRICE_COMPUTE_SOURCE
 
 
 # ======================================================================
@@ -197,7 +203,6 @@ class TestParkinsonsigmaHotReload:
     """sigma_parkinson_enabled が hot-reloadable."""
 
     def test_sigma_parkinson_in_hot_reloadable(self) -> None:
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         assert "sigma_parkinson_enabled" in _HOT_RELOADABLE_FIELDS
         assert "sigma_parkinson_window_sec" in _HOT_RELOADABLE_FIELDS
 
