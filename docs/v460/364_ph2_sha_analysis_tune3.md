@@ -14,29 +14,29 @@
 
 `tools/reaggregate_by_sha.py --sha 819ec73b2081` による current-SHA 限定集計。
 
+> **Note**: レコードは継続蓄積中。以下は 2026-03-10 時点のスナップショット。
+
 ### §1.1 総合指標
 
 | 指標 | 値 | Gate判定 |
 |---|---|---|
-| Total records | 234 | — |
-| Filled | 87 | — |
+| Total records | 238 | — |
+| Filled | 91 | — |
 | Skipped (skip_gate) | 46 | — |
-| Attempted | 188 (=234-46) | — |
-| **K1 attempted_fill_rate** | **46.15%** | **FAIL** (≥60%) |
-| **K2 cancel_ratio** | **53.85%** | **FAIL** (≤40%) |
-| PnL mean | +0.077 bps | — |
-| PnL median | -0.154 bps | — |
-| Profit% | 48.8% | — |
-| AS ratio | 34.52% (29/84) | — |
+| Attempted | 192 (=238-46) | — |
+| **K1 attempted_fill_rate** | **47.4%** | **FAIL** (≥60%) |
+| **K2 cancel_ratio** | **52.6%** | **FAIL** (≤40%) |
+| PnL mean | -0.108 bps | — |
+| PnL median | -0.183 bps | — |
 
 ### §1.2 Side別内訳
 
 | Side | Total | Filled | Skip | Attempted | Fill Rate (att) |
 |---|---|---|---|---|---|
-| Buy | 97 | 43 | 23 | 74 | **58.1%** |
-| Sell | 132 | 44 | 23 | 109 | **40.4%** |
+| Buy | 99 | 45 | 23 | 76 | **59.2%** |
+| Sell | 134 | 46 | 23 | 111 | **41.4%** |
 
-**Sell側がK1低下のボトルネック。** Buy は 58.1% で Gate 閾値 (60%) に近接。
+**Sell側がK1低下のボトルネック。** Buy は 59.2% で Gate 閾値 (60%) に近接。
 
 ### §1.3 PnL分布
 
@@ -55,28 +55,28 @@ mean: -0.029 bps, std: 7.190 bps
 
 ### §1.4 Cancel理由 (Side別)
 
-**Buy (cancel 31件):**
+**Buy cancel (attempted 中非 fill = 31件):**
 
 | Reason | 件数 |
 |---|---|
-| skip_gate | 23 |
 | stale_adverse_drift | 13 |
 | spread_too_narrow | 12 |
 | postonly_crossing_skip | 2 |
 | status_unknown_fast | 2 |
 | post_only_reject | 2 |
 
-**Sell (cancel 88件):**
+**Sell cancel (attempted 中非 fill = 65件):**
 
 | Reason | 件数 |
 |---|---|
 | **sell_dynamic_kill** | **39** |
-| skip_gate | 23 |
 | spread_too_narrow | 17 |
 | stale_adverse_drift | 5 |
 | status_unknown_fast | 2 |
 | post_only_reject | 1 |
 | postonly_crossing_skip | 1 |
+
+> skip_gate (buy: 23, sell: 23) は attempted から除外済み。上記は attempted-but-not-filled のみ。
 
 ### §1.5 SDK Cancel の Regime 分布
 
@@ -115,10 +115,10 @@ PnL は低下したが、これは fill 数増加による分母効果。
 
 ### §3.1 根拠
 
-1. **SDK が sell 側最大キャンセル要因** (39件 / sell attempted 109件 = 35.8%)
+1. **SDK が sell 側最大キャンセル要因** (39件 / sell attempted 111件 = 35.1%)
 2. **ranging で 23 SDK kill**: 現行 -0.5 bps (effective -1.0 at max inv_relax) でも過剰発動
 3. **trending_up で 16 SDK kill**: 利益機会 (+3.40 bps/fill) をブロック
-4. **360# TUNE-3 推定**: K1 寄与 +7.0pp (K1 46% → ~53%)
+4. **360# TUNE-3 推定**: K1 寄与 +7.0pp (K1 47% → ~54%)
 
 ### §3.2 変更内容
 
@@ -129,8 +129,8 @@ F7 制約 (361#): `ewma_alpha`, `ewma_time_decay_tau_sec` は **変更しない*
 | パラメータ | Before | After | Effective (max relax) | 根拠 |
 |---|---|---|---|---|
 | threshold_bps (default) | -0.3 | **-0.5** | -1.0 | 360# TUNE-3 提案値 |
-| regime: trending_up | -0.3 | **-0.5** | -1.0 | default と同期。16 SDK kill 解消 |
-| regime: ranging | -0.5 | **-0.7** | -1.2 | 23 SDK kill (最大バケット)。比例的 -0.2 緩和 |
+| regime: trending_up | -0.3 | **-0.5** | -1.0 | default と同期。16 SDK kill 解消狙い |
+| regime: ranging | -0.5 | **-0.7** | -1.2 | 23 SDK kill (最大バケット)。-0.2 bps 緩和 |
 | regime: trending_down | -1.0 | -1.0 (据置) | -1.5 | 0件 SDK kill。変更不要 |
 
 ### §3.3 リスク評価
@@ -159,16 +159,17 @@ F7 制約 (361#): `ewma_alpha`, `ewma_time_decay_tau_sec` は **変更しない*
 | ID | 説明 | ステータス | 担当 |
 |---|---|---|---|
 | OPS-5/A1 | 本番 Task Scheduler IgnoreNew 確認 | ⏳ pending | ops/user |
-| OPS-1/A2 | atexit hook RSS/状態ダンプ | ⏳ pending | codex (037-074完了) |
-| OPS-4 | restart.lock stale 30s→120s | ⏳ pending | codex |
-| OPS-6 | Start-Process 後 lock 確認 | ⏳ pending | codex |
+| OPS-1/A2 | atexit hook RSS/状態ダンプ | ✅ 完了 | codex 037-074 (`4da98356a`) |
+| OPS-2 | health_monitor 300→60s | ✅ 完了 | codex 037-075 (`2fba1020d`) |
+| OPS-4 | restart.lock stale 30s→120s | ✅ 完了 | codex 037-075 (`2fba1020d`) |
+| OPS-6 | Start-Process 後 lock 確認 | ✅ 完了 | codex 037-075 (`2fba1020d`) |
 
 ### P1 (Week2)
 | ID | 説明 | ステータス | 担当 |
 |---|---|---|---|
 | **TUNE-3/B3** | **SDK threshold 緩和** | **✅ 本文書で実装** | copilot 038 |
-| TUNE-2 | per_side_dd_halt -30→-50 bps | ⏳ pending | codex |
-| TUNE-4 | BDK threshold 緩和 | ⏳ pending | codex |
+| TUNE-2 | per_side_dd_halt -30→-50 bps | ⏳ pending | codex 038 (C-4) |
+| TUNE-4 | BDK threshold 緩和 | ⏳ skip (0件 BDK) | codex 038 (C-5 note) |
 | B2 | current-SHA 再集計→K1/K2 判定 | ✅ §1 で実施 | copilot 038 |
 | P1-1 | buy_ranging deep dive | ⏳ pending | codex |
 | B4/P1-3 | ph3 sidecar 設計文書 | ⏳ pending | codex |
@@ -186,6 +187,6 @@ F7 制約 (361#): `ewma_alpha`, `ewma_time_decay_tau_sec` は **変更しない*
 ## §5 次ステップ
 
 1. **即時**: OPS-5 (本番 Task Scheduler 確認) — user 作業
-2. **Codex 038 次タスク**: TUNE-2 (per_side_dd_halt) 検討、TUNE-4 (BDK) 検討
+2. **Codex 038**: C-4 (TUNE-2), C-5 (TUNE-4 skip note), C-6 (uncommitted commit) — `prompts/codex_038_tune2_tune4.md`
 3. **168h 後**: TUNE-3 デプロイ SHA で `reaggregate_by_sha.py` 再計測
 4. **K1 再判定**: TUNE-3 効果確認後、GATE-1 (閾値改訂) の要否を決定
