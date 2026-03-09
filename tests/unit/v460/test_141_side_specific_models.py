@@ -969,6 +969,11 @@ class TestOnlineMonitorConfig:
 class TestOnlineMonitorEvaluate:
     """141# §7-2: OnlineMonitor.evaluate() の基本動作."""
 
+    def _make_monitor(self, **kwargs: float | int) -> OnlineMonitor:
+        defaults = {"window": 100}
+        defaults.update(kwargs)
+        return OnlineMonitor(OnlineMonitorConfig(**defaults))
+
     def _make_records(
         self,
         n_pass: int = 50,
@@ -1000,7 +1005,7 @@ class TestOnlineMonitorEvaluate:
     def test_basic_evaluation(self) -> None:
 
         records = self._make_records(n_pass=60, n_skip=20)
-        monitor = OnlineMonitor(OnlineMonitorConfig(window=100))
+        monitor = self._make_monitor()
         result = monitor.evaluate(records)
 
         assert result.n_total == 80
@@ -1013,9 +1018,7 @@ class TestOnlineMonitorEvaluate:
     def test_degraded_detection(self) -> None:
 
         records = self._make_records(n_pass=50, n_skip=10, pass_pnl_mean=-0.5)
-        monitor = OnlineMonitor(OnlineMonitorConfig(
-            window=100, degraded_threshold_bps=-0.3,
-        ))
+        monitor = self._make_monitor(degraded_threshold_bps=-0.3)
         result = monitor.evaluate(records)
 
         assert result.degraded is True
@@ -1024,7 +1027,7 @@ class TestOnlineMonitorEvaluate:
     def test_insufficient_samples(self) -> None:
 
         records = self._make_records(n_pass=5, n_skip=2)
-        monitor = OnlineMonitor(OnlineMonitorConfig(window=100, min_samples=20))
+        monitor = self._make_monitor(min_samples=20)
         result = monitor.evaluate(records)
 
         assert result.n_total == 7
@@ -1032,13 +1035,13 @@ class TestOnlineMonitorEvaluate:
 
     def test_empty_records(self) -> None:
 
-        result = OnlineMonitor().evaluate(pd.DataFrame())
+        result = self._make_monitor().evaluate(pd.DataFrame())
         assert result.n_total == 0
 
     def test_side_summary(self) -> None:
 
         records = self._make_records(n_pass=40, n_skip=20)
-        monitor = OnlineMonitor(OnlineMonitorConfig(window=100))
+        monitor = self._make_monitor()
         result = monitor.evaluate(records)
 
         assert result.side_summary is not None
@@ -1052,7 +1055,7 @@ class TestOnlineMonitorEvaluate:
 
         # skip_score_mean = -0.3 → 大半が < 0 → precision 高い
         records = self._make_records(n_pass=30, n_skip=30, skip_score_mean=-0.5)
-        monitor = OnlineMonitor(OnlineMonitorConfig(window=100))
+        monitor = self._make_monitor()
         result = monitor.evaluate(records)
 
         assert result.skip_precision > 0.8  # 大半 negative → high precision
@@ -1060,7 +1063,7 @@ class TestOnlineMonitorEvaluate:
     def test_to_dict(self) -> None:
 
         records = self._make_records()
-        result = OnlineMonitor(OnlineMonitorConfig(window=100)).evaluate(records)
+        result = self._make_monitor().evaluate(records)
         d = result.to_dict()
 
         assert "n_total" in d
@@ -1072,7 +1075,7 @@ class TestOnlineMonitorEvaluate:
         """window より多い records がある場合、直近 window 件のみ使用."""
 
         records = self._make_records(n_pass=200, n_skip=50)
-        monitor = OnlineMonitor(OnlineMonitorConfig(window=50))
+        monitor = self._make_monitor(window=50)
         result = monitor.evaluate(records)
 
         assert result.n_total == 50

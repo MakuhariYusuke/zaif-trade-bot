@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Session 037-056 Test DRY Cleanup (2026-03-09)
+
+### Changed
+- Reused the shared `v460_fill_test_yaml` fixture in `tests/unit/v460/test_344_improvements.py`, removing its last direct `fill_test.yaml` read and promoting repeated config imports to module scope.
+- Consolidated repeated `OnlineMonitor(OnlineMonitorConfig(...))` construction in `tests/unit/v460/test_141_side_specific_models.py` behind a local helper.
+- Expanded shared daily fill-record builders in `tests/unit/v460/test_fill_quality.py` to cover daily fill-rate, G1.1 quick-judgment, and provisional-judgment test data generation.
+
 ## 345# プロアクティブ修正: warmup downweight 整合 / CircuitBreaker Py3.12+ (2026-03-09)
 
 ### Fixed
@@ -4466,3 +4473,21 @@ python scripts/unified_trainer.py \
 ### Notes
 - This batch is primarily DRY cleanup and horizontal reuse, not a major runtime change.
 - Focused execution of `test_fill_quality.py` itself was not reliable in this environment because direct collection raised `ModuleNotFoundError: scripts.v460.analysis.vg_and_trend`, while broader suites continue to import the module correctly. The code change is limited to test-side record construction.
+
+## Session 037-055 (2026-03-09)
+
+### Changed
+- Refactored [scripts/v460/lib/config_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/config_hot_reload.py) to resolve `TimeFilter` via a cached helper instead of performing the lazy import inline on every hot-reload path.
+- Updated [tests/unit/v460/test_169_config_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_169_config_hot_reload.py) to stub the cached `TimeFilter` resolver in hot-reload tests, removing the heavy real import graph from cases that only assert field updates / rebuild callbacks.
+- Fixed [tests/unit/v460/test_ml_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ml_pipeline.py) guarded real-data fallback so `build_as_features()` `ValueError` (for `<10` labeled samples) advances to the next `220/320` tail candidate instead of failing the integration test.
+- Continued horizontal DRY cleanup in [tests/unit/v460/test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py) by reusing the new daily-record builder across the sample-sufficiency / interim judgment cases.
+
+### Verified
+- `python -m py_compile scripts/v460/lib/config_hot_reload.py tests/unit/v460/test_169_config_hot_reload.py tests/unit/v460/test_ml_pipeline.py tests/unit/v460/test_fill_quality.py`
+- `python -m pytest tests/unit/v460/test_ml_pipeline.py::Test057Integration::test_load_real_data tests/unit/v460/test_169_config_hot_reload.py tests/unit/v460/test_336_fill_config_parser.py tests/unit/v460/test_336_yaml_code_drift_prevention.py tests/unit/v460/test_344_improvements.py -q --no-cov --tb=short --durations=25`
+- `python -m pytest tests/unit/v460/ -q --no-cov --tb=short --durations=25 --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py --ignore=tests/unit/v460/test_113_resilience.py --ignore=tests/unit/v460/test_152_parallel_tasks.py --deselect=tests/unit/v460/test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+
+### Notes
+- `test_169_config_hot_reload.py::TestConfigFieldUpdate::test_do_reload_updates_reloadable_fields` dropped from `1.48s` to `1.10s` in the focused YAML/config bundle, and to `0.02s` once executed inside the combined targeted run after the import graph was stubbed.
+- The guarded fallback fix kept `test_ml_pipeline.py::Test057Integration::test_load_real_data` stable at `0.17s` focused and `0.18s` in the filtered broad run.
+- The latest filtered broad rerun completed at `4139 passed, 13 warnings in 35.43s` with `test_152_parallel_tasks.py` ignored due an unrelated `scripts.v460.analysis.compare_regime_ab` import error.

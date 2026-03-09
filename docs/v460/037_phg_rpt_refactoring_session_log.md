@@ -2522,3 +2522,89 @@
 1. `test_169_config_hot_reload.py` の reload path を production helper 再利用で削る
 2. `test_141_side_specific_models.py` の regime threshold integration を stub/cached fixture 化する
 3. `test_fill_quality.py` の残る大量 record 構築箇所を同 helper へ横展開する
+
+---
+
+## 2026-03-09 / Session 037-055
+
+### 実施
+- production
+  - `scripts/v460/lib/config_hot_reload.py`
+    - `TimeFilter` 解決を `_resolve_time_filter_cls()` に分離
+    - lazy import の入口を 1 箇所に集約し、class object を cache
+- test
+  - `tests/unit/v460/test_169_config_hot_reload.py`
+    - `_resolve_time_filter_cls()` を autouse fixture で stub 化
+    - field update / component rebuild テストから実 `TimeFilter` import graph を除去
+  - `tests/unit/v460/test_ml_pipeline.py`
+    - `_write_real_fill_sample()` で `build_as_features()` の `ValueError` を catch
+    - labeled sample が足りない場合に `220/320` candidate へ正しく fallback
+  - `tests/unit/v460/test_fill_quality.py`
+    - daily record builder の横展開を継続
+
+### 結果
+- focused:
+  - `test_ml_pipeline.py::Test057Integration::test_load_real_data`
+  - `test_169_config_hot_reload.py`
+  - `test_336_fill_config_parser.py`
+  - `test_336_yaml_code_drift_prevention.py`
+  - `test_344_improvements.py`
+  - `69 passed in 4.38s`
+  - durations:
+    - `Test057Integration::test_load_real_data`: `0.17s`
+    - `TestYamlParsing::test_yaml_parses_all_new_params`: `0.11s`
+    - `TestYamlCodeDefaultDrift::test_no_unexpected_drift`: `0.07s`
+    - `TestConfigFieldUpdate::test_do_reload_updates_reloadable_fields`: `0.02s`（この束の実行順）
+- filtered broad:
+  - `tests/unit/v460/`（`test_260_compute_extract_regime_split.py` / `test_113_resilience.py` / `test_152_parallel_tasks.py` を除外、`test_306_proposals.py::...::test_yaml_has_microprice_side` を deselect）
+  - `4139 passed, 13 warnings in 35.43s`
+
+### 主要改善
+- `config_hot_reload` のボトルネックの一部は `TimeFilter` 側 import graph の cold cost だった。helper 化 + test stub により、reload テスト群から不要な本物 import を外した。
+- `ml_pipeline` の real-data integration では「候補 tail は広げるが、途中の `ValueError` を握らず落ちる」穴が残っていた。guarded fallback として不完全だったので、今回 catch して次候補へ進むように修正した。
+- `fill_quality` の daily record 構築 helper は今後も横展開できる。まだ同型ループが残っているので、次もこの路線でまとめるのが筋。
+
+### 補足
+- `test_169_config_hot_reload.py::TestConfigFieldUpdate::test_do_reload_updates_reloadable_fields` は focused 束で `1.48s -> 1.10s` まで低下。
+- broad では `config_hot_reload` 系は最上位群から一段後退し、上位は real-data setup / structural fixes / 一部 YAML parse に再集中した。
+- `test_152_parallel_tasks.py` は今回差分と無関係な `scripts.v460.analysis.compare_regime_ab` import error のため除外した。
+
+### 次アクション
+1. `test_141_side_specific_models.py` の online/regime threshold integration を cached fixture 化
+2. `test_fill_quality.py` の残る大量 record 構築を builder へ横展開
+3. YAML parse 系の production helper 再利用をさらに進める
+
+---
+
+## 2026-03-09 / Session 037-056
+
+### 実施
+- `tests/unit/v460/test_344_improvements.py`
+  - 既存の `v460_fill_test_yaml` fixture を再利用し、ローカル `yaml.safe_load()` + `fill_test.yaml` 直読を撤去
+  - `FillTestConfig` / `CycleGateAggregator` / `parse_fill_config_yaml` の method 内 import を module scope に集約
+- `tests/unit/v460/test_141_side_specific_models.py`
+  - `TestOnlineMonitorEvaluate` に `_make_monitor()` を追加し、`OnlineMonitor(OnlineMonitorConfig(...))` の重複生成を集約
+- `tests/unit/v460/test_fill_quality.py`
+  - `_make_daily_fill_count_records()` を追加
+  - `daily_fill_rates` / `g1_1_with_data` を同 helper へ寄せた
+  - `provisional_insufficient` を既存 `_make_uniform_daily_records()` へ寄せた
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_141_side_specific_models.py`
+  - `tests/unit/v460/test_344_improvements.py`
+  - `69 passed, 1 warning in 4.54s`
+- focused selector:
+  - `tests/unit/v460/test_fill_quality.py -k 'daily_fill_rates or g1_1_with_data or provisional_insufficient'`
+  - `3 passed, 203 deselected in 3.22s`
+  - durations:
+    - `TestGateCheckG11::test_g1_1_with_data`: `0.06s`
+
+### 主要改善
+- YAML parse 系は既にある session-cached fixture を使う形へ揃えた。これで `test_344_improvements.py` 独自の config file 再読込が消えた。
+- `side_specific_models` は focused では十分軽かったため、今回は性能よりも setup の一貫性と DRY を優先した。
+- `fill_quality` の日次データ構築は今後さらに横展開できる形になった。残件も同系統の helper 化で処理しやすい。
+
+### 補足
+- 今回は本筋の runtime 改善 batch ではなく、重複排除と fixture 再利用の整理が主眼。
+- 作業中に別ファイルの未コミット差分を確認したが、ユーザー指示どおり今回のコミット対象から除外している。

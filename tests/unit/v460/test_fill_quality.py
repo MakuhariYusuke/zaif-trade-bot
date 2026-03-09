@@ -144,6 +144,38 @@ def _make_uniform_daily_records(
     return records
 
 
+def _make_daily_fill_count_records(
+    *,
+    prefix: str,
+    filled_counts: list[int],
+    per_day: int,
+    base_ts: float,
+    order_price: float = 100.0,
+    order_quantity: float = 0.001,
+    queue_wait_sec: float | None = None,
+    post_fill_30s_pnl: float | None = None,
+    adverse_selected: bool | None = None,
+    alternate_side: bool = False,
+) -> list[FillRecord]:
+    records: list[FillRecord] = []
+    for day, filled_count in enumerate(filled_counts):
+        for i in range(per_day):
+            filled = i < filled_count
+            records.append(FillRecord(
+                cycle_id=f"{prefix}_d{day}_{i}",
+                timestamp=base_ts + day * 86400 + i * 120,
+                side="buy" if (not alternate_side or i % 2 == 0) else "sell",
+                order_price=order_price,
+                order_quantity=order_quantity,
+                filled=filled,
+                cancelled=not filled,
+                queue_wait_sec=queue_wait_sec if filled and queue_wait_sec is not None else 0.0,
+                post_fill_30s_pnl=post_fill_30s_pnl if filled else None,
+                adverse_selected=adverse_selected if filled else None,
+            ))
+    return records
+
+
 def _make_fast_cycle_runner(
     tmp_path: Path,
     *,
@@ -567,30 +599,12 @@ class TestComputeFillMetrics:
 
     def test_daily_fill_rates(self) -> None:
 
-        records = []
-        base_ts = 1700000000.0
-        # Day 1: 10 orders, 9 filled
-        for i in range(10):
-            records.append(FillRecord(
-                cycle_id=f"d1_{i}",
-                timestamp=base_ts + i * 120,
-                side="buy",
-                order_price=100.0,
-                order_quantity=0.001,
-                filled=(i < 9),
-                cancelled=(i >= 9),
-            ))
-        # Day 2: 10 orders, 5 filled
-        for i in range(10):
-            records.append(FillRecord(
-                cycle_id=f"d2_{i}",
-                timestamp=base_ts + 86400 + i * 120,
-                side="buy",
-                order_price=100.0,
-                order_quantity=0.001,
-                filled=(i < 5),
-                cancelled=(i >= 5),
-            ))
+        records = _make_daily_fill_count_records(
+            prefix="df",
+            filled_counts=[9, 5],
+            per_day=10,
+            base_ts=1700000000.0,
+        )
         m = compute_fill_metrics(records)
         assert m.measurement_days == 2
         assert len(m.daily_fill_rates) == 2
@@ -1562,22 +1576,17 @@ class TestGateCheckG11:
     def test_g1_1_with_data(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             # 高 fill rate のデータを作成
-            records = []
-            base_ts = 1700000000.0
-            for day in range(3):
-                for i in range(20):
-                    records.append(FillRecord(
-                        cycle_id=f"d{day}_{i}",
-                        timestamp=base_ts + day * 86400 + i * 120,
-                        side="buy" if i % 2 == 0 else "sell",
-                        order_price=15000000.0,
-                        order_quantity=0.001,
-                        filled=(i < 19),  # 95% fill rate
-                        cancelled=(i >= 19),
-                        queue_wait_sec=15.0 if i < 19 else 0.0,
-                        post_fill_30s_pnl=0.5 if i < 19 else None,
-                        adverse_selected=False if i < 19 else None,
-                    ))
+            records = _make_daily_fill_count_records(
+                prefix="g11",
+                filled_counts=[19, 19, 19],
+                per_day=20,
+                base_ts=1700000000.0,
+                order_price=15000000.0,
+                queue_wait_sec=15.0,
+                post_fill_30s_pnl=0.5,
+                adverse_selected=False,
+                alternate_side=True,
+            )
             save_fill_records(
                 records,
                 Path(tmpdir) / "fill_records_20260101.jsonl",
@@ -1962,18 +1971,13 @@ class TestInterimJudgment:
     def test_provisional_insufficient(self) -> None:
         """n<200 or days<3 → PROVISIONAL."""
 
-        records = [
-            FillRecord(
-                cycle_id=f"prov_{i}",
-                timestamp=1700006400.0 + i * 120,
-                side="buy",
-                order_price=100.0,
-                order_quantity=0.001,
-                filled=True,
-                queue_wait_sec=10.0,
-            )
-            for i in range(50)
-        ]
+        records = _make_uniform_daily_records(
+            prefix="prov",
+            days=1,
+            per_day=50,
+            base_ts=1700006400.0,
+            queue_wait_sec=10.0,
+        )
         metrics = compute_fill_metrics(records)
         judgment = g1_1_judgment(metrics, {})
         assert judgment["judgment_type"] == "PROVISIONAL"

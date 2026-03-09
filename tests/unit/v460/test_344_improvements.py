@@ -12,6 +12,9 @@ from __future__ import annotations
 
 import pytest
 
+from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.fill_config_parser import parse_fill_config_yaml
 from ztb.risk.sell_dynamic_kill import DynamicKillConfig, DynamicKillManager
 
 
@@ -23,7 +26,6 @@ class TestVelocityEmaAlphaDefault:
     """velocity_ema_alpha のコードデフォルトが 0.3 であること."""
 
     def test_code_default_is_0_3(self):
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.velocity_ema_alpha == 0.3
 
@@ -36,7 +38,6 @@ class TestRangingObiAsymmetryDefault:
     """ranging_obi_asymmetry_factor のコードデフォルトが 0.3 であること."""
 
     def test_code_default_is_0_3(self):
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.ranging_obi_asymmetry_factor == 0.3
 
@@ -49,7 +50,6 @@ class TestInvDecayTauDefault:
     """inv_decay_tau_sec のコードデフォルトが 1800.0 であること."""
 
     def test_code_default_is_1800(self):
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.inv_decay_tau_sec == 1800.0
 
@@ -63,21 +63,16 @@ class TestInvBypassGradual:
 
     def test_inv_bypass_threshold_default_is_zero(self):
         """sell_guard_inv_bypass_threshold がデフォルト 0.0 (無効) であること."""
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.sell_guard_inv_bypass_threshold == 0.0
 
     def test_sell_inv_relaxation_max_bps_default(self):
         """sell inv_relaxation max_bps が 0.5 (拡大済) であること."""
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.sell_dynamic_kill_inv_relaxation_max_bps == 0.5
 
     def test_gate_no_bypass_when_threshold_zero(self):
         """inv_bypass_threshold=0 時は bypass が発動しないこと."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
-
         cfg = FillTestConfig(
             sell_guard_inv_bypass_threshold=0.0,
             skip_sell_trending=True,
@@ -95,9 +90,6 @@ class TestInvBypassGradual:
 
     def test_gate_bypass_still_works_if_threshold_positive(self):
         """inv_bypass_threshold > 0 なら従来通り bypass が発動."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
-
         cfg = FillTestConfig(
             sell_guard_inv_bypass_threshold=0.3,
             skip_sell_trending=True,
@@ -114,9 +106,6 @@ class TestInvBypassGradual:
 
     def test_sell_dynamic_kill_no_bypass_when_threshold_zero(self):
         """inv_bypass_threshold=0 → sell_dynamic_kill は inv_bypass しない."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
-
         cfg = FillTestConfig(
             sell_guard_inv_bypass_threshold=0.0,
             sell_dynamic_kill_enabled=True,
@@ -274,7 +263,6 @@ class TestEwmaMode:
 
     def test_fill_config_ewma_alpha_defaults(self):
         """FillTestConfig の EWMA alpha コードデフォルトが 0.05."""
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.sell_dynamic_kill_ewma_alpha == 0.05
         assert cfg.buy_dynamic_kill_ewma_alpha == 0.05
@@ -287,18 +275,11 @@ class TestEwmaMode:
 class TestYamlParsing:
     """YAML から全新規パラメータが正しくパースされること."""
 
-    def test_yaml_parses_all_new_params(self):
-        from scripts.v460.lib.fill_config_parser import parse_fill_config_yaml
-        import os
-        import yaml
-
-        yaml_path = os.path.join(
-            os.path.dirname(__file__),
-            "..", "..", "..", "configs", "v460", "fill_test.yaml",
-        )
-        with open(yaml_path) as f:
-            raw = yaml.safe_load(f)
-        cfg = parse_fill_config_yaml(raw)
+    def test_yaml_parses_all_new_params(
+        self,
+        v460_fill_test_yaml: dict[str, object],
+    ) -> None:
+        cfg = parse_fill_config_yaml(v460_fill_test_yaml)
         # A/B/C: パラメータ有効化
         assert cfg.velocity_ema_alpha == 0.3
         assert cfg.ranging_obi_asymmetry_factor == 0.3
