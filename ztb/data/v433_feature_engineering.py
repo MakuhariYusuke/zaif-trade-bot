@@ -76,86 +76,36 @@ class MarketRegimeDetector:
         """
         レジームの分類
         """
-        regimes = []
+        short_trend = df["trend_strength_short"].fillna(0.0)
+        medium_trend = df["trend_strength_medium"].fillna(0.0)
+        short_vol = df["volatility_short"].fillna(0.0)
+        medium_vol = df["volatility_medium"].fillna(0.0)
 
-        for idx in df.index:
-            # 短期トレンド
-            short_trend = (
-                df.loc[idx, "trend_strength_short"]
-                if not pd.isna(df.loc[idx, "trend_strength_short"])
-                else 0
-            )
-            short_vol = (
-                df.loc[idx, "volatility_short"]
-                if not pd.isna(df.loc[idx, "volatility_short"])
-                else 0
-            )
+        strong_trend = (short_trend.abs() > 0.05) & (medium_trend.abs() > 0.03)
+        bull = strong_trend & (short_trend > 0) & (medium_trend > 0)
+        bear = strong_trend & (short_trend < 0) & (medium_trend < 0)
+        mixed = strong_trend & ~(bull | bear)
+        volatile = (~strong_trend) & (short_vol > medium_vol * 1.5)
 
-            # 中期トレンド
-            medium_trend = (
-                df.loc[idx, "trend_strength_medium"]
-                if not pd.isna(df.loc[idx, "trend_strength_medium"])
-                else 0
-            )
-            medium_vol = (
-                df.loc[idx, "volatility_medium"]
-                if not pd.isna(df.loc[idx, "volatility_medium"])
-                else 0
-            )
-
-            # 分類ロジック
-            if abs(short_trend) > 0.05 and abs(medium_trend) > 0.03:  # 強いトレンド
-                if short_trend > 0 and medium_trend > 0:
-                    regime = "bull"  # 強気
-                elif short_trend < 0 and medium_trend < 0:
-                    regime = "bear"  # 弱気
-                else:
-                    regime = "mixed"  # 混合
-            elif short_vol > medium_vol * 1.5:  # 高ボラティリティ
-                regime = "volatile"
-            else:
-                regime = "sideways"  # 横ばい
-
-            regimes.append(regime)
-
+        regimes = np.full(len(df), "sideways", dtype=object)
+        regimes[volatile.to_numpy()] = "volatile"
+        regimes[mixed.to_numpy()] = "mixed"
+        regimes[bear.to_numpy()] = "bear"
+        regimes[bull.to_numpy()] = "bull"
         return pd.Series(regimes, index=df.index)
 
     def _calculate_regime_confidence(self, df: pd.DataFrame) -> pd.Series:
         """
         レジームの確信度計算
         """
-        confidence = []
+        short_trend = df["trend_strength_short"].abs().fillna(0.0)
+        medium_trend = df["trend_strength_medium"].abs().fillna(0.0)
+        short_vol = df["volatility_short"].fillna(0.0)
+        medium_vol = df["volatility_medium"].fillna(0.0)
 
-        for idx in df.index:
-            short_trend = (
-                abs(df.loc[idx, "trend_strength_short"])
-                if not pd.isna(df.loc[idx, "trend_strength_short"])
-                else 0
-            )
-            medium_trend = (
-                abs(df.loc[idx, "trend_strength_medium"])
-                if not pd.isna(df.loc[idx, "trend_strength_medium"])
-                else 0
-            )
-            short_vol = (
-                df.loc[idx, "volatility_short"]
-                if not pd.isna(df.loc[idx, "volatility_short"])
-                else 0
-            )
-            medium_vol = (
-                df.loc[idx, "volatility_medium"]
-                if not pd.isna(df.loc[idx, "volatility_medium"])
-                else 0
-            )
-
-            # 確信度の計算 (0-1の範囲)
-            trend_conf = min((short_trend + medium_trend) / 0.1, 1.0)
-            vol_conf = min(abs(short_vol - medium_vol) / (medium_vol + 0.001), 1.0)
-
-            conf = (trend_conf + vol_conf) / 2
-            confidence.append(conf)
-
-        return pd.Series(confidence, index=df.index)
+        trend_conf = np.minimum((short_trend + medium_trend) / 0.1, 1.0)
+        vol_conf = np.minimum((short_vol - medium_vol).abs() / (medium_vol + 0.001), 1.0)
+        return ((trend_conf + vol_conf) / 2).rename("regime_confidence")
 
 class AdaptiveFeatureEngineer:
     """
