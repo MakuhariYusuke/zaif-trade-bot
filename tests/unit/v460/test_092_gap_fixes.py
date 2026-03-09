@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 
 import pytest
+import yaml
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 import sys
@@ -25,6 +26,16 @@ from ztb.metrics.fill_quality import (
     g1_1_judgment,
     compute_round_trip_metrics,
 )
+
+
+@pytest.fixture(scope="module")
+def gate_thresholds_yaml() -> dict[str, object]:
+    path = _PROJECT_ROOT / "configs" / "v460" / "gate_thresholds.yaml"
+    with open(path, encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+    if not isinstance(cfg, dict):
+        raise TypeError("gate_thresholds.yaml must deserialize to dict")
+    return cfg
 
 
 # =====================================================================
@@ -118,14 +129,14 @@ class TestE1ThresholdRedesign:
         result = g1_1_judgment(metrics, {"min_fill_rate_p90": 0.85})
         assert result["checks"]["E1_fill_rate_p90"]["pass"] is True
 
-    def test_gate_thresholds_yaml_has_85(self) -> None:
+    def test_gate_thresholds_yaml_has_85(
+        self,
+        gate_thresholds_yaml: dict[str, object],
+    ) -> None:
         """gate_thresholds.yaml が 0.85 に設定されていることを確認."""
-        import yaml  # type: ignore[import-untyped]
-
-        path = _PROJECT_ROOT / "configs" / "v460" / "gate_thresholds.yaml"
-        with open(path, "r") as f:
-            cfg = yaml.safe_load(f)
-        assert cfg["g1_1_exec"]["min_fill_rate_p90"] == 0.85
+        g1_1_exec = gate_thresholds_yaml["g1_1_exec"]
+        assert isinstance(g1_1_exec, dict)
+        assert g1_1_exec["min_fill_rate_p90"] == 0.85
 
 
 # =====================================================================
@@ -294,22 +305,22 @@ class TestE7NetInventory:
 class TestGateThresholdsYaml:
     """092# 追加閾値의 YAML 整合."""
 
-    def test_round_trip_threshold_exists(self) -> None:
+    def test_round_trip_threshold_exists(
+        self,
+        gate_thresholds_yaml: dict[str, object],
+    ) -> None:
         """gate_thresholds.yaml に min_round_trip_pnl_mean が定義."""
-        import yaml  # type: ignore[import-untyped]
+        g1_1_exec = gate_thresholds_yaml["g1_1_exec"]
+        assert isinstance(g1_1_exec, dict)
+        assert "min_round_trip_pnl_mean" in g1_1_exec
+        assert g1_1_exec["min_round_trip_pnl_mean"] == -2.0
 
-        path = _PROJECT_ROOT / "configs" / "v460" / "gate_thresholds.yaml"
-        with open(path, "r") as f:
-            cfg = yaml.safe_load(f)
-        assert "min_round_trip_pnl_mean" in cfg["g1_1_exec"]
-        assert cfg["g1_1_exec"]["min_round_trip_pnl_mean"] == -2.0
-
-    def test_max_net_inventory_exists(self) -> None:
+    def test_max_net_inventory_exists(
+        self,
+        gate_thresholds_yaml: dict[str, object],
+    ) -> None:
         """gate_thresholds.yaml に max_net_inventory が定義."""
-        import yaml  # type: ignore[import-untyped]
-
-        path = _PROJECT_ROOT / "configs" / "v460" / "gate_thresholds.yaml"
-        with open(path, "r") as f:
-            cfg = yaml.safe_load(f)
-        assert "max_net_inventory" in cfg["g1_1_exec"]
-        assert cfg["g1_1_exec"]["max_net_inventory"] == 5
+        g1_1_exec = gate_thresholds_yaml["g1_1_exec"]
+        assert isinstance(g1_1_exec, dict)
+        assert "max_net_inventory" in g1_1_exec
+        assert g1_1_exec["max_net_inventory"] == 5

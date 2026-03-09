@@ -2692,3 +2692,60 @@
 - `config_hot_reload` は「生成 helper」と「更新済み context helper」の二段構成になり、reload テストの重複がさらに減った。
 - `fill_quality` の I/O テストは線形レコード builder へ寄せたことで、単純 roundtrip データの記述がかなり減った。
 - `build_real_features()` は target date 解決が 1 箇所に閉じたので、今後の `--date` / `--all-dates` 条件追加でも分岐を増やしにくい。
+
+---
+
+## 2026-03-09 / Session 037-060
+
+### 実施
+- `tests/unit/v460/test_fill_quality.py`
+  - `_make_linear_records()` に `start_index` / `separator` を追加
+  - `_save_linear_records()` を追加
+  - I/O / glob / date-range 系の単発レコード生成をさらに helper 化
+- `scripts/v460/build_features.py`
+  - 未使用だった `_discover_dates()` wrapper を削除
+  - date discovery を `_discover_daily_inputs()` の単一路線に整理
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `14 passed in 4.14s`
+- focused selector:
+  - `tests/unit/v460/test_fill_quality.py -k 'save_load_roundtrip or iter_load_roundtrip or glob_load or iter_glob_load_roundtrip or iter_glob_load_can_exclude_emergency or iter_fill_record_objects_glob_roundtrip or list_fill_record_files_supports_date_range or list_fill_record_files_date_range_uses_direct_resolution or list_fill_record_files_cache_invalidates_when_directory_changes or load_fill_record_objects_glob_supports_date_range'`
+  - `11 passed, 195 deselected in 2.62s`
+
+### 主要改善
+- `fill_quality` の I/O テストは「生成 helper」と「保存 helper」まで揃ったので、今後の roundtrip ケース追加で同じ boilerplate を増やさずに済む。
+- cycle_id の命名差分も helper 引数で吸収できるようにしたので、元テスト意図を維持したまま共通化できる範囲が広がった。
+- `build_features.py` は日付 discovery の入口が 1 つになり、同種 helper の重複が減った。
+
+---
+
+## 2026-03-09 / Session 037-061
+
+### 実施
+- `tests/unit/v460/test_013_fixes.py`
+  - cached `_source()` helper を追加
+  - `CoincheckAdapter` / `BitFlyerAdapter` / `OrderManager` の source assertion を同 helper に寄せた
+- `tests/unit/v460/test_143_regime_utilization.py`
+  - cached `_source()` helper を追加
+  - `online_monitor` / `SkipGateEvaluator` / `FillTestRunner` / `OrderMonitor` の source assertion を共通化
+- `tests/unit/v460/test_139_review_fixes.py`
+  - cached `_source()` helper を追加
+  - `SkipGateEvaluator`, `pnl_measurer`, `feature_enricher`, `run_fill_test`, `retrain_scheduler` の source assertion を共通化
+- `tests/unit/v460/test_092_gap_fixes.py`
+  - `gate_thresholds_yaml` fixture を追加
+  - `gate_thresholds.yaml` 直読 3 箇所を fixture 再利用へ変更
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_013_fixes.py`
+  - `tests/unit/v460/test_092_gap_fixes.py`
+  - `tests/unit/v460/test_139_review_fixes.py`
+  - `tests/unit/v460/test_143_regime_utilization.py`
+  - `134 passed in 12.17s`
+
+### 主要改善
+- `inspect.getsource(...)` の残件はこの 3 ファイルで cached helper に置換できた。source-contract テストの重複パターンがかなり減った。
+- `gate_thresholds.yaml` の consistency テストは typed fixture に寄せたので、今後の閾値追加でも読み込み boilerplate を増やさずに済む。
+- focused durations の上位は source read ではなく実際の behavioral test に寄っており、今後は真に重い call 側を見やすい状態になった。

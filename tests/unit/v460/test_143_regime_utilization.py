@@ -22,6 +22,7 @@ import logging
 import time
 import types
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from unittest.mock import MagicMock, AsyncMock, patch
 
@@ -40,8 +41,14 @@ from scripts.v460.run_fill_test import FillTestRunner
 from ztb.metrics.fill_quality import FillRecord, _quarantine_reason
 from ztb.ml import online_monitor
 
-_REGIME_HIGH_VOL_SOURCE = inspect.getsource(MakerPriceCalculator._regime_boost_high_vol)
-_REGIME_RANGING_SOURCE = inspect.getsource(MakerPriceCalculator._regime_boost_ranging)
+
+@lru_cache(maxsize=None)
+def _source(obj: object) -> str:
+    return inspect.getsource(obj)
+
+
+_REGIME_HIGH_VOL_SOURCE = _source(MakerPriceCalculator._regime_boost_high_vol)
+_REGIME_RANGING_SOURCE = _source(MakerPriceCalculator._regime_boost_ranging)
 
 # ======================================================================
 # R-1a: Offset regime adaptation tests
@@ -422,7 +429,7 @@ class TestOnlineMonitorPreFilter:
 
     def test_pre_filter_in_source(self) -> None:
         """online_monitor.py に skip_gate_skipped/filled の pre-filter がある."""
-        source = inspect.getsource(online_monitor)
+        source = _source(online_monitor)
         assert "skip_gate_skipped" in source
         assert "filled" in source
 
@@ -431,7 +438,7 @@ class TestSkipGateSideReloadIndependence:
 
     def test_side_reload_before_unified_check_in_source(self) -> None:
         """_check_and_reload_model で side 再読込が unified hash チェックより先."""
-        source = inspect.getsource(SkipGateEvaluator._check_and_reload_model)
+        source = _source(SkipGateEvaluator._check_and_reload_model)
         # side reload の呼び出しが unified hash チェック (_model_file_hash) より先
         side_idx = source.index("_check_and_reload_side_models")
         hash_idx = source.index("_model_file_hash")
@@ -445,7 +452,7 @@ class TestEvaluateGuardAllowsSideOnly:
 
     def test_evaluate_guard_checks_side_models(self) -> None:
         """evaluate() のガードが _gate_buy/_gate_sell の存在もチェック."""
-        source = inspect.getsource(SkipGateEvaluator.evaluate)
+        source = _source(SkipGateEvaluator.evaluate)
         assert "_gate_buy" in source
         assert "_gate_sell" in source
 
@@ -532,7 +539,7 @@ class TestMinLotUnification:
 
     def test_min_lot_uses_config(self) -> None:
         """ハードコード 0.001 ではなく config.min_order_btc を参照."""
-        source = inspect.getsource(FillTestRunner._regime_adjusted_lot)
+        source = _source(FillTestRunner._regime_adjusted_lot)
         assert "self.config.min_order_btc" in source
         assert "min_lot = 0.001" not in source
 
@@ -571,7 +578,7 @@ class TestPreflightLotAlignment:
     def test_regime_lot_no_persistent_mutation(self) -> None:
         """145# fix: run_single_cycle で _regime_adjusted_lot が呼ばれるが、
         _current_lot への永続化コードが除去されている."""
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        source = _source(FillTestRunner.run_single_cycle)
         # 151# P3-03: _regime_lot を1回算出 → SkipGate + _effective_order_lot で共有
         # _regime_lot は SkipGate 前に算出 (lot_floor より先の場合あり)
         assert "_regime_lot = self._regime_adjusted_lot()" in source, (
@@ -636,26 +643,26 @@ class TestRegimeRepriceInOrderMonitor:
     """144# R-1c: OrderMonitor の regime reprice offset がソースに含まれる."""
 
     def test_regime_reprice_offset_in_source(self) -> None:
-        source = inspect.getsource(OrderMonitor.monitor)
+        source = _source(OrderMonitor.monitor)
         assert "regime_reprice_adjustments" in source
         assert "_regime_reprice_offset" in source
 
     def test_reprice_offset_applied_to_stale_max(self) -> None:
         """_stale_max_rp = base + _regime_reprice_offset."""
-        source = inspect.getsource(OrderMonitor.monitor)
+        source = _source(OrderMonitor.monitor)
         assert "_stale_max_rp_base + _regime_reprice_offset" in source
 
 class TestRegimeTimeoutInOrderMonitor:
     """144# R-1d: OrderMonitor の regime timeout multiplier がソースに含まれる."""
 
     def test_regime_timeout_in_source(self) -> None:
-        source = inspect.getsource(OrderMonitor.monitor)
+        source = _source(OrderMonitor.monitor)
         assert "regime_timeout_multipliers" in source
         assert "_effective_timeout" in source
 
     def test_effective_timeout_used_in_loop(self) -> None:
         """while ループが _effective_timeout を使用."""
-        source = inspect.getsource(OrderMonitor.monitor)
+        source = _source(OrderMonitor.monitor)
         assert "elapsed < _effective_timeout" in source
         # 旧ハードコード timeout_sec が直接ループで使われていないこと
         assert "elapsed < cfg.order_timeout_sec" not in source
@@ -684,7 +691,7 @@ class TestRegimeRepriceMonitorBehavioral:
         regime_det.current_regime.value = "trending"
 
         # trending: base=2, offset=+3 → max_reprice=5
-        src = inspect.getsource(OrderMonitor.monitor)
+        src = _source(OrderMonitor.monitor)
         # 確認: offset 加算の max(0, ...) ロジック
         assert "max(0, _stale_max_rp_base + _regime_reprice_offset)" in src
 
@@ -698,7 +705,7 @@ class TestRegimeRepriceMonitorBehavioral:
         monitor = OrderMonitor(cfg)
         # _stale_max_rp = max(0, 1 + (-5)) = max(0, -4) = 0
         # This is verified by source check; runtime would require full async mock
-        src = inspect.getsource(OrderMonitor.monitor)
+        src = _source(OrderMonitor.monitor)
         assert "max(0," in src
 
 class TestRegimeTimeoutMonitorBehavioral:

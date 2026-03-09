@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Session 037-061 Source Cache Reuse and Gate Threshold Fixture Cleanup (2026-03-09)
+
+### Changed
+- Added cached `_source()` helpers in `tests/unit/v460/test_013_fixes.py`, `tests/unit/v460/test_139_review_fixes.py`, and `tests/unit/v460/test_143_regime_utilization.py` to remove repeated uncached `inspect.getsource(...)` calls.
+- Added a typed `gate_thresholds_yaml` fixture in `tests/unit/v460/test_092_gap_fixes.py` and rewired the YAML consistency tests to reuse it instead of reopening `gate_thresholds.yaml` each time.
+
+## Session 037-060 Additional I/O Builder Reuse and Dead Wrapper Cleanup (2026-03-09)
+
+### Changed
+- Expanded `_make_linear_records()` in `tests/unit/v460/test_fill_quality.py` with `start_index` and `separator`, then reused it across the remaining one-record / two-record I/O and date-range tests.
+- Added `_save_linear_records()` in `tests/unit/v460/test_fill_quality.py` to collapse repeated `save_fill_records(_make_linear_records(...))` patterns.
+- Removed the dead `_discover_dates()` wrapper from `scripts/v460/build_features.py`, keeping date discovery on the single `_discover_daily_inputs()` path.
+
 ## Session 037-059 Reload/YAML Prep Reuse and Linear Record Builders (2026-03-09)
 
 ### Changed
