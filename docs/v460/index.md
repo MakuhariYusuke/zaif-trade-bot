@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-09 (355# API 呼出し重複排除 + ph3 障害分析)
+> 最終更新: 2026-03-09 (356# ph3 SAC 訓練計画 — vXXX 資産活用)
 
 ---
 
@@ -349,6 +349,7 @@
 | 353 | impl | [353_ph2_impl_vpin_asymmetric_buy_boost.md](353_ph2_impl_vpin_asymmetric_buy_boost.md) | VPIN 非対称 buy boost + EWMA 時間減衰 (351# 盲点1-2) + buy 防御パラメータ調整, テスト 25→29+25 |
 | 354 | fix | [354_phg_fix_code_quality_sweep.md](354_phg_fix_code_quality_sweep.md) | コード品質改善: 型安全性 (mypy 12→0), DRY (parser 共通化), サイレント例外修正, hot-reload drift 修正 |
 | 355 | impl | [355_ph2_impl_api_dedup_and_ph3_blockers.md](355_ph2_impl_api_dedup_and_ph3_blockers.md) | SkipGate API 呼出し重複排除 (OB+Trades prefetch 共有, 200-500ms/cycle 削減) + ph3 ブロッカー 5 件特定 |
+| 356 | plan | [356_ph3_plan_sac_training_with_vxxx_assets.md](356_ph3_plan_sac_training_with_vxxx_assets.md) | ph3 SAC 訓練計画: vXXX 資産活用 + B1-B5 ブロッカー解消 + 4-7 日ロードマップ |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
