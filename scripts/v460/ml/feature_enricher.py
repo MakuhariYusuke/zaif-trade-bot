@@ -17,6 +17,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
+from scripts.v460.lib.vpin_volume_sync import compute_vpin_volume_sync
 from scripts.v460.ml.frame_utils import compute_local_hour_cyclic
 from ztb.data.raw_paths import RawDirLike, resolve_raw_dir
 from ztb.io.jsonl_gz import read_jsonl_gz
@@ -361,6 +362,7 @@ def _default_multi_timeframe_trade_features(
     result["vpin_acceleration"] = 0.0
     result["tfi_acceleration"] = 0.0
     result["trade_rate_acceleration"] = 0.0
+    result["vpin_vol_sync"] = 0.5  # 366# M5: Volume-Sync VPIN default
     return result
 
 
@@ -425,6 +427,8 @@ def _compute_trade_feature_bundle(
     context: _TradeFeatureContext | None,
     primary_window_sec: int = _TRADE_WINDOW_SEC,
     multi_windows: tuple[int, ...] = tuple(_MULTI_TF_WINDOWS),
+    vpin_vol_sync_bucket: float = 0.0,
+    vpin_vol_sync_n_buckets: int = 50,
 ) -> tuple[dict[str, float], dict[str, float]]:
     """primary + multi-timeframe の trade 特徴量を一括計算."""
     primary = _default_trade_features()
@@ -474,6 +478,16 @@ def _compute_trade_feature_bundle(
         rate_30 = short_core["count"] / 30.0 if short_core["count"] > 0.0 else 0.0
         rate_300 = long_core["count"] / 300.0 if long_core["count"] > 0.0 else 0.0
         multi["trade_rate_acceleration"] = rate_30 - rate_300
+
+    # 366# M5: Volume-Sync VPIN
+    if vpin_vol_sync_bucket > 0.0 and context is not None:
+        multi["vpin_vol_sync"] = compute_vpin_volume_sync(
+            context.cumulative_total_volume,
+            context.cumulative_buy_volume,
+            end_index=end_index,
+            bucket_size=vpin_vol_sync_bucket,
+            n_buckets=vpin_vol_sync_n_buckets,
+        )
 
     return primary, multi
 

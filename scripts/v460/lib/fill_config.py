@@ -464,6 +464,11 @@ class FillTestConfig:
     # 353# VPIN 非対称 buy boost: buy 側の VPIN boost を追加増幅
     # 351# 盲点1「Ranging ≠ 対称」対応: buy は sell より VPIN リスクが構造的に高い
     vg_vpin_buy_extra_mult: float = 1.0      # 1.0=対称(従来), >1.0=buy 側追加増幅
+    # ---- 366# M5: Volume-Sync VPIN (Easley 2012) ----
+    # 出来高バケットベースの VPIN。低出来高時の安定性向上。
+    vpin_vol_sync_enabled: bool = False      # True で volume-sync VPIN 有効化
+    vpin_vol_sync_bucket_btc: float = 0.05   # 1 バケットあたりの出来高 (BTC)
+    vpin_vol_sync_n_buckets: int = 50        # 平均に使うバケット数
     # 211# P1-B: Micro Circuit Breaker (短期価格急変の自動検知・防御)
     mcb_enabled: bool = False
     mcb_caution_sigma: float = 1.0
