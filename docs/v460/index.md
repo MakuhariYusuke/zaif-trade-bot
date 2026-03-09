@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-10 (360# ph2 Fill Test ログ分析 深堀り + AI レビュー準備)
+> 最終更新: 2026-03-10 (363# 361/362 AI レビュー妥当性検証 + 統合アクション + Codex メモリ診断プロンプト)
 
 ---
 
@@ -354,6 +354,11 @@
 | 358 | impl | [358_ph3_impl_g2_sac_blockers.md](358_ph3_impl_g2_sac_blockers.md) | G2 SAC ブロッカー実装: B1 YAML + B3 feature_columns 注入 + B4 multi-seed + G2 gate 判定 |
 | 359 | impl | [359_ph2_impl_g2_gate_metrics_fix.md](359_ph2_impl_g2_gate_metrics_fix.md) | ph2 G2 gate メトリクス修正: checkpoint ROI + eval gross_roi + セルフレビュー品質改善 (ph3 先行準備) |
 | 360 | rpt | [360_ph2_rpt_fill_test_analysis.md](360_ph2_rpt_fill_test_analysis.md) | ph2 Fill Test ログ分析: 5日間集計 + SDK/BDK 影響 + クラッシュ分析 + G1.1 ゲート判定 + 改善提案 |
+| 361 | rev | [361_ph2_rev_351_360_ph3_readiness_and_profit_priority_review.md](361_ph2_rev_351_360_ph3_readiness_and_profit_priority_review.md) | Codex レビュー: 351-360 ph3 移行妥当性 + 利益最優先再整理 |
+| 362 | rev | [362_gemini_final_answer_profit_architecture.md](362_gemini_final_answer_profit_architecture.md) | Gemini 3.1 Pro レビュー: 収益最大化アーキテクチャ + Sidecar 提案 |
+| 363 | rev | [363_ph2_rev_361_362_review_validation.md](363_ph2_rev_361_362_review_validation.md) | 361/362 AI レビュー妥当性検証: コード検証 + 統合アクション + Codex メモリ診断プロンプト |
+| 363 | rev | [363_ph2_rev_361_362_review_validation.md](363_ph2_rev_361_362_review_validation.md) | 361/362 AI レビュー妥当性検証: コード検証 + 統合アクション + Codex メモリ診断プロンプト |
+| 361 | rev | [361_ph2_rev_351_360_ph3_readiness_and_profit_priority_review.md](361_ph2_rev_351_360_ph3_readiness_and_profit_priority_review.md) | 351#–360# レビュー: ph3 gate の in-sample 問題, E2 `ic_seed_std` 空洞化, ph2 live 問題との不整合, mixed-SHA 集計の補正, profit-first の次手整理 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
