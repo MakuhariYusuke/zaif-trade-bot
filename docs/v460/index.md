@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-09 (359# ph3 G2 gate メトリクス修正 + セルフレビュー品質改善)
+> 最終更新: 2026-03-10 (359# ph2 G2 gate メトリクス修正 + セルフレビュー品質改善)
 
 ---
 
@@ -352,7 +352,7 @@
 | 356 | plan | [356_ph3_plan_sac_training.md](356_ph3_plan_sac_training.md) | ph3 SAC 訓練計画: vXXX 資産活用 + B1-B5 ブロッカー解消 + 4-7 日ロードマップ |
 | 357 | rpt | [357_ph3_rpt_sac_asset_inventory.md](357_ph3_rpt_sac_asset_inventory.md) | ph3 SAC 資産インベントリ: v430-v459 設定・モデル・特徴量・環境の網羅的棚卸し |
 | 358 | impl | [358_ph3_impl_g2_sac_blockers.md](358_ph3_impl_g2_sac_blockers.md) | G2 SAC ブロッカー実装: B1 YAML + B3 feature_columns 注入 + B4 multi-seed + G2 gate 判定 |
-| 359 | impl | [359_ph3_impl_g2_gate_metrics_fix.md](359_ph3_impl_g2_gate_metrics_fix.md) | G2 gate メトリクス修正: checkpoint ROI + eval gross_roi + セルフレビュー品質改善 |
+| 359 | impl | [359_ph2_impl_g2_gate_metrics_fix.md](359_ph2_impl_g2_gate_metrics_fix.md) | ph2 G2 gate メトリクス修正: checkpoint ROI + eval gross_roi + セルフレビュー品質改善 (ph3 先行準備) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
