@@ -361,3 +361,99 @@ class TestMultiSeedDispatch:
         # Other seeds should have real results
         ok = [s for s in result["seed_results"] if s["seed"] != 456]
         assert all(s["gross_roi"] == 0.05 for s in ok)
+
+
+# ======================================================================
+# L-3/L-5: ROI extraction and metrics completeness (359#)
+# ======================================================================
+
+
+class TestROIExtraction:
+    """_extract_roi_from_env が env から正しく ROI を取得すること."""
+
+    def test_extract_roi_from_env_with_portfolio(self) -> None:
+        """portfolio_value / initial_portfolio_value から ROI を算出."""
+        from scripts.v460.lib.tasks.sac_train import _extract_roi_from_env
+
+        env = MagicMock()
+        env.portfolio_value = 110_000.0
+        env.initial_portfolio_value = 100_000.0
+        roi = _extract_roi_from_env(env)
+        assert abs(roi - 0.1) < 1e-9
+
+    def test_extract_roi_from_env_missing_attrs(self) -> None:
+        """portfolio 属性が無い env では 0.0 を返す."""
+        from scripts.v460.lib.tasks.sac_train import _extract_roi_from_env
+
+        env = MagicMock(spec=[])  # no attributes
+        roi = _extract_roi_from_env(env)
+        assert roi == 0.0
+
+    def test_extract_roi_from_env_zero_initial(self) -> None:
+        """initial_portfolio_value が 0 の場合に 0.0 を返す (ZeroDivision 防止)."""
+        from scripts.v460.lib.tasks.sac_train import _extract_roi_from_env
+
+        env = MagicMock()
+        env.portfolio_value = 100.0
+        env.initial_portfolio_value = 0.0
+        roi = _extract_roi_from_env(env)
+        assert roi == 0.0
+
+    def test_extract_roi_negative(self) -> None:
+        """損失ケースで負の ROI を返す."""
+        from scripts.v460.lib.tasks.sac_train import _extract_roi_from_env
+
+        env = MagicMock()
+        env.portfolio_value = 95_000.0
+        env.initial_portfolio_value = 100_000.0
+        roi = _extract_roi_from_env(env)
+        assert abs(roi - (-0.05)) < 1e-9
+
+
+class TestCheckpointAndEvalMetrics:
+    """チェックポイントと評価メトリクスに G2 gate 必須フィールドが存在すること."""
+
+    def test_checkpoint_metrics_contain_roi(self) -> None:
+        """_train_with_checkpoints の結果に roi フィールドが含まれる."""
+        from scripts.v460.lib.tasks.sac_train import _train_with_checkpoints
+
+        model = MagicMock()
+        model.predict.return_value = (0, None)
+
+        env = MagicMock()
+        env.reset.return_value = (0, {})
+        env.step.return_value = (0, 0.1, True, False, {})
+        env.portfolio_value = 101_000.0
+        env.initial_portfolio_value = 100_000.0
+
+        cfg = {"training": {"checkpoint_interval": 5000, "total_timesteps": 10000}}
+        result = _train_with_checkpoints(model, env, 10000, cfg)
+
+        assert len(result) == 2  # 10000 / 5000
+        for cp in result:
+            assert "roi" in cp
+            assert "timesteps" in cp
+            assert isinstance(cp["roi"], float)
+
+    def test_eval_metrics_contain_gross_roi(self) -> None:
+        """_evaluate_trained_model の結果に gross_roi が含まれる."""
+        from scripts.v460.lib.tasks.sac_train import _evaluate_trained_model
+
+        model = MagicMock()
+        model.predict.return_value = (0, None)
+
+        env = MagicMock()
+        env.reset.return_value = (0, {})
+        env.step.return_value = (0, 1.0, True, False, {})
+        env.portfolio_value = 103_000.0
+        env.initial_portfolio_value = 100_000.0
+        env.trades_count = 15
+        env.total_pnl = 3000.0
+
+        cfg = {"evaluation": {"n_episodes": 1}}
+        result = _evaluate_trained_model(model, env, cfg)
+
+        assert "gross_roi" in result
+        assert abs(float(result["gross_roi"]) - 0.03) < 1e-9
+        assert result["trade_count"] == 15
+        assert result["gross_pnl"] == 3000.0

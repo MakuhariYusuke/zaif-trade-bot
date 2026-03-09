@@ -123,7 +123,7 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
 
         # ── Training ──
         start_time = time.time()
-        checkpoint_metrics = _train_with_checkpoints(model, total_timesteps, cfg)
+        checkpoint_metrics = _train_with_checkpoints(model, env, total_timesteps, cfg)
         elapsed = time.time() - start_time
         logger.info(f"Training completed in {elapsed:.1f}s")
 
@@ -252,17 +252,19 @@ def _create_sac_model(
 
 def _train_with_checkpoints(
     model: SACTrainModelProtocol,
+    env: TrainingEnvProtocol,
     total_timesteps: int,
     cfg: ConfigSection,
-) -> list[dict[str, int]]:
+) -> list[dict[str, int | float]]:
     """チェックポイント毎に指標を収集しながら訓練.
 
     000# §3.4: 「30K 以降で ROI 変動 ≤ 5%」の判定に必要.
+    359# L-3: 各チェックポイントで ROI を記録し、E3 convergence 判定を有効化.
     """
     training_cfg = section(cfg, "training")
     checkpoint_interval_raw = training_cfg.get("checkpoint_interval", 10_000)
     checkpoint_interval = as_int(checkpoint_interval_raw, 10_000)
-    checkpoint_metrics: list[dict[str, int]] = []
+    checkpoint_metrics: list[dict[str, int | float]] = []
 
     remaining = total_timesteps
     trained = 0
@@ -273,14 +275,55 @@ def _train_with_checkpoints(
         trained += steps
         remaining -= steps
 
-        # Collect checkpoint metrics (placeholder — env metrics are env-dependent)
-        metrics: dict[str, int] = {
+        # 359# L-3: Checkpoint ROI — 1-episode deterministic eval
+        roi = _checkpoint_eval_roi(model, env)
+
+        metrics: dict[str, int | float] = {
             "timesteps": trained,
+            "roi": roi,
         }
         checkpoint_metrics.append(metrics)
-        logger.info(f"  Checkpoint @ {trained}/{total_timesteps} steps")
+        logger.info(
+            f"  Checkpoint @ {trained}/{total_timesteps} steps | roi={roi:.4f}"
+        )
 
     return checkpoint_metrics
+
+
+def _checkpoint_eval_roi(
+    model: SACTrainModelProtocol,
+    env: TrainingEnvProtocol,
+) -> float:
+    """1-episode deterministic eval で ROI を算出.
+
+    359# L-3: _train_with_checkpoints から各チェックポイントで呼ばれ、
+    E3 convergence 判定に必要な ROI 時系列を生成する.
+    """
+    obs, _ = env.reset()
+    done = False
+    while not done:
+        action, _ = model.predict(obs, deterministic=True)
+        obs, _reward, terminated, truncated, _ = env.step(action)
+        done = terminated or truncated
+
+    return _extract_roi_from_env(env)
+
+
+def _extract_roi_from_env(env: TrainingEnvProtocol) -> float:
+    """環境から ROI を算出 (duck-typing).
+
+    HeavyTradingEnv は portfolio_value / initial_portfolio_value を保持しており、
+    Protocol の最小インターフェースには含まない属性をランタイムで安全に取得する.
+    """
+    portfolio_value = getattr(env, "portfolio_value", None)
+    initial_value = getattr(env, "initial_portfolio_value", None)
+    if (
+        portfolio_value is not None
+        and initial_value is not None
+        and float(initial_value) > 0
+    ):
+        return (float(portfolio_value) - float(initial_value)) / float(initial_value)
+    return 0.0
 
 
 def _evaluate_trained_model(
@@ -322,12 +365,12 @@ def _evaluate_trained_model(
         "n_episodes": n_eval_episodes,
     }
 
-    # Extract environment-specific metrics if available
-    get_metrics_fn = getattr(env, "get_metrics", None)
-    if callable(get_metrics_fn):
-        env_metrics = get_metrics_fn()
-        if isinstance(env_metrics, dict):
-            eval_metrics.update({str(k): v for k, v in env_metrics.items()})
+    # 359# L-5: G2 gate E1/E4 に必要な gross_roi を env から抽出
+    eval_metrics["gross_roi"] = _extract_roi_from_env(env)
+    eval_metrics["trade_count"] = getattr(env, "trades_count", 0)
+    eval_metrics["gross_pnl"] = float(
+        getattr(env, "total_pnl", 0.0)
+    )
 
     return eval_metrics
 
