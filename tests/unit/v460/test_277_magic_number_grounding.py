@@ -21,12 +21,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
-from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
 from scripts.v460.lib.fill_config import FillTestConfig
-from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-from scripts.v460.lib.micro_circuit_breaker import MCBConfig, MicroCircuitBreaker
-from scripts.v460.lib.regime_policy import DefaultCycleStrategy, RegimePolicyConfig
 
 if TYPE_CHECKING:
     pass
@@ -192,6 +187,9 @@ class TestOrchestratorConfigReferences:
 
     def test_check_regime_stop_conditions_uses_config_fallback_duration(self) -> None:
         """_check_regime_stop_conditions が config.fallback_duration_sec を使用."""
+        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+        from scripts.v460.lib.regime_policy import DefaultCycleStrategy, RegimePolicyConfig
+
         obj = MagicMock(spec=FillLoopOrchestratorMixin)
         policy = RegimePolicyConfig(
             dynamic_cycle_enabled=True,
@@ -221,6 +219,9 @@ class TestOrchestratorConfigReferences:
 
     def test_pnl_window_derived_from_sell_dynamic_kill_window(self) -> None:
         """pnl_avg_window が sell_dynamic_kill_window × 2 で導出される."""
+        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+        from scripts.v460.lib.regime_policy import DefaultCycleStrategy, RegimePolicyConfig
+
         obj = MagicMock(spec=FillLoopOrchestratorMixin)
         policy = RegimePolicyConfig(
             dynamic_cycle_enabled=True, chase_enabled=True,
@@ -262,18 +263,24 @@ class TestGateAggregatorConfigIntegration:
 
     def test_custom_threshold_from_config(self) -> None:
         """config で unknown_regime_max_consecutive を変更すると閾値が変わる."""
+        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
+
         cfg = FillTestConfig(unknown_regime_max_consecutive=5)
         gate = CycleGateAggregator(cfg)
         assert gate.UNKNOWN_REGIME_MAX_CONSECUTIVE == 5
 
     def test_default_threshold_matches(self) -> None:
         """デフォルト config で UNKNOWN_REGIME_MAX_CONSECUTIVE = 5 (336# drift fix)."""
+        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
+
         cfg = FillTestConfig()
         gate = CycleGateAggregator(cfg)
         assert gate.UNKNOWN_REGIME_MAX_CONSECUTIVE == 5
 
     def test_bypass_with_custom_threshold(self) -> None:
         """カスタム閾値でバイパスが正しく機能すること."""
+        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
+
         cfg = FillTestConfig(
             unknown_regime_max_consecutive=3,
             skip_buy_unknown_regime=True,
@@ -306,11 +313,15 @@ class TestMCBMaxlenDerivation:
 
     def test_default_maxlen_720(self) -> None:
         """デフォルト (120s interval) → maxlen = 86400/120 = 720."""
+        from scripts.v460.lib.micro_circuit_breaker import MicroCircuitBreaker, MCBConfig
+
         mcb = MicroCircuitBreaker(MCBConfig())
         assert mcb._change_history_5m.maxlen == 720
 
     def test_custom_interval_changes_maxlen(self) -> None:
         """check_call_interval_sec=60 → maxlen = 86400/60 = 1440."""
+        from scripts.v460.lib.micro_circuit_breaker import MicroCircuitBreaker, MCBConfig
+
         mcb = MicroCircuitBreaker(MCBConfig(check_call_interval_sec=60.0))
         assert mcb._change_history_5m.maxlen == 1440
         assert mcb._change_history_15m.maxlen == 1440
@@ -318,22 +329,30 @@ class TestMCBMaxlenDerivation:
 
     def test_very_short_interval_has_minimum(self) -> None:
         """極端に短い interval でも maxlen >= 30."""
+        from scripts.v460.lib.micro_circuit_breaker import MicroCircuitBreaker, MCBConfig
+
         mcb = MicroCircuitBreaker(MCBConfig(check_call_interval_sec=100000.0))
         assert mcb._change_history_5m.maxlen >= 30
 
     def test_named_constants_exist(self) -> None:
         """_MIN_SIGMA_SAMPLES, _SIGMA_FLOOR_RATIO が定義されている."""
+        from scripts.v460.lib.micro_circuit_breaker import MicroCircuitBreaker
+
         assert MicroCircuitBreaker._MIN_SIGMA_SAMPLES == 10
         assert MicroCircuitBreaker._SIGMA_FLOOR_RATIO == 0.1
 
     def test_calc_threshold_uses_min_sigma_samples(self) -> None:
         """サンプル不足時にデフォルト値を返す."""
+        from scripts.v460.lib.micro_circuit_breaker import MicroCircuitBreaker
+
         history = deque([0.1] * 9)  # < _MIN_SIGMA_SAMPLES
         result = MicroCircuitBreaker._calc_threshold(history, 0.5)
         assert result == 0.5  # default_pct を返す
 
     def test_calc_threshold_uses_sigma_floor_ratio(self) -> None:
         """σ が極小時にフロア比率が適用される (flat market 保護)."""
+        from scripts.v460.lib.micro_circuit_breaker import MicroCircuitBreaker
+
         # 全て同じ値 → σ=0 → floor = default_pct * 0.1
         history = deque([0.5] * 20)
         result = MicroCircuitBreaker._calc_threshold(history, 1.0)
@@ -354,6 +373,9 @@ class TestWarmupTZFix:
 
         JST (UTC+9) 設定時、UTC 日付ではなく JST 日付が使われること。
         """
+        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+        from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
+
         obj = MagicMock(spec=FillLoopOrchestratorMixin)
 
         # DD guard: JST (UTC+9)

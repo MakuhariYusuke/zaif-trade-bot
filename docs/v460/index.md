@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-09 (353# VPIN buy boost + EWMA time decay + buy 防御調整)
+> 最終更新: 2026-03-09 (355# API 呼出し重複排除 + ph3 障害分析)
 
 ---
 
@@ -347,6 +347,8 @@
 | 351 | rev | [351_ph2_gemini_31_pro_review_340_350_profitability_audit.md](351_ph2_gemini_31_pro_review_340_350_profitability_audit.md) | Gemini 3.1 Pro レビュー: EWMA rebuild look-ahead bias, effective_threshold 無視, buy_ranging 市場理論 3 盲点, 時間減衰 EWMA 提案 |
 | 352 | impl | [352_ph2_impl_ewma_strict_buy_ranging_deep_dive.md](352_ph2_impl_ewma_strict_buy_ranging_deep_dive.md) | 350#/351# P0 実装: EWMA rebuild 厳密化 (history[0] seed), TIME LIMIT effective_threshold 修正, テスト 13→18, buy_ranging 深堀り分析 |
 | 353 | impl | [353_ph2_impl_vpin_asymmetric_buy_boost.md](353_ph2_impl_vpin_asymmetric_buy_boost.md) | VPIN 非対称 buy boost + EWMA 時間減衰 (351# 盲点1-2) + buy 防御パラメータ調整, テスト 25→29+25 |
+| 354 | fix | [354_phg_fix_code_quality_sweep.md](354_phg_fix_code_quality_sweep.md) | コード品質改善: 型安全性 (mypy 12→0), DRY (parser 共通化), サイレント例外修正, hot-reload drift 修正 |
+| 355 | impl | [355_ph2_impl_api_dedup_and_ph3_blockers.md](355_ph2_impl_api_dedup_and_ph3_blockers.md) | SkipGate API 呼出し重複排除 (OB+Trades prefetch 共有, 200-500ms/cycle 削減) + ph3 ブロッカー 5 件特定 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
