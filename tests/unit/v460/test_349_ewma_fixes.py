@@ -322,3 +322,135 @@ class TestExactRebuild:
         mgr_test.import_state(state)
         # window * 3 = 150 なので全履歴が保持される
         assert mgr_test._ewma_value == pytest.approx(expected, abs=1e-10)  # type: ignore[attr-defined]
+
+
+# =====================================================================
+# 353# EWMA 時間減衰 (351# 盲点2: stale EWMA 対策)
+# =====================================================================
+
+
+class TestEwmaTimeDecay:
+    """353# kill 中に EWMA を時間経過で中立方向へ指数減衰."""
+
+    def test_no_decay_when_disabled(self) -> None:
+        """ewma_time_decay_tau_sec=0 なら減衰なし."""
+        cfg = DynamicKillConfig(
+            window=3, ewma_alpha=0.05, ewma_time_decay_tau_sec=0.0,
+        )
+        mgr = DynamicKillManager(cfg)
+        for v in [-5.0, -3.0, -4.0]:
+            mgr.track(v)
+        ewma_stored = mgr._ewma_value  # type: ignore[attr-defined]
+        # 時間を進めても _get_rolling_mean は変わらない
+        with patch("time.time", return_value=mgr._last_track_time + 600):  # type: ignore[attr-defined]
+            rm = mgr._get_rolling_mean()
+        assert rm == pytest.approx(ewma_stored)
+
+    def test_decay_toward_zero(self) -> None:
+        """ewma_time_decay_tau_sec > 0: 時間経過で EWMA が 0 に近づく."""
+        import math
+        tau = 600.0
+        cfg = DynamicKillConfig(
+            window=3, ewma_alpha=0.05, ewma_time_decay_tau_sec=tau,
+        )
+        mgr = DynamicKillManager(cfg)
+        for v in [-5.0, -3.0, -4.0]:
+            mgr.track(v)
+        ewma_stored = mgr._ewma_value  # type: ignore[attr-defined]
+        assert ewma_stored is not None
+        assert ewma_stored < 0
+
+        # 1τ 経過 → exp(-1) ≈ 0.368 に減衰
+        t_now = mgr._last_track_time + tau  # type: ignore[attr-defined]
+        with patch("time.time", return_value=t_now):
+            rm = mgr._get_rolling_mean()
+        expected = ewma_stored * math.exp(-1.0)
+        assert rm == pytest.approx(expected, rel=1e-6)
+
+    def test_decay_does_not_modify_stored_ewma(self) -> None:
+        """_get_rolling_mean は _ewma_value を変更しない (副作用なし)."""
+        cfg = DynamicKillConfig(
+            window=3, ewma_alpha=0.05, ewma_time_decay_tau_sec=600.0,
+        )
+        mgr = DynamicKillManager(cfg)
+        mgr.track(-5.0)
+        original = mgr._ewma_value  # type: ignore[attr-defined]
+        t_now = mgr._last_track_time + 1000  # type: ignore[attr-defined]
+        with patch("time.time", return_value=t_now):
+            mgr._get_rolling_mean()
+        assert mgr._ewma_value == original  # type: ignore[attr-defined]
+
+    def test_decay_prevents_immediate_rekill(self) -> None:
+        """時間減衰により EWMA が threshold を超えて kill 解除される.
+
+        351# 盲点2 の核心テスト: kill 中の stale EWMA が時間経過で
+        自然回復し、不要な即再 kill を防止。
+        """
+        import math
+        tau = 300.0
+        cfg = DynamicKillConfig(
+            window=3, threshold_bps=-0.5, resume_window=0,
+            ewma_alpha=0.3, ewma_time_decay_tau_sec=tau,
+        )
+        mgr = DynamicKillManager(cfg)
+        # EWMA を大きく負にする
+        for v in [-3.0, -2.0, -1.5]:
+            mgr.track(v)
+        # kill 確認
+        base_time = mgr._last_track_time  # type: ignore[attr-defined]
+        with patch("time.time", return_value=base_time):
+            killed, _ = mgr.check_kill()
+        assert killed, "should be killed with negative EWMA"
+
+        # 十分な時間経過後、EWMA decay により kill 解除されるはず
+        # EWMA ≈ -1.76, threshold = -0.5
+        # -1.76 * exp(-t/300) > -0.5 → t > 300 * ln(3.52) = 300 * 1.258 ≈ 377s
+        with patch("time.time", return_value=base_time + 500):
+            killed_after, _ = mgr.check_kill()
+        assert not killed_after, "time decay should have recovered EWMA above threshold"
+
+    def test_decay_math_correctness(self) -> None:
+        """具体的な数値で数学的正しさを検証."""
+        import math
+        tau = 600.0
+        cfg = DynamicKillConfig(
+            window=3, ewma_alpha=1.0,  # α=1.0 で EWMA = 最新値
+            ewma_time_decay_tau_sec=tau,
+        )
+        mgr = DynamicKillManager(cfg)
+        mgr.track(-10.0)  # EWMA = -10.0 exactly
+        assert mgr._ewma_value == pytest.approx(-10.0)  # type: ignore[attr-defined]
+
+        # 300s 後 (0.5τ)
+        t_now = mgr._last_track_time + 300  # type: ignore[attr-defined]
+        with patch("time.time", return_value=t_now):
+            rm = mgr._get_rolling_mean()
+        assert rm == pytest.approx(-10.0 * math.exp(-0.5), rel=1e-6)
+
+        # 1200s 後 (2τ)
+        t_now2 = mgr._last_track_time + 1200  # type: ignore[attr-defined]
+        with patch("time.time", return_value=t_now2):
+            rm2 = mgr._get_rolling_mean()
+        assert rm2 == pytest.approx(-10.0 * math.exp(-2.0), rel=1e-6)
+
+    def test_export_import_last_track_time(self) -> None:
+        """last_track_time が export/import で保存・復元される."""
+        cfg = DynamicKillConfig(
+            window=3, ewma_alpha=0.05, ewma_time_decay_tau_sec=600.0,
+        )
+        mgr = DynamicKillManager(cfg)
+        mgr.track(1.0)
+        state = mgr.export_state()
+        assert "last_track_time" in state
+        assert state["last_track_time"] is not None
+
+        mgr2 = DynamicKillManager(cfg)
+        mgr2.import_state(state)
+        assert mgr2._last_track_time == pytest.approx(  # type: ignore[attr-defined]
+            mgr._last_track_time  # type: ignore[attr-defined]
+        )
+
+    def test_config_validation_negative_tau(self) -> None:
+        """τ < 0 はバリデーションエラー."""
+        with pytest.raises(ValueError, match="ewma_time_decay_tau_sec"):
+            DynamicKillConfig(ewma_time_decay_tau_sec=-1.0)

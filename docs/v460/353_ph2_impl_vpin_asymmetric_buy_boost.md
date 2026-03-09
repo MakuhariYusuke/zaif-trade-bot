@@ -1,8 +1,8 @@
-# 353# VPIN 非対称 buy boost 実装
+# 353# VPIN 非対称 buy boost + EWMA 時間減衰 + buy 防御パラメータ調整
 
 > **種別**: impl  
 > **フェーズ**: ph2 (G1.1-exec)  
-> **前提**: 352# §6 次ステップ, 351# 盲点1 (Ranging ≠ 対称), 164# SHAP 分析  
+> **前提**: 352# §6 次ステップ, 351# 盲点1-3, 164# SHAP 分析  
 > **日付**: 2026-03-09
 
 ---
@@ -139,36 +139,121 @@ if side == "buy" and vpin_boost > 1.0 and buy_extra_mult > 1.0:
 
 ```yaml
 # configs/v460/fill_test.yaml
+
+# VPIN 非対称 buy boost
 volatility_guard:
   vpin_buy_extra_mult: 1.5  # buy 側 VPIN boost を 1.5 倍増幅
+
+# EWMA 時間減衰
+sell_dynamic_kill:
+  ewma_time_decay_tau_sec: 600  # kill中 EWMA自然減衰 (τ=600s)
+buy_dynamic_kill:
+  ewma_time_decay_tau_sec: 600
+
+# buy 防御パラメータ強化
+buy_velocity_skip_threshold_bps: -4.0  # -6.0→-4.0
+fast_fill_defense:
+  threshold_sec_buy: 8.0               # 10.0→8.0
 ```
 
-**ホットリロード対応**: YAML 書き換えで即時反映可能。  
-**推奨チューニング範囲**: 1.0 (無効) 〜 2.0 (aggressive)
+**ホットリロード対応**: 全パラメータ YAML 書き換えで即時反映可能。
 
 ---
 
-## §6 今後の改善提案
+## §6 EWMA 時間減衰 (351# 盲点2 対応)
 
-### 即座に着手可能 (YAML 調整のみ)
+### 問題
 
-| 項目 | 現在値 | 提案値 | 期待効果 |
+kill 中は fill が発生しないため `track()` が呼ばれず、EWMA が stale 化:
+1. 有毒な fill で EWMA が急落 → kill 発動
+2. kill 中に市場が回復しても EWMA は更新されない
+3. TIME LIMIT (30分) で強制解除 → stale EWMA で即再 kill
+
+### 解決
+
+`_get_rolling_mean()` で時間経過に基づく指数減衰を適用:
+
+```python
+# 353# 副作用なし (stored _ewma_value は変更しない)
+elapsed = time.time() - last_track_time
+decayed_ewma = ewma * exp(-elapsed / tau)  # τ=600s
+```
+
+### 数値例 (τ=600s, EWMA=-5.0bps, threshold=-0.5bps)
+
+| 経過時間 | decay factor | decayed EWMA | kill? |
 |---|---|---|---|
-| `buy_velocity_skip_threshold_bps` | -6.0 | -4.0 | buy 時の逆走許容を絞る |
-| `fast_fill_defense.buy_seconds` | 10 | 8 | buy fast fill 検出を敏感に |
+| 0 min | 1.000 | -5.000 | ✅ |
+| 7 min | 0.500 | -2.500 | ✅ |
+| 14 min | 0.250 | -1.250 | ✅ |
+| 21 min | 0.125 | -0.625 | ✅ |
+| 23 min | 0.100 | -0.500 | ❌ (threshold到達) |
+| 30 min | 0.061 | -0.303 | ❌ (TIME LIMIT前に自然回復) |
 
-### 中期 (コード変更必要)
+### 設計判断
+
+- **副作用なし**: `_ewma_value` は変更せず、返値のみ減衰 → `track()` の再開で正確な EWMA に復帰
+- **TIME LIMIT との共存**: TIME LIMIT はハード安全弁として残留。time decay は連続的回復
+- **対称適用**: sell/buy 両方に同一 τ を適用 (構造的差異は VPIN buy boost で吸収済み)
+
+### 変更ファイル
+
+| ファイル | 変更 |
+|---|---|
+| `ztb/risk/sell_dynamic_kill.py` | `DynamicKillConfig.ewma_time_decay_tau_sec` + `_last_track_time` slot + decay logic |
+| `scripts/v460/lib/fill_config.py` | `sell/buy_dynamic_kill_ewma_time_decay_tau_sec` フィールド |
+| `scripts/v460/lib/fill_config_parser.py` | YAML → config 配線 |
+| `scripts/v460/lib/config_hot_reload.py` | ホットリロード whitelist |
+| `scripts/v460/run_fill_test.py` | DynamicKillConfig 構築に配線 |
+| `configs/v460/fill_test.yaml` | sell/buy 両方に `ewma_time_decay_tau_sec: 600` |
+
+---
+
+## §7 buy 防御パラメータ調整
+
+### buy_velocity_skip_threshold_bps: -6.0 → -4.0
+
+- **根拠**: 164# SHAP で buy は velocity に 1.73x 依存。閾値を絞ることで逆走局面での buy 参入を抑制
+- **影響**: |-4.0| < |-6.0| なので、より小さな下落でも velocity skip が発動 → buy AS 軽減
+
+### fast_fill_defense.threshold_sec_buy: 10.0 → 8.0
+
+- **根拠**: 351# 盲点1, buy 側 fast fill は AS の先行指標。検出感度を上げて早期防御
+- **影響**: 8-10s の約定も fast fill 判定 → offset boost で防御
+
+---
+
+## §8 A-S inventory skewing 状況
+
+352# §6.3-D で「大改修」として登録した A-S inventory skewing は:
+- `as_reservation` (Avellaneda-Stoikov 2008) は **既に実装・有効化** (γ=0.1, τ=120s)
+- `inventory_skewing` (162# linear model) も **既に有効化** (max_factor=0.3)
+- 追加の改修は backtest 検証後に着手。現状のパラメータでまず観測する。
+
+---
+
+## §9 テスト結果
+
+| テストファイル | 結果 |
+|---|---|
+| `test_349_ewma_fixes.py` | **25 passed** (既存18 + 新規7: time decay) |
+| `test_258_as_reservation_vpin_continuous_protocol.py` | **29 passed** |
+| `test_336_yaml_code_drift_prevention.py` | **4 passed** |
+
+---
+
+## §10 今後の改善提案
 
 | 項目 | 概要 | 優先度 |
 |---|---|---|
-| EWMA 時間減衰 | kill 中の stale EWMA 問題 (351# §4.3) | P1 |
-| A-S inventory skewing | maker_price.py 大改修、gamma パラメータ | P2 |
 | VPIN×hour interaction | 夜間帯 VPIN 感度上昇 | P2 |
 | spread-conditional buy mult | spread < 3bps 時のみ extra mult 適用 | P3 |
+| A-S gamma 調整 | as_reservation_gamma を buy/sell 非対称化 | P2 |
+| EWMA τ チューニング | 600s → 観測結果に基づき調整 | 運用後 |
 
 ---
 
-## §7 Bot 稼働状況メモ
+## §11 Bot 稼働状況メモ
 
 - PID 89776, 起動 09:51 JST 2026-03-09
 - 直近観測: Cycle 8818, buy unfilled (stale adverse drift 4.2bps cancel)

@@ -210,7 +210,7 @@ side_offset:
 fast_fill_defense:
   enabled: true                # queue_wait<=閾値 + 負エッジ時に次サイクル保守化
   threshold_sec: 5.0           # 共通閾値 (この秒数以下で「速い約定」)
-  threshold_sec_buy: 10.0      # 100# P0-4: buy 防御有効化 (旧 null=5s では実質無効)
+  threshold_sec_buy: 8.0       # 353# 10.0→8.0: buy fast fill 検出を敏感化 (351# 盲点1対策)
   threshold_sec_sell: 15.0     # 093# sell 側閾値: 084# 盲点C Q1-Q2+α 防御 (sell fast fill は破滅的: 090# -1.66bps)
   offset_boost: 2.0            # 共通防御時 offset 倍率
   offset_boost_buy: null       # 093# buy 側倍率 (null=共通値使用)
@@ -368,7 +368,7 @@ skip_gate:
   sell_velocity_skip_enabled: true
   sell_velocity_skip_threshold_bps: 6.0   # 183# 8.0→6.0 (AS率28%対策: VG vel adverse med=-0.95, sell急騰局面の捕捉率向上)
   buy_velocity_skip_enabled: true          # 183# false→true (buy AS率28%≒sell同等。急落局面で買い参入を抑制)
-  buy_velocity_skip_threshold_bps: -6.0   # 183# -8.0→-6.0 (enableに併せ閾値も保守化)
+  buy_velocity_skip_threshold_bps: -4.0   # 353# -6.0→-4.0 (buy逆走許容を絞る: 164# SHAP buy_vpin=0.548)
   # 195# velocity_skip ソフト化: hard skip → offset boost
   velocity_skip_as_offset_enabled: true
   velocity_offset_boost_factor: 1.5       # 197# 2.0→1.5 (boost 1.0-1.5帯 PnL+0.47 vs 2.0帯 PnL-0.37)
@@ -608,6 +608,7 @@ loss_control:
     max_kill_duration_sec: 1800      # 30分で自動解除 (268#: 92分持続事例への対策)
     # 344# 342#D: EWMA モード (RiskMetrics 1996)
     ewma_alpha: 0.05               # 0.0=無効(従来count-based), 0.05=effective window≈20
+    ewma_time_decay_tau_sec: 600     # 353# kill中のEWMA時間減衰 (τ=600s, 半減期≈7分)
     # 139# §9-#2: レジーム別閾値 (regime_name -> threshold_bps)
     regime_thresholds:
       trending_up: -0.3            # 341# revert: 340#符号修正に伴い復元 (sell逆行リスク→厳しめ据置)
@@ -624,6 +625,7 @@ loss_control:
     max_kill_duration_sec: 1800      # 273# 30分で自動解除
     # 344# 342#D: EWMA モード (RiskMetrics 1996)
     ewma_alpha: 0.05               # 0.0=無効, 0.05=effective window≈20
+    ewma_time_decay_tau_sec: 600     # 353# kill中のEWMA時間減衰 (τ=600s)
     regime_thresholds:
       trending_down: -0.5          # 341# revert: 下降トレンド時buyは逆張り→厳しめ
       trending_up: -1.5            # 上昇トレンド時は buy に寛容 (順張り) — 据置き

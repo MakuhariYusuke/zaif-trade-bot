@@ -92,6 +92,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     # --- 数値パラメータのチューニング (YAML ≠ code default) ---
     "adapt_recency_window",
     "buy_dynamic_kill_regime_thresholds",
+    "buy_dynamic_kill_ewma_time_decay_tau_sec",
     "buy_velocity_skip_threshold_bps",
     "dd_cooldown_release_sec",
     "e3_sampling_ratio",
@@ -118,6 +119,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "regime_trending_offset_boost_buy",
     "regime_trending_offset_boost_sell",
     "sell_dynamic_kill_regime_thresholds",
+    "sell_dynamic_kill_ewma_time_decay_tau_sec",
     "sell_hour_offset_boost",
     "sell_max_spread_jpy",
     "sell_offset_floor",

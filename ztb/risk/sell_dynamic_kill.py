@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import enum
 import logging
+import math
 import time
 from dataclasses import dataclass, field
 
@@ -136,6 +137,13 @@ class DynamicKillConfig:
     #: α=0.05 で effective window ≈ 20、レジーム遷移への高速応答。
     #: 市場理論的根拠: J.P.Morgan RiskMetrics — 新しい情報ほど重要。
     ewma_alpha: float = 0.0
+    # ---- 353# EWMA 時間減衰 (351# 盲点2: stale EWMA 対策) ----
+    #: kill 中 (fill なし) に EWMA を中立 (0) へ指数減衰させる時定数 (秒)。
+    #: 0.0 = 無効。τ=600 で半減期 ≈ 7 分 (ln2×600=416s)。
+    #: 市場理論的根拠: 古い PnL 情報は時間経過で失効する (Hull 2006)。
+    #: kill が情報劣化を反映せず永続する問題 (351# 盲点2) を
+    #: TIME LIMIT のような hard cutoff でなく連続的減衰で解決する。
+    ewma_time_decay_tau_sec: float = 0.0
 
     def __post_init__(self) -> None:
         """173# バリデーション + 241# S-4 toxicity config 制約チェック."""
@@ -188,6 +196,12 @@ class DynamicKillConfig:
                 f"DynamicKillConfig.ewma_alpha must be in [0, 1], "
                 f"got {self.ewma_alpha}"
             )
+        # 353# EWMA time decay τ バリデーション
+        if self.ewma_time_decay_tau_sec < 0:
+            raise ValueError(
+                f"DynamicKillConfig.ewma_time_decay_tau_sec must be >= 0, "
+                f"got {self.ewma_time_decay_tau_sec}"
+            )
 
 # 後方互換エイリアス
 SellKillConfig = DynamicKillConfig
@@ -232,6 +246,7 @@ class DynamicKillManager:
         "_force_released",       # 219#
         "_kill_activated_at",    # 273# kill 発動タイムスタンプ
         "_ewma_value",           # 344# 342#D EWMA 状態
+        "_last_track_time",      # 353# EWMA time decay 基準時刻
     )
 
     def __init__(self, config: DynamicKillConfig | None = None, *, side: str = "sell") -> None:
@@ -247,6 +262,7 @@ class DynamicKillManager:
         self._force_released: bool = False  # 219# force release active
         self._kill_activated_at: float | None = None  # 273# kill 発動時刻
         self._ewma_value: float | None = None  # 344# 342#D EWMA 累積値
+        self._last_track_time: float | None = None  # 353# 最終 track() 時刻
 
     @property
     def config(self) -> DynamicKillConfig:
@@ -264,6 +280,7 @@ class DynamicKillManager:
                 self._ewma_value = pnl_bps
             else:
                 self._ewma_value = alpha * pnl_bps + (1.0 - alpha) * self._ewma_value
+        self._last_track_time = time.time()  # 353# 最終 track 時刻更新
         self._stale_counter = 0  # 218# 新データ投入 → stale リセット
         self._consecutive_probes = 0  # 219# 新データ → probe 連続カウンタリセット
         if self._force_released:
@@ -304,9 +321,25 @@ class DynamicKillManager:
         EWMA モード (ewma_alpha > 0): _ewma_value を返す (window 未満でも可)。
         Count-based モード (ewma_alpha == 0): 従来の直近 window 件の算術平均。
         データ不足時は None。
+
+        353# EWMA 時間減衰: ewma_time_decay_tau_sec > 0 の場合、
+        最終 track() からの経過時間で EWMA を 0 方向へ指数減衰させる。
+        kill 中に fill が来ず EWMA が stale 化する問題 (351# 盲点2) を解決。
+        _ewma_value 自体は変更せず、返値のみ減衰 (副作用なし)。
         """
         if self._config.ewma_alpha > 0:
-            return self._ewma_value
+            ewma = self._ewma_value
+            # 353# time decay: kill 中 (fill なし) に EWMA を中立方向へ減衰
+            tau = self._config.ewma_time_decay_tau_sec
+            if (
+                ewma is not None
+                and tau > 0
+                and self._last_track_time is not None
+            ):
+                elapsed = time.time() - self._last_track_time
+                if elapsed > 0:
+                    ewma = ewma * math.exp(-elapsed / tau)
+            return ewma
         window = self._config.window
         if len(self._pnl_history) < window:
             return None
@@ -698,6 +731,7 @@ class DynamicKillManager:
             "force_released": self._force_released,
             "kill_activated_at": self._kill_activated_at,  # 273#
             "ewma_value": self._ewma_value,  # 349# P0: EWMA 状態永続化
+            "last_track_time": self._last_track_time,  # 353# EWMA time decay
         }
 
     def import_state(self, state: dict[str, object]) -> None:
@@ -722,6 +756,9 @@ class DynamicKillManager:
         # 273# kill_activated_at 復元
         _kill_at = state.get("kill_activated_at")
         self._kill_activated_at = float(_kill_at) if _kill_at is not None else None
+        # 353# last_track_time 復元
+        _last_track = state.get("last_track_time")
+        self._last_track_time = float(_last_track) if _last_track is not None else None
         # 349# P0: EWMA 状態復元 — 欠落している場合は history から再構築
         _ewma = state.get("ewma_value")
         if _ewma is not None:

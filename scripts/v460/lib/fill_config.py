@@ -563,6 +563,7 @@ class FillTestConfig:
     # 273# kill 時間上限 (268# I5: Pattern B kill↔halt 相互ロック防止)
     sell_dynamic_kill_max_duration_sec: float = 1800.0  # 336# drift fix: YAML=1800 (273#)
     sell_dynamic_kill_ewma_alpha: float = 0.05  # 344# 342#D: EWMA α (0=無効)
+    sell_dynamic_kill_ewma_time_decay_tau_sec: float = 0.0  # 353# EWMA 時間減衰 τ (0=無効)
     # ---- 157# §19: buy 動的 kill (rolling PnL ベースの自動停止 — sell との対称性) ----
     buy_dynamic_kill_enabled: bool = False   # True で buy rolling PnL 監視有効
     buy_dynamic_kill_window: int = 50        # rolling ウィンドウ (fill 数)
@@ -575,6 +576,7 @@ class FillTestConfig:
     # 273# kill 時間上限 (268# I5)
     buy_dynamic_kill_max_duration_sec: float = 1800.0  # 336# drift fix: YAML=1800 (273#)
     buy_dynamic_kill_ewma_alpha: float = 0.05  # 344# 342#D: EWMA α (0=無効)
+    buy_dynamic_kill_ewma_time_decay_tau_sec: float = 0.0  # 353# EWMA 時間減衰 τ (0=無効)
     # 286# 283# P1-4: 在庫連動の buy_dynamic_kill 閾値緩和 (Ho & Stoll 1981)
     # 在庫偏重時 (BTC 不足) に buy kill を緩和して在庫リバランスを促進。
     # 閾値オフセット = min(|imbalance| × scale, max_bps)

@@ -402,6 +402,9 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     # 344# 342#D: EWMA α + 342#B inv_relaxation max_bps
     "sell_dynamic_kill_ewma_alpha",
     "buy_dynamic_kill_ewma_alpha",
+    # 353# EWMA 時間減衰
+    "sell_dynamic_kill_ewma_time_decay_tau_sec",
+    "buy_dynamic_kill_ewma_time_decay_tau_sec",
     "sell_dynamic_kill_inv_relaxation_max_bps",
     # --- VG advanced ---
     "volatility_guard_vpin_threshold",
