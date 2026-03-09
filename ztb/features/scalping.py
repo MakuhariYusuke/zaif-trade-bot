@@ -124,38 +124,48 @@ def tick_volume_ratio(df: pd.DataFrame, window: int = 10) -> pd.Series:
 @register("order_flow_imbalance")
 def order_flow_imbalance(df: pd.DataFrame) -> pd.Series:
     """Order flow imbalance indicator"""
-    high = df["high"].values
-    low = df["low"].values
-    close = df["close"].values
-    imbalance = np.zeros_like(close)
-    for i in range(1, len(close)):
-        # Simplified order flow: buying pressure vs selling pressure
-        body_size = abs(close[i] - close[i - 1])
-        upper_wick = high[i] - max(close[i], close[i - 1])
-        lower_wick = min(close[i], close[i - 1]) - low[i]
+    high = df["high"].values.astype(np.float64, copy=False)
+    low = df["low"].values.astype(np.float64, copy=False)
+    close = df["close"].values.astype(np.float64, copy=False)
+    imbalance = np.zeros(len(close), dtype=np.float64)
+    if len(close) == 0:
+        return pd.Series(imbalance, index=df.index, name="order_flow_imbalance")
 
-        if body_size > 0:
-            imbalance[i] = (upper_wick - lower_wick) / body_size
-        else:
-            imbalance[i] = 0.0
+    prev_close = np.empty(len(close), dtype=np.float64)
+    prev_close[0] = close[0]
+    prev_close[1:] = close[:-1]
+
+    body_size = np.abs(close - prev_close)
+    max_close = np.maximum(close, prev_close)
+    min_close = np.minimum(close, prev_close)
+    upper_wick = high - max_close
+    lower_wick = min_close - low
+
+    valid = body_size > 0
+    imbalance[valid] = (upper_wick[valid] - lower_wick[valid]) / body_size[valid]
+    imbalance[0] = 0.0
     return pd.Series(imbalance, index=df.index, name="order_flow_imbalance")
 
 @register("micro_volatility")
 def micro_volatility(df: pd.DataFrame, window: int = 5) -> pd.Series:
     """Micro volatility for scalping - percentage returns"""
-    close = df["close"].values
-    volatility = np.zeros_like(close, dtype=np.float64)
-    for i in range(window, len(close)):
-        prices = np.asarray(close[i - window : i])
-        if len(prices) > 1:
-            # Calculate percentage returns
-            returns = []
-            for j in range(1, len(prices)):
-                if prices[j - 1] != 0:
-                    ret = (prices[j] - prices[j - 1]) / prices[j - 1]
-                    returns.append(ret)
-            if returns:
-                volatility[i] = np.std(returns)
+    close = df["close"].values.astype(np.float64, copy=False)
+    volatility = np.zeros(len(close), dtype=np.float64)
+    if len(close) == 0 or window <= 1 or window > len(close):
+        return pd.Series(volatility, index=df.index, name="micro_volatility")
+
+    pct_returns = np.zeros(len(close) - 1, dtype=np.float64)
+    prev_close = close[:-1]
+    valid = prev_close != 0
+    pct_returns[valid] = (close[1:][valid] - prev_close[valid]) / prev_close[valid]
+
+    rolling_std = (
+        pd.Series(pct_returns)
+        .rolling(window - 1, min_periods=window - 1)
+        .std(ddof=0)
+        .to_numpy()
+    )
+    volatility[window:] = rolling_std[window - 2 : len(close) - 2]
     return pd.Series(volatility, index=df.index, name="micro_volatility")
 
 @register("spread_pressure")
@@ -214,20 +224,19 @@ def realized_volatility(df: pd.DataFrame, window: int = 10) -> pd.Series:
     RV = sqrt(sum of squared returns over the period)
     Higher RV indicates higher price uncertainty/volatility
     """
-    close = df["close"].values
-    rv = np.zeros_like(close, dtype=np.float64)
+    close = df["close"].values.astype(np.float64, copy=False)
+    rv = np.zeros(len(close), dtype=np.float64)
+    if len(close) == 0 or window <= 1 or window > len(close):
+        return pd.Series(rv, index=df.index, name="realized_volatility")
 
-    for i in range(window, len(close)):
-        # Calculate returns over the window
-        returns = np.zeros(window - 1)
-        for j in range(1, window):
-            idx = i - window + j
-            if close[idx - 1] != 0:
-                returns[j - 1] = (close[idx] - close[idx - 1]) / close[idx - 1]
-            else:
-                returns[j - 1] = 0.0
+    pct_returns = np.zeros(len(close) - 1, dtype=np.float64)
+    prev_close = close[:-1]
+    valid = prev_close != 0
+    pct_returns[valid] = (close[1:][valid] - prev_close[valid]) / prev_close[valid]
 
-        # Realized volatility as square root of sum of squared returns
-        rv[i] = np.sqrt(np.sum(returns ** 2))
+    squared_returns = pct_returns ** 2
+    cumsum = np.concatenate(([0.0], np.cumsum(squared_returns)))
+    end_idx = np.arange(window, len(close), dtype=np.int64)
+    rv[end_idx] = np.sqrt(cumsum[end_idx - 1] - cumsum[end_idx - window])
 
     return pd.Series(rv, index=df.index, name="realized_volatility")
