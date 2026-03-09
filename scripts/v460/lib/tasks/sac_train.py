@@ -176,7 +176,7 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
 
 def _create_training_env(
     df: pd.DataFrame, cfg: ConfigSection
-) -> tuple[TrainingEnvProtocol, dict[str, int | str]]:
+) -> tuple[TrainingEnvProtocol, dict[str, int | str | bool]]:
     """訓練環境を作成.
 
     現時点では HeavyTradingEnv を使用 (016# F2: 環境切替は別チケット).
@@ -299,6 +299,11 @@ def _checkpoint_eval_roi(
 
     359# L-3: _train_with_checkpoints から各チェックポイントで呼ばれ、
     E3 convergence 判定に必要な ROI 時系列を生成する.
+
+    Note:
+        訓練と同一の env を使うため、eval 中の env.reset() が SB3 の
+        内部状態 (_last_obs) と乖離する。影響は 50K steps 中 ~10 遷移
+        (0.02%) と軽微。ph4 で eval 専用 env の分離を検討。
     """
     obs, _ = env.reset()
     done = False
@@ -346,7 +351,7 @@ def _evaluate_trained_model(
     total_reward = 0.0
     total_steps = 0
 
-    for ep in range(n_eval_episodes):
+    for _ep in range(n_eval_episodes):
         obs, _ = env.reset()
         done = False
         ep_reward = 0.0
@@ -367,6 +372,7 @@ def _evaluate_trained_model(
     }
 
     # 359# L-5: G2 gate E1/E4 に必要な gross_roi を env から抽出
+    # Note: n_episodes > 1 の場合、以下の指標は最終エピソードの値のみ反映
     eval_metrics["gross_roi"] = _extract_roi_from_env(env)
     eval_metrics["trade_count"] = getattr(env, "trades_count", 0)
     eval_metrics["gross_pnl"] = float(

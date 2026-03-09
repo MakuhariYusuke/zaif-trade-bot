@@ -137,7 +137,9 @@ E1 (positive_seed_ratio) と E4 (worst_seed_roi) の判定が不正確だった�
 | E2-IC | RL での IC 定義未確定 (現在は 0.0) | MED | SAC 訓練本番前に要検討 |
 | 065a/065b | index.md の既存アルファベット枝番 | LOW | 空き番号への再割当 |
 | 336# | index.md に 6 行同番号 | LOW | 次回整理 |
-| P3A-2 | HeavyTradingEnv 統合テスト | MED | 実データが確保できたので実施可能 |
+| S-6 | checkpoint eval が訓練 env state を汚染 (影響は 0.02% 程度) | LOW | ph4 で eval 専用 env 分離を検討 |
+| L-6 | n_episodes > 1 時に gross_roi/trade_count/gross_pnl が最終エピソードのみ | LOW | 仕様として文書化済み |
+| mypy-L196 | `EnvironmentConfig(**env_cfg)` の dict→dataclass 型不一致 | LOW | 構造的課題。YAML→dict→dataclass の型変換レイヤー導入で解決 |
 
 ---
 
@@ -169,13 +171,64 @@ YAML `data.ohlcv_path` を有効な実データに変更:
 
 ---
 
-## §9 変更ファイル一覧
+## §9 P3A-2: HeavyTradingEnv 統合テスト
+
+### 9.1 目的
+
+YAML → `load_parquet` → `_create_training_env` → `HeavyTradingEnv` の E2E パイプラインが
+実データで正常動作することを検証する。
+
+### 9.2 テスト内容
+
+`TestHeavyTradingEnvIntegration` (6 件):
+
+| テスト | 検証内容 |
+|---|---|
+| `test_env_instantiation` | 実データ + feature_names 注入で例外なく生成 |
+| `test_obs_dim_matches_feature_count` | observation_space.shape[0] == 12 (注入特徴量数) |
+| `test_feature_names_synced` | env.feature_names == 12 特徴量リスト |
+| `test_reset_returns_valid_obs` | reset() が (12,) shape, NaN なしの obs を返す |
+| `test_step_returns_valid_tuple` | step() が 5-tuple (obs, reward, terminated, truncated, info) を返す |
+| `test_create_training_env_pipeline` | `_create_training_env` が YAML 相当 cfg で正常動作、env_info 一致 |
+
+### 9.3 実行結果
+
+- 先頭 2000 行の軽量スライスでテスト (10.9 秒)
+- **6/6 PASS**, correlation_reduction=False で安定動作
+
+---
+
+## §10 セルフレビュー追加修正 (P3A-2 commit)
+
+### 10.1 SIGNIFICANT (1 件)
+
+| ID | 内容 | 修正 |
+|---|---|---|
+| **S-5** | `_create_training_env` 返り値型が `dict[str, int\|str]` (bool 欠損) | `dict[str, int\|str\|bool]` に修正 |
+
+### 10.2 LOW (2 件)
+
+| ID | 内容 | 修正 |
+|---|---|---|
+| **L-6** | `_evaluate_trained_model` — n_episodes > 1 時に env 由来メトリクスが最終エピソードのみ | コメントで仕様として明記 |
+| **L-7** | `for ep in range(...)` — 未使用ループ変数 | `_ep` にリネーム |
+
+### 10.3 文書化のみ (修正なし)
+
+| ID | 内容 | 理由 |
+|---|---|---|
+| **S-6** | checkpoint eval が env.reset() → episode → 訓練 env state を汚染 | 影響は 50K steps 中 ~10 遷移 (0.02%)。ph4 で eval 専用 env 分離を検討 |
+| **mypy-L196** | `EnvironmentConfig(**env_cfg)` の dict→dataclass 型不一致 (18 件) | YAML dict →dataclass の構造的課題。機能に影響なし |
+
+---
+
+## §11 変更ファイル一覧
 
 | ファイル | 種別 | 内容 |
 |---|---|---|
-| `scripts/v460/lib/tasks/sac_train.py` | MOD | L-3: checkpoint ROI, L-5: eval gross_roi, S-2: 型修正, S-3: sac_params リネーム |
+| `scripts/v460/lib/tasks/sac_train.py` | MOD | L-3: checkpoint ROI, L-5: eval gross_roi, S-2/S-3/S-5: 型修正, L-7: unused var |
 | `scripts/v460/run_experiment.py` | MOD | (前回 commit) C-1~C-2, S-1, S-4, L-1/L-2 |
 | `configs/v460/experiments/g2_sac_train.yaml` | MOD | P3A-1: ohlcv_path を有効な full_registry に変更 |
-| `tests/unit/v460/test_356_g2_sac_blockers.py` | MOD | 新規テスト 10 件追加 (ROI 4 + eval 2 + data 3 + seed 1) |
+| `tests/unit/v460/test_356_g2_sac_blockers.py` | MOD | 新規テスト 16 件追加 (ROI 4 + eval 2 + data 3 + seed 1 + P3A-2 6) |
 | `docs/v460/359_ph3_impl_g2_gate_metrics_fix.md` | NEW | 本ドキュメント |
 | `docs/v460/index.md` | MOD | 359# エントリ追加 |

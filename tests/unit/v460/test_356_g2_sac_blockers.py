@@ -6,6 +6,7 @@ import dataclasses
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
 
@@ -511,3 +512,166 @@ class TestTrainingDataIntegrity:
         data_path = Path(cfg["data"]["ohlcv_path"])
         schema_cols = set(pq.read_schema(str(data_path)).names)
         assert "close" in schema_cols
+
+
+# ======================================================================
+# P3A-2: HeavyTradingEnv integration (359#)
+# ======================================================================
+
+
+class TestHeavyTradingEnvIntegration:
+    """P3A-2: 実データ + feature_names 注入で HeavyTradingEnv が正常動作すること.
+
+    YAML → load_parquet → EnvironmentConfig → HeavyTradingEnv の E2E パイプラインを検証.
+    """
+
+    SELECTED_FEATURES: list[str] = [
+        "price_velocity",
+        "micro_trend",
+        "price_acceleration",
+        "volume_surge",
+        "momentum_divergence",
+        "tick_volume_ratio",
+        "order_flow_imbalance",
+        "micro_volatility",
+        "spread_pressure",
+        "momentum_burst",
+        "liquidity_surge",
+        "realized_volatility",
+    ]
+
+    @pytest.fixture()
+    def real_df(self) -> "pd.DataFrame":
+        """実データの先頭 2000 行をロード (テスト用軽量スライス)."""
+        import pandas as pd
+
+        data_path = Path("data/btc_jpy_1m_full_registry_features.parquet")
+        if not data_path.exists():
+            pytest.skip(f"Data file not found: {data_path}")
+        df = pd.read_parquet(data_path)
+        return df.head(2000).copy()
+
+    @pytest.fixture()
+    def env_config(self) -> "EnvironmentConfig":
+        """YAML 環境セクションに準拠した EnvironmentConfig を構築."""
+        from ztb.trading.environment.utils.config import EnvironmentConfig
+
+        config = EnvironmentConfig(
+            transaction_cost=0.001,
+            max_position_size=0.01,
+            initial_portfolio_value=10_000_000.0,
+            use_continuous_actions=True,
+            action_space_type="continuous_1d",
+            exchange="coincheck",
+            timeframe="1m",
+            feature_names=self.SELECTED_FEATURES,
+            # 相関低減は schema 指定時に不要 → 無効化で安定
+            correlation_reduction=False,
+        )
+        return config
+
+    def test_env_instantiation(
+        self, real_df: "pd.DataFrame", env_config: "EnvironmentConfig"
+    ) -> None:
+        """HeavyTradingEnv が実データ + feature_names で例外なく生成できる."""
+        from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+
+        env = HeavyTradingEnv(df=real_df, config=env_config)
+        try:
+            assert env is not None
+            assert hasattr(env, "observation_space")
+            assert hasattr(env, "action_space")
+        finally:
+            env.close()
+
+    def test_obs_dim_matches_feature_count(
+        self, real_df: "pd.DataFrame", env_config: "EnvironmentConfig"
+    ) -> None:
+        """observation_space の次元が注入した feature 数 (12) と一致."""
+        from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+
+        env = HeavyTradingEnv(df=real_df, config=env_config)
+        try:
+            obs_dim = env.observation_space.shape[0]
+            assert obs_dim == len(self.SELECTED_FEATURES), (
+                f"obs_dim={obs_dim} != expected={len(self.SELECTED_FEATURES)}"
+            )
+        finally:
+            env.close()
+
+    def test_feature_names_synced(
+        self, real_df: "pd.DataFrame", env_config: "EnvironmentConfig"
+    ) -> None:
+        """env.feature_names が注入した特徴量リストと一致."""
+        from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+
+        env = HeavyTradingEnv(df=real_df, config=env_config)
+        try:
+            assert env.feature_names == self.SELECTED_FEATURES
+        finally:
+            env.close()
+
+    def test_reset_returns_valid_obs(
+        self, real_df: "pd.DataFrame", env_config: "EnvironmentConfig"
+    ) -> None:
+        """reset() が正しい shape の observation を返す."""
+        from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+
+        env = HeavyTradingEnv(df=real_df, config=env_config)
+        try:
+            obs, info = env.reset()
+            assert obs.shape == (len(self.SELECTED_FEATURES),)
+            assert not np.any(np.isnan(obs)), "Observation contains NaN"
+        finally:
+            env.close()
+
+    def test_step_returns_valid_tuple(
+        self, real_df: "pd.DataFrame", env_config: "EnvironmentConfig"
+    ) -> None:
+        """step() が (obs, reward, terminated, truncated, info) を正しく返す."""
+        from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+
+        env = HeavyTradingEnv(df=real_df, config=env_config)
+        try:
+            obs, _ = env.reset()
+            # 連続行動空間: [-1, 1] の中間値 (HOLD に近い)
+            action = np.array([0.0], dtype=np.float32)
+            result = env.step(action)
+            assert len(result) == 5, f"step() returned {len(result)} elements, expected 5"
+            obs2, reward, terminated, truncated, info = result
+            assert obs2.shape == (len(self.SELECTED_FEATURES),)
+            assert isinstance(reward, (int, float))
+            assert isinstance(terminated, bool)
+            assert isinstance(truncated, bool)
+        finally:
+            env.close()
+
+    def test_create_training_env_pipeline(self) -> None:
+        """_create_training_env が YAML 相当の cfg で正常に環境を構築."""
+        import yaml
+
+        from scripts.v460.lib.tasks.sac_train import _create_training_env
+
+        yaml_path = Path("configs/v460/experiments/g2_sac_train.yaml")
+        if not yaml_path.exists():
+            pytest.skip(f"YAML not found: {yaml_path}")
+
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f)
+
+        data_path = Path(cfg["data"]["ohlcv_path"])
+        if not data_path.exists():
+            pytest.skip(f"Data file not found: {data_path}")
+
+        import pandas as pd
+
+        df = pd.read_parquet(data_path).head(2000).copy()
+
+        env, env_info = _create_training_env(df, cfg)
+        try:
+            assert env_info["obs_dim"] == len(self.SELECTED_FEATURES)
+            assert env_info["feature_columns_injected"] is True
+            assert env_info["feature_columns_count"] == len(self.SELECTED_FEATURES)
+            assert env_info["env_type"] == "HeavyTradingEnv"
+        finally:
+            env.close()
