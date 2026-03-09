@@ -13,6 +13,27 @@ from scripts.v460.lib.fill_config import FillTestConfig
 from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
 
 
+_PREFLIGHT_PAUSE_YAML: dict[str, dict[str, dict[str, float | int | bool]]] = {
+    "loss_control": {
+        "preflight_pause": {
+            "enabled": False,
+            "threshold": 3,
+            "pause_sec": 120.0,
+            "max_pauses": 2,
+        },
+    },
+}
+
+_SCORE_CALIBRATION_YAML: dict[str, dict[str, bool | str | int]] = {
+    "skip_gate": {
+        "score_calibration": True,
+        "calibrator_path": "checkpoints/cal.pkl",
+        "calibrator_min_samples": 50,
+        "calibrator_refit_interval": 200,
+    },
+}
+
+
 # ======================================================================
 # P1-10: preflight pause テスト
 # ======================================================================
@@ -30,17 +51,7 @@ class TestPreflightPause:
 
     def test_yaml_parsing(self) -> None:
         """YAML から preflight_pause 設定が正しくパースされる."""
-        yaml_cfg: dict[str, dict[str, dict[str, float | int | bool]]] = {
-            "loss_control": {
-                "preflight_pause": {
-                    "enabled": False,
-                    "threshold": 3,
-                    "pause_sec": 120.0,
-                    "max_pauses": 2,
-                },
-            },
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = FillTestConfig.from_yaml(_PREFLIGHT_PAUSE_YAML)
         assert cfg.preflight_pause_enabled is False
         assert cfg.preflight_pause_threshold == 3
         assert cfg.preflight_pause_sec == 120.0
@@ -215,15 +226,7 @@ class TestScoreCalibrationConfig:
         assert cfg.skip_gate_calibrator_refit_interval == 100
 
     def test_yaml_parsing(self) -> None:
-        yaml_cfg: dict[str, dict[str, bool | str | int]] = {
-            "skip_gate": {
-                "score_calibration": True,
-                "calibrator_path": "checkpoints/cal.pkl",
-                "calibrator_min_samples": 50,
-                "calibrator_refit_interval": 200,
-            },
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = FillTestConfig.from_yaml(_SCORE_CALIBRATION_YAML)
         assert cfg.skip_gate_score_calibration is True
         assert cfg.skip_gate_calibrator_path == "checkpoints/cal.pkl"
         assert cfg.skip_gate_calibrator_min_samples == 50

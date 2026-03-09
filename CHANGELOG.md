@@ -4811,6 +4811,11 @@ python scripts/unified_trainer.py \
 - `TestHeavyTradingEnvIntegration` setup moved from repeated multi-second parquet reads to a single cached load, dropping the dominant setup cost from the prior ~5-6 second band to ~1.4 seconds once per class in the broad profile.
 ## 2026-03-10
 
+- Consolidated more recorder/config parsing test setup and aligned a small production CLI path:
+  - added `_read_single_jsonl_gz(...)` / `_record_ob_snapshot(...)` to [tests/unit/v460/test_135_trades_and_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_135_trades_and_gate.py) and reused them in `TestOBRecorderRefactored`
+  - added `_run_do_reload_with_content(...)` to [tests/unit/v460/test_169_config_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_169_config_hot_reload.py) and reused it across reload/update assertions
+  - hoisted repeated YAML payloads into module constants in [tests/unit/v460/test_157_regime_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_157_regime_features.py) and [tests/unit/v460/test_138_p1_preflight_calibration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_138_p1_preflight_calibration.py)
+  - normalized `--raw-dir` through `resolve_raw_dir(...)` in [ztb/data/trades_health.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/data/trades_health.py) so CLI and library code follow the same path-resolution rules
 - Reduced repeated setup in the remaining `retrain/ml/core` hotspots:
   - added `_save_and_load_gate(...)` to [tests/unit/v460/test_retrain_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_retrain_hot_reload.py) and reused it in the post-deploy verification roundtrip
   - added shared `as_training_data_small` / `fill_training_data_small` fixtures to [tests/unit/v460/test_ml_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ml_pipeline.py) and trimmed GB tests to `gb_n_estimators=3`

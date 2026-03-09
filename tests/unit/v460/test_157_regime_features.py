@@ -159,19 +159,7 @@ class TestFillConfigBuyDynamicKill:
 
     def test_yaml_buy_dynamic_kill_parsing(self) -> None:
         """YAML から buy_dynamic_kill 設定を読み込む."""
-
-        yaml_data = {
-            "loss_control": {
-                "buy_dynamic_kill": {
-                    "enabled": True,
-                    "window": 30,
-                    "threshold_bps": -0.6,
-                    "resume_window": 5,
-                    "regime_thresholds": {"trending_down": -0.3},
-                },
-            },
-        }
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = FillTestConfig.from_yaml(_BUY_DYNAMIC_KILL_YAML)
         assert cfg.buy_dynamic_kill_enabled is True
         assert cfg.buy_dynamic_kill_window == 30
         assert cfg.buy_dynamic_kill_threshold_bps == -0.6
@@ -196,15 +184,7 @@ class TestTrendingOffsetAsymmetry:
 
     def test_yaml_side_specific_boost(self) -> None:
         """YAML から side-specific boost を読み込む."""
-
-        yaml_data = {
-            "regime": {
-                "trending_offset_boost": 1.5,
-                "trending_offset_boost_buy": 1.0,
-                "trending_offset_boost_sell": 1.8,
-            },
-        }
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = FillTestConfig.from_yaml(_TRENDING_OFFSET_BOOST_YAML)
         assert cfg.regime_trending_offset_boost == 1.5
         assert cfg.regime_trending_offset_boost_buy == 1.0
         assert cfg.regime_trending_offset_boost_sell == 1.8
@@ -402,3 +382,22 @@ class TestYAMLConsistency:
         regime = data.get("regime", {})
         assert regime.get("trending_offset_boost_buy") == 1.0
         assert regime.get("trending_offset_boost_sell") == 1.5
+_BUY_DYNAMIC_KILL_YAML: dict[str, object] = {
+    "loss_control": {
+        "buy_dynamic_kill": {
+            "enabled": True,
+            "window": 30,
+            "threshold_bps": -0.6,
+            "resume_window": 5,
+            "regime_thresholds": {"trending_down": -0.3},
+        },
+    },
+}
+
+_TRENDING_OFFSET_BOOST_YAML: dict[str, object] = {
+    "regime": {
+        "trending_offset_boost": 1.5,
+        "trending_offset_boost_buy": 1.0,
+        "trending_offset_boost_sell": 1.8,
+    },
+}

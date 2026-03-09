@@ -3546,3 +3546,40 @@
 - `ml_pipeline` は学習前の feature 構築を fixture 再利用に寄せ、AS/Fill classifier 群の call を `0.02s-0.03s` 帯に揃えた。
 - `v460_core` の microstructure feature generation は cached result 再利用で再計算を避ける形になった。
 - filtered broad の wall time は揺れたが、今回の対象 hotspot では回帰は出ていない。
+
+## 2026-03-10 / Session 037-083
+
+### 実施
+- `tests/unit/v460/test_135_trades_and_gate.py`
+  - `_read_single_jsonl_gz(...)` と `_record_ob_snapshot(...)` を追加
+  - `TestOBRecorderRefactored` の setup/読取重複を削減
+- `tests/unit/v460/test_169_config_hot_reload.py`
+  - `_run_do_reload_with_content(...)` を追加
+  - reload/update 系の `_prepare_reload_context(...) + _do_reload(...)` 反復を統一
+- `tests/unit/v460/test_157_regime_features.py`
+  - buy dynamic kill / trending boost YAML payload を module constant 化
+- `tests/unit/v460/test_138_p1_preflight_calibration.py`
+  - preflight pause / score calibration YAML payload を module constant 化
+- `ztb/data/trades_health.py`
+  - CLI の `--raw-dir` を `resolve_raw_dir(...)` に通すよう整理
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_135_trades_and_gate.py`
+  - `tests/unit/v460/test_169_config_hot_reload.py`
+  - `tests/unit/v460/test_157_regime_features.py`
+  - `tests/unit/v460/test_138_p1_preflight_calibration.py`
+  - `92 passed in 9.65s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4218 passed, 13 warnings in 44.42s`
+
+### 主要改善
+- `OBRecorderRefactored` は file read/write の helper が揃い、同型テスト追加時の重複が減った。
+- `config_hot_reload` は reload path 実行 helper ができ、`_do_reload` 直叩きケースをこれ以上増やしても setup 重複が増えにくくなった。
+- `157` / `138` の YAML parse テストは payload を定数化し、意図の違う assertion だけを残す形へ整理した。
+- 統合テストの「結合」自体は今回は見送った。既存ケースは失敗時の切り分け粒度を持っており、helper 化のほうが利得が大きかった。
