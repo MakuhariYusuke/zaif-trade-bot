@@ -16,13 +16,17 @@ from __future__ import annotations
 
 import argparse
 import collections
-import json
 import pathlib
 import sys
 from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
+
+from ztb.metrics.fill_quality import (
+    apply_fill_record_filters,
+    load_fill_record_objects_glob,
+)
 
 # ---------------------------------------------------------------------------
 # CLI
@@ -70,7 +74,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 # ---------------------------------------------------------------------------
-# Data Loading
+# Data Loading — delegates to ztb.metrics.fill_quality shared API
 # ---------------------------------------------------------------------------
 
 def load_records(
@@ -84,38 +88,15 @@ def load_records(
         print(f"ERROR: data directory not found: {base}", file=sys.stderr)
         sys.exit(1)
 
-    files = sorted(base.glob("fill_records_*.jsonl"))
-    if not files:
-        print(f"ERROR: no fill_records_*.jsonl found in {base}", file=sys.stderr)
+    records = load_fill_record_objects_glob(
+        base,
+        start_date=date_from,
+        end_date=date_to,
+    )
+    if not records:
+        print(f"ERROR: no fill_records found in {base}", file=sys.stderr)
         sys.exit(1)
-
-    # ファイル名日付でプリフィルタ (高速化)
-    if date_from or date_to:
-        df = date_from.replace("-", "") if date_from else "00000000"
-        dt = date_to.replace("-", "") if date_to else "99999999"
-        filtered: list[pathlib.Path] = []
-        for f in files:
-            # fill_records_20260225.jsonl -> 20260225
-            stem = f.stem  # fill_records_20260225
-            file_date = stem.split("_")[-1]  # 20260225
-            if len(file_date) == 8 and file_date.isdigit():
-                if df <= file_date <= dt:
-                    filtered.append(f)
-            else:
-                filtered.append(f)  # 日付形式でなければ含める
-        files = filtered
-
-    records: list[dict[str, Any]] = []
-    for f in files:
-        for line in f.read_text("utf-8").splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                records.append(json.loads(line))
-            except json.JSONDecodeError:
-                pass
-    return records
+    return records  # type: ignore[return-value]
 
 
 def apply_filters(
@@ -129,34 +110,19 @@ def apply_filters(
     regime: str | None = None,
 ) -> list[dict[str, Any]]:
     """レコードレベルのフィルタリングを適用."""
-    out = records
-
-    if run_id:
-        out = [r for r in out if r.get("run_id") == run_id]
-
-    if git_sha:
-        out = [r for r in out if str(r.get("git_sha", "")).startswith(git_sha)]
-
-    if date_from:
-        ts_from = datetime.strptime(date_from, "%Y-%m-%d").replace(
-            tzinfo=timezone.utc
-        ).timestamp()
-        out = [r for r in out if (r.get("timestamp") or 0) >= ts_from]
-
-    if date_to:
-        ts_to = (
-            datetime.strptime(date_to, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()
-            + 86400  # 終了日 inclusive (翌日0:00まで)
-        )
-        out = [r for r in out if (r.get("timestamp") or 0) < ts_to]
-
+    filtered, _ = apply_fill_record_filters(
+        records,
+        run_id=run_id,
+        git_sha=git_sha,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    # side / regime は共有 API にないためローカルで適用
     if side:
-        out = [r for r in out if r.get("side") == side]
-
+        filtered = [r for r in filtered if r.get("side") == side]
     if regime:
-        out = [r for r in out if r.get("regime") == regime]
-
-    return out
+        filtered = [r for r in filtered if r.get("regime") == regime]
+    return filtered  # type: ignore[return-value]
 
 
 # ---------------------------------------------------------------------------

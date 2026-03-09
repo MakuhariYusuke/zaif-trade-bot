@@ -16,25 +16,10 @@
 
 ## 各モジュールの詳細
 
-### 1. Regime Evaluation (`regime_evaluation.py`)
+### 1. Regime Evaluation
 
-市場の状態（トレンド、レンジ、高ボラティリティ、低ボラティリティ）別に戦略のパフォーマンスを分析します。
-
-#### 主な機能
-- 市場レジームの自動分類
-- レジーム別パフォーマンス指標計算
-- レジーム遷移分析
-- 適応性評価
-
-#### 使用例
-```bash
-python regime_evaluation.py --returns-path data/returns.csv --output-dir results/regime
-```
-
-#### 出力
-- レジーム別Sharpe Ratio、勝率、最大ドローダウン
-- レジーム遷移確率行列
-- パフォーマンス比較チャート
+> **Note**: `regime_evaluation.py` は deprecated/削除済み。
+> 後継: `ztb.analysis.regime.regime_eval` / `UnifiedEvaluator(EvaluationType.REGIME)`
 
 ### 2. Walkforward Analysis (`walkforward_analysis.py`)
 

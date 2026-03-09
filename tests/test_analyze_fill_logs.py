@@ -1,20 +1,16 @@
-"""Tests for tools/analysis/analyze_fill_logs.py (162# P0)."""
+"""Tests for scripts/v460/analysis/analyze_fill_logs.py (162# P0)."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import pathlib
-import sys
 import tempfile
 from datetime import datetime, timezone
 
 import pytest
 
-# Add project root to path
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
-
-from tools.analysis.analyze_fill_logs import (
+from scripts.v460.analysis.analyze_fill_logs import (
     apply_filters,
     build_json_summary,
     build_parser,

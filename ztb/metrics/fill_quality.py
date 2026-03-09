@@ -1092,34 +1092,26 @@ def iter_fill_records(path: str | Path) -> Iterator[FillRecord]:
 
     032# #19: 破損行はスキップしてログ出力。
     101# §5: cycle_id による重複排除 (SIGINT 中断時の partial+emergency 重複対策)。
+    349# P2: iter_jsonl_objects に委譲してパースロジックを一元化。
     """
     p = Path(path)
     if not p.exists():
         return
     seen_ids: set[str] = set()
-    skipped = 0
     duplicates = 0
     loaded = 0
-    with open(p, "r", encoding="utf-8") as f:
-        for line_no, line in enumerate(f, 1):
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                rec = FillRecord.from_dict(json.loads(line))
-                if rec.cycle_id in seen_ids:
-                    duplicates += 1
-                    continue
-                seen_ids.add(rec.cycle_id)
-                loaded += 1
-                yield rec
-            except (json.JSONDecodeError, TypeError, KeyError) as e:
-                skipped += 1
-                logger.warning(
-                    f"Skipped corrupt line {line_no} in {p.name}: {e}"
-                )
-    if skipped:
-        logger.warning(f"Total {skipped} corrupt lines skipped in {p.name}")
+    for obj in iter_jsonl_objects(p, warn_malformed=True):
+        try:
+            rec = FillRecord.from_dict(obj)
+        except (TypeError, KeyError) as e:
+            logger.warning(f"Skipped invalid record in {p.name}: {e}")
+            continue
+        if rec.cycle_id in seen_ids:
+            duplicates += 1
+            continue
+        seen_ids.add(rec.cycle_id)
+        loaded += 1
+        yield rec
     if duplicates:
         logger.info(f"Deduplicated {duplicates} records in {p.name}")
     logger.info(f"Loaded {loaded} fill records from {p}")
