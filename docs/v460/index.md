@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-09 (352# EWMA 厳密化 + buy_ranging 深堀り)
+> 最終更新: 2026-03-09 (353# VPIN 非対称 buy boost)
 
 ---
 
@@ -346,6 +346,7 @@
 | 350 | rev | [350_ph2_rev_339_349_bugfix_trade_multifaceted_review.md](350_ph2_rev_339_349_bugfix_trade_multifaceted_review.md) | 339#–349# 総合レビュー: kill 制御正常化の評価, EWMA fallback 数学的不整合, balance_forced 撤廃後の観測課題, buy_ranging 本丸論 |
 | 351 | rev | [351_ph2_gemini_31_pro_review_340_350_profitability_audit.md](351_ph2_gemini_31_pro_review_340_350_profitability_audit.md) | Gemini 3.1 Pro レビュー: EWMA rebuild look-ahead bias, effective_threshold 無視, buy_ranging 市場理論 3 盲点, 時間減衰 EWMA 提案 |
 | 352 | impl | [352_ph2_impl_ewma_strict_buy_ranging_deep_dive.md](352_ph2_impl_ewma_strict_buy_ranging_deep_dive.md) | 350#/351# P0 実装: EWMA rebuild 厳密化 (history[0] seed), TIME LIMIT effective_threshold 修正, テスト 13→18, buy_ranging 深堀り分析 |
+| 353 | impl | [353_ph2_impl_vpin_asymmetric_buy_boost.md](353_ph2_impl_vpin_asymmetric_buy_boost.md) | VPIN 非対称 buy boost: buy 側 VPIN boost 追加増幅 (164# SHAP, 351# 盲点1), テスト 25→29, ホットリロード対応 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

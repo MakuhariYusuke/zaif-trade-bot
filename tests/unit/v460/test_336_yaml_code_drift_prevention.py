@@ -86,6 +86,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "velocity_offset_proportional",
     "velocity_skip_as_offset_enabled",
     "vg_inv_skew_damping_enabled",
+    "vg_vpin_buy_extra_mult",
     "vg_vpin_continuous_enabled",
     "volatility_guard_enabled",
     # --- 数値パラメータのチューニング (YAML ≠ code default) ---
@@ -121,6 +122,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "sell_max_spread_jpy",
     "sell_offset_floor",
     "sell_velocity_skip_threshold_bps",
+    "vg_vpin_buy_extra_mult",
     "skip_gate_as_threshold",
     "skip_gate_as_threshold_buy",
     "skip_gate_as_threshold_sell",

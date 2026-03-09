@@ -408,6 +408,7 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "volatility_guard_velocity_window_sec",
     "vg_vpin_continuous_enabled",
     "vg_vpin_continuous_min",
+    "vg_vpin_buy_extra_mult",
     "vg_inv_skew_damping_enabled",
     # --- loss / PnL ---
     "loss_boost_decay_tau_sec",

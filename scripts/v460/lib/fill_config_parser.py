@@ -264,6 +264,8 @@ def _parse_stale_vg_section(yaml_cfg: dict) -> dict:
         # 269# VPIN continuous modulator YAML 配線
         "vpin_continuous_enabled": "vg_vpin_continuous_enabled",
         "vpin_continuous_min": "vg_vpin_continuous_min",
+        # 353# VPIN 非対称 buy boost
+        "vpin_buy_extra_mult": "vg_vpin_buy_extra_mult",
     }
     for yaml_key, config_key in vg_map.items():
         if yaml_key in vg:

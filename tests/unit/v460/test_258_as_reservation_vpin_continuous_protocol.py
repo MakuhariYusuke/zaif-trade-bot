@@ -394,3 +394,102 @@ class TestVPINContinuousModulator:
         src = inspect.getsource(MakerPrice._apply_volatility_guard)
         assert "vg_vpin_continuous_enabled" in src
         assert "quadratic" in src.lower() or "_norm * _norm" in src
+
+
+# ======================================================================
+# 353# VPIN 非対称 buy boost
+# ======================================================================
+
+
+class TestVPINBuyExtraMult:
+    """353# VPIN asymmetric buy boost — buy 側の VPIN boost 追加増幅."""
+
+    def test_default_mult_1_no_change(self) -> None:
+        """vg_vpin_buy_extra_mult=1.0 (default): buy と sell で同じ boost."""
+        cfg = _make_config(
+            volatility_guard_enabled=True,
+            vg_vpin_continuous_enabled=True,
+            vg_vpin_continuous_min=0.40,
+            volatility_guard_vpin_threshold=0.70,
+            volatility_guard_offset_boost_factor=2.0,
+            vg_vpin_buy_extra_mult=1.0,
+        )
+        mp_buy = _make_mp(cfg)
+        mp_buy._last_vpin = 0.60
+        mp_sell = _make_mp(cfg)
+        mp_sell._last_vpin = 0.60
+        buy_result = mp_buy._apply_volatility_guard("buy", None, 0.05)
+        sell_result = mp_sell._apply_volatility_guard("sell", None, 0.05)
+        assert abs(buy_result - sell_result) < 1e-8
+
+    def test_buy_extra_mult_increases_buy_boost(self) -> None:
+        """vg_vpin_buy_extra_mult=1.5: buy の boost が sell より大きい."""
+        cfg = _make_config(
+            volatility_guard_enabled=True,
+            vg_vpin_continuous_enabled=True,
+            vg_vpin_continuous_min=0.40,
+            volatility_guard_vpin_threshold=0.70,
+            volatility_guard_offset_boost_factor=2.0,
+            vg_vpin_buy_extra_mult=1.5,
+        )
+        mp_buy = _make_mp(cfg)
+        mp_buy._last_vpin = 0.60
+        mp_sell = _make_mp(cfg)
+        mp_sell._last_vpin = 0.60
+        buy_result = mp_buy._apply_volatility_guard("buy", None, 0.05)
+        sell_result = mp_sell._apply_volatility_guard("sell", None, 0.05)
+        assert buy_result > sell_result, (
+            f"buy boost should be larger: buy={buy_result:.4f} vs sell={sell_result:.4f}"
+        )
+
+    def test_buy_extra_mult_math_correctness(self) -> None:
+        """vg_vpin_buy_extra_mult の数学的正しさを検証.
+
+        VPIN=0.55, min=0.40, threshold=0.70 → norm=0.5, boost=1+0.5²=1.25
+        buy_extra_mult=1.5 → buy_boost=1+(0.25)*1.5=1.375
+        """
+        cfg = _make_config(
+            volatility_guard_enabled=True,
+            vg_vpin_continuous_enabled=True,
+            vg_vpin_continuous_min=0.40,
+            volatility_guard_vpin_threshold=0.70,
+            volatility_guard_offset_boost_factor=2.0,
+            vg_vpin_buy_extra_mult=1.5,
+        )
+        mp = _make_mp(cfg)
+        mp._last_vpin = 0.55
+        initial = 0.05
+        result = mp._apply_volatility_guard("buy", None, initial)
+        # norm = (0.55 - 0.40) / (0.70 - 0.40) = 0.5
+        # base vpin_boost = 1 + (2.0 - 1) * 0.25 = 1.25
+        # buy extra: 1 + (1.25 - 1) * 1.5 = 1.375
+        expected = initial * 1.375
+        assert abs(result - expected) < 0.001, (
+            f"Expected {expected:.4f}, got {result:.4f}"
+        )
+
+    def test_sell_unaffected_by_buy_extra_mult(self) -> None:
+        """sell は vg_vpin_buy_extra_mult の影響を受けない."""
+        cfg_base = _make_config(
+            volatility_guard_enabled=True,
+            vg_vpin_continuous_enabled=True,
+            vg_vpin_continuous_min=0.40,
+            volatility_guard_vpin_threshold=0.70,
+            volatility_guard_offset_boost_factor=2.0,
+            vg_vpin_buy_extra_mult=1.0,
+        )
+        cfg_extra = _make_config(
+            volatility_guard_enabled=True,
+            vg_vpin_continuous_enabled=True,
+            vg_vpin_continuous_min=0.40,
+            volatility_guard_vpin_threshold=0.70,
+            volatility_guard_offset_boost_factor=2.0,
+            vg_vpin_buy_extra_mult=2.0,
+        )
+        mp_base = _make_mp(cfg_base)
+        mp_base._last_vpin = 0.60
+        mp_extra = _make_mp(cfg_extra)
+        mp_extra._last_vpin = 0.60
+        sell_base = mp_base._apply_volatility_guard("sell", None, 0.05)
+        sell_extra = mp_extra._apply_volatility_guard("sell", None, 0.05)
+        assert abs(sell_base - sell_extra) < 1e-8, "sell should be unaffected"

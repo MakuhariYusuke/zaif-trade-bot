@@ -118,6 +118,17 @@ class RiskGuardsMixin:
                             f"{self._last_vpin:.2f}"
                         )
 
+            # 353# VPIN 非対称 buy boost (351# 盲点1: Ranging ≠ 対称)
+            # buy 側は informed trading の逆選択リスクが構造的に高い
+            # (164# SHAP: buy vpin_60s=0.548 vs sell=0.316)
+            if (
+                side == "buy"
+                and vpin_boost > 1.0
+                and cfg.vg_vpin_buy_extra_mult > 1.0
+            ):
+                vpin_boost = 1.0 + (vpin_boost - 1.0) * cfg.vg_vpin_buy_extra_mult
+                vg_reason += f"(buy_extra={cfg.vg_vpin_buy_extra_mult:.1f}x)"
+
             # --- 最終 boost: velocity と VPIN の max ---
             _raw_boost = max(velocity_boost, vpin_boost)
             vg_triggered = _raw_boost > 1.0
