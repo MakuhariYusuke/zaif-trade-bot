@@ -27,6 +27,8 @@ from unittest.mock import MagicMock, PropertyMock
 import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.run_fill_test import FillTestRunner
+from ztb.metrics.fill_quality import FillRecord
 
 
 # ======================================================================
@@ -37,8 +39,6 @@ from scripts.v460.lib.fill_config import FillTestConfig
 
 def _make_runner(config: FillTestConfig) -> MagicMock:
     """FillTestRunner のモックを生成し、confidence_lot メソッドを実体化."""
-    from scripts.v460.run_fill_test import FillTestRunner
-
     runner = MagicMock(spec=FillTestRunner)
     runner.config = config
 
@@ -308,7 +308,6 @@ class TestFillRecordFields:
     """FillRecord に 151# 新フィールドが存在すること."""
 
     def test_confidence_lot_fields_exist(self) -> None:
-        from ztb.metrics.fill_quality import FillRecord
         r = FillRecord(
             cycle_id="test",
             timestamp=0.0,
@@ -326,7 +325,6 @@ class TestFillRecordFields:
         assert r.confidence_lot_mode == "as"
 
     def test_confidence_lot_fields_default_none(self) -> None:
-        from ztb.metrics.fill_quality import FillRecord
         r = FillRecord(
             cycle_id="test",
             timestamp=0.0,
@@ -340,7 +338,6 @@ class TestFillRecordFields:
         assert r.confidence_lot_mode is None
 
     def test_to_dict_includes_new_fields(self) -> None:
-        from ztb.metrics.fill_quality import FillRecord
         r = FillRecord(
             cycle_id="test",
             timestamp=0.0,

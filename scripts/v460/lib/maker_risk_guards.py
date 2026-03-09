@@ -57,6 +57,21 @@ class RiskGuardsMixin:
     ) -> tuple[float, float]:
         ...
 
+    @staticmethod
+    def _current_utc_hour() -> int:
+        """現在の UTC hour を返す.
+
+        time-of-day 依存ロジックを 1 箇所に閉じる。
+        """
+        return datetime.now(timezone.utc).hour
+
+    def _resolve_sell_hour_boost_mult(self) -> float | None:
+        """sell_hour_offset_boost から現在 UTC hour の倍率を解決する."""
+        cfg = self._config
+        if not cfg.sell_hour_offset_boost:
+            return None
+        return cfg.sell_hour_offset_boost.get(self._current_utc_hour())
+
     # ------------------------------------------------------------------
     # Risk guard pipeline stages
     # ------------------------------------------------------------------
@@ -274,10 +289,10 @@ class RiskGuardsMixin:
         とは独立した第三の防御レイヤー (offset 拡大) として機能する。
         """
         cfg = self._config
-        if side != "sell" or not cfg.sell_hour_offset_boost:
+        if side != "sell":
             return effective_offset_ratio
-        utc_h = datetime.now(timezone.utc).hour
-        mult = cfg.sell_hour_offset_boost.get(utc_h)
+        utc_h = self._current_utc_hour()
+        mult = self._resolve_sell_hour_boost_mult()
         if mult is not None and mult > 1.0:
             _prev = effective_offset_ratio
             effective_offset_ratio, _applied = self._scale_offset_ratio(

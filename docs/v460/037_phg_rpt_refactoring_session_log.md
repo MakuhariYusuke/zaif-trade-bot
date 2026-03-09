@@ -3028,3 +3028,36 @@
 - `253/255` は source 読込の流儀がほぼ shared helper に揃った。今後の split-file 変更や UTF-8/BOM 対応は helper 側で吸収できる。
 - `ob_recorder.py` も raw-dir 正規化を共通 helper に寄せたので、`feature_enricher` / `build_features` / `market_data_collector` / `trades_recorder` と同じ境界で扱えるようになった。
 - 今回は性能差分より再利用境界の整理が主成果で、raw path の実装分岐をさらに 1 箇所減らせた。
+
+---
+
+## 2026-03-10 / Session 037-071
+
+### 実施
+- `tests/unit/v460/test_203_dd_state_persistence.py`
+  - `OrchestratorPreCycleMixin._handle_dd_halt` の source 契約を shared helper に変更
+  - `DailyDrawdownGuard`, `FillLoopOrchestratorMixin` を module scope に集約
+- `tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py`
+  - `_apply_loss_boost`, `_handle_dd_halt`, `_feed_mcb_sad`, `_rebuild_fast_fill_defense` の source 契約を shared helper / `read_fill_test_method_source()` に変更
+- `tests/unit/v460/test_151_confidence_lot.py`
+  - `FillTestRunner`, `FillRecord` を module scope に集約
+- `tests/unit/v460/test_166_remaining_tasks.py`
+  - `FillRecord`, `FillMonitorResult`, `FillTestConfig`, `SideSelector`, `_GATE_TO_CANCEL_REASON` を module scope に集約
+- `scripts/v460/lib/maker_risk_guards.py`
+  - `_current_utc_hour()` を追加
+  - `_resolve_sell_hour_boost_mult()` を追加
+  - `_apply_sell_hour_boost()` が時間取得と config lookup を helper 再利用へ変更
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_203_dd_state_persistence.py`
+  - `tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py`
+  - `tests/unit/v460/test_151_confidence_lot.py`
+  - `tests/unit/v460/test_166_remaining_tasks.py`
+  - `tests/unit/v460/test_306_proposals.py -k 'not test_yaml_has_microprice_side'`
+  - `150 passed, 1 deselected in 10.14s`
+
+### 主要改善
+- DD halt / loss_boost / FFD hot-reload の source 契約が shared helper にさらに寄ったので、orchestrator split と `run_fill_test` 分割への追随点が減った。
+- `151/166` の `FillRecord` 周辺は、今後 field 追加が入っても import boilerplate が増えにくい形になった。
+- production 側では `sell_hour_offset_boost` の時間帯判定を pure helper に分離したので、`skip_gate_hour_offsets` など他の time-of-day ルールとの共通化を検討しやすい下地ができた。

@@ -9,7 +9,6 @@ S5: halt 中 MCB/SAD フィード継続 (ソースコード検証)
 """
 from __future__ import annotations
 
-import inspect
 import math
 import time
 from collections import deque
@@ -21,7 +20,14 @@ from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseC
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator as MakerPrice
 from scripts.v460.lib.micro_circuit_breaker import MicroCircuitBreaker
-from tests.unit.v460._fill_test_source import ORCHESTRATOR_GUARDS, read_source_text
+from tests.unit.v460._fill_test_source import (
+    MAKER_PRICE,
+    ORCHESTRATOR_GUARDS,
+    ORCHESTRATOR_PRE_CYCLE,
+    read_class_method_source,
+    read_fill_test_method_source,
+    read_source_text,
+)
 
 
 # ======================================================================
@@ -115,7 +121,7 @@ class TestLossBoostExponentialDecay:
     def test_compute_source_has_decay_formula(self) -> None:
         """指数減衰の数式が _apply_loss_boost() に実装されている (ソースコード検証)."""
         # 260# P2-2: loss boost は _apply_loss_boost() に抽出済み
-        src = inspect.getsource(MakerPrice._apply_loss_boost)
+        src = read_class_method_source(MAKER_PRICE, "MakerPriceCalculator", "_apply_loss_boost")
         assert "exp(" in src, "math.exp() が _apply_loss_boost() に存在すること"
         assert "_loss_boost_set_time" in src
         assert "226# T1" in src
@@ -354,8 +360,11 @@ class TestHaltMCBSADFeedContinuation:
 
         330#: run_continuous → _handle_dd_halt に抽出。
         """
-        from scripts.v460.lib.orchestrator_pre_cycle import OrchestratorPreCycleMixin
-        src = inspect.getsource(OrchestratorPreCycleMixin._handle_dd_halt)
+        src = read_class_method_source(
+            ORCHESTRATOR_PRE_CYCLE,
+            "OrchestratorPreCycleMixin",
+            "_handle_dd_halt",
+        )
         assert "226# S5" in src
         # "is_halted" → MCB/SAD feed が halt ブロック内にある
         halted_section = src[src.index("daily_drawdown_guard.is_halted()"):]
@@ -366,9 +375,12 @@ class TestHaltMCBSADFeedContinuation:
 
     def test_orchestrator_source_has_halt_sad_update(self) -> None:
         """halt 中の continue 前に SAD update が存在する (272# _feed_mcb_sad に統合済)."""
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         # _feed_mcb_sad ヘルパー内に SAD update が含まれていることを検証
-        src = inspect.getsource(FillLoopOrchestratorMixin._feed_mcb_sad)
+        src = read_class_method_source(
+            ORCHESTRATOR_GUARDS,
+            "OrchestratorGuardsMixin",
+            "_feed_mcb_sad",
+        )
         assert "self._sad.update" in src, "_feed_mcb_sad should contain SAD update"
 
 
@@ -418,8 +430,7 @@ class TestFFDHotReloadPreservation:
 
     def test_rebuild_source_preserves_state(self) -> None:
         """_rebuild_fast_fill_defense に export/import パターンがある."""
-        from scripts.v460.run_fill_test import FillTestRunner
-        src = inspect.getsource(FillTestRunner._rebuild_fast_fill_defense)
+        src = read_fill_test_method_source("_rebuild_fast_fill_defense")
         assert "export_state" in src, (
             "_rebuild_fast_fill_defense should call export_state"
         )

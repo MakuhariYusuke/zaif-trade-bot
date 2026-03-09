@@ -4664,6 +4664,21 @@ python scripts/unified_trainer.py \
 - The focused bundle completed at `45 passed in 2.09s`.
 - This pass was driven by reuse discovery rather than hotspot timings: it removed another set of duplicated source-loading patterns and one more production-side raw-dir normalization fork.
 
+## Session 037-071 (2026-03-10)
+
+### Changed
+- Extended split-source helper reuse to [test_203_dd_state_persistence.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_203_dd_state_persistence.py) and [test_226_loss_boost_decay_inv_skew_state.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py), replacing remaining `inspect.getsource(...)` assertions with `_fill_test_source.py` lookups for `OrchestratorPreCycleMixin._handle_dd_halt`, `OrchestratorGuardsMixin._feed_mcb_sad`, `MakerPriceCalculator._apply_loss_boost`, and `FillTestRunner._rebuild_fast_fill_defense`.
+- Hoisted `FillRecord` and related helper imports to module scope in [test_151_confidence_lot.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_151_confidence_lot.py) and [test_166_remaining_tasks.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_166_remaining_tasks.py), continuing the test-local fixture/import reuse cleanup around `FillRecord`, `FillMonitorResult`, `FillTestConfig`, and `SideSelector`.
+- Refactored [maker_risk_guards.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/maker_risk_guards.py) to isolate time-of-day logic behind `_current_utc_hour()` and `_resolve_sell_hour_boost_mult()`, so `sell_hour_offset_boost` no longer mixes `datetime.now(...)` and config lookup directly inside the pipeline stage.
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile tests/unit/v460/test_203_dd_state_persistence.py tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py tests/unit/v460/test_151_confidence_lot.py tests/unit/v460/test_166_remaining_tasks.py scripts/v460/lib/maker_risk_guards.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_203_dd_state_persistence.py tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py tests/unit/v460/test_151_confidence_lot.py tests/unit/v460/test_166_remaining_tasks.py tests/unit/v460/test_306_proposals.py -q --no-cov --tb=short -k 'not test_yaml_has_microprice_side' --durations=25`
+
+### Notes
+- The focused bundle completed at `150 passed, 1 deselected in 10.14s`.
+- This pass pushed the shared source-helper boundary deeper into the DD / halt / loss-boost tests while also creating a cleaner production seam for any future time-of-day rule reuse beside `skip_gate_hour_offsets`.
+
 ## Session 037-065 (2026-03-09)
 
 ### Changed

@@ -18,9 +18,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import numpy as np
 import pandas as pd
 import pytest
+from scripts.v460.lib.cycle_gate_aggregator import _GATE_TO_CANCEL_REASON
+from scripts.v460.lib.fill_config import FillMonitorResult, FillTestConfig
+from scripts.v460.lib.side_selector import SideSelector
 from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
 from tests.unit.v460._fill_test_source import read_fill_test_runner_source
 from tests.unit.v460._fill_test_source import ORCHESTRATOR_MID_CYCLE, read_source_text
+from ztb.metrics.fill_quality import FillRecord
 
 
 class _SetOutputRecorder:
@@ -109,16 +113,12 @@ class TestCancelFailedKPI:
 
     def test_fill_monitor_result_has_field(self):
         """FillMonitorResult に cancel_failed_likely_filled がある."""
-        from scripts.v460.lib.fill_config import FillMonitorResult
-
         r = FillMonitorResult()
         assert hasattr(r, "cancel_failed_likely_filled")
         assert r.cancel_failed_likely_filled is False
 
     def test_fill_monitor_result_field_set(self):
         """FillMonitorResult の cancel_failed_likely_filled を True に設定可能."""
-        from scripts.v460.lib.fill_config import FillMonitorResult
-
         r = FillMonitorResult(
             filled=True,
             cancel_failed_likely_filled=True,
@@ -127,8 +127,6 @@ class TestCancelFailedKPI:
 
     def test_fill_record_has_field(self):
         """FillRecord に cancel_failed_likely_filled がある."""
-        from ztb.metrics.fill_quality import FillRecord
-
         r = FillRecord(
             cycle_id="test",
             timestamp=0.0,
@@ -141,8 +139,6 @@ class TestCancelFailedKPI:
 
     def test_fill_record_roundtrip(self):
         """FillRecord の cancel_failed_likely_filled が JSON roundtrip で保持される."""
-        from ztb.metrics.fill_quality import FillRecord
-
         r = FillRecord(
             cycle_id="test",
             timestamp=0.0,
@@ -189,7 +185,6 @@ class TestDeadlockSideAlternation:
 
     def test_all_gate_reasons_mapped_to_cancel_reasons(self):
         """194# 全ゲートの blocking_reason が cancel_reason にマッピングされている."""
-        from scripts.v460.lib.cycle_gate_aggregator import _GATE_TO_CANCEL_REASON
         expected_reasons = [
             "unknown_regime_buy_skip",
             "trending_sell_skip",
@@ -203,9 +198,6 @@ class TestDeadlockSideAlternation:
 
     def test_side_selector_alternation_after_buy_skip(self):
         """_last_side='buy' 設定後に _next_side() が 'sell' を返す."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.side_selector import SideSelector
-
         config = FillTestConfig()
         ss = SideSelector(config)
         ss.last_side = "buy"
@@ -214,9 +206,6 @@ class TestDeadlockSideAlternation:
 
     def test_side_selector_alternation_after_sell_skip(self):
         """_last_side='sell' 設定後に _next_side() が 'buy' を返す."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.side_selector import SideSelector
-
         config = FillTestConfig()
         ss = SideSelector(config)
         ss.last_side = "sell"

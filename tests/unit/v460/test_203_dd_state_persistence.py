@@ -14,6 +14,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
+from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+from tests.unit.v460._fill_test_source import (
+    ORCHESTRATOR_PRE_CYCLE,
+    read_class_method_source,
+)
+
 
 # ============================================================
 # 203# E: Halt state save — _halt_entering logic
@@ -24,14 +31,12 @@ class TestHaltStateSave:
 
     def test_halt_entering_flag_first_iteration(self) -> None:
         """_halt_start_cycle が None → _halt_entering=True."""
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         mixin = FillLoopOrchestratorMixin.__new__(FillLoopOrchestratorMixin)
         # 初期状態: _halt_start_cycle 未設定
         assert not hasattr(mixin, "_halt_start_cycle") or getattr(mixin, "_halt_start_cycle", None) is None
 
     def test_halt_iter_count_attr_on_orchestrator(self) -> None:
         """_halt_iter_count attr がクラスレベルで 0 初期化されている."""
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         mixin = FillLoopOrchestratorMixin.__new__(FillLoopOrchestratorMixin)
         # 216# §7: クラスレベル属性として 0 で定義済み
         assert getattr(mixin, "_halt_iter_count", None) == 0
@@ -56,9 +61,6 @@ class TestDDWarmupFromRecords:
     def _make_mixin_with_dd_guard(
         self, *, hard_limit: float = -50.0, soft_limit: float = -30.0,
     ) -> "FillLoopOrchestratorMixin":
-        from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-
         mixin = FillLoopOrchestratorMixin.__new__(FillLoopOrchestratorMixin)
         mixin._daily_drawdown_guard = DailyDrawdownGuard(
             enabled=True, hard_limit_bps=hard_limit, soft_limit_bps=soft_limit,
@@ -152,19 +154,21 @@ class TestHaltElapsedCounter:
 
     def test_halt_end_resets_iter_count(self) -> None:
         """halt終了時に _halt_iter_count がリセットされる."""
-        import inspect
-        # 330# extract: DD halt ロジックは _handle_dd_halt に移動
-        from scripts.v460.lib.orchestrator_pre_cycle import OrchestratorPreCycleMixin
-        src = inspect.getsource(OrchestratorPreCycleMixin._handle_dd_halt)
+        src = read_class_method_source(
+            ORCHESTRATOR_PRE_CYCLE,
+            "OrchestratorPreCycleMixin",
+            "_handle_dd_halt",
+        )
         assert "_halt_iter_count = 0" in src, \
             "halt終了時に _halt_iter_count がリセットされるべき"
 
     def test_halt_entering_saves_state(self) -> None:
         """halt開始時のstate保存コードが存在する."""
-        import inspect
-        # 330# extract: DD halt ロジックは _handle_dd_halt に移動
-        from scripts.v460.lib.orchestrator_pre_cycle import OrchestratorPreCycleMixin
-        src = inspect.getsource(OrchestratorPreCycleMixin._handle_dd_halt)
+        src = read_class_method_source(
+            ORCHESTRATOR_PRE_CYCLE,
+            "OrchestratorPreCycleMixin",
+            "_handle_dd_halt",
+        )
         assert "_halt_entering" in src, \
             "203# E halt開始フラグが存在するべき"
         # 216# §7: _halt_entering は _should_record_halt に統合された
@@ -173,10 +177,11 @@ class TestHaltElapsedCounter:
 
     def test_no_old_cycle_count_modulo_in_halt(self) -> None:
         """旧実装の self._cycle_count % progress_log_interval (halt内) が除去された."""
-        import inspect
-        # 330# extract: DD halt ロジックは _handle_dd_halt に移動
-        from scripts.v460.lib.orchestrator_pre_cycle import OrchestratorPreCycleMixin
-        src = inspect.getsource(OrchestratorPreCycleMixin._handle_dd_halt)
+        src = read_class_method_source(
+            ORCHESTRATOR_PRE_CYCLE,
+            "OrchestratorPreCycleMixin",
+            "_handle_dd_halt",
+        )
         # halt ブロック内に旧条件がないことを確認
         # "200# P0-3: HALT 中も" コメントが 203# E に置換されているか
         assert "200# P0-3" not in src, \
