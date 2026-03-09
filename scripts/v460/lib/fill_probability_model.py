@@ -119,7 +119,10 @@ class FillProbabilityModel:
     ) -> float:
         """GLFT 最適 offset δ* を算出.
 
-        δ* = 1/k + q·γ·σ²·τ / k
+        δ* = 1/k + |q|·γ·σ²·τ / k
+
+        在庫 q の符号による bid/ask 非対称性は呼び出し側が管理する。
+        本メソッドは |q| (offset の大きさ) のみを返す。
 
         Parameters
         ----------
@@ -210,8 +213,8 @@ def estimate_fill_probability_params(
             f"offsets ({len(offsets)}) と filled ({len(filled)}) の長さが不一致"
         )
 
-    # フィルタ: offset が非負のレコードのみ
-    valid = offsets >= 0
+    # フィルタ: offset が非負かつ有限のレコードのみ (H4 fix: NaN フィルタ追加)
+    valid = np.isfinite(offsets) & (offsets >= 0)
     offsets = offsets[valid]
     filled = filled[valid]
 

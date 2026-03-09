@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import logging
 import math
+from collections import Counter, deque
 from dataclasses import dataclass
 from enum import Enum
 from typing import Protocol, runtime_checkable
@@ -231,7 +232,9 @@ class FillTestRegimeDetector:
         # 366# T5: Welford online variance — O(1) per update
         self._window_welford = WelfordOnlineVar()   # 直近 window の returns 用
         self._all_welford = WelfordOnlineVar()       # 全 buffer の returns 用 (baseline)
-        self._last_return: float | None = None       # 直近の return (window sliding 用)
+        # C2 fix: 実際に add した return 値を deque に保持し、正確な remove を保証
+        self._window_returns: deque[float] = deque()
+        self._all_returns: deque[float] = deque()
 
     @property
     def current_regime(self) -> FillTestRegime:
@@ -276,41 +279,24 @@ class FillTestRegimeDetector:
             new_ret = (mid_price - prev_price) / prev_price
             if math.isfinite(new_ret):
                 self._all_welford.add(new_ret)
+                self._all_returns.append(new_ret)
                 self._window_welford.add(new_ret)
+                self._window_returns.append(new_ret)
 
         # バッファ上限: window の 3 倍まで保持 (baseline 算出用)
         max_buffer = self.config.window * 3
         if len(self._prices) > max_buffer:
-            # 削除される price pair の return を Welford から除去
-            removed_prices = self._prices[:-max_buffer]
-            for i in range(len(removed_prices) - 1):
-                p0 = removed_prices[i][1]
-                p1 = removed_prices[i + 1][1]
-                if abs(p0) > 1e-12:
-                    old_ret = (p1 - p0) / p0
-                    if math.isfinite(old_ret):
-                        self._all_welford.remove(old_ret)
             self._prices = self._prices[-max_buffer:]
+            # C2 fix: all_returns も同期してトリム
+            while len(self._all_returns) > max_buffer - 1:
+                old_ret = self._all_returns.popleft()
+                self._all_welford.remove(old_ret)
 
-        # window_welford: window サイズを超えた分を除去
+        # C2 fix: window_returns から実際に add した値を pop して正確に remove
         window = self.config.window
-        n_returns_in_window = len(self._prices) - 1  # returns = prices - 1
-        while self._window_welford.count > max(0, min(n_returns_in_window, window - 1)):
-            # window 外の oldest return を除去
-            idx = len(self._prices) - 1 - self._window_welford.count
-            if idx >= 0 and idx + 1 < len(self._prices):
-                p0 = self._prices[idx][1]
-                p1 = self._prices[idx + 1][1]
-                if abs(p0) > 1e-12:
-                    old_ret = (p1 - p0) / p0
-                    if math.isfinite(old_ret):
-                        self._window_welford.remove(old_ret)
-                    else:
-                        break
-                else:
-                    break
-            else:
-                break
+        while len(self._window_returns) > max(0, window - 1):
+            old_ret = self._window_returns.popleft()
+            self._window_welford.remove(old_ret)
 
         # データ不足 → unknown (confidence=0)
         if len(self._prices) < self.config.window:
@@ -568,8 +554,6 @@ class FillTestRegimeDetector:
             self._confirmed_regime == FillTestRegime.UNKNOWN
             and len(self._raw_history) >= self.config.hysteresis_count * 2
         ):
-            from collections import Counter
-
             recent_raw = self._raw_history[-self.config.hysteresis_count * 2 :]
             non_unknown = [r for r in recent_raw if r != FillTestRegime.UNKNOWN]
             if non_unknown:
@@ -594,6 +578,11 @@ class FillTestRegimeDetector:
         self._raw_history.clear()
         self._confirmed_regime = FillTestRegime.UNKNOWN
         self._stability_count = 0
+        # C2 fix: Welford + return deque もリセット
+        self._window_welford.reset()
+        self._all_welford.reset()
+        self._window_returns.clear()
+        self._all_returns.clear()
 
     # --- 121# A4: state persistence support ---
 

@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import logging
 import math
+from collections import deque
 from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Final
@@ -252,7 +253,9 @@ class BayesianRegimeFilter:
 
         # 統計
         self._update_count: int = 0
-        self._regime_history: list[int] = []  # A 行列再推定用
+        # C1 fix: deque で上限を設け無限メモリ増加を防止
+        _max_history = max(self._config.reestimate_interval * 3, 300)
+        self._regime_history: deque[int] = deque(maxlen=_max_history)
 
     # -----------------------------------------------------------------
     # 遷移行列
@@ -353,16 +356,20 @@ class BayesianRegimeFilter:
         ):
             self._reestimate_transition()
 
-        return self._make_result(observation)
+        # M1 fix: predicted を再利用して二重計算を回避
+        return self._make_result(observation, predicted=predicted)
 
     # -----------------------------------------------------------------
     # 結果生成
     # -----------------------------------------------------------------
 
-    def _make_result(self, observation: float) -> BayesianRegimeResult:
+    def _make_result(
+        self, observation: float, *, predicted: np.ndarray | None = None,
+    ) -> BayesianRegimeResult:
         """現在の posterior から BayesianRegimeResult を生成."""
         map_idx = int(np.argmax(self._posterior))
-        predicted = self._transition.T @ self._posterior
+        if predicted is None:
+            predicted = self._transition.T @ self._posterior
         offset_mult = float(np.dot(self._posterior, self._offset_mults))
         return BayesianRegimeResult(
             posterior=self._posterior.copy(),
@@ -514,6 +521,9 @@ class BayesianRegimeFilter:
             post = np.array(state["posterior"], dtype=np.float64)
             if post.shape != (self._n_states,):
                 return False
+            # H2 fix: 全要素0の場合は復元失敗
+            if post.sum() <= 0:
+                return False
             self._posterior = post / post.sum()
 
             trans = np.array(state["transition"], dtype=np.float64)
@@ -521,10 +531,17 @@ class BayesianRegimeFilter:
                 return False
             self._transition = trans
 
-            self._emission_mu = np.array(state["emission_mu"], dtype=np.float64)
-            self._emission_sigma = np.array(state["emission_sigma"], dtype=np.float64)
+            # H1 fix: emission 配列の shape 検証
+            mu = np.array(state["emission_mu"], dtype=np.float64)
+            sigma = np.array(state["emission_sigma"], dtype=np.float64)
+            if mu.shape != (self._n_states,) or sigma.shape != (self._n_states,):
+                return False
+            self._emission_mu = mu
+            self._emission_sigma = sigma
             self._update_count = int(state.get("update_count", 0))
-            self._regime_history = list(state.get("regime_history_tail", []))
+            tail = list(state.get("regime_history_tail", []))
+            _max_history = max(self._config.reestimate_interval * 3, 300)
+            self._regime_history = deque(tail, maxlen=_max_history)
 
             logger.info(
                 f"[BayesianRegime] state restored: "
@@ -555,4 +572,5 @@ class BayesianRegimeFilter:
             dtype=np.float64,
         )
         self._update_count = 0
-        self._regime_history.clear()
+        _max_history = max(self._config.reestimate_interval * 3, 300)
+        self._regime_history = deque(maxlen=_max_history)

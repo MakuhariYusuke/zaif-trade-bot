@@ -187,3 +187,28 @@ class TestVolatilityRegimeClassifier:
 
         clf.classify(2.0)
         assert clf.current_offset_mult == 1.5
+
+
+# =====================================================================
+# セルフレビュー TG4-TG5: テストギャップ補完
+# =====================================================================
+
+
+class TestReviewGapsSigma:
+    """セルフレビューで特定されたテストギャップの補完."""
+
+    def test_tg4_negative_vol_ratio(self) -> None:
+        """TG4: 負の vol_ratio が LOW に分類されること (ガード追加済み)."""
+        clf = VolatilityRegimeClassifier()
+        result = clf.classify(-1.0)
+        assert result == VolatilityCluster.LOW
+
+    def test_tg5_threshold_order_validation(self) -> None:
+        """TG5: 閾値逆転時に ValueError."""
+        with pytest.raises(ValueError, match="low < high < extreme"):
+            VolatilityClusterConfig(low_threshold=2.0, high_threshold=1.0, extreme_threshold=3.0)
+
+    def test_tg5_threshold_equal_raises(self) -> None:
+        """TG5: 同一閾値でも ValueError."""
+        with pytest.raises(ValueError, match="low < high < extreme"):
+            VolatilityClusterConfig(low_threshold=1.0, high_threshold=1.0, extreme_threshold=3.0)

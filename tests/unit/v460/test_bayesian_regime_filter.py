@@ -426,3 +426,51 @@ class TestConversionMaps:
 
     def test_n_states_constant(self) -> None:
         assert _N_STATES == 4
+
+
+# =====================================================================
+# セルフレビュー TG1-TG3: テストギャップ補完
+# =====================================================================
+
+
+class TestReviewGaps:
+    """セルフレビューで特定されたテストギャップの補完."""
+
+    def test_tg1_regime_history_bounded(self) -> None:
+        """TG1: _regime_history が deque(maxlen) で上限を持つこと."""
+        cfg = BayesianRegimeConfig(reestimate_interval=10)
+        f = BayesianRegimeFilter(cfg)
+        expected_maxlen = max(10 * 3, 300)  # max(interval*3, 300)
+        # 大量の更新を行っても _regime_history が無限に伸びない
+        for _ in range(500):
+            f.update(1e-4)
+        assert len(f._regime_history) <= expected_maxlen
+
+    def test_tg2_restore_emission_shape_mismatch(self) -> None:
+        """TG2: emission shape 不一致の state を渡すと False."""
+        f = BayesianRegimeFilter()
+        state = f.get_state()
+        state["emission_mu"] = [0.0, 0.0]  # shape (2,) != (4,)
+        assert f.restore_state(state) is False
+
+    def test_tg2_restore_emission_sigma_shape_mismatch(self) -> None:
+        """TG2: emission_sigma shape 不一致."""
+        f = BayesianRegimeFilter()
+        state = f.get_state()
+        state["emission_sigma"] = [0.1]
+        assert f.restore_state(state) is False
+
+    def test_h2_restore_all_zero_posterior(self) -> None:
+        """H2: 全要素 0 の posterior で restore → False."""
+        f = BayesianRegimeFilter()
+        state = f.get_state()
+        state["posterior"] = [0.0, 0.0, 0.0, 0.0]
+        assert f.restore_state(state) is False
+
+    def test_tg3_emission_floor_prevents_underflow(self) -> None:
+        """TG3: emission_floor が極端な observation でも underflow を防ぐ."""
+        f = BayesianRegimeFilter()
+        # 極端な値で underflow しないこと
+        result = f.update(1e6)
+        assert np.all(np.isfinite(result.posterior))
+        assert abs(result.posterior.sum() - 1.0) < 1e-10

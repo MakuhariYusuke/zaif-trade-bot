@@ -76,6 +76,13 @@ def compute_vpin_volume_sync(
     ):
         return NEUTRAL_VPIN
 
+    # H5 fix: NaN/Inf 入力ガード
+    if (
+        not np.all(np.isfinite(cumulative_total_volume))
+        or not np.all(np.isfinite(cumulative_buy_volume))
+    ):
+        return NEUTRAL_VPIN
+
     # Clamp end_index to array bounds
     end_index = min(end_index, len(cumulative_total_volume) - 1)
 

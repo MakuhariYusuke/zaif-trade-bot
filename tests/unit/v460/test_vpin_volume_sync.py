@@ -254,3 +254,33 @@ class TestFeatureEnricherVpinVolSync:
         )
         # Default (not computed) should be 0.5
         assert multi["vpin_vol_sync"] == NEUTRAL_VPIN
+
+
+# =====================================================================
+# セルフレビュー TG8: NaN/Inf テスト
+# =====================================================================
+
+
+class TestReviewGapsVpin:
+    """セルフレビューで特定されたテストギャップの補完."""
+
+    def test_tg8_nan_in_cumulative_total(self) -> None:
+        """TG8: NaN を含む累積配列で NEUTRAL_VPIN を返す."""
+        cum_total = np.array([0.0, 0.1, float("nan"), 0.3])
+        cum_buy = np.array([0.0, 0.05, 0.1, 0.15])
+        result = compute_vpin_volume_sync(cum_total, cum_buy, end_index=3, bucket_size=0.1, n_buckets=2)
+        assert result == NEUTRAL_VPIN
+
+    def test_tg8_inf_in_cumulative_buy(self) -> None:
+        """TG8: Inf を含む累積配列で NEUTRAL_VPIN を返す."""
+        cum_total = np.array([0.0, 0.1, 0.2, 0.3])
+        cum_buy = np.array([0.0, 0.05, float("inf"), 0.15])
+        result = compute_vpin_volume_sync(cum_total, cum_buy, end_index=3, bucket_size=0.1, n_buckets=2)
+        assert result == NEUTRAL_VPIN
+
+    def test_tg8_negative_inf_in_total(self) -> None:
+        """TG8: -Inf で NEUTRAL_VPIN."""
+        cum_total = np.array([0.0, float("-inf"), 0.2])
+        cum_buy = np.array([0.0, 0.1, 0.15])
+        result = compute_vpin_volume_sync(cum_total, cum_buy, end_index=2, bucket_size=0.1, n_buckets=1)
+        assert result == NEUTRAL_VPIN

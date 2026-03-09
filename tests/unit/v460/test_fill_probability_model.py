@@ -198,3 +198,28 @@ class TestFillProbabilityModelFit:
 
         # buy の A は sell より大きいはず
         assert buy_model.A > sell_model.A * 0.8  # ノイズ考慮して緩く
+
+
+# =====================================================================
+# セルフレビュー TG6: NaN テスト
+# =====================================================================
+
+
+class TestReviewGapsFill:
+    """セルフレビューで特定されたテストギャップの補完."""
+
+    def test_tg6_nan_offsets_filtered(self) -> None:
+        """TG6: NaN を含む offsets が適切にフィルタされること."""
+        offsets = np.array([0.01, 0.02, float("nan"), 0.04, 0.05] * 10)
+        filled = np.array([True, True, True, False, False] * 10)
+        result = estimate_fill_probability_params(offsets, filled)
+        # NaN がフィルタされて正常に推定できる
+        assert result.n_samples == 40  # 50 - 10 (NaN rows)
+        assert result.A > 0
+
+    def test_tg6_all_nan_offsets_fallback(self) -> None:
+        """TG6: 全 NaN → サンプル不足でフォールバック."""
+        offsets = np.array([float("nan")] * 10)
+        filled = np.array([True] * 10)
+        result = estimate_fill_probability_params(offsets, filled)
+        assert result.is_fallback is True

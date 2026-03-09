@@ -78,6 +78,15 @@ class VolatilityClusterConfig:
     # ヒステリシス幅 (チャタリング防止)
     hysteresis: float = 0.05
 
+    def __post_init__(self) -> None:
+        """H3 fix: 閾値の順序検証."""
+        if not (self.low_threshold < self.high_threshold < self.extreme_threshold):
+            raise ValueError(
+                f"閾値は low < high < extreme である必要があります: "
+                f"low={self.low_threshold}, high={self.high_threshold}, "
+                f"extreme={self.extreme_threshold}"
+            )
+
     def offset_mult_for(self, cluster: VolatilityCluster) -> float:
         """クラスタ → offset 乗数."""
         return {
@@ -134,6 +143,8 @@ class VolatilityRegimeClassifier:
         -------
         VolatilityCluster
         """
+        # M2 fix: 負の vol_ratio をガード
+        vol_ratio = max(0.0, vol_ratio)
         cfg = self._config
         h = cfg.hysteresis
         prev = self._current
