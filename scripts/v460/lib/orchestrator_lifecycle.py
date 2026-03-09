@@ -58,11 +58,15 @@ class OrchestratorLifecycleMixin:
 
         225# F1: 当日分のみ replay — B2 日替わり kill reset との矛盾を防止。
         348# balance_forced 撤廃: forced downweight 論理を削除。
+        349#: 既に pnl_history が存在する側は warmup をスキップ (二重 track 防止)。
         """
         utc_today = datetime.now(timezone.utc).strftime("%Y%m%d")
         sell_count = 0
         buy_count = 0
         skipped_old = 0
+        # 349#: import_state で既に復元済みの側は warmup スキップ
+        sell_needs_warmup = len(self._sell_kill_mgr._pnl_history) == 0
+        buy_needs_warmup = len(self._buy_kill_mgr._pnl_history) == 0
         for r in records:
             if not r.filled or r.post_fill_30s_pnl is None:
                 continue
@@ -73,10 +77,10 @@ class OrchestratorLifecycleMixin:
                 skipped_old += 1
                 continue
             pnl = r.post_fill_30s_pnl
-            if r.side == "sell":
+            if r.side == "sell" and sell_needs_warmup:
                 self._sell_kill_mgr.track(pnl)
                 sell_count += 1
-            elif r.side == "buy":
+            elif r.side == "buy" and buy_needs_warmup:
                 self._buy_kill_mgr.track(pnl)
                 buy_count += 1
         if sell_count > 0 or buy_count > 0 or skipped_old > 0:
@@ -200,7 +204,8 @@ class OrchestratorLifecycleMixin:
                 f"[209# H4] Sell kill state restored: "
                 f"history={len(self._sell_kill_mgr._pnl_history)}, "
                 f"cooldown={self._sell_kill_mgr._cooldown}, "
-                f"kills={self._sell_kill_mgr._total_kills}"
+                f"kills={self._sell_kill_mgr._total_kills}, "
+                f"ewma={self._sell_kill_mgr._ewma_value}"
             )
         if saved_state.buy_kill_state:
             self._buy_kill_mgr.import_state(saved_state.buy_kill_state)
@@ -208,7 +213,8 @@ class OrchestratorLifecycleMixin:
                 f"[209# H4] Buy kill state restored: "
                 f"history={len(self._buy_kill_mgr._pnl_history)}, "
                 f"cooldown={self._buy_kill_mgr._cooldown}, "
-                f"kills={self._buy_kill_mgr._total_kills}"
+                f"kills={self._buy_kill_mgr._total_kills}, "
+                f"ewma={self._buy_kill_mgr._ewma_value}"
             )
         # 225# MCB/SAD 状態復元
         _mcb_state = saved_state.mcb_state
@@ -406,7 +412,11 @@ class OrchestratorLifecycleMixin:
             self._warmup_daily_drawdown_from_records(existing_records)
 
         # 209# H4: Kill manager warmup
-        if existing_records and len(self._sell_kill_mgr._pnl_history) == 0:
+        # 349#: sell/buy 両方の pnl_history を独立チェック (片側のみ空の場合も warmup)
+        if existing_records and (
+            len(self._sell_kill_mgr._pnl_history) == 0
+            or len(self._buy_kill_mgr._pnl_history) == 0
+        ):
             self._warmup_kill_managers_from_records(existing_records)
 
         if self._regime_detector is not None and existing_records and not regime_restored:

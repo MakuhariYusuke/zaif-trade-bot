@@ -157,7 +157,25 @@ kill 閾値のすぐ上に置くことで、次の悪い fill では再 kill さ
 | P2 | `sell_dynamic_kill.py` | TIME LIMIT 解除時に EWMA を `threshold * 0.8` にリセット |
 | テスト | `test_349_ewma_fixes.py` | 13 test cases (永続化・シード・decay・reset) |
 
-## 5. 付随修正
+## 5. 横展開: orchestrator warmup 非対称バグ修正
+
+### 問題
+
+`orchestrator_lifecycle._warmup_kill_managers_from_records()` の発火条件が
+sell 側の `pnl_history` のみをチェックしていた。
+
+```python
+# Before: sell 側のみチェック → buy に history が無くても warmup スキップの可能性
+if existing_records and len(self._sell_kill_mgr._pnl_history) == 0:
+```
+
+### 修正
+
+1. **発火条件**: sell/buy 両方を OR で独立チェック
+2. **二重 track 防止**: warmup 関数内で、既に `pnl_history` がある側をスキップ
+3. **restore ログ強化**: `import_state` 後のログに `ewma` 値を追加
+
+## 6. 付随修正
 
 - `tests/test_analyze_fill_logs.py`: import パスを `tools.analysis.` → `scripts.v460.analysis.` に修正
 - `docs/evaluation/extended_evaluation.md`: regime_evaluation セクションを後継モジュールへの案内に更新
@@ -170,6 +188,7 @@ kill 閾値のすぐ上に置くことで、次の悪い fill では再 kill さ
 | `ztb/metrics/fill_quality.py` | -34 → +19 (net -15) |
 | `ztb/analysis/regime/regime_evaluation.py` | **削除** (-341) |
 | `ztb/risk/sell_dynamic_kill.py` | P0/P1/P2 EWMA 修正 (+50) |
+| `scripts/v460/lib/orchestrator_lifecycle.py` | warmup 条件修正 + ログ強化 |
 | `tests/unit/v460/test_349_ewma_fixes.py` | **新規** (13 tests) |
 | `tests/test_analyze_fill_logs.py` | import パス修正 |
 | `docs/evaluation/extended_evaluation.md` | deprecated 案内 |

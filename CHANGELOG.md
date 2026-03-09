@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **349# P0: EWMA 状態永続化** — `DynamicKillManager.export_state()`/`import_state()` に `ewma_value` が欠落、再起動後に EWMA=None → 単一 fill でシード → -10.71bps 固定で kill 無限ループ
 - **349# P1: EWMA シード安定化** — 初回シードを単一観測値から `pnl_history` 算術平均に変更
 - **349# P2: TIME LIMIT EWMA リセット** — 解除時に EWMA を `threshold * 0.8` にリセット（従来は変更なしで即再 kill）
+- **349# warmup 非対称修正** — kill manager warmup 条件を sell/buy 両側独立チェックに変更 + 二重 track 防止
 
 ### Changed
 - **analyze_fill_logs.py**: 手動 JSONL 読み込み → `load_fill_record_objects_glob()` + `apply_fill_record_filters()` に委譲 (DRY)
