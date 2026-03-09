@@ -256,15 +256,12 @@ class DynamicKillManager:
         """fill の PnL (bps) を追跡."""
         self._pnl_history.append(pnl_bps)
         # 344# 342#D: EWMA 更新
-        # 349# P1: 初回シードを history 平均から算出 (単一外れ値による毒化防止)
+        # 352#: 初回シードは当該値そのもの (track() と _rebuild_ewma_from_history() の整合性確保)
+        # (349# P1 の history 平均シードは 350# F1 / 351# Q1 で look-ahead bias と指摘 → 撤回)
         alpha = self._config.ewma_alpha
         if alpha > 0:
             if self._ewma_value is None:
-                # 初回: history があれば平均でシード、なければ当該値
-                if len(self._pnl_history) > 1:
-                    self._ewma_value = sum(self._pnl_history) / len(self._pnl_history)
-                else:
-                    self._ewma_value = pnl_bps
+                self._ewma_value = pnl_bps
             else:
                 self._ewma_value = alpha * pnl_bps + (1.0 - alpha) * self._ewma_value
         self._stale_counter = 0  # 218# 新データ投入 → stale リセット
@@ -284,18 +281,20 @@ class DynamicKillManager:
         """349# P0: pnl_history から EWMA 値を再構築.
 
         import_state() で ewma_value が欠落している場合のフォールバック。
-        history を先頭から replay して EWMA を再計算する。
+        352#: history[0] を seed とし history[1:] を replay する厳密式に修正。
+        (350# F1 / 351# Q1: 平均 seed + 全履歴 replay は look-ahead bias / double counting)
         """
         alpha = self._config.ewma_alpha
         if alpha <= 0 or not self._pnl_history:
             self._ewma_value = None
             return
-        ewma = sum(self._pnl_history) / len(self._pnl_history)  # 平均でシード
-        for v in self._pnl_history:
+        # 352#: track() と同一の更新式で厳密に再構築
+        ewma = self._pnl_history[0]  # 初回 seed = 最初の観測値
+        for v in self._pnl_history[1:]:
             ewma = alpha * v + (1.0 - alpha) * ewma
         self._ewma_value = ewma
         logger.info(
-            f"[349# P0] {self._side} EWMA rebuilt from {len(self._pnl_history)} records: "
+            f"[352# P0] {self._side} EWMA rebuilt from {len(self._pnl_history)} records: "
             f"ewma={ewma:.4f}"
         )
 
@@ -480,19 +479,25 @@ class DynamicKillManager:
             # 349# P2: TIME LIMIT 解除時に EWMA を decay して即再 kill を防止
             # 根拠: kill 中は新データが入らず EWMA が stale 化している。
             # threshold 付近まで decay させることで、次の fill で改善の余地を与える。
+            # 352#: effective_threshold (regime + inv_relaxation) を使用
+            #   (351# Q2: base threshold のみだと inv_relaxation 適用後にリセット先が
+            #    kill 圏内に入り TIME LIMIT 即再 kill のデッドロック復活リスク)
             old_ewma = self._ewma_value
             if self._config.ewma_alpha > 0 and self._ewma_value is not None:
-                threshold = self._config.threshold_bps
+                effective_threshold = self._config.threshold_bps
                 if regime and regime in self._config.regime_thresholds:
-                    threshold = self._config.regime_thresholds[regime]
-                # EWMA を threshold * 0.8 にリセット (kill 閾値の少し上)
+                    effective_threshold = self._config.regime_thresholds[regime]
+                # 在庫連動緩和も反映 (check_kill と同一のロジック)
+                if threshold_offset_bps != 0.0:
+                    effective_threshold -= threshold_offset_bps
+                # EWMA を effective_threshold * 0.8 にリセット (kill 閾値の少し上)
                 # これにより即再 kill は避けつつ、次の悪い fill では再 kill される
-                reset_target = threshold * 0.8
+                reset_target = effective_threshold * 0.8
                 self._ewma_value = reset_target
                 logger.info(
-                    f"[349# P2] {self._side} EWMA decay on TIME LIMIT: "
+                    f"[352# P2] {self._side} EWMA decay on TIME LIMIT: "
                     f"{old_ewma:.3f} → {reset_target:.3f}bps "
-                    f"(threshold={threshold})"
+                    f"(effective_threshold={effective_threshold}, offset={threshold_offset_bps})"
                 )
             logger.warning(
                 f"[273#] {self._side} kill TIME LIMIT expired: "
