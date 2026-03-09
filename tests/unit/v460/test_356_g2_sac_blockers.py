@@ -3,11 +3,48 @@
 from __future__ import annotations
 
 import dataclasses
+from functools import lru_cache
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+import pandas as pd
+import pyarrow.parquet as pq
 import pytest
+import yaml
+
+from scripts.v460.lib.data_loader import load_parquet
+from scripts.v460.lib.tasks.sac_train import _create_training_env
+from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+from ztb.trading.environment.utils.config import EnvironmentConfig
+
+_G2_SAC_YAML_PATH = Path("configs/v460/experiments/g2_sac_train.yaml")
+
+
+@lru_cache(maxsize=1)
+def _load_g2_sac_yaml() -> dict:
+    with open(_G2_SAC_YAML_PATH, encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+    if not isinstance(cfg, dict):
+        raise TypeError("g2_sac_train.yaml did not load as dict")
+    return cfg
+
+
+@lru_cache(maxsize=1)
+def _load_g2_schema_names() -> tuple[str, ...]:
+    cfg = _load_g2_sac_yaml()
+    data_path = Path(cfg["data"]["ohlcv_path"])
+    return tuple(pq.read_schema(str(data_path)).names)
+
+
+@lru_cache(maxsize=1)
+def _load_g2_real_df_2000() -> pd.DataFrame:
+    cfg = _load_g2_sac_yaml()
+    data_path = Path(cfg["data"]["ohlcv_path"])
+    selected = cfg["features"]["selected"]
+    if not isinstance(selected, list):
+        raise TypeError("features.selected must be list")
+    return load_parquet(data_path, feature_cols=[str(col) for col in selected]).head(2000).copy()
 
 
 # ======================================================================
@@ -18,25 +55,23 @@ import pytest
 class TestB1YamlExists:
     """g2_sac_train.yaml が存在し構造が正しいこと."""
 
-    @pytest.fixture()
+    @pytest.fixture(scope="class")
     def yaml_path(self) -> Path:
-        return Path("configs/v460/experiments/g2_sac_train.yaml")
+        return _G2_SAC_YAML_PATH
+
+    @pytest.fixture(scope="class")
+    def yaml_cfg(self, yaml_path: Path) -> dict:
+        assert yaml_path.exists(), f"{yaml_path} does not exist"
+        return dict(_load_g2_sac_yaml())
 
     def test_file_exists(self, yaml_path: Path) -> None:
         assert yaml_path.exists(), f"{yaml_path} does not exist"
 
-    def test_yaml_loads(self, yaml_path: Path) -> None:
-        import yaml
+    def test_yaml_loads(self, yaml_cfg: dict) -> None:
+        assert isinstance(yaml_cfg, dict)
 
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
-        assert isinstance(cfg, dict)
-
-    def test_required_keys(self, yaml_path: Path) -> None:
-        import yaml
-
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
+    def test_required_keys(self, yaml_cfg: dict) -> None:
+        cfg = yaml_cfg
         assert cfg["_gate"] == "G2-train"
         assert cfg["_task"] == "sac_train"
         assert "data" in cfg
@@ -44,41 +79,29 @@ class TestB1YamlExists:
         assert "sac_hyperparameters" in cfg
         assert "seeds" in cfg
 
-    def test_seeds_count(self, yaml_path: Path) -> None:
-        import yaml
-
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
+    def test_seeds_count(self, yaml_cfg: dict) -> None:
+        cfg = yaml_cfg
         seeds = cfg["seeds"]
         assert isinstance(seeds, list)
         assert len(seeds) == 4, "G2 gate requires 4 seeds"
 
-    def test_features_are_featureregistry(self, yaml_path: Path) -> None:
-        import yaml
-
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
+    def test_features_are_featureregistry(self, yaml_cfg: dict) -> None:
+        cfg = yaml_cfg
         selected = cfg["features"]["selected"]
         assert isinstance(selected, list)
         assert len(selected) >= 10, f"Expected >= 10 features, got {len(selected)}"
         # These should be FeatureRegistry names, not v460 microstructure
         assert "bid_ask_spread" not in selected, "Should not use v460 microstructure features"
 
-    def test_sac_hyperparameters_v459_tuning(self, yaml_path: Path) -> None:
-        import yaml
-
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
+    def test_sac_hyperparameters_v459_tuning(self, yaml_cfg: dict) -> None:
+        cfg = yaml_cfg
         sac = cfg["sac_hyperparameters"]
         assert sac["gamma"] == 0.80, "v459 short-term gamma"
         assert sac["buffer_size"] == 100000, "v459 buffer size"
         assert sac["learning_starts"] == 100, "v459 early learning"
 
-    def test_environment_uses_continuous_actions(self, yaml_path: Path) -> None:
-        import yaml
-
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
+    def test_environment_uses_continuous_actions(self, yaml_cfg: dict) -> None:
+        cfg = yaml_cfg
         env = cfg["environment"]
         assert env.get("use_continuous_actions") is True
 
@@ -93,8 +116,6 @@ class TestB3FeatureInjection:
 
     def test_feature_names_injected_when_present(self) -> None:
         """features.selected が設定されたら EnvironmentConfig.feature_names にセットされる."""
-        from ztb.trading.environment.utils.config import EnvironmentConfig
-
         # _create_training_env の核心ロジックを再現
         feature_columns = ["price_velocity", "micro_trend", "volume_surge"]
         env_config = EnvironmentConfig()
@@ -109,8 +130,6 @@ class TestB3FeatureInjection:
 
     def test_feature_names_not_injected_when_empty(self) -> None:
         """features.selected が空なら feature_names は None のまま."""
-        from ztb.trading.environment.utils.config import EnvironmentConfig
-
         feature_columns: list[str] = []
         env_config = EnvironmentConfig()
 
@@ -468,49 +487,34 @@ class TestCheckpointAndEvalMetrics:
 class TestTrainingDataIntegrity:
     """P3A-1: YAML で参照するデータファイルが有効であること."""
 
-    def test_yaml_data_file_exists_and_valid(self) -> None:
+    @pytest.fixture(scope="class")
+    def yaml_cfg(self) -> dict:
+        return dict(_load_g2_sac_yaml())
+
+    @pytest.fixture(scope="class")
+    def schema_names(self, yaml_cfg: dict) -> tuple[str, ...]:
+        data_path = Path(yaml_cfg["data"]["ohlcv_path"])
+        if not data_path.exists():
+            pytest.skip(f"Data file not found: {data_path}")
+        return _load_g2_schema_names()
+
+    def test_yaml_data_file_exists_and_valid(self, yaml_cfg: dict, schema_names: tuple[str, ...]) -> None:
         """g2_sac_train.yaml の ohlcv_path が有効な Parquet ファイルを指す."""
-        import yaml
-        import pyarrow.parquet as pq
-
-        yaml_path = Path("configs/v460/experiments/g2_sac_train.yaml")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
-
-        data_path = Path(cfg["data"]["ohlcv_path"])
+        data_path = Path(yaml_cfg["data"]["ohlcv_path"])
         assert data_path.exists(), f"Data file not found: {data_path}"
+        assert len(schema_names) > 0
 
-        # 有効な Parquet であること (ArrowInvalid で落ちないこと)
-        schema = pq.read_schema(str(data_path))
-        assert len(schema.names) > 0
-
-    def test_yaml_features_present_in_data(self) -> None:
+    def test_yaml_features_present_in_data(self, yaml_cfg: dict, schema_names: tuple[str, ...]) -> None:
         """YAML selected features が全てデータファイルに存在する."""
-        import yaml
-        import pyarrow.parquet as pq
-
-        yaml_path = Path("configs/v460/experiments/g2_sac_train.yaml")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
-
-        data_path = Path(cfg["data"]["ohlcv_path"])
-        schema_cols = set(pq.read_schema(str(data_path)).names)
-        selected = cfg["features"]["selected"]
+        schema_cols = set(schema_names)
+        selected = yaml_cfg["features"]["selected"]
 
         missing = [f for f in selected if f not in schema_cols]
         assert not missing, f"Features missing in data: {missing}"
 
-    def test_data_has_close_column(self) -> None:
+    def test_data_has_close_column(self, schema_names: tuple[str, ...]) -> None:
         """HeavyTradingEnv が必要とする close カラムの存在確認."""
-        import yaml
-        import pyarrow.parquet as pq
-
-        yaml_path = Path("configs/v460/experiments/g2_sac_train.yaml")
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
-
-        data_path = Path(cfg["data"]["ohlcv_path"])
-        schema_cols = set(pq.read_schema(str(data_path)).names)
+        schema_cols = set(schema_names)
         assert "close" in schema_cols
 
 
@@ -540,22 +544,17 @@ class TestHeavyTradingEnvIntegration:
         "realized_volatility",
     ]
 
-    @pytest.fixture()
+    @pytest.fixture(scope="class")
     def real_df(self) -> "pd.DataFrame":
-        """実データの先頭 2000 行をロード (テスト用軽量スライス)."""
-        import pandas as pd
-
+        """実データの必要列だけを 1 回ロード (テスト用軽量スライス)."""
         data_path = Path("data/btc_jpy_1m_full_registry_features.parquet")
         if not data_path.exists():
             pytest.skip(f"Data file not found: {data_path}")
-        df = pd.read_parquet(data_path)
-        return df.head(2000).copy()
+        return _load_g2_real_df_2000()
 
-    @pytest.fixture()
+    @pytest.fixture(scope="class")
     def env_config(self) -> "EnvironmentConfig":
         """YAML 環境セクションに準拠した EnvironmentConfig を構築."""
-        from ztb.trading.environment.utils.config import EnvironmentConfig
-
         config = EnvironmentConfig(
             transaction_cost=0.001,
             max_position_size=0.01,
@@ -570,13 +569,18 @@ class TestHeavyTradingEnvIntegration:
         )
         return config
 
+    @staticmethod
+    def _create_env(real_df: "pd.DataFrame", env_config: "EnvironmentConfig") -> HeavyTradingEnv:
+        return HeavyTradingEnv(
+            df=real_df.copy(deep=True),
+            config=dataclasses.replace(env_config),
+        )
+
     def test_env_instantiation(
         self, real_df: "pd.DataFrame", env_config: "EnvironmentConfig"
     ) -> None:
         """HeavyTradingEnv が実データ + feature_names で例外なく生成できる."""
-        from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-
-        env = HeavyTradingEnv(df=real_df, config=env_config)
+        env = self._create_env(real_df, env_config)
         try:
             assert env is not None
             assert hasattr(env, "observation_space")
@@ -588,9 +592,7 @@ class TestHeavyTradingEnvIntegration:
         self, real_df: "pd.DataFrame", env_config: "EnvironmentConfig"
     ) -> None:
         """observation_space の次元が注入した feature 数 (12) と一致."""
-        from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-
-        env = HeavyTradingEnv(df=real_df, config=env_config)
+        env = self._create_env(real_df, env_config)
         try:
             obs_dim = env.observation_space.shape[0]
             assert obs_dim == len(self.SELECTED_FEATURES), (
@@ -603,9 +605,7 @@ class TestHeavyTradingEnvIntegration:
         self, real_df: "pd.DataFrame", env_config: "EnvironmentConfig"
     ) -> None:
         """env.feature_names が注入した特徴量リストと一致."""
-        from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-
-        env = HeavyTradingEnv(df=real_df, config=env_config)
+        env = self._create_env(real_df, env_config)
         try:
             assert env.feature_names == self.SELECTED_FEATURES
         finally:
@@ -615,9 +615,7 @@ class TestHeavyTradingEnvIntegration:
         self, real_df: "pd.DataFrame", env_config: "EnvironmentConfig"
     ) -> None:
         """reset() が正しい shape の observation を返す."""
-        from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-
-        env = HeavyTradingEnv(df=real_df, config=env_config)
+        env = self._create_env(real_df, env_config)
         try:
             obs, info = env.reset()
             assert obs.shape == (len(self.SELECTED_FEATURES),)
@@ -629,9 +627,7 @@ class TestHeavyTradingEnvIntegration:
         self, real_df: "pd.DataFrame", env_config: "EnvironmentConfig"
     ) -> None:
         """step() が (obs, reward, terminated, truncated, info) を正しく返す."""
-        from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-
-        env = HeavyTradingEnv(df=real_df, config=env_config)
+        env = self._create_env(real_df, env_config)
         try:
             obs, _ = env.reset()
             # 連続行動空間: [-1, 1] の中間値 (HOLD に近い)
@@ -648,24 +644,17 @@ class TestHeavyTradingEnvIntegration:
 
     def test_create_training_env_pipeline(self) -> None:
         """_create_training_env が YAML 相当の cfg で正常に環境を構築."""
-        import yaml
-
-        from scripts.v460.lib.tasks.sac_train import _create_training_env
-
-        yaml_path = Path("configs/v460/experiments/g2_sac_train.yaml")
+        yaml_path = _G2_SAC_YAML_PATH
         if not yaml_path.exists():
             pytest.skip(f"YAML not found: {yaml_path}")
 
-        with open(yaml_path) as f:
-            cfg = yaml.safe_load(f)
+        cfg = dict(_load_g2_sac_yaml())
 
         data_path = Path(cfg["data"]["ohlcv_path"])
         if not data_path.exists():
             pytest.skip(f"Data file not found: {data_path}")
-
-        import pandas as pd
-
-        df = pd.read_parquet(data_path).head(2000).copy()
+        selected = cfg["features"]["selected"]
+        df = load_parquet(data_path, feature_cols=[str(col) for col in selected]).head(2000).copy()
 
         env, env_info = _create_training_env(df, cfg)
         try:
