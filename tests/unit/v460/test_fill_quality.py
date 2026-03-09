@@ -11,6 +11,7 @@ import inspect
 import os
 import tempfile
 import time
+from collections.abc import Callable
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -250,12 +251,21 @@ def _make_linear_records(
 
 def _save_linear_records(path: Path, **kwargs: object) -> None:
     """線形レコードを生成して保存する."""
-    save_fill_records(_make_linear_records(**kwargs), path)
+    _save_generated_records(path, _make_linear_records, **kwargs)
 
 
 def _save_daily_fill_count_records(path: Path, **kwargs: object) -> None:
     """日次 fill-count レコードを生成して保存する."""
-    save_fill_records(_make_daily_fill_count_records(**kwargs), path)
+    _save_generated_records(path, _make_daily_fill_count_records, **kwargs)
+
+
+def _save_generated_records(
+    path: Path,
+    builder: Callable[..., list[FillRecord]],
+    **kwargs: object,
+) -> None:
+    """builder が返す FillRecord 群を保存する."""
+    save_fill_records(builder(**kwargs), path)
 
 
 def _make_fast_cycle_runner(

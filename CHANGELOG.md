@@ -4600,3 +4600,19 @@ python scripts/unified_trainer.py \
   - `resolve_raw_dir()` and `discover_raw_daily_inputs()` have production-wide reuse value and are now on the correct side of the boundary.
   - `read_class_method_source()` remains the right shared test helper for split-source assertions and still has additional horizontal rollout potential.
   - `_save_daily_fill_count_records()` is currently only worth keeping test-local; moving it to `conftest.py` would be premature until another file needs the same record shape.
+
+## Session 037-065 (2026-03-09)
+
+### Changed
+- Integrated the `test_fill_quality.py` save helpers behind a single `_save_generated_records()` entry point, keeping `_save_linear_records()` and `_save_daily_fill_count_records()` as thin readable wrappers instead of duplicating `save_fill_records(builder(...), path)`.
+- Promoted date-resolution reuse by adding `resolve_available_raw_dates()` to [feature_enricher.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/feature_enricher.py) and reusing it from [build_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/build_features.py), removing another near-duplicate helper from the production path.
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile tests/unit/v460/test_fill_quality.py scripts/v460/ml/feature_enricher.py scripts/v460/build_features.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_fill_quality.py -q --no-cov --tb=short -k 'g1_1_with_data or save_load_roundtrip or glob_load or iter_glob_load_roundtrip' --durations=20`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_build_features_pipeline.py -q --no-cov --tb=short --durations=20`
+
+### Notes
+- `test_fill_quality.py` focused selector completed at `6 passed, 200 deselected in 3.49s`.
+- `test_build_features_pipeline.py` completed at `14 passed in 3.32s`.
+- The helper boundary is cleaner now: builder-specific wrappers remain for readability, while the actual persistence step is centralized once.

@@ -2842,3 +2842,30 @@
 - `resolve_raw_dir()` は `str | Path | None` を直接受けるようになったので、CLI 呼び出しとライブラリ呼び出しで余分な `Path(...)` 包装が不要になった。再利用境界として扱いやすくなった。
 - `OrderMonitor.monitor` を読む source-contract テストは `_fill_test_source.py` にさらに寄った。split-source 系の参照経路が揃い、`inspect.getsource(...)` の局所実装がまた減った。
 - 今回追加した helper のうち、production-wide に昇格させる価値があるのは raw path/date helper 側で、`_save_daily_fill_count_records()` は現時点では test-local helper のままが適切と判断した。
+
+---
+
+## 2026-03-09 / Session 037-065
+
+### 実施
+- `tests/unit/v460/test_fill_quality.py`
+  - `_save_generated_records()` を追加
+  - `_save_linear_records()` と `_save_daily_fill_count_records()` を thin wrapper 化
+- `scripts/v460/ml/feature_enricher.py`
+  - `resolve_available_raw_dates()` を追加
+- `scripts/v460/build_features.py`
+  - `_resolve_target_dates()` を削除
+  - `resolve_available_raw_dates()` を再利用する形へ変更
+
+### 結果
+- focused selector:
+  - `tests/unit/v460/test_fill_quality.py -k 'g1_1_with_data or save_load_roundtrip or glob_load or iter_glob_load_roundtrip'`
+  - `6 passed, 200 deselected in 3.49s`
+- focused:
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `14 passed in 3.32s`
+
+### 主要改善
+- `fill_quality` の helper は「builder ごとの差」は残しつつ、「保存処理そのもの」は 1 箇所へ統合した。可読性を落とさずに重複だけ削れている。
+- production 側は raw path 解決だけでなく target date 解決も `feature_enricher` 側へ寄せたので、`build_features.py` から raw 入力発見系 helper がさらに 1 つ減った。
+- helper 統合の判断としては、「builder 名がテスト意図を伝えるもの」は wrapper を残し、「内部で同じことをするだけ」の層だけを畳むのが妥当だった。

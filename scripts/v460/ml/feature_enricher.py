@@ -117,6 +117,26 @@ def discover_raw_daily_inputs(
     return daily_inputs
 
 
+def resolve_available_raw_dates(
+    daily_inputs: dict[str, tuple[Path | None, Path | None]],
+    dates: list[str] | None = None,
+) -> list[str]:
+    """利用可能な日付集合から対象日付を一意化して返す."""
+    all_dates = sorted(daily_inputs)
+    if dates is None:
+        return all_dates
+
+    resolved: list[str] = []
+    seen: set[str] = set()
+    for date_str in dates:
+        if date_str in seen:
+            continue
+        seen.add(date_str)
+        if date_str in daily_inputs:
+            resolved.append(date_str)
+    return resolved
+
+
 def _build_file_signature(files: list[Path]) -> tuple[tuple[str, int, int], ...]:
     """mtime+size ベースの軽量シグネチャを生成."""
     signature: list[tuple[str, int, int]] = []

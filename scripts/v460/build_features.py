@@ -53,7 +53,11 @@ logger = logging.getLogger(__name__)
 from ztb.data.market_data_collector import MarketDataCollector
 from ztb.features.microstructure import add_microstructure_features, MICROSTRUCTURE_FEATURES
 from ztb.utils.run_manifest import compute_file_hash as _compute_shared_file_hash
-from scripts.v460.ml.feature_enricher import discover_raw_daily_inputs, resolve_raw_dir
+from scripts.v460.ml.feature_enricher import (
+    discover_raw_daily_inputs,
+    resolve_available_raw_dates,
+    resolve_raw_dir,
+)
 
 # Default paths
 DEFAULT_SOURCE = "data/btc_jpy_1m_v451_optimized_features.parquet"
@@ -172,26 +176,6 @@ def compute_sha256(path: Path) -> str:
     return _compute_shared_file_hash(path)
 
 
-def _resolve_target_dates(
-    daily_inputs: dict[str, tuple[Path | None, Path | None]],
-    dates: list[str] | None,
-) -> list[str]:
-    """処理対象日付を一意化して返す."""
-    all_dates = sorted(daily_inputs)
-    if dates is None:
-        return all_dates
-
-    resolved: list[str] = []
-    seen: set[str] = set()
-    for date_str in dates:
-        if date_str in seen:
-            continue
-        seen.add(date_str)
-        if date_str in daily_inputs:
-            resolved.append(date_str)
-    return resolved
-
-
 def build_real_features(
     raw_dir: str | Path,
     output_path: str | Path,
@@ -220,7 +204,7 @@ def build_real_features(
     if not all_dates:
         raise FileNotFoundError(f"No raw data found in {raw}")
 
-    target_dates = _resolve_target_dates(daily_inputs, dates)
+    target_dates = resolve_available_raw_dates(daily_inputs, dates)
     logger.info(f"Target dates: {target_dates} (available: {all_dates})")
 
     # Aggregate each date
