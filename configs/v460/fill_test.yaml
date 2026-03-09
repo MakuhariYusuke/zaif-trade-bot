@@ -618,7 +618,7 @@ loss_control:
   buy_dynamic_kill:
     enabled: true
     window: 50                     # rolling ウィンドウ (buy fill 数)
-    threshold_bps: -0.8            # 341# revert: 340#符号修正でinv_relaxation正常化→-0.8復元 (effective -1.1 at max relaxation)
+    threshold_bps: -0.8            # 341# revert: 340#符号修正でinv_relaxation正常化→-0.8復元 (effective -1.1 at max relaxation) | 364# TUNE-4 skip: SHA 819ec73b 0件BDK cancel, 変更不要
     resume_window: 10              # 停止後、N サイクル後に再評価
     max_stale_kill_cycles: 0         # 269# 0=probe無効
     max_force_release_probes: 0      # 269# 0=force-release無効
@@ -683,14 +683,14 @@ loss_control:
     soft_drawdown_interval_multiplier: 3.0
     # 205# §9.5: 片側 DD Halt — サイド別累積損失超過で片側取引停止
     per_side_enabled: true         # 片側 DD ガード有効化
-    per_side_hard_limit_bps: -30.0 # 片側累積 PnL がこの bps 以下でそのサイドを封鎖
-    per_side_halt_cycles: 15       # 218# 封鎖サイクル数 (15×120s=30分で解除; 旧0=永続→デッドロック原因)
+    per_side_hard_limit_bps: -50.0 # 片側累積 PnL がこの bps 以下でそのサイドを封鎖 | 364# TUNE-2: -30→-50 (K1寄与+5.6pp), cycles 15→10 (recovery短縮)
+    per_side_halt_cycles: 10       # 218# 封鎖サイクル数 (10×120s=20分で解除; 旧0=永続→デッドロック原因) | 364# TUNE-2
     # 224# B1: halt解除後ソフトリカバリ — lot半減で段階的復帰
     per_side_recovery_cycles: 5    # リカバリ期間サイクル数 (5×120s=10分; 0=無効)
     per_side_recovery_lot_scale: 0.5  # リカバリ期間中lot倍率 (0.5=半減)
     # 269# per-side halt PnL リアンカー: release 時に side PnL を部分リセット
     # release 後は「過去の負債」ではなく「release 後の追加損失」で再 halt 判定
-    per_side_reanchor_budget_bps: -15.0  # release 後この追加損失で再 halt
+    per_side_reanchor_budget_bps: -25.0  # release 後この追加損失で再 halt | 364# TUNE-2: hard_limit -50 に比例調整
     # 225# 市場理論 (Avellaneda-Stoikov): regime-aware recovery ペナルティ
     recovery_trending_penalty: 0.7    # trending 時は lot ×0.7 追加縮小 (AS リスク残存)
     recovery_high_vol_penalty: 0.8    # high_vol 時は lot ×0.8 追加縮小 (在庫リスク増大)

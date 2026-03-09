@@ -4811,6 +4811,12 @@ python scripts/unified_trainer.py \
 - `TestHeavyTradingEnvIntegration` setup moved from repeated multi-second parquet reads to a single cached load, dropping the dominant setup cost from the prior ~5-6 second band to ~1.4 seconds once per class in the broad profile.
 ## 2026-03-10
 
+- Relaxed `daily_drawdown.per_side_*` defaults and production YAML in `configs/v460/fill_test.yaml` / `scripts/v460/lib/fill_config.py`:
+  - `per_side_hard_limit_bps: -30.0 -> -50.0`
+  - `per_side_halt_cycles: 15 -> 10` in YAML and `0 -> 10` in code defaults
+  - `per_side_reanchor_budget_bps: -15.0 -> -25.0`
+- Added the `364# TUNE-4 skip` note to the `buy_dynamic_kill.threshold_bps` YAML comment after confirming BDK is not currently a bottleneck.
+- Updated daily-drawdown default assertions and YAML/code drift allowlist tests to match the new TUNE-2 defaults without leaving stale allowlist entries behind.
 - Reduced `test_356_g2_sac_blockers.py` HeavyTradingEnv cost by shrinking the cached real-data slice to 128 rows, reusing the same cached DataFrame in `_create_training_env(...)`, and removing a redundant pre-env deep copy in the test helper.
 - Simplified `test_build_features_pipeline.py` real-mode fixtures to aggregate once with `output_path=None`, then reuse that aggregate for both the 30-minute schema checks and the microstructure pipeline checks.
 - Trimmed `test_enricher_skip_gate.py` real-data setup by lowering the guarded upper bound from 320 to 280 rows and removing an extra DataFrame copy before `enrich_fill_records(...)`.

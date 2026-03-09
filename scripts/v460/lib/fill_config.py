@@ -225,14 +225,14 @@ class FillTestConfig:
     soft_drawdown_interval_multiplier: float = 3.0
     # 205# §9.5: 片側 DD Halt — サイド別累積損失超過で片側取引停止
     per_side_dd_enabled: bool = False           # True で片側 DD ガードを有効化
-    per_side_dd_hard_limit_bps: float = -30.0   # 片側累積 PnL がこの bps 以下でそのサイドを封鎖
-    per_side_dd_halt_cycles: int = 0            # 封鎖サイクル数 (0=UTC 日替わりまで永続封鎖)
+    per_side_dd_hard_limit_bps: float = -50.0   # 片側累積 PnL がこの bps 以下でそのサイドを封鎖 (364# TUNE-2)
+    per_side_dd_halt_cycles: int = 10           # 封鎖サイクル数 (364# TUNE-2: 既定20分, 0=UTC 日替わりまで永続封鎖)
     # 224# B1: halt解除後ソフトリカバリ — lot 縮小で段階的復帰
     per_side_dd_recovery_cycles: int = 5        # リカバリ期間サイクル数 (0=無効)
     per_side_dd_recovery_lot_scale: float = 0.5 # リカバリ期間中の lot 倍率
     # 269# per-side halt PnL リアンカー: release 時に side PnL を部分リセット
     # release 後は「過去の負債」ではなく「release 後の追加損失」で再 halt 判定
-    per_side_dd_reanchor_budget_bps: float = -15.0  # release 後にこの追加損失で再 halt (-15bps)
+    per_side_dd_reanchor_budget_bps: float = -25.0  # release 後にこの追加損失で再 halt (364# TUNE-2, -25bps)
     # 225# 市場理論補強: regime-aware recovery lot ペナルティ
     recovery_trending_penalty: float = 0.7  # trending 時のリカバリ lot 追加縮小倍率
     recovery_high_vol_penalty: float = 0.8  # high_vol 時のリカバリ lot 追加縮小倍率

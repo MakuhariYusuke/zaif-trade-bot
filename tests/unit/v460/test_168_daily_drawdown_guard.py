@@ -480,8 +480,9 @@ class TestFillTestConfig205:
     def test_per_side_dd_defaults(self) -> None:
         cfg = FillTestConfig()
         assert cfg.per_side_dd_enabled is False
-        assert cfg.per_side_dd_hard_limit_bps == -30.0
-        assert cfg.per_side_dd_halt_cycles == 0
+        assert cfg.per_side_dd_hard_limit_bps == -50.0
+        assert cfg.per_side_dd_halt_cycles == 10
+        assert cfg.per_side_dd_reanchor_budget_bps == -25.0
 
 
 # ======================================================================

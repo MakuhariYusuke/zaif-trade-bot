@@ -3335,3 +3335,45 @@
 - `build_features_pipeline` の real-mode setup は 2 本立ての raw 生成/集約をやめ、単一路線化できた。
 - `enricher_skip_gate` の real-data setup は broad で `0.35s` まで低下した。
 - `HeavyTradingEnv` / `RewardCalculator` の WARNING ログ固定費を削除し、通常実行の log capture と `asdict()` コストを減らした。
+
+## 2026-03-10 / Session 037-077
+
+### 実施
+- `prompts/codex_038_tune2_tune4.md` の C-4 / C-5 を反映
+- `configs/v460/fill_test.yaml`
+  - `buy_dynamic_kill.threshold_bps` コメントに `364# TUNE-4 skip` 注記を追加
+  - `daily_drawdown.per_side_hard_limit_bps` を `-30.0 -> -50.0`
+  - `daily_drawdown.per_side_halt_cycles` を `15 -> 10`
+  - `daily_drawdown.per_side_reanchor_budget_bps` を `-15.0 -> -25.0`
+- `scripts/v460/lib/fill_config.py`
+  - `per_side_dd_hard_limit_bps` デフォルトを `-50.0`
+  - `per_side_dd_halt_cycles` デフォルトを `10`
+  - `per_side_dd_reanchor_budget_bps` デフォルトを `-25.0`
+- `tests/unit/v460/test_168_daily_drawdown_guard.py`
+  - default assertion を新しい TUNE-2 値へ更新
+- `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
+  - `per_side_dd_halt_cycles` を stale allowlist から除去
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_168_daily_drawdown_guard.py`
+  - `tests/unit/v460/test_169_c1_c3_c4_config.py`
+  - `tests/unit/v460/test_336_fill_config_parser.py`
+  - `tests/unit/v460/test_344_improvements.py`
+  - `181 passed in 2.46s`
+- focused:
+  - `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
+  - `4 passed in 0.85s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4218 passed, 13 warnings in 43.07s`
+
+### 主要改善
+- `per_side_dd_halt` は本番 YAML とコードデフォルトの両方で、より緩い `-50bps / 10 cycles` に揃った。
+- `per_side_reanchor_budget_bps` も hard limit に合わせて `-25bps` へ比例調整した。
+- `TUNE-4` は実際に BDK bottleneck が出ていないため、閾値は動かさず YAML コメントだけで判断根拠を残した。
+- drift prevention allowlist を同時に掃除し、設定変更で stale allowlist を増やさない状態へ戻した。

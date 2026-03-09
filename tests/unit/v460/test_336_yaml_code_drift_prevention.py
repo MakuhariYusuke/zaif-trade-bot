@@ -111,7 +111,6 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "offset_ceiling_ratio_buy",
     "offset_ceiling_ratio_sell",
     "order_timeout_sec_sell",
-    "per_side_dd_halt_cycles",
     "post_fill_wait_sec_sell",
     "regime_adaptive_extra_buy",
     "regime_adaptive_extra_sell",
