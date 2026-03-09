@@ -2749,3 +2749,36 @@
 - `inspect.getsource(...)` の残件はこの 3 ファイルで cached helper に置換できた。source-contract テストの重複パターンがかなり減った。
 - `gate_thresholds.yaml` の consistency テストは typed fixture に寄せたので、今後の閾値追加でも読み込み boilerplate を増やさずに済む。
 - focused durations の上位は source read ではなく実際の behavioral test に寄っており、今後は真に重い call 側を見やすい状態になった。
+
+---
+
+## 2026-03-09 / Session 037-062
+
+### 実施
+- `tests/unit/v460/test_094_stale_order.py`
+  - cached `_source()` helper を追加
+  - `OrderMonitor`, `MakerPriceCalculator`, `SkipGate`, `FillMonitorResult`, `SkipGateResult` の repeated import を module scope に集約
+  - `OrderMonitor.monitor` の source assertion を helper 経由へ統一
+- `tests/unit/v460/test_137_p1_features.py`
+  - `FillTestConfig`, `PnlMeasurer`, `RetrainTriggerConfig` の method 内 import を module scope に集約
+- `tests/unit/v460/test_138_p1_preflight_calibration.py`
+  - `FillTestConfig`, `ScoreCalibrator`, `ScoreCalibratorConfig` の method 内 import を module scope に集約
+  - bare `dict` の一部を具体的な union 型注釈へ変更
+- `tests/unit/v460/test_fill_quality.py`
+  - `TestFillRecordIO` の roundtrip / glob / date-range ケースを `_save_linear_records()` に横展開
+  - `load_corrupt_lines_skipped` も `_make_linear_records()` ベースへ寄せて単発 `FillRecord(...)` 構築を削減
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_094_stale_order.py`
+  - `tests/unit/v460/test_137_p1_features.py`
+  - `tests/unit/v460/test_138_p1_preflight_calibration.py`
+  - `79 passed in 3.64s`
+- focused selector:
+  - `tests/unit/v460/test_fill_quality.py -k 'save_load_roundtrip or iter_load_roundtrip or glob_load or iter_glob_load_roundtrip or load_corrupt_lines_skipped'`
+  - `7 passed, 199 deselected in 3.37s`
+
+### 主要改善
+- `test_094_stale_order.py` の source-contract テストは cached source 参照に揃ったので、同じ `OrderMonitor.monitor` text を何度も取り直さなくなった。
+- `test_137_p1_features.py` と `test_138_p1_preflight_calibration.py` は method 内 import をかなり削り、型注釈も少し締めたので、以後の横展開がしやすい状態になった。
+- `test_fill_quality.py` の `TestFillRecordIO` は JSONL I/O helper の再利用範囲が広がり、1件/2件保存ケースの boilerplate がさらに減った。

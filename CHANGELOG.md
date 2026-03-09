@@ -4549,3 +4549,19 @@ python scripts/unified_trainer.py \
 - `test_169_config_hot_reload.py::TestConfigFieldUpdate::test_do_reload_updates_reloadable_fields` dropped from `1.48s` to `1.10s` in the focused YAML/config bundle, and to `0.02s` once executed inside the combined targeted run after the import graph was stubbed.
 - The guarded fallback fix kept `test_ml_pipeline.py::Test057Integration::test_load_real_data` stable at `0.17s` focused and `0.18s` in the filtered broad run.
 - The latest filtered broad rerun completed at `4139 passed, 13 warnings in 35.43s` with `test_152_parallel_tasks.py` ignored due an unrelated `scripts.v460.analysis.compare_regime_ab` import error.
+
+## Session 037-062 (2026-03-09)
+
+### Changed
+- Consolidated `test_094_stale_order.py` source-contract checks behind a cached `_source()` helper and hoisted repeated `OrderMonitor`, `MakerPriceCalculator`, `SkipGate`, `FillMonitorResult`, and `SkipGateResult` imports to module scope.
+- Removed remaining method-local imports from `test_137_p1_features.py` and `test_138_p1_preflight_calibration.py`, and tightened a few local YAML dict annotations to concrete union types instead of bare `dict`.
+- Extended `test_fill_quality.py` record-builder reuse by routing more JSONL roundtrip / glob / date-range cases through `_save_linear_records()` and `_make_linear_records()`, reducing duplicated one-off `FillRecord(...)` construction in `TestFillRecordIO`.
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile tests/unit/v460/test_094_stale_order.py tests/unit/v460/test_137_p1_features.py tests/unit/v460/test_138_p1_preflight_calibration.py tests/unit/v460/test_fill_quality.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_094_stale_order.py tests/unit/v460/test_137_p1_features.py tests/unit/v460/test_138_p1_preflight_calibration.py -q --no-cov --tb=short --durations=20`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_fill_quality.py -q --no-cov --tb=short -k 'save_load_roundtrip or iter_load_roundtrip or glob_load or iter_glob_load_roundtrip or load_corrupt_lines_skipped' --durations=20`
+
+### Notes
+- The targeted bundle completed at `79 passed in 3.64s`; the `test_fill_quality.py` I/O subset completed at `7 passed, 199 deselected in 3.37s`.
+- The main gain in this batch is maintainability and reduced repeated import/source work, not a broad-suite wall-time step change.
