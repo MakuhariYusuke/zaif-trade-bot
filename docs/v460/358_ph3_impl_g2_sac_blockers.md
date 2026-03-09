@@ -1,13 +1,13 @@
-# 357# ph3 G2 SAC ブロッカー実装
+# 358# ph3 G2 SAC ブロッカー実装
 
-> **356a# B1/B3/B4 ブロッカー解消 — G2 SAC 訓練基盤の構築**
+> **356# B1/B3/B4 ブロッカー解消 — G2 SAC 訓練基盤の構築**
 > 作成日: 2026-03-09
 
 ---
 
 ## §1 概要
 
-356a# で特定された ph3 ブロッカー 5 件 (B1–B5) のうち、即時実装可能な 3 件 (B1/B3/B4) を解消した。
+356# で特定された ph3 ブロッカー 5 件 (B1–B5) のうち、即時実装可能な 3 件 (B1/B3/B4) を解消した。
 これにより G2 SAC 4-seed 訓練 → gate 自動判定の end-to-end パイプラインが構築された。
 
 | Blocker | 内容 | 状態 |
@@ -16,7 +16,7 @@
 | B2 | 特徴量選定 | ⏳ B1 の YAML で 12 特徴量を仮選定 (P3A-3 で精査) |
 | **B3** | feature_columns 未注入 | ✅ 解消 |
 | **B4** | multi-seed wrapper 未実装 | ✅ 解消 |
-| B5 | 3-way 設計判断 | 📝 356a# で C パスを主方針に決定 (コード変更不要) |
+| B5 | 3-way 設計判断 | 📝 356# で C パスを主方針に決定 (コード変更不要) |
 
 ---
 
@@ -73,7 +73,7 @@ YAML `features.selected` で指定した特徴量が `HeavyTradingEnv` の obser
 ### 修正
 
 ```python
-# 356a# B3: 明示的に feature_names を注入
+# 356# B3: 明示的に feature_names を注入
 if feature_columns:
     env_config.feature_names = feature_columns
 ```
@@ -137,18 +137,15 @@ run_gate_check.py の G2 判定ロジックを dict 入力で再現。4 つの�
 
 ---
 
-## §6 枝番付与 (356# → 356a/356b)
+## §6 ドキュメント番号再割り当て
 
-000# §5 の命名規則に従い、356# を枝番化:
+元 356# の 2 文書をユニークな数値番号に再割り当て:
 
-| 枝番 | 種別 | ファイル | 内容 |
-|---|---|---|---|
-| 356a | plan | `356_ph3_plan_sac_training.md` | SAC 訓練計画 (旧名: `...with_vxxx_assets.md`) |
-| 356b | rpt | `356_ph3_rpt_sac_asset_inventory.md` | SAC 資産インベントリ (ファイル名に `rpt` type 追加) |
-
-同時に index.md の 336# (6 行重複) と 253# (rev+impl 結合) にも枝番を付与:
-- 336 → 336a–336f
-- 253 → 253a/253b
+| 旧 | 新 | 種別 | ファイル | 内容 |
+|---|---|---|---|---|
+| 356 | 356 | plan | `356_ph3_plan_sac_training.md` | SAC 訓練計画 (旧名: `...with_vxxx_assets.md`) |
+| — | 357 | rpt | `357_ph3_rpt_sac_asset_inventory.md` | SAC 資産インベントリ (`rpt` type 追加) |
+| — | 358 | impl | `358_ph3_impl_g2_sac_blockers.md` | 本ドキュメント |
 
 ---
 
@@ -157,7 +154,7 @@ run_gate_check.py の G2 判定ロジックを dict 入力で再現。4 つの�
 | ID | 内容 | 次ステップ |
 |---|---|---|
 | B2 | 特徴量精査 (12 → 最適セット) | P3A-3: FeatureRegistry 全量評価 |
-| B5 | SAC 3-way (A/B/C) 方針 | 356a# で C 決定済、コード変更不要 |
+| B5 | SAC 3-way (A/B/C) 方針 | 356# で C 決定済、コード変更不要 |
 | P3A-1 | 実データ取得 + 前処理 | data/ 配下のパイプライン構築 |
 | P3A-2 | HeavyTradingEnv 統合テスト | feature_columns 注入の E2E 検証 |
 
@@ -171,7 +168,7 @@ run_gate_check.py の G2 判定ロジックを dict 入力で再現。4 つの�
 | `scripts/v460/lib/tasks/sac_train.py` | MOD | B3: feature_columns 注入 |
 | `scripts/v460/run_experiment.py` | MOD | B4: multi-seed + convergence + G2 gate |
 | `tests/unit/v460/test_356_g2_sac_blockers.py` | NEW | 22 tests |
-| `docs/v460/356_ph3_plan_sac_training.md` | RENAME | 枝番化 (356a) |
-| `docs/v460/356_ph3_rpt_sac_asset_inventory.md` | RENAME | 枝番化 (356b) + rpt type 追加 |
-| `docs/v460/index.md` | MOD | 枝番更新 (253/336/356) |
-| `docs/v460/357_ph3_impl_g2_sac_blockers.md` | NEW | 本ドキュメント |
+| `docs/v460/356_ph3_plan_sac_training.md` | RENAME | ファイル名短縮 |
+| `docs/v460/357_ph3_rpt_sac_asset_inventory.md` | RENAME | 357 番号割当 + rpt type 追加 |
+| `docs/v460/index.md` | MOD | 番号ユニーク化 |
+| `docs/v460/358_ph3_impl_g2_sac_blockers.md` | NEW | 本ドキュメント |

@@ -1,4 +1,4 @@
-"""356a# B1/B3/B4 tests: g2_sac_train.yaml, feature_columns injection, G2 gate."""
+"""356# B1/B3/B4 tests: g2_sac_train.yaml, feature_columns injection, G2 gate."""
 
 from __future__ import annotations
 
@@ -99,7 +99,7 @@ class TestB3FeatureInjection:
         env_config = EnvironmentConfig()
         assert env_config.feature_names is None
 
-        # 356a# B3 修正後のロジック
+        # 356# B3 修正後のロジック
         if feature_columns:
             env_config.feature_names = feature_columns
 
@@ -329,3 +329,35 @@ class TestMultiSeedDispatch:
         gate = cfg.get("_gate", "")
         seeds = cfg.get("seeds", [])
         assert "G2" not in gate
+
+    def test_seed_failure_captured_not_propagated(self) -> None:
+        """1 seed 失敗時に他 seed の結果が保持され、例外が伝播しない."""
+        from scripts.v460.run_experiment import _run_multi_seed
+
+        call_count = 0
+
+        def mock_task(cfg: dict) -> dict:
+            nonlocal call_count
+            call_count += 1
+            if cfg["seed"] == 456:
+                raise RuntimeError("seed 456 exploded")
+            return {
+                "eval_metrics": {"gross_roi": 0.05, "ic_mean": 0.02},
+                "checkpoint_metrics": [],
+            }
+
+        cfg: dict = {"_gate": "G2-train", "_task": "sac_train"}
+        seeds = [42, 123, 456, 789]
+
+        result = _run_multi_seed(cfg, seeds, mock_task)
+
+        assert call_count == 4
+        assert len(result["seed_results"]) == 4
+        # Seed 456 should have error marker with 0.0 ROI
+        failed = [s for s in result["seed_results"] if s["seed"] == 456]
+        assert len(failed) == 1
+        assert failed[0]["gross_roi"] == 0.0
+        assert "error" in failed[0]
+        # Other seeds should have real results
+        ok = [s for s in result["seed_results"] if s["seed"] != 456]
+        assert all(s["gross_roi"] == 0.05 for s in ok)

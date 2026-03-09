@@ -181,7 +181,7 @@ def _create_training_env(
     現時点では HeavyTradingEnv を使用 (016# F2: 環境切替は別チケット).
     FastIntradayEnvV456 への移行は段階的に行う.
 
-    356a# B3: feature_columns を EnvironmentConfig.feature_names に注入.
+    356# B3: feature_columns を EnvironmentConfig.feature_names に注入.
     """
     from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
     from ztb.trading.environment.utils.config import EnvironmentConfig
@@ -194,7 +194,7 @@ def _create_training_env(
     # Construct EnvironmentConfig
     env_config = EnvironmentConfig(**env_cfg) if env_cfg else EnvironmentConfig()
 
-    # 356a# B3: 明示的に feature_names を注入
+    # 356# B3: 明示的に feature_names を注入
     # config.features.selected で指定した特徴量のみを observation space に含める
     if feature_columns:
         env_config.feature_names = feature_columns
@@ -216,7 +216,7 @@ def _create_training_env(
         "action_dim": action_dim,
         "env_type": "HeavyTradingEnv",
         "feature_columns_count": len(feature_columns),
-        "feature_columns_injected": bool(feature_columns),  # 356a# B3 可観測性
+        "feature_columns_injected": bool(feature_columns),  # 356# B3 可観測性
     }
 
     return cast(TrainingEnvProtocol, env), env_info

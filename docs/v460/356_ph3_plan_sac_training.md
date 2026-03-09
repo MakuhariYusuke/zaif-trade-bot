@@ -1,4 +1,4 @@
-# 356a# ph3 計画: SAC 訓練 — vXXX 資産活用による加速戦略
+# 356# ph3 計画: SAC 訓練 — vXXX 資産活用による加速戦略
 
 > **目的**: ph3 G2-train Gate 突破に向けた SAC 4-seed 訓練の包括的実行計画  
 > **前提**: 355# B1-B5 ブロッカー + 既存 vXXX 資産の棚卸し結果 (356b#)  
@@ -698,4 +698,4 @@ Worst case: 7-10 日 (3 回の改善サイクル)
 | 日付 | 版 | 内容 |
 |---|---|---|
 | 2026-03-09 | 1.0 | 初版 (vXXX 資産棚卸し + 5 ブロッカー解消計画 + 実装ロードマップ) |
-| 2026-03-09 | 1.1 | 枝番付与 (356a/356b), B1 g2_sac_train.yaml 作成, B3 feature_columns 修正, B4 G2 dispatch + multi-seed 実装 |
+| 2026-03-09 | 1.1 | 番号再割当 (356/357/358), B1 g2_sac_train.yaml 作成, B3 feature_columns 修正, B4 G2 dispatch + multi-seed 実装 |

@@ -23,7 +23,7 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import cast
+from typing import Callable
 
 # Project root
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -97,7 +97,7 @@ def run(config_path: str, seed_override: int | None = None) -> dict:
         if task_fn is None:
             raise ValueError(f"Unknown task: {task_name}")
 
-        # 356a# B4: G2 multi-seed execution
+        # 356# B4: G2 multi-seed execution
         seeds = cfg.get("seeds", [])
         if "G2" in gate and len(seeds) > 1:
             results = _run_multi_seed(cfg, seeds, task_fn)
@@ -194,12 +194,10 @@ def _evaluate_gate(gate: str, results: dict, cfg: dict) -> str:
             final_pass = judgment["g1_pass"] and extra_any_pass
             return "PASS" if final_pass else "FAIL"
 
-    # 356a# B4: G2 gate evaluation
+    # 356# B4: G2 gate evaluation
     if "G2" in gate:
         seed_results = results.get("seed_results", [])
         if seed_results:
-            from scripts.v460.run_gate_check import run_g2_judgment
-
             # run_g2_judgment expects a file path — use dict-based evaluation
             try:
                 gate_cfg = load_gate_thresholds()
@@ -216,25 +214,21 @@ def _evaluate_gate(gate: str, results: dict, cfg: dict) -> str:
 
 
 # ======================================================================
-# G2 Multi-seed Helpers (356a# B4)
+# G2 Multi-seed Helpers (356# B4)
 # ======================================================================
 
 
 def _run_multi_seed(
     cfg: dict,
     seeds: list[int],
-    task_fn: object,
+    task_fn: Callable[[dict], dict],
 ) -> dict:
     """Run SAC training across multiple seeds and aggregate for G2 gate.
 
-    356a# B4: 4-seed 訓練実行 + 結果集約.
+    356# B4: 4-seed 訓練実行 + 結果集約.
     """
-    from statistics import stdev
-    from typing import Callable
-
-    task_callable = cast(Callable[[dict], dict], task_fn)
     seed_results: list[dict[str, object]] = []
-    all_checkpoint_metrics: list[list[dict[str, int]]] = []
+    all_checkpoint_metrics: list[list[dict[str, int | float]]] = []
     raw_results: dict[int, dict[str, object]] = {}
 
     for i, seed in enumerate(seeds):
@@ -242,9 +236,18 @@ def _run_multi_seed(
         seed_cfg = dict(cfg)
         seed_cfg["seed"] = seed
 
-        result = task_callable(seed_cfg)
+        try:
+            result = task_fn(seed_cfg)
+        except Exception as e:
+            logger.error(f"Seed {seed} failed: {e}")
+            seed_results.append({
+                "seed": seed,
+                "gross_roi": 0.0,
+                "ic_mean": 0.0,
+                "error": str(e),
+            })
+            continue
 
-        # Extract eval metrics
         eval_metrics = result.get("eval_metrics", {})
         if isinstance(eval_metrics, dict):
             gross_roi = float(eval_metrics.get("gross_roi", eval_metrics.get("mean_reward", 0.0)))
@@ -280,12 +283,12 @@ def _run_multi_seed(
 
 
 def _compute_convergence(
-    all_checkpoint_metrics: list[list[dict[str, int]]],
+    all_checkpoint_metrics: list[list[dict[str, int | float]]],
     window_start: int = 30000,
 ) -> dict[str, float]:
     """30K step 以降の ROI 変動を算出.
 
-    356a# §5.2: convergence 計算.
+    356# §5.2: convergence 計算.
     """
     roi_values: list[float] = []
     for cp_list in all_checkpoint_metrics:
@@ -309,7 +312,7 @@ def _evaluate_g2_from_results(
 ) -> dict[str, object]:
     """G2 gate evaluation from in-memory results (dict-based).
 
-    356a# B4: run_g2_judgment のロジックを dict 入力で再現.
+    356# B4: run_g2_judgment のロジックを dict 入力で再現.
     """
     from statistics import stdev
 

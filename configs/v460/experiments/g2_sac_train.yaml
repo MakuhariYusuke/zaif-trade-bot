@@ -1,5 +1,5 @@
 # G2: SAC 4-seed Training — Microstructure Edge
-# 356a# B1: ph3 SAC 訓練用実験 YAML
+# 356# B1: ph3 SAC 訓練用実験 YAML
 #
 # 使用方法:
 #   python scripts/v460/run_experiment.py \
@@ -20,7 +20,7 @@ data:
   ohlcv_path: "data/btc_jpy_1m_v451_optimized_features.parquet"
 
 # ---- 特徴量 (FeatureRegistry 系統) ----
-# 356a# §4.3: OHLCV ベースの FeatureRegistry 特徴量を使用
+# 356# §4.3: OHLCV ベースの FeatureRegistry 特徴量を使用
 # v460 microstructure features は ph4 で統合
 features:
   selected:
@@ -48,7 +48,7 @@ environment:
   timeframe: "1m"
 
 # ---- SAC ハイパーパラメータ ----
-# v459 短期指向チューニングを踏襲 (111# / 356a# §2.3)
+# v459 短期指向チューニングを踏襲 (111# / 356# §2.3)
 sac_hyperparameters:
   gamma: 0.80                      # 短期スキャルピング (v451 由来)
   ent_coef: "auto"
