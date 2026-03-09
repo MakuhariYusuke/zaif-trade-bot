@@ -53,6 +53,7 @@ logger = logging.getLogger(__name__)
 from ztb.data.market_data_collector import MarketDataCollector
 from ztb.features.microstructure import add_microstructure_features, MICROSTRUCTURE_FEATURES
 from ztb.utils.run_manifest import compute_file_hash as _compute_shared_file_hash
+from scripts.v460.ml.feature_enricher import discover_raw_daily_inputs, resolve_raw_dir
 
 # Default paths
 DEFAULT_SOURCE = "data/btc_jpy_1m_v451_optimized_features.parquet"
@@ -171,33 +172,6 @@ def compute_sha256(path: Path) -> str:
     return _compute_shared_file_hash(path)
 
 
-# ---------------------------------------------------------------------------
-# Real data pipeline: raw JSONL.gz → 1min agg → microstructure features
-# ---------------------------------------------------------------------------
-
-def _discover_dates(raw_dir: Path) -> list[str]:
-    """raw_dir 内の日付ファイルを検出して日付文字列リストを返す."""
-    return sorted(_discover_daily_inputs(raw_dir))
-
-
-def _discover_daily_inputs(raw_dir: Path) -> dict[str, tuple[Path | None, Path | None]]:
-    """利用可能な日次 raw 入力を date -> (orderbook, trades) で返す."""
-    ob_dir = raw_dir / "orderbook"
-    daily_inputs: dict[str, tuple[Path | None, Path | None]] = {}
-    if ob_dir.is_dir():
-        for f in ob_dir.glob("*.jsonl.gz"):
-            date_str = f.name.replace(".jsonl.gz", "")
-            _, tr_path = daily_inputs.get(date_str, (None, None))
-            daily_inputs[date_str] = (f, tr_path)
-    tr_dir = raw_dir / "trades"
-    if tr_dir.is_dir():
-        for f in tr_dir.glob("*.jsonl.gz"):
-            date_str = f.name.replace(".jsonl.gz", "")
-            ob_path, _ = daily_inputs.get(date_str, (None, None))
-            daily_inputs[date_str] = (ob_path, f)
-    return daily_inputs
-
-
 def _resolve_target_dates(
     daily_inputs: dict[str, tuple[Path | None, Path | None]],
     dates: list[str] | None,
@@ -235,15 +209,13 @@ def build_real_features(
     Returns:
         メタデータ dict
     """
-    raw = Path(raw_dir)
-    if not raw.is_absolute():
-        raw = _PROJECT_ROOT / raw
+    raw = resolve_raw_dir(Path(raw_dir))
     out = Path(output_path)
     if not out.is_absolute():
         out = _PROJECT_ROOT / out
 
     # Discover dates and reuse resolved daily inputs to avoid repeated exists/stat checks.
-    daily_inputs = _discover_daily_inputs(raw)
+    daily_inputs = discover_raw_daily_inputs(raw)
     all_dates = sorted(daily_inputs)
     if not all_dates:
         raise FileNotFoundError(f"No raw data found in {raw}")

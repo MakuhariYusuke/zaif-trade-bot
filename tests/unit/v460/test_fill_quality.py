@@ -253,6 +253,11 @@ def _save_linear_records(path: Path, **kwargs: object) -> None:
     save_fill_records(_make_linear_records(**kwargs), path)
 
 
+def _save_daily_fill_count_records(path: Path, **kwargs: object) -> None:
+    """日次 fill-count レコードを生成して保存する."""
+    save_fill_records(_make_daily_fill_count_records(**kwargs), path)
+
+
 def _make_fast_cycle_runner(
     tmp_path: Path,
     *,
@@ -1532,7 +1537,8 @@ class TestGateCheckG11:
     def test_g1_1_with_data(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             # 高 fill rate のデータを作成
-            records = _make_daily_fill_count_records(
+            _save_daily_fill_count_records(
+                Path(tmpdir) / "fill_records_20260101.jsonl",
                 prefix="g11",
                 filled_counts=[19, 19, 19],
                 per_day=20,
@@ -1542,10 +1548,6 @@ class TestGateCheckG11:
                 post_fill_30s_pnl=0.5,
                 adverse_selected=False,
                 alternate_side=True,
-            )
-            save_fill_records(
-                records,
-                Path(tmpdir) / "fill_records_20260101.jsonl",
             )
             result = run_g1_1(tmpdir)
             # 135# P0-12: delegation 後は g1_1_quick_judgment 由来の "G1.1-quick"

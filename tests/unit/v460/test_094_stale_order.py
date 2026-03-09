@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 import inspect
-from functools import lru_cache
 from pathlib import Path
 
 import pytest
@@ -27,15 +26,10 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 
 from scripts.v460.lib.fill_config import FillMonitorResult, SkipGateResult
 from scripts.v460.lib.maker_price import MakerPriceCalculator
-from scripts.v460.lib.order_monitor import OrderMonitor
 from scripts.v460.ml.skip_gate import SkipGate
 from scripts.v460.run_fill_test import FillTestConfig
+from tests.unit.v460._fill_test_source import ORDER_MONITOR, read_class_method_source
 from ztb.metrics.fill_quality import FillRecord
-
-
-@lru_cache(maxsize=None)
-def _source(obj: object) -> str:
-    return inspect.getsource(obj)
 
 
 # =====================================================================
@@ -247,35 +241,39 @@ class TestFillRecordRepriceDriftBps:
 class TestStaleOrderLogic:
     """094# stale order ロジックがコードに存在."""
 
+    @staticmethod
+    def _monitor_source() -> str:
+        return read_class_method_source(ORDER_MONITOR, "OrderMonitor", "monitor")
+
     def test_run_single_cycle_has_stale_order_logic(self) -> None:
         """run_single_cycle (or delegated _monitor_fill_polling) に stale_order 関連ロジックがある."""
         # 120#: stale order logic extracted to OrderMonitor.monitor
-        source = _source(OrderMonitor.monitor)
+        source = self._monitor_source()
         assert "stale_order" in source
         assert "stale_drift_bps" in source
         assert "reprice_count" in source
 
     def test_stale_order_checks_direction(self) -> None:
         """200# stale 判定で adverse/favorable drift 方向を検証している."""
-        source = _source(OrderMonitor.monitor)
+        source = self._monitor_source()
         assert "is_adverse_drift" in source
         assert "is_favorable_drift" in source
         assert "stale_adverse_drift" in source
 
     def test_stale_order_respects_max_reprice(self) -> None:
         """max_reprice のチェックがある."""
-        source = _source(OrderMonitor.monitor)
+        source = self._monitor_source()
         assert "stale_max_reprice" in source
 
     def test_stale_order_has_cooldown(self) -> None:
         """cooldown の制御がある."""
-        source = _source(OrderMonitor.monitor)
+        source = self._monitor_source()
         assert "stale_cooldown_sec" in source
         assert "last_reprice_time" in source
 
     def test_stale_order_cancel_before_replace(self) -> None:
         """cancel → place の順序になっている."""
-        source = _source(OrderMonitor.monitor)
+        source = self._monitor_source()
         # stale セクション内の cancel は後半にある
         stale_section = source[source.find("[stale_order]"):]
         pos_cancel_stale = stale_section.find("cancel_order")
@@ -286,13 +284,13 @@ class TestStaleOrderLogic:
 
     def test_stale_order_updates_mid_at_order(self) -> None:
         """reprice 時に mid_at_order を更新している."""
-        source = _source(OrderMonitor.monitor)
+        source = self._monitor_source()
         # mid_at_order = current_mid
         assert "mid_at_order = current_mid" in source
 
     def test_stale_order_tracks_cumulative_drift(self) -> None:
         """158# P1-3: cumulative_drift_bps を追跡している."""
-        source = _source(OrderMonitor.monitor)
+        source = self._monitor_source()
         assert "cumulative_drift_bps" in source
         assert "cumulative_drift_bps += drift_bps" in source
 

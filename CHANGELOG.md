@@ -4565,3 +4565,20 @@ python scripts/unified_trainer.py \
 ### Notes
 - The targeted bundle completed at `79 passed in 3.64s`; the `test_fill_quality.py` I/O subset completed at `7 passed, 199 deselected in 3.37s`.
 - The main gain in this batch is maintainability and reduced repeated import/source work, not a broad-suite wall-time step change.
+
+## Session 037-063 (2026-03-09)
+
+### Changed
+- Switched `test_094_stale_order.py` from its local `inspect.getsource()` cache to the shared [_fill_test_source.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_fill_test_source.py) helper, so `OrderMonitor.monitor` source-contract checks now use the same AST/file cache path as the other split-source tests.
+- Added `_save_daily_fill_count_records()` in `test_fill_quality.py` and reused it in the `run_g1_1` integration case, continuing the JSONL builder consolidation.
+- Refactored [scripts/v460/ml/feature_enricher.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/feature_enricher.py) to expose reusable raw-path/date discovery helpers, and updated [scripts/v460/build_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/build_features.py) to reuse them instead of maintaining a second copy of raw input discovery logic.
+
+### Verified
+- `./.venv/Scripts/python.exe -m py_compile tests/unit/v460/test_094_stale_order.py tests/unit/v460/test_fill_quality.py scripts/v460/ml/feature_enricher.py scripts/v460/build_features.py`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_094_stale_order.py tests/unit/v460/test_build_features_pipeline.py -q --no-cov --tb=short --durations=20`
+- `./.venv/Scripts/python.exe -m pytest tests/unit/v460/test_fill_quality.py -q --no-cov --tb=short -k 'g1_1_with_data or save_load_roundtrip or iter_load_roundtrip or glob_load or iter_glob_load_roundtrip or load_corrupt_lines_skipped' --durations=20`
+
+### Notes
+- The stale-order source checks still passed focused at `66 passed in 8.15s` together with the build-features pipeline bundle.
+- The focused `fill_quality.py` selector completed at `8 passed, 198 deselected in 7.43s`.
+- This batch is mostly reuse consolidation on the production side: `build_features.py` now depends on the same raw discovery helpers that `feature_enricher.py` already uses, which reduces duplicate path/date handling and keeps future changes in one place.

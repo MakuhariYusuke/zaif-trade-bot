@@ -2782,3 +2782,36 @@
 - `test_094_stale_order.py` の source-contract テストは cached source 参照に揃ったので、同じ `OrderMonitor.monitor` text を何度も取り直さなくなった。
 - `test_137_p1_features.py` と `test_138_p1_preflight_calibration.py` は method 内 import をかなり削り、型注釈も少し締めたので、以後の横展開がしやすい状態になった。
 - `test_fill_quality.py` の `TestFillRecordIO` は JSONL I/O helper の再利用範囲が広がり、1件/2件保存ケースの boilerplate がさらに減った。
+
+---
+
+## 2026-03-09 / Session 037-063
+
+### 実施
+- `tests/unit/v460/test_094_stale_order.py`
+  - ローカル `_source()` を廃止
+  - [_fill_test_source.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_fill_test_source.py) の `read_class_method_source()` と `ORDER_MONITOR` を使う形に変更
+- `tests/unit/v460/test_fill_quality.py`
+  - `_save_daily_fill_count_records()` を追加
+  - `TestGateCheckG11::test_g1_1_with_data` を helper 再利用へ変更
+- `scripts/v460/ml/feature_enricher.py`
+  - `resolve_raw_dir()` を追加
+  - `discover_raw_daily_inputs()` を追加
+  - raw orderbook/trades loader が同 helper を使うよう整理
+- `scripts/v460/build_features.py`
+  - raw dir 解決と日次 raw 入力 discovery を `feature_enricher` 側 helper の再利用へ寄せた
+  - `_discover_daily_inputs()` の重複実装を削除
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_094_stale_order.py`
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `66 passed in 8.15s`
+- focused selector:
+  - `tests/unit/v460/test_fill_quality.py -k 'g1_1_with_data or save_load_roundtrip or iter_load_roundtrip or glob_load or iter_glob_load_roundtrip or load_corrupt_lines_skipped'`
+  - `8 passed, 198 deselected in 7.43s`
+
+### 主要改善
+- `stale_order` の source-contract は他の split-source テストと同じ helper 経路に揃った。`inspect.getsource()` のローカルキャッシュ実装が1つ減った。
+- `fill_quality` の `run_g1_1` integration も日次 fill-count builder に揃ったので、日次サンプル生成の修正点がさらに集中した。
+- production 側は `feature_enricher` と `build_features` の raw path/date 解決が 1 箇所にまとまり、今後の raw layout 変更や日付解決ロジック変更を片側だけ直して齟齬が出るリスクを下げた。

@@ -45,6 +45,13 @@ _RAW_ORDERBOOK_CACHE: dict[tuple[str, tuple[str, ...] | None], _RawLoadCacheEntr
 _RAW_TRADES_CACHE: dict[tuple[str, tuple[str, ...] | None], _RawLoadCacheEntry] = {}
 
 
+def resolve_raw_dir(raw_dir: Optional[Path] = None) -> Path:
+    """raw data ルートを絶対パスで返す."""
+    if raw_dir is None:
+        return _DEFAULT_RAW_DIR
+    return raw_dir if raw_dir.is_absolute() else (Path.cwd() / raw_dir).resolve()
+
+
 def _normalize_date_filter(
     date_filter: Optional[set[str]],
 ) -> tuple[str, ...] | None:
@@ -91,6 +98,23 @@ def _select_raw_files(
     return sorted(data_dir.glob("*.jsonl.gz"))
 
 
+def discover_raw_daily_inputs(
+    raw_dir: Optional[Path] = None,
+) -> dict[str, tuple[Path | None, Path | None]]:
+    """利用可能な raw 入力を date -> (orderbook, trades) で返す."""
+    resolved_root = resolve_raw_dir(raw_dir)
+    daily_inputs: dict[str, tuple[Path | None, Path | None]] = {}
+    for orderbook_path in _select_raw_files(resolved_root / "orderbook", date_filter=None):
+        date_str = orderbook_path.name.replace(".jsonl.gz", "")
+        _, trades_path = daily_inputs.get(date_str, (None, None))
+        daily_inputs[date_str] = (orderbook_path, trades_path)
+    for trades_path in _select_raw_files(resolved_root / "trades", date_filter=None):
+        date_str = trades_path.name.replace(".jsonl.gz", "")
+        orderbook_path, _ = daily_inputs.get(date_str, (None, None))
+        daily_inputs[date_str] = (orderbook_path, trades_path)
+    return daily_inputs
+
+
 def _build_file_signature(files: list[Path]) -> tuple[tuple[str, int, int], ...]:
     """mtime+size ベースの軽量シグネチャを生成."""
     signature: list[tuple[str, int, int]] = []
@@ -134,7 +158,7 @@ def _load_raw_orderbook_entry(
     date_filter: Optional[set[str]] = None,
 ) -> _RawLoadCacheEntry:
     """板 raw と派生 context をまとめてロードする."""
-    d = raw_dir or _DEFAULT_RAW_DIR
+    d = resolve_raw_dir(raw_dir)
     ob_dir = d / "orderbook"
     if not ob_dir.exists():
         return _RawLoadCacheEntry(file_signature=(), df=pd.DataFrame())
@@ -201,7 +225,7 @@ def _load_raw_trades_entry(
     date_filter: Optional[set[str]] = None,
 ) -> _RawLoadCacheEntry:
     """約定 raw と派生 context をまとめてロードする."""
-    d = raw_dir or _DEFAULT_RAW_DIR
+    d = resolve_raw_dir(raw_dir)
     tr_dir = d / "trades"
     if not tr_dir.exists():
         return _RawLoadCacheEntry(file_signature=(), df=pd.DataFrame())
