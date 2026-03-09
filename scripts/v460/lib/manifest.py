@@ -16,12 +16,13 @@ import os
 import subprocess
 import sys
 from functools import lru_cache
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import cast
 
 from ztb.types.common import ConfigSection, JSONDict
+from ztb.utils.dataclass_utils import shallow_asdict
 from ztb.utils.git_utils import get_git_sha as _get_shared_git_sha
 from ztb.utils.run_manifest import compute_file_hash as _compute_shared_file_hash
 
@@ -161,7 +162,7 @@ class ManifestEntry:
     artifacts: list[str] = field(default_factory=list)
 
     def to_dict(self) -> JSONDict:
-        return cast(JSONDict, asdict(self))
+        return cast(JSONDict, shallow_asdict(self))
 
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), ensure_ascii=False, default=str)

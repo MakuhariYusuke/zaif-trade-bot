@@ -3689,3 +3689,35 @@
 - `order_flow_imbalance(...)` は loop を消しつつ、先頭 0.0 と body-size 0 の扱いを維持した。
 - `micro_volatility(...)` は内側ループをなくし、ゼロ割回避の既存契約も保持した。
 - 今回の core 側最適化は `v4_feature_extractor` と filtered broad の両方で回帰なしを確認した。
+
+## 2026-03-10 / Session 037-087
+
+### 実施
+- `scripts/v460/lib/manifest.py`
+  - `ManifestEntry.to_dict()` を `dataclasses.asdict(...)` から `shallow_asdict(...)` に変更
+  - manifest entry は flat dataclass なので deep copy を不要化
+- `tests/unit/v460/test_v460_core.py`
+  - `_write_yaml(...)` / `_write_config_pair(...)` を追加
+  - config-loader / `_task` preservation テストの `base.yaml` / `exp.yaml` 生成を共通化
+- `tests/unit/v460/test_retrain_hot_reload.py`
+  - `_write_corrupt_gate(...)` を追加
+  - post-deploy verification の壊れた artifact 準備を helper 化
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_v460_core.py`
+  - `tests/unit/v460/test_retrain_hot_reload.py`
+  - `137 passed in 4.77s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4241 passed, 13 warnings in 55.03s`
+
+### 主要改善
+- `manifest.py` は flat dataclass の deep copy をやめたので、`TestManifest::test_write_and_read` の hot path を軽くした。
+- `test_v460_core.py` は YAML setup の編集点が 1 箇所に集まり、今後の config-loader ケース追加時の重複が減った。
+- `test_retrain_hot_reload.py` は corrupt artifact の準備が共通化され、atomic/post-deploy 周辺テストの意図が読みやすくなった。
+- focused では `test_v460_core.py` + `test_retrain_hot_reload.py` が `7.89s -> 4.77s` まで低下した。

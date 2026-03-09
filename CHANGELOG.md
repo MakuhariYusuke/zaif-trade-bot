@@ -4870,3 +4870,10 @@ python scripts/unified_trainer.py \
   - `tests/unit/core/features/test_scalping_features.py`: `14 passed in 6.14s`
   - `tests/unit/core/features/test_v4_feature_extractor.py -k 'realized_volatility or order_flow_imbalance'`: `2 passed, 13 deselected in 7.88s`
   - filtered broad: `4225 passed, 13 warnings in 43.81s`
+- Continued low-risk test reuse plus a small production fast path:
+  - switched [scripts/v460/lib/manifest.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/manifest.py) `ManifestEntry.to_dict()` from recursive `asdict(...)` to `shallow_asdict(...)` because the dataclass is flat and does not need deep copies
+  - added `_write_config_pair(...)` in [tests/unit/v460/test_v460_core.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_v460_core.py) to consolidate repeated `base.yaml` / `exp.yaml` setup in config-loader tests
+  - added `_write_corrupt_gate(...)` in [tests/unit/v460/test_retrain_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_retrain_hot_reload.py) to unify the corrupt-artifact setup used by post-deploy verification tests
+- Verified the latest changes with:
+  - focused: `137 passed in 4.77s` for `test_v460_core.py` and `test_retrain_hot_reload.py`
+  - filtered broad: `4241 passed, 13 warnings in 55.03s`
