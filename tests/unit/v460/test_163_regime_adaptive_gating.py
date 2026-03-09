@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 import pytest
@@ -35,8 +36,13 @@ def _make_config(**overrides: object) -> FillTestConfig:
 
 
 def _mock_hour(hour: int):
-    """UTC hour helper を任意の値に差し替える fixture."""
-    return patch("scripts.v460.lib.time_filter.current_utc_hour", return_value=hour)
+    """datetime.now(utc).hour を任意の値に差し替える fixture."""
+    mock_dt = datetime(2025, 2, 26, hour, 30, 0, tzinfo=timezone.utc)
+    return patch(
+        "scripts.v460.lib.time_filter.datetime",
+        wraps=datetime,
+        **{"now.return_value": mock_dt},  # type: ignore[arg-type]
+    )
 
 
 # ── Step 2 基本テスト ───────────────────────────────────

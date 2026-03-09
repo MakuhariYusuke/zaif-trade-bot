@@ -20,7 +20,6 @@ from typing import TYPE_CHECKING, Protocol, cast
 
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import FillTestConfig, SkipGateResult
-from scripts.v460.lib.hour_rules import resolve_hour_float, utc_hour_from_timestamp
 from scripts.v460.lib.ob_utils import OrderBookSnapshot
 from scripts.v460.ml.skip_gate import SkipDecision, build_features_from_market_state
 # ファイルの SHA256 ハッシュを算出 (126# hot-reload 用)
@@ -1197,11 +1196,8 @@ class SkipGateEvaluator:
                     return result
 
             # 158# P1-6: 時間帯別 skip_gate 閾値調整
-            _utc_hour = utc_hour_from_timestamp(market_ts)
-            _hour_offset = resolve_hour_float(
-                self._config.skip_gate_hour_offsets,
-                _utc_hour,
-            )
+            _utc_hour = time.gmtime(market_ts).tm_hour
+            _hour_offset = self._config.skip_gate_hour_offsets.get(_utc_hour, 0.0)
 
             # 183# narrow spread adverse guard: spread < threshold → 閾値厳格化
             _spread_offset = 0.0

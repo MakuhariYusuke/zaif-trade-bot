@@ -12,9 +12,9 @@ from __future__ import annotations
 
 import logging
 import time as _time
+from datetime import datetime, timezone
 
 from scripts.v460.lib.fill_config import FillTestConfig
-from scripts.v460.lib.hour_rules import current_utc_hour
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ class TimeFilter:
         """
         if not self._config.enable_time_filter:
             return False
-        utc_hour = current_utc_hour()
+        current_utc_hour = datetime.now(timezone.utc).hour
 
         global_hours = set(self._config.skip_utc_hours or [])
 
@@ -81,19 +81,19 @@ class TimeFilter:
 
         if side == "buy" and self._config.skip_utc_hours_buy is not None:
             side_hours = set(self._config.skip_utc_hours_buy)
-            return utc_hour in (global_hours | side_hours | extra_buy)
+            return current_utc_hour in (global_hours | side_hours | extra_buy)
         if side == "sell" and self._config.skip_utc_hours_sell is not None:
             side_hours = set(self._config.skip_utc_hours_sell)
-            return utc_hour in (global_hours | side_hours | extra_sell)
+            return current_utc_hour in (global_hours | side_hours | extra_sell)
 
-        return utc_hour in global_hours
+        return current_utc_hour in global_hours
 
     def on_enter(self) -> None:
         """フィルタ突入."""
         if not self._in_filter:
             self._in_filter = True
             self._last_heartbeat_time = _time.time()
-            utc_h = current_utc_hour()
+            utc_h = datetime.now(timezone.utc).hour
             logger.info(
                 f"[time_filter] Entering High-AS zone (UTC {utc_h}h) "
                 f"— both sides filtered, suppressing cycles"

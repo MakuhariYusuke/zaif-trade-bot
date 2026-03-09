@@ -17,9 +17,8 @@ maker_price.py MakerPriceCalculator からの God Object 分割 (321# §4):
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
-
-from scripts.v460.lib.hour_rules import current_utc_hour, resolve_optional_hour_float
 
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
@@ -64,14 +63,14 @@ class RiskGuardsMixin:
 
         time-of-day 依存ロジックを 1 箇所に閉じる。
         """
-        return current_utc_hour()
+        return datetime.now(timezone.utc).hour
 
     def _resolve_sell_hour_boost_mult(self) -> float | None:
         """sell_hour_offset_boost から現在 UTC hour の倍率を解決する."""
-        return resolve_optional_hour_float(
-            self._config.sell_hour_offset_boost,
-            self._current_utc_hour(),
-        )
+        cfg = self._config
+        if not cfg.sell_hour_offset_boost:
+            return None
+        return cfg.sell_hour_offset_boost.get(self._current_utc_hour())
 
     # ------------------------------------------------------------------
     # Risk guard pipeline stages

@@ -6,6 +6,7 @@ F-2: RegimeDetectorLike Protocol による型安全化
 """
 from __future__ import annotations
 
+import inspect
 import math
 from unittest.mock import MagicMock
 
@@ -14,18 +15,10 @@ import pytest
 from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator as MakerPrice
-from scripts.v460.lib.order_monitor import OrderMonitor
 from scripts.v460.lib.regime_detector import (
     FillTestRegime,
     FillTestRegimeDetector,
     RegimeDetectorLike,
-)
-from tests.unit.v460._fill_test_source import (
-    ADAPTATION_ENGINE,
-    MAKER_PRICE,
-    MAKER_RISK_GUARDS,
-    ORDER_MONITOR,
-    read_class_method_source,
 )
 
 
@@ -94,6 +87,8 @@ class TestRegimeDetectorProtocol:
 
     def test_order_monitor_resolve_regime_name_with_protocol(self) -> None:
         """order_monitor._resolve_regime_name が Protocol 型で動作."""
+        from scripts.v460.lib.order_monitor import OrderMonitor
+
         cfg = _make_config()
         om = OrderMonitor(cfg)
 
@@ -107,30 +102,22 @@ class TestRegimeDetectorProtocol:
 
     def test_resolve_regime_no_getattr_in_source(self) -> None:
         """257# _resolve_regime_name に getattr/hasattr が残っていない."""
-        src = read_class_method_source(
-            ORDER_MONITOR,
-            "OrderMonitor",
-            "_resolve_regime_name",
-        )
+        from scripts.v460.lib.order_monitor import OrderMonitor
+
+        src = inspect.getsource(OrderMonitor._resolve_regime_name)
         assert "getattr" not in src
         assert "hasattr" not in src
 
     def test_adaptation_engine_accepts_protocol(self) -> None:
         """adaptation_engine の regime_detector パラメータが Protocol 型."""
-        src = read_class_method_source(
-            ADAPTATION_ENGINE,
-            "AdaptationEngine",
-            "try_auto_adapt",
-        )
+        from scripts.v460.lib.adaptation_engine import AdaptationEngine
+
+        src = inspect.getsource(AdaptationEngine.try_auto_adapt)
         assert "RegimeDetectorLike" in src
 
     def test_maker_price_constructor_uses_protocol_type(self) -> None:
         """maker_price.__init__ が RegimeDetectorLike 型を使用."""
-        src = read_class_method_source(
-            MAKER_PRICE,
-            "MakerPriceCalculator",
-            "__init__",
-        )
+        src = inspect.getsource(MakerPrice.__init__)
         assert "RegimeDetectorLike" in src
 
 
@@ -247,11 +234,7 @@ class TestASReservationShift:
 
     def test_pipeline_includes_as_reservation(self) -> None:
         """compute() パイプラインに _apply_as_reservation_shift が含まれる."""
-        src = read_class_method_source(
-            MAKER_PRICE,
-            "MakerPriceCalculator",
-            "compute",
-        )
+        src = inspect.getsource(MakerPrice.compute)
         assert "_apply_as_reservation_shift" in src
 
 
@@ -408,11 +391,7 @@ class TestVPINContinuousModulator:
 
     def test_vg_source_no_binary_vpin_when_continuous(self) -> None:
         """VG ソースに continuous mode 分岐が存在."""
-        src = read_class_method_source(
-            MAKER_RISK_GUARDS,
-            "RiskGuardsMixin",
-            "_apply_volatility_guard",
-        )
+        src = inspect.getsource(MakerPrice._apply_volatility_guard)
         assert "vg_vpin_continuous_enabled" in src
         assert "quadratic" in src.lower() or "_norm * _norm" in src
 

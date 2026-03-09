@@ -541,7 +541,9 @@ class TestTimeFilterNoRecord:
         tf = TimeFilter(config)
 
         # UTC15: buy はフィルタ、sell はグローバル通過
-        with patch("scripts.v460.lib.time_filter.current_utc_hour", return_value=15):
+        with patch("scripts.v460.lib.time_filter.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 1, 1, 15, 0, 0, tzinfo=timezone.utc)
+            mock_dt.side_effect = lambda *a, **k: datetime(*a, **k)
             assert tf.is_filtered(side="buy") is True
             assert tf.is_filtered(side="sell") is False
 
@@ -556,7 +558,9 @@ class TestTimeFilterNoRecord:
         tf = TimeFilter(config)
 
         # UTC4: sell はフィルタ、buy はグローバル通過
-        with patch("scripts.v460.lib.time_filter.current_utc_hour", return_value=4):
+        with patch("scripts.v460.lib.time_filter.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 1, 1, 4, 0, 0, tzinfo=timezone.utc)
+            mock_dt.side_effect = lambda *a, **k: datetime(*a, **k)
             assert tf.is_filtered(side="sell") is True
             assert tf.is_filtered(side="buy") is False
 
@@ -570,7 +574,9 @@ class TestTimeFilterNoRecord:
         )
         tf = TimeFilter(config)
 
-        with patch("scripts.v460.lib.time_filter.current_utc_hour", return_value=15):
+        with patch("scripts.v460.lib.time_filter.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 1, 1, 15, 0, 0, tzinfo=timezone.utc)
+            mock_dt.side_effect = lambda *a, **k: datetime(*a, **k)
             # side=None → グローバルで判定 → UTC15 は含まれない → False
             assert tf.is_filtered(side=None) is False
             assert tf.is_filtered() is False
