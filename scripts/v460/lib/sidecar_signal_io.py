@@ -99,12 +99,13 @@ def read_sidecar_signal(
         SidecarSignal or None (読込失敗/stale時)
     """
     path = Path(path)
-    if not path.exists():
-        return None
-
+    # 373# TOCTOU 修正: exists() + read_text() の間にファイルが消える
+    # 可能性があるため、直接 try/except で処理する。
     try:
         raw = path.read_text(encoding="utf-8")
         data: dict = json.loads(raw)  # type: ignore[assignment]
+    except FileNotFoundError:
+        return None
     except (json.JSONDecodeError, OSError) as e:
         logger.warning(f"Sidecar signal read error: {e}")
         return None

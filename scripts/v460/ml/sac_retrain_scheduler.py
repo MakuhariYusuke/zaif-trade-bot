@@ -163,6 +163,38 @@ class SACRetrainConfig:
             min_trade_count=int(retrain_cfg.get("min_trade_count", 3)),
         )
 
+    def __post_init__(self) -> None:
+        """373# 値域バリデーション — YAML 誤設定による訓練暴走を早期検出."""
+        if self.rolling_window_days < 1:
+            raise ValueError(f"rolling_window_days must be >= 1, got {self.rolling_window_days}")
+        if self.total_timesteps < 1:
+            raise ValueError(f"total_timesteps must be >= 1, got {self.total_timesteps}")
+        if self.incremental_timesteps < 1:
+            raise ValueError(f"incremental_timesteps must be >= 1, got {self.incremental_timesteps}")
+        if not (0.0 < self.val_ratio < 1.0):
+            raise ValueError(f"val_ratio must be in (0, 1), got {self.val_ratio}")
+        if self.batch_size < 1:
+            raise ValueError(f"batch_size must be >= 1, got {self.batch_size}")
+        if self.buffer_size < self.batch_size:
+            raise ValueError(
+                f"buffer_size ({self.buffer_size}) must be >= batch_size ({self.batch_size})"
+            )
+        if self.learning_rate <= 0:
+            raise ValueError(f"learning_rate must be > 0, got {self.learning_rate}")
+        if self.check_interval_sec < 1:
+            raise ValueError(f"check_interval_sec must be >= 1, got {self.check_interval_sec}")
+        if self.retrain_interval_sec < 1:
+            raise ValueError(f"retrain_interval_sec must be >= 1, got {self.retrain_interval_sec}")
+        if self.retrain_interval_max_sec < self.retrain_interval_sec:
+            raise ValueError(
+                f"retrain_interval_max_sec ({self.retrain_interval_max_sec}) must be >= "
+                f"retrain_interval_sec ({self.retrain_interval_sec})"
+            )
+        if self.n_eval_episodes < 1:
+            raise ValueError(f"n_eval_episodes must be >= 1, got {self.n_eval_episodes}")
+        if self.min_trade_count < 0:
+            raise ValueError(f"min_trade_count must be >= 0, got {self.min_trade_count}")
+
 
 # ════════════════════════════════════════════════════════════════
 # Training Protocol (SB3 SAC のミニマルインターフェース)

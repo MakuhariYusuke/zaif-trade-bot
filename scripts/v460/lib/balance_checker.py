@@ -129,8 +129,14 @@ class BalanceChecker:
             else:
                 return await self._check_buy(adapter, symbol, regime_mult=regime_mult)
         except Exception as e:
-            logger.warning(f"[balance] Pre-flight check failed — proceeding: {e}")
-        return False
+            # 373# CRITICAL: 例外時は注文スキップ (True) に変更。
+            # 旧実装は return False (=注文続行) だったが、残高未検証で
+            # 取引を続行すると insufficient funds 連打やロット計算不整合が発生する。
+            logger.error(
+                f"[balance] Pre-flight check FAILED — skipping order: {e}",
+                exc_info=True,
+            )
+        return True
 
     async def _check_sell(
         self, adapter: BalanceAdapterProtocol, symbol: str, *, regime_mult: float = 1.0,

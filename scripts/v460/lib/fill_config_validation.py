@@ -22,6 +22,17 @@ def validate_fill_config(config: FillTestConfig) -> None:
     Raises:
         ValueError: 値域制約違反時
     """
+    # 373# CRITICAL: order_quantity / min_order_btc ゼロ除算防止
+    # balance_checker._check_sell() で int(max_base / min_order_btc) を行うため
+    # 0 以下だと ZeroDivisionError → 注文不能 or 無限ロット計算が発生する。
+    if config.order_quantity <= 0:
+        raise ValueError(
+            f"order_quantity must be > 0, got {config.order_quantity}"
+        )
+    if config.min_order_btc <= 0:
+        raise ValueError(
+            f"min_order_btc must be > 0, got {config.min_order_btc}"
+        )
     if config.balance_shrink_divisor < 1:
         raise ValueError(
             f"balance_shrink_divisor must be >= 1, got {config.balance_shrink_divisor}"
