@@ -1078,6 +1078,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
             ev_score_pretrade=_ev_score_pretrade,
             ev_offset_mult_applied=_ev_offset_mult_applied,
             decision_path=_decision_path,
+            sidecar_offset_bps=sidecar_offset_bps if sidecar_offset_bps != 0.0 else None,
+            sidecar_bias=None,  # 372# bias は gate_result 経由で取得 (後続改善)
             queue_depth_ahead=_queue_depth_ahead,
             queue_fill_prob_est=_queue_fill_prob_est,
             regime_at_order=_regime_at_order,

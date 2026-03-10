@@ -646,3 +646,126 @@ class TestSidecarBpsOffset:
         new_price, delta = self._apply_sidecar_offset("buy", 0, 5.0)
         assert new_price == 0
         assert delta == 0.0
+
+
+# ════════════════════════════════════════════════════════════════
+# §7  372# FillRecord sidecar フィールド + Deploy Gate
+# ════════════════════════════════════════════════════════════════
+
+
+class TestFillRecordSidecarFields:
+    """372# FillRecord の sidecar_offset_bps / sidecar_bias フィールド."""
+
+    def test_fields_exist(self) -> None:
+        """FillRecord に sidecar 関連フィールドが定義されている。"""
+        from ztb.metrics.fill_quality import FillRecord
+
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+        )
+        assert r.sidecar_offset_bps is None
+        assert r.sidecar_bias is None
+
+    def test_set_values(self) -> None:
+        """sidecar フィールドに値を設定できる。"""
+        from ztb.metrics.fill_quality import FillRecord
+
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+            sidecar_offset_bps=3.5,
+            sidecar_bias=0.42,
+        )
+        assert r.sidecar_offset_bps == pytest.approx(3.5)
+        assert r.sidecar_bias == pytest.approx(0.42)
+
+    def test_to_dict_includes_sidecar(self) -> None:
+        """to_dict() に sidecar フィールドが含まれる。"""
+        from ztb.metrics.fill_quality import FillRecord
+
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+            sidecar_offset_bps=5.0,
+        )
+        d = r.to_dict()
+        assert "sidecar_offset_bps" in d
+        assert d["sidecar_offset_bps"] == pytest.approx(5.0)
+
+    def test_round_trip_from_dict(self) -> None:
+        """from_dict() で sidecar フィールドが復元される。"""
+        from ztb.metrics.fill_quality import FillRecord
+
+        r1 = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+            sidecar_offset_bps=2.5,
+            sidecar_bias=-0.3,
+        )
+        r2 = FillRecord.from_dict(r1.to_dict())
+        assert r2.sidecar_offset_bps == pytest.approx(2.5)
+        assert r2.sidecar_bias == pytest.approx(-0.3)
+
+
+class TestConfidenceDynamic:
+    """372# confidence 動的計算のテスト."""
+
+    @staticmethod
+    def _compute_confidence(
+        roi: float,
+        gate_threshold: float = 0.0,
+        full_roi: float = 0.005,
+    ) -> float:
+        """sac_retrain_scheduler の confidence 計算ロジックを抽出。"""
+        if full_roi <= gate_threshold:
+            return 1.0
+        if roi <= gate_threshold:
+            return 0.0
+        return min(1.0, (roi - gate_threshold) / (full_roi - gate_threshold))
+
+    def test_below_gate_zero(self) -> None:
+        """ROI < gate → confidence=0."""
+        assert self._compute_confidence(-0.001) == 0.0
+
+    def test_at_gate_zero(self) -> None:
+        """ROI == gate → confidence=0."""
+        assert self._compute_confidence(0.0) == 0.0
+
+    def test_halfway(self) -> None:
+        """ROI halfway between gate and full → confidence=0.5."""
+        c = self._compute_confidence(0.0025, gate_threshold=0.0, full_roi=0.005)
+        assert c == pytest.approx(0.5)
+
+    def test_at_full_roi(self) -> None:
+        """ROI == full_roi → confidence=1.0."""
+        c = self._compute_confidence(0.005, gate_threshold=0.0, full_roi=0.005)
+        assert c == pytest.approx(1.0)
+
+    def test_above_full_roi_capped(self) -> None:
+        """ROI > full_roi → confidence=1.0 (キャップ)."""
+        c = self._compute_confidence(0.01)
+        assert c == 1.0
+
+    def test_misconfigured_full_leq_gate(self) -> None:
+        """full_roi <= gate → フォールバック 1.0."""
+        c = self._compute_confidence(0.001, gate_threshold=0.005, full_roi=0.005)
+        assert c == 1.0
+
+
+class TestDeployGateTradeCount:
+    """372# Deploy Gate 強化: min_trade_count チェック."""
+
+    def test_config_default(self) -> None:
+        """min_trade_count のデフォルトは 3."""
+        from scripts.v460.ml.sac_retrain_scheduler import SACRetrainConfig
+
+        cfg = SACRetrainConfig()
+        assert cfg.min_trade_count == 3
+
+    def test_config_confidence_roi_full_default(self) -> None:
+        """confidence_roi_full のデフォルトは 0.005."""
+        from scripts.v460.ml.sac_retrain_scheduler import SACRetrainConfig
+
+        cfg = SACRetrainConfig()
+        assert cfg.confidence_roi_full == pytest.approx(0.005)

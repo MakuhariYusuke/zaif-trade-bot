@@ -131,6 +131,8 @@ class FillRecordBuilderMixin:
         ev_score_pretrade: float | None = None,
         ev_offset_mult_applied: float | None = None,
         decision_path: str | None = None,
+        sidecar_offset_bps: float | None = None,
+        sidecar_bias: float | None = None,
     ) -> dict[str, object]:
         """FillRecord の市場観測/実行メタ系フィールドを構築."""
         return {
@@ -179,6 +181,9 @@ class FillRecordBuilderMixin:
             "ev_score_pretrade": ev_score_pretrade,
             "ev_offset_mult_applied": ev_offset_mult_applied,
             "decision_path": decision_path,
+            # 372# F1: SAC Sidecar offset 記録
+            "sidecar_offset_bps": sidecar_offset_bps,
+            "sidecar_bias": sidecar_bias,
         }
 
     def _build_fill_strategy_fields(
@@ -286,6 +291,8 @@ class FillRecordBuilderMixin:
         ev_score_pretrade: float | None = None,
         ev_offset_mult_applied: float | None = None,
         decision_path: str | None = None,
+        sidecar_offset_bps: float | None = None,
+        sidecar_bias: float | None = None,
         queue_depth_ahead: float | None = None,
         queue_fill_prob_est: float | None = None,
         regime_at_order: str | None = None,
@@ -359,6 +366,8 @@ class FillRecordBuilderMixin:
                 ev_score_pretrade=ev_score_pretrade,
                 ev_offset_mult_applied=ev_offset_mult_applied,
                 decision_path=decision_path,
+                sidecar_offset_bps=sidecar_offset_bps,
+                sidecar_bias=sidecar_bias,
             )
         )
         payload.update(

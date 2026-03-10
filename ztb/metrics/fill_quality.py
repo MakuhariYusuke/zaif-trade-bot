@@ -168,6 +168,9 @@ class FillRecord:
     # 注文発行時の mid price。mid_at_fill (post-fill 測定時の mid) との差で
     # 検出レイテンシバイアスを分離し、spread capture 計算の精度を向上。
     mid_at_order: float | None = None             # mid price at order submission
+    # ---- 372# F1: SAC Sidecar offset 記録 ----
+    sidecar_offset_bps: float | None = None       # 適用された sidecar offset (bps, 正=攻撃的)
+    sidecar_bias: float | None = None             # SAC directional_bias [-1,+1]
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

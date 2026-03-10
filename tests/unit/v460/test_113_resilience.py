@@ -221,10 +221,10 @@ class TestR1MethodExtraction:
         assert "_measure_post_fill_pnl" in source
 
     def test_run_single_cycle_under_400_lines(self) -> None:
-        """run_single_cycle が 740 行以下 (R1 目標 + ... + 319# S-3 mid_at_order)."""
+        """run_single_cycle が 755 行以下 (R1 目標 + ... + 372# sidecar bps offset)."""
         source = read_fill_test_method_source("run_single_cycle")
         line_count = len(source.splitlines())
-        assert line_count <= 740, f"run_single_cycle is {line_count} lines (> 740)"
+        assert line_count <= 755, f"run_single_cycle is {line_count} lines (> 755)"
 
     def test_extracted_methods_exist(self) -> None:
         """抽出メソッドが FillTestRunner に存在."""

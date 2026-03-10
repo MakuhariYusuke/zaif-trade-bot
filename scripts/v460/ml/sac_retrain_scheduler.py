@@ -99,6 +99,8 @@ class SACRetrainConfig:
     # ── OOS Gate ──
     min_gross_roi: float = 0.0  # > 0 で gate 通過
     n_eval_episodes: int = 3
+    confidence_roi_full: float = 0.005  # この ROI 以上で confidence=1.0
+    min_trade_count: int = 3  # 372# Deploy Gate: OOS 中の最低取引回数
 
     # ── スケジューラ ──
     check_interval_sec: int = 300  # polling 間隔 (5分)
@@ -327,6 +329,24 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
                 warm_start=is_warm_start,
                 gross_roi=float(eval_result["gross_roi"]),
                 trade_count=int(eval_result.get("trade_count", 0)),
+            )
+
+        # 372# Deploy Gate 強化: OOS 中の最低取引回数チェック
+        _oos_trade_count = int(eval_result.get("trade_count", 0))
+        if cfg.min_trade_count > 0 and _oos_trade_count < cfg.min_trade_count:
+            logger.warning(
+                f"OOS validation FAILED: trade_count={_oos_trade_count} "
+                f"< {cfg.min_trade_count} — insufficient trading activity"
+            )
+            return RetrainResult(
+                status="oos_failed",
+                timestamp=timestamp,
+                model_version=model_version,
+                training_time_sec=training_time,
+                total_timesteps=timesteps,
+                warm_start=is_warm_start,
+                gross_roi=float(eval_result["gross_roi"]),
+                trade_count=_oos_trade_count,
             )
 
         # ── 5. Atomic deploy ──
@@ -701,11 +721,25 @@ def _update_sidecar_signal(
         logger.warning(f"Sidecar inference failed, using neutral: {e}")
         bias = 0.0
 
+    # 372# confidence 動的計算: OOS gross_roi の gate margin から導出
+    # min_gross_roi を僅かに超えた程度 → 低 confidence (慎重な offset)
+    # confidence_roi_full 以上 → confidence=1.0 (full boost)
+    _oos_roi = float(eval_result.get("gross_roi", 0.0))
+    _gate_threshold = cfg.min_gross_roi
+    _full_roi = cfg.confidence_roi_full
+    if _full_roi <= _gate_threshold:
+        # misconfigured → フォールバック 1.0
+        _confidence = 1.0
+    elif _oos_roi <= _gate_threshold:
+        _confidence = 0.0
+    else:
+        _confidence = min(1.0, (_oos_roi - _gate_threshold) / (_full_roi - _gate_threshold))
+
     signal_obj = SidecarSignal(
         timestamp=datetime.now(timezone.utc).isoformat(),
         directional_bias=bias,
         model_version=model_version,
-        confidence=1.0,
+        confidence=_confidence,
         regime_hint="",
         features_snapshot=features_snapshot,
         training_metrics={
@@ -716,7 +750,8 @@ def _update_sidecar_signal(
 
     write_sidecar_signal(signal_obj, cfg.signal_path)
     logger.info(
-        f"Sidecar signal updated: bias={bias:+.4f} | {cfg.signal_path}"
+        f"Sidecar signal updated: bias={bias:+.4f} "
+        f"confidence={_confidence:.3f} (roi={_oos_roi:.4f}) | {cfg.signal_path}"
     )
 
 
