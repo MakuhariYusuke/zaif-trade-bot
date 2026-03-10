@@ -622,7 +622,7 @@ loss_control:
     resume_window: 10              # 停止後、N サイクル後に再評価
     max_stale_kill_cycles: 0         # 269# 0=probe無効
     max_force_release_probes: 0      # 269# 0=force-release無効
-    max_kill_duration_sec: 1800      # 273# 30分で自動解除
+    max_kill_duration_sec: 900       # 370# 30分→15分に短縮 (BDK DEADLOCK WARNING 2回/日 → duty cycle 回復)
     # 344# 342#D: EWMA モード (RiskMetrics 1996)
     ewma_alpha: 0.05               # 0.0=無効, 0.05=effective window≈20
     ewma_time_decay_tau_sec: 600     # 353# kill中のEWMA時間減衰 (τ=600s)
@@ -630,6 +630,7 @@ loss_control:
       trending_down: -0.5          # 341# revert: 下降トレンド時buyは逆張り→厳しめ
       trending_up: -1.5            # 上昇トレンド時は buy に寛容 (順張り) — 据置き
       high_vol: -0.5               # 341# revert: 高ボラ時は慎重に
+      ranging: -1.0                # 370# TUNE-4R: レンジ相場でBDK緩和 (SDK TUNE-3成功の横展開, 14/21 BDK kills解消狙い)
   # 286# 283# P1-4: 在庫連動 buy_dynamic_kill 緩和 (Ho & Stoll 1981)
   # BTC 不足 (inv_net_imbalance < 0) 時に kill 閾値を offset して在庫補充 buy を許容
   buy_dynamic_kill_inv_relaxation:
@@ -696,10 +697,10 @@ loss_control:
     recovery_high_vol_penalty: 0.8    # high_vol 時は lot ×0.8 追加縮小 (在庫リスク増大)
     # 246# DD Halt Cooldown Release: halt後一定時間経過でlot縮小付き再開
     # Optimal stopping theory: 無期限 halt の機会損失 > 縮小 lot でのリスク
-    cooldown_release_sec: 7200         # halt後2h(7200s)で部分再開 (0=無効)
+    cooldown_release_sec: 3600         # 370# 2h→1h短縮: 369# Step1 稼働時間確保 (halt=0利益)
     cooldown_release_lot_scale: 0.3    # cooldown再開時lot倍率 (0.3=30%)
     # 249# Cooldown Re-arm: release後の追加損失で再halt (再releaseなし)
-    cooldown_rearm_budget_bps: -10.0   # release後このbps以下で再halt
+    cooldown_rearm_budget_bps: -25.0   # 370# -10→-25: lot30%での-10bpsは過敏 (03-10 11:31に-31bps→即re-arm→5h完全停止)
 
 # ---- 102# チューニングパラメータ (散在マジックナンバーの外部化) ----
 tuning:
