@@ -6,7 +6,7 @@
 | フェーズ | ph2 G1.1-exec |
 | 前提文書 | 128# (dust sweep 初版), 370# §4 (SAC F1/F2), 365# (P1-P8) |
 | 作業日 | 2026-03-10 |
-| コミット | `154bd38b2` (dust sweep), `9ee8b662e` (SAC F1/F2) |
+| コミット | `154bd38b2` (dust sweep), `9ee8b662e` (SAC F1/F2), `c6991afc2` (self-review) |
 
 ---
 
@@ -141,13 +141,31 @@ delta_jpy = round(sidecar_offset_bps / 10000 * order_price)
 既存の `_apply_offset_multiplier()` (乗数ベース) とは独立した bps 直接適用。
 toxicity/trending/velocity offset の後に最終調整として適用。
 
-### §3.3 Deploy Gate 強化 (P1) — 🔲 未着手
+### §3.3 Deploy Gate 強化 (P1) — ✅ 完了
 
-現在: `gross_roi > 0` のみ。
-改善案:
-- Seed stability check (複数 seed で一貫した方向性)
-- Worst-window 検証 (最悪期間の損失が許容範囲内)
-- Sharpe ratio threshold
+**min_trade_count (c6991afc2):**
+OOS 評価中の取引回数が `min_trade_count` (default=3) 未満 → `oos_failed` として棄却。
+取引回数0〜2回で `gross_roi > 0` をパスする偶発的モデルを排除。
+
+**confidence 動的計算 (c6991afc2):**
+```python
+# 修正前: confidence = 1.0 (ハードコード)
+# 修正後:
+gate_threshold = sac_gate_roi_threshold  # default 0.0
+full_roi = confidence_roi_full            # default 0.005
+confidence = clamp((oos_roi - gate_threshold) / (full_roi - gate_threshold), 0.0, 1.0)
+```
+- Gate ギリギリ (`roi ≈ 0`) → `confidence ≈ 0` → sidecar offset 小
+- `roi ≥ 0.005` → `confidence = 1.0` → sidecar offset 全力
+- 低品質モデルが大きなオフセットを適用するリスクを自動抑制
+
+**FillRecord 監査証跡 (c6991afc2):**
+`FillRecord` に `sidecar_offset_bps` / `sidecar_bias` フィールド追加。
+fill_record_builder 経由で記録 → 事後分析で sidecar impact を定量評価可能。
+
+**残存 (deferred):**
+- Seed stability check (複数 seed 一貫性) — 現時点では single-seed
+- Sharpe ratio threshold — eval window が短すぎるため有効性未確認
 
 ---
 
@@ -158,27 +176,31 @@ toxicity/trending/velocity offset の後に最終調整として適用。
 | 1 | F2: `_get_latest_obs()` + signal 推論修正 | ✅ 完了 | env API 変更不要 (current_step 直接操作) |
 | 2 | F1: Gap-1 配線 (orchestrator → gate) | ✅ 完了 | `read_sidecar_signal()` → `evaluate()` |
 | 3 | F1: Gap-2/3 配線 (gate → executor → pricing) | ✅ 完了 | bps 直接適用、乗数独立 |
-| 4 | Deploy gate 強化 | 🔲 未着手 | P1: seed stability + Sharpe threshold |
+| 4 | Deploy gate 強化 | ✅ 完了 | min_trade_count=3 + confidence 動的計算 |
+| 5 | Self-review: FillRecord 監査証跡 | ✅ 完了 | sidecar_offset_bps / sidecar_bias |
 
 ### §4.1 テスト結果
 
 ```
 $ python -m pytest tests/unit/v460/test_sidecar_sac_integration.py -v --no-cov
-51 passed in 0.82s  (13 new: 5 F2 + 7 F1-Gap3 + 1 line-guard)
+63 passed in 0.87s  (25 new: 5 F2 + 7 F1-Gap3 + 1 line-guard + 4 FillRecord + 6 confidence + 2 config)
 
 $ python -m pytest tests/unit/v460/ -q --no-cov
-4480 passed, 33 skipped in 29.66s
+4492 passed, 33 skipped in 25.10s
 ```
 
-### §4.2 変更ファイル (F1/F2)
+### §4.2 変更ファイル (F1/F2 + Self-review)
 
 | ファイル | 変更内容 |
 |---|---|
-| `scripts/v460/ml/sac_retrain_scheduler.py` | `_get_latest_obs()` 追加、`_update_sidecar_signal()` で使用 |
+| `scripts/v460/ml/sac_retrain_scheduler.py` | `_get_latest_obs()` 追加、confidence 動的計算、`min_trade_count` gate |
 | `scripts/v460/lib/orchestrator_mid_cycle.py` | `read_sidecar_signal()` + `sidecar_signal=` パラメータ、`sidecar_offset_bps=` 伝搬 |
-| `scripts/v460/lib/fill_cycle_executor.py` | `sidecar_offset_bps` パラメータ + bps pricing 適用 |
-| `tests/unit/v460/test_sidecar_sac_integration.py` | F2/F1 テスト 13件追加 |
+| `scripts/v460/lib/fill_cycle_executor.py` | `sidecar_offset_bps` パラメータ + bps pricing + FillRecord 記録 |
+| `scripts/v460/lib/fill_record_builder.py` | `sidecar_offset_bps` / `sidecar_bias` パラメータ追加 |
+| `ztb/metrics/fill_quality.py` | `FillRecord` に sidecar フィールド追加 |
+| `tests/unit/v460/test_sidecar_sac_integration.py` | 25 tests (F2/F1/FillRecord/confidence/config) |
 | `tests/unit/v460/test_253_...py` | line-guard 上限 1100→1120 |
+| `tests/unit/v460/test_113_resilience.py` | `run_single_cycle` line-guard 740→755 |
 
 ---
 
@@ -187,3 +209,5 @@ $ python -m pytest tests/unit/v460/ -q --no-cov
 | 日付 | 版 | 内容 |
 |---|---|---|
 | 2026-03-10 | 1.0 | 初版 — dust sweep buy-to-clear + SAC sidecar 監査 |
+| 2026-03-10 | 1.1 | F1/F2 完了記録 |
+| 2026-03-10 | 1.2 | Self-review 修正 — FillRecord 監査証跡 + confidence 動的計算 + Deploy Gate 強化 |
