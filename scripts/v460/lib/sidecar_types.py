@@ -36,8 +36,11 @@ BIAS_THRESHOLD: float = 0.3
 DEFAULT_SIDECAR_BOOST_BPS: float = 0.3
 
 # シグナルの有効期限 (秒)
-# SAC は数分毎に推論 → 10 分 (600s) を超えたら stale
-DEFAULT_SIGNAL_TTL_SEC: float = 600.0
+# 372# fix: retrain_interval=7200s なので TTL も合わせる。
+# 600s では retrain 間の ~92% で stale 判定 → sidecar 事実上無効だった。
+# retrain_interval + 10min buffer = 7800s に延長。
+# scheduler crash 時は 2h10m で signal 自然失効 → safe fallback。
+DEFAULT_SIGNAL_TTL_SEC: float = 7800.0
 
 
 @dataclass(frozen=True, slots=True)
