@@ -222,6 +222,24 @@ class FillTestRunner(
                 f"hysteresis={regime_cfg.hysteresis_count}"
             )
 
+        # 366# M2: Bayesian Regime Filter 初期化 (regime_detector に注入)
+        if config.bayesian_regime_enabled and self._regime_detector is not None:
+            from scripts.v460.lib.bayesian_regime_filter import (
+                BayesianRegimeConfig,
+                BayesianRegimeFilter,
+            )
+
+            bay_cfg = BayesianRegimeConfig(
+                transition_stickiness=config.bayesian_regime_stickiness,
+                emission_lr=config.bayesian_regime_emission_lr,
+            )
+            bayesian_filter = BayesianRegimeFilter(bay_cfg)
+            self._regime_detector.set_bayesian_filter(bayesian_filter)
+            logger.info(
+                f"[M2] Bayesian regime filter enabled: "
+                f"stickiness={bay_cfg.transition_stickiness}"
+            )
+
         # 189# D: MacroRegimeDetector 初期化
         self._macro_regime_detector: Optional["MacroRegimeDetector"] = None
         if config.enable_macro_regime:
@@ -256,6 +274,34 @@ class FillTestRunner(
             yaml_cfg=self._yaml_cfg,
             results_dir=self._results_dir,
         )
+
+        # 366# M3: σ-Clustering 分類器を AdaptationEngine に注入
+        if config.sigma_clustering_enabled:
+            from scripts.v460.lib.sigma_clustering import (
+                VolatilityClusterConfig,
+                VolatilityRegimeClassifier,
+            )
+
+            cluster_cfg = VolatilityClusterConfig(
+                low_threshold=config.sigma_clustering_low_threshold,
+                high_threshold=config.sigma_clustering_high_threshold,
+                extreme_threshold=config.sigma_clustering_extreme_threshold,
+            )
+            self._adaptation_engine.set_sigma_classifier(
+                VolatilityRegimeClassifier(cluster_cfg)
+            )
+            logger.info("[M3] σ-clustering enabled for adaptation")
+
+        # 366# M4: GLFT Fill Probability Model を MakerPrice + AdaptationEngine に注入
+        if config.glft_dynamic_k_enabled:
+            from scripts.v460.lib.fill_probability_model import FillProbabilityModel
+
+            _glft_model = FillProbabilityModel()
+            self._maker_price._fill_prob_model = _glft_model  # type: ignore[attr-defined]
+            self._adaptation_engine.set_fill_prob_model(_glft_model)
+            logger.info("[M4] GLFT dynamic k enabled for AS δ*")
+        else:
+            self._maker_price._fill_prob_model = None  # type: ignore[attr-defined]
 
         # 121# God Object 分割: SkipGateEvaluator に ML 判定を委譲
         self._skip_gate_evaluator = SkipGateEvaluator(config, _PROJECT_ROOT)

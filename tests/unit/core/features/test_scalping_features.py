@@ -12,6 +12,7 @@ from ztb.features.scalping import (
     liquidity_surge,
     micro_trend,
     micro_volatility,
+    momentum_divergence,
     momentum_burst,
     price_acceleration,
     price_velocity,
@@ -255,6 +256,17 @@ class TestScalpingFeatures:
         assert result.iloc[1] == 0.0
         assert result.iloc[2] == pytest.approx(2.0)
         assert result.iloc[3] == pytest.approx(0.25)
+
+    def test_momentum_divergence_matches_fast_minus_slow_change(self):
+        """fast / slow 変化率差分をそのまま返す."""
+        df = pd.DataFrame({"close": [100.0, 110.0, 121.0, 133.1, 146.41]})
+
+        result = momentum_divergence(df, fast_window=2, slow_window=4)
+
+        fast_change = (146.41 - 121.0) / 121.0
+        slow_change = (146.41 - 100.0) / 100.0
+        assert result.iloc[:4].eq(0.0).all()
+        assert result.iloc[4] == pytest.approx(fast_change - slow_change)
 
     def test_micro_volatility_basic(self, sample_dataframe):
         """Test basic micro volatility calculation"""

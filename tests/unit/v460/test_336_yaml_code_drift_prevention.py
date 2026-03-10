@@ -43,6 +43,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "as_delta_star_enabled",
     "as_reservation_enabled",
     "as_tau_dynamic_enabled",
+    "bayesian_regime_enabled",
     "buy_as_guard_enabled",
     "buy_dynamic_kill_enabled",
     "buy_dynamic_kill_inv_relaxation_enabled",
@@ -101,6 +102,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "fast_fill_offset_boost_sell",
     "fast_fill_threshold_sec_buy",
     "fast_fill_threshold_sec_sell",
+    "glft_dynamic_k_enabled",
     "hard_skip_utc_hours",
     "loss_boost_offset_mult",
     "max_consecutive_trending_sell_skip",
@@ -125,6 +127,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "sell_max_spread_jpy",
     "sell_offset_floor",
     "sell_velocity_skip_threshold_bps",
+    "sigma_clustering_enabled",
     "vg_vpin_buy_extra_mult",
     "skip_gate_as_threshold",
     "skip_gate_as_threshold_buy",
@@ -164,6 +167,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "unknown_buy_offset_boost",
     "volatility_guard_velocity_threshold_bps",
     "volatility_guard_vpin_threshold",
+    "vpin_vol_sync_enabled",
     "wide_spread_bps",
 })
 

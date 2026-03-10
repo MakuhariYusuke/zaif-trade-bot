@@ -473,6 +473,38 @@ sigma_parkinson:
   enabled: true                    # 306# 有効化
   window_sec: 300.0                # high/low 追跡ウィンドウ (秒)
 
+# ---- 366# M2: Bayesian Regime Filter (Hamilton 1989) ----
+# 閾値ベース regime 分類をベイズ事後確率で補完。confidence を精緻化。
+# burn-in 期間 (~100 observations) が必要だが、フォールバック付きで安全。
+bayesian_regime:
+  enabled: true                    # 370# 有効化
+  stickiness: 0.90                 # 遷移行列の対角要素割合 (状態持続性)
+  emission_lr: 0.01                # emission パラメータのオンライン学習率
+
+# ---- 366# M3: σ-Clustering (Volatility Regime Classification) ----
+# ボラティリティを 4 段階に分類し、adaptation の step_ratio を動的スケール。
+# LOW→tight(×0.8), MID→unchanged(×1.0), HIGH→wide(×1.3), EXTREME→halt(×2.0)。
+sigma_clustering:
+  enabled: true                    # 370# 有効化
+  low_threshold: 0.6               # LOW ↔ MID 境界 (vol_ratio)
+  high_threshold: 1.5              # MID ↔ HIGH 境界
+  extreme_threshold: 3.0           # HIGH ↔ EXTREME 境界
+
+# ---- 366# M4: GLFT Fill Probability — 動的 k 推定 ----
+# fill_records から到着率 k を回帰推定し、AS δ* の静的 k を動的置換。
+# サンプル不足時はフォールバック値 (as_reservation.delta_star_fill_rate_k) を使用。
+glft_dynamic_k:
+  enabled: true                    # 370# 有効化
+  min_samples: 20                  # 推定に必要な最小サンプル数
+
+# ---- 366# M5: Volume-Sync VPIN (Easley 2012) ----
+# 出来高バケットベースの VPIN。低出来高時のノイズ耐性が向上。
+# 時間バケット VPIN (vpin_60s) を出来高正規化版で置換。
+vpin_vol_sync:
+  enabled: true                    # 370# 有効化
+  bucket_btc: 0.05                 # 1 バケットあたりの出来高 (BTC)
+  n_buckets: 50                    # VPIN 平均に使うバケット数
+
 # ---- 303# none レジーム Passive MM フォールバック ----
 # regime 未確定 (warmup/欠損) 時に 13 段パイプラインをバイパスし固定 offset で指値
 # AS 43% の根本対策 (302# 盲点1): 情報不足時はパッシブに待機

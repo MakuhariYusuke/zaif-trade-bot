@@ -978,4 +978,39 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
     if "offset_ceiling_ratio_sell" in yaml_cfg:
         kwargs["offset_ceiling_ratio_sell"] = float(yaml_cfg["offset_ceiling_ratio_sell"])
 
+    # ---- 366# 市場理論システム M2-M5 ----
+    # M2: Bayesian Regime Filter
+    br = yaml_cfg.get("bayesian_regime", {})
+    if br.get("enabled") is not None:
+        kwargs["bayesian_regime_enabled"] = br["enabled"]
+    if "stickiness" in br:
+        kwargs["bayesian_regime_stickiness"] = float(br["stickiness"])
+    if "emission_lr" in br:
+        kwargs["bayesian_regime_emission_lr"] = float(br["emission_lr"])
+    # M3: σ-Clustering
+    sc = yaml_cfg.get("sigma_clustering", {})
+    if sc.get("enabled") is not None:
+        kwargs["sigma_clustering_enabled"] = sc["enabled"]
+    for yk, ck in {
+        "low_threshold": "sigma_clustering_low_threshold",
+        "high_threshold": "sigma_clustering_high_threshold",
+        "extreme_threshold": "sigma_clustering_extreme_threshold",
+    }.items():
+        if yk in sc:
+            kwargs[ck] = float(sc[yk])
+    # M4: GLFT dynamic k
+    glft = yaml_cfg.get("glft_dynamic_k", {})
+    if glft.get("enabled") is not None:
+        kwargs["glft_dynamic_k_enabled"] = glft["enabled"]
+    if "min_samples" in glft:
+        kwargs["glft_dynamic_k_min_samples"] = int(glft["min_samples"])
+    # M5: Volume-Sync VPIN
+    vvs = yaml_cfg.get("vpin_vol_sync", {})
+    if vvs.get("enabled") is not None:
+        kwargs["vpin_vol_sync_enabled"] = vvs["enabled"]
+    if "bucket_btc" in vvs:
+        kwargs["vpin_vol_sync_bucket_btc"] = float(vvs["bucket_btc"])
+    if "n_buckets" in vvs:
+        kwargs["vpin_vol_sync_n_buckets"] = int(vvs["n_buckets"])
+
     return _FillTestConfig(**kwargs)

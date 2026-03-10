@@ -84,6 +84,8 @@ from ztb.metrics.fill_quality import (
 )
 
 from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.fill_probability_model import FillProbabilityModel
+from scripts.v460.lib.sigma_clustering import VolatilityRegimeClassifier
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +119,8 @@ class AdaptationEngine:
         "_results_dir",
         "_cached_records",
         "_cache_ts",
+        "_sigma_classifier",
+        "_fill_prob_model",
     )
 
     def __init__(
@@ -131,6 +135,10 @@ class AdaptationEngine:
         # 120# メモリリーク修正: レコードキャッシュ (TTL ベース)
         self._cached_records: list[FillRecord] | None = None
         self._cache_ts: float = 0.0
+        # 366# M3: σ-clustering 分類器 (オプショナル)
+        self._sigma_classifier: VolatilityRegimeClassifier | None = None
+        # 366# M4: GLFT fill probability model (オプショナル)
+        self._fill_prob_model: FillProbabilityModel | None = None
 
     def _load_clean_records(self) -> list[FillRecord]:
         """clean レコードを TTL キャッシュ付きでロード (メモリリーク修正).
@@ -154,11 +162,66 @@ class AdaptationEngine:
         self._cached_records = None
         self._cache_ts = 0.0
 
+    def set_sigma_classifier(self, classifier: VolatilityRegimeClassifier) -> None:
+        """366# M3: σ-clustering 分類器を注入."""
+        self._sigma_classifier = classifier
+        logger.info("[AdaptationEngine] σ-clustering classifier injected")
+
+    def set_fill_prob_model(self, model: FillProbabilityModel) -> None:
+        """366# M4: GLFT fill probability model を注入."""
+        self._fill_prob_model = model
+        logger.info("[AdaptationEngine] GLFT fill probability model injected")
+
+    def _calibrate_fill_prob_model(self, records: list[FillRecord]) -> None:
+        """366# M4: fill_records から GLFT A/k を再推定.
+
+        adapt サイクルごとに呼ばれ、effective_offset_used と filled から
+        FillProbabilityModel のパラメータを OLS 対数回帰で更新する。
+        """
+        import numpy as np
+
+        model = self._fill_prob_model
+        if model is None:
+            return
+
+        min_samples = self._config.glft_dynamic_k_min_samples
+
+        # effective_offset_used が記録されたレコードのみ使用
+        offsets: list[float] = []
+        filled: list[bool] = []
+        for r in records:
+            if r.effective_offset_used is not None:
+                offsets.append(r.effective_offset_used)
+                filled.append(r.filled)
+
+        if len(offsets) < min_samples:
+            logger.debug(
+                f"[M4] GLFT calibration skipped: "
+                f"samples={len(offsets)} < min={min_samples}"
+            )
+            return
+
+        try:
+            est = model.fit(
+                np.array(offsets, dtype=np.float64),
+                np.array(filled, dtype=bool),
+            )
+            logger.info(
+                f"[M4] GLFT calibrated: A={est.A:.4f}, k={est.k:.2f}, "
+                f"R²={est.r_squared:.3f}, n={est.n_samples}, "
+                f"fallback={est.is_fallback}"
+            )
+        except Exception as e:
+            logger.warning(f"[M4] GLFT calibration failed (non-fatal): {e}")
+
     # ------------------------------------------------------------------
     # YAML 設定からの kwargs 構築
     # ------------------------------------------------------------------
-    def _build_adapt_kwargs(self) -> dict:
-        """YAML adaptation セクションから AdaptationConfig 用 kwargs を構築."""
+    def _build_adapt_kwargs(self, *, regime_detector: RegimeDetectorLike | None = None) -> dict:
+        """YAML adaptation セクションから AdaptationConfig 用 kwargs を構築.
+
+        366# M3: σ-clustering 有効時は vol_ratio に応じて step_ratio を動的スケール。
+        """
         adapt_yaml = self._yaml_cfg.get("adaptation", {})
         kwargs: dict = {}
         key_map = {
@@ -172,6 +235,19 @@ class AdaptationEngine:
         for yaml_key, config_key in key_map.items():
             if yaml_key in adapt_yaml:
                 kwargs[config_key] = adapt_yaml[yaml_key]
+
+        # 366# M3: σ-clustering による step_ratio 動的スケーリング
+        if self._sigma_classifier is not None and regime_detector is not None:
+            vol_ratio = regime_detector.last_volatility_ratio
+            self._sigma_classifier.classify(vol_ratio)
+            scale = self._sigma_classifier.current_offset_mult
+            if "step_ratio" in kwargs:
+                kwargs["step_ratio"] = kwargs["step_ratio"] * scale
+            logger.debug(
+                f"[σ-cluster] {self._sigma_classifier.current_cluster.value} "
+                f"step_ratio scale={scale:.2f}"
+            )
+
         return kwargs
 
     def _build_lot_kwargs(self) -> dict:
@@ -250,6 +326,9 @@ class AdaptationEngine:
             if len(records) < cfg.min_adapt_samples:
                 return result
 
+            # 366# M4: GLFT fill probability calibration
+            self._calibrate_fill_prob_model(records)
+
             # 088# side 分離
             buy_records = [r for r in records if r.side == "buy"]
             sell_records = [r for r in records if r.side == "sell"]
@@ -274,11 +353,11 @@ class AdaptationEngine:
 
                 buy_config = AdaptationConfig(
                     current_offset_ratio=buy_offset,
-                    **self._build_adapt_kwargs(),
+                    **self._build_adapt_kwargs(regime_detector=regime_detector),
                 )
                 sell_config = AdaptationConfig(
                     current_offset_ratio=sell_offset,
-                    **self._build_adapt_kwargs(),
+                    **self._build_adapt_kwargs(regime_detector=regime_detector),
                 )
 
                 side_result = compute_side_adaptation(
@@ -345,7 +424,7 @@ class AdaptationEngine:
 
                 adapt_config = AdaptationConfig(
                     current_offset_ratio=base_offset_ratio,
-                    **self._build_adapt_kwargs(),
+                    **self._build_adapt_kwargs(regime_detector=regime_detector),
                 )
                 adapt_result = compute_adaptation(
                     fill_rate=metrics.fill_rate_p90,

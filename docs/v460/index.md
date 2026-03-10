@@ -357,6 +357,11 @@
 | 361 | rev | [361_ph2_rev_351_360_ph3_readiness_and_profit_priority_review.md](361_ph2_rev_351_360_ph3_readiness_and_profit_priority_review.md) | Codex レビュー: 351-360 ph3 移行妥当性 + 利益最優先再整理 |
 | 362 | rev | [362_gemini_final_answer_profit_architecture.md](362_gemini_final_answer_profit_architecture.md) | Gemini 3.1 Pro レビュー: 収益最大化アーキテクチャ + Sidecar 提案 |
 | 363 | rev | [363_ph2_rev_361_362_review_validation.md](363_ph2_rev_361_362_review_validation.md) | 361/362 AI レビュー妥当性検証: コード検証 + 統合アクション + Codex メモリ診断プロンプト |
+| 364 | rpt | [364_ph2_sha_analysis_tune3.md](364_ph2_sha_analysis_tune3.md) | SHA別分析レポート + TUNE-3 SDK閾値緩和 |
+| 365 | plan | [365_ph3_design_sac_sidecar_and_env_obstacles.md](365_ph3_design_sac_sidecar_and_env_obstacles.md) | ph3 設計: SAC Sidecar アーキテクチャ + HeavyTradingEnv 阻害要因分析 |
+| 366 | rpt | [366_ph3_market_theory_proposals_and_tech_debt.md](366_ph3_market_theory_proposals_and_tech_debt.md) | 市場理論システム提案 + 技術課題 + 計算高速化 |
+| 367 | rpt | [367_ph2_deep_analysis_360_ai_review.md](367_ph2_deep_analysis_360_ai_review.md) | ph2 深堀り分析: 360# AIレビュー準備 |
+| 368 | rev | [368_ph2_rev_362_367_sac_linkage_and_urgent_blockers.md](368_ph2_rev_362_367_sac_linkage_and_urgent_blockers.md) | 362#-367# レビュー: SAC接続・市場理論・緊急ブロッカー再整理 |
 | 363 | rev | [363_ph2_rev_361_362_review_validation.md](363_ph2_rev_361_362_review_validation.md) | 361/362 AI レビュー妥当性検証: コード検証 + 統合アクション + Codex メモリ診断プロンプト |
 | 361 | rev | [361_ph2_rev_351_360_ph3_readiness_and_profit_priority_review.md](361_ph2_rev_351_360_ph3_readiness_and_profit_priority_review.md) | 351#–360# レビュー: ph3 gate の in-sample 問題, E2 `ic_seed_std` 空洞化, ph2 live 問題との不整合, mixed-SHA 集計の補正, profit-first の次手整理 |
 

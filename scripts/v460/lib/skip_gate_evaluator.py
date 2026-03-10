@@ -18,6 +18,8 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, cast
 
+import numpy as np
+
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import FillTestConfig, SkipGateResult
 from scripts.v460.lib.hour_rules import resolve_hour_float, utc_hour_from_timestamp
@@ -1113,8 +1115,21 @@ class SkipGateEvaluator:
             )
 
             # 107# Volatility Guard: VPIN キャッシュ
+            # 366# M5: Volume-Sync VPIN (Easley 2012) — vpin_vol_sync_enabled 時は
+            # 出来高バケット VPIN で置換。低出来高時のノイズ耐性が向上。
+            vpin_value = gate_features.get("vpin_60s")
+            if (
+                self._config.vpin_vol_sync_enabled
+                and recent_trades_data
+                and len(recent_trades_data) >= 5
+            ):
+                try:
+                    vpin_value = self._compute_vol_sync_vpin(recent_trades_data)
+                    gate_features["vpin_60s"] = vpin_value
+                except Exception:
+                    pass  # フォールバック: time-based VPIN を維持
             if maker_price_vpin_setter is not None and callable(maker_price_vpin_setter):
-                maker_price_vpin_setter(gate_features.get("vpin_60s"))
+                maker_price_vpin_setter(vpin_value)
 
             # 165# AS-R1: velocity-based pre-ML sell/buy skip rule
             # 195# ソフト化: velocity_skip_as_offset_enabled 時は hard skip せず offset boost
@@ -1311,3 +1326,37 @@ class SkipGateEvaluator:
             result.reason = f"error:{e}"
 
         return result
+
+    # ------------------------------------------------------------------
+    # 366# M5: Volume-Sync VPIN ヘルパー
+    # ------------------------------------------------------------------
+    def _compute_vol_sync_vpin(self, trades: list[dict]) -> float:
+        """recent_trades から Volume-Sync VPIN を計算.
+
+        Easley-López de Prado (2012) 出来高バケット VPIN。
+        """
+        from scripts.v460.lib.vpin_volume_sync import (
+            NEUTRAL_VPIN,
+            compute_vpin_volume_sync,
+        )
+
+        if not trades:
+            return NEUTRAL_VPIN
+
+        # 累積配列を構築 (長さ N+1, [0]=0.0)
+        n = len(trades)
+        cum_total = np.zeros(n + 1, dtype=np.float64)
+        cum_buy = np.zeros(n + 1, dtype=np.float64)
+        for i, t in enumerate(trades):
+            amount = max(float(t.get("amount", 0.0)), 0.0)  # 負値ガード
+            cum_total[i + 1] = cum_total[i] + amount
+            is_buy = t.get("side", "").lower() in ("buy", "bid")
+            cum_buy[i + 1] = cum_buy[i] + (amount if is_buy else 0.0)
+
+        return compute_vpin_volume_sync(
+            cumulative_total_volume=cum_total,
+            cumulative_buy_volume=cum_buy,
+            end_index=n,
+            bucket_size=self._config.vpin_vol_sync_bucket_btc,
+            n_buckets=self._config.vpin_vol_sync_n_buckets,
+        )

@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
+    from scripts.v460.lib.fill_probability_model import FillProbabilityModel
     from scripts.v460.lib.regime_detector import RegimeDetectorLike
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,7 @@ class MicrostructureMixin:
     # --- type stubs for mixin dependencies ---
     _config: FillTestConfig
     _regime_detector: RegimeDetectorLike | None
+    _fill_prob_model: FillProbabilityModel | None
     _last_bid_depth: float
     _last_ask_depth: float
     _mid_high: float
@@ -212,7 +214,14 @@ class MicrostructureMixin:
         # リターンベース (無次元) なので σ_abs = σ_return × mid_price に変換。
         # δ* (JPY) → offset_ratio = δ* / spread で変換。
         if cfg.as_delta_star_enabled and gamma > 0:
-            k = cfg.as_delta_star_fill_rate_k
+            # 366# M4: GLFT Fill Probability — 動的 k (有効時)
+            k = cfg.as_delta_star_fill_rate_k  # フォールバック
+            if (
+                getattr(self, "_fill_prob_model", None) is not None
+                and cfg.glft_dynamic_k_enabled
+                and self._fill_prob_model.k > 0  # type: ignore[union-attr]
+            ):
+                k = self._fill_prob_model.k  # type: ignore[union-attr]
             if k > 0:
                 sigma_abs = sigma * mid_price  # リターン → 絶対価格 (JPY)
                 sigma_abs_sq = sigma_abs * sigma_abs

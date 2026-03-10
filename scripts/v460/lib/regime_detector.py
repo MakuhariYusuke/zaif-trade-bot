@@ -36,9 +36,15 @@ import math
 from collections import Counter, deque
 from dataclasses import dataclass
 from enum import Enum
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from scripts.v460.lib.bayesian_regime_filter import (
+        BayesianRegimeFilter,
+        BayesianRegimeResult,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -235,6 +241,9 @@ class FillTestRegimeDetector:
         # C2 fix: 実際に add した return 値を deque に保持し、正確な remove を保証
         self._window_returns: deque[float] = deque()
         self._all_returns: deque[float] = deque()
+        # 366# M2: Bayesian Regime Filter (オプショナル)
+        self._bayesian_filter: BayesianRegimeFilter | None = None
+        self._last_bayesian_result: BayesianRegimeResult | None = None
 
     @property
     def current_regime(self) -> FillTestRegime:
@@ -259,6 +268,18 @@ class FillTestRegimeDetector:
     def observation_count(self) -> int:
         """蓄積済み観測数."""
         return len(self._prices)
+
+    @property
+    def bayesian_offset_multiplier(self) -> float:
+        """366# M2: ベイズ事後確率加重の offset 乗数 (未配線時は 1.0)."""
+        if self._last_bayesian_result is not None:
+            return self._last_bayesian_result.offset_multiplier
+        return 1.0
+
+    def set_bayesian_filter(self, bf: BayesianRegimeFilter) -> None:
+        """366# M2: Bayesian Regime Filter を注入."""
+        self._bayesian_filter = bf
+        logger.info("[Regime] Bayesian filter injected")
 
     def update(self, timestamp: float, mid_price: float) -> RegimeResult:
         """新しい mid_price を投入し、レジーム判定を更新.
@@ -328,6 +349,22 @@ class FillTestRegimeDetector:
             trend_pct=trend_pct,
             volatility_ratio=vol_ratio,
         )
+
+        # 366# M2: Bayesian filter で confidence を補完
+        if self._bayesian_filter is not None and prev_price is not None and prev_price > 0:
+            ret = (mid_price - prev_price) / prev_price
+            bay_result = self._bayesian_filter.update(ret)
+            self._last_bayesian_result = bay_result
+            # ベイズ事後確率の MAP 確率で confidence を補正 (加重平均)
+            bayes_conf = bay_result.map_probability
+            result = RegimeResult(
+                regime=confirmed,
+                confidence=0.6 * confidence + 0.4 * bayes_conf,
+                stability=self._stability_count,
+                trend_pct=trend_pct,
+                volatility_ratio=vol_ratio,
+            )
+
         # 168# §9.10: maker_price 低 vol boost 用にキャッシュ
         self._last_result = result
         return result
@@ -590,13 +627,18 @@ class FillTestRegimeDetector:
         """永続化用の状態辞書を返す.
 
         FillTestStatePersistence に保存して再起動時の warm-up を省略.
+        366# M2: Bayesian filter 状態も含める。
         """
-        return {
+        state: dict = {
             "confirmed": self._confirmed_regime.value,
             "stability": self._stability_count,
             "prices": list(self._prices),  # [(ts, price), ...]
             "raw_history": [r.value for r in self._raw_history],
         }
+        # 366# M2: Bayesian filter state persistence
+        if self._bayesian_filter is not None:
+            state["bayesian_filter"] = self._bayesian_filter.get_state()
+        return state
 
     def restore_state(self, state: dict) -> bool:
         """永続化された状態から復元. 成功時 True.
@@ -617,6 +659,15 @@ class FillTestRegimeDetector:
 
             raw_history = state.get("raw_history", [])
             self._raw_history = [FillTestRegime(v) for v in raw_history]
+
+            # 366# M2: Bayesian filter state restoration
+            bayes_state = state.get("bayesian_filter")
+            if bayes_state is not None and self._bayesian_filter is not None:
+                ok = self._bayesian_filter.restore_state(bayes_state)
+                if ok:
+                    logger.info("[Regime] Bayesian filter state restored")
+                else:
+                    logger.warning("[Regime] Bayesian filter state restore failed — using fresh prior")
 
             logger.info(
                 f"[Regime] state restored: regime={self._confirmed_regime.value}, "

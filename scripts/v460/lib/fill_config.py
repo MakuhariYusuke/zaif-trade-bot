@@ -469,6 +469,21 @@ class FillTestConfig:
     vpin_vol_sync_enabled: bool = False      # True で volume-sync VPIN 有効化
     vpin_vol_sync_bucket_btc: float = 0.05   # 1 バケットあたりの出来高 (BTC)
     vpin_vol_sync_n_buckets: int = 50        # 平均に使うバケット数
+    # ---- 366# M2: Bayesian Regime Filter (Hamilton 1989) ----
+    # 閾値ベース regime 分類をベイズ事後確率で補完。confidence を精緻化。
+    bayesian_regime_enabled: bool = False    # True で Bayesian filter 有効化
+    bayesian_regime_stickiness: float = 0.90 # 遷移行列の対角要素割合 (状態持続性)
+    bayesian_regime_emission_lr: float = 0.01  # emission パラメータのオンライン学習率
+    # ---- 366# M3: σ-Clustering (Vol Regime Classification) ----
+    # ボラティリティを 4 段階に分類し、adaptation の step_ratio を動的調整。
+    sigma_clustering_enabled: bool = False   # True で σ-clustering 有効化
+    sigma_clustering_low_threshold: float = 0.6   # LOW ↔ MID 境界 (vol_ratio)
+    sigma_clustering_high_threshold: float = 1.5  # MID ↔ HIGH 境界
+    sigma_clustering_extreme_threshold: float = 3.0  # HIGH ↔ EXTREME 境界
+    # ---- 366# M4: GLFT Fill Probability — 動的 k 推定 ----
+    # fill_records から到着率 k を回帰推定し、AS δ* の静的 k を動的置換。
+    glft_dynamic_k_enabled: bool = False     # True で動的 k 推定有効化
+    glft_dynamic_k_min_samples: int = 20     # 推定に必要な最小サンプル数
     # 211# P1-B: Micro Circuit Breaker (短期価格急変の自動検知・防御)
     mcb_enabled: bool = False
     mcb_caution_sigma: float = 1.0
