@@ -5,6 +5,7 @@ BalanceChecker の端数BTC一掃機能をテスト:
 - apply_lot_floor が dust sweep 中にスキップされる
 - サイクル後のロット復元
 - dust_sweep_enabled=false で無効化
+- 372# buy-to-clear: micro-dust の buy 経由解消
 """
 
 from __future__ import annotations
@@ -111,6 +112,8 @@ class TestDustSweepDetection:
 
         assert skip, "min_order_btc 未満は sell スキップ"
         assert not checker.dust_sweep_active
+        # 372# micro-dust → dust_buy_pending が有効になる
+        assert checker.dust_buy_pending
 
     @pytest.mark.asyncio
     async def test_buy_side_unaffected(self) -> None:
@@ -262,3 +265,138 @@ class TestDustSweepEdgeCases:
         assert checker.current_lot == pytest.approx(0.001995, abs=1e-9)
         checker.restore_lot_after_dust_sweep()
         assert checker.current_lot == 0.001
+
+
+class TestDustBuyToClear:
+    """372# dust buy-to-clear テスト."""
+
+    @pytest.mark.asyncio
+    async def test_micro_dust_sets_buy_pending(self) -> None:
+        """btc_free < min_order_btc で dust_buy_pending が有効になる."""
+        config = _make_config()
+        checker = BalanceChecker(config)
+        adapter = _make_adapter(btc_free=0.00042)
+
+        skip = await checker.check("sell", adapter, "btc_jpy")
+
+        assert skip, "min_order 未満は sell スキップ"
+        assert checker.dust_buy_pending
+        assert not checker.dust_sweep_active  # buy はまだ
+
+    @pytest.mark.asyncio
+    async def test_zero_balance_no_buy_pending(self) -> None:
+        """btc_free = 0 では buy_pending にならない (dust なし)."""
+        config = _make_config()
+        checker = BalanceChecker(config)
+        adapter = _make_adapter(btc_free=0.0)
+
+        skip = await checker.check("sell", adapter, "btc_jpy")
+
+        assert skip
+        assert not checker.dust_buy_pending
+
+    @pytest.mark.asyncio
+    async def test_dust_disabled_no_buy_pending(self) -> None:
+        """dust_sweep_enabled=False では buy_pending にならない."""
+        config = _make_config(dust_sweep_enabled=False)
+        checker = BalanceChecker(config)
+        adapter = _make_adapter(btc_free=0.00042)
+
+        skip = await checker.check("sell", adapter, "btc_jpy")
+
+        assert skip
+        assert not checker.dust_buy_pending
+
+    def test_prepare_dust_buy(self) -> None:
+        """prepare_dust_buy でロットが min_order_btc になる."""
+        config = _make_config(order_quantity=0.003)
+        checker = BalanceChecker(config)
+
+        checker.prepare_dust_buy()
+
+        assert checker.current_lot == 0.001
+        assert checker.dust_sweep_active  # lot floor スキップ用
+
+    def test_prepare_and_restore_dust_buy(self) -> None:
+        """prepare → restore でロットが元に戻る."""
+        config = _make_config(order_quantity=0.003)
+        checker = BalanceChecker(config)
+
+        checker.prepare_dust_buy()
+        assert checker.current_lot == 0.001
+
+        checker.restore_lot_after_dust_sweep()
+        assert checker.current_lot == 0.003
+        assert not checker.dust_sweep_active
+
+    def test_clear_dust_buy_pending(self) -> None:
+        """clear_dust_buy_pending でフラグがクリアされる."""
+        config = _make_config()
+        checker = BalanceChecker(config)
+        checker._dust_buy_pending = True
+
+        checker.clear_dust_buy_pending()
+
+        assert not checker.dust_buy_pending
+
+    @pytest.mark.asyncio
+    async def test_buy_pending_cleared_when_sell_possible(self) -> None:
+        """sell が可能になったら dust_buy_pending が自動クリアされる."""
+        config = _make_config()
+        checker = BalanceChecker(config)
+
+        # まず micro-dust で pending 有効化
+        adapter_dust = _make_adapter(btc_free=0.00042)
+        await checker.check("sell", adapter_dust, "btc_jpy")
+        assert checker.dust_buy_pending
+
+        # buy 後に十分な BTC → sell チェックで pending クリア
+        adapter_ok = _make_adapter(btc_free=0.00142)
+        skip = await checker.check("sell", adapter_ok, "btc_jpy")
+        assert not skip, "0.001 以上あるので sell 可能"
+        assert not checker.dust_buy_pending, "sell 可能なら pending 解除"
+        assert checker.dust_sweep_active, "dust sweep が発動する"
+
+    @pytest.mark.asyncio
+    async def test_full_buy_to_clear_cycle(self) -> None:
+        """完全な buy-to-clear フロー: dust → buy → sell all → clean.
+
+        Phase 1: micro-dust 検出
+        Phase 2: prepare_dust_buy → buy 0.001
+        Phase 3: restore lot → clear pending
+        Phase 4: sell check with dust + bought → dust_sweep sells all
+        Phase 5: restore → clean state
+        """
+        config = _make_config(order_quantity=0.003)
+        checker = BalanceChecker(config)
+        dust_amount = 0.00042
+
+        # Phase 1: micro-dust 検出
+        adapter1 = _make_adapter(btc_free=dust_amount)
+        skip = await checker.check("sell", adapter1, "btc_jpy")
+        assert skip
+        assert checker.dust_buy_pending
+
+        # Phase 2: prepare buy (orchestrator_balance が呼ぶ)
+        checker.prepare_dust_buy()
+        assert checker.current_lot == 0.001
+        assert checker.dust_sweep_active
+
+        # Phase 3: buy cycle 完了後 (orchestrator_mid が呼ぶ)
+        checker.restore_lot_after_dust_sweep()
+        assert checker.current_lot == 0.003  # 元のロットに復元
+        assert not checker.dust_sweep_active
+        checker.clear_dust_buy_pending()
+        assert not checker.dust_buy_pending
+
+        # Phase 4: 次の sell — btc_free = dust + bought
+        btc_after_buy = dust_amount + 0.001  # 0.00142
+        adapter2 = _make_adapter(btc_free=btc_after_buy)
+        skip = await checker.check("sell", adapter2, "btc_jpy")
+        assert not skip
+        assert checker.dust_sweep_active  # dust があるので全額売却
+        assert checker.current_lot == pytest.approx(btc_after_buy, abs=1e-9)
+
+        # Phase 5: sell 完了 → 復元
+        checker.restore_lot_after_dust_sweep()
+        assert not checker.dust_sweep_active

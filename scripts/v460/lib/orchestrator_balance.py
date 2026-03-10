@@ -8,6 +8,7 @@ OrchestratorBalanceMixin に分離。
   - 残高 pre-flight check (current side + opposite side 試行)
   - Inventory Escape Mode (269#)
   - Preflight failure handling (balance_shrink, pause, safe_stop)
+  - 372# dust buy-to-clear: micro-dust 検出時の buy 準備
 
 市場理論的位置づけ:
   **Inventory Risk Management** (Stoll 1978, Ho & Stoll 1981):
@@ -83,6 +84,10 @@ class OrchestratorBalanceMixin:
             self._last_side = opposite
             self._preflight_skip_count = 0
             tried_opposite = True
+
+            # 372# dust buy-to-clear: micro-dust → buy 最小ロット
+            if self._balance_checker.dust_buy_pending:
+                self._balance_checker.prepare_dust_buy()
 
             # 348# per-side halt 再チェック (balance_forced 撤廃)
             if self._daily_drawdown_guard.is_side_halted(next_side):

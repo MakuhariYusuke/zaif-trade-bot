@@ -3,12 +3,15 @@
 FillTestRunner から残高 pre-flight チェック + ロット自動縮小を分離。
 041# 残高チェック / 052# ロット縮小 / 101# 残高回復ロジックを統合。
 128# dust_sweep: 端数 BTC 一掃売却 (sell 時に全BTC売却で最小取引金額未満の残留を解消)。
+372# dust buy-to-clear: btc_free < min_order_btc の micro-dust を
+     buy 0.001 → sell 全額の自動2サイクルで解消。
 
 責務:
   - buy/sell 残高の事前検証
   - 残高不足時のロット自動縮小 (0.001 BTC 単位)
   - 残高回復時のロット復元
   - 128# sell 時 dust 込み全額売却
+  - 372# micro-dust buy-to-clear (sell 不能端数の buy 経由解消)
 """
 
 from __future__ import annotations
@@ -53,6 +56,8 @@ class BalanceChecker:
         # 128# dust sweep 状態
         self._dust_sweep_active: bool = False
         self._pre_dust_lot: float = config.order_quantity
+        # 372# dust buy-to-clear 状態
+        self._dust_buy_pending: bool = False
         # 166# HF3: Insufficient 警告クールダウン (side別)
         self._insufficient_cooldown_sec: float = 120.0  # 同一 side 2分間抑制
         self._last_insufficient_log: dict[str, float] = {}  # side -> timestamp
@@ -90,6 +95,11 @@ class BalanceChecker:
     def dust_sweep_active(self) -> bool:
         """128# dust sweep がアクティブか."""
         return self._dust_sweep_active
+
+    @property
+    def dust_buy_pending(self) -> bool:
+        """372# dust buy-to-clear が保留中か."""
+        return self._dust_buy_pending
 
     @property
     def pre_shrink_lot(self) -> float:
@@ -151,6 +161,8 @@ class BalanceChecker:
                     f"ロット自動縮小: {old_lot:.4f} → {new_lot:.4f} BTC"
                 )
                 # 128# 縮小後も dust sweep 判定を通過させる
+                # 372# sell 可能になったら dust_buy_pending 解除
+                self._dust_buy_pending = False
                 return self._maybe_dust_sweep(btc_free)
             self._log_insufficient(
                 "sell",
@@ -159,7 +171,19 @@ class BalanceChecker:
                 f"(regime_mult={regime_mult:.2f}). "
                 f"Skipping sell → will retry buy next.",
             )
+            # 372# micro-dust buy-to-clear: min_order 未満だが残高 > 0 → buy 経由で解消
+            if btc_free > 1e-9 and self._config.dust_sweep_enabled:
+                if not self._dust_buy_pending:
+                    logger.info(
+                        f"[dust_sweep] Micro-dust {btc_free:.8f} BTC detected "
+                        f"(< min_order {self._min_order_btc}). "
+                        f"Scheduling buy-to-clear."
+                    )
+                self._dust_buy_pending = True
             return True
+
+        # 372# sell 可能 → dust_buy_pending 解除
+        self._dust_buy_pending = False
 
         # 101# §6: 残高が十分な場合、以前の縮小から復元
         # 145# §8-#1: 復元時もレジーム倍率を考慮
@@ -304,6 +328,27 @@ class BalanceChecker:
             logger.info(
                 f"[dust_sweep] Lot restored: {old_lot:.8f} → {self._current_lot:.4f} BTC"
             )
+
+    def prepare_dust_buy(self) -> None:
+        """372# dust buy-to-clear: buy ロットを min_order_btc に設定.
+
+        micro-dust 解消のため最小ロットで buy 注文を出す。
+        buy 完了後に restore_lot_after_dust_sweep() でロット復元される。
+        """
+        if not self._dust_sweep_active:
+            self._pre_dust_lot = self._current_lot
+        self._current_lot = self._min_order_btc
+        self._dust_sweep_active = True  # apply_lot_floor スキップ
+        logger.info(
+            f"[dust_sweep] Buy-to-clear: lot={self._min_order_btc} BTC "
+            f"(original={self._pre_dust_lot:.4f})"
+        )
+
+    def clear_dust_buy_pending(self) -> None:
+        """372# dust buy-to-clear 完了: pending フラグをクリア."""
+        if self._dust_buy_pending:
+            self._dust_buy_pending = False
+            logger.info("[dust_sweep] Buy-to-clear pending cleared.")
 
     def restore_lot_on_success(self) -> None:
         """051# P2-3: 成功時に balance_shrink を解除し、ロットを原値に復元."""

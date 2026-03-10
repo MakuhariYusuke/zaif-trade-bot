@@ -414,6 +414,15 @@ class OrchestratorMidCycleMixin:
 
         self._balance_checker.restore_lot_after_dust_sweep()
 
+        # 372# dust buy-to-clear: buy 完了 → 次サイクルで sell 強制
+        if self._balance_checker.dust_buy_pending and next_side == "buy":
+            self._balance_checker.clear_dust_buy_pending()
+            self._side_selector.rapid_exit_side = "sell"
+            logger.info(
+                "[dust_sweep] Buy-to-clear completed. "
+                "Forcing sell next cycle for dust sweep."
+            )
+
         # 265# extract: post-cycle + adaptation
         self._process_post_cycle(record, next_side, st)
         await self._log_progress_and_adapt(next_side, st)
