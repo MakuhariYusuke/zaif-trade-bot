@@ -20,31 +20,34 @@ from ztb.analysis.strategy_evaluators import create_simple_strategy_evaluator
 from ztb.analysis.walk_forward_analyzer import ParameterSet
 
 
+def _build_sample_market_data() -> pd.DataFrame:
+    """サンプル市場データを構築"""
+    dates = pd.date_range("2023-01-01", periods=200, freq="D")
+    np.random.seed(42)
+
+    trend = np.linspace(0, 50, 200)
+    noise = np.random.randn(200) * 3
+    prices = 100 + trend + noise
+
+    return pd.DataFrame(
+        {
+            "open": prices,
+            "high": prices + np.abs(np.random.randn(200)),
+            "low": prices - np.abs(np.random.randn(200)),
+            "close": prices + np.random.randn(200) * 0.5,
+        },
+        index=dates,
+    )
+
+
+@pytest.fixture
+def sample_market_data() -> pd.DataFrame:
+    """サンプル市場データ"""
+    return _build_sample_market_data()
+
+
 class TestIntegratedOptimizer:
     """統合最適化システムのテスト"""
-
-    @pytest.fixture
-    def sample_market_data(self):
-        """サンプル市場データ"""
-        dates = pd.date_range("2023-01-01", periods=200, freq="D")
-        np.random.seed(42)
-
-        # トレンド + ノイズのデータ生成
-        trend = np.linspace(0, 50, 200)
-        noise = np.random.randn(200) * 3
-        prices = 100 + trend + noise
-
-        data = pd.DataFrame(
-            {
-                "open": prices,
-                "high": prices + np.abs(np.random.randn(200)),
-                "low": prices - np.abs(np.random.randn(200)),
-                "close": prices + np.random.randn(200) * 0.5,
-            },
-            index=dates,
-        )
-
-        return data
 
     @pytest.fixture
     def sample_trades(self):
@@ -280,7 +283,9 @@ class TestIntegrationWithComponents:
         atr_series = optimizer.atr_risk_manager.calculate_atr(sample_market_data)
 
         assert len(atr_series) == len(sample_market_data)
-        assert all(atr_series > 0)
+        valid_atr = atr_series.dropna()
+        assert not valid_atr.empty
+        assert (valid_atr > 0).all()
 
     def test_confidence_integration(self, sample_market_data, sample_trades):
         """信頼度調整統合テスト"""

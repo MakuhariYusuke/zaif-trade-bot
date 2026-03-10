@@ -14,7 +14,6 @@ import pyarrow.parquet as pq
 import pytest
 import yaml
 
-from scripts.v460.lib.data_loader import load_parquet
 from scripts.v460.lib.tasks.sac_train import SACTrainModelProtocol, _create_training_env
 from ztb.training.algorithms.sac import SACAlgorithm
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
@@ -47,7 +46,18 @@ def _load_g2_real_df() -> pd.DataFrame:
     selected = cfg["features"]["selected"]
     if not isinstance(selected, list):
         raise TypeError("features.selected must be list")
-    return load_parquet(data_path, feature_cols=[str(col) for col in selected]).head(_G2_REAL_ROWS)
+    columns = sorted({*(str(col) for col in selected), "close"})
+    parquet_file = pq.ParquetFile(str(data_path))
+    first_batch = next(
+        parquet_file.iter_batches(
+            batch_size=_G2_REAL_ROWS,
+            columns=columns,
+        ),
+        None,
+    )
+    if first_batch is None:
+        return pd.DataFrame(columns=columns)
+    return first_batch.to_pandas()
 
 
 @lru_cache(maxsize=1)

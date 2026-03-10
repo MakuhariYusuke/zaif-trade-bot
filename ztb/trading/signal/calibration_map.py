@@ -218,6 +218,20 @@ class CalibrationGate:
         stats_fb = stats_bundle["fallback"]
         n_min = stats_bundle["n_min"]
 
+        # 2. Estimate Cost first so invalid market/order inputs always fail closed.
+        cost = self._estimate_cost(market_data, rl_action, size_to_use)
+        if not math.isfinite(cost):
+            return {
+                "should_enter": False,
+                "ev": float("-inf"),
+                "ev_l1": float("-inf"),
+                "ev_fb": float("-inf"),
+                "lambda_val": 1.0 if n_min <= EPSILON else 0.0,
+                "cost": cost,
+                "stats": stats_l1,
+                "stats_fallback": stats_fb,
+            }
+
         # If no data, allow entry for initial exploration
         if stats_l1.get("n_eff", 0.0) < EPSILON and stats_fb.get("n_eff", 0.0) < EPSILON:
             return {
@@ -225,14 +239,11 @@ class CalibrationGate:
                 "ev": 0.0,
                 "ev_l1": 0.0,
                 "ev_fb": 0.0,
-                "lambda_val": 0.0,
-                "cost": 0.0,
+                "lambda_val": 1.0 if n_min <= EPSILON else 0.0,
+                "cost": cost,
                 "stats": stats_l1,
                 "stats_fallback": stats_fb,
             }
-
-        # 2. Estimate Cost
-        cost = self._estimate_cost(market_data, rl_action, size_to_use)
 
         # 3. Calculate EV for L1 and Fallback
         ev_l1 = self._calculate_ev(stats_l1, cost)

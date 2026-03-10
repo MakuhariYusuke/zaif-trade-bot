@@ -3880,3 +3880,35 @@
 - `HeavyTradingEnv` integration は「環境を重くする要因」を production 側でいじるのではなく、テスト側の入力量と `random_start` だけを絞って軽くした。
 - `test_197...` は call 上位だったが、実体は read-only YAML 確認で deepcopy が無駄だった。session-cached fixture へ寄せるだけで固定費を落とせた。
 - この batch は `v460` に近いホットスポットを優先し、`base_features_v456.py` の高リスク変更にはまだ踏み込んでいない。
+
+## 2026-03-11 / Session 037-093
+
+### 実施
+- `prompts/codex_test_cleanup_and_perf.md` で求められていた broad-suite の test cleanup を継続し、未コミットだった non-`v460` 修正群を維持したまま `v460` の残 failure と hotspot を追加処理した。
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `retrain_once()` が `stable_baselines3` を `sys.modules` から退避して再 import する現在の実装に合わせ、fake SB3 module を返す `_mock_sb3_import(...)` helper を追加
+  - cold-start / warm-start / OOS failure の 3 ケースを `patch("stable_baselines3.SAC")` 依存から helper 経由へ統一
+- `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `_load_g2_real_df()` を parquet 全読込 + `head(...)` から「first batch only + 必須 `close` 列」へ変更
+  - `HeavyTradingEnv` integration の setup を、実データ E2E 性を保ったまま軽量化
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `27 passed in 4.22s`
+- focused:
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `76 passed in 15.63s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4578 passed, 13 warnings in 63.42s`
+
+### 主要改善
+- `test_sac_retrain_scheduler.py::TestRetrainOnce::test_warm_start` は、real SB3 import が torch stub と衝突して落ちていた。production を戻さず、現実装どおりの import 経路をテスト側で再現する形に直した。
+- `test_356_g2_sac_blockers.py` は `head(80)` のために parquet 全体を読んでいたのが重かった。first-batch 読込に変えたことで、`HeavyTradingEnv` integration の最大 setup は旧 broad 計測 `2.87s` 基準から `0.91s` まで低下した。
+- broad の上位は引き続き `test_enricher_skip_gate.py` real-data setup と `test_build_features_pipeline.py` setup に集まっている。次はこの 2 本を優先して詰めるのが筋。
