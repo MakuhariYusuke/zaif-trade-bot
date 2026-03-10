@@ -15,14 +15,11 @@ SB3 / HeavyTradingEnv への依存をモックで切り離し、
 
 from __future__ import annotations
 
-from contextlib import contextmanager
 import json
 import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from types import ModuleType
-from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -250,37 +247,6 @@ def _make_mock_model():
     return model
 
 
-@contextmanager
-def _mock_sb3_import(mock_model: MagicMock) -> Iterator[MagicMock]:
-    """retrain_once() の real SB3 import を fake module に置き換える."""
-    fake_sac_cls = MagicMock()
-    fake_sac_cls.return_value = mock_model
-    fake_sac_cls.load.return_value = mock_model
-
-    fake_sb3 = ModuleType("stable_baselines3")
-    fake_sb3.__version__ = "test"
-    fake_sb3.__file__ = "fake_stable_baselines3.py"
-    fake_sb3.SAC = fake_sac_cls
-
-    import builtins
-
-    real_import = builtins.__import__
-
-    def _patched_import(
-        name: str,
-        globals_: object | None = None,
-        locals_: object | None = None,
-        fromlist: object = (),
-        level: int = 0,
-    ) -> object:
-        if name == "stable_baselines3":
-            return fake_sb3
-        return real_import(name, globals_, locals_, fromlist, level)
-
-    with patch("builtins.__import__", side_effect=_patched_import):
-        yield fake_sac_cls
-
-
 class TestRetrainOnce:
     """retrain_once() のテスト (SB3/env をモック化)."""
 
@@ -315,7 +281,7 @@ class TestRetrainOnce:
             import pandas as pd
 
             mock_load.return_value = pd.DataFrame({"close": range(1000)})
-            with _mock_sb3_import(mock_model) as mock_sac_cls:
+            with patch("stable_baselines3.SAC") as mock_sac_cls:
                 mock_sac_cls.return_value = mock_model
                 result = retrain_once(cfg)
 
@@ -356,7 +322,7 @@ class TestRetrainOnce:
             import pandas as pd
 
             mock_load.return_value = pd.DataFrame({"close": range(1000)})
-            with _mock_sb3_import(mock_model) as mock_sac_cls:
+            with patch("stable_baselines3.SAC") as mock_sac_cls:
                 mock_sac_cls.load.return_value = mock_model
                 result = retrain_once(cfg)
 
@@ -391,9 +357,8 @@ class TestRetrainOnce:
             import pandas as pd
 
             mock_load.return_value = pd.DataFrame({"close": range(1000)})
-            mock_model = _make_mock_model()
-            with _mock_sb3_import(mock_model) as mock_sac_cls:
-                mock_sac_cls.return_value = mock_model
+            with patch("stable_baselines3.SAC") as mock_sac_cls:
+                mock_sac_cls.return_value = _make_mock_model()
                 result = retrain_once(cfg)
 
         assert result.status == "oos_failed"

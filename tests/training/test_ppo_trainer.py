@@ -38,36 +38,6 @@ else:
     from ztb.training.core.ppo_trainer import PPOTrainingConfig as TrainingConfig
 
 
-@pytest.fixture
-def temp_dir():
-    """Create temporary directory for tests that do not define a class-local fixture."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        yield tmpdir
-
-
-@pytest.fixture
-def sample_config():
-    """Default PPO config for tests that do not define a class-local fixture."""
-    return {
-        "ppo": {
-            "learning_rate": 3e-4,
-            "n_steps": 1024,
-            "batch_size": 32,
-            "n_epochs": 10,
-            "gamma": 0.99,
-            "gae_lambda": 0.95,
-            "clip_range": 0.2,
-            "ent_coef": 0.0,
-            "vf_coef": 0.5,
-            "max_grad_norm": 0.5,
-            "total_timesteps": 10000,
-            "reward_scaling": 1.0,
-            "use_custom_ppo": False,
-        },
-        "eval_gates_enabled": False,
-    }
-
-
 class TestPPOTrainerAutoHalt:
     """Test PPOTrainerAutoHalt functionality."""
 
@@ -142,9 +112,9 @@ class TestPPOTrainerAutoHalt:
         with pytest.raises(ValueError, match="config must be a dictionary"):
             PPOTrainerAutoHalt(params)
 
-    @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
-    @patch("ztb.training.core.ppo_trainer.HeavyTradingEnv")
-    @patch("ztb.training.core.ppo_trainer.ActionMasker")
+    @patch("ztb.training.ppo_trainer.load_csv_data_optimized")
+    @patch("ztb.training.ppo_trainer.HeavyTradingEnv")
+    @patch("ztb.training.ppo_trainer.ActionMasker")
     def test_create_environment(
         self, mock_action_masker, mock_env, mock_load_data, trainer_params
     ):
@@ -185,8 +155,8 @@ class TestPPOTrainerAutoHalt:
 
         assert env == mock_action_masker_instance
 
-    @patch("ztb.training.core.ppo_trainer.CustomPPO")
-    @patch("ztb.training.core.ppo_trainer.MaskablePPO")
+    @patch("ztb.training.ppo_trainer.CustomPPO")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
     def test_create_model_custom_ppo(
         self, mock_maskable_ppo, mock_custom_ppo, trainer_params
     ):
@@ -209,8 +179,8 @@ class TestPPOTrainerAutoHalt:
         mock_maskable_ppo.assert_not_called()
         assert model == mock_custom_ppo.return_value
 
-    @patch("ztb.training.core.ppo_trainer.CustomPPO")
-    @patch("ztb.training.core.ppo_trainer.MaskablePPO")
+    @patch("ztb.training.ppo_trainer.CustomPPO")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
     def test_create_model_standard_ppo(
         self, mock_maskable_ppo, mock_custom_ppo, trainer_params
     ):
@@ -234,7 +204,7 @@ class TestPPOTrainerAutoHalt:
         mock_custom_ppo.assert_not_called()
         assert model == mock_maskable_ppo.return_value
 
-    @patch("ztb.training.core.ppo_trainer.CompositeTrainingCallback")
+    @patch("ztb.training.ppo_trainer.CompositeTrainingCallback")
     def test_create_callback(self, mock_callback, trainer_params):
         """Test callback creation."""
         trainer = PPOTrainerAutoHalt(trainer_params)
@@ -243,7 +213,7 @@ class TestPPOTrainerAutoHalt:
         mock_callback.assert_called_once()
         assert callback == mock_callback.return_value
 
-    @patch("ztb.training.core.ppo_trainer.neutralize_policy_bias")
+    @patch("ztb.training.ppo_trainer.neutralize_policy_bias")
     def test_neutralize_policy_bias_with_model(self, mock_neutralize, trainer_params):
         """Test policy bias neutralization when model exists."""
         trainer = PPOTrainerAutoHalt(trainer_params)
@@ -253,7 +223,7 @@ class TestPPOTrainerAutoHalt:
 
         mock_neutralize.assert_called_once_with(trainer.model)
 
-    @patch("ztb.training.core.ppo_trainer.neutralize_policy_bias")
+    @patch("ztb.training.ppo_trainer.neutralize_policy_bias")
     def test_neutralize_policy_bias_without_model(
         self, mock_neutralize, trainer_params
     ):
@@ -265,11 +235,11 @@ class TestPPOTrainerAutoHalt:
 
         mock_neutralize.assert_not_called()
 
-    @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
-    @patch("ztb.training.core.ppo_trainer.HeavyTradingEnv")
-    @patch("ztb.training.core.ppo_trainer.ActionMasker")
-    @patch("ztb.training.core.ppo_trainer.MaskablePPO")
-    @patch("ztb.training.core.ppo_trainer.CompositeTrainingCallback")
+    @patch("ztb.training.ppo_trainer.load_csv_data_optimized")
+    @patch("ztb.training.ppo_trainer.HeavyTradingEnv")
+    @patch("ztb.training.ppo_trainer.ActionMasker")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
+    @patch("ztb.training.ppo_trainer.CompositeTrainingCallback")
     def test_train_success_path(
         self,
         mock_callback,
@@ -318,15 +288,15 @@ class TestPPOTrainerAutoHalt:
         # Create trainer and attempt training
         trainer = PPOTrainerAutoHalt(trainer_params)
 
-        # Current trainer propagates KeyboardInterrupt so outer runners can stop cleanly.
-        with pytest.raises(KeyboardInterrupt):
-            trainer.train("test_session")
+        # Should handle interruption gracefully
+        result = trainer.train("test_session")
+        assert result is None  # Training was interrupted
 
-    @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
-    @patch("ztb.training.core.ppo_trainer.HeavyTradingEnv")
-    @patch("ztb.training.core.ppo_trainer.ActionMasker")
-    @patch("ztb.training.core.ppo_trainer.MaskablePPO")
-    @patch("ztb.training.core.ppo_trainer.CompositeTrainingCallback")
+    @patch("ztb.training.ppo_trainer.load_csv_data_optimized")
+    @patch("ztb.training.ppo_trainer.HeavyTradingEnv")
+    @patch("ztb.training.ppo_trainer.ActionMasker")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
+    @patch("ztb.training.ppo_trainer.CompositeTrainingCallback")
     def test_train_with_exception(
         self,
         mock_callback,
@@ -340,7 +310,6 @@ class TestPPOTrainerAutoHalt:
         # Setup mocks to cause early failure
         mock_df = Mock()
         mock_df.shape = (1000, 10)
-        mock_df.columns = [f"col{i}" for i in range(10)]
         mock_load_data.return_value = mock_df
 
         mock_env_instance = Mock()
@@ -352,7 +321,6 @@ class TestPPOTrainerAutoHalt:
         mock_model = Mock()
         mock_model.learn.side_effect = ValueError("Mock environment error")
         mock_ppo.return_value = mock_model
-        mock_ppo.configure_mock(**{"__name__": "MaskablePPO"})
 
         mock_callback_instance = Mock()
         mock_callback.return_value = mock_callback_instance
@@ -363,11 +331,11 @@ class TestPPOTrainerAutoHalt:
         with pytest.raises(ValueError, match="Mock environment error"):
             trainer.train("test_session")
 
-    @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
-    @patch("ztb.training.core.ppo_trainer.HeavyTradingEnv")
-    @patch("ztb.training.core.ppo_trainer.ActionMasker")
-    @patch("ztb.training.core.ppo_trainer.MaskablePPO")
-    @patch("ztb.training.core.ppo_trainer.CompositeTrainingCallback")
+    @patch("ztb.training.ppo_trainer.load_csv_data_optimized")
+    @patch("ztb.training.ppo_trainer.HeavyTradingEnv")
+    @patch("ztb.training.ppo_trainer.ActionMasker")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
+    @patch("ztb.training.ppo_trainer.CompositeTrainingCallback")
     def test_train_complete_success_path(
         self,
         mock_callback,
@@ -422,11 +390,11 @@ class TestPPOTrainerAutoHalt:
         result = trainer.train("test_session")
         assert result == mock_model  # Training completed successfully
 
-    @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
-    @patch("ztb.training.core.ppo_trainer.HeavyTradingEnv")
-    @patch("ztb.training.core.ppo_trainer.ActionMasker")
-    @patch("ztb.training.core.ppo_trainer.MaskablePPO")
-    @patch("ztb.training.core.ppo_trainer.CompositeTrainingCallback")
+    @patch("ztb.training.ppo_trainer.load_csv_data_optimized")
+    @patch("ztb.training.ppo_trainer.HeavyTradingEnv")
+    @patch("ztb.training.ppo_trainer.ActionMasker")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
+    @patch("ztb.training.ppo_trainer.CompositeTrainingCallback")
     def test_train_with_exception_logging(
         self,
         mock_callback,
@@ -479,7 +447,7 @@ class TestPPOTrainerAutoHalt:
         with pytest.raises(ValueError, match="Test error"):
             trainer.train("test_session")
 
-    @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
+    @patch("ztb.training.ppo_trainer.load_csv_data_optimized")
     def test_create_environment_data_loading(self, mock_load_data, trainer_params):
         """Test environment creation data loading path."""
         # Setup mock data
@@ -503,8 +471,8 @@ class TestPPOTrainerAutoHalt:
 
         trainer = PPOTrainerAutoHalt(trainer_params)
 
-        with patch("ztb.training.core.ppo_trainer.HeavyTradingEnv") as mock_env, patch(
-            "ztb.training.core.ppo_trainer.ActionMasker"
+        with patch("ztb.training.ppo_trainer.HeavyTradingEnv") as mock_env, patch(
+            "ztb.training.ppo_trainer.ActionMasker"
         ) as mock_action_masker:
             mock_env_instance = Mock()
             mock_env.return_value = mock_env_instance
@@ -601,8 +569,8 @@ class TestTrainingConfig:
 
         # Check that defaults are applied
         assert config.learning_rate == 3e-4
-        assert config.n_steps == 1024
-        assert config.batch_size == 32
+        assert config.n_steps == 2048
+        assert config.batch_size == 64
         assert config.n_epochs == 10
         assert config.gamma == 0.99
         assert config.gae_lambda == 0.95
@@ -622,6 +590,23 @@ class TestPPOTrainerBasic:
         """Create temporary directory for testing."""
         with tempfile.TemporaryDirectory() as tmpdir:
             yield tmpdir
+        return {
+            "ppo": {
+                "learning_rate": 3e-4,
+                "n_steps": 2048,
+                "batch_size": 64,
+                "n_epochs": 10,
+                "gamma": 0.99,
+                "gae_lambda": 0.95,
+                "clip_range": 0.2,
+                "ent_coef": 0.0,
+                "vf_coef": 0.5,
+                "max_grad_norm": 0.5,
+                "total_timesteps": 10000,
+                "reward_scaling": 1.0,
+                "use_custom_ppo": False,
+            }
+        }
 
     @pytest.fixture
     def trainer_params(self, temp_dir, sample_config):
@@ -723,7 +708,7 @@ class TestPPOTrainerBasic:
 
     def test_ppo_trainer_initialization_invalid_config_type(self, temp_dir):
         """Test PPOTrainer initialization with invalid config type."""
-        with pytest.raises(AttributeError, match="items"):
+        with pytest.raises(ValueError, match="config must be a dictionary"):
             PPOTrainer(
                 data_path="dummy_path.csv",
                 config="invalid_config",

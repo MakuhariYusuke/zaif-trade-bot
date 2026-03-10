@@ -50,11 +50,10 @@ class TestPhase0Integration:
         assert first_trade[trade_type_key] == "long_close"
         assert reporter.trade_history[1][trade_type_key] == "short_open"
         
-        # 現行実装では reverse の realized PnL は close 側に全配賦し、
-        # open 側はエントリーのみのため net_pnl=0.0 です。
+        # PnL/費用の分割確認
         pnl_key = 'net_pnl' if 'net_pnl' in first_trade else 'pnl'
-        assert abs(first_trade[pnl_key] - 100.0) < 1e-6
-        assert abs(reporter.trade_history[1][pnl_key] - 0.0) < 1e-6
+        assert abs(first_trade[pnl_key] - 50.0) < 1e-6
+        assert abs(reporter.trade_history[1][pnl_key] - 50.0) < 1e-6
         
         # 日次Sharpe計算（最低2日=2880分必要）
         reporter.portfolio_history = [100.0 + i * 0.1 for i in range(3000)]

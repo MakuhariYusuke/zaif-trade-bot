@@ -512,3 +512,4 @@ def _calculate_kama_numba(
 | 2026-03-15 | 1.5 | 365# P6 完了 — sac_retrain_scheduler.py (warm-start + OOS gate + atomic deploy, 24 tests) |
 | 2026-03-15 | 1.6 | 365# P7 (embed_action_masks) + P8 (LiteTradingEnv) 完了 — P1-P8 全ブロッカー解消 (32 tests) |
 | 2026-03-15 | 1.7 | 371# M2-M5 live 配線完了 + GLFT calibration cycle + Bayesian state persistence + VPIN 負amount guard |
+| 2026-03-11 | 1.8 | 378# 366#以前の市場理論導入履歴を 377# §10 に体系化。035#→366# の段階的導入タイムライン + offset パイプライン全景図を追記 |

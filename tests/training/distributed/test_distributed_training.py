@@ -29,24 +29,6 @@ from ztb.training.distributed.distributed_training import (
 )
 
 
-if not hasattr(nn, "Linear") or not hasattr(nn.Module, "to"):
-    pytest.skip(
-        "Distributed training tests require the full torch.nn module API; current suite is running with a lightweight stub.",
-        allow_module_level=True,
-    )
-
-
-class SimpleModel(nn.Module):
-    """Minimal model used by distributed trainer tests."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.linear = nn.Linear(10, 1)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.linear(x)
-
-
 class TestDistributedTrainingConfig:
     def test_config_creation(self):
         config = DistributedTrainingConfig(

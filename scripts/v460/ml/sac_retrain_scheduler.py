@@ -25,6 +25,7 @@ import json
 import logging
 import os
 import signal
+import sys
 import threading
 import time
 from dataclasses import dataclass, field
@@ -306,7 +307,42 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
     val_env: TrainingEnvProtocol | None = None
 
     try:
-        from stable_baselines3 import SAC as SB3_SAC
+        # 378# SB3 stub 回避: プロジェクトルートの stub パッケージが
+        # PYTHONPATH="." / sitecustomize.py で優先される問題を解消する。
+        # sys.path/sys.modules から一時的にプロジェクトルート + stub を
+        # 除外して本物の SB3 (site-packages) をロードする。
+        import importlib
+
+        # stub 関連モジュールを全て除去
+        _sb3_keys = [k for k in sys.modules if k == "stable_baselines3" or k.startswith("stable_baselines3.")]
+        _sb3_cached = {k: sys.modules.pop(k) for k in _sb3_keys}
+
+        _project_root = str(Path(__file__).resolve().parents[3])
+        _removed_paths: list[str] = []
+        for _p in list(sys.path):
+            # プロジェクトルート自体、"." 、sitecustomize 経由の追加を除外
+            # site-packages は保持
+            if "site-packages" not in _p and (
+                _p == "." or _p == _project_root or _p.rstrip("/\\") == _project_root.rstrip("/\\")
+            ):
+                sys.path.remove(_p)
+                _removed_paths.append(_p)
+        try:
+            import stable_baselines3 as _sb3_real
+
+            # 検証: stub は __version__ を持たない
+            if not hasattr(_sb3_real, "__version__"):
+                raise ImportError(
+                    "Loaded stub stable_baselines3 instead of real SB3. "
+                    f"Path: {getattr(_sb3_real, '__file__', 'unknown')}"
+                )
+            SB3_SAC = _sb3_real.SAC  # type: ignore[attr-defined]
+            logger.info(f"SB3 loaded: v{_sb3_real.__version__} from {_sb3_real.__file__}")
+        finally:
+            # パス復元
+            for _p in reversed(_removed_paths):
+                if _p not in sys.path:
+                    sys.path.insert(0, _p)
 
         env = _create_env(train_df, cfg)
         is_warm_start = cfg.model_path.exists()
@@ -873,6 +909,8 @@ def main() -> None:
     if args.once:
         logger.info("[365# P6] One-shot mode")
         result = retrain_once(cfg)
+        # 378# --once でも履歴を記録する (run_scheduler のみだった)
+        _append_history(cfg.history_path, result)
         logger.info(f"Result: {json.dumps(result.to_dict(), indent=2)}")
     else:
         run_scheduler(cfg)

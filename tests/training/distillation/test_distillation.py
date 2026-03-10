@@ -1,19 +1,8 @@
-import pytest
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from ztb.training.distillation.distiller import DistillationPipeline, SACDistiller
-
-
-if not all(
-    hasattr(nn, attr)
-    for attr in ("Sequential", "Linear", "ReLU", "CrossEntropyLoss")
-):
-    pytest.skip(
-        "Distillation tests require the full torch.nn surface; current suite is running with a lightweight stub.",
-        allow_module_level=True,
-    )
 
 
 def _make_teacher_student():

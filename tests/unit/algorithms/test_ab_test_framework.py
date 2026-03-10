@@ -36,6 +36,7 @@ class TestABTestTypes(unittest.TestCase):
         self.assertEqual(StatisticalTest.T_TEST.value, "t_test")
         self.assertEqual(StatisticalTest.MANN_WHITNEY.value, "mann_whitney")
         self.assertEqual(StatisticalTest.CHI_SQUARE.value, "chi_square")
+        self.assertEqual(StatisticalTest.FISHER_EXACT.value, "fisher_exact")
 
     def test_ab_test_variant_creation(self):
         """ABTestVariantの作成テスト"""
@@ -54,26 +55,24 @@ class TestABTestTypes(unittest.TestCase):
 
     def test_ab_test_configuration_creation(self):
         """ABTestConfigurationの作成テスト"""
-        variant_a = ABTestVariant("A", "/model/a", "v1.0", "Variant A")
-        variant_b = ABTestVariant("B", "/model/b", "v1.1", "Variant B")
         config = ABTestConfiguration(
             test_id="test_001",
             name="Test A/B Test",
             description="Test configuration",
-            variant_a=variant_a,
-            variant_b=variant_b,
-            statistical_test=StatisticalTest.T_TEST,
+            variants=[
+                ABTestVariant("A", "/model/a", "v1.0", "Variant A"),
+                ABTestVariant("B", "/model/b", "v1.1", "Variant B"),
+            ],
+            statistical_tests=[StatisticalTest.T_TEST, StatisticalTest.MANN_WHITNEY],
             confidence_level=0.95,
             minimum_sample_size=1000,
-            max_duration_hours=1,
-            traffic_percentage=50.0,
+            maximum_test_duration=3600,
+            traffic_split=0.5,
         )
 
         self.assertEqual(config.test_id, "test_001")
         self.assertEqual(config.name, "Test A/B Test")
-        self.assertEqual(config.variant_a.variant_id, "A")
-        self.assertEqual(config.variant_b.variant_id, "B")
-        self.assertEqual(config.statistical_test, StatisticalTest.T_TEST)
+        self.assertEqual(len(config.variants), 2)
         self.assertEqual(config.confidence_level, 0.95)
         self.assertEqual(config.minimum_sample_size, 1000)
 
@@ -96,16 +95,16 @@ class TestABTestConfig(unittest.TestCase):
 
         self.assertGreater(perf_config.max_workers, 0)
         self.assertGreater(perf_config.batch_size, 0)
-        self.assertGreater(perf_config.stream_buffer_size, 0)
+        self.assertGreater(perf_config.queue_size, 0)
 
     def test_risk_config(self):
         """リスク設定のテスト"""
         config = ABTestConfig()
         risk_config = config.risk
 
-        self.assertGreater(risk_config.max_regression_rate, 0)
-        self.assertGreater(risk_config.rollback_trigger_threshold, 0)
-        self.assertGreater(risk_config.regression_detection_window, 0)
+        self.assertGreater(risk_config.max_regression_threshold, 0)
+        self.assertGreater(risk_config.rollback_threshold, 0)
+        self.assertGreater(risk_config.monitoring_interval, 0)
 
 
 class TestABTestAnalyzer(unittest.TestCase):
@@ -118,10 +117,8 @@ class TestABTestAnalyzer(unittest.TestCase):
         self.sample_data_b = np.random.normal(105, 10, 1000)
 
     def test_t_test_calculation(self):
-        """現行 analyze_parallel の基本動作テスト"""
-        result = self.analyzer.analyze_parallel(
-            self.sample_data_a, self.sample_data_b
-        )
+        """t検定の計算テスト"""
+        result = self.analyzer._perform_t_test(self.sample_data_a, self.sample_data_b)
 
         self.assertIsInstance(result, StatisticalResult)
         self.assertIsInstance(result.p_value, float)
@@ -129,37 +126,36 @@ class TestABTestAnalyzer(unittest.TestCase):
         self.assertIsInstance(result.confidence_interval, tuple)
         self.assertEqual(len(result.confidence_interval), 2)
 
-    def test_effect_size_calculation(self):
-        """効果量計算のテスト"""
-        result = self.analyzer._calculate_effect_size(
+    def test_mann_whitney_calculation(self):
+        """Mann-Whitney U検定の計算テスト"""
+        result = self.analyzer._perform_mann_whitney(
             self.sample_data_a, self.sample_data_b
         )
 
-        self.assertIsInstance(result, float)
+        self.assertIsInstance(result, StatisticalResult)
+        self.assertIsInstance(result.p_value, float)
+        self.assertIsInstance(result.effect_size, float)
 
     def test_parallel_analysis(self):
         """並列分析のテスト"""
-        result = self.analyzer.analyze_parallel(self.sample_data_a, self.sample_data_b)
-        self.assertIsInstance(result, StatisticalResult)
-        self.assertGreater(result.sample_size_a, 0)
-        self.assertGreater(result.sample_size_b, 0)
+        test_data = {"variant_a": self.sample_data_a, "variant_b": self.sample_data_b}
+
+        results = self.analyzer.analyze_parallel(test_data, [StatisticalTest.T_TEST])
+
+        self.assertIn(StatisticalTest.T_TEST, results)
+        self.assertIsInstance(results[StatisticalTest.T_TEST], StatisticalResult)
 
     def test_bootstrap_confidence_interval(self):
         """ブートストラップ信頼区間のテスト"""
-        result = self.analyzer.calculate_bootstrap_ci(
+        ci = self.analyzer._calculate_bootstrap_ci(
             self.sample_data_a, self.sample_data_b, n_bootstrap=100
         )
 
-        self.assertIsInstance(result, StatisticalResult)
-        self.assertEqual(len(result.confidence_interval), 2)
-        self.assertLess(
-            result.confidence_interval[0], result.confidence_interval[1]
-        )  # 下限 < 上限
+        self.assertIsInstance(ci, tuple)
+        self.assertEqual(len(ci), 2)
+        self.assertLess(ci[0], ci[1])  # 下限 < 上限
 
 
-@unittest.skip(
-    "Legacy executor harness targets a pre-streaming A/B API and is covered by newer component tests."
-)
 class TestABTestExecutor(unittest.TestCase):
     """A/Bテスト実行エンジンのテスト"""
 
@@ -217,9 +213,7 @@ class TestABTestExecutor(unittest.TestCase):
         # キューサイズを確認
         self.assertGreaterEqual(self.executor.data_queue.qsize(), 0)
 
-@unittest.skip(
-    "Legacy selector API tests predate the current select_model decision contract."
-)
+
 class TestModelSelector(unittest.TestCase):
     """モデル選択器のテスト"""
 
@@ -274,9 +268,6 @@ class TestModelSelector(unittest.TestCase):
         self.assertFalse(should_rollback)
 
 
-@unittest.skip(
-    "Environment-dependent benchmark assertions are unstable under the current test harness."
-)
 class TestPerformanceBenchmarks(unittest.TestCase):
     """パフォーマンスベンチマークテスト"""
 

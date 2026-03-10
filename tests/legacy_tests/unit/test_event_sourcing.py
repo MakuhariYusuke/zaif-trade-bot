@@ -7,12 +7,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
-pytestmark = pytest.mark.skip(
-    reason="legacy CoverageValidator event-sourcing hooks are no longer implemented"
-)
-
 from ztb.evaluation.status import CoverageValidator
 
 

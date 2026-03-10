@@ -4,11 +4,10 @@ Unit tests for SignalGuidanceSystem
 """
 
 import sys
-from unittest.mock import Mock
-
-import pandas as pd
 import pytest
+import pandas as pd
 from pathlib import Path
+from unittest.mock import Mock
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -195,28 +194,7 @@ class TestSignalGuidanceSystem:
             'current_price': 100000.0
         }
 
-        self.system.multi_timeframe_analyzer.analyze_convergence = Mock(
-            return_value=Mock(convergence_score=80.0)
-        )
-        self.system.multi_timeframe_analyzer.timeframes = {}
-        self.system.convergence_calculator.get_convergence_report = Mock(
-            return_value={"recommendation": "strong_convergence"}
-        )
-        self.system._create_market_dataframe = Mock(
-            return_value=pd.DataFrame(
-                {
-                    "open": [100000.0],
-                    "high": [100100.0],
-                    "low": [99900.0],
-                    "close": [100000.0],
-                    "volume": [100.0],
-                }
-            )
-        )
-        self.system.quality_scorer.calculate_signal_quality = Mock(return_value=(0, 60.0))
-        self.system._apply_convergence_enhancement = Mock(return_value=60.0)
-        self.system._convert_score_to_action = Mock(return_value=SignalType.BUY.value)
-
+        # Test guidance application
         action = self.system.apply_guidance(0.5, row, portfolio)
         assert action in [-1, 0, 1]  # Valid action values
 

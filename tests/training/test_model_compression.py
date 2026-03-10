@@ -27,16 +27,6 @@ from ztb.optimization.model_compression import (
 )
 
 
-if not all(
-    hasattr(nn, attr)
-    for attr in ("Linear", "CrossEntropyLoss", "Sequential", "ReLU")
-) or not hasattr(torch, "relu"):
-    pytest.skip(
-        "Model compression tests require the full torch.nn and autograd surface; current suite is running with a lightweight stub.",
-        allow_module_level=True,
-    )
-
-
 class SimpleTestModel(nn.Module):
     """Simple neural network for testing compression techniques."""
 

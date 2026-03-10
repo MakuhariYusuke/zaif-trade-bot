@@ -24,24 +24,6 @@ from ztb.utils.system_utils import check_library_availability
 
 logger = get_logger(__name__)
 
-
-def _resolve_system_memory_optimization(system_optimizer: object) -> dict[str, object]:
-    """Support both legacy and current SystemOptimizer APIs."""
-    if hasattr(system_optimizer, "optimize_memory_usage"):
-        return system_optimizer.optimize_memory_usage()
-    if hasattr(system_optimizer, "get_memory_usage"):
-        return system_optimizer.get_memory_usage()
-    return {}
-
-
-def _resolve_system_status(system_optimizer: object) -> dict[str, object]:
-    """Support both legacy and current SystemOptimizer status APIs."""
-    if hasattr(system_optimizer, "get_system_status"):
-        return system_optimizer.get_system_status()
-    if hasattr(system_optimizer, "get_system_stats"):
-        return system_optimizer.get_system_stats()
-    return {}
-
 # 依存ライブラリのチェック
 OPTUNA_AVAILABLE = check_library_availability('optuna', 'Bayesian optimization')
 TQDM_AVAILABLE = check_library_availability('tqdm', 'Progress bars')
@@ -537,11 +519,11 @@ class UnifiedOptimizer:
             return {"status": "disabled"}
 
         self.logger.info("Starting system optimization")
-        memory_result = _resolve_system_memory_optimization(self.system_optimizer)
+        memory_result = self.system_optimizer.optimize_memory_usage()
 
         result = {
             "memory_optimization": memory_result,
-            "system_status": _resolve_system_status(self.system_optimizer),
+            "system_status": self.system_optimizer.get_system_status(),
             "timestamp": datetime.now().isoformat(),
         }
 
@@ -666,17 +648,18 @@ class UnifiedOptimizer:
 
     def get_optimization_summary(self) -> dict[str, object]:
         """最適化のサマリーを取得"""
-        history = list(self.optimization_history)
         summary = {
-            "total_optimizations": len(history),
+            "total_optimizations": len(self.optimization_history),
             "optimization_types": {},
             "best_parameters": self.current_best_params,
-            "system_status": _resolve_system_status(self.system_optimizer),
-            "recent_history": history[-5:] if history else [],
+            "system_status": self.system_optimizer.get_system_status(),
+            "recent_history": self.optimization_history[-5:]
+            if self.optimization_history
+            else [],
         }
 
         # 最適化タイプの集計
-        for opt in history:
+        for opt in self.optimization_history:
             opt_type = opt.get("type", "unknown")
             summary["optimization_types"][opt_type] = (
                 summary["optimization_types"].get(opt_type, 0) + 1
@@ -1827,7 +1810,7 @@ class AutomaticOptimizationPipeline:
         """システム最適化ステージ"""
         self.logger.info("Starting system optimization")
 
-        result = _resolve_system_memory_optimization(self.system_optimizer)
+        result = self.system_optimizer.optimize_memory_usage()
 
         self.logger.info(f"System optimization completed. Memory status: {result}")
 

@@ -7,17 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import pytest
 import torch
-
-if not all(
-    hasattr(torch.nn, attr)
-    for attr in ("Linear", "ReLU", "Dropout", "Identity")
-):
-    pytest.skip(
-        "Multimodal core tests require the full torch.nn module surface; current suite is running with a lightweight stub.",
-        allow_module_level=True,
-    )
 
 from ztb.multimodal.config import MultimodalConfig
 

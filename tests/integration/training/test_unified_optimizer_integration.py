@@ -2,22 +2,12 @@
 """
 Integration tests for Unified Optimizer components
 """
-from unittest.mock import Mock
-
 import numpy as np
 import pytest
 
 from ztb.training.unified_optimizer import (
     OptimizationConfig, UnifiedOptimizer, BayesianOptimizer
 )
-
-
-def _stub_system_optimizer(optimizer: UnifiedOptimizer) -> None:
-    """Current SystemOptimizer no longer exposes legacy memory/status methods."""
-    optimizer.system_optimizer = Mock()
-    optimizer.system_optimizer.optimize_memory_usage.return_value = {"status": "ok"}
-    optimizer.system_optimizer.get_system_status.return_value = {"status": "ok"}
-    optimizer.automatic_pipeline.system_optimizer = optimizer.system_optimizer
 
 
 class TestUnifiedOptimizerIntegration:
@@ -27,7 +17,6 @@ class TestUnifiedOptimizerIntegration:
         """完全自動最適化パイプラインの統合テスト"""
         config = OptimizationConfig(max_trials=5)  # 短いテスト用
         optimizer = UnifiedOptimizer(config)
-        _stub_system_optimizer(optimizer)
 
         base_params = {"learning_rate": 0.001, "batch_size": 32}
 
@@ -151,7 +140,6 @@ class TestUnifiedOptimizerIntegration:
         """エンドツーエンドワークフローの統合テスト"""
         config = OptimizationConfig(max_trials=5)
         optimizer = UnifiedOptimizer(config)
-        _stub_system_optimizer(optimizer)
 
         # 1. ハイパーパラメータ最適化
         def objective(params):

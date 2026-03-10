@@ -132,10 +132,9 @@ class TestMemoryOptimizationPerformance(unittest.TestCase):
             self.assertIsInstance(stats, dict)
         monitor_time = time.time() - start_time
 
-        # Monitoring cost is environment-dependent on Windows CI and local AV.
-        # Keep this as a regression guard, not a microbenchmark.
+        # Monitoring should be lightweight (< 0.1 seconds for 1000 calls)
         self.assertLess(
-            monitor_time, 0.5, f"Memory monitoring too slow: {monitor_time}s"
+            monitor_time, 0.1, f"Memory monitoring too slow: {monitor_time}s"
         )
 
         # Test cleanup performance
@@ -164,9 +163,9 @@ class TestMemoryOptimizationPerformance(unittest.TestCase):
             registry.register(obj, f"callback_{i}")
         register_time = time.time() - start_time
 
-        # Weakref bookkeeping varies across Python builds; use a coarse regression threshold.
+        # Should be fast (< 0.05 seconds for 1000 registrations)
         self.assertLess(
-            register_time, 0.1, f"Weak ref registration too slow: {register_time}s"
+            register_time, 0.05, f"Weak ref registration too slow: {register_time}s"
         )
 
         # Test callback triggering
@@ -528,9 +527,6 @@ class TestSystemIntegrationPerformance(unittest.TestCase):
 class TestScalabilityBenchmarks(unittest.TestCase):
     """Scalability benchmark tests."""
 
-    @unittest.skip(
-        "Throughput scaling depends heavily on local CPU scheduling and is too noisy for deterministic test runs."
-    )
     def test_worker_scaling(self):
         """Test how performance scales with number of workers."""
         worker_counts = [1, 2, 4]

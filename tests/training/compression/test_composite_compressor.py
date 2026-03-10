@@ -1,4 +1,3 @@
-import pytest
 import torch
 import torch.nn as nn
 
@@ -12,13 +11,6 @@ from ztb.training.compression.composite_compressor import (
     compress_model_pipeline,
 )
 from ztb.training.compression.compressor import CompositeCompressor
-
-
-if not all(hasattr(nn, attr) for attr in ("Sequential", "LSTM", "Linear", "ReLU")):
-    pytest.skip(
-        "Composite compression tests require the full torch.nn surface; current suite is running with a lightweight stub.",
-        allow_module_level=True,
-    )
 
 
 def _tiny_model():

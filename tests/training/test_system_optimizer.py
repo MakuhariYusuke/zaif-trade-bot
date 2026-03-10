@@ -13,7 +13,6 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import psutil
-import pytest
 import torch
 import torch.nn as nn
 
@@ -22,23 +21,6 @@ from ztb.optimization.system_optimizer import (
     PerformanceOptimizer,
     SystemOptimizer,
 )
-
-
-if not all(
-    hasattr(SystemOptimizer, attr)
-    for attr in (
-        "reset_stats",
-        "get_system_stats",
-        "optimize_model_memory",
-        "optimize_dataloader",
-        "cache_io_operation",
-        "optimize_training_step",
-    )
-):
-    pytest.skip(
-        "System optimizer tests target a richer legacy API than the current shim implementation.",
-        allow_module_level=True,
-    )
 
 
 class SimpleTestModel(nn.Module):

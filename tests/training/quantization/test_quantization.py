@@ -1,15 +1,7 @@
-import pytest
 import torch
 import torch.nn as nn
 
 from ztb.training.quantization.quantizer import QuantizationPipeline, SACQuantizer
-
-
-if not all(hasattr(nn, attr) for attr in ("Sequential", "Linear", "ReLU", "LSTM")):
-    pytest.skip(
-        "Quantization tests require the full torch.nn surface; current suite is running with a lightweight stub.",
-        allow_module_level=True,
-    )
 
 
 def _make_tiny_model():

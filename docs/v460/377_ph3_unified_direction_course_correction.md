@@ -296,3 +296,116 @@ python scripts/v460/ml/sac_retrain_scheduler.py --config configs/v460/experiment
 |---|---|---|
 | 2026-03-18 | 1.0 | 初版: 375#/376# レビュー統合方針 + 軌道修正 + データパリティロードマップ + FastIntradayEnvV456 評価 |
 | 2026-03-11 | 2.0 | Phase 3.1 コード実装完了反映 (`82675725d`): §4.1 チェックリスト更新, §7.1 SAC live 調査結果 (0/4), §8.2 実装サマリ追加, §9.2 残作業ステータス更新, M2-M5 build_features.py proxy 追加着手 |
+| 2026-03-11 | 2.1 | 378# SAC scheduler 実行検証: SB3 stub 回避修正→v2.7.1ロード成功, Env/Model作成成功, `--once`履歴記録修正。P0 全7ファイル 377# 仕様完全準拠確認。§10 市場理論導入全タイムライン追記 |
+
+---
+
+## §10 市場理論タイムライン (035# 以降の段階的導入)
+
+366# M1-M5 以前に fill_test へ段階的に導入された市場理論の全体像を以下に整理する。
+
+### §10.1 初期フェーズ: 観測レイヤー構築 (035#–107#, 2/14–2/18)
+
+| 文書 | 導入された市場理論 | 理論的根拠 | 実装先 |
+|---|---|---|---|
+| **035#** | **4状態レジーム分類** (trending/ranging/high_vol/unknown) + ヒステリシス + 信頼度ゲート | Hamilton (1989) Markov-Switching Model, Lo (2004) Adaptive Market Hypothesis | `regime_detector.py` |
+| **054#** | **S1: Orderbook Imbalance** — `(bid_vol − ask_vol) / total ∈ [−1, +1]` による情報非対称性検知 | Glosten-Milgrom (1985): 情報トレーダーの存在が bid-ask spread を決定 | `maker_price.py` |
+| **107#** | **VPIN 閾値トリガー** + **Volatility Guard** (σ + velocity) — 静的 time_filter → 動的ゲーティング | Easley-López de Prado-O'Hara (2012): VPIN = 情報非対称性連続指標 | `maker_price.py` |
+
+### §10.2 在庫管理フェーズ (162#–228#, 2/25–3/1)
+
+| 文書 | 導入された市場理論 | 理論的根拠 | 実装先 |
+|---|---|---|---|
+| **162#** | **Inventory Skewing (線形)** — `inv_net_imbalance × factor` で在庫偏重に応じた非対称 offset | Stoll (1978), Ho & Stoll (1981): MM在庫管理の基本原理 | `maker_price.py` |
+| **200#** | **Velocity Modulation** — 短期 velocity が方向一致するかで boost/suppress | 動量ベースのサイド整合性 | `regime_detector.py`, `maker_price.py` |
+| **226#** | **loss_boost 指数減衰** — `mult(t) = 1 + (M−1)·exp(−t/τ)` | Guéant-Lehalle-Fernandez-Tapia (2013): リスク調整の指数的減衰 | `maker_price.py` |
+| **227#** | **EMA smoothed velocity** — bid-ask bounce ノイズフィルタ | EMA = IIR フィルタ理論 | `regime_detector.py` |
+| **228#** | **Time-decay imbalance** — 古い fill 履歴の影響を指数減衰 | AS理論: 在庫ペナルティの時間的減衰 | `maker_price.py` |
+
+### §10.3 理論統合フェーズ (257#–330#, 3/3–3/8)
+
+| 文書 | 導入された市場理論 | 理論的根拠 | 実装先 |
+|---|---|---|---|
+| **257#/258#** | **AS Reservation Price** — `r = s − q·γ·σ²·τ` (在庫×ボラ連動 offset) + **VPIN Continuous** (二次関数ランプ) | Avellaneda-Stoikov (2008), Roll (1984): spread-based σ proxy | `maker_price.py`, `maker_microstructure.py` |
+| **266#** | **GLFT τ動的化** `τ_eff = τ_base / vol_ratio` + **AS δ\*** + **Kyle λ** `λ = spread/(2·depth)` + **Amihud ILLIQ** `(spread/mid)/depth` | GLFT (2013), Kyle (1985), Amihud (2002) | `maker_microstructure.py` |
+| **283#/284#** | **Buy-side AS 防御** — microprice 急落時の offset 拡大 | AS損失の非対称性に対する防御 | `maker_price.py` |
+| **305#** | **Parkinson σ推定器** — `σ_P = ln(H/L)/(2√ln2)` + **PnL Execution Quality 分解** | Parkinson (1980), Kissell & Glantz (2003) | `maker_microstructure.py` |
+| **306#** | **Microprice Side Selection** + **Queue Position** `P_fill = exp(−depth/lot)` + **Dynamic Cycle Interval** `interval = base × σ_ref/σ` | Gatheral microprice, Block Bootstrap | `maker_price.py`, `side_selector.py`, `fill_loop_orchestrator.py` |
+| **324#** | **RSI Modulation** — ztb 既存実装の活用 (opt-in) | Wilder (1978): Relative Strength Index | `maker_price.py` |
+| **330#** | **σ floor** — `σ=0` は AS δ\*/Kyle λ/Amihud を完全無効化するため最小フロア設定 | 数値安定性ガード | `maker_microstructure.py` |
+
+### §10.4 市場理論提案・実装フェーズ (366#–378#, 3/10–3/11)
+
+| 文書 | 導入された市場理論 | 理論的根拠 | 実装先 |
+|---|---|---|---|
+| **366# M1** | **Microprice L1→L5** Gatheral (2018) 指数減衰重み `w_k = exp(−0.5k)` | Gatheral (2018): multi-level microprice | `maker_price.py` |
+| **366# M2** | **Bayesian Regime Filter** — Phase A: 4次元事後確率ベクトル + 遷移行列 | Hamilton (1989): Markov-Switching Bayesian 更新 | `bayesian_regime_filter.py`, `regime_detector.py` |
+| **366# M3** | **σ-Clustering** — vol regime 自動検出 → offset キャリブレーション | K-Means/GMM ボラティリティクラスタリング | `regime_detector.py` |
+| **366# M4** | **GLFT Fill Probability** — `A(δ) = A·exp(−kδ)` 到着率モデル + 動的 k | GLFT (2013): fill probability model | `fill_probability_model.py`, `maker_microstructure.py` |
+| **366# M5** | **Volume-Sync VPIN** — Volume-bucket 化 + `compute_vpin_volume_sync` | Easley-López de Prado (2012): Volume-synchronized PIN | `feature_enricher.py` |
+| **366# T5** | **Welford Online Variance** — O(1) per update (O(n)→O(1)) | Welford (1962): online variance | `regime_detector.py` |
+| **378#** | **SB3 stub 回避** — `sys.modules`/`sys.path` 操作で本物の SB3 v2.7.1 をロード | — | `sac_retrain_scheduler.py` |
+
+### §10.5 fill_test offset パイプライン全景 (378# 時点, 13+ ステージ)
+
+```
+compute(side, spread, mid_price, ...)
+  │
+  ├── [096#] base_offset_ratio (side別)
+  ├── [162#] Inventory Skewing              ← q × factor (Ho & Stoll 1981)
+  ├── [088#] Sell Offset Floor
+  ├── [258#] AS Reservation Shift           ← q·γ·σ²·τ (Avellaneda-Stoikov 2008)
+  │    ├── [305#] Parkinson σ               ← ln(H/L)/(2√ln2) (Parkinson 1980)
+  │    ├── [266#] GLFT τ動的化              ← τ_eff = τ_base/vol_ratio (GLFT 2013)
+  │    └── [266#] AS δ* floor               ← γσ²τ + (2/γ)ln(1+γ/k)
+  ├── [163#] Regime Boosts (5段)
+  ├── [163#] Spread Adaptive
+  ├── [266#] Kyle λ                         ← spread/(2·depth) (Kyle 1985)
+  ├── [266#] Amihud ILLIQ                   ← (spread/mid)/depth (Amihud 2002)
+  ├── [366# M4] GLFT Fill Probability       ← A·exp(−kδ) (GLFT 2013)
+  ├── [107#] Volatility Guard               ← velocity + VPIN continuous (258#)
+  ├── [054#] Imbalance Risk                 ← OB imbalance (Glosten-Milgrom 1985)
+  ├── [226#] Loss Boost                     ← 指数減衰 (GLFT 2013)
+  ├── [100#] FastFillDefense
+  ├── [283#] Buy AS Guard                   ← microprice 急落防御
+  ├── [306#] Offset Ceiling                 ← 無制限膨張防止
+  ├── [365#] Sidecar Offset (v2)            ← SAC signal × max_boost_bps × shaping
+  └── Finalize (spread guard + 価格組立)
+```
+
+### §10.6 SAC Scheduler 動作検証結果 (378#, 2026-03-11)
+
+| 項目 | 結果 |
+|---|---|
+| SB3 ロード | ✅ v2.7.1 (site-packages) — stub 回避修正適用 |
+| Data ロード | ✅ `btc_jpy_1m_full_registry_features.parquet` (1,216,930行 × 77列) |
+| Rolling window | ✅ 7d = 10,080行 (Train: 8,064 / Val: 2,016) |
+| 環境作成 | ✅ 12特徴量, continuous_1d action space, coincheck profile |
+| モデル作成 | ✅ Cold-start SAC model |
+| `--once` 履歴記録 | ✅ `_append_history()` 追加済み |
+| 50,000 step 学習 | ⏳ 実行中 (計算量大 — 結果待ち) |
+| `sidecar_signal.json` | ⏳ OOS gate 通過時のみ生成 |
+
+#### SAC Scheduler 修正内容
+
+1. **SB3 stub 回避**: `sys.modules` から `stable_baselines3.*` 全モジュール除去 + `sys.path` からプロジェクトルート一時除外 → 本物の SB3 v2.7.1 をロード。`__version__` 属性検証で stub 混入を検出
+2. **`--once` mode 履歴記録**: `main()` 内で `_append_history()` を呼ぶよう修正 (従来は `run_scheduler` ループ内のみ)
+
+### §10.7 P0 仕様準拠確認 (全7ファイル ✅)
+
+| ファイル | sidecar 機能 | 準拠 |
+|---|---|---|
+| `sidecar_types.py` | `compute_sidecar_offset_bps_v2()`, `_shaping_fn()`, `max_boost_bps=0.15` | ✅ |
+| `fill_config.py` | 5 フィールド (enabled, max_boost_bps, dead_zone, shaping, use_v2) | ✅ |
+| `fill_config_parser.py` | sidecar YAML parse (5 keys) | ✅ |
+| `config_hot_reload.py` | 5 sidecar keys hot-reload 対応 | ✅ |
+| `cycle_gate_aggregator.py` | v1/v2 切替 + `sidecar_enabled` ガード | ✅ |
+| `fill_config_validation.py` | `max_boost_bps ≤ 0.20` ceiling | ✅ |
+| `fill_test.yaml` | `sidecar:` セクション (0.15 / 0.10 / linear / v2) | ✅ |
+
+### §10.8 次のステップ
+
+1. SAC scheduler 50,000 step 学習完了後の OOS 結果確認
+2. `sidecar_signal.json` 生成確認 → live presence 4 項目の充足
+3. OOS gate 不通過の場合: `min_gross_roi` / `min_trade_count` 閾値の検討
+4. fill_test 実運用での sidecar_offset_bps の観測

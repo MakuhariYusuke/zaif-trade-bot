@@ -81,7 +81,7 @@ class TestUnifiedTrainerComponents:
         # Import component classes for type checking
         from ztb.training.unified_trainer.components.config_manager import TrainingConfigManager
         from ztb.training.unified_trainer.components.ui_manager import TrainingUIManager
-        from ztb.training.unified_trainer.reporting import TrainingReporter
+        from ztb.training.unified_trainer.components.reporter import TrainingReporter
 
         assert isinstance(trainer.config_manager, TrainingConfigManager)
         assert isinstance(trainer.ui_manager, TrainingUIManager)

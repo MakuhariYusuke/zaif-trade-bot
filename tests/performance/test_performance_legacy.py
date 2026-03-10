@@ -7,13 +7,6 @@ mance.py` but uses a unique basename to prevent pytest import collisions during
 collection.
 """
 
-import pytest
-
-pytest.skip(
-    "Legacy performance benchmarks are environment-dependent and excluded from the maintained functional test baseline.",
-    allow_module_level=True,
-)
-
 import os
 import sys
 # (Renamed and relocated content from the original performance test to avoid
@@ -22,6 +15,7 @@ import sys
 import numpy as np
 import pandas as pd
 import psutil
+import pytest
 from unittest.mock import Mock, patch
 
 # Add src to path for imports

@@ -2,12 +2,6 @@
 Tests for Feature Dependencies functionality.
 """
 
-import pytest
-
-pytestmark = pytest.mark.skip(
-    reason="legacy dependency compatibility stubs no longer provide graph operations"
-)
-
 from ztb.evaluation.dependency import DependencyGraph, FeatureDependencyManager
 
 
