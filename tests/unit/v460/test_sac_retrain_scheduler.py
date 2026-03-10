@@ -83,6 +83,30 @@ class TestSACRetrainConfig:
         # Should use all defaults without error
         assert cfg.total_timesteps == 50_000
 
+    def test_from_yaml_dict_confidence_roi_full(self) -> None:
+        """372# audit: confidence_roi_full が YAML からパースされる."""
+        from scripts.v460.ml.sac_retrain_scheduler import SACRetrainConfig
+
+        raw = {"sac_retrain": {"confidence_roi_full": 0.01}}
+        cfg = SACRetrainConfig.from_yaml_dict(raw)
+        assert cfg.confidence_roi_full == pytest.approx(0.01)
+
+    def test_from_yaml_dict_min_trade_count(self) -> None:
+        """372# audit: min_trade_count が YAML からパースされる."""
+        from scripts.v460.ml.sac_retrain_scheduler import SACRetrainConfig
+
+        raw = {"sac_retrain": {"min_trade_count": 5}}
+        cfg = SACRetrainConfig.from_yaml_dict(raw)
+        assert cfg.min_trade_count == 5
+
+    def test_from_yaml_dict_372_fields_defaults(self) -> None:
+        """372# audit: 未指定時はデフォルト値が使われる."""
+        from scripts.v460.ml.sac_retrain_scheduler import SACRetrainConfig
+
+        cfg = SACRetrainConfig.from_yaml_dict({})
+        assert cfg.confidence_roi_full == pytest.approx(0.005)
+        assert cfg.min_trade_count == 3
+
 
 # ════════════════════════════════════════════════════════════════
 # §2 SACRetrainTrigger
@@ -426,6 +450,57 @@ class TestUpdateSidecarSignal:
 # ════════════════════════════════════════════════════════════════
 # §6 History append
 # ════════════════════════════════════════════════════════════════
+
+
+class TestEvaluateModel:
+    """372# audit: _evaluate_model の複数エピソード集約テスト."""
+
+    def test_multi_episode_aggregation(self) -> None:
+        """複数エピソードの trade_count が累積、ROI が平均される."""
+        from scripts.v460.ml.sac_retrain_scheduler import (
+            SACRetrainConfig,
+            _evaluate_model,
+        )
+
+        # エピソード毎に trades_count がリセットされるのをシミュレート
+        _ep_trades = iter([3, 5, 7])
+
+        def _reset_side_effect() -> tuple:
+            return (np.zeros(12), {})
+
+        def _step_side_effect(action: object) -> tuple:
+            return (np.zeros(12), 0.1, True, False, {})
+
+        mock_env = MagicMock()
+        mock_env.observation_space = MagicMock()
+        mock_env.observation_space.shape = (12,)
+        mock_env.action_space = MagicMock()
+        mock_env.action_space.shape = (1,)
+
+        # reset 毎に trades_count をリセットし、step 後に設定
+        def _reset() -> tuple:
+            mock_env.trades_count = 0
+            return (np.zeros(12), {})
+
+        def _step(action: object) -> tuple:
+            mock_env.trades_count = next(_ep_trades)
+            mock_env.portfolio_value = 10_100_000.0
+            return (np.zeros(12), 0.1, True, False, {})
+
+        mock_env.reset.side_effect = _reset
+        mock_env.step.side_effect = _step
+        mock_env.initial_portfolio_value = 10_000_000.0
+
+        mock_model = MagicMock()
+        mock_model.predict.return_value = (np.array([0.0]), None)
+
+        cfg = SACRetrainConfig(n_eval_episodes=3)
+        result = _evaluate_model(mock_model, mock_env, cfg)
+
+        # trade_count は累積 (3 + 5 + 7 = 15)
+        assert result["trade_count"] == 15
+        # gross_roi は平均 (各エピソードとも同じ ROI = 0.01)
+        assert result["gross_roi"] == pytest.approx(0.01)
 
 
 class TestAppendHistory:

@@ -395,6 +395,7 @@ class OrchestratorMidCycleMixin:
                 ),
                 toxicity_offset_mult=gate_result.toxicity_offset_mult,
                 sidecar_offset_bps=gate_result.sidecar_offset_bps,
+                sidecar_bias=gate_result.sidecar_bias if gate_result.sidecar_bias != 0.0 else None,
             )
             # 154# C-2: 実サイクル実行 → skip カウンタリセット
             self._trending_sell_skip_count = 0

@@ -159,6 +159,8 @@ class SACRetrainConfig:
             retrain_interval_max_sec=int(retrain_cfg.get("retrain_interval_max_sec", 14400)),
             min_new_rows=int(retrain_cfg.get("min_new_rows", 120)),
             history_path=Path(str(retrain_cfg.get("history_path", "logs/sac_retrain_history.jsonl"))),
+            confidence_roi_full=float(retrain_cfg.get("confidence_roi_full", 0.005)),
+            min_trade_count=int(retrain_cfg.get("min_trade_count", 3)),
         )
 
 
@@ -574,8 +576,16 @@ def _evaluate_model(
     env: TrainingEnvProtocol,
     cfg: SACRetrainConfig,
 ) -> dict[str, float | int]:
-    """OOS evaluation — 365# §5.2 step 4."""
+    """OOS evaluation — 365# §5.2 step 4.
+
+    372# audit fix: 複数エピソードの ROI / trade_count を平均・累積で集約。
+    env.reset() は trades_count を 0 にリセットするため、
+    各エピソード終了時に個別に取得して集約する。
+    """
     total_reward = 0.0
+    episode_rois: list[float] = []
+    total_trades = 0
+
     for _ in range(cfg.n_eval_episodes):
         obs, _ = env.reset()
         done = False
@@ -585,17 +595,22 @@ def _evaluate_model(
             total_reward += reward
             done = terminated or truncated
 
-    # ROI 抽出
-    pv = getattr(env, "portfolio_value", None)
-    ipv = getattr(env, "initial_portfolio_value", None)
-    roi = 0.0
-    if pv is not None and ipv is not None and float(ipv) > 0:
-        roi = (float(pv) - float(ipv)) / float(ipv)
+        # エピソード終了時に ROI / trades を記録
+        pv = getattr(env, "portfolio_value", None)
+        ipv = getattr(env, "initial_portfolio_value", None)
+        ep_roi = 0.0
+        if pv is not None and ipv is not None and float(ipv) > 0:
+            ep_roi = (float(pv) - float(ipv)) / float(ipv)
+        episode_rois.append(ep_roi)
+        total_trades += int(getattr(env, "trades_count", 0))
+
+    n_eps = max(cfg.n_eval_episodes, 1)
+    avg_roi = sum(episode_rois) / len(episode_rois) if episode_rois else 0.0
 
     return {
-        "gross_roi": roi,
-        "mean_reward": total_reward / max(cfg.n_eval_episodes, 1),
-        "trade_count": int(getattr(env, "trades_count", 0)),
+        "gross_roi": avg_roi,
+        "mean_reward": total_reward / n_eps,
+        "trade_count": total_trades,
     }
 
 
