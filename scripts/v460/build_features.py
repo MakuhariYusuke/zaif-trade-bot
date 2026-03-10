@@ -76,6 +76,17 @@ V460_FEATURES = [
     "ask_depth_slope",
 ]
 
+# 377# M2-M5 市場理論 proxy 特徴量 (Phase 3.2 準備)
+M2_M5_FEATURES = [
+    "posterior_trending_up",    # M2: BayesianRegimeFilter posterior
+    "posterior_trending_down",  # M2
+    "posterior_ranging",        # M2
+    "posterior_volatile",       # M2
+    "vol_cluster",             # M3: σ-Clustering (0=LOW,1=MID,2=HIGH,3=EXTREME)
+    "fill_prob",               # M4: GLFT fill probability proxy
+    "vpin_vol_sync",           # M5: VPIN (= order_flow_toxicity のエイリアス)
+]
+
 
 def build_proxy_features(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
     """OHLCV からマイクロストラクチャ proxy 特徴量を生成.
@@ -164,6 +175,103 @@ def build_proxy_features(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
 
     # Fill NaN from rolling (no bfill — 003# #8)
     out = out.ffill().fillna(0)
+
+    # ---- 377# M2-M5 市場理論 proxy 特徴量 ----
+    out = _add_m2_m5_proxy(out, close, high, low, volume, window)
+
+    return out
+
+
+def _add_m2_m5_proxy(
+    out: pd.DataFrame,
+    close: pd.Series,
+    high: pd.Series,
+    low: pd.Series,
+    volume: pd.Series,
+    window: int,
+) -> pd.DataFrame:
+    """377# M2-M5 市場理論 proxy 特徴量を OHLCV から計算.
+
+    Phase 3.2 準備: build_features.py の M2-M5 ゼロ行を解消する。
+    オンラインモジュール (bayesian_regime_filter, sigma_clustering,
+    fill_probability_model) と同等のロジックを batch 適用する。
+
+    Args:
+        out: 既存の特徴量 DataFrame (close + 10 microstructure)
+        close, high, low, volume: OHLCV Series
+        window: rolling window
+
+    Returns:
+        out に M2-M5 の 7 列を追加した DataFrame
+    """
+    eps = 1e-10
+    n = len(out)
+
+    # ---- M2: Bayesian Regime posterior (Hamilton filter proxy) ----
+    # シーケンシャル処理が必要 (path-dependent)
+    from scripts.v460.lib.bayesian_regime_filter import BayesianRegimeFilter
+
+    brf = BayesianRegimeFilter()
+    log_ret = np.log(close / close.shift(1)).fillna(0.0).values
+
+    posteriors = np.zeros((n, 4), dtype=np.float64)
+    for i in range(n):
+        result = brf.update(float(log_ret[i]))
+        posteriors[i] = result.posterior
+
+    out["posterior_trending_up"] = posteriors[:, 0]
+    out["posterior_trending_down"] = posteriors[:, 1]
+    out["posterior_ranging"] = posteriors[:, 2]
+    out["posterior_volatile"] = posteriors[:, 3]
+    logger.info(f"  M2 BayesianRegime: {n} updates, final MAP={np.argmax(posteriors[-1])}")
+
+    # ---- M3: σ-Clustering (vol_ratio → cluster int) ----
+    from scripts.v460.lib.sigma_clustering import (
+        VolatilityCluster,
+        VolatilityRegimeClassifier,
+    )
+
+    classifier = VolatilityRegimeClassifier()
+    _cluster_to_int = {
+        VolatilityCluster.LOW: 0,
+        VolatilityCluster.MID: 1,
+        VolatilityCluster.HIGH: 2,
+        VolatilityCluster.EXTREME: 3,
+    }
+
+    # vol_ratio proxy: rolling std / rolling mean of |return|
+    abs_ret = np.abs(log_ret)
+    abs_ret_series = pd.Series(abs_ret, index=out.index)
+    rolling_std = abs_ret_series.rolling(window, min_periods=1).std().fillna(eps)
+    baseline_std = abs_ret_series.expanding(min_periods=max(window, 1)).std().fillna(eps)
+    vol_ratio = (rolling_std / (baseline_std + eps)).clip(lower=0.01, upper=10.0)
+
+    vol_cluster = np.ones(n, dtype=np.int32)  # default MID=1
+    for i in range(n):
+        cluster = classifier.classify(float(vol_ratio.iloc[i]))
+        vol_cluster[i] = _cluster_to_int[cluster]
+
+    out["vol_cluster"] = vol_cluster
+    logger.info(f"  M3 σ-Clustering: distribution={np.bincount(vol_cluster, minlength=4).tolist()}")
+
+    # ---- M4: GLFT fill probability proxy ----
+    # offset_ratio proxy: bid_ask_spread / 2 (half-spread as offset)
+    from scripts.v460.lib.fill_probability_model import FillProbabilityModel
+
+    fpm = FillProbabilityModel()
+    spread = out["bid_ask_spread"].values if "bid_ask_spread" in out.columns else np.full(n, 0.005)
+    offset_proxy = np.clip(spread / 2.0, 0.0, 1.0)
+    fill_prob = np.array([fpm.predict_fill_prob(float(o)) for o in offset_proxy], dtype=np.float64)
+    out["fill_prob"] = fill_prob
+    logger.info(f"  M4 GLFT fill_prob: mean={fill_prob.mean():.4f}, std={fill_prob.std():.4f}")
+
+    # ---- M5: VPIN volume sync ----
+    # order_flow_toxicity は既に VPIN proxy として計算済み → エイリアス
+    if "order_flow_toxicity" in out.columns:
+        out["vpin_vol_sync"] = out["order_flow_toxicity"]
+    else:
+        out["vpin_vol_sync"] = 0.5  # neutral fallback
+    logger.info("  M5 VPIN: aliased from order_flow_toxicity")
 
     return out
 
@@ -302,16 +410,19 @@ def build_and_save(
     result = build_proxy_features(df, window=window)
     logger.info(f"Output shape: {result.shape}")
 
-    # Validate: all 10 features present
-    for feat in V460_FEATURES:
+    # Validate: all 10 + 7 features present
+    all_expected = V460_FEATURES + M2_M5_FEATURES
+    for feat in all_expected:
         assert feat in result.columns, f"Missing feature: {feat}"
 
-    # NaN check
+    # NaN check (V460 base features のみ — M2-M5 は path-dependent で warmup NaN が許容)
     nan_count = int(result[V460_FEATURES].isna().sum().sum())
     total_cells = len(result) * len(V460_FEATURES)
     nan_ratio = nan_count / max(total_cells, 1)
     logger.info(f"NaN count: {nan_count}/{total_cells} ({nan_ratio:.6f})")
     assert nan_ratio <= 0.01, f"NaN ratio {nan_ratio:.4f} exceeds 1% threshold"
+
+    logger.info(f"Total features: {len(all_expected)} ({len(V460_FEATURES)} base + {len(M2_M5_FEATURES)} M2-M5)")
 
     # Save
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -326,8 +437,8 @@ def build_and_save(
         "source_path": str(src),
         "output_path": str(out),
         "rows": len(result),
-        "features": V460_FEATURES,
-        "n_features": len(V460_FEATURES),
+        "features": all_expected,
+        "n_features": len(all_expected),
         "nan_ratio": round(nan_ratio, 8),
         "sha256": data_hash,
         "window": window,

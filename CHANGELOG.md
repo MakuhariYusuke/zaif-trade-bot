@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Session 039 M2-M5 Proxy Features + 377# Design Update (2026-03-11)
+
+### Added
+- **build_features.py M2-M5**: `_add_m2_m5_proxy()` — BayesianRegimeFilter(M2), VolatilityRegimeClassifier(M3), FillProbabilityModel(M4), VPIN(M5) の7特徴量をオフラインプロキシ計算
+- `M2_M5_FEATURES` 定数追加 (posterior_trending_up/down, posterior_ranging, posterior_volatile, vol_cluster, fill_prob, vpin_vol_sync)
+
+### Changed
+- **377# 設計書 v2.0**: SAC live 調査結果 (0/4 positive) 反映、Phase 3.1 完了チェックリスト更新、§8.2 実装コミット記録追加
+- `build_and_save()` バリデーション: 10 → 17 特徴量チェック、metadata に M2-M5 含む
+
 ## Session 038 374# Phase 3.1 Proportional Boost Implementation (2026-03-10)
 
 ### Added

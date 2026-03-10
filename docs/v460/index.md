@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-11 (375# 追加: 369#-374# Profit-First 再点検 + SAC スコープ是正レビュー)
+> 最終更新: 2026-03-11 (M2-M5 proxy features 追加 + 377# v2.0 設計書更新)
 
 ---
 

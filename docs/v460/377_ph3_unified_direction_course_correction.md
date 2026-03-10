@@ -6,7 +6,7 @@
 | フェーズ | ph3 (SAC Sidecar → Live Injection) |
 | 前提 | 374# (4Phase設計), 375# (Codex), 376# (Gemini 3.1 Pro) |
 | 作成 | Copilot |
-| ステータス | **ACTIVE — 実行方針** |
+| ステータス | **ACTIVE — Phase 3.1 コード実装完了、SAC live 起動待ち** |
 
 ---
 
@@ -61,12 +61,24 @@
 
 ### §4.1 Phase 3.1 前提条件チェックリスト
 
-Phase 3.1 着手前に以下を確認する:
+Phase 3.1 **コード実装は完了** (374# impl `82675725d`)。live 稼働には以下が必要:
 
-- [ ] `cache/sidecar_signal.json` が scheduler により定期更新されている
-- [ ] `logs/sac_retrain_history.jsonl` に retrain 履歴が存在する
-- [ ] `fill_records` に `sidecar_offset_bps` non-null エントリが存在する
-- [ ] log に sidecar 関連エントリが出力されている
+- [x] `compute_sidecar_offset_bps_v2()` + `_shaping_fn()` 実装 (sidecar_types.py)
+- [x] FillConfig 5フィールド + YAML parser + hot-reload 配線
+- [x] CycleGateAggregator v1/v2 切替 + `sidecar_enabled` ガード
+- [x] fill_config_validation.py sidecar バリデーション (max_boost≤0.20 ceiling)
+- [x] 66 tests (55 core + 11 validation), 4637 v460 total pass
+- [ ] `cache/sidecar_signal.json` が scheduler により定期更新されている → **❌ 未生成**
+- [ ] `logs/sac_retrain_history.jsonl` に retrain 履歴が存在する → **❌ 未生成**
+- [ ] `fill_records` に `sidecar_offset_bps` non-null エントリが存在する → **❌ (signal なし)**
+- [ ] log に sidecar 関連エントリが出力されている → **❌ 0 件**
+
+**SAC Live 状況 (2026-03-11 調査):**
+- SAC checkpoints: 1310件存在 (最新 2/11, 実験用 `HeavyTradingEnv`)
+- training parquet: 136MB 存在 (`data/btc_jpy_1m_full_registry_features.parquet`)
+- `sac_retrain_scheduler.py`: standalone CLI、fill_test への自動統合なし
+- `orchestrator_mid_cycle.py`: signal 読み込み済み (None → offset=0 で安全フォールバック)
+- **結論**: コードは完全に配線済み。scheduler の初回実行が必要。
 
 ### §4.2 修正されたパラメータ
 
@@ -182,12 +194,17 @@ classifier = MarketRegimeClassifier(config)
 
 ### §7.1 最低要件
 
-| 項目 | 確認方法 | 現状 |
+| 項目 | 確認方法 | 現状 (2026-03-11) |
 |---|---|---|
-| `sidecar_signal.json` 更新 | `stat cache/sidecar_signal.json` の mtime | ❓ 未確認 |
-| retrain 履歴 | `wc -l logs/sac_retrain_history.jsonl` | ❓ 未確認 |
-| fill_records sidecar fields | `jq '.sidecar_offset_bps' fill_records_*.jsonl \| grep -v null \| wc -l` | ❓ 未確認 |
-| log sidecar entries | `grep -c 'sidecar' fill_test.log` | 375# §7: **0 件** |
+| `sidecar_signal.json` 更新 | `stat cache/sidecar_signal.json` の mtime | **❌ NOT FOUND** |
+| retrain 履歴 | `wc -l logs/sac_retrain_history.jsonl` | **❌ NOT FOUND** |
+| fill_records sidecar fields | `jq '.sidecar_offset_bps' fill_records_*.jsonl \| grep -v null \| wc -l` | **❌ (signal なし)** |
+| log sidecar entries | `grep -c 'sidecar' fill_test.log` | **❌ 0 件** |
+
+**根本原因**: `sac_retrain_scheduler.py` は standalone CLI であり、fill_test から自動起動されない。初回手動実行が必要:
+```bash
+python scripts/v460/ml/sac_retrain_scheduler.py --config configs/v460/experiments/g2_sac_train.yaml --once
+```
 
 ### §7.2 達成後のみ Phase 3.1 着手可能
 
@@ -196,7 +213,9 @@ classifier = MarketRegimeClassifier(config)
 
 ---
 
-## §8 コード修正サマリ (本セッション実施分)
+## §8 コード修正サマリ
+
+### §8.1 初版 (377# 作成時)
 
 | # | 修正内容 | ファイル | 根拠 |
 |---|---|---|---|
@@ -205,6 +224,21 @@ classifier = MarketRegimeClassifier(config)
 | C3 | 374# v3.0 改版: max_boost_bps 3.0→0.15、Phase 判定修正、§16 追加 | `374_ph3_design_*.md` | 375#/376# 全般 |
 | C4 | 本文書 377# 作成 | `377_ph3_unified_direction_*.md` | 統合方針の明文化 |
 | C5 | `DEFAULT_SIDECAR_BOOST_BPS` 0.3→0.15 に修正 | `sidecar_types.py` | 376# §3: 0.15 絶対上限 |
+
+### §8.2 Phase 3.1 実装 (`82675725d`)
+
+| # | 修正内容 | ファイル | 根拠 |
+|---|---|---|---|
+| C6 | `compute_sidecar_offset_bps_v2()` + `_shaping_fn()` 実装 | `sidecar_types.py` | 374# §3.1 |
+| C7 | FillConfig 5 sidecar フィールド追加 | `fill_config.py` | 374# §10.1 |
+| C8 | YAML `sidecar:` section parsing | `fill_config_parser.py` | 374# §10.1 |
+| C9 | 5 sidecar keys hot-reload 対象追加 | `config_hot_reload.py` | 374# §10.1 |
+| C10 | `_apply_sidecar_offset()` v1/v2 切替 | `cycle_gate_aggregator.py` | 374# §3.1 |
+| C11 | sidecar validation (max_boost≤0.20 ceiling) | `fill_config_validation.py` | セルフレビュー横展開 |
+| C12 | `import math` module-level 化 | `sidecar_types.py` | セルフレビュー |
+| C13 | sidecar log 精度 `.2f`→`.4f` | `fill_cycle_executor.py` | セルフレビュー |
+| C14 | `sidecar:` section YAML 追加 | `fill_test.yaml` | Phase 3.1 |
+| C15 | 66 tests (55 core + 11 validation) | `test_374_proportional_boost.py` | 374# |
 
 ---
 
@@ -223,10 +257,12 @@ classifier = MarketRegimeClassifier(config)
 
 | 項目 | 工数見積 | 状態 |
 |---|---|---|
-| `compute_sidecar_offset_bps_v2()` 実装 | 2h | 374# §3.1 設計完了 |
-| fill_config / YAML / hot-reload 配線 | 2h | 374# §10.1 設計完了 |
-| テスト (20-30 件) | 2h | 374# §10.2 設計完了 |
-| SAC live presence 確認 | 1h | §7.1 チェックリスト |
+| ~~`compute_sidecar_offset_bps_v2()` 実装~~ | ~~2h~~ | ✅ 完了 (`82675725d`) |
+| ~~fill_config / YAML / hot-reload 配線~~ | ~~2h~~ | ✅ 完了 (`82675725d`) |
+| ~~テスト (66 件)~~ | ~~2h~~ | ✅ 完了 (55 core + 11 validation) |
+| ~~バリデーション横展開~~ | ~~1h~~ | ✅ 完了 (fill_config_validation.py) |
+| SAC scheduler 初回実行 | 0.5h | ⏳ 手動実行待ち |
+| SAC live presence 確認 (§7.1) | — | ❌ 0/4 positive |
 
 ### §9.3 観察項目
 
@@ -259,3 +295,4 @@ classifier = MarketRegimeClassifier(config)
 | 日付 | 版 | 内容 |
 |---|---|---|
 | 2026-03-18 | 1.0 | 初版: 375#/376# レビュー統合方針 + 軌道修正 + データパリティロードマップ + FastIntradayEnvV456 評価 |
+| 2026-03-11 | 2.0 | Phase 3.1 コード実装完了反映 (`82675725d`): §4.1 チェックリスト更新, §7.1 SAC live 調査結果 (0/4), §8.2 実装サマリ追加, §9.2 残作業ステータス更新, M2-M5 build_features.py proxy 追加着手 |
