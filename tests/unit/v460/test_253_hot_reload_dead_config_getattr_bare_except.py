@@ -224,9 +224,10 @@ class TestRegressionIntegrity:
         """fill_cycle_executor.py の行数が MAX LINES 未満。"""
         path = Path("scripts/v460/lib/fill_cycle_executor.py")
         lines = path.read_text(encoding="utf-8").count("\n")
-        # MAX LINES: 1100 (docstring 宣言)
+        # MAX LINES: 1120 (docstring 宣言)
         # 323# God Object 分割: 1502→1090 (FillRecordBuilder + PreOrderAdjustments 抽出)
-        assert lines < 1100, f"fill_cycle_executor.py has {lines} lines"
+        # 372# F1 Gap-3: sidecar bps offset 適用 (+13行)
+        assert lines < 1120, f"fill_cycle_executor.py has {lines} lines"
 
     def test_event_logger_has_logger(self) -> None:
         """event_logger.py にモジュールレベル logger が存在。"""

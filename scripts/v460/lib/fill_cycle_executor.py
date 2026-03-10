@@ -366,6 +366,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
         trending_offset_mult: float | None = None,
         degraded_liquidation: bool = False,
         toxicity_offset_mult: float = 1.0,
+        sidecar_offset_bps: float = 0.0,
     ) -> FillRecord:
         """1 サイクル: 発注 → 監視 → 結果記録."""
         self._cycle_count += 1
@@ -719,6 +720,20 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                     f"[215# alert_mode] {side}: offset_mult={_a_mult:.2f} "
                     f"(delta={_a_delta:+.0f}JPY, price={order_price:.0f})"
                 )
+
+        # 372# F1 Gap-3: SAC Sidecar bps offset — 非対称 maker 調整
+        # sidecar_offset_bps: 正=攻撃的(mid に近い), 負=保守的
+        # buy: 正bps → 価格上昇(mid に近づく) / sell: 正bps → 価格下降(mid に近づく)
+        if sidecar_offset_bps != 0.0 and order_price > 0:
+            _sidecar_delta = round(sidecar_offset_bps / 10000.0 * order_price)
+            if side == "buy":
+                order_price = round(order_price + _sidecar_delta)
+            else:
+                order_price = round(order_price - _sidecar_delta)
+            logger.info(
+                f"[372# sidecar] {side}: offset={sidecar_offset_bps:+.2f}bps "
+                f"→ delta={_sidecar_delta:+.0f}JPY, price={order_price:.0f}"
+            )
 
         # 2. 発注 (CM-2: リトライ付き)
         t_submit = time.time()

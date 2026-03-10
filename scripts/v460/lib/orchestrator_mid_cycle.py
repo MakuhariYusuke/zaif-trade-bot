@@ -132,6 +132,11 @@ class OrchestratorMidCycleMixin:
             next_side,
         )
 
+        # 372# F1 Gap-1: SAC sidecar signal を読み込み gate に注入
+        from scripts.v460.lib.sidecar_signal_io import read_sidecar_signal
+
+        _sidecar_signal = read_sidecar_signal()
+
         _gate_result = self._cycle_gate.evaluate(
             side=next_side,
             regime=(
@@ -153,6 +158,7 @@ class OrchestratorMidCycleMixin:
             buy_toxicity=_buy_tox,
             sell_toxicity=_sell_tox,
             halt_recovery_active=_halt_recovery_active,
+            sidecar_signal=_sidecar_signal,
         )
 
         if _gate_result.blocked:
@@ -388,6 +394,7 @@ class OrchestratorMidCycleMixin:
                     gate_result.degraded_liquidation or ctx.inventory_escape
                 ),
                 toxicity_offset_mult=gate_result.toxicity_offset_mult,
+                sidecar_offset_bps=gate_result.sidecar_offset_bps,
             )
             # 154# C-2: 実サイクル実行 → skip カウンタリセット
             self._trending_sell_skip_count = 0

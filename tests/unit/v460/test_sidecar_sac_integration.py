@@ -4,6 +4,8 @@
   - sidecar_types.py: SidecarSignal, classify_bias, compute_sidecar_offset_bps
   - sidecar_signal_io.py: write/read atomic I/O, staleness, error handling
   - cycle_gate_aggregator.py: sidecar offset injection
+  - 372# F2: _get_latest_obs() — env 末尾 observation 取得
+  - 372# F1 Gap-3: sidecar bps offset → pricing 適用ロジック
 """
 
 from __future__ import annotations
@@ -477,3 +479,170 @@ class TestCycleGateResultSidecarFields:
         # 基本的なフィールドが設定されている
         assert result.sidecar_bias == pytest.approx(0.6)
         assert result.sidecar_direction == "buy_bias"
+
+
+# ════════════════════════════════════════════════════════════════
+# §5  372# F2: _get_latest_obs — env 末尾 observation 取得
+# ════════════════════════════════════════════════════════════════
+
+
+class _FakeLiteEnv:
+    """LiteTradingEnv 相当の最小 stub."""
+
+    def __init__(self, n_rows: int = 100, n_features: int = 12) -> None:
+        import numpy as np
+
+        self._feature_matrix = np.random.randn(n_rows, n_features).astype(
+            np.float32,
+        )
+        self.current_step = 0
+
+    def _get_observation(self):
+        return self._feature_matrix[self.current_step].copy()
+
+    def reset(self):
+        self.current_step = 0
+        return self._get_observation(), {}
+
+
+class _FakeDfEnv:
+    """HeavyTradingEnv 相当の最小 stub (df 属性あり)."""
+
+    def __init__(self, n_rows: int = 200, n_features: int = 12) -> None:
+        import numpy as np
+
+        self.df = list(range(n_rows))  # len() 可能な何か
+        self._data = np.random.randn(n_rows, n_features).astype(np.float32)
+        self.current_step = 0
+
+    def _get_observation(self):
+        return self._data[self.current_step].copy()
+
+    def reset(self):
+        self.current_step = 0
+        return self._get_observation(), {}
+
+
+class TestGetLatestObs:
+    """372# F2: _get_latest_obs() のテスト."""
+
+    def test_lite_env_returns_last_row(self) -> None:
+        """LiteTradingEnv パターン: 末尾行の observation を返す."""
+        import numpy as np
+        from scripts.v460.ml.sac_retrain_scheduler import _get_latest_obs
+
+        env = _FakeLiteEnv(n_rows=50, n_features=8)
+        obs = _get_latest_obs(env)
+        expected = env._feature_matrix[49]
+        np.testing.assert_array_almost_equal(obs, expected)
+
+    def test_lite_env_preserves_current_step(self) -> None:
+        """_get_latest_obs 後に current_step が元に戻る."""
+        from scripts.v460.ml.sac_retrain_scheduler import _get_latest_obs
+
+        env = _FakeLiteEnv(n_rows=50)
+        env.current_step = 10
+        _get_latest_obs(env)
+        assert env.current_step == 10
+
+    def test_df_env_returns_last_row(self) -> None:
+        """HeavyTradingEnv パターン: df 末尾行の observation を返す."""
+        import numpy as np
+        from scripts.v460.ml.sac_retrain_scheduler import _get_latest_obs
+
+        env = _FakeDfEnv(n_rows=200, n_features=8)
+        obs = _get_latest_obs(env)
+        expected = env._data[199]
+        np.testing.assert_array_almost_equal(obs, expected)
+
+    def test_df_env_preserves_current_step(self) -> None:
+        """HeavyTradingEnv パターン: current_step 復元."""
+        from scripts.v460.ml.sac_retrain_scheduler import _get_latest_obs
+
+        env = _FakeDfEnv(n_rows=200)
+        env.current_step = 42
+        _get_latest_obs(env)
+        assert env.current_step == 42
+
+    def test_fallback_to_reset(self) -> None:
+        """df も _feature_matrix もない env → reset() フォールバック."""
+        import numpy as np
+        from scripts.v460.ml.sac_retrain_scheduler import _get_latest_obs
+
+        class _PlainEnv:
+            def __init__(self):
+                self.current_step = 0
+                self._obs = np.ones(4, dtype=np.float32)
+
+            def reset(self):
+                return self._obs.copy(), {}
+
+        env = _PlainEnv()
+        obs = _get_latest_obs(env)
+        np.testing.assert_array_equal(obs, env._obs)
+
+
+# ════════════════════════════════════════════════════════════════
+# §6  372# F1 Gap-3: sidecar bps offset → pricing 適用ロジック
+# ════════════════════════════════════════════════════════════════
+
+
+class TestSidecarBpsOffset:
+    """372# F1 Gap-3: sidecar_offset_bps → 価格調整の妥当性.
+
+    fill_cycle_executor 内のロジックを再現して検証。
+    """
+
+    @staticmethod
+    def _apply_sidecar_offset(
+        side: str, order_price: float, sidecar_offset_bps: float,
+    ) -> tuple[float, float]:
+        """fill_cycle_executor.py 内のロジックを抽出 (テスト対象)."""
+        if sidecar_offset_bps == 0.0 or order_price <= 0:
+            return order_price, 0.0
+        delta = round(sidecar_offset_bps / 10000.0 * order_price)
+        if side == "buy":
+            return round(order_price + delta), delta
+        else:
+            return round(order_price - delta), delta
+
+    def test_positive_bps_buy_increases_price(self) -> None:
+        """正bps + buy → 価格上昇 (mid に近づく = 攻撃的)."""
+        new_price, delta = self._apply_sidecar_offset("buy", 15_000_000, 5.0)
+        assert delta > 0
+        assert new_price > 15_000_000
+
+    def test_positive_bps_sell_decreases_price(self) -> None:
+        """正bps + sell → 価格下降 (mid に近づく = 攻撃的)."""
+        new_price, delta = self._apply_sidecar_offset("sell", 15_000_000, 5.0)
+        assert delta > 0
+        assert new_price < 15_000_000
+
+    def test_negative_bps_buy_decreases_price(self) -> None:
+        """負bps + buy → 価格下降 (mid から遠ざかる = 保守的)."""
+        new_price, delta = self._apply_sidecar_offset("buy", 15_000_000, -5.0)
+        assert delta < 0
+        assert new_price < 15_000_000
+
+    def test_negative_bps_sell_increases_price(self) -> None:
+        """負bps + sell → 価格上昇 (mid から遠ざかる = 保守的)."""
+        new_price, delta = self._apply_sidecar_offset("sell", 15_000_000, -5.0)
+        assert delta < 0
+        assert new_price > 15_000_000
+
+    def test_zero_bps_no_change(self) -> None:
+        """bps=0 → 価格不変."""
+        new_price, delta = self._apply_sidecar_offset("buy", 15_000_000, 0.0)
+        assert new_price == 15_000_000
+        assert delta == 0.0
+
+    def test_bps_magnitude_at_15m(self) -> None:
+        """BTC 15M JPY で 5bps → 7500 JPY の調整."""
+        _, delta = self._apply_sidecar_offset("buy", 15_000_000, 5.0)
+        assert delta == 7500  # 5/10000 * 15_000_000
+
+    def test_zero_price_no_change(self) -> None:
+        """order_price=0 → 変化なし."""
+        new_price, delta = self._apply_sidecar_offset("buy", 0, 5.0)
+        assert new_price == 0
+        assert delta == 0.0

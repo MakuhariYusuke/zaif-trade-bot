@@ -629,6 +629,45 @@ def _atomic_deploy_model(
             pass
 
 
+def _get_latest_obs(env: TrainingEnvProtocol) -> object:
+    """372# F2 fix: 訓練データ末尾の observation を取得.
+
+    env.reset() は current_step を先頭にリワインドしてしまうため、
+    代わりに末尾の step に移動して _get_observation() を呼ぶ。
+    環境の正規化パイプライン (OnlineScaler, action_masks) がそのまま適用される。
+
+    HeavyTradingEnv / LiteTradingEnv 両対応。
+    """
+    import numpy as np
+
+    # HeavyTradingEnv: df 属性あり
+    df = getattr(env, "df", None)
+    if df is not None and hasattr(df, "__len__"):
+        last_step = max(0, len(df) - 1)
+    # LiteTradingEnv: _feature_matrix 属性あり
+    elif hasattr(env, "_feature_matrix"):
+        fm = getattr(env, "_feature_matrix")
+        last_step = max(0, fm.shape[0] - 1)
+    else:
+        # フォールバック: reset() を使用 (旧動作)
+        obs, _ = env.reset()
+        return obs
+
+    # current_step を末尾に設定して observation を取得
+    saved_step = getattr(env, "current_step", 0)
+    try:
+        env.current_step = last_step  # type: ignore[attr-defined]
+        if hasattr(env, "_get_observation"):
+            obs = env._get_observation()  # type: ignore[attr-defined]
+        else:
+            # _get_observation がない場合のフォールバック
+            obs, _ = env.reset()
+    finally:
+        env.current_step = saved_step  # type: ignore[attr-defined]
+
+    return obs
+
+
 def _update_sidecar_signal(
     model: SACModelProtocol,
     env: TrainingEnvProtocol,
@@ -639,18 +678,25 @@ def _update_sidecar_signal(
     """Sidecar signal ファイルを更新.
 
     365# §5.2 step 6 / §5.3 フォーマット準拠。
-    最新 observation で推論して directional_bias を取得。
+    372# F2 fix: 訓練データ末尾 (最新) の observation で推論。
+    env.reset() は訓練データ先頭にリワインドするため使用しない。
     """
     from scripts.v460.lib.sidecar_signal_io import write_sidecar_signal
     from scripts.v460.lib.sidecar_types import SidecarSignal
 
-    # 最新 obs で推論
+    # 372# F2 fix: 訓練データ末尾 (= 最新市場状態) で推論
+    features_snapshot: dict[str, float] = {}
     try:
-        obs, _ = env.reset()
+        obs = _get_latest_obs(env)
         action, _ = model.predict(obs, deterministic=True)
         # SB3 SAC continuous → action[0] が [-1, +1]
         raw_bias = float(action[0]) if hasattr(action, "__getitem__") else float(action)
         bias = max(-1.0, min(1.0, raw_bias))
+        # features_snapshot: 診断用に obs の最初の数値を保存
+        feature_names = getattr(cfg, "feature_columns", None) or []
+        for i, name in enumerate(feature_names):
+            if i < len(obs):
+                features_snapshot[name] = float(obs[i])
     except Exception as e:
         logger.warning(f"Sidecar inference failed, using neutral: {e}")
         bias = 0.0
@@ -661,6 +707,7 @@ def _update_sidecar_signal(
         model_version=model_version,
         confidence=1.0,
         regime_hint="",
+        features_snapshot=features_snapshot,
         training_metrics={
             "gross_roi": float(eval_result.get("gross_roi", 0.0)),
             "total_timesteps": float(eval_result.get("trade_count", 0)),
