@@ -179,6 +179,7 @@ class TestCancelReasons:
             CR.ONE_SIDED_COOLDOWN_SKIP,        # 234# one-sided
             CR.ONE_SIDED_FREEZE_SKIP,          # 234# one-sided
             CR.SKIP_GATE_RULE_UNKNOWN_SELL,    # 296# unknown sell
+            CR.POLL_ERROR_LIMIT,               # 373# F9 poll error
         }
         assert CR.AUDIT_CANCEL_REASONS == expected
 

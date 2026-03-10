@@ -68,6 +68,8 @@ ONE_SIDED_FREEZE_SKIP = "one_sided_freeze_skip"
 # 348# balance_forced 撤廃: FORCED_BUY_DELAY を削除
 # 296# skip_gate_rule: unknown regime sell skip
 SKIP_GATE_RULE_UNKNOWN_SELL = "skip_gate_rule_unknown_sell"
+# 373# F9: order_monitor poll エラー連続限度超過
+POLL_ERROR_LIMIT = "poll_error_limit"
 
 AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     CIRCUIT_BREAKER_OPEN,
@@ -102,6 +104,7 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     ONE_SIDED_COOLDOWN_SKIP,
     ONE_SIDED_FREEZE_SKIP,
     SKIP_GATE_RULE_UNKNOWN_SELL,
+    POLL_ERROR_LIMIT,
 })
 
 # ======================================================================
@@ -191,4 +194,6 @@ CancelReason = Literal[
     "one_sided_freeze_skip",
     # 296# skip_gate_rule: unknown regime sell
     "skip_gate_rule_unknown_sell",
+    # 373# F9: poll error limit
+    "poll_error_limit",
 ]

@@ -323,6 +323,7 @@ class OrderMonitor:
             except Exception as e:
                 logger.debug(f"[stale_order] mid_at_order 取得失敗 (stale 検出無効化): {e}")
         last_reprice_time = t_submit
+        _consecutive_poll_errors = 0  # 373# F9: 連続 poll エラーカウンタ
 
         while elapsed < _effective_timeout and not shutdown_check.is_killed():
             await asyncio.sleep(cfg.poll_interval_sec)
@@ -409,7 +410,16 @@ class OrderMonitor:
                     logger.info(f"Order {status_order.status}: {order.order_id}")
                     break
             except Exception as e:
-                logger.warning(f"Poll error: {e}")
+                _consecutive_poll_errors += 1
+                logger.warning(f"Poll error ({_consecutive_poll_errors}): {e}")
+                # 373# F9: 連続 poll エラーが閾値超過 → ループ脱出して cancel
+                if _consecutive_poll_errors >= 5:
+                    logger.error(
+                        f"[373# F9] {_consecutive_poll_errors} consecutive poll errors "
+                        f"— giving up monitoring, will cancel order"
+                    )
+                    cancel_reason_poll = CR.POLL_ERROR_LIMIT
+                    break
 
             # --- 094# stale order 検出 & cancel-replace ---
             # 200# 10-B: 冗長 ternary 解消 — side 別値を先に解決

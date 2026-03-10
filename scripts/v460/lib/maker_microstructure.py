@@ -216,12 +216,14 @@ class MicrostructureMixin:
         if cfg.as_delta_star_enabled and gamma > 0:
             # 366# M4: GLFT Fill Probability — 動的 k (有効時)
             k = cfg.as_delta_star_fill_rate_k  # フォールバック
+            # 373# F6: type:ignore[union-attr] を narrowing で排除
+            _fpm = self._fill_prob_model
             if (
-                getattr(self, "_fill_prob_model", None) is not None
+                _fpm is not None
                 and cfg.glft_dynamic_k_enabled
-                and self._fill_prob_model.k > 0  # type: ignore[union-attr]
+                and _fpm.k > 0
             ):
-                k = self._fill_prob_model.k  # type: ignore[union-attr]
+                k = _fpm.k
             if k > 0:
                 sigma_abs = sigma * mid_price  # リターン → 絶対価格 (JPY)
                 sigma_abs_sq = sigma_abs * sigma_abs

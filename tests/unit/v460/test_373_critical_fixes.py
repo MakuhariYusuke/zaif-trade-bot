@@ -5,6 +5,9 @@
   - CRITICAL-2: balance_checker.check() 例外時 skip に変更
   - IMPORTANT-3: SACRetrainConfig __post_init__ バリデーション
   - IMPORTANT-4: read_sidecar_signal TOCTOU 修正
+  - F6: maker_microstructure type:ignore 排除
+  - F8: fill_cycle_executor max_lot 最終クランプ
+  - F9: order_monitor poll エラーカウンタ + POLL_ERROR_LIMIT
 """
 
 from __future__ import annotations
@@ -191,3 +194,74 @@ class TestSidecarSignalTOCTOU:
         assert not sig_path.exists()
         result = read_sidecar_signal(sig_path)
         assert result is None
+
+
+# ════════════════════════════════════════════════════════════════
+# §5 F6: maker_microstructure type:ignore 排除
+# ════════════════════════════════════════════════════════════════
+
+
+class TestMakerMicrostructureNoTypeIgnore:
+    """_fill_prob_model 参照に type:ignore が残っていないこと."""
+
+    def test_no_type_ignore_union_attr(self) -> None:
+        import inspect
+        from scripts.v460.lib.maker_microstructure import MicrostructureMixin
+        source = inspect.getsource(MicrostructureMixin)
+        assert "type: ignore[union-attr]" not in source, (
+            "type:ignore[union-attr] が maker_microstructure に残存"
+        )
+
+    def test_no_getattr_fill_prob_model(self) -> None:
+        """getattr fallback ではなく直接参照に変更されたこと."""
+        import inspect
+        from scripts.v460.lib.maker_microstructure import MicrostructureMixin
+        source = inspect.getsource(MicrostructureMixin)
+        assert 'getattr(self, "_fill_prob_model"' not in source
+
+
+# ════════════════════════════════════════════════════════════════
+# §6 F8: fill_cycle_executor max_lot 最終クランプ
+# ════════════════════════════════════════════════════════════════
+
+
+class TestMaxLotFinalClamp:
+    """全乗数適用後に max_lot クランプが存在すること."""
+
+    def test_max_lot_clamp_in_source(self) -> None:
+        import inspect
+        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
+        source = inspect.getsource(FillCycleExecutorMixin)
+        assert "373# F8" in source, "F8 max_lot 最終クランプが未実装"
+        assert "self.config.max_lot" in source
+
+
+# ════════════════════════════════════════════════════════════════
+# §7 F9: order_monitor poll consecutive error counter
+# ════════════════════════════════════════════════════════════════
+
+
+class TestPollErrorLimit:
+    """POLL_ERROR_LIMIT 定数と連続エラーカウンタの存在テスト."""
+
+    def test_poll_error_limit_constant_exists(self) -> None:
+        from scripts.v460.lib import cancel_reasons as CR
+        assert hasattr(CR, "POLL_ERROR_LIMIT")
+        assert CR.POLL_ERROR_LIMIT == "poll_error_limit"
+
+    def test_poll_error_limit_in_audit_set(self) -> None:
+        from scripts.v460.lib import cancel_reasons as CR
+        assert CR.POLL_ERROR_LIMIT in CR.AUDIT_CANCEL_REASONS
+
+    def test_poll_error_limit_in_cancel_reason_literal(self) -> None:
+        import typing
+        from scripts.v460.lib.cancel_reasons import CancelReason
+        args = typing.get_args(CancelReason)
+        assert "poll_error_limit" in args
+
+    def test_consecutive_poll_errors_in_monitor_source(self) -> None:
+        import inspect
+        from scripts.v460.lib.order_monitor import OrderMonitor
+        source = inspect.getsource(OrderMonitor)
+        assert "_consecutive_poll_errors" in source
+        assert "373# F9" in source

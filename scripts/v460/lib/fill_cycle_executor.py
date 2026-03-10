@@ -799,6 +799,14 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                     f"{_pre_lot:.6f} → {_order_lot:.6f}"
                 )
 
+        # 373# F8: 全乗数チェーン適用後の最終 max_lot クランプ (防御的)
+        # 現行乗数は全て ≤ 1.0 だが、将来の拡張で > 1.0 が入った場合の安全弁
+        if self.config.max_lot > 0 and _order_lot > self.config.max_lot:
+            logger.warning(
+                f"[373# F8] lot {_order_lot:.6f} > max_lot {self.config.max_lot:.6f} — clamped"
+            )
+            _order_lot = self.config.max_lot
+
         # 306# O1: Queue Position Estimation — OB cache から推定
         _queue_depth_ahead: float | None = None
         _queue_fill_prob_est: float | None = None

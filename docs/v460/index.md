@@ -364,6 +364,7 @@
 | 368 | rev | [368_ph2_rev_362_367_sac_linkage_and_urgent_blockers.md](368_ph2_rev_362_367_sac_linkage_and_urgent_blockers.md) | 362#-367# レビュー: SAC接続・市場理論・緊急ブロッカー再整理 |
 | 363 | rev | [363_ph2_rev_361_362_review_validation.md](363_ph2_rev_361_362_review_validation.md) | 361/362 AI レビュー妥当性検証: コード検証 + 統合アクション + Codex メモリ診断プロンプト |
 | 361 | rev | [361_ph2_rev_351_360_ph3_readiness_and_profit_priority_review.md](361_ph2_rev_351_360_ph3_readiness_and_profit_priority_review.md) | 351#–360# レビュー: ph3 gate の in-sample 問題, E2 `ic_seed_std` 空洞化, ph2 live 問題との不整合, mixed-SHA 集計の補正, profit-first の次手整理 |
+| 373 | fix | [373_phg_fix_post_sac_audit_and_safety_hardening.md](373_phg_fix_post_sac_audit_and_safety_hardening.md) | Post-SAC 安全性監査 & ハードニング: CRITICAL 2件 (order_quantity ゼロ除算防止, balance_checker 例外安全化) + IMPORTANT 7件 (SACRetrainConfig validation, TOCTOU, type:ignore 排除, max_lot clamp, poll error limit) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
