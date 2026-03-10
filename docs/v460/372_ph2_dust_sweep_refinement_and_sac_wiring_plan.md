@@ -6,7 +6,7 @@
 | フェーズ | ph2 G1.1-exec |
 | 前提文書 | 128# (dust sweep 初版), 370# §4 (SAC F1/F2), 365# (P1-P8) |
 | 作業日 | 2026-03-10 |
-| コミット | `154bd38b2` |
+| コミット | `154bd38b2` (dust sweep), `9ee8b662e` (SAC F1/F2) |
 
 ---
 
@@ -107,29 +107,41 @@ action, _ = model.predict(obs, deterministic=True)
 
 ## §3 SAC 改善計画
 
-### §3.1 F2 修正: signal 推論の現在市場化 (P0)
+### §3.1 F2 修正: signal 推論の現在市場化 (P0) — ✅ 完了
 
 ```python
-# 現状 (バグ):
-obs, _ = env.reset()
+# 修正前 (バグ):
+obs, _ = env.reset()  # 訓練データ先頭にリワインド
 
-# 修正案:
-# 最新の feature row から observation を構築
-latest_obs = env.build_latest_observation(feature_source)
-action, _ = model.predict(latest_obs, deterministic=True)
+# 修正後 (372# F2):
+obs = _get_latest_obs(env)  # 訓練データ末尾 = 最新市場状態
 ```
 
-**依存**: `LiteTradingEnv` / `HeavyTradingEnv` に `build_latest_observation()` API 追加が必要。
+`_get_latest_obs()` は `env.current_step` を末尾に設定して `_get_observation()` を
+呼ぶことで、OnlineScaler + action_masks を含む正規化パイプラインを再利用。
+HeavyTradingEnv (df) / LiteTradingEnv (_feature_matrix) 両対応、
+フォールバックとして reset() も保持。
 
-### §3.2 F1 修正: 3段階配線 (P0)
+### §3.2 F1 修正: 3段階配線 (P0) — ✅ 完了
 
-| Gap | 修正箇所 | 内容 |
-|---|---|---|
-| Gap-1 | `orchestrator_mid_cycle.py` | `read_sidecar_signal()` → `evaluate(sidecar_signal=sig)` |
-| Gap-2 | `fill_cycle_executor.py` | `run_single_cycle()` に `sidecar_offset_bps: float = 0.0` パラメータ追加 |
-| Gap-3 | `fill_cycle_executor.py` | `sidecar_offset_bps` を price に反映 (bps → JPY → 加算) |
+| Gap | 修正箇所 | 内容 | 状態 |
+|---|---|---|---|
+| Gap-1 | `orchestrator_mid_cycle.py` | `read_sidecar_signal()` → `evaluate(sidecar_signal=sig)` | ✅ |
+| Gap-2 | `fill_cycle_executor.py` | `run_single_cycle()` に `sidecar_offset_bps: float = 0.0` 追加 | ✅ |
+| Gap-3 | `fill_cycle_executor.py` | `sidecar_offset_bps` → `delta_jpy = bps/10000 * price` → 価格直接調整 | ✅ |
+| 呼出連鎖 | `orchestrator_mid_cycle.py` | `gate_result.sidecar_offset_bps` を `run_single_cycle()` に伝搬 | ✅ |
 
-### §3.3 Deploy Gate 強化 (P1)
+**Gap-3 pricing ロジック:**
+```
+正bps = 攻撃的 (mid に近づく):  buy → +delta,  sell → -delta
+負bps = 保守的 (mid から離れる): buy → -delta,  sell → +delta
+delta_jpy = round(sidecar_offset_bps / 10000 * order_price)
+```
+
+既存の `_apply_offset_multiplier()` (乗数ベース) とは独立した bps 直接適用。
+toxicity/trending/velocity offset の後に最終調整として適用。
+
+### §3.3 Deploy Gate 強化 (P1) — 🔲 未着手
 
 現在: `gross_roi > 0` のみ。
 改善案:
@@ -141,12 +153,32 @@ action, _ = model.predict(latest_obs, deterministic=True)
 
 ## §4 実行順序
 
-| # | タスク | 依存 | 工数 |
+| # | タスク | 状態 | 備考 |
 |---|---|---|---|
-| 1 | F2: `build_latest_observation()` 実装 + signal 推論修正 | なし | 2-3h |
-| 2 | F1: Gap-1 配線 (orchestrator → gate) | F2 | 0.5h |
-| 3 | F1: Gap-2/3 配線 (gate → executor → pricing) | Gap-1 | 1-2h |
-| 4 | Deploy gate 強化 | F1/F2 | 2-4h |
+| 1 | F2: `_get_latest_obs()` + signal 推論修正 | ✅ 完了 | env API 変更不要 (current_step 直接操作) |
+| 2 | F1: Gap-1 配線 (orchestrator → gate) | ✅ 完了 | `read_sidecar_signal()` → `evaluate()` |
+| 3 | F1: Gap-2/3 配線 (gate → executor → pricing) | ✅ 完了 | bps 直接適用、乗数独立 |
+| 4 | Deploy gate 強化 | 🔲 未着手 | P1: seed stability + Sharpe threshold |
+
+### §4.1 テスト結果
+
+```
+$ python -m pytest tests/unit/v460/test_sidecar_sac_integration.py -v --no-cov
+51 passed in 0.82s  (13 new: 5 F2 + 7 F1-Gap3 + 1 line-guard)
+
+$ python -m pytest tests/unit/v460/ -q --no-cov
+4480 passed, 33 skipped in 29.66s
+```
+
+### §4.2 変更ファイル (F1/F2)
+
+| ファイル | 変更内容 |
+|---|---|
+| `scripts/v460/ml/sac_retrain_scheduler.py` | `_get_latest_obs()` 追加、`_update_sidecar_signal()` で使用 |
+| `scripts/v460/lib/orchestrator_mid_cycle.py` | `read_sidecar_signal()` + `sidecar_signal=` パラメータ、`sidecar_offset_bps=` 伝搬 |
+| `scripts/v460/lib/fill_cycle_executor.py` | `sidecar_offset_bps` パラメータ + bps pricing 適用 |
+| `tests/unit/v460/test_sidecar_sac_integration.py` | F2/F1 テスト 13件追加 |
+| `tests/unit/v460/test_253_...py` | line-guard 上限 1100→1120 |
 
 ---
 
