@@ -131,9 +131,10 @@ class _VgAggregate:
     def mean_offset(self) -> float | None:
         return self.offset_total / self.offset_count if self.offset_count else None
 
-# TODO(123# Gemini review): プレーンテキストログの regex パースは脆い。
-#   VG 発動等の重要イベントは JSONL 構造化ログとして出力・保存する設計に
-#   変更することを推奨。→ 118# E12 として追跡。
+# 372# E12 解消: VG イベントは maker_risk_guards.py から JSONL 構造化ログ
+# (logs/vg_events.jsonl) として出力されるようになった。
+# JSONL 読み込みを優先し、ファイル不在時のみ旧来の regex パースにフォールバック。
+# regex パースは互換性のため残存。削除は全環境で JSONL 出力が確認された後。
 
 # Log format: 2026-02-18 12:18:47,674 INFO [...] [volatility_guard] 107# sell offset boosted: 0.2800→0.3000 (vpin=0.98)
 _VG_PATTERN = re.compile(
@@ -147,6 +148,43 @@ _CYCLE_PATTERN = re.compile(
     r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),\d+ \w+ \[.*?\] "
     r"=== Cycle (\d+) \((\w+)\) ==="
 )
+
+
+def _load_vg_activations_jsonl(jsonl_path: Path) -> list[dict]:
+    """372# E12: JSONL 構造化ログから VG 発動イベントを読み込む.
+
+    maker_risk_guards.py が出力する logs/vg_events.jsonl を直接パースする。
+    regex パースと異なり、フォーマット変更に強く信頼性が高い。
+
+    Returns:
+        list[dict]: 各要素は {timestamp, side, pre_offset, post_offset, reason}
+    """
+    if not jsonl_path.exists():
+        return []
+
+    import json as _json
+
+    activations: list[dict] = []
+    with open(jsonl_path, encoding="utf-8", errors="replace") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                data = _json.loads(line)
+            except _json.JSONDecodeError:
+                continue
+            if data.get("event") != "vg_activation":
+                continue
+            activations.append({
+                "timestamp": float(data.get("timestamp_epoch", 0)),
+                "datetime_str": str(data.get("timestamp_iso", "")),
+                "side": str(data.get("side", "")),
+                "pre_offset": float(data.get("pre_offset", 0)),
+                "post_offset": float(data.get("post_offset", 0)),
+                "reason": str(data.get("reason", "")),
+            })
+    return activations
 
 
 def _parse_vg_activations(log_path: Path) -> list[dict]:
@@ -513,8 +551,20 @@ def main() -> None:
 
     # A4: VG Effectiveness
     if not args.skip_vg:
-        activations = _parse_vg_activations(log_file)
-        print(f"VG activations in log: {len(activations)}")
+        # 372# E12: JSONL 優先、不在時は regex フォールバック
+        vg_jsonl_path = results_dir / "logs" / "vg_events.jsonl"
+        # --log-file で明示指定がない場合は logs/ 直下も探す
+        if not vg_jsonl_path.exists():
+            vg_jsonl_path = Path("logs/vg_events.jsonl")
+        activations = _load_vg_activations_jsonl(vg_jsonl_path)
+        if activations:
+            print(f"VG activations from JSONL: {len(activations)} (structured)")
+        else:
+            activations = _parse_vg_activations(log_file)
+            if activations:
+                print(f"VG activations from log (regex fallback): {len(activations)}")
+            else:
+                print("VG activations: 0 (no JSONL or log data found)")
 
         vg_cycle_ids = _match_vg_to_records(activations, all_records)
         print(f"VG-matched cycles: {len(vg_cycle_ids)}")

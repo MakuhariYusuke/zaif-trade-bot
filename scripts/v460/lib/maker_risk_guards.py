@@ -180,6 +180,16 @@ class RiskGuardsMixin:
                     f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
                     f"({vg_reason})"
                 )
+                # 372# E12: 構造化イベントログ (JSONL)
+                _emit_vg_event(
+                    side=side,
+                    pre_offset=pre_offset,
+                    post_offset=effective_offset_ratio,
+                    reason=vg_reason,
+                    velocity_bps=_vg_velocity,
+                    vpin=_vg_vpin,
+                    boost_factor=_vg_boost,
+                )
             # 120# P2-1: VG 発動状態を追跡
             self._last_vg_triggered = vg_triggered
             # 158# P2-6: VG 詳細ログ (ヒンドサイト分析用)
@@ -306,3 +316,50 @@ class RiskGuardsMixin:
                 f"offset {_prev:.4f} → {effective_offset_ratio:.4f}"
             )
         return effective_offset_ratio
+
+
+# ── 372# E12: VG イベント構造化ログ ──────────────────────
+
+_VG_EVENT_LOG_PATH = "logs/vg_events.jsonl"
+
+
+def _emit_vg_event(
+    *,
+    side: str,
+    pre_offset: float,
+    post_offset: float,
+    reason: str,
+    velocity_bps: float | None,
+    vpin: float | None,
+    boost_factor: float,
+) -> None:
+    """VG 発動イベントを JSONL ファイルに追記.
+
+    372# E12 解消: プレーンテキストログの regex パースではなく
+    構造化データとして保存し、分析ツール (vg_and_trend.py) から
+    直接利用可能にする。
+    """
+    import time
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    try:
+        from ztb.io.jsonl import append_jsonl
+
+        now = datetime.now(timezone.utc)
+        event = {
+            "event": "vg_activation",
+            "timestamp_iso": now.isoformat(),
+            "timestamp_epoch": time.time(),
+            "side": side,
+            "pre_offset": round(pre_offset, 6),
+            "post_offset": round(post_offset, 6),
+            "reason": reason,
+            "velocity_bps": round(velocity_bps, 4) if velocity_bps is not None else None,
+            "vpin": round(vpin, 4) if vpin is not None else None,
+            "boost_factor": round(boost_factor, 4),
+        }
+        append_jsonl(Path(_VG_EVENT_LOG_PATH), [event])
+    except Exception:
+        # イベントログ失敗で取引を止めてはならない
+        logger.debug("[vg_event] JSONL write failed", exc_info=True)

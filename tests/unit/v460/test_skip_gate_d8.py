@@ -153,10 +153,10 @@ def _run_warm_start(
     """warm_start を file I/O なしで実行する."""
     fake_file = Path("fill_records_20260220.jsonl")
     with patch(
-        "scripts.v460.ml.skip_gate.list_fill_record_files",
+        "ztb.ml.skip_gate.list_fill_record_files",
         return_value=[fake_file] if records else [],
     ), patch(
-        "scripts.v460.ml.skip_gate.iter_jsonl_objects",
+        "ztb.ml.skip_gate.iter_jsonl_objects",
         return_value=iter(records),
     ):
         warm_start_skip_gate_thresholds(gate, Path("."), window=window)
