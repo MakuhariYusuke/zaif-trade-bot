@@ -342,3 +342,29 @@ def validate_fill_config(config: FillTestConfig) -> None:
         raise ValueError(
             f"vol_ratio_floor must be > 0, got {config.vol_ratio_floor}"
         )
+
+    # 374# Phase 3.1: sidecar フィールドバリデーション
+    # 375#/376# hard ceiling: max_boost_bps ≤ 0.20 (median spread 超過は自殺的)
+    _SIDECAR_MAX_BOOST_CEILING: float = 0.20
+    if config.sidecar_max_boost_bps < 0:
+        raise ValueError(
+            f"sidecar_max_boost_bps must be >= 0, "
+            f"got {config.sidecar_max_boost_bps}"
+        )
+    if config.sidecar_max_boost_bps > _SIDECAR_MAX_BOOST_CEILING:
+        raise ValueError(
+            f"sidecar_max_boost_bps must be <= {_SIDECAR_MAX_BOOST_CEILING} "
+            f"(375#/376# hard ceiling), got {config.sidecar_max_boost_bps}"
+        )
+    if not (0.0 <= config.sidecar_dead_zone < 1.0):
+        raise ValueError(
+            f"sidecar_dead_zone must be in [0.0, 1.0), "
+            f"got {config.sidecar_dead_zone}"
+        )
+    from scripts.v460.lib.sidecar_types import _VALID_SHAPING
+
+    if config.sidecar_shaping not in _VALID_SHAPING:
+        raise ValueError(
+            f"sidecar_shaping must be one of {sorted(_VALID_SHAPING)}, "
+            f"got {config.sidecar_shaping!r}"
+        )

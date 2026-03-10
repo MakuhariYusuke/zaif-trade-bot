@@ -505,6 +505,18 @@ vpin_vol_sync:
   bucket_btc: 0.05                 # 1 バケットあたりの出来高 (BTC)
   n_buckets: 50                    # VPIN 平均に使うバケット数
 
+# ---- 374# Phase 3.1: SAC Sidecar Proportional Boost ----
+# SAC 連続出力 [-1,+1] を比例的にオフセットへ変換 (v1 離散分類を置換)。
+# 375#/376# 安全制約: max_boost_bps ≤ 0.20 (hard ceiling, median spread 超過防止)。
+# 377# ladder 検証計画: Step1=0.10 (24h) → Step2=0.15 (24h) → Step3=0.20 (24h, if 0.15 good)。
+# hot-reload 対応: YAML 変更 → 次サイクルで自動反映。ladder step-up はここを編集するだけ。
+sidecar:
+  enabled: true                    # sidecar offset 注入の有効/無効
+  max_boost_bps: 0.15              # 最大ブースト (bps)。375# hard ceiling=0.20
+  dead_zone: 0.10                  # |bias| ≤ この値で offset=0 (ノイズ除去)
+  shaping: linear                  # "linear" | "quadratic" | "sigmoid"
+  use_v2: true                     # true=v2(比例), false=v1(離散) — A/B切替用
+
 # ---- 303# none レジーム Passive MM フォールバック ----
 # regime 未確定 (warmup/欠損) 時に 13 段パイプラインをバイパスし固定 offset で指値
 # AS 43% の根本対策 (302# 盲点1): 情報不足時はパッシブに待機

@@ -363,31 +363,52 @@ class CycleGateAggregator:
         signal: SidecarSignal,
         side: str,
     ) -> None:
-        """365# P5: SAC sidecar の directional_bias を offset に注入.
+        """365# P5 / 374# P3.1: SAC sidecar の directional_bias を offset に注入.
 
-        365# §2.2 フロー:
-          BUY_BIAS:  buy_offset += boost,  sell_offset -= boost
-          SELL_BIAS: sell_offset += boost,  buy_offset -= boost
-          NEUTRAL:   no change
+        374# Phase 3.1: sidecar_use_v2=True (デフォルト) の場合は
+        compute_sidecar_offset_bps_v2 を使用し、SAC 連続値を比例的に変換。
+        sidecar_use_v2=False の場合は従来の v1 (離散分類) を維持。
 
-        offset の攻撃性/保守性を非対称に調整し、
-        Asymmetric Maker として機能させる。
+        Config hot-reload 対応: sidecar_max_boost_bps, sidecar_dead_zone,
+        sidecar_shaping はランタイム中に YAML 変更で即時反映可能。
         """
-        from scripts.v460.lib.sidecar_types import compute_sidecar_offset_bps
+        if not self._config.sidecar_enabled:
+            return
 
-        offset = compute_sidecar_offset_bps(
-            bias=signal.directional_bias,
-            side=side,
-            confidence=signal.confidence,
-        )
+        if self._config.sidecar_use_v2:
+            from scripts.v460.lib.sidecar_types import (
+                compute_sidecar_offset_bps_v2,
+            )
+
+            offset = compute_sidecar_offset_bps_v2(
+                bias=signal.directional_bias,
+                side=side,
+                max_boost_bps=self._config.sidecar_max_boost_bps,
+                dead_zone=self._config.sidecar_dead_zone,
+                confidence=signal.confidence,
+                shaping=self._config.sidecar_shaping,
+            )
+        else:
+            from scripts.v460.lib.sidecar_types import (
+                compute_sidecar_offset_bps,
+            )
+
+            offset = compute_sidecar_offset_bps(
+                bias=signal.directional_bias,
+                side=side,
+                confidence=signal.confidence,
+            )
+
         result.sidecar_offset_bps = offset
         result.sidecar_bias = signal.directional_bias
         result.sidecar_direction = signal.direction.name.lower()
 
         if offset != 0.0:
+            _version = "v2" if self._config.sidecar_use_v2 else "v1"
             logger.info(
-                f"[365#] Sidecar {side}: bias={signal.directional_bias:+.3f} "
-                f"→ {result.sidecar_direction} → offset={offset:+.3f}bps"
+                f"[374#] Sidecar {side} ({_version}): "
+                f"bias={signal.directional_bias:+.3f} "
+                f"→ {result.sidecar_direction} → offset={offset:+.4f}bps"
             )
 
     # ================================================================

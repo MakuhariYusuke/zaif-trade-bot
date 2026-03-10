@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Session 038 374# Phase 3.1 Proportional Boost Implementation (2026-03-10)
+
+### Added
+- **374# Phase 3.1**: `compute_sidecar_offset_bps_v2()` + `_shaping_fn()` in `sidecar_types.py` — linear/quadratic/sigmoid shaping with dead-zone
+- 5 new sidecar fields in `fill_config.py`: `sidecar_enabled`, `sidecar_max_boost_bps` (0.15), `sidecar_dead_zone` (0.10), `sidecar_shaping` ("linear"), `sidecar_use_v2` (True)
+- YAML `sidecar:` section parsing in `fill_config_parser.py`
+- 5 sidecar keys added to `_HOT_RELOADABLE_FIELDS` in `config_hot_reload.py`
+- Sidecar field validation in `fill_config_validation.py`: max_boost_bps ≤ 0.20 hard ceiling, dead_zone ∈ [0,1), shaping ∈ {linear, quadratic, sigmoid}
+- `sidecar:` section added to `configs/v460/fill_test.yaml`
+- `tests/unit/v460/test_374_proportional_boost.py` — 55 tests (9 classes)
+- Design docs: 374#–377# (v3.0 design, Codex/Gemini reviews, unified direction)
+
+### Changed
+- `_apply_sidecar_offset()` in `cycle_gate_aggregator.py` rewritten with v1/v2 switching via `sidecar_use_v2` config + `sidecar_enabled` guard
+- `DEFAULT_SIDECAR_BOOST_BPS` 0.3 → 0.15 (375#/376# review correction)
+- `sac_retrain_scheduler.py` L794 mislabel fix (total_timesteps → trade_count)
+- `fill_cycle_executor.py` sidecar log precision `.2f` → `.4f` for v2 proportional output
+- `sidecar_types.py` `import math` moved from local (per-call) to module-level
+
 ## Session 038 SHA Analysis and TUNE-3 SDK Threshold Relaxation (2026-03-10)
 
 ### Added

@@ -484,6 +484,15 @@ class FillTestConfig:
     # fill_records から到着率 k を回帰推定し、AS δ* の静的 k を動的置換。
     glft_dynamic_k_enabled: bool = False     # True で動的 k 推定有効化
     glft_dynamic_k_min_samples: int = 20     # 推定に必要な最小サンプル数
+    # ---- 374# Phase 3.1: SAC Sidecar Proportional Boost ----
+    # SAC 連続出力 [-1,+1] を比例的にオフセットへ変換 (v1 の離散分類を置換)。
+    # 375#/376# 安全制約: max_boost_bps ≤ 0.20 (hard ceiling)。
+    # 377# ladder 検証計画: 0.10 → 0.15 → 0.20 bps step-up。
+    sidecar_enabled: bool = True             # sidecar offset 注入の有効/無効
+    sidecar_max_boost_bps: float = 0.15      # 最大ブースト (bps), 375# hard ceiling=0.20
+    sidecar_dead_zone: float = 0.10          # |bias| ≤ この値で offset=0 (ノイズ除去)
+    sidecar_shaping: str = "linear"          # "linear" | "quadratic" | "sigmoid"
+    sidecar_use_v2: bool = True              # True=v2(比例), False=v1(離散) — A/B切替用
     # 211# P1-B: Micro Circuit Breaker (短期価格急変の自動検知・防御)
     mcb_enabled: bool = False
     mcb_caution_sigma: float = 1.0

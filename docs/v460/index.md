@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-10 (363# A3/A4 実装: G2 train/val split + E2 roi_seed_std, 42 tests passed)
+> 最終更新: 2026-03-11 (375# 追加: 369#-374# Profit-First 再点検 + SAC スコープ是正レビュー)
 
 ---
 
@@ -354,7 +354,7 @@
 | 358 | impl | [358_ph3_impl_g2_sac_blockers.md](358_ph3_impl_g2_sac_blockers.md) | G2 SAC ブロッカー実装: B1 YAML + B3 feature_columns 注入 + B4 multi-seed + G2 gate 判定 |
 | 359 | impl | [359_ph2_impl_g2_gate_metrics_fix.md](359_ph2_impl_g2_gate_metrics_fix.md) | ph2 G2 gate メトリクス修正: checkpoint ROI + eval gross_roi + セルフレビュー品質改善 (ph3 先行準備) |
 | 360 | rpt | [360_ph2_rpt_fill_test_analysis.md](360_ph2_rpt_fill_test_analysis.md) | ph2 Fill Test ログ分析: 5日間集計 + SDK/BDK 影響 + クラッシュ分析 + G1.1 ゲート判定 + 改善提案 |
-| 361 | rev | [361_ph2_rev_351_360_ph3_readiness_and_profit_priority_review.md](361_ph2_rev_351_360_ph3_readiness_and_profit_priority_review.md) | Codex レビュー: 351-360 ph3 移行妥当性 + 利益最優先再整理 |
+| 361 | rev | [361_ph2_rev_351_360_ph3_readiness_and_profit_priority_review.md](361_ph2_rev_351_360_ph3_readiness_and_profit_priority_review.md) | 351#–360# Codex レビュー: ph3 gate in-sample 問題, E2 `ic_seed_std` 空洞化, ph2 live 不整合, mixed-SHA 補正, profit-first 次手整理 |
 | 362 | rev | [362_gemini_final_answer_profit_architecture.md](362_gemini_final_answer_profit_architecture.md) | Gemini 3.1 Pro レビュー: 収益最大化アーキテクチャ + Sidecar 提案 |
 | 363 | rev | [363_ph2_rev_361_362_review_validation.md](363_ph2_rev_361_362_review_validation.md) | 361/362 AI レビュー妥当性検証: コード検証 + 統合アクション + Codex メモリ診断プロンプト |
 | 364 | rpt | [364_ph2_sha_analysis_tune3.md](364_ph2_sha_analysis_tune3.md) | SHA別分析レポート + TUNE-3 SDK閾値緩和 |
@@ -362,9 +362,17 @@
 | 366 | rpt | [366_ph3_market_theory_proposals_and_tech_debt.md](366_ph3_market_theory_proposals_and_tech_debt.md) | 市場理論システム提案 + 技術課題 + 計算高速化 |
 | 367 | rpt | [367_ph2_deep_analysis_360_ai_review.md](367_ph2_deep_analysis_360_ai_review.md) | ph2 深堀り分析: 360# AIレビュー準備 |
 | 368 | rev | [368_ph2_rev_362_367_sac_linkage_and_urgent_blockers.md](368_ph2_rev_362_367_sac_linkage_and_urgent_blockers.md) | 362#-367# レビュー: SAC接続・市場理論・緊急ブロッカー再整理 |
-| 363 | rev | [363_ph2_rev_361_362_review_validation.md](363_ph2_rev_361_362_review_validation.md) | 361/362 AI レビュー妥当性検証: コード検証 + 統合アクション + Codex メモリ診断プロンプト |
-| 361 | rev | [361_ph2_rev_351_360_ph3_readiness_and_profit_priority_review.md](361_ph2_rev_351_360_ph3_readiness_and_profit_priority_review.md) | 351#–360# レビュー: ph3 gate の in-sample 問題, E2 `ic_seed_std` 空洞化, ph2 live 問題との不整合, mixed-SHA 集計の補正, profit-first の次手整理 |
+| 369 | rev | [369_gemini_verification_and_next_steps.md](369_gemini_verification_and_next_steps.md) | Gemini 3.1 Pro: Codex 368# 徹底検証と収益再構築への緊急指令 (362#-368#) |
+| 370 | plan | [370_ph2_pivot_368_369_review_acceptance.md](370_ph2_pivot_368_369_review_acceptance.md) | ph2 方向転換: 368#/369# レビュー受容 + 緊急対応 |
+| 371 | impl | [371_ph2_366_market_theory_wiring.md](371_ph2_366_market_theory_wiring.md) | ph2 366# 市場理論システム配線 (M2-M5) |
+| 372 | plan | [372_ph2_dust_sweep_refinement_and_sac_wiring_plan.md](372_ph2_dust_sweep_refinement_and_sac_wiring_plan.md) | ph2 Dust Sweep 洗練 + SAC sidecar 配線計画 |
+| 372 | rpt | [372_ph3_audit_report.md](372_ph3_audit_report.md) | Phase 3 Post-Implementation Audit Report (**同番号**: ph2/ph3 別文書) |
 | 373 | fix | [373_phg_fix_post_sac_audit_and_safety_hardening.md](373_phg_fix_post_sac_audit_and_safety_hardening.md) | Post-SAC 安全性監査 & ハードニング: CRITICAL 2件 (order_quantity ゼロ除算防止, balance_checker 例外安全化) + IMPORTANT 7件 (SACRetrainConfig validation, TOCTOU, type:ignore 排除, max_lot clamp, poll error limit) |
+| 374 | plan | [374_ph3_design_sac_continuous_value_and_market_theory_integration.md](374_ph3_design_sac_continuous_value_and_market_theory_integration.md) | SAC 連続値活用 + 市場理論統合 4 Phase 設計: Proportional boost, Regime-Aware obs, Parameter modulation, Closed-loop reward |
+| 375 | rev | [375_ph3_rev_369_374_profit_first_and_sac_scope_review.md](375_ph3_rev_369_374_profit_first_and_sac_scope_review.md) | 369#-374# Codex レビュー: profit-first 再整理, 374# の縮小GO/HOLD/NO-GO判定, sidecar 数値感・obs契約・closed-loop reward の危険性点検 |
+| 376 | rev | [376_gemini_ph3_comprehensive_review_and_v456_revival.md](376_gemini_ph3_comprehensive_review_and_v456_revival.md) | Gemini 3.1 Pro: 374#–375# 深層レビュー + v456/v454 資産復活 + データパリティ是正 |
+| 377 | plan | [377_ph3_unified_direction_course_correction.md](377_ph3_unified_direction_course_correction.md) | 375#/376# レビュー統合方針: 軌道修正 + データパリティロードマップ + FastIntradayEnvV456 評価 |
+| 374 | impl | — | Phase 3.1 Proportional Boost 実装: `compute_sidecar_offset_bps_v2` + `_shaping_fn` + FillConfig 5フィールド + YAML parser + hot-reload + CycleGateAggregator v1/v2 切替 + validation 横展開 + 55 tests |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

@@ -1013,4 +1013,17 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
     if "n_buckets" in vvs:
         kwargs["vpin_vol_sync_n_buckets"] = int(vvs["n_buckets"])
 
+    # ---- 374# Phase 3.1: SAC Sidecar Proportional Boost ----
+    sc = yaml_cfg.get("sidecar", {})
+    if sc.get("enabled") is not None:
+        kwargs["sidecar_enabled"] = bool(sc["enabled"])
+    if "max_boost_bps" in sc:
+        kwargs["sidecar_max_boost_bps"] = float(sc["max_boost_bps"])
+    if "dead_zone" in sc:
+        kwargs["sidecar_dead_zone"] = float(sc["dead_zone"])
+    if "shaping" in sc:
+        kwargs["sidecar_shaping"] = str(sc["shaping"])
+    if "use_v2" in sc:
+        kwargs["sidecar_use_v2"] = bool(sc["use_v2"])
+
     return _FillTestConfig(**kwargs)

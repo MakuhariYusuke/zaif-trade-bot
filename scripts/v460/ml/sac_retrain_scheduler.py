@@ -791,7 +791,7 @@ def _update_sidecar_signal(
         features_snapshot=features_snapshot,
         training_metrics={
             "gross_roi": float(eval_result.get("gross_roi", 0.0)),
-            "total_timesteps": float(eval_result.get("trade_count", 0)),
+            "trade_count": float(eval_result.get("trade_count", 0)),
         },
     )
 

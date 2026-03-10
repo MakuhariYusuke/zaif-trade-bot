@@ -489,6 +489,12 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     # 320# サイド別 ceiling (321# hot-reload 追加)
     "offset_ceiling_ratio_buy",
     "offset_ceiling_ratio_sell",
+    # --- 374# Phase 3.1: SAC Sidecar Proportional Boost ---
+    "sidecar_enabled",
+    "sidecar_max_boost_bps",
+    "sidecar_dead_zone",
+    "sidecar_shaping",
+    "sidecar_use_v2",
 })
 
 # 構造体再構築が必要なコンポーネントのマッピング

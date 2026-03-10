@@ -732,7 +732,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
             else:
                 order_price = round(order_price - _sidecar_delta)
             logger.info(
-                f"[372# sidecar] {side}: offset={sidecar_offset_bps:+.2f}bps "
+                f"[372# sidecar] {side}: offset={sidecar_offset_bps:+.4f}bps "
                 f"→ delta={_sidecar_delta:+.0f}JPY, price={order_price:.0f}"
             )
 
