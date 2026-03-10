@@ -610,6 +610,9 @@ class HeavyTradingEnv(
                 f for f in all_features if not any(ex in f for ex in excluded)
             ]
             obs_dim = len(self.features)
+            # P7: action_masks embedding adds 3 dims (HOLD/BUY/SELL legality)
+            if getattr(self.config, "embed_action_masks", False):
+                obs_dim += 3
             self.observation_space = gym.spaces.Box(
                 low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32
             )
@@ -1531,8 +1534,12 @@ class HeavyTradingEnv(
         except Exception:
             pass
 
-        return obs
+        # P7: Embed action_masks into observation for SAC ghost-action awareness
+        if getattr(self.config, "embed_action_masks", False):
+            masks = self.get_action_masks().astype(np.float32)  # [HOLD, BUY, SELL]
+            obs = np.concatenate([obs, masks])
 
+        return obs
     def _get_info(self) -> dict[str, object]:
         # 112# Perf: dataclasses.asdict(self.config) をキャッシュ化
         # 80+フィールドのネストdataclassを毎ステップ再帰変換するのは高コスト

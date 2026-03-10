@@ -270,6 +270,7 @@ class EnvironmentConfig:
     action_space_type: str | None = None
     target_feature_count: int | None = None  # Desired observation feature count when reducing correlations
     enable_action_masking: bool = False  # Only for discrete actions (PPO)
+    embed_action_masks: bool = False  # P7: Embed action_masks [3] into observation for SAC
     continuous_to_discrete_threshold: float = (
         SAC_CONTINUOUS_THRESHOLD  # Threshold for SAC continuous→discrete conversion
     )
