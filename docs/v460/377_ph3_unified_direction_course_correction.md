@@ -405,7 +405,27 @@ compute(side, spread, mid_price, ...)
 
 ### §10.8 次のステップ
 
-1. SAC scheduler 50,000 step 学習完了後の OOS 結果確認
+1. ~~SAC scheduler 50,000 step 学習完了後の OOS 結果確認~~ → **379# で特徴量拡張実施**
 2. `sidecar_signal.json` 生成確認 → live presence 4 項目の充足
 3. OOS gate 不通過の場合: `min_gross_roi` / `min_trade_count` 閾値の検討
 4. fill_test 実運用での sidecar_offset_bps の観測
+
+### §10.9 379# Pre-366# SAC 統合 (2026-03-25)
+
+035#-306# の 10 市場理論システムを SAC 観測空間に接続:
+
+| 変更 | 内容 |
+|---|---|
+| `ztb/features/market_theory.py` | 新規: `parkinson_sigma`, `vpin_proxy`, `kyle_lambda_proxy`, `amihud_illiq`, `ema_velocity_bps` の 5 特徴量を FeatureRegistry 登録 |
+| `scripts/v460/build_features.py` | `_add_pre366_proxy()` 追加、`PRE366_FEATURES`(5列) で Parquet 22列化 |
+| `g2_sac_train.yaml` | `features.selected` 12→17 に拡張 |
+| テスト | 23 tests all PASSED |
+
+10 システムのうち:
+- **5 システム**: 新 Feature で直接接続 (305#/107#/266#/227#/200#)
+- **3 システム**: 既存特徴量で間接カバー (035#→M2, 054#→order_flow_imbalance, 258#→σ+λ)
+- **2 システム**: env-internal state として Phase 3 future work (162#/228#, 226#)
+
+次アクション: Parquet 再生成 → 17 特徴量で SAC 訓練 → OOS gate 検証
+
+詳細: `docs/v460/379_pre366_sac_integration.md`

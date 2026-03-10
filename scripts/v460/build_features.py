@@ -87,6 +87,15 @@ M2_M5_FEATURES = [
     "vpin_vol_sync",           # M5: VPIN (= order_flow_toxicity のエイリアス)
 ]
 
+# 379# 035#-306# pre-366# 市場理論 proxy 特徴量 (SAC 接続用)
+PRE366_FEATURES = [
+    "parkinson_sigma",        # 305# Parkinson (1980) H/L σ (intra-bar volatility)
+    "ema_velocity_bps",       # 227#/200# EMA smoothed velocity (bps)
+    "kyle_lambda_proxy",      # 266# Kyle (1985) 価格インパクト係数
+    "amihud_illiq_proxy",     # 266# Amihud (2002) 非流動性比率
+    "vpin_toxicity",          # 107# VPIN order flow toxicity
+]
+
 
 def build_proxy_features(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
     """OHLCV からマイクロストラクチャ proxy 特徴量を生成.
@@ -178,6 +187,9 @@ def build_proxy_features(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
 
     # ---- 377# M2-M5 市場理論 proxy 特徴量 ----
     out = _add_m2_m5_proxy(out, close, high, low, volume, window)
+
+    # ---- 379# 035#-306# pre-366# 市場理論 proxy 特徴量 ----
+    out = _add_pre366_proxy(out, close, high, low, volume, window)
 
     return out
 
@@ -272,6 +284,110 @@ def _add_m2_m5_proxy(
     else:
         out["vpin_vol_sync"] = 0.5  # neutral fallback
     logger.info("  M5 VPIN: aliased from order_flow_toxicity")
+
+    return out
+
+
+def _add_pre366_proxy(
+    out: pd.DataFrame,
+    close: pd.Series,
+    high: pd.Series,
+    low: pd.Series,
+    volume: pd.Series,
+    window: int,
+) -> pd.DataFrame:
+    """379# 035#-306# pre-366# 市場理論 proxy 特徴量を OHLCV から計算.
+
+    10 個の pre-366# 市場理論システムのうち、OHLCV から合理的に
+    proxy 可能な 5 特徴量を batch 計算する。
+
+    FeatureRegistry (ztb/features/market_theory.py) と同等のロジック。
+    build_features.py Parquet 向けのバッチ生成版。
+
+    Args:
+        out: 既存の特徴量 DataFrame
+        close, high, low, volume: OHLCV Series
+        window: rolling window
+
+    Returns:
+        out に PRE366_FEATURES の 5 列を追加した DataFrame
+    """
+    import math as _math
+
+    eps = 1e-10
+    n = len(out)
+
+    # ---- 305# Parkinson σ: intra-bar H/L volatility ----
+    parkinson_denom = 2.0 * _math.sqrt(_math.log(2.0))
+    hl_valid = (high > 0) & (low > 0) & (high > low)
+    log_hl = pd.Series(0.0, index=out.index, dtype=np.float64)
+    log_hl[hl_valid] = np.log(high[hl_valid] / low[hl_valid])
+    parkinson_raw = log_hl / parkinson_denom
+    out["parkinson_sigma"] = parkinson_raw.rolling(window, min_periods=1).mean()
+    logger.info(
+        f"  379# Parkinson σ: mean={out['parkinson_sigma'].mean():.6f}, "
+        f"std={out['parkinson_sigma'].std():.6f}"
+    )
+
+    # ---- 227#/200# EMA smoothed velocity (bps) ----
+    prev_close = close.shift(1).fillna(close.iloc[0] if n > 0 else 0)
+    valid_prev = prev_close > eps
+    velocity_bps = pd.Series(0.0, index=out.index, dtype=np.float64)
+    velocity_bps[valid_prev] = (
+        (close[valid_prev] - prev_close[valid_prev])
+        / prev_close[valid_prev]
+        * 10000.0
+    )
+    out["ema_velocity_bps"] = velocity_bps.ewm(span=5, min_periods=1, adjust=False).mean()
+    logger.info(
+        f"  379# EMA velocity: mean={out['ema_velocity_bps'].mean():.4f} bps, "
+        f"std={out['ema_velocity_bps'].std():.4f}"
+    )
+
+    # ---- 266# Kyle λ proxy: range / (2·volume) → z-score ----
+    bar_range = high - low
+    safe_vol = volume.clip(lower=eps)
+    raw_kyle = bar_range / (2.0 * safe_vol)
+    kyle_mean = raw_kyle.rolling(window, min_periods=1).mean()
+    kyle_std = raw_kyle.rolling(window, min_periods=1).std().fillna(eps)
+    out["kyle_lambda_proxy"] = (raw_kyle - kyle_mean) / (kyle_std + eps)
+    logger.info(
+        f"  379# Kyle λ: raw_mean={raw_kyle.mean():.6e}, "
+        f"z_mean={out['kyle_lambda_proxy'].mean():.4f}"
+    )
+
+    # ---- 266# Amihud ILLIQ: |return|/volume → z-score ----
+    abs_return = (close / prev_close - 1).abs().fillna(0)
+    raw_amihud = abs_return / safe_vol
+    amihud_mean = raw_amihud.rolling(window, min_periods=1).mean()
+    amihud_std = raw_amihud.rolling(window, min_periods=1).std().fillna(eps)
+    out["amihud_illiq_proxy"] = (raw_amihud - amihud_mean) / (amihud_std + eps)
+    logger.info(
+        f"  379# Amihud ILLIQ: raw_mean={raw_amihud.mean():.6e}, "
+        f"z_mean={out['amihud_illiq_proxy'].mean():.4f}"
+    )
+
+    # ---- 107# VPIN toxicity (order_flow_toxicity の明示的別名) ----
+    if "order_flow_toxicity" in out.columns:
+        out["vpin_toxicity"] = out["order_flow_toxicity"]
+    else:
+        # フォールバック: CLV-based VPIN を再計算
+        hl_range = high - low
+        safe_range = hl_range.where(hl_range > eps, 1.0)
+        clv = ((close - low) / safe_range) * 2 - 1
+        abs_signed = (clv * volume).abs()
+        out["vpin_toxicity"] = (
+            abs_signed.rolling(window, min_periods=1).sum()
+            / (volume.rolling(window, min_periods=1).sum() + eps)
+        )
+    logger.info(
+        f"  379# VPIN toxicity: mean={out['vpin_toxicity'].mean():.4f}"
+    )
+
+    # NaN fill (no bfill — 003# #8)
+    for col in PRE366_FEATURES:
+        if col in out.columns:
+            out[col] = out[col].ffill().fillna(0)
 
     return out
 
@@ -410,19 +526,23 @@ def build_and_save(
     result = build_proxy_features(df, window=window)
     logger.info(f"Output shape: {result.shape}")
 
-    # Validate: all 10 + 7 features present
-    all_expected = V460_FEATURES + M2_M5_FEATURES
+    # Validate: all 10 + 7 + 5 features present
+    all_expected = V460_FEATURES + M2_M5_FEATURES + PRE366_FEATURES
     for feat in all_expected:
         assert feat in result.columns, f"Missing feature: {feat}"
 
-    # NaN check (V460 base features のみ — M2-M5 は path-dependent で warmup NaN が許容)
+    # NaN check (V460 base features のみ — M2-M5/PRE366 は path-dependent で warmup NaN が許容)
     nan_count = int(result[V460_FEATURES].isna().sum().sum())
     total_cells = len(result) * len(V460_FEATURES)
     nan_ratio = nan_count / max(total_cells, 1)
     logger.info(f"NaN count: {nan_count}/{total_cells} ({nan_ratio:.6f})")
     assert nan_ratio <= 0.01, f"NaN ratio {nan_ratio:.4f} exceeds 1% threshold"
 
-    logger.info(f"Total features: {len(all_expected)} ({len(V460_FEATURES)} base + {len(M2_M5_FEATURES)} M2-M5)")
+    logger.info(
+        f"Total features: {len(all_expected)} "
+        f"({len(V460_FEATURES)} base + {len(M2_M5_FEATURES)} M2-M5 + "
+        f"{len(PRE366_FEATURES)} pre-366#)"
+    )
 
     # Save
     out.parent.mkdir(parents=True, exist_ok=True)

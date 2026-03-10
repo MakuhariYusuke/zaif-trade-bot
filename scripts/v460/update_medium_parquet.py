@@ -24,6 +24,7 @@ from ztb.features.core.registry import FeatureRegistry
 
 # Feature modules を import して register
 import ztb.features.scalping  # noqa: F401
+import ztb.features.market_theory  # noqa: F401  # 379#
 import ztb.features.time.time_features  # noqa: F401
 
 try:

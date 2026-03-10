@@ -558,13 +558,19 @@ class V4FeatureExtractor:
 
         FeatureRegistry.initialize()
 
-        # scalping featuresをインポートして登録
+        # scalping + market_theory featuresをインポートして登録
         try:
             import ztb.features.scalping  # noqa: F401
 
             logger.info("Scalping features loaded")
         except ImportError as e:
             logger.warning(f"Failed to load scalping features: {e}")
+        try:
+            import ztb.features.market_theory  # noqa: F401  # 379#
+
+            logger.info("Market theory features loaded")
+        except ImportError as e:
+            logger.warning(f"Failed to load market theory features: {e}")
 
         logger.info("V4FeatureExtractor initialized")
 
