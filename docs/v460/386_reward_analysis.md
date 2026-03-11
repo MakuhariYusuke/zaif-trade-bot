@@ -5,18 +5,53 @@
 385# baseline (gamma=0.80) で Seeds 123/456 が OOS 負になる根本原因を分析。
 報酬のペナルティコンポーネントが PnL 報酬に対して過大であることを発見。
 
-## 報酬コンポーネント構成
+## 報酬コンポーネント構成 (全パイプライン)
 
 ```
-reward = pnl_reward          # PnL × 1.0 × 1.0 = O(1-50) JPY
-       + position_penalty    # -0.01 × (pos/max_pos)² = O(-0.01)
-       + hold_penalty        # HOLD時 -0.01
-       + consistency_penalty # BUY→SELL反転時 -0.05
-       + confidence_penalty  # 損失×高確信時 O(-0.04)
-       + balance_penalty     # BUY/SELL比率偏り時 O(-0.05〜-0.5)  ← 問題
-       + balance_shaping     # バランス改善時 +0.05
-       + entropy_shaping     # 行動多様性 +0.01
-       → asymmetric_scaler(×1.0) → clip[-80, 80]
+calculate_reward():
+  # 1. balance_penalty (BUY/SELL 前に計算)
+  balance_penalty = -raw_excess × balance_penalty_value  # 外側
+
+  # 2. base_reward (stage method、デフォルト = _calculate_default_reward)
+  base_reward = pnl_reward            # PnL × reward_scaling(1.0) × pnl_reward_multiplier(1.0)
+             + position_penalty       # -position_penalty_weight(0.01) × (pos/max_pos)²
+             + hold_penalty           # HOLD時 -hold_penalty_weight(0.01)
+             + consistency_penalty    # 反転時 -consistency_penalty(0.05)
+
+  # 3. 外側のペナルティ・ボーナス
+  total = base_reward
+        + confidence_penalty          # 損失×高確信: -(loss_mag × (|action| - threshold) × factor)
+        + action_bonus                # BUY/SELL/HOLD ボーナス (通常 0)
+        + balance_penalty             # -raw_excess × balance_penalty_value(1.0)
+        + skew_penalty                # BUY/SELL 偏り罰
+        + balance_shaping             # バランス改善ボーナス
+        + entropy_bonus               # 行動多様性
+
+  # 4. 後処理
+  → asymmetric_scaler(×1.0 no-op) → clip[-80, 80]
+```
+
+### キー設定のアクセスパス
+
+| 設定 | キー | アクセスパス | デフォルト |
+|------|------|------------|-----------|
+| balance_penalty | `behavior_optimization.balance_penalty` | `config.behavior_optimization` dict | **1.0** |
+| balance_penalty_tolerance | `behavior_optimization.balance_penalty_tolerance` | `config.behavior_optimization` dict | 0.05 |
+| consistency_penalty | `behavior_optimization.consistency_penalty` | `reward_settings.consistency_penalty` | **0.05** |
+| hold_penalty_weight | `hold_penalty_weight` | `reward_settings.custom_reward_params` | **0.01** |
+| position_penalty_weight | `position_penalty_weight` | `reward_settings.custom_reward_params` | 0.01 |
+| confidence_penalty_threshold | `confidence_penalty_threshold` | `reward_settings.custom_reward_params` | 0.05 |
+
+### YAML 設定マッピング (386# 修正後)
+
+```yaml
+environment:
+  behavior_optimization:       # → EnvironmentConfig.behavior_optimization dict
+    balance_penalty: 0.1       #   → reward_calculator.balance_penalty
+    consistency_penalty: 0.01  #   → reward_settings.consistency_penalty
+reward_settings:               # → RewardSettings.custom_reward_params
+  hold_penalty_weight: 0.001   #   → get_setting_float("hold_penalty_weight")
+  confidence_penalty_threshold: 0.2  # → _get_setting("confidence_penalty_threshold")
 ```
 
 ## 問題分析
@@ -56,6 +91,23 @@ reward = pnl_reward          # PnL × 1.0 × 1.0 = O(1-50) JPY
 ## 推奨調整案 (387# 予定)
 
 gamma=0.95 実験結果を待ち、G2 PASS 不達の場合に適用。
+YAML: `configs/v460/experiments/g2_sac_gamma095_reward_tuned.yaml`
+
+### 数値効果検証 (386# 実測)
+
+| 対象 | 現行値 | 推奨値 | 削減率 | YAML セクション |
+|------|--------|--------|--------|----------------|
+| `balance_penalty` | 1.0 | **0.1** | 90%↓ | `environment.behavior_optimization` |
+| `hold_penalty_weight` | 0.01 | **0.001** | 90%↓ | `reward_settings` |
+| `consistency_penalty` | 0.05 | **0.01** | 80%↓ | `environment.behavior_optimization` |
+| `confidence_penalty_threshold` | 0.05 | **0.2** | — | `reward_settings` |
+
+### 386# P0-5: YAML→env 伝播バグ修正
+
+reward-tuned YAML を準備する過程で発見した伝播バグ:
+1. `reward_settings` がYAMLトップレベルにある場合、`sac_trainer.py` が消失させていた → **修正済み**
+2. `behavior_optimization` dict が `EnvironmentConfig.from_dict()` で `instance.behavior_optimization` に保存されていなかった → **修正済み**
+3. 当初の reward-tuned YAML に無効キー (`balance_penalty_value`, `consistency_penalty_value`) があった → **正しいキー名に修正済み**
 
 | 対象 | 現行値 | 推奨値 | 根拠 |
 |------|--------|--------|------|
