@@ -285,3 +285,47 @@ class TestRewardSettingsPropagation:
         # consistency_penalty は reward_settings にもマッピングされる
         assert env_config.reward_settings is not None
         assert env_config.reward_settings.consistency_penalty == pytest.approx(0.01)
+
+    def test_e2e_reward_tuned_penalty_values(self) -> None:
+        """E2E: reward-tuned 設定でペナルティ値が正しく伝播すること."""
+        from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
+        from ztb.trading.environment.components.calculators.reward_calculator import (
+            RewardCalculator,
+        )
+        from ztb.trading.constants import ACTION_HOLD
+
+        # Simulate the env config from reward-tuned YAML
+        config_dict = {
+            "behavior_optimization": {
+                "balance_penalty": 0.1,
+                "consistency_penalty": 0.01,
+            },
+            "reward_settings": {
+                "hold_penalty_weight": 0.001,
+                "confidence_penalty_threshold": 0.2,
+                "position_penalty_weight": 0.01,
+            },
+        }
+        env_config = EnvironmentConfig.from_dict(config_dict)
+
+        # Verify settings propagated to reward_settings
+        assert env_config.reward_settings.balance_penalty == pytest.approx(0.1)
+        assert env_config.reward_settings.consistency_penalty == pytest.approx(0.01)
+
+        # Verify behavior_optimization dict stored
+        assert env_config.behavior_optimization["balance_penalty"] == 0.1
+
+        # Create RewardCalculator and verify penalty values
+        calc = RewardCalculator(
+            env_config, env_config.reward_settings,
+            initial_portfolio_value=10_000_000.0,
+        )
+        assert calc.balance_penalty == pytest.approx(0.1), (
+            f"Expected balance_penalty=0.1, got {calc.balance_penalty}"
+        )
+
+        # Verify hold penalty
+        hp = calc._calculate_hold_penalty(ACTION_HOLD)
+        assert hp == pytest.approx(-0.001), (
+            f"Expected hold_penalty=-0.001 for HOLD, got {hp}"
+        )

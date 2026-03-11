@@ -592,7 +592,22 @@ class EnvironmentConfig:
                         setattr(instance, key, converted_bonuses)
                     elif key == "reward_settings" and isinstance(value, dict):
                         # Handle reward_settings dict
-                        instance.reward_settings = RewardSettings.from_dict(value)
+                        # 386# FIX: Merge instead of replace to preserve behavior_optimization overrides
+                        new_rs = RewardSettings.from_dict(value)
+                        if instance.reward_settings is not None:
+                            from ztb.utils.dataclass_utils import shallow_asdict
+                            existing = shallow_asdict(instance.reward_settings)
+                            new_dict = shallow_asdict(new_rs)
+                            # new_rs takes priority, but preserve existing non-default values
+                            # that were set by behavior_optimization
+                            defaults = shallow_asdict(RewardSettings())
+                            for k, v in existing.items():
+                                if k not in new_dict or new_dict.get(k) == defaults.get(k):
+                                    if v != defaults.get(k):
+                                        new_dict[k] = v
+                            instance.reward_settings = RewardSettings.from_dict(new_dict)
+                        else:
+                            instance.reward_settings = new_rs
                     elif key in ["base_action_penalty", "commission", "slippage"]:
                         # Handle float fields
                         setattr(instance, key, float(value))
