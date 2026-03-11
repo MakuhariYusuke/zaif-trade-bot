@@ -85,4 +85,4 @@ seeds: [42, 123, 456, 789]
 # ---- 出力 ----
 output:
   results_dir: "results/v460"
-  model_dir: "models/v460"
+  model_dir: "models/v460/gamma095"    # ベースライン上書き防止

@@ -61,6 +61,13 @@ features:
 #   - adaptive_threshold_mode → False (閾値非定常化回避)
 #   - enable_forced_diversity → False (行動分布制約なし)
 # ★ これらを有効化する場合は 365# §3.5 の注意事項を必ず参照
+#
+# 385# 監査注記:
+#   - reward_scaling: EnvironmentConfig デフォルト 6.0 (PPO由来) が暗黙適用されるが、
+#     _calculate_default_reward は reward_scaling を受け取らないため実質デッドコード。
+#     bankruptcy/drawdown ペナルティでのみ 6.0x 乗数として使用。386# で要修正。
+#   - continuous_to_discrete_threshold: 訓練 0.10 vs ライブ 0.33 の乖離あり。
+#     ライブ投入時に ZTB_CONTINUOUS_TO_DISCRETE_THRESHOLD=0.10 を設定すること。
 environment:
   # 385# FIX: 000# 前提 "全取引はmaker注文（手数料0%）で執行" に準拠
   # 旧: 0.001 (0.1%) — 000# 教訓4 "taker 0.1% × 1min足は Oracle でも不成立" と矛盾

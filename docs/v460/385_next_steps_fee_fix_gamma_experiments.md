@@ -48,13 +48,39 @@ core.py
 reward_calculator では二重課金されない設計。transaction_cost=0.0 にすれば
 fee ペナルティは完全消滅する。
 
-### 2.3 OOS 全走査の所要時間
+### 2.3 OOS 全走査の所要時間 (実測値更新)
 
 - 384# で `max_steps_per_episode=None` (全走査) に変更
 - val データ: 1,216,930 × 0.2 = **243,386 steps**
 - `inspect.signature` は 379# でキャッシュ済み (per-step ns オーダー)
-- 推定: 243K steps × ~7.5ms/step ≈ **30分/seed**
-- 4 seed 合計: ~120分 (前回の訓練時間とほぼ同等)
+- **実測**: 243K steps × ~16ms/step ≈ **65分/seed** (初期推定30分の2倍)
+- 訓練20分 + OOS65分 = **~85分/seed**, 4 seed 合計: ~340分 (5.7時間)
+
+### 2.4 reward_scaling デッドコード (HIGH — 386# で対応)
+
+**発見**: `_calculate_default_reward()` の関数シグネチャに `reward_scaling` パラメータが
+含まれておらず、`inspect.signature()` フィルタにより除外される。
+
+```
+calculate_reward() 内:
+  scale_adjustment = 1.0 / max(0.01, max_position_size=0.01) = 100.0
+  reward_scaling = config.reward_scaling(=6.0) × 100.0 = 600.0
+  → method_args["reward_scaling"] = 600.0
+  → _calculate_default_reward に渡されない（シグネチャに無い）
+  → pnl_reward = pnl × 1.0 × 1.0 = 生 JPY PnL がそのまま報酬
+```
+
+**影響**:
+- 報酬スケールは O(1〜50) JPY/step — SAC には大きい (理想は O(1) 以下)
+- `ent_coef="auto"` がある程度自動調整するため、致命的ではないが最適ではない
+- `config.reward_scaling` を YAML で変更しても **一切効果がない**
+- `asymmetric_reward_scaler` も全乗数=1.0 で実質ノーオプ
+- クリップ [-80, 80] は典型的な報酬 (1-50) に対して実質無効
+
+**386# 対応案**:
+1. `_calculate_default_reward` に `reward_scaling` パラメータを追加
+2. または `portfolio_return` (既に計算・渡し済み) を使用してPnLを正規化
+3. SAC 用の適切なスケール値を YAML に明示設定
 
 ## 3. 実験計画
 
@@ -68,6 +94,24 @@ fee ペナルティは完全消滅する。
 | パイプライン | 384# fixes | CRITICAL-1/2 + HIGH-1/2 |
 
 **期待**: ROI が +2~3% 改善し、G2 E1 (positive_seed_ratio ≥ 0.75) が PASS する可能性。
+
+### 3.1.1 Seed42 チェックポイント結果 (in-sample, 5K step eval)
+
+| Steps | 385# ROI | Pre-385# ROI | Delta |
+|-------|----------|--------------|-------|
+| 5K | **+0.16%** | -0.28% | +0.44% |
+| 10K | **+0.11%** | -0.20% | +0.31% |
+| 15K | **+0.13%** | -0.13% | +0.26% |
+| 20K | **+0.08%** | -0.08% | +0.16% |
+| 25K | **+0.17%** | -0.12% | +0.29% |
+| 30K | **+0.11%** | -0.23% | +0.34% |
+| 35K | **+0.23%** | -0.18% | +0.41% |
+| 40K | **+0.10%** | -0.18% | +0.28% |
+| 45K | **+0.21%** | -0.18% | +0.39% |
+| 50K | **+0.13%** | -0.19% | +0.32% |
+
+**全10チェックポイントで正ROI** ✅ — fee fix の効果は明確。
+Pre-385# baseline (全て負) との差は一貫して +0.16% 〜 +0.44%。
 
 ### 3.2 実験 B: gamma=0.95
 
@@ -116,9 +160,11 @@ fee ペナルティは完全消滅する。
 
 | ID | 課題 | 状態 | 次アクション |
 |----|------|------|------------|
-| B4 | gamma 比較実験 | 🔄 YAML 準備完了 | A 結果後に実行 |
-| B5 | transaction_cost 検証 | ✅ 修正済み | A で実測確認 |
+| B4 | gamma 比較実験 | 🔄 YAML 準備完了、model_dir分離済み | A 結果後に実行 |
+| B5 | transaction_cost 検証 | ✅ 修正済み | A で実測確認中 |
 | B6 | curriculum_learning 設計 | ⬜ | A/B 結果後に検討 |
+| B7 | **reward_scaling デッドコード修正** | ⬜ HIGH | 386# で対応 |
+| B8 | **報酬正規化 (portfolio_return 活用)** | ⬜ HIGH | 386# で対応 |
 | B1-B3 | conftest/_sb3_test_stub cleanup | ⬜ | 低優先 |
 
 ## 6. 既存実装の活用ポイント
