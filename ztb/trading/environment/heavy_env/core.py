@@ -61,6 +61,7 @@ from ztb.trading.environment.heavy_env.mixins.initialization import (
     _refresh_features,
     _select_features_by_correlation_in_env,
     _setup_scaler,
+    _sync_data_manager_buffers,
 )
 from ztb.trading.environment.heavy_env.mixins.pricing import (
     _resolve_atr,
@@ -312,6 +313,7 @@ class HeavyTradingEnv(
     _extract_numeric_column = _extract_numeric_column
     _setup_scaler = _setup_scaler
     _compute_scaler_from_data = _compute_scaler_from_data
+    _sync_data_manager_buffers = _sync_data_manager_buffers
 
     _select_features_by_correlation_in_env = _select_features_by_correlation_in_env
 
@@ -539,6 +541,7 @@ class HeavyTradingEnv(
 
         self._initialize_features_and_spaces(max_features)
         self._initialize_data_manager(streaming_pipeline, stream_batch_size, df)
+        self._sync_data_manager_buffers()
 
         # データリークを防ぐため、訓練/検証の分割インデックスを取得
         train_end_index = self.config.train_end_index
@@ -546,7 +549,8 @@ class HeavyTradingEnv(
         # スケーラーを初期化
         self.scaler_mean: NDArray[np.float64] | None = None
         self.scaler_std: NDArray[np.float64] | None = None
-        if self.scaler_mean is None:
+        self._setup_scaler()
+        if self.scaler_mean is None or self.scaler_std is None:
             self._compute_scaler_from_data(train_end_index=train_end_index)
 
         # 残りのコンポーネントを初期化

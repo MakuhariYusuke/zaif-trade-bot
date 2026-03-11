@@ -325,27 +325,35 @@ def _train_with_checkpoints(
     return checkpoint_metrics
 
 
+# 379# Perf: チェックポイント評価のステップ上限
+# 973K全ステップ走査は inspect.signature 等の per-step コストにより
+# ~30分/回 かかる。5000ステップで十分な convergence 判定が可能。
+_CHECKPOINT_EVAL_MAX_STEPS = 5_000
+
+
 def _checkpoint_eval_roi(
     model: SACTrainModelProtocol,
     env: TrainingEnvProtocol,
+    max_steps: int = _CHECKPOINT_EVAL_MAX_STEPS,
 ) -> float:
-    """1-episode deterministic eval で ROI を算出 (in-sample convergence 用).
+    """短縮版 1-episode deterministic eval で ROI を算出 (in-sample convergence 用).
 
     359# L-3: _train_with_checkpoints から各チェックポイントで呼ばれ、
     E3 convergence 判定に必要な ROI 時系列を生成する.
 
-    Note:
-        363# A3: 訓練と同一の train_env を使う (in-sample convergence monitoring).
-        最終 G2 gate 評価 (E1/E4) は train/val split 済みの val_env で実施.
-        eval 中の env.reset() が SB3 _last_obs と衝突するが、
-        50K steps 中 ~10 遷移 (0.02%) と影響軽微.
+    379# Perf: max_steps を導入。973Kステップ全走査は非現実的
+    (inspect.signature per-step overhead により ~30分/回)。
+    5Kステップで in-sample convergence の傾向把握は十分。
+    最終 G2 gate 評価 (E1/E4) は train/val split 済みの val_env で実施.
     """
     obs, _ = env.reset()
     done = False
-    while not done:
+    steps = 0
+    while not done and steps < max_steps:
         action, _ = model.predict(obs, deterministic=True)
         obs, _reward, terminated, truncated, _ = env.step(action)
         done = terminated or truncated
+        steps += 1
 
     return extract_roi_from_env(env)
 

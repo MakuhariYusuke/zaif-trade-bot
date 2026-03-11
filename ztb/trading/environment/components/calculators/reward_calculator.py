@@ -1076,14 +1076,25 @@ class RewardCalculator:
         self._previous_portfolio_value = portfolio_value
 
         # Filter arguments for the specific method being called
-        sig = inspect.signature(reward_method)  # type: ignore
-        has_kwargs = any(
-            p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
-        )
+        # 379# Perf: inspect.signature() is extremely expensive (~0.3ms/call).
+        # Cache the result per method object to avoid calling it every step.
+        if not hasattr(self, '_sig_cache'):
+            self._sig_cache: dict[object, tuple[bool, frozenset[str]]] = {}
+        cache_key = reward_method
+        cached = self._sig_cache.get(cache_key)
+        if cached is None:
+            sig = inspect.signature(reward_method)  # type: ignore
+            has_kwargs = any(
+                p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+            )
+            param_names = frozenset(sig.parameters.keys())
+            self._sig_cache[cache_key] = (has_kwargs, param_names)
+        else:
+            has_kwargs, param_names = cached
         if has_kwargs:
             valid_args = method_args
         else:
-            valid_args = {k: v for k, v in method_args.items() if k in sig.parameters}
+            valid_args = {k: v for k, v in method_args.items() if k in param_names}
 
         # Calculate the base reward for the current stage
         base_reward = reward_method(**valid_args)  # type: ignore
