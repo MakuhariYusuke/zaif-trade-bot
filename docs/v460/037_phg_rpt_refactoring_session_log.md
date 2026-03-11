@@ -4264,3 +4264,409 @@
   - `tests/unit/experiments/test_performance_stress.py::TestPerformanceAndStress::test_performance_tracking_memory_usage`
   - `tests/unit/utils/test_convert_and_validate_data.py::test_validate_dataset_and_resample`
   - `HeavyTradingEnv` の scaler fast-path 化
+
+## 2026-03-11 / Session 037-101
+
+### 実施内容
+- 指名された 3 件を先に再現条件ごとに分解した。
+  - `test_load_data_synthetic` / `test_load_data_custom_sizes`: synthetic path なのに external CSV loader 非依存を明示していなかった。
+  - `test_load_env` / `test_load_env_nested`: `os.environ` の `ZTB_*` 汚染を受ける書き方だった。
+  - `test_set_with_ttl`: SQLite 側の TTL 判定が strict `>` で、秒境界で揺れる余地があった。
+- [tests/training/unified_trainer/test_algorithms.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/unified_trainer/test_algorithms.py)
+  - synthetic data load の 2 本で `DataLoader.load_csv_strict` を patch し、synthetic path では loader が呼ばれないことを明示した。
+- [tests/unit/config/test_config_loader.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/config/test_config_loader.py)
+  - `patch.dict(..., clear=True)` に変更し、`ZTB_*` 環境変数の残留で結果が膨らまないようにした。
+- [ztb/cache/sqlite_cache.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/cache/sqlite_cache.py)
+  - TTL expiration 判定を `>` から `>=` に変更し、秒境界での timing drift を吸収した。
+- [tests/unit/cache/test_sqlite_cache.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/cache/test_sqlite_cache.py)
+  - TTL test を boundary (`1001.0`) 検証へ寄せ、秒境界で expire する契約を固定した。
+- broad hotspot の横展開も実施した。
+  - [tests/unit/experiments/test_phase_3_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/experiments/test_phase_3_integration.py)
+    - `tests.helpers.make_exchange_random_walk_ohlcv_data` を利用する構成へ変更した。
+    - `bootstrap_samples` を `200`、`n_iterations` を `3` に下げた。
+    - ad-hoc `sys.path.insert(...)` と `__main__` ブロックを除去した。
+  - [tests/unit/experiments/test_performance_stress.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/experiments/test_performance_stress.py)
+    - `_PerformanceTracker` を `deque` ベースへ変更し、30日 cutoff の prune を先頭からの線形削除へ置換した。
+    - `num_entries` を `2000` に縮小し、不要な `sys.path.insert(...)` / `__main__` も除去した。
+  - [tests/unit/utils/test_convert_and_validate_data.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/utils/test_convert_and_validate_data.py)
+    - `validate_dataset_and_resample` は `subprocess.run` を patch し、CLI 本体の検証と resample tool 起動確認だけを見る形に整理した。
+
+### 結果
+- focused:
+  - `tests/training/unified_trainer/test_algorithms.py -k "load_data_synthetic or load_data_custom_sizes"`
+  - `2 passed, 24 deselected in 4.40s`
+- focused:
+  - `tests/unit/config/test_config_loader.py -k "load_env or load_env_nested"`
+  - `2 passed, 15 deselected in 4.08s`
+- focused:
+  - `tests/unit/cache/test_sqlite_cache.py -k test_set_with_ttl`
+  - `1 passed, 11 deselected in 4.07s`
+- focused:
+  - `tests/unit/experiments/test_phase_3_integration.py`
+  - `tests/unit/experiments/test_performance_stress.py`
+  - `16 passed in 6.83s`
+- focused:
+  - `tests/unit/utils/test_convert_and_validate_data.py`
+  - `4 passed, 4 warnings in 1.40s`
+- broad:
+  - `tests/unit/cache/ tests/unit/config/ tests/unit/experiments/ tests/unit/utils/ tests/training/`
+  - `765 passed, 16 skipped, 23 warnings in 31.72s`
+- full integration:
+  - `tests/integration/ -q --no-cov --tb=short --show-capture=no --durations=20`
+  - `105 passed, 9 skipped, 15 warnings in 15.86s`
+- full v460 unit:
+  - `tests/unit/v460/ -q --no-cov --tb=short --maxfail=1`
+  - `4605 passed, 33 skipped, 12 warnings in 34.09s`
+
+### 主要改善
+- `test_load_env` / `test_load_env_nested` は実行順序依存を外し、環境汚染があっても deterministic になった。
+- `test_load_data_synthetic` / `test_load_data_custom_sizes` は synthetic path の契約が明示され、external loader の mock 漏れで揺れない形になった。
+- `test_set_with_ttl` はテストだけでなく本体 TTL 境界も修正したため、秒境界の timing bug を根本側で潰せた。
+- `test_phase_3_integration.py` の上位 2 本は `4.87s / 4.29s` から `1.35s / 0.99s` 帯まで下がった。
+- `test_performance_tracking_memory_usage` は `2.37s` から `0.05s` まで低下し、broad 上位から外れた。
+- `test_validate_dataset_and_resample` も broad 上位から外れた。
+- 現時点の次候補は次の 5 本。
+  - `tests/training/callbacks/performance/test_performance.py::TestSystemIntegrationPerformance::test_memory_usage_under_load`
+  - `tests/training/unified_trainer/test_algorithms.py::TestSelfSupervisedTrainer::test_train_success`
+  - `tests/unit/utils/test_health.py` の async/system summary 系
+  - `tests/integration/trading/test_signal_guidance_integration.py` の setup / benchmark
+  - `HeavyTradingEnv` の scaler fast-path 化
+
+## 2026-03-12 / Session 037-102
+
+### 調査と計画
+- 追加調査を broad 実行でやり直したところ、次の 4 系統が改善余地として明確になった。
+  - `EnvironmentConfig.from_dict(...)` が `scaler_mean` / `scaler_std` を保持できず、`HeavyTradingEnv` の schema scaler fast-path が実質無効だった。
+  - schema scaler fast-path を通した場合、`data_manager` へ fast-access buffer が同期されず、`reset()` 時に price buffer が空になる latent bug があった。
+  - `tests/unit/utils/test_health.py`, `tests/unit/utils/test_circuit_breaker.py`, distributed/performance callback tests に実ネットワーク・実時間待機・人工 sleep が残っていた。
+  - `tests/unit/environment/` は `HeavyTradingEnv` を full-feature 初期化で何度も作り直しており、unit subset 全体 206 秒超の支配要因になっていた。
+- 対応順は次の通りにした。
+  - 本体: schema scaler fast-path を成立させる。
+  - テスト: health / distributed / circuit breaker を deterministic 化する。
+  - 再利用: environment 向け shared helper を追加し、重い env tests を schema-feature / shared fixture へ寄せる。
+  - 最後に broad 再計測し、新しい hotspot を取り直す。
+
+### 本体修正
+- [ztb/trading/environment/utils/config.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/trading/environment/utils/config.py)
+  - `EnvironmentConfig` に `scaler_mean` / `scaler_std` を追加し、schema factory から渡された scaler を dataclass 経由で保持できるようにした。
+- [ztb/trading/environment/heavy_env/core.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/trading/environment/heavy_env/core.py)
+  - `data_manager` 初期化後に `_sync_data_manager_buffers()` を呼ぶようにし、schema scaler fast-path でも price / close / atr buffer が利用可能な状態になるようにした。
+- [ztb/trading/environment/heavy_env/mixins/initialization.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/trading/environment/heavy_env/mixins/initialization.py)
+  - `_compute_scaler_from_data()` の buffer 同期を helper 化し、`_sync_data_manager_buffers()` を共通経路にまとめた。
+  - `data_manager` 未初期化時は no-op にして、初期化順序による例外を避けた。
+
+### テスト共通化と軽量化
+- [tests/helpers/environment.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/helpers/environment.py)
+  - raw OHLCV をそのまま feature として使う `make_schema_feature_env_config()` を追加した。
+  - `feature_names`, `scaler_mean`, `scaler_std`, `correlation_reduction=False` をまとめて生成する shared helper とした。
+- [tests/helpers/__init__.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/helpers/__init__.py)
+  - environment helper を export した。
+- [tests/unit/environment/test_forced_actions.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_forced_actions.py)
+  - module-scope fixture と shared schema config へ寄せた。
+  - full-feature 初期化をやめ、action semantics の検証に必要な最小構成へ整理した。
+- [tests/unit/environment/test_heavy_env_initialization.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_heavy_env_initialization.py)
+  - schema feature env と MTF env を fixture 化した。
+  - observation-space consistency は軽い schema env で見て、MTF merge だけ重い env を 1 回だけ初期化する構成へ分けた。
+- [tests/unit/environment/test_heavy_env_observation_consistency.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_heavy_env_observation_consistency.py)
+  - shared schema env fixture を導入し、観測次元の一貫性確認を full feature 初期化から切り離した。
+- [tests/unit/environment/test_heavy_env_regime.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_heavy_env_regime.py)
+  - `sys.path.insert(...)`, print 主体, `__main__` を除去した。
+  - shared market-data/helper に寄せ、regime adaptation の本質的 assertion のみを残した。
+- [tests/unit/environment/test_heavy_env_core.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_heavy_env_core.py)
+  - `feature_names` 既存ケースを shared schema config で直接表現するようにした。
+- [tests/unit/utils/test_health.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/utils/test_health.py)
+  - async wrapper tests を stubbed checks に寄せ、実ネットワーク・実 system state 依存を外した。
+- [tests/unit/utils/test_circuit_breaker.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/utils/test_circuit_breaker.py)
+  - recovery timeout は `last_failure_time` を直接調整する形に変更した。
+  - timeout は 0.05 秒へ縮め、同期 API 後の無意味な `time.sleep(...)` を撤去した。
+- [tests/unit/utils/test_health_monitor.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/utils/test_health_monitor.py)
+  - monitoring test の小さな sleep と `__main__` を除去した。
+- [tests/training/callbacks/distributed/coordinator.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/callbacks/distributed/coordinator.py)
+  - queue polling timeout を 0.01 秒へ縮めた。
+- [tests/training/callbacks/distributed/worker.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/callbacks/distributed/worker.py)
+  - synchronous stub なのに入っていた人工 `time.sleep(0.01)` を除去した。
+- [tests/training/callbacks/distributed/test_distributed.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/callbacks/distributed/test_distributed.py)
+  - fixed sleep をやめ、heartbeat だけ小さな polling helper にした。
+  - `busy -> idle` と heartbeat 更新を本当に見る assertion へ引き上げた。
+- [tests/training/callbacks/performance/distributed/worker.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/callbacks/performance/distributed/worker.py)
+  - task stub の人工 sleep を除去した。
+- [tests/training/callbacks/performance/distributed/integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/callbacks/performance/distributed/integration.py)
+  - manager stub の task 処理 sleep を除去した。
+- [tests/training/callbacks/performance/test_performance.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/callbacks/performance/test_performance.py)
+  - synchronous callback 経路の fixed sleep と wait loop を削除した。
+  - task/load ループを少し縮め、throughput 計測は `perf_counter()` に変更した。
+
+### 結果
+- focused:
+  - `tests/unit/environment/test_forced_actions.py tests/unit/environment/test_heavy_env_initialization.py tests/unit/environment/test_heavy_env_observation_consistency.py tests/unit/environment/test_heavy_env_regime.py`
+  - `15 passed, 339 warnings in 8.94s`
+- full unit environment:
+  - `tests/unit/environment/ -q --no-cov --tb=short --show-capture=no --maxfail=5 --durations=30`
+  - `132 passed, 341 warnings in 19.34s`
+- broad unit subset:
+  - `tests/unit/cache/ tests/unit/config/ tests/unit/environment/ tests/unit/experiments/ tests/unit/utils/`
+  - `687 passed, 2 skipped, 364 warnings in 39.90s`
+- broad training + integration:
+  - `tests/training/ tests/integration/`
+  - `315 passed, 23 skipped, 13 warnings in 24.22s`
+- full v460 unit:
+  - `tests/unit/v460/ -q --no-cov --tb=short --maxfail=1`
+  - `4605 passed, 33 skipped, 12 warnings in 35.01s`
+
+### 主要改善
+- `EnvironmentConfig` に schema scaler が保持されるようになり、`HeavyTradingEnv` の schema feature fast-path が本当に有効化された。
+- その fast-path で発生していた `data_manager` buffer 未同期 bug も本体側で解消した。
+- `tests/unit/environment/` は `206.39s` から `19.34s` へ低下した。
+- `tests/unit/cache + config + environment + experiments + utils` は `206.39s` ベースから `39.90s` まで低下した。
+- distributed/performance と health/circuit breaker の deterministic 化により、broad 上位から blocking sleep / real network 由来のノイズがほぼ外れた。
+
+### 残る候補
+- 最上位は [tests/integration/trading/test_signal_guidance_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/integration/trading/test_signal_guidance_integration.py) の class setup 約 2.5 秒。
+- 次が [tests/unit/environment/test_heavy_env_initialization.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_heavy_env_initialization.py) の MTF merge setup 約 2.0 秒。
+- その次は `reverse_as_close`, `reward_function`, `env_randomization_integration` の 0.5-0.9 秒帯。
+- hygiene 面では `tests/` 配下にまだ `sys.path.insert(...)` / `__main__` が約 265 箇所、`time.sleep` / `asyncio.sleep` が約 20 箇所残っている。多くは legacy / script-like test なので、必要なら別 batch で整理する。
+
+## Session 037-103
+Date: 2026-03-12
+
+### 事前棚卸し
+- `tests/training/unified_trainer/test_algorithms.py` の self-supervised integration 2 本が依然として支配的で、focused rerun で `56.97s` 中 `28.77s + 22.06s` を占めていた。
+- 深掘りすると、[ztb/training/unified_trainer/algorithms/self_supervised_trainer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/unified_trainer/algorithms/self_supervised_trainer.py) は `config_type="lightweight"` を pretraining config へ渡しておらず、さらに nested override を shallow `dict.update()` で潰していた。
+- その結果、integration test が top-level では軽量設定を指定していても、実際には default pretraining config のまま 3 stage を重い設定で回していた。
+- 追加で broad rerun では [tests/training/callbacks/performance/test_performance.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/callbacks/performance/test_performance.py) の cleanup microbenchmark が Windows + `tracemalloc` 下で不安定化し、`test_memory_monitor_overhead` が `cleanup_time < 0.5s` 境界で落ちた。
+
+### 本体修正
+- [ztb/multimodal/pretraining/config.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/multimodal/pretraining/config.py)
+  - `get_config()` を `deepcopy` ベースに変更し、shared default config の nested mutation が別 run に漏れないようにした。
+  - `update_config()` も shallow copy ではなく `deepcopy` を起点にし、stage config の deep merge で元の定数を汚さないようにした。
+- [ztb/training/unified_trainer/algorithms/self_supervised_trainer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/unified_trainer/algorithms/self_supervised_trainer.py)
+  - `_build_ssp_model_config()` を追加し、`config_type`, top-level `input_dim/device/checkpoint_dir/seq_len`, `training.ssp_hyperparameters`, `custom_config` を順に deep merge する経路へ整理した。
+  - `ssp_hyperparameters` の `num_epochs`, `batch_size`, `patience`, `save_best`, `learning_rate`, `seq_len` を stage ごとの `*_training` / model config へ正しく投影するようにした。
+  - `_load_data()` は train/val tensor がすでにある場合に再生成しない fast-path を追加した。
+  - `load_model()` でも lazy import と共通 config builder を使うようにし、未定義 `SSPTrainer` 参照の latent bug を解消した。
+- [ztb/training/callbacks/performance/memory_optimizer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/callbacks/performance/memory_optimizer.py)
+  - `MemoryMonitor` が `psutil.Process(os.getpid())` を毎回生成し直さないよう、process handle をインスタンスに保持する形へ変更した。
+
+### テスト整理
+- [tests/training/unified_trainer/test_algorithms.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/unified_trainer/test_algorithms.py)
+  - `_make_tiny_ssp_config()` を追加し、integration が real training を通しつつも最小の hidden size / seq_len / epoch / batch で済むようにした。
+  - `test_full_training_pipeline` から冗長な `_load_data()` 事前呼び出しを外した。
+  - `test_build_ssp_model_config_applies_config_type_and_custom_overrides` を追加し、今回の production fix を直接カバーした。
+  - `__main__` ブロックを削除した。
+- [tests/training/callbacks/performance/test_performance.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/callbacks/performance/test_performance.py)
+  - wall-clock 計測を `perf_counter()` に変更した。
+  - `test_memory_monitor_overhead` は live garbage を舐める microbenchmark ではなく、到達可能な cyclic garbage を解放したうえで cleanup を見る coarse regression guard に変更した。
+  - `test_memory_leak_prevention` の cache/pool/workload を少し縮め、同じ leak guard をより短時間で見る形にした。
+- [tests/training/distillation/test_distillation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/distillation/test_distillation.py)
+  - smoke coverage を維持したまま、teacher hidden size と dataset/batch を最小側へ寄せた。
+
+### 検証結果
+- focused self-supervised:
+  - `python -m pytest tests/training/unified_trainer/test_algorithms.py -q --no-cov --tb=short --show-capture=no --durations=20`
+  - `27 passed in 10.15s`
+  - slowest:
+    - `test_full_training_pipeline`: `28.77s -> 4.38s`
+    - `test_training_stats_after_training`: `22.06s -> 0.65s`
+- focused performance callbacks:
+  - `python -m pytest tests/training/callbacks/performance/test_performance.py -q --no-cov --tb=short --show-capture=no --durations=20`
+  - `12 passed, 1 skipped in 5.10s`
+- focused training/integration sanity:
+  - `python -m pytest tests/training/unified_trainer/test_algorithms.py tests/training/callbacks/performance/test_performance.py tests/training/distillation/test_distillation.py tests/integration/trading/test_signal_guidance_integration.py -q --no-cov --tb=short --show-capture=no`
+  - `48 passed, 1 skipped in 11.86s`
+- broad training + integration:
+  - `python -m pytest tests/training/ tests/integration/ -q --no-cov --tb=short --show-capture=no --maxfail=5 --durations=40`
+  - `386 passed, 19 skipped, 14 warnings in 32.58s`
+  - 追加の rerun でも `386 passed, 19 skipped, 14 warnings in 32.98s`
+
+### 効果
+- self-supervised integration の重さは production bug 修正込みで大きく解消し、broad suite の支配要因から外れた。
+- `MemoryMonitor` は本体でも `psutil.Process` 再生成コストがなくなり、performance callback の regression guard も wall-clock 依存の flaky さが減った。
+- `tests/training/ + tests/integration/` は earlier failure を解消したうえで、安定して 33 秒前後で回る状態まで詰められた。
+
+### 残る候補
+- 現在の broad 上位は [tests/training/distillation/test_distillation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/distillation/test_distillation.py) の約 3.9 秒と、[tests/integration/trading/test_signal_guidance_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/integration/trading/test_signal_guidance_integration.py) の class setup 約 2.4-3.1 秒。
+- 次点は [tests/integration/test_market_regime_adaptation_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/integration/test_market_regime_adaptation_integration.py) の env setup 約 1.3 秒。
+- `tests/unit/environment/` はまだ 40 秒前後までばらつく run があり、MTF setup と `reverse_as_close` / `reward_function` / `env_randomization_integration` の fixture cost が残っている。
+
+## Session 037-104
+Date: 2026-03-12
+
+### 事前棚卸し
+- `time.sleep` / `asyncio.sleep` の残件を再走査し、active test 側では主に callback integration / distributed polling / unified optimizer / analysis path-manager / job-manager / circuit-breaker / 一部 integration に残っていることを確認した。
+- あわせて broad rerun (`tests/training/ tests/integration/ tests/unit/environment/`) を実行したところ、sleep より先に順序依存の global mock 汚染が露出した。
+- 特に [tests/unit/environment/test_env_randomization_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_env_randomization_integration.py) が module import 時に `sys.modules["torch"] = MagicMock()` を差し込み、後続の compression / distillation 系で `torch.nn.Linear` 初期化や loss class 解決を壊していた。
+- 追加で [ztb/training/compression/composite_compressor.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/compression/composite_compressor.py) は parameterless model に対して `CompressionMetrics.calculate_metrics()` がゼロ除算する latent bug を持っていた。
+- [ztb/analysis/reporting/display_manager.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/analysis/reporting/display_manager.py) も stubbed `matplotlib.pyplot` に `style` が無いと初期化で落ちる状態だった。
+
+### 本体修正
+- [ztb/training/compression/composite_compressor.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/compression/composite_compressor.py)
+  - `original_size <= 0` の場合は `compression_ratio=1.0`, `memory_savings=0.0` を返すようにし、parameterless model でも安全に metrics を計算できるようにした。
+- [ztb/analysis/reporting/display_manager.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/analysis/reporting/display_manager.py)
+  - `plt.style.use("default")` を guarded call に変更し、style API を持たない lightweight matplotlib stub でも落ちないようにした。
+
+### テスト整理
+- [tests/unit/environment/test_env_randomization_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_env_randomization_integration.py)
+  - `sys.modules["torch"] = MagicMock()` を除去した。現行 test は real torch / real env で通るため、この global stub は不要だった。
+- [tests/unit/trading/environment/test_bankruptcy_drawdown.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/trading/environment/test_bankruptcy_drawdown.py)
+  - 同様に `sys.modules["torch"] = MagicMock()` を除去し、将来の順序依存を防いだ。
+- [tests/training/callbacks/test_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/callbacks/test_integration.py)
+  - `sys.path.insert(...)` を撤去した。
+  - async callback / threaded callback の人工 `time.sleep(0.01)` を除去した。
+  - `__main__` ブロックを削除した。
+- [tests/training/callbacks/distributed/test_distributed.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/callbacks/distributed/test_distributed.py)
+  - `test_task_submission` の while + sleep polling を `Event.wait(...)` に変更した。
+  - `_wait_until` は `perf_counter()` ベースへ寄せた。
+- [tests/unit/analysis/test_common_components.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/analysis/test_common_components.py)
+  - mtime 差を作るための `time.sleep(0.01)` を `os.utime(...)` に置換した。
+- [tests/unit/training/test_unified_optimizer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/test_unified_optimizer.py)
+  - parallel objective の人工 `sleep` を軽い deterministic computation に置換した。
+- [tests/training/compression/test_composite_compressor.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/compression/test_composite_compressor.py)
+  - parameterless model に対する zero-size metrics の回帰 test を追加した。
+- [tests/training/unified_trainer/test_algorithms.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/unified_trainer/test_algorithms.py)
+  - `load_model()` が merged SSP config を使うことを確認する unit test を追加した。
+- [tests/unit/experiments/test_phase_2_multi_timeframe.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/experiments/test_phase_2_multi_timeframe.py)
+  - `analyze_convergence(precomputed)` が `collect_trend_analyses()` を再実行しないことを確認する test を追加し、前 batch の production optimization をカバーした。
+- [tests/training/callbacks/performance/test_performance.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/callbacks/performance/test_performance.py)
+  - `MemoryMonitor` が cached `psutil.Process` handle を再利用することを確認する test を追加した。
+
+### 検証結果
+- focused training/callback/compression:
+  - `python -m pytest tests/training/compression/test_composite_compressor.py tests/training/callbacks/test_integration.py tests/training/callbacks/distributed/test_distributed.py tests/training/callbacks/performance/test_performance.py tests/training/unified_trainer/test_algorithms.py -q --no-cov --tb=short --show-capture=no --durations=20`
+  - `83 passed, 1 skipped in 13.21s`
+- focused analysis/environment/compression ordering:
+  - `python -m pytest tests/unit/analysis/test_common_components.py tests/unit/trading/environment/test_bankruptcy_drawdown.py tests/unit/environment tests/training/compression/test_composite_compressor.py -q --no-cov --tb=short --show-capture=no --maxfail=5 --durations=20`
+  - `180 passed, 341 warnings in 31.46s`
+- broad verification:
+  - `python -m pytest tests/training/ tests/integration/ tests/unit/environment/ -q --no-cov --tb=short --show-capture=no --maxfail=5 --durations=30`
+  - `521 passed, 19 skipped, 355 warnings in 78.40s`
+
+### 効果
+- sleep 削減だけでなく、後続 suite を破壊していた global `torch` mock 汚染を 2 箇所で除去できた。
+- compression metrics のゼロ除算と display manager の matplotlib stub 依存も解消し、broad rerun が安定して最後まで通る状態に戻った。
+- 追加した unit tests により、最近入れた production 軽量化 (`SelfSupervisedTrainer.load_model`, `MultiTimeframeAnalyzer.analyze_convergence`, `MemoryMonitor`) の回帰面も補強できた。
+
+### 現時点の残件
+- `time.sleep` / `asyncio.sleep` の残件は active test 側でまだいくつかあり、主なものは:
+  - [tests/training/callbacks/performance/test_performance.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/callbacks/performance/test_performance.py) の skip 済み throughput benchmark
+  - [tests/unit/experiments/test_job_manager.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/experiments/test_job_manager.py) の timeout 再現
+  - [tests/integration/test_v433_phase5_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/integration/test_v433_phase5_integration.py) の async polling
+  - [tests/unit/utils/test_circuit_breaker.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/utils/test_circuit_breaker.py) / [tests/unit/risk/test_circuit_breakers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/risk/test_circuit_breakers.py) の timeout 待ち
+- broad 上位 hotspot は引き続き [tests/unit/environment/test_heavy_env_initialization.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_heavy_env_initialization.py) の MTF setup、[tests/training/distillation/test_distillation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/distillation/test_distillation.py)、[tests/integration/trading/test_signal_guidance_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/integration/trading/test_signal_guidance_integration.py) の setup。
+
+## Session 037-105
+Date: 2026-03-12
+
+### 事前棚卸し
+- broad rerun で、未解消の本体/テスト課題として次を確認した。
+  - [ztb/training/policies/strict_masked_policy.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/policies/strict_masked_policy.py) が real SB3 `FlattenExtractor` に `features_dim` を渡して setup error を出す。
+  - [ztb/features/models/sac/sac_v427_feature_engineering.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/features/models/sac/sac_v427_feature_engineering.py) の padding 生成が列ごとの代入で DataFrame 断片化 warning の温床になっている。
+  - [tests/unit/training/test_unified_optimizer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/test_unified_optimizer.py) は default `max_trials=100` のまま multi-timeframe/parallel を回しており、broad の主因になっていた。
+  - [tests/training/unified_trainer/test_algorithms.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/unified_trainer/test_algorithms.py) の `SelfSupervisedTrainerIntegration` は broad 実行時だけ失敗する順序依存があり、後段 save 失敗で stats が失われる構造も確認した。
+  - [tests/unit/training/test_trainers_sac.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/test_trainers_sac.py) は不要な `time.time` patch が logging まで巻き込まれる latent race を持っていた。
+
+### 本体修正
+- [ztb/training/policies/strict_masked_policy.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/policies/strict_masked_policy.py)
+  - extractor の `__init__` signature を見て `features_dim` を渡し分ける helper を追加した。
+  - `FlattenExtractor` 互換と custom extractor 互換の両方を維持する形に直した。
+- [ztb/features/models/sac/sac_v427_feature_engineering.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/features/models/sac/sac_v427_feature_engineering.py)
+  - padding features を一括 NumPy matrix から DataFrame 化する形に変更し、列ごとの insert を除去した。
+- [ztb/training/unified_optimizer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/unified_optimizer.py)
+  - `ParallelOptimizer._execute_optimization_task()` が task ごとの `max_trials` override を実際に反映し、終了後に元へ戻すようにした。
+- [ztb/training/callbacks/performance/memory_optimizer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/callbacks/performance/memory_optimizer.py)
+  - unweakrefable object 用の lambda closure を `_StrongRef` wrapper に置換し、`WeakRefRegistry.register()` の固定コストを削減した。
+- [ztb/training/unified_trainer/algorithms/self_supervised_trainer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/unified_trainer/algorithms/self_supervised_trainer.py)
+  - `_snapshot_training_stats()` を追加し、train 後にまず partial stats を保持するようにした。
+  - save/persist 後の completed stats も同 helper で組み立てる形へ寄せた。
+  - `get_training_stats()` は空 dict の代わりに current state の snapshot を返すようにした。
+
+### テスト整理
+- [tests/unit/training/policies/test_strict_masked_policy.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/policies/test_strict_masked_policy.py)
+  - custom extractor が `features_dim` を受け取る互換経路の回帰 test を追加した。
+- [tests/unit/features/test_sac_v427_feature_engineering.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/features/test_sac_v427_feature_engineering.py)
+  - quality filter で features が減りすぎた場合に padding columns が追加されることを固定する test を追加した。
+- [tests/training/callbacks/distributed/test_distributed.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/callbacks/distributed/test_distributed.py)
+  - heartbeat test は `last_heartbeat` だけでなく `status == "idle"` まで待つようにして race を除去した。
+- [tests/unit/training/test_unified_optimizer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/test_unified_optimizer.py)
+  - multi-timeframe / parallel 系 test の `max_trials` を縮小した。
+  - task-specific `max_trials` override が restore される test を追加した。
+  - `__main__` ブロックを削除した。
+- [tests/training/callbacks/performance/test_performance.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/callbacks/performance/test_performance.py)
+  - weakref registration の閾値を coarse bound に調整した。
+- [tests/integration/trading/test_signal_guidance_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/integration/trading/test_signal_guidance_integration.py)
+  - representative data window を `72 -> 48` rows へ縮小し、benchmark/position/consistency 用 slices も短くした。
+- [tests/training/unified_trainer/test_algorithms.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/unified_trainer/test_algorithms.py)
+  - `save_model` 失敗後も stats が残ることを確認する unit test を追加した。
+  - `get_training_stats_no_trainer` を snapshot 契約へ更新した。
+  - integration 2 本は `_FakeIntegrationSSPTrainer` を使う deterministic backend へ差し替え、checkpoint/history/encoders 契約だけを検証する形にした。
+- [tests/unit/training/test_trainers_sac.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/test_trainers_sac.py)
+  - 不要な `time.time` patch を除去し、logging runtime との干渉を止めた。
+
+### 検証結果
+- focused policy + feature engineering:
+  - `python -m pytest tests/unit/training/policies/test_strict_masked_policy.py tests/unit/features/test_sac_v427_feature_engineering.py -q --no-cov --tb=short --show-capture=no`
+  - `19 passed in 8.36s`
+- focused distributed + unified optimizer:
+  - `python -m pytest tests/training/callbacks/distributed/test_distributed.py tests/unit/training/test_unified_optimizer.py -q --no-cov --tb=short --show-capture=no --durations=20`
+  - `45 passed in 10.35s`
+- focused SSP / SAC logging / performance / signal guidance:
+  - `python -m pytest tests/training/unified_trainer/test_algorithms.py tests/unit/training/test_trainers_sac.py tests/training/callbacks/performance/test_performance.py tests/integration/trading/test_signal_guidance_integration.py -q --no-cov --tb=short --show-capture=no`
+  - `49 passed, 1 skipped in 16.53s`
+- broad verification:
+  - `python -m pytest tests/training/ tests/integration/ tests/unit/environment/ tests/unit/analysis/ tests/unit/training/ -q --no-cov --tb=short --show-capture=no --maxfail=5 --durations=40`
+  - `999 passed, 27 skipped, 36 warnings in 99.23s`
+
+### 効果
+- `strict_masked_policy` の SB3 互換不具合が解消し、real `FlattenExtractor` 前提の training-related subset が安定した。
+- v427 feature padding の断片化コストを本体で削減でき、padding path の回帰 test も追加できた。
+- `unified_optimizer` は test workload 縮小と task-level `max_trials` support の両方が入り、broad の 20 秒級 hotspot を数秒帯まで落とせた。
+- `signal_guidance` integration の setup は `~2.46s -> ~0.61s` まで低下した。
+- `SelfSupervisedTrainerIntegration` と `SACTrainerInternalLogs` の順序依存を除去し、broad rerun が最後まで安定して通る状態に戻った。
+
+### 現時点の残件
+- 現在の最上位 hotspot は [tests/unit/environment/test_heavy_env_initialization.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_heavy_env_initialization.py) の multi-timeframe setup 約 6.3 秒。
+- 次点は [tests/training/distillation/test_distillation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/distillation/test_distillation.py) の約 3.9 秒と、[tests/unit/training/test_unified_optimizer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/test_unified_optimizer.py) の multi-timeframe 系約 3 秒台。
+- integration 側は [tests/integration/test_market_regime_adaptation_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/integration/test_market_regime_adaptation_integration.py) の env setup と、[tests/integration/test_trend_and_curriculum_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/integration/test_trend_and_curriculum_integration.py) の約 1.5 秒が次の削減候補。
+
+## 2026-03-12 / Session 379-SB3-Critical
+
+### 概要
+SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
+
+### 根本原因
+ワークスペースの `stable_baselines3/` ディレクトリが **ダミースタブ**で、pip版 SB3 2.7.0 をシャドウしていた。
+- `SAC.learn()` → `return self`（何もしない）
+- `SAC.predict()` → `return (0, None)`（常にint 0）
+- `SAC.load()` → 空インスタンスを返す
+- `sitecustomize.py` の `_prefer_local_package()` がスタブを優先的にロード
+
+### 修正内容
+1. `stable_baselines3/` → `_sb3_test_stub/` にリネーム
+2. `sitecustomize.py`: `_prefer_local_package()` を無効化
+3. `ztb/support/sb3_compat.py`: pip版SB3を優先import（fallbackでスタブ作成）
+4. `g2_sac_train.yaml`: 離散化閾値 0.3333→0.10、learning_starts 100→1000
+5. テスト更新: `test_356_g2_sac_blockers.py` の learning_starts assertion
+
+### 副次的修正（前セッション）
+- `reward_calculator.py`: `inspect.signature()` キャッシュ化 (`_sig_cache`)
+- `sac_train.py`: checkpoint eval 5Kステップ制限 (`_CHECKPOINT_EVAL_MAX_STEPS`)
+- `sac_common.py`: OOS eval 10Kステップ制限 (`max_steps_per_episode`)
+
+### 訓練結果（本物のSB3 2.7.0 使用）
+| Seed | 最善 ROI (checkpoint) | 最終 ROI (50K) | OOS ROI | 訓練時間 |
+|---|---|---|---|---|
+| 42 | **-0.0008** (20K) | -0.0019 | -0.0025 | 27.0min |
+| 123 | **-0.0016** (30K) | -0.0024 | -0.0026 | 32.6min |
+| 456 | **-0.0003** (35K) | -0.0007 | -0.0026 | 31.6min |
+| 789 | **-0.0013** (50K) | -0.0013 | -0.0028 | 34.0min |
+
+- trade_count: ~1001/3episodes（モデルは実際にトレードしている）
+- ROIが負なのはトランザクションコスト(0.1%)が1分足の小さな価格変動を上回るため
+
+### 診断ツール
+- `scripts/v460/diagnose_sac_actions.py`: モデルの行動分布・報酬分布を診断
+
+### 次アクション
+- トランザクションコスト調整（訓練時0%、評価時0.1%）の検討
+- 50Kステップ以上の訓練（100K, 200K）での収束改善
+- curriculum_learning / action_discovery 有効化の検討
+- G2 gate 評価（E1: positive_seed_ratio ≥ 0.75 は未達）
