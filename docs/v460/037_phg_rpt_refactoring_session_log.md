@@ -4627,6 +4627,180 @@ Date: 2026-03-12
 - 次点は [tests/training/distillation/test_distillation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/distillation/test_distillation.py) の約 3.9 秒と、[tests/unit/training/test_unified_optimizer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/test_unified_optimizer.py) の multi-timeframe 系約 3 秒台。
 - integration 側は [tests/integration/test_market_regime_adaptation_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/integration/test_market_regime_adaptation_integration.py) の env setup と、[tests/integration/test_trend_and_curriculum_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/integration/test_trend_and_curriculum_integration.py) の約 1.5 秒が次の削減候補。
 
+## Session 037-106
+Date: 2026-03-12
+
+### 調査メモ
+- 既存 helper の活用余地を broad hotspot と合わせて洗い直した結果、重複と無駄コストは主に次へ集約されていた。
+  - [tests/unit/environment/test_heavy_env_initialization.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_heavy_env_initialization.py) は raw OHLCV/scale config を既存 helper に寄せ切れておらず、MTF merge contract の確認に実 MTF 計算を回していた。
+  - [tests/training/distillation/test_distillation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/distillation/test_distillation.py) は tiny smoke test のはずが real optimizer/backprop を抱えており、しかも本体の `create_student_model()` は teacher shape を見ずに固定 156/3 を使っていた。
+  - [tests/unit/training/test_unified_optimizer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/test_unified_optimizer.py) は scalar objective/search space と timeframe objective/search space を毎回ローカル定義し、multi-timeframe/parallel の orchestration test でも real Optuna を回していた。
+  - [tests/training/test_gradient_accumulation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/test_gradient_accumulation.py) は unit 粒度の test でも real autograd/optimizer 初期化を使っていた。
+  - broad 後半で見ると、environment 系では [tests/unit/environment/test_reverse_as_close.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_reverse_as_close.py) / [tests/unit/environment/test_reward_function.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_reward_function.py) / [tests/unit/environment/test_env_randomization_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_env_randomization_integration.py) が類似 env fixture を個別構築しており、次の共通化候補として残っている。
+
+### 本体修正
+- [ztb/training/distillation/distiller.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/distillation/distiller.py)
+  - `create_student_model()` を teacher の `nn.Linear` stack から入出力次元と hidden dim を推定する形へ変更した。
+  - fallback は従来の固定次元を残しつつ、一般の teacher に対して shape mismatch を起こしにくい構成へ修正した。
+- [ztb/training/gradient_accumulation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/gradient_accumulation.py)
+  - `_update_parameters()` 内の `clip_grad_value` ブロック重複を除去した。
+
+### helper / test 共通化
+- [tests/helpers/environment.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/helpers/environment.py)
+  - `make_schema_feature_env_config(..., include_feature_names=False)` を追加し、schema scaler は使いつつ feature discovery を許す経路を共通化した。
+  - `make_stub_multi_timeframe_features()` を追加し、MTF merge contract を shared stub data で検証できるようにした。
+- [tests/helpers/optimization.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/helpers/optimization.py)
+  - `make_scalar_objective()`, `make_scalar_search_space()`, `make_timeframe_objectives()`, `make_timeframe_search_spaces()` を追加した。
+- [tests/helpers/distillation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/helpers/distillation.py)
+  - tiny teacher model と tiny distillation loader を helper 化した。
+- [tests/helpers/__init__.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/helpers/__init__.py)
+  - 上記 helper を公開した。
+
+### テスト整理
+- [tests/unit/environment/test_heavy_env_initialization.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_heavy_env_initialization.py)
+  - MTF env fixture を shared schema-scaler config + shared MTF stub data へ変更した。
+  - merge の assertion も「列数増加」から stub column presence に引き上げた。
+  - base OHLCV rows を `64 -> 48` に縮小した。
+- [tests/training/distillation/test_distillation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/distillation/test_distillation.py)
+  - shared distillation helper を利用するようにした。
+  - pipeline smoke は `create_student_model` / `distill` / optimizer 初期化を lightweight に寄せ、orchestration contract だけを見る形に変更した。
+  - `create_student_model()` が teacher dimensions を追従する回帰 test を追加した。
+- [tests/unit/training/test_unified_optimizer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/test_unified_optimizer.py)
+  - shared optimization helper を利用するようにした。
+  - multi-timeframe / parallel orchestration test は `_StubOptimizer` を使う形にし、real Optuna 依存を `BayesianOptimizer` 専用 test に限定した。
+  - `max_trials` もさらに絞り、構造検証に不要な workload を削除した。
+- [tests/training/test_gradient_accumulation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/test_gradient_accumulation.py)
+  - clipping tests は手動 grad + fake optimizer へ変更した。
+  - trainer initialization / effective batch size / training_step は mock model/optimizer/accumulator に寄せ、wrapper 契約だけを見る形にした。
+  - `__main__` ブロックを削除した。
+- [tests/training/test_lagrange_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/test_lagrange_integration.py)
+  - `CustomPPO` creation smoke に `n_steps=8`, `batch_size=4` を明示した。
+  - 効果は限定的だったが、creation-only test に不要な large rollout buffer 前提は外した。
+
+### 検証結果
+- focused heavy env:
+  - `python -m pytest tests/unit/environment/test_heavy_env_initialization.py -q --no-cov --tb=short --show-capture=no --durations=10`
+  - `4 passed in 6.98s`
+  - MTF setup は `~6.3s -> ~0.68-0.90s` 帯まで低下
+- focused distillation:
+  - `python -m pytest tests/training/distillation/test_distillation.py -q --no-cov --tb=short --show-capture=no --durations=10`
+  - `3 passed in 0.65s`
+- focused unified optimizer:
+  - `python -m pytest tests/unit/training/test_unified_optimizer.py -q --no-cov --tb=short --show-capture=no --durations=20`
+  - `25 passed in 4.01s`
+- focused gradient accumulation:
+  - `python -m pytest tests/training/test_gradient_accumulation.py -q --no-cov --tb=short --show-capture=no --durations=20`
+  - `10 passed, 3 skipped in 0.56s`
+- broad verification:
+  - `python -m pytest tests/training/ tests/integration/ tests/unit/environment/ tests/unit/analysis/ tests/unit/training/ -q --no-cov --tb=short --show-capture=no --maxfail=5 --durations=40`
+  - `1000 passed, 27 skipped, 36 warnings in 76.27s`
+
+### 効果
+- broad subset は `99.23s -> 76.27s` まで短縮した。
+- 特に効いたのは `distillation` の `3.89s -> 0.65s`、`unified_optimizer` の multi-timeframe/parallel orchestration、`gradient_accumulation` の `4s` 級 autograd-based unit tests の除去、`heavy_env_initialization` の MTF merge stub 化。
+- helper 化したことで、同系統 test を今後追加する際の再利用先も整理できた。
+
+### 現時点の残件
+- 新しい最上位 hotspot は [tests/training/test_lagrange_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/test_lagrange_integration.py) の `test_custom_ppo_lagrange_creation` 約 4.5 秒。
+  - これは `CustomPPO` 実初期化自体が支配的なので、次に触るなら “creation smoke 1 本だけ実体、残りは patched constructor / property propagation test” の分離が筋。
+- environment 系では [tests/unit/environment/test_reverse_as_close.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_reverse_as_close.py)、[tests/unit/environment/test_reward_function.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_reward_function.py)、[tests/unit/environment/test_env_randomization_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_env_randomization_integration.py) に shared env fixture 化の余地が残る。
+- optimizer 系の残り real-Optuna path は [tests/unit/training/test_unified_optimizer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/test_unified_optimizer.py) の `BayesianOptimizer` と `UnifiedOptimizer.optimize_hyperparameters` のみで、ここは “本当に Optuna 実行が必要な 1 本” にさらに寄せられる余地がある。
+
+## 2026-03-12 / Session 037-107
+
+### 概要
+残っていた `lagrange` と environment 系の重複・重い初期化を整理した。方針は以下の 3 点。
+- `CustomPPO` / `SELLBiasMitigationPPOTrainer` の creation-only test から実 SB3 / PPO bootstrap を外す
+- environment 系 test data を既存 helper へ寄せ、schema-scaler fast-path を外していた default config 経路をなくす
+- 変更後に focused / broad の両方を再計測し、残る支配要因を再確認する
+
+### 実施内容
+- [tests/training/test_lagrange_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/test_lagrange_integration.py)
+  - `TestCustomPPOLagrangeIntegration` では `MaskablePPO.__init__` を lightweight stub に差し替え、`enable_pan` / `enable_target_entropy` も切って `lagrange` wiring だけを見る形にした。
+  - `TestTrainerLagrangeIntegration` では `PPOTrainer.__init__` を stub 化し、`_final_validation()` に不要な base trainer 初期化を回避した。
+  - これで `CustomPPO` creation-only と trainer final-validation の両方から、重い PPO bootstrap を除去した。
+- [tests/unit/environment/test_reverse_as_close.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_reverse_as_close.py)
+  - sample data を ad-hoc DataFrame から `make_trending_ohlcv_data()` に寄せた。
+  - backward compatibility fixture も `EnvironmentConfig(...)` 直書きではなく `make_schema_feature_env_config(...)` を使うようにし、schema-scaler fast-path を有効化した。
+  - pytest 運用に不要な manual integration function / `__main__` を削除した。
+- [tests/unit/environment/test_reward_function.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_reward_function.py)
+  - OHLCV を `make_exchange_random_walk_ohlcv_data()` へ統一した。
+  - rows と replay step 数を契約を保つ最小限まで削減した。
+  - debug `print(...)` を撤去した。
+- [tests/unit/environment/test_env_randomization_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_env_randomization_integration.py)
+  - `setUp()` ごとの DataFrame/config 再構築をやめ、`setUpClass()` で shared fixture 化した。
+  - data 生成も `make_trending_ohlcv_data()` に寄せた。
+
+### 検証結果
+- focused lagrange:
+  - `python -m pytest tests/training/test_lagrange_integration.py -q --no-cov --tb=short --show-capture=no --durations=10`
+  - `13 passed, 3 skipped in 3.79s`
+  - `test_trainer_final_validation_with_lagrange` は `~4.7s` 級から実質解消
+- focused environment trio:
+  - `python -m pytest tests/unit/environment/test_reverse_as_close.py tests/unit/environment/test_reward_function.py tests/unit/environment/test_env_randomization_integration.py -q --no-cov --tb=short --show-capture=no --durations=10`
+  - `12 passed, 2 warnings in 9.01s`
+  - `test_reverse_as_close.py` 単体は `8 passed in 6.21s`
+- broad verification:
+  - `python -m pytest tests/training/ tests/integration/ tests/unit/environment/ tests/unit/analysis/ tests/unit/training/ -q --no-cov --tb=short --show-capture=no --maxfail=5 --durations=40`
+  - `999 passed, 27 skipped, 36 warnings in 82.71s`
+
+### 効果
+- `lagrange` の creation / final-validation 系は、重さの原因だった実 PPO/bootstrap を切り分けられた。
+- environment 系 3 ファイルは shared helper と schema-scaler fast-path に寄せる形で重複を減らした。
+- broad subset 全体では前回再計測 (`90.66s`) から `82.71s` まで改善した。
+
+### 残件
+- broad の現時点の最大 hotspot は [tests/unit/training/policies/test_strict_masked_policy.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/policies/test_strict_masked_policy.py) の初回 setup で、focused では `13 passed in 2.98s` なので、broad 側では torch backend 初回 import/初期化コストが支配的と見られる。
+- 次点は [tests/integration/trading/test_signal_guidance_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/integration/trading/test_signal_guidance_integration.py) の class setup、[tests/integration/test_market_regime_adaptation_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/integration/test_market_regime_adaptation_integration.py) の setup、[tests/unit/training/test_unified_optimizer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/test_unified_optimizer.py) の real Optuna path。
+
+## 2026-03-12 / Session 037-108
+
+### 概要
+残る broad 上位のうち、本体コードの軽量化で効く箇所を優先して整理した。今回は以下を対象にした。
+- [ztb/training/policies/strict_masked_policy.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/policies/strict_masked_policy.py)
+- [ztb/trading/signal/signal_guidance_system.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/trading/signal/signal_guidance_system.py)
+- [ztb/training/unified_optimizer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/unified_optimizer.py)
+
+### 実施内容
+- [strict_masked_policy.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/policies/strict_masked_policy.py)
+  - `optimizer` を eager 作成から lazy property に変更した。
+  - `StrictMaskedPolicy` 初期化時には optimizer class / kwargs だけ保持し、実際に `policy.optimizer` が必要になった時点で `Adam` を構築する。
+  - これにより、forward/evaluate だけを見る unit test や lightweight runtime path で不要な torch optimizer 初期化を避けられる。
+- [signal_guidance_system.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/trading/signal/signal_guidance_system.py)
+  - market history から組み立てる `DataFrame` を cache するようにした。
+  - convergence input は timeframe の長さと最新価格を signature にした cache を追加し、同一状態での再計算を避けた。
+  - さらに、どの timeframe も最低データ数に達していない場合は neutral convergence を即返し、不要な multi-timeframe analysis を避けるようにした。
+- [unified_optimizer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/unified_optimizer.py)
+  - `SystemOptimizer` / `RewardFunctionOptimizer` / `MultiTimeframeOptimizer` / `ABTestingFramework` / `AutomaticOptimizationPipeline` / `OptimizationResultPersistence` / `ParallelOptimizer` を lazy property 化した。
+  - `UnifiedOptimizer` の `__init__` では必要最小限の state のみ持ち、実際に使う optimizer だけ初期化する。
+  - `system_optimizer` setter は `automatic_pipeline` へも反映するようにして、既存 integration test の差し替えパターンを維持した。
+
+### 検証結果
+- strict masked policy:
+  - `python -m pytest tests/unit/training/policies/test_strict_masked_policy.py -q --no-cov --tb=short --show-capture=no --durations=20`
+  - `13 passed in 0.85s`
+  - 直前 focused 実行の `2.98s` から短縮
+- signal guidance integration:
+  - `python -m pytest tests/integration/trading/test_signal_guidance_integration.py -q --no-cov --tb=short --show-capture=no --durations=20`
+  - `7 passed in 4.53s`
+  - class setup は `0.53s` まで低下
+- unified optimizer:
+  - `python -m pytest tests/unit/training/test_unified_optimizer.py -q --no-cov --tb=short --show-capture=no --durations=20`
+  - `25 passed in 3.55s`
+- broad verification:
+  - `python -m pytest tests/training/ tests/integration/ tests/unit/environment/ tests/unit/analysis/ tests/unit/training/ -q --no-cov --tb=short --show-capture=no --maxfail=5 --durations=40`
+  - `999 passed, 27 skipped, 36 warnings in 84.90s`
+
+### 所見
+- targeted では `strict_masked_policy` と `unified_optimizer` の改善幅が大きい。
+- broad subset は cold-start の import / torch backend 初期化コストがまだ支配的で、今回の run では [tests/unit/training/test_target_entropy.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/test_target_entropy.py) の初回 call が最上位になった。
+- focused の `test_target_entropy.py` 自体は `12 passed in 3.42s` なので、broad では module import/初期化位置の影響が大きいと見られる。
+
+### 次の候補
+- [tests/unit/training/test_target_entropy.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/test_target_entropy.py) と関連 module の初回 import コスト切り分け
+- [tests/integration/test_market_regime_adaptation_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/integration/test_market_regime_adaptation_integration.py) の setup 共有化の継続
+- environment 系の [tests/unit/environment/test_forced_actions.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_forced_actions.py) / [tests/unit/environment/test_pnl_invariants.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_pnl_invariants.py) に対する shared env fixture 化
+
 ## 2026-03-12 / Session 379-SB3-Critical
 
 ### 概要

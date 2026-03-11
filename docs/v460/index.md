@@ -376,6 +376,7 @@
 | 379 | fix | — | watchdog UNKNOWN→NOT_RUNNING エスカレーション修正 + fill_test 再起動 |
 | 380 | analysis | [380_fill_test_trading_improvement_analysis.md](380_fill_test_trading_improvement_analysis.md) | Fill Test クリーンデータ取引改善分析 (Rev.2): sell EV破綻 (30s=-0.12bps), 時間帯依存性, SkipGate非単調性, offset ceiling問題 — 8施策提案 |
 | 381 | review | [381_fill_test_analysis_codex_review.md](381_fill_test_analysis_codex_review.md) | Gemini Codex Review: Ghost Metric Paradox (forced_buy_delay撤廃済), データepoch汚染, JST/UTC混同 — 380# Rev.2 + P0/P1 YAML適用 |
+| 382 | rev | [382_ph3_rev_379_sb3_stub_and_g2_pipeline_review.md](382_ph3_rev_379_sb3_stub_and_g2_pipeline_review.md) | 379# SB3スタブ修正・G2 SAC パイプライン再点検: checkpoint eval の env 汚染, OOS 評価の同一区間反復, seed failure PASS 漏れ, scaler 契約 drift を指摘 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
