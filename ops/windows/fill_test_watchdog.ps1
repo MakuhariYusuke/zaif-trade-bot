@@ -319,9 +319,15 @@ if (-not $AutoRestart) {
 }
 
 if ($status -eq "UNKNOWN") {
-    # §11 #1: UNKNOWN は再起動不可 (状態不確定)、アラートのみ
-    Write-WatchdogLog "SKIP" "[watchdog] status=UNKNOWN, restart skipped (state unconfirmed)"
-    exit 1
+    # §11 #1 (379# fix): UNKNOWN でも lock PID が死亡 & heartbeat stale なら NOT_RUNNING として扱う
+    # 元のロジックは WMI "Call cancelled" 時に再起動を永久スキップしてしまうバグがあった
+    if ($heartbeatStale -and -not $lockPidAlive) {
+        Write-WatchdogLog "ESCALATE" "[watchdog] status=UNKNOWN but lock PID dead + heartbeat STALE → treating as NOT_RUNNING"
+        $status = "NOT_RUNNING"
+    } else {
+        Write-WatchdogLog "SKIP" "[watchdog] status=UNKNOWN, restart skipped (state unconfirmed)"
+        exit 1
+    }
 }
 if ($status -ne "NOT_RUNNING") {
     Write-WatchdogLog "SKIP" "[watchdog] status=$status, AutoRestart skipped (not NOT_RUNNING)"

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Session 039 379# fill_test Crash Investigation + Watchdog Bug Fix (2026-03-12)
+
+### Fixed
+- **379# fill_test crash**: PID 47788 サイレントクラッシュ (3/11 04:34:50, エラーログなし)
+  - 原因: プロセスが突然終了 (OOM kill または OS レベルの停止の可能性)
+  - watchdog の WMI `Call cancelled` エラーにより status=UNKNOWN → 再起動が永久スキップされていた
+- **379# watchdog bug fix**: `fill_test_watchdog.ps1` — status=UNKNOWN でも lock PID 死亡 + heartbeat STALE なら NOT_RUNNING にエスカレーションして自動再起動を実行するよう修正
+
+### Changed
+- fill_test 手動再起動: PID 22044/21612, run_id `1773244569_4dc471e9`, state 復元済み (cycle 9439→9479)
+
 ## Session 039 M2-M5 Proxy Features + 377# Design Update (2026-03-11)
 
 ### Added
