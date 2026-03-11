@@ -1,13 +1,8 @@
-import sys
-from unittest.mock import MagicMock
-
-# Mock torch before importing anything else
-sys.modules["torch"] = MagicMock()
-
 import unittest
 
 import numpy as np
 import pandas as pd
+from unittest.mock import MagicMock
 
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig

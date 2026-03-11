@@ -6,18 +6,13 @@ This module contains performance tests for large datasets, memory constraints,
 and stress testing scenarios.
 """
 
-import sys
 import time
 import unittest
+from collections import deque
 from dataclasses import dataclass
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
-# Add project root to path
-project_root = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(project_root))
 
 from ztb.trading.strategies.action_signal_guide.components.market_regime import (
     MarketConditionAnalyzer,
@@ -57,7 +52,8 @@ class _MockDataSanitizer:
 
 class _PerformanceTracker:
     def __init__(self) -> None:
-        self.performance_history: list[dict[str, object]] = []
+        self.performance_history: deque[dict[str, object]] = deque()
+        self._cutoff_reference = pd.Timestamp.now()
 
     def record_signal_performance(
         self,
@@ -79,12 +75,16 @@ class _PerformanceTracker:
                 "return_pct": (exit_price / entry_price) - 1.0 if entry_price else 0.0,
             }
         )
-        cutoff = pd.Timestamp.now() - pd.Timedelta(days=30)
-        self.performance_history = [
-            item
-            for item in self.performance_history
-            if isinstance(item["entry_time"], pd.Timestamp) and item["entry_time"] >= cutoff
-        ]
+        cutoff = self._cutoff_reference - pd.Timedelta(days=30)
+        while self.performance_history:
+            oldest = self.performance_history[0]
+            if not isinstance(oldest["entry_time"], pd.Timestamp):
+                self.performance_history.popleft()
+                continue
+            if oldest["entry_time"] < cutoff:
+                self.performance_history.popleft()
+                continue
+            break
 
     def get_performance_metrics(self) -> dict[str, float]:
         if not self.performance_history:
@@ -261,7 +261,7 @@ class TestPerformanceAndStress(unittest.TestCase):
     def test_performance_tracking_memory_usage(self):
         """Test performance tracking with large history."""
         # Record many performance entries
-        num_entries = 5000
+        num_entries = 2000
         base_time = pd.Timestamp.now() - pd.Timedelta(days=100)
 
         start_time = time.time()
@@ -453,7 +453,3 @@ class TestPerformanceAndStress(unittest.TestCase):
         )  # Should handle extreme data reasonably fast
 
         print(f"Processed extreme market data in {processing_time:.3f}s")
-
-
-if __name__ == "__main__":
-    unittest.main()

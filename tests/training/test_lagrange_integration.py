@@ -7,7 +7,7 @@ to SELLBiasMitigationPPOTrainer.
 
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
@@ -264,6 +264,13 @@ class TestLagrangeConstraintUnit:
 class TestCustomPPOLagrangeIntegration:
     """Integration tests for Lagrange constraint in CustomPPO."""
 
+    @staticmethod
+    def _stub_maskable_ppo_init(self, policy, env, *args, **kwargs):
+        """Avoid expensive SB3 bootstrap for tests that only verify Lagrange wiring."""
+        self.env = env
+        self.action_space = env.action_space
+        self.observation_space = env.observation_space
+
     @pytest.fixture
     def simple_env(self):
         """Create a simple discrete environment for testing."""
@@ -273,14 +280,23 @@ class TestCustomPPOLagrangeIntegration:
 
     def test_custom_ppo_lagrange_creation(self, simple_env):
         """Test CustomPPO creates Lagrange when enabled."""
-        model = CustomPPO(
-            policy="MlpPolicy",
-            env=simple_env,
-            enable_lagrange=True,
-            lagrange_target_action="SELL",
-            lagrange_r_target=0.15,
-            verbose=0,
-        )
+        with patch(
+            "ztb.training.models.custom_ppo.MaskablePPO.__init__",
+            new=self._stub_maskable_ppo_init,
+        ):
+            model = CustomPPO(
+                policy="MlpPolicy",
+                env=simple_env,
+                enable_pan=False,
+                enable_target_entropy=False,
+                enable_lagrange=True,
+                lagrange_target_action="SELL",
+                lagrange_r_target=0.15,
+                n_steps=8,
+                batch_size=4,
+                verbose=0,
+                _init_setup_model=False,
+            )
 
         assert model.lagrange is not None
         assert model.lagrange.target_action == "SELL"
@@ -288,29 +304,47 @@ class TestCustomPPOLagrangeIntegration:
 
     def test_custom_ppo_lagrange_disabled(self, simple_env):
         """Test CustomPPO doesn't create Lagrange when disabled."""
-        model = CustomPPO(
-            policy="MlpPolicy",
-            env=simple_env,
-            enable_lagrange=False,
-            verbose=0,
-        )
+        with patch(
+            "ztb.training.models.custom_ppo.MaskablePPO.__init__",
+            new=self._stub_maskable_ppo_init,
+        ):
+            model = CustomPPO(
+                policy="MlpPolicy",
+                env=simple_env,
+                enable_pan=False,
+                enable_target_entropy=False,
+                enable_lagrange=False,
+                n_steps=8,
+                batch_size=4,
+                verbose=0,
+                _init_setup_model=False,
+            )
 
         assert model.lagrange is None
 
     def test_custom_ppo_lagrange_parameters(self, simple_env):
         """Test CustomPPO passes Lagrange parameters correctly."""
-        model = CustomPPO(
-            policy="MlpPolicy",
-            env=simple_env,
-            enable_lagrange=True,
-            lagrange_target_action="BUY",
-            lagrange_r_target=0.25,
-            lagrange_tolerance=0.1,
-            lagrange_eta=0.01,
-            lagrange_lambda_max=2.0,
-            lagrange_warmup_steps=1000,
-            verbose=0,
-        )
+        with patch(
+            "ztb.training.models.custom_ppo.MaskablePPO.__init__",
+            new=self._stub_maskable_ppo_init,
+        ):
+            model = CustomPPO(
+                policy="MlpPolicy",
+                env=simple_env,
+                enable_pan=False,
+                enable_target_entropy=False,
+                enable_lagrange=True,
+                lagrange_target_action="BUY",
+                lagrange_r_target=0.25,
+                lagrange_tolerance=0.1,
+                lagrange_eta=0.01,
+                lagrange_lambda_max=2.0,
+                lagrange_warmup_steps=1000,
+                n_steps=8,
+                batch_size=4,
+                verbose=0,
+                _init_setup_model=False,
+            )
 
         assert model.lagrange.target_action == "BUY"
         assert model.lagrange.r_target == 0.25
@@ -322,6 +356,14 @@ class TestCustomPPOLagrangeIntegration:
 
 class TestTrainerLagrangeIntegration:
     """Integration tests for Lagrange in SELLBiasMitigationPPOTrainer."""
+
+    @staticmethod
+    def _stub_base_trainer_init(self, params):
+        """Set only attributes required by SELLBiasMitigationPPOTrainer unit-level checks."""
+        self.config = params.config or {}
+        self.data_path = params.data_path
+        self.checkpoint_dir = params.checkpoint_dir
+        self.model_save_path = str(Path(params.checkpoint_dir) / "model.zip")
 
     @pytest.fixture
     def temp_dir(self):
@@ -368,7 +410,11 @@ class TestTrainerLagrangeIntegration:
             enable_stratified_sampling=False,
         )
 
-        trainer = SELLBiasMitigationPPOTrainer(params)
+        with patch(
+            "ztb.training.experiments.sell_mitigation_ppo_trainer.PPOTrainer.__init__",
+            new=self._stub_base_trainer_init,
+        ):
+            trainer = SELLBiasMitigationPPOTrainer(params)
 
         # Model created during train(), so we need to access it via patch or run partial train
         # For now, verify params stored correctly
@@ -387,9 +433,16 @@ class TestTrainerLagrangeIntegration:
             enable_lagrange=True,
             enable_probes=False,
             enable_weights=False,
+            enable_pan=False,
+            enable_target_entropy=False,
+            enable_stratified_sampling=False,
         )
 
-        trainer = SELLBiasMitigationPPOTrainer(params)
+        with patch(
+            "ztb.training.experiments.sell_mitigation_ppo_trainer.PPOTrainer.__init__",
+            new=self._stub_base_trainer_init,
+        ):
+            trainer = SELLBiasMitigationPPOTrainer(params)
 
         # Create mock model with lagrange
         mock_model = Mock()
@@ -418,9 +471,18 @@ class TestTrainerLagrangeIntegration:
             config=config,
             checkpoint_dir=temp_dir,
             enable_lagrange=False,
+            enable_probes=False,
+            enable_weights=False,
+            enable_pan=False,
+            enable_target_entropy=False,
+            enable_stratified_sampling=False,
         )
 
-        trainer = SELLBiasMitigationPPOTrainer(params)
+        with patch(
+            "ztb.training.experiments.sell_mitigation_ppo_trainer.PPOTrainer.__init__",
+            new=self._stub_base_trainer_init,
+        ):
+            trainer = SELLBiasMitigationPPOTrainer(params)
 
         # Create mock model without lagrange
         mock_model = Mock()

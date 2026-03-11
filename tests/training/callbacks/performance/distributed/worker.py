@@ -20,10 +20,6 @@ class WorkerPool:
         return None
 
     def submit_task(self, task_type, task_data, callback=None):
-        # Simulate per-task processing that improves with more workers to emulate scaling
-        processing_delay = 0.02 / max(1, getattr(self, "n_workers", 1))
-        time.sleep(processing_delay)
-
         # Synchronously execute the callback with a mock result
         result = {"task_type": task_type, "task_data": task_data, "result": True}
         if callback:

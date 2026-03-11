@@ -3,13 +3,58 @@ Tests for system health monitoring functionality.
 """
 
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from ztb.ops.health.system_health import (
     HealthCheckResult,
     SystemHealthChecker,
     run_health_check_async,
 )
+
+
+def _fake_health_check(name: str, status: str = "healthy") -> HealthCheckResult:
+    return HealthCheckResult(
+        name=name,
+        status=status,
+        message=f"{name} check {status}",
+        details={"stubbed": True},
+    )
+
+
+def _install_stubbed_checks(checker: SystemHealthChecker) -> None:
+    checker._check_cpu_usage = MagicMock(  # type: ignore[method-assign]
+        side_effect=lambda: checker.checks.append(_fake_health_check("cpu_usage"))
+    )
+    checker._check_memory_usage = MagicMock(  # type: ignore[method-assign]
+        side_effect=lambda: checker.checks.append(_fake_health_check("memory_usage"))
+    )
+    checker._check_disk_space = MagicMock(  # type: ignore[method-assign]
+        side_effect=lambda: checker.checks.append(_fake_health_check("disk_space"))
+    )
+    checker._check_network_connectivity = MagicMock(  # type: ignore[method-assign]
+        side_effect=lambda: checker.checks.append(
+            _fake_health_check("network_connectivity")
+        )
+    )
+    checker._check_python_version = MagicMock(  # type: ignore[method-assign]
+        side_effect=lambda: checker.checks.append(_fake_health_check("python_version"))
+    )
+    checker._check_dependencies = MagicMock(  # type: ignore[method-assign]
+        side_effect=lambda: checker.checks.append(_fake_health_check("dependency_numpy"))
+    )
+    checker._check_data_access = MagicMock(  # type: ignore[method-assign]
+        side_effect=lambda: checker.checks.append(_fake_health_check("data_access"))
+    )
+    checker._check_model_access = MagicMock(  # type: ignore[method-assign]
+        side_effect=lambda: checker.checks.append(_fake_health_check("model_access"))
+    )
+
+    async def _fake_venue_check() -> None:
+        checker.checks.append(_fake_health_check("venue_connectivity"))
+
+    checker._check_venue_connectivity_async = AsyncMock(  # type: ignore[method-assign]
+        side_effect=_fake_venue_check
+    )
 
 
 class TestHealthCheckResult(unittest.TestCase):
@@ -39,6 +84,7 @@ class TestSystemHealthChecker(unittest.IsolatedAsyncioTestCase):
 
     async def test_run_all_checks_populates_checks_list(self):
         """Test that run_all_checks populates the checks list."""
+        _install_stubbed_checks(self.checker)
         initial_length = len(self.checker.checks)
         await self.checker.run_all_checks_async()
 
@@ -47,6 +93,7 @@ class TestSystemHealthChecker(unittest.IsolatedAsyncioTestCase):
 
     async def test_get_summary_returns_dict(self):
         """Test that get_summary returns a dictionary."""
+        _install_stubbed_checks(self.checker)
         await self.checker.run_all_checks_async()
         summary = self.checker.get_summary()
 
@@ -236,7 +283,16 @@ class TestRunHealthCheck(unittest.IsolatedAsyncioTestCase):
 
     async def test_run_health_check_async_returns_dict(self):
         """Test that run_health_check_async returns a dictionary."""
-        result = await run_health_check_async()
+        async def fake_run_all_checks(self):
+            self.checks = [
+                _fake_health_check("cpu_usage"),
+                _fake_health_check("memory_usage"),
+                _fake_health_check("venue_connectivity"),
+            ]
+            return self.checks
+
+        with patch.object(SystemHealthChecker, "run_all_checks_async", fake_run_all_checks):
+            result = await run_health_check_async()
 
         self.assertIsInstance(result, dict)
         self.assertIn("status", result)
@@ -245,7 +301,16 @@ class TestRunHealthCheck(unittest.IsolatedAsyncioTestCase):
 
     async def test_run_health_check_async_has_expected_structure(self):
         """Test that run_health_check_async returns expected structure."""
-        result = await run_health_check_async()
+        async def fake_run_all_checks(self):
+            self.checks = [
+                _fake_health_check("cpu_usage"),
+                _fake_health_check("memory_usage"),
+                _fake_health_check("venue_connectivity"),
+            ]
+            return self.checks
+
+        with patch.object(SystemHealthChecker, "run_all_checks_async", fake_run_all_checks):
+            result = await run_health_check_async()
 
         # Should have all expected keys
         expected_keys = [
@@ -267,7 +332,3 @@ class TestRunHealthCheck(unittest.IsolatedAsyncioTestCase):
             self.assertIn("name", check)
             self.assertIn("status", check)
             self.assertIn("message", check)
-
-
-if __name__ == "__main__":
-    unittest.main()

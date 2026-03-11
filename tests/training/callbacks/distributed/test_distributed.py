@@ -9,11 +9,21 @@ system including coordinator, workers, and integration components.
 import time
 import unittest
 from datetime import datetime
+from threading import Event
 from unittest.mock import Mock, patch
 
 from .coordinator import DistributedConfig, DistributedCoordinator, Message, WorkerInfo
 from .integration import DistributedCallbackAdapter, DistributedTrainingManager
 from .worker import DistributedWorker, WorkerPool
+
+
+def _wait_until(predicate, timeout: float = 0.2, interval: float = 0.005) -> bool:
+    deadline = time.perf_counter() + timeout
+    while time.perf_counter() < deadline:
+        if predicate():
+            return True
+        time.sleep(interval)
+    return predicate()
 
 
 class TestDistributedCoordinator(unittest.TestCase):
@@ -103,21 +113,28 @@ class TestDistributedCoordinator(unittest.TestCase):
     def test_message_handling(self):
         """Test message processing."""
         # Register a worker
-        worker_info = WorkerInfo(worker_id=1, host="localhost", port=12346)
+        worker_info = WorkerInfo(worker_id=1, host="localhost", port=12346, status="busy")
         self.coordinator.register_worker(worker_info)
+        previous_heartbeat = worker_info.last_heartbeat
 
         # Start coordination to enable message processing
         self.coordinator.start_coordination()
-        time.sleep(0.1)  # Allow thread to start
 
         # Send heartbeat message
         heartbeat_msg = Message("heartbeat", 1, {})
         self.coordinator.message_queue.put(heartbeat_msg)
 
-        time.sleep(0.2)  # Allow processing
-
         # Check that heartbeat was processed
+        self.assertTrue(
+            _wait_until(
+                lambda: self.coordinator.workers[1].status == "idle"
+                and self.coordinator.workers[1].last_heartbeat >= heartbeat_msg.timestamp
+            )
+        )
         self.assertEqual(self.coordinator.workers[1].status, "idle")
+        self.assertGreaterEqual(
+            self.coordinator.workers[1].last_heartbeat, previous_heartbeat
+        )
 
 
 class TestDistributedWorker(unittest.TestCase):
@@ -143,7 +160,6 @@ class TestDistributedWorker(unittest.TestCase):
         result = worker.start()
         self.assertTrue(result)
         self.assertTrue(worker.is_running)
-        time.sleep(0.1)  # Allow process to start
         self.assertTrue(worker.process.is_alive())
 
         # Test stop
@@ -156,7 +172,6 @@ class TestDistributedWorker(unittest.TestCase):
         """Test task execution in worker."""
         worker = DistributedWorker(1, self.config)
         worker.start()
-        time.sleep(0.1)  # Allow worker to start
 
         try:
             # Send a simple task
@@ -202,7 +217,6 @@ class TestWorkerPool(unittest.TestCase):
         self.assertEqual(len(pool.workers), 2)
 
         # Check workers are running
-        time.sleep(0.2)
         for worker in pool.workers.values():
             self.assertTrue(worker.is_running)
             self.assertTrue(worker.process.is_alive())
@@ -216,13 +230,15 @@ class TestWorkerPool(unittest.TestCase):
         """Test task submission to pool."""
         pool = WorkerPool(2, self.config)
         pool.start_pool()
-        time.sleep(0.2)  # Allow workers to start
 
         try:
             results = []
+            all_results_received = Event()
 
             def result_callback(result):
                 results.append(result)
+                if len(results) >= 3:
+                    all_results_received.set()
 
             # Submit multiple tasks
             task_ids = []
@@ -233,12 +249,7 @@ class TestWorkerPool(unittest.TestCase):
                 self.assertIsNotNone(task_id)
                 task_ids.append(task_id)
 
-            # Wait for results
-            timeout = 10
-            start_time = time.time()
-            while len(results) < 3 and (time.time() - start_time) < timeout:
-                time.sleep(0.1)
-
+            self.assertTrue(all_results_received.wait(timeout=10))
             self.assertEqual(len(results), 3)
             for result in results:
                 self.assertIsNotNone(result)
@@ -251,7 +262,6 @@ class TestWorkerPool(unittest.TestCase):
         """Test pool status reporting."""
         pool = WorkerPool(2, self.config)
         pool.start_pool()
-        time.sleep(0.2)
 
         try:
             status = pool.get_pool_status()

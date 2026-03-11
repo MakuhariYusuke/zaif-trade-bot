@@ -233,7 +233,6 @@ class TestHealthMonitor(unittest.TestCase):
         # Record some memory usage
         for _ in range(5):
             self.health_checker.memory_monitor.record_memory_usage()
-            time.sleep(0.01)
 
         result = self.health_checker.check_memory_health()
 
@@ -262,7 +261,3 @@ class TestHealthMonitor(unittest.TestCase):
         # Check that checks were run
         self.assertIn("system_health", summary["checks"])
         self.assertIn("memory_health", summary["checks"])
-
-
-if __name__ == "__main__":
-    unittest.main()

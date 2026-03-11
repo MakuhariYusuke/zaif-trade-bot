@@ -93,24 +93,21 @@ class TestGradientAccumulator:
             accumulation_steps=1, clip_grad_norm=1.0
         )  # Update after each step
 
-        model = SimpleModel()
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+        parameters = [
+            nn.Parameter(torch.zeros(2, 2)),
+            nn.Parameter(torch.zeros(2)),
+        ]
+        for parameter in parameters:
+            parameter.grad = torch.full_like(parameter, 10.0)
 
-        # Create large gradients
-        x = torch.randn(5, 10)
-        y = torch.randn(5, 1)
-
-        # First step
-        output = model(x)
-        loss = nn.MSELoss()(output, y)
-        step_info = accumulator.accumulate_step(loss, optimizer)
+        optimizer = Mock()
+        optimizer.param_groups = [{"params": parameters}]
+        optimizer.step = Mock()
+        optimizer.zero_grad = Mock()
+        accumulator._update_parameters(optimizer)
 
         # Check that gradients were clipped
-        grad_norms = [
-            torch.norm(p.grad.detach())
-            for p in model.parameters()
-            if p.grad is not None
-        ]
+        grad_norms = [torch.norm(parameter.grad.detach()) for parameter in parameters]
         if grad_norms:
             total_norm = torch.norm(torch.stack(grad_norms))
             assert total_norm <= 1.0
@@ -121,21 +118,23 @@ class TestGradientAccumulator:
             accumulation_steps=1, clip_grad_value=0.1
         )  # Update after each step
 
-        model = SimpleModel()
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+        parameters = [
+            nn.Parameter(torch.zeros(2, 2)),
+            nn.Parameter(torch.zeros(2)),
+        ]
+        for parameter in parameters:
+            parameter.grad = torch.full_like(parameter, 5.0)
 
-        x = torch.randn(5, 10)
-        y = torch.randn(5, 1)
-
-        output = model(x)
-        loss = nn.MSELoss()(output, y)
-        accumulator.accumulate_step(loss, optimizer)
+        optimizer = Mock()
+        optimizer.param_groups = [{"params": parameters}]
+        optimizer.step = Mock()
+        optimizer.zero_grad = Mock()
+        accumulator._update_parameters(optimizer)
 
         # Check that gradients are clipped by value
-        for param in model.parameters():
-            if param.grad is not None:
-                assert torch.all(param.grad <= 0.1)
-                assert torch.all(param.grad >= -0.1)
+        for parameter in parameters:
+            assert torch.all(parameter.grad <= 0.1)
+            assert torch.all(parameter.grad >= -0.1)
 
     @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
     def test_mixed_precision(self):
@@ -214,8 +213,8 @@ class TestGradientAccumulationTrainer:
 
     def test_trainer_initialization(self):
         """Test trainer initialization."""
-        model = SimpleModel()
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+        model = Mock()
+        optimizer = Mock()
 
         trainer = GradientAccumulationTrainer(
             model=model,
@@ -248,18 +247,35 @@ class TestGradientAccumulationTrainer:
 
     def test_training_step(self):
         """Test training step."""
-        model = SimpleModel()
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+        model = Mock(return_value=torch.ones(3, 1))
+        optimizer = Mock()
 
         trainer = GradientAccumulationTrainer(
             model=model, optimizer=optimizer, accumulation_steps=2
+        )
+        trainer.accumulator.accumulate_step = Mock(
+            side_effect=[
+                {
+                    "step_loss": 0.5,
+                    "accumulated_loss": 0.5,
+                    "step_count": 1,
+                    "parameters_updated": False,
+                },
+                {
+                    "step_loss": 0.5,
+                    "accumulated_loss": 1.0,
+                    "step_count": 2,
+                    "parameters_updated": True,
+                },
+            ]
         )
 
         # Create batch
         batch = torch.randn(3, 10)
 
         def loss_fn(output, target):
-            return nn.MSELoss()(output, torch.randn_like(output))
+            del output, target
+            return torch.tensor(1.0, requires_grad=True)
 
         # First step
         step_info = trainer.training_step(batch, loss_fn)
@@ -274,8 +290,8 @@ class TestGradientAccumulationTrainer:
     def test_effective_batch_size(self):
         """Test effective batch size calculation."""
         trainer = GradientAccumulationTrainer(
-            SimpleModel(),
-            torch.optim.SGD(SimpleModel().parameters(), lr=0.01),
+            Mock(),
+            Mock(),
             accumulation_steps=4,
         )
 
@@ -318,7 +334,3 @@ class TestUtilityFunctions:
         assert info["gradient_updates_per_epoch"] == 8
         assert "training_notes" in info
         assert len(info["training_notes"]) == 4
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])

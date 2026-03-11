@@ -142,6 +142,10 @@ class SignalGuidanceSystem:
             "volume": deque(maxlen=100),
         }
         self.max_history_size = 100  # Keep last 100 data points for technical analysis
+        self._market_df_cache: pd.DataFrame | None = None
+        self._market_df_cache_size = 0
+        self._cached_convergence_signature: tuple[tuple[str, int, float], ...] | None = None
+        self._cached_convergence_inputs: tuple[ConvergenceAnalysis, dict[str, float | str]] | None = None
 
     def update_market_context(self, row: pd.Series, portfolio: dict[str, Any]) -> None:
         """Update market context for guidance decisions"""
@@ -502,12 +506,21 @@ class SignalGuidanceSystem:
         try:
             # Use market data history if available (preferred for technical analysis)
             if len(self.market_data_history["close"]) >= 30:
-                return pd.DataFrame(
+                cache_size = len(self.market_data_history["close"])
+                if (
+                    self._market_df_cache is not None
+                    and self._market_df_cache_size == cache_size
+                ):
+                    return self._market_df_cache
+
+                self._market_df_cache = pd.DataFrame(
                     {
                         key: list(values)[-50:]
                         for key, values in self.market_data_history.items()
                     }
                 )
+                self._market_df_cache_size = cache_size
+                return self._market_df_cache
             else:
                 # Fallback: use recent price trend for technical analysis
                 return self._create_fallback_dataframe(row, portfolio)
@@ -528,22 +541,69 @@ class SignalGuidanceSystem:
         self.market_data_history["low"].append(low_price)
         self.market_data_history["close"].append(close_price)
         self.market_data_history["volume"].append(volume)
+        self._market_df_cache = None
+        self._market_df_cache_size = 0
+        self._cached_convergence_signature = None
+        self._cached_convergence_inputs = None
 
     def _get_convergence_inputs(
         self,
     ) -> tuple[ConvergenceAnalysis, dict[str, float | str]]:
         """Compute convergence analysis and report from a single trend-analysis pass."""
-        convergence_analysis = self.multi_timeframe_analyzer.analyze_convergence()
-        trend_analyses = {}
-        for timeframe in self.multi_timeframe_analyzer.timeframes.keys():
-            analysis = self.multi_timeframe_analyzer.analyze_timeframe_trend(timeframe)
-            if analysis is not None:
-                trend_analyses[timeframe] = analysis
+        signature = tuple(
+            (
+                timeframe.value,
+                len(data.prices),
+                float(data.prices[-1]) if data.prices else 0.0,
+            )
+            for timeframe, data in self.multi_timeframe_analyzer.timeframes.items()
+        )
+        if (
+            self._cached_convergence_signature == signature
+            and self._cached_convergence_inputs is not None
+        ):
+            return self._cached_convergence_inputs
+
+        if not any(
+            data.has_minimum_data(
+                self.multi_timeframe_analyzer.min_data_points[timeframe]
+            )
+            for timeframe, data in self.multi_timeframe_analyzer.timeframes.items()
+        ):
+            neutral_inputs = (
+                ConvergenceAnalysis(
+                    convergence_score=50.0,
+                    dominant_trend=self.multi_timeframe_analyzer.analyze_convergence(
+                        {}
+                    ).dominant_trend,
+                    timeframe_agreement=0.0,
+                    short_term_bias=self.multi_timeframe_analyzer.analyze_convergence(
+                        {}
+                    ).short_term_bias,
+                    medium_term_bias=self.multi_timeframe_analyzer.analyze_convergence(
+                        {}
+                    ).medium_term_bias,
+                ),
+                {
+                    "convergence_score": 50.0,
+                    "recommendation": "weak_convergence",
+                },
+            )
+            self._cached_convergence_signature = signature
+            self._cached_convergence_inputs = neutral_inputs
+            return neutral_inputs
+
+        trend_analyses = self.multi_timeframe_analyzer.collect_trend_analyses()
+        convergence_analysis = self.multi_timeframe_analyzer.analyze_convergence(
+            trend_analyses
+        )
 
         convergence_report = self.convergence_calculator.get_convergence_report(
             trend_analyses
         )
-        return convergence_analysis, convergence_report
+        self._cached_convergence_signature = signature
+        self._cached_convergence_inputs = (convergence_analysis, convergence_report)
+        return self._cached_convergence_inputs
 
     def _create_fallback_dataframe(
         self, row: pd.Series, portfolio: dict[str, Any]

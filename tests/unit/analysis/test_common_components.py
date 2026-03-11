@@ -6,6 +6,7 @@ Tests for data loaders, analysis interfaces, and path management components.
 """
 
 import json
+import os
 from typing import Any, Dict
 
 import pytest
@@ -262,8 +263,6 @@ class TestAnalysisPathManager:
 
     def test_find_latest_experiment_dir(self, tmp_path):
         """Test finding latest experiment directory."""
-        import time
-
         manager = AnalysisPathManager(tmp_path)
 
         # Create test experiment directories
@@ -272,9 +271,10 @@ class TestAnalysisPathManager:
 
         exp1 = exp_base / "run_001"
         exp1.mkdir()
-        time.sleep(0.01)  # Ensure different mtime
         exp2 = exp_base / "run_002"
         exp2.mkdir()
+        os.utime(exp1, (1_700_000_000, 1_700_000_000))
+        os.utime(exp2, (1_700_000_100, 1_700_000_100))
 
         latest = manager.find_latest_experiment_dir("test_exp")
         assert latest == exp2  # exp2 should be more recent

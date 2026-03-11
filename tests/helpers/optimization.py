@@ -33,6 +33,42 @@ def make_lr_batch_search_space() -> dict[str, dict[str, Any]]:
     }
 
 
+def make_scalar_search_space(
+    param_name: str = "x",
+    *,
+    low: float = -1.0,
+    high: float = 1.0,
+) -> dict[str, dict[str, Any]]:
+    return {param_name: {"type": "float", "low": low, "high": high}}
+
+
+def make_scalar_objective(param_name: str = "x") -> Callable[[dict[str, Any]], float]:
+    def objective(params: dict[str, Any]) -> float:
+        return float(params.get(param_name, 0.0)) ** 2
+
+    return objective
+
+
+def make_timeframe_objectives(
+    timeframes: list[str],
+    *,
+    param_name: str = "param",
+) -> dict[str, Callable[[dict[str, Any]], float]]:
+    objective = make_scalar_objective(param_name)
+    return {timeframe: objective for timeframe in timeframes}
+
+
+def make_timeframe_search_spaces(
+    timeframes: list[str],
+    *,
+    param_name: str = "param",
+    low: float = -1.0,
+    high: float = 1.0,
+) -> dict[str, dict[str, dict[str, Any]]]:
+    search_space = make_scalar_search_space(param_name, low=low, high=high)
+    return {timeframe: dict(search_space) for timeframe in timeframes}
+
+
 def make_lr_batch_objective(
     *, noise_scale: float = 0.0, seed: int = 42
 ) -> Callable[[dict[str, Any]], float]:

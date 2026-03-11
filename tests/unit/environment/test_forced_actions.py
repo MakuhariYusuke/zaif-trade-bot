@@ -12,60 +12,71 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from tests.helpers import make_schema_feature_env_config
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.trading.environment.environment import HeavyTradingEnv
 
 
+@pytest.fixture(scope="module")
+def simple_price_data() -> pd.DataFrame:
+    """Create simple price data for deterministic testing."""
+    dates = pd.date_range("2024-01-01", periods=100, freq="1min")
+    prices = np.linspace(100.0, 110.0, 100)
+
+    return pd.DataFrame(
+        {
+            "timestamp": dates,
+            "open": prices,
+            "high": prices + 0.5,
+            "low": prices - 0.5,
+            "close": prices,
+            "volume": np.ones(100) * 1000,
+        }
+    )
+
+
+@pytest.fixture(scope="module")
+def zero_fee_env(simple_price_data: pd.DataFrame) -> HeavyTradingEnv:
+    """Create environment with zero fees for baseline testing."""
+    env = HeavyTradingEnv(
+        df=simple_price_data.copy(),
+        config=make_schema_feature_env_config(
+            simple_price_data,
+            transaction_cost=0.0,
+            max_position_size=1.0,
+            initial_portfolio_value=10000.0,
+            curriculum_stage="full",
+            reward_scaling=1.0,
+            max_delta_per_step=1.0,
+            min_holding_period=0,
+        ),
+    )
+    yield env
+    env.close()
+
+
+@pytest.fixture(scope="module")
+def with_fee_env(simple_price_data: pd.DataFrame) -> HeavyTradingEnv:
+    """Create environment with fees for fee testing."""
+    env = HeavyTradingEnv(
+        df=simple_price_data.copy(),
+        config=make_schema_feature_env_config(
+            simple_price_data,
+            transaction_cost=0.001,
+            max_position_size=1.0,
+            initial_portfolio_value=10000.0,
+            curriculum_stage="full",
+            reward_scaling=1.0,
+            max_delta_per_step=1.0,
+            min_holding_period=0,
+        ),
+    )
+    yield env
+    env.close()
+
+
 class TestForcedActions:
     """Test cases for forced action execution."""
-
-    @pytest.fixture
-    def simple_price_data(self) -> pd.DataFrame:
-        """Create simple price data for deterministic testing."""
-        # Simple linear price increase for predictable results
-        dates = pd.date_range("2024-01-01", periods=100, freq="1min")
-        prices = np.linspace(100.0, 110.0, 100)
-
-        df = pd.DataFrame(
-            {
-                "timestamp": dates,
-                "open": prices,
-                "high": prices + 0.5,
-                "low": prices - 0.5,
-                "close": prices,
-                "volume": np.ones(100) * 1000,
-            }
-        )
-
-        return df
-
-    @pytest.fixture
-    def zero_fee_env(self, simple_price_data: pd.DataFrame) -> HeavyTradingEnv:
-        """Create environment with zero fees for baseline testing."""
-        config = {
-            "transaction_cost": 0.0,
-            "max_position_size": 1.0,
-            "initial_portfolio_value": 10000.0,
-            "curriculum_stage": "full",
-            "reward_scaling": 1.0,
-            "max_delta_per_step": 1.0,
-            "min_holding_period": 0,  # Bug #37 fix: Allow immediate reversal for testing
-        }
-        return HeavyTradingEnv(df=simple_price_data, config=config)
-
-    @pytest.fixture
-    def with_fee_env(self, simple_price_data: pd.DataFrame) -> HeavyTradingEnv:
-        """Create environment with fees for fee testing."""
-        config = {
-            "transaction_cost": 0.001,  # 0.1% fee
-            "max_position_size": 1.0,
-            "initial_portfolio_value": 10000.0,
-            "curriculum_stage": "full",
-            "reward_scaling": 1.0,
-            "max_delta_per_step": 1.0,
-            "min_holding_period": 0,  # Bug #37 fix: Allow immediate reversal for testing
-        }
-        return HeavyTradingEnv(df=simple_price_data, config=config)
 
     def test_hold_only_sequence(self, zero_fee_env: HeavyTradingEnv) -> None:
         """Test that HOLD-only sequence maintains initial state."""

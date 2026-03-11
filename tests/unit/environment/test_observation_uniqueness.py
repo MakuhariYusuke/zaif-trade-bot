@@ -24,21 +24,22 @@ import pandas as pd
 import pytest
 from numpy.typing import NDArray
 
-from ztb.trading.environment.environment import EnvironmentConfig, HeavyTradingEnv
+from tests.helpers import make_schema_feature_env_config
+from ztb.trading.environment.environment import HeavyTradingEnv
 
 
 class TestObservationUniqueness:
     """Tests for observation update correctness."""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def varying_price_data(self) -> pd.DataFrame:
         """Create test data with varying prices."""
-        np.random.seed(42)
+        rng = np.random.default_rng(42)
         n_steps = 100
 
         # Generate price series with clear trend
         base_price = 100.0
-        noise = np.random.randn(n_steps) * 0.5
+        noise = rng.normal(0.0, 0.5, n_steps)
         trend = np.linspace(0, 10, n_steps)
         prices = base_price + trend + noise
 
@@ -48,23 +49,25 @@ class TestObservationUniqueness:
                 "open": prices - 0.1,
                 "high": prices + 0.2,
                 "low": prices - 0.2,
-                "volume": np.random.uniform(1000, 2000, n_steps),
+                "volume": rng.uniform(1000, 2000, n_steps),
             }
         )
 
         return df
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def test_env(self, varying_price_data: pd.DataFrame) -> HeavyTradingEnv:
         """Create test environment with varying prices."""
-        config = EnvironmentConfig(
+        config = make_schema_feature_env_config(
+            varying_price_data,
             curriculum_stage="full",
             transaction_cost=0.0,
             initial_portfolio_value=10000.0,
             max_position_size=1.0,
         )
-        env = HeavyTradingEnv(varying_price_data, config)
-        return env
+        env = HeavyTradingEnv(varying_price_data.copy(), config)
+        yield env
+        env.close()
 
     def obs_hash(self, obs: NDArray[np.float32]) -> str:
         """Compute SHA1 hash of observation."""

@@ -22,7 +22,7 @@ class TestCircuitBreaker(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.config = CircuitBreakerConfig(
-            failure_threshold=3, recovery_timeout=1.0, success_threshold=2, timeout=0.5
+            failure_threshold=3, recovery_timeout=0.05, success_threshold=2, timeout=0.05
         )
         self.breaker = CircuitBreaker("test_breaker", self.config)
 
@@ -100,8 +100,9 @@ class TestCircuitBreaker(unittest.TestCase):
 
         self.assertEqual(self.breaker.state, CircuitState.OPEN)
 
-        # Wait for recovery timeout
-        await asyncio.sleep(self.config.recovery_timeout + 0.1)
+        self.breaker.last_failure_time = time.time() - (
+            self.config.recovery_timeout + 0.01
+        )
 
         # Next call should attempt recovery (half-open)
         async def success_func():
@@ -122,8 +123,9 @@ class TestCircuitBreaker(unittest.TestCase):
             with self.assertRaises(ValueError):
                 await self.breaker.call(fail_func)
 
-        # Wait for recovery and fail again
-        await asyncio.sleep(self.config.recovery_timeout + 0.1)
+        self.breaker.last_failure_time = time.time() - (
+            self.config.recovery_timeout + 0.01
+        )
 
         with self.assertRaises(ValueError):
             await self.breaker.call(fail_func)
@@ -141,8 +143,9 @@ class TestCircuitBreaker(unittest.TestCase):
             with self.assertRaises(ValueError):
                 await self.breaker.call(fail_func)
 
-        # Wait for recovery
-        await asyncio.sleep(self.config.recovery_timeout + 0.1)
+        self.breaker.last_failure_time = time.time() - (
+            self.config.recovery_timeout + 0.01
+        )
 
         # Succeed required number of times
         async def success_func():
@@ -160,7 +163,7 @@ class TestCircuitBreaker(unittest.TestCase):
         """Test timeout handling."""
 
         async def slow_func():
-            await asyncio.sleep(1.0)  # Longer than timeout
+            await asyncio.sleep(self.config.timeout * 2)
             return "slow"
 
         with self.assertRaises(asyncio.TimeoutError):
@@ -194,10 +197,6 @@ class TestCircuitBreaker(unittest.TestCase):
         self.breaker.success_count = 0
 
         self.breaker.record_success()
-
-        # Give async task time to complete
-        time.sleep(0.1)
-
         self.assertEqual(self.breaker.success_count, 1)
 
     def test_record_failure_synchronous(self):
@@ -205,10 +204,6 @@ class TestCircuitBreaker(unittest.TestCase):
         self.breaker.failure_count = 0
 
         self.breaker.record_failure()
-
-        # Give async task time to complete
-        time.sleep(0.1)
-
         self.assertEqual(self.breaker.failure_count, 1)
 
     def test_get_circuit_breaker_registry(self):
@@ -249,7 +244,3 @@ class TestCircuitBreaker(unittest.TestCase):
 
         self.assertEqual(breaker1.state, CircuitState.CLOSED)
         self.assertEqual(breaker2.state, CircuitState.CLOSED)
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -199,6 +199,8 @@ class EnvironmentConfig:
     timeframe: str = "1m"
     feature_set: str = "full"
     feature_names: list[str] | None = None  # Explicit feature list (overrides feature_set)
+    scaler_mean: list[float] | None = None  # Optional schema-provided observation scaler
+    scaler_std: list[float] | None = None  # Optional schema-provided observation scaler
     correlation_reduction: bool = True
     curriculum_stage: str | None = None  # set from training.curriculum_learning
     curriculum_learning: dict[str, Any] | None = None

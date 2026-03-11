@@ -125,14 +125,6 @@ class GradientAccumulator:
                 self.clip_grad_value,
             )
 
-        if self.clip_grad_value is not None:
-            if self.mixed_precision and self.scaler is not None:
-                self.scaler.unscale_(optimizer)
-            torch.nn.utils.clip_grad_value_(
-                [p for group in optimizer.param_groups for p in group["params"]],
-                self.clip_grad_value,
-            )
-
         # Update parameters
         if self.mixed_precision and self.scaler is not None:
             self.scaler.step(optimizer)

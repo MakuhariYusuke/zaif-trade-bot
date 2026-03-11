@@ -115,3 +115,68 @@ class TestSACv427FeatureEngineering:
 
         # Should have reasonable number of features
         assert len(full_features.columns) > len(sample_data.columns) + 30, "Insufficient features generated"
+
+    def test_generate_v427_features_adds_padding_columns_when_quality_filter_over_filters(
+        self,
+        feature_engineer,
+        sample_data,
+        monkeypatch,
+    ):
+        empty_features = lambda df, *args, **kwargs: pd.DataFrame(index=df.index)  # noqa: E731
+
+        monkeypatch.setattr(feature_engineer, "_generate_mtf_features", empty_features)
+        monkeypatch.setattr(
+            feature_engineer,
+            "_generate_regime_features_optimized",
+            lambda df, common_calcs: pd.DataFrame(index=df.index),
+        )
+        monkeypatch.setattr(
+            feature_engineer,
+            "_generate_correlation_features_optimized",
+            lambda df, common_calcs: pd.DataFrame(index=df.index),
+        )
+        monkeypatch.setattr(
+            feature_engineer,
+            "_generate_ensemble_features_optimized",
+            lambda df, common_calcs: pd.DataFrame(index=df.index),
+        )
+        monkeypatch.setattr(
+            feature_engineer,
+            "_generate_risk_adjusted_technical_features_optimized",
+            lambda df, window, common_calcs: pd.DataFrame(index=df.index),
+        )
+        monkeypatch.setattr(
+            feature_engineer,
+            "_generate_market_microstructure_features",
+            empty_features,
+        )
+        monkeypatch.setattr(
+            feature_engineer,
+            "_generate_enhanced_statistical_features",
+            empty_features,
+        )
+        monkeypatch.setattr(
+            feature_engineer,
+            "_generate_volume_features_optimized",
+            empty_features,
+        )
+        monkeypatch.setattr(
+            feature_engineer,
+            "_generate_momentum_features_optimized",
+            empty_features,
+        )
+        monkeypatch.setattr(
+            feature_engineer,
+            "_quality_filter_features",
+            lambda df, skip_quality_filtering=False: df[["open", "high", "low", "close", "volume"]].copy(),
+        )
+
+        features = feature_engineer.generate_v427_features(
+            sample_data.copy(),
+            window_sizes=[3],
+            feature_set="minimal",
+            skip_quality_filtering=True,
+        )
+
+        padding_columns = [column for column in features.columns if column.startswith("padding_")]
+        assert len(padding_columns) >= 176

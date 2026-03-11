@@ -10,6 +10,7 @@ from typing import Optional
 
 import torch
 import torch.nn as nn
+from ztb.utils.training_utils import get_safe_loss_function
 
 # Guard import of torch.nn.functional to avoid ModuleNotFoundError in minimal
 # test environments which may have a partial 'torch' stub during collection.
@@ -72,9 +73,6 @@ class DistillationLoss(nn.Module):
         super().__init__()
         self.temperature = temperature
         self.alpha = alpha
-        # Use centralized safe instantiation to fall back to a dummy loss if needed
-        from ztb.utils.training_utils import get_safe_loss_function
-
         self.ce_loss = get_safe_loss_function(nn.CrossEntropyLoss)
 
         self.kl_div = get_safe_loss_function(
@@ -450,30 +448,36 @@ class SACDistiller:
         Returns:
             Student model with reduced complexity
         """
-        # This is a simplified implementation
-        # In practice, this would need to be customized based on specific model architecture
+        linear_layers = [
+            module for module in teacher_model.modules() if isinstance(module, nn.Linear)
+        ]
+        if linear_layers:
+            dims = [linear_layers[0].in_features] + [
+                layer.out_features for layer in linear_layers
+            ]
+        else:
+            dims = [156, 128, 64, 3]
 
-        class CompressedLinear(nn.Module):
-            def __init__(self, in_features, out_features, compression_ratio):
-                super().__init__()
-                compressed_features = int(out_features * compression_ratio)
-                self.linear1 = nn.Linear(in_features, compressed_features)
-                self.linear2 = nn.Linear(compressed_features, out_features)
-                self.activation = nn.ReLU()
+        student_layers: list[nn.Module] = []
+        input_dim = dims[0]
+        output_dim = dims[-1]
+        hidden_dims = dims[1:-1]
 
-            def forward(self, x):
-                x = self.activation(self.linear1(x))
-                return self.linear2(x)
+        compressed_hidden_dims = [
+            max(output_dim, int(hidden_dim * compression_ratio), 1)
+            for hidden_dim in hidden_dims
+        ]
 
-        # Create a simple compressed version
-        # This should be replaced with architecture-specific compression
-        student_model = nn.Sequential(
-            CompressedLinear(156, 128, compression_ratio),  # Assuming 156 features
-            nn.ReLU(),
-            CompressedLinear(128, 64, compression_ratio),
-            nn.ReLU(),
-            CompressedLinear(64, 3, compression_ratio),  # Assuming 3 actions
-        )
+        architecture = [input_dim, *compressed_hidden_dims, output_dim]
+
+        for idx, (in_features, out_features) in enumerate(
+            zip(architecture[:-1], architecture[1:])
+        ):
+            student_layers.append(nn.Linear(in_features, out_features))
+            if idx < len(architecture) - 2:
+                student_layers.append(nn.ReLU())
+
+        student_model = nn.Sequential(*student_layers)
 
         logger.info(
             f"Created student model with compression ratio: {compression_ratio}"

@@ -1,34 +1,34 @@
 import numpy as np
 import pandas as pd
+import pytest
 
+from tests.helpers import make_schema_feature_env_config
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+
+
+@pytest.fixture(scope="module")
+def schema_feature_env() -> HeavyTradingEnv:
+    df = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2023-01-01", periods=96, freq="1min"),
+            "open": [100.0] * 96,
+            "high": [101.0] * 96,
+            "low": [99.0] * 96,
+            "close": [100.5] * 96,
+            "volume": [1000.0] * 96,
+        }
+    )
+    env = HeavyTradingEnv(df=df, config=make_schema_feature_env_config(df))
+    yield env
+    env.close()
 
 
 class TestHeavyTradingEnvObservationConsistency:
     """Test cases for HeavyTradingEnv observation consistency without defensive code."""
 
-    def test_observation_always_matches_space_dimensions(self):
+    def test_observation_always_matches_space_dimensions(self, schema_feature_env):
         """Test that observations always match the declared observation space dimensions."""
-        # Create sample data
-        df = pd.DataFrame(
-            {
-                "timestamp": pd.date_range("2023-01-01", periods=200, freq="1min"),
-                "open": [100] * 200,
-                "high": [101] * 200,
-                "low": [99] * 200,
-                "close": [100.5] * 200,
-                "volume": [1000] * 200,
-            }
-        )
-
-        # Config with multi-timeframe features
-        config = {
-            "feature_set": "full",
-            "multi_timeframe": {"enabled": True, "timeframes": ["5m", "15m"]},
-        }
-
-        # Initialize environment
-        env = HeavyTradingEnv(df=df, config=config)
+        env = schema_feature_env
 
         # Reset to get initial observation
         obs, info = env.reset()
@@ -77,7 +77,7 @@ class TestHeavyTradingEnvObservationConsistency:
             }
         )
 
-        config = {"feature_set": "minimal"}
+        config = make_schema_feature_env_config(df)
 
         env = HeavyTradingEnv(df=df, config=config)
         obs, info = env.reset()
@@ -93,22 +93,9 @@ class TestHeavyTradingEnvObservationConsistency:
             len(new_obs) == obs_dim
         ), "Observation should match space dimensions without defensive code"
 
-    def test_observation_consistency_across_multiple_resets(self):
+    def test_observation_consistency_across_multiple_resets(self, schema_feature_env):
         """Test that observation dimensions remain consistent across multiple environment resets."""
-        df = pd.DataFrame(
-            {
-                "timestamp": pd.date_range("2023-01-01", periods=100, freq="1min"),
-                "open": [100] * 100,
-                "high": [101] * 100,
-                "low": [99] * 100,
-                "close": [100.5] * 100,
-                "volume": [1000] * 100,
-            }
-        )
-
-        config = {"feature_set": "full"}
-
-        env = HeavyTradingEnv(df=df, config=config)
+        env = schema_feature_env
 
         obs_dims = []
 

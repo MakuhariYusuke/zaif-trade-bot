@@ -1,4 +1,5 @@
 import pandas as pd
+from unittest.mock import patch
 
 from tools.data.convert_timeframe import resample_ohlcv, map_freq
 from tools.data.validate_dataset import main as validate_main
@@ -52,7 +53,8 @@ def test_validate_dataset_missing_col(tmp_path, capsys, monkeypatch):
     assert "Missing required columns" in captured.out
 
 
-def test_validate_dataset_and_resample(tmp_path, capsys, monkeypatch):
+@patch("subprocess.run")
+def test_validate_dataset_and_resample(mock_subprocess_run, tmp_path, capsys, monkeypatch):
     csv_path = tmp_path / "test_minute.csv"
     df = make_minute_df("2025-11-01T00:00:00", periods=6)
     df.to_csv(csv_path, index=False)
@@ -64,3 +66,4 @@ def test_validate_dataset_and_resample(tmp_path, capsys, monkeypatch):
     validate_main()
     captured = capsys.readouterr()
     assert "Dataset validation complete" in captured.out
+    mock_subprocess_run.assert_called_once()

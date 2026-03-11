@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from gymnasium import spaces
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 
 try:
     import torch
@@ -35,6 +36,15 @@ def _as_numpy(value: object) -> np.ndarray:
 
 def _tensor(value: object) -> object:
     return torch.tensor(value, dtype=getattr(torch, "float32", None))
+
+
+class _CustomExtractor(BaseFeaturesExtractor):
+    def __init__(self, observation_space: spaces.Space, features_dim: int) -> None:
+        super().__init__(observation_space, features_dim)
+        self.recorded_features_dim = features_dim
+
+    def forward(self, observations: object) -> object:
+        return observations
 
 
 @pytest.fixture
@@ -73,6 +83,21 @@ class TestStrictMaskedPolicyInit:
 
         assert _as_numpy(features).shape == (1, 10)
         assert _as_numpy(logits).shape == (1, 3)
+
+    def test_custom_feature_extractor_receives_features_dim(
+        self,
+        simple_observation_space: spaces.Box,
+        simple_action_space: spaces.Discrete,
+    ) -> None:
+        policy = StrictMaskedPolicy(
+            observation_space=simple_observation_space,
+            action_space=simple_action_space,
+            lr_schedule=lambda _: 3e-4,
+            features_extractor_class=_CustomExtractor,
+        )
+
+        assert isinstance(policy.features_extractor, _CustomExtractor)
+        assert policy.features_extractor.recorded_features_dim == 10
 
 
 class TestStrictMaskedPolicyForward:

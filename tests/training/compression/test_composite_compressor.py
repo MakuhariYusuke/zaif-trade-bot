@@ -76,6 +76,20 @@ class TestNewCompositeCompressor:
         assert metrics.compression_ratio > 0
         assert metrics.memory_savings >= 0
 
+    def test_compression_metrics_handles_parameterless_models(self):
+        """Test metrics calculation does not divide by zero for parameterless models."""
+        metrics = CompressionMetrics()
+
+        model1 = nn.Sequential(nn.ReLU())
+        model2 = nn.Sequential(nn.Identity())
+
+        metrics.calculate_metrics(model1, model2)
+
+        assert metrics.original_size == 0
+        assert metrics.compressed_size == 0
+        assert metrics.compression_ratio == 1.0
+        assert metrics.memory_savings == 0.0
+
     def test_compress_model_basic(self):
         """Test basic model compression."""
         model = _tiny_model()

@@ -113,14 +113,18 @@ class TestConfigLoader:
         with pytest.raises(ValueError, match="Configuration validation failed"):
             loader.validate_config(config)
 
-    @patch.dict(os.environ, {"ZTB_TEST_KEY": "test_value", "OTHER_VAR": "ignore"})
+    @patch.dict(
+        os.environ,
+        {"ZTB_TEST_KEY": "test_value", "OTHER_VAR": "ignore"},
+        clear=True,
+    )
     def test_load_env(self):
         """Test loading config from environment variables."""
         loader = ConfigLoader()
         result = loader.load_env("ZTB_")
         assert result == {"test": {"key": "test_value"}}
 
-    @patch.dict(os.environ, {"ZTB_NESTED_KEY": "nested_value"})
+    @patch.dict(os.environ, {"ZTB_NESTED_KEY": "nested_value"}, clear=True)
     def test_load_env_nested(self):
         """Test loading nested config from environment variables."""
         loader = ConfigLoader()

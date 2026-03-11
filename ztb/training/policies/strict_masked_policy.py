@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from typing import Any
 
 import numpy as np
@@ -22,6 +23,40 @@ def _to_numpy(value: object) -> np.ndarray:
 
 def _to_tensor(value: object) -> torch.Tensor:
     return torch.tensor(value, dtype=getattr(torch, "float32", None))
+
+
+def _build_features_extractor(
+    features_extractor_class: type[BaseFeaturesExtractor],
+    observation_space: spaces.Space[Any],
+    flat_dim: int,
+    extractor_kwargs: dict[str, Any],
+) -> BaseFeaturesExtractor:
+    init_kwargs = dict(extractor_kwargs)
+
+    try:
+        parameters = inspect.signature(features_extractor_class.__init__).parameters
+    except (TypeError, ValueError):
+        parameters = {}
+
+    accepts_var_kwargs = any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        for parameter in parameters.values()
+    )
+    if accepts_var_kwargs or "features_dim" in parameters:
+        init_kwargs.setdefault("features_dim", flat_dim)
+
+    try:
+        return features_extractor_class(observation_space, **init_kwargs)
+    except TypeError as exc:
+        # Some SB3 extractors (e.g. FlattenExtractor) reject features_dim, while
+        # custom extractors may still require it. Fall back only on this kwarg.
+        if "features_dim" in init_kwargs or "features_dim" not in str(exc):
+            raise
+        return features_extractor_class(
+            observation_space,
+            features_dim=flat_dim,
+            **init_kwargs,
+        )
 
 
 class _Dense(nn.Module):
@@ -92,21 +127,34 @@ class StrictMaskedPolicy(nn.Module):
         self.share_features_extractor = share_features_extractor
         self.normalize_images = normalize_images
         flat_dim = int(np.prod(observation_space.shape or (1,)))
-        self.features_extractor = features_extractor_class(
+        self.features_extractor = _build_features_extractor(
+            features_extractor_class,
             observation_space,
-            features_dim=flat_dim,
-            **extractor_kwargs,
+            flat_dim,
+            extractor_kwargs,
         )
         self.features_dim = flat_dim
         self.mlp_extractor = _SimpleMlpExtractor(self.features_dim)
         self.action_net = _Dense(64, action_space.n, seed=17)
         self.value_net = _Dense(64, 1, seed=19)
         self._optimizer_anchor = nn.Parameter(_to_tensor([0.0]))
-        self.optimizer = optimizer_class(
-            self.parameters(),
-            lr=float(lr_schedule(1.0)),
-            **(optimizer_kwargs or {}),
-        )
+        self._optimizer_class = optimizer_class
+        self._optimizer_kwargs = dict(optimizer_kwargs or {})
+        self._optimizer: torch.optim.Optimizer | None = None
+
+    @property
+    def optimizer(self) -> torch.optim.Optimizer:
+        if self._optimizer is None:
+            self._optimizer = self._optimizer_class(
+                self.parameters(),
+                lr=float(self.lr_schedule(1.0)),
+                **self._optimizer_kwargs,
+            )
+        return self._optimizer
+
+    @optimizer.setter
+    def optimizer(self, value: torch.optim.Optimizer) -> None:
+        self._optimizer = value
 
     def extract_features(
         self,

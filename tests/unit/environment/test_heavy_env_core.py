@@ -1,5 +1,6 @@
 import pandas as pd
 
+from tests.helpers import make_schema_feature_env_config
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 
 
@@ -26,7 +27,7 @@ class TestHeavyTradingEnvCore:
             }
         )
 
-        config = {"feature_set": "full"}
+        config = make_schema_feature_env_config(df)
 
         # This should work without errors, and features should be initialized
         env = HeavyTradingEnv(df=df, config=config)

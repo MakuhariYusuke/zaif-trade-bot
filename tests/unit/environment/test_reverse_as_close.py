@@ -12,39 +12,82 @@ Tests verify that:
 import pandas as pd
 import pytest
 
+from tests.helpers import make_schema_feature_env_config, make_trending_ohlcv_data
 from ztb.trading.environment.environment import EnvironmentConfig, HeavyTradingEnv
+
+
+@pytest.fixture(scope="module")
+def sample_df():
+    """Create sample DataFrame for testing."""
+    return make_trending_ohlcv_data(
+        rows=6,
+        seed=7,
+        start_price=100.0,
+        end_price=105.0,
+        noise_scale=0.0,
+        volume_low=1000.0,
+        volume_high=1000.0,
+        include_timestamp=False,
+    )
+
+def _make_env(sample_df, **overrides) -> HeavyTradingEnv:
+    config = make_schema_feature_env_config(
+        sample_df,
+        curriculum_stage="full",
+        max_position_size=1.0,
+        **overrides,
+    )
+    return HeavyTradingEnv(df=sample_df.copy(), config=config)
+
+
+@pytest.fixture(scope="module")
+def env_allow_reverse_true(sample_df: pd.DataFrame) -> HeavyTradingEnv:
+    env = _make_env(sample_df, allow_reverse=True, transaction_cost=0.001)
+    yield env
+    env.close()
+
+
+@pytest.fixture(scope="module")
+def env_allow_reverse_false(sample_df: pd.DataFrame) -> HeavyTradingEnv:
+    env = _make_env(sample_df, allow_reverse=False, transaction_cost=0.001)
+    yield env
+    env.close()
+
+
+@pytest.fixture(scope="module")
+def env_allow_reverse_true_high_fee(sample_df: pd.DataFrame) -> HeavyTradingEnv:
+    env = _make_env(sample_df, allow_reverse=True, transaction_cost=0.01)
+    yield env
+    env.close()
+
+
+@pytest.fixture(scope="module")
+def env_allow_reverse_false_high_fee(sample_df: pd.DataFrame) -> HeavyTradingEnv:
+    env = _make_env(sample_df, allow_reverse=False, transaction_cost=0.01)
+    yield env
+    env.close()
+
+
+@pytest.fixture(scope="module")
+def env_allow_reverse_default(sample_df: pd.DataFrame) -> HeavyTradingEnv:
+    env = HeavyTradingEnv(
+        df=sample_df.copy(),
+        config=make_schema_feature_env_config(
+            sample_df,
+            transaction_cost=0.001,
+            curriculum_stage="full",
+        ),
+    )
+    yield env
+    env.close()
 
 
 class TestReverseAsClose:
     """Test suite for allow_reverse flag."""
 
-    @pytest.fixture
-    def sample_df(self):
-        """Create sample DataFrame for testing."""
-        return pd.DataFrame(
-            {
-                "close": [100.0, 101.0, 102.0, 103.0, 104.0, 105.0],
-                "open": [99.5, 100.5, 101.5, 102.5, 103.5, 104.5],
-                "high": [100.5, 101.5, 102.5, 103.5, 104.5, 105.5],
-                "low": [99.0, 100.0, 101.0, 102.0, 103.0, 104.0],
-                "volume": [1000, 1100, 1200, 1300, 1400, 1500],
-                "sma_5": [100.0] * 6,
-                "ema_12": [100.0] * 6,
-                "rsi_14": [50.0] * 6,
-                "atr_14": [1.0] * 6,
-            }
-        )
-
-    def test_allow_reverse_true_default(self, sample_df):
+    def test_allow_reverse_true_default(self, env_allow_reverse_true):
         """Test default behavior: allow_reverse=True."""
-        config = EnvironmentConfig(
-            allow_reverse=True,
-            transaction_cost=0.001,
-            max_position_size=1.0,
-            curriculum_stage="full",
-        )
-
-        env = HeavyTradingEnv(df=sample_df, config=config)
+        env = env_allow_reverse_true
         obs, info = env.reset()
 
         # Initial: position=0 (Flat)
@@ -60,16 +103,9 @@ class TestReverseAsClose:
         assert env.position < 0.0, "SELL from Long should reverse to Short (allow_reverse=True)"
         assert abs(env.position) > 0.0
 
-    def test_allow_reverse_false_no_reversal(self, sample_df):
+    def test_allow_reverse_false_no_reversal(self, env_allow_reverse_false):
         """Test reverse禁止モード: allow_reverse=False."""
-        config = EnvironmentConfig(
-            allow_reverse=False,
-            transaction_cost=0.001,
-            max_position_size=1.0,
-            curriculum_stage="full",
-        )
-
-        env = HeavyTradingEnv(df=sample_df, config=config)
+        env = env_allow_reverse_false
         obs, info = env.reset()
 
         # Initial: position=0 (Flat)
@@ -85,16 +121,9 @@ class TestReverseAsClose:
             env.position == 0.0
         ), "SELL from Long should close to Flat (allow_reverse=False)"
 
-    def test_allow_reverse_false_short_to_flat(self, sample_df):
+    def test_allow_reverse_false_short_to_flat(self, env_allow_reverse_false):
         """Test Short→BUY→Flat (no reversal)."""
-        config = EnvironmentConfig(
-            allow_reverse=False,
-            transaction_cost=0.001,
-            max_position_size=1.0,
-            curriculum_stage="full",
-        )
-
-        env = HeavyTradingEnv(df=sample_df, config=config)
+        env = env_allow_reverse_false
         obs, info = env.reset()
 
         # Step 1: SELL → Short
@@ -107,19 +136,20 @@ class TestReverseAsClose:
             env.position == 0.0
         ), "BUY from Short should close to Flat (allow_reverse=False)"
 
-    def test_flat_to_long_short_unaffected(self, sample_df):
+    def test_flat_to_long_short_unaffected(
+        self,
+        env_allow_reverse_true,
+        env_allow_reverse_false,
+    ):
         """Test that Flat→Long/Short is unaffected by allow_reverse."""
-        config_true = EnvironmentConfig(allow_reverse=True, curriculum_stage="full")
-        config_false = EnvironmentConfig(allow_reverse=False, curriculum_stage="full")
-
         # Test with allow_reverse=True
-        env_true = HeavyTradingEnv(df=sample_df, config=config_true)
+        env_true = env_allow_reverse_true
         env_true.reset()
         env_true.step(1)  # BUY
         assert env_true.position > 0.0
 
         # Test with allow_reverse=False
-        env_false = HeavyTradingEnv(df=sample_df, config=config_false)
+        env_false = env_allow_reverse_false
         env_false.reset()
         env_false.step(1)  # BUY
         assert env_false.position > 0.0
@@ -127,26 +157,23 @@ class TestReverseAsClose:
         # Both should be identical
         assert env_true.position == env_false.position
 
-    def test_transaction_cost_count(self, sample_df):
+    def test_transaction_cost_count(
+        self,
+        env_allow_reverse_true_high_fee,
+        env_allow_reverse_false_high_fee,
+    ):
         """Test that allow_reverse=False reduces transaction costs."""
-        config_true = EnvironmentConfig(
-            allow_reverse=True, transaction_cost=0.01, curriculum_stage="full"
-        )  # 1% fee
-        config_false = EnvironmentConfig(
-            allow_reverse=False, transaction_cost=0.01, curriculum_stage="full"
-        )  # 1% fee
-
         # Scenario: Flat→BUY→SELL
         # allow_reverse=True: 3 trades (BUY open, SELL close, SELL open)
         # allow_reverse=False: 2 trades (BUY open, SELL close)
 
-        env_true = HeavyTradingEnv(df=sample_df, config=config_true)
+        env_true = env_allow_reverse_true_high_fee
         env_true.reset()
         env_true.step(1)  # BUY
         env_true.step(2)  # SELL
         trades_true = env_true.trades_count
 
-        env_false = HeavyTradingEnv(df=sample_df, config=config_false)
+        env_false = env_allow_reverse_false_high_fee
         env_false.reset()
         env_false.step(1)  # BUY
         env_false.step(2)  # SELL
@@ -156,11 +183,10 @@ class TestReverseAsClose:
             trades_true > trades_false
         ), f"allow_reverse=True should have more trades ({trades_true} vs {trades_false})"
 
-    def test_position_transitions_detailed(self, sample_df):
+    def test_position_transitions_detailed(self, env_allow_reverse_false):
         """Test detailed position transitions with both allow_reverse modes."""
         # Test allow_reverse=False: Long→SELL→Flat→SELL→Short
-        config_false = EnvironmentConfig(allow_reverse=False, curriculum_stage="full")
-        env = HeavyTradingEnv(df=sample_df, config=config_false)
+        env = env_allow_reverse_false
         env.reset()
 
         # Flat → BUY → Long
@@ -200,78 +226,16 @@ class TestReverseAsClose:
         config_str_false = EnvironmentConfig.from_dict({"allow_reverse": "false"})
         assert config_str_false.allow_reverse is False
 
-    def test_backward_compatibility(self, sample_df):
+    def test_backward_compatibility(self, env_allow_reverse_default):
         """Test that existing code without allow_reverse still works."""
         # Old code that doesn't specify allow_reverse
-        config = EnvironmentConfig(transaction_cost=0.001, curriculum_stage="full")
-
-        env = HeavyTradingEnv(df=sample_df, config=config)
+        env = env_allow_reverse_default
         obs, info = env.reset()
 
         # Should default to allow_reverse=True (backward compatible)
-        assert config.allow_reverse is True
+        assert env.config.allow_reverse is True
 
         # Test reversal behavior
         env.step(1)  # BUY
         env.step(2)  # SELL
         assert env.position < 0.0, "Should allow reversal by default"
-
-
-def test_reverse_as_close_integration():
-    """Integration test for reverse-as-close functionality."""
-    print("\n=== Reverse-as-Close Integration Test ===")
-
-    # Create test data
-    df = pd.DataFrame(
-        {
-            "close": [100.0 + i for i in range(10)],
-            "open": [99.5 + i for i in range(10)],
-            "high": [100.5 + i for i in range(10)],
-            "low": [99.0 + i for i in range(10)],
-            "volume": [1000 + i * 100 for i in range(10)],
-            "sma_5": [100.0] * 10,
-            "ema_12": [100.0] * 10,
-            "rsi_14": [50.0] * 10,
-            "atr_14": [1.0] * 10,
-        }
-    )
-
-    # Test scenario: Long→SELL→SELL
-    print("\nScenario: Long → SELL → SELL")
-
-    # allow_reverse=True
-    print("\n1. allow_reverse=True:")
-    config_true = EnvironmentConfig(allow_reverse=True, curriculum_stage="full")
-    env_true = HeavyTradingEnv(df=df, config=config_true)
-    env_true.reset()
-
-    env_true.step(1)  # BUY → Long
-    print(f"   After BUY: position={env_true.position}")
-
-    env_true.step(2)  # SELL → Close + Short
-    print(f"   After SELL: position={env_true.position}")
-
-    env_true.step(2)  # SELL → No change (already Short)
-    print(f"   After SELL again: position={env_true.position}")
-
-    # allow_reverse=False
-    print("\n2. allow_reverse=False:")
-    config_false = EnvironmentConfig(allow_reverse=False, curriculum_stage="full")
-    env_false = HeavyTradingEnv(df=df, config=config_false)
-    env_false.reset()
-
-    env_false.step(1)  # BUY → Long
-    print(f"   After BUY: position={env_false.position}")
-
-    env_false.step(2)  # SELL → Close only (Flat)
-    print(f"   After SELL: position={env_false.position}")
-
-    env_false.step(2)  # SELL → Short (from Flat)
-    print(f"   After SELL again: position={env_false.position}")
-
-    print("\n✅ Integration test complete!")
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
-    test_reverse_as_close_integration()

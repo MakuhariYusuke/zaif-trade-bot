@@ -35,6 +35,11 @@ class CompressionMetrics:
         """Calculate compression metrics."""
         self.original_size = self._calculate_model_size(original_model)
         self.compressed_size = self._calculate_model_size(compressed_model)
+        if self.original_size <= 0:
+            self.compression_ratio = 1.0
+            self.memory_savings = 0.0
+            return
+
         self.compression_ratio = self.original_size / max(self.compressed_size, 1e-6)
         self.memory_savings = (1 - self.compressed_size / self.original_size) * 100
 

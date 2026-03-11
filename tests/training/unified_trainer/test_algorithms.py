@@ -25,6 +25,112 @@ from ztb.training.unified_trainer.algorithms import (
 _HAS_TRANSFORMER_ENCODER = hasattr(torch.nn, "TransformerEncoderLayer")
 
 
+class _FakeIntegrationSSPTrainer:
+    def __init__(
+        self,
+        input_dim: int,
+        device: str,
+        checkpoint_dir: str,
+        memory_manager: object | None = None,
+    ) -> None:
+        self.input_dim = input_dim
+        self.device = device
+        self.checkpoint_dir = checkpoint_dir
+        self.memory_manager = memory_manager
+        self.training_history = {}
+
+    def train_all_stages(self, train_data, val_data, config) -> None:
+        self.training_history = {
+            "mpm": {"epochs": [1]},
+            "train_shape": tuple(getattr(train_data, "shape", ())),
+            "val_shape": tuple(getattr(val_data, "shape", ())),
+            "config_keys": sorted(config.keys()),
+        }
+
+    def save_checkpoint(self, path: str | None = None) -> None:
+        target = path or os.path.join(self.checkpoint_dir, "fake_checkpoint.pth")
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        with open(target, "wb") as handle:
+            handle.write(b"fake-ssp-checkpoint")
+
+    def save_training_history(self) -> None:
+        os.makedirs(self.checkpoint_dir, exist_ok=True)
+        with open(
+            os.path.join(self.checkpoint_dir, "training_history.txt"),
+            "w",
+            encoding="utf-8",
+        ) as handle:
+            handle.write("ok")
+
+    def get_pretrained_encoders(self) -> dict[str, str]:
+        return {"mpm_encoder": "encoder"}
+
+
+def _make_tiny_ssp_config(temp_dir: str, **overrides):
+    """Create a minimal but real SSP config for integration coverage."""
+    config = {
+        "input_dim": 156,
+        "device": "cpu",
+        "checkpoint_dir": os.path.join(temp_dir, "checkpoints"),
+        "config_type": "lightweight",
+        "synthetic_batch_size": 4,
+        "synthetic_val_batch_size": 2,
+        "seq_len": 8,
+        "training": {
+            "ssp_hyperparameters": {
+                "learning_rate": 1e-3,
+                "batch_size": 2,
+                "num_epochs": 1,
+                "patience": 1,
+                "save_best": False,
+                "seq_len": 8,
+            }
+        },
+        "custom_config": {
+            "mpm": {
+                "hidden_dim": 32,
+                "num_layers": 1,
+                "num_heads": 2,
+                "max_seq_len": 8,
+                "dropout": 0.1,
+            },
+            "mpm_training": {
+                "epochs": 1,
+                "batch_size": 2,
+                "patience": 1,
+                "save_best": False,
+            },
+            "contrastive": {
+                "hidden_dim": 32,
+                "projection_dim": 16,
+                "learning_rate": 1e-3,
+            },
+            "contrastive_training": {
+                "epochs": 1,
+                "batch_size": 2,
+                "patience": 1,
+                "save_best": False,
+            },
+            "anomaly": {
+                "hidden_dims": [16, 8],
+                "latent_dim": 4,
+                "lstm_hidden_dim": 8,
+                "lstm_num_layers": 1,
+                "seq_len": 8,
+                "learning_rate": 1e-3,
+            },
+            "anomaly_training": {
+                "epochs": 1,
+                "batch_size": 2,
+                "patience": 1,
+                "save_best": False,
+            },
+        },
+    }
+    config.update(overrides)
+    return config
+
+
 class TestCreateAlgorithmTrainer:
     """Test the create_algorithm_trainer factory function"""
 
@@ -123,7 +229,10 @@ class TestSelfSupervisedTrainer:
         trainer = SelfSupervisedTrainer(config)
         assert trainer.validate_config() is False
 
-    def test_load_data_synthetic(self, basic_config):
+    @patch(
+        "ztb.training.unified_trainer.algorithms.self_supervised_trainer.DataLoader.load_csv_strict"
+    )
+    def test_load_data_synthetic(self, mock_load_csv, basic_config):
         """Test loading synthetic data when no data paths provided"""
         trainer = SelfSupervisedTrainer(basic_config)
         assert trainer._load_data() is True
@@ -131,8 +240,12 @@ class TestSelfSupervisedTrainer:
         assert trainer.val_data is not None
         assert trainer.train_data.shape[1:] == (100, 156)  # seq_len, input_dim
         assert trainer.val_data.shape[1:] == (100, 156)
+        mock_load_csv.assert_not_called()
 
-    def test_load_data_custom_sizes(self):
+    @patch(
+        "ztb.training.unified_trainer.algorithms.self_supervised_trainer.DataLoader.load_csv_strict"
+    )
+    def test_load_data_custom_sizes(self, mock_load_csv):
         """Test loading synthetic data with custom sizes"""
         config = {
             "input_dim": 156,
@@ -145,6 +258,7 @@ class TestSelfSupervisedTrainer:
         assert trainer._load_data() is True
         assert trainer.train_data.shape == (20, 75, 156)
         assert trainer.val_data.shape == (5, 75, 156)
+        mock_load_csv.assert_not_called()
 
     @patch("pandas.read_csv")
     @patch(
@@ -222,7 +336,9 @@ class TestSelfSupervisedTrainer:
         """Test getting training stats when no trainer initialized"""
         trainer = SelfSupervisedTrainer(basic_config)
         stats = trainer.get_training_stats()
-        assert stats == {}
+        assert stats["status"] == "partial"
+        assert "data_shapes" in stats
+        assert stats["data_shapes"] == {"train": None, "val": None}
 
     @patch.object(SelfSupervisedTrainer, "_load_data")
     @patch("ztb.multimodal.pretraining.SelfSupervisedTrainer")
@@ -246,6 +362,58 @@ class TestSelfSupervisedTrainer:
         assert "training_history" in stats
         assert "encoders_available" in stats
         assert "data_shapes" in stats
+
+    @patch.object(SelfSupervisedTrainer, "save_model")
+    @patch.object(SelfSupervisedTrainer, "_load_data")
+    @patch("ztb.multimodal.pretraining.SelfSupervisedTrainer")
+    def test_get_training_stats_survive_save_failure(
+        self,
+        mock_ssp_trainer,
+        mock_load_data,
+        mock_save_model,
+        basic_config,
+    ):
+        """Late persistence failures should not discard collected training stats."""
+        mock_load_data.return_value = True
+        mock_save_model.side_effect = RuntimeError("disk full")
+
+        mock_instance = MagicMock()
+        mock_instance.training_history = {"mpm": {"epochs": [1]}}
+        mock_instance.get_pretrained_encoders.return_value = {"mpm_encoder": "encoder"}
+        mock_ssp_trainer.return_value = mock_instance
+
+        trainer = SelfSupervisedTrainer(basic_config)
+        assert trainer.train() is False
+
+        stats = trainer.get_training_stats()
+        assert stats["status"] == "trained"
+        assert "training_history" in stats
+        assert "data_shapes" in stats
+
+    @patch("ztb.multimodal.pretraining.SelfSupervisedTrainer")
+    def test_load_model_uses_effective_config(self, mock_ssp_trainer):
+        """Test load_model uses the merged SSP config rather than nested defaults only."""
+        mock_instance = MagicMock()
+        mock_ssp_trainer.return_value = mock_instance
+
+        trainer = SelfSupervisedTrainer(
+            {
+                "input_dim": 156,
+                "device": "cpu",
+                "checkpoint_dir": "custom_checkpoints",
+                "config_type": "lightweight",
+                "custom_config": {"mpm": {"hidden_dim": 32}},
+            }
+        )
+
+        assert trainer.load_model("checkpoint.pth") is True
+        mock_ssp_trainer.assert_called_once_with(
+            input_dim=156,
+            device="cpu",
+            checkpoint_dir="custom_checkpoints",
+            memory_manager=None,
+        )
+        mock_instance.load_checkpoint.assert_called_once_with("checkpoint.pth")
 
     @patch("os.path.exists")
     def test_validate_config_with_valid_data_paths(self, mock_exists, basic_config):
@@ -272,6 +440,39 @@ class TestSelfSupervisedTrainer:
         # but we're testing the config structure here
         assert "custom_config" in trainer.config
 
+    def test_build_ssp_model_config_applies_config_type_and_custom_overrides(self):
+        """Test that SSP config composition honors lightweight and nested overrides."""
+        trainer = SelfSupervisedTrainer(
+            {
+                "input_dim": 156,
+                "device": "cpu",
+                "config_type": "lightweight",
+                "seq_len": 12,
+                "training": {
+                    "ssp_hyperparameters": {
+                        "learning_rate": 1e-3,
+                        "batch_size": 2,
+                        "num_epochs": 1,
+                        "patience": 1,
+                        "save_best": False,
+                    }
+                },
+                "custom_config": {
+                    "mpm": {"hidden_dim": 32},
+                    "contrastive": {"projection_dim": 16},
+                },
+            }
+        )
+
+        effective_config = trainer._build_ssp_model_config()
+
+        assert effective_config["mpm"]["hidden_dim"] == 32
+        assert effective_config["mpm"]["max_seq_len"] == 12
+        assert effective_config["contrastive"]["projection_dim"] == 16
+        assert effective_config["mpm_training"]["epochs"] == 1
+        assert effective_config["mpm_training"]["batch_size"] == 2
+        assert effective_config["anomaly_training"]["save_best"] is False
+
     @pytest.mark.parametrize("config_type", ["default", "lightweight", "production"])
     def test_different_config_types(self, config_type):
         """Test different configuration types"""
@@ -294,29 +495,20 @@ class TestSelfSupervisedTrainerIntegration:
         not _HAS_TRANSFORMER_ENCODER,
         reason="Self-supervised integration requires full torch.nn transformer support.",
     )
+    @patch(
+        "ztb.multimodal.pretraining.SelfSupervisedTrainer",
+        _FakeIntegrationSSPTrainer,
+    )
     def test_full_training_pipeline(self, temp_dir):
         """Test the complete training pipeline"""
-        config = {
-            "input_dim": 156,
-            "device": "cpu",
-            "checkpoint_dir": os.path.join(temp_dir, "checkpoints"),
-            "config_type": "lightweight",
-            "synthetic_batch_size": 5,  # Small for testing
-            "synthetic_val_batch_size": 2,
-            "seq_len": 20,
-        }
+        config = _make_tiny_ssp_config(temp_dir)
 
         trainer = SelfSupervisedTrainer(config)
 
         # Validate config
         assert trainer.validate_config() is True
 
-        # Load data
-        assert trainer._load_data() is True
-
         # Training should succeed (though it will use synthetic data)
-        # Note: This is a lightweight test - full training might be slow
-        # In a real scenario, you might want to mock the SSP trainer
         result = trainer.train()
         assert result is True
 
@@ -328,17 +520,13 @@ class TestSelfSupervisedTrainerIntegration:
         not _HAS_TRANSFORMER_ENCODER,
         reason="Self-supervised integration requires full torch.nn transformer support.",
     )
+    @patch(
+        "ztb.multimodal.pretraining.SelfSupervisedTrainer",
+        _FakeIntegrationSSPTrainer,
+    )
     def test_training_stats_after_training(self, temp_dir):
         """Test training statistics after successful training"""
-        config = {
-            "input_dim": 156,
-            "device": "cpu",
-            "checkpoint_dir": os.path.join(temp_dir, "checkpoints"),
-            "config_type": "lightweight",
-            "synthetic_batch_size": 3,
-            "synthetic_val_batch_size": 2,
-            "seq_len": 10,
-        }
+        config = _make_tiny_ssp_config(temp_dir)
 
         trainer = SelfSupervisedTrainer(config)
         trainer.train()
@@ -354,7 +542,3 @@ class TestSelfSupervisedTrainerIntegration:
         # Check data shapes
         assert stats["data_shapes"]["train"] is not None
         assert stats["data_shapes"]["val"] is not None
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])

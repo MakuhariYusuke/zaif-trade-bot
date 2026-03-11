@@ -43,6 +43,126 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
         self.optimizer_tracker = optimizer_tracker
         self.training_stats: TrainingStats = {}
 
+    def _snapshot_training_stats(
+        self,
+        model: Any | None = None,
+        *,
+        total_steps: int | None = None,
+        training_time: float | None = None,
+        model_path: str | None = None,
+        status: str = "partial",
+    ) -> TrainingStats:
+        stats: TrainingStats = {"status": status}
+        if total_steps is not None:
+            stats["total_timesteps"] = total_steps
+        if training_time is not None:
+            stats["training_time"] = training_time
+        if model_path is not None:
+            stats["model_path"] = model_path
+
+        active_model = model or self.model
+
+        try:
+            history = getattr(active_model, "training_history", None)
+            if history is not None:
+                stats["training_history"] = history
+        except Exception:
+            pass
+
+        try:
+            encoders = getattr(active_model, "get_pretrained_encoders", lambda: {})()
+            stats["encoders_available"] = bool(encoders)
+            stats["encoders"] = encoders
+        except Exception:
+            stats["encoders_available"] = False
+
+        try:
+            stats["data_shapes"] = {
+                "train": getattr(self.train_data, "shape", None),
+                "val": getattr(self.val_data, "shape", None),
+            }
+        except Exception:
+            stats["data_shapes"] = {}
+
+        return stats
+
+    def _build_ssp_model_config(self) -> dict[str, Any]:
+        """Build the effective SSP config from config_type and nested overrides."""
+        from ztb.multimodal.pretraining.config import (
+            get_config as get_ssp_config,
+            update_config as update_ssp_config,
+        )
+
+        if not isinstance(self.config, dict):
+            return get_ssp_config()
+
+        training_config = self.config.get("training", {})
+        if not isinstance(training_config, dict):
+            training_config = {}
+
+        config_type = (
+            self.config.get("config_type")
+            or training_config.get("config_type")
+            or "default"
+        )
+        model_config = get_ssp_config(config_type)
+
+        top_level_overrides: dict[str, Any] = {}
+        for key in ("input_dim", "device", "checkpoint_dir"):
+            if self.config.get(key) is not None:
+                top_level_overrides[key] = self.config[key]
+
+        seq_len = self.config.get("seq_len")
+        if seq_len is not None:
+            top_level_overrides["mpm"] = {"max_seq_len": int(seq_len)}
+            top_level_overrides["anomaly"] = {"seq_len": int(seq_len)}
+
+        if top_level_overrides:
+            model_config = update_ssp_config(model_config, top_level_overrides)
+
+        ssp_config = training_config.get("ssp_hyperparameters", {})
+        if isinstance(ssp_config, dict) and ssp_config:
+            stage_overrides: dict[str, Any] = {}
+            learning_rate = ssp_config.get("learning_rate")
+            if learning_rate is not None:
+                stage_overrides["mpm"] = {"learning_rate": learning_rate}
+                stage_overrides["contrastive"] = {"learning_rate": learning_rate}
+                stage_overrides["anomaly"] = {"learning_rate": learning_rate}
+
+            training_override: dict[str, Any] = {}
+            if ssp_config.get("num_epochs") is not None:
+                training_override["epochs"] = int(ssp_config["num_epochs"])
+            if ssp_config.get("batch_size") is not None:
+                training_override["batch_size"] = int(ssp_config["batch_size"])
+            if ssp_config.get("patience") is not None:
+                training_override["patience"] = int(ssp_config["patience"])
+            if ssp_config.get("save_best") is not None:
+                training_override["save_best"] = bool(ssp_config["save_best"])
+
+            if training_override:
+                stage_overrides["mpm_training"] = training_override.copy()
+                stage_overrides["contrastive_training"] = training_override.copy()
+                stage_overrides["anomaly_training"] = training_override.copy()
+
+            if ssp_config.get("seq_len") is not None:
+                stage_overrides.setdefault("mpm", {})["max_seq_len"] = int(
+                    ssp_config["seq_len"]
+                )
+                stage_overrides.setdefault("anomaly", {})["seq_len"] = int(
+                    ssp_config["seq_len"]
+                )
+
+            if stage_overrides:
+                model_config = update_ssp_config(model_config, stage_overrides)
+
+        custom_config = self.config.get("custom_config")
+        if custom_config is None:
+            custom_config = training_config.get("custom_config")
+        if isinstance(custom_config, dict) and custom_config:
+            model_config = update_ssp_config(model_config, custom_config)
+
+        return model_config
+
     def validate_config(self) -> bool:
         """Validate self-supervised learning configuration using unified configuration manager."""
         try:
@@ -145,6 +265,9 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
         Returns True if data is available/loaded, False otherwise.
         """
         try:
+            if self.train_data is not None and self.val_data is not None:
+                return True
+
             # Support both flat (test-friendly) and nested (training-config) formats
             cfg = self.config.get("training", {}) if isinstance(self.config, dict) and "training" in self.config else self.config
 
@@ -207,34 +330,24 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
 
         self.log_structured_event("data", "loaded", {"train_shape": getattr(self.train_data, 'shape', None)})
 
-        # Get SSP hyperparameters
-        ssp_config = self.config.get("training", {}).get("ssp_hyperparameters", {})
-
         # Create self-supervised learning model
         self.log_structured_event(
             "model", "creation", {"algorithm": "SelfSupervised", "type": "SSPTrainer"}
         )
         # Import SSPTrainer lazily to avoid heavy imports during test collection
         from ztb.multimodal.pretraining import SelfSupervisedTrainer as SSPTrainer
-        from ztb.multimodal.pretraining.config import get_config as get_ssp_config
 
-        # Get SSP configuration
-        ssp_model_config = get_ssp_config()
-        # Override with training config
-        ssp_model_config.update(ssp_config)
+        # Build the effective SSP configuration from config_type and explicit overrides.
+        ssp_model_config = self._build_ssp_model_config()
 
         # Extract parameters for SSPTrainer initialization
         input_dim = ssp_model_config.get("input_dim", 156)
         device = ssp_model_config.get(
             "device", "cuda" if torch.cuda.is_available() else "cpu"
         )
-        # Respect a top-level explicit checkpoint_dir when provided in the
-        # unified trainer config (tests pass this value at top level).
-        checkpoint_dir = None
-        if isinstance(self.config, dict) and self.config.get("checkpoint_dir"):
-            checkpoint_dir = self.config.get("checkpoint_dir")
-        else:
-            checkpoint_dir = ssp_model_config.get("checkpoint_dir", "checkpoints/pretraining")
+        checkpoint_dir = ssp_model_config.get(
+            "checkpoint_dir", "checkpoints/pretraining"
+        )
 
         self.model = SSPTrainer(
             input_dim=input_dim,
@@ -244,8 +357,24 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
         )
 
         # Training parameters
-        num_epochs = ssp_config.get("num_epochs", 100)
-        batch_size = ssp_config.get("batch_size", 32)
+        stage_training_configs = [
+            ssp_model_config.get("mpm_training", {}),
+            ssp_model_config.get("contrastive_training", {}),
+            ssp_model_config.get("anomaly_training", {}),
+        ]
+        num_epochs = sum(
+            int(stage_config.get("epochs", 0))
+            for stage_config in stage_training_configs
+            if isinstance(stage_config, dict)
+        ) or 100
+        batch_size = next(
+            (
+                int(stage_config["batch_size"])
+                for stage_config in stage_training_configs
+                if isinstance(stage_config, dict) and stage_config.get("batch_size")
+            ),
+            32,
+        )
 
         # Compute approximate total steps using loaded tensors (robust to mocked _load_data)
         train_tensor = self.train_data
@@ -303,6 +432,12 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
 
         # Training completed
         training_time = time.time() - start_time
+        self.training_stats = self._snapshot_training_stats(
+            model,
+            total_steps=total_steps,
+            training_time=training_time,
+            status="trained",
+        )
 
         # Clean up metrics collection
         self.cleanup_metrics_collection()
@@ -322,30 +457,15 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
             steps_per_second=(total_steps / training_time) if training_time > 0 else 0,
             status="completed",
         )
-
-        try:
-            history = getattr(model, "training_history", None)
-            if history is not None:
-                stats["training_history"] = history
-        except Exception:
-            pass
-
-        # Include whether pretrained encoders are available
-        try:
-            encoders = getattr(model, "get_pretrained_encoders", lambda: {})()
-            stats["encoders_available"] = bool(encoders)
-            stats["encoders"] = encoders
-        except Exception:
-            stats["encoders_available"] = False
-
-        # Include shapes of loaded data for diagnostics
-        try:
-            stats["data_shapes"] = {
-                "train": getattr(self.train_data, "shape", None),
-                "val": getattr(self.val_data, "shape", None),
-            }
-        except Exception:
-            stats["data_shapes"] = {}
+        stats.update(
+            self._snapshot_training_stats(
+                model,
+                total_steps=total_steps,
+                training_time=training_time,
+                model_path=model_path,
+                status="completed",
+            )
+        )
 
         self.training_stats = stats
 
@@ -354,7 +474,9 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
 
     def get_training_stats(self) -> dict[str, Any]:
         """Get self-supervised learning training statistics."""
-        return dict(self.training_stats)
+        if self.training_stats:
+            return dict(self.training_stats)
+        return dict(self._snapshot_training_stats())
 
     def load_model(self, model_path: str) -> bool:
         """Load a trained self-supervised learning model from file."""
@@ -362,12 +484,16 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
             self.logger.info(f"Loading SSP model from {model_path}")
 
             # Create a new SSPTrainer instance and load the checkpoint
-            ssp_config = self.config.get("training", {}).get("ssp_hyperparameters", {})
-            input_dim = ssp_config.get("input_dim", 156)
-            device = ssp_config.get(
+            from ztb.multimodal.pretraining import SelfSupervisedTrainer as SSPTrainer
+
+            ssp_model_config = self._build_ssp_model_config()
+            input_dim = ssp_model_config.get("input_dim", 156)
+            device = ssp_model_config.get(
                 "device", "cuda" if torch.cuda.is_available() else "cpu"
             )
-            checkpoint_dir = ssp_config.get("checkpoint_dir", "checkpoints/pretraining")
+            checkpoint_dir = ssp_model_config.get(
+                "checkpoint_dir", "checkpoints/pretraining"
+            )
 
             self.model = SSPTrainer(
                 input_dim=input_dim,

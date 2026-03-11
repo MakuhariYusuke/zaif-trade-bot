@@ -451,15 +451,13 @@ class SACv427FeatureEngineer:
 
             
 
-            # Create padding features with correct index
-
-            padding_features = pd.DataFrame(index=features_df.index)
-
-            for i in range(num_padding):
-
-                # Use random noise
-
-                padding_features[f"padding_{i}"] = np.random.normal(0, 1e-5, len(features_df))
+            # Build padding columns in one shot to avoid DataFrame fragmentation.
+            padding_columns = [f"padding_{i}" for i in range(num_padding)]
+            padding_features = pd.DataFrame(
+                np.random.normal(0, 1e-5, size=(len(features_df), num_padding)),
+                index=features_df.index,
+                columns=padding_columns,
+            )
 
             
 

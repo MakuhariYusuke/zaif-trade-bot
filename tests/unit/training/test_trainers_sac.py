@@ -245,8 +245,7 @@ class TestTrainingProgressCallbackDebugLogs:
 class TestSACTrainerInternalLogs:
     """Test SAC trainer internal logging enhancements."""
 
-    @patch("ztb.training.unified_trainer.algorithms.sac_trainer.time.time")
-    def test_sac_training_completion_debug_log(self, mock_time, caplog):
+    def test_sac_training_completion_debug_log(self, caplog):
         """Test that SAC training completion logs detailed metrics at DEBUG level."""
         import logging
         from unittest.mock import MagicMock
@@ -254,9 +253,6 @@ class TestSACTrainerInternalLogs:
         from ztb.training.unified_trainer.algorithms.sac_trainer import SACTrainer
 
         caplog.set_level(logging.DEBUG)
-
-        # Mock time for consistent timing
-        mock_time.side_effect = [1000.0, 1050.0]  # 50 seconds training time
 
         # Create trainer with minimal config
         config = {

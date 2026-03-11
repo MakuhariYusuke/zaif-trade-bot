@@ -1,4 +1,3 @@
-import time
 from typing import Dict
 
 
@@ -31,7 +30,6 @@ class DistributedWorker:
 
     def send_task(self, task_name: str, data: dict, timeout: float = 5.0):
         # simple synchronous emulation
-        time.sleep(0.01)
         self.stats["tasks_executed"] += 1
         return {"completed": True, "validation_loss": 0.0, "validation_accuracy": 1.0}
 

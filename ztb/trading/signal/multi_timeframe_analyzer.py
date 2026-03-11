@@ -183,20 +183,25 @@ class MultiTimeframeAnalyzer:
             logger.error(f"Error analyzing {timeframe.value} trend: {e}")
             return None
 
-    def analyze_convergence(self) -> ConvergenceAnalysis:
+    def collect_trend_analyses(self) -> dict[Timeframe, TrendAnalysis]:
+        """Collect all currently-available timeframe analyses in a single pass."""
+        analyses: dict[Timeframe, TrendAnalysis] = {}
+        for timeframe in self.timeframes.keys():
+            analysis = self.analyze_timeframe_trend(timeframe)
+            if analysis is not None:
+                analyses[timeframe] = analysis
+        return analyses
+
+    def analyze_convergence(
+        self, trend_analyses: dict[Timeframe, TrendAnalysis] | None = None
+    ) -> ConvergenceAnalysis:
         """
         Analyze convergence across all timeframes
 
         Returns:
             ConvergenceAnalysis with convergence metrics
         """
-        trend_analyses = {}
-
-        # Analyze each timeframe
-        for timeframe in self.timeframes.keys():
-            analysis = self.analyze_timeframe_trend(timeframe)
-            if analysis:
-                trend_analyses[timeframe] = analysis
+        trend_analyses = trend_analyses or self.collect_trend_analyses()
 
         if not trend_analyses:
             # Return neutral analysis if no data available

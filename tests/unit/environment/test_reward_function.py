@@ -1,14 +1,30 @@
 import numpy as np
-import pandas as pd
 
+from tests.helpers import (
+    make_exchange_random_walk_ohlcv_data,
+    make_schema_feature_env_config,
+)
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
+from ztb.trading.environment.utils.config import RewardSettings
 
 
-def test_reward_calculation_with_behavior_optimization():
-    """Test that reward function correctly applies behavior optimization penalties/bonuses."""
-    # Create a minimal config with reward_settings
-    config = EnvironmentConfig(
+def _make_reward_env(rows: int, *, seed: int = 42) -> HeavyTradingEnv:
+    dummy_df = make_exchange_random_walk_ohlcv_data(
+        rows=rows,
+        seed=seed,
+        start="2023-01-01",
+        freq="1H",
+        base_price=150.0,
+        return_scale=0.01,
+        intrabar_scale=0.02,
+        open_scale=0.01,
+        volume_logmean=8.5,
+        volume_logsigma=0.25,
+        include_timestamp=True,
+    )
+
+    config = make_schema_feature_env_config(
+        dummy_df,
         initial_portfolio_value=100000.0,
         transaction_cost=0.001,
         max_position_size=1.0,
@@ -25,21 +41,12 @@ def test_reward_calculation_with_behavior_optimization():
             }
         ),
     )
+    return HeavyTradingEnv(df=dummy_df, config=config)
 
-    # Create minimal dummy data
-    dates = pd.date_range("2023-01-01", periods=10, freq="1H")
-    dummy_df = pd.DataFrame(
-        {
-            "close": np.random.uniform(100, 200, 10),
-            "high": np.random.uniform(105, 205, 10),
-            "low": np.random.uniform(95, 195, 10),
-            "volume": np.random.uniform(1000, 10000, 10),
-            "timestamp": dates,
-        }
-    )
 
-    # Initialize environment
-    env = HeavyTradingEnv(df=dummy_df, config=config)
+def test_reward_calculation_with_behavior_optimization():
+    """Test that reward function correctly applies behavior optimization penalties/bonuses."""
+    env = _make_reward_env(8, seed=42)
 
     # Reset to get initial state
     obs, info = env.reset()
@@ -70,57 +77,23 @@ def test_reward_calculation_with_behavior_optimization():
         # Check that reward is within reasonable bounds (not extreme)
         assert -1000 <= reward <= 1000, f"Reward {reward} seems unreasonable"
 
-        # Log for debugging
-        print(f"Action {continuous_action} ({expected_discrete}): Reward = {reward}")
-
         # For this test, we mainly check that the function doesn't crash and returns reasonable values
         # More specific assertions would require detailed knowledge of the reward calculation logic
 
 
 def test_reward_balance_in_behavior_optimization():
     """Test that behavior optimization doesn't create extreme bias."""
-    # Similar setup as above
-    config = EnvironmentConfig(
-        initial_portfolio_value=100000.0,
-        transaction_cost=0.001,
-        max_position_size=1.0,
-        reward_scaling=1.0,
-        action_space_type="continuous",
-        use_continuous_actions=True,
-        reward_settings=RewardSettings(
-            custom_reward_params={
-                "action_bonuses": {
-                    "buy_action_bonus": 0.0,
-                    "sell_action_bonus": 0.0,
-                    "hold_action_bonus": 0.0,
-                }
-            }
-        ),
-    )
-
-    dates = pd.date_range("2023-01-01", periods=20, freq="1H")
-    dummy_df = pd.DataFrame(
-        {
-            "close": np.random.uniform(100, 200, 20),
-            "high": np.random.uniform(105, 205, 20),
-            "low": np.random.uniform(95, 195, 20),
-            "volume": np.random.uniform(1000, 10000, 20),
-            "timestamp": dates,
-        }
-    )
-
-    env = HeavyTradingEnv(df=dummy_df, config=config)
+    env = _make_reward_env(12, seed=43)
 
     rewards = []
-    actions = []
+    rng = np.random.default_rng(44)
 
     # Run multiple steps to collect reward statistics
     obs, info = env.reset()
-    for i in range(10):
-        action = np.random.uniform(-1, 1)  # Random continuous action
+    for i in range(6):
+        action = rng.uniform(-1, 1)  # Random continuous action
         next_obs, reward, terminated, truncated, info = env.step(np.array([action]))
         rewards.append(reward)
-        actions.append(action)
         if terminated or truncated:
             break
 
@@ -135,7 +108,3 @@ def test_reward_balance_in_behavior_optimization():
     assert (
         -10 <= mean_reward <= 10
     ), f"Mean reward {mean_reward} seems unreasonable for behavior optimization"
-
-    print(
-        f"Collected {len(rewards)} rewards with mean {mean_reward:.3f}, std {np.std(rewards):.3f}"
-    )

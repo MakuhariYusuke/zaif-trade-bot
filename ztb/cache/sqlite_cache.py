@@ -137,7 +137,7 @@ class SQLiteCache:
         value_blob, ttl_sec, created_at = row
 
         # Check TTL
-        if ttl_sec and (now - created_at) > ttl_sec:
+        if ttl_sec and (now - created_at) >= ttl_sec:
             # Expired, remove
             conn.execute("DELETE FROM cache WHERE key = ?", (key,))
             conn.commit()

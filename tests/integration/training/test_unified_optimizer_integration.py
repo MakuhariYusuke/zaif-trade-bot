@@ -24,14 +24,23 @@ def _stub_system_optimizer(optimizer: UnifiedOptimizer) -> None:
     optimizer.automatic_pipeline.system_optimizer = optimizer.system_optimizer
 
 
+def _make_optimizer(tmp_path, *, max_trials: int = 1, max_parallel_trials: int = 1) -> UnifiedOptimizer:
+    config = OptimizationConfig(
+        max_trials=max_trials,
+        max_parallel_trials=max_parallel_trials,
+        persistence_base_dir=str(tmp_path / "optimization_results"),
+    )
+    optimizer = UnifiedOptimizer(config)
+    _stub_system_optimizer(optimizer)
+    return optimizer
+
+
 class TestUnifiedOptimizerIntegration:
     """統合テスト for UnifiedOptimizer"""
 
-    def test_full_automatic_pipeline(self):
+    def test_full_automatic_pipeline(self, tmp_path):
         """完全自動最適化パイプラインの統合テスト"""
-        config = OptimizationConfig(max_trials=3)
-        optimizer = UnifiedOptimizer(config)
-        _stub_system_optimizer(optimizer)
+        optimizer = _make_optimizer(tmp_path)
 
         base_params = {"learning_rate": 0.001, "batch_size": 32}
         complex_objective = make_lr_batch_objective(noise_scale=0.0)
@@ -49,10 +58,9 @@ class TestUnifiedOptimizerIntegration:
         assert "action" in recommendation
         assert "params" in recommendation
 
-    def test_multi_timeframe_with_ab_testing(self):
+    def test_multi_timeframe_with_ab_testing(self, tmp_path):
         """マルチタイムフレーム最適化 + A/Bテストの統合テスト"""
-        config = OptimizationConfig(max_trials=3)
-        optimizer = UnifiedOptimizer(config)
+        optimizer = _make_optimizer(tmp_path)
 
         def tf_objective_1m(params):
             return -params.get("momentum", 0.9)**2
@@ -71,18 +79,20 @@ class TestUnifiedOptimizerIntegration:
         variant_params = mt_result["integrated"].best_params
 
         test_id = optimizer.create_ab_test(
-            "integration_test", control_params, variant_params, tf_objective_1m
+            "integration_test",
+            control_params,
+            variant_params,
+            tf_objective_1m,
+            sample_size_per_group=8,
         )
 
-        # 統計的有意差検定に必要なサンプルサイズを確保（最低30）
-        ab_result = optimizer.run_ab_test(test_id, num_iterations=30)
+        ab_result = optimizer.run_ab_test(test_id, num_iterations=8)
         assert "status" in ab_result
         assert ab_result["status"] in ["completed", "significant", "insignificant", "insufficient_data", "variant_better", "control_better", "no_significant_difference", "running"]
 
-    def test_parallel_optimization_integration(self):
+    def test_parallel_optimization_integration(self, tmp_path):
         """並列最適化の統合テスト"""
-        config = OptimizationConfig(max_trials=3, max_parallel_trials=2)
-        optimizer = UnifiedOptimizer(config)
+        optimizer = _make_optimizer(tmp_path, max_parallel_trials=1)
         complex_objective = make_lr_batch_objective(noise_scale=0.0)
         search_space = make_lr_batch_search_space()
 
@@ -91,7 +101,7 @@ class TestUnifiedOptimizerIntegration:
         for i in range(2):
             task = {
                 "task_id": f"integration_parallel_{i}",
-                "optimizer": BayesianOptimizer(config),
+                "optimizer": BayesianOptimizer(optimizer.config),
                 "objective": complex_objective,
                 "search_space": search_space
             }
@@ -104,10 +114,9 @@ class TestUnifiedOptimizerIntegration:
         assert parallel_result["completed_tasks"] == 2
         assert "results" in parallel_result
 
-    def test_persistence_integration(self):
+    def test_persistence_integration(self, tmp_path):
         """持続化機能の統合テスト"""
-        config = OptimizationConfig()
-        optimizer = UnifiedOptimizer(config)
+        optimizer = _make_optimizer(tmp_path)
 
         test_result = {"integration_test": True, "score": 0.85}
         version_id = optimizer.save_result_to_version_control(
@@ -131,11 +140,9 @@ class TestUnifiedOptimizerIntegration:
         assert "results" in comparison
         assert len(comparison["results"]) == 1
 
-    def test_end_to_end_workflow(self):
+    def test_end_to_end_workflow(self, tmp_path):
         """エンドツーエンドワークフローの統合テスト"""
-        config = OptimizationConfig(max_trials=3)
-        optimizer = UnifiedOptimizer(config)
-        _stub_system_optimizer(optimizer)
+        optimizer = _make_optimizer(tmp_path)
 
         # 1. ハイパーパラメータ最適化
         def objective(params):

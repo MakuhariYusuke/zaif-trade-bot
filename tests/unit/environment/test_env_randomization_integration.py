@@ -1,48 +1,44 @@
-import sys
-from unittest.mock import MagicMock
-
-# Mock torch before it gets imported
-sys.modules["torch"] = MagicMock()
-
+import copy
 import unittest
 
-import pandas as pd
-
+from tests.helpers import make_schema_feature_env_config, make_trending_ohlcv_data
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 
 
 class TestEnvRandomizationIntegration(unittest.TestCase):
-    def setUp(self):
-        # Create minimal data
-        self.df = pd.DataFrame(
-            {
-                "timestamp": pd.date_range("2023-01-01", periods=100, freq="1min"),
-                "open": [100.0] * 100,
-                "high": [101.0] * 100,
-                "low": [99.0] * 100,
-                "close": [100.5] * 100,
-                "volume": [1000.0] * 100,
-            }
+    @classmethod
+    def setUpClass(cls):
+        cls.df = make_trending_ohlcv_data(
+            rows=24,
+            seed=11,
+            start="2023-01-01",
+            freq="1min",
+            start_price=100.5,
+            end_price=100.5,
+            noise_scale=0.0,
+            volume_low=1000.0,
+            volume_high=1000.0,
+            include_timestamp=True,
         )
 
-        self.base_config = {
-            "feature_set": "minimal",
-            "continuous_to_discrete_threshold": 0.01,
-            "exchange_profile": {
+        cls.base_config = make_schema_feature_env_config(
+            cls.df,
+            continuous_to_discrete_threshold=0.01,
+            exchange_profile={
                 "name": "base",
                 "maker_fee_rate": 0.0,
                 "taker_fee_rate": 0.0,
                 "slippage_rate": 0.0,
                 "latency_ms": 0.0,
             },
-            "domain_randomization": {
+            domain_randomization={
                 "enabled": True,
                 "maker_fee_range": [0.001, 0.002],
                 "taker_fee_range": [0.002, 0.003],
                 "slippage_range": [0.01, 0.02],
                 "latency_range": [100.0, 200.0],
             },
-        }
+        )
 
     def test_env_reset_randomizes_profile(self):
         """Test that environment reset randomizes the exchange profile."""
@@ -74,7 +70,7 @@ class TestEnvRandomizationIntegration(unittest.TestCase):
 
     def test_env_randomization_disabled(self):
         """Test that environment keeps base profile when randomization is disabled."""
-        config = self.base_config.copy()
+        config = copy.deepcopy(self.base_config)
         config["domain_randomization"]["enabled"] = False
 
         env = HeavyTradingEnv(df=self.df, config=config)
@@ -88,7 +84,3 @@ class TestEnvRandomizationIntegration(unittest.TestCase):
         profile2 = env.config.exchange_profile
 
         self.assertEqual(profile2.maker_fee_rate, 0.0)
-
-
-if __name__ == "__main__":
-    unittest.main()

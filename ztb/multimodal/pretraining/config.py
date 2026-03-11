@@ -12,6 +12,7 @@ techniques implemented in the pretraining module.
 - Training hyperparameters
 """
 
+import copy
 from typing import Any
 
 # Default configuration for Masked Price Modeling
@@ -192,11 +193,11 @@ def get_config(config_type: str = "default") -> dict[str, Any]:
         Configuration dictionary
     """
     if config_type == "lightweight":
-        return LIGHTWEIGHT_CONFIG.copy()
+        return copy.deepcopy(LIGHTWEIGHT_CONFIG)
     elif config_type == "production":
-        return PRODUCTION_CONFIG.copy()
+        return copy.deepcopy(PRODUCTION_CONFIG)
     else:
-        return SELF_SUPERVISED_CONFIG.copy()
+        return copy.deepcopy(SELF_SUPERVISED_CONFIG)
 
 def update_config(
     base_config: dict[str, Any], updates: dict[str, Any]
@@ -211,7 +212,7 @@ def update_config(
     Returns:
         Updated configuration
     """
-    config = base_config.copy()
+    config = copy.deepcopy(base_config)
 
     def deep_update(d: dict[str, Any], u: dict[str, Any]) -> None:
         for k, v in u.items():

@@ -520,13 +520,17 @@ def _initialize_features_and_spaces(self: Any, max_features: int | None) -> None
 def _setup_scaler(self: Any) -> None:
     """Setup feature scaler from config or schema data."""
     # Check if scaler data is provided in config
-    scaler_mean = getattr(self.config, "scaler_mean", None)
-    scaler_std = getattr(self.config, "scaler_std", None)
+    if isinstance(self.config, dict):
+        scaler_mean = self.config.get("scaler_mean")
+        scaler_std = self.config.get("scaler_std")
+    else:
+        scaler_mean = getattr(self.config, "scaler_mean", None)
+        scaler_std = getattr(self.config, "scaler_std", None)
 
     if scaler_mean is not None and scaler_std is not None:
         # Store scaler data for later use
-        self.scaler_mean = scaler_mean
-        self.scaler_std = scaler_std
+        self.scaler_mean = np.asarray(scaler_mean, dtype=np.float32)
+        self.scaler_std = np.asarray(scaler_std, dtype=np.float32)
         logger.info("Using schema-provided scaler data")
     else:
         # No scaler data provided
@@ -541,15 +545,7 @@ def _compute_scaler_from_data(self: Any, train_end_index: int | None = None) -> 
     """
     # Ensure fast access buffers are built
     self._build_fast_access_buffers()
-
-    # Update data manager with built buffers
-    self.data_manager._feature_matrix = self._feature_matrix
-    self.data_manager._price_array = self._price_array
-    self.data_manager._close_array = self._close_array
-    self.data_manager._atr_array = self._atr_array
-    self.data_manager._episode_id_array = self._episode_id_array
-    self.data_manager._nonfinite_rows = self._nonfinite_rows
-    self.data_manager._nonfinite_warned_rows = self._nonfinite_warned_rows
+    _sync_data_manager_buffers(self)
 
     if not hasattr(self, "_feature_matrix") or self._feature_matrix.size == 0:
         logger.warning("Feature matrix is empty. Cannot compute scaler.")
@@ -1060,6 +1056,19 @@ def _extract_numeric_column(
         return np.empty(0, dtype=np.float32)
 
     return np.full(self.n_steps, fallback, dtype=np.float32)
+
+
+def _sync_data_manager_buffers(self: Any) -> None:
+    """Keep DataManager buffer views aligned with environment fast-access buffers."""
+    if not hasattr(self, "data_manager") or self.data_manager is None:
+        return
+    self.data_manager._feature_matrix = self._feature_matrix
+    self.data_manager._price_array = self._price_array
+    self.data_manager._close_array = self._close_array
+    self.data_manager._atr_array = self._atr_array
+    self.data_manager._episode_id_array = self._episode_id_array
+    self.data_manager._nonfinite_rows = self._nonfinite_rows
+    self.data_manager._nonfinite_warned_rows = self._nonfinite_warned_rows
 
 def _select_features_by_correlation_in_env(
     self: Any,

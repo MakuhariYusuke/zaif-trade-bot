@@ -96,7 +96,7 @@ class DistributedCoordinator:
     def _process_messages(self):
         while getattr(self, "_running", False):
             try:
-                msg = self.message_queue.get(timeout=0.1)
+                msg = self.message_queue.get(timeout=0.01)
             except Empty:
                 continue
 

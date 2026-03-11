@@ -98,6 +98,7 @@ class OptimizationConfig:
     # 並列処理
     max_parallel_trials: int = 4
     enable_distributed: bool = False
+    persistence_base_dir: str = "optimization_results"
 
 @dataclass
 class OptimizationResult:
@@ -457,28 +458,73 @@ class UnifiedOptimizer:
 
         # 各最適化器の初期化
         self.hyperparameter_optimizer = None
-        self.system_optimizer = SystemOptimizer(config)
-        self.reward_optimizer = RewardFunctionOptimizer(config)
-
-        # 新機能: マルチタイムフレーム最適化器とA/Bテストフレームワーク
-        self.multi_timeframe_optimizer = MultiTimeframeOptimizer(config)
-        self.ab_testing_framework = ABTestingFramework(config)
-
-        # 自動最適化パイプライン
-        self.automatic_pipeline = AutomaticOptimizationPipeline(config, self.system_optimizer)
-
-        # 最適化結果持続化
-        self.persistence = OptimizationResultPersistence()
-
-        # 並列最適化実行器
-        self.parallel_optimizer = ParallelOptimizer(config)
+        self._system_optimizer: SystemOptimizer | object | None = None
+        self._reward_optimizer: RewardFunctionOptimizer | None = None
+        self._multi_timeframe_optimizer: MultiTimeframeOptimizer | None = None
+        self._ab_testing_framework: ABTestingFramework | None = None
+        self._automatic_pipeline: AutomaticOptimizationPipeline | None = None
+        self._persistence: OptimizationResultPersistence | None = None
+        self._parallel_optimizer: ParallelOptimizer | None = None
 
         # 最適化履歴
         self.optimization_history: deque = deque(maxlen=1000)
         self.current_best_params = {}
 
         # ハイパーパラメータ最適化器の初期化（optimization_methodに従う）
-        self.initialize_hyperparameter_optimizer(self.config.optimization_method)
+        if self.config.enable_hyperparameter_optimization:
+            self.initialize_hyperparameter_optimizer(self.config.optimization_method)
+
+    @property
+    def system_optimizer(self) -> object:
+        if self._system_optimizer is None:
+            self._system_optimizer = SystemOptimizer(self.config)
+        return self._system_optimizer
+
+    @system_optimizer.setter
+    def system_optimizer(self, value: object) -> None:
+        self._system_optimizer = value
+        if self._automatic_pipeline is not None:
+            self._automatic_pipeline.system_optimizer = value
+
+    @property
+    def reward_optimizer(self) -> "RewardFunctionOptimizer":
+        if self._reward_optimizer is None:
+            self._reward_optimizer = RewardFunctionOptimizer(self.config)
+        return self._reward_optimizer
+
+    @property
+    def multi_timeframe_optimizer(self) -> "MultiTimeframeOptimizer":
+        if self._multi_timeframe_optimizer is None:
+            self._multi_timeframe_optimizer = MultiTimeframeOptimizer(self.config)
+        return self._multi_timeframe_optimizer
+
+    @property
+    def ab_testing_framework(self) -> "ABTestingFramework":
+        if self._ab_testing_framework is None:
+            self._ab_testing_framework = ABTestingFramework(self.config)
+        return self._ab_testing_framework
+
+    @property
+    def automatic_pipeline(self) -> "AutomaticOptimizationPipeline":
+        if self._automatic_pipeline is None:
+            self._automatic_pipeline = AutomaticOptimizationPipeline(
+                self.config, self.system_optimizer
+            )
+        return self._automatic_pipeline
+
+    @property
+    def persistence(self) -> "OptimizationResultPersistence":
+        if self._persistence is None:
+            self._persistence = OptimizationResultPersistence(
+                self.config.persistence_base_dir
+            )
+        return self._persistence
+
+    @property
+    def parallel_optimizer(self) -> "ParallelOptimizer":
+        if self._parallel_optimizer is None:
+            self._parallel_optimizer = ParallelOptimizer(self.config)
+        return self._parallel_optimizer
 
     def initialize_hyperparameter_optimizer(self, method: str = "bayesian") -> None:
         """ハイパーパラメータ最適化器の初期化"""
@@ -2067,15 +2113,28 @@ class ParallelOptimizer:
 
             # 追加パラメータ
             method = task.get("method", "bayesian")
-            task.get("max_trials", self.config.max_trials)
+            task_max_trials = task.get("max_trials")
+            optimizer_config = getattr(optimizer, "config", None)
+            original_max_trials = getattr(optimizer_config, "max_trials", None)
 
-            # 最適化実行
-            if hasattr(optimizer, 'optimize_hyperparameters'):
-                # UnifiedOptimizerの場合
-                result = optimizer.optimize_hyperparameters(objective, search_space, method)
-            else:
-                # BaseOptimizerの場合
-                result = optimizer.optimize(objective, search_space)
+            if task_max_trials is not None and optimizer_config is not None:
+                optimizer_config.max_trials = int(task_max_trials)
+
+            try:
+                # 最適化実行
+                if hasattr(optimizer, 'optimize_hyperparameters'):
+                    # UnifiedOptimizerの場合
+                    result = optimizer.optimize_hyperparameters(objective, search_space, method)
+                else:
+                    # BaseOptimizerの場合
+                    result = optimizer.optimize(objective, search_space)
+            finally:
+                if (
+                    task_max_trials is not None
+                    and optimizer_config is not None
+                    and original_max_trials is not None
+                ):
+                    optimizer_config.max_trials = original_max_trials
 
             return {
                 "success": True,
@@ -2324,11 +2383,12 @@ class OptimizationResultPersistence:
 
     def __init__(self, base_dir: str = "optimization_results") -> None:
         self.base_dir = Path(base_dir)
-        self.base_dir.mkdir(exist_ok=True)
+        self.base_dir.mkdir(parents=True, exist_ok=True)
         self.logger = get_logger(__name__)
 
         # バージョン管理
         self.version_file = self.base_dir / "versions.json"
+        self._index_cache: dict[str, object] | None = None
         self.current_version = self._load_current_version()
 
     def _load_current_version(self) -> int:
@@ -2347,7 +2407,7 @@ class OptimizationResultPersistence:
         version_data = {
             "current_version": self.current_version,
             "last_updated": datetime.now().isoformat(),
-            "total_versions": len(self._list_versions())
+            "total_versions": len(self._load_index())
         }
 
         safe_json_dump(version_data, self.version_file, indent=2, ensure_ascii=False)
@@ -2428,15 +2488,7 @@ class OptimizationResultPersistence:
     def _update_index(self, version_id: str, result_data: dict[str, object]):
         """検索インデックスを更新"""
         index_file = self.base_dir / "index.json"
-
-        # 既存インデックス読み込み
-        index = {}
-        if index_file.exists():
-            try:
-                with open(index_file, 'r', encoding='utf-8') as f:
-                    index = json.load(f)
-            except Exception as e:
-                self.logger.warning(f"Failed to load index: {e}")
+        index = self._load_index()
 
         # 新しいエントリ追加
         index[version_id] = {
@@ -2448,6 +2500,7 @@ class OptimizationResultPersistence:
         }
 
         # インデックス保存
+        self._index_cache = index
         safe_json_dump(index, index_file, indent=2, ensure_ascii=False)
 
     def load_optimization_result(self, version_id: str) -> dict[str, object] | None:
@@ -2472,13 +2525,18 @@ class OptimizationResultPersistence:
 
     def _load_index(self) -> dict[str, object]:
         """インデックスを読み込み"""
+        if self._index_cache is not None:
+            return dict(self._index_cache)
+
         index_file = self.base_dir / "index.json"
         if not index_file.exists():
             return {}
 
         try:
             with open(index_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                index = json.load(f)
+                self._index_cache = dict(index)
+                return dict(index)
         except Exception as e:
             self.logger.warning(f"Failed to load index: {e}")
             return {}
@@ -2644,6 +2702,7 @@ class OptimizationResultPersistence:
 
                 # インデックスから削除
                 del index[version_id]
+                self._index_cache = index
                 index_file = self.base_dir / "index.json"
                 safe_json_dump(index, index_file, indent=2, ensure_ascii=False)
 

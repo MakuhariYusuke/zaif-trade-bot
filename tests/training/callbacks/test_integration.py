@@ -6,16 +6,12 @@ This module provides integration tests that verify the callback system
 works correctly in realistic training scenarios.
 """
 
-import os
 import shutil
-import sys
 import tempfile
 import time
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
 from ztb.training.callbacks.core.callback_implementations import (
     CheckpointCallback,
@@ -263,9 +259,6 @@ class TestCallbackSystemIntegration(unittest.TestCase):
             async_callback.config.enabled = True
 
             def sync_on_training_start(ctx):
-                import time
-
-                time.sleep(0.01)  # Simulate work
                 return MagicMock(success=True)
 
             async_callback.on_training_start = sync_on_training_start
@@ -437,7 +430,6 @@ class TestCallbackSystemEdgeCases(unittest.TestCase):
             callback.config.priority = 0
 
             def threaded_execution(ctx):
-                time.sleep(0.01)  # Simulate work
                 with lock:
                     execution_order.append(name)
                 return MagicMock(success=True)
@@ -457,7 +449,3 @@ class TestCallbackSystemEdgeCases(unittest.TestCase):
         self.assertEqual(len(execution_order), 5)
         # All callbacks should have executed
         self.assertTrue(all(result.success for result in results))
-
-
-if __name__ == "__main__":
-    unittest.main()

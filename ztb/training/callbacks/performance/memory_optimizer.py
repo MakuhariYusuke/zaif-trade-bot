@@ -27,6 +27,18 @@ V = TypeVar("V")
 T = TypeVar("T")
 RefGetter = Callable[[], object | None]
 
+
+class _StrongRef:
+    """Callable wrapper for objects that cannot be weak-referenced."""
+
+    __slots__ = ("value",)
+
+    def __init__(self, value: object | None) -> None:
+        self.value = value
+
+    def __call__(self) -> object | None:
+        return self.value
+
 def _default_pool_object() -> object:
     return {}
 
@@ -225,6 +237,7 @@ class MemoryMonitor(_ThreadSafeStatsBase):
         super().__init__()
         self.config = config or MemoryConfig()
         self.logger = logging.getLogger(__name__)
+        self._process = psutil.Process(os.getpid())
         self._monitoring = False
         self._monitor_thread: threading.Thread | None = None
         self._last_memory_mb = 0.0
@@ -259,8 +272,7 @@ class MemoryMonitor(_ThreadSafeStatsBase):
     def get_memory_stats(self) -> dict[str, object]:
         """Get current memory statistics."""
         try:
-            process = psutil.Process(os.getpid())
-            memory_info = process.memory_info()
+            memory_info = self._process.memory_info()
             memory_mb = float(memory_info.rss) / BYTES_PER_MB
 
             with self._lock:
@@ -380,8 +392,8 @@ class WeakRefRegistry(_ThreadSafeStatsBase):
                 )
                 self._refs[key] = ref
             except TypeError:
-                # Unweakrefable (e.g., list of primitives); store a callable provider
-                self._refs[key] = lambda captured=value: captured
+                # Unweakrefable (e.g., list of primitives); avoid per-entry closures.
+                self._refs[key] = _StrongRef(value)
 
     def cleanup(self) -> int:
         """Alias for cleanup_dead_refs used by tests."""

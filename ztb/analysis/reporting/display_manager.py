@@ -36,7 +36,8 @@ class AnalysisDisplayManager:
         self.output_dir.mkdir(exist_ok=True)
 
         # set up plotting style
-        plt.style.use("default")
+        if hasattr(plt, "style") and hasattr(plt.style, "use"):
+            plt.style.use("default")
         if hasattr(sns, "set_palette"):
             sns.set_palette("husl")
 

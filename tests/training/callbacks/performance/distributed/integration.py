@@ -20,9 +20,6 @@ class WorkerPoolStub:
         return None
 
     def submit_task(self, task_type, task_data, callback=None):
-        # Simulate per-task processing time inversely proportional to worker count
-        processing_delay = 0.01 / max(1, getattr(self, "num_workers", 1))
-        time.sleep(processing_delay)
         if callback:
             try:
                 callback({"task_type": task_type, "task_data": task_data, "result": True})

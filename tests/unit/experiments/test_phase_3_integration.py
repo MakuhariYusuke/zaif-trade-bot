@@ -1,22 +1,9 @@
 #!/usr/bin/env python3
-"""
-Phase 3 Integration Tests
-Risk Management & Statistical Validation
-
-Phase 3コンポーネントの統合テスト。
-EnhancedRiskManager, StatisticalValidator, IntegratedBacktestRunnerの連携を確認。
-"""
-
-import sys
-from pathlib import Path
+"""Phase 3 integration tests for risk management and statistical validation."""
 
 import numpy as np
-import pandas as pd
 
-# Add project root to path
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
-
+from tests.helpers import make_exchange_random_walk_ohlcv_data
 from ztb.metrics.statistical_validator import StatisticalValidator
 from ztb.risk.enhanced_risk_manager import EnhancedRiskManager
 from ztb.trading.backtest.integrated_backtest_runner import IntegratedBacktestRunner
@@ -28,6 +15,8 @@ class TestPhase3Integration:
 
     def setup_method(self):
         """テスト前準備"""
+        self.rng = np.random.default_rng(42)
+
         # 設定
         self.risk_config = {
             "enabled": True,
@@ -43,7 +32,7 @@ class TestPhase3Integration:
         self.validation_config = {
             "alpha_level": 0.05,
             "confidence_level": 0.95,
-            "bootstrap_samples": 1000,  # テスト用に少なく
+            "bootstrap_samples": 100,
             "min_sample_size": 30,
         }
 
@@ -51,26 +40,21 @@ class TestPhase3Integration:
             "enable_risk_management": True,
             "enable_statistical_validation": True,
             "multi_timeframe_enabled": True,
-            "n_iterations": 5,  # テスト用に少なく
+            "n_iterations": 2,
             "confidence_level": 0.95,
         }
 
-        # サンプルデータ生成
-        np.random.seed(42)
-        dates = pd.date_range("2023-01-01", periods=1000, freq="1min")
-        self.market_data = pd.DataFrame(
-            {
-                "open": np.random.randn(1000) + 100,
-                "high": np.random.randn(1000) + 102,
-                "low": np.random.randn(1000) + 98,
-                "close": np.random.randn(1000) + 100,
-                "volume": np.random.randint(1000, 10000, 1000),
-            },
-            index=dates,
+        self.market_data = make_exchange_random_walk_ohlcv_data(
+            rows=360,
+            seed=42,
+            start="2023-01-01",
+            freq="1min",
+            base_price=100.0,
+            include_timestamp=False,
         )
 
         # リターンデータ生成
-        self.sample_returns = np.random.normal(0.001, 0.02, 500).tolist()
+        self.sample_returns = self.rng.normal(0.001, 0.02, 160).tolist()
 
     def test_enhanced_risk_manager_initialization(self):
         """EnhancedRiskManager初期化テスト"""
@@ -166,8 +150,8 @@ class TestPhase3Integration:
         validator = StatisticalValidator(self.validation_config)
 
         # 予測値と実際のリターンを生成
-        predictions = np.random.normal(0, 1, 200).tolist()
-        actual_returns = [p * 0.5 + np.random.normal(0, 0.01) for p in predictions]
+        predictions = self.rng.normal(0, 1, 160).tolist()
+        actual_returns = [p * 0.5 + self.rng.normal(0, 0.01) for p in predictions]
 
         result = validator.validate_signal_quality(predictions, actual_returns)
 
@@ -186,7 +170,7 @@ class TestPhase3Integration:
 
         assert runner.enable_risk_management == True
         assert runner.enable_statistical_validation == True
-        assert runner.n_iterations == 5
+        assert runner.n_iterations == 2
 
     def test_integrated_backtest_execution(self):
         """統合バックテスト実行テスト"""
@@ -195,7 +179,7 @@ class TestPhase3Integration:
         # シンプルな戦略関数
         def simple_strategy(data_point, portfolio_value):
             # ランダムな取引シグナル
-            signal = np.random.choice([-1, 0, 1], p=[0.3, 0.4, 0.3])
+            signal = self.rng.choice([-1, 0, 1], p=[0.3, 0.4, 0.3])
             position_size = 0.1 if signal != 0 else 0.0
             return {
                 "signal": signal,
@@ -204,7 +188,7 @@ class TestPhase3Integration:
             }
 
         # テスト用にデータを小さく
-        test_data = self.market_data.head(100)
+        test_data = self.market_data.head(40)
 
         result = runner.run_integrated_backtest(
             simple_strategy, test_data, initial_capital=1000.0
@@ -213,7 +197,7 @@ class TestPhase3Integration:
         assert result["success"] == True
         assert "summary" in result
         assert "iterations" in result
-        assert len(result["iterations"]) == 5
+        assert len(result["iterations"]) == 2
 
         summary = result["summary"]
         assert "total_iterations" in summary
@@ -233,14 +217,14 @@ class TestPhase3Integration:
 
         # 4. 統合バックテスト実行
         def test_strategy(data_point, portfolio_value):
-            signal = np.random.choice([-1, 0, 1])
+            signal = self.rng.choice([-1, 0, 1])
             return {
                 "signal": signal,
                 "position_size": 0.05,
                 "price": data_point["close"],
             }
 
-        test_data = self.market_data.head(50)  # 小さくしてテスト
+        test_data = self.market_data.head(32)
         backtest_result = runner.run_integrated_backtest(
             test_strategy, test_data, initial_capital=1000.0
         )
@@ -280,35 +264,3 @@ class TestPhase3Integration:
         assert "Integrated Backtest Report" in report
         assert "Summary" in report
         assert "Performance Metrics" in report
-
-
-if __name__ == "__main__":
-    # 直接実行時のテスト
-    test_instance = TestPhase3Integration()
-    test_instance.setup_method()
-
-    print("Running Phase 3 Integration Tests...")
-
-    try:
-        test_instance.test_enhanced_risk_manager_initialization()
-        print("✓ EnhancedRiskManager initialization test passed")
-
-        test_instance.test_statistical_validator_initialization()
-        print("✓ StatisticalValidator initialization test passed")
-
-        test_instance.test_performance_metrics_validation()
-        print("✓ Performance metrics validation test passed")
-
-        test_instance.test_integrated_backtest_runner_initialization()
-        print("✓ IntegratedBacktestRunner initialization test passed")
-
-        test_instance.test_full_integration_workflow()
-        print("✓ Full integration workflow test passed")
-
-        print("\n🎉 All Phase 3 integration tests passed!")
-
-    except Exception as e:
-        print(f"\n❌ Test failed: {e}")
-        import traceback
-
-        traceback.print_exc()

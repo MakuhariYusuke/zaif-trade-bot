@@ -7,13 +7,18 @@ AutomaticOptimizationPipeline, OptimizationResultPersistence, and ParallelOptimi
 """
 
 import tempfile
-import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
+from tests.helpers import (
+    make_scalar_objective,
+    make_scalar_search_space,
+    make_timeframe_objectives,
+    make_timeframe_search_spaces,
+)
 from ztb.training.unified_optimizer import (
     ABTestingFramework,
     AutomaticOptimizationPipeline,
@@ -26,6 +31,24 @@ from ztb.training.unified_optimizer import (
     UnifiedOptimizer,
 )
 from ztb.utils.system_utils import check_library_availability
+
+
+class _StubOptimizer:
+    def __init__(self, param_name: str = "param", value: float = 0.25):
+        self.param_name = param_name
+        self.value = value
+        self.config = OptimizationConfig(max_trials=1)
+
+    def optimize(self, objective, search_space):
+        params = {self.param_name: self.value}
+        return OptimizationResult(
+            best_params=params,
+            best_score=objective(params),
+            optimization_history=[],
+            execution_time=0.0,
+            convergence_info={},
+            recommendations=[],
+        )
 
 
 class TestOptimizationConfig:
@@ -94,12 +117,9 @@ class TestBayesianOptimizer:
     @unittest.skipUnless(check_library_availability('optuna', 'optimization'), "optuna not available")
     def test_optimize_with_optuna(self):
         """Test optimization with Optuna available."""
-        config = OptimizationConfig(max_trials=5)
-
-        def objective(params):
-            return params.get('x', 0) ** 2
-
-        search_space = {'x': {'type': 'float', 'low': -1, 'high': 1}}
+        config = OptimizationConfig(max_trials=2)
+        objective = make_scalar_objective("x")
+        search_space = make_scalar_search_space("x")
 
         optimizer = BayesianOptimizer(config)
         result = optimizer.optimize(objective, search_space)
@@ -115,7 +135,7 @@ class TestBayesianOptimizer:
     @patch('ztb.training.unified_optimizer.OPTUNA_AVAILABLE', False)
     def test_optimize_without_optuna_raises_error(self):
         """Test that BayesianOptimizer raises error when Optuna is not available."""
-        config = OptimizationConfig(max_trials=5)
+        config = OptimizationConfig(max_trials=2)
 
         with pytest.raises(ImportError, match="Optuna is required for Bayesian optimization"):
             BayesianOptimizer(config)
@@ -136,24 +156,15 @@ class TestMultiTimeframeOptimizer:
 
     def test_optimize_multi_timeframe(self):
         """Test multi-timeframe optimization."""
-        config = OptimizationConfig()
-
-        def tf_objective(params):
-            return params.get('param', 0) ** 2
-
-        objective_functions = {
-            '1m': tf_objective,
-            '5m': tf_objective,
-            '15m': tf_objective
-        }
-
-        search_spaces = {
-            '1m': {'param': {'type': 'float', 'low': -1, 'high': 1}},
-            '5m': {'param': {'type': 'float', 'low': -1, 'high': 1}},
-            '15m': {'param': {'type': 'float', 'low': -1, 'high': 1}}
-        }
+        config = OptimizationConfig(max_trials=1)
+        objective_functions = make_timeframe_objectives(["1m", "5m", "15m"], param_name="param")
+        search_spaces = make_timeframe_search_spaces(["1m", "5m", "15m"], param_name="param")
 
         optimizer = MultiTimeframeOptimizer(config)
+        optimizer.timeframe_optimizers = {
+            timeframe: _StubOptimizer("param", value=0.25)
+            for timeframe in optimizer.timeframes
+        }
         result = optimizer.optimize_multi_timeframe(objective_functions, search_spaces)
 
         assert 'integrated' in result
@@ -277,24 +288,20 @@ class TestParallelOptimizer:
 
     def test_run_parallel_optimization(self):
         """Test parallel optimization execution."""
-        config = OptimizationConfig(max_parallel_trials=2)
-
-        def objective(params):
-            time.sleep(0.01)  # Simulate computation
-            return params.get('x', 0) ** 2
-
-        search_space = {'x': {'type': 'float', 'low': -1, 'high': 1}}
+        config = OptimizationConfig(max_trials=1, max_parallel_trials=2)
+        objective = make_scalar_objective("x")
+        search_space = make_scalar_search_space("x")
 
         tasks = [
             {
                 'task_id': 'task1',
-                'optimizer': BayesianOptimizer(config),
+                'optimizer': _StubOptimizer("x", value=0.1),
                 'objective': objective,
                 'search_space': search_space
             },
             {
                 'task_id': 'task2',
-                'optimizer': BayesianOptimizer(config),
+                'optimizer': _StubOptimizer("x", value=0.2),
                 'objective': objective,
                 'search_space': search_space
             }
@@ -306,6 +313,42 @@ class TestParallelOptimizer:
         assert result['total_tasks'] == 2
         assert result['completed_tasks'] == 2
         assert 'results' in result
+
+    def test_task_specific_max_trials_override_is_restored(self):
+        """Per-task max_trials should apply only to that task execution."""
+        config = OptimizationConfig(max_trials=9, max_parallel_trials=1)
+
+        class RecordingOptimizer:
+            def __init__(self):
+                self.config = OptimizationConfig(max_trials=9)
+                self.observed_max_trials = []
+
+            def optimize(self, objective, search_space):
+                self.observed_max_trials.append(self.config.max_trials)
+                return OptimizationResult(
+                    best_params={},
+                    best_score=objective({}),
+                    optimization_history=[],
+                    execution_time=0.0,
+                    convergence_info={},
+                    recommendations=[],
+                )
+
+        recording_optimizer = RecordingOptimizer()
+        optimizer = ParallelOptimizer(config)
+        result = optimizer._execute_optimization_task(
+            {
+                "task_id": "recording",
+                "optimizer": recording_optimizer,
+                "objective": lambda params: 0.0,
+                "search_space": {},
+                "max_trials": 1,
+            }
+        )
+
+        assert result["success"] is True
+        assert recording_optimizer.observed_max_trials == [1]
+        assert recording_optimizer.config.max_trials == 9
 
 
 class TestAutomaticOptimizationPipeline:
@@ -321,12 +364,9 @@ class TestAutomaticOptimizationPipeline:
 
     def test_run_pipeline(self):
         """Test running optimization pipeline."""
-        config = OptimizationConfig(max_trials=5)
-
-        def objective(params):
-            return params.get('x', 0) ** 2
-
-        search_space = {'x': {'type': 'float', 'low': -1, 'high': 1}}
+        config = OptimizationConfig(max_trials=2)
+        objective = make_scalar_objective("x")
+        search_space = make_scalar_search_space("x")
 
         pipeline = AutomaticOptimizationPipeline(config)
         # Skip system optimization stage for testing
@@ -356,12 +396,9 @@ class TestUnifiedOptimizer:
 
     def test_optimize_hyperparameters(self):
         """Test hyperparameter optimization."""
-        config = OptimizationConfig(max_trials=5)
-
-        def objective(params):
-            return params.get('x', 0) ** 2
-
-        search_space = {'x': {'type': 'float', 'low': -1, 'high': 1}}
+        config = OptimizationConfig(max_trials=2)
+        objective = make_scalar_objective("x")
+        search_space = make_scalar_search_space("x")
 
         optimizer = UnifiedOptimizer(config)
         result = optimizer.optimize_hyperparameters(objective, search_space)
@@ -370,24 +407,15 @@ class TestUnifiedOptimizer:
 
     def test_optimize_multi_timeframe(self):
         """Test multi-timeframe optimization."""
-        config = OptimizationConfig()
-
-        def tf_objective(params):
-            return params.get('param', 0) ** 2
-
-        objective_functions = {
-            '1m': tf_objective,
-            '5m': tf_objective,
-            '15m': tf_objective
-        }
-
-        search_spaces = {
-            '1m': {'param': {'type': 'float', 'low': -1, 'high': 1}},
-            '5m': {'param': {'type': 'float', 'low': -1, 'high': 1}},
-            '15m': {'param': {'type': 'float', 'low': -1, 'high': 1}}
-        }
+        config = OptimizationConfig(max_trials=1)
+        objective_functions = make_timeframe_objectives(["1m", "5m", "15m"], param_name="param")
+        search_spaces = make_timeframe_search_spaces(["1m", "5m", "15m"], param_name="param")
 
         optimizer = UnifiedOptimizer(config)
+        optimizer.multi_timeframe_optimizer.timeframe_optimizers = {
+            timeframe: _StubOptimizer("param", value=0.25)
+            for timeframe in optimizer.multi_timeframe_optimizer.timeframes
+        }
         result = optimizer.optimize_multi_timeframe(objective_functions, search_spaces)
 
         assert 'integrated' in result
@@ -410,17 +438,14 @@ class TestUnifiedOptimizer:
 
     def test_run_parallel_optimization(self):
         """Test parallel optimization."""
-        config = OptimizationConfig(max_parallel_trials=2)
-
-        def objective(params):
-            return params.get('x', 0) ** 2
-
-        search_space = {'x': {'type': 'float', 'low': -1, 'high': 1}}
+        config = OptimizationConfig(max_trials=1, max_parallel_trials=2)
+        objective = make_scalar_objective("x")
+        search_space = make_scalar_search_space("x")
 
         tasks = [
             {
                 'task_id': 'task1',
-                'optimizer': BayesianOptimizer(config),
+                'optimizer': _StubOptimizer("x", value=0.1),
                 'objective': objective,
                 'search_space': search_space
             }
@@ -457,7 +482,3 @@ class TestUnifiedOptimizer:
 
             loaded = optimizer.load_result_from_version_control(version_id)
             assert loaded is not None
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])

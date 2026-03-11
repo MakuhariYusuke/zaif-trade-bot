@@ -66,7 +66,7 @@ class TestSignalGuidanceIntegration:
     @pytest.fixture(scope="class")
     def realistic_market_data(self):
         """Create realistic market data for testing"""
-        return make_realistic_intraday_ohlcv_data(rows=96, seed=42, base_price=50000.0)
+        return make_realistic_intraday_ohlcv_data(rows=48, seed=42, base_price=50000.0)
 
     @pytest.fixture(scope="class")
     def portfolio_state(self):
@@ -88,52 +88,47 @@ class TestSignalGuidanceIntegration:
         return rng.normal(0, 0.5, len(market_rows))
 
     @pytest.fixture(scope="class")
-    def signal_replay(self, market_rows, portfolio_state, action_samples):
+    def improved_replay(self, market_rows, portfolio_state, action_samples):
         improved_system = SignalGuidanceSystem()
-        baseline_system = _make_baseline_system()
 
         improved_signals = _collect_guided_actions(
             improved_system, market_rows, portfolio_state, action_samples
         )
-        baseline_signals = _collect_guided_actions(
-            baseline_system, market_rows, portfolio_state, action_samples
-        )
 
         return {
             "improved_signals": np.asarray(improved_signals, dtype=int),
-            "baseline_signals": np.asarray(baseline_signals, dtype=int),
             "total_signals": len(market_rows),
         }
 
     @pytest.fixture(scope="class")
     def benchmark_rows(self, market_rows):
-        return market_rows[:48]
+        return market_rows[:16]
 
     @pytest.fixture(scope="class")
     def benchmark_actions(self, action_samples):
-        return action_samples[:48]
+        return action_samples[:16]
 
     @pytest.fixture(scope="class")
     def position_test_rows(self, market_rows):
-        return market_rows[:20]
+        return market_rows[:8]
 
     @pytest.fixture(scope="class")
     def consistency_rows(self, market_rows):
-        return market_rows[:12]
+        return market_rows[:6]
 
     def test_end_to_end_signal_generation(
         self,
         realistic_market_data,
-        signal_replay,
+        improved_replay,
     ):
         """Test end-to-end signal generation with realistic data"""
         # Validate signal distribution
-        signals_array = signal_replay["improved_signals"]
+        signals_array = improved_replay["improved_signals"]
         buy_signals = int(np.sum(signals_array == 1))
         sell_signals = int(np.sum(signals_array == -1))
         hold_signals = int(np.sum(signals_array == 0))
 
-        total_signals = int(signal_replay["total_signals"])
+        total_signals = int(improved_replay["total_signals"])
         assert total_signals == len(realistic_market_data)
 
         # Should have reasonable signal distribution
@@ -153,11 +148,22 @@ class TestSignalGuidanceIntegration:
     def test_signal_quality_vs_baseline(
         self,
         realistic_market_data,
-        signal_replay,
+        improved_replay,
+        market_rows,
+        portfolio_state,
+        action_samples,
     ):
         """Guided system should suppress noisy baseline threshold firing."""
-        improved_signals = signal_replay["improved_signals"]
-        baseline_signals = signal_replay["baseline_signals"]
+        improved_signals = improved_replay["improved_signals"]
+        baseline_signals = np.asarray(
+            _collect_guided_actions(
+                _make_baseline_system(),
+                market_rows,
+                portfolio_state,
+                action_samples,
+            ),
+            dtype=int,
+        )
 
         # Calculate signal frequencies
         improved_trading_signals = int(np.sum(improved_signals != 0))

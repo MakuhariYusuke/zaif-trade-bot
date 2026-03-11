@@ -139,6 +139,30 @@ class TestMultiTimeframeAnalyzer:
         assert result.timeframe_agreement >= 0.0
         assert result.timeframe_agreement <= 1.0
 
+    def test_analyze_convergence_uses_precomputed_analyses(self, mock_technical_indicators):
+        """Test convergence can reuse precomputed analyses without a second collection pass."""
+        mock_instance = Mock()
+        mock_technical_indicators.return_value = mock_instance
+
+        analyzer = MultiTimeframeAnalyzer()
+        analyses = {
+            Timeframe.M1: TrendAnalysis(
+                direction=TrendDirection.BULLISH,
+                strength=70.0,
+                momentum=12.0,
+                rsi=62.0,
+                macd_signal="bullish",
+                bollinger_position="middle",
+            )
+        }
+
+        with patch.object(analyzer, "collect_trend_analyses") as mock_collect:
+            result = analyzer.analyze_convergence(analyses)
+
+        mock_collect.assert_not_called()
+        assert result.dominant_trend == TrendDirection.BULLISH
+        assert result.convergence_score >= 0.0
+
     def test_get_analysis_summary(self, mock_technical_indicators):
         """Test getting comprehensive analysis summary"""
         # Mock TechnicalIndicators instance
