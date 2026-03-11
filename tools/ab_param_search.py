@@ -28,12 +28,12 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from ztb.utils.parallel_experiments import run_parallel_experiments
-
 # Ensure tools package path is importable when running as a script
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
+
+from ztb.utils.parallel_experiments import run_parallel_experiments
 
 import importlib.util
 

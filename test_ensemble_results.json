@@ -1,0 +1,215 @@
+{
+  "config": {
+    "enabled": true,
+    "members": 5,
+    "specializations": [
+      "bull",
+      "bear",
+      "sideways",
+      "high_vol",
+      "low_vol"
+    ],
+    "voting_mechanism": "weighted_confidence",
+    "diversity_weight": 0.3,
+    "consensus_requirement": {
+      "enabled": true,
+      "agreement_threshold": 0.6,
+      "force_hold_on_disagreement": true
+    },
+    "stability_voting": {
+      "enabled": true,
+      "stability_weight": 0.4,
+      "performance_weight": 0.6
+    },
+    "adaptation": {
+      "enabled": true,
+      "performance_threshold": 0.7,
+      "rebalancing_interval": 1000
+    }
+  },
+  "stats": {
+    "member_stats": {
+      "0": {
+        "specialization": "bull",
+        "confidence": 0.5,
+        "performance_score": 0.5,
+        "stability_score": 0.5,
+        "last_updated": 1773222253.445056
+      },
+      "1": {
+        "specialization": "bear",
+        "confidence": 0.5,
+        "performance_score": 0.5,
+        "stability_score": 0.5,
+        "last_updated": 1773222253.445056
+      },
+      "2": {
+        "specialization": "sideways",
+        "confidence": 0.5,
+        "performance_score": 0.5,
+        "stability_score": 0.5,
+        "last_updated": 1773222253.445056
+      },
+      "3": {
+        "specialization": "high_vol",
+        "confidence": 0.5,
+        "performance_score": 0.5,
+        "stability_score": 0.5,
+        "last_updated": 1773222253.445056
+      },
+      "4": {
+        "specialization": "low_vol",
+        "confidence": 0.5,
+        "performance_score": 0.5,
+        "stability_score": 0.5,
+        "last_updated": 1773222253.445056
+      }
+    },
+    "overall_stats": {
+      "total_members": 5,
+      "avg_confidence": 0.5,
+      "avg_performance": 0.5,
+      "avg_stability": 0.5,
+      "decision_log_size": 20,
+      "performance_history_size": 0
+    },
+    "config": {
+      "voting_mechanism": "weighted_confidence",
+      "diversity_weight": 0.3,
+      "consensus_enabled": true
+    }
+  },
+  "predictions": [
+    [
+      -1,
+      {
+        "method": "weighted_confidence",
+        "action_weights": {
+          "1": 1.0,
+          "-1": 1.5
+        },
+        "total_weight": 2.5,
+        "normalized_weights": {
+          "1": 0.4,
+          "-1": 0.6
+        }
+      }
+    ],
+    [
+      1,
+      {
+        "method": "weighted_confidence",
+        "action_weights": {
+          "1": 1.0,
+          "-1": 0.5,
+          "0": 1.0
+        },
+        "total_weight": 2.5,
+        "normalized_weights": {
+          "1": 0.4,
+          "-1": 0.2,
+          "0": 0.4
+        }
+      }
+    ],
+    [
+      1,
+      {
+        "method": "weighted_confidence",
+        "action_weights": {
+          "1": 1.0,
+          "-1": 1.0,
+          "0": 0.5
+        },
+        "total_weight": 2.5,
+        "normalized_weights": {
+          "1": 0.4,
+          "-1": 0.4,
+          "0": 0.2
+        }
+      }
+    ],
+    [
+      -1,
+      {
+        "method": "weighted_confidence",
+        "action_weights": {
+          "1": 0.5,
+          "-1": 1.0,
+          "0": 1.0
+        },
+        "total_weight": 2.5,
+        "normalized_weights": {
+          "1": 0.2,
+          "-1": 0.4,
+          "0": 0.4
+        }
+      }
+    ],
+    [
+      1,
+      {
+        "method": "weighted_confidence",
+        "action_weights": {
+          "1": 1.0,
+          "-1": 0.5,
+          "0": 1.0
+        },
+        "total_weight": 2.5,
+        "normalized_weights": {
+          "1": 0.4,
+          "-1": 0.2,
+          "0": 0.4
+        }
+      }
+    ]
+  ],
+  "analysis": {
+    "ensemble_performance": {
+      "total_decisions": 20,
+      "avg_confidence": 0.5,
+      "diversity_score": 0.85
+    },
+    "member_analysis": {
+      "0": {
+        "specialization": "bull",
+        "confidence": 0.5,
+        "performance_score": 0.5,
+        "stability_score": 0.5,
+        "last_updated": 1773222253.445056
+      },
+      "1": {
+        "specialization": "bear",
+        "confidence": 0.5,
+        "performance_score": 0.5,
+        "stability_score": 0.5,
+        "last_updated": 1773222253.445056
+      },
+      "2": {
+        "specialization": "sideways",
+        "confidence": 0.5,
+        "performance_score": 0.5,
+        "stability_score": 0.5,
+        "last_updated": 1773222253.445056
+      },
+      "3": {
+        "specialization": "high_vol",
+        "confidence": 0.5,
+        "performance_score": 0.5,
+        "stability_score": 0.5,
+        "last_updated": 1773222253.445056
+      },
+      "4": {
+        "specialization": "low_vol",
+        "confidence": 0.5,
+        "performance_score": 0.5,
+        "stability_score": 0.5,
+        "last_updated": 1773222253.445056
+      }
+    },
+    "decision_patterns": {
+      "action_distribution": {},
+      "consensus_rate": 0.75
+    }
+  }
+}

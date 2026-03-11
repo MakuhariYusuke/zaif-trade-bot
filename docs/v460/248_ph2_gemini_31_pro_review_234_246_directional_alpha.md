@@ -35,7 +35,7 @@ BTC/JPY のような強いモメンタムを伴う市場において、**強い�
 
 **Q4/Q5. 在庫偏重は「異常」ではなく「トレンドの結果」。どこを変えるべきか？ / Trending Up での Sell 完全封鎖は是か？**
 - **結論: 是。** inventory_skewing (中立化圧力) によるオフセット補正は、**「現在のレジームが Ranging の時のみ有効」と条件付け（Gating）すべきです。**
-- Trending 判定されている最中の在庫の偏りは「正当なポジショニング（Directional Exposure）」です。ここで alance_forced や inventory_skewing を働かせて逆張りの Sell を行うことは、アルファ（α）の破壊に他なりません。
+- Trending 判定されている最中の在庫の偏りは「正当なポジショニング（Directional Exposure）」です。ここで balance_forced や inventory_skewing を働かせて逆張りの Sell を行うことは、アルファ（α）の破壊に他なりません。
 - Trending_up レジームにおいてはSellを原則封鎖し、既存のBTCは「利確（Take Profit）のための遥か遠いLimit」を除いて手放すべきではありません。
 
 **Q6. 18日間 -792 JPY の根本原因**
@@ -63,7 +63,7 @@ BTC/JPY のような強いモメンタムを伴う市場において、**強い�
 ### [P0] Regime-Aware Inventory Skew (在庫中立化のレジーム依存化)
 inventory_skewing（在庫を中央に戻そうとするオフセット調整）を、レジームにリンクさせます。
 - **Ranging:** 従来の A-S モデル通り、強烈な inventory_skewing を適用。
-- **Trending (Up/Down):** inventory_skewing を無効化（または極端に弱める）。順張り方向への在庫偏重を「適正」とみなし、逆張り方向の alance_forced も発動させない。
+- **Trending (Up/Down):** inventory_skewing を無効化（または極端に弱める）。順張り方向への在庫偏重を「適正」とみなし、逆張り方向の balance_forced も発動させない。
 
 ### [P0] Total Equity (Mark-to-Market) PnL の公式指標化
 「JPYが減ったから負け」という評価基準をシステムから抹消してください。

@@ -8,10 +8,10 @@
 
 ## 0. 総括: 「止まらないBot」への到達と、新たに発覚した「多重人格」問題
 
-前回の 270# レビューに対し、271# ドキュメントにて「State save の見落とし」や「市場理論実装の有効化（Dormant）の未確認」について手痛いご指摘をいただきました。今回はそのフィードバックを真摯に受け止め、実ログ（ill_records_20260305.jsonl や ill_test_events.jsonl）のパース結果と、ソースコード上の挙動を厳格に突き合わせて検証を行いました。
+前回の 270# レビューに対し、271# ドキュメントにて「State save の見落とし」や「市場理論実装の有効化（Dormant）の未確認」について手痛いご指摘をいただきました。今回はそのフィードバックを真摯に受け止め、実ログ（fill_records_20260305.jsonl や fill_test_events.jsonl）のパース結果と、ソースコード上の挙動を厳格に突き合わせて検証を行いました。
 
 結論を示します：
-1. **282# のデッドロック修正は「クリティカル・ヒット」です。** 長らく苦しめられた alance_forced と per-side halt の永久ループは、このコミット（untick除去とIE双方向化）により論理的に破壊されました。
+1. **282# のデッドロック修正は「クリティカル・ヒット」です。** 長らく苦しめられた balance_forced と per-side halt の永久ループは、このコミット（untick除去とIE双方向化）により論理的に破壊されました。
 2. しかし、**Codex が 283# 4.1 で発見した「run_id の重複稼働（Split-Brain）」は文字通り致命的（P0）** です。単一スレッド・単一のアカウントで取引すべき HFT Bot が、同一時刻に2つのプロセスとして走り、取引レコードを同一ファイルに書き込んでいる状態は、ポジションの自己交差（Wash Trade）や CEX 側の API Ban（Rate Limit 超過）、残高枯渇のエラーを誘発する最悪のインシデント状態です。
 3. **市場理論的観点:** Codex の「レンジ相場での Maker 逆選択負け」と「Buy側の情報優位欠如」という分析は、オーダーブック力学（Order Book Dynamics）の観点から 100% 正確です。
 
@@ -53,7 +53,7 @@ Codex 3.2 の指摘：「Buy が短期ドリフトに対し不利な位置で約
 
 ### 【P0】ロック機構とシングルトン（単一実行）の絶対保証
 システムが儲かるかどうか以前の話です。
-1. **Lock の OS レベル強化:** Pythonの portalocker や msvcrt (Windows) / cntl (Linux) を用いた「プロセスが死ねば自動解放される強固なファイルロック」を実装し、ロック取得失敗時は絶対に起動させない (sys.exit(1)) 構造に直す。
+1. **Lock の OS レベル強化:** Pythonの portalocker や msvcrt (Windows) / fcntl (Linux) を用いた「プロセスが死ねば自動解放される強固なファイルロック」を実装し、ロック取得失敗時は絶対に起動させない (sys.exit(1)) 構造に直す。
 2. **Watchdog の確実な Kill:** 前の PID に対して「本当にプロセスツリーから消えたか」を確認するループ（psutil.pid_exists 等）を組み込み、消えるまで新プロセスは待機させる。
 
 ### 【P1】Buy サイド防御（Adverse Selection Guard）の非対称な強化
@@ -61,7 +61,7 @@ Codex 3.2 の指摘：「Buy が短期ドリフトに対し不利な位置で約
 1. **Buy 側の AS_Ratio (逆選択比率) 連動の Offset 強制拡大:**
    短期的な売り圧力（Microprice の下落速度）が一定閾値を超えた場合、強制的に Buy 注文の Offset を +3.0bps や +5.0bps といった安全圏まで引き下げる。
 2. **Forced Buy での「待つ勇気」:**
-   alance_forced な Buy であっても、Toxicity（Toxic Down Flow）を検知した場合はすぐに買わない。Glosten-Milgrom 判定に基づき「いま買うと損失確定」な瞬間は、数サイクル待ってから拾う（Delay Execution）。
+   balance_forced な Buy であっても、Toxicity（Toxic Down Flow）を検知した場合はすぐに買わない。Glosten-Milgrom 判定に基づき「いま買うと損失確定」な瞬間は、数サイクル待ってから拾う（Delay Execution）。
 
 ---
 

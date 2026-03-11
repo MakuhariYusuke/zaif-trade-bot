@@ -20,7 +20,7 @@
 ## 1. 構造的欠陥の数理的・論理的断罪
 
 ### 1.1 順序依存の矛盾 (Routing Bug)
-269# 2.2 で指摘されている通り、ill_loop_orchestrator.py:1699 周辺の alance_forced ルーティングに致命的欠陥があります。
+269# 2.2 で指摘されている通り、fill_loop_orchestrator.py:1699 周辺の balance_forced ルーティングに致命的欠陥があります。
 **「通常取引（Alpha採取）」をブロックするための Safety（per-side halt）が、「在庫の清算」という System Recovery 行動まで無差別にブロックしています。**
 Inventory Constraint（在庫制約）による破綻を回避するためには、「Alpha採取」と「在庫逃がし」をコードの最上段（Top-level）で明示的に分岐させ、**「在庫逃がし（Inventory Escape Mode）の時だけ、特例として該当 Side の Halt をバイパスして縮退ロットで放出する」**という権限を与えなければなりません。
 
@@ -39,7 +39,7 @@ DailyDrawdownGuard の 	ick_side_halt によって解放された直後、対象
 **しかし、現状これらは YAML で無効化（Dormant）されており、実際の Live 判断に 1 ミリも貢献していません。** 
 素晴らしいフェラーリのエンジンを積み込みながら、開かない車のトランクに放置している状態です。
 
-特に **Kelly Criterion（ケリー基準）** は、現在の alance_forced 問題に対する究極の数理的回答です。もし逆選択（Adverse Selection）の確率 $ が高く、期待値（Edge）がマイナスになるならば、Kelly Fraction ^*$ は自動的にゼロ以下の負になります。
+特に **Kelly Criterion（ケリー基準）** は、現在の balance_forced 問題に対する究極の数理的回答です。もし逆選択（Adverse Selection）の確率 $ が高く、期待値（Edge）がマイナスになるならば、Kelly Fraction ^*$ は自動的にゼロ以下の負になります。
 つまり、危険な相場では「システムが自動的にロットサイズを 0 にして取引を止める（＝事実上の Halt）」という美しい自己調整機能として働きます。これらを意図的に使わない手はありません。
 
 ---
@@ -49,8 +49,8 @@ DailyDrawdownGuard の 	ick_side_halt によって解放された直後、対象
 269# の提案 (4.1/4.2) を全面的に支持しつつ、さらに市場理論を連携させた以下の [P0] ３アクションを要求します。
 
 ### [P0] Action A: 「Inventory Escape Mode」のトップレベル分離と専用ルート開通
-ill_loop_orchestrator.py のメインループ直下で、以下の条件を満たした場合は「Alpha Loop」に進入させるのをやめ、**早期 Return/Continue ではなく execute_inventory_escape 関数へ飛ばす（Routing）**ように改修すること。
-- 条件: alance_forced == True かつ is_side_halted(next_side) == True （あるいは Inventory が極端に偏っている場合）
+fill_loop_orchestrator.py のメインループ直下で、以下の条件を満たした場合は「Alpha Loop」に進入させるのをやめ、**早期 Return/Continue ではなく execute_inventory_escape 関数へ飛ばす（Routing）**ように改修すること。
+- 条件: balance_forced == True かつ is_side_halted(next_side) == True （あるいは Inventory が極端に偏っている場合）
 - このルートに入った際は per-side halt を合法的に無視し、234# で作った「Degraded Liquidation（極小ロット・極大スプレッド・間引き）」を直接実行する。
 
 ### [P0] Action B: Per-side Halt 解除時の PnL 再アンカー (Debt Forgiveness)

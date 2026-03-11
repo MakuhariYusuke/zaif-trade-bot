@@ -20,6 +20,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
 
+# Ensure project root is importable when running as a script
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
+
 # Windows DLL guard: torch must be imported before numpy/scipy/pandas to avoid WinError 1114
 _TORCH_IMPORT_ERROR = None
 try:

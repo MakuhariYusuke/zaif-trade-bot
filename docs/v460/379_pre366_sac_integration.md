@@ -1,6 +1,6 @@
 # 379# Pre-366# 市場理論 SAC 統合 + リファクタリング + ph3 次タスク設計
 
-**Status**: P3-A/B/C 完了・P3-D 未着手  
+**Status**: P3-A/B/C 完了 + 訓練パイプライン最適化完了・P3-D 未着手  
 **Parent**: 377# (ph3 統一方針), 378# (SAC stub 回避 + タイムライン文書化)  
 **Date**: 2026-03-25 (updated: 2026-03-11)
 
@@ -245,6 +245,12 @@ P3-D (importance analysis) ⬜ 未着手 → NEXT
 | `ztb/features/unified_feature.py` | market_theory import 追加 |
 | `scripts/v460/update_medium_parquet.py` | market_theory import 追加 |
 | `tests/unit/core/features/test_market_theory_features.py` | **新規**: 23 テスト |
+| `scripts/v460/lib/sac_common.py` | **新規**: SAC 訓練共通ユーティリティ (Protocol/ROI抽出/OOS評価/split/cleanup/buffer調整/SB3 stub回避) |
+| `scripts/v460/lib/tasks/sac_train.py` | sac_common import に切替, _extract_roi_from_env 削除, _evaluate_trained_model を evaluate_model_oos に委譲 |
+| `scripts/v460/ml/sac_retrain_scheduler.py` | sac_common import に切替, Protocol/OOS評価/train_val_split/cleanup/SB3 stub回避 を共通化 |
+| `configs/v460/experiments/g2_sac_train.yaml` | 本番復元: full parquet, 50K steps, 4 seeds, train_end_index=973544 |
+| `tests/unit/v460/test_356_g2_sac_blockers.py` | extract_roi_from_env import 先を sac_common に変更 |
+| `tests/unit/v460/test_sac_retrain_scheduler.py` | _mock_sb3_import を import_real_sb3 パッチに簡素化 |
 | `docs/v460/379_pre366_sac_integration.md` | **新規**: 本設計書 |
 
 ## §9 リスク・制約
@@ -261,3 +267,4 @@ P3-D (importance analysis) ⬜ 未着手 → NEXT
 |---|---|---|
 | v1.0 | 2026-03-25 | 初版: 10 システム SAC 接続 + リファクタリング + ph3 設計 |
 | v2.0 | 2026-03-11 | P3-A/B (B3-B6)/C 完了。neutral fallback + mtime IO cache 実装。117 tests PASSED |
+| v3.0 | 2026-03-11 | YAML本番復元 (I4/I6), sac_common.py 新設で重複排除 (~120行削減), OOS評価バグ修正 (n>1 episode)。4605 tests PASSED |

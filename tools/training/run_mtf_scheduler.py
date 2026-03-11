@@ -3,7 +3,13 @@
 Run MTF scheduler tool quickly from the command line.
 """
 import argparse
+import sys
 from pathlib import Path
+
+# Ensure project root is importable when running as a script
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
 
 from ztb.trading.environment.components.reward.mtf_weight_manager import (
     MTFWeightManager,

@@ -11,26 +11,26 @@
 230#〜231#における Fast Fill Defense (FFD) の Layer 2 追加や Kyle (1985) 情報漸次伝播に基づく Streak 解除の導入自体は、コード衛生や論理的妥当性の観点から見れば非常に優れている。
 しかし、**「なぜ何度も投入しては1時間で破綻するのか」に対する答えは FFD にはない。**
 
-最大の真因は、232# の Codex のレビューでも指摘されている通り、**alance_forced を悪用（濫用）した安全装置 (Gate) の大規模な意図的バイパス**にある。
+最大の真因は、232# の Codex のレビューでも指摘されている通り、**balance_forced を悪用（濫用）した安全装置 (Gate) の大規模な意図的バイパス**にある。
 「システムを死なせないこと（Liveness / デッドロック回避）」と「資産を守ること（Safety / 逆選択回避）」を天秤にかけ、Liveness を優先するために「Safetyの電源を引っこ抜いている」のが現在のシステムの実態だ。これでは何百回パラメータを調整しようが、強いトレンド（Toxic flow）が来た瞬間に破綻する。
 
 以下に、市場理論に基づく厳格な評価と、この Ph2 の泥沼を打破するための「抜本的アーキテクチャ改修」を要求する。
 
 ---
 
-## 1. 致命的欠陥: alance_forced による事前防御 (Proactive) と事後防御 (Reactive) の倒錯
+## 1. 致命的欠陥: balance_forced による事前防御 (Proactive) と事後防御 (Reactive) の倒錯
 
 ### 事実関係 (コードベースの証拠)
 scripts/v460/lib/cycle_gate_aggregator.py における以下の実装を確認した:
-- Gate 3 (trending_sell): nd not balance_forced によりバイパス
-- Gate 4 (buy_dynamic_kill): nd not balance_forced によりバイパス
-- Gate 5 (sell_dynamic_kill): nd not balance_forced によりバイパス
+- Gate 3 (trending_sell): and not balance_forced によりバイパス
+- Gate 4 (buy_dynamic_kill): and not balance_forced によりバイパス
+- Gate 5 (sell_dynamic_kill): and not balance_forced によりバイパス
 
 ### 論理的破綻
 dynamic_kill や 	rending 判定は、システムが外部の市場環境（ボラティリティや方向性）から**「今は逆張りの指値を置くと刈られる（Adverse Selection）」**と判断した **プロアクティブ（事前）防御** である。
 一方、今懸命に強化している Fast Fill Defense (FFD) は、**「実際に約定して損失（Negative edge）を出してから初めてスプレッドを広げる」 リアクティブ（事後）防御** である。
 
-現在のロジックでは、在庫が足りなくなり alance_forced = True になった瞬間、**「Toxicな相場だ」と分かっているのに事前防御(Kill Gate)を全バイパスして通常ロットで突撃し、わざわざ被弾してから FFD の事後防御に後始末を丸投げしている。**
+現在のロジックでは、在庫が足りなくなり balance_forced = True になった瞬間、**「Toxicな相場だ」と分かっているのに事前防御(Kill Gate)を全バイパスして通常ロットで突撃し、わざわざ被弾してから FFD の事後防御に後始末を丸投げしている。**
 Avellaneda-Stoikov (A-S) モデルの観点から言えば、在庫が限界に達した時に予約価格 (Reservation Price) をシフトさせることは正しいが、「確実なToxic環境（Kill状態）」においてスプレッドを無視して流動性を提供する行為は、単なる流動性プロバイダー（我々）の自殺である。
 
 ---
@@ -53,11 +53,11 @@ Liveness（毎サイクル注文を出すこと）を諦める勇気を持たな
 
 ### [P0] Gate Aggregator からの 
 ot balance_forced バイパスの即時全削除
-cycle_gate_aggregator.py の _check_buy_dynamic_kill, _check_sell_dynamic_kill, _check_trending_sell 等に存在する nd not balance_forced のバイパス条件をすべて削除しろ。
+cycle_gate_aggregator.py の _check_buy_dynamic_kill, _check_sell_dynamic_kill, _check_trending_sell 等に存在する and not balance_forced のバイパス条件をすべて削除しろ。
 **Kill 判定は、いかなる在庫事情（Inventory Context）をも凌駕する「絶対的 Safety 権限」を持たせなければならない。**
 
 ### [P0] Degraded Liquidation Mode (縮退清算モード) の新設
-どうしても在庫を戻したい（片道が空で稼働できないのを防ぎたい）のであれば、alance_forced を「通常 Gate を貫通させるフラグ」として使うのをやめろ。
+どうしても在庫を戻したい（片道が空で稼働できないのを防ぎたい）のであれば、balance_forced を「通常 Gate を貫通させるフラグ」として使うのをやめろ。
 代わりに、**別枠の Liquidation（清算）専用ロジック** を走らせるべきである。
 - 在庫枯渇 かつ 対象SideがKill状態 の場合:
   - 通常の Cycle Executor は Skip とし、通常の指値は休止。
