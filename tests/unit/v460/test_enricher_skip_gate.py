@@ -45,8 +45,8 @@ from scripts.v460.ml.data_loader import build_as_features, load_fill_records as 
 from ztb.io.jsonl import read_tail_jsonl_objects
 
 _REAL_DATA_SAMPLE_ROWS = 120
-_REAL_DATA_FALLBACK_SAMPLE_ROWS = 160
-_REAL_DATA_EXPANDED_SAMPLE_ROWS = 180
+_REAL_DATA_FALLBACK_SAMPLE_ROWS = 220
+_REAL_DATA_EXPANDED_SAMPLE_ROWS = 280
 _REAL_DATA_MIN_TRAIN_SAMPLES = 31
 
 
@@ -1039,7 +1039,7 @@ class Test058Integration:
         enriched = _cached_real_enriched_training_df()
         if enriched.empty:
             pytest.skip("No fill records")
-        return enriched
+        return enriched.copy(deep=False)
 
     def test_enrichment_with_real_data(
         self,

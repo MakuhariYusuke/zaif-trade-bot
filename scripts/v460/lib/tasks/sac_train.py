@@ -20,6 +20,7 @@ import time
 from pathlib import Path
 from typing import Protocol, cast
 
+import torch
 import pandas as pd
 
 from scripts.v460.lib.config_access import as_int, section

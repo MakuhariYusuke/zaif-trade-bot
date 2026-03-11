@@ -4,8 +4,7 @@ Unit tests for ztb.config.loader module.
 
 import json
 import os
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
@@ -32,70 +31,121 @@ class TestConfigLoader:
         assert loader._file_mtimes == {}
         assert loader.environment in ["development", "production", "test"]
 
-    def test_load_yaml_file_not_exists(self, tmp_path):
+    @patch("ztb.config.loader.Path")
+    def test_load_yaml_file_not_exists(self, mock_path):
         """Test load_yaml when file doesn't exist."""
+        mock_path_instance = MagicMock()
+        mock_path_instance.exists.return_value = False
+        mock_path.return_value = mock_path_instance
+
         loader = ConfigLoader()
-        result = loader.load_yaml(str(tmp_path / "nonexistent.yaml"))
+        result = loader.load_yaml("nonexistent.yaml")
         assert result == {}
 
-    def test_load_yaml_success(self, write_yaml_file):
+    @patch("ztb.config.loader.Path")
+    @patch("builtins.open", new_callable=mock_open, read_data="key: value\n")
+    def test_load_yaml_success(self, mock_file, mock_path):
         """Test successful YAML loading."""
-        config_path = write_yaml_file("test.yaml", "key: value\n")
+        mock_path_instance = MagicMock()
+        mock_path_instance.exists.return_value = True
+        mock_path_instance.stat.return_value.st_mtime = 1234567890
+        mock_path.return_value = mock_path_instance
+
         loader = ConfigLoader()
-        result = loader.load_yaml(str(config_path))
+        result = loader.load_yaml("test.yaml")
 
         assert result == {"key": "value"}
-        assert str(config_path) in loader._file_cache
-        assert loader._file_mtimes[str(config_path)] == config_path.stat().st_mtime
+        assert "test.yaml" in loader._file_cache
+        assert loader._file_mtimes["test.yaml"] == 1234567890
 
-    def test_load_yaml_invalid_yaml(self, write_yaml_file):
+    @patch("ztb.config.loader.Path")
+    @patch(
+        "builtins.open", new_callable=mock_open, read_data="invalid: yaml: content:\n"
+    )
+    def test_load_yaml_invalid_yaml(self, mock_file, mock_path):
         """Test load_yaml with invalid YAML."""
-        config_path = write_yaml_file("invalid.yaml", "invalid: yaml: content:\n")
+        mock_path_instance = MagicMock()
+        mock_path_instance.exists.return_value = True
+        mock_path_instance.stat.return_value.st_mtime = 1234567890
+        mock_path.return_value = mock_path_instance
+
         loader = ConfigLoader()
-        result = loader.load_yaml(str(config_path))
+        result = loader.load_yaml("invalid.yaml")
 
         # Should return empty dict on error
         assert result == {}
 
-    def test_load_yaml_cached(self, write_yaml_file):
+    @patch("ztb.config.loader.Path")
+    def test_load_yaml_cached(self, mock_path):
         """Test load_yaml returns cached result."""
-        config_path = write_yaml_file("test.yaml", "cached: data\n")
-        loader = ConfigLoader()
-        loader._file_cache[str(config_path)] = {"cached": "data"}
-        loader._file_mtimes[str(config_path)] = config_path.stat().st_mtime + 1.0
+        mock_path_instance = MagicMock()
+        mock_path_instance.exists.return_value = True
+        mock_path_instance.stat.return_value.st_mtime = 1234567890
+        mock_path.return_value = mock_path_instance
 
-        result = loader.load_yaml(str(config_path))
+        loader = ConfigLoader()
+        loader._file_cache["test.yaml"] = {"cached": "data"}
+        loader._file_mtimes["test.yaml"] = 1234567891  # newer than current
+
+        result = loader.load_yaml("test.yaml")
         assert result == {"cached": "data"}
 
-    def test_load_yaml_with_env_fallback_env_specific(self, write_yaml_file):
+    @patch("ztb.config.loader.Path")
+    def test_load_yaml_with_env_fallback_env_specific(self, mock_path):
         """Test load_yaml_with_env_fallback with environment-specific file."""
         loader = ConfigLoader()
         loader.environment = "production"
-        base_path = write_yaml_file("config.yaml", "base: config\n")
-        env_path = write_yaml_file("config.production.yaml", "env: prod\n")
 
-        result = loader.load_yaml_with_env_fallback(str(base_path))
-        assert result == {"env": "prod"}
+        # Mock paths
+        mock_env_path = MagicMock()
+        mock_env_path.exists.return_value = True
+        mock_base_path = MagicMock()
+        mock_base_path.exists.return_value = True
 
-    def test_load_yaml_with_env_fallback_base(self, write_yaml_file):
+        def path_side_effect(path):
+            if path == "config.production.yaml":
+                return mock_env_path
+            elif path == "config.yaml":
+                return mock_base_path
+            return MagicMock()
+
+        mock_path.side_effect = path_side_effect
+
+        with patch.object(loader, "load_yaml") as mock_load:
+            mock_load.side_effect = (
+                lambda p: {"env": "prod"} if "production" in p else {"base": "config"}
+            )
+
+            result = loader.load_yaml_with_env_fallback("config")
+            mock_load.assert_called_once_with("config.production.yaml")
+            assert result == {"env": "prod"}
+
+    @patch("ztb.config.loader.Path")
+    def test_load_yaml_with_env_fallback_base(self, mock_path):
         """Test load_yaml_with_env_fallback falls back to base file."""
         loader = ConfigLoader()
         loader.environment = "production"
-        base_path = write_yaml_file("config.yaml", "base: config\n")
 
-        result = loader.load_yaml_with_env_fallback(str(base_path))
-        assert result == {"base": "config"}
+        # Mock paths
+        mock_env_path = MagicMock()
+        mock_env_path.exists.return_value = False
+        mock_base_path = MagicMock()
+        mock_base_path.exists.return_value = True
+
+
+        mock_path.side_effect = path_side_effect
+
+        with patch.object(loader, "load_yaml") as mock_load:
+            mock_load.return_value = {"base": "config"}
+
+            result = loader.load_yaml_with_env_fallback("config")
+            assert mock_load.call_count == 1
+            assert result == {"base": "config"}
 
     def test_validate_config_success(self):
         """Test successful config validation."""
         loader = ConfigLoader()
-        config = {
-            "training": {
-                "model_name": "test_model",
-                "algorithm": "sac",
-                "total_timesteps": 1000,
-            }
-        }
+        config = {"training": {"total_timesteps": 1000}}
         result = loader.validate_config(config)
         assert isinstance(result, dict)
         assert result["training"]["total_timesteps"] == 1000
@@ -103,13 +153,7 @@ class TestConfigLoader:
     def test_validate_config_invalid(self):
         """Test config validation failure."""
         loader = ConfigLoader()
-        config = {
-            "training": {
-                "model_name": "test_model",
-                "algorithm": "sac",
-                "total_timesteps": "invalid",
-            }
-        }
+        config = {"training": {"total_timesteps": "invalid"}}
         with pytest.raises(ValueError, match="Configuration validation failed"):
             loader.validate_config(config)
 
@@ -150,7 +194,7 @@ class TestConfigLoader:
         assert result["env_only"] == "env"
         assert result["cli_only"] == "cli"
 
-    @patch("ztb.config.loaders.priority_loader.GlobalConfig")
+    @patch("ztb.config.loader.GlobalConfig")
     def test_get_config(self, mock_global_config):
         """Test get_config method."""
         # Mock for defaults
@@ -188,8 +232,8 @@ class TestConfigLoader:
         assert "type" in schema
         assert "properties" in schema
 
-    @patch("ztb.config.loaders.priority_loader.initialize_risk_profiles")
-    @patch("ztb.config.loaders.priority_loader.ConfigLoader")
+    @patch("ztb.config.loader.initialize_risk_profiles")
+    @patch("ztb.config.loader.ConfigLoader")
     def test_load_config(self, mock_loader_class, mock_init_risk):
         """Test load_config convenience function."""
         mock_loader = MagicMock()
@@ -207,7 +251,7 @@ class TestConfigLoader:
         mock_manager = MagicMock()
         mock_get_manager.return_value = mock_manager
 
-        config = SimpleNamespace(risk_profiles={"low": object(), "high": object()})
+        config = GlobalConfig()
         initialize_risk_profiles(config)
 
         # Should call add_profile for each risk profile

@@ -15,14 +15,11 @@ SB3 / HeavyTradingEnv への依存をモックで切り離し、
 
 from __future__ import annotations
 
-from contextlib import contextmanager
 import json
 import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
-from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -239,49 +236,6 @@ def _make_mock_env():
     return env
 
 
-def _make_sidecar_env() -> SimpleNamespace:
-    """_update_sidecar_signal 用の最小 env."""
-    return SimpleNamespace(
-        df=[0] * 12,
-        current_step=0,
-        trades_count=5,
-        portfolio_value=10_100_000.0,
-        initial_portfolio_value=10_000_000.0,
-        _get_observation=lambda: np.zeros(12),
-    )
-
-
-class _EvalEnv:
-    """_evaluate_model 用の最小 1-step env."""
-
-    def __init__(
-        self,
-        *,
-        episode_trade_counts: list[int] | tuple[int, ...],
-        episode_portfolio_values: list[float] | tuple[float, ...],
-        initial_portfolio_value: float = 10_000_000.0,
-        reward: float = 0.1,
-    ) -> None:
-        self._episode_trade_counts = list(episode_trade_counts)
-        self._episode_portfolio_values = list(episode_portfolio_values)
-        self.initial_portfolio_value = initial_portfolio_value
-        self.portfolio_value = initial_portfolio_value
-        self.trades_count = 0
-        self._episode_index = -1
-        self._reward = reward
-
-    def reset(self) -> tuple[np.ndarray, dict[str, object]]:
-        self._episode_index += 1
-        self.trades_count = 0
-        return np.zeros(12), {}
-
-    def step(self, action: object) -> tuple[np.ndarray, float, bool, bool, dict[str, object]]:
-        del action
-        self.trades_count = self._episode_trade_counts[self._episode_index]
-        self.portfolio_value = self._episode_portfolio_values[self._episode_index]
-        return np.zeros(12), self._reward, True, False, {}
-
-
 def _make_mock_model():
     """Mock SB3 SAC model."""
     model = MagicMock()
@@ -291,37 +245,6 @@ def _make_mock_model():
     model.save_replay_buffer.return_value = None
     model.load_replay_buffer.return_value = None
     return model
-
-
-@contextmanager
-def _mock_sb3_import(mock_model: MagicMock) -> Iterator[MagicMock]:
-    """retrain_once() の real SB3 import を fake module に置き換える."""
-    fake_sac_cls = MagicMock()
-    fake_sac_cls.return_value = mock_model
-    fake_sac_cls.load.return_value = mock_model
-
-    fake_sb3 = ModuleType("stable_baselines3")
-    fake_sb3.__version__ = "test"
-    fake_sb3.__file__ = "fake_stable_baselines3.py"
-    fake_sb3.SAC = fake_sac_cls
-
-    import builtins
-
-    real_import = builtins.__import__
-
-    def _patched_import(
-        name: str,
-        globals_: object | None = None,
-        locals_: object | None = None,
-        fromlist: object = (),
-        level: int = 0,
-    ) -> object:
-        if name == "stable_baselines3":
-            return fake_sb3
-        return real_import(name, globals_, locals_, fromlist, level)
-
-    with patch("builtins.__import__", side_effect=_patched_import):
-        yield fake_sac_cls
 
 
 class TestRetrainOnce:
@@ -358,7 +281,7 @@ class TestRetrainOnce:
             import pandas as pd
 
             mock_load.return_value = pd.DataFrame({"close": range(1000)})
-            with _mock_sb3_import(mock_model) as mock_sac_cls:
+            with patch("stable_baselines3.SAC") as mock_sac_cls:
                 mock_sac_cls.return_value = mock_model
                 result = retrain_once(cfg)
 
@@ -399,7 +322,7 @@ class TestRetrainOnce:
             import pandas as pd
 
             mock_load.return_value = pd.DataFrame({"close": range(1000)})
-            with _mock_sb3_import(mock_model) as mock_sac_cls:
+            with patch("stable_baselines3.SAC") as mock_sac_cls:
                 mock_sac_cls.load.return_value = mock_model
                 result = retrain_once(cfg)
 
@@ -434,9 +357,8 @@ class TestRetrainOnce:
             import pandas as pd
 
             mock_load.return_value = pd.DataFrame({"close": range(1000)})
-            mock_model = _make_mock_model()
-            with _mock_sb3_import(mock_model) as mock_sac_cls:
-                mock_sac_cls.return_value = mock_model
+            with patch("stable_baselines3.SAC") as mock_sac_cls:
+                mock_sac_cls.return_value = _make_mock_model()
                 result = retrain_once(cfg)
 
         assert result.status == "oos_failed"
@@ -512,7 +434,7 @@ class TestUpdateSidecarSignal:
         mock_model = MagicMock()
         mock_model.predict.return_value = (np.array([0.42]), None)
 
-        mock_env = _make_sidecar_env()
+        mock_env = _make_mock_env()
 
         _update_sidecar_signal(
             mock_model, mock_env, cfg, "test_v1",
@@ -540,10 +462,34 @@ class TestEvaluateModel:
             _evaluate_model,
         )
 
-        mock_env = _EvalEnv(
-            episode_trade_counts=[3, 5, 7],
-            episode_portfolio_values=[10_100_000.0, 10_100_000.0, 10_100_000.0],
-        )
+        # エピソード毎に trades_count がリセットされるのをシミュレート
+        _ep_trades = iter([3, 5, 7])
+
+        def _reset_side_effect() -> tuple:
+            return (np.zeros(12), {})
+
+        def _step_side_effect(action: object) -> tuple:
+            return (np.zeros(12), 0.1, True, False, {})
+
+        mock_env = MagicMock()
+        mock_env.observation_space = MagicMock()
+        mock_env.observation_space.shape = (12,)
+        mock_env.action_space = MagicMock()
+        mock_env.action_space.shape = (1,)
+
+        # reset 毎に trades_count をリセットし、step 後に設定
+        def _reset() -> tuple:
+            mock_env.trades_count = 0
+            return (np.zeros(12), {})
+
+        def _step(action: object) -> tuple:
+            mock_env.trades_count = next(_ep_trades)
+            mock_env.portfolio_value = 10_100_000.0
+            return (np.zeros(12), 0.1, True, False, {})
+
+        mock_env.reset.side_effect = _reset
+        mock_env.step.side_effect = _step
+        mock_env.initial_portfolio_value = 10_000_000.0
 
         mock_model = MagicMock()
         mock_model.predict.return_value = (np.array([0.0]), None)
@@ -587,10 +533,7 @@ class TestAppendHistory:
 class TestLoadConfig:
     """load_config YAML loader."""
 
-    def test_load_valid_yaml(
-        self,
-        write_yaml_file: "Callable[[str | Path, str | dict[str, object]], Path]",
-    ) -> None:
+    def test_load_valid_yaml(self, tmp_path: Path) -> None:
         from scripts.v460.ml.sac_retrain_scheduler import load_config
 
         yaml_content = """
@@ -604,7 +547,8 @@ features:
   selected:
     - price_velocity
 """
-        config_path = write_yaml_file("test.yaml", yaml_content)
+        config_path = tmp_path / "test.yaml"
+        config_path.write_text(yaml_content, encoding="utf-8")
 
         cfg = load_config(config_path)
         assert cfg.ohlcv_path == "test_data.parquet"
@@ -633,10 +577,7 @@ class TestEvaluateModel:
         )
 
         mock_model = _make_mock_model()
-        mock_env = _EvalEnv(
-            episode_trade_counts=[5],
-            episode_portfolio_values=[10_100_000.0],
-        )
+        mock_env = _make_mock_env()
         # PV = 10.1M, IPV = 10M → ROI = 1%
         cfg = SACRetrainConfig(n_eval_episodes=1)
 
@@ -651,10 +592,8 @@ class TestEvaluateModel:
         )
 
         mock_model = _make_mock_model()
-        mock_env = _EvalEnv(
-            episode_trade_counts=[5],
-            episode_portfolio_values=[9_500_000.0],
-        )
+        mock_env = _make_mock_env()
+        mock_env.portfolio_value = 9_500_000.0
 
         cfg = SACRetrainConfig(n_eval_episodes=1)
         result = _evaluate_model(mock_model, mock_env, cfg)

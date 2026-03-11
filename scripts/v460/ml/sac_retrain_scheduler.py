@@ -28,6 +28,9 @@ import signal
 import sys
 import threading
 import time
+# --- PyTorch DLL load fix (import early) ---
+import torch
+# ----------------------------------------
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
