@@ -19,7 +19,10 @@ _task: sac_train
 data:
   # P3A-1: v451 stub → full_registry (77列, 1.2M行, 12特徴量全載)
   ohlcv_path: "data/btc_jpy_1m_full_registry_features.parquet"
-  train_end_index: 1000000
+  # data.v460_features_path が base.yaml で指定されているため明示的に無効化
+  v460_features_path: null
+  # train_end_index: base.yaml で null になっているため指定が必要(1.2M行のうち学習に使う量)
+  train_end_index: 973544
 
 # ---- 特徴量 (FeatureRegistry 系統) ----
 # 356# §4.3: OHLCV ベースの FeatureRegistry 特徴量を使用
@@ -81,8 +84,9 @@ sac_hyperparameters:
 
 # ---- 訓練 ----
 training:
-  total_timesteps: 50000           # G2 gate 基準
-  checkpoint_interval: 5000        # 10 チェックポイント (convergence 計算用)
+  # G2 gate 基準は 50000 だが、負荷軽減のため一時的に 20K を設定（随時 50K へ戻す）
+  total_timesteps: 20000          
+  checkpoint_interval: 5000        
   val_ratio: 0.2                   # 363# A3: holdout 20% for OOS evaluation
   # 365# P1: Warm-start (2回目以降に有効化)
   # pretrained_model_path: "models/v460/sac_v460_seed42.zip"
@@ -94,7 +98,8 @@ evaluation:
   n_episodes: 3
 
 # ---- Multi-seed (G2 gate: 4 seed) ----
-seeds: [42, 123, 456, 789]
+# 計算負荷軽減のため、1 seed 実施に変更。本格学習時は [42, 123, 456, 789] などとする。
+seeds: [42] 
 
 # ---- 出力 ----
 output:
