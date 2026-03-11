@@ -3,6 +3,10 @@ import sys
 import types
 import warnings
 from pathlib import Path
+from typing import Any, Callable
+
+import pytest
+import yaml
 
 # Workaround for [WinError 1114] DLL initialization failed
 # Torch must be imported before pandas/scipy/numpy in some environments
@@ -52,6 +56,28 @@ except Exception:
 proj_root_str = str(project_root)
 if proj_root_str not in sys.path:
     sys.path.insert(0, proj_root_str)
+
+
+@pytest.fixture
+def write_yaml_file(tmp_path: Path) -> Callable[[str | Path, str | dict[str, Any]], Path]:
+    """Write YAML or raw YAML text under tmp_path and return the created path."""
+
+    def _write_yaml_file(
+        path_like: str | Path,
+        payload: str | dict[str, Any],
+    ) -> Path:
+        path = Path(path_like)
+        if not path.is_absolute():
+            path = tmp_path / path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if isinstance(payload, str):
+            text = payload
+        else:
+            text = yaml.safe_dump(payload, sort_keys=False, allow_unicode=True)
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    return _write_yaml_file
 
 # Minimal dummy model used as a fallback in a few places during collection.
 # Defined early so later import-time patching can reference it safely.
