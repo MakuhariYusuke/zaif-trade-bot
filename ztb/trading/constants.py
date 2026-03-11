@@ -26,10 +26,11 @@ MULTIPLIER_INDEX_SELL = 1
 MULTIPLIER_INDEX_HOLD = 2
 
 # SAC continuous action discretization thresholds
-SAC_CONTINUOUS_THRESHOLD = (
-    0.3333  # Threshold for converting continuous actions to discrete
-)
-SAC_CONTINUOUS_THRESHOLD_NEG = -0.3333  # Negative threshold for SELL action
+# 386# FIX: 0.3333 → 0.10 — 379# で訓練YAMLを 0.10 に変更済み、デフォルトも統一。
+# SAC tanh squashing 初期出力 ≈ N(0, ~0.3) で threshold=0.33 だと HOLD 過多、
+# ROI=0 の原因だった (379# レポート参照)。
+SAC_CONTINUOUS_THRESHOLD = 0.10  # HOLD zone: [-0.10, 0.10] = 10% of action space
+SAC_CONTINUOUS_THRESHOLD_NEG = -0.10  # Negative threshold for SELL action
 
 # Financial constants
 TRADING_DAYS_PER_YEAR = 252  # Standard number of trading days in a year

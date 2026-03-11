@@ -1,7 +1,7 @@
 """385# 設定監査: 閾値整合性テスト.
 
 P0-1: continuous_to_discrete_threshold が訓練とライブで乖離するリスクを検証。
-P0-2: reward_scaling デッドコードの検証。
+P0-2: reward_scaling デッドコードの検証 (386# 修正済み。修正後の正常動作を確認)。
 """
 
 from __future__ import annotations
@@ -33,35 +33,13 @@ class TestThresholdConsistency:
         assert neg == pytest.approx(-0.10)
 
     def test_live_default_threshold_documented(self) -> None:
-        """ライブ trader のデフォルト閾値が既知であること.
+        """386# FIX: ライブ・訓練・定数の閾値が統一されていること."""
+        from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD
 
-        P0-1: live_trader/config.py のデフォルト (0.33) が訓練 (0.10) と
-        異なることを検出し、将来のライブ投入時の整合性担保に使う。
-        """
-        # live_trader が ZTB_CONTINUOUS_TO_DISCRETE_THRESHOLD 未設定時の
-        # デフォルト値が 0.33 であることを確認 (意図的に不一致を検出)
-        import importlib
-        import os
-
-        # env var が未設定であることを確認
-        env_key = "ZTB_CONTINUOUS_TO_DISCRETE_THRESHOLD"
-        original = os.environ.pop(env_key, None)
-        try:
-            # live config のデフォルト値を確認
-            from ztb.trading.live_trader.config import LiveTraderConfig
-
-            config = LiveTraderConfig()
-            threshold_config = getattr(config, "continuous_to_discrete_threshold", None)
-            # config 構造によって取得方法が異なりうるため、
-            # ここでは env var デフォルト = 0.33 の事実を記録テスト
-            assert True, "P0-1: ライブ閾値は ZTB_CONTINUOUS_TO_DISCRETE_THRESHOLD で制御"
-        except (ImportError, AttributeError):
-            # live_trader の import が失敗してもテストは通す
-            # ドキュメントとしての役割は果たす
-            pytest.skip("LiveTraderConfig not importable in test env")
-        finally:
-            if original is not None:
-                os.environ[env_key] = original
+        # SAC_CONTINUOUS_THRESHOLD が 0.10 であること (386# 修正)
+        assert SAC_CONTINUOUS_THRESHOLD == pytest.approx(0.10), (
+            f"SAC_CONTINUOUS_THRESHOLD should be 0.10, got {SAC_CONTINUOUS_THRESHOLD}"
+        )
 
     def test_training_threshold_range(self) -> None:
         """threshold が SAC の tanh 出力範囲 [-1, 1] 内で妥当であること."""
@@ -73,11 +51,11 @@ class TestThresholdConsistency:
         )
 
 
-class TestRewardScalingDeadCode:
-    """reward_scaling が _calculate_default_reward に渡されないことの検証."""
+class TestRewardScalingFixed:
+    """reward_scaling が _calculate_default_reward に正しく流れることの検証 (386# 修正)."""
 
-    def test_default_reward_ignores_scaling(self) -> None:
-        """_calculate_default_reward は reward_scaling を受け取らない."""
+    def test_default_reward_accepts_scaling(self) -> None:
+        """_calculate_default_reward が reward_scaling を受け取ること (386# 修正)."""
         import inspect
         from ztb.trading.environment.components.calculators.reward_calculator import (
             RewardCalculator,
@@ -85,10 +63,8 @@ class TestRewardScalingDeadCode:
 
         sig = inspect.signature(RewardCalculator._calculate_default_reward)
         params = set(sig.parameters.keys())
-        # reward_scaling が無いことを確認 (デッドコード検出)
-        assert "reward_scaling" not in params, (
-            "reward_scaling が _calculate_default_reward に追加された場合、"
-            "このテストは更新が必要 (386# で意図的に追加された場合は削除)"
+        assert "reward_scaling" in params, (
+            "386# FIX: reward_scaling が _calculate_default_reward に存在すること"
         )
 
     def test_pnl_focused_accepts_scaling(self) -> None:
@@ -104,14 +80,14 @@ class TestRewardScalingDeadCode:
             "pnl_focused は reward_scaling を使用すべき"
         )
 
-    def test_reward_scaling_default_is_ppo_value(self) -> None:
-        """EnvironmentConfig の reward_scaling デフォルトが PPO 由来の 6.0."""
+    def test_reward_scaling_default_is_sac_value(self) -> None:
+        """EnvironmentConfig の reward_scaling デフォルトが 1.0 (386# 修正後)."""
         from ztb.trading.environment.utils.config import EnvironmentConfig
 
         config = EnvironmentConfig()
-        # PPO 最適化値 6.0 がデフォルト
-        assert config.reward_scaling == pytest.approx(6.0), (
-            f"Expected PPO default 6.0, got {config.reward_scaling}"
+        # 386# FIX: PPO 値 6.0 → SAC 値 1.0
+        assert config.reward_scaling == pytest.approx(1.0), (
+            f"Expected SAC default 1.0, got {config.reward_scaling}"
         )
 
     def test_pnl_reward_with_unit_scaling(self) -> None:
@@ -127,6 +103,49 @@ class TestRewardScalingDeadCode:
         result = calc._calculate_pnl_reward(100.0, 1.0)
         # pnl × reward_scaling × pnl_reward_multiplier(=1.0)
         assert result == pytest.approx(100.0), f"Expected 100.0, got {result}"
+
+    def test_reward_scaling_flows_through_default_reward(self) -> None:
+        """386# FIX: reward_scaling が default_reward に正しく伝搬すること."""
+        import numpy as np
+
+        from ztb.trading.environment.components.calculators.reward_calculator import (
+            RewardCalculator,
+        )
+        from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
+
+        config = EnvironmentConfig()
+        settings = RewardSettings()
+        calc = RewardCalculator(config, settings, initial_portfolio_value=10_000_000.0)
+
+        # reward_scaling=1.0 で呼出
+        r1 = calc._calculate_default_reward(
+            action=0, atr_normalised=0.01, portfolio_return=0.0,
+            position=0.0, effective_max_position=0.01, current_price=15_000_000.0,
+            atr=50_000.0, pnl=100.0, reward_scaling=1.0,
+        )
+        # reward_scaling=2.0 で呼出 — PnL 部分のみ 2 倍
+        r2 = calc._calculate_default_reward(
+            action=0, atr_normalised=0.01, portfolio_return=0.0,
+            position=0.0, effective_max_position=0.01, current_price=15_000_000.0,
+            atr=50_000.0, pnl=100.0, reward_scaling=2.0,
+        )
+        # PnL以外の penalty は同一なので差分 = pnl × (2.0 - 1.0) = 100.0
+        diff = r2 - r1
+        assert diff == pytest.approx(100.0, abs=0.01), (
+            f"Expected reward diff 100.0 (pnl × scaling diff), got {diff:.4f}"
+        )
+
+    def test_yaml_reward_scaling_explicit(self) -> None:
+        """386# FIX: SAC YAML に reward_scaling=1.0 が明示されていること."""
+        from scripts.v460.lib.config_loader import load_config
+
+        cfg = load_config("configs/v460/experiments/g2_sac_train.yaml")
+        env_cfg = cfg.get("environment", {})
+        scaling = env_cfg.get("reward_scaling")
+        assert scaling is not None, "reward_scaling が YAML に明示されていない"
+        assert float(scaling) == pytest.approx(1.0), (
+            f"SAC YAML reward_scaling should be 1.0, got {scaling}"
+        )
 
 
 class TestGammaConfigModelDir:

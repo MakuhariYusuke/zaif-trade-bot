@@ -45,6 +45,7 @@ features:
 environment:
   # 385# FIX: maker 0% (000# 前提条件)
   transaction_cost: 0.0            # 0% (Coincheck Maker)
+  reward_scaling: 1.0              # 386# FIX: SAC用明示設定
   max_position_size: 0.01
   initial_portfolio_value: 10000000.0
   use_continuous_actions: true

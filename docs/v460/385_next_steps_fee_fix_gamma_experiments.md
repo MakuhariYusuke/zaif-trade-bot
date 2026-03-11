@@ -189,11 +189,41 @@ Pre-385# baseline (全て負) との差は一貫して +0.16% 〜 +0.44%。
 
 ## 7. 成功基準
 
-### 実験 A (385# Baseline)
-- **G2 E1 PASS**: positive_seed_ratio ≥ 0.75 (3/4 seeds が gross ROI > 0)
-- **G2 E2**: roi_seed_std ≤ 0.03
-- **G2 E4**: worst_seed_roi > -0.02
+### 実験 A (385# Baseline) — 結果
+
+**G2 Gate: FAIL** (E1 のみ失敗)
+
+| チェック | 値 | 閾値 | 結果 |
+|---------|-----|------|------|
+| E1: positive_seed_ratio | 0.50 (2/4) | ≥0.75 | **FAIL** |
+| E2: roi_seed_std | 0.0229 | ≤0.03 | PASS |
+| E3: convergence | 0.19% | ≤5.0% | PASS |
+| E4: worst_seed_roi | -0.44% | >-2.0% | PASS |
+
+#### OOS 結果詳細
+
+| Seed | gross_roi | PnL (JPY) | Trades | Pre-385# ROI |
+|------|-----------|-----------|--------|--------------|
+| **42** | **+4.37%** | +437,143 | 53,557 | -0.25% |
+| 123 | -0.39% | -40,170 | 22,819 | -0.26% |
+| 456 | -0.44% | -43,754 | 59,469 | -0.26% |
+| **789** | **+2.00%** | +199,693 | 41,171 | -0.28% |
+
+**平均 ROI: +1.39%** (pre-385#: -0.26%)  
+**結果ファイル**: `results/v460/v460_g2train_seed42_20260311_202003.json`
+
+#### 所見
+1. Fee fix により平均ROI -0.26% → +1.39%、大幅改善
+2. 2/4 seeds が正ROI (Seed42: +4.37%, Seed789: +2.00%)
+3. Seeds 123/456 は in-sample では全チェックポイント正だがOOSで微負 → 軽度過学習
+4. trade_count は Seed間で大きく異なる (22K〜59K) → 同一config/異なるseedで行動戦略が分岐
+5. **E1 FAIL の打開策**: gamma=0.95 (より長期視野) が有望、100K steps で安定性向上を期待
 
 ### 全体目標
 - G2 gate PASS → ph4 (microstructure features) へ進行
-- transaction_cost=0.0 で ROI 正転 → maker-only 戦略の妥当性を実証
+- transaction_cost=0.0 で ROI 正転 → maker-only 戦略の妥当性を実証 ✅ (平均+1.39%)
+
+### gamma=0.95 実験 (B4 — 実行中)
+- 100K steps × 4 seeds, checkpoint_interval=10K
+- 推定所要時間: ~3 時間 (per-seed ~47 min)
+- 期待: gamma 拡大 → temporal credit assignment 改善 → 3/4 以上の正 ROI

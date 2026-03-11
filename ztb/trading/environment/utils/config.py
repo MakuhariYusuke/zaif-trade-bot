@@ -21,7 +21,6 @@ from ztb.training.config.ppo_config import (
     DEFAULT_REWARD_POSITION_PENALTY_EXPONENT,
     DEFAULT_REWARD_POSITION_PENALTY_SCALE,
     DEFAULT_REWARD_POSITION_SOFT_CAP,
-    DEFAULT_REWARD_SCALING,
     DEFAULT_REWARD_SHARPE_BONUS_SCALE,
     DEFAULT_REWARD_TRADE_COOLDOWN_PENALTY,
     DEFAULT_REWARD_TRADE_COOLDOWN_STEPS,
@@ -183,7 +182,9 @@ class EnvironmentConfig:
     """Configuration for HeavyTradingEnv with proper typing."""
 
     # Core settings
-    reward_scaling: float = DEFAULT_REWARD_SCALING
+    # 386# FIX: reward_scaling default を PPO 値 6.0 → 中立値 1.0 に変更。
+    # PPO/SAC 各 YAML で明示的に設定すること。
+    reward_scaling: float = 1.0
     transaction_cost: float = 0.0
     commission: float = 0.0  # Alias for transaction_cost for backward compatibility
     slippage: float = 0.0  # Slippage cost

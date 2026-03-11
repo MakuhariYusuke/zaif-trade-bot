@@ -63,17 +63,20 @@ features:
 # ★ これらを有効化する場合は 365# §3.5 の注意事項を必ず参照
 #
 # 385# 監査注記:
-#   - reward_scaling: EnvironmentConfig デフォルト 6.0 (PPO由来) が暗黙適用されるが、
-#     _calculate_default_reward は reward_scaling を受け取らないため実質デッドコード。
-#     bankruptcy/drawdown ペナルティでのみ 6.0x 乗数として使用。386# で要修正。
-#   - continuous_to_discrete_threshold: 訓練 0.10 vs ライブ 0.33 の乖離あり。
-#     ライブ投入時に ZTB_CONTINUOUS_TO_DISCRETE_THRESHOLD=0.10 を設定すること。
+#   - reward_scaling: 386# で修正済み — _calculate_default_reward に reward_scaling
+#     パラメータを追加。SAC YAML で明示的に 1.0 を指定。
+#   - continuous_to_discrete_threshold: 386# で統一済み。
+#     SAC_CONTINUOUS_THRESHOLD (constants.py) と live_trader デフォルトを 0.10 に変更。
 environment:
   # 385# FIX: 000# 前提 "全取引はmaker注文（手数料0%）で執行" に準拠
   # 旧: 0.001 (0.1%) — 000# 教訓4 "taker 0.1% × 1min足は Oracle でも不成立" と矛盾
   # ExchangeFeeModel.coincheck = {"buy": 0.0, "sell": 0.0}
   # TradeExecutionEngine.coincheck.maker_fee = 0.0
   transaction_cost: 0.0            # 0% (Coincheck Maker — 000# §前提条件)
+  # 386# FIX: reward_scaling dead code 修正。明示的に 1.0 を指定。
+  # PPO デフォルト 6.0 が EnvironmentConfig 経由で暗黙適用される誤りを防止。
+  # SAC の entropy regularization があるため PnL スケーリングは 1.0 が適切。
+  reward_scaling: 1.0
   max_position_size: 0.01          # 0.01 BTC
   initial_portfolio_value: 10000000.0  # 1000万円 (v459 踏襲)
   use_continuous_actions: true     # SAC 用連続行動空間

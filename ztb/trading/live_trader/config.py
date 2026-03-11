@@ -240,7 +240,7 @@ class TradingConfig:
                 "ZTB_PRICE_CHANGE_THRESHOLD", 0.20
             ),
             "continuous_to_discrete_threshold": self._get_float(
-                "ZTB_CONTINUOUS_TO_DISCRETE_THRESHOLD", 0.33
+                "ZTB_CONTINUOUS_TO_DISCRETE_THRESHOLD", 0.10  # 386# FIX: 0.33→0.10 (訓練と統一)
             ),
         }
 

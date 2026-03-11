@@ -8,34 +8,26 @@ g2_sac_train.yaml と関連設定の包括的な監査を実施。
 
 ## P0: CRITICAL — 運用に直接影響
 
-### P0-1: `continuous_to_discrete_threshold` 訓練/ライブ乖離
+### P0-1: `continuous_to_discrete_threshold` 訓練/ライブ乖離 — **386# 修正済み**
 
-| 場所 | 値 | 備考 |
-|------|-----|------|
-| **g2_sac_train.yaml** | **0.10** | 379# で 0.3333 → 0.10 に変更 |
-| SAC_CONTINUOUS_THRESHOLD (constants.py) | 0.3333 | EnvironmentConfig デフォルト |
-| **live_trader/config.py** | **0.33** | `ZTB_CONTINUOUS_TO_DISCRETE_THRESHOLD` デフォルト |
-| backtest/adapters.py | 0.01 | バックテスト用ハードコード |
+| 場所 | 旧値 | 新値 (386#) | 備考 |
+|------|------|------------|------|
+| **g2_sac_train.yaml** | **0.10** | 0.10 (変更なし) | 379# で設定済み |
+| SAC_CONTINUOUS_THRESHOLD (constants.py) | ~~0.3333~~ | **0.10** | 386# で統一 |
+| **live_trader/config.py** | ~~0.33~~ | **0.10** | 386# で統一 |
+| backtest/adapters.py | 0.01 | 0.01 (未変更) | バックテスト用ハードコード |
 
-**影響**: SAC の tanh 出力 [-1, 1] に対し:
-- 訓練 (0.10): HOLD帯 = [-0.10, 0.10] → 行動空間の 10%
-- ライブ (0.33): HOLD帯 = [-0.33, 0.33] → 行動空間の 33%
+**386# 修正**: `SAC_CONTINUOUS_THRESHOLD` と `live_trader/config.py` のデフォルトを
+0.10 に統一。`ZTB_CONTINUOUS_TO_DISCRETE_THRESHOLD` 環境変数による上書きも引き続き可能。
 
-→ [0.10, 0.33] 範囲の出力が訓練ではBUY、ライブではHOLDになる。
-学習した行動分布が本番で完全に乖離する。
+### P0-2: `reward_scaling = 6.0` の暗黙適用 → デッドコード — **386# 修正済み**
 
-**対策**: ライブ投入時に `ZTB_CONTINUOUS_TO_DISCRETE_THRESHOLD=0.10` を設定。
-もしくは g2 YAML と live config を統一する仕組みを導入。
-
-### P0-2: `reward_scaling = 6.0` の暗黙適用 → デッドコード
-
-- EnvironmentConfig デフォルト: `reward_scaling = 6.0` (PPO由来)
-- `_calculate_default_reward()` に `reward_scaling` パラメータなし
-- `inspect.signature()` フィルタで除外 → 値は計算されるが未使用
-- ただし bankrupty/drawdown ペナルティでは `× 6.0` が適用される
-
-**対策**: 386# で `_calculate_default_reward` に `reward_scaling` を追加。
-もしくは YAML で `environment.reward_scaling: 1.0` を明示設定。
+- ~~EnvironmentConfig デフォルト: `reward_scaling = 6.0` (PPO由来)~~ → **1.0 に変更**
+- ~~`_calculate_default_reward()` に `reward_scaling` パラメータなし~~ → **追加済み**
+- ~~`inspect.signature()` フィルタで除外~~ → **正常に流れるようになった**
+- SAC YAML に `reward_scaling: 1.0` を明示設定済み
+- `DEFAULT_TRADING_ENV_CONFIG["reward_scaling"]` も 6.0 → 1.0 に変更
+- `EnvironmentConfig.reward_scaling` デフォルトを `DEFAULT_REWARD_SCALING` (PPO) → 直接 `1.0` に変更
 
 ## P1: HIGH — 潜在的な結果影響
 
