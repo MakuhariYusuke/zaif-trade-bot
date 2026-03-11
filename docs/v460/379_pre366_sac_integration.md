@@ -211,9 +211,9 @@ P3-D (importance analysis) ⬜ 未着手 → NEXT
 | I1 | PyTorch DLL 競合 (`WinError 1114`) | Windows 環境で SAC 訓練がクラッシュ | `import torch` を SB3 より前に実行 | ✅ 修正済 |
 | I2 | 毎サイクルの sidecar 同期 I/O | ライブループのレイテンシ劣化 | mtime キャッシュ導入 | ✅ 修正済 |
 | I3 | OOS 失敗時の stale バイアス残留 | 危険なバイアスが残り続ける | neutral fallback 自動発行 | ✅ 修正済 |
-| I4 | g2_sac_train.yaml の軽量化設定 | 本番訓練には不十分 (20K steps) | 本番運用時に復元必要 | ⚠ 要対応 |
+| I4 | g2_sac_train.yaml の軽量化設定 | 本番訓練には不十分 (20K steps) | 本番設定に復元済 (50K steps, 4 seeds) | ✅ 修正済 |
 | I5 | Feature Pipeline 二重管理 | FeatureRegistry と build_features の乖離リスク | §5.3 統合設計で将来解消 | ⬜ 技術負債 |
-| I6 | `_small.parquet` データの代表性 | 80K行では市場全体を表現できない | 本番では full parquet 使用 | ⚠ 要対応 |
+| I6 | `_small.parquet` データの代表性 | 80K行では市場全体を表現できない | full parquet 使用に復元済 | ✅ 修正済 |
 
 ## §7 テスト
 
@@ -268,3 +268,4 @@ P3-D (importance analysis) ⬜ 未着手 → NEXT
 | v1.0 | 2026-03-25 | 初版: 10 システム SAC 接続 + リファクタリング + ph3 設計 |
 | v2.0 | 2026-03-11 | P3-A/B (B3-B6)/C 完了。neutral fallback + mtime IO cache 実装。117 tests PASSED |
 | v3.0 | 2026-03-11 | YAML本番復元 (I4/I6), sac_common.py 新設で重複排除 (~120行削減), OOS評価バグ修正 (n>1 episode)。4605 tests PASSED |
+| v3.1 | 2026-03-11 | EnvInternalTracker テスト整合修正 (obs_space +3 internal features), 全変更3分割コミット完了 |
