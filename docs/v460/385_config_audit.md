@@ -29,6 +29,16 @@ g2_sac_train.yaml と関連設定の包括的な監査を実施。
 - `DEFAULT_TRADING_ENV_CONFIG["reward_scaling"]` も 6.0 → 1.0 に変更
 - `EnvironmentConfig.reward_scaling` デフォルトを `DEFAULT_REWARD_SCALING` (PPO) → 直接 `1.0` に変更
 
+### P0-5: `reward_settings` YAML→env 伝播バグ — **386# 修正済み**
+
+- YAML の `reward_settings:` がトップレベルに配置された場合、`sac_trainer.py` が
+  `config.get("environment", {})` でenv セクションのみ抽出するため `reward_settings` が消失
+- `curriculum_learning` には手動注入コードがあったが `reward_settings` にはなかった
+- **386# 修正**: `sac_trainer.py` にトップレベル `reward_settings` のフォールバックマージを追加
+  - `actual_env_config` 構築後にトップレベルの `reward_settings` を検出・注入
+  - `_extract_expected_reward_params` にもフォールバック追加 (検証ログ用)
+- テスト: `TestRewardSettingsPropagation` 3テスト追加 (トップレベル/ネスト/YAML存在確認)
+
 ## P1: HIGH — 潜在的な結果影響
 
 ### P1-1: `action_space_type: "continuous_1d"` の無声書き換え
@@ -94,11 +104,12 @@ max_position_size: float = 1.0          # 1 BTC ≠ YAML 0.01
 
 ## 対応計画
 
-| ID | 対策 | 対応時期 | 影響度 |
-|----|------|---------|--------|
-| P0-1 | threshold 統一 or ライブ env var 設定 | G4 (ライブ投入前) | CRITICAL |
-| P0-2 | reward_scaling 修正 | 386# | HIGH |
-| P1-2 | base.yaml の sac.gamma 削除/整理 | 386# | MEDIUM |
-| P1-3 | 旧 EnvironmentConfig 廃止計画 | v461 | MEDIUM |
-| P1-4 | FeeModel フォールバック防御強化 | 386# | MEDIUM |
-| P2-* | 段階的なデフォルト値整理 | v461 | LOW |
+| ID | 対策 | 対応時期 | 影響度 | 状態 |
+|----|------|---------|--------|------|
+| P0-1 | threshold 統一 | 386# | CRITICAL | ✅ 修正済み |
+| P0-2 | reward_scaling 修正 | 386# | CRITICAL | ✅ 修正済み |
+| P0-5 | reward_settings YAML→env 伝播 | 386# | CRITICAL | ✅ 修正済み |
+| P1-2 | base.yaml の sac.gamma 削除/整理 | 386# | MEDIUM | ⬜ 未対応 |
+| P1-3 | 旧 EnvironmentConfig 廃止計画 | v461 | MEDIUM | ⬜ 未対応 |
+| P1-4 | FeeModel フォールバック防御強化 | 386# | MEDIUM | ⬜ 未対応 |
+| P2-* | 段階的なデフォルト値整理 | v461 | LOW | ⬜ 未対応 |

@@ -175,6 +175,13 @@ class SACTrainer(BaseAlgorithmTrainer):
                 expected.update(reward_settings)
             elif isinstance(reward_settings, RewardSettings):
                 expected.update(shallow_asdict(reward_settings))
+
+        # 386# FIX: Fallback to top-level reward_settings
+        if not expected or "balance_penalty_value" not in expected:
+            top_level_rs = config.get("reward_settings")
+            if isinstance(top_level_rs, dict):
+                expected.update(top_level_rs)
+
         return expected
 
     def _collect_actual_reward_params(self, env: object) -> dict[str, object]:
@@ -625,7 +632,18 @@ class SACTrainer(BaseAlgorithmTrainer):
                 env_config = self.config.get("training", {}).get("environment", {})
             # Extract the actual config from the environment section (could be nested)
             actual_env_config = env_config.get("config", env_config)
-            
+
+            # 386# FIX: Merge top-level reward_settings into environment config
+            # reward_settings can be defined at YAML top-level for readability,
+            # but EnvironmentConfig.from_dict() expects it inside the env dict.
+            if isinstance(actual_env_config, dict) and "reward_settings" not in actual_env_config:
+                top_level_rs = self.config.get("reward_settings") if isinstance(self.config, dict) else None
+                if isinstance(top_level_rs, dict):
+                    actual_env_config["reward_settings"] = top_level_rs
+                    self.logger.info(
+                        f"Merged top-level reward_settings into env config: {list(top_level_rs.keys())}"
+                    )
+
             # Log the exact object passed to the environment so we can trace
             # where boolean flags like `use_continuous_actions` may be lost.
             try:

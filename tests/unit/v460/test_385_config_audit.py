@@ -2,6 +2,7 @@
 
 P0-1: continuous_to_discrete_threshold が訓練とライブで乖離するリスクを検証。
 P0-2: reward_scaling デッドコードの検証 (386# 修正済み。修正後の正常動作を確認)。
+P0-5: reward_settings YAML→env 伝播バグ検証 (386# 修正)。
 """
 
 from __future__ import annotations
@@ -183,3 +184,70 @@ class TestGammaConfigModelDir:
         assert base_dir != g095_dir, "Baseline and gamma095 should have different model dirs"
         assert base_dir != g099_dir, "Baseline and gamma099 should have different model dirs"
         assert g095_dir != g099_dir, "gamma095 and gamma099 should have different model dirs"
+
+
+class TestRewardSettingsPropagation:
+    """386# FIX: reward_settings YAML→env 伝播の検証."""
+
+    def test_top_level_reward_settings_merged_into_env_config(self) -> None:
+        """トップレベル reward_settings が actual_env_config にマージされること."""
+        from ztb.training.unified_trainer.algorithms.sac_trainer import SACTrainer
+
+        # Simulate a config with top-level reward_settings
+        config = {
+            "environment": {
+                "transaction_cost": 0.0,
+                "reward_scaling": 1.0,
+            },
+            "reward_settings": {
+                "balance_penalty_value": 0.1,
+                "hold_penalty_weight": 0.001,
+            },
+        }
+
+        trainer = SACTrainer.__new__(SACTrainer)
+        trainer.config = config
+        expected = trainer._extract_expected_reward_params(config)
+        # Top-level reward_settings should be picked up
+        assert "balance_penalty_value" in expected, (
+            "Top-level reward_settings should be extracted"
+        )
+        assert expected["balance_penalty_value"] == 0.1
+
+    def test_env_nested_reward_settings_takes_priority(self) -> None:
+        """environment 内の reward_settings がトップレベルより優先されること."""
+        from ztb.training.unified_trainer.algorithms.sac_trainer import SACTrainer
+
+        config = {
+            "environment": {
+                "transaction_cost": 0.0,
+                "reward_settings": {
+                    "balance_penalty_value": 0.2,
+                },
+            },
+            "reward_settings": {
+                "balance_penalty_value": 0.1,
+            },
+        }
+
+        trainer = SACTrainer.__new__(SACTrainer)
+        trainer.config = config
+        expected = trainer._extract_expected_reward_params(config)
+        # env-nested reward_settings has balance_penalty_value
+        assert expected.get("balance_penalty_value") == 0.2, (
+            "environment-nested reward_settings should take priority"
+        )
+
+    def test_reward_tuned_yaml_has_reward_settings(self) -> None:
+        """reward-tuned YAML に reward_settings が存在すること."""
+        from scripts.v460.lib.config_loader import load_config
+
+        cfg = load_config(
+            "configs/v460/experiments/g2_sac_gamma095_reward_tuned.yaml"
+        )
+        rs = cfg.get("reward_settings")
+        assert rs is not None, "reward_settings section missing from reward-tuned YAML"
+        assert isinstance(rs, dict)
+        assert rs.get("balance_penalty_value") == 0.1, (
+            f"Expected balance_penalty_value=0.1, got {rs.get('balance_penalty_value')}"
+        )
