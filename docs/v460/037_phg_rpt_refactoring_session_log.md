@@ -4011,3 +4011,44 @@
 ### 判断
 - 今回の failure は test optimization の副作用ではなく、`g2_sac_train.yaml` と実 parquet の config drift が本体だった。YAML を実データに合わせて戻し、test 側は YAML 追従へ寄せるのが一番筋が良い。
 - `test_356` は今後も YAML を変えるたびに自動追従するため、同種 drift の再発コストは下がった。
+
+## 2026-03-11 / Session 037-096
+
+### 実施内容
+- `prompts/codex_test_cleanup_and_perf.md` の残課題を継続確認しつつ、`v460` filtered broad の `--durations=30` を取り直して現時点の実ボトルネックを再特定した。
+- 最新の上位は以下だった:
+  - `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration` setup
+  - `test_enricher_skip_gate.py::Test058Integration` real-data setup
+  - `test_v460_core.py::TestDataLoader::test_load_parquet`
+  - `test_sac_retrain_scheduler.py::TestUpdateSidecarSignal::test_writes_signal_file`
+- production 側の再利用改善として [scripts/v460/lib/data_loader.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/data_loader.py) に `max_rows` を追加。
+  - `feature_cols` を使う selective load と両立しつつ、`pyarrow.ParquetFile.iter_batches(...)` を使って先頭 batch だけ読む fast path を共通 helper に寄せた。
+  - 空 parquet は schema から columns を復元して空 DataFrame を返す。
+  - `max_rows <= 0` は `ValueError` にした。
+- [tests/unit/v460/test_v460_core.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_v460_core.py) に `load_parquet(..., max_rows=2)` 回帰を追加。
+- [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py)
+  - `_G2_REAL_ROWS` を `80 -> 64` に圧縮
+  - 一度は generic `load_parquet(..., max_rows=64)` へ寄せたが、実測で direct `pyarrow.ParquetFile.iter_batches(...)` のほうが約 2 倍速かったため、hot fixture は最短経路へ戻した
+  - helper は production に残し、hotspot test だけ別扱いにした
+- prompt 残課題の確認:
+  - `tests/integration/test_custom_ppo_integration.py` は 9 件 skip のまま安定
+  - `tests/training/test_v430_1000_steps.py` は現 live tree には存在しない
+  - `find tests -type d -empty` は空で、空テストディレクトリ残件はなかった
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `tests/unit/v460/test_v460_core.py`
+  - `105 passed in 10.41s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=10`
+  - `--ignore=tests/unit/v460/test_113_resilience.py`
+  - `--ignore=tests/unit/v460/test_152_parallel_tasks.py`
+  - `--ignore=tests/unit/v460/test_260_compute_extract_regime_split.py`
+  - `--deselect=tests/unit/v460/test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4579 passed, 13 warnings in 38.60s`
+
+### 主要改善
+- `load_parquet(max_rows=...)` は `v460` helper として今後再利用できる形になった。大量 parquet の先頭サンプルだけ欲しい case では、full read + `head()` より明確に安い。
+- 一方で `test_356` のような最上位 hotspot では、schema 検査や timestamp 検出の generic 固定費すら効く。ここは helper 再利用より hot path 最短化を優先した。
+- `v460` broad の上位は依然として `test_356` setup、`test_enricher_skip_gate` real-data setup、`test_sac_retrain_scheduler` sidecar write に集中している。次はこの 3 本を順に詰めるのが妥当。

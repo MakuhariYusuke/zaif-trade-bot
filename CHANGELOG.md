@@ -4976,3 +4976,11 @@ python scripts/unified_trainer.py \
   - legacy prompt unit failures: `36 passed, 9 skipped, 15 subtests passed in 5.08s`
   - `tests/integration/test_custom_ppo_integration.py`: `9 skipped in 4.01s`
   - `tests/training/test_v430_1000_steps.py` no longer exists in the live tree
+- Continued `prompts/codex_test_cleanup_and_perf.md` follow-up while keeping the 17-feature G2 change deferred to a separate branch:
+  - added `max_rows` support to [scripts/v460/lib/data_loader.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/data_loader.py) using first-batch parquet reads for low-cost partial sampling without loading the full file
+  - added a `load_parquet(..., max_rows=...)` regression in [tests/unit/v460/test_v460_core.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_v460_core.py)
+  - reduced [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py) real-data sample size from `80` to `64` rows and kept its hot-path load on the direct `pyarrow.ParquetFile.iter_batches(...)` route after confirming the generic helper adds avoidable schema overhead there
+  - rechecked residual prompt status: `tests/integration/test_custom_ppo_integration.py` remains intentionally skipped, `tests/training/test_v430_1000_steps.py` is absent from the live tree, and no empty test directories were present
+- Verified the latest `v460` batch with:
+  - focused: `tests/unit/v460/test_356_g2_sac_blockers.py tests/unit/v460/test_v460_core.py` → `105 passed in 10.41s`
+  - filtered broad `tests/unit/v460/` → `4579 passed, 13 warnings in 38.60s`
