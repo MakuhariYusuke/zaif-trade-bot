@@ -62,7 +62,11 @@ features:
 #   - enable_forced_diversity → False (行動分布制約なし)
 # ★ これらを有効化する場合は 365# §3.5 の注意事項を必ず参照
 environment:
-  transaction_cost: 0.001          # 0.1% (Coincheck Maker)
+  # 385# FIX: 000# 前提 "全取引はmaker注文（手数料0%）で執行" に準拠
+  # 旧: 0.001 (0.1%) — 000# 教訓4 "taker 0.1% × 1min足は Oracle でも不成立" と矛盾
+  # ExchangeFeeModel.coincheck = {"buy": 0.0, "sell": 0.0}
+  # TradeExecutionEngine.coincheck.maker_fee = 0.0
+  transaction_cost: 0.0            # 0% (Coincheck Maker — 000# §前提条件)
   max_position_size: 0.01          # 0.01 BTC
   initial_portfolio_value: 10000000.0  # 1000万円 (v459 踏襲)
   use_continuous_actions: true     # SAC 用連続行動空間
