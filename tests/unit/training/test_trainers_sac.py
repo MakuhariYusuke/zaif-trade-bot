@@ -329,21 +329,28 @@ class TestSACTrainerInternalLogs:
 
         trainer = SACTrainer(config)
 
-        with patch(
-            "stable_baselines3.common.callbacks.CheckpointCallback"
-        ) as mock_checkpoint:
-            checkpoint_instance = MagicMock(spec=CheckpointCallback)
-            mock_checkpoint.return_value = checkpoint_instance
-
-            callbacks = trainer._setup_callbacks()
+        # Test that _setup_callbacks creates CallbackList with CheckpointCallback
+        callbacks = trainer._setup_callbacks()
 
         # Should return CallbackList
         assert isinstance(callbacks, CallbackList), "Should return CallbackList"
-        assert checkpoint_instance in callbacks.callbacks
 
-        mock_checkpoint.assert_called_once_with(
-            save_freq=500,
-            save_path="models/checkpoints",
-            name_prefix="sac_checkpoint",
-            verbose=1,
-        )
+        # Should contain CheckpointCallback
+        checkpoint_callbacks = [
+            cb for cb in callbacks.callbacks if isinstance(cb, CheckpointCallback)
+        ]
+        assert (
+            len(checkpoint_callbacks) == 1
+        ), "Should contain exactly one CheckpointCallback"
+
+        # Check CheckpointCallback configuration
+        checkpoint_cb = checkpoint_callbacks[0]
+        assert (
+            checkpoint_cb.save_freq == 500
+        ), "Should use checkpoint_interval from config"
+        assert (
+            checkpoint_cb.save_path == "models/checkpoints"
+        ), "Should use checkpoint_dir from config"
+        assert (
+            "sac_checkpoint" in checkpoint_cb.name_prefix
+        ), "Should use sac_checkpoint prefix"

@@ -90,20 +90,17 @@ class TestUnifiedTrainer:
             }
         ]
 
-        df = sample_backtest_data["period_1"]["data"]
-
-        with (
-            patch.object(trainer, "_create_backtest_environment", return_value=Mock()) as mock_env,
-            patch.object(trainer, "_load_backtest_data", return_value=df),
-            patch.object(
-                trainer,
-                "_run_single_period_backtest",
-                return_value={"total_return_pct": 5.0, "total_actions": 100},
-            ),
-            patch.object(trainer, "_calculate_overall_backtest_metrics") as mock_overall,
-            patch.object(trainer, "_analyze_backtest_regime_performance") as mock_regime,
-            patch.object(trainer, "_generate_backtest_recommendations") as mock_recommend,
-        ):
+        # Mock to avoid actual backtest
+        with patch.object(trainer, '_create_backtest_environment') as mock_env,              patch.object(trainer, '_load_backtest_data', return_value=sample_backtest_data),              patch.object(trainer, '_run_single_period_backtest', return_value={
+                 "metrics": {
+                     "total_return": 0.05,
+                     "win_rate": 0.6,
+                     "total_trades": 100
+                 },
+                 "performance_by_regime": {
+                     "bull": {"return": 0.08, "win_rate": 0.7}
+                 }
+             }),              patch.object(trainer, '_calculate_overall_backtest_metrics') as mock_overall,              patch.object(trainer, '_analyze_backtest_regime_performance') as mock_regime,              patch.object(trainer, '_generate_backtest_recommendations') as mock_recommend:
 
             mock_overall.return_value = {
                 "total_periods": 2,
@@ -130,29 +127,35 @@ class TestUnifiedTrainer:
 
     def test_create_backtest_environment(self, trainer):
         """Backtest environment creation test"""
-        with patch.object(trainer, "_create_training_environment") as mock_create:
+        env_config = {"env_name": "HeavyTradingEnv"}
+
+        with patch('ztb.training.unified_trainer.trainer.gym.make') as mock_make:
             mock_env = Mock()
-            mock_create.return_value = mock_env
+            mock_make.return_value = mock_env
 
-            env = trainer._create_backtest_environment()
+            env = trainer._create_backtest_environment(env_config)
 
-            mock_create.assert_called_once()
+            mock_make.assert_called_with("HeavyTradingEnv")
             assert env == mock_env
 
     def test_load_backtest_data(self, trainer):
         """Backtest data loading test"""
-        trainer.config.setdefault("training", {})["data_config"] = {"data_path": "dummy.csv"}
-        mock_df = pd.DataFrame({"timestamp": ["2023-01-01T00:00:00"], "price": [100.0]})
+        periods = [
+            {
+                "name": "period_1",
+                "start_date": "2023-01-01",
+                "end_date": "2023-01-31"
+            }
+        ]
 
-        with patch(
-            "ztb.training.unified_trainer.trainer.DataLoader.load_csv_optimized",
-            return_value=mock_df.copy(),
-        ) as mock_load:
-            data = trainer._load_backtest_data()
+        with patch('ztb.training.unified_trainer.trainer.load_market_data') as mock_load:
+            mock_data = {"period_1": pd.DataFrame()}
+            mock_load.return_value = mock_data
 
-            mock_load.assert_called_once_with("dummy.csv")
-            assert not data.empty
-            assert "timestamp" in data.columns
+            data = trainer._load_backtest_data(periods)
+
+            mock_load.assert_called()
+            assert data == mock_data
 
     def test_run_single_period_backtest(self, trainer):
         """Single period backtest execution test"""
@@ -162,39 +165,41 @@ class TestUnifiedTrainer:
             "volume": [1000] * 10
         })
 
-        mock_env = Mock()
-        trainer.model = Mock()
+        with patch.object(trainer, '_create_backtest_environment') as mock_env,              patch('ztb.training.unified_trainer.trainer.evaluate_policy') as mock_eval:
 
-        with patch.object(
-            trainer,
-            "_test_period_with_model",
-            return_value={"period_name": "period_1", "total_return_pct": 5.0},
-        ) as mock_test:
-            results = trainer._run_single_period_backtest(
-                trainer.model,
-                mock_env,
-                period_data,
-                {
-                    "name": "period_1",
-                    "start_date": "2023-01-01",
-                    "end_date": "2023-01-01 09:00:00",
-                },
-            )
+            mock_env_instance = Mock()
+            mock_env.return_value = mock_env_instance
+            mock_eval.return_value = {
+                "mean_reward": 150,
+                "std_reward": 20,
+                "total_episodes": 10
+            }
 
-            assert results["period_name"] == "period_1"
-            assert results["total_return_pct"] == 5.0
-            mock_test.assert_called_once()
+            # Mock model
+            trainer.model = Mock()
+
+            results = trainer._run_single_period_backtest("period_1", period_data)
+
+            assert "metrics" in results
+            assert "performance_by_regime" in results
+            assert results["metrics"]["total_episodes"] == 10
 
     def test_calculate_overall_backtest_metrics(self, trainer):
         """Overall backtest metrics calculation test"""
         period_results = [
             {
-                "total_return_pct": 5.0,
-                "total_actions": 100,
+                "metrics": {
+                    "total_return": 0.05,
+                    "total_trades": 100,
+                    "win_rate": 0.6
+                }
             },
             {
-                "total_return_pct": -1.0,
-                "total_actions": 80,
+                "metrics": {
+                    "total_return": 0.03,
+                    "total_trades": 80,
+                    "win_rate": 0.55
+                }
             }
         ]
 
@@ -203,11 +208,11 @@ class TestUnifiedTrainer:
         assert "total_periods" in metrics
         assert "average_return" in metrics
         assert "total_trades" in metrics
-        assert "win_rate" in metrics
+        assert "average_win_rate" in metrics
         assert metrics["total_periods"] == 2
-        assert abs(metrics["average_return"] - 2.0) < 0.001
+        assert abs(metrics["average_return"] - 0.04) < 0.001
         assert metrics["total_trades"] == 180
-        assert abs(metrics["win_rate"] - 50.0) < 0.001
+        assert abs(metrics["average_win_rate"] - 0.575) < 0.001
 
     def test_analyze_backtest_regime_performance(self, trainer):
         """Backtest regime performance analysis test"""
@@ -228,16 +233,18 @@ class TestUnifiedTrainer:
 
         regime_perf = trainer._analyze_backtest_regime_performance(period_results)
 
-        assert "bull_market_performance" in regime_perf
-        assert "bear_market_performance" in regime_perf
-        assert regime_perf["bull_market_performance"]["average_return"] == 0.0
-        assert regime_perf["bear_market_performance"]["win_rate"] == 0.0
+        assert "bull" in regime_perf
+        assert "bear" in regime_perf
+        assert regime_perf["bull"]["average_return"] == 0.07
+        assert regime_perf["bull"]["average_win_rate"] == 0.675
+        assert regime_perf["bear"]["average_return"] == -0.015
+        assert regime_perf["bear"]["average_win_rate"] == 0.425
 
     def test_generate_backtest_recommendations(self, trainer):
         """Backtest recommendations generation test"""
         results = {
             "overall_metrics": {
-                "win_rate": 65.0,
+                "average_win_rate": 0.65,
                 "average_return": 0.04
             },
             "regime_performance": {
@@ -250,7 +257,9 @@ class TestUnifiedTrainer:
 
         assert isinstance(recommendations, list)
         assert len(recommendations) > 0
-        assert any("Strong overall performance" in rec for rec in recommendations)
+        # Should contain recommendations for strong performing regime
+        strong_regime_found = any("bull" in rec for rec in recommendations)
+        assert strong_regime_found
 
     def test_error_handling(self, trainer):
         """Error handling test"""

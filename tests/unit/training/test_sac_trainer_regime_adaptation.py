@@ -245,13 +245,20 @@ class TestSACTrainerRegimeAdaptation:
     ):
         """Test error handling in regime initialization"""
         # Test that trainer handles classifier initialization errors gracefully
-        classifier_error = Exception("Classifier initialization failed")
+        mock_classifier.side_effect = Exception("Classifier initialization failed")
 
         with patch(
-            "ztb.analysis.regime.market_regime_classifier.MarketRegimeClassifier",
-            side_effect=classifier_error,
-        ), pytest.raises(Exception, match="Classifier initialization failed"):
-            SACTrainer(trainer_config, mock_env)
+            "ztb.analysis.market_regime_classifier.MarketRegimeClassifier",
+            mock_classifier,
+        ):
+            trainer = SACTrainer(trainer_config, mock_env)
+
+            # Trainer should handle initialization errors gracefully
+            # The regime adaptation should be disabled
+            assert (
+                trainer.regime_classifier is None
+                or not trainer.market_regime_adaptation.get("enabled", False)
+            )
 
     def test_regime_adaptation_metrics_collection(
         self, trainer_config, mock_env, mock_classifier

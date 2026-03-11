@@ -160,8 +160,8 @@ class TestAnalyzeResultsMethods:
         mock_callback = Mock()
         mock_callback.discrete_actions = [1, 2, 0]  # BUY, SELL, HOLD
         mock_callback.regime_action_counts = {
-            "bull": [2, 0, 1],  # BUY:2, SELL:0, HOLD:1
-            "bear": [1, 1, 0],  # BUY:1, SELL:1, HOLD:0
+            "bull": [1, 2, 0],  # HOLD:1, BUY:2, SELL:0
+            "bear": [0, 1, 1],  # HOLD:0, BUY:1, SELL:1
         }
         trainer.training_stats = {"callback": mock_callback}
 
@@ -172,14 +172,14 @@ class TestAnalyzeResultsMethods:
         assert "bull" in regime_dist
         assert "bear" in regime_dist
 
-        # Bull market: 3 total actions (2+0+1)
+        # Bull market: 3 total actions (1+2+0)
         bull_dist = regime_dist["bull"]
         assert bull_dist["HOLD"] == 1 / 3  # 1/3 ≈ 0.333
         assert bull_dist["BUY"] == 2 / 3  # 2/3 ≈ 0.667
         assert bull_dist["SELL"] == 0 / 3  # 0/3 = 0.0
         assert bull_dist["total_actions"] == 3
 
-        # Bear market: 2 total actions (1+1+0)
+        # Bear market: 2 total actions (0+1+1)
         bear_dist = regime_dist["bear"]
         assert bear_dist["HOLD"] == 0 / 2  # 0/2 = 0.0
         assert bear_dist["BUY"] == 1 / 2  # 1/2 = 0.5

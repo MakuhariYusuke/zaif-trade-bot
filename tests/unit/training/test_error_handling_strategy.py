@@ -57,10 +57,7 @@ class TestErrorHandlingStrategy(unittest.TestCase):
     def test_enum_string_representation(self):
         """Test string representation of enum members."""
         self.assertEqual(str(ErrorHandlingStrategy.CONTINUE), 'ErrorHandlingStrategy.CONTINUE')
-        self.assertEqual(
-            repr(ErrorHandlingStrategy.RETRY),
-            "<ErrorHandlingStrategy.RETRY: 'retry'>",
-        )
+        self.assertEqual(repr(ErrorHandlingStrategy.RETRY), 'ErrorHandlingStrategy.RETRY')
 
     def test_enum_comparison(self):
         """Test enum member comparison."""

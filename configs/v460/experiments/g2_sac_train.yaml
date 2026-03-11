@@ -19,12 +19,13 @@ _task: sac_train
 data:
   # P3A-1: v451 stub → full_registry (77列, 1.2M行, 12特徴量全載)
   ohlcv_path: "data/btc_jpy_1m_full_registry_features.parquet"
+  train_end_index: 1000000
 
 # ---- 特徴量 (FeatureRegistry 系統) ----
 # 356# §4.3: OHLCV ベースの FeatureRegistry 特徴量を使用
 # v460 microstructure features は ph4 で統合
-# 現行 parquet は FeatureRegistry の 12 特徴量を全載。
-# 市場理論 5 特徴量は別データ更新後に再投入する。
+# 379# P3-B3: 12 既存 + 5 市場理論(pre-366#) = 17 特徴量
+#   市場理論 5 特徴量: z-score clipping ±5.0 適用済み
 features:
   selected:
     - price_velocity
@@ -39,6 +40,12 @@ features:
     - momentum_burst
     - liquidity_surge
     - realized_volatility
+    # 379# pre-366# market theory features
+    - parkinson_sigma
+    - vpin_proxy
+    - kyle_lambda_proxy
+    - amihud_illiq
+    - ema_velocity_bps
 
 # ---- 環境 (EnvironmentConfig フィールド準拠) ----
 # 365# §3.2: 以下の市場理論機構は明示的に無設定 = 無効:

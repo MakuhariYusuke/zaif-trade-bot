@@ -14,13 +14,14 @@ import pyarrow.parquet as pq
 import pytest
 import yaml
 
+from scripts.v460.lib.data_loader import load_parquet
 from scripts.v460.lib.tasks.sac_train import SACTrainModelProtocol, _create_training_env
 from ztb.training.algorithms.sac import SACAlgorithm
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
 
 _G2_SAC_YAML_PATH = Path("configs/v460/experiments/g2_sac_train.yaml")
-_G2_REAL_ROWS = 64
+_G2_REAL_ROWS = 80
 
 
 @lru_cache(maxsize=1)
@@ -40,30 +41,13 @@ def _load_g2_schema_names() -> tuple[str, ...]:
 
 
 @lru_cache(maxsize=1)
-def _load_g2_selected_features() -> tuple[str, ...]:
-    cfg = _load_g2_sac_yaml()
-    selected = cfg["features"]["selected"]
-    if not isinstance(selected, list):
-        raise TypeError("features.selected must be list")
-    return tuple(str(col) for col in selected)
-
-
-@lru_cache(maxsize=1)
 def _load_g2_real_df() -> pd.DataFrame:
     cfg = _load_g2_sac_yaml()
     data_path = Path(cfg["data"]["ohlcv_path"])
-    columns = sorted({*_load_g2_selected_features(), "close"})
-    parquet_file = pq.ParquetFile(str(data_path))
-    first_batch = next(
-        parquet_file.iter_batches(
-            batch_size=_G2_REAL_ROWS,
-            columns=columns,
-        ),
-        None,
-    )
-    if first_batch is None:
-        return pd.DataFrame(columns=columns)
-    return first_batch.to_pandas()
+    selected = cfg["features"]["selected"]
+    if not isinstance(selected, list):
+        raise TypeError("features.selected must be list")
+    return load_parquet(data_path, feature_cols=[str(col) for col in selected]).head(_G2_REAL_ROWS)
 
 
 @lru_cache(maxsize=1)
@@ -551,13 +535,26 @@ class TestTrainingDataIntegrity:
 # ======================================================================
 
 
-@pytest.mark.slow
-@pytest.mark.integration
 class TestHeavyTradingEnvIntegration:
     """P3A-2: 実データ + feature_names 注入で HeavyTradingEnv が正常動作すること.
 
     YAML → load_parquet → EnvironmentConfig → HeavyTradingEnv の E2E パイプラインを検証.
     """
+
+    SELECTED_FEATURES: list[str] = [
+        "price_velocity",
+        "micro_trend",
+        "price_acceleration",
+        "volume_surge",
+        "momentum_divergence",
+        "tick_volume_ratio",
+        "order_flow_imbalance",
+        "micro_volatility",
+        "spread_pressure",
+        "momentum_burst",
+        "liquidity_surge",
+        "realized_volatility",
+    ]
 
     @pytest.fixture(scope="class")
     def real_df(self) -> "pd.DataFrame":
@@ -568,11 +565,7 @@ class TestHeavyTradingEnvIntegration:
         return _load_g2_real_df()
 
     @pytest.fixture(scope="class")
-    def selected_features(self) -> tuple[str, ...]:
-        return _load_g2_selected_features()
-
-    @pytest.fixture(scope="class")
-    def env_config(self, selected_features: tuple[str, ...]) -> "EnvironmentConfig":
+    def env_config(self) -> "EnvironmentConfig":
         """YAML 環境セクションに準拠した EnvironmentConfig を構築."""
         config = EnvironmentConfig(
             transaction_cost=0.001,
@@ -582,7 +575,7 @@ class TestHeavyTradingEnvIntegration:
             action_space_type="continuous_1d",
             exchange="coincheck",
             timeframe="1m",
-            feature_names=list(selected_features),
+            feature_names=self.SELECTED_FEATURES,
             random_start=False,
             # 相関低減は schema 指定時に不要 → 無効化で安定
             correlation_reduction=False,
@@ -634,36 +627,32 @@ class TestHeavyTradingEnvIntegration:
     def test_obs_dim_matches_feature_count(
         self,
         shared_env: "HeavyTradingEnv",
-        selected_features: tuple[str, ...],
     ) -> None:
         """observation_space の次元が注入した feature 数 (12) と一致."""
         obs_dim = shared_env.observation_space.shape[0]
-        assert obs_dim == len(selected_features), (
-            f"obs_dim={obs_dim} != expected={len(selected_features)}"
+        assert obs_dim == len(self.SELECTED_FEATURES), (
+            f"obs_dim={obs_dim} != expected={len(self.SELECTED_FEATURES)}"
         )
 
     def test_feature_names_synced(
         self,
         shared_env: "HeavyTradingEnv",
-        selected_features: tuple[str, ...],
     ) -> None:
         """env.feature_names が注入した特徴量リストと一致."""
-        assert shared_env.feature_names == list(selected_features)
+        assert shared_env.feature_names == self.SELECTED_FEATURES
 
     def test_reset_returns_valid_obs(
         self,
         shared_env: "HeavyTradingEnv",
-        selected_features: tuple[str, ...],
     ) -> None:
         """reset() が正しい shape の observation を返す."""
         obs, info = shared_env.reset()
-        assert obs.shape == (len(selected_features),)
+        assert obs.shape == (len(self.SELECTED_FEATURES),)
         assert not np.any(np.isnan(obs)), "Observation contains NaN"
 
     def test_step_returns_valid_tuple(
         self,
         shared_env: "HeavyTradingEnv",
-        selected_features: tuple[str, ...],
     ) -> None:
         """step() が (obs, reward, terminated, truncated, info) を正しく返す."""
         obs, _ = shared_env.reset()
@@ -672,7 +661,7 @@ class TestHeavyTradingEnvIntegration:
         result = shared_env.step(action)
         assert len(result) == 5, f"step() returned {len(result)} elements, expected 5"
         obs2, reward, terminated, truncated, info = result
-        assert obs2.shape == (len(selected_features),)
+        assert obs2.shape == (len(self.SELECTED_FEATURES),)
         assert isinstance(reward, (int, float))
         assert isinstance(terminated, bool)
         assert isinstance(truncated, bool)
@@ -680,14 +669,13 @@ class TestHeavyTradingEnvIntegration:
     def test_create_training_env_pipeline(
         self,
         training_env_bundle: tuple["HeavyTradingEnv", dict[str, int | str | bool]],
-        selected_features: tuple[str, ...],
     ) -> None:
         """_create_training_env が YAML 相当の cfg で正常に環境を構築."""
         env, env_info = training_env_bundle
         assert env is not None
-        assert env_info["obs_dim"] == len(selected_features)
+        assert env_info["obs_dim"] == len(self.SELECTED_FEATURES)
         assert env_info["feature_columns_injected"] is True
-        assert env_info["feature_columns_count"] == len(selected_features)
+        assert env_info["feature_columns_count"] == len(self.SELECTED_FEATURES)
         assert env_info["env_type"] == "HeavyTradingEnv"
 
 

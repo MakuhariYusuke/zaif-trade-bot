@@ -66,7 +66,7 @@ def write_sidecar_signal(
     )
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
+            json.dump(data, f, ensure_ascii=False, indent=2)
         os.replace(tmp_path, str(path))
         logger.debug(f"Sidecar signal written: {path}")
     except Exception:

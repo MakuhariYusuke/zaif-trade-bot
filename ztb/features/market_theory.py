@@ -155,9 +155,14 @@ def kyle_lambda_proxy(df: pd.DataFrame, window: int = 20) -> pd.Series:
         lam_series = pd.Series(raw_lambda)
         rolling_mean = lam_series.rolling(window, min_periods=1).mean()
         rolling_std = lam_series.rolling(window, min_periods=1).std().fillna(eps)
-        lam = ((raw_lambda - rolling_mean.to_numpy()) / (rolling_std.to_numpy() + eps))
+        # std が極小 (price stall) のとき z-score 爆発防止: floor を設ける
+        safe_std = np.maximum(rolling_std.to_numpy(), rolling_mean.to_numpy().clip(min=eps) * 0.01)
+        lam = (raw_lambda - rolling_mean.to_numpy()) / (safe_std + eps)
     else:
         lam = raw_lambda
+
+    # clip: extreme outliers を抑制 (SAC obs 安定化)
+    lam = np.clip(lam, -5.0, 5.0)
 
     return pd.Series(lam, index=df.index, name="kyle_lambda_proxy")
 
@@ -209,11 +214,14 @@ def amihud_illiq(df: pd.DataFrame, window: int = 20) -> pd.Series:
         illiq_series = pd.Series(raw_illiq)
         rolling_mean = illiq_series.rolling(window, min_periods=1).mean()
         rolling_std = illiq_series.rolling(window, min_periods=1).std().fillna(eps)
-        illiq = (
-            (raw_illiq - rolling_mean.to_numpy()) / (rolling_std.to_numpy() + eps)
-        )
+        # std が極小 (price stall) のとき z-score 爆発防止
+        safe_std = np.maximum(rolling_std.to_numpy(), rolling_mean.to_numpy().clip(min=eps) * 0.01)
+        illiq = (raw_illiq - rolling_mean.to_numpy()) / (safe_std + eps)
     else:
         illiq = raw_illiq
+
+    # clip: extreme outliers を抑制 (SAC obs 安定化)
+    illiq = np.clip(illiq, -5.0, 5.0)
 
     return pd.Series(illiq, index=df.index, name="amihud_illiq")
 

@@ -411,10 +411,10 @@ class TrainingProgressCallback(BaseCallback):
             or self.ent_coefs
             or self.learning_rates
         ):
-            recent_actor = list(self.actor_losses)[-10:] if self.actor_losses else []
-            recent_critic = list(self.critic_losses)[-10:] if self.critic_losses else []
-            recent_ent = list(self.ent_coefs)[-10:] if self.ent_coefs else []
-            recent_lr = list(self.learning_rates)[-10:] if self.learning_rates else []
+            recent_actor = self.actor_losses[-10:] if self.actor_losses else []
+            recent_critic = self.critic_losses[-10:] if self.critic_losses else []
+            recent_ent = self.ent_coefs[-10:] if self.ent_coefs else []
+            recent_lr = self.learning_rates[-10:] if self.learning_rates else []
 
             avg_actor = sum(recent_actor) / len(recent_actor) if recent_actor else 0
             avg_critic = sum(recent_critic) / len(recent_critic) if recent_critic else 0
@@ -952,7 +952,3 @@ class TrainingProgressCallback(BaseCallback):
         logging.warning("  Average Steps/Second: %.2f", steps_per_sec)
 
         logging.info("=" * 80)
-
-    def on_rollout_end(self) -> None:
-        """Compatibility no-op for callers using the legacy public callback hook."""
-        return None

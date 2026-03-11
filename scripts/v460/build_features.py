@@ -350,7 +350,9 @@ def _add_pre366_proxy(
     raw_kyle = bar_range / (2.0 * safe_vol)
     kyle_mean = raw_kyle.rolling(window, min_periods=1).mean()
     kyle_std = raw_kyle.rolling(window, min_periods=1).std().fillna(eps)
-    out["kyle_lambda_proxy"] = (raw_kyle - kyle_mean) / (kyle_std + eps)
+    # safe_std: stdが極小時の z-score 爆発防止
+    kyle_safe_std = kyle_std.clip(lower=kyle_mean.clip(lower=eps) * 0.01)
+    out["kyle_lambda_proxy"] = ((raw_kyle - kyle_mean) / (kyle_safe_std + eps)).clip(-5.0, 5.0)
     logger.info(
         f"  379# Kyle λ: raw_mean={raw_kyle.mean():.6e}, "
         f"z_mean={out['kyle_lambda_proxy'].mean():.4f}"
@@ -361,7 +363,9 @@ def _add_pre366_proxy(
     raw_amihud = abs_return / safe_vol
     amihud_mean = raw_amihud.rolling(window, min_periods=1).mean()
     amihud_std = raw_amihud.rolling(window, min_periods=1).std().fillna(eps)
-    out["amihud_illiq_proxy"] = (raw_amihud - amihud_mean) / (amihud_std + eps)
+    # safe_std: stdが極小時の z-score 爆発防止
+    amihud_safe_std = amihud_std.clip(lower=amihud_mean.clip(lower=eps) * 0.01)
+    out["amihud_illiq_proxy"] = ((raw_amihud - amihud_mean) / (amihud_safe_std + eps)).clip(-5.0, 5.0)
     logger.info(
         f"  379# Amihud ILLIQ: raw_mean={raw_amihud.mean():.6e}, "
         f"z_mean={out['amihud_illiq_proxy'].mean():.4f}"
