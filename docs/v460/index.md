@@ -373,6 +373,8 @@
 | 376 | rev | [376_gemini_ph3_comprehensive_review_and_v456_revival.md](376_gemini_ph3_comprehensive_review_and_v456_revival.md) | Gemini 3.1 Pro: 374#–375# 深層レビュー + v456/v454 資産復活 + データパリティ是正 |
 | 377 | plan | [377_ph3_unified_direction_course_correction.md](377_ph3_unified_direction_course_correction.md) | 375#/376# レビュー統合方針: 軌道修正 + データパリティロードマップ + FastIntradayEnvV456 評価 |
 | 374 | impl | — | Phase 3.1 Proportional Boost 実装: `compute_sidecar_offset_bps_v2` + `_shaping_fn` + FillConfig 5フィールド + YAML parser + hot-reload + CycleGateAggregator v1/v2 切替 + validation 横展開 + 55 tests |
+| 379 | fix | — | watchdog UNKNOWN→NOT_RUNNING エスカレーション修正 + fill_test 再起動 |
+| 380 | analysis | [380_fill_test_trading_improvement_analysis.md](380_fill_test_trading_improvement_analysis.md) | Fill Test 7日間取引改善分析: sell EV破綻 (30s=-0.32bps), ranging損失, SkipGate非単調性, forced_buy_delay過剰, offset ceiling問題 — 10施策提案 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
