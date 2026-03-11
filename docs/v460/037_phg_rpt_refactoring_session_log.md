@@ -3880,3 +3880,102 @@
 - `HeavyTradingEnv` integration は「環境を重くする要因」を production 側でいじるのではなく、テスト側の入力量と `random_start` だけを絞って軽くした。
 - `test_197...` は call 上位だったが、実体は read-only YAML 確認で deepcopy が無駄だった。session-cached fixture へ寄せるだけで固定費を落とせた。
 - この batch は `v460` に近いホットスポットを優先し、`base_features_v456.py` の高リスク変更にはまだ踏み込んでいない。
+
+## 2026-03-11 / Session 037-093
+
+### 実施
+- `prompts/codex_test_cleanup_and_perf.md` で求められていた broad-suite の test cleanup を継続し、未コミットだった non-`v460` 修正群を維持したまま `v460` の残 failure と hotspot を追加処理した。
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `retrain_once()` が `stable_baselines3` を `sys.modules` から退避して再 import する現在の実装に合わせ、fake SB3 module を返す `_mock_sb3_import(...)` helper を追加
+  - cold-start / warm-start / OOS failure の 3 ケースを `patch("stable_baselines3.SAC")` 依存から helper 経由へ統一
+- `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `_load_g2_real_df()` を parquet 全読込 + `head(...)` から「first batch only + 必須 `close` 列」へ変更
+  - `HeavyTradingEnv` integration の setup を、実データ E2E 性を保ったまま軽量化
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `27 passed in 4.22s`
+- focused:
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `76 passed in 15.63s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4578 passed, 13 warnings in 63.42s`
+
+### 主要改善
+- `test_sac_retrain_scheduler.py::TestRetrainOnce::test_warm_start` は、real SB3 import が torch stub と衝突して落ちていた。production を戻さず、現実装どおりの import 経路をテスト側で再現する形に直した。
+- `test_356_g2_sac_blockers.py` は `head(80)` のために parquet 全体を読んでいたのが重かった。first-batch 読込に変えたことで、`HeavyTradingEnv` integration の最大 setup は旧 broad 計測 `2.87s` 基準から `0.91s` まで低下した。
+- broad の上位は引き続き `test_enricher_skip_gate.py` real-data setup と `test_build_features_pipeline.py` setup に集まっている。次はこの 2 本を優先して詰めるのが筋。
+
+## 2026-03-11 / Session 037-094
+
+### 実施
+- `prompts/codex_test_cleanup_and_perf.md` の残課題として、non-`v460` broad で落ちていた training / trading / utils 群を現行 API に追随させた。
+- `tests/unit/trading/test_live.py`
+  - 非同期テストを `asyncio.run(...)` ベースの同期 smoke / unit test に整理
+  - `SimBroker` / `PaperTrader` の patch 先を現行 module path に揃えた
+- `tests/unit/trading/test_heavy_env_regime_adaptation.py`
+  - `HeavyTradingEnv(df=..., config=...)` の現行 API へ全面更新
+  - `EnvironmentConfig.from_dict(...)` と minimal market DataFrame を使う実動作ベースに変更
+- `ztb/trading/live/simulation/sim_broker.py`
+  - `OrderStateMachine` の import を不完全な `orders.state` ではなく `live.order_state` に修正
+  - `get_order_by_idempotency_key` / `create_order` 欠落による実バグを解消
+- `ztb/training/unified_trainer/base/callbacks.py`
+  - deque slicing を `list(...)[-10:]` に直し、broad 中の `TypeError` を解消
+- `tests/unit/training/*`
+  - `test_action_recording_fixes.py`, `test_algorithm_switching.py`, `test_analyze_results_methods.py`, `test_checkpoint_manager.py`, `test_error_handling_strategy.py`, `test_reward_components_persistence.py` を現行 callback / trainer / config 契約へ更新
+  - `test_sac_trainer.py`, `test_sac_trainer_regime_adaptation.py`, `test_trainers_sac.py`, `test_training_resume.py`, `test_unified_config_manager.py`, `test_unified_trainer.py` を現行 `SACTrainer` / `TrainingStateManager` / `TrainingConfigManager` / `UnifiedTrainer` のシグネチャと戻り値に追随
+- `tests/unit/utils/*`
+  - `test_schema_validation.py` を現行 `schema/results_schema.json` に追随
+  - `test_validation_utils.py` に欠落していた `MockActionSignal` を追加し、現行 validator の挙動に合わせて期待値を更新
+  - `test_numpy_compatibility.py` の SciPy `zscore` 依存を NumPy 直計算へ置換して torch array-api stub 衝突を回避
+- `tests/unit/training/policies/test_strict_masked_policy.py`
+- `tests/unit/training/test_target_entropy.py`
+  - full torch backend がない broad 環境では明示 skip するように変更
+- `ztb/utils/torch_utils.py`
+  - `ZTB_FORCE_TORCH_STUB=1` を尊重する fast path を追加
+  - stub version を `0.0.0` に統一
+- `ztb/training/unified_trainer/algorithms/sac_trainer.py`
+  - `_propagate_feature_set(...)` が `env_candidate=None` で落ちないよう guard を追加
+- `tests/unit/v459/test_reporter_v459.py`
+  - 反転取引時の PnL / fee 配賦を現仕様（クローズ側に全配賦、新規側は 0）へ更新
+
+### 結果
+- focused:
+  - `tests/unit/training/test_algorithm_switching.py`
+  - `tests/unit/training/test_analyze_results_methods.py`
+  - `tests/unit/training/test_checkpoint_manager.py`
+  - `tests/unit/training/test_error_handling_strategy.py`
+  - `tests/unit/training/test_reward_components_persistence.py`
+  - `tests/unit/training/test_action_recording_fixes.py`
+  - `tests/unit/training/policies/test_strict_masked_policy.py`
+  - `87 passed in 7.46s`
+- focused:
+  - `tests/unit/training/policies/test_strict_masked_policy.py`
+  - `tests/unit/training/test_target_entropy.py`
+  - `tests/unit/utils/test_schema_validation.py`
+  - `tests/unit/utils/test_torch_shim.py`
+  - `tests/unit/utils/test_validation_utils.py`
+  - `tests/unit/utils/test_numpy_compatibility.py`
+  - `tests/unit/training/test_sac_trainer.py`
+  - `tests/unit/training/test_sac_trainer_regime_adaptation.py`
+  - `tests/unit/training/test_trainers_sac.py`
+  - `tests/unit/training/test_training_resume.py`
+  - `tests/unit/training/test_unified_config_manager.py`
+  - `tests/unit/training/test_unified_trainer.py`
+  - `97 passed, 2 skipped in 12.28s`
+- broad:
+  - `tests/unit/ --ignore=tests/unit/v460/ -q --no-cov --tb=short --maxfail=5`
+  - `3203 passed, 37 skipped, 3237 warnings, 86 subtests passed in 605.46s`
+
+### 主要改善
+- broad non-`v460` unit を止めていた failure は、ほぼすべて「古い API 前提」か「lightweight torch stub 前提の欠落」だった。production を戻すのではなく、テストを現行契約に寄せる形で収束させた。
+- `strict_masked_policy` / `target_entropy` は full torch がある focused 環境では通る一方、broad では conftest の lightweight torch stub が混在する。ここは無理に production を stub 対応へ寄せず、test 側で skip 条件を明示した。
+- `training_resume` は broad 実行時だけ `torch` RNG/state payload が stub 化されて pickle 不能になる問題があったため、テストの state payload を pure NumPy / bytes に固定した。
+- non-`v460` unit broad は現時点で clean になった。次は prompt 残課題として integration 側 (`tests/integration/`) と `legacy_tests/training` 周辺を同じ方針で詰めるのが筋。

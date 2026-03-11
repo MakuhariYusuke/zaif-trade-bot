@@ -51,61 +51,58 @@ class TestSchemaValidation:
     @pytest.fixture
     def results_schema(self):
         """Load the results schema."""
-        schema_path = Path(__file__).parent.parent / "config" / "results_schema.json"
-        with open(schema_path, "r") as f:
+        repo_root = Path(__file__).resolve().parents[3]
+        candidates = [
+            repo_root / "schema" / "results_schema.json",
+            repo_root / "configs" / "schema" / "results_schema.json",
+            repo_root / "configs" / "results_schema.json",
+        ]
+        schema_path = next((path for path in candidates if path.exists()), None)
+        if schema_path is None:
+            pytest.fail("results_schema.json not found in expected locations")
+        with open(schema_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
     @pytest.fixture
     def minimal_synthetic_results(self):
         """Create minimal synthetic results for testing."""
         return {
-            "strategy": "buy_hold",
-            "dataset": "btc_usd_1m",
-            "slippage_bps": 5.0,
-            "initial_capital": 10000.0,
-            "total_pnl": 1250.0,
-            "sharpe_ratio": 1.25,
-            "deflated_sharpe_ratio": 1.15,
-            "pvalue_bootstrap": 0.032,
-            "max_drawdown": -500.0,
-            "win_rate": 0.55,
-            "total_trades": 10,
-            "trades_per_day": 2.5,
-            "duration_minutes": 120.0,
-            "budget_analysis": {
-                "annual_pnl": 9125.0,
-                "trading_costs": 250.0,
-                "net_profit": 8875.0,
-                "break_even_trades": 400,
-                "payback_period_months": 6.7,
-                "roi_percentage": 177.5,
-                "total_investment": 5000.0,
+            "metadata": {
+                "version": "1.0.0",
+                "timestamp": datetime.now().isoformat(),
+                "run_id": "test-run-001",
+                "type": "backtest",
+                "config": {"symbol": "BTC_JPY"},
             },
-            "equity_curve": [
-                {"timestamp": "2020-01-01T00:00:00", "equity": 10000.0},
-                {"timestamp": "2020-01-02T00:00:00", "equity": 11250.0},
-            ],
-            "orders": [
+            "performance": {
+                "total_return": 0.125,
+                "sharpe_ratio": 1.25,
+                "max_drawdown": 0.05,
+                "win_rate": 0.55,
+                "total_trades": 10,
+                "profit_factor": 1.6,
+            },
+            "risk": {
+                "value_at_risk": -0.02,
+                "expected_shortfall": -0.03,
+                "beta": 1.05,
+                "volatility": 0.12,
+            },
+            "trades": [
                 {
+                    "id": "trade-001",
                     "timestamp": "2020-01-01T00:00:00",
-                    "action": "buy",
+                    "symbol": "BTC_JPY",
+                    "side": "buy",
+                    "quantity": 1.0,
                     "price": 10000.0,
-                    "shares": 1.0,
-                    "notional": 10000.0,
-                    "position_before": 0,
-                    "position_after": 1,
-                    "sizing_reason": "All-in position sizing",
+                    "fee": 10.0,
                     "pnl": 0.0,
                 }
             ],
-            "run_metadata": {
-                "python_version": "3.11.9",
-                "os": "Linux",
-                "cpu_model": "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz",
-                "package_hashes": {"pandas": "abc123", "numpy": "def456"},
-                "git_sha": "a1b2c3d4",
-                "random_seed": 42,
-                "timestamp": datetime.now().isoformat(),
+            "metrics": {
+                "deflated_sharpe_ratio": 1.15,
+                "pvalue_bootstrap": 0.032,
             },
         }
 
@@ -121,7 +118,7 @@ class TestSchemaValidation:
     ):
         """Test that missing required fields cause validation failure."""
         invalid_results = minimal_synthetic_results.copy()
-        del invalid_results["strategy"]
+        del invalid_results["metadata"]
 
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(invalid_results, results_schema)
@@ -129,40 +126,43 @@ class TestSchemaValidation:
     def test_invalid_enum_value_fails(self, results_schema, minimal_synthetic_results):
         """Test that invalid enum values cause validation failure."""
         invalid_results = minimal_synthetic_results.copy()
-        invalid_results["strategy"] = "invalid_strategy"
+        invalid_results["metadata"] = dict(invalid_results["metadata"])
+        invalid_results["metadata"]["type"] = "invalid_type"
 
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(invalid_results, results_schema)
 
-    def test_null_statistical_fields_allowed(
+    def test_null_metrics_values_fail(
         self, results_schema, minimal_synthetic_results
     ):
-        """Test that null statistical fields are allowed."""
+        """Current schema does not allow null values in metrics payloads."""
         results_with_nulls = minimal_synthetic_results.copy()
-        results_with_nulls["deflated_sharpe_ratio"] = None
-        results_with_nulls["pvalue_bootstrap"] = None
-
-        try:
-            jsonschema.validate(results_with_nulls, results_schema)
-        except jsonschema.ValidationError as e:
-            pytest.fail(f"Schema validation failed for null fields: {e.message}")
-
-    def test_budget_analysis_required_fields(
-        self, results_schema, minimal_synthetic_results
-    ):
-        """Test that budget analysis has all required fields."""
-        results_missing_budget_field = minimal_synthetic_results.copy()
-        del results_missing_budget_field["budget_analysis"]["annual_pnl"]
+        results_with_nulls["metrics"] = dict(results_with_nulls["metrics"])
+        results_with_nulls["metrics"]["deflated_sharpe_ratio"] = None
 
         with pytest.raises(jsonschema.ValidationError):
-            jsonschema.validate(results_missing_budget_field, results_schema)
+            jsonschema.validate(results_with_nulls, results_schema)
 
-    def test_run_metadata_required_fields(
+    def test_trade_required_fields(
         self, results_schema, minimal_synthetic_results
     ):
-        """Test that run metadata has all required fields."""
+        """Trades must include required core fields."""
+        results_missing_trade_field = minimal_synthetic_results.copy()
+        results_missing_trade_field["trades"] = [dict(minimal_synthetic_results["trades"][0])]
+        del results_missing_trade_field["trades"][0]["id"]
+
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(results_missing_trade_field, results_schema)
+
+    def test_metadata_required_fields(
+        self, results_schema, minimal_synthetic_results
+    ):
+        """Metadata has the required core fields."""
         results_missing_metadata_field = minimal_synthetic_results.copy()
-        del results_missing_metadata_field["run_metadata"]["python_version"]
+        results_missing_metadata_field["metadata"] = dict(
+            minimal_synthetic_results["metadata"]
+        )
+        del results_missing_metadata_field["metadata"]["run_id"]
 
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(results_missing_metadata_field, results_schema)

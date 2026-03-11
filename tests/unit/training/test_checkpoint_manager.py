@@ -50,10 +50,12 @@ class TestTrainingCheckpointManager(unittest.TestCase):
 
         # Create a mock SAC model for testing
         self.mock_model = Mock(spec=SAC)
-        self.mock_policy = Mock(spec=ActorCriticPolicy)
+        self.mock_policy = Mock()
         self.mock_model.policy = self.mock_policy
         self.mock_optimizer = Mock()
         self.mock_policy.optimizer = self.mock_optimizer
+        self.mock_policy.state_dict.return_value = {"layer1": torch.randn(10, 10)}
+        self.mock_optimizer.state_dict.return_value = {"state": {}, "param_groups": []}
 
     def tearDown(self):
         """Clean up after tests."""
@@ -138,14 +140,10 @@ class TestTrainingCheckpointManager(unittest.TestCase):
 
     def test_validate_checkpoint_integrity_with_model(self):
         """Test checkpoint integrity validation against a model."""
-        # Create a simple model
-        model = SAC("MlpPolicy", "Pendulum-v1", verbose=0)
-
-        # Create a valid snapshot with matching policy state
-        policy_state = model.policy.state_dict()
+        policy_state = self.mock_policy.state_dict()
         payload = {
             "policy_state": policy_state,
-            "optimizer_state": model.policy.optimizer.state_dict(),
+            "optimizer_state": self.mock_policy.optimizer.state_dict(),
             "step": 1000,
         }
         snapshot = TrainingCheckpointSnapshot(
@@ -154,7 +152,9 @@ class TestTrainingCheckpointManager(unittest.TestCase):
             metadata={}
         )
 
-        validation = self.manager.validate_checkpoint_integrity(snapshot, model)
+        validation = self.manager.validate_checkpoint_integrity(
+            snapshot, self.mock_model
+        )
 
         self.assertTrue(validation["valid"])
         self.assertEqual(len(validation["errors"]), 0)

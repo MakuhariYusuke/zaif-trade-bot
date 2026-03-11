@@ -12,6 +12,12 @@ from ztb.training.algorithms import AlgorithmFactory
 from ztb.training.algorithms.ppo import PPOAlgorithm
 from ztb.training.algorithms.sac import SACAlgorithm
 
+
+def _validate_ppo_config(config: dict[str, object]) -> bool:
+    """Validate PPO config through the current factory-backed instance API."""
+    return AlgorithmFactory.create("ppo").validate_config(config)
+
+
 # ========================================
 # アルゴリズム登録確認テスト
 # ========================================
@@ -106,7 +112,7 @@ class TestConfigValidation:
         config = ppo.get_default_config()
 
         # デフォルト設定が有効であることを確認
-        assert PPOAlgorithm.validate_config(config) is True
+        assert _validate_ppo_config(config) is True
 
     def test_sac_valid_config(self):
         """SAC有効設定の検証。"""
@@ -125,7 +131,7 @@ class TestConfigValidation:
         }
 
         with pytest.raises(ValueError, match="learning_rate must be positive"):
-            PPOAlgorithm.validate_config(config)
+            _validate_ppo_config(config)
 
     def test_sac_invalid_config(self):
         """SAC無効設定でエラー。"""
@@ -197,7 +203,7 @@ class TestAlgorithmSwitchingScenarios:
         }
 
         # 両方の設定が有効であることを確認
-        assert PPOAlgorithm.validate_config(ppo_config) is True
+        assert _validate_ppo_config(ppo_config) is True
         assert SACAlgorithm.validate_config(sac_config) is True
 
         # 設定が混在しないことを確認
@@ -300,7 +306,7 @@ class TestErrorHandling:
         }
 
         with pytest.raises(ValueError):
-            PPOAlgorithm.validate_config(config)
+            _validate_ppo_config(config)
 
     def test_invalid_sac_hyperparameters(self):
         """SAC無効ハイパーパラメータ。"""
@@ -354,7 +360,7 @@ class TestPracticalIntegrationScenarios:
         assert sac.algorithm_name == "sac"
 
         # 両方が有効な設定であることを確認
-        assert PPOAlgorithm.validate_config(v394_config["ppo_hyperparameters"]) is True
+        assert _validate_ppo_config(v394_config["ppo_hyperparameters"]) is True
         assert SACAlgorithm.validate_config(v395_config["sac_hyperparameters"]) is True
 
     def test_batch_algorithm_creation(self):

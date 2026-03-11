@@ -16,6 +16,12 @@ import pytest
 try:
     import torch
 
+    if not getattr(torch, "__file__", None):
+        pytest.skip(
+            "lightweight torch stub active; target entropy tests require full torch backend",
+            allow_module_level=True,
+        )
+
     from ztb.training.entropy_temperature import TargetEntropyController
 except ImportError:
     pytest.skip(

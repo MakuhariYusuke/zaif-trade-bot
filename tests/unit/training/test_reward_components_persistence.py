@@ -4,10 +4,37 @@ import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import numpy as np
+import pandas as pd
 import pytest
 
+from ztb.trading.constants import ACTION_HOLD
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback
+
+
+def _make_minimal_env() -> HeavyTradingEnv:
+    rows = 64
+    close = np.linspace(100.0, 103.0, rows)
+    df = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2024-01-01", periods=rows, freq="5min"),
+            "open": close,
+            "high": close + 0.1,
+            "low": close - 0.1,
+            "close": close,
+            "volume": np.full(rows, 1000.0),
+        }
+    )
+    config = EnvironmentConfig.from_dict(
+        {
+            "random_start": False,
+            "feature_set": "minimal",
+            "use_continuous_actions": False,
+        }
+    )
+    return HeavyTradingEnv(df=df, config=config)
 
 
 class TestRewardComponentsPersistence:
@@ -15,60 +42,46 @@ class TestRewardComponentsPersistence:
 
     def test_reward_components_in_env_step(self):
         """Test that HeavyTradingEnv.step() returns reward_components in info."""
-        # Mock minimal env setup
-        with patch.object(HeavyTradingEnv, '__init__', return_value=None):
-            env = HeavyTradingEnv()
-            env.current_step = 0
-            env.data_provider = Mock()
-            env.data_provider.get_current_price.return_value = 1000000.0
-            env.reward_calculator = Mock()
-            
-            # Mock reward calculator to return components
-            env.reward_calculator.calculate_reward.return_value = (
-                0.5,  # reward
-                {
-                    "balance_penalty": -0.02,
-                    "skew_penalty": -0.01,
-                    "balance_shaping": 0.03,
-                    "action_bonus": 0.0,
-                    "final_reward": 0.5
-                }
-            )
-            env.reward_calculator._last_reward_components = {
-                "balance_penalty": -0.02,
-                "skew_penalty": -0.01,
-                "balance_shaping": 0.03,
-                "action_bonus": 0.0,
-                "final_reward": 0.5
-            }
-            
-            # Mock other required methods
-            env._get_observation = Mock(return_value=[0] * 10)
-            env._is_done = Mock(return_value=False)
-            
-            # Execute step
-            obs, reward, done, truncated, info = env.step(1)
-            
-            # Verify reward_components in info
-            assert "reward_components" in info
-            assert info["reward_components"]["balance_penalty"] == -0.02
-            assert info["reward_components"]["skew_penalty"] == -0.01
-            assert info["reward_components"]["balance_shaping"] == 0.03
+        env = _make_minimal_env()
+        env.reset()
+        reward_components = {
+            "balance_penalty": -0.02,
+            "skew_penalty": -0.01,
+            "balance_shaping": 0.03,
+            "action_bonus": 0.0,
+            "final_reward": 0.5,
+        }
+
+        with (
+            patch.object(env.reward_calculator, "calculate_reward", return_value=0.5),
+            patch.object(
+                env.reward_calculator,
+                "get_last_reward_components",
+                return_value=reward_components,
+            ),
+        ):
+            _, _, _, _, info = env.step(ACTION_HOLD)
+
+        assert "reward_components" in info
+        assert info["reward_components"]["balance_penalty"] == -0.02
+        assert info["reward_components"]["skew_penalty"] == -0.01
+        assert info["reward_components"]["balance_shaping"] == 0.03
 
     def test_callback_collects_reward_components(self):
         """Test that TrainingProgressCallback collects reward_components."""
         callback = TrainingProgressCallback(
+            check_freq=10,
             verbose=0,
-            eval_freq=10,
-            log_freq=10,
-            n_eval_episodes=1
         )
-        
-        # Mock model and locals
+
         mock_model = Mock()
         mock_model.num_timesteps = 1
-        
-        # Mock info with reward_components
+        mock_model.logger = Mock()
+        mock_model.logger.name_to_value = {}
+        mock_model.policy = Mock()
+        mock_model.policy.optimizer = Mock()
+        mock_model.policy.optimizer.param_groups = [{"lr": 0.001}]
+
         mock_info = {
             "reward_components": {
                 "balance_penalty": -0.02,
@@ -77,19 +90,16 @@ class TestRewardComponentsPersistence:
                 "final_reward": 0.5
             }
         }
-        
         callback.model = mock_model
-        callback.locals = {"infos": [mock_info]}
-        
-        # Initialize history
-        callback.reward_components_history = []
-        
-        # Collect components (simulate what happens in _on_step)
-        for info in callback.locals.get("infos", []):
-            if "reward_components" in info:
-                callback.reward_components_history.append(info["reward_components"].copy())
-        
-        # Verify collection
+        callback.locals = {
+            "actions": [ACTION_HOLD],
+            "rewards": [0.5],
+            "infos": [mock_info],
+        }
+        callback._log_progress = Mock()
+        callback.n_calls = 1
+
+        assert callback._on_step() is True
         assert len(callback.reward_components_history) == 1
         assert callback.reward_components_history[0]["balance_penalty"] == -0.02
         assert callback.reward_components_history[0]["balance_shaping"] == 0.03
