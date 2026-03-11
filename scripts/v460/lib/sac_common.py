@@ -98,15 +98,16 @@ def evaluate_model_oos(
     model: SACModelProtocol,
     env: TrainingEnvProtocol,
     n_episodes: int = 1,
+    max_steps_per_episode: int = 10_000,
 ) -> dict[str, float | int]:
     """OOS 評価 — 複数エピソードで ROI / trade_count を正しく集約.
 
     372# audit fix: env.reset() は trades_count を 0 にリセットするため、
     各エピソード終了時に個別に取得して集約する。
 
-    Note:
-        旧 sac_train._evaluate_trained_model は n_episodes > 1 のとき
-        最終エピソードの ROI のみ返すバグがあった。本関数で統一。
+    379# Perf: max_steps_per_episode を導入。OOS env が 243K+ ステップの場合
+    全走査は非現実的 (per-step overhead により数十分)。10Kステップで
+    モデルの行動傾向は十分評価可能。
     """
     total_reward = 0.0
     episode_rois: list[float] = []
@@ -115,11 +116,13 @@ def evaluate_model_oos(
     for _ in range(max(n_episodes, 1)):
         obs, _ = env.reset()
         done = False
-        while not done:
+        steps = 0
+        while not done and steps < max_steps_per_episode:
             action, _ = model.predict(obs, deterministic=True)
             obs, reward, terminated, truncated, _ = env.step(action)
             total_reward += reward
             done = terminated or truncated
+            steps += 1
 
         episode_rois.append(extract_roi_from_env(env))
         total_trades += int(getattr(env, "trades_count", 0))
