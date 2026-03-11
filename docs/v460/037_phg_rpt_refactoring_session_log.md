@@ -3979,3 +3979,35 @@
 - `strict_masked_policy` / `target_entropy` は full torch がある focused 環境では通る一方、broad では conftest の lightweight torch stub が混在する。ここは無理に production を stub 対応へ寄せず、test 側で skip 条件を明示した。
 - `training_resume` は broad 実行時だけ `torch` RNG/state payload が stub 化されて pickle 不能になる問題があったため、テストの state payload を pure NumPy / bytes に固定した。
 - non-`v460` unit broad は現時点で clean になった。次は prompt 残課題として integration 側 (`tests/integration/`) と `legacy_tests/training` 周辺を同じ方針で詰めるのが筋。
+
+## 2026-03-11 / Session 037-095
+
+### 実施内容
+- `prompts/codex_test_cleanup_and_perf.md` の残課題を再点検し、直前の non-`v460` cleanup が `v460` broad を壊していないか filtered broad を再実行。
+- `tests/unit/v460/test_356_g2_sac_blockers.py` failure を調査した結果、`configs/v460/experiments/g2_sac_train.yaml` が実データ parquet に存在しない 5 市場理論特徴量 (`parkinson_sigma`, `vpin_proxy`, `kyle_lambda_proxy`, `amihud_illiq`, `ema_velocity_bps`) を `features.selected` に含めており、`HeavyTradingEnv` integration と schema consistency の両方を壊していた。
+- `configs/v460/experiments/g2_sac_train.yaml` を現行 `data/btc_jpy_1m_full_registry_features.parquet` の 12 FeatureRegistry 列に戻し、market-theory 5 特徴量はデータ更新後に再投入する deferred note に整理。
+- `tests/unit/v460/test_356_g2_sac_blockers.py` に `_load_g2_selected_features()` を追加し、YAML と別に持っていた 12 feature の hard-coded list を除去。`env_config` と env integration assertion を YAML 追従へ統一。
+- prompt 残課題の状態も再確認:
+  - `tests/integration/test_custom_ppo_integration.py` は 9 件 skip で安定
+  - `tests/training/test_v430_1000_steps.py` は live tree から既に消えており、現在の collection error 対象ではない
+  - 旧 prompt の `unit` failure 群 (`action_validation` / `ab_test_framework`) はすべて pass 維持
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `49 passed in 6.20s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short`
+  - `--ignore=tests/unit/v460/test_113_resilience.py`
+  - `--ignore=tests/unit/v460/test_152_parallel_tasks.py`
+  - `--ignore=tests/unit/v460/test_260_compute_extract_regime_split.py`
+  - `--deselect=tests/unit/v460/test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4578 passed, 13 warnings in 36.99s`
+- prompt residual check:
+  - `tests/unit/action_validation/test_signal_guidance_system.py tests/unit/action_validation/test_signal_performance_analyzer.py tests/unit/algorithms/test_ab_test_framework.py`
+  - `36 passed, 9 skipped, 15 subtests passed in 5.08s`
+  - `tests/integration/test_custom_ppo_integration.py`: `9 skipped in 4.01s`
+
+### 判断
+- 今回の failure は test optimization の副作用ではなく、`g2_sac_train.yaml` と実 parquet の config drift が本体だった。YAML を実データに合わせて戻し、test 側は YAML 追従へ寄せるのが一番筋が良い。
+- `test_356` は今後も YAML を変えるたびに自動追従するため、同種 drift の再発コストは下がった。

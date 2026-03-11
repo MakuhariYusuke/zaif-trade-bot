@@ -4968,3 +4968,11 @@ python scripts/unified_trainer.py \
 - Verified current non-`v460` unit broad status with:
   - `python -m pytest tests/unit/ --ignore=tests/unit/v460/ -q --no-cov --tb=short --maxfail=5`
   - `3203 passed, 37 skipped, 3237 warnings, 86 subtests passed in 605.46s`
+- Fixed `g2_sac_train.yaml` / parquet drift that was breaking the latest filtered `v460` broad run:
+  - reverted [configs/v460/experiments/g2_sac_train.yaml](/mnt/c/Users/Admin/dev/zaif-trade-bot/configs/v460/experiments/g2_sac_train.yaml) `features.selected` to the 12 FeatureRegistry columns actually present in `data/btc_jpy_1m_full_registry_features.parquet`, keeping the 5 market-theory fields as deferred follow-up instead of an invalid runtime dependency
+  - updated [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py) to read `features.selected` from YAML via a cached helper so the env integration assertions track config changes without a second hard-coded feature list
+- Re-verified prompt `codex_test_cleanup_and_perf.md` residuals relevant to the current tree:
+  - filtered `tests/unit/v460/`: `4578 passed, 13 warnings in 36.99s`
+  - legacy prompt unit failures: `36 passed, 9 skipped, 15 subtests passed in 5.08s`
+  - `tests/integration/test_custom_ppo_integration.py`: `9 skipped in 4.01s`
+  - `tests/training/test_v430_1000_steps.py` no longer exists in the live tree

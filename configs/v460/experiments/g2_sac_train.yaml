@@ -23,7 +23,8 @@ data:
 # ---- 特徴量 (FeatureRegistry 系統) ----
 # 356# §4.3: OHLCV ベースの FeatureRegistry 特徴量を使用
 # v460 microstructure features は ph4 で統合
-# 379# 035#-306# 市場理論 5 特徴量追加 (12 → 17)
+# 現行 parquet は FeatureRegistry の 12 特徴量を全載。
+# 市場理論 5 特徴量は別データ更新後に再投入する。
 features:
   selected:
     - price_velocity
@@ -38,12 +39,6 @@ features:
     - momentum_burst
     - liquidity_surge
     - realized_volatility
-    # 379# 035#-306# pre-366# market theory features
-    - parkinson_sigma       # 305# intra-bar H/L volatility
-    - vpin_proxy            # 107# order flow toxicity
-    - kyle_lambda_proxy     # 266# price impact coefficient
-    - amihud_illiq           # 266# illiquidity ratio
-    - ema_velocity_bps       # 227#/200# smoothed velocity
 
 # ---- 環境 (EnvironmentConfig フィールド準拠) ----
 # 365# §3.2: 以下の市場理論機構は明示的に無設定 = 無効:
