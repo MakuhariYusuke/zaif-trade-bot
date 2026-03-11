@@ -374,7 +374,8 @@
 | 377 | plan | [377_ph3_unified_direction_course_correction.md](377_ph3_unified_direction_course_correction.md) | 375#/376# レビュー統合方針: 軌道修正 + データパリティロードマップ + FastIntradayEnvV456 評価 |
 | 374 | impl | — | Phase 3.1 Proportional Boost 実装: `compute_sidecar_offset_bps_v2` + `_shaping_fn` + FillConfig 5フィールド + YAML parser + hot-reload + CycleGateAggregator v1/v2 切替 + validation 横展開 + 55 tests |
 | 379 | fix | — | watchdog UNKNOWN→NOT_RUNNING エスカレーション修正 + fill_test 再起動 |
-| 380 | analysis | [380_fill_test_trading_improvement_analysis.md](380_fill_test_trading_improvement_analysis.md) | Fill Test 7日間取引改善分析: sell EV破綻 (30s=-0.32bps), ranging損失, SkipGate非単調性, forced_buy_delay過剰, offset ceiling問題 — 10施策提案 |
+| 380 | analysis | [380_fill_test_trading_improvement_analysis.md](380_fill_test_trading_improvement_analysis.md) | Fill Test クリーンデータ取引改善分析 (Rev.2): sell EV破綻 (30s=-0.12bps), 時間帯依存性, SkipGate非単調性, offset ceiling問題 — 8施策提案 |
+| 381 | review | [381_fill_test_analysis_codex_review.md](381_fill_test_analysis_codex_review.md) | Gemini Codex Review: Ghost Metric Paradox (forced_buy_delay撤廃済), データepoch汚染, JST/UTC混同 — 380# Rev.2 + P0/P1 YAML適用 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
