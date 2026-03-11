@@ -34,35 +34,35 @@
         "confidence": 0.5,
         "performance_score": 0.5,
         "stability_score": 0.5,
-        "last_updated": 1773258944.5683398
+        "last_updated": 1773259702.012293
       },
       "1": {
         "specialization": "bear",
         "confidence": 0.5,
         "performance_score": 0.5,
         "stability_score": 0.5,
-        "last_updated": 1773258944.5683398
+        "last_updated": 1773259702.012293
       },
       "2": {
         "specialization": "sideways",
         "confidence": 0.5,
         "performance_score": 0.5,
         "stability_score": 0.5,
-        "last_updated": 1773258944.5683398
+        "last_updated": 1773259702.012293
       },
       "3": {
         "specialization": "high_vol",
         "confidence": 0.5,
         "performance_score": 0.5,
         "stability_score": 0.5,
-        "last_updated": 1773258944.5683398
+        "last_updated": 1773259702.012293
       },
       "4": {
         "specialization": "low_vol",
         "confidence": 0.5,
         "performance_score": 0.5,
         "stability_score": 0.5,
-        "last_updated": 1773258944.5683398
+        "last_updated": 1773259702.012293
       }
     },
     "overall_stats": {
@@ -176,35 +176,35 @@
         "confidence": 0.5,
         "performance_score": 0.5,
         "stability_score": 0.5,
-        "last_updated": 1773258944.5683398
+        "last_updated": 1773259702.012293
       },
       "1": {
         "specialization": "bear",
         "confidence": 0.5,
         "performance_score": 0.5,
         "stability_score": 0.5,
-        "last_updated": 1773258944.5683398
+        "last_updated": 1773259702.012293
       },
       "2": {
         "specialization": "sideways",
         "confidence": 0.5,
         "performance_score": 0.5,
         "stability_score": 0.5,
-        "last_updated": 1773258944.5683398
+        "last_updated": 1773259702.012293
       },
       "3": {
         "specialization": "high_vol",
         "confidence": 0.5,
         "performance_score": 0.5,
         "stability_score": 0.5,
-        "last_updated": 1773258944.5683398
+        "last_updated": 1773259702.012293
       },
       "4": {
         "specialization": "low_vol",
         "confidence": 0.5,
         "performance_score": 0.5,
         "stability_score": 0.5,
-        "last_updated": 1773258944.5683398
+        "last_updated": 1773259702.012293
       }
     },
     "decision_patterns": {

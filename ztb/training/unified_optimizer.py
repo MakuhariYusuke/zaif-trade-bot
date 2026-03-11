@@ -2412,6 +2412,17 @@ class OptimizationResultPersistence:
 
         safe_json_dump(version_data, self.version_file, indent=2, ensure_ascii=False)
 
+    @staticmethod
+    def _build_relative_result_path(
+        result_type: str,
+        version_id: str,
+        timestamp: datetime,
+    ) -> Path:
+        """Store result files under year/month buckets to avoid a flat directory."""
+        dated_dir = Path(f"{timestamp:%Y}") / f"{timestamp:%Y-%m}"
+        filename = f"{result_type}_{version_id}_{timestamp:%Y%m%d}.json"
+        return dated_dir / filename
+
     def save_optimization_result(
         self,
         result: dict[str, object],
@@ -2433,12 +2444,13 @@ class OptimizationResultPersistence:
         """
         self.current_version += 1
         version_id = f"v{self.current_version:04d}"
+        timestamp = datetime.now()
 
         # 結果データの作成
         result_data = {
             "version_id": version_id,
             "result_type": result_type,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": timestamp.isoformat(),
             "result": result,
             "metadata": metadata or {},
             "tags": tags or [],
@@ -2446,9 +2458,11 @@ class OptimizationResultPersistence:
         }
 
         # ファイル保存
-        timestamp_str = datetime.now().strftime("%Y%m%d")
-        filename = f"{result_type}_{version_id}_{timestamp_str}.json"
-        filepath = self.base_dir / filename
+        relative_path = self._build_relative_result_path(
+            result_type, version_id, timestamp
+        )
+        filepath = self.base_dir / relative_path
+        filepath.parent.mkdir(parents=True, exist_ok=True)
 
         safe_json_dump(result_data, filepath, indent=2, ensure_ascii=False, default=str)
 
@@ -2496,7 +2510,13 @@ class OptimizationResultPersistence:
             "timestamp": result_data["timestamp"],
             "tags": result_data["tags"],
             "performance_metrics": result_data["performance_metrics"],
-            "filename": f"{result_data['result_type']}_{version_id}_{result_data['timestamp'][:10].replace('-', '')}.json"
+            "filename": str(
+                self._build_relative_result_path(
+                    str(result_data["result_type"]),
+                    version_id,
+                    datetime.fromisoformat(str(result_data["timestamp"])),
+                )
+            ).replace("\\", "/"),
         }
 
         # インデックス保存

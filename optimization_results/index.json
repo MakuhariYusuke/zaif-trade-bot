@@ -807,7 +807,7 @@
       "test"
     ],
     "performance_metrics": {},
-    "filename": "integration_test_v0091_20260311.json"
+    "filename": "2026/2026-03/integration_test_v0091_20260311.json"
   },
   "v0092": {
     "result_type": "workflow_test",
@@ -816,7 +816,7 @@
     "performance_metrics": {
       "best_score": -1.3920398315825757
     },
-    "filename": "workflow_test_v0092_20260311.json"
+    "filename": "2026/2026-03/workflow_test_v0092_20260311.json"
   },
   "v0093": {
     "result_type": "integration_test",
@@ -826,7 +826,7 @@
       "test"
     ],
     "performance_metrics": {},
-    "filename": "integration_test_v0093_20260312.json"
+    "filename": "2026/2026-03/integration_test_v0093_20260312.json"
   },
   "v0094": {
     "result_type": "workflow_test",
@@ -835,6 +835,6 @@
     "performance_metrics": {
       "best_score": -0.5807692267288695
     },
-    "filename": "workflow_test_v0094_20260312.json"
+    "filename": "2026/2026-03/workflow_test_v0094_20260312.json"
   }
 }
