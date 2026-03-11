@@ -66,7 +66,7 @@ def write_sidecar_signal(
     )
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+            json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
         os.replace(tmp_path, str(path))
         logger.debug(f"Sidecar signal written: {path}")
     except Exception:
@@ -80,12 +80,16 @@ def write_sidecar_signal(
     return path
 
 
+_SIDECAR_CACHE: dict[str, tuple[float, SidecarSignal | None]] = {}
+
 def read_sidecar_signal(
     path: Path | str = DEFAULT_SIGNAL_PATH,
     ttl_sec: float = DEFAULT_SIGNAL_TTL_SEC,
 ) -> SidecarSignal | None:
     """sidecar_signal.json を安全に読み込む.
 
+    379# P3-C: mtime ベースのキャッシュを導入し、毎サイクルの同期 I/O を削減。
+    
     - ファイル不在 → None (初回起動時)
     - JSON パースエラー → None + warning ログ
     - TTL 超過 (stale) → None + info ログ
@@ -99,32 +103,60 @@ def read_sidecar_signal(
         SidecarSignal or None (読込失敗/stale時)
     """
     path = Path(path)
-    # 373# TOCTOU 修正: exists() + read_text() の間にファイルが消える
-    # 可能性があるため、直接 try/except で処理する。
+    abs_path = str(path.absolute())
+
+    # mtime の取得 (I/O)
+    try:
+        mtime = path.stat().st_mtime
+    except FileNotFoundError:
+        _SIDECAR_CACHE.pop(abs_path, None)
+        return None
+    except OSError as e:
+        logger.warning(f"Error reading sidecar signal stat: {e}")
+        return None
+
+    # キャッシュチェック
+    if abs_path in _SIDECAR_CACHE:
+        cached_mtime, cached_signal = _SIDECAR_CACHE[abs_path]
+        if mtime == cached_mtime:
+            # TTL は動的 (時間経過) なので、キャッシュヒットしても都度チェック
+            if cached_signal is not None and ttl_sec > 0:
+                if _is_stale(cached_signal.timestamp, ttl_sec):
+                    logger.info(f"Cached sidecar signal is stale (TTL={ttl_sec}s exceeded)")
+                    return None
+            return cached_signal
+
+    # キャッシュミス時の読み込み
     try:
         raw = path.read_text(encoding="utf-8")
         data: dict = json.loads(raw)  # type: ignore[assignment]
     except FileNotFoundError:
+        _SIDECAR_CACHE.pop(abs_path, None)
         return None
     except (json.JSONDecodeError, OSError) as e:
         logger.warning(f"Sidecar signal read error: {e}")
+        _SIDECAR_CACHE[abs_path] = (mtime, None)
         return None
-
-    # TTL チェック
-    if ttl_sec > 0:
-        ts_str = data.get("timestamp", "")
-        if ts_str and _is_stale(ts_str, ttl_sec):
-            logger.info(
-                f"Sidecar signal stale: timestamp={ts_str}, "
-                f"ttl={ttl_sec}s exceeded"
-            )
-            return None
 
     try:
-        return _dict_to_signal(data)
+        signal = _dict_to_signal(data)
     except (KeyError, ValueError, TypeError) as e:
         logger.warning(f"Sidecar signal parse error: {e}")
+        _SIDECAR_CACHE[abs_path] = (mtime, None)
         return None
+
+    # 初回パース時の TTL チェック
+    if ttl_sec > 0 and _is_stale(signal.timestamp, ttl_sec):
+        logger.info(
+            f"Sidecar signal stale: timestamp={signal.timestamp}, "
+            f"ttl={ttl_sec}s exceeded"
+        )
+        _SIDECAR_CACHE[abs_path] = (mtime, None)
+        return None
+
+    # キャッシュ更新
+    _SIDECAR_CACHE[abs_path] = (mtime, signal)
+    return signal
 
 
 # ── 内部ヘルパー ──────────────────────────────────────────

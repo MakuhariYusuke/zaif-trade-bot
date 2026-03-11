@@ -391,8 +391,10 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
         if eval_result["gross_roi"] <= cfg.min_gross_roi:
             logger.warning(
                 f"OOS validation FAILED: gross_roi={eval_result['gross_roi']:.6f} "
-                f"<= {cfg.min_gross_roi:.6f} — keeping previous model"
+                f"<= {cfg.min_gross_roi:.6f} — enforcing neutral bias fallback"
             )
+            # 379# P3-C: Neutral Bias Fallback
+            _push_neutral_fallback()
             return RetrainResult(
                 status="oos_failed",
                 timestamp=timestamp,
@@ -409,8 +411,10 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
         if cfg.min_trade_count > 0 and _oos_trade_count < cfg.min_trade_count:
             logger.warning(
                 f"OOS validation FAILED: trade_count={_oos_trade_count} "
-                f"< {cfg.min_trade_count} — insufficient trading activity"
+                f"< {cfg.min_trade_count} — enforcing neutral bias fallback"
             )
+            # 379# P3-C: Neutral Bias Fallback
+            _push_neutral_fallback()
             return RetrainResult(
                 status="oos_failed",
                 timestamp=timestamp,
@@ -772,6 +776,17 @@ def _get_latest_obs(env: TrainingEnvProtocol) -> object:
         env.current_step = saved_step  # type: ignore[attr-defined]
 
     return obs
+
+
+def _push_neutral_fallback() -> None:
+    """379# P3-C: OOS Gate 失敗時の自動フォールバック (Neutral Bias)."""
+    from scripts.v460.lib.sidecar_signal_io import (
+        create_neutral_signal,
+        write_sidecar_signal,
+    )
+    neutral_signal = create_neutral_signal()
+    write_sidecar_signal(neutral_signal)
+    logger.info("Neutral bias fallback successfully pushed to sidecar.")
 
 
 def _update_sidecar_signal(
