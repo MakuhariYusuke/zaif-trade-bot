@@ -25,6 +25,12 @@ import sys
 from pathlib import Path
 from typing import Callable
 
+# [WinError 1114] DLL load error workaround (load PyTorch before pandas / large models fragment memory)
+try:
+    import torch
+except ImportError:
+    pass
+
 # Project root
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
