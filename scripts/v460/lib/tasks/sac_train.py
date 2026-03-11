@@ -18,46 +18,27 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import Protocol, cast
+from typing import cast
 
 import torch
 import pandas as pd
 
 from scripts.v460.lib.config_access import as_int, section
+from scripts.v460.lib.sac_common import (
+    SACModelProtocol,
+    TrainingEnvProtocol,
+    adjust_buffer_size,
+    cleanup_envs,
+    evaluate_model_oos,
+    extract_roi_from_env,
+    train_val_split,
+)
 from ztb.types.common import ConfigSection
 
 logger = logging.getLogger(__name__)
 
-
-class TrainingEnvProtocol(Protocol):
-    observation_space: object
-    action_space: object
-
-    def reset(self) -> tuple[object, object]:
-        ...
-
-    def step(self, action: object) -> tuple[object, float, bool, bool, object]:
-        ...
-
-    def close(self) -> None:
-        ...
-
-
-class SACTrainModelProtocol(Protocol):
-    def learn(self, total_timesteps: int, reset_num_timesteps: bool = False) -> object:
-        ...
-
-    def predict(self, observation: object, deterministic: bool = True) -> tuple[object, object]:
-        ...
-
-    def save(self, path: str) -> None:
-        ...
-
-    def save_replay_buffer(self, path: str) -> None:
-        ...
-
-    def load_replay_buffer(self, path: str) -> None:
-        ...
+# Protocol aliases (後方互換)
+SACTrainModelProtocol = SACModelProtocol
 
 
 def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
@@ -109,10 +90,8 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
     # ── 363# A3: Time-series train/val split ──
     # 361# F1 / 362# G1: 同一データで train+eval は in-sample 過学習
     val_ratio_raw = training_cfg.get("val_ratio", 0.2)
-    val_ratio = max(0.0, min(float(val_ratio_raw), 0.5))
-    split_idx = int(len(df) * (1.0 - val_ratio))
-    train_df = df.iloc[:split_idx].copy()
-    val_df = df.iloc[split_idx:].copy()
+    val_ratio = float(val_ratio_raw) if val_ratio_raw else 0.2
+    train_df, val_df = train_val_split(df, val_ratio)
     train_size = len(train_df)
     val_size = len(val_df)
     del df  # 全体 DataFrame を早期解放
@@ -127,7 +106,7 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
     raw_buffer = as_int(raw_buffer_value, 1_000_000)
     # S-3: 元 cfg を汚さないようコピー (sac_params で shadowing 回避)
     sac_params = dict(sac_cfg)
-    sac_params["buffer_size"] = min(raw_buffer, max(total_timesteps * 2, 10_000))
+    sac_params["buffer_size"] = adjust_buffer_size(raw_buffer, total_timesteps)
     if cast(int, sac_params["buffer_size"]) != raw_buffer:
         logger.info(
             f"Replay buffer adjusted: {raw_buffer:,} → {sac_params['buffer_size']:,} "
@@ -200,12 +179,7 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
 
     finally:
         # C2: 環境を確実にクローズしてメモリ解放
-        for _env in (eval_env, env):
-            if _env is not None:
-                try:
-                    _env.close()
-                except Exception as e:
-                    logger.warning(f"Failed to close environment: {e}")
+        cleanup_envs(eval_env, env)
         # DataFrame 参照を明示的に解放
         del train_df, val_df
 
@@ -373,24 +347,7 @@ def _checkpoint_eval_roi(
         obs, _reward, terminated, truncated, _ = env.step(action)
         done = terminated or truncated
 
-    return _extract_roi_from_env(env)
-
-
-def _extract_roi_from_env(env: TrainingEnvProtocol) -> float:
-    """環境から ROI を算出 (duck-typing).
-
-    HeavyTradingEnv は portfolio_value / initial_portfolio_value を保持しており、
-    Protocol の最小インターフェースには含まない属性をランタイムで安全に取得する.
-    """
-    portfolio_value = getattr(env, "portfolio_value", None)
-    initial_value = getattr(env, "initial_portfolio_value", None)
-    if (
-        portfolio_value is not None
-        and initial_value is not None
-        and float(initial_value) > 0
-    ):
-        return (float(portfolio_value) - float(initial_value)) / float(initial_value)
-    return 0.0
+    return extract_roi_from_env(env)
 
 
 def _evaluate_trained_model(
@@ -403,47 +360,14 @@ def _evaluate_trained_model(
     363# A3: val_env (out-of-sample) を渡して G2 gate の信頼性を担保.
     361# F1 / 362# G1: in-sample 評価は過学習を検出できない.
 
-    G2 判定に必要な指標:
-      - gross_roi  (E1/E4)
-      - gross_pnl
-      - trade_count
+    内部は sac_common.evaluate_model_oos に委譲。
+    372# audit fix: 複数エピソードの ROI / trade_count を正しく集約.
     """
     eval_cfg = section(cfg, "evaluation")
     n_eval_episodes_raw = eval_cfg.get("n_episodes", 1)
     n_eval_episodes = as_int(n_eval_episodes_raw, 1)
 
-    total_reward = 0.0
-    total_steps = 0
-
-    for _ep in range(n_eval_episodes):
-        obs, _ = env.reset()
-        done = False
-        ep_reward = 0.0
-
-        while not done:
-            action, _ = model.predict(obs, deterministic=True)
-            obs, reward, terminated, truncated, _ = env.step(action)
-            ep_reward += reward
-            total_steps += 1
-            done = terminated or truncated
-
-        total_reward += ep_reward
-
-    eval_metrics: dict[str, object] = {
-        "mean_reward": total_reward / max(n_eval_episodes, 1),
-        "total_steps": total_steps,
-        "n_episodes": n_eval_episodes,
-    }
-
-    # 359# L-5: G2 gate E1/E4 に必要な gross_roi を env から抽出
-    # Note: n_episodes > 1 の場合、以下の指標は最終エピソードの値のみ反映
-    eval_metrics["gross_roi"] = _extract_roi_from_env(env)
-    eval_metrics["trade_count"] = getattr(env, "trades_count", 0)
-    eval_metrics["gross_pnl"] = float(
-        getattr(env, "total_pnl", 0.0)
-    )
-
-    return eval_metrics
+    return evaluate_model_oos(model, env, n_episodes=n_eval_episodes)
 
 
 def _save_model_schema(

@@ -34,7 +34,7 @@ import torch
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Protocol, cast
+from typing import cast
 
 logger = logging.getLogger(__name__)
 
@@ -201,28 +201,19 @@ class SACRetrainConfig:
 
 
 # ════════════════════════════════════════════════════════════════
-# Training Protocol (SB3 SAC のミニマルインターフェース)
+# Training Protocol — sac_common から統一定義を import
 # ════════════════════════════════════════════════════════════════
 
-
-class SACModelProtocol(Protocol):
-    """SB3 SAC 最小プロトコル."""
-
-    def learn(self, total_timesteps: int, reset_num_timesteps: bool = False) -> object: ...
-    def predict(self, observation: object, deterministic: bool = True) -> tuple[object, object]: ...
-    def save(self, path: str) -> None: ...
-    def save_replay_buffer(self, path: str) -> None: ...
-    def load_replay_buffer(self, path: str) -> None: ...
-
-
-class TrainingEnvProtocol(Protocol):
-    """Training env 最小プロトコル."""
-
-    observation_space: object
-    action_space: object
-    def reset(self) -> tuple[object, object]: ...
-    def step(self, action: object) -> tuple[object, float, bool, bool, object]: ...
-    def close(self) -> None: ...
+from scripts.v460.lib.sac_common import (  # noqa: E402
+    SACModelProtocol,
+    TrainingEnvProtocol,
+    adjust_buffer_size,
+    cleanup_envs,
+    evaluate_model_oos,
+    extract_roi_from_env,
+    import_real_sb3,
+    train_val_split,
+)
 
 
 # ════════════════════════════════════════════════════════════════
@@ -298,10 +289,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
             )
 
     # Train/Val split
-    val_ratio = max(0.0, min(cfg.val_ratio, 0.5))
-    split_idx = int(len(df) * (1.0 - val_ratio))
-    train_df = df.iloc[:split_idx].copy()
-    val_df = df.iloc[split_idx:].copy()
+    train_df, val_df = train_val_split(df, cfg.val_ratio)
     del df
     logger.info(f"Train: {len(train_df)} rows, Val: {len(val_df)} rows")
 
@@ -310,42 +298,9 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
     val_env: TrainingEnvProtocol | None = None
 
     try:
-        # 378# SB3 stub 回避: プロジェクトルートの stub パッケージが
-        # PYTHONPATH="." / sitecustomize.py で優先される問題を解消する。
-        # sys.path/sys.modules から一時的にプロジェクトルート + stub を
-        # 除外して本物の SB3 (site-packages) をロードする。
-        import importlib
-
-        # stub 関連モジュールを全て除去
-        _sb3_keys = [k for k in sys.modules if k == "stable_baselines3" or k.startswith("stable_baselines3.")]
-        _sb3_cached = {k: sys.modules.pop(k) for k in _sb3_keys}
-
-        _project_root = str(Path(__file__).resolve().parents[3])
-        _removed_paths: list[str] = []
-        for _p in list(sys.path):
-            # プロジェクトルート自体、"." 、sitecustomize 経由の追加を除外
-            # site-packages は保持
-            if "site-packages" not in _p and (
-                _p == "." or _p == _project_root or _p.rstrip("/\\") == _project_root.rstrip("/\\")
-            ):
-                sys.path.remove(_p)
-                _removed_paths.append(_p)
-        try:
-            import stable_baselines3 as _sb3_real
-
-            # 検証: stub は __version__ を持たない
-            if not hasattr(_sb3_real, "__version__"):
-                raise ImportError(
-                    "Loaded stub stable_baselines3 instead of real SB3. "
-                    f"Path: {getattr(_sb3_real, '__file__', 'unknown')}"
-                )
-            SB3_SAC = _sb3_real.SAC  # type: ignore[attr-defined]
-            logger.info(f"SB3 loaded: v{_sb3_real.__version__} from {_sb3_real.__file__}")
-        finally:
-            # パス復元
-            for _p in reversed(_removed_paths):
-                if _p not in sys.path:
-                    sys.path.insert(0, _p)
+        # 378# SB3 stub 回避 (sac_common.import_real_sb3 に統合)
+        sb3 = import_real_sb3()
+        SB3_SAC = sb3.SAC  # type: ignore[attr-defined]
 
         env = _create_env(train_df, cfg)
         is_warm_start = cfg.model_path.exists()
@@ -364,7 +319,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
                 "MlpPolicy",
                 env,
                 learning_rate=cfg.learning_rate,
-                buffer_size=min(cfg.buffer_size, max(cfg.total_timesteps * 2, 10_000)),
+                buffer_size=adjust_buffer_size(cfg.buffer_size, cfg.total_timesteps),
                 learning_starts=cfg.learning_starts,
                 batch_size=cfg.batch_size,
                 tau=cfg.tau,
@@ -464,12 +419,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
             error_message=str(e),
         )
     finally:
-        for _env in (val_env, env):
-            if _env is not None:
-                try:
-                    _env.close()
-                except Exception:
-                    pass
+        cleanup_envs(val_env, env)
         del train_df, val_df
 
 
@@ -653,40 +603,10 @@ def _evaluate_model(
 ) -> dict[str, float | int]:
     """OOS evaluation — 365# §5.2 step 4.
 
-    372# audit fix: 複数エピソードの ROI / trade_count を平均・累積で集約。
-    env.reset() は trades_count を 0 にリセットするため、
-    各エピソード終了時に個別に取得して集約する。
+    sac_common.evaluate_model_oos に委譲。
+    372# audit fix: 複数エピソードの ROI / trade_count を正しく集約。
     """
-    total_reward = 0.0
-    episode_rois: list[float] = []
-    total_trades = 0
-
-    for _ in range(cfg.n_eval_episodes):
-        obs, _ = env.reset()
-        done = False
-        while not done:
-            action, _ = model.predict(obs, deterministic=True)
-            obs, reward, terminated, truncated, _ = env.step(action)
-            total_reward += reward
-            done = terminated or truncated
-
-        # エピソード終了時に ROI / trades を記録
-        pv = getattr(env, "portfolio_value", None)
-        ipv = getattr(env, "initial_portfolio_value", None)
-        ep_roi = 0.0
-        if pv is not None and ipv is not None and float(ipv) > 0:
-            ep_roi = (float(pv) - float(ipv)) / float(ipv)
-        episode_rois.append(ep_roi)
-        total_trades += int(getattr(env, "trades_count", 0))
-
-    n_eps = max(cfg.n_eval_episodes, 1)
-    avg_roi = sum(episode_rois) / len(episode_rois) if episode_rois else 0.0
-
-    return {
-        "gross_roi": avg_roi,
-        "mean_reward": total_reward / n_eps,
-        "trade_count": total_trades,
-    }
+    return evaluate_model_oos(model, env, n_episodes=cfg.n_eval_episodes)
 
 
 def _atomic_deploy_model(

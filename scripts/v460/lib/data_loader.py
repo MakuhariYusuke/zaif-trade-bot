@@ -44,12 +44,14 @@ def _read_schema_names(path: Path) -> tuple[str, ...]:
 def load_parquet(
     path: str | Path,
     feature_cols: list[str] | None = None,
+    max_rows: int | None = None,
 ) -> pd.DataFrame:
     """Load a Parquet file, optionally selecting columns.
 
     Args:
         path: Absolute or project-relative path.
         feature_cols: If given, only these + timestamp/close columns are loaded.
+        max_rows: If given, read at most this many rows using an initial parquet batch.
 
     Returns:
         DataFrame with all or selected columns.
@@ -61,6 +63,7 @@ def load_parquet(
     if not p.exists():
         raise FileNotFoundError(f"Data file not found: {p}")
 
+    keep: list[str] | None = None
     if feature_cols:
         # 003# #13: sorted() for deterministic column order (set() was non-deterministic)
         # 003# #14: pass columns= to read_parquet for selective I/O
@@ -74,7 +77,22 @@ def load_parquet(
         missing = [c for c in keep if c not in schema_cols]
         if missing:
             raise KeyError(f"Missing columns in {p.name}: {missing}")
-
+    if max_rows is not None:
+        if max_rows <= 0:
+            raise ValueError("max_rows must be positive")
+        parquet_file = pq.ParquetFile(str(p))
+        first_batch = next(
+            parquet_file.iter_batches(
+                batch_size=max_rows,
+                columns=keep,
+            ),
+            None,
+        )
+        if first_batch is None:
+            df = pd.DataFrame(columns=keep or list(_read_schema_names(p)))
+        else:
+            df = first_batch.to_pandas()
+    elif keep is not None:
         df = pd.read_parquet(p, columns=keep)
     else:
         df = pd.read_parquet(p)
