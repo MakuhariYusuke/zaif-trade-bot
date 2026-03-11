@@ -16,6 +16,10 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
+CPU_SAMPLE_INTERVAL_SECONDS = 0.0
+NETWORK_CONNECTIVITY_TIMEOUT_SECONDS = 0.5
+VENUE_CONNECTIVITY_TIMEOUT_SECONDS = 0.5
+
 @dataclass
 class HealthCheckResult:
     """Result of a health check."""
@@ -59,25 +63,39 @@ class SystemHealthChecker:
         self._check_model_access()
 
         # Venue connectivity check (async) - skip if websockets not available
-        try:
-            await self._check_venue_connectivity_async()
-        except Exception as e:
-            logger.warning(f"Venue connectivity check failed: {e}")
+        network_available = any(
+            check.name == "network_connectivity" and check.status == "healthy"
+            for check in self.checks
+        )
+        if not network_available:
             self.checks.append(
                 HealthCheckResult(
                     name="venue_connectivity",
                     status="warning",
-                    message="Venue connectivity check skipped due to dependency issues",
-                    details={"error": str(e), "skipped": True},
+                    message="Venue connectivity check skipped because basic network connectivity is unavailable",
+                    details={"reason": "network_unavailable", "skipped": True},
                 )
             )
+        else:
+            try:
+                await self._check_venue_connectivity_async()
+            except Exception as e:
+                logger.warning(f"Venue connectivity check failed: {e}")
+                self.checks.append(
+                    HealthCheckResult(
+                        name="venue_connectivity",
+                        status="warning",
+                        message="Venue connectivity check skipped due to dependency issues",
+                        details={"error": str(e), "skipped": True},
+                    )
+                )
 
         return self.checks
 
     def _check_cpu_usage(self) -> None:
         """Check CPU usage."""
         try:
-            cpu_percent = psutil.cpu_percent(interval=1)
+            cpu_percent = psutil.cpu_percent(interval=CPU_SAMPLE_INTERVAL_SECONDS)
             if cpu_percent > 90:
                 status = "critical"
                 message = f"CPU usage is critically high: {cpu_percent}%"
@@ -189,7 +207,9 @@ class SystemHealthChecker:
             import socket
 
             # Try to connect to a reliable host
-            socket.create_connection(("8.8.8.8", 53), timeout=5)
+            socket.create_connection(
+                ("8.8.8.8", 53), timeout=NETWORK_CONNECTIVITY_TIMEOUT_SECONDS
+            )
             self.checks.append(
                 HealthCheckResult(
                     name="network_connectivity",
@@ -394,7 +414,11 @@ class SystemHealthChecker:
                 return
 
             # Check primary venue (coincheck)
-            checker = VenueHealthChecker("coincheck", "btc_jpy", timeout=5)
+            checker = VenueHealthChecker(
+                "coincheck",
+                "btc_jpy",
+                timeout=VENUE_CONNECTIVITY_TIMEOUT_SECONDS,
+            )
             result = await checker.run_checks()
 
             # Determine status based on connectivity results

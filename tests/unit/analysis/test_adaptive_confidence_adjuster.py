@@ -59,7 +59,7 @@ class TestAdaptiveConfidenceAdjuster:
         assert adjuster.thresholds is not None
         assert adjuster.regime_detector is not None
         assert adjuster.performance_history == []
-        assert adjuster.threshold_history == []
+        assert len(adjuster.threshold_history) == 0
 
     def test_initialization_with_custom_thresholds(self):
         """カスタム閾値での初期化テスト"""

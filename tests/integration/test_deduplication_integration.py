@@ -121,7 +121,10 @@ class TestDeduplicationIntegration(unittest.TestCase):
         # Test TradingStrategy Protocol import
         try:
             from ztb.trading.backtest.unified_backtest.strategy_base import TradingStrategy
-            self.assertTrue(hasattr(TradingStrategy, '__protocol_attrs__'))
+            self.assertTrue(
+                getattr(TradingStrategy, "_is_protocol", False)
+                or hasattr(TradingStrategy, "__annotations__")
+            )
         except ImportError as e:
             self.fail(f"TradingStrategy import failed: {e}")
 
@@ -198,8 +201,11 @@ class TestDeduplicationIntegration(unittest.TestCase):
         )
 
         # Verify these are classes/types
-        self.assertTrue(hasattr(TradingStrategy, '__protocol_attrs__') or hasattr(TradingStrategy, '__annotations__'))
-        self.assertTrue(issubclass(ErrorHandlingStrategy, type))  # Enum metaclass
+        self.assertTrue(
+            getattr(TradingStrategy, "_is_protocol", False)
+            or hasattr(TradingStrategy, "__annotations__")
+        )
+        self.assertTrue(hasattr(ErrorHandlingStrategy, "__members__"))
         self.assertTrue(hasattr(TradingEvaluator, '__init__'))
 
 

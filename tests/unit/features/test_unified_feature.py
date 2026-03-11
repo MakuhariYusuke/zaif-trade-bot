@@ -46,7 +46,7 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
         self.assertIsInstance(engineer, UnifiedFeatureEngineer)
         self.assertEqual(engineer.config_path, "configs/features.yaml")
         mock_registry.assert_called_once()
-        mock_sac_engineer.assert_called_once_with(config_path=None)
+        mock_sac_engineer.assert_called_once_with(config={}, config_path=None)
         mock_registry_instance.initialize.assert_called_once()
 
     @patch("ztb.features.unified_feature.FeatureRegistry")
@@ -68,7 +68,9 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
 
         # 検証
         self.assertEqual(engineer.config_path, custom_path)
-        mock_sac_engineer.assert_called_once_with(config_path=custom_path)
+        mock_sac_engineer.assert_called_once_with(
+            config={}, config_path=custom_path
+        )
 
     @patch("ztb.features.unified_feature.compute_features_batch")
     @patch("ztb.features.unified_feature.FeatureRegistry")
@@ -123,9 +125,10 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
         # 検証
         self.assertIsInstance(result, pd.DataFrame)
         mock_get_feature_set.assert_called_once_with("technical")
-        mock_compute.assert_called_once_with(
-            self.sample_data, feature_names=["rsi", "macd"]
-        )
+        mock_compute.assert_called_once()
+        args, kwargs = mock_compute.call_args
+        self.assertIsInstance(args[0], pd.DataFrame)
+        self.assertEqual(kwargs["feature_names"], ["rsi", "macd"])
 
     @patch("ztb.features.unified_feature.get_feature_set")
     @patch("ztb.features.unified_feature.FeatureRegistry")
@@ -205,8 +208,11 @@ class TestUnifiedFeatureEngineer(unittest.TestCase):
         mock_sac_engineer.return_value = mock_sac_instance
 
         # get_feature_setのモック設定
-
-        mock_get_feature_set.side_effect = mock_get_feature_set_func
+        mock_get_feature_set.side_effect = lambda set_name: {
+            "curated": ["rsi", "macd"],
+            "full": ["rsi", "macd", "sma"],
+            "minimal": ["rsi"],
+        }.get(set_name, [])
 
         # インスタンス作成
         engineer = UnifiedFeatureEngineer()

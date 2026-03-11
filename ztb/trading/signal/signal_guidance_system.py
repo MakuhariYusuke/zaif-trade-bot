@@ -7,7 +7,7 @@ Type-safe, high-performance signal guidance for SAC action conversion
 from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -17,7 +17,12 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 from ztb.trading.signal.common.utilities import score_to_discrete_action
-from ztb.trading.signal.constants import DEFAULT_FALLBACK_THRESHOLD, HIGH_SCORE_IS_BUY
+from ztb.trading.signal.constants import (
+    DEFAULT_BUY_THRESHOLD,
+    DEFAULT_FALLBACK_THRESHOLD,
+    DEFAULT_SELL_THRESHOLD,
+    HIGH_SCORE_IS_BUY,
+)
 from ztb.trading.signal.multi_timeframe_analyzer import (
     ConvergenceAnalysis,
     MultiTimeframeAnalyzer,
@@ -25,6 +30,15 @@ from ztb.trading.signal.multi_timeframe_analyzer import (
 )
 from ztb.trading.signal.quality_scorer import SignalQualityScorer
 from ztb.trading.signal.trend_convergence_calculator import TrendConvergenceCalculator
+
+T = TypeVar("T")
+
+
+def _tail(values: list[T] | deque[T], size: int) -> list[T]:
+    """Return the last ``size`` items for list/deque inputs."""
+    if size <= 0:
+        return []
+    return list(values)[-size:]
 
 class MarketTrend(Enum):
     """Market trend enumeration"""
@@ -120,7 +134,13 @@ class SignalGuidanceSystem:
         # Initialize trend convergence calculator for Phase 2 enhancement
         self.convergence_calculator = TrendConvergenceCalculator()
         # Keep market data history for technical indicator calculations
-        self.market_data_history: deque[pd.Series] = deque(maxlen=100)
+        self.market_data_history: dict[str, deque[float]] = {
+            "open": deque(maxlen=100),
+            "high": deque(maxlen=100),
+            "low": deque(maxlen=100),
+            "close": deque(maxlen=100),
+            "volume": deque(maxlen=100),
+        }
         self.max_history_size = 100  # Keep last 100 data points for technical analysis
 
     def update_market_context(self, row: pd.Series, portfolio: dict[str, Any]) -> None:
@@ -184,7 +204,7 @@ class SignalGuidanceSystem:
                 sell_signal_ratio=0.0,
             )
 
-        recent_signals = self.signal_history[-3:]
+        recent_signals = _tail(self.signal_history, 3)
 
         # Check for bias
         buy_count = sum(1 for s in recent_signals if s == SignalType.BUY)
@@ -208,13 +228,10 @@ class SignalGuidanceSystem:
                 break
 
         # Calculate sell signal ratio
-        total_recent = (
-            len(self.signal_history[-10:])
-            if len(self.signal_history) >= 10
-            else len(self.signal_history)
-        )
+        recent_window = _tail(self.signal_history, 10)
+        total_recent = len(recent_window)
         sell_ratio = (
-            sum(1 for s in self.signal_history[-10:] if s == SignalType.SELL)
+            sum(1 for s in recent_window if s == SignalType.SELL)
             / total_recent
             if total_recent > 0
             else 0.0
@@ -235,26 +252,16 @@ class SignalGuidanceSystem:
             # Update context for backward compatibility
             self.update_market_context(row, portfolio)
 
-            # Add current market data to history for technical analysis
-            self.market_data_history.append(row.copy())
+            # Store normalized OHLCV once so subsequent calculations do not repeatedly
+            # copy/unwrap the incoming Series.
+            self._append_market_bar(row)
 
             # Create DataFrame from recent market data for technical analysis
             market_df = self._create_market_dataframe(row, portfolio)
 
-            # Phase 2: Get multi-timeframe convergence analysis
-            convergence_analysis = self.multi_timeframe_analyzer.analyze_convergence()
-
-            # Get trend analyses for convergence calculation
-            trend_analyses = {}
-            for timeframe in self.multi_timeframe_analyzer.timeframes.keys():
-                analysis = self.multi_timeframe_analyzer.analyze_timeframe_trend(
-                    timeframe
-                )
-                if analysis:
-                    trend_analyses[timeframe] = analysis
-
-            convergence_report = self.convergence_calculator.get_convergence_report(
-                trend_analyses
+            # Phase 2: Get convergence inputs once per guidance decision.
+            convergence_analysis, convergence_report = (
+                self._get_convergence_inputs()
             )
 
             # Use quality scorer for deterministic signal generation
@@ -290,7 +297,7 @@ class SignalGuidanceSystem:
             return MarketTrend.NEUTRAL
 
         # Simple trend analysis
-        recent_prices = self.market_context.price_trend[-5:]
+        recent_prices = _tail(self.market_context.price_trend, 5)
         if recent_prices[-1] > recent_prices[0] * 1.002:  # 0.2% up
             return MarketTrend.BULLISH
         elif recent_prices[-1] < recent_prices[0] * 0.998:  # 0.2% down
@@ -384,13 +391,10 @@ class SignalGuidanceSystem:
             base_probability *= self.config.sell_injection_overexposed_multiplier
 
         # Increase probability when no recent SELL signals
-        recent_signals = (
-            len(self.signal_history[-5:])
-            if len(self.signal_history) >= 5
-            else len(self.signal_history)
-        )
+        recent_window = _tail(self.signal_history, 5)
+        recent_signals = len(recent_window)
         sell_count = (
-            sum(1 for s in self.signal_history[-5:] if s == SignalType.SELL)
+            sum(1 for s in recent_window if s == SignalType.SELL)
             if recent_signals > 0
             else 0
         )
@@ -497,21 +501,13 @@ class SignalGuidanceSystem:
         """Create market DataFrame from current row and historical context"""
         try:
             # Use market data history if available (preferred for technical analysis)
-            if (
-                len(self.market_data_history) >= 30
-            ):  # Minimum for most technical indicators
-                # Create DataFrame from recent history
-                recent_data = self.market_data_history[
-                    -50:
-                ]  # Use last 50 points for analysis
-                data = {
-                    "open": [r.get("open", r.get("price", 0)) for r in recent_data],
-                    "high": [r.get("high", r.get("price", 0)) for r in recent_data],
-                    "low": [r.get("low", r.get("price", 0)) for r in recent_data],
-                    "close": [r.get("close", r.get("price", 0)) for r in recent_data],
-                    "volume": [r.get("volume", 1.0) for r in recent_data],
-                }
-                return pd.DataFrame(data)
+            if len(self.market_data_history["close"]) >= 30:
+                return pd.DataFrame(
+                    {
+                        key: list(values)[-50:]
+                        for key, values in self.market_data_history.items()
+                    }
+                )
             else:
                 # Fallback: use recent price trend for technical analysis
                 return self._create_fallback_dataframe(row, portfolio)
@@ -519,16 +515,42 @@ class SignalGuidanceSystem:
             logger.warning(f"Error creating market DataFrame: {e}")
             return self._create_fallback_dataframe(row, portfolio)
 
+    def _append_market_bar(self, row: pd.Series) -> None:
+        """Normalize the incoming row into lightweight OHLCV histories."""
+        close_price = float(row.get("close", row.get("price", 0.0)))
+        open_price = float(row.get("open", close_price))
+        high_price = float(row.get("high", close_price))
+        low_price = float(row.get("low", close_price))
+        volume = float(row.get("volume", 0.0))
+
+        self.market_data_history["open"].append(open_price)
+        self.market_data_history["high"].append(high_price)
+        self.market_data_history["low"].append(low_price)
+        self.market_data_history["close"].append(close_price)
+        self.market_data_history["volume"].append(volume)
+
+    def _get_convergence_inputs(
+        self,
+    ) -> tuple[ConvergenceAnalysis, dict[str, float | str]]:
+        """Compute convergence analysis and report from a single trend-analysis pass."""
+        convergence_analysis = self.multi_timeframe_analyzer.analyze_convergence()
+        trend_analyses = {}
+        for timeframe in self.multi_timeframe_analyzer.timeframes.keys():
+            analysis = self.multi_timeframe_analyzer.analyze_timeframe_trend(timeframe)
+            if analysis is not None:
+                trend_analyses[timeframe] = analysis
+
+        convergence_report = self.convergence_calculator.get_convergence_report(
+            trend_analyses
+        )
+        return convergence_analysis, convergence_report
+
     def _create_fallback_dataframe(
         self, row: pd.Series, portfolio: dict[str, Any]
     ) -> pd.DataFrame:
         """Create fallback DataFrame when insufficient historical data is available"""
         # Use recent price trend for technical analysis
-        recent_prices = (
-            self.market_context.price_trend[-50:]
-            if len(self.market_context.price_trend) >= 50
-            else self.market_context.price_trend
-        )
+        recent_prices = _tail(self.market_context.price_trend, 50)
 
         if not recent_prices:
             # Fallback: create minimal DataFrame from current row
@@ -707,8 +729,11 @@ class SignalGuidanceSystem:
         """
         # Phase 2 thresholds with convergence enhancement
         # Higher convergence can lower thresholds for more responsive signals
-        buy_threshold = 85.0  # BUY if score >= 85
-        sell_threshold = 15.0  # SELL if score <= 15
+        # Keep final score conversion aligned with SignalQualityScorer so the
+        # convergence enhancement adjusts sensitivity instead of collapsing
+        # most scores back to HOLD.
+        buy_threshold = float(DEFAULT_BUY_THRESHOLD)
+        sell_threshold = float(DEFAULT_SELL_THRESHOLD)
         # Use shared utility to preserve parity support
         return score_to_discrete_action(
             score,
@@ -725,16 +750,13 @@ class SignalGuidanceSystem:
             Dictionary containing convergence analysis and timeframe details
         """
         try:
-            # Get convergence analysis
-            convergence = self.multi_timeframe_analyzer.analyze_convergence()
-
-            # Get trend analyses for all timeframes
+            convergence, convergence_report = self._get_convergence_inputs()
             trend_analyses = {}
-            for timeframe in self.multi_timeframe_analyzer.timeframes.keys():
-                analysis = self.multi_timeframe_analyzer.analyze_timeframe_trend(
-                    timeframe
-                )
-                if analysis:
+            for timeframe, analysis in (
+                (tf, self.multi_timeframe_analyzer.analyze_timeframe_trend(tf))
+                for tf in self.multi_timeframe_analyzer.timeframes.keys()
+            ):
+                if analysis is not None:
                     trend_analyses[timeframe.value] = {
                         "direction": analysis.direction.value,
                         "strength": analysis.strength,
@@ -743,17 +765,6 @@ class SignalGuidanceSystem:
                         "macd_signal": analysis.macd_signal,
                         "bollinger_position": analysis.bollinger_position,
                     }
-
-            # Get convergence report
-            trend_analyses_dict = {}
-            for tf in self.multi_timeframe_analyzer.timeframes.keys():
-                analysis = self.multi_timeframe_analyzer.analyze_timeframe_trend(tf)
-                if analysis is not None:
-                    trend_analyses_dict[tf] = analysis
-
-            convergence_report = self.convergence_calculator.get_convergence_report(
-                trend_analyses_dict
-            )
 
             return {
                 "phase": "Phase 2 - Multi-timeframe Analysis",

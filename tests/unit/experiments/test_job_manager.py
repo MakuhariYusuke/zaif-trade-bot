@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import time
 from pathlib import Path
 
@@ -43,16 +44,20 @@ def test_run_all_jobs_default_backend_supports_local_callable(tmp_path: Path) ->
 
 def test_timeout_status_not_overwritten_after_late_completion(tmp_path: Path) -> None:
     manager = _make_manager(tmp_path)
-    manager.timeout_seconds = 0.1
+    manager.timeout_seconds = 0.05
+    finished = threading.Event()
 
     def slow_train(_job: JobConfig) -> dict[str, object]:
-        time.sleep(0.35)
-        return {
-            "total_pnl": 0.5,
-            "win_rate": 0.4,
-            "max_drawdown": 0.2,
-            "sharpe_ratio": 0.8,
-        }
+        try:
+            time.sleep(0.12)
+            return {
+                "total_pnl": 0.5,
+                "win_rate": 0.4,
+                "max_drawdown": 0.2,
+                "sharpe_ratio": 0.8,
+            }
+        finally:
+            finished.set()
 
     started_at = time.time()
     summary = manager.run_all_jobs(slow_train, max_workers=2, parallel_backend="thread")
@@ -60,11 +65,11 @@ def test_timeout_status_not_overwritten_after_late_completion(tmp_path: Path) ->
 
     assert summary["completed_jobs"] == 0
     assert summary["failed_jobs"] == 1
-    assert elapsed < 0.3
+    assert elapsed < 0.2
 
     result_file = manager.results_dir / "result_00_00.json"
     assert _read_status(result_file) == "timeout"
 
     # Worker may complete after timeout; output must not be overwritten.
-    time.sleep(0.4)
+    assert finished.wait(0.2)
     assert _read_status(result_file) == "timeout"

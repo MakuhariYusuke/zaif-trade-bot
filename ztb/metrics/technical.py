@@ -9,15 +9,27 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
-from ztb.features.generators.technical.momentum.rsi import compute_rsi
-from ztb.features.generators.technical.volatility.return_std import (
-    compute_return_stddev,
-)
 from ztb.trading.constants import TRADING_DAYS_PER_YEAR
 from ztb.utils.talib_wrapper import TaLibWrapper
 
 # Global instance to share cache for SMA
 _talib = TaLibWrapper()
+
+
+def _compute_rsi_series(df: pd.DataFrame, period: int) -> pd.Series:
+    """Lazy-import RSI generator to avoid feature/environment import cycles."""
+    from ztb.features.generators.technical.momentum.rsi import compute_rsi
+
+    return compute_rsi(df, period=period)
+
+
+def _compute_return_stddev_series(df: pd.DataFrame, period: int) -> pd.Series:
+    """Lazy-import volatility generator to avoid import-time cycles."""
+    from ztb.features.generators.technical.volatility.return_std import (
+        compute_return_stddev,
+    )
+
+    return compute_return_stddev(df, period=period)
 
 def calculate_rsi(
     prices: list[float] | NDArray[np.float64] | pd.Series, period: int = 14
@@ -48,7 +60,7 @@ def calculate_rsi(
 
     try:
         # Use feature generator
-        rsi_series = compute_rsi(df, period=period)
+        rsi_series = _compute_rsi_series(df, period=period)
 
         # Get last valid value
         last_val = rsi_series.iloc[-1]
@@ -90,7 +102,7 @@ def calculate_volatility(
 
     try:
         # Use feature generator
-        vol_series = compute_return_stddev(df, period=window)
+        vol_series = _compute_return_stddev_series(df, period=window)
 
         last_val = vol_series.iloc[-1]
         val = float(last_val) if not pd.isna(last_val) else 0.0
@@ -243,7 +255,7 @@ def calculate_rolling_rsi(
 
     try:
         # Use feature generator
-        rsi_series = compute_rsi(df, period=period)
+        rsi_series = _compute_rsi_series(df, period=period)
         return rsi_series
     except Exception:
         return pd.Series(dtype=float)

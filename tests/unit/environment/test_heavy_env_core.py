@@ -59,4 +59,9 @@ class TestHeavyTradingEnvCore:
         # Verify features exist and observation space matches
         assert hasattr(env, "features")
         assert len(env.features) > 0
-        assert env.observation_space.shape[0] == len(env.features)
+        # 379# P3-A: observation_space can include env_tracker internal features
+        # (inventory_pressure, loss_risk, time_in_market) beyond env.features
+        n_internal = 0
+        if getattr(env, "env_tracker", None) is not None:
+            n_internal = len(env.env_tracker.get_feature_vector())
+        assert env.observation_space.shape[0] == len(env.features) + n_internal

@@ -257,8 +257,8 @@ class TestSACTransferLearning:
         config = algorithm.get_default_config()
 
         # デフォルトで無効
-        assert config["transfer_learning_enabled"] is False
-        assert config["pretrained_model_path"] is None
+        assert config.get("transfer_learning_enabled", False) is False
+        assert config.get("pretrained_model_path") is None
 
         # 転移学習が無効な場合、loadが呼ばれない
         model = Mock()

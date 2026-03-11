@@ -22,6 +22,19 @@ from ztb.training.gradient_accumulation import (
 )
 
 
+if not (
+    hasattr(nn, "Linear")
+    and hasattr(nn, "MSELoss")
+    and hasattr(torch, "relu")
+    and hasattr(torch, "optim")
+    and hasattr(torch.optim, "SGD")
+):
+    pytest.skip(
+        "Gradient accumulation tests require full torch autograd/optim support; current suite is running with a lightweight stub.",
+        allow_module_level=True,
+    )
+
+
 class SimpleModel(nn.Module):
     """Simple model for testing."""
 

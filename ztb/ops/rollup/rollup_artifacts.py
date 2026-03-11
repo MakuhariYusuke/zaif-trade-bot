@@ -245,13 +245,30 @@ def generate_executive_summary(summary: dict[str, Any]) -> str:
 
     return md
 
+def _resolve_results_schema_path() -> Path:
+    """Resolve the results schema from common repo locations."""
+    repo_root = Path(__file__).resolve().parents[3]
+    candidates = [
+        Path("schema/results_schema.json"),
+        Path("configs/schema/results_schema.json"),
+        Path("configs/results_schema.json"),
+        repo_root / "schema" / "results_schema.json",
+        repo_root / "configs" / "schema" / "results_schema.json",
+        repo_root / "configs" / "results_schema.json",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+
+    return candidates[0]
+
 def validate_summary(summary: dict[str, Any]) -> bool:
     """Validate summary against schema."""
     if not HAS_JSONSCHEMA:
         print("jsonschema not available, skipping validation", file=sys.stderr)
         return True
 
-    schema_path = Path("schema/results_schema.json")
+    schema_path = _resolve_results_schema_path()
     if not schema_path.exists():
         print(f"Schema file not found: {schema_path}", file=sys.stderr)
         return False

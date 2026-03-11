@@ -213,5 +213,9 @@ def initialize_risk_profiles(config: GlobalConfig) -> None:
     from ztb.trading.live.risk.profiles import get_risk_manager
 
     manager = get_risk_manager()
-    for profile in config.risk_profiles.values():
+    risk_profiles = getattr(config, "risk_profiles", None)
+    if not isinstance(risk_profiles, dict):
+        return
+
+    for profile in risk_profiles.values():
         manager.add_profile(profile)

@@ -33,36 +33,42 @@ def test_reward_settings_dataclass_reads_values():
 
 def test_lookback_boundary_values():
     """Test boundary values for lookback settings."""
-    # Test lookback = 0 (should be clamped to 1, but maxlen uses max of all lookbacks)
+    # lookback=0 now disables consistency penalties rather than clamping.
+    # Dict-backed reward settings also keep the larger forced-balance window by default.
     cfg = EnvironmentConfig()
     cfg.reward_settings = {"consistency_lookback": 0}
     calc = BehavioralPenaltyCalculator(cfg)
-    assert calc.lookback == 1  # Should be clamped to 1
-    assert calc.recent_actions.maxlen == 10  # max(1, 10, 10) since entropy/skewness default to 10
+    assert calc.lookback == 0
+    assert calc.recent_actions.maxlen == 101
 
     # Test lookback = 1 (minimum valid)
     cfg.reward_settings = {"consistency_lookback": 1}
     calc = BehavioralPenaltyCalculator(cfg)
     assert calc.lookback == 1
-    assert calc.recent_actions.maxlen == 10  # Still 10 due to other defaults
+    assert calc.recent_actions.maxlen == 101
 
     # Test large lookback = 1000
     cfg.reward_settings = {"consistency_lookback": 1000}
     calc = BehavioralPenaltyCalculator(cfg)
     assert calc.lookback == 1000
-    assert calc.recent_actions.maxlen == 1000
+    assert calc.recent_actions.maxlen == 1001
 
     # Test default lookback = 50
     cfg = EnvironmentConfig()
     calc = BehavioralPenaltyCalculator(cfg)
     assert calc.lookback == 50
-    assert calc.recent_actions.maxlen == 50
+    assert calc.recent_actions.maxlen == 51
 
 
 def test_sliding_window_edge_cases():
     """Test edge cases for sliding window behavior."""
     cfg = EnvironmentConfig()
-    cfg.reward_settings = {"consistency_lookback": 3, "skewness_lookback": 3, "action_entropy_lookback": 3}
+    cfg.reward_settings = {
+        "consistency_lookback": 3,
+        "skewness_lookback": 3,
+        "action_entropy_lookback": 3,
+        "forced_balance_min_actions": 3,
+    }
     calc = BehavioralPenaltyCalculator(cfg)
 
     # Empty window
@@ -86,16 +92,16 @@ def test_sliding_window_edge_cases():
     counts = calc._get_recent_counts()
     assert counts == [1, 1, 1]
 
-    # Overfill window (should slide)
-    calc.record_action(ACTION_BUY)  # This should pop ACTION_BUY (first one), leaving SELL, HOLD, BUY
+    # The deque keeps an extra slot so consistency logic can see previous+current actions.
+    calc.record_action(ACTION_BUY)
     counts = calc._get_recent_counts()
-    assert counts == [1, 1, 1]  # HOLD:1, BUY:1, SELL:1
+    assert counts == [1, 2, 1]
 
-    # Check that old actions are forgotten
+    # Additional actions should now slide the oldest entries out.
     calc.record_action(ACTION_SELL)
     calc.record_action(ACTION_SELL)
     counts = calc._get_recent_counts()
-    assert counts == [0, 1, 2]  # HOLD forgotten, BUY:1, SELL:2
+    assert counts == [1, 1, 2]
 
 
 def test_skewness_penalty_with_small_lookback():

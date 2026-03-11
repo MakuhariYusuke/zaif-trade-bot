@@ -5,7 +5,17 @@
 
 import unittest
 
+import pytest
 import torch
+
+if not all(
+    hasattr(torch.nn, attr)
+    for attr in ("Linear", "ReLU", "Dropout", "LayerNorm", "MultiheadAttention")
+):
+    pytest.skip(
+        "Multimodal core-component tests require the full torch.nn module surface; current suite is running with a lightweight stub.",
+        allow_module_level=True,
+    )
 
 # テスト対象のインポート
 from ztb.multimodal.core.attention import (

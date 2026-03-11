@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Unified action decoding with strict mask enforcement and tiebreaker.
 
@@ -16,7 +18,7 @@ Critical Requirements:
 """
 
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 try:
@@ -27,6 +29,46 @@ from numpy.typing import NDArray
 
 from ztb.trading.constants import ACTION_HOLD
 from ztb.trading.environment.constants import EPSILON
+
+
+def _torch_tensor_type() -> type[Any] | None:
+    """Return a valid torch.Tensor type when the torch module is well-formed."""
+    if torch is None:
+        return None
+    tensor_type = getattr(torch, "Tensor", None)
+    return tensor_type if isinstance(tensor_type, type) else None
+
+
+def _to_numpy_array(value: Any) -> NDArray[np.generic]:
+    """Convert torch/stub tensors and array-likes into numpy arrays."""
+    torch_tensor_type = _torch_tensor_type()
+    if torch_tensor_type is not None and isinstance(value, torch_tensor_type):
+        tensor = value.detach() if hasattr(value, "detach") else value
+        tensor = tensor.cpu() if hasattr(tensor, "cpu") else tensor
+        if hasattr(tensor, "numpy"):
+            return np.asarray(tensor.numpy())
+    if hasattr(value, "detach"):
+        value = value.detach()
+    if hasattr(value, "cpu"):
+        value = value.cpu()
+    if hasattr(value, "numpy"):
+        try:
+            return np.asarray(value.numpy())
+        except Exception:
+            pass
+    if hasattr(value, "_arr"):
+        return np.asarray(value._arr)
+    array = np.asarray(value)
+    if array.dtype == object and array.ndim == 0:
+        scalar = array.item()
+        if scalar is not value:
+            return _to_numpy_array(scalar)
+    if array.size == 0 and hasattr(value, "__len__") and hasattr(value, "__getitem__"):
+        try:
+            return np.asarray([value[i] for i in range(len(value))])
+        except Exception:
+            pass
+    return array
 
 @dataclass
 class InferenceConfig:
@@ -113,14 +155,10 @@ def decode_action(
             config.temperature, config.min_temperature, config.max_temperature
         )
 
-    # Convert to numpy if torch tensor
-    is_torch = torch is not None and isinstance(logits, torch.Tensor)
-    if is_torch:
-        logits_np = cast(torch.Tensor, logits).detach().cpu().numpy()
-        mask_np = cast(torch.Tensor, legal_mask).detach().cpu().numpy()
-    else:
-        logits_np = np.asarray(logits)
-        mask_np = np.asarray(legal_mask)
+    # Convert to numpy if torch tensor or lightweight torch stub tensor
+    torch_tensor_type = _torch_tensor_type()
+    logits_np = _to_numpy_array(logits)
+    mask_np = _to_numpy_array(legal_mask)
 
     # Guard: Clip logits to safe range (prevent overflow in exp)
     logits_np = np.clip(logits_np, -config.logits_clip_value, config.logits_clip_value)
@@ -185,10 +223,7 @@ def decode_action(
     # Convert advantages to numpy if provided
     advantages_np = None
     if advantages is not None:
-        if torch is not None and isinstance(advantages, torch.Tensor):
-            advantages_np = advantages.detach().cpu().numpy()
-        else:
-            advantages_np = np.array(advantages)
+        advantages_np = _to_numpy_array(advantages)
 
         # Handle single observation case
         if advantages_np.ndim == 1:

@@ -90,6 +90,11 @@ class LongTermMetrics:
         )
 
     @staticmethod
+    def max_drawdown(portfolio_values: np.ndarray) -> float:
+        """Calculate max drawdown for a portfolio series."""
+        return float(max_drawdown(portfolio_values))
+
+    @staticmethod
     def action_balance_stability(action_history: list[int], window: int = 100) -> float:
         """
         Measure stability of action distribution over time.

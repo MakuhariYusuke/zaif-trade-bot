@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock
+from types import SimpleNamespace
 
 
 from ztb.trading.environment.components.threshold_manager import ThresholdManager
@@ -7,12 +7,23 @@ from ztb.trading.environment.components.threshold_manager import ThresholdManage
 
 class TestThresholdManager(unittest.TestCase):
     def setUp(self):
-        self.config = MagicMock()
-        self.config.continuous_to_discrete_threshold = 0.01
-        self.config.adaptive_threshold_mode = False
-        self.config.threshold_volatility_multiplier = 1.0
-        self.config.min_action_threshold = 0.001
-        self.config.max_action_threshold = 0.05
+        self.config = SimpleNamespace(
+            continuous_to_discrete_threshold=0.01,
+            adaptive_threshold_mode=False,
+            threshold_volatility_multiplier=1.0,
+            min_action_threshold=0.001,
+            max_action_threshold=0.05,
+            dynamic_threshold_mode="fixed",
+            z_score_window=100,
+            z_score_threshold=2.0,
+            z_score_method="std",
+            regime_detection_window=50,
+            threshold_adaptation_rate=0.1,
+            performance_memory_size=100,
+            regime_detection_config={},
+            trend_detection_threshold=0.001,
+            volatility_detection_threshold=0.02,
+        )
 
     def test_static_threshold(self):
         manager = ThresholdManager(self.config)

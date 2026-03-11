@@ -4,8 +4,10 @@ Unit tests for advanced neural network architectures.
 
 from unittest.mock import Mock
 
+import pytest
 import torch
 
+import ztb.training.models.advanced_networks as advanced_networks_module
 from ztb.training.models.advanced_networks import (
     LSTMFeatureExtractor,
     LSTMPolicy,
@@ -14,6 +16,19 @@ from ztb.training.models.advanced_networks import (
     TransformerFeatureExtractor,
     TransformerPolicy,
 )
+
+def _advanced_torch_available() -> bool:
+    return bool(
+        hasattr(advanced_networks_module.torch, "zeros")
+        and hasattr(advanced_networks_module.nn, "LSTM")
+        and hasattr(advanced_networks_module.nn, "MultiheadAttention")
+    )
+
+
+@pytest.fixture(autouse=True)
+def _require_advanced_torch():
+    if not _advanced_torch_available():
+        pytest.skip("advanced torch layers unavailable in the test environment")
 
 
 class TestLSTMFeatureExtractor:

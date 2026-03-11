@@ -22,7 +22,12 @@ class TestUnifiedConfig(unittest.TestCase):
             "version": "1.0.0",
             "algorithm": "sac",
             "description": "Test configuration",
-            "training": {"total_timesteps": 1000, "learning_rate": 0.001},
+            "training": {
+                "total_timesteps": 1000,
+                "learning_rate": 0.001,
+                "batch_size": 64,
+                "buffer_size": 10000,
+            },
             "features": {
                 "basic_features": ["open", "high", "low", "close"],
                 "technical_indicators": ["rsi", "macd"],
@@ -75,7 +80,7 @@ class TestUnifiedConfig(unittest.TestCase):
         errors = config.validate()
 
         self.assertGreater(len(errors), 0)
-        self.assertIn("Missing required field", str(errors))
+        self.assertIn("Missing or empty required field", str(errors))
 
     def test_unified_config_save_load_json(self):
         """JSON形式での保存・読み込みテスト"""
@@ -175,7 +180,12 @@ class TestUnifiedConfigManager(unittest.TestCase):
             "model_name": "test_model",
             "version": "1.0.0",
             "algorithm": "sac",
-            "training": {"total_timesteps": 1000, "learning_rate": 0.001},
+            "training": {
+                "total_timesteps": 1000,
+                "learning_rate": 0.001,
+                "batch_size": 64,
+                "buffer_size": 10000,
+            },
             "features": {"basic_features": ["open", "high"]},
         }
 

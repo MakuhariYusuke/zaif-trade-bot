@@ -25,6 +25,14 @@ from ztb.utils.talib_wrapper import TaLibWrapper
 
 logger = get_logger(__name__)
 
+
+def _get_last_valid_float(values: np.ndarray | pd.Series) -> float:
+    """Return the last non-NaN value from an indicator series."""
+    arr = np.asarray(values, dtype=float)
+    valid = arr[~np.isnan(arr)]
+    return float(valid[-1]) if len(valid) > 0 else 0.0
+
+
 class TechnicalIndicators:
     """
     Lightweight technical indicators calculator for signal quality scoring
@@ -88,15 +96,10 @@ class TechnicalIndicators:
                 prices, fast_period, slow_period, signal_period
             )
 
-            # Return the last valid values
-            def get_last_valid(arr):
-                valid = arr[~np.isnan(arr)]
-                return float(valid[-1]) if len(valid) > 0 else 0.0
-
             return (
-                get_last_valid(macd_line),
-                get_last_valid(signal_line),
-                get_last_valid(histogram),
+                _get_last_valid_float(macd_line),
+                _get_last_valid_float(signal_line),
+                _get_last_valid_float(histogram),
             )
         except Exception as e:
             logger.warning(f"MACD calculation failed: {e}")
@@ -120,14 +123,14 @@ class TechnicalIndicators:
             tuple of (Upper band, Middle band, Lower band)
         """
         try:
-            upper, middle, lower = self.talib.bbands(prices, period, std_dev)
-
-            # Return the last valid values
+            upper, middle, lower = self.talib.bbands(
+                prices, period, nbdevup=std_dev, nbdevdn=std_dev
+            )
 
             return (
-                get_last_valid(upper),
-                get_last_valid(middle),
-                get_last_valid(lower),
+                _get_last_valid_float(upper),
+                _get_last_valid_float(middle),
+                _get_last_valid_float(lower),
             )
         except Exception as e:
             logger.warning(f"Bollinger Bands calculation failed: {e}")
@@ -224,7 +227,6 @@ class TechnicalIndicators:
         except Exception as e:
             logger.warning(f"Stochastic calculation failed: {e}")
             return 50.0, 50.0
-            return (50.0, 50.0)
 
     def calculate_momentum(
         self, prices: np.ndarray | pd.Series, period: int = 10

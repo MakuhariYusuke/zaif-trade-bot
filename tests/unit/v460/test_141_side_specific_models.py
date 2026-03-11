@@ -64,6 +64,25 @@ class _ConstantRegressor:
         n_rows = len(x) if hasattr(x, "__len__") else 1
         return np.full(n_rows, self._value, dtype=float)
 
+
+class _PredictPipeline:
+    """SkipGate evaluate テスト用の軽量 predict stub."""
+
+    def __init__(self, value: float = 0.0) -> None:
+        self._prediction = np.array([value], dtype=float)
+        self.steps: list[tuple[str, object]] = []
+
+    def set_output(self, *, transform: str) -> "_PredictPipeline":
+        del transform
+        return self
+
+    def set_prediction(self, value: float) -> None:
+        self._prediction = np.array([value], dtype=float)
+
+    def predict(self, x: object) -> np.ndarray:
+        del x
+        return self._prediction
+
 # ---------------------------------------------------------------------------
 # §1: FillConfig — side 別モデルパスフィールド
 # ---------------------------------------------------------------------------
@@ -405,7 +424,10 @@ class TestEvaluatorSideDispatch:
 class TestRetrainConfigSideSpecific:
     """141# §4: retrain config に side 別設定が反映されること."""
 
-    def test_load_retrain_config_side_fields(self, tmp_path: Path) -> None:
+    def test_load_retrain_config_side_fields(
+        self,
+        write_yaml_file: "Callable[[str | Path, str | dict[str, Any]], Path]",
+    ) -> None:
         """YAML から model_path_buy/sell と retrain section の side 設定を読める."""
 
         yaml_content = {
@@ -425,8 +447,7 @@ class TestRetrainConfigSideSpecific:
             },
             "results_dir": "results/v460/fill_test",
         }
-        yaml_path = tmp_path / "config.yaml"
-        yaml_path.write_text(yaml.dump(yaml_content))
+        yaml_path = write_yaml_file("config.yaml", yaml_content)
 
         cfg = load_retrain_config(yaml_path)
         # skip_gate セクションから継承
@@ -439,7 +460,10 @@ class TestRetrainConfigSideSpecific:
         assert cfg.get("target_sell") == "pnl120"
         assert cfg.get("side_min_samples") == 50
 
-    def test_load_retrain_config_no_side_fields(self, tmp_path: Path) -> None:
+    def test_load_retrain_config_no_side_fields(
+        self,
+        write_yaml_file: "Callable[[str | Path, str | dict[str, Any]], Path]",
+    ) -> None:
         """YAML に side 設定がない場合はデフォルト."""
 
         yaml_content = {
@@ -452,8 +476,7 @@ class TestRetrainConfigSideSpecific:
             },
             "results_dir": "results/v460/fill_test",
         }
-        yaml_path = tmp_path / "config.yaml"
-        yaml_path.write_text(yaml.dump(yaml_content))
+        yaml_path = write_yaml_file("config.yaml", yaml_content)
 
         cfg = load_retrain_config(yaml_path)
         assert cfg["model_path_buy"] == ""
@@ -772,21 +795,20 @@ class TestRegimeThresholdEvaluate:
             regime_thresholds=regime_thresholds or {},
             adaptive_threshold=False,
         )
-        # 最低限の Pipeline mock
-        mock_pipeline = MagicMock()
+        pipeline = _PredictPipeline()
         gate = SkipGate(
-            model=MagicMock(),
-            scaler=MagicMock(),
+            model=_ConstantRegressor(0.0),
+            scaler=_IdentityScaler(),
             feature_cols=["side_buy", "spread_bps", "offset_ratio"],
             config=cfg,
-            pipeline=mock_pipeline,
+            pipeline=pipeline,
         )
         return gate
 
     def test_no_regime_uses_default_threshold(self) -> None:
         """regime=None の場合は threshold_bps を使用."""
         gate = self._make_gate(threshold_bps=0.1)
-        gate._pipeline.predict.return_value = np.array([0.05])  # 0.05 < 0.1 → skip
+        gate._pipeline.set_prediction(0.05)  # 0.05 < 0.1 → skip
 
         decision = gate.evaluate(
             {"side_buy": 1.0, "spread_bps": 10.0, "offset_ratio": 0.01},
@@ -803,7 +825,7 @@ class TestRegimeThresholdEvaluate:
             regime_thresholds={"high_vol": 0.3},
         )
         # pred_pnl = 0.2 → threshold_bps=0.0 なら pass, high_vol=0.3 なら skip
-        gate._pipeline.predict.return_value = np.array([0.2])
+        gate._pipeline.set_prediction(0.2)
 
         # high_vol → threshold=0.3, 0.2 < 0.3 → skip
         decision_hv = gate.evaluate(
@@ -827,7 +849,7 @@ class TestRegimeThresholdEvaluate:
             threshold_bps=0.0,
             regime_thresholds={"trending": -0.5},
         )
-        gate._pipeline.predict.return_value = np.array([-0.3])
+        gate._pipeline.set_prediction(-0.3)
 
         # trending: threshold=-0.5, -0.3 > -0.5 → pass
         decision = gate.evaluate(
@@ -848,7 +870,7 @@ class TestRegimeThresholdEvaluate:
     def test_empty_regime_thresholds_uses_default(self) -> None:
         """regime_thresholds が空の場合は常に threshold_bps."""
         gate = self._make_gate(threshold_bps=0.0, regime_thresholds={})
-        gate._pipeline.predict.return_value = np.array([0.1])
+        gate._pipeline.set_prediction(0.1)
 
         decision = gate.evaluate(
             {"side_buy": 1.0, "spread_bps": 10.0, "offset_ratio": 0.01},
@@ -1118,13 +1140,13 @@ class TestRegimeAdaptiveThresholdIntegration:
             adaptive_min_samples=adaptive_min_samples,
             adaptive_step=0.05,
         )
-        mock_pipeline = MagicMock()
+        pipeline = _PredictPipeline()
         gate = SkipGate(
-            model=MagicMock(),
-            scaler=MagicMock(),
+            model=_ConstantRegressor(0.0),
+            scaler=_IdentityScaler(),
             feature_cols=["side_buy", "spread_bps", "offset_ratio"],
             config=cfg,
-            pipeline=mock_pipeline,
+            pipeline=pipeline,
         )
         return gate
 
@@ -1135,7 +1157,7 @@ class TestRegimeAdaptiveThresholdIntegration:
             regime_thresholds={"high_vol": 0.5},
             adaptive_min_samples=100,  # warmup 未達で base_threshold が返る
         )
-        gate._pipeline.predict.return_value = np.array([0.3])
+        gate._pipeline.set_prediction(0.3)
 
         # adaptive min_samples 未達 → warmup → base_threshold がそのまま返る
         # regime=high_vol → base_threshold=0.5 (not 0.0)
@@ -1155,7 +1177,7 @@ class TestRegimeAdaptiveThresholdIntegration:
             regime_thresholds={"high_vol": 0.5},
             adaptive_min_samples=100,
         )
-        gate._pipeline.predict.return_value = np.array([0.3])
+        gate._pipeline.set_prediction(0.3)
 
         decision = gate.evaluate(
             {"side_buy": 1.0, "spread_bps": 10.0, "offset_ratio": 0.01},
@@ -1176,7 +1198,7 @@ class TestRegimeAdaptiveThresholdIntegration:
         )
         # warmup: 3件投入して calibration を有効化
         for pnl in [0.1, 0.2, 0.3]:
-            gate._pipeline.predict.return_value = np.array([pnl])
+            gate._pipeline.set_prediction(pnl)
             gate.evaluate(
                 {"side_buy": 1.0, "spread_bps": 10.0, "offset_ratio": 0.01},
                 side="buy",
@@ -1189,7 +1211,7 @@ class TestRegimeAdaptiveThresholdIntegration:
         gate._pnl_threshold_buy = None  # reset
         gate._pred_pnl_history_buy = None  # reset
         for pnl in [0.1, 0.2, 0.3]:
-            gate._pipeline.predict.return_value = np.array([pnl])
+            gate._pipeline.set_prediction(pnl)
             gate.evaluate(
                 {"side_buy": 1.0, "spread_bps": 10.0, "offset_ratio": 0.01},
                 side="buy",

@@ -454,6 +454,13 @@ def _initialize_features_and_spaces(self: Any, max_features: int | None) -> None
                 f"Added optimizer features to observation space: +{len(self.optimizer_tracker.get_feature_names())} dimensions"
             )
 
+    # Add env internal features dimension if tracker is available
+    if hasattr(self, "env_tracker") and self.env_tracker is not None:
+        obs_dim += len(self.env_tracker.get_feature_vector())
+        logger.info(
+            f"Added env internal features to observation space: +{len(self.env_tracker.get_feature_vector())} dimensions"
+        )
+
     # Observation space (always Box for features)
     self.observation_space = spaces.Box(
         low=-np.inf,
@@ -601,6 +608,9 @@ def _initialize_remaining_components(self: Any) -> None:
         if isinstance(self.optimizer_tracker, OptimizerFeatureTracker):
             obs_dim += len(self.optimizer_tracker.get_feature_names())
 
+    if hasattr(self, "env_tracker") and self.env_tracker is not None:
+        obs_dim += len(self.env_tracker.get_feature_vector())
+
     self.online_scaler = OnlineScaler(shape=(obs_dim,), clip=5.0)
     logger.info(f"Initialized OnlineScaler with dimension {obs_dim}")
 
@@ -717,6 +727,7 @@ def _initialize_remaining_components(self: Any) -> None:
         scaler_mean=None,
         scaler_std=None,
         optimizer_tracker=self.optimizer_tracker,
+        env_tracker=getattr(self, "env_tracker", None),
     )
 
     # Final consistency check: ensure observation builder feature matrix matches

@@ -220,7 +220,9 @@ class StatisticalValidator:
 
         try:
             # 基本相関分析
-            correlation = np.corrcoef(predictions, actual_returns)[0, 1]
+            correlation = self._calculate_pearson_correlation(
+                predictions, actual_returns
+            )
             results["correlation"] = {
                 "value": correlation,
                 "p_value": self._calculate_correlation_p_value(
@@ -412,14 +414,26 @@ class StatisticalValidator:
 
     def _calculate_correlation_p_value(self, x: list[float], y: list[float]) -> float:
         """相関係数のp値計算"""
-        correlation, p_value = stats.pearsonr(x, y)
+        correlation = self._calculate_pearson_correlation(x, y)
+        n = len(x)
+        if n < 3 or not np.isfinite(correlation):
+            return 1.0
+        if abs(correlation) >= 1.0:
+            return 0.0
+
+        t_stat = correlation * np.sqrt((n - 2) / max(1.0 - correlation**2, 1e-12))
+        p_value = 2.0 * stats.t.sf(abs(t_stat), df=n - 2)
         return float(p_value)
 
     def _calculate_correlation_confidence_interval(
         self, x: list[float], y: list[float]
     ) -> list[float]:
         """相関係数の信頼区間計算（Fisher変換使用）"""
-        correlation, _ = stats.pearsonr(x, y)
+        correlation = self._calculate_pearson_correlation(x, y)
+        if len(x) < 4 or not np.isfinite(correlation):
+            return [0.0, 0.0]
+
+        correlation = float(np.clip(correlation, -0.999999, 0.999999))
 
         # Fisher変換
         z = np.arctanh(correlation)
@@ -434,6 +448,23 @@ class StatisticalValidator:
         r_upper = np.tanh(z_upper)
 
         return [float(r_lower), float(r_upper)]
+
+    def _calculate_pearson_correlation(
+        self, x: list[float], y: list[float]
+    ) -> float:
+        """Calculate Pearson correlation without scipy.stats.pearsonr side effects."""
+        x_arr = np.asarray(x, dtype=np.float64)
+        y_arr = np.asarray(y, dtype=np.float64)
+
+        if x_arr.size != y_arr.size or x_arr.size < 2:
+            return 0.0
+        if not np.isfinite(x_arr).all() or not np.isfinite(y_arr).all():
+            return 0.0
+        if float(np.std(x_arr)) == 0.0 or float(np.std(y_arr)) == 0.0:
+            return 0.0
+
+        correlation = np.corrcoef(x_arr, y_arr)[0, 1]
+        return float(correlation) if np.isfinite(correlation) else 0.0
 
     def _analyze_signal_thresholds(
         self,

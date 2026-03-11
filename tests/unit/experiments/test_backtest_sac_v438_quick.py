@@ -134,16 +134,11 @@ class TestBacktestSACv438Quick:
         mock_path,
     ):
         """Test backtest when data file is not found."""
-
-        # Mock paths - model exists, data doesn't
-        def mock_exists(path):
-            if "model" in str(path):
-                return True
-            elif "data" in str(path):
-                return False
-            return True
-
-        mock_path.return_value.exists.side_effect = mock_exists
+        model_path_mock = Mock()
+        model_path_mock.exists.return_value = True
+        data_path_mock = Mock()
+        data_path_mock.exists.return_value = False
+        mock_path.side_effect = [model_path_mock, data_path_mock]
 
         result = backtest_sac_v438_quick(
             model_path="existing_model.zip", data_path="nonexistent_data.csv"

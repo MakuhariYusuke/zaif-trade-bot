@@ -1,6 +1,6 @@
 """Tests for Real Data Validation System component."""
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pandas as pd
@@ -17,6 +17,18 @@ from ztb.trading.real_data_validator import (
     StatisticalValidator,
     ValidationResult,
 )
+
+
+@pytest.fixture
+def mock_integration_manager():
+    """Simple integration manager stub for validator tests."""
+    manager = Mock()
+    manager.component_manager = Mock()
+    manager.component_manager.v433_system = Mock()
+    manager.component_manager.v433_system.update_market_data = Mock(return_value=None)
+    manager.component_manager.position_manager = Mock()
+    manager.component_manager.position_manager.submit_signal = Mock(return_value=None)
+    return manager
 
 
 @pytest.fixture

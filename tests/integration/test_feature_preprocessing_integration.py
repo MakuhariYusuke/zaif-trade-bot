@@ -4,66 +4,36 @@ Integration tests for SAC v446 components
 SAC v446コンポーネントの統合テスト
 """
 
-import sys
 from unittest.mock import Mock, patch
 
 import numpy as np
 import pandas as pd
 import pytest
 
-# Add src to path for imports
-sys.path.insert(0, "src")
-
+from tests.helpers.market_data import make_exchange_random_walk_ohlcv_data
 from ztb.features.unified_feature import V4FeatureExtractor
-
-# from ztb.core.preprocessing.data_preprocessing import (
-#     NoiseFilter,
-#     AnomalyDetector,
-#     SyntheticDataGenerator,
-#     preprocess_data
-# )
+from ztb.core.preprocessing import (
+    AnomalyDetector,
+    NoiseFilter,
+    SyntheticDataGenerator,
+    preprocess_data,
+)
 
 
 class TestFeaturePreprocessingIntegration:
     """Integration tests for feature extraction and preprocessing"""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def sample_market_data(self):
         """Create sample market data for testing"""
-        np.random.seed(42)
-        n_samples = 1000
-
-        # Generate realistic market data
-        base_price = 100.0
-        prices = []
-        current_price = base_price
-
-        for i in range(n_samples):
-            # Random walk with some trend
-            change = np.random.normal(0, 0.01)  # 1% volatility
-            current_price *= 1 + change
-            prices.append(current_price)
-
-        # Create OHLCV data
-        data = []
-        for i in range(n_samples):
-            price = prices[i]
-            high = price * (1 + abs(np.random.normal(0, 0.005)))
-            low = price * (1 - abs(np.random.normal(0, 0.005)))
-            volume = np.random.lognormal(10, 1)  # Log-normal volume
-
-            data.append(
-                {
-                    "timestamp": pd.Timestamp("2023-01-01") + pd.Timedelta(minutes=i),
-                    "open": price * (1 + np.random.normal(0, 0.002)),
-                    "high": high,
-                    "low": low,
-                    "close": price,
-                    "volume": volume,
-                }
-            )
-
-        return pd.DataFrame(data)
+        return make_exchange_random_walk_ohlcv_data(
+            rows=320,
+            seed=42,
+            start="2023-01-01",
+            freq="1min",
+            base_price=100.0,
+            include_timestamp=True,
+        )
 
     @pytest.fixture
     def mock_unified_feature_engineer(self):

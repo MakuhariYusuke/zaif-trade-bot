@@ -14,7 +14,7 @@ import pandas as pd
 
 from ..base import ParameterizedFeature
 from ..registry import FeatureRegistry
-from ..timeframe import Timeframe
+from ztb.features.timeframe import Timeframe, get_timeframe_params
 
 @FeatureRegistry.register("EMACross_Diff")
 def compute_ema_cross_diff(
@@ -24,8 +24,6 @@ def compute_ema_cross_diff(
     feature = EMACross()
     if timeframe is not None:
         # Adjust periods based on timeframe
-        from ..timeframe import get_timeframe_params
-
         tf_params = get_timeframe_params(timeframe)
         feature.default_params = {
             "fast_period": tf_params["short_period"] // 4,  # EMA period
@@ -42,8 +40,6 @@ def compute_ema_cross_signal(
     feature = EMACross()
     if timeframe is not None:
         # Adjust periods based on timeframe
-        from ..timeframe import get_timeframe_params
-
         tf_params = get_timeframe_params(timeframe)
         feature.default_params = {
             "fast_period": tf_params["short_period"] // 4,  # EMA period
@@ -152,8 +148,9 @@ class EMACross(ParameterizedFeature):
         if fast_col not in df.columns:
             from ztb.utils.talib_wrapper import TaLibWrapper
 
-            talib = TaLibWrapper()
-            df[fast_col] = talib.ema(df["close"].values.astype(np.float64), fast_period)
+            df[fast_col] = TaLibWrapper.ema(
+                df["close"].values.astype(np.float64), fast_period
+            )
         if slow_col not in df.columns:
             from ztb.utils.talib_wrapper import TaLibWrapper
 

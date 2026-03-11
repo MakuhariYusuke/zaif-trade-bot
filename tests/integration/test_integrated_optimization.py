@@ -7,9 +7,10 @@ Phase 3-2: パラメータ最適化 - 統合テスト
 from unittest.mock import Mock
 
 import numpy as np
-import pandas as pd
 import pytest
 
+from tests.helpers.market_data import make_trending_ohlcv_data
+from tests.helpers.optimization import make_sample_trade_records
 from ztb.analysis.integrated_optimizer import (
     IntegratedOptimizationConfig,
     IntegratedOptimizationResult,
@@ -20,47 +21,38 @@ from ztb.analysis.strategy_evaluators import create_simple_strategy_evaluator
 from ztb.analysis.walk_forward_analyzer import ParameterSet
 
 
+@pytest.fixture(scope="module")
+def sample_market_data():
+    """サンプル市場データ"""
+    return make_trending_ohlcv_data(
+        rows=96,
+        seed=42,
+        start="2023-01-01",
+        freq="D",
+        start_price=100.0,
+        end_price=130.0,
+        noise_scale=3.0,
+    )
+
+
+@pytest.fixture(scope="module")
+def sample_trades():
+    return make_sample_trade_records()
+
+
+@pytest.fixture(scope="module")
+def extended_sample_trades():
+    return make_sample_trade_records(extended=True)
+
+
+@pytest.fixture(scope="module")
+def mock_strategy_func():
+    """モック戦略評価関数"""
+    return create_simple_strategy_evaluator()
+
+
 class TestIntegratedOptimizer:
     """統合最適化システムのテスト"""
-
-    @pytest.fixture
-    def sample_market_data(self):
-        """サンプル市場データ"""
-        dates = pd.date_range("2023-01-01", periods=200, freq="D")
-        np.random.seed(42)
-
-        # トレンド + ノイズのデータ生成
-        trend = np.linspace(0, 50, 200)
-        noise = np.random.randn(200) * 3
-        prices = 100 + trend + noise
-
-        data = pd.DataFrame(
-            {
-                "open": prices,
-                "high": prices + np.abs(np.random.randn(200)),
-                "low": prices - np.abs(np.random.randn(200)),
-                "close": prices + np.random.randn(200) * 0.5,
-            },
-            index=dates,
-        )
-
-        return data
-
-    @pytest.fixture
-    def sample_trades(self):
-        """サンプルトレードデータ"""
-        return [
-            {"pnl": 100, "confidence": 0.8, "entry_price": 100},
-            {"pnl": -50, "confidence": 0.6, "entry_price": 105},
-            {"pnl": 150, "confidence": 0.9, "entry_price": 102},
-            {"pnl": -30, "confidence": 0.7, "entry_price": 108},
-            {"pnl": 200, "confidence": 0.85, "entry_price": 110},
-        ]
-
-    @pytest.fixture
-    def mock_strategy_func(self, sample_trades):
-        """モック戦略評価関数"""
-        return create_simple_strategy_evaluator()
 
     def test_initialization(self):
         """初期化テスト"""
@@ -238,38 +230,17 @@ class TestIntegratedOptimizer:
 class TestIntegrationWithComponents:
     """コンポーネント統合テスト"""
 
-    @pytest.fixture
-    def sample_trades(self):
-        """サンプルトレードデータ"""
-        return [
-            {"pnl": 100, "confidence": 0.8, "entry_price": 100},
-            {"pnl": -50, "confidence": 0.6, "entry_price": 105},
-            {"pnl": 150, "confidence": 0.9, "entry_price": 102},
-            {"pnl": -30, "confidence": 0.7, "entry_price": 108},
-            {"pnl": 200, "confidence": 0.85, "entry_price": 110},
-            {"pnl": 80, "confidence": 0.75, "entry_price": 115},
-            {"pnl": -70, "confidence": 0.65, "entry_price": 118},
-            {"pnl": 120, "confidence": 0.82, "entry_price": 120},
-            {"pnl": -40, "confidence": 0.68, "entry_price": 122},
-            {"pnl": 180, "confidence": 0.88, "entry_price": 125},
-        ]
-
-    @pytest.fixture
-    def mock_strategy_func(self):
-        """モック戦略評価関数"""
-        return create_simple_strategy_evaluator()
-
-    def test_kelly_integration(self, sample_trades):
+    def test_kelly_integration(self, extended_sample_trades):
         """Kelly基準統合テスト"""
         from ztb.analysis.integrated_optimizer import IntegratedParameterOptimizer
 
         optimizer = IntegratedParameterOptimizer()
         kelly_params = optimizer.kelly_sizer.calculate_kelly_parameters(
-            sample_trades, 10000
+            extended_sample_trades, 10000
         )
 
         assert kelly_params is not None
-        assert kelly_params.total_trades == len(sample_trades)
+        assert kelly_params.total_trades == len(extended_sample_trades)
         assert 0 <= kelly_params.kelly_fraction <= 1
 
     def test_atr_integration(self, sample_market_data):
@@ -280,15 +251,17 @@ class TestIntegrationWithComponents:
         atr_series = optimizer.atr_risk_manager.calculate_atr(sample_market_data)
 
         assert len(atr_series) == len(sample_market_data)
-        assert all(atr_series > 0)
+        valid_atr = atr_series.dropna()
+        assert not valid_atr.empty
+        assert (valid_atr > 0).all()
 
-    def test_confidence_integration(self, sample_market_data, sample_trades):
+    def test_confidence_integration(self, sample_market_data, extended_sample_trades):
         """信頼度調整統合テスト"""
         from ztb.analysis.integrated_optimizer import IntegratedParameterOptimizer
 
         optimizer = IntegratedParameterOptimizer()
         decision = optimizer.confidence_adjuster.calculate_adaptive_threshold(
-            sample_market_data, sample_trades
+            sample_market_data, extended_sample_trades
         )
 
         assert 0.5 <= decision.final_threshold <= 0.9
@@ -317,110 +290,3 @@ class TestIntegrationWithComponents:
             assert hasattr(results[0], "best_parameters")
             assert hasattr(results[0], "in_sample_performance")
             assert hasattr(results[0], "out_of_sample_performance")
-
-
-if __name__ == "__main__":
-    # 直接実行時のテスト
-    print("統合最適化システムのテストを実行中...")
-
-    # 基本テスト
-    test_instance = TestIntegratedOptimizer()
-
-    # サンプルデータ作成（fixtureを使わず直接）
-    dates = pd.date_range("2023-01-01", periods=200, freq="D")
-    np.random.seed(42)
-
-    # トレンド + ノイズのデータ生成
-    trend = np.linspace(0, 50, 200)
-    noise = np.random.randn(200) * 3
-    prices = 100 + trend + noise
-
-    sample_data = pd.DataFrame(
-        {
-            "open": prices,
-            "high": prices + np.abs(np.random.randn(200)),
-            "low": prices - np.abs(np.random.randn(200)),
-            "close": prices + np.random.randn(200) * 0.5,
-        },
-        index=dates,
-    )
-
-    sample_trades = [
-        {"pnl": 100, "confidence": 0.8, "entry_price": 100},
-        {"pnl": -50, "confidence": 0.6, "entry_price": 105},
-        {"pnl": 150, "confidence": 0.9, "entry_price": 102},
-        {"pnl": -30, "confidence": 0.7, "entry_price": 108},
-        {"pnl": 200, "confidence": 0.85, "entry_price": 110},
-        {"pnl": 80, "confidence": 0.75, "entry_price": 115},
-        {"pnl": -70, "confidence": 0.65, "entry_price": 118},
-        {"pnl": 120, "confidence": 0.82, "entry_price": 120},
-        {"pnl": -40, "confidence": 0.68, "entry_price": 122},
-        {"pnl": 180, "confidence": 0.88, "entry_price": 125},
-    ]
-
-    def mock_strategy_func(trades):
-        """モック戦略評価関数"""
-
-        def mock_evaluator(data: pd.DataFrame, params) -> dict:
-            returns = data["close"].pct_change().dropna()
-            if len(returns) == 0:
-                total_return = 0.0
-                volatility = 1.0
-                sharpe_ratio = 0.0
-            else:
-                prod_result = returns.prod()
-                total_return = (
-                    float(prod_result - 1)
-                    if isinstance(prod_result, (int, float))
-                    else 0.0
-                )
-                std_result = returns.std()
-                volatility = (
-                    float(std_result) if isinstance(std_result, (int, float)) else 1.0
-                )
-                sharpe_ratio = (
-                    float(returns.mean() / volatility * np.sqrt(252))
-                    if volatility > 0
-                    else 0.0
-                )
-
-            return {
-                "total_return": total_return,
-                "sharpe_ratio": sharpe_ratio,
-                "win_rate": 0.6,
-                "max_drawdown": 0.15,
-                "total_trades": len(trades),
-                "trades": trades,
-            }
-
-        return mock_evaluator
-
-    # 実際の戦略評価関数を使用
-    strategy_func = create_simple_strategy_evaluator()
-
-    # 初期化テスト
-    test_instance.test_initialization()
-    print("✓ 初期化テスト通過")
-
-    # 統合戦略評価関数テスト
-    test_instance.test_create_integrated_strategy_evaluator(sample_data, strategy_func)
-    print("✓ 統合戦略評価関数テスト通過")
-
-    # 統合最適化テスト - 現在デバッグ中のためスキップ
-    print("⚠ 統合最適化テストは現在デバッグ中につきスキップ")
-
-    # コンポーネント統合テスト
-    integration_test = TestIntegrationWithComponents()
-    integration_test.test_kelly_integration(sample_trades)
-    print("✓ Kelly基準統合テスト通過")
-
-    integration_test.test_atr_integration(sample_data)
-    print("✓ ATR統合テスト通過")
-
-    integration_test.test_confidence_integration(sample_data, sample_trades)
-    print("✓ 信頼度調整統合テスト通過")
-
-    integration_test.test_walk_forward_integration(sample_data, strategy_func)
-    print("✓ ウォークフォワード統合テスト通過")
-
-    print("\n🎉 すべての統合テストが通過しました！")

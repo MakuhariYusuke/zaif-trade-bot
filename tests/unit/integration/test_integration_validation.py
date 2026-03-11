@@ -36,7 +36,7 @@ def validate_integration():
 
             # Create mock backtest results for testing
             mock_results = create_mock_backtest_results()
-            test_with_mock_data(mock_results)
+            _run_with_mock_data(mock_results)
             return
 
         if not Path(test_data_path).exists():
@@ -44,7 +44,7 @@ def validate_integration():
             print("Using mock data for validation...")
 
             mock_results = create_mock_backtest_results()
-            test_with_mock_data(mock_results)
+            _run_with_mock_data(mock_results)
             return
 
         # Test integrated trainer functionality
@@ -83,52 +83,31 @@ def validate_integration():
     return True
 
 
-def create_mock_backtest_results() -> Dict[str, Any]:
+def create_mock_backtest_results() -> list[Dict[str, Any]]:
     """Create mock backtest results for testing."""
-    return {
-        "24h_windows": {
-            "summary": {
-                "overall": {
-                    "total_trades": 150,
-                    "win_rate": 0.65,
-                    "avg_return": 0.023,
-                    "sharpe_ratio": 1.8,
-                    "max_drawdown": 0.12
-                }
-            },
-            "regime_performance": {
-                "bull": {"win_rate": 0.75, "avg_return": 0.035},
-                "bear": {"win_rate": 0.45, "avg_return": -0.012},
-                "sideways": {"win_rate": 0.60, "avg_return": 0.015}
-            }
-        },
-        "48h_windows": {
-            "summary": {
-                "overall": {
-                    "total_trades": 120,
-                    "win_rate": 0.58,
-                    "avg_return": 0.018,
-                    "sharpe_ratio": 1.5,
-                    "max_drawdown": 0.15
-                }
-            },
-            "regime_performance": {
-                "bull": {"win_rate": 0.70, "avg_return": 0.028},
-                "bear": {"win_rate": 0.40, "avg_return": -0.008},
-                "sideways": {"win_rate": 0.55, "avg_return": 0.012}
-            }
-        }
-    }
+    return [
+        {"name": "24h_window"},
+        {"name": "48h_window"},
+    ]
 
 
-def test_with_mock_data(mock_results: Dict[str, Any]):
-    """Test integration with mock data."""
+def _run_with_mock_data(mock_results: list[Dict[str, Any]]) -> None:
+    """Run integration validation with mock data."""
     print("Testing with mock data...")
 
     # Create analyzer instance without loading data
     analyzer = V4XXUnifiedAnalyzer.__new__(V4XXUnifiedAnalyzer)
     analyzer.version = "445.3"
     analyzer.metrics = {}
+    analyzer.results = {
+        "summary": {
+            "average_trades": 135,
+            "win_rate": 0.615,
+            "total_return": 0.0205,
+            "sharpe_ratio": 1.65,
+            "max_drawdown": 0.135,
+        }
+    }
 
     # Initialize logger (from UnifiedBase)
     import logging
@@ -143,33 +122,46 @@ def test_with_mock_data(mock_results: Dict[str, Any]):
     validate_output_structure(mock_results, analysis_results)
 
 
-def validate_output_structure(backtest_results: Dict[str, Any], analysis_results: Dict[str, Any]):
+def test_with_mock_data():
+    """Test integration with mock data."""
+    _run_with_mock_data(create_mock_backtest_results())
+
+
+def validate_output_structure(
+    backtest_results: list[Dict[str, Any]], analysis_results: Dict[str, Any]
+):
     """Validate that output has expected structure."""
 
     print("Validating output structure...")
 
     # Check backtest results structure
-    required_keys = ["overall_performance", "regime_performance", "timeframe_comparison", "recommendations"]
+    required_keys = [
+        "period_analysis",
+        "overall_metrics",
+        "regime_performance",
+        "recommendations",
+    ]
     for key in required_keys:
         if key not in analysis_results:
             raise ValueError(f"Missing required key in analysis results: {key}")
 
     print("✅ Analysis results structure valid")
 
-    # Check recommendations structure
+    # Check period analysis and recommendation structure
+    period_analysis = analysis_results["period_analysis"]
+    if len(period_analysis) != len(backtest_results):
+        raise ValueError("Unexpected period analysis length")
+
     recommendations = analysis_results["recommendations"]
-    rec_keys = ["optimal_timeframe", "regime_strategy", "risk_management", "implementation_priority"]
-    for key in rec_keys:
-        if key not in recommendations:
-            raise ValueError(f"Missing required key in recommendations: {key}")
+    if not isinstance(recommendations, list) or not recommendations:
+        raise ValueError("Recommendations should be a non-empty list")
 
     print("✅ Recommendations structure valid")
 
     # Print summary
     print("\n📊 Integration Test Summary:")
-    print(f"  - Overall Performance: {analysis_results['overall_performance']}")
-    print(f"  - Optimal Timeframe: {recommendations['optimal_timeframe']}")
-    print(f"  - Implementation Priority: {recommendations['implementation_priority']}")
+    print(f"  - Overall Metrics: {analysis_results['overall_metrics']}")
+    print(f"  - First Recommendation: {recommendations[0]}")
 
 
 if __name__ == "__main__":

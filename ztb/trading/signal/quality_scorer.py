@@ -209,14 +209,21 @@ class SignalQualityScorer:
                     else (20.0 if fallback_action == -1 else 50.0)
                 )
                 return fallback_action, fallback_score
+            trend_metrics = calculate_trend_metrics(df, window=20)
+
             # Determine market regime for adaptive indicators
-            market_regime = self._determine_market_regime(df)
+            market_regime = self._determine_market_regime(
+                df, trend_metrics=trend_metrics
+            )
 
-            # Get technical indicators (legacy method)
-            tech_signals = self.technical_indicators.get_technical_signals(df)
-
-            # Get enhanced signals using Phase 2 indicators
-            enhanced_signals = self._get_enhanced_signals(df, market_regime)
+            # Get enhanced signals using Phase 2 indicators and merge in legacy
+            # technicals only when the adaptive path does not provide them.
+            enhanced_signals = self._get_enhanced_signals(
+                df,
+                market_regime,
+                trend_metrics=trend_metrics,
+            )
+            tech_signals = self._ensure_basic_technical_signals(df, enhanced_signals)
 
             # Get RSI for potential force SELL logic (but don't force it)
             rsi = enhanced_signals.get("rsi", tech_signals.get("rsi", 50.0))
@@ -226,7 +233,9 @@ class SignalQualityScorer:
             macd_score = self._calculate_macd_score_enhanced(enhanced_signals)
             bollinger_score = self._calculate_bollinger_score(enhanced_signals, df)
             atr_score = self._calculate_atr_score(enhanced_signals)
-            trend_score = self._calculate_trend_score_enhanced(df)
+            trend_score = self._calculate_trend_score_enhanced(
+                df, trend_metrics=trend_metrics
+            )
             momentum_score = self._calculate_momentum_score(enhanced_signals)
             stochastic_score = self._calculate_stochastic_score(enhanced_signals)
 
@@ -515,11 +524,16 @@ class SignalQualityScorer:
 
         return max(0, min(100, score))
 
-    def _calculate_trend_score_enhanced(self, df: pd.DataFrame) -> float:
+    def _calculate_trend_score_enhanced(
+        self,
+        df: pd.DataFrame,
+        trend_metrics: dict[str, float] | None = None,
+    ) -> float:
         """Calculate enhanced trend-based score using Phase 2 metrics (0-100)"""
         try:
             # Use enhanced trend metrics from Phase 2
-            trend_metrics = calculate_trend_metrics(df, window=20)
+            if trend_metrics is None:
+                trend_metrics = calculate_trend_metrics(df, window=20)
 
             bull_strength = trend_metrics.get("bull_strength", 0.0)
             bear_strength = trend_metrics.get("bear_strength", 0.0)
@@ -678,7 +692,11 @@ class SignalQualityScorer:
         else:
             return 0
 
-    def _determine_market_regime(self, df: pd.DataFrame) -> str:
+    def _determine_market_regime(
+        self,
+        df: pd.DataFrame,
+        trend_metrics: dict[str, float] | None = None,
+    ) -> str:
         """
         Determine current market regime using trend metrics
 
@@ -687,7 +705,8 @@ class SignalQualityScorer:
         """
         try:
             # Use trend metrics to determine regime
-            trend_metrics = calculate_trend_metrics(df, window=20)
+            if trend_metrics is None:
+                trend_metrics = calculate_trend_metrics(df, window=20)
 
             from ztb.features.generators.technical.volatility.return_std import (
                 compute_return_stddev,
@@ -717,7 +736,10 @@ class SignalQualityScorer:
             return "ranging"  # Default fallback
 
     def _get_enhanced_signals(
-        self, df: pd.DataFrame, market_regime: str
+        self,
+        df: pd.DataFrame,
+        market_regime: str,
+        trend_metrics: dict[str, float] | None = None,
     ) -> dict[str, Any]:
         """
         Get enhanced signals using Phase 2 advanced indicators
@@ -749,7 +771,8 @@ class SignalQualityScorer:
             enhanced_signals.update(composite_result)
 
             # Add trend metrics (bull_strength, bear_strength)
-            trend_metrics = calculate_trend_metrics(df, window=20)
+            if trend_metrics is None:
+                trend_metrics = calculate_trend_metrics(df, window=20)
             enhanced_signals.update(trend_metrics)
 
             # Add market regime info
@@ -761,3 +784,29 @@ class SignalQualityScorer:
             enhanced_signals = self.technical_indicators.get_technical_signals(df)
 
         return enhanced_signals
+
+    def _ensure_basic_technical_signals(
+        self, df: pd.DataFrame, signals: dict[str, Any]
+    ) -> dict[str, float]:
+        """Backfill legacy technical keys only when the adaptive path omitted them."""
+        required_keys = {
+            "rsi",
+            "atr",
+            "macd_line",
+            "macd_signal",
+            "macd_histogram",
+            "bb_upper",
+            "bb_middle",
+            "bb_lower",
+            "bb_position",
+            "momentum",
+            "stoch_k",
+            "stoch_d",
+        }
+        if required_keys.issubset(signals):
+            return {key: float(signals[key]) for key in required_keys}
+
+        tech_signals = self.technical_indicators.get_technical_signals(df)
+        merged = dict(tech_signals)
+        merged.update(signals)
+        return merged

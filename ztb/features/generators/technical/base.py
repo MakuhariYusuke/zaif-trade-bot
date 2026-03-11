@@ -1,4 +1,4 @@
-# Compatibility shim to re-export BaseFeature from core
-from ztb.features.core.base import BaseFeature
+# Compatibility shim to re-export feature base classes from core.
+from ztb.features.core.base import BaseFeature, ParameterizedFeature
 
-__all__ = ["BaseFeature"]
+__all__ = ["BaseFeature", "ParameterizedFeature"]

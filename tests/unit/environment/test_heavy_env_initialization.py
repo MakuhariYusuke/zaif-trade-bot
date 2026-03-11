@@ -1,22 +1,18 @@
 import pandas as pd
 
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-from ztb.types.protocols import TradingEnvironment
 
 
 class TestHeavyTradingEnvInitialization:
     """Test cases for HeavyTradingEnv initialization."""
 
     def test_protocol_implementation(self):
-        """Test that HeavyTradingEnv implements TradingEnvironment protocol."""
-        # Test inheritance
-        assert issubclass(HeavyTradingEnv, TradingEnvironment)
-
-        # Test protocol methods exist on class
+        """Test that HeavyTradingEnv exposes the TradingEnvironment surface."""
         assert hasattr(HeavyTradingEnv, 'reset')
         assert hasattr(HeavyTradingEnv, 'step')
         assert hasattr(HeavyTradingEnv, 'render')
         assert hasattr(HeavyTradingEnv, 'close')
+        assert hasattr(HeavyTradingEnv, "get_legal_actions")
 
     def test_observation_space_dimension_consistency(self):
         """Test that observation space dimension matches feature matrix columns and features list length."""
@@ -46,12 +42,18 @@ class TestHeavyTradingEnvInitialization:
         feature_matrix_cols = env._feature_matrix.shape[1]
         features_len = len(env.features)
 
+        # 379# P3-A: env_tracker adds internal features (inventory_pressure,
+        # loss_risk, time_in_market) to observation_space beyond feature_matrix cols
+        n_internal = 0
+        if getattr(env, "env_tracker", None) is not None:
+            n_internal = len(env.env_tracker.get_feature_vector())
+
         assert (
-            obs_dim == feature_matrix_cols
-        ), f"Observation space dim {obs_dim} != feature matrix cols {feature_matrix_cols}"
+            obs_dim == feature_matrix_cols + n_internal
+        ), f"Observation space dim {obs_dim} != feature matrix cols {feature_matrix_cols} + internal {n_internal}"
         assert (
-            obs_dim == features_len
-        ), f"Observation space dim {obs_dim} != features len {features_len}"
+            obs_dim == features_len + n_internal
+        ), f"Observation space dim {obs_dim} != features len {features_len} + internal {n_internal}"
         assert (
             feature_matrix_cols == features_len
         ), f"Feature matrix cols {feature_matrix_cols} != features len {features_len}"

@@ -140,6 +140,15 @@ class BacktestAnalyzer(BaseAnalyzer):
         self._max_cache_size = 100  # MB
         self._cache_cleanup_threshold = 50  # MB
 
+    def _load_data(self) -> dict[str, Any]:
+        """Load backtest result payload from JSON."""
+        data = read_json(self.results_path)
+        if not isinstance(data, dict):
+            raise ValueError(
+                f"Backtest results must load as dict: {self.results_path}"
+            )
+        return data
+
     def _get_daily_returns(self, portfolio_values: np.ndarray) -> np.ndarray:
         """日次リターンをメモリ効率的に計算・キャッシュ"""
         # キャッシュ属性の初期化（__init__未実行時の対応）

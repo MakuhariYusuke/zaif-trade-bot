@@ -529,6 +529,14 @@ class HeavyTradingEnv(
         self._market_regime_cache: list[V444RegimeType | None] = [
             None
         ] * self.n_steps
+
+        # 379# EnvInternalTracker initialization
+        from ztb.trading.environment.components.env_internal_trackers import (
+            EnvInternalTracker,
+        )
+
+        self.env_tracker = EnvInternalTracker()
+
         self._initialize_features_and_spaces(max_features)
         self._initialize_data_manager(streaming_pipeline, stream_batch_size, df)
 
@@ -690,6 +698,10 @@ class HeavyTradingEnv(
         self.reward_calculator.reset()
         self.statistics_calculator.reset()
         self.state_manager.reset_state()
+        
+        # 379# EnvInternalTracker reset
+        if hasattr(self, "env_tracker") and self.env_tracker is not None:
+            self.env_tracker.reset()
         # 112# config dict cache invalidation (DomainRandomization等でconfig変更時に再生成)
         if hasattr(self, '_config_dict_cache'):
             del self._config_dict_cache
@@ -967,8 +979,13 @@ class HeavyTradingEnv(
         except Exception:
             pass
 
-        # Get current regime (v452)
-        current_regime: V444RegimeType = self._get_current_market_regime()  # type: ignore[no-redef]
+        # Get current regime (v452). Reuse the value resolved earlier in the step
+        # instead of repeatedly re-running regime detection.
+        current_regime: V444RegimeType
+        if regime_obj is not None:
+            current_regime = regime_obj
+        else:
+            current_regime = self._get_current_market_regime()  # type: ignore[no-redef]
         regime_obj_for_info = current_regime
         # IMPORTANT: PositionManager/hybrid filters expect the regime key string (Enum.value)
         regime_str = current_regime.value  # type: ignore[union-attr]
@@ -1244,6 +1261,24 @@ class HeavyTradingEnv(
             effective_action, self.current_step, trade_pnl
         )
 
+        # 379# P3-A: Update env internal trackers
+        if hasattr(self, "env_tracker") and self.env_tracker is not None:
+            self.env_tracker.update_step(self.position != 0)
+            
+            # Action was executed and trades_count increased -> entered/reversed position
+            if actual_action in [ACTION_BUY, ACTION_SELL] and self.position_manager.trades_count > old_trades_count:
+                direction = 1 if actual_action == ACTION_BUY else -1
+                amount = float(getattr(self.config, "max_position_size", 0.01))
+                # Note: true fill logic handles partial amounts, we proxy it via limit size.
+                self.env_tracker.on_trade(direction, amount)
+
+            # Trade closed -> check PnL ratio
+            if trade_pnl != 0:
+                pv = getattr(self, "_portfolio_value", self.initial_portfolio_value)
+                if pv > 0:
+                    trade_pnl_pct = trade_pnl / pv
+                    self.env_tracker.on_trade_close(trade_pnl_pct)
+
         unrealized_pnl = self.position_manager.calculate_unrealized_pnl()
         portfolio_value = (
             self.initial_portfolio_value + self.realized_pnl + unrealized_pnl
@@ -1300,11 +1335,11 @@ class HeavyTradingEnv(
             self, "regime_adaptation_config"
         ):
             try:
-                current_regime: V444RegimeType = self._get_current_market_regime()  # type: ignore[no-redef]
-                if current_regime.value != "unknown":  # type: ignore[union-attr]
+                adaptation_regime = current_regime
+                if adaptation_regime.value != "unknown":  # type: ignore[union-attr]
                     # Get regime-specific multiplier
                     # Cast V444RegimeType to the generic RegimeType expected by the classifier
-                    generic_regime = GenericRegimeType(current_regime.value)  # type: ignore[union-attr]
+                    generic_regime = GenericRegimeType(adaptation_regime.value)  # type: ignore[union-attr]
                     reward_multiplier = self.regime_classifier.get_regime_multiplier(
                         generic_regime, "reward"
                     )
@@ -1319,27 +1354,27 @@ class HeavyTradingEnv(
                         reward *= penalty_multiplier
 
                     # Update regime statistics (C1: deque で上限制限 — OOM 防止)
-                    if current_regime not in self.regime_stats["regime_counts"]:
-                        self.regime_stats["regime_counts"][current_regime] = 0
-                        self.regime_stats["regime_rewards"][current_regime] = deque(maxlen=self._REGIME_STATS_MAXLEN)
-                        self.regime_stats["regime_actions"][current_regime] = deque(maxlen=self._REGIME_STATS_MAXLEN)
+                    if adaptation_regime not in self.regime_stats["regime_counts"]:
+                        self.regime_stats["regime_counts"][adaptation_regime] = 0
+                        self.regime_stats["regime_rewards"][adaptation_regime] = deque(maxlen=self._REGIME_STATS_MAXLEN)
+                        self.regime_stats["regime_actions"][adaptation_regime] = deque(maxlen=self._REGIME_STATS_MAXLEN)
 
-                    self.regime_stats["regime_counts"][current_regime] += 1
-                    self.regime_stats["regime_rewards"][current_regime].append(reward)
-                    self.regime_stats["regime_actions"][current_regime].append(
+                    self.regime_stats["regime_counts"][adaptation_regime] += 1
+                    self.regime_stats["regime_rewards"][adaptation_regime].append(reward)
+                    self.regime_stats["regime_actions"][adaptation_regime].append(
                         actual_action
                     )
 
                     # Track regime transitions (最新 500 件のみ保持)
-                    if self.regime_stats["current_regime"] != current_regime:
+                    if self.regime_stats["current_regime"] != adaptation_regime:
                         self.regime_stats["regime_transitions"].append(
                             {
                                 "from": self.regime_stats["current_regime"],
-                                "to": current_regime,
+                                "to": adaptation_regime,
                                 "step": self.current_step,
                             }
                         )
-                        self.regime_stats["current_regime"] = current_regime
+                        self.regime_stats["current_regime"] = adaptation_regime
 
             except Exception as e:
                 logger.warning(f"Failed to apply regime adaptation: {e}")
@@ -1348,7 +1383,7 @@ class HeavyTradingEnv(
         reward = self.validation_manager.validate_reward_calculation(reward)
 
         # Add raw reward components to info for debugging and AB analysis
-        info = self._get_info()
+        info = self._get_info(current_regime=current_regime)
         info["effective_action"] = effective_action  # v453: Expose effective action
         reward_components = self.reward_calculator.get_last_reward_components()
         info.update(reward_components)
@@ -1540,7 +1575,10 @@ class HeavyTradingEnv(
             obs = np.concatenate([obs, masks])
 
         return obs
-    def _get_info(self) -> dict[str, object]:
+    def _get_info(
+        self,
+        current_regime: V444RegimeType | None = None,
+    ) -> dict[str, object]:
         # 112# Perf: dataclasses.asdict(self.config) をキャッシュ化
         # 80+フィールドのネストdataclassを毎ステップ再帰変換するのは高コスト
         if not hasattr(self, '_config_dict_cache'):
@@ -1557,7 +1595,11 @@ class HeavyTradingEnv(
 
         # Add market regime for regime-aware diagnostics
         current_price = self.data_manager.get_price_at_step(self.current_step)
-        market_regime = self._get_current_market_regime()
+        market_regime = (
+            current_regime
+            if current_regime is not None
+            else self._get_current_market_regime()
+        )
 
         base_info["market_regime"] = market_regime
 
@@ -1739,8 +1781,11 @@ class FlipHeavyTradingEnv(HeavyTradingEnv):
 
         return obs, reward, done, truncated, info
 
-    def _get_info(self) -> dict[str, object]:
-        info = super()._get_info()
+    def _get_info(
+        self,
+        current_regime: V444RegimeType | None = None,
+    ) -> dict[str, object]:
+        info = super()._get_info(current_regime=current_regime)
         if "position" in info:
             info["position"] = -info["position"]
         return info

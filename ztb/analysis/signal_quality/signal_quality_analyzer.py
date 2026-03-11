@@ -232,8 +232,8 @@ class SignalQualityAnalyzer:
                     future_prices = market_data.iloc[current_idx : current_idx + 24][
                         "close"
                     ]
-                    max_drawdown = max_drawdown(future_prices)
-                    impact_scores.append(max_drawdown)
+                    drawdown = max_drawdown(future_prices)
+                    impact_scores.append(drawdown)
 
         return np.mean(impact_scores) if impact_scores else 0.0
 

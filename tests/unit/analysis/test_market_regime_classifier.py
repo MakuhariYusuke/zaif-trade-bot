@@ -209,7 +209,7 @@ class TestMarketRegimeClassifier:
         if secondary_regimes:
             assert len(secondary_regimes[0]) == 2  # (regime, confidence) tuple
 
-    @patch("ztb.analysis.market_regime_classifier.logger")
+    @patch("ztb.analysis.regime.market_regime_classifier.logger")
     def test_error_handling(self, mock_logger, classifier, sample_price_data):
         """Test error handling in regime detection"""
         # Test with corrupted data

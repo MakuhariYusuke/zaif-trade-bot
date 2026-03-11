@@ -1,4 +1,5 @@
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -15,7 +16,7 @@ def test_production_guard_requires_explicit_enable(tmp_path, monkeypatch):
     monkeypatch.delenv("ZTB_ALLOW_PRODUCTION", raising=False)
 
     options = LiveTradingOptions(
-        model_path=Path("package.json"),
+        model_path=Path("pytest.ini"),
         algorithm="sac",
         venue="coincheck",
         duration_hours=0.01,
@@ -41,7 +42,7 @@ def test_production_guard_allows_with_flag(tmp_path, monkeypatch):
     monkeypatch.setenv("ZTB_ALLOW_PRODUCTION", "1")
 
     options = LiveTradingOptions(
-        model_path=Path("package.json"),
+        model_path=Path("pytest.ini"),
         algorithm="sac",
         venue="coincheck",
         duration_hours=0.01,
@@ -55,5 +56,17 @@ def test_production_guard_allows_with_flag(tmp_path, monkeypatch):
         allow_production=True,
     )
 
-    trader = LiveTrader(options)
+    with patch(
+        "ztb.trading.live_trader.live_trader.get_broker_registry"
+    ) as mock_registry, patch(
+        "ztb.trading.live_trader.live_trader.ModelLoading"
+    ) as mock_model_loading, patch(
+        "ztb.trading.live_trader.live_trader.ModelManager"
+    ) as mock_model_manager, patch(
+        "ztb.trading.live_trader.live_trader.prometheus_available", False
+    ):
+        mock_registry.return_value.get_broker.return_value = Mock()
+        mock_model_loading.return_value.load_model.return_value = Mock()
+        mock_model_manager.return_value.initialize_model.return_value = None
+        trader = LiveTrader(options)
     assert trader is not None

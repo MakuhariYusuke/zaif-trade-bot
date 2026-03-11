@@ -6,6 +6,19 @@ import numpy as np
 import pandas as pd
 
 from ztb.trading.environment import HeavyTradingEnv
+from ztb.trading.environment.utils.config import EnvironmentConfig
+
+
+def _make_env(df: pd.DataFrame, **overrides: object) -> HeavyTradingEnv:
+    config = EnvironmentConfig.from_dict(
+        {
+            "random_start": False,
+            "feature_set": "minimal",
+            "use_continuous_actions": False,
+            **overrides,
+        }
+    )
+    return HeavyTradingEnv(df=df, config=config)
 
 
 class TestHeavyTradingEnv:
@@ -25,7 +38,7 @@ class TestHeavyTradingEnv:
         df = pd.DataFrame(data, index=dates)
 
         # Test initialization
-        env = HeavyTradingEnv(df=df)
+        env = _make_env(df)
         assert env is not None
         assert hasattr(env, "reset")
         assert hasattr(env, "step")
@@ -45,7 +58,7 @@ class TestHeavyTradingEnv:
         }
         df = pd.DataFrame(data, index=dates)
 
-        env = HeavyTradingEnv(df=df)
+        env = _make_env(df)
         obs, info = env.reset()
 
         assert isinstance(obs, np.ndarray)
@@ -65,7 +78,7 @@ class TestHeavyTradingEnv:
         }
         df = pd.DataFrame(data, index=dates)
 
-        env = HeavyTradingEnv(df=df)
+        env = _make_env(df)
         env.reset()
 
         # Test step with random action
@@ -95,7 +108,7 @@ class TestHeavyTradingEnv:
             index=dates,
         )
 
-        env = HeavyTradingEnv(df=df)
+        env = _make_env(df)
         assert env.action_space is not None
         # Sample some actions
         for _ in range(5):
@@ -116,7 +129,7 @@ class TestHeavyTradingEnv:
             index=dates,
         )
 
-        env = HeavyTradingEnv(df=df)
+        env = _make_env(df)
         assert env.observation_space is not None
 
         obs, _ = env.reset()
@@ -136,7 +149,7 @@ class TestHeavyTradingEnv:
             index=dates,
         )
 
-        env = HeavyTradingEnv(df=df)
+        env = _make_env(df)
         env.reset()
 
         # Take a few steps and check rewards are reasonable
@@ -164,7 +177,7 @@ class TestHeavyTradingEnv:
             index=dates,
         )
 
-        env = HeavyTradingEnv(df=df)
+        env = _make_env(df)
         env.reset()
 
         done = False
@@ -201,13 +214,11 @@ class TestHeavyTradingEnv:
             }
         )
 
-        env = HeavyTradingEnv(
-            df=df,
-            config={
-                "enable_correlation_reduction": True,
-                "correlation_reduction": True,
-                "target_feature_count": 5,
-            },
+        env = _make_env(
+            df,
+            enable_correlation_reduction=True,
+            correlation_reduction=True,
+            target_feature_count=5,
         )
 
         assert len(env.features) == 5

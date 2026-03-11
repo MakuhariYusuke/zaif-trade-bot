@@ -75,9 +75,7 @@ class ParallelExperimentRunner:
 
         # GPUリソース監視 - 遅延評価で効率化
         self._gpu_available: bool | None = None  # キャッシュ用
-        self._gpu_stats_cache: 
-            dict[str, dict[str, float]]
-         | None = None  # GPU統計キャッシュ
+        self._gpu_stats_cache: dict[str, dict[str, float]] | None = None
         self._gpu_cache_time: float = 0.0  # キャッシュ時間
         self._gpu_cache_ttl: float = 5.0  # キャッシュ有効期間（秒）
 

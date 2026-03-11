@@ -9,6 +9,9 @@ import pandas as pd
 from ztb.features.core.registry import FeatureRegistry
 from ztb.utils.talib_wrapper import TaLibWrapper
 
+_TALIB = TaLibWrapper()
+
+
 @FeatureRegistry.register("Stochastic")
 def compute_stochastic(
     df: pd.DataFrame, period: int = 14, smooth_k: int = 3
@@ -18,7 +21,7 @@ def compute_stochastic(
     low_prices = np.asarray(df["low"].values, dtype=float)
     close_prices = np.asarray(df["close"].values, dtype=float)
 
-    slowk, slowd = TaLibWrapper.stoch(
+    slowk, slowd = _TALIB.stoch(
         high_prices,
         low_prices,
         close_prices,
@@ -39,7 +42,7 @@ def compute_stochastic_k(
     low_prices = np.asarray(df["low"].values, dtype=float)
     close_prices = np.asarray(df["close"].values, dtype=float)
 
-    slowk, slowd = TaLibWrapper.stoch(
+    slowk, slowd = _TALIB.stoch(
         high_prices,
         low_prices,
         close_prices,

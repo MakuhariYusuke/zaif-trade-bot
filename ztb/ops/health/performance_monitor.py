@@ -17,6 +17,8 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
+CPU_SAMPLE_INTERVAL_SECONDS = 0.0
+
 @dataclass
 class PerformanceSnapshot:
     """Snapshot of system performance metrics."""
@@ -73,7 +75,7 @@ class HealthPerformanceMonitor:
         """Take a current performance snapshot."""
         try:
             # Basic system metrics
-            cpu_percent = psutil.cpu_percent(interval=0.1)
+            cpu_percent = psutil.cpu_percent(interval=CPU_SAMPLE_INTERVAL_SECONDS)
             memory = psutil.virtual_memory()
             disk = psutil.disk_usage("/")
             network = psutil.net_io_counters()

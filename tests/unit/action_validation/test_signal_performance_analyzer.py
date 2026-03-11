@@ -308,7 +308,7 @@ class TestSignalPerformanceAnalyzer(unittest.TestCase):
     def test_history_size_management(self):
         """Test that history size is properly managed."""
         # Add more data than max_history_size
-        for i in range(150):  # More than max_history_size (100)
+        for i in range(220):  # high_water (= 200) を超える量を追加
             self.analyzer.signal_quality_history.append({
                 'quality_score': 0.5,
                 'pattern_type': 'test',

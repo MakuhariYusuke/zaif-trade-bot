@@ -10,11 +10,24 @@ from typing import Any, cast
 
 import numpy as np
 import pandas as pd
-from scipy import stats
 
 from ztb.utils.errors import safe_operation
 
 logger = logging.getLogger(__name__)
+
+
+def _abs_z_scores(values: pd.Series | np.ndarray) -> np.ndarray:
+    """Return absolute z-scores using a NumPy-only implementation."""
+    arr = np.asarray(values, dtype=float)
+    if arr.size == 0:
+        return np.array([], dtype=float)
+
+    mean = np.nanmean(arr)
+    std = np.nanstd(arr)
+    if not np.isfinite(std) or std <= 0.0:
+        return np.zeros(arr.shape, dtype=float)
+
+    return np.abs((arr - mean) / std)
 
 def detect_outliers_iqr(
     data: pd.DataFrame, column: str
@@ -81,12 +94,8 @@ def _detect_outliers_zscore_impl(
 ) -> pd.DataFrame:
     """Implementation of Z-score outlier detection."""
     series = data[column]
-
-    # Calculate z-scores, handling NaN values
-    z_scores_raw = stats.zscore(series, nan_policy="omit")
-
-    # Convert to numpy array, filling NaN with 0
-    z_scores = np.nan_to_num(np.array(z_scores_raw), nan=0.0)
+    z_scores = _abs_z_scores(series)
+    z_scores = np.nan_to_num(z_scores, nan=0.0)
 
     # Find outliers
     outlier_mask = np.abs(z_scores) > threshold

@@ -47,16 +47,21 @@ def _make_ohlcv(n: int = 200) -> pd.DataFrame:
     })
 
 
+_PROXY_DEFAULT_ROWS = 120
+_PROXY_ZERO_VOLUME_ROWS = 80
+_PROXY_WINDOW_VARIANT_ROWS = 120
+
+
 @pytest.fixture(scope="module")
 def proxy_features_default() -> pd.DataFrame:
     """代表的な proxy feature 出力を再利用する."""
-    return build_proxy_features(_make_ohlcv(200))
+    return build_proxy_features(_make_ohlcv(_PROXY_DEFAULT_ROWS))
 
 
 @pytest.fixture(scope="module")
 def proxy_features_zero_volume() -> pd.DataFrame:
     """volume=0 系の出力を再利用する."""
-    df = _make_ohlcv(100)
+    df = _make_ohlcv(_PROXY_ZERO_VOLUME_ROWS)
     df["volume"] = 0.0
     return build_proxy_features(df)
 
@@ -64,7 +69,7 @@ def proxy_features_zero_volume() -> pd.DataFrame:
 @pytest.fixture(scope="module")
 def proxy_window_variants() -> tuple[pd.DataFrame, pd.DataFrame]:
     """window 差分比較用の2出力を返す."""
-    df = _make_ohlcv(200)
+    df = _make_ohlcv(_PROXY_WINDOW_VARIANT_ROWS)
     return build_proxy_features(df, window=10), build_proxy_features(df, window=30)
 
 

@@ -15,8 +15,9 @@ This script provides unified training capabilities for SAC trading models includ
 - Model validation
 """
 
-import argparse
 import sys
+import torch  # First import to avoid DLL loading issues
+import argparse
 from pathlib import Path
 from typing import Any
 
@@ -306,7 +307,7 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
 
         if data_path and Path(data_path).exists():
             try:
-from ztb.io.data_loader import DataLoader
+                from ztb.io.data_loader import DataLoader
 
                 return DataLoader.load_csv_strict(data_path)
             except Exception as e:
@@ -354,7 +355,7 @@ def main():
     if args.curriculum:
         # Run curriculum training
         try:
-                curriculum_config = read_json(args.curriculum)
+            curriculum_config = read_json(args.curriculum)
 
             stages = curriculum_config.get("stages", [])
             results = trainer.run_curriculum_training(stages)

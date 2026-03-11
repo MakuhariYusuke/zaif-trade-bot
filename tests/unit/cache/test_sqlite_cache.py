@@ -116,22 +116,18 @@ class TestSQLiteCache:
         """Test set with custom TTL."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path = Path(tmp_dir) / "test.db"
-            cache = SQLiteCache(db_path=db_path)
+            with patch("ztb.cache.sqlite_cache.time.time", side_effect=[1000.0, 1000.0, 1002.0]):
+                cache = SQLiteCache(db_path=db_path, enable_memory_cache=False)
 
-            cache.set("ttl_key", "ttl_value", ttl_sec=1)
+                cache.set("ttl_key", "ttl_value", ttl_sec=1)
 
-            # Should exist immediately
-            result = cache.get("ttl_key")
-            assert result == "ttl_value"
+                # Should exist immediately
+                result = cache.get("ttl_key")
+                assert result == "ttl_value"
 
-            # Wait for expiration
-            import time
-
-            time.sleep(2)
-
-            # Should be expired
-            result = cache.get("ttl_key")
-            assert result is None
+                # Should be expired once the clock advances
+                result = cache.get("ttl_key")
+                assert result is None
 
             cache.close()
 

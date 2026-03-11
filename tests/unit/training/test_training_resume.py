@@ -4,11 +4,14 @@ Tests for training resume functionality
 Tests the ability to save, load, and resume training state across interruptions.
 """
 
+import importlib
 import os
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+import numpy as np
 import torch
 from stable_baselines3 import SAC
 
@@ -24,23 +27,39 @@ class TestTrainingResume(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.training_state_manager = TrainingStateManager(self.temp_dir)
 
+        self.mock_torch = Mock()
+        self.mock_torch.cuda.is_available.return_value = False
+        self.mock_torch.random.get_rng_state.return_value = b"cpu_rng_state"
+        self.mock_torch.random.set_rng_state = Mock()
+        real_import_module = importlib.import_module
+        self.import_module_patcher = patch(
+            "importlib.import_module",
+            side_effect=lambda name, package=None: self.mock_torch
+            if name == "torch"
+            else real_import_module(name, package),
+        )
+        self.import_module_patcher.start()
+
         # Create a mock SAC model
         self.mock_env = Mock()
         self.mock_model = Mock(spec=SAC)
         self.mock_model.policy = Mock()
-        self.mock_model.policy.state_dict.return_value = {"weight": torch.randn(10, 10)}
+        self.mock_model.policy.state_dict.return_value = {
+            "weight": np.zeros((10, 10), dtype=np.float32)
+        }
         self.mock_model.policy.optimizer = Mock()
         self.mock_model.policy.optimizer.state_dict.return_value = {
             "state": {},
             "param_groups": [],
         }
-        self.mock_model.replay_buffer = Mock()
-        self.mock_model.replay_buffer.__dict__ = {"size": 1000, "pos": 500}
+        self.mock_model.policy_kwargs = {}
+        self.mock_model.replay_buffer = SimpleNamespace(size=1000, pos=500)
 
     def tearDown(self):
         """Clean up test fixtures"""
         import shutil
 
+        self.import_module_patcher.stop()
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_save_training_state(self):

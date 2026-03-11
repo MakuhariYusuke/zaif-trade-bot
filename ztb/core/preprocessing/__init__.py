@@ -35,8 +35,12 @@ class NoiseFilter:
     def filter_zscore(self, df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
         df = df.copy()
         detector = OutlierDetector()
-        methods = [{"type": "z_score", "threshold": self.zscore_threshold}]
-        flags = detector.detect_outliers(df, methods, columns=cols)
+        flags = detector.detect_outliers(
+            df,
+            method="z_score",
+            columns=cols,
+            threshold=self.zscore_threshold,
+        )
         # flags is a DataFrame-like with _is_outlier columns added per column
         for col in cols:
             is_outlier_col = f"{col}_is_outlier"
@@ -47,8 +51,12 @@ class NoiseFilter:
     def filter_iqr(self, df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
         df = df.copy()
         detector = OutlierDetector()
-        methods = [{"type": "iqr", "multiplier": self.iqr_multiplier}]
-        flags = detector.detect_outliers(df, methods, columns=cols)
+        flags = detector.detect_outliers(
+            df,
+            method="iqr",
+            columns=cols,
+            multiplier=self.iqr_multiplier,
+        )
         for col in cols:
             is_outlier_col = f"{col}_is_outlier"
             if is_outlier_col in flags.columns:
@@ -186,8 +194,12 @@ class AnomalyDetector:
         columns: list[str] | None = None,
     ):
         if method == "statistical":
-            methods = [{"type": "z_score", "threshold": 3.0}]
-            flags = self._outlier_detector.detect_outliers(df, methods, columns=columns)
+            flags = self._outlier_detector.detect_outliers(
+                df,
+                method="z_score",
+                columns=columns,
+                threshold=3.0,
+            )
             # Build mask across specified numeric columns
             outlier_cols = [c for c in flags.columns if c.endswith("_is_outlier")]
             if outlier_cols:
@@ -230,7 +242,34 @@ class AnomalyDetector:
 def preprocess_data(df: pd.DataFrame, config: dict | None = None) -> pd.DataFrame:
     """Helper wrapper used by older tests.
 
-    It performs basic noise filtering and returns the resulting DataFrame.
+    It performs the compatibility subset expected by legacy tests:
+    optional noise filtering, anomaly detection, and synthetic data expansion.
     """
-    filter_obj = NoiseFilter(config=config)
-    return filter_obj.apply_filters(df)
+    config = config or {}
+    processed = df.copy()
+
+    if config.get("apply_noise_filter", False):
+        filter_obj = NoiseFilter(config=config)
+        processed = filter_obj.apply_filters(processed)
+
+    if config.get("apply_anomaly_detection", False):
+        detector = AnomalyDetector(config=config)
+        method = str(config.get("anomaly_method", "statistical"))
+        clean_data, anomaly_mask = detector.detect_anomalies(
+            processed, method=method
+        )
+        if isinstance(anomaly_mask, pd.Series) and len(anomaly_mask) == len(clean_data):
+            processed = clean_data.loc[~anomaly_mask].reset_index(drop=True)
+        else:
+            processed = clean_data.reset_index(drop=True)
+
+    if config.get("generate_synthetic", False):
+        synthetic_periods = int(config.get("synthetic_periods", 100))
+        generator = SyntheticDataGenerator(config=config)
+        synthetic = generator.generate_time_series(processed, n_periods=synthetic_periods)
+        processed = pd.concat(
+            [processed.reset_index(drop=True), synthetic.reset_index(drop=True)],
+            ignore_index=True,
+        )
+
+    return processed

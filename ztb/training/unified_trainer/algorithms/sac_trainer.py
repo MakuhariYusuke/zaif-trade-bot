@@ -366,7 +366,9 @@ class SACTrainer(BaseAlgorithmTrainer):
             return
 
         # Only propagate to dict/object targets, not to string env_candidate
-        if isinstance(env_candidate, dict) or not isinstance(env_candidate, str):
+        if env_candidate is not None and (
+            isinstance(env_candidate, dict) or not isinstance(env_candidate, str)
+        ):
             self._ensure_feature_set_on_target(env_candidate, feature_set)
 
         cfg = self.config if isinstance(self.config, dict) else None

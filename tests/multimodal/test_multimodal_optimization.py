@@ -5,8 +5,18 @@
 
 import unittest
 
+import pytest
 import torch
 import torch.nn as nn
+
+if not all(
+    hasattr(torch.nn, attr)
+    for attr in ("Linear", "ReLU", "Sequential")
+):
+    pytest.skip(
+        "Multimodal optimization tests require the full torch.nn module surface; current suite is running with a lightweight stub.",
+        allow_module_level=True,
+    )
 
 # テスト対象のインポート
 from ztb.multimodal.optimization.compression import KnowledgeDistillation, ModelPruning

@@ -80,15 +80,17 @@ class TestDataProcessorPreprocessData:
         # Check that excluded columns are removed
         excluded_cols = [
             "ts",
-            "timestamp",
             "exchange",
             "pair",
-            "episode_id",
             "side",
             "source",
         ]
         for col in excluded_cols:
             assert col not in result.columns
+
+        # Timestamp metadata is intentionally preserved for downstream streaming/MTF paths.
+        assert "timestamp" in result.columns
+        assert "episode_id" in result.columns
 
         # Check that NaN values are filled
         assert not result.isnull().any().any()

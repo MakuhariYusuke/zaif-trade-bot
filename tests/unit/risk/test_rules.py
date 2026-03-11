@@ -9,6 +9,7 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from ztb.risk.rules import RiskRuleEngine, RiskLimits
+from ztb.utils.errors import ValidationError
 
 
 @pytest.fixture
@@ -40,6 +41,16 @@ def sample_risk_limits():
 def risk_engine(sample_risk_limits):
     """RiskRuleEngine instance for testing."""
     return RiskRuleEngine(sample_risk_limits)
+
+
+@pytest.fixture
+def benchmark():
+    """Fallback benchmark fixture when pytest-benchmark is not installed."""
+
+    def _run(func, *args, **kwargs):
+        return func(*args, **kwargs)
+
+    return _run
 
 
 class TestRiskRuleEngineInitialization:
@@ -229,7 +240,7 @@ class TestRiskRuleEngineChecks:
 
     def test_check_trade_frequency_exceeded(self, risk_engine):
         """Test trade frequency check when exceeded."""
-        risk_engine.trades_this_hour = 5
+        risk_engine.trades_this_hour = risk_engine.limits.max_trades_per_hour
 
         allowed, reason = risk_engine.check_trade_frequency()
         assert allowed is False
@@ -237,7 +248,9 @@ class TestRiskRuleEngineChecks:
 
     def test_check_trade_frequency_interval_violation(self, risk_engine):
         """Test trade frequency check with interval violation."""
-        risk_engine.last_trade_time = time.time() - 300  # 5 minutes ago
+        risk_engine.last_trade_time = time.time() - (
+            risk_engine.limits.min_trade_interval_sec - 1
+        )
 
         allowed, reason = risk_engine.check_trade_frequency()
         assert allowed is False
@@ -248,8 +261,8 @@ class TestRiskRuleEngineChecks:
     ):
         """Test trade frequency check at exactly the interval limit."""
         risk_engine.last_trade_time = (
-            time.time() - 600
-        )  # Exactly 10 minutes ago (should be allowed)
+            time.time() - risk_engine.limits.min_trade_interval_sec
+        )
 
         allowed, reason = risk_engine.check_trade_frequency()
         assert allowed is True
@@ -260,8 +273,8 @@ class TestRiskRuleEngineChecks:
     ):
         """Test trade frequency check just under the interval limit."""
         risk_engine.last_trade_time = (
-            time.time() - 599
-        )  # 9 minutes 59 seconds ago (should be blocked)
+            time.time() - (risk_engine.limits.min_trade_interval_sec - 1)
+        )
 
         allowed, reason = risk_engine.check_trade_frequency()
         assert allowed is False
@@ -340,7 +353,7 @@ class TestRiskRuleEngineTrailingStop:
 
         risk_engine.update_trailing_stop(current_price, "long")
 
-        expected_stop = 100.0 * (1 - 0.03)  # 97.0
+        expected_stop = 100.0 * (1 - risk_engine.limits.stop_loss_pct)
         assert risk_engine.trailing_stop_level == expected_stop
 
     def test_update_trailing_stop_short_position_initial(self, risk_engine):
@@ -349,7 +362,7 @@ class TestRiskRuleEngineTrailingStop:
 
         risk_engine.update_trailing_stop(current_price, "short")
 
-        expected_stop = 100.0 * (1 + 0.03)  # 103.0
+        expected_stop = 100.0 * (1 + risk_engine.limits.stop_loss_pct)
         assert risk_engine.trailing_stop_level == expected_stop
 
     def test_update_trailing_stop_long_position_update(self, risk_engine):
@@ -379,7 +392,7 @@ class TestRiskRuleEngineTrailingStop:
     def test_check_trailing_stop_long_not_hit(self, risk_engine):
         """Test trailing stop check for long position not hit."""
         risk_engine.update_trailing_stop(100.0, "long")
-        current_price = 98.0  # Above stop level
+        current_price = risk_engine.trailing_stop_level + 1.0
 
         allowed, reason = risk_engine.check_trailing_stop(current_price, "long")
         assert allowed is True
@@ -410,7 +423,7 @@ class TestRiskRuleEngineTakeProfit:
     def test_check_take_profit_long_not_reached(self, risk_engine):
         """Test take profit check for long position not reached."""
         entry_price = 100.0
-        current_price = 105.0  # 5% profit
+        current_price = 100.0 * (1 + risk_engine.limits.take_profit_pct - 0.01)
 
         allowed, reason = risk_engine.check_take_profit(
             entry_price, current_price, "long"
@@ -554,7 +567,9 @@ class TestRiskRuleEngineErrorHandling:
 
     def test_update_portfolio_state_negative_value(self, risk_engine):
         """Test portfolio state update with negative value."""
-        with pytest.raises(ValueError, match="Portfolio value cannot be negative"):
+        with pytest.raises(
+            ValidationError, match="current_value must be non-negative"
+        ):
             risk_engine.update_portfolio_state(-1000.0, 0.1)
 
     def test_update_portfolio_state_zero_value(self, risk_engine):

@@ -106,7 +106,7 @@ class TestEnvInitialization:
         assert structure['cyclical'][0] == 6
         assert structure['global'][0] == 6
         assert structure['regime'][0] == 13
-        assert structure['account'][0] == 3
+        assert structure['account'][0] == 6
 
 
 class TestReset:
@@ -313,9 +313,12 @@ class TestTerminationConditions:
         """ドローダウンリミットがdone=Trueを返す"""
         env.reset()
         env.drawdown_limit = 0.5  # 50%
-        
-        # 残高を大きく減らす
-        env.balance = env.initial_balance * 0.4
+
+        # 現行実装は accounting.portfolio_value() を balance に同期するので、
+        # drawdown 状態は gross/net pnl の両方に反映させる必要がある
+        env.accounting.gross_pnl = -env.initial_balance * 0.6
+        env.accounting.net_pnl = -env.initial_balance * 0.6
+        env.balance = env.accounting.portfolio_value()
         env.current_step = env.data_len - 10
         
         _, _, done, _, _ = env.step(np.array([0.0, 0.0], dtype=np.float32))

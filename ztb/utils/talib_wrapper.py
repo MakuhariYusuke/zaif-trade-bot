@@ -50,6 +50,11 @@ logger = logging.getLogger(__name__)
 # ruff: noqa: E402
 from ztb.utils.performance_utils import timed
 
+
+class TaLibError(Exception):
+    """Raised when technical indicator calculation or validation fails."""
+
+
 class TaLibWrapper:
     """
     Wrapper class for Ta-Lib functions with fallback to custom implementations.
@@ -319,9 +324,6 @@ class TaLibWrapper:
         Returns:
             tuple of (Upper Band, Middle Band (SMA), Lower Band)
         """
-
-        # Use the staticmethod implementation below for bbands calculations.
-        return TaLibWrapper._bbands_custom(data, period, nbdevup, nbdevdn)
         data = self._validate_input_data(data, "data")
         period = self._validate_period(period, "period")
 

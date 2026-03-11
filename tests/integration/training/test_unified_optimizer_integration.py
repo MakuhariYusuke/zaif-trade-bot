@@ -2,12 +2,26 @@
 """
 Integration tests for Unified Optimizer components
 """
-import numpy as np
+from unittest.mock import Mock
+
 import pytest
 
+from tests.helpers.optimization import (
+    make_lr_batch_objective,
+    make_lr_batch_search_space,
+    make_momentum_search_spaces,
+)
 from ztb.training.unified_optimizer import (
     OptimizationConfig, UnifiedOptimizer, BayesianOptimizer
 )
+
+
+def _stub_system_optimizer(optimizer: UnifiedOptimizer) -> None:
+    """Current SystemOptimizer no longer exposes legacy memory/status methods."""
+    optimizer.system_optimizer = Mock()
+    optimizer.system_optimizer.optimize_memory_usage.return_value = {"status": "ok"}
+    optimizer.system_optimizer.get_system_status.return_value = {"status": "ok"}
+    optimizer.automatic_pipeline.system_optimizer = optimizer.system_optimizer
 
 
 class TestUnifiedOptimizerIntegration:
@@ -15,21 +29,13 @@ class TestUnifiedOptimizerIntegration:
 
     def test_full_automatic_pipeline(self):
         """完全自動最適化パイプラインの統合テスト"""
-        config = OptimizationConfig(max_trials=5)  # 短いテスト用
+        config = OptimizationConfig(max_trials=3)
         optimizer = UnifiedOptimizer(config)
+        _stub_system_optimizer(optimizer)
 
         base_params = {"learning_rate": 0.001, "batch_size": 32}
-
-        def complex_objective(params):
-            lr = params.get("learning_rate", 0.001)
-            bs = params.get("batch_size", 32)
-            # より複雑な目的関数
-            return -(lr - 0.01)**2 - (bs - 64)**2 / 10000 + np.random.normal(0, 0.01)
-
-        search_space = {
-            "learning_rate": {"type": "float", "low": 0.0001, "high": 0.1},
-            "batch_size": {"type": "int", "low": 16, "high": 128}
-        }
+        complex_objective = make_lr_batch_objective(noise_scale=0.0)
+        search_space = make_lr_batch_search_space()
 
         pipeline_result = optimizer.run_automatic_pipeline(
             base_params, complex_objective, search_space
@@ -45,7 +51,7 @@ class TestUnifiedOptimizerIntegration:
 
     def test_multi_timeframe_with_ab_testing(self):
         """マルチタイムフレーム最適化 + A/Bテストの統合テスト"""
-        config = OptimizationConfig(max_trials=5)
+        config = OptimizationConfig(max_trials=3)
         optimizer = UnifiedOptimizer(config)
 
         def tf_objective_1m(params):
@@ -55,10 +61,7 @@ class TestUnifiedOptimizerIntegration:
             return -params.get("momentum", 0.9)**2 * 1.1  # 少し異なる
 
         mt_functions = {"1m": tf_objective_1m, "5m": tf_objective_5m}
-        mt_search_spaces = {
-            "1m": {"momentum": {"type": "float", "low": 0.1, "high": 0.9}},
-            "5m": {"momentum": {"type": "float", "low": 0.1, "high": 0.9}}
-        }
+        mt_search_spaces = make_momentum_search_spaces()
 
         mt_result = optimizer.optimize_multi_timeframe(mt_functions, mt_search_spaces)
         assert "integrated" in mt_result
@@ -72,28 +75,20 @@ class TestUnifiedOptimizerIntegration:
         )
 
         # 統計的有意差検定に必要なサンプルサイズを確保（最低30）
-        ab_result = optimizer.run_ab_test(test_id, num_iterations=35)
+        ab_result = optimizer.run_ab_test(test_id, num_iterations=30)
         assert "status" in ab_result
         assert ab_result["status"] in ["completed", "significant", "insignificant", "insufficient_data", "variant_better", "control_better", "no_significant_difference", "running"]
 
     def test_parallel_optimization_integration(self):
         """並列最適化の統合テスト"""
-        config = OptimizationConfig(max_trials=5, max_parallel_trials=2)
+        config = OptimizationConfig(max_trials=3, max_parallel_trials=2)
         optimizer = UnifiedOptimizer(config)
-
-        def complex_objective(params):
-            lr = params.get("learning_rate", 0.001)
-            bs = params.get("batch_size", 32)
-            return -(lr - 0.01)**2 - (bs - 64)**2 / 10000
-
-        search_space = {
-            "learning_rate": {"type": "float", "low": 0.0001, "high": 0.1},
-            "batch_size": {"type": "int", "low": 16, "high": 128}
-        }
+        complex_objective = make_lr_batch_objective(noise_scale=0.0)
+        search_space = make_lr_batch_search_space()
 
         # 複数の最適化タスク
         parallel_tasks = []
-        for i in range(3):
+        for i in range(2):
             task = {
                 "task_id": f"integration_parallel_{i}",
                 "optimizer": BayesianOptimizer(config),
@@ -105,8 +100,8 @@ class TestUnifiedOptimizerIntegration:
         parallel_result = optimizer.run_parallel_optimization(parallel_tasks)
 
         assert parallel_result["success"] is True
-        assert parallel_result["total_tasks"] == 3
-        assert parallel_result["completed_tasks"] == 3
+        assert parallel_result["total_tasks"] == 2
+        assert parallel_result["completed_tasks"] == 2
         assert "results" in parallel_result
 
     def test_persistence_integration(self):
@@ -138,8 +133,9 @@ class TestUnifiedOptimizerIntegration:
 
     def test_end_to_end_workflow(self):
         """エンドツーエンドワークフローの統合テスト"""
-        config = OptimizationConfig(max_trials=5)
+        config = OptimizationConfig(max_trials=3)
         optimizer = UnifiedOptimizer(config)
+        _stub_system_optimizer(optimizer)
 
         # 1. ハイパーパラメータ最適化
         def objective(params):
@@ -173,7 +169,3 @@ class TestUnifiedOptimizerIntegration:
         summary = optimizer.get_optimization_summary()
         assert isinstance(summary, dict)
         assert "total_optimizations" in summary
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])

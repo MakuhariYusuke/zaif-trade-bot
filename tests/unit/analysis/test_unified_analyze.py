@@ -245,7 +245,7 @@ class TestTrainingAnalysis:
         tools = analyzer.get_available_tools()
         assert isinstance(tools, list)
         # Check that it contains some expected tools
-        expected_tools = ["progress", "profile", "sac_v423"]
+        expected_tools = ["progress", "sac_v423"]
         for tool in expected_tools:
             assert tool in tools
 

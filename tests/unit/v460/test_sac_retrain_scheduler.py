@@ -306,7 +306,7 @@ def _make_mock_model():
 
 @contextmanager
 def _mock_sb3_import(mock_model: MagicMock) -> Iterator[MagicMock]:
-    """retrain_once() の real SB3 import を fake module に置き換える."""
+    """retrain_once() の import_real_sb3 を fake module に置き換える."""
     fake_sac_cls = MagicMock()
     fake_sac_cls.return_value = mock_model
     fake_sac_cls.load.return_value = mock_model
@@ -316,22 +316,10 @@ def _mock_sb3_import(mock_model: MagicMock) -> Iterator[MagicMock]:
     fake_sb3.__file__ = "fake_stable_baselines3.py"
     fake_sb3.SAC = fake_sac_cls
 
-    import builtins
-
-    real_import = builtins.__import__
-
-    def _patched_import(
-        name: str,
-        globals_: object | None = None,
-        locals_: object | None = None,
-        fromlist: object = (),
-        level: int = 0,
-    ) -> object:
-        if name == "stable_baselines3":
-            return fake_sb3
-        return real_import(name, globals_, locals_, fromlist, level)
-
-    with patch("builtins.__import__", side_effect=_patched_import):
+    with patch(
+        "scripts.v460.ml.sac_retrain_scheduler.import_real_sb3",
+        return_value=fake_sb3,
+    ):
         yield fake_sac_cls
 
 

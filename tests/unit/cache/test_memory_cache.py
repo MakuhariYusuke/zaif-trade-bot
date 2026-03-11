@@ -96,20 +96,47 @@ class TestMemoryManager(unittest.TestCase):
     def test_cache_expiration(self):
         """Test cache expiration functionality."""
         test_data = {"data": "value"}
+        clock = {"now": 1000.0}
 
-        # Cache with short TTL (1 second)
-        self.manager.cache_feature_data("expire_key", test_data, ttl=1)
+        class FakeTTLCache(dict):
+            def __init__(self, maxsize, ttl):
+                super().__init__()
+                self.maxsize = maxsize
+                self.ttl = ttl
+                self._timestamps = {}
 
-        # Should be available immediately
-        cached = self.manager.get_cached_feature_data("expire_key")
-        self.assertEqual(cached, test_data)
+            def __setitem__(self, key, value):
+                super().__setitem__(key, value)
+                self._timestamps[key] = clock["now"]
 
-        # Wait for expiration
-        time.sleep(1.1)
+            def __getitem__(self, key):
+                if clock["now"] - self._timestamps[key] > self.ttl:
+                    super().__delitem__(key)
+                    del self._timestamps[key]
+                    raise KeyError(key)
+                return super().__getitem__(key)
 
-        # Should be expired
-        cached = self.manager.get_cached_feature_data("expire_key")
-        self.assertIsNone(cached)
+            def get(self, key, default=None):
+                try:
+                    return self[key]
+                except KeyError:
+                    return default
+
+        with patch("ztb.cache.memory_cache.TTLCache", FakeTTLCache):
+            manager = MemoryManager(max_memory_mb=100.0, enable_monitoring=False)
+
+            manager.cache_feature_data("expire_key", test_data, ttl=1)
+
+            # Should be available immediately
+            cached = manager.get_cached_feature_data("expire_key")
+            self.assertEqual(cached, test_data)
+
+            # Advance the fake clock beyond TTL
+            clock["now"] = 1001.1
+
+            # Should be expired
+            cached = manager.get_cached_feature_data("expire_key")
+            self.assertIsNone(cached)
 
     def test_clear_expired_cache(self):
         """Test manual cache expiration clearing."""

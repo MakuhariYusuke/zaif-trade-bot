@@ -139,7 +139,7 @@ class TestFibonacciRetracementRecognizer(unittest.TestCase):
             "volume": [1000, 1100]
         })
         result = self.pattern.recognize(small_data)
-        self.assertIsNone(result)  # Should return None for insufficient data
+        self.assertIsNone(result)
 
         # Test with normal data
         data = pd.DataFrame({
@@ -290,7 +290,9 @@ class TestBollingerBandsRecognizer(unittest.TestCase):
             "volume": [1000, 1100]
         })
         result = self.pattern.recognize(small_data)
-        self.assertIsNone(result)  # Should return None for insufficient data
+        self.assertIsInstance(result, SignalResult)
+        self.assertEqual(result.signal_type, "bb_insufficient_data")
+        self.assertEqual(result.strength, 0.0)
 
         # Test with normal data
         data = pd.DataFrame({

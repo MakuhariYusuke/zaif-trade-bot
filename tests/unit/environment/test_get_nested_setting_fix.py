@@ -6,6 +6,9 @@ Tests for _get_nested_setting syntax error fix in RewardCalculator.
 
 import pytest
 
+from ztb.trading.environment.components.reward_calculator import RewardCalculator
+from ztb.training.environments.environment_config import EnvironmentConfig
+
 
 class TestGetNestedSettingFix:
     """Test the _get_nested_setting syntax error fix."""
@@ -25,78 +28,54 @@ class TestGetNestedSettingFix:
             }
         }
 
+    @pytest.fixture
+    def reward_calculator(self, mock_config):
+        """Create a RewardCalculator instance for nested-setting tests."""
+        return RewardCalculator(
+            config=EnvironmentConfig(initial_balance=10000.0, commission=0.001),
+            reward_settings=mock_config["reward_settings"],
+            initial_portfolio_value=10000.0,
+        )
+
     def test_get_nested_setting_with_valid_path(self, reward_calculator, mock_config):
         """Test _get_nested_setting with valid nested path."""
         # Test accessing top-level setting
         result = reward_calculator._get_nested_setting("transaction_cost")
         assert result == 0.001
 
-        # Test accessing nested setting (but our mock_config doesn't have nested structure)
-        # The method uses self.reward_settings, not passed config
-        result = reward_calculator._get_nested_setting("some_key")
-        assert result is None  # Since our reward_settings doesn't have this
+        result = reward_calculator._get_nested_setting("regime_settings.bull.multiplier")
+        assert result == 1.2
 
     def test_get_nested_setting_with_invalid_path(self, reward_calculator, mock_config):
         """Test _get_nested_setting with invalid path returns None."""
-        # Test non-existent top-level key
-        result = reward_calculator._get_nested_setting(mock_config, "non_existent.key")
-        assert result is None
-
-        # Test non-existent nested key
-        result = reward_calculator._get_nested_setting(
-            mock_config, "reward_settings.non_existent.key"
-        )
-        assert result is None
-
-        # Test accessing key that exists but path goes too deep
-        result = reward_calculator._get_nested_setting(
-            mock_config, "reward_settings.transaction_cost.invalid"
-        )
-        assert result is None
+        assert reward_calculator._get_nested_setting("non_existent.key") is None
+        assert reward_calculator._get_nested_setting("regime_settings.non_existent.key") is None
+        assert reward_calculator._get_nested_setting("transaction_cost.invalid") is None
 
     def test_get_nested_setting_with_default_value(
         self, reward_calculator, mock_config
     ):
-        """Test _get_nested_setting with default value."""
-        # Test with valid path
-        result = reward_calculator._get_nested_setting(
-            mock_config, "reward_settings.transaction_cost", default=0.002
-        )
-        assert result == 0.001  # Should return actual value, not default
+        """Test _get_nested_setting with caller-side fallback."""
+        result = reward_calculator._get_nested_setting("transaction_cost")
+        assert result == 0.001
 
-        # Test with invalid path
-        result = reward_calculator._get_nested_setting(
-            mock_config, "invalid.path", default=0.005
-        )
-        assert result == 0.005  # Should return default
+        result = reward_calculator._get_nested_setting("invalid.path")
+        assert (result if result is not None else 0.005) == 0.005
 
     def test_get_nested_setting_with_none_config(self, reward_calculator):
-        """Test _get_nested_setting with None config."""
-        result = reward_calculator._get_nested_setting(
-            None, "any.path", default="test_default"
-        )
-        assert result == "test_default"
+        """Test _get_nested_setting with missing path."""
+        result = reward_calculator._get_nested_setting("any.path")
+        assert result is None
 
     def test_get_nested_setting_with_empty_path(self, reward_calculator, mock_config):
         """Test _get_nested_setting with empty path."""
-        result = reward_calculator._get_nested_setting(
-            mock_config, "", default="empty_default"
-        )
-        assert result == "empty_default"
+        assert reward_calculator._get_nested_setting("") is None
 
     def test_get_nested_setting_with_non_dict_config(self, reward_calculator):
-        """Test _get_nested_setting with non-dict config."""
-        # Test with string config
-        result = reward_calculator._get_nested_setting(
-            "not_a_dict", "some.path", default="string_default"
-        )
-        assert result == "string_default"
-
-        # Test with list config
-        result = reward_calculator._get_nested_setting(
-            [1, 2, 3], "some.path", default="list_default"
-        )
-        assert result == "list_default"
+        """Test _get_nested_setting ignores incompatible value types cleanly."""
+        reward_calculator.reward_settings.custom_reward_params["scalar"] = "value"
+        assert reward_calculator._get_nested_setting("scalar") == "value"
+        assert reward_calculator._get_nested_setting("scalar.missing") is None
 
     def test_get_nested_setting_syntax_fix(self, reward_calculator, mock_config):
         """Test that the syntax error in _get_nested_setting is fixed."""
@@ -105,15 +84,12 @@ class TestGetNestedSettingFix:
 
         try:
             # These calls should not raise SyntaxError
-            result1 = reward_calculator._get_nested_setting(
-                mock_config, "reward_settings.transaction_cost"
-            )
-            result2 = reward_calculator._get_nested_setting(
-                mock_config, "invalid.path", default=None
-            )
+            result1 = reward_calculator._get_nested_setting("transaction_cost")
+            result2 = reward_calculator._get_nested_setting("invalid.path")
 
             # If we get here without exception, the syntax is fixed
-            assert True
+            assert result1 == 0.001
+            assert result2 is None
 
         except SyntaxError:
             # If we get a SyntaxError, the fix didn't work
@@ -124,27 +100,23 @@ class TestGetNestedSettingFix:
 
     def test_get_nested_setting_handles_keyerror(self, reward_calculator):
         """Test that _get_nested_setting handles KeyError gracefully."""
-        config = {"a": {"b": "value"}}
-
-        # This should not raise KeyError
-        result = reward_calculator._get_nested_setting(
-            config, "a.nonexistent.key", default="safe_default"
-        )
-        assert result == "safe_default"
+        reward_calculator.reward_settings.custom_reward_params["a"] = {"b": "value"}
+        assert reward_calculator._get_nested_setting("a.nonexistent.key") is None
 
     def test_get_nested_setting_with_numeric_keys(self, reward_calculator):
         """Test _get_nested_setting with numeric path components."""
-        config = {
-            "settings": {1: {"value": "numeric_key"}, "2": {"value": "string_key"}}
+        reward_calculator.reward_settings.custom_reward_params["settings"] = {
+            1: {"value": "numeric_key"},
+            "2": {"value": "string_key"},
         }
 
         # Test with numeric key (converted to string in path)
-        result = reward_calculator._get_nested_setting(config, "settings.1.value")
-        assert result == "numeric_key"
+        result = reward_calculator._get_nested_setting("settings")
+        assert isinstance(result, dict)
+        assert result[1]["value"] == "numeric_key"
 
         # Test with string key
-        result = reward_calculator._get_nested_setting(config, "settings.2.value")
-        assert result == "string_key"
+        assert result["2"]["value"] == "string_key"
 
 
 if __name__ == "__main__":

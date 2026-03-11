@@ -68,7 +68,7 @@ class RewardCalculator:
     def __init__(
         self,
         config: EnvironmentConfig,
-        reward_settings: RewardSettings,
+        reward_settings: RewardSettings | dict[str, object],
         initial_portfolio_value: float,
     ):
         """
@@ -80,6 +80,8 @@ class RewardCalculator:
             initial_portfolio_value: Initial portfolio value
         """
         self.config = config
+        if isinstance(reward_settings, dict):
+            reward_settings = RewardSettings.from_dict(reward_settings)
         self.reward_settings = reward_settings
         self.initial_portfolio_value = initial_portfolio_value
         self.logger = get_logger("ztb.trading.environment.reward")
@@ -183,6 +185,17 @@ class RewardCalculator:
 
         # Logging setup
         self._setup_logging()
+
+    def get_current_regime(self, current_price: float, step: int) -> str:
+        """Compatibility wrapper around the active market regime detector."""
+        detector = getattr(self, "market_regime_detector", None)
+        if detector is None:
+            return "sideways"
+        try:
+            return str(detector.detect_regime(current_price, step))
+        except Exception as exc:
+            self.logger.debug("Failed to resolve current regime: %s", exc)
+            return "sideways"
 
     def _initialize_components(self, config: EnvironmentConfig) -> None:
         """Initialize all sub-components."""
@@ -751,7 +764,22 @@ class RewardCalculator:
                 if hasattr(self.reward_settings, "custom_reward_params") and isinstance(
                     self.reward_settings.custom_reward_params, dict
                 ):
-                    return self.reward_settings.custom_reward_params.get(key)
+                    custom_params = self.reward_settings.custom_reward_params
+                    direct_value = custom_params.get(key)
+                    if direct_value is not None:
+                        return direct_value
+
+                    nested_value: object = custom_params
+                    for k in keys:
+                        if isinstance(nested_value, dict):
+                            nested_value = nested_value.get(k)
+                        elif hasattr(nested_value, k):
+                            nested_value = getattr(nested_value, k)
+                        else:
+                            nested_value = None
+                            break
+                    if nested_value is not None:
+                        return nested_value
             except Exception:
                 pass
 
@@ -1191,17 +1219,19 @@ class RewardCalculator:
 
     def calculate_reward_simple(
         self,
-        pnl: float,
-        portfolio_value: float,
-        position: float,
-        old_position: float,
-        action: int,
-        reward_history: list[float],
-        portfolio_value_history: list[float],
+        pnl: float | None = None,
+        portfolio_value: float | None = None,
+        position: float | None = None,
+        old_position: float = 0.0,
+        action: int = ACTION_HOLD,
+        reward_history: list[float] | None = None,
+        portfolio_value_history: list[float] | None = None,
         current_price: float = 0.0,
         step: int = 0,
-        transaction_cost: float = 0.0,
+        transaction_cost: float | None = None,
         continuous_action_value: float | None = None,
+        previous_price: float | None = None,
+        position_size: float | None = None,
     ) -> float:
         """
         Calculate simple reward based on PnL with v431 enhancements and v440.1 dynamic shaping.
@@ -1228,6 +1258,51 @@ class RewardCalculator:
             Enhanced simple reward value
         """
         try:
+            reward_history = reward_history or []
+            portfolio_value_history = portfolio_value_history or []
+
+            if pnl is None and previous_price is not None and position_size is not None:
+                position = float(position_size)
+                if transaction_cost is None:
+                    if isinstance(self.config, dict):
+                        transaction_cost = float(
+                            self.config.get("transaction_cost")
+                            or self.config.get("commission")
+                            or self.config.get("reward_settings", {}).get(
+                                "transaction_cost", 0.0
+                            )
+                        )
+                    else:
+                        transaction_cost = float(
+                            getattr(
+                                self.config,
+                                "transaction_cost",
+                                getattr(self.config, "commission", 0.0),
+                            )
+                        )
+                current_price = float(current_price)
+                previous_price = float(previous_price)
+                gross_pnl = (current_price - previous_price) * position
+                fee_penalty = abs(position) * previous_price * float(transaction_cost)
+                pnl = gross_pnl - fee_penalty
+                portfolio_value = float(
+                    portfolio_value
+                    if portfolio_value is not None
+                    else getattr(self, "initial_portfolio_value", 0.0)
+                )
+                action = (
+                    ACTION_BUY
+                    if position > 0
+                    else ACTION_SELL if position < 0 else ACTION_HOLD
+                )
+            elif transaction_cost is None:
+                transaction_cost = 0.0
+
+            if portfolio_value is None:
+                portfolio_value = float(getattr(self, "initial_portfolio_value", 0.0))
+            if position is None:
+                position = 0.0
+
             self.logger.debug(
                 f"calculate_reward_simple called: pnl={pnl}, action={action}"
             )

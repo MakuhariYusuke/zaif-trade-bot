@@ -170,11 +170,11 @@ class TestBacktestReporterV459:
         assert reporter.trade_history[0]["type"] == "long_close"
         assert reporter.trade_history[1]["type"] == "short_open"
         
-        # PnL/fee/slippageは均等分割
-        assert reporter.trade_history[0]["net_pnl"] == 100.0
-        assert reporter.trade_history[1]["net_pnl"] == 100.0
-        assert reporter.trade_history[0]["fee"] == 10.0
-        assert reporter.trade_history[1]["fee"] == 10.0
+        # 現仕様: 反転時はクローズ側にPnL/コストを全配賦し、新規側は0
+        assert reporter.trade_history[0]["net_pnl"] == 200.0
+        assert reporter.trade_history[1]["net_pnl"] == 0.0
+        assert reporter.trade_history[0]["fee"] == 20.0
+        assert reporter.trade_history[1]["fee"] == 0.0
     
     def test_finalize_stats_profit_factor_zero_loss(self):
         """Profit Factor: 損失ゼロの場合はinf"""

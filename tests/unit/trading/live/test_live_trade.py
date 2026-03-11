@@ -235,7 +235,7 @@ class TestLiveTraderInitialization:
 
         with patch("ztb.trading.live_trader.live_trader.prometheus_available", False):
             # Use existing file as model path
-            model_path = Path("package.json")
+            model_path = Path("pytest.ini")
 
             # Create minimal config
             config = {
@@ -290,7 +290,7 @@ class TestLiveTraderInitialization:
             mock_model_instance._load_model.return_value = Mock()
 
             # Use existing file as model path
-            model_path = Path("package.json")
+            model_path = Path("pytest.ini")
 
             config = {
                 "price_history_length": 100,
@@ -342,7 +342,7 @@ class TestLiveTraderInitialization:
             mock_model_instance._load_model.return_value = Mock()
 
             # Use existing file as model path
-            model_path = Path("package.json")
+            model_path = Path("pytest.ini")
 
             trader = LiveTrader(
                 model_path=model_path,

@@ -6,7 +6,7 @@ Phase 3-2: パラメータ最適化 - 統合最適化システム
 """
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from datetime import datetime
 from typing import Any, Callable
 
@@ -427,7 +427,14 @@ class IntegratedParameterOptimizer:
 
         # データからオブジェクト再構築（簡易版）
         optimal_params = ParameterSet(**data["optimal_parameters"])
-        kelly_params = KellyParameters(**data["kelly_parameters"])
+        kelly_field_names = {field.name for field in fields(KellyParameters)}
+        kelly_params = KellyParameters(
+            **{
+                key: value
+                for key, value in data["kelly_parameters"].items()
+                if key in kelly_field_names
+            }
+        )
         config = IntegratedOptimizationConfig(**data["config_used"])
 
         # ウォークフォワード結果の再構築は複雑なので、主要な結果のみ

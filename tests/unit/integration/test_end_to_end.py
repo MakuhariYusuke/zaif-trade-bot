@@ -17,6 +17,7 @@ import numpy as np
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
+from ztb.analysis.regime.market_regime_types import MarketRegime
 from ztb.trading.strategies.action_signal_guide.action_signal_guide import ActionSignalGuide
 from ztb.trading.strategies.action_signal_guide.components.sac_integration import (
     SACSignalValidator,
@@ -35,8 +36,26 @@ from ztb.trading.strategies.action_signal_guide.components.validation import (
 )
 
 
+class MockActionSignal:
+    """Minimal action-signal object for integration tests."""
+
+    def __init__(self, **kwargs):
+        self.action = kwargs.get("action", "BUY")
+        self.confidence = kwargs.get("confidence", 0.8)
+        self.pattern_type = kwargs.get("pattern_type", "fibonacci")
+        self.price = kwargs.get("price", 100.0)
+        self.timestamp = kwargs.get("timestamp", pd.Timestamp.now())
+        self.stop_loss = kwargs.get("stop_loss", 95.0)
+        self.take_profit = kwargs.get("take_profit", 110.0)
+        self.signal_type = kwargs.get("signal_type", "test")
+
+
 class TestActionSignalGuideEndToEnd(unittest.TestCase):
     """End-to-end tests for complete Action Signal Guide workflows."""
+
+    @staticmethod
+    def _regime_name(regime: MarketRegime | str) -> str:
+        return regime.value if isinstance(regime, MarketRegime) else str(regime)
 
     def setUp(self):
         """Set up test fixtures with realistic market data."""
@@ -85,8 +104,7 @@ class TestActionSignalGuideEndToEnd(unittest.TestCase):
 
         # Step 2: Market regime detection
         regime = self.regime_detector.detect_regime(sanitized_data)
-        self.assertIn("regime", regime)
-        self.assertIn("confidence", regime)
+        self.assertIsInstance(regime, MarketRegime)
 
         # Step 3: Market condition analysis
         market_conditions = self.market_analyzer.analyze_market_conditions(sanitized_data)
@@ -95,7 +113,9 @@ class TestActionSignalGuideEndToEnd(unittest.TestCase):
         self.assertIn("volume", market_conditions)
 
         # Step 4: Signal generation (mock realistic signals)
-        signals = self._generate_realistic_signals(sanitized_data, regime["regime"])
+        signals = self._generate_realistic_signals(
+            sanitized_data, self._regime_name(regime)
+        )
 
         # Step 5: Signal validation
         validated_signals = []
@@ -114,7 +134,7 @@ class TestActionSignalGuideEndToEnd(unittest.TestCase):
 
         # Step 7: Regime-adaptive processing
         regime_processed_signals = self.regime_processor.process_signals_for_regime(
-            sac_validated_signals, regime["regime"]
+            sac_validated_signals, sanitized_data
         )
 
         # Step 8: Final decision integration
@@ -161,7 +181,9 @@ class TestActionSignalGuideEndToEnd(unittest.TestCase):
         regime = self.regime_detector.detect_regime(sanitized_data)
         market_conditions = self.market_analyzer.analyze_market_conditions(sanitized_data)
 
-        signals = self._generate_realistic_signals(sanitized_data, regime["regime"])
+        signals = self._generate_realistic_signals(
+            sanitized_data, self._regime_name(regime)
+        )
         validated_signals = []
         for signal in signals:
             if self.signal_validator.validate_signal(signal).is_valid:
@@ -173,7 +195,7 @@ class TestActionSignalGuideEndToEnd(unittest.TestCase):
         )
 
         regime_processed_signals = self.regime_processor.process_signals_for_regime(
-            sac_validated_signals, regime["regime"]
+            sac_validated_signals, sanitized_data
         )
 
         final_decision = self.decision_integrator.integrate_decisions(
@@ -207,7 +229,9 @@ class TestActionSignalGuideEndToEnd(unittest.TestCase):
                 sanitized_data, _ = self.data_sanitizer.sanitize_market_data(test_data)
                 regime = self.regime_detector.detect_regime(sanitized_data)
 
-                signals = self._generate_realistic_signals(sanitized_data, regime["regime"])
+                signals = self._generate_realistic_signals(
+                    sanitized_data, self._regime_name(regime)
+                )
                 validated_signals = [
                     s for s in signals
                     if self.signal_validator.validate_signal(s).is_valid
@@ -219,7 +243,7 @@ class TestActionSignalGuideEndToEnd(unittest.TestCase):
                 )
 
                 regime_processed_signals = self.regime_processor.process_signals_for_regime(
-                    sac_validated_signals, regime["regime"]
+                    sac_validated_signals, sanitized_data
                 )
 
                 final_decision = self.decision_integrator.integrate_decisions(
@@ -246,7 +270,9 @@ class TestActionSignalGuideEndToEnd(unittest.TestCase):
             sanitized_data, _ = self.data_sanitizer.sanitize_market_data(cycle_data)
             regime = self.regime_detector.detect_regime(sanitized_data)
 
-            signals = self._generate_realistic_signals(sanitized_data, regime["regime"])
+            signals = self._generate_realistic_signals(
+                sanitized_data, self._regime_name(regime)
+            )
             validated_signals = [
                 s for s in signals
                 if self.signal_validator.validate_signal(s).is_valid
@@ -261,7 +287,7 @@ class TestActionSignalGuideEndToEnd(unittest.TestCase):
             )
 
             regime_processed_signals = self.regime_processor.process_signals_for_regime(
-                sac_validated_signals, regime["regime"]
+                sac_validated_signals, sanitized_data
             )
 
             final_decision = self.decision_integrator.integrate_decisions(
@@ -277,13 +303,13 @@ class TestActionSignalGuideEndToEnd(unittest.TestCase):
             )
 
             # Track regime performance
-            self.regime_processor.update_regime_performance(regime["regime"], outcome)
+            self.regime_processor.update_regime_performance(regime, outcome)
 
             performance_history.append({
                 "cycle": cycle,
                 "decision": final_decision,
                 "outcome": outcome,
-                "regime": regime["regime"]
+                "regime": self._regime_name(regime)
             })
 
         # Verify learning and adaptation
@@ -295,8 +321,12 @@ class TestActionSignalGuideEndToEnd(unittest.TestCase):
         self.assertEqual(len(performance_history), num_cycles)
 
         # Test regime-specific performance
-        for regime_type in ["trending_bullish", "trending_bearish", "ranging"]:
-            config = self.regime_processor.get_regime_config(regime_type)
+        for regime_type in [
+            MarketRegime.MODERATE_BULL_TREND,
+            MarketRegime.MODERATE_BEAR_TREND,
+            MarketRegime.MODERATE_VOLATILITY_RANGING,
+        ]:
+            config = self.regime_processor._get_regime_config(regime_type)
             self.assertIsInstance(config, dict)
 
     def _generate_realistic_signals(self, market_data, regime):

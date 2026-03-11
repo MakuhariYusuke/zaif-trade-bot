@@ -19,6 +19,14 @@ from ztb.types.protocols import TradingEnvironment
 
 logger = logging.getLogger(__name__)
 
+
+def _initial_portfolio_value_from_config(config: EnvironmentConfig) -> float:
+    """Support both legacy training config and trading config field names."""
+    initial_value = getattr(config, "initial_portfolio_value", None)
+    if initial_value is None:
+        initial_value = getattr(config, "initial_balance")
+    return float(initial_value)
+
 class HeavyTradingEnv(gym.Env, TradingEnvironment):
     """
     Heavy trading environment for reinforcement learning.
@@ -121,6 +129,7 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
             k: v for k, v in reward_defaults.items() if k in reward_settings_fields
         }
         self.reward_settings = RewardSettings(**filtered_reward_defaults)
+        initial_portfolio_value = _initial_portfolio_value_from_config(self.config)
 
         # Create trading EnvironmentConfig from training EnvironmentConfig
         from ztb.trading.environment.utils.config import (
@@ -128,14 +137,14 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
         )
 
         trading_config = TradingEnvironmentConfig(
-            initial_portfolio_value=self.config.initial_portfolio_value,
+            initial_portfolio_value=initial_portfolio_value,
             transaction_cost=self.config.commission,
             max_position_size=self.config.max_position_size,
             reward_scaling=self.config.reward_scaling,
             feature_set=self.config.feature_set,
             curriculum_stage=self.config.curriculum_stage,
-            base_action_penalty=self.config.base_action_penalty,
-            action_bonuses=self.config.action_bonuses,
+            base_action_penalty=getattr(self.config, "base_action_penalty", 0.015),
+            action_bonuses=getattr(self.config, "action_bonuses", None),
         )
         if hasattr(self.config, "behavior"):
             setattr(trading_config, "behavior", getattr(self.config, "behavior"))
@@ -143,7 +152,7 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
         self.reward_calculator = RewardCalculator(
             config=trading_config,
             reward_settings=self.reward_settings,
-            initial_portfolio_value=self.config.initial_portfolio_value,
+            initial_portfolio_value=initial_portfolio_value,
         )
         # Expose optional MTFScheduler to the environment for diagnostics/tests
         self.mtf_scheduler = getattr(self.reward_calculator, "mtf_scheduler", None)
@@ -177,7 +186,7 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
             super().reset(seed=seed)
 
         self.current_step = 0
-        self.balance = self.config.initial_portfolio_value
+        self.balance = _initial_portfolio_value_from_config(self.config)
         self._position = 0.0  # Current position size
         self.entry_price = 0.0
         self._unrealized_pnl = 0.0

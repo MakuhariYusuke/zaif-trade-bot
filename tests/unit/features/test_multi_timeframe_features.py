@@ -3,6 +3,8 @@ Unit tests for multi-timeframe features implementation.
 多時間軸特徴量実装の単体テスト
 """
 
+import importlib
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -10,6 +12,14 @@ import pytest
 from ztb.features.curated_features import get_feature_set
 from ztb.features.registry import FeatureRegistry
 from ztb.features.timeframe import Timeframe, get_timeframe_params
+
+FEATURE_MODULES = (
+    "ztb.features.generators.technical.momentum.rsi",
+    "ztb.features.generators.technical.volatility.atr",
+    "ztb.features.generators.technical.trend.adx",
+    "ztb.features.generators.technical.trend.heikin_ashi",
+    "ztb.features.generators.technical.trend.emacross",
+)
 
 
 class TestMultiTimeframeFeatures:
@@ -49,11 +59,13 @@ class TestMultiTimeframeFeatures:
 
         return df
 
-    @pytest.fixture(autouse=True)
+    @pytest.fixture(scope="module", autouse=True)
     def setup_registry(self):
         """Setup feature registry before each test"""
-        # Import feature modules to register multi-timeframe features
-
+        FeatureRegistry.reset_for_testing()
+        for module_name in FEATURE_MODULES:
+            module = importlib.import_module(module_name)
+            importlib.reload(module)
         yield
 
     def test_registry_registration(self):
@@ -119,13 +131,12 @@ class TestMultiTimeframeFeatures:
             if any(tf in f for tf in ["_M1", "_M5", "_M15", "_H1", "_H4", "_D1"])
         ]
 
-        # Should have 78 multi-timeframe features based on implementation
+        # The current curated set includes DI, ATR_simplified, and Ichimoku MTF features.
         assert (
-            len(timeframe_features) == 78
-        ), f"Expected 78 multi-timeframe features, got {len(timeframe_features)}"
+            len(timeframe_features) == 80
+        ), f"Expected 80 multi-timeframe features, got {len(timeframe_features)}"
 
-        # Total features should be 156
-        assert len(features) == 156, f"Expected 156 total features, got {len(features)}"
+        assert len(features) == 169, f"Expected 169 total features, got {len(features)}"
 
     def test_rsi_multi_timeframe_calculation(self, sample_data):
         """Test RSI multi-timeframe calculations"""

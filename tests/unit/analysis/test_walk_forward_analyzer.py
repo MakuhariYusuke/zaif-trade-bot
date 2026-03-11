@@ -19,6 +19,22 @@ class TestWalkForwardAnalyzer:
     """WalkForwardAnalyzerのテスト"""
 
     @pytest.fixture
+    def sample_market_data(self):
+        """ウォークフォワード向けの日次 OHLC データ."""
+        dates = pd.date_range("2023-01-01", periods=160, freq="D")
+        close = pd.Series(np.linspace(100.0, 140.0, len(dates)), index=dates)
+        return pd.DataFrame(
+            {
+                "open": close * 0.995,
+                "high": close * 1.01,
+                "low": close * 0.99,
+                "close": close,
+                "volume": np.full(len(dates), 1000.0),
+            },
+            index=dates,
+        )
+
+    @pytest.fixture
     def mock_strategy_func(self):
         """モック戦略評価関数"""
 

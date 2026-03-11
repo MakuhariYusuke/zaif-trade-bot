@@ -1,113 +1,97 @@
 """
-Integration tests for Market Regime Adaptation System
-
-Tests the complete integration of market regime adaptation across
-SAC trainer, HeavyTradingEnv, and MarketRegimeClassifier.
+Integration tests for market regime adaptation across env and trainer wiring.
 """
 
-from unittest.mock import Mock, patch
+from __future__ import annotations
 
-import numpy as np
-import pandas as pd
+import copy
+from types import SimpleNamespace
+from unittest.mock import patch
+
 import pytest
 
-from ztb.analysis.regime.market_regime_classifier import MarketRegimeClassifier, RegimeType
+from tests.helpers.market_data import make_multi_regime_ohlcv_data
+from ztb.analysis.regime.market_regime_classifier import RegimeType
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.training.unified_trainer.algorithms.sac_trainer import SACTrainer
 
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.slow,
+]
+
+
+class _StubStructuredLogger:
+    def __init__(self, *args, **kwargs) -> None:
+        pass
+
+    def info(self, *args, **kwargs) -> None:
+        pass
+
+    def debug(self, *args, **kwargs) -> None:
+        pass
+
+    def warning(self, *args, **kwargs) -> None:
+        pass
+
+    def error(self, *args, **kwargs) -> None:
+        pass
+
+
+class _StubTrainingStateManager:
+    def __init__(self, *args, **kwargs) -> None:
+        pass
+
+
+class _StubCheckpointManager:
+    def __init__(self, *args, **kwargs) -> None:
+        pass
+
+
+class _StubRegimeClassifier:
+    def detect_regime(self, price_data):
+        return SimpleNamespace(primary_regime=RegimeType.CONSOLIDATION)
+
+    def get_regime_multiplier(self, regime, reward_type: str) -> float:
+        if reward_type == "reward" and getattr(regime, "value", regime) == RegimeType.STRONG_BULL.value:
+            return 1.4
+        if reward_type == "penalty" and getattr(regime, "value", regime) == RegimeType.STRONG_BEAR.value:
+            return 1.3
+        return 1.0
+
 
 class TestMarketRegimeAdaptationIntegration:
-    """Integration test suite for complete market regime adaptation system"""
+    """Integration tests with fast-path fixtures for regime adaptation wiring."""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class", autouse=True)
+    def patch_trainer_side_effects(self):
+        with (
+            patch(
+                "ztb.training.unified_trainer.algorithms.sac_trainer.StructuredLogger",
+                _StubStructuredLogger,
+            ),
+            patch(
+                "ztb.training.unified_trainer.algorithms.sac_trainer.TrainingStateManager",
+                _StubTrainingStateManager,
+            ),
+            patch(
+                "ztb.training.unified_trainer.algorithms.sac_trainer.TrainingCheckpointManager",
+                _StubCheckpointManager,
+            ),
+        ):
+            yield
+
+    @pytest.fixture(scope="class")
     def sample_market_data(self):
-        """Create comprehensive sample market data"""
-        dates = pd.date_range("2023-01-01", periods=2000, freq="1min")
-        np.random.seed(42)
+        return make_multi_regime_ohlcv_data(rows_per_regime=32, seed=42)
 
-        # Create realistic market data with multiple regimes
-        base_price = 100
-
-        # First 500 points: strong bull trend
-        bull_trend = np.linspace(0, 15, 500)
-        bull_noise = np.random.normal(0, 0.8, 500)
-        bull_prices = base_price + bull_trend + bull_noise
-
-        # Next 500 points: high volatility ranging
-        range_center = base_price + 15
-        range_noise = np.random.normal(0, 3.0, 500)
-        range_prices = range_center + range_noise
-
-        # Next 500 points: strong bear trend
-        bear_trend = np.linspace(0, -12, 500)
-        bear_noise = np.random.normal(0, 1.0, 500)
-        bear_prices = range_center + bear_trend + bear_noise
-
-        # Last 500 points: low volatility ranging
-        final_center = range_center - 12
-        final_noise = np.random.normal(0, 0.3, 500)
-        final_prices = final_center + final_noise
-
-        close = np.concatenate([bull_prices, range_prices, bear_prices, final_prices])
-
-        # Create OHLC data
-        high = close + np.abs(np.random.normal(0, 0.5, 2000))
-        low = close - np.abs(np.random.normal(0, 0.5, 2000))
-        open_price = np.roll(close, 1)
-        open_price[0] = base_price
-        volume = np.random.uniform(100, 2000, 2000)
-
-        df = pd.DataFrame(
-            {
-                "timestamp": dates,
-                "open": open_price,
-                "high": high,
-                "low": low,
-                "close": close,
-                "volume": volume,
-            }
-        )
-
-        return df
-
-    @pytest.fixture
-    def adaptive_classifier(self, sample_market_data):
-        """Create a real classifier for integration testing"""
-        config = {
-            "lookback_periods": {"short": 10, "medium": 30, "long": 100},
-            "regime_scheme": "comprehensive",
-            "adaptation": {
-                "enabled": True,
-                "regime_reward_multipliers": {
-                    RegimeType.STRONG_BULL: 1.4,
-                    RegimeType.MODERATE_BULL: 1.2,
-                    RegimeType.STRONG_BEAR: 0.6,
-                    RegimeType.MODERATE_BEAR: 0.8,
-                    RegimeType.HIGH_VOLATILITY_RANGE: 1.1,
-                    RegimeType.LOW_VOLATILITY_RANGE: 1.0,
-                    RegimeType.CONSOLIDATION: 0.9,
-                },
-                "regime_penalty_multipliers": {
-                    RegimeType.STRONG_BULL: 0.7,
-                    RegimeType.MODERATE_BULL: 0.8,
-                    RegimeType.STRONG_BEAR: 1.5,
-                    RegimeType.MODERATE_BEAR: 1.3,
-                    RegimeType.HIGH_VOLATILITY_RANGE: 1.2,
-                    RegimeType.LOW_VOLATILITY_RANGE: 1.0,
-                    RegimeType.CONSOLIDATION: 1.1,
-                },
-            },
-        }
-        return MarketRegimeClassifier(config)
-
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def trainer_config(self):
-        """Create trainer configuration with regime adaptation"""
         return {
             "algorithm": "sac",
             "learning_rate": 3e-4,
-            "batch_size": 256,
-            "buffer_size": 100000,
+            "batch_size": 64,
+            "buffer_size": 1024,
             "gamma": 0.99,
             "tau": 0.005,
             "alpha": 0.2,
@@ -116,213 +100,164 @@ class TestMarketRegimeAdaptationIntegration:
             "training": {
                 "market_regime_adaptation": {
                     "enabled": True,
-                    "regime_update_frequency": 50,
+                    "regime_update_frequency": 10,
                     "regime_statistics_tracking": True,
+                    "lookback_periods": {"short": 4, "medium": 8, "long": 16},
+                    "regime_scheme": "comprehensive",
                 }
             },
         }
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def env_config(self):
-        """Create environment configuration with regime adaptation"""
         return {
             "initial_balance": 10000,
             "max_position_size": 1.0,
             "transaction_fee": 0.001,
             "slippage": 0.0005,
+            "random_start": False,
+            "use_continuous_actions": False,
+            "feature_set": "minimal",
             "market_regime_adaptation": {"enabled": True},
         }
 
-    def test_complete_regime_adaptation_workflow(
-        self, trainer_config, env_config, adaptive_classifier, sample_market_data
-    ):
-        """Test complete workflow from regime detection to reward adjustment"""
-        # Initialize environment
-        env = HeavyTradingEnv(df=sample_market_data, config=env_config)
+    def _make_env(self, market_data, env_config):
+        return HeavyTradingEnv(df=market_data.copy(), config=copy.deepcopy(env_config))
 
-        # Initialize trainer (this should enable regime adaptation in the environment)
-        trainer = SACTrainer(trainer_config, env)
+    def _make_trainer(self, trainer_config, env):
+        return SACTrainer(copy.deepcopy(trainer_config), env)
 
-        # Verify initialization
+    @pytest.fixture(scope="class")
+    def initialized_system(self, sample_market_data, trainer_config, env_config):
+        env = self._make_env(sample_market_data.head(80), env_config)
+        trainer = self._make_trainer(trainer_config, env)
+        return env, trainer
+
+    @pytest.fixture(scope="class")
+    def adapted_env_pair(self, sample_market_data, env_config):
+        market_data = sample_market_data.head(64)
+        env_with_adaptation = self._make_env(market_data, env_config)
+        env_with_adaptation.enable_market_regime_adaptation(
+            _StubRegimeClassifier(), {"enabled": True}
+        )
+        env_without_adaptation = self._make_env(market_data, env_config)
+        return env_with_adaptation, env_without_adaptation
+
+    def test_complete_regime_adaptation_workflow(self, initialized_system):
+        env, trainer = initialized_system
+
         assert trainer.regime_adaptation_enabled is True
         assert env.market_regime_adaptation_enabled is True
         assert trainer.regime_classifier is not None
         assert env.regime_classifier is not None
-        assert hasattr(env, "regime_statistics")
 
-        # Test basic functionality
         state = env.reset()
         assert state is not None
         assert hasattr(trainer, "regime_statistics")
+        assert "regime_counts" in trainer.regime_statistics
+        assert "regime_counts" in env.regime_statistics
 
-        # Verify statistics were collected
-        total_regime_actions = sum(trainer.regime_statistics["regime_counts"].values())
-        assert total_regime_actions >= 0  # At least initialized
+    def test_regime_adaptation_changes_reward_path(self, adapted_env_pair):
+        env_with_adaptation, env_without_adaptation = adapted_env_pair
+        env_with_adaptation.reset()
+        env_without_adaptation.reset()
 
-        total_env_actions = sum(env.regime_statistics["regime_counts"].values())
-        assert total_env_actions >= 0
+        with (
+            patch.object(
+                env_with_adaptation.reward_calculator,
+                "calculate_reward",
+                return_value=1.0,
+            ),
+            patch.object(
+                env_without_adaptation.reward_calculator,
+                "calculate_reward",
+                return_value=1.0,
+            ),
+            patch.object(
+                env_with_adaptation,
+                "_get_current_market_regime",
+                return_value=RegimeType.STRONG_BULL,
+            ),
+            patch.object(
+                env_without_adaptation,
+                "_get_current_market_regime",
+                return_value=RegimeType.STRONG_BULL,
+            ),
+        ):
+            _, reward_with, _, _, _ = env_with_adaptation.step(0)
+            _, reward_without, _, _, _ = env_without_adaptation.step(0)
 
-    def test_regime_adaptation_performance_impact(
-        self, trainer_config, env_config, adaptive_classifier, sample_market_data
-    ):
-        """Test that regime adaptation affects training performance"""
-        # Create two environments: one with adaptation, one without
-        env_with_adaptation = HeavyTradingEnv(df=sample_market_data, config=env_config)
-        env_with_adaptation.enable_market_regime_adaptation(adaptive_classifier)
-
-        env_without_adaptation = HeavyTradingEnv(
-            df=sample_market_data, config=env_config.copy()
-        )
-
-        trainer_with = SACTrainer(trainer_config, env_with_adaptation)
-        trainer_without = SACTrainer(trainer_config.copy(), env_without_adaptation)
-        trainer_without.regime_adaptation_enabled = False
-
-        # Test that environments have different regime adaptation settings
-        assert env_with_adaptation.market_regime_adaptation_enabled == True
-        assert env_without_adaptation.market_regime_adaptation_enabled == False
-
-        # Test that trainers have different regime adaptation settings
-        assert trainer_with.regime_adaptation_enabled == True
-        assert trainer_without.regime_adaptation_enabled == False
-
-        # Test rewards with a simple step
-        state_with = env_with_adaptation.reset()
-        state_without = env_without_adaptation.reset()
-
-        action = np.array([0.0, 0.0, 0.0])  # Dummy action
-        (
-            next_state_with,
-            reward_with,
-            done_with,
-            truncated_with,
-            info_with,
-        ) = env_with_adaptation.step(action)
-        (
-            next_state_without,
-            reward_without,
-            done_without,
-            truncated_without,
-            info_without,
-        ) = env_without_adaptation.step(action)
-
-        # Rewards should be different (adaptation affects reward scaling)
-        # Note: This is a basic check - in practice, the impact would be more nuanced
+        assert env_with_adaptation.market_regime_adaptation_enabled is True
         assert (
-            reward_with != reward_without or abs(reward_with - reward_without) < 0.1
-        )  # Allow small differences
+            getattr(env_without_adaptation, "market_regime_adaptation_enabled", False)
+            is False
+        )
+        assert reward_with > reward_without
 
-    def test_regime_transition_handling(
-        self, trainer_config, env_config, adaptive_classifier, sample_market_data
-    ):
-        """Test handling of regime transitions during training"""
-        env = HeavyTradingEnv(df=sample_market_data, config=env_config)
-        env.enable_market_regime_adaptation(adaptive_classifier)
+    def test_regime_transition_handling(self, adapted_env_pair):
+        env_with_adaptation, _ = adapted_env_pair
+        env_with_adaptation.reset()
+        env_with_adaptation.regime_stats["regime_transitions"].clear()
+        env_with_adaptation.regime_stats["current_regime"] = None
 
-        trainer = SACTrainer(trainer_config, env)
-
-        # Simulate training with forced regime transitions
-        state = env.reset()
-        transitions_detected = []
-
-        for step in range(10):  # Reduced steps for testing
-            # Use random action instead of select_action to avoid model initialization
-            action = np.random.choice([0, 1, 2])  # ACTION_HOLD, ACTION_BUY, ACTION_SELL
-            next_state, reward, done, truncated, info = env.step(action)
-
-            # Store transition if trainer has the method
-            if hasattr(trainer, "store_transition"):
-                trainer.store_transition(state, action, reward, next_state, done)
-
-            # Check for regime transitions in environment statistics
-            if (
-                hasattr(env, "regime_statistics")
-                and "regime_transitions" in env.regime_statistics
+        for regime in (
+            RegimeType.STRONG_BULL,
+            RegimeType.STRONG_BEAR,
+            RegimeType.CONSOLIDATION,
+        ):
+            with (
+                patch.object(
+                    env_with_adaptation.reward_calculator,
+                    "calculate_reward",
+                    return_value=0.5,
+                ),
+                patch.object(
+                    env_with_adaptation,
+                    "_get_current_market_regime",
+                    return_value=regime,
+                ),
             ):
-                transitions = env.regime_statistics["regime_transitions"]
-                if transitions and transitions[-1] not in transitions_detected:
-                    transitions_detected.append(transitions[-1])
+                env_with_adaptation.step(0)
 
-            state = next_state
+        transitions = list(env_with_adaptation.regime_stats["regime_transitions"])
+        assert len(transitions) >= 2
+        assert transitions[-1]["from"] == RegimeType.STRONG_BEAR
+        assert transitions[-1]["to"] == RegimeType.CONSOLIDATION
 
-            if done:
-                break
-
-        # Verify the test ran without errors
-        assert isinstance(transitions_detected, list)
-
-    def test_regime_adaptation_stability(
-        self, trainer_config, env_config, adaptive_classifier, sample_market_data
-    ):
-        """Test that regime adaptation doesn't cause training instability"""
-        env = HeavyTradingEnv(df=sample_market_data, config=env_config)
-        env.enable_market_regime_adaptation(adaptive_classifier)
-
-        trainer = SACTrainer(trainer_config, env)
-
-        # Test that regime adaptation is properly initialized
-        assert env.market_regime_adaptation_enabled == True
-        assert trainer.regime_adaptation_enabled == True
-        assert hasattr(env, "regime_statistics")
-        assert hasattr(trainer, "regime_statistics")
+    def test_regime_adaptation_stability(self, initialized_system):
+        env, trainer = initialized_system
+        assert env.market_regime_adaptation_enabled is True
+        assert trainer.regime_adaptation_enabled is True
         assert "regime_counts" in env.regime_statistics
         assert "regime_counts" in trainer.regime_statistics
 
-    def test_regime_statistics_accuracy(
-        self, trainer_config, env_config, adaptive_classifier, sample_market_data
-    ):
-        """Test that regime statistics are accurately tracked"""
-        env = HeavyTradingEnv(df=sample_market_data, config=env_config)
-        env.enable_market_regime_adaptation(adaptive_classifier)
-
-        trainer = SACTrainer(trainer_config, env)
-
-        # Test that regime statistics are initialized
-        assert hasattr(env, "regime_statistics")
-        assert hasattr(trainer, "regime_statistics")
+    def test_regime_statistics_accuracy(self, initialized_system):
+        env, trainer = initialized_system
         assert isinstance(env.regime_statistics, dict)
         assert isinstance(trainer.regime_statistics, dict)
         assert "regime_counts" in env.regime_statistics
         assert "regime_counts" in trainer.regime_statistics
 
-    def test_error_handling_integration(
-        self, trainer_config, env_config, adaptive_classifier, sample_market_data
-    ):
-        """Test error handling in the integrated system"""
-        # Mock environment logger
-        with patch("ztb.trading.environment.heavy_env.core.logger") as mock_env_logger:
-            # Create environment with corrupted classifier
-            env = HeavyTradingEnv(df=sample_market_data, config=env_config)
+    def test_error_handling_integration(self, adapted_env_pair):
+        env_with_adaptation, _ = adapted_env_pair
+        env_with_adaptation.reset()
+        if hasattr(env_with_adaptation, "_market_regime_cache"):
+            env_with_adaptation._market_regime_cache = [None] * len(env_with_adaptation.df)
 
-            # Make classifier throw errors
-            adaptive_classifier.detect_regime = Mock(
-                side_effect=Exception("Detection failed")
-            )
+        with (
+            patch.object(
+                env_with_adaptation.reward_calculator,
+                "calculate_reward",
+                return_value=0.25,
+            ),
+            patch.object(
+                env_with_adaptation.regime_classifier,
+                "detect_regime",
+                side_effect=Exception("Detection failed"),
+            ),
+            patch("ztb.trading.environment.heavy_env.core.logger"),
+        ):
+            next_state, reward, done, truncated, info = env_with_adaptation.step(0)
 
-            env.enable_market_regime_adaptation(adaptive_classifier)
-            trainer = SACTrainer(trainer_config, env)
-
-            # Mock trainer logger
-            with patch(
-                "ztb.training.unified_trainer.algorithms.sac_trainer.logger"
-            ) as mock_trainer_logger:
-                # Test that error handling works - simulate step with error
-                try:
-                    # This should trigger error handling in regime detection
-                    state = env.reset()
-                    # Since we mocked detect_regime to throw exception, step should handle it
-                    next_state, reward, done, truncated, info = env.step(
-                        np.array([0.0, 0.0, 0.0])
-                    )  # Dummy action
-
-                    # Errors should be logged
-                    mock_env_logger.error.assert_called()
-                    mock_trainer_logger.error.assert_called()
-
-                    # Training should continue despite errors
-                    assert next_state is not None
-                    assert isinstance(reward, (int, float))
-                except Exception:
-                    # If exception is raised, it should be logged
-                    mock_env_logger.error.assert_called()
-                    mock_trainer_logger.error.assert_called()
+        assert next_state is not None
+        assert isinstance(reward, (int, float))

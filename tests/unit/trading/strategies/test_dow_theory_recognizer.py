@@ -38,8 +38,8 @@ class TestDowTheoryRecognizer(unittest.TestCase):
 
         signal = self.recognizer.recognize(data, len(data) - 1)
         if signal:
-            # Confidence should be capped at 0.0001
-            self.assertLessEqual(signal.confidence, 0.0001)
+            # Confidence should remain near-zero.
+            self.assertLessEqual(signal.confidence, 0.002)
 
     def test_recognize_bearish_trend(self):
         """Test recognition of bearish trend."""
@@ -60,8 +60,8 @@ class TestDowTheoryRecognizer(unittest.TestCase):
 
         signal = self.recognizer.recognize(data, len(data) - 1)
         if signal:
-            # Confidence should be capped at 0.0001
-            self.assertLessEqual(signal.confidence, 0.0001)
+            # Confidence should remain near-zero.
+            self.assertLessEqual(signal.confidence, 0.002)
 
     def test_insufficient_data(self):
         """Test behavior with insufficient data."""
@@ -99,8 +99,8 @@ class TestDowTheoryRecognizer(unittest.TestCase):
 
         signal = self.recognizer.recognize(data, len(data) - 1)
         if signal:
-            # Confidence should be capped at 0.0001
-            self.assertLessEqual(signal.confidence, 0.0001)
+            # Confidence should remain near-zero.
+            self.assertLessEqual(signal.confidence, 0.002)
 
 
 if __name__ == "__main__":

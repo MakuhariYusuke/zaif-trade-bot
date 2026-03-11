@@ -8,11 +8,19 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from sac import SACSuite
+try:
+    from sac import SACSuite
+except ModuleNotFoundError:
+    pytest.skip(
+        "legacy v430 SAC harness depends on removed 'sac' module; kept for archive only",
+        allow_module_level=True,
+    )
 
 from ztb.utils.logging_utils import get_logger
 
@@ -148,6 +156,8 @@ def run_test_training():
     return success
 
 
+def main() -> int:
+    return 0 if run_test_training() else 1
 
 
 if __name__ == "__main__":

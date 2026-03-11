@@ -4,12 +4,13 @@ Phase 3-1: ActionSignalGuideAdapter統合テスト
 ActionSignalGuideAdapterのシグナル品質向上統合機能をテストします。
 """
 
-
-import numpy as np
 import pandas as pd
 import pytest
 
+from tests.helpers.market_data import make_trending_ohlcv_data
 from ztb.trading.backtest.adapters import ActionSignalGuideAdapter
+
+pytestmark = [pytest.mark.integration]
 
 
 class TestActionSignalGuideAdapterIntegration:
@@ -40,23 +41,13 @@ class TestActionSignalGuideAdapterIntegration:
     @pytest.fixture
     def sample_market_data(self):
         """テスト用の市場データ"""
-        dates = pd.date_range("2023-01-01", periods=100, freq="1h")
-        np.random.seed(42)
-
-        # トレンドのあるデータを作成
-        trend = np.linspace(100, 120, 100)
-        noise = np.random.normal(0, 2, 100)
-        close_prices = trend + noise
-
-        return pd.DataFrame(
-            {
-                "open": close_prices - np.random.uniform(1, 3, 100),
-                "high": close_prices + np.random.uniform(1, 3, 100),
-                "low": close_prices - np.random.uniform(1, 3, 100),
-                "close": close_prices,
-                "volume": np.random.uniform(1000, 2000, 100),
-            },
-            index=dates,
+        return make_trending_ohlcv_data(
+            rows=96,
+            seed=42,
+            freq="1h",
+            start_price=100.0,
+            end_price=120.0,
+            noise_scale=2.0,
         )
 
     def test_initialization_with_quality_filter(self, adapter):

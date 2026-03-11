@@ -1,10 +1,7 @@
 import json
-import glob
-from pathlib import Path
-
 import pytest
 
-from tools.analyze_recent_reports import analyze_reports
+import tools.analyze_recent_reports as recent_reports_module
 from ztb.trading.environment.components.rewards.utils import RewardUtils
 
 
@@ -20,10 +17,18 @@ def test_analyze_reports_uses_rewardutils_and_parses_reward(tmp_path, monkeypatc
     }
     report_file.write_text(json.dumps(data), encoding="utf-8")
 
-    # Monkeypatch glob.glob to return our file path regardless of cwd
-    monkeypatch.setattr(glob, "glob", lambda pattern: [str(report_file)])
+    monkeypatch.setattr(
+        recent_reports_module,
+        "get_recent_training_reports",
+        lambda limit, reports_dir: [report_file],
+    )
+    monkeypatch.setattr(
+        recent_reports_module,
+        "load_training_report",
+        lambda path: data,
+    )
 
-    results = analyze_reports(limit=1)
+    results = recent_reports_module.analyze_reports(limit=1)
     assert len(results) == 1
     r = results[0]
     assert r["file"] == report_file.name

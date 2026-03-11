@@ -14,7 +14,6 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from scipy import stats
 from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.preprocessing import StandardScaler
@@ -22,6 +21,20 @@ from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.seasonal import STL
 
 logger = logging.getLogger(__name__)
+
+
+def _abs_z_scores(values: np.ndarray) -> np.ndarray:
+    """Return absolute z-scores using a NumPy-only implementation."""
+    arr = np.asarray(values, dtype=float)
+    if arr.size == 0:
+        return np.array([], dtype=float)
+
+    mean = np.nanmean(arr)
+    std = np.nanstd(arr)
+    if not np.isfinite(std) or std <= 0.0:
+        return np.zeros(arr.shape, dtype=float)
+
+    return np.abs((arr - mean) / std)
 
 class OutlierDetector:
     """
@@ -74,81 +87,136 @@ class OutlierDetector:
             ... ]
             >>> result = detector.detect_outliers(data, methods)
         """
-        # Handle single-method shorthand (tests expect detect_outliers(array, method="z_score", ...))
+        if isinstance(data, (np.ndarray, pd.Series)):
+            if method is None:
+                raise ValueError(
+                    "method is required for array or series outlier detection"
+                )
+
+            arr = np.asarray(data)
+            if arr.size == 0:
+                return {
+                    "method": method,
+                    "outlier_flags": np.array([]),
+                    "outlier_indices": np.array([]),
+                }
+
+            if method == "z_score":
+                flags, indices = self._detect_z_score(
+                    arr, threshold=kwargs.get("threshold", 3.0)
+                )
+            elif method == "iqr":
+                flags, indices = self._detect_iqr(
+                    arr, multiplier=kwargs.get("multiplier", 1.5)
+                )
+            elif method == "modified_z_score":
+                flags, indices = self._detect_modified_z_score(
+                    arr, threshold=kwargs.get("threshold", 3.5)
+                )
+            elif method == "isolation_forest":
+                flags, indices = self._detect_isolation_forest(
+                    arr, contamination=kwargs.get("contamination", 0.1)
+                )
+            elif method == "lof":
+                flags, indices = self._detect_lof(
+                    arr,
+                    n_neighbors=kwargs.get("n_neighbors", 20),
+                    contamination=kwargs.get("contamination", 0.1),
+                )
+            elif method == "stl_decomposition":
+                series = pd.Series(arr) if not isinstance(data, pd.Series) else data
+                flags, indices = self._detect_stl_decomposition(
+                    series,
+                    threshold=kwargs.get("threshold", 2.0),
+                    seasonal=kwargs.get("seasonal", 7),
+                )
+            elif method == "arima_residual":
+                series = pd.Series(arr) if not isinstance(data, pd.Series) else data
+                flags, indices = self._detect_arima_residual(
+                    series,
+                    order=kwargs.get("order", (1, 1, 1)),
+                    threshold=kwargs.get("threshold", 2.0),
+                )
+            else:
+                raise ValueError(f"Unknown outlier detection method: {method}")
+
+            return {"method": method, "outlier_flags": flags, "outlier_indices": indices}
+
+        if columns is None and isinstance(data, pd.DataFrame):
+            columns = data.select_dtypes(include=[np.number]).columns.tolist()
+
+        method_configs = methods or []
         if method is not None:
-            # Array/Series path
-            if isinstance(data, (np.ndarray, pd.Series)):
-                arr = np.asarray(data)
-                if arr.size == 0:
-                    return {"method": method, "outlier_flags": np.array([]), "outlier_indices": np.array([])}
+            method_configs = [dict(type=method, **kwargs)]
 
-                if method == "z_score":
-                    flags, indices = self._detect_z_score(arr, threshold=kwargs.get("threshold", 3.0))
-                elif method == "iqr":
-                    flags, indices = self._detect_iqr(arr, multiplier=kwargs.get("multiplier", 1.5))
-                elif method == "modified_z_score":
-                    flags, indices = self._detect_modified_z_score(arr, threshold=kwargs.get("threshold", 3.5))
-                elif method == "isolation_forest":
-                    flags, indices = self._detect_isolation_forest(arr, contamination=kwargs.get("contamination", 0.1))
-                elif method == "lof":
-                    flags, indices = self._detect_lof(arr, n_neighbors=kwargs.get("n_neighbors", 20), contamination=kwargs.get("contamination", 0.1))
-                elif method == "stl_decomposition":
-                    # For STL and ARIMA tests, users may pass Series — convert if needed
-                    series = pd.Series(arr) if not isinstance(data, pd.Series) else data
-                    flags, indices = self._detect_stl_decomposition(series, threshold=kwargs.get("threshold", 2.0), seasonal=kwargs.get("seasonal", 7))
-                elif method == "arima_residual":
-                    series = pd.Series(arr) if not isinstance(data, pd.Series) else data
-                    flags, indices = self._detect_arima_residual(series, order=kwargs.get("order", (1, 1, 1)), threshold=kwargs.get("threshold", 2.0))
+        result_data = data.copy()
+        if not method_configs:
+            return result_data
+
+        outlier_flags: dict[str, dict[str, np.ndarray]] = {}
+        for method_config in method_configs:
+            method_type = method_config.get("type", "")
+            try:
+                if method_type == "z_score":
+                    flags = self._detect_z_score(
+                        result_data,
+                        columns,
+                        threshold=method_config.get("threshold", 3.0),
+                    )
+                elif method_type == "iqr":
+                    flags = self._detect_iqr(
+                        result_data,
+                        columns,
+                        multiplier=method_config.get("multiplier", 1.5),
+                    )
+                elif method_type == "modified_z_score":
+                    flags = self._detect_modified_z_score(
+                        result_data,
+                        columns,
+                        threshold=method_config.get("threshold", 3.5),
+                    )
+                elif method_type == "isolation_forest":
+                    flags = self._detect_isolation_forest(
+                        result_data,
+                        columns,
+                        contamination=method_config.get("contamination", 0.1),
+                    )
+                elif method_type == "lof":
+                    flags = self._detect_lof(
+                        result_data,
+                        columns,
+                        n_neighbors=method_config.get("n_neighbors", 20),
+                        contamination=method_config.get("contamination", 0.1),
+                    )
+                elif method_type == "stl_decomposition":
+                    flags = self._detect_stl_decomposition(
+                        result_data,
+                        columns,
+                        seasonal=method_config.get("seasonal", 7),
+                        threshold=method_config.get("threshold", 2.0),
+                    )
+                elif method_type == "arima_residual":
+                    flags = self._detect_arima_residual(
+                        result_data,
+                        columns,
+                        order=method_config.get("order", (1, 1, 1)),
+                        threshold=method_config.get("threshold", 2.0),
+                    )
                 else:
-                    raise ValueError(f"Unknown outlier detection method: {method}")
-
-                return {"method": method, "outlier_flags": flags, "outlier_indices": indices}
-
-            # DataFrame path: methods list or method + columns
-            if columns is None and isinstance(data, pd.DataFrame):
-                columns = data.select_dtypes(include=[np.number]).columns.tolist()
-
-            method_configs = methods or []
-            if method is not None:
-                # convert single method+kwargs to method config
-                method_configs = [dict(type=method, **kwargs)]
-
-            result_data = data.copy()
-            outlier_flags = {}
-
-            for method_config in method_configs:
-                method_type = method_config.get("type", "")
-                try:
-                    if method_type == "z_score":
-                        flags = self._detect_z_score(result_data, columns, threshold=method_config.get("threshold", 3.0))
-                    elif method_type == "iqr":
-                        flags = self._detect_iqr(result_data, columns, multiplier=method_config.get("multiplier", 1.5))
-                    elif method_type == "modified_z_score":
-                        flags = self._detect_modified_z_score(result_data, columns, threshold=method_config.get("threshold", 3.5))
-                    elif method_type == "isolation_forest":
-                        flags = self._detect_isolation_forest(result_data, columns, contamination=method_config.get("contamination", 0.1))
-                    elif method_type == "lof":
-                        flags = self._detect_lof(result_data, columns, n_neighbors=method_config.get("n_neighbors", 20), contamination=method_config.get("contamination", 0.1))
-                    elif method_type == "stl_decomposition":
-                        flags = self._detect_stl_decomposition(result_data, columns, seasonal=method_config.get("seasonal", 7), threshold=method_config.get("threshold", 2.0))
-                    elif method_type == "arima_residual":
-                        flags = self._detect_arima_residual(result_data, columns, order=method_config.get("order", (1, 1, 1)), threshold=method_config.get("threshold", 2.0))
-                    else:
-                        logger.warning(f"Unknown outlier detection method: {method_type}")
-                        continue
-
-                    outlier_flags[method_type] = flags
-
-                except Exception as e:
-                    logger.error(f"Failed to apply outlier detection {method_type}: {e}")
+                    logger.warning(f"Unknown outlier detection method: {method_type}")
                     continue
 
-            combined_flags = self._combine_outlier_flags(outlier_flags)
-            for col in columns:
-                if col in combined_flags:
-                    result_data[f"{col}_is_outlier"] = combined_flags[col]
+                outlier_flags[method_type] = flags
+            except Exception as e:
+                logger.error(f"Failed to apply outlier detection {method_type}: {e}")
+                continue
 
-            return result_data
+        combined_flags = self._combine_outlier_flags(outlier_flags)
+        for col in columns or []:
+            if col in combined_flags:
+                result_data[f"{col}_is_outlier"] = combined_flags[col]
+
+        return result_data
 
     def _detect_z_score(
         self, data: pd.DataFrame | pd.Series | np.ndarray, columns: list[str] | None = None, threshold: float = 3.0
@@ -176,7 +244,7 @@ class OutlierDetector:
             if values.size == 0:
                 return np.zeros(arr.shape, dtype=bool), np.array([], dtype=int)
 
-            z_scores = np.abs(stats.zscore(values))
+            z_scores = _abs_z_scores(values)
             outlier_mask = np.full(arr.shape, False)
             outlier_mask[valid_mask] = z_scores > threshold
             indices = np.where(outlier_mask)[0]
@@ -193,7 +261,7 @@ class OutlierDetector:
                 flags[col] = np.zeros(len(data), dtype=bool)
                 continue
 
-            z_scores = np.abs(stats.zscore(values))
+            z_scores = _abs_z_scores(values)
             outlier_mask = np.full(len(data), False)
 
             # NaNでない位置のみを考慮

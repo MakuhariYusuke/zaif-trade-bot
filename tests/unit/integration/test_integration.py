@@ -17,6 +17,7 @@ import numpy as np
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
+from ztb.analysis.regime.market_regime_types import MarketRegime
 from ztb.trading.strategies.action_signal_guide.action_signal_guide import ActionSignalGuide
 from ztb.trading.strategies.action_signal_guide.components.sac_integration import (
     SACSignalValidator,
@@ -32,6 +33,7 @@ from ztb.trading.strategies.action_signal_guide.components.validation import (
     SignalValidator,
     DataSanitizer,
     PerformanceTracker,
+    ValidationResult,
 )
 
 
@@ -51,6 +53,10 @@ class MockActionSignal:
 
 class TestActionSignalGuideIntegration(unittest.TestCase):
     """Integration tests for Action Signal Guide components."""
+
+    @staticmethod
+    def _regime_name(regime: MarketRegime | str) -> str:
+        return regime.value if isinstance(regime, MarketRegime) else str(regime)
 
     def setUp(self):
         """Set up test fixtures."""
@@ -83,8 +89,7 @@ class TestActionSignalGuideIntegration(unittest.TestCase):
 
         # Step 2: Detect market regime
         regime = self.regime_detector.detect_regime(sanitized_data)
-        self.assertIsInstance(regime, dict)
-        self.assertIn("regime", regime)
+        self.assertIsInstance(regime, MarketRegime)
 
         # Step 3: Analyze market conditions
         market_conditions = self.market_analyzer.analyze_market_conditions(sanitized_data)
@@ -135,7 +140,7 @@ class TestActionSignalGuideIntegration(unittest.TestCase):
         """Test regime-adaptive signal processing integration."""
         # Detect regime
         regime = self.regime_detector.detect_regime(self.market_data)
-        self.assertIn("regime", regime)
+        self.assertIsInstance(regime, MarketRegime)
 
         # Create signals for different regimes
         signals = [
@@ -145,7 +150,7 @@ class TestActionSignalGuideIntegration(unittest.TestCase):
 
         # Process signals adaptively based on regime
         processed_signals = self.regime_processor.process_signals_for_regime(
-            signals, regime["regime"]
+            signals, self.market_data
         )
 
         self.assertIsInstance(processed_signals, list)
@@ -153,10 +158,10 @@ class TestActionSignalGuideIntegration(unittest.TestCase):
         self.assertGreaterEqual(len(processed_signals), 0)
 
         # Test regime performance tracking
-        self.regime_processor.update_regime_performance(regime["regime"], 0.02)
+        self.regime_processor.update_regime_performance(regime, 0.02)
 
         # Verify regime configuration
-        config = self.regime_processor.get_regime_config(regime["regime"])
+        config = self.regime_processor._get_regime_config(regime)
         self.assertIsInstance(config, dict)
 
     def test_validation_and_performance_tracking_integration(self):
@@ -215,7 +220,7 @@ class TestActionSignalGuideIntegration(unittest.TestCase):
 
         # Regime detector should handle edge cases
         regime = self.regime_detector.detect_regime(invalid_data)
-        self.assertIsInstance(regime, dict)
+        self.assertIsInstance(regime, MarketRegime)
 
         # Signal validator should handle invalid signals
         invalid_signal = MockActionSignal(confidence=-0.5, price=-100)
@@ -251,7 +256,7 @@ class TestActionSignalGuideIntegration(unittest.TestCase):
         market_conditions = self.market_analyzer.analyze_market_conditions(minimal_data)
 
         self.assertIsInstance(sanitized_data, pd.DataFrame)
-        self.assertIsInstance(regime, dict)
+        self.assertIsInstance(regime, MarketRegime)
         self.assertIsInstance(market_conditions, dict)
 
         # Test with extreme values
@@ -264,7 +269,7 @@ class TestActionSignalGuideIntegration(unittest.TestCase):
         regime = self.regime_detector.detect_regime(extreme_data)
 
         self.assertIsInstance(sanitized_data, pd.DataFrame)
-        self.assertIsInstance(regime, dict)
+        self.assertIsInstance(regime, MarketRegime)
         self.assertIn("issues_found", report)
 
         # Test signal validation with extreme values

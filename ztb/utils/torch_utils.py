@@ -115,7 +115,7 @@ def _install_torch_stub() -> None:
     stub = types.ModuleType("torch")
     stub.__dict__.update(
         {
-            "__version__": "0.0-stub",
+            "__version__": "0.0.0",
             _TORCH_STUB_FLAG: True,
             "device": lambda *_args, **_kwargs: "cpu",
             "cuda": types.SimpleNamespace(
@@ -155,6 +155,10 @@ def ensure_cpu_mode() -> None:
 
     os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
     ensure_torch_dll_search_path()
+
+    if os.getenv("ZTB_FORCE_TORCH_STUB") == "1":
+        _install_torch_stub()
+        return
 
     try:
         torch_mod = importlib.import_module("torch")

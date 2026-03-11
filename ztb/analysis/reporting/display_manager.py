@@ -37,7 +37,8 @@ class AnalysisDisplayManager:
 
         # set up plotting style
         plt.style.use("default")
-        sns.set_palette("husl")
+        if hasattr(sns, "set_palette"):
+            sns.set_palette("husl")
 
     def display_backtest_results(
         self,

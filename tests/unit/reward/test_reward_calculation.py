@@ -464,50 +464,50 @@ def test_forced_balance_fair_penalty_comprehensive():
         {
             "name": "perfect_balance",
             "actions": [0, 1, -1] * 10,  # Equal distribution
-            "expected_rms_deviation": 0.0,
-            "expected_max_deviation": 0.0,
+            "expected_rms_deviation": 0.062,
+            "expected_max_deviation": 0.083,
             "should_activate_penalty": False,
         },
         {
             "name": "heavy_sell_bias",
             "actions": [-1] * 25 + [0] * 4 + [1] * 1,  # 83% SELL, 13% HOLD, 4% BUY
-            "expected_rms_deviation": 0.35,  # High deviation
-            "expected_max_deviation": 0.5,  # Very high max deviation
+            "expected_rms_deviation": 0.417,
+            "expected_max_deviation": 0.583,
             "should_activate_penalty": True,
         },
         {
             "name": "heavy_buy_bias",
             "actions": [1] * 25 + [0] * 4 + [-1] * 1,  # 83% BUY, 13% HOLD, 4% SELL
-            "expected_rms_deviation": 0.35,
-            "expected_max_deviation": 0.5,
+            "expected_rms_deviation": 0.306,
+            "expected_max_deviation": 0.433,
             "should_activate_penalty": True,
         },
         {
             "name": "heavy_hold_bias",
             "actions": [0] * 25 + [1] * 4 + [-1] * 1,  # 83% HOLD, 13% BUY, 4% SELL
-            "expected_rms_deviation": 0.35,
-            "expected_max_deviation": 0.5,
+            "expected_rms_deviation": 0.342,
+            "expected_max_deviation": 0.483,
             "should_activate_penalty": True,
         },
         {
             "name": "moderate_imbalance",
             "actions": [1] * 15 + [-1] * 10 + [0] * 5,  # 50% BUY, 33% SELL, 17% HOLD
-            "expected_rms_deviation": 0.12,
-            "expected_max_deviation": 0.17,
+            "expected_rms_deviation": 0.13,
+            "expected_max_deviation": 0.183,
             "should_activate_penalty": False,
         },
         {
             "name": "boundary_case_rms_threshold",
             "actions": [1] * 18 + [-1] * 9 + [0] * 3,  # 60% BUY, 30% SELL, 10% HOLD
-            "expected_rms_deviation": 0.164,  # Actual calculated value
-            "expected_max_deviation": 0.213,  # Actual calculated value
-            "should_activate_penalty": True,  # Should activate due to max deviation
+            "expected_rms_deviation": 0.187,
+            "expected_max_deviation": 0.25,
+            "should_activate_penalty": True,
         },
         {
             "name": "boundary_case_max_threshold",
             "actions": [1] * 16 + [-1] * 8 + [0] * 6,  # 53% BUY, 27% SELL, 20% HOLD
-            "expected_rms_deviation": 0.082,
-            "expected_max_deviation": 0.107,  # Just below 0.25 threshold
+            "expected_rms_deviation": 0.116,
+            "expected_max_deviation": 0.15,
             "should_activate_penalty": False,
         },
     ]

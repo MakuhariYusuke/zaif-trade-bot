@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
+from scripts.v460.lib.orchestrator_lifecycle import OrchestratorLifecycleMixin
 from scripts.v460.lib.regime_detector import FillTestRegime
 
 
@@ -26,19 +27,39 @@ class _FakeFillRecord:
     timestamp: float = 0.0
 
 
+class _TrackRecorder:
+    """kill manager track 呼び出しの最小 recorder."""
+
+    def __init__(self) -> None:
+        self._pnl_history: list[float] = []
+        self.calls: list[float] = []
+
+    def track(self, pnl: float) -> None:
+        self.calls.append(pnl)
+
+    def assert_not_called(self) -> None:
+        assert not self.calls
+
+    def assert_called_once_with(self, pnl: float) -> None:
+        assert self.calls == [pnl]
+
+
+class _WarmupOrchestrator:
+    """_warmup_kill_managers_from_records 実行用の最小 orchestrator."""
+
+    def __init__(self) -> None:
+        self._sell_kill_mgr = _TrackRecorder()
+        self._buy_kill_mgr = _TrackRecorder()
+
+
 class TestKillManagerWarmupDateFilter:
     """225# F1: _warmup_kill_managers_from_records の日付フィルタテスト."""
 
-    def _make_mock_orchestrator(self) -> MagicMock:
-        """FillLoopOrchestratorMixin のモック (warmup メソッドのみ実装)."""
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-
-        orch = MagicMock(spec=FillLoopOrchestratorMixin)
-        orch._sell_kill_mgr = MagicMock()
-        orch._buy_kill_mgr = MagicMock()
-        # bind the real method
-        orch._warmup_kill_managers_from_records = (
-            FillLoopOrchestratorMixin._warmup_kill_managers_from_records.__get__(orch)
+    def _make_mock_orchestrator(self) -> _WarmupOrchestrator:
+        """warmup メソッドだけを bind した軽量 orchestrator."""
+        orch = _WarmupOrchestrator()
+        orch._warmup_kill_managers_from_records = (  # type: ignore[attr-defined]
+            OrchestratorLifecycleMixin._warmup_kill_managers_from_records.__get__(orch)
         )
         return orch
 
@@ -59,8 +80,8 @@ class TestKillManagerWarmupDateFilter:
         orch._warmup_kill_managers_from_records(records)
 
         # 当日分のみ track された
-        orch._sell_kill_mgr.track.assert_called_once_with(0.3)
-        orch._buy_kill_mgr.track.assert_called_once_with(0.7)
+        orch._sell_kill_mgr.assert_called_once_with(0.3)
+        orch._buy_kill_mgr.assert_called_once_with(0.7)
 
     def test_unfilled_records_skipped(self) -> None:
         """未約定レコードはスキップ."""
@@ -71,14 +92,14 @@ class TestKillManagerWarmupDateFilter:
             _FakeFillRecord(filled=True, post_fill_30s_pnl=None, side="buy", timestamp=now),
         ]
         orch._warmup_kill_managers_from_records(records)
-        orch._sell_kill_mgr.track.assert_not_called()
-        orch._buy_kill_mgr.track.assert_not_called()
+        orch._sell_kill_mgr.assert_not_called()
+        orch._buy_kill_mgr.assert_not_called()
 
     def test_empty_records(self) -> None:
         """空リストでもエラーにならない."""
         orch = self._make_mock_orchestrator()
         orch._warmup_kill_managers_from_records([])
-        orch._sell_kill_mgr.track.assert_not_called()
+        orch._sell_kill_mgr.assert_not_called()
 
     def test_all_old_records_skipped(self) -> None:
         """全て前日のレコードの場合、track は 0 回."""
@@ -89,8 +110,8 @@ class TestKillManagerWarmupDateFilter:
             _FakeFillRecord(side="buy", post_fill_30s_pnl=2.0, timestamp=old),
         ]
         orch._warmup_kill_managers_from_records(records)
-        orch._sell_kill_mgr.track.assert_not_called()
-        orch._buy_kill_mgr.track.assert_not_called()
+        orch._sell_kill_mgr.assert_not_called()
+        orch._buy_kill_mgr.assert_not_called()
 
 
 # ======================================================================

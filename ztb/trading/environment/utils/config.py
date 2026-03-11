@@ -242,6 +242,7 @@ class EnvironmentConfig:
     )
     base_action_penalty: float = 0.015
     behavior_optimization: dict[str, Any] = dataclasses.field(default_factory=dict)
+    logging: dict[str, Any] = dataclasses.field(default_factory=dict)
 
     # 🔧 CRITICAL FIX: 現実的な資金設定
     # Bitcoin価格 ≈ 18,000,000円 を考慮した設定
@@ -380,6 +381,20 @@ class EnvironmentConfig:
             f"EnvironmentConfig.from_dict called with config_dict keys: {list(config_dict.keys())}"
         )
 
+        training_section = config_dict.get("training")
+        if isinstance(training_section, dict):
+            training_env = training_section.get("environment")
+            if isinstance(training_env, dict):
+                normalized_env = dict(training_env)
+                nested_env_config = normalized_env.pop("config", None)
+                if isinstance(nested_env_config, dict):
+                    normalized_env = {**normalized_env, **nested_env_config}
+
+                config_dict = {
+                    **{k: v for k, v in config_dict.items() if k != "training"},
+                    "environment": normalized_env,
+                }
+
         # Create instance with defaults
         instance = cls()
 
@@ -444,6 +459,15 @@ class EnvironmentConfig:
                     )
 
         # Update fields from config_dict
+        bool_fields = {
+            "use_continuous_actions",
+            "allow_reverse",
+            "enforce_reverse_cooldown",
+            "debug_internal_state",
+            "correlation_reduction",
+            "enable_forced_diversity",
+            "memory_logging_enabled",
+        }
         for key, value in config_dict.items():
             if isinstance(key, dict):
                 logger.error(
@@ -524,6 +548,8 @@ class EnvironmentConfig:
                                 logger.info(
                                     f"Updated max_action_threshold to {env_value}"
                                 )
+                            elif env_key in bool_fields:
+                                setattr(instance, env_key, cls._as_bool(env_value))
                             else:
                                 setattr(instance, env_key, env_value)
                             logger.debug(f"set environment.{env_key} = {env_value}")
@@ -572,6 +598,8 @@ class EnvironmentConfig:
                             key,
                             int(float(value)) if value is not None else None,
                         )
+                    elif key in bool_fields:
+                        setattr(instance, key, cls._as_bool(value))
                     else:
                         # Default assignment
                         setattr(instance, key, value)
@@ -636,6 +664,15 @@ class EnvironmentConfig:
                     pass
         except Exception:
             pass
+
+        if instance.action_space_type == "continuous":
+            instance.use_continuous_actions = True
+        elif instance.action_space_type == "discrete":
+            instance.use_continuous_actions = False
+        elif instance.use_continuous_actions:
+            instance.action_space_type = "continuous"
+        else:
+            instance.action_space_type = "discrete"
 
         logger.debug(
             f"EnvironmentConfig.from_dict completed: base_action_penalty={instance.base_action_penalty}, action_bonuses={instance.action_bonuses}"

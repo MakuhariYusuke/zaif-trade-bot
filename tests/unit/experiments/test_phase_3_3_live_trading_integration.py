@@ -7,6 +7,7 @@ Phase 3-3 ライブトレーディング統合テスト
 """
 
 import pytest
+import sys
 import unittest.mock as mock
 from datetime import datetime
 from ztb.live_trading.trading_api import TradingAPI
@@ -50,12 +51,15 @@ class TestLiveTradingIntegration:
     @mock.patch('ztb.live_trading.trading_api.time.sleep')
     def test_get_balance_mock(self, mock_sleep):
         """残高取得テスト（モック）"""
-        mock_response = {
-            'btc': 0.5,
-            'jpy': 50000.0
+        mock_exchange = mock.Mock()
+        mock_exchange.fetch_balance.return_value = {
+            'BTC': {'free': 0.5},
+            'JPY': {'free': 50000.0},
         }
+        mock_ccxt = mock.Mock()
+        mock_ccxt.zaif.return_value = mock_exchange
 
-        with mock.patch.object(self.trading_api, '_make_request', return_value=mock_response):
+        with mock.patch.dict(sys.modules, {'ccxt': mock_ccxt}):
             balance = self.trading_api.get_balance()
 
             assert balance['btc'] == 0.5

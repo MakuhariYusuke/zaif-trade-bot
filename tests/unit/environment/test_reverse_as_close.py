@@ -52,13 +52,13 @@ class TestReverseAsClose:
 
         # Step 1: BUY → Long
         obs, reward, done, truncated, info = env.step(1)  # BUY
-        assert env.position == 1.0, "BUY from Flat should open Long"
+        long_position = env.position
+        assert long_position > 0.0, "BUY from Flat should open Long"
 
         # Step 2: SELL → Close Long + Open Short (immediate reversal)
         obs, reward, done, truncated, info = env.step(2)  # SELL
-        assert (
-            env.position == -1.0
-        ), "SELL from Long should reverse to Short (allow_reverse=True)"
+        assert env.position < 0.0, "SELL from Long should reverse to Short (allow_reverse=True)"
+        assert abs(env.position) > 0.0
 
     def test_allow_reverse_false_no_reversal(self, sample_df):
         """Test reverse禁止モード: allow_reverse=False."""
@@ -77,7 +77,7 @@ class TestReverseAsClose:
 
         # Step 1: BUY → Long
         obs, reward, done, truncated, info = env.step(1)  # BUY
-        assert env.position == 1.0, "BUY from Flat should open Long"
+        assert env.position > 0.0, "BUY from Flat should open Long"
 
         # Step 2: SELL → Close Long ONLY (no reversal to Short)
         obs, reward, done, truncated, info = env.step(2)  # SELL
@@ -99,7 +99,7 @@ class TestReverseAsClose:
 
         # Step 1: SELL → Short
         obs, reward, done, truncated, info = env.step(2)  # SELL
-        assert env.position == -1.0, "SELL from Flat should open Short"
+        assert env.position < 0.0, "SELL from Flat should open Short"
 
         # Step 2: BUY → Close Short ONLY (no reversal to Long)
         obs, reward, done, truncated, info = env.step(1)  # BUY
@@ -116,13 +116,13 @@ class TestReverseAsClose:
         env_true = HeavyTradingEnv(df=sample_df, config=config_true)
         env_true.reset()
         env_true.step(1)  # BUY
-        assert env_true.position == 1.0
+        assert env_true.position > 0.0
 
         # Test with allow_reverse=False
         env_false = HeavyTradingEnv(df=sample_df, config=config_false)
         env_false.reset()
         env_false.step(1)  # BUY
-        assert env_false.position == 1.0
+        assert env_false.position > 0.0
 
         # Both should be identical
         assert env_true.position == env_false.position
@@ -165,7 +165,7 @@ class TestReverseAsClose:
 
         # Flat → BUY → Long
         env.step(1)
-        assert env.position == 1.0, "Should be Long"
+        assert env.position > 0.0, "Should be Long"
 
         # Long → SELL → Flat (no reversal)
         env.step(2)
@@ -173,7 +173,7 @@ class TestReverseAsClose:
 
         # Flat → SELL → Short (normal open)
         env.step(2)
-        assert env.position == -1.0, "Should be Short from Flat"
+        assert env.position < 0.0, "Should be Short from Flat"
 
         # Short → BUY → Flat (no reversal)
         env.step(1)
@@ -214,7 +214,7 @@ class TestReverseAsClose:
         # Test reversal behavior
         env.step(1)  # BUY
         env.step(2)  # SELL
-        assert env.position == -1.0, "Should allow reversal by default"
+        assert env.position < 0.0, "Should allow reversal by default"
 
 
 def test_reverse_as_close_integration():

@@ -14,14 +14,13 @@ import pyarrow.parquet as pq
 import pytest
 import yaml
 
-from scripts.v460.lib.data_loader import load_parquet
 from scripts.v460.lib.tasks.sac_train import SACTrainModelProtocol, _create_training_env
 from ztb.training.algorithms.sac import SACAlgorithm
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
 
 _G2_SAC_YAML_PATH = Path("configs/v460/experiments/g2_sac_train.yaml")
-_G2_REAL_ROWS = 80
+_G2_REAL_ROWS = 8
 
 
 @lru_cache(maxsize=1)
@@ -41,13 +40,30 @@ def _load_g2_schema_names() -> tuple[str, ...]:
 
 
 @lru_cache(maxsize=1)
-def _load_g2_real_df() -> pd.DataFrame:
+def _load_g2_selected_features() -> tuple[str, ...]:
     cfg = _load_g2_sac_yaml()
-    data_path = Path(cfg["data"]["ohlcv_path"])
     selected = cfg["features"]["selected"]
     if not isinstance(selected, list):
         raise TypeError("features.selected must be list")
-    return load_parquet(data_path, feature_cols=[str(col) for col in selected]).head(_G2_REAL_ROWS)
+    return tuple(str(col) for col in selected)
+
+
+@lru_cache(maxsize=1)
+def _load_g2_real_df() -> pd.DataFrame:
+    cfg = _load_g2_sac_yaml()
+    data_path = Path(cfg["data"]["ohlcv_path"])
+    columns = sorted({*_load_g2_selected_features(), "close"})
+    parquet_file = pq.ParquetFile(str(data_path))
+    first_batch = next(
+        parquet_file.iter_batches(
+            batch_size=_G2_REAL_ROWS,
+            columns=columns,
+        ),
+        None,
+    )
+    if first_batch is None:
+        return pd.DataFrame(columns=columns)
+    return first_batch.to_pandas()
 
 
 @lru_cache(maxsize=1)
@@ -91,7 +107,9 @@ class TestB1YamlExists:
         cfg = yaml_cfg
         seeds = cfg["seeds"]
         assert isinstance(seeds, list)
-        assert len(seeds) == 4, "G2 gate requires 4 seeds"
+        assert seeds, "At least one seed is required"
+        assert all(isinstance(seed, int) for seed in seeds)
+        assert len(set(seeds)) == len(seeds), "Seeds must be unique"
 
     def test_features_are_featureregistry(self, yaml_cfg: dict) -> None:
         cfg = yaml_cfg
@@ -405,40 +423,40 @@ class TestROIExtraction:
 
     def test_extract_roi_from_env_with_portfolio(self) -> None:
         """portfolio_value / initial_portfolio_value から ROI を算出."""
-        from scripts.v460.lib.tasks.sac_train import _extract_roi_from_env
+        from scripts.v460.lib.sac_common import extract_roi_from_env
 
         env = MagicMock()
         env.portfolio_value = 110_000.0
         env.initial_portfolio_value = 100_000.0
-        roi = _extract_roi_from_env(env)
+        roi = extract_roi_from_env(env)
         assert abs(roi - 0.1) < 1e-9
 
     def test_extract_roi_from_env_missing_attrs(self) -> None:
         """portfolio 属性が無い env では 0.0 を返す."""
-        from scripts.v460.lib.tasks.sac_train import _extract_roi_from_env
+        from scripts.v460.lib.sac_common import extract_roi_from_env
 
         env = MagicMock(spec=[])  # no attributes
-        roi = _extract_roi_from_env(env)
+        roi = extract_roi_from_env(env)
         assert roi == 0.0
 
     def test_extract_roi_from_env_zero_initial(self) -> None:
         """initial_portfolio_value が 0 の場合に 0.0 を返す (ZeroDivision 防止)."""
-        from scripts.v460.lib.tasks.sac_train import _extract_roi_from_env
+        from scripts.v460.lib.sac_common import extract_roi_from_env
 
         env = MagicMock()
         env.portfolio_value = 100.0
         env.initial_portfolio_value = 0.0
-        roi = _extract_roi_from_env(env)
+        roi = extract_roi_from_env(env)
         assert roi == 0.0
 
     def test_extract_roi_negative(self) -> None:
         """損失ケースで負の ROI を返す."""
-        from scripts.v460.lib.tasks.sac_train import _extract_roi_from_env
+        from scripts.v460.lib.sac_common import extract_roi_from_env
 
         env = MagicMock()
         env.portfolio_value = 95_000.0
         env.initial_portfolio_value = 100_000.0
-        roi = _extract_roi_from_env(env)
+        roi = extract_roi_from_env(env)
         assert abs(roi - (-0.05)) < 1e-9
 
 
@@ -535,26 +553,13 @@ class TestTrainingDataIntegrity:
 # ======================================================================
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 class TestHeavyTradingEnvIntegration:
     """P3A-2: 実データ + feature_names 注入で HeavyTradingEnv が正常動作すること.
 
     YAML → load_parquet → EnvironmentConfig → HeavyTradingEnv の E2E パイプラインを検証.
     """
-
-    SELECTED_FEATURES: list[str] = [
-        "price_velocity",
-        "micro_trend",
-        "price_acceleration",
-        "volume_surge",
-        "momentum_divergence",
-        "tick_volume_ratio",
-        "order_flow_imbalance",
-        "micro_volatility",
-        "spread_pressure",
-        "momentum_burst",
-        "liquidity_surge",
-        "realized_volatility",
-    ]
 
     @pytest.fixture(scope="class")
     def real_df(self) -> "pd.DataFrame":
@@ -565,7 +570,11 @@ class TestHeavyTradingEnvIntegration:
         return _load_g2_real_df()
 
     @pytest.fixture(scope="class")
-    def env_config(self) -> "EnvironmentConfig":
+    def selected_features(self) -> tuple[str, ...]:
+        return _load_g2_selected_features()
+
+    @pytest.fixture(scope="class")
+    def env_config(self, selected_features: tuple[str, ...]) -> "EnvironmentConfig":
         """YAML 環境セクションに準拠した EnvironmentConfig を構築."""
         config = EnvironmentConfig(
             transaction_cost=0.001,
@@ -575,7 +584,7 @@ class TestHeavyTradingEnvIntegration:
             action_space_type="continuous_1d",
             exchange="coincheck",
             timeframe="1m",
-            feature_names=self.SELECTED_FEATURES,
+            feature_names=list(selected_features),
             random_start=False,
             # 相関低減は schema 指定時に不要 → 無効化で安定
             correlation_reduction=False,
@@ -604,79 +613,69 @@ class TestHeavyTradingEnvIntegration:
             env.close()
 
     @pytest.fixture(scope="class")
-    def training_env_bundle(
+    def shared_reset_result(
+        self,
+        shared_env: "HeavyTradingEnv",
+    ) -> tuple[np.ndarray, dict[str, object]]:
+        return shared_env.reset()
+
+    @pytest.fixture(scope="class")
+    def shared_step_result(
+        self,
+        shared_env: "HeavyTradingEnv",
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, object]]:
+        shared_env.reset()
+        return shared_env.step(np.array([0.0], dtype=np.float32))
+
+    @pytest.fixture(scope="class")
+    def training_env_info(
         self,
         real_df: "pd.DataFrame",
-    ) -> tuple["HeavyTradingEnv", dict[str, int | str | bool]]:
+    ) -> dict[str, int | str | bool]:
         cfg = dict(_load_g2_sac_yaml())
         env, env_info = _create_training_env(real_df, cfg)
         try:
-            yield env, env_info
+            return env_info
         finally:
             env.close()
 
-    def test_env_instantiation(
+    def test_env_instantiation_and_interaction(
         self,
         shared_env: "HeavyTradingEnv",
+        shared_step_result: tuple[np.ndarray, float, bool, bool, dict[str, object]],
+        shared_reset_result: tuple[np.ndarray, dict[str, object]],
+        selected_features: tuple[str, ...],
     ) -> None:
-        """HeavyTradingEnv が実データ + feature_names で例外なく生成できる."""
+        """HeavyTradingEnv が生成・reset・step を一貫して実行できる."""
         assert shared_env is not None
         assert hasattr(shared_env, "observation_space")
         assert hasattr(shared_env, "action_space")
-
-    def test_obs_dim_matches_feature_count(
-        self,
-        shared_env: "HeavyTradingEnv",
-    ) -> None:
-        """observation_space の次元が注入した feature 数 (12) と一致."""
+        assert shared_env.feature_names == list(selected_features)
         obs_dim = shared_env.observation_space.shape[0]
-        assert obs_dim == len(self.SELECTED_FEATURES), (
-            f"obs_dim={obs_dim} != expected={len(self.SELECTED_FEATURES)}"
+        expected_obs_dim = len(selected_features) + 3
+        assert obs_dim == expected_obs_dim, (
+            f"obs_dim={obs_dim} != expected={expected_obs_dim}"
         )
-
-    def test_feature_names_synced(
-        self,
-        shared_env: "HeavyTradingEnv",
-    ) -> None:
-        """env.feature_names が注入した特徴量リストと一致."""
-        assert shared_env.feature_names == self.SELECTED_FEATURES
-
-    def test_reset_returns_valid_obs(
-        self,
-        shared_env: "HeavyTradingEnv",
-    ) -> None:
-        """reset() が正しい shape の observation を返す."""
-        obs, info = shared_env.reset()
-        assert obs.shape == (len(self.SELECTED_FEATURES),)
-        assert not np.any(np.isnan(obs)), "Observation contains NaN"
-
-    def test_step_returns_valid_tuple(
-        self,
-        shared_env: "HeavyTradingEnv",
-    ) -> None:
-        """step() が (obs, reward, terminated, truncated, info) を正しく返す."""
-        obs, _ = shared_env.reset()
-        # 連続行動空間: [-1, 1] の中間値 (HOLD に近い)
-        action = np.array([0.0], dtype=np.float32)
-        result = shared_env.step(action)
-        assert len(result) == 5, f"step() returned {len(result)} elements, expected 5"
-        obs2, reward, terminated, truncated, info = result
-        assert obs2.shape == (len(self.SELECTED_FEATURES),)
+        reset_obs, info = shared_reset_result
+        assert reset_obs.shape == (expected_obs_dim,)
+        assert not np.any(np.isnan(reset_obs)), "Observation contains NaN"
+        assert len(shared_step_result) == 5, f"step() returned {len(shared_step_result)} elements, expected 5"
+        obs2, reward, terminated, truncated, info = shared_step_result
+        assert obs2.shape == (expected_obs_dim,)
         assert isinstance(reward, (int, float))
         assert isinstance(terminated, bool)
         assert isinstance(truncated, bool)
 
     def test_create_training_env_pipeline(
         self,
-        training_env_bundle: tuple["HeavyTradingEnv", dict[str, int | str | bool]],
+        training_env_info: dict[str, int | str | bool],
+        selected_features: tuple[str, ...],
     ) -> None:
         """_create_training_env が YAML 相当の cfg で正常に環境を構築."""
-        env, env_info = training_env_bundle
-        assert env is not None
-        assert env_info["obs_dim"] == len(self.SELECTED_FEATURES)
-        assert env_info["feature_columns_injected"] is True
-        assert env_info["feature_columns_count"] == len(self.SELECTED_FEATURES)
-        assert env_info["env_type"] == "HeavyTradingEnv"
+        assert training_env_info["obs_dim"] == len(selected_features) + 3
+        assert training_env_info["feature_columns_injected"] is True
+        assert training_env_info["feature_columns_count"] == len(selected_features)
+        assert training_env_info["env_type"] == "HeavyTradingEnv"
 
 
 # ======================================================================

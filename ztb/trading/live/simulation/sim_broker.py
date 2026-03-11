@@ -17,7 +17,7 @@ from ztb.trading.live.exchanges.base.broker_interfaces import (
     Order,
     Position,
 )
-from ztb.trading.live.orders.state import OrderStateMachine
+from ztb.trading.live.order_state import OrderData, OrderStateMachine
 
 class SimBroker(IBroker):  # type: ignore[misc]
     """Simulated broker for paper trading."""
@@ -156,8 +156,6 @@ class SimBroker(IBroker):  # type: ignore[misc]
         self.orders[order_id] = order
 
         # Register with state machine
-        from ztb.trading.live.orders.state import OrderData
-
         order_data = OrderData(
             order_id=order_id,
             client_order_id=client_order_id,

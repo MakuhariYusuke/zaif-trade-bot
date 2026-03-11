@@ -110,19 +110,19 @@ class TestPnLInvariants:
         env.reset()
 
         initial_value = env.portfolio_value
-        position_size = env.config.max_position_size
 
         # BUY at 100
         env.step(ACTION_BUY)
-        price_buy = env.df.iloc[env.current_step]["close"]
+        position_size = env.position
+        price_buy = env.entry_price
 
         # Advance 10 steps (price rises to 105)
         for _ in range(10):
             env.step(ACTION_HOLD)
 
         # SELL at 105
-        env.step(ACTION_SELL)
         price_sell = env.df.iloc[env.current_step]["close"]
+        env.step(ACTION_SELL)
 
         # INVARIANT: Realized PnL = (sell_price - buy_price) * position_size
         expected_pnl = (price_sell - price_buy) * position_size

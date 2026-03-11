@@ -26,6 +26,7 @@ class ObservationBuilder:
         scaler_mean: NDArray[np.float32] | None = None,
         scaler_std: NDArray[np.float32] | None = None,
         optimizer_tracker: OptimizerFeatureTracker | None = None,
+        env_tracker: Any | None = None,  # Type Any to avoid circular import, expected EnvInternalTracker
     ):
         super().__init__()
         self.features = features
@@ -35,6 +36,7 @@ class ObservationBuilder:
         self.scaler_mean = scaler_mean
         self.scaler_std = scaler_std
         self.optimizer_tracker = optimizer_tracker
+        self.env_tracker = env_tracker
 
     def get_observation(
         self,
@@ -73,6 +75,14 @@ class ObservationBuilder:
                     list(optimizer_features.values()), dtype=np.float32
                 )
                 obs = np.concatenate([obs, optimizer_values])
+
+            # Add env internal features if tracker is available
+            if getattr(self, "env_tracker", None) is not None:
+                env_features = self.env_tracker.get_feature_vector()
+                env_values = np.array(
+                    list(env_features.values()), dtype=np.float32
+                )
+                obs = np.concatenate([obs, env_values])
 
             # Diagnostic: log observation shape and optimizer tracker state (every 100 steps)
             try:
@@ -113,6 +123,14 @@ class ObservationBuilder:
                 list(optimizer_features.values()), dtype=np.float32
             )
             obs = np.concatenate([obs, optimizer_values])
+
+        # Add env internal features if tracker is available
+        if getattr(self, "env_tracker", None) is not None:
+            env_features = self.env_tracker.get_feature_vector()
+            env_values = np.array(
+                list(env_features.values()), dtype=np.float32
+            )
+            obs = np.concatenate([obs, env_values])
 
         # Diagnostic: log observation shape and optimizer tracker state for fallback path
         try:

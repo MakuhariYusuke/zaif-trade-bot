@@ -22,6 +22,9 @@ from ztb.training.unified_trainer.algorithms import (
 )
 
 
+_HAS_TRANSFORMER_ENCODER = hasattr(torch.nn, "TransformerEncoderLayer")
+
+
 class TestCreateAlgorithmTrainer:
     """Test the create_algorithm_trainer factory function"""
 
@@ -144,11 +147,17 @@ class TestSelfSupervisedTrainer:
         assert trainer.val_data.shape == (5, 75, 156)
 
     @patch("pandas.read_csv")
-    def test_load_data_from_csv(self, mock_read_csv, basic_config, sample_data):
+    @patch(
+        "ztb.training.unified_trainer.algorithms.self_supervised_trainer.DataLoader.load_csv_strict"
+    )
+    def test_load_data_from_csv(
+        self, mock_load_csv, mock_read_csv, basic_config, sample_data
+    ):
         """Test loading data from CSV files"""
         # Mock CSV data
         mock_df = pd.DataFrame(sample_data[0].numpy())  # First sample
         mock_read_csv.return_value = mock_df
+        mock_load_csv.return_value = mock_df
 
         config = basic_config.copy()
         config["train_data_path"] = "train.csv"
@@ -281,6 +290,10 @@ class TestSelfSupervisedTrainerIntegration:
         with tempfile.TemporaryDirectory() as tmpdir:
             yield tmpdir
 
+    @pytest.mark.skipif(
+        not _HAS_TRANSFORMER_ENCODER,
+        reason="Self-supervised integration requires full torch.nn transformer support.",
+    )
     def test_full_training_pipeline(self, temp_dir):
         """Test the complete training pipeline"""
         config = {
@@ -311,6 +324,10 @@ class TestSelfSupervisedTrainerIntegration:
         checkpoint_files = os.listdir(config["checkpoint_dir"])
         assert len(checkpoint_files) > 0
 
+    @pytest.mark.skipif(
+        not _HAS_TRANSFORMER_ENCODER,
+        reason="Self-supervised integration requires full torch.nn transformer support.",
+    )
     def test_training_stats_after_training(self, temp_dir):
         """Test training statistics after successful training"""
         config = {

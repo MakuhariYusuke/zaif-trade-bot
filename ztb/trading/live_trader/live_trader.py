@@ -47,10 +47,21 @@ from ztb.trading.environment.constants import (
 )
 from ztb.trading.live.action_mask_provider import ActionMaskConfig, ActionMaskProvider
 from ztb.trading.live.registry.broker_registry import get_broker_registry
+from ztb.trading.live_trader.action_prediction import ActionPrediction
+from ztb.trading.live_trader.feature_computation import FeatureComputation
+from ztb.trading.live_trader.health_monitoring import HealthMonitoring
 from ztb.trading.live_trader.components.order_manager import OrderManager
-from ztb.trading.live_trader.config import LiveTraderConfig, LiveTradingOptions
+from ztb.trading.live_trader.components.risk_manager import RiskManager
+from ztb.trading.live_trader.config import (
+    LiveTraderConfig,
+    LiveTradingOptions,
+    prometheus_available,
+)
+from ztb.trading.live_trader.model_loading import ModelLoading
 from ztb.trading.live_trader.price_utils import resolve_current_price
+from ztb.trading.live_trader.trading_loop import TradingLoop
 from ztb.trading.risk.compat import ensure_risk_manager_protocol
+from ztb.utils.circuit_breaker import CircuitBreaker, CircuitBreakerConfig
 from ztb.utils.logging_utils import create_structured_logger, get_logger
 from ztb.utils.safety import safe_divide, safe_get_nested_value, safe_to_int
 
@@ -164,10 +175,24 @@ class LiveTrader:
         dry_run: bool = False,
     ) -> None:
         logger = get_logger(__name__)
+        self.logger = logger
         self.structured_logger = create_structured_logger(__name__, json_format=False)
         self.structured_logger.set_context(component="LiveTrader", instance_id=id(self))
         logger.info("LiveTrader.__init__ started")
         print("LiveTrader.__init__ started")
+
+        if isinstance(model_path, LiveTradingOptions):
+            options = model_path
+            self.model_path = Path(options.model_path).expanduser()
+        else:
+            self.model_path = Path(model_path).expanduser()
+            options = LiveTradingOptions(
+                model_path=self.model_path,
+                algorithm="sac" if "sac" in str(self.model_path).lower() else "ppo",
+                venue="coincheck",
+                disable_risk_limits=disable_risk_limits,
+                dry_run=dry_run,
+            )
 
         # Quick dry-run initialization
         if dry_run:
@@ -175,18 +200,6 @@ class LiveTrader:
                 "Dry-run mode: using simplified initialization with live components"
             )
             self.dry_run = True
-            if isinstance(model_path, LiveTradingOptions):
-                options = model_path
-                self.model_path = Path(options.model_path).expanduser()
-            else:
-                self.model_path = Path(model_path).expanduser()
-                options = LiveTradingOptions(
-                    model_path=self.model_path,
-                    algorithm="sac" if "sac" in str(self.model_path).lower() else "ppo",
-                    venue="coincheck",
-                    disable_risk_limits=disable_risk_limits,
-                    dry_run=dry_run,
-                )
             self.options = options
             self.trader_config = LiveTraderConfig()  # 212# §7.1
             self.disable_risk_limits = options.disable_risk_limits
@@ -387,18 +400,17 @@ class LiveTrader:
                 logger.warning(
                     "set environment variables or create .env file with API credentials for live trading"
                 )
-            # If API credentials are provided and not in dry-run, require explicit allow_production
-            if not self.demo_mode:
-                allow_production_flag = getattr(self.options, "allow_production", False)
-                env_allow = os.getenv("ZTB_ALLOW_PRODUCTION", "false").lower() in (
-                    "1",
-                    "true",
-                    "yes",
+        else:
+            allow_production_flag = getattr(self.options, "allow_production", False)
+            env_allow = os.getenv("ZTB_ALLOW_PRODUCTION", "false").lower() in (
+                "1",
+                "true",
+                "yes",
+            )
+            if not (allow_production_flag or env_allow):
+                raise TradingError(
+                    "Production trading is disabled by default. set --allow-production or ZTB_ALLOW_PRODUCTION=1 to enable live trading."
                 )
-                if not (allow_production_flag or env_allow):
-                    raise TradingError(
-                        "Production trading is disabled by default. set --allow-production or ZTB_ALLOW_PRODUCTION=1 to enable live trading."
-                    )
 
         try:
             broker_registry = get_broker_registry()
@@ -418,7 +430,7 @@ class LiveTrader:
         self.algorithm = "ppo"  # Default, will be updated by model_loading
         self.ACTION_NAMES = ACTION_NAMES
         self.model_loading = ModelLoading(self)
-        self.model = self._load_model()
+        self.model = self.model_loading.load_model()
 
         # Initialize PositionManager (Bug #25, #26 fix) - moved after model loading
         logger.info(f"PositionManager available: {position_manager_available}")
@@ -512,12 +524,8 @@ class LiveTrader:
         self.api_circuit_breaker = CircuitBreaker("coincheck_api", circuit_config)
 
         # Initialize extracted components
-        self.model_manager = ModelManager(self.logger)
-        self.feature_computer = FeatureComputer(self.logger)
-        self.trading_loop_manager = TradingLoopManager(self.logger)
-
-        # Initialize model using ModelManager
-        self.model_manager.initialize_model(self.model_path, self.options)
+        self.model_manager = ModelManager()
+        self.trading_loop_manager = TradingLoopManager()
 
         # Memory optimization: Periodic cleanup counter
         self._cleanup_counter = 0
@@ -531,6 +539,11 @@ class LiveTrader:
         self.risk_manager = ensure_risk_manager_protocol(RiskManager(self))
         self.order_manager = OrderManager(self)
         # self.model_loading = ModelLoading(self)  # Already initialized above
+
+        # Keep the auxiliary manager in sync without re-loading the model.
+        self.model_manager.model = self.model
+        self.model_manager.model_path = str(self.model_path)
+        self.model_manager.algorithm = self.algorithm
 
         # Send startup notification (with schema info if available)
         feature_info = "68 technical indicators (default)"
@@ -567,10 +580,7 @@ class LiveTrader:
 
     def run_trading_loop(self, duration_hours: float) -> None:
         """Run the main trading loop for live trading."""
-        # Delegate to TradingLoopManager
-        self.trading_loop_manager.run_trading_loop(
-            duration_hours=duration_hours, live_trader=self
-        )
+        self.trading_loop.run_trading_loop(duration_hours)
 
         start_time = datetime.now()
         end_time = start_time + timedelta(hours=duration_hours)
@@ -745,10 +755,26 @@ class LiveTrader:
         self._last_valid_price = updated_last_valid_price
         return price
 
+    async def _get_current_price_async(self) -> float:
+        """Compatibility async wrapper for synchronous price fetching."""
+        return self._get_current_price()
+
+    def _get_current_price_sync(self) -> float:
+        """Compatibility wrapper used by older tests and callers."""
+        try:
+            return asyncio.run(self._get_current_price_async())
+        except Exception:
+            last_valid_price = float(getattr(self, "_last_valid_price", 0.0))
+            if last_valid_price > 0:
+                return last_valid_price
+            config = getattr(self, "config", {}) or {}
+            if isinstance(config, dict):
+                return float(config.get("fallback_price", 5000000.0))
+            return 5000000.0
+
     def _compute_features(self) -> NDArray[np.float32]:
         """Compute features for model prediction using full feature engine when available."""
-        # Delegate to FeatureComputer
-        return self.feature_computer.compute_features(live_trader=self)
+        return self.feature_computation.compute_features()
 
     def _compute_rsi(self, prices: list[float]) -> float:
         """Compute RSI indicator."""

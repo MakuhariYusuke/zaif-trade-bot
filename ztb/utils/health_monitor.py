@@ -20,6 +20,8 @@ from ztb.utils.memory_monitor import BackgroundMemoryMonitor
 
 logger = logging.getLogger(__name__)
 
+CPU_SAMPLE_INTERVAL_SECONDS = 0.0
+
 class HealthStatus(Enum):
     """Health status levels."""
 
@@ -166,25 +168,27 @@ class HealthChecker:
         Returns:
             Overall health status
         """
-        results = self.run_all_checks()
+        return self._calculate_overall_health(self.run_all_checks())
 
+    @staticmethod
+    def _calculate_overall_health(
+        results: dict[str, HealthCheckResult],
+    ) -> HealthStatus:
+        """Derive overall health from an already-computed result set."""
         if not results:
             return HealthStatus.UNKNOWN
 
-        # Count statuses
         status_counts = {}
         for result in results.values():
             status_counts[result.status] = status_counts.get(result.status, 0) + 1
 
-        # Determine overall status
         if status_counts.get(HealthStatus.UNHEALTHY, 0) > 0:
             return HealthStatus.UNHEALTHY
-        elif status_counts.get(HealthStatus.DEGRADED, 0) > 0:
+        if status_counts.get(HealthStatus.DEGRADED, 0) > 0:
             return HealthStatus.DEGRADED
-        elif status_counts.get(HealthStatus.HEALTHY, 0) == len(results):
+        if status_counts.get(HealthStatus.HEALTHY, 0) == len(results):
             return HealthStatus.HEALTHY
-        else:
-            return HealthStatus.UNKNOWN
+        return HealthStatus.UNKNOWN
 
     def collect_system_metrics(self) -> SystemMetrics:
         """
@@ -194,7 +198,7 @@ class HealthChecker:
             System metrics
         """
         try:
-            cpu_percent = psutil.cpu_percent(interval=1)
+            cpu_percent = psutil.cpu_percent(interval=CPU_SAMPLE_INTERVAL_SECONDS)
             memory = psutil.virtual_memory()
             disk = psutil.disk_usage("/")
             network = len(psutil.net_connections())
@@ -287,11 +291,9 @@ class HealthChecker:
 
         # Placeholder - in real implementation, this would test actual DB connection
         try:
-            # Simulate database check
-            time.sleep(0.1)  # Simulate network latency
             status = HealthStatus.HEALTHY
             message = "Database connection healthy"
-            details = {"connection_time_ms": 100}
+            details = {"connection_time_ms": 0}
         except Exception as e:
             status = HealthStatus.UNHEALTHY
             message = f"Database connection failed: {str(e)}"
@@ -317,12 +319,10 @@ class HealthChecker:
 
         # Placeholder - in real implementation, this would test actual API endpoints
         try:
-            # Simulate API check
-            time.sleep(0.05)  # Simulate network latency
             status = HealthStatus.HEALTHY
             message = "External APIs responding normally"
             details = {
-                "response_time_ms": 50,
+                "response_time_ms": 0,
                 "apis_checked": ["exchange_api", "market_data_api"],
             }
         except Exception as e:
@@ -417,8 +417,8 @@ class HealthChecker:
             Health summary dictionary
         """
         results = self.run_all_checks()
-        overall_status = self.get_overall_health()
-        metrics = self.collect_system_metrics()
+        overall_status = self._calculate_overall_health(results)
+        metrics = self.last_metrics or self.collect_system_metrics()
         memory_stats = self.memory_monitor.get_memory_stats()
 
         return {

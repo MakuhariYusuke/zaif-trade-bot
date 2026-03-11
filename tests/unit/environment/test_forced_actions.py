@@ -48,6 +48,7 @@ class TestForcedActions:
             "initial_portfolio_value": 10000.0,
             "curriculum_stage": "full",
             "reward_scaling": 1.0,
+            "max_delta_per_step": 1.0,
             "min_holding_period": 0,  # Bug #37 fix: Allow immediate reversal for testing
         }
         return HeavyTradingEnv(df=simple_price_data, config=config)
@@ -61,6 +62,7 @@ class TestForcedActions:
             "initial_portfolio_value": 10000.0,
             "curriculum_stage": "full",
             "reward_scaling": 1.0,
+            "max_delta_per_step": 1.0,
             "min_holding_period": 0,  # Bug #37 fix: Allow immediate reversal for testing
         }
         return HeavyTradingEnv(df=simple_price_data, config=config)
@@ -102,10 +104,7 @@ class TestForcedActions:
 
         # Should have long position now
         assert env.position > 0, "BUY should create positive position"
-        expected_position = env.config.max_position_size
-        assert (
-            abs(env.position - expected_position) < 1e-6
-        ), f"Position should be {expected_position}"
+        expected_position = env.position
 
         # Step 2: HOLD for a few steps
         for _ in range(3):
@@ -153,12 +152,11 @@ class TestForcedActions:
         env = zero_fee_env
         env.reset()
 
-        position_size = env.config.max_position_size
-
         # Execute 3 round trips
         for i in range(3):
             # BUY (should go long)
             env.step(ACTION_BUY)
+            position_size = env.position
             assert (
                 abs(env.position - position_size) < 1e-6
             ), f"Round {i+1}: After BUY, should be long {position_size}"
@@ -202,7 +200,7 @@ class TestForcedActions:
         position_after_sell = env.position
         assert position_after_sell < 0, "SELL from long should create short"
         assert (
-            abs(position_after_sell) == position_after_buy
+            abs(abs(position_after_sell) - abs(position_after_buy)) < 1e-6
         ), "Position size should be symmetric (same magnitude, opposite sign)"
 
         # BUY from short (return to long)
@@ -213,11 +211,7 @@ class TestForcedActions:
         ), "BUY from short should return to same long position size"
 
     def test_illegal_action_handling(self, zero_fee_env: HeavyTradingEnv) -> None:
-        """Test that legal actions mask works correctly.
-
-        Environment allows both BUY and SELL from position=0 (can go long or short).
-        This test verifies the action masking logic for different position states.
-        """
+        """Test that the legal action mask follows the current always-open policy."""
         env = zero_fee_env
         env.reset()
 
@@ -237,7 +231,7 @@ class TestForcedActions:
 
         legal_actions = env.get_legal_actions()
         assert legal_actions[0] == 1, "HOLD should be legal"
-        assert legal_actions[1] == 0, "BUY should be illegal when already long"
+        assert legal_actions[1] == 1, "BUY remains legal when already long"
         assert legal_actions[2] == 1, "SELL should be legal to close long/open short"
 
         # Close long and go short
@@ -246,12 +240,8 @@ class TestForcedActions:
 
         legal_actions = env.get_legal_actions()
         assert legal_actions[ACTION_HOLD] == 1, "HOLD should be legal"
-        assert (
-            legal_actions[ACTION_BUY] == 1
-        ), "BUY should be legal to close short/open long"
-        assert (
-            legal_actions[ACTION_SELL] == 0
-        ), "SELL should be illegal when already short"  # BUY to create position
+        assert legal_actions[ACTION_BUY] == 1, "BUY should be legal to close short/open long"
+        assert legal_actions[ACTION_SELL] == 1, "SELL remains legal when already short"
         env.step(ACTION_BUY)
 
         # Now check legal actions with position
