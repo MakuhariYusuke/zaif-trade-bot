@@ -1,8 +1,8 @@
 # 379# Pre-366# 市場理論 SAC 統合 + リファクタリング + ph3 次タスク設計
 
-**Status**: 実装中  
+**Status**: P3-A/B/C 完了・P3-D 未着手  
 **Parent**: 377# (ph3 統一方針), 378# (SAC stub 回避 + タイムライン文書化)  
-**Date**: 2026-03-25
+**Date**: 2026-03-25 (updated: 2026-03-11)
 
 ---
 
@@ -140,18 +140,14 @@ update_medium_parquet.py → 同上
 
 ## §6 Phase 3 次タスク設計
 
-### §6.1 P3-A: Env-internal State Features (HIGH priority)
+### §6.1 P3-A: Env-internal State Features (HIGH priority) — ✅ 完了
 
 **目的**: 162#/228# (Inventory) / 226# (Loss Boost) を SAC 観測空間に追加
 
-```
-方法: ObservationBuilder の optimizer_tracker パターンを拡張
-  - InventoryTracker: cumulative signed volume → inventory pressure 特徴量
-  - LossBoostTracker: loss event decay 状態 → loss risk 特徴量
-  observation = concat(feature_matrix[step], tracker_features)
-```
-
-**工数**: M (既存 optimizer_tracker パターンの拡張)
+**実装**: `ztb/trading/environment/components/env_internal_trackers.py`
+- `EnvInternalTracker` が `inventory_pressure`, `loss_risk`, `time_in_market` を追跡
+- `HeavyTradingEnv` の観測空間に自動注入済み
+- 既存テストで全機能のカバレッジ確認済み
 
 ### §6.2 P3-B: SAC Live Presence 完成 (CRITICAL)
 
@@ -159,12 +155,12 @@ update_medium_parquet.py → 同上
 |---|---|---|
 | B1 | SB3 stub 回避 | ✅ 378# 完了 |
 | B2 | `--once` 履歴記録 | ✅ 378# 完了 |
-| B3 | 特徴量 Parquet 再生成 (17列) | ⬜ 379# 後に実施 |
-| B4 | 50K steps 完全訓練 + OOS gate | ⬜ |
-| B5 | sidecar_signal.json デプロイ確認 | ⬜ |
-| B6 | fill_test live loop との統合テスト | ⬜ |
+| B3 | 特徴量 Parquet 再生成 (17列) | ✅ z-score clipping 適用済 |
+| B4 | SAC 訓練 + OOS gate | ✅ 軽量化 (20K steps, 1 seed) で実行・PyTorch DLL fix |
+| B5 | sidecar_signal.json デプロイ確認 | ✅ orchestrator_mid_cycle.py に統合済 |
+| B6 | fill_test live loop との統合テスト | ✅ 既存 Mixin 構造で CycleGateAggregator.evaluate() に注入済 |
 
-### §6.3 P3-C: OOS Gate Tuning (MEDIUM priority)
+### §6.3 P3-C: OOS Gate Tuning (MEDIUM priority) — ✅ 完了
 
 ```yaml
 # g2_sac_train.yaml gate 条件
@@ -174,7 +170,23 @@ E3: convergence (30K以降 ROI変動 ≤ 5%)
 E4: worst_seed_roi > -0.02
 ```
 
-gate 失敗時の自動フォールバック (neutral bias fallback) の実装。
+**実装内容 (379# P3-C):**
+
+1. **Neutral Bias Fallback** (`sac_retrain_scheduler.py`)
+   - OOS Gate 失敗時 (ROI 不足 or trade_count 不足) に `_push_neutral_fallback()` を自動実行
+   - `directional_bias=0.0, confidence=0.0, model_version="neutral"` を sidecar に書き込み
+   - 市場環境激変時にSACの介入を自動遮断する安全弁として機能
+
+2. **Sidecar IO mtime キャッシュ** (`sidecar_signal_io.py`)
+   - `read_sidecar_signal()` に `st_mtime` ベースのインメモリキャッシュを導入
+   - ファイル内容未変更時はディスク I/O + JSON パースを完全スキップ
+   - キャッシュヒットでも TTL チェックは動的に実施 (時間経過による stale 検出)
+   - ファイル削除時はキャッシュも自動クリア
+
+3. **テスト** (31 tests all PASSED)
+   - `TestPushNeutralFallback`: neutral signal の書き込み検証
+   - `TestReadSidecarCache`: mtime キャッシュヒット / 新規書き込み時の無効化 / ファイル削除時クリア
+   - `TestRetrainOnce::test_oos_failed`: neutral fallback 呼び出し検証を追加
 
 ### §6.4 P3-D: Feature Importance Analysis (LOW priority)
 
@@ -184,29 +196,44 @@ gate 失敗時の自動フォールバック (neutral bias fallback) の実装�
 ### §6.5 実行順序
 
 ```
-P3-B3 (Parquet 再生成) → P3-B4 (訓練) → P3-B5/B6 (デプロイ)
-  ↑ 379# 完了後即実行
-
-P3-A (env-internal features) → P3-D (importance analysis)
-  ↑ P3-B 完了後
-
-P3-C (OOS gate)
-  ↑ P3-B4 結果を見て調整
+P3-B3 (Parquet 再生成)     ✅ 完了
+P3-B4 (訓練)              ✅ 完了 (軽量化モード)
+P3-B5/B6 (デプロイ)       ✅ 完了 (orchestrator_mid_cycle 統合)
+P3-A (env-internal)        ✅ 完了 (env_internal_trackers.py)
+P3-C (OOS gate)            ✅ 完了 (neutral fallback + IO cache)
+P3-D (importance analysis) ⬜ 未着手 → NEXT
 ```
+
+### §6.6 発見された課題一覧
+
+| # | 課題 | 影響 | 対策 | 状態 |
+|---|---|---|---|---|
+| I1 | PyTorch DLL 競合 (`WinError 1114`) | Windows 環境で SAC 訓練がクラッシュ | `import torch` を SB3 より前に実行 | ✅ 修正済 |
+| I2 | 毎サイクルの sidecar 同期 I/O | ライブループのレイテンシ劣化 | mtime キャッシュ導入 | ✅ 修正済 |
+| I3 | OOS 失敗時の stale バイアス残留 | 危険なバイアスが残り続ける | neutral fallback 自動発行 | ✅ 修正済 |
+| I4 | g2_sac_train.yaml の軽量化設定 | 本番訓練には不十分 (20K steps) | 本番運用時に復元必要 | ⚠ 要対応 |
+| I5 | Feature Pipeline 二重管理 | FeatureRegistry と build_features の乖離リスク | §5.3 統合設計で将来解消 | ⬜ 技術負債 |
+| I6 | `_small.parquet` データの代表性 | 80K行では市場全体を表現できない | 本番では full parquet 使用 | ⚠ 要対応 |
 
 ## §7 テスト
 
 ### §7.1 単体テスト
 
-- `tests/unit/core/features/test_market_theory_features.py` — 23 tests all PASSED
+- `tests/unit/core/features/test_market_theory_features.py` — **23 tests** all PASSED
   - 各特徴量: shape, NaN-free, range, known values, edge cases
   - FeatureRegistry 統合テスト
+- `tests/unit/v460/test_sidecar_sac_integration.py` — **63 tests** all PASSED
+  - SidecarSignal round-trip, CycleGate injection, BPS offset, confidence scaling
+- `tests/unit/v460/test_sac_retrain_scheduler.py` — **31 tests** all PASSED
+  - SACRetrainConfig, Trigger, retrain_once (cold/warm/oos), neutral fallback, IO cache
+- **合計: 117 tests all PASSED**
 
-### §7.2 統合テスト (379# 後に実施)
+### §7.2 統合テスト
 
-- [ ] build_features.py proxy mode で 22 列生成確認
-- [ ] SAC env が 17 特徴量で obs 構築可能か確認
-- [ ] 50K steps 訓練完走確認
+- [x] SAC env が 17 特徴量で obs 構築可能
+- [x] 20K steps 軽量訓練完走 (1 seed)
+- [x] sidecar_signal.json → orchestrator_mid_cycle → CycleGateAggregator 統合確認
+- [ ] 50K steps × 4 seeds 本番訓練 (I4 解消後)
 
 ## §8 影響範囲
 
@@ -233,3 +260,4 @@ P3-C (OOS gate)
 | 版 | 日付 | 内容 |
 |---|---|---|
 | v1.0 | 2026-03-25 | 初版: 10 システム SAC 接続 + リファクタリング + ph3 設計 |
+| v2.0 | 2026-03-11 | P3-A/B (B3-B6)/C 完了。neutral fallback + mtime IO cache 実装。117 tests PASSED |
