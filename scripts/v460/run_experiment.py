@@ -322,6 +322,20 @@ def _evaluate_g2_from_results(
     if not seed_results:
         return {"gate": "G2-train", "gate_result": "FAIL", "checks": {}, "reason": "no seed_results"}
 
+    # 384# HIGH-1: seed crash → ROI=0.0 がゲートを通過する問題を修正
+    # error キーを持つ seed は明示的に検出し、gate_result に反映する
+    error_seeds = [s for s in seed_results if "error" in s]
+    if error_seeds:
+        error_info = [
+            f"seed={s.get('seed', '?')}: {s.get('error', '?')}" for s in error_seeds
+        ]
+        return {
+            "gate": "G2-train",
+            "gate_result": "ERROR",
+            "checks": {},
+            "reason": f"{len(error_seeds)} seed(s) crashed: {'; '.join(error_info)}",
+        }
+
     checks: dict[str, dict[str, object]] = {}
 
     # E1: gross > 0 の seed 比率 >= 75%

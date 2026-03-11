@@ -211,7 +211,6 @@ from scripts.v460.lib.sac_common import (  # noqa: E402
     cleanup_envs,
     evaluate_model_oos,
     extract_roi_from_env,
-    import_real_sb3,
     train_val_split,
 )
 
@@ -298,9 +297,8 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
     val_env: TrainingEnvProtocol | None = None
 
     try:
-        # 378# SB3 stub 回避 (sac_common.import_real_sb3 に統合)
-        sb3 = import_real_sb3()
-        SB3_SAC = sb3.SAC  # type: ignore[attr-defined]
+        # 384# import_real_sb3 廃止 — pip版 SB3 を直接 import
+        from stable_baselines3 import SAC as SB3_SAC
 
         env = _create_env(train_df, cfg)
         is_warm_start = cfg.model_path.exists()

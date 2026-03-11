@@ -309,6 +309,42 @@ class TestB4G2GateEvaluation:
         judgment = _evaluate_g2_from_results(results, thresholds)
         assert judgment["checks"]["positive_seed_ratio"]["pass"] is True
 
+    def test_error_seed_returns_error_gate(self, thresholds: dict) -> None:
+        """384# HIGH-1: seed crash で error キーがあれば gate_result=ERROR."""
+        from scripts.v460.run_experiment import _evaluate_g2_from_results
+
+        results = {
+            "seed_results": [
+                {"seed": 42, "gross_roi": 0.05},
+                {"seed": 123, "gross_roi": 0.03},
+                {"seed": 456, "gross_roi": 0.04},
+                {"seed": 789, "gross_roi": 0.0, "error": "CUDA OOM"},
+            ],
+            "convergence": {"roi_variance_pct_after_30k": 1.0},
+        }
+
+        judgment = _evaluate_g2_from_results(results, thresholds)
+        assert judgment["gate_result"] == "ERROR"
+        assert "1 seed(s) crashed" in str(judgment.get("reason", ""))
+
+    def test_multiple_error_seeds(self, thresholds: dict) -> None:
+        """384# HIGH-1: 複数 seed crash の場合."""
+        from scripts.v460.run_experiment import _evaluate_g2_from_results
+
+        results = {
+            "seed_results": [
+                {"seed": 42, "gross_roi": 0.05},
+                {"seed": 123, "gross_roi": 0.0, "error": "timeout"},
+                {"seed": 456, "gross_roi": 0.0, "error": "NaN loss"},
+                {"seed": 789, "gross_roi": 0.01},
+            ],
+            "convergence": {"roi_variance_pct_after_30k": 1.0},
+        }
+
+        judgment = _evaluate_g2_from_results(results, thresholds)
+        assert judgment["gate_result"] == "ERROR"
+        assert "2 seed(s) crashed" in str(judgment.get("reason", ""))
+
 
 # ======================================================================
 # B4: convergence computation

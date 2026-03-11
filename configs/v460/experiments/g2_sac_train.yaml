@@ -100,7 +100,9 @@ training:
 
 # ---- 評価 ----
 evaluation:
-  n_episodes: 3
+  # 384# CRITICAL-2: n_episodes=1 で holdout 全走査に変更
+  # 旧: n_episodes=3 → random_start=False 環境では同一データを3回繰り返すだけ
+  n_episodes: 1
 
 # ---- Multi-seed (G2 gate: 4 seed) ----
 seeds: [42, 123, 456, 789]

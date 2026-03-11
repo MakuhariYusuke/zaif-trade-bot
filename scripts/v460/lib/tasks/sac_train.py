@@ -115,10 +115,17 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
 
     env: TrainingEnvProtocol | None = None
     eval_env: TrainingEnvProtocol | None = None
+    checkpoint_eval_env: TrainingEnvProtocol | None = None
     try:
         # ── Training environment (in-sample) ──
         env, env_info = _create_training_env(train_df, cfg)
         logger.info(f"Training env: obs_dim={env_info['obs_dim']}, action_dim={env_info['action_dim']}")
+
+        # ── 384# CRITICAL-1: Checkpoint eval env (training env と完全分離) ──
+        # 382#/383# Review: 訓練中の env を checkpoint eval で reset/step すると
+        # SB3 の _last_obs とデータ位置がズレ、学習バイアスが発生する。
+        checkpoint_eval_env, _ = _create_training_env(train_df, cfg)
+        logger.info("Checkpoint eval env: separate instance created")
 
         # ── Model creation (or warm-start from pretrained) ──
         # 365# P1: Warm-start incremental training with replay buffer
@@ -148,13 +155,19 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
 
         # ── Training ──
         start_time = time.time()
-        checkpoint_metrics = _train_with_checkpoints(model, env, total_timesteps, cfg)
+        checkpoint_metrics = _train_with_checkpoints(
+            model, env, total_timesteps, cfg,
+            checkpoint_eval_env=checkpoint_eval_env,
+        )
         elapsed = time.time() - start_time
         logger.info(f"Training completed in {elapsed:.1f}s")
 
-        # ── 363# A3: Out-of-sample evaluation ──
-        eval_env, _ = _create_training_env(val_df, cfg)
-        logger.info(f"Validation env: {val_size} rows (out-of-sample)")
+        # ── 384# HIGH-2: train scaler を val env に引き渡し ──
+        # 382# Review: val env が独自に scaler を計算すると、train と異なる
+        # 正規化で推論してしまう。EnvironmentConfig.scaler_mean/std を活用。
+        val_env_cfg = _build_val_env_config(env, cfg)
+        eval_env, _ = _create_training_env(val_df, val_env_cfg)
+        logger.info(f"Validation env: {val_size} rows (out-of-sample, train scaler injected)")
         eval_metrics = _evaluate_trained_model(model, eval_env, cfg)
 
         # ── Save model ──
@@ -179,7 +192,7 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
 
     finally:
         # C2: 環境を確実にクローズしてメモリ解放
-        cleanup_envs(eval_env, env)
+        cleanup_envs(eval_env, checkpoint_eval_env, env)
         # DataFrame 参照を明示的に解放
         del train_df, val_df
 
@@ -206,6 +219,41 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
 # ======================================================================
 # Internal helpers
 # ======================================================================
+
+
+def _build_val_env_config(
+    train_env: TrainingEnvProtocol, cfg: ConfigSection
+) -> ConfigSection:
+    """384# HIGH-2: train env の scaler を val env config に注入.
+
+    382# Review: val env が独立に scaler を計算すると train と異なる
+    正規化パラメータで推論し、G2 gate 評価が不正確になる。
+    EnvironmentConfig の scaler_mean/scaler_std フィールドを活用して
+    train scaler を val env に転送する。
+    """
+    import copy
+
+    import numpy as np
+
+    val_cfg = copy.deepcopy(dict(cfg))
+    env_section = dict(val_cfg.get("environment", {}))  # type: ignore[arg-type]
+
+    scaler_mean = getattr(train_env, "scaler_mean", None)
+    scaler_std = getattr(train_env, "scaler_std", None)
+
+    if scaler_mean is not None and scaler_std is not None:
+        # EnvironmentConfig expects list[float]
+        env_section["scaler_mean"] = np.asarray(scaler_mean).tolist()
+        env_section["scaler_std"] = np.asarray(scaler_std).tolist()
+        logger.info(
+            f"Scaler transfer: mean dim={len(env_section['scaler_mean'])}, "
+            f"std dim={len(env_section['scaler_std'])}"
+        )
+    else:
+        logger.warning("Train env has no scaler — val env will compute its own")
+
+    val_cfg["environment"] = env_section  # type: ignore[assignment]
+    return val_cfg  # type: ignore[return-value]
 
 
 def _create_training_env(
@@ -290,16 +338,24 @@ def _train_with_checkpoints(
     env: TrainingEnvProtocol,
     total_timesteps: int,
     cfg: ConfigSection,
+    *,
+    checkpoint_eval_env: TrainingEnvProtocol | None = None,
 ) -> list[dict[str, int | float]]:
     """チェックポイント毎に指標を収集しながら訓練.
 
     000# §3.4: 「30K 以降で ROI 変動 ≤ 5%」の判定に必要.
     359# L-3: 各チェックポイントで ROI を記録し、E3 convergence 判定を有効化.
+
+    384# CRITICAL-1: checkpoint eval は training env とは別の env で実行する。
+    model.learn() が内部で持つ _last_obs / env state と衝突するのを防止。
     """
     training_cfg = section(cfg, "training")
     checkpoint_interval_raw = training_cfg.get("checkpoint_interval", 10_000)
     checkpoint_interval = as_int(checkpoint_interval_raw, 10_000)
     checkpoint_metrics: list[dict[str, int | float]] = []
+
+    # 384# CRITICAL-1: eval は分離 env を使用 (fallback: training env)
+    eval_target_env = checkpoint_eval_env if checkpoint_eval_env is not None else env
 
     remaining = total_timesteps
     trained = 0
@@ -311,7 +367,8 @@ def _train_with_checkpoints(
         remaining -= steps
 
         # 359# L-3: Checkpoint ROI — 1-episode deterministic eval
-        roi = _checkpoint_eval_roi(model, env)
+        # 384# CRITICAL-1: training env を汚さないよう別 env で評価
+        roi = _checkpoint_eval_roi(model, eval_target_env)
 
         metrics: dict[str, int | float] = {
             "timesteps": trained,

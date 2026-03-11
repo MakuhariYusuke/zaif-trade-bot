@@ -7,19 +7,16 @@ sac_train.py / sac_retrain_scheduler.py の重複ロジックを統合。
 - Train/Val 分割
 - 環境 cleanup
 - Buffer サイズ調整
-- SB3 stub 回避インポート
 
 References:
+  - 384# pipeline fixes: CRITICAL-1/2, HIGH-1/2
   - 375# §2.9: training_metrics ラベル整合
   - 372# audit: 複数エピソード ROI 集約
-  - 378# SB3 stub 回避
 """
 
 from __future__ import annotations
 
 import logging
-import sys
-from pathlib import Path
 from typing import Protocol
 
 import pandas as pd
@@ -98,26 +95,33 @@ def evaluate_model_oos(
     model: SACModelProtocol,
     env: TrainingEnvProtocol,
     n_episodes: int = 1,
-    max_steps_per_episode: int = 10_000,
+    max_steps_per_episode: int | None = None,
 ) -> dict[str, float | int]:
-    """OOS 評価 — 複数エピソードで ROI / trade_count を正しく集約.
+    """OOS 評価 — holdout 全データで 1-pass deterministic eval.
+
+    384# CRITICAL-2 fix:
+      - max_steps_per_episode を撤廃 (デフォルト None = 全走査)。
+        旧デフォルト 10K は 243K OOS の 4% しか評価せず、G2 gate 不正確。
+      - n_episodes > 1 は random_start=True の場合のみ意味がある。
+        random_start=False (デフォルト) では reset() → step=0 で同一データを
+        繰り返すだけなので、G2 gate には n_episodes=1 を推奨。
+      - gross_pnl を全エピソード集約 (旧: 最終エピソードのみ)。
 
     372# audit fix: env.reset() は trades_count を 0 にリセットするため、
     各エピソード終了時に個別に取得して集約する。
-
-    379# Perf: max_steps_per_episode を導入。OOS env が 243K+ ステップの場合
-    全走査は非現実的 (per-step overhead により数十分)。10Kステップで
-    モデルの行動傾向は十分評価可能。
     """
     total_reward = 0.0
     episode_rois: list[float] = []
+    episode_pnls: list[float] = []
     total_trades = 0
+
+    effective_max = max_steps_per_episode if max_steps_per_episode is not None else int(1e9)
 
     for _ in range(max(n_episodes, 1)):
         obs, _ = env.reset()
         done = False
         steps = 0
-        while not done and steps < max_steps_per_episode:
+        while not done and steps < effective_max:
             action, _ = model.predict(obs, deterministic=True)
             obs, reward, terminated, truncated, _ = env.step(action)
             total_reward += reward
@@ -125,17 +129,19 @@ def evaluate_model_oos(
             steps += 1
 
         episode_rois.append(extract_roi_from_env(env))
+        episode_pnls.append(float(getattr(env, "total_pnl", 0.0)))
         total_trades += int(getattr(env, "trades_count", 0))
 
     n_eps = max(n_episodes, 1)
     avg_roi = sum(episode_rois) / len(episode_rois) if episode_rois else 0.0
+    avg_pnl = sum(episode_pnls) / len(episode_pnls) if episode_pnls else 0.0
 
     return {
         "gross_roi": avg_roi,
         "mean_reward": total_reward / n_eps,
         "trade_count": total_trades,
         "n_episodes": n_eps,
-        "gross_pnl": float(getattr(env, "total_pnl", 0.0)),
+        "gross_pnl": avg_pnl,
     }
 
 
@@ -194,53 +200,6 @@ def adjust_buffer_size(raw_buffer: int, total_timesteps: int) -> int:
     return min(raw_buffer, max(total_timesteps * 2, 10_000))
 
 
-# ════════════════════════════════════════════════════════════════
-# SB3 stub 回避インポート
-# ════════════════════════════════════════════════════════════════
-
-
-def import_real_sb3() -> object:
-    """378# SB3 stub 回避: プロジェクトルートの stub パッケージを回避して
-    本物の SB3 (site-packages) をロードする.
-
-    プロジェクトルートに stub ``stable_baselines3/`` ディレクトリがあると
-    PYTHONPATH="." / sitecustomize.py 経由で stub が優先される問題を解消。
-
-    Returns:
-        本物の ``stable_baselines3`` モジュール (SAC は ``.SAC`` でアクセス)
-    """
-    import importlib
-
-    # stub 関連モジュールを全て除去
-    _sb3_keys = [
-        k
-        for k in sys.modules
-        if k == "stable_baselines3" or k.startswith("stable_baselines3.")
-    ]
-    for k in _sb3_keys:
-        sys.modules.pop(k, None)
-
-    _project_root = str(Path(__file__).resolve().parents[3])
-    _removed_paths: list[str] = []
-    for _p in list(sys.path):
-        if "site-packages" not in _p and (
-            _p == "."
-            or _p == _project_root
-            or _p.rstrip("/\\") == _project_root.rstrip("/\\")
-        ):
-            sys.path.remove(_p)
-            _removed_paths.append(_p)
-    try:
-        sb3 = importlib.import_module("stable_baselines3")
-        if not hasattr(sb3, "__version__"):
-            raise ImportError(
-                "Loaded stub stable_baselines3 instead of real SB3. "
-                f"Path: {getattr(sb3, '__file__', 'unknown')}"
-            )
-        logger.info(f"SB3 loaded: v{sb3.__version__} from {sb3.__file__}")
-    finally:
-        for _p in reversed(_removed_paths):
-            if _p not in sys.path:
-                sys.path.insert(0, _p)
-
-    return sb3
+# 384# import_real_sb3() は削除 — 379# でスタブを _sb3_test_stub/ にリネーム済み。
+# pip版 SB3 2.7.0 が正常にロードされるため、sys.path/modules 操作は不要。
+# 旧コール元 (sac_retrain_scheduler.py) は直接 `from stable_baselines3 import SAC` に移行。
