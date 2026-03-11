@@ -551,6 +551,8 @@ class TestTrainingDataIntegrity:
 # ======================================================================
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 class TestHeavyTradingEnvIntegration:
     """P3A-2: 実データ + feature_names 注入で HeavyTradingEnv が正常動作すること.
 

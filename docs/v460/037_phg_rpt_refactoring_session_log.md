@@ -4052,3 +4052,46 @@
 - `load_parquet(max_rows=...)` は `v460` helper として今後再利用できる形になった。大量 parquet の先頭サンプルだけ欲しい case では、full read + `head()` より明確に安い。
 - 一方で `test_356` のような最上位 hotspot では、schema 検査や timestamp 検出の generic 固定費すら効く。ここは helper 再利用より hot path 最短化を優先した。
 - `v460` broad の上位は依然として `test_356` setup、`test_enricher_skip_gate` real-data setup、`test_sac_retrain_scheduler` sidecar write に集中している。次はこの 3 本を順に詰めるのが妥当。
+
+## 2026-03-11 / Session 037-097
+
+### 実施内容
+- `prompts/codex_test_cleanup_and_perf.md` の残課題を prompt 作成者視点で再解釈し、単純な failure 修正だけでなく「重い real-data/integration を optional に寄せる」「頻繁に踏む production I/O を少しずつ軽くする」方針で追加改善を入れた。
+- [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py)
+  - `TestHeavyTradingEnvIntegration` に `@pytest.mark.slow` と `@pytest.mark.integration` を付与
+  - これは prompt の slow marker 方針に沿った整理で、通常実行を `-m "not slow"` に分離しやすくするためのもの
+- [scripts/v460/lib/sidecar_signal_io.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/sidecar_signal_io.py)
+  - `write_sidecar_signal(...)` の `json.dump(..., indent=2)` を compact JSON (`separators=(",", ":")`) に変更
+  - sidecar signal は機械読取主体のファイルなので、pretty-print の利得より I/O と serialization 固定費削減を優先した
+- [tests/unit/v460/test_sac_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_sac_retrain_scheduler.py)
+  - `_make_sidecar_env()` を追加し、`TestUpdateSidecarSignal::test_writes_signal_file` を `MagicMock` ベースから `SimpleNamespace` stub に変更
+  - `_EvalEnv` を追加し、`TestEvaluateModel` の `positive_roi` / `negative_roi` / `multi_episode_aggregation` を 1-step 軽量 env に置換
+  - 本質が集計ロジックのテストなので、`MagicMock` の attribute / side effect overhead を削っても検証価値は落ちない
+- 残課題確認:
+  - `tests/integration/test_custom_ppo_integration.py` は依然 9 件 skip で安定
+  - `tests/training/test_v430_1000_steps.py` は live tree に存在しない
+  - 空テストディレクトリはなし
+
+### 結果
+- focused:
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/unit/v460/test_sidecar_sac_integration.py`
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `139 passed in 16.04s`
+- focused:
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/unit/v460/test_sidecar_sac_integration.py`
+  - `90 passed in 2.34s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=tests/unit/v460/test_113_resilience.py`
+  - `--ignore=tests/unit/v460/test_152_parallel_tasks.py`
+  - `--ignore=tests/unit/v460/test_260_compute_extract_regime_split.py`
+  - `--deselect=tests/unit/v460/test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - `4579 passed, 13 warnings in 34.91s`
+
+### 主要改善
+- `TestUpdateSidecarSignal::test_writes_signal_file` は `0.21s -> 0.03s` まで低下した。
+- `TestEvaluateModel::test_positive_roi` は broad 上位から外れた。残った `negative_roi` も従来より軽いが、現在は `test_356` / `test_enricher_skip_gate` が支配的。
+- filtered broad 全体も直前の `45.84s` から `34.91s` まで低下した。
+- prompt 作成者の観点で見ると、次に手を付けるべきは `test_356` setup と `test_enricher_skip_gate` real-data setup の 2 本で、どちらも「本質的に integration」であることが明確になった。

@@ -4984,3 +4984,11 @@ python scripts/unified_trainer.py \
 - Verified the latest `v460` batch with:
   - focused: `tests/unit/v460/test_356_g2_sac_blockers.py tests/unit/v460/test_v460_core.py` → `105 passed in 10.41s`
   - filtered broad `tests/unit/v460/` → `4579 passed, 13 warnings in 38.60s`
+- Continued `prompts/codex_test_cleanup_and_perf.md` follow-up with the prompt author's likely next step in mind: make heavyweight real-data tests optional and trim frequently-hit scheduler I/O paths.
+  - marked [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py) `TestHeavyTradingEnvIntegration` as `@pytest.mark.slow` + `@pytest.mark.integration`
+  - compacted [scripts/v460/lib/sidecar_signal_io.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/sidecar_signal_io.py) JSON output by dropping pretty-print indentation from `write_sidecar_signal(...)`
+  - replaced `MagicMock`-heavy eval/signal envs in [tests/unit/v460/test_sac_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_sac_retrain_scheduler.py) with lightweight stubs for `_update_sidecar_signal(...)` and `_evaluate_model(...)` tests
+- Re-verified after the latest batch:
+  - focused `test_sac_retrain_scheduler.py test_sidecar_sac_integration.py test_356_g2_sac_blockers.py`: `139 passed in 16.04s`
+  - focused `test_sac_retrain_scheduler.py test_sidecar_sac_integration.py`: `90 passed in 2.34s`
+  - filtered broad `tests/unit/v460/`: `4579 passed, 13 warnings in 34.91s`
