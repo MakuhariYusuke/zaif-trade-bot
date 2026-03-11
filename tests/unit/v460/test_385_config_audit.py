@@ -248,6 +248,40 @@ class TestRewardSettingsPropagation:
         rs = cfg.get("reward_settings")
         assert rs is not None, "reward_settings section missing from reward-tuned YAML"
         assert isinstance(rs, dict)
-        assert rs.get("balance_penalty_value") == 0.1, (
-            f"Expected balance_penalty_value=0.1, got {rs.get('balance_penalty_value')}"
+        # hold_penalty_weight は直接キーなので reward_settings に存在
+        assert rs.get("hold_penalty_weight") == 0.001, (
+            f"Expected hold_penalty_weight=0.001, got {rs.get('hold_penalty_weight')}"
         )
+
+    def test_reward_tuned_yaml_behavior_optimization(self) -> None:
+        """reward-tuned YAML の behavior_optimization が正しく構成されていること."""
+        from scripts.v460.lib.config_loader import load_config
+
+        cfg = load_config(
+            "configs/v460/experiments/g2_sac_gamma095_reward_tuned.yaml"
+        )
+        env = cfg.get("environment", {})
+        bo = env.get("behavior_optimization")
+        assert bo is not None, "behavior_optimization section missing from environment"
+        assert bo.get("balance_penalty") == 0.1, (
+            f"Expected balance_penalty=0.1, got {bo.get('balance_penalty')}"
+        )
+        assert bo.get("consistency_penalty") == 0.01, (
+            f"Expected consistency_penalty=0.01, got {bo.get('consistency_penalty')}"
+        )
+
+    def test_behavior_optimization_flows_to_env_config(self) -> None:
+        """behavior_optimization が EnvironmentConfig に正しくマッピングされること."""
+        from ztb.trading.environment.utils.config import EnvironmentConfig
+
+        config_dict = {
+            "behavior_optimization": {
+                "balance_penalty": 0.1,
+                "consistency_penalty": 0.01,
+            },
+        }
+        env_config = EnvironmentConfig.from_dict(config_dict)
+        assert env_config.behavior_optimization.get("balance_penalty") == 0.1
+        # consistency_penalty は reward_settings にもマッピングされる
+        assert env_config.reward_settings is not None
+        assert env_config.reward_settings.consistency_penalty == pytest.approx(0.01)

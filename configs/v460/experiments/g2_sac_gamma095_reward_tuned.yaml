@@ -55,22 +55,25 @@ environment:
   timeframe: "1m"
   continuous_to_discrete_threshold: 0.10
   continuous_to_discrete_threshold_neg: -0.10
+  # ---- behavior_optimization (EnvironmentConfig.behavior_optimization → reward_calculator) ----
+  # 386# 分析: PnL reward O(1-50 JPY) に対してペナルティが過大
+  behavior_optimization:
+    # P0-3: balance_penalty 縮小 (1.0 → 0.1)
+    # パス: EnvironmentConfig.behavior_optimization → reward_calculator.balance_penalty
+    balance_penalty: 0.1
+    balance_penalty_tolerance: 0.05
+    # P1-4: consistency_penalty 縮小 (0.05 → 0.01)
+    # パス: EnvironmentConfig.behavior_optimization → reward_settings.consistency_penalty
+    consistency_penalty: 0.01
 
-# ---- 報酬ペナルティ調整 (387# Reward Tuning) ----
-# 386# 分析: PnL reward O(1-50 JPY) に対してペナルティが過大
-# hold_penalty (-0.01) + balance_penalty (-0.5) がShift=0の低ボラstepでPnLを上回る
+# ---- reward_settings (RewardSettings.custom_reward_params → reward_calculator) ----
+# hold_penalty, confidence_penalty は get_setting_float() 直接キーでアクセス
 reward_settings:
-  # P0-3: balance_penalty 縮小 (1.0 → 0.1)
-  # 理由: BUY/SELL均等化の強制がトレンド追従を阻害
-  balance_penalty_value: 0.1
-  balance_penalty_tolerance: 0.05
   # P0-4: hold_penalty 縮小 (0.01 → 0.001)
-  # 理由: 低ボラ期の不必要な取引誘発を抑制 (Seed456 59K trades対策)
+  # パス: custom_reward_params["hold_penalty_weight"] → get_setting_float()
   hold_penalty_weight: 0.001
-  # P1-4: consistency_penalty 縮小 (-0.05 → -0.01)
-  # 理由: BUY→SELL反転罰がトレンド転換対応を阻害 (Seed123 保守性対策)
-  consistency_penalty_value: -0.01
   # confidence_penalty 閾値を引上げ (0.05 → 0.2)
+  # パス: custom_reward_params["confidence_penalty_threshold"] → _get_setting()
   confidence_penalty_threshold: 0.2
   # 既存設定維持
   position_penalty_weight: 0.01

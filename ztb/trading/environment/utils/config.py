@@ -432,6 +432,8 @@ class EnvironmentConfig:
 
         # Handle behavior_optimization dict
         if behavior_opt is not None:
+            # 386# FIX: Store raw dict so reward_calculator can access config.behavior_optimization
+            instance.behavior_optimization = behavior_opt
             if not instance.reward_settings:
                 instance.reward_settings = RewardSettings()
             # Map behavior_optimization keys to reward_settings
