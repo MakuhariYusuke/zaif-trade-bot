@@ -14,12 +14,15 @@ from types import ModuleType
 def ensure_sb3_compat():
     try:
         sb3 = sys.modules.get("stable_baselines3")
-        # If missing, try to import; if that fails, create a minimal module
+        # If missing, try to import the real package first; only fall back to stub
         if sb3 is None:
-            sb3 = ModuleType("stable_baselines3")
-            sb3.SAC = type("SAC", (), {"learn": lambda self, *a, **k: self})
-            sb3.PPO = type("PPO", (), {"learn": lambda self, *a, **k: self})
-            sys.modules["stable_baselines3"] = sb3
+            try:
+                import stable_baselines3 as sb3  # type: ignore[no-redef]
+            except ImportError:
+                sb3 = ModuleType("stable_baselines3")
+                sb3.SAC = type("SAC", (), {"learn": lambda self, *a, **k: self})
+                sb3.PPO = type("PPO", (), {"learn": lambda self, *a, **k: self})
+                sys.modules["stable_baselines3"] = sb3
         else:
             for algo in ("SAC", "PPO", "A2C", "DQN", "TD3"):
                 if not hasattr(sb3, algo):

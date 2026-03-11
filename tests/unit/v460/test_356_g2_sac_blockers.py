@@ -124,7 +124,7 @@ class TestB1YamlExists:
         sac = cfg["sac_hyperparameters"]
         assert sac["gamma"] == 0.80, "v459 short-term gamma"
         assert sac["buffer_size"] == 100000, "v459 buffer size"
-        assert sac["learning_starts"] == 100, "v459 early learning"
+        assert sac["learning_starts"] == 1000, "379# 100→1000: バッファ多様性確保"
 
     def test_environment_uses_continuous_actions(self, yaml_cfg: dict) -> None:
         cfg = yaml_cfg
