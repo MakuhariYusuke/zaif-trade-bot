@@ -5197,3 +5197,9 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused `test_273_kill_time_limit_halt_untick_recovery_grace.py test_websocket_client.py test_094_stale_order.py test_266_market_theory_protocol.py test_v460_core.py test_build_features_pipeline.py`: `229 passed in 5.24s`
     - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 35.52s`
+- 2026-03-13: pushed one more v460 cleanup wave around microstructure-only tests and dispatch-only websocket paths.
+  - changed `test_websocket_client.py::test_stats_increment` to validate stats without installing an async callback when the callback itself is irrelevant
+  - refactored `test_266_market_theory_protocol.py` Kyle/Amihud disabled and depth-only cases to call the mixin methods with a tiny `SimpleNamespace` stub instead of constructing full `MakerPriceCalculator` instances
+  - re-verified with:
+    - focused `test_266_market_theory_protocol.py test_websocket_client.py test_094_stale_order.py`: `136 passed in 2.42s`
+    - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 37.15s`

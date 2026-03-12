@@ -5779,3 +5779,37 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - `time` module patch と ignored callback 用 `AsyncMock` はかなり整理できた。
 - それでも broad の上位に残る `test_094` / `test_266` / `test_websocket_client` は、call 計測上のノイズではなく、初回 import/initialization 固定費がなお強い可能性が高い。
 - 次は `feature_enricher` / `HeavyTradingEnv` setup 系と、`gate_check` / `ml_pipeline` の単発重 call を優先して切るのが妥当。
+
+## 2026-03-13 / Wave: Microstructure Stub and Dispatch-Only Cleanup
+
+### 実施内容
+- [tests/unit/v460/test_websocket_client.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_websocket_client.py)
+  - `test_stats_increment` から callback を外し、stats 更新だけを直接検証
+- [tests/unit/v460/test_266_market_theory_protocol.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_266_market_theory_protocol.py)
+  - `_make_microstructure_stub(...)` を追加
+  - Kyle / Amihud の disabled・depth-only ケースを `MakerPriceCalculator` 実生成なしで検証する形へ変更
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_266_market_theory_protocol.py`
+  - `tests/unit/v460/test_websocket_client.py`
+  - `tests/unit/v460/test_094_stale_order.py`
+  - 結果: `136 passed in 2.42s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4643 passed, 13 warnings in 37.15s`
+
+### 更新後の上位
+1. `test_094_stale_order.py::TestStaleOrderLogic::test_fill_monitor_result_has_reprice_drift_bps` call `0.31s`
+2. `test_266_market_theory_protocol.py::TestKyleLambda::test_disabled` call `0.28s`
+3. `test_websocket_client.py::TestCoincheckPublicWS::test_stats_increment` call `0.28s`
+4. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.21s`
+5. `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction` setup `0.18s`
+
+### 見立て
+- `test_266` は focused では軽くなっており、broad 上の残コストは module import / initial cache warm-up の影響が濃い。
+- 次に実利が大きいのは、`feature_enricher` / `HeavyTradingEnv` の setup 側と、`gate_check` / `ml_pipeline` の Monte Carlo・integration call 側。
