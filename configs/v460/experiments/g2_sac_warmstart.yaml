@@ -1,0 +1,103 @@
+# G2: SAC 4-seed Training — warm-start from gamma=0.95 + reward-tuned
+# 387#: gamma=0.95 訓練済みモデルから reward-tuned で追加訓練
+#
+# 使用方法:
+#   python scripts/v460/run_experiment.py \
+#     --config configs/v460/experiments/g2_sac_warmstart.yaml
+#
+# 戦略:
+#   - Phase 1 (gamma=0.95 100K steps) で学習した方策を初期値に使用
+#   - Phase 2 (reward-tuned 50K steps) でペナルティ縮小下で微調整
+#   - より安定した worst-seed ROI を目指す
+#
+# 前提: models/v460/gamma095/ に各シードのモデルが存在すること
+# 根拠: docs/v460/386_reward_analysis.md
+
+_base: configs/v460/base.yaml
+_gate: G2-train
+_task: sac_train
+
+# ---- データ ----
+data:
+  ohlcv_path: "data/btc_jpy_1m_full_registry_features.parquet"
+  v460_features_path: null
+  train_end_index: 973544
+
+# ---- 特徴量 ----
+features:
+  selected:
+    - price_velocity
+    - micro_trend
+    - price_acceleration
+    - volume_surge
+    - momentum_divergence
+    - tick_volume_ratio
+    - order_flow_imbalance
+    - micro_volatility
+    - spread_pressure
+    - momentum_burst
+    - liquidity_surge
+    - realized_volatility
+    - parkinson_sigma
+    - vpin_proxy
+    - kyle_lambda_proxy
+    - amihud_illiq
+    - ema_velocity_bps
+
+# ---- 環境 ----
+environment:
+  transaction_cost: 0.0            # 0% (Coincheck Maker)
+  reward_scaling: 1.0              # SAC用 (PnL × 1.0)
+  max_position_size: 0.01
+  initial_portfolio_value: 10000000.0
+  use_continuous_actions: true
+  action_space_type: "continuous_1d"
+  exchange: coincheck
+  timeframe: "1m"
+  continuous_to_discrete_threshold: 0.10
+  continuous_to_discrete_threshold_neg: -0.10
+  # ---- behavior_optimization ----
+  behavior_optimization:
+    balance_penalty: 0.1
+    balance_penalty_tolerance: 0.05
+    consistency_penalty: 0.01
+  # ---- reward_settings ----
+  reward_settings:
+    hold_penalty_weight: 0.001
+    confidence_penalty_threshold: 0.2
+    position_penalty_weight: 0.01
+    pnl_reward_multiplier: 1.0
+
+# ---- SAC ハイパーパラメータ ----
+sac_hyperparameters:
+  gamma: 0.95                      # 中期割引 (Phase 1 と同一)
+  ent_coef: "auto"
+  learning_rate: 1.0e-4            # 微調整用: 学習率を下げる (3e-4 → 1e-4)
+  batch_size: 256
+  buffer_size: 200000
+  learning_starts: 0               # warm-start: 即時学習開始
+  tau: 0.005
+  train_freq: 1
+  gradient_steps: 1
+
+# ---- 訓練 ----
+training:
+  total_timesteps: 50000           # 微調整: 50K steps (Phase 1 の半分)
+  checkpoint_interval: 10000
+  val_ratio: 0.2
+  # warm-start: gamma=0.95 モデルから継続訓練
+  # NOTE: {seed} はプレースホルダ — task_sac_train が実行時に seed で置換
+  pretrained_model_path: "models/v460/gamma095/sac_v460_seed{seed}.zip"
+  pretrained_buffer_path: "models/v460/gamma095/sac_v460_seed{seed}.buffer.pkl"
+
+# ---- 評価 ----
+evaluation:
+  n_episodes: 1
+
+# ---- Multi-seed ----
+seeds: [42, 123, 456, 789]
+
+# ---- 出力 ----
+output:
+  results_dir: "results/v460"
+  model_dir: "models/v460/warmstart"
