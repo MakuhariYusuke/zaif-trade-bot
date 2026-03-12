@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -16,27 +15,10 @@ import pytest
 from scripts.v460.lib.abstract_cycle_runner import AbstractCycleRunner
 from scripts.v460.lib.ob_utils import MarketDataAccessor
 from scripts.v460.run_fill_test import FillTestRunner
-from tests.unit.v460._fill_test_source import (
-    read_class_method_source,
-    read_fill_test_method_source,
-)
 from ztb.trading.live.exchanges.base.adapter import BaseExchangeAdapter
 from ztb.trading.live.exchanges.base.broker_interfaces import IBroker
-from ztb.trading.live.exchanges.coincheck import adapter as coincheck_adapter_module
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 from ztb.utils.errors import OrderNotFoundError
-
-COINCHECK_ADAPTER_SOURCE = Path(coincheck_adapter_module.__file__).resolve()
-_RUN_SINGLE_CYCLE_SOURCE = read_fill_test_method_source("run_single_cycle")
-_MAKE_API_REQUEST_SOURCE = read_class_method_source(
-    COINCHECK_ADAPTER_SOURCE, "CoincheckAdapter", "_make_api_request"
-)
-_CREATE_SIGNATURE_SOURCE = read_class_method_source(
-    COINCHECK_ADAPTER_SOURCE, "CoincheckAdapter", "_create_signature"
-)
-_PLACE_ORDER_REAL_SOURCE = read_class_method_source(
-    COINCHECK_ADAPTER_SOURCE, "CoincheckAdapter", "_place_order_real"
-)
 
 
 # =====================================================================
@@ -269,13 +251,17 @@ class TestOBInlineElimination:
 
     def test_no_hasattr_price_in_postonly_guard(self) -> None:
         """postonly guard に hasattr(... 'price') パターンが残っていない."""
-        assert "hasattr(_pre_ob.bids[0], 'price')" not in _RUN_SINGLE_CYCLE_SOURCE, (
+
+        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        assert "hasattr(_pre_ob.bids[0], 'price')" not in source, (
             "Inline dual-format access should be replaced with ob_utils.best_bid_ask()"
         )
 
     def test_best_bid_ask_import_in_source(self) -> None:
         """run_single_cycle 内に best_bid_ask のインポートがある."""
-        assert "best_bid_ask" in _RUN_SINGLE_CYCLE_SOURCE
+
+        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        assert "best_bid_ask" in source
 
 
 # =====================================================================
@@ -287,12 +273,18 @@ class TestCoincheckAdapterTestCompat:
 
     def test_make_api_request_still_on_coincheck(self) -> None:
         """_make_api_request は CoincheckAdapter に残存."""
-        assert "urlencode" in _MAKE_API_REQUEST_SOURCE  # C-3 signature fix
+
+        source = inspect.getsource(CoincheckAdapter._make_api_request)
+        assert "urlencode" in source  # C-3 signature fix
 
     def test_create_signature_still_on_coincheck(self) -> None:
         """_create_signature は CoincheckAdapter に残存."""
-        assert "hmac" in _CREATE_SIGNATURE_SOURCE
+
+        source = inspect.getsource(CoincheckAdapter._create_signature)
+        assert "hmac" in source
 
     def test_place_order_real_has_post_only(self) -> None:
         """_place_order_real に post_only がある."""
-        assert "post_only" in _PLACE_ORDER_REAL_SOURCE
+
+        source = inspect.getsource(CoincheckAdapter._place_order_real)
+        assert "post_only" in source

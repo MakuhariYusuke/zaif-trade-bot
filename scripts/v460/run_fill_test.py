@@ -297,11 +297,11 @@ class FillTestRunner(
             from scripts.v460.lib.fill_probability_model import FillProbabilityModel
 
             _glft_model = FillProbabilityModel()
-            self._maker_price.set_fill_prob_model(_glft_model)
+            self._maker_price._fill_prob_model = _glft_model  # type: ignore[attr-defined]
             self._adaptation_engine.set_fill_prob_model(_glft_model)
             logger.info("[M4] GLFT dynamic k enabled for AS δ*")
         else:
-            self._maker_price.set_fill_prob_model(None)
+            self._maker_price._fill_prob_model = None  # type: ignore[attr-defined]
 
         # 121# God Object 分割: SkipGateEvaluator に ML 判定を委譲
         self._skip_gate_evaluator = SkipGateEvaluator(config, _PROJECT_ROOT)

@@ -1,0 +1,59 @@
+{
+  "version": "1.0",
+  "training": {
+    "algorithm": "sac",
+    "model_name": "sac_v437_1_balanced_features",
+    "total_timesteps": 50000,
+    "data_config": {
+      "csv_path": "data/btc_jpy_real_dataset.csv",
+      "use_real_data": true,
+      "validation_split": 0.2
+    },
+    "environment": {
+      "initial_balance": 200000.0,
+      "transaction_cost": 0.001,
+      "max_position_size": 1.0,
+      "enable_action_masking": true,
+      "use_continuous_actions": true,
+      "use_standardized_observations": true,
+      "random_start": true,
+      "curriculum_stage": "profit_optimized",
+      "continuous_to_discrete_threshold": 0.1,
+      "reward_settings": {
+        "use_simple_reward": false,
+        "reward_scale": 1.0,
+        "trading_bonus": 0.01,
+        "profit_bonuses": {
+          "trading_bonus": 0.01,
+          "profit_multiplier": 2.0,
+          "loss_penalty_multiplier": 1.5
+        },
+        "position_penalties": {
+          "hold_penalty_rate": 0.1,
+          "position_size_bonus_rate": 0.05
+        },
+        "entropy_bonus": 0.0
+      }
+    },
+    "features": {
+      "feature_set": "v427_full"
+    },
+    "sac_hyperparameters": {
+      "learning_rate": 0.0003,
+      "buffer_size": 100000,
+      "learning_starts": 1000,
+      "batch_size": 256,
+      "tau": 0.005,
+      "gamma": 0.99,
+      "ent_coef": "auto",
+      "target_update_interval": 1,
+      "target_entropy": "auto"
+    }
+  },
+  "evaluation": {
+    "eval_freq": 5000,
+    "n_eval_episodes": 5,
+    "save_freq": 10000,
+    "log_interval": 1000
+  }
+}

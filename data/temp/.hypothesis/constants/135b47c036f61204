@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\curriculum_learning.py
+# hypothesis_version: 6.140.3
+
+[0.02, 0.03, 0.05, 0.4, 0.6, 0.8, 50000, 100000, 200000, '\n🎉 カリキュラム学習完了!', '--models', '--price-data', 'P0_forced_balance', 'P2_full_curriculum', '__main__', 'action_distribution', 'balanced_transition', 'config', 'curriculum_stage', 'ent_coef', 'forced_balance', 'full', 'name', 'python', 'regime_evaluation.py', 'regime_metrics', 'session_id', 'target_kl', 'total_timesteps', 'w', 'カリキュラム学習を開始します...', '評価完了']

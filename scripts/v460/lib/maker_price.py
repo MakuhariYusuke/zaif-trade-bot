@@ -21,7 +21,7 @@ import collections
 import logging
 import math
 import time
-from typing import TYPE_CHECKING, Final, NamedTuple, Protocol
+from typing import Final, NamedTuple, Protocol
 
 from scripts.v460.lib.fast_fill_defense import FastFillDefense
 from scripts.v460.lib.fill_config import FillTestConfig
@@ -79,9 +79,6 @@ class ImbalanceResult(NamedTuple):
 
 
 from scripts.v460.lib.constants import BPS_FACTOR as _BPS_FACTOR
-
-if TYPE_CHECKING:
-    from scripts.v460.lib.fill_probability_model import FillProbabilityModel
 
 
 class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixin):
@@ -218,10 +215,6 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
             (prev_mid_price, prev_mid_time) — 未設定時は (None, None).
         """
         return self._prev_mid_price, self._prev_mid_time
-
-    def set_fill_prob_model(self, model: FillProbabilityModel | None) -> None:
-        """366# M4: GLFT fill probability model を注入する."""
-        self._fill_prob_model = model
 
     @property
     def last_sigma(self) -> float:

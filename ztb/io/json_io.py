@@ -35,15 +35,10 @@ def write_json(
     data: object,
     indent: int = 2,
     ensure_ascii: bool = False,
-    sort_keys: bool = False,
     default: JSONDefaultEncoder | None = str,
     encoding: str = "utf-8",
 ) -> Path:
     content = json.dumps(
-        data,
-        indent=indent,
-        ensure_ascii=ensure_ascii,
-        sort_keys=sort_keys,
-        default=default,
+        data, indent=indent, ensure_ascii=ensure_ascii, default=default
     )
     return atomic_write_text(path, content, encoding=encoding)

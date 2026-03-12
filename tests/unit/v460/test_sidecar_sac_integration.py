@@ -15,25 +15,7 @@ import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-import numpy as np
 import pytest
-
-from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator, CycleGateResult
-from scripts.v460.lib.sidecar_signal_io import (
-    create_neutral_signal,
-    make_timestamp,
-    read_sidecar_signal,
-    write_sidecar_signal,
-)
-from scripts.v460.lib.sidecar_types import (
-    SidecarDirection,
-    SidecarSignal,
-    classify_bias,
-    compute_sidecar_offset_bps,
-)
-from scripts.v460.ml.sac_retrain_scheduler import SACRetrainConfig, _get_latest_obs
-from tests.unit.v460.conftest import make_gate_config
-from ztb.metrics.fill_quality import FillRecord
 
 
 # ════════════════════════════════════════════════════════════════
@@ -45,6 +27,8 @@ class TestSidecarDirection:
     """SidecarDirection enum."""
 
     def test_values(self) -> None:
+        from scripts.v460.lib.sidecar_types import SidecarDirection
+
         assert SidecarDirection.BUY_BIAS == 1
         assert SidecarDirection.NEUTRAL == 0
         assert SidecarDirection.SELL_BIAS == -1
@@ -54,24 +38,34 @@ class TestClassifyBias:
     """classify_bias() — 閾値ベース分類."""
 
     def test_buy_bias(self) -> None:
+        from scripts.v460.lib.sidecar_types import classify_bias, SidecarDirection
+
         assert classify_bias(0.5) == SidecarDirection.BUY_BIAS
         assert classify_bias(1.0) == SidecarDirection.BUY_BIAS
 
     def test_sell_bias(self) -> None:
+        from scripts.v460.lib.sidecar_types import classify_bias, SidecarDirection
+
         assert classify_bias(-0.5) == SidecarDirection.SELL_BIAS
         assert classify_bias(-1.0) == SidecarDirection.SELL_BIAS
 
     def test_neutral(self) -> None:
+        from scripts.v460.lib.sidecar_types import classify_bias, SidecarDirection
+
         assert classify_bias(0.0) == SidecarDirection.NEUTRAL
         assert classify_bias(0.3) == SidecarDirection.NEUTRAL
         assert classify_bias(-0.3) == SidecarDirection.NEUTRAL
         assert classify_bias(0.29) == SidecarDirection.NEUTRAL
 
     def test_boundary_above(self) -> None:
+        from scripts.v460.lib.sidecar_types import classify_bias, SidecarDirection
+
         assert classify_bias(0.31) == SidecarDirection.BUY_BIAS
         assert classify_bias(-0.31) == SidecarDirection.SELL_BIAS
 
     def test_custom_threshold(self) -> None:
+        from scripts.v460.lib.sidecar_types import classify_bias, SidecarDirection
+
         assert classify_bias(0.15, threshold=0.1) == SidecarDirection.BUY_BIAS
         assert classify_bias(0.15, threshold=0.2) == SidecarDirection.NEUTRAL
 
@@ -80,12 +74,16 @@ class TestSidecarSignal:
     """SidecarSignal dataclass."""
 
     def test_creation(self) -> None:
+        from scripts.v460.lib.sidecar_types import SidecarSignal
+
         sig = SidecarSignal(timestamp="2026-03-10T12:00:00+09:00", directional_bias=0.42)
         assert sig.directional_bias == 0.42
         assert sig.confidence == 1.0
         assert sig.model_version == ""
 
     def test_direction_property(self) -> None:
+        from scripts.v460.lib.sidecar_types import SidecarSignal, SidecarDirection
+
         sig = SidecarSignal(timestamp="t", directional_bias=0.5)
         assert sig.direction == SidecarDirection.BUY_BIAS
 
@@ -96,6 +94,8 @@ class TestSidecarSignal:
         assert sig3.direction == SidecarDirection.NEUTRAL
 
     def test_bias_validation_out_of_range(self) -> None:
+        from scripts.v460.lib.sidecar_types import SidecarSignal
+
         with pytest.raises(ValueError, match="directional_bias"):
             SidecarSignal(timestamp="t", directional_bias=1.5)
 
@@ -103,12 +103,16 @@ class TestSidecarSignal:
             SidecarSignal(timestamp="t", directional_bias=-1.1)
 
     def test_confidence_validation(self) -> None:
+        from scripts.v460.lib.sidecar_types import SidecarSignal
+
         with pytest.raises(ValueError, match="confidence"):
             SidecarSignal(timestamp="t", directional_bias=0.0, confidence=-0.1)
         with pytest.raises(ValueError, match="confidence"):
             SidecarSignal(timestamp="t", directional_bias=0.0, confidence=1.5)
 
     def test_frozen(self) -> None:
+        from scripts.v460.lib.sidecar_types import SidecarSignal
+
         sig = SidecarSignal(timestamp="t", directional_bias=0.0)
         with pytest.raises(AttributeError):
             sig.directional_bias = 0.5  # type: ignore[misc]
@@ -118,40 +122,58 @@ class TestComputeSidecarOffsetBps:
     """compute_sidecar_offset_bps() — 非対称 offset 計算."""
 
     def test_buy_bias_buy_side(self) -> None:
+        from scripts.v460.lib.sidecar_types import compute_sidecar_offset_bps
+
         offset = compute_sidecar_offset_bps(0.5, "buy")
         assert offset > 0  # 攻撃的
 
     def test_buy_bias_sell_side(self) -> None:
+        from scripts.v460.lib.sidecar_types import compute_sidecar_offset_bps
+
         offset = compute_sidecar_offset_bps(0.5, "sell")
         assert offset < 0  # 保守的
 
     def test_sell_bias_sell_side(self) -> None:
+        from scripts.v460.lib.sidecar_types import compute_sidecar_offset_bps
+
         offset = compute_sidecar_offset_bps(-0.5, "sell")
         assert offset > 0  # 攻撃的
 
     def test_sell_bias_buy_side(self) -> None:
+        from scripts.v460.lib.sidecar_types import compute_sidecar_offset_bps
+
         offset = compute_sidecar_offset_bps(-0.5, "buy")
         assert offset < 0  # 保守的
 
     def test_neutral_returns_zero(self) -> None:
+        from scripts.v460.lib.sidecar_types import compute_sidecar_offset_bps
+
         assert compute_sidecar_offset_bps(0.0, "buy") == 0.0
         assert compute_sidecar_offset_bps(0.0, "sell") == 0.0
         assert compute_sidecar_offset_bps(0.2, "buy") == 0.0
 
     def test_confidence_scaling(self) -> None:
+        from scripts.v460.lib.sidecar_types import compute_sidecar_offset_bps
+
         full = compute_sidecar_offset_bps(0.5, "buy", confidence=1.0)
         half = compute_sidecar_offset_bps(0.5, "buy", confidence=0.5)
         assert abs(half) == pytest.approx(abs(full) * 0.5)
 
     def test_zero_confidence(self) -> None:
+        from scripts.v460.lib.sidecar_types import compute_sidecar_offset_bps
+
         assert compute_sidecar_offset_bps(0.5, "buy", confidence=0.0) == 0.0
 
     def test_custom_boost(self) -> None:
+        from scripts.v460.lib.sidecar_types import compute_sidecar_offset_bps
+
         offset = compute_sidecar_offset_bps(0.5, "buy", boost_bps=1.0)
         assert offset == pytest.approx(1.0)
 
     def test_symmetry(self) -> None:
         """BUY bias → buy offset と SELL bias → sell offset は同符号同値."""
+        from scripts.v460.lib.sidecar_types import compute_sidecar_offset_bps
+
         buy_buy = compute_sidecar_offset_bps(0.5, "buy")
         sell_sell = compute_sidecar_offset_bps(-0.5, "sell")
         assert buy_buy == pytest.approx(sell_sell)
@@ -166,6 +188,12 @@ class TestWriteAndReadSignal:
     """write_sidecar_signal / read_sidecar_signal の往復テスト."""
 
     def test_round_trip(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.sidecar_types import SidecarSignal
+        from scripts.v460.lib.sidecar_signal_io import (
+            write_sidecar_signal,
+            read_sidecar_signal,
+        )
+
         sig = SidecarSignal(
             timestamp="2026-03-10T12:00:00+09:00",
             directional_bias=0.42,
@@ -184,6 +212,12 @@ class TestWriteAndReadSignal:
         assert loaded.regime_hint == "trending_up"
 
     def test_atomic_overwrite(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.sidecar_types import SidecarSignal
+        from scripts.v460.lib.sidecar_signal_io import (
+            write_sidecar_signal,
+            read_sidecar_signal,
+        )
+
         out = tmp_path / "signal.json"
         sig1 = SidecarSignal(timestamp="t1", directional_bias=0.1)
         write_sidecar_signal(sig1, out)
@@ -200,22 +234,30 @@ class TestReadSignalErrors:
     """read_sidecar_signal のエラーハンドリング."""
 
     def test_file_not_found(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.sidecar_signal_io import read_sidecar_signal
+
         result = read_sidecar_signal(tmp_path / "nonexistent.json")
         assert result is None
 
     def test_invalid_json(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.sidecar_signal_io import read_sidecar_signal
+
         bad = tmp_path / "bad.json"
         bad.write_text("{invalid", encoding="utf-8")
         result = read_sidecar_signal(bad)
         assert result is None
 
     def test_missing_required_field(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.sidecar_signal_io import read_sidecar_signal
+
         p = tmp_path / "sig.json"
         p.write_text('{"timestamp": "t"}', encoding="utf-8")  # no directional_bias
         result = read_sidecar_signal(p, ttl_sec=0)
         assert result is None
 
     def test_invalid_bias_value(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.sidecar_signal_io import read_sidecar_signal
+
         p = tmp_path / "sig.json"
         data = {"timestamp": "t", "directional_bias": 5.0}
         p.write_text(json.dumps(data), encoding="utf-8")
@@ -227,6 +269,13 @@ class TestSignalStaleness:
     """TTL ベースの staleness チェック."""
 
     def test_fresh_signal(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.sidecar_types import SidecarSignal
+        from scripts.v460.lib.sidecar_signal_io import (
+            write_sidecar_signal,
+            read_sidecar_signal,
+            make_timestamp,
+        )
+
         sig = SidecarSignal(
             timestamp=make_timestamp(),
             directional_bias=0.5,
@@ -238,6 +287,12 @@ class TestSignalStaleness:
         assert loaded is not None
 
     def test_stale_signal(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.sidecar_types import SidecarSignal
+        from scripts.v460.lib.sidecar_signal_io import (
+            write_sidecar_signal,
+            read_sidecar_signal,
+        )
+
         old_ts = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
         sig = SidecarSignal(timestamp=old_ts, directional_bias=0.5)
         out = tmp_path / "sig.json"
@@ -251,11 +306,15 @@ class TestHelpers:
     """make_timestamp, create_neutral_signal."""
 
     def test_make_timestamp(self) -> None:
+        from scripts.v460.lib.sidecar_signal_io import make_timestamp
+
         ts = make_timestamp()
         dt = datetime.fromisoformat(ts)
         assert dt.tzinfo is not None
 
     def test_create_neutral_signal(self) -> None:
+        from scripts.v460.lib.sidecar_signal_io import create_neutral_signal
+
         sig = create_neutral_signal()
         assert sig.directional_bias == 0.0
         assert sig.confidence == 0.0
@@ -269,6 +328,9 @@ class TestHelpers:
 
 def _make_aggregator():
     """テスト用 CycleGateAggregator を生成."""
+    from tests.unit.v460.conftest import make_gate_config
+    from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
+
     config = make_gate_config(
         skip_buy_unknown_regime=False,
         skip_ranging_buy_low_vol=False,
@@ -284,6 +346,9 @@ def _make_aggregator():
 
 
 def _make_signal(bias: float, confidence: float = 1.0):
+    from scripts.v460.lib.sidecar_types import SidecarSignal
+    from scripts.v460.lib.sidecar_signal_io import make_timestamp
+
     return SidecarSignal(
         timestamp=make_timestamp(),
         directional_bias=bias,
@@ -374,6 +439,9 @@ class TestCycleGateSidecarInjection:
 
     def test_gate_blocked_no_sidecar(self) -> None:
         """Gate blocked → sidecar は適用されない (early return)."""
+        from tests.unit.v460.conftest import make_gate_config
+        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
+
         config = make_gate_config(skip_buy_unknown_regime=True)
         agg = CycleGateAggregator(config)
         sig = _make_signal(0.5)
@@ -392,6 +460,8 @@ class TestCycleGateResultSidecarFields:
     """CycleGateResult の sidecar フィールドのデフォルト値."""
 
     def test_defaults(self) -> None:
+        from scripts.v460.lib.cycle_gate_aggregator import CycleGateResult
+
         r = CycleGateResult()
         assert r.sidecar_offset_bps == 0.0
         assert r.sidecar_direction == "neutral"
@@ -420,6 +490,8 @@ class _FakeLiteEnv:
     """LiteTradingEnv 相当の最小 stub."""
 
     def __init__(self, n_rows: int = 100, n_features: int = 12) -> None:
+        import numpy as np
+
         self._feature_matrix = np.random.randn(n_rows, n_features).astype(
             np.float32,
         )
@@ -437,6 +509,8 @@ class _FakeDfEnv:
     """HeavyTradingEnv 相当の最小 stub (df 属性あり)."""
 
     def __init__(self, n_rows: int = 200, n_features: int = 12) -> None:
+        import numpy as np
+
         self.df = list(range(n_rows))  # len() 可能な何か
         self._data = np.random.randn(n_rows, n_features).astype(np.float32)
         self.current_step = 0
@@ -454,6 +528,9 @@ class TestGetLatestObs:
 
     def test_lite_env_returns_last_row(self) -> None:
         """LiteTradingEnv パターン: 末尾行の observation を返す."""
+        import numpy as np
+        from scripts.v460.ml.sac_retrain_scheduler import _get_latest_obs
+
         env = _FakeLiteEnv(n_rows=50, n_features=8)
         obs = _get_latest_obs(env)
         expected = env._feature_matrix[49]
@@ -461,6 +538,8 @@ class TestGetLatestObs:
 
     def test_lite_env_preserves_current_step(self) -> None:
         """_get_latest_obs 後に current_step が元に戻る."""
+        from scripts.v460.ml.sac_retrain_scheduler import _get_latest_obs
+
         env = _FakeLiteEnv(n_rows=50)
         env.current_step = 10
         _get_latest_obs(env)
@@ -468,6 +547,9 @@ class TestGetLatestObs:
 
     def test_df_env_returns_last_row(self) -> None:
         """HeavyTradingEnv パターン: df 末尾行の observation を返す."""
+        import numpy as np
+        from scripts.v460.ml.sac_retrain_scheduler import _get_latest_obs
+
         env = _FakeDfEnv(n_rows=200, n_features=8)
         obs = _get_latest_obs(env)
         expected = env._data[199]
@@ -475,6 +557,8 @@ class TestGetLatestObs:
 
     def test_df_env_preserves_current_step(self) -> None:
         """HeavyTradingEnv パターン: current_step 復元."""
+        from scripts.v460.ml.sac_retrain_scheduler import _get_latest_obs
+
         env = _FakeDfEnv(n_rows=200)
         env.current_step = 42
         _get_latest_obs(env)
@@ -482,6 +566,9 @@ class TestGetLatestObs:
 
     def test_fallback_to_reset(self) -> None:
         """df も _feature_matrix もない env → reset() フォールバック."""
+        import numpy as np
+        from scripts.v460.ml.sac_retrain_scheduler import _get_latest_obs
+
         class _PlainEnv:
             def __init__(self):
                 self.current_step = 0
@@ -571,6 +658,8 @@ class TestFillRecordSidecarFields:
 
     def test_fields_exist(self) -> None:
         """FillRecord に sidecar 関連フィールドが定義されている。"""
+        from ztb.metrics.fill_quality import FillRecord
+
         r = FillRecord(
             cycle_id="test", timestamp=0.0, side="buy",
             order_price=100.0, order_quantity=0.001,
@@ -580,6 +669,8 @@ class TestFillRecordSidecarFields:
 
     def test_set_values(self) -> None:
         """sidecar フィールドに値を設定できる。"""
+        from ztb.metrics.fill_quality import FillRecord
+
         r = FillRecord(
             cycle_id="test", timestamp=0.0, side="buy",
             order_price=100.0, order_quantity=0.001,
@@ -591,6 +682,8 @@ class TestFillRecordSidecarFields:
 
     def test_to_dict_includes_sidecar(self) -> None:
         """to_dict() に sidecar フィールドが含まれる。"""
+        from ztb.metrics.fill_quality import FillRecord
+
         r = FillRecord(
             cycle_id="test", timestamp=0.0, side="buy",
             order_price=100.0, order_quantity=0.001,
@@ -602,6 +695,8 @@ class TestFillRecordSidecarFields:
 
     def test_round_trip_from_dict(self) -> None:
         """from_dict() で sidecar フィールドが復元される。"""
+        from ztb.metrics.fill_quality import FillRecord
+
         r1 = FillRecord(
             cycle_id="test", timestamp=0.0, side="buy",
             order_price=100.0, order_quantity=0.001,
@@ -663,10 +758,14 @@ class TestDeployGateTradeCount:
 
     def test_config_default(self) -> None:
         """min_trade_count のデフォルトは 3."""
+        from scripts.v460.ml.sac_retrain_scheduler import SACRetrainConfig
+
         cfg = SACRetrainConfig()
         assert cfg.min_trade_count == 3
 
     def test_config_confidence_roi_full_default(self) -> None:
         """confidence_roi_full のデフォルトは 0.005."""
+        from scripts.v460.ml.sac_retrain_scheduler import SACRetrainConfig
+
         cfg = SACRetrainConfig()
         assert cfg.confidence_roi_full == pytest.approx(0.005)

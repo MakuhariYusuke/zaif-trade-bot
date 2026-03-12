@@ -11,7 +11,6 @@ WARNING (God Object 防止):
 from __future__ import annotations
 
 import ast
-import inspect
 from functools import lru_cache
 from pathlib import Path
 
@@ -210,9 +209,3 @@ def read_function_source(path: Path, function_name: str) -> str:
             continue
         return "\n".join(lines[node.lineno - 1:node.end_lineno])
     raise KeyError(f"{function_name} not found in {path}")
-
-
-@lru_cache(maxsize=None)
-def read_inspect_source(obj: object) -> str:
-    """inspect.getsource() の共有キャッシュ."""
-    return inspect.getsource(obj)

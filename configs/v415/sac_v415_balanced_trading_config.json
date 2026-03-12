@@ -1,0 +1,76 @@
+{
+  "model_name": "sac_v415_balanced_trading",
+  "algorithm": "sac",
+  "total_timesteps": 5000,
+  "data_source": "csv",
+  "data_path": "btc_jpy_real_dataset.csv",
+  "data_config": {
+    "csv_path": "btc_jpy_real_dataset.csv",
+    "use_real_data": true
+  },
+  "sac_hyperparameters": {
+    "learning_rate": 0.0003,
+    "buffer_size": 20000,
+    "learning_starts": 500,
+    "batch_size": 128,
+    "tau": 0.005,
+    "gamma": 0.99,
+    "train_freq": 1,
+    "gradient_steps": 1,
+    "ent_coef": 0.01,
+    "target_update_interval": 1,
+    "target_entropy": -1.0
+  },
+  "environment": {
+    "initial_balance": 200000.0,
+    "transaction_cost": 1e-05,
+    "max_position_size": 1.0,
+    "enable_action_masking": false,
+    "use_continuous_actions": true,
+    "use_standardized_observations": true,
+    "random_start": true,
+    "curriculum_stage": "profit_optimized",
+    "continuous_to_discrete_threshold": 0.1
+  },
+  "reward_settings": {
+    "use_simple_reward": false,
+    "reward_scale": 500.0,
+    "reward_clip_min": -200.0,
+    "reward_clip_max": 200.0,
+    "forced_balance_scaling": 1.0,
+    "enable_inactivity_penalty": true,
+    "inactivity_penalty_rate": 0.005,
+    "enable_opportunity_cost": true,
+    "opportunity_cost_rate": 0.005,
+    "enable_trade_execution_bonus": true,
+    "trade_execution_bonus_rate": 2.0,
+    "buy_action_penalty": 0.0,
+    "sell_action_penalty": 0.0,
+    "action_threshold_buy": 0.1,
+    "action_threshold_sell": -0.1,
+    "trading_focused_scaling": 1.0,
+    "hold_penalty_rate": 0.02,
+    "trading_bonus_multiplier": 3.0,
+    "profit_multiplier": 3.0,
+    "loss_penalty_multiplier": 3.0,
+    "sell_penalty_rate": 0.0,
+    "buy_bonus_rate": 0.0,
+    "balance_penalty_tolerance": 0.05,
+    "balance_penalty": 1.0,
+    "constraint_penalty": 1.0,
+    "profit_bonus_multipliers": [
+      1.2,
+      1.0,
+      0.8
+    ]
+  },
+  "checkpoint_interval": 1000,
+  "notes": "SAC v415: Enhanced diversity and win bonuses for balanced trading",
+  "fixes_implemented": {
+    "fix_1": "Increased trading_bonus_multiplier to 3.0 for diversity bonus",
+    "fix_2": "Added profit_bonus_multipliers [1.2, 1.0, 0.8] to boost BUY actions",
+    "fix_3": "Increased balance_penalty to 1.0 for stronger balance enforcement",
+    "fix_4": "Increased hold_penalty_rate to 0.02 to reduce HOLD actions",
+    "fix_5": "Reset action penalties to 0.0 for neutral trading incentives"
+  }
+}

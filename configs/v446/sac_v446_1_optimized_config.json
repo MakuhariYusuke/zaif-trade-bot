@@ -1,0 +1,128 @@
+{
+  "version": "v446.1",
+  "algorithm": "sac",
+  "model_name": "sac_v446_optimized",
+  "description": "SAC v446.1 Optimized Configuration with Learning Parameter Optimization Results",
+
+  "training": {
+    "total_timesteps": 5000,
+    "algorithm": "SAC",
+    "sac_hyperparameters": {
+      "learning_rate": 0.009549152153374013,
+      "buffer_size": 434558,
+      "learning_starts": 1475,
+      "batch_size": 327,
+      "tau": 0.027859723627546424,
+      "gamma": 0.9378199804848419,
+      "train_freq": 1,
+      "gradient_steps": 8,
+      "target_update_interval": 1,
+      "ent_coef": "auto",
+      "ent_coef_init": 1.664250966988551,
+      "target_entropy": "auto"
+    },
+
+    "data_config": {
+      "data_path": "data/btc_jpy_real_dataset.csv",
+      "validation_split": 0.2,
+      "test_split": 0.1,
+      "use_real_data": true
+    },
+
+    "environment": {
+      "initial_balance": 10000,
+      "transaction_cost": 0.001,
+      "max_position_size": 1.0,
+      "random_start": true,
+      "use_continuous_actions": true,
+      "continuous_to_discrete_threshold": 0.3333,
+      "reward_function": "sharpe_ratio_focused",
+      "behavior_optimization": {
+        "entropy_regularization": 0.06911089482590727,
+        "action_smoothing": 0.4945676294968961,
+        "reward_scale": 269.58067055238905
+      },
+      "risk_management": {
+        "max_drawdown_limit": 0.1,
+        "position_sizing": "kelly_criterion",
+        "stop_loss_enabled": true,
+        "take_profit_enabled": true
+      }
+    },
+
+    "features": {
+      "feature_set": "optimized_v445",
+      "technical_indicators": true,
+      "price_patterns": true,
+      "volume_analysis": true,
+      "market_regime_detection": true,
+      "correlation_features": false,
+      "dimensionality_reduction": "auto"
+    },
+
+    "validation": {
+      "enabled": true,
+      "validation_freq": 1000,
+      "n_eval_episodes": 5,
+      "deterministic_eval": true,
+      "eval_callback_enabled": true
+    },
+
+    "logging": {
+      "log_interval": 100,
+      "save_freq": 1000,
+      "verbose": 1,
+      "tensorboard_log": "./tensorboard/sac_v446_1_optimized",
+      "checkpoint_freq": 25000
+    },
+
+    "optimization": {
+      "early_stopping": {
+        "enabled": false,
+        "patience": 10,
+        "min_delta": 0.001
+      },
+      "gradient_clipping": {
+        "enabled": true,
+        "clip_value": 1.0
+      }
+    }
+  },
+
+  "evaluation": {
+    "backtest_config": {
+      "initial_balance": 10000,
+      "transaction_cost": 0.001,
+      "max_position_size": 1.0,
+      "use_real_data": true,
+      "data_path": "data/btc_jpy_real_dataset.csv"
+    },
+    "metrics": [
+      "total_return",
+      "sharpe_ratio",
+      "max_drawdown",
+      "win_rate",
+      "profit_factor",
+      "calmar_ratio",
+      "sortino_ratio",
+      "alpha",
+      "beta"
+    ],
+    "plots": [
+      "equity_curve",
+      "drawdown_chart",
+      "monthly_returns",
+      "trade_analysis",
+      "risk_metrics"
+    ]
+  },
+
+  "metadata": {
+    "created_from": "sac_v446_base_config.json",
+    "optimization_source": "sac_v446_learning_params_opt_20251112_135503.json",
+    "optimization_method": "bayesian_optimization",
+    "optimization_trials": 10,
+    "optimization_time_seconds": 183.84,
+    "notes": "Optimized learning parameters for improved training stability and performance"
+  }
+}

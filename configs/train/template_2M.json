@@ -1,0 +1,89 @@
+{
+  "comment": "2M Long-run Training Template - 長時間学習用設定",
+  "_usage": "2M学習（約6-10時間）用。YOUR_SESSION_IDを置換してください",
+
+  "algorithm": "ppo",
+  "data_path": "ml-dataset-enhanced.csv",
+  "session_id": "YOUR_SESSION_ID_2M",
+  "total_timesteps": 2000000,
+
+  "training": {
+    "learning_rate": 3.0e-4,
+    "n_steps": 2048,
+    "batch_size": 64,
+    "n_epochs": 10,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "ent_coef": 0.7,
+    "ent_coef_schedule": "cosine_decay",
+    "ent_coef_final": 0.15,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "seed": 42
+  },
+
+  "custom_ppo": {
+    "enable_pan": true,
+    "enable_target_entropy": true,
+    "enable_stratified_sampling": false,
+    "target_entropy_ratio": 0.7,
+    "lr_temperature": 3.0e-4,
+    "initial_temperature": 0.01,
+    "pan_epsilon": 1.0e-8
+  },
+
+  "environment": {
+    "transaction_cost": 0.001,
+    "max_position_size": 1.0,
+    "curriculum_stage": "full",
+    "allow_reverse": false
+  },
+
+  "reward_profit_bonus_multipliers": [1.0, 1.0, 1.0],
+  "reward_settings": {
+    "enable_forced_diversity": false
+  },
+
+  "checkpoint_interval": 50000,
+  "checkpoint_dir": "checkpoints/YOUR_SESSION_ID_2M",
+  "log_dir": "logs/YOUR_SESSION_ID_2M",
+  "model_dir": "models/YOUR_SESSION_ID_2M",
+
+  "evaluation": {
+    "enabled": true,
+    "eval_freq": 50000,
+    "n_eval_episodes": 20,
+    "eval_deterministic": true
+  },
+
+  "resume": {
+    "enabled": true,
+    "checkpoint_path": null,
+    "comment": "中断時に自動再開する場合、checkpoint_pathを指定"
+  },
+
+  "rolling_evaluation": {
+    "enabled": true,
+    "eval_interval": 100000,
+    "eval_data_path": "ml-dataset-enhanced.csv",
+    "eval_episodes": 50,
+    "save_results": true,
+    "results_dir": "eval_results/YOUR_SESSION_ID_2M"
+  },
+
+  "enable_grad_probe_guard": true,
+  "grad_probe_config": {
+    "zero_threshold": 1e-8,
+    "consecutive_zeros": 5,
+    "check_interval": 5000,
+    "monitor_actions": ["SELL", "BUY", "HOLD"],
+    "critical_actions": ["SELL"],
+    "save_replay_buffer": true,
+    "save_model_state": true,
+    "save_diagnostics": true,
+    "archive_dir": "grad_probe_archives",
+    "save_tensorboard_events": true,
+    "save_environment_state": true
+  }
+}

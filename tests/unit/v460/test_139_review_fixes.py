@@ -17,10 +17,12 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 import pickle
 import time
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -38,14 +40,17 @@ from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from tests.unit.v460._fill_test_source import (
     FILL_LOOP_ORCHESTRATOR,
-    SKIP_GATE_EVALUATOR,
-    read_class_method_source,
-    read_inspect_source,
     read_fill_test_runner_source,
     read_source_text,
 )
 from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
 from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
+
+
+@lru_cache(maxsize=None)
+def _source(obj: object) -> str:
+    return inspect.getsource(obj)
+
 
 # ---------------------------------------------------------------------------
 # §8 #1: SkipGateEvaluator → ScoreCalibrator 注入テスト
@@ -130,11 +135,7 @@ class TestEvaluatorCalibratorInjection:
 
     def test_hot_reload_re_injects_calibrator(self) -> None:
         """_check_and_reload_model 内で _inject_calibrator が呼ばれる."""
-        source = read_class_method_source(
-            SKIP_GATE_EVALUATOR,
-            "SkipGateEvaluator",
-            "_check_and_reload_model",
-        )
+        source = _source(SkipGateEvaluator._check_and_reload_model)
         assert "_inject_calibrator" in source
 
 
@@ -346,7 +347,7 @@ class TestFeeSpecClarification:
 
     def test_pnl_measurer_comment_documents_scope(self) -> None:
         """pnl_measurer.py に maker-only 仕様明記のコメントがある."""
-        source = read_inspect_source(pm)
+        source = _source(pm)
         assert "maker fee のみ控除" in source or "maker fee only" in source.lower()
         assert "taker" in source.lower()  # taker についての言及がある
 
@@ -366,7 +367,7 @@ class TestTradesFallbackSafety:
 
     def test_enricher_no_full_load_fallback(self) -> None:
         """feature_enricher.py に date_filter=None の 3段目がない."""
-        source = read_inspect_source(fe)
+        source = _source(fe)
         # 139# §9-#5: 全量ロード廃止確認
         assert "date_filter=None全量ロード廃止" in source
         # date_filter=None の最終フォールバックが除去されたことを確認
@@ -444,7 +445,7 @@ class TestRunContinuousBranchExecution:
 
     def test_preflight_pause_no_attribute_error(self, tmp_path: Path) -> None:
         """preflight_pause 分岐で _append_fill_record が呼ばれず batch.append が使われる."""
-        source = read_inspect_source(rft.FillTestRunner)
+        source = _source(rft.FillTestRunner)
         # _append_fill_record が存在しないことを確認
         assert not hasattr(rft.FillTestRunner, "_append_fill_record"), \
             "_append_fill_record should not exist on FillTestRunner"
@@ -506,7 +507,7 @@ class TestRetrainRunIdComparison:
 
     def test_metadata_includes_source_run_id(self) -> None:
         """retrain_model の metadata に source_run_id が含まれる."""
-        source = read_inspect_source(rs)
+        source = _source(rs)
         assert '"source_run_id"' in source
         assert '"run_switched"' in source
 

@@ -1,0 +1,124 @@
+{
+  "session_id": "ppo_reward_v379_dynamic",
+  "algorithm": "ppo",
+  "description": "Reward Improvement v2: Dynamic scale with market adaptation - v378 + volatility/trend-adjusted rewards",
+
+  "comment_experiment": "v379: Advanced reward function - market-adaptive rewards based on volatility and trend strength",
+  "comment_strategy": "Build on v378 scale adjustments + add dynamic market-aware reward scaling",
+  "comment_target": "Reduce HOLD rate to 40-50% with intelligent market-adaptive trading",
+
+  "comment_reward_improvements": [
+    "✅ All v378 improvements (4x HOLD penalty, 3x profit, 3x trading bonus, exponential consecutive HOLD)",
+    "✅ NEW: volatility_adjusted_penalty: True (increase HOLD penalty in high volatility)",
+    "✅ NEW: trend_adjusted_bonus: True (increase trading bonus in strong trends)",
+    "✅ NEW: range_market_hold_tolerance: 0.5 (reduce penalty in range-bound markets)",
+    "✅ Dynamic scaling based on ATR, trend strength, and market regime"
+  ],
+
+  "curated_features_list": "curated_features.py::CURATED_FEATURES",
+  "enable_feature_filtering": true,
+  "feature_filter_mode": "whitelist",
+
+  "max_features": null,
+  "enable_correlation_reduction": false,
+
+  "data_rows_limit": null,
+
+  "ppo": {
+    "learning_rate": 0.0003,
+    "n_steps": 512,
+    "batch_size": 128,
+    "n_epochs": 6,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "clip_range_vf": null,
+    "ent_coef": 0.06,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "use_sde": false,
+    "sde_sample_freq": -1,
+    "target_kl": 0.03,
+    "policy_kwargs": {
+      "net_arch": [
+        {"pi": [128, 128], "vf": [128, 128]}
+      ]
+    }
+  },
+
+  "environment": {
+    "initial_balance": 10000,
+    "transaction_cost": 0.0001,
+    "max_position_size": 1.0,
+    "enable_action_masking": true,
+    "random_start": true,
+    "reward_settings": {
+      "hold_penalty_weight": 0.02,
+      "consecutive_hold_penalty": 0.01,
+      "consecutive_hold_exponential": true,
+      "consecutive_hold_threshold": 5,
+      "trading_frequency_bonus": 0.15,
+      "profit_reward_multiplier": 3.0,
+      "action_diversity_bonus": 0.05,
+      "successful_trade_bonus": 0.5,
+      "volatility_adjusted_penalty": true,
+      "trend_adjusted_bonus": true,
+      "range_market_hold_tolerance": 0.5
+    }
+  },
+
+  "training": {
+    "total_timesteps": 30000,
+    "checkpoint_interval": 2000,
+    "enable_autohalt": true,
+    "eval_freq": 1000,
+    "n_eval_episodes": 10,
+    "reward_scaling": 1.0
+  },
+
+  "custom_ppo": {
+    "enabled": true,
+    "use_pan": true,
+    "use_target_entropy": true,
+    "target_entropy": -0.8,
+    "use_gradient_probe_guard": false,
+    "pan_epsilon": 1e-8,
+    "enable_evaluation_gates": true,
+    "gate_thresholds": {
+      "variance_threshold": 0.01,
+      "distribution_check_enabled": true
+    }
+  },
+
+  "data_path": "ml-dataset-enhanced-balanced.csv",
+
+  "comment_comparison": "Comparison with other versions:",
+  "comparison": {
+    "v377_baseline": {
+      "reward_type": "Static",
+      "hold_penalty": 0.005,
+      "expected_hold_rate": "60-65%",
+      "market_adaptation": "None"
+    },
+    "v378_scale_adjusted": {
+      "reward_type": "Static (scaled)",
+      "hold_penalty": 0.02,
+      "expected_hold_rate": "45-55%",
+      "market_adaptation": "None"
+    },
+    "v379_dynamic": {
+      "reward_type": "Dynamic (market-adaptive)",
+      "hold_penalty": "0.02 * volatility_factor",
+      "expected_hold_rate": "40-50%",
+      "market_adaptation": "Volatility + Trend + Range detection",
+      "risk_level": "Medium-High"
+    }
+  },
+
+  "comment_dynamic_scaling": [
+    "High volatility (ATR > mean): HOLD penalty increased by 1.5-2x",
+    "Strong trend (MACD, EMA alignment): Trading bonus increased by 1.5-2x",
+    "Range market (low ADX, small price movement): HOLD penalty reduced by 50%",
+    "Adaptive to market conditions for optimal action selection"
+  ]
+}

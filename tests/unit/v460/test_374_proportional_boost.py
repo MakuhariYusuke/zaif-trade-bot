@@ -20,24 +20,6 @@ import math
 
 import pytest
 
-import scripts.v460.lib.sidecar_types as st
-from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
-from scripts.v460.lib.cycle_gate_aggregator import (
-    CycleGateAggregator,
-    CycleGateResult,
-)
-from scripts.v460.lib.fill_config import FillTestConfig
-from scripts.v460.lib.fill_config_parser import parse_fill_config_yaml
-from scripts.v460.lib.fill_config_validation import validate_fill_config
-from scripts.v460.lib.sidecar_types import (
-    DEFAULT_SIDECAR_BOOST_BPS,
-    DEFAULT_SIDECAR_DEAD_ZONE,
-    SidecarSignal,
-    _shaping_fn,
-    compute_sidecar_offset_bps,
-    compute_sidecar_offset_bps_v2,
-)
-
 
 # ════════════════════════════════════════════════════════════════
 # §1 compute_sidecar_offset_bps_v2 — コア比例計算
@@ -48,6 +30,8 @@ class TestComputeSidecarOffsetBpsV2:
     """374# Phase 3.1: SAC 連続値 → 比例 offset 変換."""
 
     def _v2(self, **kwargs):
+        from scripts.v460.lib.sidecar_types import compute_sidecar_offset_bps_v2
+
         return compute_sidecar_offset_bps_v2(**kwargs)
 
     # --- dead zone ---
@@ -205,6 +189,8 @@ class TestShapingFn:
     """_shaping_fn 内部関数テスト."""
 
     def _fn(self, normalized: float, shaping: str) -> float:
+        from scripts.v460.lib.sidecar_types import _shaping_fn
+
         return _shaping_fn(normalized, shaping)
 
     def test_linear_endpoints(self) -> None:
@@ -239,6 +225,11 @@ class TestV1V2Compatibility:
         bias=0.2: v1=NEUTRAL(0), v2=positive(dead_zone=0.1 内では超えている)
         → v2 はより細かい粒度で offset を適用。
         """
+        from scripts.v460.lib.sidecar_types import (
+            compute_sidecar_offset_bps,
+            compute_sidecar_offset_bps_v2,
+        )
+
         bias = 0.2
         v1 = compute_sidecar_offset_bps(bias=bias, side="buy")
         v2 = compute_sidecar_offset_bps_v2(bias=bias, side="buy")
@@ -247,6 +238,11 @@ class TestV1V2Compatibility:
 
     def test_strong_bias_same_direction(self) -> None:
         """strong bias (|bias|=0.8): 両方とも同方向 offset."""
+        from scripts.v460.lib.sidecar_types import (
+            compute_sidecar_offset_bps,
+            compute_sidecar_offset_bps_v2,
+        )
+
         v1_buy = compute_sidecar_offset_bps(bias=0.8, side="buy")
         v2_buy = compute_sidecar_offset_bps_v2(bias=0.8, side="buy")
         assert v1_buy > 0.0  # same direction
@@ -254,6 +250,8 @@ class TestV1V2Compatibility:
 
     def test_v2_output_bounded(self) -> None:
         """v2 出力は max_boost_bps 以内."""
+        from scripts.v460.lib.sidecar_types import compute_sidecar_offset_bps_v2
+
         for bias in [-1.0, -0.5, 0.0, 0.5, 1.0]:
             for side in ["buy", "sell"]:
                 offset = compute_sidecar_offset_bps_v2(
@@ -271,6 +269,8 @@ class TestFillConfigSidecarFields:
     """374# sidecar_* フィールドのデフォルト値検証."""
 
     def test_defaults(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+
         cfg = FillTestConfig()
         assert cfg.sidecar_enabled is True
         assert cfg.sidecar_max_boost_bps == 0.15
@@ -279,6 +279,8 @@ class TestFillConfigSidecarFields:
         assert cfg.sidecar_use_v2 is True
 
     def test_custom_values(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+
         cfg = FillTestConfig(
             sidecar_enabled=False,
             sidecar_max_boost_bps=0.20,
@@ -302,6 +304,8 @@ class TestFillConfigParserSidecar:
     """374# sidecar YAML セクションの解析テスト."""
 
     def test_parse_sidecar_section(self) -> None:
+        from scripts.v460.lib.fill_config_parser import parse_fill_config_yaml
+
         yaml_cfg = {
             "sidecar": {
                 "enabled": True,
@@ -320,6 +324,8 @@ class TestFillConfigParserSidecar:
 
     def test_parse_sidecar_partial(self) -> None:
         """部分指定 — 未指定フィールドはデフォルト値."""
+        from scripts.v460.lib.fill_config_parser import parse_fill_config_yaml
+
         yaml_cfg = {"sidecar": {"max_boost_bps": 0.20}}
         cfg = parse_fill_config_yaml(yaml_cfg)
         assert cfg.sidecar_max_boost_bps == 0.20
@@ -328,11 +334,15 @@ class TestFillConfigParserSidecar:
 
     def test_parse_sidecar_absent(self) -> None:
         """sidecar セクション未指定 → 全デフォルト."""
+        from scripts.v460.lib.fill_config_parser import parse_fill_config_yaml
+
         cfg = parse_fill_config_yaml({})
         assert cfg.sidecar_enabled is True
         assert cfg.sidecar_max_boost_bps == 0.15
 
     def test_parse_sidecar_disabled(self) -> None:
+        from scripts.v460.lib.fill_config_parser import parse_fill_config_yaml
+
         yaml_cfg = {"sidecar": {"enabled": False}}
         cfg = parse_fill_config_yaml(yaml_cfg)
         assert cfg.sidecar_enabled is False
@@ -347,6 +357,8 @@ class TestConfigHotReloadSidecar:
     """374# sidecar キーが hot-reload 対象に登録されていること."""
 
     def test_sidecar_keys_in_hot_reloadable(self) -> None:
+        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
+
         expected = {
             "sidecar_enabled",
             "sidecar_max_boost_bps",
@@ -366,6 +378,8 @@ class TestCycleGateAggregatorSidecarV2:
     """374# _apply_sidecar_offset が v2 を正しく呼び出すこと."""
 
     def _make_signal(self, bias: float = 0.5, confidence: float = 1.0):
+        from scripts.v460.lib.sidecar_types import SidecarSignal
+
         return SidecarSignal(
             timestamp="2026-03-15T12:00:00+09:00",
             directional_bias=bias,
@@ -373,10 +387,15 @@ class TestCycleGateAggregatorSidecarV2:
         )
 
     def _make_aggregator(self, **config_overrides):
+        from scripts.v460.lib.fill_config import FillTestConfig
+        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
+
         cfg = FillTestConfig(**config_overrides)
         return CycleGateAggregator(cfg)
 
     def _make_result(self):
+        from scripts.v460.lib.cycle_gate_aggregator import CycleGateResult
+
         return CycleGateResult(blocked=False)
 
     def test_v2_produces_proportional_offset(self) -> None:
@@ -469,15 +488,21 @@ class TestSafetyBounds:
 
     def test_default_max_boost_within_ceiling(self) -> None:
         """DEFAULT_SIDECAR_BOOST_BPS ≤ 0.20."""
+        from scripts.v460.lib.sidecar_types import DEFAULT_SIDECAR_BOOST_BPS
+
         assert DEFAULT_SIDECAR_BOOST_BPS <= 0.20
 
     def test_config_default_within_ceiling(self) -> None:
         """FillTestConfig.sidecar_max_boost_bps ≤ 0.20."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
         cfg = FillTestConfig()
         assert cfg.sidecar_max_boost_bps <= 0.20
 
     def test_v2_output_never_exceeds_max_boost(self) -> None:
         """全 bias/side/shaping 組合せで |offset| ≤ max_boost_bps."""
+        from scripts.v460.lib.sidecar_types import compute_sidecar_offset_bps_v2
+
         max_bps = 0.15
         for bias in [-1.0, -0.8, -0.5, -0.11, 0.0, 0.11, 0.5, 0.8, 1.0]:
             for side in ["buy", "sell"]:
@@ -493,6 +518,8 @@ class TestSafetyBounds:
 
     def test_dead_zone_default(self) -> None:
         """DEFAULT_SIDECAR_DEAD_ZONE == 0.10."""
+        from scripts.v460.lib.sidecar_types import DEFAULT_SIDECAR_DEAD_ZONE
+
         assert DEFAULT_SIDECAR_DEAD_ZONE == 0.10
 
 
@@ -507,6 +534,8 @@ class TestLadderSteps:
     @pytest.mark.parametrize("max_boost", [0.10, 0.15, 0.20])
     def test_ladder_step_bounded(self, max_boost: float) -> None:
         """各 ladder step で |offset| ≤ max_boost."""
+        from scripts.v460.lib.sidecar_types import compute_sidecar_offset_bps_v2
+
         for bias in [-1.0, 1.0]:
             offset = compute_sidecar_offset_bps_v2(
                 bias=bias, side="buy", max_boost_bps=max_boost,
@@ -516,6 +545,8 @@ class TestLadderSteps:
     @pytest.mark.parametrize("max_boost", [0.10, 0.15, 0.20])
     def test_ladder_step_monotonic(self, max_boost: float) -> None:
         """|bias| 増加 → |offset| 単調増加 (linear)."""
+        from scripts.v460.lib.sidecar_types import compute_sidecar_offset_bps_v2
+
         prev = 0.0
         for bias_val in [0.2, 0.4, 0.6, 0.8, 1.0]:
             offset = compute_sidecar_offset_bps_v2(
@@ -535,6 +566,8 @@ class TestSidecarValidation:
 
     def _make_config(self, **overrides):
         """最小限の FillTestConfig を生成 (validation 通過するデフォルト)."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
         cfg = FillTestConfig()
         for k, v in overrides.items():
             object.__setattr__(cfg, k, v)
@@ -542,41 +575,55 @@ class TestSidecarValidation:
 
     def test_max_boost_bps_negative_raises(self) -> None:
         """sidecar_max_boost_bps < 0 → ValueError."""
+        from scripts.v460.lib.fill_config_validation import validate_fill_config
+
         cfg = self._make_config(sidecar_max_boost_bps=-0.01)
         with pytest.raises(ValueError, match="sidecar_max_boost_bps must be >= 0"):
             validate_fill_config(cfg)
 
     def test_max_boost_bps_exceeds_ceiling_raises(self) -> None:
         """sidecar_max_boost_bps > 0.20 → ValueError (375#/376# hard ceiling)."""
+        from scripts.v460.lib.fill_config_validation import validate_fill_config
+
         cfg = self._make_config(sidecar_max_boost_bps=0.21)
         with pytest.raises(ValueError, match="hard ceiling"):
             validate_fill_config(cfg)
 
     def test_max_boost_bps_at_ceiling_ok(self) -> None:
         """sidecar_max_boost_bps == 0.20 → 通過."""
+        from scripts.v460.lib.fill_config_validation import validate_fill_config
+
         cfg = self._make_config(sidecar_max_boost_bps=0.20)
         # Should not raise
         validate_fill_config(cfg)
 
     def test_dead_zone_negative_raises(self) -> None:
         """sidecar_dead_zone < 0 → ValueError."""
+        from scripts.v460.lib.fill_config_validation import validate_fill_config
+
         cfg = self._make_config(sidecar_dead_zone=-0.1)
         with pytest.raises(ValueError, match="sidecar_dead_zone must be in"):
             validate_fill_config(cfg)
 
     def test_dead_zone_one_raises(self) -> None:
         """sidecar_dead_zone >= 1.0 → ValueError."""
+        from scripts.v460.lib.fill_config_validation import validate_fill_config
+
         cfg = self._make_config(sidecar_dead_zone=1.0)
         with pytest.raises(ValueError, match="sidecar_dead_zone must be in"):
             validate_fill_config(cfg)
 
     def test_dead_zone_valid_range_ok(self) -> None:
         """sidecar_dead_zone in [0, 1) → 通過."""
+        from scripts.v460.lib.fill_config_validation import validate_fill_config
+
         cfg = self._make_config(sidecar_dead_zone=0.5)
         validate_fill_config(cfg)
 
     def test_shaping_invalid_raises(self) -> None:
         """sidecar_shaping が不正文字列 → ValueError."""
+        from scripts.v460.lib.fill_config_validation import validate_fill_config
+
         cfg = self._make_config(sidecar_shaping="cubic")
         with pytest.raises(ValueError, match="sidecar_shaping must be one of"):
             validate_fill_config(cfg)
@@ -584,10 +631,14 @@ class TestSidecarValidation:
     @pytest.mark.parametrize("shaping", ["linear", "quadratic", "sigmoid"])
     def test_shaping_valid_ok(self, shaping: str) -> None:
         """有効な shaping 値 → 通過."""
+        from scripts.v460.lib.fill_config_validation import validate_fill_config
+
         cfg = self._make_config(sidecar_shaping=shaping)
         validate_fill_config(cfg)
 
     def test_math_module_level_import(self) -> None:
         """sidecar_types.py の math が module-level import であることを確認."""
+        import scripts.v460.lib.sidecar_types as st
+
         assert hasattr(st, "math"), "math should be a module-level import"
         assert st.math is math, "st.math should be the same math module"

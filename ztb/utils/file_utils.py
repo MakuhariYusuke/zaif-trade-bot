@@ -50,14 +50,12 @@ def safe_json_dump(
     indent: int = 2,
     default: Any = None,
     ensure_ascii: bool = False,
-    sort_keys: bool = False,
     encoding: str = "utf-8",
 ) -> bool:
     """
     Safely dump data to JSON file with error handling.
 
-    Backwards-compatible: accepts `ensure_ascii`, `sort_keys`, and `encoding`
-    kwargs used in callers.
+    Backwards-compatible: accepts `ensure_ascii` and `encoding` kwargs used in callers.
 
     Args:
         data: Data to serialize
@@ -65,7 +63,6 @@ def safe_json_dump(
         indent: JSON indentation level
         default: Default function for objects that can't be serialized
         ensure_ascii: Whether to escape non-ASCII characters
-        sort_keys: Whether to sort JSON object keys
         encoding: File encoding
 
     Returns:
@@ -84,7 +81,6 @@ def safe_json_dump(
             data,
             indent=indent,
             ensure_ascii=ensure_ascii,
-            sort_keys=sort_keys,
             default=default,
             encoding=encoding,
         )

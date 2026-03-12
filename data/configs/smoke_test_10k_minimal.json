@@ -1,0 +1,47 @@
+{
+  "comment": "10k smoke test - Lagrange only (minimal)",
+  "algorithm": "ppo",
+  "data_path": "ml-dataset-enhanced.csv",
+  "total_timesteps": 10000,
+  "learning_rate": 3e-4,
+  "n_steps": 2048,
+  "batch_size": 64,
+  "gamma": 0.99,
+  "ent_coef": 0.01,
+  "vf_coef": 0.5,
+  "max_grad_norm": 0.5,
+  "clip_range": 0.2,
+  "gae_lambda": 0.95,
+  "seed": 42,
+
+  "environment": {
+    "transaction_cost": 0.001,
+    "max_position_size": 1.0,
+    "curriculum_stage": "full",
+    "allow_reverse": false,
+    "gc_collect_interval_steps": 100,
+    "memory_log_interval_steps": 500
+  },
+
+  "mitigation": {
+    "enable_lagrange": true,
+    "enable_probes": false,
+    "enable_weights": false,
+    "enable_pan": false,
+    "enable_target_entropy": false,
+    "enable_stratified_sampling": false
+  },
+
+  "validation": {
+    "target_sell_rate_min": 0.12,
+    "target_sell_rate_optimal": 0.15,
+    "grad_norm_threshold": 1e-6,
+    "moving_window": 5000
+  },
+
+  "output": {
+    "checkpoint_dir": "./checkpoints/smoke_test_10k_minimal",
+    "tensorboard_log": "./logs/smoke_test_10k_minimal",
+    "probe_csv": "./checkpoints/smoke_test_10k_minimal/sell_probe.csv"
+  }
+}

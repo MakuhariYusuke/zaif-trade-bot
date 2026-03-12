@@ -1,0 +1,49 @@
+"""
+Common interfaces for trading components.
+"""
+
+from abc import ABC, abstractmethod
+from typing import Any
+
+import pandas as pd
+
+class TradingStrategy(ABC):
+    """Abstract base class for trading strategies."""
+
+    @abstractmethod
+    def generate_signal(
+        self, data: pd.DataFrame, current_position: int
+    ) -> dict[str, Any]:
+        """Generate trading signal based on current data and position."""
+
+    @abstractmethod
+    def get_required_columns(self) -> list[str]:
+        """Return list of required data columns."""
+
+class DataProvider(ABC):
+    """Abstract base class for data providers."""
+
+    @abstractmethod
+    async def get_historical_data(
+        self, symbol: str, start_date: str, end_date: str
+    ) -> pd.DataFrame:
+        """Fetch historical data for a symbol."""
+
+    @abstractmethod
+    async def get_current_price(self, symbol: str) -> float:
+        """Get current price for a symbol."""
+
+class OrderManager(ABC):
+    """Abstract base class for order management."""
+
+    @abstractmethod
+    async def place_order(self, order: dict[str, Any]) -> str:
+        """Place an order and return order ID."""
+
+    @abstractmethod
+    async def cancel_order(self, order_id: str) -> bool:
+        """Cancel an order by ID."""
+
+    @abstractmethod
+    async def get_order_status(self, order_id: str) -> dict[str, Any]:
+        """Get status of an order."""

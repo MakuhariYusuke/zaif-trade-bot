@@ -1,0 +1,18 @@
+# v457 Feature Set Definition
+# Based on 'balanced' set from v456 era, but explicitly defined here.
+# This list is the SOURCE OF TRUTH for v457 features.
+
+features:
+  - MFI
+  - Lags
+  - VWAP
+  - Donchian
+  - KalmanFilter
+  - RSI
+  - RollingMean14
+  - RollingStd14
+  - ATR_simplified
+  - OBV
+  # Pre-allocation for candidates (Commented out until proven)
+  # - ZScore
+  # - PriceAction

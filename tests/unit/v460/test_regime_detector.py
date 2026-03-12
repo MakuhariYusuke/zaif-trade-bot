@@ -30,16 +30,16 @@ from scripts.v460.lib.regime_detector import (
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from scripts.v460.lib.time_filter import TimeFilter
 from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
-from tests.unit.v460._fill_test_source import (
-    ORCHESTRATOR_PRE_CYCLE,
-    read_class_method_source,
-    read_fill_test_method_source,
-    read_inspect_source,
-    read_source_text,
-)
+from tests.unit.v460._fill_test_source import read_source_text
 from ztb.metrics.fill_quality import FillRecord, filter_clean_records
 from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+
+
+@lru_cache(maxsize=None)
+def _source(obj: object) -> str:
+    return inspect.getsource(obj)
+
 
 @lru_cache(maxsize=None)
 def _maker_price_source() -> str:
@@ -762,7 +762,7 @@ class TestRateLimitDoubleCheck:
     def test_rate_limit_called_before_transactions(self) -> None:
         """_get_order_status_real のソースに _check_rate_limit がある."""
 
-        source = read_inspect_source(CoincheckAdapter._get_order_status_real)
+        source = _source(CoincheckAdapter._get_order_status_real)
         count = source.count("_check_rate_limit")
         assert count >= 1, f"Expected ≥1 rate limit checks in _get_order_status_real, found {count}"
 
@@ -775,7 +775,7 @@ class TestPriceRounding:
     def test_price_uses_round_not_int(self) -> None:
         """_place_order_real のソースに round(price) が使われている."""
 
-        source = read_inspect_source(CoincheckAdapter._place_order_real)
+        source = _source(CoincheckAdapter._place_order_real)
         assert "round(price)" in source, "price should use round() not int()"
         assert "int(price)" not in source, "int(price) should be replaced by round(price)"
 
@@ -788,7 +788,7 @@ class TestBalanceLocked:
     def test_balance_source_has_reserved_handling(self) -> None:
         """_get_balance_real のソースに _reserved の処理が含まれる."""
 
-        source = read_inspect_source(CoincheckAdapter._get_balance_real)
+        source = _source(CoincheckAdapter._get_balance_real)
         assert "_reserved" in source, "_get_balance_real should handle *_reserved keys"
         assert "locked=0.0" not in source, "locked should not be hardcoded to 0.0"
 
@@ -802,7 +802,7 @@ class TestBug10InsufficientFundsNoRetry:
     def test_source_has_insufficient_funds_break(self) -> None:
         """run_single_cycle のソースに insufficient_funds → break が含まれる."""
 
-        source = read_fill_test_method_source("run_single_cycle")
+        source = _source(FillTestRunner.run_single_cycle)
         # 084# 改修: 非リトライ対象をセットで管理
         assert '"insufficient_funds"' in source
         assert "not retriable" in source.lower() or "_non_retriable" in source
@@ -916,7 +916,7 @@ class TestBalanceCurrencyFilter:
     def test_ignore_suffixes_in_source(self) -> None:
         """_get_balance_real のソースに _lending 等の除外ロジックがある."""
 
-        source = read_inspect_source(CoincheckAdapter._get_balance_real)
+        source = _source(CoincheckAdapter._get_balance_real)
         for suffix in ["_lending", "_lend_in_use", "_lent", "_debt", "_tsumitate"]:
             assert suffix in source, f"{suffix} should be excluded in _get_balance_real"
 
@@ -926,7 +926,7 @@ class TestBalanceCurrencyFilter:
         120#: adaptation_engine.py に抽出済み。
         """
 
-        source = read_inspect_source(AdaptationEngine.update_dynamic_loss_cap)
+        source = _source(AdaptationEngine.update_dynamic_loss_cap)
         assert "JPY_RESERVED" not in source, "Dead check should be removed"
         assert "BTC_RESERVED" not in source, "Dead check should be removed"
 
@@ -939,11 +939,7 @@ class TestBug086TimeFilterPositionAccumulation:
         330#: 時間フィルタは orchestrator_pre_cycle._apply_time_filter に抽出済み。
         """
         from scripts.v460.lib.orchestrator_pre_cycle import OrchestratorPreCycleMixin
-        source = read_class_method_source(
-            ORCHESTRATOR_PRE_CYCLE,
-            "OrchestratorPreCycleMixin",
-            "_apply_time_filter",
-        )
+        source = _source(OrchestratorPreCycleMixin._apply_time_filter)
         assert "alt_side == self._last_side" in source, (
             "086# 片側蓄積防止ガードが必要"
         )

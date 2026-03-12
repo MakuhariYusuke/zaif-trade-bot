@@ -7,14 +7,13 @@ about training runs, including git state, configuration, and data fingerprints.
 
 import hashlib
 import json
-from dataclasses import is_dataclass
+from dataclasses import asdict, is_dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import cast
 
 from ztb.io.json_io import read_json_object, write_json
 from ztb.types.common import ConfigDict
-from ztb.utils.dataclass_utils import shallow_asdict
 from ztb.utils.git_utils import (
     get_git_dirty_status as _get_git_dirty_status,
     get_git_sha as _get_git_sha,
@@ -54,7 +53,7 @@ def inference_config_to_dict(config: object) -> dict[str, object]:
         return {str(k): v for k, v in config.items() if isinstance(k, str)}
 
     if is_dataclass(config):
-        return cast(dict[str, object], shallow_asdict(config))
+        return cast(dict[str, object], asdict(config))
 
     # Fallback: try to extract attributes
     config_dict = getattr(config, "__dict__", None)

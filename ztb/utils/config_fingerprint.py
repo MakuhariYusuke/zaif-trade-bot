@@ -22,13 +22,12 @@ Usage:
 
 import hashlib
 import json
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
 from ztb.io.json_io import read_json
 from ztb.types.common import ConfigDict
-from ztb.utils.dataclass_utils import shallow_asdict
 from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 
@@ -175,7 +174,7 @@ class ConfigFingerprint:
         Returns:
             SHA256 hash of configuration
         """
-        config_dict = shallow_asdict(self)
+        config_dict = asdict(self)
 
         # Exclude training params if requested (for train/eval comparison)
         if not include_training_params:
@@ -222,8 +221,8 @@ class ConfigFingerprint:
 
         if ignore_inference_params:
             # Create copies without inference params
-            self_dict = shallow_asdict(self)
-            other_dict = shallow_asdict(other)
+            self_dict = asdict(self)
+            other_dict = asdict(other)
 
             for key in ["deterministic", "temperature"]:
                 self_dict.pop(key, None)
@@ -246,8 +245,8 @@ class ConfigFingerprint:
         Returns:
             dict of {field: (self_value, other_value)} for differing fields
         """
-        self_dict = shallow_asdict(self)
-        other_dict = shallow_asdict(other)
+        self_dict = asdict(self)
+        other_dict = asdict(other)
 
         diffs = {}
         all_keys = set(self_dict.keys()) | set(other_dict.keys())
@@ -270,7 +269,7 @@ class ConfigFingerprint:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        safe_json_dump(shallow_asdict(self), str(path), indent=2, sort_keys=True)
+        safe_json_dump(asdict(self), str(path), indent=2, sort_keys=True)
 
     @classmethod
     def load(cls, path: Path | str) -> "ConfigFingerprint":

@@ -5,6 +5,7 @@ F-3: adaptation_engine hasattr(regime_detector, "current_regime") 排除
 """
 from __future__ import annotations
 
+import inspect
 from unittest.mock import MagicMock
 
 import pytest
@@ -16,11 +17,6 @@ from scripts.v460.lib.regime_detector import (
     FillTestRegime,
     FillTestRegimeDetector,
     RegimeDetectorLike,
-)
-from tests.unit.v460._fill_test_source import (
-    ADAPTATION_ENGINE,
-    MAKER_MICROSTRUCTURE,
-    read_class_method_source,
 )
 
 
@@ -203,9 +199,7 @@ class TestASVolRatioIntegration:
     def test_source_references_vol_ratio(self) -> None:
         """ソースに vol_ratio 統合コードが存在."""
         # 266# σ推定は _estimate_sigma に抽出済み
-        src = read_class_method_source(
-            MAKER_MICROSTRUCTURE, "MicrostructureMixin", "_estimate_sigma"
-        )
+        src = inspect.getsource(MakerPrice._estimate_sigma)
         assert "vol_ratio" in src
         assert "_regime_detector" in src
         assert "last_volatility_ratio" in src
@@ -221,9 +215,9 @@ class TestAdaptationEngineHasattrRemoval:
 
     def test_try_auto_adapt_no_hasattr(self) -> None:
         """try_auto_adapt に hasattr が残っていない."""
-        src = read_class_method_source(
-            ADAPTATION_ENGINE, "AdaptationEngine", "try_auto_adapt"
-        )
+        from scripts.v460.lib.adaptation_engine import AdaptationEngine
+
+        src = inspect.getsource(AdaptationEngine.try_auto_adapt)
         assert "hasattr" not in src, (
             "try_auto_adapt should not use hasattr — "
             "RegimeDetectorLike Protocol makes it unnecessary"
@@ -231,9 +225,9 @@ class TestAdaptationEngineHasattrRemoval:
 
     def test_try_auto_lot_size_no_hasattr(self) -> None:
         """try_auto_lot_size に hasattr が残っていない."""
-        src = read_class_method_source(
-            ADAPTATION_ENGINE, "AdaptationEngine", "try_auto_lot_size"
-        )
+        from scripts.v460.lib.adaptation_engine import AdaptationEngine
+
+        src = inspect.getsource(AdaptationEngine.try_auto_lot_size)
         assert "hasattr" not in src, (
             "try_auto_lot_size should not use hasattr — "
             "RegimeDetectorLike Protocol makes it unnecessary"
@@ -241,20 +235,18 @@ class TestAdaptationEngineHasattrRemoval:
 
     def test_regime_tag_extraction_with_none(self) -> None:
         """regime_detector=None → regime_tag='n/a'."""
+        from scripts.v460.lib.adaptation_engine import AdaptationEngine
+
         # ソースコードで regime_detector is not None 分岐があることを確認
-        src_adapt = read_class_method_source(
-            ADAPTATION_ENGINE, "AdaptationEngine", "try_auto_adapt"
-        )
-        src_lot = read_class_method_source(
-            ADAPTATION_ENGINE, "AdaptationEngine", "try_auto_lot_size"
-        )
+        src_adapt = inspect.getsource(AdaptationEngine.try_auto_adapt)
+        src_lot = inspect.getsource(AdaptationEngine.try_auto_lot_size)
         assert "n/a" in src_adapt
         assert "n/a" in src_lot
 
     def test_regime_tag_uses_direct_access(self) -> None:
         """regime_detector.current_regime.value を直接アクセスしている."""
-        src = read_class_method_source(
-            ADAPTATION_ENGINE, "AdaptationEngine", "try_auto_adapt"
-        )
+        from scripts.v460.lib.adaptation_engine import AdaptationEngine
+
+        src = inspect.getsource(AdaptationEngine.try_auto_adapt)
         assert "regime_detector.current_regime.value" in src
         assert "getattr" not in src

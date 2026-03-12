@@ -1,0 +1,53 @@
+# Stage 1 Hold Removed - Phase 4 Day 6 実験C
+# 目的: Hold削除による報酬バランス改善（49番優先1）
+# 基準: stage1_basic.yaml からの差分
+#   - trading_bonus: 0.01 → 0.0（Hold削除）
+#   - reward_clip範囲縮小: [-80, 80] → [-1, 1]
+
+name: "stage1_hold_removed"
+description: "Hold penalty removed, reward clip tightened for Phase4 Day6 C"
+curriculum_stage: "simple"
+use_simple_reward: false
+reward_scale: 100.0
+
+# ===== 報酬ウェイト設定 =====
+profit_weight: 1.0
+risk_weight: 0.3
+consistency_weight: 0.1
+
+# ===== Hold削除（49番優先1） =====
+trading_bonus: 0.0  # 0.01 → 0.0（Hold削除）
+hold_penalty_multiplier: 0.0  # force hold penalty to 0
+
+# ===== 取引ペナルティ（基本値維持） =====
+trade_frequency_penalty: 0.001
+trade_cooldown_steps: 5
+trade_cooldown_penalty: 0.01
+
+# Behavior optimization settings
+behavior_optimization:
+  action_smoothing: 0.0
+
+# ===== 報酬クリップ（49番優先1） =====
+reward_clip_min: -1.0  # -80.0 → -1.0
+reward_clip_max: 1.0   # 80.0 → 1.0
+
+# ===== リスク管理設定 =====
+max_drawdown_penalty_weight: 0.5
+drawdown_threshold: 0.05
+risk_free_rate: 0.0
+
+# ===== ポジション管理 =====
+position_penalty_weight: 0.1
+max_position_ratio: 1.0
+
+# ===== その他の設定 =====
+consistency_penalty_weight: 0.05
+sharp_ratio_bonus_weight: 0.0
+max_holding_time_penalty_weight: 0.0
+
+# ===== 実験メタデータ =====
+# 作成日: 2026-01-28
+# Phase 4 Day 6 実験C
+# 期待効果: 負報酬比率 99.34% → 95%以下
+# 前提: stage1_basic.yamlから段階的改善

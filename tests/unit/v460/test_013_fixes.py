@@ -5,15 +5,21 @@ CoincheckAdapter and OrderManager.
 """
 
 import asyncio
+import inspect
 import json
 import urllib.parse
+from functools import lru_cache
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from tests.unit.v460._fill_test_source import read_inspect_source
 from ztb.trading.live.exchanges.bitflyer.adapter import BitFlyerAdapter
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 from ztb.trading.live_trader.components.order_manager import OrderManager
+
+
+@lru_cache(maxsize=None)
+def _source(obj: object) -> str:
+    return inspect.getsource(obj)
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +109,7 @@ class TestC3SignatureConsistency:
 
     def test_old_json_dumps_not_used_in_signature(self):
         """Ensure json.dumps is NOT used for signature computation."""
-        source = read_inspect_source(CoincheckAdapter._make_api_request)
+        source = _source(CoincheckAdapter._make_api_request)
         # json.dumps should not appear in the signature computation section
         # It may still be imported but should not be used for message construction
         assert "json.dumps(data" not in source, (
@@ -125,21 +131,21 @@ class TestC4AsyncUnification:
 
     def test_place_order_real_uses_asyncio_to_thread(self):
         """_place_order_real must use asyncio.to_thread."""
-        source = read_inspect_source(CoincheckAdapter._place_order_real)
+        source = _source(CoincheckAdapter._place_order_real)
         assert "asyncio.to_thread" in source, (
             "_place_order_real must use asyncio.to_thread for sync requests"
         )
 
     def test_cancel_order_real_uses_asyncio_to_thread(self):
         """_cancel_order_real must use asyncio.to_thread."""
-        source = read_inspect_source(CoincheckAdapter._cancel_order_real)
+        source = _source(CoincheckAdapter._cancel_order_real)
         assert "asyncio.to_thread" in source, (
             "_cancel_order_real must use asyncio.to_thread for sync requests"
         )
 
     def test_get_balance_real_uses_asyncio_to_thread(self):
         """_get_balance_real must use asyncio.to_thread."""
-        source = read_inspect_source(CoincheckAdapter._get_balance_real)
+        source = _source(CoincheckAdapter._get_balance_real)
         assert "asyncio.to_thread" in source, (
             "_get_balance_real must use asyncio.to_thread for sync requests"
         )
@@ -262,7 +268,7 @@ class TestC7OrderTypeMapping:
 
     def test_no_limit_buy_limit_sell_values(self):
         """'limit_buy'/'limit_sell' must NOT appear in source (145# _place_order_real)."""
-        source = read_inspect_source(CoincheckAdapter._place_order_real)
+        source = _source(CoincheckAdapter._place_order_real)
         assert "limit_buy" not in source
         assert "limit_sell" not in source
 
@@ -276,7 +282,7 @@ class TestD1OrderManagerConnection:
 
     def test_no_todo_in_execute_trade(self):
         """The TODO comment should be removed."""
-        source = read_inspect_source(OrderManager.execute_trade)
+        source = _source(OrderManager.execute_trade)
         assert "TODO" not in source, (
             "TODO should be removed — live trading is now implemented"
         )
@@ -329,7 +335,7 @@ class TestD3PostOnly:
 
     def test_place_order_source_contains_post_only(self):
         """_place_order_real source must reference post_only (145# §13)."""
-        source = read_inspect_source(CoincheckAdapter._place_order_real)
+        source = _source(CoincheckAdapter._place_order_real)
         assert "post_only" in source, "post_only must be in _place_order_real"
 
 
@@ -374,10 +380,10 @@ class TestC5BitFlyerNormalization:
 
     def test_place_order_normalizes_product_code(self):
         """_place_order_real must uppercase symbol for product_code."""
-        source = read_inspect_source(BitFlyerAdapter._place_order_real)
+        source = _source(BitFlyerAdapter._place_order_real)
         assert "symbol.upper()" in source or "product_code = symbol.upper()" in source
 
     def test_get_current_price_normalizes_product_code(self):
         """_get_current_price_real must uppercase symbol."""
-        source = read_inspect_source(BitFlyerAdapter._get_current_price_real)
+        source = _source(BitFlyerAdapter._get_current_price_real)
         assert "symbol.upper()" in source or "product_code = symbol.upper()" in source

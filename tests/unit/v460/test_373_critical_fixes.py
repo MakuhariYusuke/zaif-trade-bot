@@ -25,12 +25,6 @@ from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.fill_config_validation import validate_fill_config
 from scripts.v460.lib.sidecar_signal_io import read_sidecar_signal
 from scripts.v460.ml.sac_retrain_scheduler import SACRetrainConfig
-from tests.unit.v460._fill_test_source import (
-    FILL_CYCLE_EXECUTOR,
-    MAKER_MICROSTRUCTURE,
-    ORDER_MONITOR,
-    read_class_method_source,
-)
 
 if TYPE_CHECKING:
     pass
@@ -211,18 +205,18 @@ class TestMakerMicrostructureNoTypeIgnore:
     """_fill_prob_model 参照に type:ignore が残っていないこと."""
 
     def test_no_type_ignore_union_attr(self) -> None:
-        source = read_class_method_source(
-            MAKER_MICROSTRUCTURE, "MicrostructureMixin", "_apply_as_reservation_shift"
-        )
+        import inspect
+        from scripts.v460.lib.maker_microstructure import MicrostructureMixin
+        source = inspect.getsource(MicrostructureMixin)
         assert "type: ignore[union-attr]" not in source, (
             "type:ignore[union-attr] が maker_microstructure に残存"
         )
 
     def test_no_getattr_fill_prob_model(self) -> None:
         """getattr fallback ではなく直接参照に変更されたこと."""
-        source = read_class_method_source(
-            MAKER_MICROSTRUCTURE, "MicrostructureMixin", "_apply_as_reservation_shift"
-        )
+        import inspect
+        from scripts.v460.lib.maker_microstructure import MicrostructureMixin
+        source = inspect.getsource(MicrostructureMixin)
         assert 'getattr(self, "_fill_prob_model"' not in source
 
 
@@ -235,9 +229,9 @@ class TestMaxLotFinalClamp:
     """全乗数適用後に max_lot クランプが存在すること."""
 
     def test_max_lot_clamp_in_source(self) -> None:
-        source = read_class_method_source(
-            FILL_CYCLE_EXECUTOR, "FillCycleExecutorMixin", "run_single_cycle"
-        )
+        import inspect
+        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
+        source = inspect.getsource(FillCycleExecutorMixin)
         assert "373# F8" in source, "F8 max_lot 最終クランプが未実装"
         assert "self.config.max_lot" in source
 
@@ -266,6 +260,8 @@ class TestPollErrorLimit:
         assert "poll_error_limit" in args
 
     def test_consecutive_poll_errors_in_monitor_source(self) -> None:
-        source = read_class_method_source(ORDER_MONITOR, "OrderMonitor", "monitor")
+        import inspect
+        from scripts.v460.lib.order_monitor import OrderMonitor
+        source = inspect.getsource(OrderMonitor)
         assert "_consecutive_poll_errors" in source
         assert "373# F9" in source

@@ -1,0 +1,34 @@
+{
+  "model_name": "sac_v396_log_test",
+  "session_id": "sac_session",
+  "algorithm": "sac",
+  "total_timesteps": 1000,
+  "metrics_log_interval": 100,
+  "checkpoint_interval": 500,
+  "data_path": "btc_jpy_real_dataset.csv",
+  "environment": {
+    "initial_balance": 1000000.0,
+    "commission_rate": 0.001,
+    "price_column": "close",
+    "use_continuous_actions": true,
+    "enable_action_masking": false
+  },
+  "sac_hyperparameters": {
+    "learning_rate": 0.000574,
+    "batch_size": 128,
+    "gamma": 0.9948,
+    "tau": 0.005,
+    "ent_coef": "auto",
+    "target_update_interval": 3,
+    "train_freq": 1,
+    "gradient_steps": 1,
+    "learning_starts": 100,
+    "buffer_size": 5000,
+    "policy_kwargs": {
+      "net_arch": [
+        256,
+        256
+      ]
+    }
+  }
+}

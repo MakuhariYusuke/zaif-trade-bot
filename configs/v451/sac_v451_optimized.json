@@ -1,0 +1,109 @@
+{
+    "model_name": "sac_v451_phase7_regime_aware",
+    "description": "Phase 7 HFT Model with Temporal and Regime Awareness - Optimized",
+    "training": {
+        "algorithm": "sac",
+        "total_timesteps": 20000,
+        "log_interval": 100,
+        "checkpoint_interval": 2000,
+        "checkpoint_dir": "checkpoints/v451/phase7",
+        "sac_hyperparameters": {
+            "learning_rate": 5e-5,
+            "batch_size": 2048,
+            "buffer_size": 200000,
+            "learning_starts": 1000,
+            "tau": 0.005,
+            "gamma": 0.80,
+            "train_freq": 1,
+            "gradient_steps": 1,
+            "ent_coef": 0.05,
+            "target_entropy": "auto"
+        },
+        "environment": {
+            "config": {
+                "initial_portfolio_value": 1000000.0,
+                "max_position_size": 1.0,
+                "transaction_cost": 0.0005,
+                "reward_scaling": 1.0,
+                "timeframe": "1m",
+                "feature_set": "v451",
+                "use_continuous_actions": true,
+                "action_space_type": "continuous",
+                "curriculum_stage": "trading_focused",
+                "enable_feature_filtering": false,
+                "include_multi_timeframe_features": false,
+                "reward_settings": {
+                    "behavior": {
+                        "trading_focused": {
+                            "hold_penalty_rate": 0.0,
+                            "trading_bonus_multiplier": 1.0,
+                            "balance_penalty": 0.0,
+                            "fee_penalty": 0.0
+                        }
+                    },
+                    "profit_bonus_multipliers": {
+                        "profit": 1.0,
+                        "loss": 1.2
+                    }
+                },
+                "execution_model": {
+                    "base_slippage": 0.0001,
+                    "atr_slippage_factor": 0.1,
+                    "base_latency_ms": 10.0,
+                    "latency_jitter_ms": 5.0
+                },
+                "bankruptcy_threshold": 2000.0,
+                "bankruptcy_penalty": 1000.0,
+                "drawdown_penalty_threshold": 0.05,
+                "drawdown_penalty_factor": 0.5,
+                "advanced_market_regime": {
+                    "enabled": true,
+                    "regime_classifier_config": {
+                        "regime_scheme": "comprehensive",
+                        "use_multi_timeframe": true,
+                        "confidence_threshold": 0.6,
+                        "adaptation": {
+                            "enabled": true,
+                            "regime_reward_multipliers": {
+                                "buy_breakout": 2.0,
+                                "buy_divergence": 1.5,
+                                "buy_momentum_strong": 1.5,
+                                "buy_volume_surge": 1.5,
+                                "sell_breakdown": 2.0,
+                                "sell_divergence": 1.5,
+                                "sell_momentum_weak": 1.5,
+                                "sell_volume_surge": 1.5,
+                                "strong_bull_trend": 1.2,
+                                "strong_bear_trend": 1.2
+                            },
+                            "regime_penalty_multipliers": {
+                                "buy_breakout": 0.5,
+                                "buy_divergence": 0.8,
+                                "buy_momentum_strong": 0.8,
+                                "buy_volume_surge": 0.8,
+                                "sell_breakdown": 0.5,
+                                "sell_divergence": 0.8,
+                                "sell_momentum_weak": 0.8,
+                                "sell_volume_surge": 0.8
+                            }
+                        }
+                    }
+                }
+            },
+            "feature_set": "v451"
+        },
+        "data_config": {
+            "data_path": "data/btc_jpy_1m_v451.csv"
+        },
+        "evaluation": {
+            "enabled": true,
+            "eval_freq": 2000,
+            "n_eval_episodes": 3,
+            "deterministic": true,
+            "config": {
+                "transaction_cost": 0.0000,
+                "initial_portfolio_value": 1000000.0
+            }
+        }
+    }
+}

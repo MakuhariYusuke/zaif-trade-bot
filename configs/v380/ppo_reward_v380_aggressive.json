@@ -1,0 +1,143 @@
+{
+  "session_id": "ppo_reward_v380_aggressive",
+  "algorithm": "ppo",
+  "description": "Reward Improvement v3: Aggressive anti-HOLD - 10x HOLD penalty, 5x profit multiplier, 6x trading bonus, opportunity cost penalty",
+
+  "comment_experiment": "v380: Aggressive reward function - maximize trading activity with strong HOLD disincentives",
+  "comment_strategy": "Extreme scale adjustments to force active trading - use only if v378/v379 still show excessive HOLD bias",
+  "comment_target": "Reduce HOLD rate to 30-40% - high risk, high reward approach",
+
+  "comment_reward_improvements": [
+    "✅ hold_penalty_weight: 0.005 → 0.05 (10x increase - very aggressive)",
+    "✅ consecutive_hold_penalty: 0.002 → 0.03 (15x increase)",
+    "✅ consecutive_hold_exponential: True (rapid escalation)",
+    "✅ consecutive_hold_threshold: 3 (penalty kicks in earlier)",
+    "✅ trading_frequency_bonus: 0.05 → 0.3 (6x increase)",
+    "✅ profit_reward_multiplier: 1.5 → 5.0 (3.3x increase - strong profit emphasis)",
+    "✅ action_diversity_bonus: 0.01 → 0.1 (10x increase)",
+    "✅ successful_trade_bonus: 1.0 (2x v378 bonus)",
+    "✅ NEW: hold_opportunity_cost: 0.02 (additional penalty for missed opportunities)"
+  ],
+
+  "comment_warnings": [
+    "⚠️ High risk configuration - may lead to overtrading",
+    "⚠️ Use only if v378/v379 show insufficient trading activity",
+    "⚠️ Monitor for excessive transaction costs eating into profits",
+    "⚠️ May require higher entropy coefficient to maintain exploration"
+  ],
+
+  "curated_features_list": "curated_features.py::CURATED_FEATURES",
+  "enable_feature_filtering": true,
+  "feature_filter_mode": "whitelist",
+
+  "max_features": null,
+  "enable_correlation_reduction": false,
+
+  "data_rows_limit": null,
+
+  "ppo": {
+    "learning_rate": 0.0003,
+    "n_steps": 512,
+    "batch_size": 128,
+    "n_epochs": 6,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "clip_range_vf": null,
+    "ent_coef": 0.08,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "use_sde": false,
+    "sde_sample_freq": -1,
+    "target_kl": 0.03,
+    "policy_kwargs": {
+      "net_arch": [
+        {"pi": [128, 128], "vf": [128, 128]}
+      ]
+    }
+  },
+
+  "environment": {
+    "initial_balance": 10000,
+    "transaction_cost": 0.0001,
+    "max_position_size": 1.0,
+    "enable_action_masking": true,
+    "random_start": true,
+    "reward_settings": {
+      "hold_penalty_weight": 0.05,
+      "consecutive_hold_penalty": 0.03,
+      "consecutive_hold_exponential": true,
+      "consecutive_hold_threshold": 3,
+      "trading_frequency_bonus": 0.3,
+      "profit_reward_multiplier": 5.0,
+      "action_diversity_bonus": 0.1,
+      "successful_trade_bonus": 1.0,
+      "hold_opportunity_cost": 0.02
+    }
+  },
+
+  "training": {
+    "total_timesteps": 30000,
+    "checkpoint_interval": 2000,
+    "enable_autohalt": true,
+    "eval_freq": 1000,
+    "n_eval_episodes": 10,
+    "reward_scaling": 1.0
+  },
+
+  "custom_ppo": {
+    "enabled": true,
+    "use_pan": true,
+    "use_target_entropy": true,
+    "target_entropy": -0.8,
+    "use_gradient_probe_guard": false,
+    "pan_epsilon": 1e-8,
+    "enable_evaluation_gates": true,
+    "gate_thresholds": {
+      "variance_threshold": 0.01,
+      "distribution_check_enabled": true
+    }
+  },
+
+  "data_path": "ml-dataset-enhanced-balanced.csv",
+
+  "comment_comparison": "Comparison across all reward versions:",
+  "comparison": {
+    "v377_baseline": {
+      "hold_penalty": 0.005,
+      "profit_multiplier": 1.5,
+      "trading_bonus": 0.05,
+      "expected_hold_rate": "60-65%",
+      "risk": "Low"
+    },
+    "v378_scale_adjusted": {
+      "hold_penalty": 0.02,
+      "profit_multiplier": 3.0,
+      "trading_bonus": 0.15,
+      "expected_hold_rate": "45-55%",
+      "risk": "Medium"
+    },
+    "v379_dynamic": {
+      "hold_penalty": "0.02 * market_factor",
+      "profit_multiplier": 3.0,
+      "trading_bonus": "0.15 * trend_factor",
+      "expected_hold_rate": "40-50%",
+      "risk": "Medium-High"
+    },
+    "v380_aggressive": {
+      "hold_penalty": 0.05,
+      "profit_multiplier": 5.0,
+      "trading_bonus": 0.3,
+      "expected_hold_rate": "30-40%",
+      "risk": "High",
+      "note": "Use as last resort if v378/v379 insufficient"
+    }
+  },
+
+  "comment_usage_recommendation": [
+    "Step 1: Try v378 first (balanced scale adjustment)",
+    "Step 2: If HOLD still >55%, try v379 (market-adaptive)",
+    "Step 3: If HOLD still >50%, try v380 (aggressive anti-HOLD)",
+    "Monitor: Transaction costs, profit quality, risk-adjusted returns"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "version_id": "v0063",
+  "result_type": "integration_test",
+  "timestamp": "2026-03-11T17:53:25.023000",
+  "result": {
+    "integration_test": true,
+    "score": 0.85
+  },
+  "metadata": {},
+  "tags": [
+    "integration",
+    "test"
+  ],
+  "performance_metrics": {}
+}

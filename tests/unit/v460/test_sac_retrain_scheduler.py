@@ -26,30 +26,7 @@ from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 import numpy as np
-import pandas as pd
 import pytest
-
-from scripts.v460.lib.sidecar_signal_io import (
-    _SIDECAR_CACHE,
-    create_neutral_signal,
-    read_sidecar_signal,
-    write_sidecar_signal,
-)
-from scripts.v460.lib.sidecar_types import SidecarSignal
-from scripts.v460.ml.sac_retrain_scheduler import (
-    SACRetrainConfig,
-    SACRetrainTrigger,
-    RetrainResult,
-    _append_history,
-    _atomic_deploy_model,
-    _evaluate_model,
-    _push_neutral_fallback,
-    _shutdown_event,
-    _update_sidecar_signal,
-    load_config,
-    retrain_once,
-    run_scheduler,
-)
 
 
 # ════════════════════════════════════════════════════════════════
@@ -61,6 +38,8 @@ class TestSACRetrainConfig:
     """SACRetrainConfig dataclass + from_yaml_dict."""
 
     def test_defaults(self) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import SACRetrainConfig
+
         cfg = SACRetrainConfig()
         assert cfg.total_timesteps == 50_000
         assert cfg.incremental_timesteps == 15_000
@@ -69,6 +48,8 @@ class TestSACRetrainConfig:
         assert cfg.rolling_window_days == 7
 
     def test_from_yaml_dict_minimal(self) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import SACRetrainConfig
+
         raw = {
             "data": {"ohlcv_path": "test.parquet"},
             "sac_hyperparameters": {"gamma": 0.95},
@@ -82,6 +63,8 @@ class TestSACRetrainConfig:
         assert cfg.feature_columns == ["price_velocity", "micro_trend"]
 
     def test_from_yaml_dict_retrain_section(self) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import SACRetrainConfig
+
         raw = {
             "sac_retrain": {
                 "rolling_window_days": 14,
@@ -97,24 +80,32 @@ class TestSACRetrainConfig:
         assert cfg.min_gross_roi == 0.01
 
     def test_from_yaml_dict_empty(self) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import SACRetrainConfig
+
         cfg = SACRetrainConfig.from_yaml_dict({})
         # Should use all defaults without error
         assert cfg.total_timesteps == 50_000
 
     def test_from_yaml_dict_confidence_roi_full(self) -> None:
         """372# audit: confidence_roi_full が YAML からパースされる."""
+        from scripts.v460.ml.sac_retrain_scheduler import SACRetrainConfig
+
         raw = {"sac_retrain": {"confidence_roi_full": 0.01}}
         cfg = SACRetrainConfig.from_yaml_dict(raw)
         assert cfg.confidence_roi_full == pytest.approx(0.01)
 
     def test_from_yaml_dict_min_trade_count(self) -> None:
         """372# audit: min_trade_count が YAML からパースされる."""
+        from scripts.v460.ml.sac_retrain_scheduler import SACRetrainConfig
+
         raw = {"sac_retrain": {"min_trade_count": 5}}
         cfg = SACRetrainConfig.from_yaml_dict(raw)
         assert cfg.min_trade_count == 5
 
     def test_from_yaml_dict_372_fields_defaults(self) -> None:
         """372# audit: 未指定時はデフォルト値が使われる."""
+        from scripts.v460.ml.sac_retrain_scheduler import SACRetrainConfig
+
         cfg = SACRetrainConfig.from_yaml_dict({})
         assert cfg.confidence_roi_full == pytest.approx(0.005)
         assert cfg.min_trade_count == 3
@@ -129,6 +120,11 @@ class TestSACRetrainTrigger:
     """再訓練トリガー判定."""
 
     def _make_trigger(self, tmp_path: Path, **overrides):
+        from scripts.v460.ml.sac_retrain_scheduler import (
+            SACRetrainConfig,
+            SACRetrainTrigger,
+        )
+
         data_file = tmp_path / "data.parquet"
         data_file.write_bytes(b"dummy")
         cfg = SACRetrainConfig(
@@ -161,6 +157,11 @@ class TestSACRetrainTrigger:
         assert "data_unchanged" in reason
 
     def test_data_not_found(self, tmp_path: Path) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import (
+            SACRetrainConfig,
+            SACRetrainTrigger,
+        )
+
         cfg = SACRetrainConfig(ohlcv_path=str(tmp_path / "nonexistent.parquet"))
         trigger = SACRetrainTrigger(cfg=cfg)
         should, reason = trigger.should_retrain()
@@ -200,6 +201,8 @@ class TestRetrainResult:
     """RetrainResult dataclass."""
 
     def test_to_dict(self) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import RetrainResult
+
         r = RetrainResult(
             status="deployed",
             timestamp="2026-03-10T12:00:00",
@@ -334,6 +337,11 @@ class TestRetrainOnce:
         mock_create_env: MagicMock,
         tmp_path: Path,
     ) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import (
+            SACRetrainConfig,
+            retrain_once,
+        )
+
         mock_env = _make_mock_env()
         mock_create_env.return_value = mock_env
         mock_model = _make_mock_model()
@@ -347,6 +355,8 @@ class TestRetrainOnce:
         data_file = tmp_path / "data.parquet"
 
         with patch("scripts.v460.lib.data_loader.load_parquet") as mock_load:
+            import pandas as pd
+
             mock_load.return_value = pd.DataFrame({"close": range(1000)})
             with _mock_sb3_import(mock_model) as mock_sac_cls:
                 mock_sac_cls.return_value = mock_model
@@ -364,6 +374,11 @@ class TestRetrainOnce:
         mock_create_env: MagicMock,
         tmp_path: Path,
     ) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import (
+            SACRetrainConfig,
+            retrain_once,
+        )
+
         mock_env = _make_mock_env()
         mock_create_env.return_value = mock_env
         mock_model = _make_mock_model()
@@ -381,6 +396,8 @@ class TestRetrainOnce:
         )
 
         with patch("scripts.v460.lib.data_loader.load_parquet") as mock_load:
+            import pandas as pd
+
             mock_load.return_value = pd.DataFrame({"close": range(1000)})
             with _mock_sb3_import(mock_model) as mock_sac_cls:
                 mock_sac_cls.load.return_value = mock_model
@@ -399,6 +416,11 @@ class TestRetrainOnce:
         mock_push_neutral: MagicMock,
         tmp_path: Path,
     ) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import (
+            SACRetrainConfig,
+            retrain_once,
+        )
+
         mock_env = _make_mock_env()
         # OOS failure: negative ROI
         mock_env.portfolio_value = 9_000_000.0
@@ -411,6 +433,8 @@ class TestRetrainOnce:
         )
 
         with patch("scripts.v460.lib.data_loader.load_parquet") as mock_load:
+            import pandas as pd
+
             mock_load.return_value = pd.DataFrame({"close": range(1000)})
             mock_model = _make_mock_model()
             with _mock_sb3_import(mock_model) as mock_sac_cls:
@@ -423,6 +447,11 @@ class TestRetrainOnce:
         mock_push_neutral.assert_called_once()
 
     def test_data_load_error(self, tmp_path: Path) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import (
+            SACRetrainConfig,
+            retrain_once,
+        )
+
         cfg = SACRetrainConfig(
             ohlcv_path=str(tmp_path / "nonexistent.parquet"),
         )
@@ -446,6 +475,11 @@ class TestAtomicDeploy:
     """_atomic_deploy_model のテスト."""
 
     def test_deploy_creates_files(self, tmp_path: Path) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import (
+            SACRetrainConfig,
+            _atomic_deploy_model,
+        )
+
         model_path = tmp_path / "model.zip"
         buffer_path = tmp_path / "model.buffer.pkl"
         cfg = SACRetrainConfig(model_path=model_path, buffer_path=buffer_path)
@@ -471,6 +505,11 @@ class TestUpdateSidecarSignal:
     """_update_sidecar_signal のテスト."""
 
     def test_writes_signal_file(self, tmp_path: Path) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import (
+            SACRetrainConfig,
+            _update_sidecar_signal,
+        )
+
         signal_path = tmp_path / "signal.json"
         cfg = SACRetrainConfig(signal_path=signal_path)
 
@@ -500,6 +539,11 @@ class TestEvaluateModel:
 
     def test_multi_episode_aggregation(self) -> None:
         """複数エピソードの trade_count が累積、ROI が平均される."""
+        from scripts.v460.ml.sac_retrain_scheduler import (
+            SACRetrainConfig,
+            _evaluate_model,
+        )
+
         mock_env = _EvalEnv(
             episode_trade_counts=[3, 5, 7],
             episode_portfolio_values=[10_100_000.0, 10_100_000.0, 10_100_000.0],
@@ -520,6 +564,11 @@ class TestAppendHistory:
     """_append_history のテスト."""
 
     def test_append(self, tmp_path: Path) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import (
+            RetrainResult,
+            _append_history,
+        )
+
         path = tmp_path / "history.jsonl"
         r1 = RetrainResult(status="deployed", gross_roi=0.01)
         r2 = RetrainResult(status="oos_failed", gross_roi=-0.02)
@@ -545,6 +594,8 @@ class TestLoadConfig:
         self,
         write_yaml_file: "Callable[[str | Path, str | dict[str, object]], Path]",
     ) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import load_config
+
         yaml_content = """
 data:
   ohlcv_path: "test_data.parquet"
@@ -564,6 +615,8 @@ features:
         assert cfg.total_timesteps == 30000
 
     def test_missing_yaml(self, tmp_path: Path) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import load_config
+
         with pytest.raises(FileNotFoundError):
             load_config(tmp_path / "nonexistent.yaml")
 
@@ -577,6 +630,11 @@ class TestEvaluateModel:
     """_evaluate_model のテスト."""
 
     def test_positive_roi(self) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import (
+            SACRetrainConfig,
+            _evaluate_model,
+        )
+
         mock_model = _PredictOnlyModel(0.42)
         mock_env = _EvalEnv(
             episode_trade_counts=[5],
@@ -590,6 +648,11 @@ class TestEvaluateModel:
         assert result["trade_count"] == 5
 
     def test_negative_roi(self) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import (
+            SACRetrainConfig,
+            _evaluate_model,
+        )
+
         mock_model = _PredictOnlyModel(0.42)
         mock_env = _EvalEnv(
             episode_trade_counts=[5],
@@ -617,6 +680,13 @@ class TestRunScheduler:
         mock_retrain: MagicMock,
         tmp_path: Path,
     ) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import (
+            SACRetrainConfig,
+            RetrainResult,
+            run_scheduler,
+            _shutdown_event,
+        )
+
         # データファイル
         data_file = tmp_path / "data.parquet"
         data_file.write_bytes(b"dummy")
@@ -662,6 +732,8 @@ class TestPushNeutralFallback:
     """379# P3-C: _push_neutral_fallback のテスト."""
 
     def test_writes_neutral_signal(self, tmp_path: Path) -> None:
+        from scripts.v460.ml.sac_retrain_scheduler import _push_neutral_fallback
+
         signal_path = tmp_path / "signal.json"
         with patch(
             "scripts.v460.lib.sidecar_signal_io.write_sidecar_signal"
@@ -678,6 +750,13 @@ class TestReadSidecarCache:
     """379# P3-C: sidecar_signal_io の mtime キャッシュテスト."""
 
     def test_cache_hit_on_same_mtime(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.sidecar_signal_io import (
+            read_sidecar_signal,
+            write_sidecar_signal,
+            create_neutral_signal,
+            _SIDECAR_CACHE,
+        )
+
         signal_path = tmp_path / "signal.json"
         sig = create_neutral_signal()
         write_sidecar_signal(sig, signal_path)
@@ -694,6 +773,13 @@ class TestReadSidecarCache:
         assert result2.directional_bias == result1.directional_bias
 
     def test_cache_invalidated_on_new_write(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.sidecar_signal_io import (
+            read_sidecar_signal,
+            write_sidecar_signal,
+            _SIDECAR_CACHE,
+        )
+        from scripts.v460.lib.sidecar_types import SidecarSignal
+
         signal_path = tmp_path / "signal.json"
 
         sig1 = SidecarSignal(
@@ -708,6 +794,7 @@ class TestReadSidecarCache:
         assert result1.directional_bias == pytest.approx(0.5)
 
         # 新しいシグナルを書き込み → mtime 変更 → キャッシュ無効化
+        import time
         time.sleep(0.05)  # Windows mtime 精度確保
         sig2 = SidecarSignal(
             timestamp="2026-03-11T00:00:01+00:00",
@@ -721,6 +808,13 @@ class TestReadSidecarCache:
         assert result2.directional_bias == pytest.approx(-0.3)
 
     def test_cache_cleared_on_file_deleted(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.sidecar_signal_io import (
+            read_sidecar_signal,
+            write_sidecar_signal,
+            create_neutral_signal,
+            _SIDECAR_CACHE,
+        )
+
         signal_path = tmp_path / "signal.json"
         write_sidecar_signal(create_neutral_signal(), signal_path)
         read_sidecar_signal(signal_path, ttl_sec=0)

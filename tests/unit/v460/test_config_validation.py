@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 
 from scripts.v460.lib.config_loader import (
     _deep_merge,
@@ -19,7 +20,6 @@ from scripts.v460.lib.config_loader import (
     load_config,
     load_gate_thresholds,
 )
-from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
@@ -163,7 +163,8 @@ class TestLoadConfig:
     def test_base_yaml_trading_config(self) -> None:
         """base.yaml にmaker_zero / maker_only が設定されていること."""
         base_path = _PROJECT_ROOT / "configs" / "v460" / "base.yaml"
-        base = load_yaml_mapping(base_path)
+        with open(base_path) as f:
+            base = yaml.safe_load(f)
         assert base["trading"]["fee_model"] == "maker_zero"
         assert base["trading"]["order_type"] == "maker_only"
         assert base["trading"]["symbol"] == "btc_jpy"
@@ -237,7 +238,8 @@ class TestBaseFeatureConsistency:
 
     def test_base_candidates_not_empty(self) -> None:
         base_path = _PROJECT_ROOT / "configs" / "v460" / "base.yaml"
-        base = load_yaml_mapping(base_path)
+        with open(base_path) as f:
+            base = yaml.safe_load(f)
         candidates = base.get("features", {}).get("candidates", [])
         assert len(candidates) >= 5, "base.yaml should have ≥5 feature candidates"
 
@@ -248,7 +250,8 @@ class TestBaseFeatureConsistency:
     def test_sac_config_in_base(self) -> None:
         """SAC 設定が base.yaml に存在すること (G2 準備)."""
         base_path = _PROJECT_ROOT / "configs" / "v460" / "base.yaml"
-        base = load_yaml_mapping(base_path)
+        with open(base_path) as f:
+            base = yaml.safe_load(f)
         sac = base.get("sac", {})
         assert sac.get("total_steps", 0) > 0
         assert isinstance(sac.get("seeds"), list)

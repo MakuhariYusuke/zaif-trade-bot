@@ -13,33 +13,12 @@
 
 from __future__ import annotations
 
-import dataclasses
 import json
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
-from scripts.v460.analysis.vg_and_trend import _load_vg_activations_jsonl
-from scripts.v460.lib.maker_risk_guards import _emit_vg_event
-from scripts.v460.ml.skip_gate import (
-    SkipDecision as ShimSkipDecision,
-    SkipGate as ShimSkipGate,
-    _BASE_FEATURE_COLS,
-)
-from scripts.v460.ml.skip_gate_features import (
-    FEATURE_NAME_MIGRATION as SHIM_FEATURE_NAME_MIGRATION,
-)
-from ztb.ml.skip_gate import (
-    GATE_FEATURE_COLS,
-    SkipDecision,
-    SkipGate,
-    SkipGateConfig,
-    build_features_from_market_state,
-    get_gate_feature_cols,
-)
-from ztb.ml.skip_gate_features import FEATURE_NAME_MIGRATION
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -51,21 +30,27 @@ class TestSkipGateCanonicalImport:
     """ztb.ml.skip_gate からの正規 import が動作するか."""
 
     def test_import_skip_gate_class(self) -> None:
+        from ztb.ml.skip_gate import SkipGate
         assert hasattr(SkipGate, "evaluate")
 
     def test_import_skip_gate_config(self) -> None:
+        from ztb.ml.skip_gate import SkipGateConfig
         cfg = SkipGateConfig()
         assert hasattr(cfg, "threshold_bps")
 
     def test_import_skip_decision(self) -> None:
+        from ztb.ml.skip_gate import SkipDecision
+        import dataclasses
         field_names = {f.name for f in dataclasses.fields(SkipDecision)}
         assert "should_skip" in field_names
 
     def test_import_feature_cols(self) -> None:
+        from ztb.ml.skip_gate import GATE_FEATURE_COLS, get_gate_feature_cols
         assert len(GATE_FEATURE_COLS) > 0
         assert GATE_FEATURE_COLS == get_gate_feature_cols(use_ob=False)
 
     def test_import_build_features(self) -> None:
+        from ztb.ml.skip_gate import build_features_from_market_state
         assert callable(build_features_from_market_state)
 
 
@@ -73,16 +58,23 @@ class TestSkipGateShimImport:
     """scripts.v460.ml.skip_gate シムからの互換 import が動作するか."""
 
     def test_shim_skip_gate(self) -> None:
-        assert ShimSkipGate is SkipGate
+        from scripts.v460.ml.skip_gate import SkipGate
+        from ztb.ml.skip_gate import SkipGate as Canonical
+        assert SkipGate is Canonical
 
     def test_shim_skip_decision(self) -> None:
-        assert ShimSkipDecision is SkipDecision
+        from scripts.v460.ml.skip_gate import SkipDecision
+        from ztb.ml.skip_gate import SkipDecision as Canonical
+        assert SkipDecision is Canonical
 
     def test_shim_features(self) -> None:
-        assert SHIM_FEATURE_NAME_MIGRATION is FEATURE_NAME_MIGRATION
+        from scripts.v460.ml.skip_gate_features import FEATURE_NAME_MIGRATION
+        from ztb.ml.skip_gate_features import FEATURE_NAME_MIGRATION as Canonical
+        assert FEATURE_NAME_MIGRATION is Canonical
 
     def test_shim_private_base_feature_cols(self) -> None:
         """テストコードが _BASE_FEATURE_COLS をインポートできること."""
+        from scripts.v460.ml.skip_gate import _BASE_FEATURE_COLS
         assert isinstance(_BASE_FEATURE_COLS, list)
         assert len(_BASE_FEATURE_COLS) > 0
 
@@ -96,6 +88,8 @@ class TestVgEmitEvent:
     """maker_risk_guards._emit_vg_event の動作検証."""
 
     def test_emit_creates_jsonl(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.maker_risk_guards import _emit_vg_event
+
         jsonl_path = tmp_path / "vg_events.jsonl"
         with patch(
             "scripts.v460.lib.maker_risk_guards._VG_EVENT_LOG_PATH",
@@ -127,6 +121,8 @@ class TestVgEmitEvent:
         assert "timestamp_epoch" in data
 
     def test_emit_multiple_appends(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.maker_risk_guards import _emit_vg_event
+
         jsonl_path = tmp_path / "vg_events.jsonl"
         with patch(
             "scripts.v460.lib.maker_risk_guards._VG_EVENT_LOG_PATH",
@@ -148,6 +144,8 @@ class TestVgEmitEvent:
 
     def test_emit_failure_silent(self, tmp_path: Path) -> None:
         """JSONL 書き込み失敗時に例外を投げないこと."""
+        from scripts.v460.lib.maker_risk_guards import _emit_vg_event
+
         # 存在しないディレクトリの存在しないパスに書くがエラーにならない
         # (append_jsonl が ensure_parent_dir するので実際は成功するが、
         # ここでは append_jsonl 自体を例外にして silent 確認)
@@ -174,16 +172,22 @@ class TestVgLoadJsonl:
     """vg_and_trend._load_vg_activations_jsonl の読み込み検証."""
 
     def test_load_empty_file(self, tmp_path: Path) -> None:
+        from scripts.v460.analysis.vg_and_trend import _load_vg_activations_jsonl
+
         jsonl_path = tmp_path / "vg_events.jsonl"
         jsonl_path.write_text("")
         result = _load_vg_activations_jsonl(jsonl_path)
         assert result == []
 
     def test_load_nonexistent(self, tmp_path: Path) -> None:
+        from scripts.v460.analysis.vg_and_trend import _load_vg_activations_jsonl
+
         result = _load_vg_activations_jsonl(tmp_path / "nope.jsonl")
         assert result == []
 
     def test_load_valid_events(self, tmp_path: Path) -> None:
+        from scripts.v460.analysis.vg_and_trend import _load_vg_activations_jsonl
+
         jsonl_path = tmp_path / "vg_events.jsonl"
         events = [
             {
@@ -215,6 +219,8 @@ class TestVgLoadJsonl:
         assert result[1]["side"] == "buy"
 
     def test_load_ignores_non_vg_events(self, tmp_path: Path) -> None:
+        from scripts.v460.analysis.vg_and_trend import _load_vg_activations_jsonl
+
         jsonl_path = tmp_path / "vg_events.jsonl"
         events = [
             {"event": "other_event", "timestamp_epoch": 100.0},
@@ -235,6 +241,8 @@ class TestVgLoadJsonl:
         assert result[0]["timestamp"] == 200.0
 
     def test_load_handles_malformed_lines(self, tmp_path: Path) -> None:
+        from scripts.v460.analysis.vg_and_trend import _load_vg_activations_jsonl
+
         jsonl_path = tmp_path / "vg_events.jsonl"
         content = (
             '{"event": "vg_activation", "timestamp_epoch": 100.0, '

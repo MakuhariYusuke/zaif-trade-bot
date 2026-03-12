@@ -31,7 +31,6 @@ import ztb.trading.live.broker_interfaces as live_broker_interfaces_module
 import ztb.trading.live.exchanges as live_exchanges
 import ztb.trading.live.exchanges.base.broker_interfaces as base_broker_interfaces_module
 import ztb.trading.live.registry.broker_registry as broker_registry_module
-from tests.unit.v460._fill_test_source import read_inspect_source
 from ztb.trading.live.exchanges.base import (
     BaseExchangeConfig,
     MarketDataNotSupported,
@@ -55,6 +54,11 @@ from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 _RUN_DAILY_HEALTH_CHECK_PARAMS = tuple(inspect.signature(run_daily_health_check).parameters)
+
+
+@lru_cache(maxsize=None)
+def _source(obj: object) -> str:
+    return inspect.getsource(obj)
 
 
 @lru_cache(maxsize=None)
@@ -154,13 +158,13 @@ class TestBitFlyerAdapterFixes:
     def test_make_request_uses_asyncio_to_thread(self) -> None:
         """_make_request が asyncio.to_thread を使用 (イベントループ非ブロック)."""
 
-        src = read_inspect_source(BitFlyerAdapter._make_request)
+        src = _source(BitFlyerAdapter._make_request)
         assert "asyncio.to_thread" in src
 
     def test_make_request_raises_network_error(self) -> None:
         """_make_request の docstring が NetworkError を記載."""
 
-        src = read_inspect_source(BitFlyerAdapter._make_request)
+        src = _source(BitFlyerAdapter._make_request)
         assert "NetworkError" in src
         # 旧い "Exception: For API errors" は除去
         assert "Exception: For API errors" not in src
@@ -194,7 +198,7 @@ class TestSymbolNormalization:
     def test_bitflyer_api_calls_uppercase(self) -> None:
         """BitFlyer API 呼び出しではシンボルを .upper() する."""
 
-        src = read_inspect_source(BitFlyerAdapter._place_order_real)
+        src = _source(BitFlyerAdapter._place_order_real)
         assert "symbol.upper()" in src
 
 # ---------------------------------------------------------------------------
@@ -289,7 +293,7 @@ class TestAdapterInheritance:
             assert "get_orderbook" in dir(cls)
             assert "get_recent_trades" in dir(cls)
             # Should be overridden (not the base default)
-            src = read_inspect_source(cls.get_orderbook)
+            src = _source(cls.get_orderbook)
             assert "MarketDataNotSupported" not in src
 
 # ---------------------------------------------------------------------------

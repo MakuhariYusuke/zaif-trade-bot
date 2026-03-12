@@ -29,7 +29,7 @@ import argparse
 from ztb.utils.safety import safe_to_finite
 import sys
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -44,7 +44,6 @@ from ztb.metrics.fill_quality import (
     partition_clean_records,
 )
 from ztb.io.json_io import write_json
-from ztb.utils.dataclass_utils import shallow_asdict
 
 
 # ======================================================================
@@ -416,10 +415,10 @@ def run_oracle_baseline(
 
     # --- レポート構築 ---
     report = {
-        "all": shallow_asdict(all_metrics),
-        "buy": shallow_asdict(buy_metrics),
-        "sell": shallow_asdict(sell_metrics),
-        "by_regime": [shallow_asdict(m) for m in regime_metrics],
+        "all": asdict(all_metrics),
+        "buy": asdict(buy_metrics),
+        "sell": asdict(sell_metrics),
+        "by_regime": [asdict(m) for m in regime_metrics],
         "lot_scenarios": lot_scenarios,
         "ph3_check": ph3_check,
         "params": {

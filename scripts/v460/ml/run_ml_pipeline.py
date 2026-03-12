@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 # プロジェクトルートを追加
@@ -27,7 +28,6 @@ from scripts.v460.ml.data_loader import (
 )
 from scripts.v460.ml.fill_classifier import train_fill_classifier
 from ztb.io.json_io import write_json
-from ztb.utils.dataclass_utils import shallow_asdict
 
 logging.basicConfig(
     level=logging.INFO,
@@ -82,7 +82,7 @@ def run_as_pipeline(
         X, y, pnl, model_type="gb", n_splits=5,
         n_features_select=n_feat_gb,
     )
-    results["gb"] = shallow_asdict(gb_metrics)
+    results["gb"] = asdict(gb_metrics)
     _print_as_metrics("GB", gb_metrics)
 
     # --- LogisticRegression (060# tuned: C=0.01, l2) ---
@@ -91,7 +91,7 @@ def run_as_pipeline(
         X, y, pnl, model_type="lr", n_splits=5,
         n_features_select=n_feat_lr,
     )
-    results["lr"] = shallow_asdict(lr_metrics)
+    results["lr"] = asdict(lr_metrics)
     _print_as_metrics("LR", lr_metrics)
 
     # --- Skip policy simulation (best model, OOF only — 059# P0-3) ---
@@ -136,7 +136,7 @@ def run_fill_pipeline(df: "pd.DataFrame", output_dir: Path) -> dict:
     gb_metrics, gb_model, gb_scaler = train_fill_classifier(
         X, y, model_type="gb", n_splits=5
     )
-    results["gb"] = shallow_asdict(gb_metrics)
+    results["gb"] = asdict(gb_metrics)
     _print_fill_metrics("GB", gb_metrics)
 
     # --- LogisticRegression ---
@@ -144,7 +144,7 @@ def run_fill_pipeline(df: "pd.DataFrame", output_dir: Path) -> dict:
     lr_metrics, lr_model, lr_scaler = train_fill_classifier(
         X, y, model_type="lr", n_splits=5
     )
-    results["lr"] = shallow_asdict(lr_metrics)
+    results["lr"] = asdict(lr_metrics)
     _print_fill_metrics("LR", lr_metrics)
 
     best = "gb" if gb_metrics.roc_auc_mean >= lr_metrics.roc_auc_mean else "lr"
