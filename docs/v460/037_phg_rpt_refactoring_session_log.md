@@ -5032,6 +5032,47 @@ Date: 2026-03-12
 - YAML 直読は helper 本体の `yaml.safe_load(...)` 3 箇所だけが残る状態まで縮小した。
 - `tests/ -x --no-cov ...` のバックグラウンド lane は継続中で、少なくともプロセス自体は生存している。
 
+## 2026-03-12 / Session 037 Follow-up: Duration Wave 3
+
+### 目的
+- filtered broad `--durations` 上位へ戻ってきた source-assertion call と `HeavyTradingEnv` setup をもう一段削る。
+
+### 実施内容
+- [tests/unit/v460/test_261_protocol_type_safety.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_261_protocol_type_safety.py)
+  - `extract_price`, `extract_size`, `_normalize_levels` の source を import-time cache 化
+- [tests/unit/v460/test_145_s14_structural_refactors.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_145_s14_structural_refactors.py)
+  - `run_single_cycle`, `_make_api_request`, `_create_signature`, `_place_order_real` の source を import-time cache 化
+- [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py)
+  - `_G2_REAL_ROWS` を `8 -> 6`
+  - `shared_reset_result` / `shared_step_result` を `shared_cycle_results` 1 本へ統合
+- [tests/unit/v460/test_sac_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_sac_retrain_scheduler.py)
+  - `_update_sidecar_signal` / `time` の local import を除去
+- [tests/unit/v460/test_373_critical_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_373_critical_fixes.py)
+  - `maker_microstructure` / `fill_cycle_executor` の参照先メソッドを現 split 実装に合わせて修正
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `tests/unit/v460/test_261_protocol_type_safety.py`
+  - 結果: `66 passed in 4.68s`
+- focused:
+  - `tests/unit/v460/test_145_s14_structural_refactors.py`
+  - `tests/unit/v460/test_261_protocol_type_safety.py`
+  - 結果: `47 passed in 1.78s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4620 passed, 13 warnings in 30.73s`
+
+### 効果
+- `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction`
+  - filtered broad setup: `1.30s -> 1.04s`
+  - focused setup: `1.30s -> 0.75s`
+- `test_145_s14_structural_refactors.py` と `test_261_protocol_type_safety.py` の source-based assertions は call 上位からかなり後退した。
+
 ## 2026-03-12 / Session 379-SB3-Critical
 
 ### 概要

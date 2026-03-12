@@ -5052,3 +5052,12 @@ python scripts/unified_trainer.py \
     - focused wave subset: `263 passed in 3.63s`
     - focused scheduler/source/YAML follow-up: `71 passed in 2.27s`
     - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 32.50s`
+
+- 2026-03-12: trimmed the next duration wave in `v460` by caching source lookups and tightening `HeavyTradingEnv` setup reuse.
+  - precomputed source text/constants in `test_145_s14_structural_refactors.py` and `test_261_protocol_type_safety.py` so source-contract assertions no longer pay parse cost inside individual tests
+  - tightened `test_356_g2_sac_blockers.py` real-data slice `8 -> 6` rows and merged reset/step into one shared cycle fixture
+  - followed through in `test_sac_retrain_scheduler.py` and `test_373_critical_fixes.py` with the remaining local-import and split-source cleanup
+  - re-verified with:
+    - focused `test_356_g2_sac_blockers.py test_261_protocol_type_safety.py`: `66 passed in 4.68s`
+    - focused `test_145_s14_structural_refactors.py test_261_protocol_type_safety.py`: `47 passed in 1.78s`
+    - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 30.73s`

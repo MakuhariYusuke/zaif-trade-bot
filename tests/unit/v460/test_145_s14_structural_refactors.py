@@ -27,6 +27,16 @@ from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 from ztb.utils.errors import OrderNotFoundError
 
 COINCHECK_ADAPTER_SOURCE = Path(coincheck_adapter_module.__file__).resolve()
+_RUN_SINGLE_CYCLE_SOURCE = read_fill_test_method_source("run_single_cycle")
+_MAKE_API_REQUEST_SOURCE = read_class_method_source(
+    COINCHECK_ADAPTER_SOURCE, "CoincheckAdapter", "_make_api_request"
+)
+_CREATE_SIGNATURE_SOURCE = read_class_method_source(
+    COINCHECK_ADAPTER_SOURCE, "CoincheckAdapter", "_create_signature"
+)
+_PLACE_ORDER_REAL_SOURCE = read_class_method_source(
+    COINCHECK_ADAPTER_SOURCE, "CoincheckAdapter", "_place_order_real"
+)
 
 
 # =====================================================================
@@ -259,15 +269,13 @@ class TestOBInlineElimination:
 
     def test_no_hasattr_price_in_postonly_guard(self) -> None:
         """postonly guard に hasattr(... 'price') パターンが残っていない."""
-        source = read_fill_test_method_source("run_single_cycle")
-        assert "hasattr(_pre_ob.bids[0], 'price')" not in source, (
+        assert "hasattr(_pre_ob.bids[0], 'price')" not in _RUN_SINGLE_CYCLE_SOURCE, (
             "Inline dual-format access should be replaced with ob_utils.best_bid_ask()"
         )
 
     def test_best_bid_ask_import_in_source(self) -> None:
         """run_single_cycle 内に best_bid_ask のインポートがある."""
-        source = read_fill_test_method_source("run_single_cycle")
-        assert "best_bid_ask" in source
+        assert "best_bid_ask" in _RUN_SINGLE_CYCLE_SOURCE
 
 
 # =====================================================================
@@ -279,21 +287,12 @@ class TestCoincheckAdapterTestCompat:
 
     def test_make_api_request_still_on_coincheck(self) -> None:
         """_make_api_request は CoincheckAdapter に残存."""
-        source = read_class_method_source(
-            COINCHECK_ADAPTER_SOURCE, "CoincheckAdapter", "_make_api_request"
-        )
-        assert "urlencode" in source  # C-3 signature fix
+        assert "urlencode" in _MAKE_API_REQUEST_SOURCE  # C-3 signature fix
 
     def test_create_signature_still_on_coincheck(self) -> None:
         """_create_signature は CoincheckAdapter に残存."""
-        source = read_class_method_source(
-            COINCHECK_ADAPTER_SOURCE, "CoincheckAdapter", "_create_signature"
-        )
-        assert "hmac" in source
+        assert "hmac" in _CREATE_SIGNATURE_SOURCE
 
     def test_place_order_real_has_post_only(self) -> None:
         """_place_order_real に post_only がある."""
-        source = read_class_method_source(
-            COINCHECK_ADAPTER_SOURCE, "CoincheckAdapter", "_place_order_real"
-        )
-        assert "post_only" in source
+        assert "post_only" in _PLACE_ORDER_REAL_SOURCE
