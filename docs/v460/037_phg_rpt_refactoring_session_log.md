@@ -5606,3 +5606,42 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - `test_356` は heavy env 本体より周辺の GC/teardown 固定費がまだ残っていたので、patch で十分に下がった。
 - `test_build_features_pipeline` は fixture 重複と row 数削減が効いたが、なお `proxy_features_generation` は本体側の計算コストが支配的。
 - `test_093` と `test_157` は read-only YAML / config load を module cache に寄せたので、今後の同種テストにも横展開しやすい。
+
+## 2026-03-13 / Wave: Proxy Feature Rolling Reuse
+
+### 実施内容
+- [scripts/v460/build_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/build_features.py)
+  - `build_proxy_features(...)` で rolling volume の `sum/mean` を再利用
+  - `trade_flow_imbalance` / `vwap_deviation` / `trade_intensity` / `order_flow_toxicity` 間の重複 rolling 計算を削減
+- [tests/unit/v460/test_v460_core.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_v460_core.py)
+  - proxy feature テストの入力行数を `120/240` に縮小
+  - V460 feature 生成と非定数性の coverage は維持
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_v460_core.py`
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - 結果: `70 passed in 4.64s`
+- focused:
+  - `tests/unit/v460/test_fill_quality.py -k 'status_none_twice_becomes_cancelled_status_unknown'`
+  - 結果: `1 passed, 205 deselected in 1.73s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4643 passed, 13 warnings in 37.59s`
+
+### 更新後の上位
+1. `test_fill_quality.py::TestUnknownFillHandling::test_status_none_twice_becomes_cancelled_status_unknown` call `0.66s`
+2. `test_skip_gate_v3.py::TestSkipSellUnknownRegime::test_evaluator_passes_sell_trending` call `0.29s`
+3. `test_262_protocol_cancel_recheck.py::TestTryCancelWithFillRecheck::test_cancel_filled_without_price_uses_fallback` call `0.27s`
+4. `test_092_gap_fixes.py::TestE7NetInventory::test_e7_unbalanced_fails` call `0.22s`
+5. `test_build_features_pipeline.py::TestBuildProxyFeatures::test_different_window` setup `0.18s`
+6. `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction` setup `0.18s`
+
+### 見立て
+- `proxy_features_generation` は broad 上位から外れた。ここは production 側の rolling 再利用が効いた。
+- 次の本命は `fill_quality` unknown-fill と `skip_gate_v3` / `protocol_cancel_recheck` の call 側。
+- `test_356` は setup `0.18s` まで落ちており、以後は heavy env より他テストの単発 call が支配的になっている。

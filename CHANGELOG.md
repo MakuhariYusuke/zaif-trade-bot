@@ -5164,3 +5164,10 @@ python scripts/unified_trainer.py \
     - focused `test_093_side_params.py test_157_regime_features.py test_build_features_pipeline.py test_356_g2_sac_blockers.py`: `121 passed in 6.56s`
     - focused `test_build_features_pipeline.py test_356_g2_sac_blockers.py`: `61 passed in 7.64s`
     - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 50.97s`
+- 2026-03-13: reduced proxy-feature fixed cost in both production code and v460 tests.
+  - updated `scripts/v460/build_features.py::build_proxy_features(...)` to reuse rolling volume statistics instead of recomputing the same rolling sums/means multiple times
+  - reduced `test_v460_core.py` proxy-feature row counts from `200/500` to `120/240` while preserving nontriviality coverage
+  - re-verified with:
+    - focused `test_v460_core.py test_build_features_pipeline.py`: `70 passed in 4.64s`
+    - focused `test_fill_quality.py -k 'status_none_twice_becomes_cancelled_status_unknown'`: `1 passed, 205 deselected in 1.73s`
+    - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 37.59s`
