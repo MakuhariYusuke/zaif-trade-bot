@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-12 (385# config audit + 386# reward analysis + 387# G2 PASS 達成)
+> 最終更新: 2026-03-12 (391# fill test deep dive root cause analysis)
 
 ---
 
@@ -383,6 +383,8 @@
 | 386 | plan | [386_ph3_plan_fee_fix_gamma_experiments.md](386_ph3_plan_fee_fix_gamma_experiments.md) | 次ステップ計画: 手数料矛盾修正 + Gamma比較実験 + 科学的アプローチ |
 | 387 | rpt | [387_ph3_rpt_reward_analysis.md](387_ph3_rpt_reward_analysis.md) | 報酬関数分析: ペナルティ過大問題, 4実験比較 (baseline/γ=0.95/reward-tuned/warm-start), **G2 PASS達成** |
 | 388 | plan | [388_ph3_plan_g3_pnl_preparation.md](388_ph3_plan_g3_pnl_preparation.md) | G3-pnl Gate 準備計画: 評価パイプライン構築, PF/MaxDD/Sharpe 計測, FAIL 時対策 |
+| 389 | rev | [389_ph3_rev_383_388_profit_systems_market_review.md](389_ph3_rev_383_388_profit_systems_market_review.md) | 383#-388# Profit-first 再整理: G2 PASS の artifact/curr threshold 整合, reward-PnL 逆相関, G3 二重実装回避, friction 未考慮リスクを点検 |
+| 391 | rpt | [391_fill_test_deep_dive_root_cause.md](391_fill_test_deep_dive_root_cause.md) | Fill Test 根本原因分析: sell tail 2.7x, EV confident-wrong, rapid-fire −0.43bps, offset ceiling 59%張付き, **P0施策で+100bps改善余地** |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
