@@ -14,7 +14,6 @@ import math
 import typing
 from functools import lru_cache
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -78,7 +77,7 @@ def _make_mp(
 
 
 def _make_microstructure_stub(
-    config: FillTestConfig,
+    config: object,
     *,
     bid_depth: float = 0.0,
     ask_depth: float = 0.0,
@@ -93,11 +92,26 @@ def _make_microstructure_stub(
     )
 
 
-def _make_regime_detector(vol_ratio: float = 1.0) -> MagicMock:
-    det = MagicMock()
-    det.current_regime = FillTestRegime.RANGING
-    det.last_volatility_ratio = vol_ratio
-    return det
+def _make_microstructure_config(**overrides: object) -> SimpleNamespace:
+    defaults: dict[str, object] = {
+        "max_offset_ratio": 0.30,
+        "order_quantity": 0.001,
+        "kyle_lambda_enabled": False,
+        "kyle_lambda_impact_mult": 1.0,
+        "kyle_lambda_max_add_ratio": 0.01,
+        "amihud_illiq_enabled": False,
+        "amihud_illiq_baseline": 0.001,
+        "amihud_illiq_max_mult": 2.0,
+    }
+    defaults.update(overrides)
+    return SimpleNamespace(**defaults)
+
+
+def _make_regime_detector(vol_ratio: float = 1.0) -> SimpleNamespace:
+    return SimpleNamespace(
+        current_regime=FillTestRegime.RANGING,
+        last_volatility_ratio=vol_ratio,
+    )
 
 
 def _maker_price_source(method_name: str) -> str:
@@ -275,19 +289,19 @@ class TestKyleLambda:
 
     def test_disabled(self) -> None:
         """kyle_lambda_enabled=False なら無影響."""
-        mp = _make_microstructure_stub(_make_config(kyle_lambda_enabled=False))
+        mp = _make_microstructure_stub(_make_microstructure_config(kyle_lambda_enabled=False))
         result = MakerPrice._apply_kyle_lambda(mp, "buy", 100.0, 10_000_000.0, 0.05)
         assert result == 0.05
 
     def test_zero_depth_no_effect(self) -> None:
         """depth=0 なら無影響."""
-        mp = _make_microstructure_stub(_make_config(kyle_lambda_enabled=True))
+        mp = _make_microstructure_stub(_make_microstructure_config(kyle_lambda_enabled=True))
         result = MakerPrice._apply_kyle_lambda(mp, "buy", 100.0, 10_000_000.0, 0.05)
         assert result == 0.05
 
     def test_positive_depth_adds_offset(self) -> None:
         """正の depth で offset が加算される."""
-        cfg = _make_config(
+        cfg = _make_microstructure_config(
             kyle_lambda_enabled=True,
             kyle_lambda_impact_mult=1.0,
             kyle_lambda_max_add_ratio=0.10,
@@ -301,7 +315,7 @@ class TestKyleLambda:
 
     def test_max_add_ratio_clamp(self) -> None:
         """kyle_lambda_max_add_ratio で加算が上限クランプされる."""
-        cfg = _make_config(
+        cfg = _make_microstructure_config(
             kyle_lambda_enabled=True,
             kyle_lambda_impact_mult=10000.0,  # 意図的に巨大倍率
             kyle_lambda_max_add_ratio=0.01,
@@ -314,7 +328,7 @@ class TestKyleLambda:
 
     def test_sell_uses_ask_depth(self) -> None:
         """sell 側は ask depth を使用する."""
-        cfg = _make_config(
+        cfg = _make_microstructure_config(
             kyle_lambda_enabled=True,
             kyle_lambda_impact_mult=1.0,
             kyle_lambda_max_add_ratio=0.10,
@@ -340,13 +354,13 @@ class TestAmihudILLIQ:
 
     def test_disabled(self) -> None:
         """amihud_illiq_enabled=False なら無影響."""
-        mp = _make_microstructure_stub(_make_config(amihud_illiq_enabled=False))
+        mp = _make_microstructure_stub(_make_microstructure_config(amihud_illiq_enabled=False))
         result = MakerPrice._apply_amihud_illiq(mp, "buy", 100.0, 10_000_000.0, 0.05)
         assert result == 0.05
 
     def test_sufficient_liquidity(self) -> None:
         """流動性十分 (ILLIQ ≤ baseline) なら無影響."""
-        cfg = _make_config(
+        cfg = _make_microstructure_config(
             amihud_illiq_enabled=True,
             amihud_illiq_baseline=0.01,  # 高いベースライン
         )
@@ -357,7 +371,7 @@ class TestAmihudILLIQ:
 
     def test_low_liquidity_increases_offset(self) -> None:
         """低流動性 (ILLIQ > baseline) で offset が拡大."""
-        cfg = _make_config(
+        cfg = _make_microstructure_config(
             amihud_illiq_enabled=True,
             amihud_illiq_baseline=1e-8,  # 非常に低いベースライン
             amihud_illiq_max_mult=2.0,
@@ -368,26 +382,22 @@ class TestAmihudILLIQ:
 
     def test_max_mult_clamp(self) -> None:
         """amihud_illiq_max_mult で倍率が上限クランプされる."""
-        cfg = _make_config(
+        cfg = _make_microstructure_config(
             amihud_illiq_enabled=True,
             amihud_illiq_baseline=1e-15,  # 極小 → 巨大 ratio
             amihud_illiq_max_mult=1.2,
         )
-        mp = _make_mp(cfg)
-        mp._last_bid_depth = 0.001
-        mp._last_ask_depth = 0.001
+        mp = _make_microstructure_stub(cfg, bid_depth=0.001, ask_depth=0.001)
         prev = 0.05
-        result = mp._apply_amihud_illiq("buy", 100.0, 10_000_000.0, prev)
+        result = MakerPrice._apply_amihud_illiq(mp, "buy", 100.0, 10_000_000.0, prev)
         # max_mult = 1.2 → 最大でも 0.05 * 1.2 = 0.06
         assert result <= prev * 1.2 + 1e-10
 
     def test_zero_depth_no_effect(self) -> None:
         """depth=0 なら無影響."""
-        cfg = _make_config(amihud_illiq_enabled=True)
-        mp = _make_mp(cfg)
-        mp._last_bid_depth = 0.0
-        mp._last_ask_depth = 0.0
-        result = mp._apply_amihud_illiq("buy", 100.0, 10_000_000.0, 0.05)
+        cfg = _make_microstructure_config(amihud_illiq_enabled=True)
+        mp = _make_microstructure_stub(cfg)
+        result = MakerPrice._apply_amihud_illiq(mp, "buy", 100.0, 10_000_000.0, 0.05)
         assert result == 0.05
 
     def test_illiq_cached(self) -> None:

@@ -5883,3 +5883,34 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - broad は 30 秒を切った。
 - 残上位は 0.2 秒前後の単発 call/setup に集中しており、ここからは test-side helper より production 側の初期化固定費と import ノイズの比重が大きい。
 - 次は `feature_enricher` / `gate_check` / `stale_order` / `market theory` の pure-call 群を小さく刈るのが筋。
+
+## 2026-03-13 / Wave: Market-Theory Stub Reuse + Fast-Cycle Noise Reduction
+
+### 実施内容
+- [tests/unit/v460/test_266_market_theory_protocol.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_266_market_theory_protocol.py)
+  - Kyle / Amihud の pure-call ケースを minimal microstructure config + stub に統一
+  - 小さい regime detector も `SimpleNamespace` に置換
+- [tests/unit/v460/test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+  - real-data sampling ladder を `94 / 96 / 100` に短縮
+  - 現行 stable tail では `94 rows / 31 trainable` を確認
+- [tests/unit/v460/test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py)
+  - fast-cycle helper で非検証 logger を no-op 化
+  - phantom guard を無効にして unknown-fill / cancel-race の余分な work を削減
+- [tests/unit/v460/test_094_stale_order.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_094_stale_order.py)
+  - read-only production YAML 検査を `v460_fill_test_yaml_base` へ変更
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_266_market_theory_protocol.py tests/unit/v460/test_enricher_skip_gate.py::Test058Integration tests/unit/v460/test_fill_quality.py::TestUnknownFillHandling tests/unit/v460/test_fill_quality.py::TestBug11CancelRaceCondition`
+  - 結果: `47 passed in 2.76s`
+- focused:
+  - `tests/unit/v460/test_094_stale_order.py tests/unit/v460/test_266_market_theory_protocol.py tests/unit/v460/test_enricher_skip_gate.py::Test058Integration tests/unit/v460/test_fill_quality.py::TestUnknownFillHandling`
+  - 結果: `97 passed in 2.99s`
+- focused singletons:
+  - `test_fill_monitor_result_has_reprice_drift_bps` + `TestAmihudILLIQ::test_disabled`
+  - 結果: `2 passed in 1.26s`
+
+### 見立て
+- `test_266` と `test_094` の broad 上位化は focused では再現しなかった。単発ノイズの比率が高い。
+- 一方で `test_enricher_skip_gate` の setup と `test_fill_quality` unknown-fill は focused で確実に下がっている。
+- 次は broad の再測定結果に合わせて、`test_356` / `test_enricher_skip_gate` / `test_fill_quality` の順で再度詰める。

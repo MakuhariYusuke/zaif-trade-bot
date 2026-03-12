@@ -5215,3 +5215,13 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused `test_build_features_pipeline.py test_v460_core.py`: `70 passed in 2.46s`
     - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 29.73s`
+
+- 2026-03-13: tightened another v460 wave around market-theory pure-call stubs, unknown-fill fast-cycle noise, and stale-order read-only YAML checks.
+  - changed `test_266_market_theory_protocol.py` Kyle/Amihud pure-call tests to use a minimal microstructure config/stub path and replaced the tiny regime detector MagicMock with a SimpleNamespace
+  - reduced `test_enricher_skip_gate.py` real-data sampling ladder from `95/100/105` to `94/96/100` after confirming the current stable tail still yields `31` trainable samples in `94` rows
+  - silenced non-asserted fast-cycle logger/phantom-guard work in `test_fill_quality.py` by patching module loggers and nulling the phantom guard inside the shared runner helper
+  - switched `test_094_stale_order.py::test_production_yaml_has_stale_order` to the shared read-only `v460_fill_test_yaml_base` fixture
+  - re-verified with:
+    - focused `test_266_market_theory_protocol.py Test058Integration unknown-fill/bad-cancel bundles`: `47 passed in 2.76s`
+    - focused `test_094_stale_order.py test_266_market_theory_protocol.py test_enricher_skip_gate.py::Test058Integration test_fill_quality.py::TestUnknownFillHandling`: `97 passed in 2.99s`
+    - filtered broad `tests/unit/v460/`: latest rerun pending / previous pass green
