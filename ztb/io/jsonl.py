@@ -179,12 +179,10 @@ def append_jsonl(
 ) -> Path:
     """Append one or more records to a JSONL file."""
     target = ensure_parent_dir(path)
-    lines = [
-        json.dumps(payload, ensure_ascii=ensure_ascii, default=default) + "\n"
-        for payload in payloads
-    ]
-    if not lines:
-        return target
     with open(target, "a", encoding=encoding) as f:
-        f.write("".join(lines))
+        for payload in payloads:
+            f.write(
+                json.dumps(payload, ensure_ascii=ensure_ascii, default=default)
+                + "\n"
+            )
     return target

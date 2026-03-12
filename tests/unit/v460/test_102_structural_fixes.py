@@ -16,7 +16,7 @@ import json
 import time
 from pathlib import Path
 from typing import Optional
-from unittest.mock import patch
+from unittest.mock import MagicMock
 
 import pytest
 from scripts.v460.lib.fill_config import FillTestConfig
@@ -33,10 +33,6 @@ from ztb.metrics.fill_quality import (
     load_fill_records_glob,
     save_fill_records,
 )
-
-
-class _AdapterStub:
-    pass
 
 
 def _make_record(
@@ -70,8 +66,7 @@ def _make_runner(*, order_quantity: float = 0.001) -> FillTestRunner:
         order_quantity=order_quantity,
         enable_regime=False,
     )
-    with patch.object(FillTestRunner, "_get_git_sha", return_value="abc123"):
-        return FillTestRunner(_AdapterStub(), config)
+    return FillTestRunner(MagicMock(), config)
 
 
 # =====================================================================

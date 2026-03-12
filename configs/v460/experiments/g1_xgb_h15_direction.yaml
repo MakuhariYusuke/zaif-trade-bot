@@ -1,0 +1,24 @@
+# G1: XGBoost Walk-Forward — h15 (15min) × direction
+_base: configs/v460/base.yaml
+_gate: G1-info
+_task: feature_info
+
+data:
+  train_end_index: 973544
+
+features:
+  selected:
+    - bid_ask_spread
+    - depth_imbalance
+    - trade_flow_imbalance
+    - vwap_deviation
+    - trade_intensity
+    - order_flow_toxicity
+    - price_impact
+    - micro_return_vol
+    - bid_depth_slope
+    - ask_depth_slope
+
+g1:
+  horizons: [15]
+  targets: [direction]

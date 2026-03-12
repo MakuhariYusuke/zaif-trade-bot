@@ -1,0 +1,39 @@
+{
+  "model": "v397g_realistic_buy_size",
+  "timestamp": "2025-10-12T05:07:42.209225",
+  "steps": 4999,
+  "action_distribution": {
+    "buy_count": 0,
+    "buy_percentage": 0.0,
+    "sell_count": 258,
+    "sell_percentage": 5.161032206441289,
+    "hold_count": 4741,
+    "hold_percentage": 94.83896779355871,
+    "total_trades": 258,
+    "significant_changes": 3
+  },
+  "reward_stats": {
+    "mean": -0.011449026010811715,
+    "std": 0.13865089849244272,
+    "min": -9.8,
+    "max": 0.04942895487972199,
+    "positive_count": 2,
+    "positive_percentage": 0.040008001600320066,
+    "negative_count": 3171,
+    "negative_percentage": 63.43268653730746,
+    "zero_count": 1826,
+    "zero_percentage": 36.52730546109222
+  },
+  "performance": {
+    "initial_portfolio_value": 200000.0,
+    "final_portfolio_value": 197947.807185,
+    "total_return_percentage": -1.0260964074999939,
+    "realized_pnl": -2662.732815
+  },
+  "position_stats": {
+    "mean": -0.003656731346269254,
+    "std": 0.004816184104029287,
+    "min": -0.01,
+    "max": 0.0
+  }
+}

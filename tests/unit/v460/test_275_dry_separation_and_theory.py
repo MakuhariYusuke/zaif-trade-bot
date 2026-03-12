@@ -24,14 +24,6 @@ from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
 from tests.unit.v460._fill_test_source import ORCHESTRATOR_MID_CYCLE, read_source_text
 
 _FILL_LOOP_ORCHESTRATOR_SOURCE = read_source_text(ORCHESTRATOR_MID_CYCLE)
-_REGIME_DETECTOR_DOC = regime_detector_mod.__doc__ or ""
-_SIDE_SELECTOR_DOC = side_selector_mod.__doc__ or ""
-_PARAM_ADAPTER_DOC = param_adapter_mod.__doc__ or ""
-_MICRO_CIRCUIT_BREAKER_DOC = micro_circuit_breaker_mod.__doc__ or ""
-_SPREAD_ANOMALY_DETECTOR_DOC = spread_anomaly_detector_mod.__doc__ or ""
-_VELOCITY_MATH_DOC = velocity_math_mod.__doc__ or ""
-_MACRO_REGIME_DOC = macro_regime_mod.__doc__ or ""
-_ADAPTATION_ENGINE_DOC = adaptation_engine_mod.__doc__ or ""
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -122,57 +114,51 @@ class TestMarketTheoryDocstrings275:
 
     def test_regime_detector_theory(self) -> None:
         """regime_detector に Hamilton (1989) + AMH (Lo 2004) 参照がある."""
-        assert "Hamilton" in _REGIME_DETECTOR_DOC
-        assert (
-            "Adaptive Market" in _REGIME_DETECTOR_DOC
-            or "Lo (2004)" in _REGIME_DETECTOR_DOC
-            or "AMH" in _REGIME_DETECTOR_DOC
-        )
+        doc = regime_detector_mod.__doc__ or ""
+        assert "Hamilton" in doc
+        assert "Adaptive Market" in doc or "Lo (2004)" in doc or "AMH" in doc
 
     def test_side_selector_theory(self) -> None:
         """side_selector に Garman / Ho & Stoll 在庫管理理論がある."""
-        assert "Garman" in _SIDE_SELECTOR_DOC or "Ho & Stoll" in _SIDE_SELECTOR_DOC
-        assert "Inventory" in _SIDE_SELECTOR_DOC or "在庫" in _SIDE_SELECTOR_DOC
+        doc = side_selector_mod.__doc__ or ""
+        assert "Garman" in doc or "Ho & Stoll" in doc
+        assert "Inventory" in doc or "在庫" in doc
 
     def test_param_adapter_theory(self) -> None:
         """param_adapter に Avellaneda-Stoikov + Glosten-Milgrom がある."""
-        assert "Avellaneda" in _PARAM_ADAPTER_DOC
-        assert "Glosten" in _PARAM_ADAPTER_DOC
+        doc = param_adapter_mod.__doc__ or ""
+        assert "Avellaneda" in doc
+        assert "Glosten" in doc
 
     def test_micro_circuit_breaker_theory(self) -> None:
         """micro_circuit_breaker に Circuit Breaker + Liquidity Spiral がある."""
-        assert "Circuit Breaker" in _MICRO_CIRCUIT_BREAKER_DOC
-        assert (
-            "Brunnermeier" in _MICRO_CIRCUIT_BREAKER_DOC
-            or "Liquidity Spiral" in _MICRO_CIRCUIT_BREAKER_DOC
-        )
+        doc = micro_circuit_breaker_mod.__doc__ or ""
+        assert "Circuit Breaker" in doc
+        assert "Brunnermeier" in doc or "Liquidity Spiral" in doc
 
     def test_spread_anomaly_detector_theory(self) -> None:
         """spread_anomaly_detector に Roll + Copeland & Galai がある."""
-        assert "Roll" in _SPREAD_ANOMALY_DETECTOR_DOC
-        assert (
-            "Copeland" in _SPREAD_ANOMALY_DETECTOR_DOC
-            or "Information-Based" in _SPREAD_ANOMALY_DETECTOR_DOC
-        )
+        doc = spread_anomaly_detector_mod.__doc__ or ""
+        assert "Roll" in doc
+        assert "Copeland" in doc or "Information-Based" in doc
 
     def test_velocity_math_theory(self) -> None:
         """velocity_math に Kyle λ + Hasbrouck がある."""
-        assert "Kyle" in _VELOCITY_MATH_DOC
-        assert "Hasbrouck" in _VELOCITY_MATH_DOC
+        doc = velocity_math_mod.__doc__ or ""
+        assert "Kyle" in doc
+        assert "Hasbrouck" in doc
 
     def test_macro_regime_theory(self) -> None:
         """macro_regime に Hamilton + Regime-Switching がある."""
-        assert "Hamilton" in _MACRO_REGIME_DOC
-        assert "Regime-Switching" in _MACRO_REGIME_DOC or "Regime" in _MACRO_REGIME_DOC
+        doc = macro_regime_mod.__doc__ or ""
+        assert "Hamilton" in doc
+        assert "Regime-Switching" in doc or "Regime" in doc
 
     def test_adaptation_engine_theory(self) -> None:
         """adaptation_engine に AMH + Kelly がある."""
-        assert (
-            "Adaptive Market" in _ADAPTATION_ENGINE_DOC
-            or "AMH" in _ADAPTATION_ENGINE_DOC
-            or "Lo (2004)" in _ADAPTATION_ENGINE_DOC
-        )
-        assert "Kelly" in _ADAPTATION_ENGINE_DOC
+        doc = adaptation_engine_mod.__doc__ or ""
+        assert "Adaptive Market" in doc or "AMH" in doc or "Lo (2004)" in doc
+        assert "Kelly" in doc
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

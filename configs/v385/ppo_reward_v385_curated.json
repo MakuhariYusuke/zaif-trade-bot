@@ -1,0 +1,121 @@
+{
+  "session_id": "ppo_reward_v385_curated",
+  "algorithm": "ppo",
+  "description": "v385: 厳選68特徴量セット - Phase2実装後の初回訓練（スキーマ自動保存検証）",
+
+  "comment_experiment": "v385: FeatureSchemaManager統合後の検証訓練",
+  "comment_strategy": "v384と同じ68特徴量を使用、スキーマ自動保存機能をテスト",
+  "comment_target": "Phase2完了確認 - models/schemas/ppo_reward_v385_curated/ の自動生成を検証",
+
+  "comment_improvements_from_v384": [
+    "✨ 新機能: 訓練完了時にスキーマ自動保存（Phase2実装）",
+    "📁 生成ファイル: metadata.json, features_schema.json, scaler.npz",
+    "🎯 目的: 今後のモデルで特徴量数の不一致問題を防止",
+    "✅ 特徴量: v384と同じ68特徴量（curated）",
+    "✅ 過学習防止: 全特徴量110個ではなく厳選68個を使用"
+  ],
+
+  "curated_features_list": "curated_features.py::CURATED_FEATURES",
+  "enable_feature_filtering": true,
+  "feature_filter_mode": "whitelist",
+
+  "data_path": "ml-dataset-enhanced.csv",
+  "max_features": null,
+  "enable_correlation_reduction": false,
+
+  "data_rows_limit": null,
+
+  "ppo": {
+    "total_timesteps": 50000,
+    "learning_rate": 0.003,
+    "n_steps": 1024,
+    "batch_size": 256,
+    "n_epochs": 10,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_range": 0.1,
+    "clip_range_vf": null,
+    "normalize_advantage": true,
+    "ent_coef": 0.01,
+    "vf_coef": 0.3,
+    "max_grad_norm": 0.5,
+    "use_sde": false,
+    "sde_sample_freq": -1,
+    "target_kl": 0.01,
+    "stats_window_size": 100,
+    "tensorboard_log": "runs",
+    "verbose": 1,
+    "seed": null,
+    "device": "cpu",
+    "pan_enabled": true,
+    "pan_alpha_lr": 0.01,
+    "pan_target_entropy_ratio": 0.7
+  },
+
+  "environment": {
+    "transaction_cost": 0.0005,
+    "max_position_size": 0.5,
+    "initial_balance": 10000.0,
+    "curriculum_stage": "forced_balance",
+    "feature_set": "full",
+    "enable_correlation_reduction": false,
+    "correlation_threshold": 0.95,
+    "enable_feature_filtering": true,
+    "feature_filter_mode": "whitelist",
+    "curated_features_list": "curated_features.py::CURATED_FEATURES"
+  },
+
+  "reward": {
+    "hold_penalty_weight": 0.05,
+    "consecutive_hold_penalty": 0.02,
+    "consecutive_hold_threshold": 3,
+    "consecutive_hold_exponential": true,
+    "profit_reward_multiplier": 5.0,
+    "loss_penalty_multiplier": 1.0,
+    "action_diversity_bonus": 0.05,
+    "trading_frequency_bonus": 0.25,
+    "successful_trade_bonus": 1.0,
+    "risk_adjusted_return_weight": 0.5,
+    "max_drawdown_penalty": 0.3,
+    "sharpe_ratio_bonus": 0.2
+  },
+
+  "lagrange_constraints": {
+    "enabled": true,
+    "r_target": 0.175,
+    "tolerance": 0.042625,
+    "eta": 0.062875,
+    "lambda_init": 1.0,
+    "lambda_max": 3.875,
+    "lambda_min": 0.0,
+    "warmup_steps": 3874,
+    "adaptation_rate": 0.01
+  },
+
+  "training": {
+    "model_save_path": "models/ppo_reward_v385_curated.zip",
+    "checkpoint_dir": "checkpoints",
+    "checkpoint_interval": 10000,
+    "resume_from": null,
+    "eval_frequency": 5000,
+    "eval_episodes": 5,
+    "save_replay_buffer": false,
+    "save_vecnormalize": false
+  },
+
+  "logging": {
+    "log_level": "INFO",
+    "log_to_file": true,
+    "log_file": "logs/training_v385.log",
+    "tensorboard_enabled": true,
+    "wandb_enabled": false,
+    "wandb_project": null,
+    "wandb_entity": null
+  },
+
+  "performance": {
+    "num_envs": 1,
+    "num_workers": 4,
+    "use_multiprocessing": false
+  }
+}

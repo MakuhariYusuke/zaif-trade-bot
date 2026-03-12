@@ -16,7 +16,6 @@ import time
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -222,7 +221,7 @@ class TestOrchestratorConfigReferences:
 
     def test_pnl_window_derived_from_sell_dynamic_kill_window(self) -> None:
         """pnl_avg_window が sell_dynamic_kill_window × 2 で導出される."""
-        obj = SimpleNamespace()
+        obj = MagicMock(spec=FillLoopOrchestratorMixin)
         policy = RegimePolicyConfig(
             dynamic_cycle_enabled=True, chase_enabled=True,
             fill_rate_floor=0.0, pnl_floor_bps=-0.5,
@@ -232,11 +231,11 @@ class TestOrchestratorConfigReferences:
             policy=policy,
         )
         obj._cycle_strategy = strategy
-        obj.config = SimpleNamespace(
-            fallback_duration_sec=3600.0,
-            sell_dynamic_kill_window=25,  # → pnl_window = 50
-            min_adapt_samples=50,  # → min_samples = 10
-        )
+        _mock_config = MagicMock()
+        _mock_config.fallback_duration_sec = 3600.0
+        _mock_config.sell_dynamic_kill_window = 25  # → pnl_window = 50
+        _mock_config.min_adapt_samples = 50  # → min_samples = 10
+        obj.config = _mock_config
 
         @dataclass
         class _FakeRec:

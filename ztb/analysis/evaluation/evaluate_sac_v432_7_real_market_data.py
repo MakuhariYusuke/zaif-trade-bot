@@ -1,0 +1,469 @@
+#!/usr/bin/env python3
+"""
+SAC v432.7 Evaluation Script with Real Market Data
+Using actual BTC/JPY data for realistic performance evaluation
+"""
+
+import sys
+from pathlib import Path
+
+import numpy as np
+
+from ztb.io.data_loader import DataLoader
+from ztb.io.json_io import read_json, write_json
+# Add project root to path using path_utils
+project_root = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+from ztb.utils.path_utils import get_project_root
+
+def load_config():
+    """Load v432.4 configuration for real market evaluation"""
+    config_path = (
+        get_project_root()
+        / "ztb"
+        / "configs"
+        / "v432"
+        / "sac_v432_4_profit_focused_optimization.json"
+    )
+    return read_json(config_path)
+
+def simulate_market_data(num_steps=5000):
+    """Load real market data for backtesting"""
+    # Load real BTC/JPY data
+    data_path = get_project_root() / "data" / "btc_jpy_real_dataset.csv"
+    df = DataLoader.load_csv_strict(data_path)
+
+    # Use close prices, limit to num_steps
+    prices = df["close"].values[:num_steps]
+
+    # Normalize prices to start from 100 for consistency with synthetic data
+    prices = prices / prices[0] * 100.0
+
+    print(f"Loaded {len(prices)} real market data points")
+    print(f"Price range: {prices.min():.2f} - {prices.max():.2f}")
+    return prices
+
+def check_entry_conditions(price, prev_price, market_condition, config):
+    """Check if entry conditions are met for v432.3 enhanced criteria"""
+    entry_config = config["advanced_position_management"]["entry_conditions"]
+
+    price_change = (price - prev_price) / prev_price
+    trend_strength = abs(price_change)
+
+    # Get regime-specific filters
+    regime_filters = entry_config.get("regime_specific_filters", {})
+    regime_config = regime_filters.get(market_condition, {})
+
+    # Use regime-specific min_trend if available, otherwise use default
+    min_trend = regime_config.get("min_trend", entry_config["trend_strength_min"])
+
+    if trend_strength < min_trend:
+        return False
+
+    # Volume confirmation check
+    if entry_config.get("volume_confirmation", False):
+        volume_spike_required = regime_config.get("volume_spike", 1.0)
+        # Simplified volume check - assume volume spike if trend is strong
+        if trend_strength < min_trend * volume_spike_required:
+            return False
+
+    return True
+
+    if entry_config.get("momentum_alignment", False):
+        if market_condition == "bull" and price_change <= 0:
+            return False
+        if market_condition == "bear" and price_change >= 0:
+            return False
+
+    if entry_config.get("support_resistance_filter", False):
+        # シンプルなサポレジ近似: 明確なトレンドが無い場合はエントリーを抑制する
+    position,
+    position_size,
+    # Get base rewards (v432.2: optimized for win rate)
+    base_rewards = {
+        "SELL": config["reward_function"]["sell_bonus"],  # 0.3
+        "HOLD": config["reward_function"][
+            "hold_bonus"
+        ],  # -0.02 (optimized for scalping)
+        "BUY": config["reward_function"]["buy_bonus"],  # 0.3
+    }
+
+    # Apply market adaptive multipliers (enhanced for v432.1)
+    market_multipliers = config["reward_function"]["market_adaptive"]
+    if detected_condition == "sideways":
+        multiplier = market_multipliers["sideways_multiplier"]  # 2.0 (increased)
+    elif detected_condition == "high_vol":
+        multiplier = market_multipliers["high_vol_multiplier"]  # 1.5 (increased)
+    elif detected_condition == "low_vol":
+        multiplier = market_multipliers["low_vol_multiplier"]  # 0.6 (decreased)
+    elif detected_condition == "bull":
+        multiplier = market_multipliers.get("bull_multiplier", 1.2)
+    elif detected_condition == "bear":
+        multiplier = market_multipliers.get("bear_multiplier", 1.2)
+    else:
+        multiplier = 1.0
+
+    # Apply ensemble-style specialization bonuses (hardcoded for v432.1)
+    specialization_overrides = {
+        "bull": {"reward_overrides": {"BUY": 0.36, "SELL": 0.27}},  # 1.2x, 0.9x
+        "bear": {"reward_overrides": {"BUY": 0.27, "SELL": 0.36}},  # 0.9x, 1.2x
+        "sideways": {"reward_overrides": {"HOLD": -0.0015}},  # 側面局面ではHOLDも許容
+        "high_vol": {"reward_overrides": {"BUY": 0.39, "SELL": 0.39}},  # 1.3x each
+        "low_vol": {
+            "reward_overrides": {"HOLD": -0.004}
+        },  # 低ボラ局面でも過度なトレードを抑える
+    }
+
+    if detected_condition in specialization_overrides:
+        member_config = specialization_overrides[detected_condition]
+        if "reward_overrides" in member_config:
+            overrides = member_config["reward_overrides"]
+            for action, override in overrides.items():
+                if action in base_rewards:
+                    base_rewards[action] = override
+
+    # Apply market multiplier to all rewards
+    adjusted_rewards = {k: v * multiplier for k, v in base_rewards.items()}
+
+    # Advanced Position Management decision making
+    confidence_score = np.random.uniform(0.3, 0.9)  # Simulated confidence
+    entry_config = config["advanced_position_management"]["entry_conditions"]
+
+    # Check exit conditions first (enhanced for v432.3)
+    should_exit, exit_reason = check_exit_conditions(
+        position, entry_price, price, hold_periods, config
+    )
+    if should_exit:
+        if position > 0:
+            action = "SELL"  # Close long
+        elif position < 0:
+            action = "BUY"  # Close short
+        else:
+            action = "HOLD"
+    else:
+        # Entry/position management logic
+        if position == 0:  # Flat position
+            # Check entry conditions
+            if check_entry_conditions(price, prev_price, detected_condition, config):
+                if detected_condition == "bull" and price_change > 0:
+                    action = "BUY"
+                elif detected_condition == "bear" and price_change < 0:
+                    action = "SELL"
+                elif detected_condition == "high_vol":
+                    if trend_strength > entry_config["trend_strength_min"] * 1.8:
+                        action_prob = [0.3, 0.4, 0.3]
+                        action = np.random.choice(
+                            ["SELL", "HOLD", "BUY"], p=action_prob
+                        )
+                    else:
+                        action_prob = [0.4, 0.2, 0.4]  # Bias toward trading in high_vol
+                        action = np.random.choice(
+                            ["SELL", "HOLD", "BUY"], p=action_prob
+                        )
+                elif detected_condition == "sideways":
+                    action_prob = [0.4, 0.2, 0.4]  # Bias toward trading in sideways
+                    action = np.random.choice(["SELL", "HOLD", "BUY"], p=action_prob)
+                else:
+                    action_prob = [
+                        0.4,
+                        0.2,
+                        0.4,
+                    ]  # Bias toward trading in uncertain conditions
+                    action = np.random.choice(["SELL", "HOLD", "BUY"], p=action_prob)
+            else:
+                action_prob = [
+                    0.4,
+                    0.2,
+                    0.4,
+                ]  # Bias toward trading when entry conditions not met
+                action = np.random.choice(["SELL", "HOLD", "BUY"], p=action_prob)
+        else:
+            # Position maintenance logic
+            if abs(position) > 0.15:  # 現在の設定では0.15以上で大きめポジションとみなす
+                if detected_condition in ["high_vol", "sideways"]:
+                    action_prob = [
+                        0.4,
+                        0.2,
+                        0.4,
+                    ]  # Bias toward reducing position but allow trading
+                    action = np.random.choice(["SELL", "HOLD", "BUY"], p=action_prob)
+                else:
+                    action_prob = [
+                        0.3,
+                        0.4,
+                        0.3,
+                    ]  # Hold in trending markets but allow some trading
+                    action = np.random.choice(["SELL", "HOLD", "BUY"], p=action_prob)
+            else:
+                action_prob = [
+                    0.3,
+                    0.4,
+                    0.3,
+                ]  # Small position, maintain but allow trading
+                action = np.random.choice(["SELL", "HOLD", "BUY"], p=action_prob)
+
+    final_action = action
+    final_reward = adjusted_rewards[final_action]
+
+    return final_action, final_reward, detected_condition, confidence_score
+
+def run_backtest_simulation_v432_3(config, num_steps=10000, initial_capital=10000.0):
+    """Run v432.3 backtest simulation with Entry/Exit Enhancement"""
+    print("=== SAC v432.7 Real Market Data Backtest ===")
+    print(f"Steps: {num_steps}, Initial Capital: ${initial_capital}")
+    print("Features: Enhanced entry/exit conditions, regime-specific strategies")
+
+    # Generate market data
+    prices = simulate_market_data(num_steps)
+    print(f"Generated {len(prices)} price data points with diverse market conditions")
+
+    # Initialize trading variables
+    capital = initial_capital
+    position = 0.0
+    position_units = 0.0
+    entry_price = None
+    trades = []
+    transaction_cost = 0.0005
+    hold_periods = 0
+
+    actions_count = {"BUY": 0, "SELL": 0, "HOLD": 0}
+    total_reward = 0.0
+    market_conditions = []
+
+    print("\nStarting advanced position management simulation...")
+
+    for step in range(1, num_steps):
+        current_price = prices[step]
+        prev_price = prices[step - 1]
+
+        if position != 0:
+            hold_periods += 1
+        else:
+            hold_periods = 0
+
+        # Calculate dynamic position size
+        volatility = np.random.uniform(0.005, 0.06)
+        position_size = calculate_dynamic_position_size(
+            config, "neutral", 0.5, volatility
+        )
+
+        # Get SAC v432.2 action with win rate optimization
+        confidence = 0.5  # Default confidence
+        market_condition = "neutral"  # Default market condition
+        action, reward, market_condition, confidence = simulate_sac_v432_7_action(
+            config,
+            current_price,
+            prev_price,
+            position,
+            position_size,
+            confidence,
+            market_condition,
+            entry_price,
+            hold_periods,
+        )
+        actions_count[action] += 1
+        total_reward += reward
+        market_conditions.append(market_condition)
+
+        # Execute trade logic with advanced position management
+
+        if action == "BUY":
+            if position < 0 and position_units != 0 and entry_price:
+                trade_notional = abs(position_units) * current_price
+                pnl = (current_price - entry_price) * position_units
+                pnl -= transaction_cost * trade_notional
+                capital += pnl
+                trades.append(
+                    {
+                        "type": "COVER_SHORT",
+                        "entry_price": entry_price,
+                        "exit_price": current_price,
+                        "pnl": pnl,
+                        "step": step,
+                        "market_condition": market_condition,
+                        "hold_periods": hold_periods,
+                    }
+                )
+                position = 0.0
+                position_units = 0.0
+                entry_price = None
+                hold_periods = 0
+
+            if position == 0 and position_size > 0:
+                entry_notional = capital * position_size
+                if entry_notional > 0:
+                    position_units = entry_notional / current_price
+                    position = position_size
+                    entry_price = current_price
+                    capital -= transaction_cost * entry_notional
+                    hold_periods = 1
+
+        elif action == "SELL":
+            if position > 0 and position_units != 0 and entry_price:
+                trade_notional = abs(position_units) * current_price
+                pnl = (current_price - entry_price) * position_units
+                pnl -= transaction_cost * trade_notional
+                capital += pnl
+                trades.append(
+                    {
+                        "type": "CLOSE_LONG",
+                        "entry_price": entry_price,
+                        "exit_price": current_price,
+                        "pnl": pnl,
+                        "step": step,
+                        "market_condition": market_condition,
+                        "hold_periods": hold_periods,
+                    }
+                )
+                position = 0.0
+                position_units = 0.0
+                entry_price = None
+                hold_periods = 0
+
+            if position == 0 and position_size > 0:
+                entry_notional = capital * position_size
+                if entry_notional > 0:
+                    position_units = -entry_notional / current_price
+                    position = -position_size
+                    entry_price = current_price
+                    capital -= transaction_cost * entry_notional
+                    hold_periods = 1
+
+        if step % 1000 == 0:
+            progress = step / num_steps * 100
+            print(f"Progress: {progress:.1f}%")
+
+    # Close positions
+    if position != 0 and position_units != 0 and entry_price:
+        final_price = prices[-1]
+        trade_notional = abs(position_units) * final_price
+        pnl = (final_price - entry_price) * position_units
+        pnl -= transaction_cost * trade_notional
+        capital += pnl
+        trades.append(
+            {
+                "type": "CLOSE_LONG" if position > 0 else "COVER_SHORT",
+                "entry_price": entry_price,
+                "exit_price": final_price,
+                "pnl": pnl,
+                "step": num_steps,
+                "market_condition": market_conditions[-1]
+                if market_conditions
+                else "neutral",
+                "hold_periods": hold_periods,
+            }
+        )
+        position = 0.0
+        position_units = 0.0
+        entry_price = None
+
+    # Calculate metrics
+    total_return = (capital - initial_capital) / initial_capital * 100
+    num_trades = len(trades)
+    winning_trades = len([t for t in trades if t["pnl"] > 0])
+    win_rate = winning_trades / num_trades * 100 if num_trades > 0 else 0
+
+    returns = [t["pnl"] for t in trades]
+    if returns:
+        avg_return = np.mean(returns)
+        std_return = np.std(returns)
+        sharpe_ratio = avg_return / std_return * np.sqrt(252) if std_return > 0 else 0
+    else:
+        sharpe_ratio = 0
+        avg_return = 0
+
+    cumulative_returns = np.cumsum([t["pnl"] for t in trades])
+    running_max = np.maximum.accumulate(cumulative_returns)
+    drawdowns = running_max - cumulative_returns
+    max_drawdown = np.max(drawdowns) if len(drawdowns) > 0 else 0
+
+    # Market condition analysis
+    market_condition_counts = {}
+    for condition in market_conditions:
+        market_condition_counts[condition] = (
+            market_condition_counts.get(condition, 0) + 1
+        )
+
+    print("=== SAC v432.7 Real Market Data Results ===")
+    print(f"Total Return: {total_return:.2f}%")
+    print(f"Final Capital: ${capital:.2f}")
+    print(f"Total Trades: {num_trades}")
+    print(f"Win Rate: {win_rate:.1f}%")
+    print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
+    print(f"Max Drawdown: ${max_drawdown:.2f}")
+    print(f"Average Trade P&L: ${avg_return:.2f}")
+
+    print("\n[Advanced Action Distribution]")
+    total_actions = sum(actions_count.values())
+    for action, count in actions_count.items():
+        pct = count / total_actions * 100
+        print(f"  {action}: {count} ({pct:.1f}%)")
+
+    print("\n[Market Condition Analysis]")
+    for condition, count in market_condition_counts.items():
+        pct = count / len(market_conditions) * 100
+        print(f"  {condition}: {count} ({pct:.1f}%)")
+
+    print("\n[Reward System Performance]")
+    avg_reward = total_reward / num_steps
+    print(f"Average Reward per Step: {avg_reward:.4f}")
+    print(f"Total Reward Points: {total_reward:.2f}")
+
+    # Performance comparison with v432.0
+    print("\n[Performance Improvement Analysis vs v432.0]")
+    if win_rate > 50:
+        print("✅ Win rate improved (>50%)")
+    else:
+        print("⚠️ Win rate needs further improvement")
+
+    if total_return > -89.94:  # Better than v432.0's -89.94%
+        print("✅ Total return improved vs v432.0")
+    else:
+        print("❌ Total return still needs improvement")
+
+    if actions_count["HOLD"] / total_actions < 0.45:  # Less than v432.0's 45.2%
+        print("✅ HOLD rate reduced with negative penalty")
+    else:
+        print("⚠️ HOLD rate still high despite negative penalty")
+
+    return {
+        "total_return": total_return,
+        "win_rate": win_rate,
+        "sharpe_ratio": sharpe_ratio,
+        "max_drawdown": max_drawdown,
+        "num_trades": num_trades,
+        "final_capital": capital,
+        "trades": trades,
+        "market_conditions": market_condition_counts,
+        "actions_distribution": actions_count,
+        "total_reward": total_reward,
+    }
+
+def main():
+    # Load configuration
+    config = load_config()
+
+    # Run advanced position management backtest
+    results = run_backtest_simulation_v432_3(
+        config, num_steps=5000, initial_capital=10000.0
+    )
+
+    # Save results
+    output_file = (
+        get_project_root()
+        / "ztb"
+        / "evaluation"
+        / "v432"
+        / "sac_v432_7_real_market_data_results.json"
+    )
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    write_json(output_file, results, indent=2, default=str)
+
+    print(f"\nResults saved to: {output_file}")
+    print("\n=== SAC v432.7 Real Market Data Evaluation Complete ===")
+    print("Ready for training integration and further optimization")
+
+if __name__ == "__main__":
+    main()

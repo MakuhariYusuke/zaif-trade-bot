@@ -123,7 +123,7 @@ class TestNarrowSpreadPause:
         assert cfg.narrow_spread_pause_sec == 5.0
         assert cfg.narrow_spread_pause_max_consecutive == 3
 
-    def test_yaml_parsing(self) -> None:
+    def test_yaml_parsing(self, tmp_path: Path) -> None:
         """YAML から narrow_spread_pause を正しくパース."""
         yaml_content = {
             "loss_control": {
@@ -155,7 +155,7 @@ class TestFeeConfigParsing:
         assert cfg.maker_fee_bps == 0.0
         assert cfg.taker_fee_bps == 0.0
 
-    def test_yaml_parsing(self) -> None:
+    def test_yaml_parsing(self, tmp_path: Path) -> None:
         """YAML から PnL fee 設定をパース."""
         yaml_content = {
             "loss_control": {
@@ -184,7 +184,7 @@ class TestRepriceSellMax:
         assert cfg.stale_max_reprice_sell is None
         assert cfg.stale_max_reprice == 2  # 共通デフォルト
 
-    def test_yaml_sell_reprice_override(self) -> None:
+    def test_yaml_sell_reprice_override(self, tmp_path: Path) -> None:
         """YAML で sell 側 max_reprice を上書きできる."""
         yaml_content = {
             "stale_order": {

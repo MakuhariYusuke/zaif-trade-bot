@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\ppo_config.py
+# hypothesis_version: 6.140.3
+
+[0.0, 1e-06, 0.0001, 0.0003, 0.001, 0.005, 0.01, 0.02, 0.025, 0.05, 0.1, 0.12, 0.2, 0.3, 0.5, 0.7, 0.8, 0.95, 0.99, 1.0, 1.0986, 2.0, 4.0, 6.0, 8.0, 1000000.0, 128, 500, 2048, 100000, 1000000, 'atr_14', 'batch_size', 'bb_lower', 'bb_upper', 'clip_range', 'clip_range_vf', 'close', 'ent_coef', 'features', 'fee_model', 'fee_rate', 'final_end', 'gae_lambda', 'gamma', 'learning_rate', 'macd', 'main_end', 'max_grad_norm', 'max_position_size', 'n_epochs', 'n_steps', 'normalize_advantage', 'percentage', 'returns', 'reward_scaling', 'rsi_14', 'sde_sample_freq', 'sma_20', 'sma_50', 'stoch_d', 'stoch_k', 'target_kl', 'total_timesteps', 'transaction_cost', 'transition_end', 'use_sde', 'verbose', 'vf_coef', 'volume', 'warmup_end']

@@ -1,0 +1,37 @@
+SAC v427 Enhanced Feature Analysis Summary
+==================================================
+Generated: 20251025_004717
+Data Source: data/btc_jpy_yahoo_real_20251021_featured.csv
+
+📊 OVERVIEW
+Total Features: 117
+Harmful Features: 67
+Excellent Quality: 50
+Poor Quality: 0
+
+⚠️  HARMFUL FEATURES
+• open (minor)
+  Issues: over_correlated:7_features
+• high (minor)
+  Issues: over_correlated:7_features
+• low (minor)
+  Issues: over_correlated:7_features
+• close (minor)
+  Issues: over_correlated:7_features
+• volume (minor)
+  Issues: over_correlated:1_features
+• dividends (critical)
+  Issues: low_variance:0.00e+00, excessive_zeros:100.00%
+• stock splits (critical)
+  Issues: low_variance:0.00e+00, excessive_zeros:100.00%
+• returns (minor)
+  Issues: over_correlated:4_features
+• log_returns (minor)
+  Issues: over_correlated:4_features
+• volatility (minor)
+  Issues: over_correlated:2_features
+... and 57 more
+
+💡 RECOMMENDATIONS
+• Remove 67 harmful features (2 critical, 0 moderate)
+  Impact: Improve model stability and reduce overfitting

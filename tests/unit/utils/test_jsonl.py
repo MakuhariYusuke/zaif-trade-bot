@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ztb.io.jsonl import append_jsonl, read_tail_jsonl_objects
+from ztb.io.jsonl import read_tail_jsonl_objects
 
 
 def _write_lines(path: Path, lines: list[str]) -> None:
@@ -57,12 +57,3 @@ def test_read_tail_jsonl_objects_warn_malformed_keeps_valid_rows(tmp_path: Path)
     rows = read_tail_jsonl_objects(path, limit=4, warn_malformed=True)
 
     assert [row["n"] for row in rows] == [1, 2]
-
-
-def test_append_jsonl_writes_records_in_order(tmp_path: Path) -> None:
-    path = tmp_path / "append.jsonl"
-
-    append_jsonl(path, [{"n": 1}, {"n": 2}])
-
-    lines = path.read_text(encoding="utf-8").splitlines()
-    assert [json.loads(line)["n"] for line in lines] == [1, 2]

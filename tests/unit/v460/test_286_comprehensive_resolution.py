@@ -35,9 +35,6 @@ from tests.unit.v460._fill_test_source import (
 from ztb.metrics.fill_quality import FillRecord, detect_split_brain
 from ztb.risk.sell_dynamic_kill import DynamicKillConfig, DynamicKillManager
 
-_FILL_TEST_CLI_SOURCE = read_source_text(FILL_TEST_CLI)
-_FILL_TEST_CLI_TREE = parse_source_tree(FILL_TEST_CLI)
-
 
 # ======================================================================
 # 1. LockManager portalocker + zombie wait
@@ -167,8 +164,8 @@ class TestEventsStartStopGuarantee:
 
     def test_stop_event_logged_on_crash(self):
         """crash 時も stop イベントが記録されること (コード検査)."""
-        source = _FILL_TEST_CLI_SOURCE
-        assert isinstance(_FILL_TEST_CLI_TREE, ast.AST)
+        source = read_source_text(FILL_TEST_CLI)
+        parse_source_tree(FILL_TEST_CLI)  # syntax check
 
         assert 'not stop_reason.startswith("crash:")' not in source, (
             "286# fix: crash 時も stop イベントを記録するべき"

@@ -1,0 +1,33 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`trade-logger JSON mode snapshot > writes JSON lines (INFO/ERROR/SIGNAL) snapshot stable 1`] = `
+[
+  {
+    "data": {
+      "side": "buy",
+      "strength": 0.8,
+    },
+    "message": "strategy_entry",
+    "ts": "T",
+    "type": "SIGNAL",
+  },
+  {
+    "data": {
+      "id": "OID123",
+      "qty": 0.01,
+    },
+    "message": "queued_order",
+    "ts": "T",
+    "type": "INFO",
+  },
+  {
+    "data": {
+      "reason": "timeout",
+      "retry": true,
+    },
+    "message": "failed_execution",
+    "ts": "T",
+    "type": "ERROR",
+  },
+]
+`;

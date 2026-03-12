@@ -17,9 +17,9 @@ import asyncio
 import inspect
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin, RunSessionState
 from tests.unit.v460._fill_test_source import read_fill_test_runner_source
 
 
@@ -32,6 +32,7 @@ class TestExecuteSkipSignature:
 
     @pytest.fixture(autouse=True)
     def _setup(self) -> None:
+        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         self.mixin = FillLoopOrchestratorMixin
 
     def test_method_exists(self) -> None:
@@ -233,99 +234,68 @@ class TestHaltSleepMultiplierConfig:
 class TestExecuteSkipBehavior:
     """_execute_skip の動作を mock ベースで検証."""
 
-    class _SleepStub:
-        def __init__(self) -> None:
-            self.calls: list[tuple[float, float]] = []
-
-        async def __call__(self, *, multiplier: float = 1.0, max_override: float = 0.0) -> None:
-            self.calls.append((multiplier, max_override))
-
-        def assert_awaited_once(self) -> None:
-            assert len(self.calls) == 1
-
-        def assert_not_awaited(self) -> None:
-            assert self.calls == []
-
-        def assert_awaited_once_with(self, *, multiplier: float, max_override: float) -> None:
-            assert self.calls == [(multiplier, max_override)]
-
-    class _BatchPersistenceStub:
-        def __init__(self) -> None:
-            self.calls: list[tuple[list[object], str]] = []
-
-        def maybe_flush(self, batch: list[object], context: str) -> list[object]:
-            self.calls.append((list(batch), context))
-            return []
-
-    class _OrchestratorStub:
-        def __init__(self, execute_skip: object) -> None:
-            self._execute_skip = execute_skip
-            self.record_calls: list[dict[str, object]] = []
-            self._batch_persistence = TestExecuteSkipBehavior._BatchPersistenceStub()
-            self._heartbeat_calls = 0
-            self._state_save_calls: list[tuple[object, str]] = []
-            self._effective_sleep = TestExecuteSkipBehavior._SleepStub()
-            self._last_side = "buy"
-
-        def _make_loop_skip_record(self, **kwargs: object) -> object:
-            self.record_calls.append(dict(kwargs))
-            return SimpleNamespace(**kwargs)
-
-        def _update_lock_heartbeat(self) -> None:
-            self._heartbeat_calls += 1
-
-        def _maybe_skip_state_save(self, state: object, context: str) -> None:
-            self._state_save_calls.append((state, context))
-
     @pytest.fixture
-    def orchestrator_mock(self) -> "_OrchestratorStub":
-        """オーケストレータの最小 stub."""
-        orch = self._OrchestratorStub(FillLoopOrchestratorMixin._execute_skip)
+    def orchestrator_mock(self) -> MagicMock:
+        """オーケストレータの最小 mock."""
+        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+        from scripts.v460.lib.fill_loop_orchestrator import RunSessionState
+
+        orch = MagicMock(spec=FillLoopOrchestratorMixin)
         orch._execute_skip = FillLoopOrchestratorMixin._execute_skip.__get__(orch)
+        orch._make_loop_skip_record = MagicMock(return_value=MagicMock())
+        orch._batch_persistence = MagicMock()
+        orch._batch_persistence.maybe_flush = MagicMock(return_value=[])
+        orch._update_lock_heartbeat = MagicMock()
+        orch._maybe_skip_state_save = MagicMock()
+        orch._effective_sleep = AsyncMock()
+        orch._last_side = "buy"
         return orch
 
     @pytest.fixture
     def session_state(self) -> "RunSessionState":
+        from scripts.v460.lib.fill_loop_orchestrator import RunSessionState
         return RunSessionState()
 
     @pytest.mark.asyncio
-    async def test_basic_skip(self, orchestrator_mock: "_OrchestratorStub", session_state: "RunSessionState") -> None:
+    async def test_basic_skip(self, orchestrator_mock: MagicMock, session_state: "RunSessionState") -> None:
         """基本的な skip: record 生成+append+count+flush+sleep."""
         await orchestrator_mock._execute_skip(
             session_state, side="none", cancel_reason="test",
         )
-        assert len(orchestrator_mock.record_calls) == 1
+        orchestrator_mock._make_loop_skip_record.assert_called_once()
         assert session_state.total_count == 1
-        assert len(orchestrator_mock._batch_persistence.calls) == 1
+        orchestrator_mock._batch_persistence.maybe_flush.assert_called_once()
         orchestrator_mock._effective_sleep.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_heartbeat_called(self, orchestrator_mock: "_OrchestratorStub", session_state: "RunSessionState") -> None:
+    async def test_heartbeat_called(self, orchestrator_mock: MagicMock, session_state: "RunSessionState") -> None:
         """heartbeat=True で _update_lock_heartbeat が呼ばれる."""
         await orchestrator_mock._execute_skip(
             session_state, side="none", cancel_reason="test", heartbeat=True,
         )
-        assert orchestrator_mock._heartbeat_calls == 1
+        orchestrator_mock._update_lock_heartbeat.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_heartbeat_not_called_by_default(self, orchestrator_mock: "_OrchestratorStub", session_state: "RunSessionState") -> None:
+    async def test_heartbeat_not_called_by_default(self, orchestrator_mock: MagicMock, session_state: "RunSessionState") -> None:
         """デフォルトでは _update_lock_heartbeat は呼ばれない."""
         await orchestrator_mock._execute_skip(
             session_state, side="none", cancel_reason="test",
         )
-        assert orchestrator_mock._heartbeat_calls == 0
+        orchestrator_mock._update_lock_heartbeat.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_state_save_called(self, orchestrator_mock: "_OrchestratorStub", session_state: "RunSessionState") -> None:
+    async def test_state_save_called(self, orchestrator_mock: MagicMock, session_state: "RunSessionState") -> None:
         """state_save=True で _maybe_skip_state_save が呼ばれる."""
         await orchestrator_mock._execute_skip(
             session_state, side="none", cancel_reason="test",
             state_save=True, state_save_context="ctx",
         )
-        assert orchestrator_mock._state_save_calls == [(session_state, "ctx")]
+        orchestrator_mock._maybe_skip_state_save.assert_called_once_with(
+            session_state, "ctx",
+        )
 
     @pytest.mark.asyncio
-    async def test_update_last_side(self, orchestrator_mock: "_OrchestratorStub", session_state: "RunSessionState") -> None:
+    async def test_update_last_side(self, orchestrator_mock: MagicMock, session_state: "RunSessionState") -> None:
         """update_last_side=True で _last_side が更新される."""
         await orchestrator_mock._execute_skip(
             session_state, side="sell", cancel_reason="test",
@@ -334,7 +304,7 @@ class TestExecuteSkipBehavior:
         assert orchestrator_mock._last_side == "sell"
 
     @pytest.mark.asyncio
-    async def test_no_sleep_when_disabled(self, orchestrator_mock: "_OrchestratorStub", session_state: "RunSessionState") -> None:
+    async def test_no_sleep_when_disabled(self, orchestrator_mock: MagicMock, session_state: "RunSessionState") -> None:
         """sleep=False で _effective_sleep が呼ばれない."""
         await orchestrator_mock._execute_skip(
             session_state, side="none", cancel_reason="test", sleep=False,
@@ -342,7 +312,7 @@ class TestExecuteSkipBehavior:
         orchestrator_mock._effective_sleep.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_multiplier_passed(self, orchestrator_mock: "_OrchestratorStub", session_state: "RunSessionState") -> None:
+    async def test_multiplier_passed(self, orchestrator_mock: MagicMock, session_state: "RunSessionState") -> None:
         """multiplier が _effective_sleep に渡される."""
         await orchestrator_mock._execute_skip(
             session_state, side="none", cancel_reason="test", multiplier=5.0,
@@ -352,22 +322,24 @@ class TestExecuteSkipBehavior:
         )
 
     @pytest.mark.asyncio
-    async def test_flush_context_falls_back_to_cancel_reason(self, orchestrator_mock: "_OrchestratorStub", session_state: "RunSessionState") -> None:
+    async def test_flush_context_falls_back_to_cancel_reason(self, orchestrator_mock: MagicMock, session_state: "RunSessionState") -> None:
         """flush_context 省略時は cancel_reason が使われる."""
         await orchestrator_mock._execute_skip(
             session_state, side="none", cancel_reason="my_reason",
         )
-        assert len(orchestrator_mock._batch_persistence.calls) == 1
-        assert orchestrator_mock._batch_persistence.calls[0][1] == "my_reason"
+        orchestrator_mock._batch_persistence.maybe_flush.assert_called_once()
+        call_args = orchestrator_mock._batch_persistence.maybe_flush.call_args
+        assert call_args[0][1] == "my_reason"
 
     @pytest.mark.asyncio
-    async def test_record_kwargs_forwarded(self, orchestrator_mock: "_OrchestratorStub", session_state: "RunSessionState") -> None:
+    async def test_record_kwargs_forwarded(self, orchestrator_mock: MagicMock, session_state: "RunSessionState") -> None:
         """追加の record_kwargs が _make_loop_skip_record に渡される."""
         await orchestrator_mock._execute_skip(
             session_state, side="sell", cancel_reason="test",
             order_quantity=0.001, balance_forced_switch=True,
         )
-        assert orchestrator_mock.record_calls[0]["balance_forced_switch"] is True
+        call_kwargs = orchestrator_mock._make_loop_skip_record.call_args
+        assert call_kwargs[1]["balance_forced_switch"] is True
 
 
 # =====================================================================

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import inspect
 from functools import lru_cache
 from pathlib import Path
@@ -11,20 +12,24 @@ import numpy as np
 import pandas as pd
 import pyarrow.parquet as pq
 import pytest
+import yaml
 
 from scripts.v460.lib.tasks.sac_train import SACTrainModelProtocol, _create_training_env
-from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
 from ztb.training.algorithms.sac import SACAlgorithm
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
 
 _G2_SAC_YAML_PATH = Path("configs/v460/experiments/g2_sac_train.yaml")
-_G2_REAL_ROWS = 2
+_G2_REAL_ROWS = 8
 
 
 @lru_cache(maxsize=1)
 def _load_g2_sac_yaml() -> dict:
-    return load_yaml_mapping(_G2_SAC_YAML_PATH)
+    with open(_G2_SAC_YAML_PATH, encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+    if not isinstance(cfg, dict):
+        raise TypeError("g2_sac_train.yaml did not load as dict")
+    return cfg
 
 
 @lru_cache(maxsize=1)
@@ -605,53 +610,79 @@ class TestHeavyTradingEnvIntegration:
         return _load_g2_selected_features()
 
     @pytest.fixture(scope="class")
-    def training_env_bundle(
+    def env_config(self, selected_features: tuple[str, ...]) -> "EnvironmentConfig":
+        """YAML 環境セクションに準拠した EnvironmentConfig を構築."""
+        config = EnvironmentConfig(
+            transaction_cost=0.001,
+            max_position_size=0.01,
+            initial_portfolio_value=10_000_000.0,
+            use_continuous_actions=True,
+            action_space_type="continuous_1d",
+            exchange="coincheck",
+            timeframe="1m",
+            feature_names=list(selected_features),
+            random_start=False,
+            # 相関低減は schema 指定時に不要 → 無効化で安定
+            correlation_reduction=False,
+        )
+        return config
+
+    @staticmethod
+    def _create_env(real_df: "pd.DataFrame", env_config: "EnvironmentConfig") -> HeavyTradingEnv:
+        # HeavyTradingEnv 側で DataFrame を前処理用にコピーするため、
+        # ここでは共有済みの軽量 slice をそのまま渡して二重コピーを避ける。
+        return HeavyTradingEnv(
+            df=real_df,
+            config=dataclasses.replace(env_config),
+        )
+
+    @pytest.fixture(scope="class")
+    def shared_env(
         self,
         real_df: "pd.DataFrame",
-    ) -> tuple["HeavyTradingEnv", dict[str, int | str | bool]]:
-        cfg = dict(_load_g2_sac_yaml())
-        cfg["environment"] = {
-            **dict(cfg.get("environment", {})),
-            "random_start": False,
-        }
-        env, env_info = _create_training_env(real_df, cfg)
+        env_config: "EnvironmentConfig",
+    ) -> "HeavyTradingEnv":
+        env = self._create_env(real_df, env_config)
         try:
-            yield env, env_info
+            yield env
         finally:
             env.close()
 
     @pytest.fixture(scope="class")
-    def shared_cycle_results(
+    def shared_reset_result(
         self,
-        training_env_bundle: tuple["HeavyTradingEnv", dict[str, int | str | bool]],
-    ) -> tuple[
-        tuple[np.ndarray, dict[str, object]],
-        tuple[np.ndarray, float, bool, bool, dict[str, object]],
-    ]:
-        env, _ = training_env_bundle
-        reset_result = env.reset()
-        step_result = env.step(np.array([0.0], dtype=np.float32))
-        return reset_result, step_result
+        shared_env: "HeavyTradingEnv",
+    ) -> tuple[np.ndarray, dict[str, object]]:
+        return shared_env.reset()
+
+    @pytest.fixture(scope="class")
+    def shared_step_result(
+        self,
+        shared_env: "HeavyTradingEnv",
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, object]]:
+        shared_env.reset()
+        return shared_env.step(np.array([0.0], dtype=np.float32))
 
     @pytest.fixture(scope="class")
     def training_env_info(
         self,
-        training_env_bundle: tuple["HeavyTradingEnv", dict[str, int | str | bool]],
+        real_df: "pd.DataFrame",
     ) -> dict[str, int | str | bool]:
-        _, env_info = training_env_bundle
-        return env_info
+        cfg = dict(_load_g2_sac_yaml())
+        env, env_info = _create_training_env(real_df, cfg)
+        try:
+            return env_info
+        finally:
+            env.close()
 
     def test_env_instantiation_and_interaction(
         self,
-        training_env_bundle: tuple["HeavyTradingEnv", dict[str, int | str | bool]],
-        shared_cycle_results: tuple[
-            tuple[np.ndarray, dict[str, object]],
-            tuple[np.ndarray, float, bool, bool, dict[str, object]],
-        ],
+        shared_env: "HeavyTradingEnv",
+        shared_step_result: tuple[np.ndarray, float, bool, bool, dict[str, object]],
+        shared_reset_result: tuple[np.ndarray, dict[str, object]],
         selected_features: tuple[str, ...],
     ) -> None:
         """HeavyTradingEnv が生成・reset・step を一貫して実行できる."""
-        shared_env, _ = training_env_bundle
         assert shared_env is not None
         assert hasattr(shared_env, "observation_space")
         assert hasattr(shared_env, "action_space")
@@ -661,7 +692,6 @@ class TestHeavyTradingEnvIntegration:
         assert obs_dim == expected_obs_dim, (
             f"obs_dim={obs_dim} != expected={expected_obs_dim}"
         )
-        shared_reset_result, shared_step_result = shared_cycle_results
         reset_obs, info = shared_reset_result
         assert reset_obs.shape == (expected_obs_dim,)
         assert not np.any(np.isnan(reset_obs)), "Observation contains NaN"

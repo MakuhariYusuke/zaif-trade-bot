@@ -1,0 +1,156 @@
+# Stage 2: Extended Reward Design (リスク考慮型)
+#
+# 設計方針:
+# - Stage 1をベースにリスク管理を強化
+# - Sharpe/Sortino ratioボーナスを追加
+# - ボラティリティペナルティを強化
+# - バランスペナルティを増加
+#
+# 想定される動作:
+# - リスク調整済みリターンの最適化
+# - より安定した取引パターン
+# - 過度なポジション保有の抑制
+
+name: "stage2_extended"
+description: "Extended reward with risk management emphasis"
+curriculum_stage: "trading_focused"
+
+# 基本スケール設定
+use_simple_reward: false
+reward_scale: 100.0
+
+# リスク重視のバランス調整
+profit_weight: 1.0
+risk_weight: 0.7  # Stage 1の0.3から増加
+consistency_weight: 0.3  # Stage 1の0.1から増加
+
+# 取引関連ボーナス/ペナルティ (若干厳格化)
+trading_bonus: 0.01
+trade_frequency_penalty: 0.002  # Stage 1の0.001から増加
+trade_frequency_halflife: 100.0
+trade_cooldown_steps: 8  # Stage 1の5から増加
+trade_cooldown_penalty: 0.02  # Stage 1の0.01から増加
+max_consecutive_trades: 3
+consecutive_trade_penalty: 0.08  # Stage 1の0.05から増加
+
+# ポジション管理 (より厳格)
+position_soft_cap: 0.4  # Stage 1の0.5から減少
+position_penalty_scale: 0.15  # Stage 1の0.1から増加
+position_penalty_exponent: 2.2  # Stage 1の2.0から増加
+
+# 在庫管理
+inventory_window: 15  # Stage 1の10から増加
+inventory_penalty_scale: 0.015  # Stage 1の0.01から増加
+
+# ボラティリティ関連 (強化)
+volatility_window: 30  # Stage 1の20から増加
+volatility_penalty_scale: 0.02  # Stage 1の0.01から増加
+
+# リスク調整済みリターン (強化)
+sharpe_bonus_scale: 0.03  # Stage 1の0.01から増加
+sortino_bonus_scale: 0.025  # Stage 1の0.01から増加
+calmar_bonus_scale: 0.015  # Stage 1の0.005から増加
+
+# バランスペナルティ (強化)
+balance_penalty: 0.5  # Stage 1の0.1から増加
+balance_penalty_tolerance: 0.03  # Stage 1の0.05から減少
+
+# 報酬クリッピング
+reward_clip_value: 100.0
+reward_clip_min: -80.0
+reward_clip_max: 80.0
+
+# エントロピー正則化 (軽度有効化)
+entropy_bonus: 0.01
+entropy_regularization: 0.01
+
+# アクションスムージング (軽度有効化)
+action_smoothing: 0.05
+
+# 一貫性ペナルティ (有効化)
+consistency_penalty: 0.05
+
+# 強制多様性 (無効)
+enable_forced_diversity: false
+
+# 未実現損失ペナルティ (有効化)
+unrealized_loss_penalty_enabled: true
+unrealized_loss_penalty_base: 1.1
+unrealized_loss_penalty_max_steps: 10
+
+# 非対称報酬スケーリング (ロングポジション優遇)
+asymmetric_reward_scaling:
+  long_position_reward_multiplier: 1.1  # Stage 1の1.0から増加
+  short_position_reward_multiplier: 0.95  # Stage 1の1.0から減少
+  long_position_penalty_multiplier: 0.9  # Stage 1の1.0から減少
+  short_position_penalty_multiplier: 1.05  # Stage 1の1.0から増加
+
+# 動的報酬シェーピング (有効化)
+dynamic_reward_shaping:
+  enabled: true
+  market_regime_awareness: true
+  volatility_adjusted_rewards: true
+  trend_strength_bonus: true
+  
+  # レジーム係数
+  regime_coefficients:
+    bull_market_bonus_coeff: 1.2
+    bear_market_penalty_coeff: 0.85
+    sideways_market_penalty_coeff: 0.9
+    volatile_market_bonus_coeff: 1.1
+  
+  # ボラティリティ係数
+  volatility_coefficients:
+    high_volatility_threshold: 0.02
+    low_volatility_threshold: 0.005
+    high_volatility_bonus: 1.2
+    low_volatility_penalty: 0.8
+  
+  # トレンド係数
+  trend_coefficients:
+    trend_strength_threshold: 0.001
+    strong_trend_bonus: 1.15
+    weak_trend_penalty: 0.9
+
+# 利益ボーナス倍率 (強化)
+profit_bonus_multipliers: [1.0, 1.8, 2.5]  # Stage 1の[1.0, 1.5, 2.0]から増加
+
+# Ultra Profit設定 (無効)
+ultra_profit_multiplier: 1.0
+ultra_risk_multiplier: 1.0
+
+# Behavioral Penalty Calculator設定
+behavior_optimization:
+  balance_penalty: 0.5
+  action_balance_target: 0.333
+  consistency_lookback: 75  # Stage 1の50から増加
+  skewness_lookback: 15  # Stage 1の10から増加
+  action_entropy_lookback: 15  # Stage 1の10から増加
+  consistency_min_actions: 3  # Stage 1の2から増加
+
+# レジーム検出設定
+regime_detection_config:
+  use_relative: false
+  reference_window: 1000
+  percentile_threshold: 0.8
+
+# メタデータ
+metadata:
+  version: "1.0.0"
+  created_date: "2026-01-25"
+  phase: "Phase 3 Day 3"
+  purpose: "AB Testing Extended - Risk-aware reward with dynamic shaping"
+  expected_behavior:
+    - "Risk-adjusted return optimization"
+    - "Stable trading patterns"
+    - "Market regime adaptation"
+    - "Reduced position volatility"
+  improvements_over_stage1:
+    - "Enhanced Sharpe/Sortino bonus"
+    - "Stronger volatility penalty"
+    - "Dynamic reward shaping"
+    - "Unrealized loss penalty"
+    - "Asymmetric long/short treatment"
+  compatible_environments:
+    - "HeavyTradingEnv"
+    - "TradingEnvV456"

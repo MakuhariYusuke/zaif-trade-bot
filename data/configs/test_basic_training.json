@@ -1,0 +1,20 @@
+{
+  "algorithm": "ppo",
+  "data_path": "ml-dataset-final.csv",
+  "total_timesteps": 10000,
+  "session_id": "basic_test",
+  "enable_sell_mitigation": false,
+  "checkpoint_dir": "checkpoints",
+  "model_dir": "models",
+  "tensorboard_log": "tensorboard_logs",
+  "ppo_config": {
+    "learning_rate": 3e-4,
+    "n_steps": 2048,
+    "batch_size": 64,
+    "n_epochs": 10,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "ent_coef": 0.01
+  }
+}

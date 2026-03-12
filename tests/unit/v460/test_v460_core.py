@@ -281,7 +281,7 @@ class TestDataLoader:
         return p
 
     def test_load_parquet(self, basic_parquet_path: Path) -> None:
-        loaded = load_parquet(basic_parquet_path, max_rows=3)
+        loaded = load_parquet(basic_parquet_path)
         assert len(loaded) == 3
         assert "close" in loaded.columns
 

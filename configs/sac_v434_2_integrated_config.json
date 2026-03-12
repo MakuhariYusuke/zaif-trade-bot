@@ -1,0 +1,17 @@
+{
+  "model_name": "sac_v434_2_integrated",
+  "total_timesteps": 1000000,
+  "curriculum_learning": true,
+  "feature_correlation_analysis": true,
+  "news_feature_integration": true,
+  "adaptive_cost_management": true,
+  "ensemble_learning": false,
+  "correlation_threshold": 0.85,
+  "max_features": 50,
+  "venue_name": "coincheck",
+  "data_path": "data/train.csv",
+  "news_data_path": "data/news.csv",
+  "output_dir": "models/sac_v434_2_integrated",
+  "checkpoint_interval": 50000,
+  "evaluation_interval": 10000
+}

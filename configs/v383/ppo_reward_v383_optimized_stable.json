@@ -1,0 +1,157 @@
+{
+  "session_id": "ppo_reward_v383_optimized_stable",
+  "algorithm": "ppo",
+  "description": "v383: v381_revised best practices with careful fine-tuning",
+
+  "comment_strategy": [
+    "📊 ベース: v381_revised (最良結果: 報酬-525, HOLD 44.5%, EV 51.7%)",
+    "🎯 目標: HOLD 35-40%, BUY 30-35%, SELL 25-30%, 報酬-450以上",
+    "⚠️ 原則: vf_coef=0.3を維持（0.5は過剰と判明）",
+    "⚠️ 原則: 一度に1-2個のパラメータのみ変更"
+  ],
+
+  "comment_changes_from_v381_revised": [
+    "🔧 target_kl: 0.01 → null (Early stopping無効化を試行)",
+    "🔧 clip_range: 0.1 → 0.15 (微調整、0.2は大きすぎる可能性)",
+    "✅ vf_coef: 0.3維持 (最重要！0.5への増加は失敗と確認)",
+    "✅ learning_rate: 0.003維持 (0.002は遅すぎと判明)",
+    "🔧 hold_penalty_weight: 0.05 → 0.055 (HOLD削減継続)",
+    "🔧 consecutive_hold_threshold: 3 → 2 (早期ペナルティ強化)",
+    "🔧 buy_action_bonus: 0.15 → 0.20 (BUY促進、0.25は過剰調整)",
+    "🔧 buy_multiplier: 新規追加 1.2 (BUY時の報酬乗数)",
+    "✅ total_timesteps: 50000 → 75000 (十分な収束時間)"
+  ],
+
+  "comment_key_learnings": [
+    "✅ vf_coef=0.3が最適（0.1→0.5%EV、0.3→51.7%EV、0.5→2.3%EV）",
+    "✅ learning_rate=0.003が良好（0.002は100kでも収束せず）",
+    "✅ target_kl制約がボトルネック（Early stopping 100%発生）",
+    "✅ clip_range=0.2でclip率61-74%に改善（しかし報酬悪化）",
+    "❌ 複数パラメータの同時変更は危険（原因特定困難）"
+  ],
+
+  "curated_features_list": "curated_features.py::CURATED_FEATURES",
+  "enable_feature_filtering": true,
+  "feature_filter_mode": "whitelist",
+
+  "max_features": null,
+  "enable_correlation_reduction": false,
+  "data_rows_limit": null,
+
+  "ppo": {
+    "learning_rate": 0.003,
+    "n_steps": 1024,
+    "batch_size": 256,
+    "n_epochs": 16,
+    "gamma": 0.8475,
+    "gae_lambda": 0.8,
+    "clip_range": 0.15,
+    "clip_range_vf": null,
+    "ent_coef": 0.001,
+    "vf_coef": 0.3,
+    "max_grad_norm": 5.05,
+    "use_sde": false,
+    "sde_sample_freq": -1,
+    "target_kl": null,
+    "normalize_advantage": true,
+    "verbose": 1,
+    "policy_kwargs": {
+      "net_arch": [
+        {"pi": [128, 128], "vf": [128, 128]}
+      ]
+    }
+  },
+
+  "environment": {
+    "initial_balance": 10000,
+    "transaction_cost": 0.0001,
+    "max_position_size": 1.0,
+    "enable_action_masking": true,
+    "random_start": true,
+    "reward_settings": {
+      "comment_aggressive_hold_reduction": "HOLDを更に抑制（v381_revised比+10%強化）",
+      "hold_penalty_weight": 0.055,
+      "consecutive_hold_penalty": 0.025,
+      "consecutive_hold_exponential": true,
+      "consecutive_hold_threshold": 2,
+      "hold_opportunity_cost": 0.015,
+
+      "comment_trading_incentives": "取引と利益を最大化",
+      "trading_frequency_bonus": 0.25,
+      "profit_reward_multiplier": 5.0,
+      "action_diversity_bonus": 0.1,
+      "successful_trade_bonus": 1.2,
+
+      "comment_buy_promotion": "BUY率を30%以上に引き上げ（控えめな調整）",
+      "buy_action_bonus": 0.20,
+      "buy_multiplier": 1.2,
+
+      "comment_profit_focus": "高利益取引にボーナス",
+      "profit_threshold_bonus": 0.5,
+      "profit_threshold": 0.01,
+
+      "comment_dynamic_adaptation": "v379の市場適応型機能を完全採用",
+      "volatility_adjusted_penalty": true,
+      "trend_adjusted_bonus": true,
+      "range_market_hold_tolerance": 0.5
+    }
+  },
+
+  "training": {
+    "total_timesteps": 75000,
+    "checkpoint_interval": 5000,
+    "enable_autohalt": true,
+    "eval_freq": 2000,
+    "n_eval_episodes": 10,
+    "reward_scaling": 0.1,
+    "progress_bar": false
+  },
+
+  "custom_ppo": {
+    "enabled": true,
+    "use_pan": true,
+    "use_target_entropy": true,
+    "target_entropy": -0.8,
+    "use_gradient_probe_guard": false,
+    "pan_epsilon": 1e-8,
+    "enable_evaluation_gates": true,
+    "gate_thresholds": {
+      "variance_threshold": 0.01,
+      "distribution_check_enabled": true
+    }
+  },
+
+  "comment_lagrange_optimized": "二分探索最適化結果を完全採用",
+  "lagrange": {
+    "r_target": 0.175,
+    "tolerance": 0.042625,
+    "eta": 0.062875,
+    "lambda_max": 3.875,
+    "warmup_steps": 3874,
+    "enabled": true
+  },
+
+  "data_path": "ml-dataset-enhanced-balanced.csv",
+
+  "tensorboard": {
+    "log_dir": "checkpoints",
+    "comment": "TensorBoard logs will be saved in checkpoints/<session_id>_<run_number>/"
+  },
+
+  "reproducibility": {
+    "seed": 31415,
+    "comment": "Fixed seed for reproducible training runs"
+  },
+
+  "comment_expected_improvements": {
+    "vs_v381_revised": "target_kl無効化でEarly stopping削減、HOLD率35-40%、BUY率30-35%",
+    "hold_rate": "35-40% (v381_revised最良: 44.5%)",
+    "buy_rate": "30-35% (v381_revised最良: 30.5%)",
+    "avg_reward": "-450以上 (v381_revised最良: -525)",
+    "explained_variance": "40-60%安定 (v381_revised最良: 51.7%)",
+    "early_stop_rate": "0-20% (v381_revised: 100%)",
+    "training_time": "約3.5分 (75kステップ)"
+  },
+
+  "comment_usage": "cmd /d /c \"cd /d C:\\Users\\Admin\\dev\\zaif-trade-bot && call .\\.venv\\Scripts\\activate.bat && python run_training.py --config configs/training/ppo_reward_v383_optimized_stable.json\""
+}
