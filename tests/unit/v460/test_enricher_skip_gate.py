@@ -44,9 +44,9 @@ from scripts.v460.ml.skip_gate import (
 from scripts.v460.ml.data_loader import build_as_features, load_fill_records as load_fill_records_df
 from ztb.io.jsonl import read_tail_jsonl_objects
 
-_REAL_DATA_SAMPLE_ROWS = 95
-_REAL_DATA_FALLBACK_SAMPLE_ROWS = 100
-_REAL_DATA_EXPANDED_SAMPLE_ROWS = 105
+_REAL_DATA_SAMPLE_ROWS = 120
+_REAL_DATA_FALLBACK_SAMPLE_ROWS = 140
+_REAL_DATA_EXPANDED_SAMPLE_ROWS = 160
 _REAL_DATA_MIN_TRAIN_SAMPLES = 31
 
 
@@ -109,22 +109,16 @@ def _select_real_enriched_training_df(
     if recent_fill_df.empty:
         return pd.DataFrame()
 
-    trainable_mask = (
-        recent_fill_df["filled"].astype(bool).to_numpy(copy=False)
-        & recent_fill_df["post_fill_30s_pnl"].notna().to_numpy(copy=False)
-    )
-    reverse_cumsum = np.cumsum(trainable_mask[::-1], dtype=np.int32)
-    enough_trainable = np.flatnonzero(reverse_cumsum >= min_train_samples)
-    if enough_trainable.size > 0:
-        selected_rows = int(enough_trainable[0]) + 1
-    else:
-        selected_rows = expanded_rows
-
-    # 実データの揺れに備えて、過去に安定だった fallback ladder を下限/上限として維持する。
-    if selected_rows > initial_rows and selected_rows < fallback_rows:
-        selected_rows = fallback_rows
-    selected_rows = min(selected_rows, expanded_rows)
-
+    selected_rows = expanded_rows
+    for sample_rows in (initial_rows, fallback_rows, expanded_rows):
+        candidate = recent_fill_df.tail(sample_rows)
+        trainable_rows = int(np.count_nonzero(
+            candidate["filled"].astype(bool).to_numpy(copy=False)
+            & candidate["post_fill_30s_pnl"].notna().to_numpy(copy=False)
+        ))
+        selected_rows = sample_rows
+        if trainable_rows >= min_train_samples:
+            break
     return enrich_fill_records(recent_fill_df.tail(selected_rows))
 
 

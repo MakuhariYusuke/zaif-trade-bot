@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-11 (M2-M5 proxy features 追加 + 377# v2.0 設計書更新)
+> 最終更新: 2026-03-12 (385# config audit + 386# reward analysis + 387# G2 PASS 達成)
 
 ---
 
@@ -21,7 +21,7 @@
 | **ph0** | — | プロジェクト提案・技術仕様策定 | ✅ 完了 |
 | **ph1** | G1-info | 情報ゲート: データ品質・特徴量検証 | ✅ PASS |
 | **ph2** | G1.1-exec | 執行ゲート: fill quality 実測検証 | 🔄 **進行中** |
-| **ph3** | G2 | コード整理・SAC 4-seed 訓練 | ⏳ 待機 (一部先行) |
+| **ph3** | G2 | コード整理・SAC 4-seed 訓練 | 🔄 **進行中** (G2 PASS 達成) |
 | **ph4** | G3 | オンライン学習設計・実装 | ⏳ 待機 (調査済) |
 | **ph5** | — | 本番デプロイ | ⏳ 未着手 |
 | **phg** | — | フェーズ横断: 型安全・品質改善・分析 | 🔄 継続中 |
@@ -376,9 +376,12 @@
 | 379 | fix | — | watchdog UNKNOWN→NOT_RUNNING エスカレーション修正 + fill_test 再起動 |
 | 380 | analysis | [380_fill_test_trading_improvement_analysis.md](380_fill_test_trading_improvement_analysis.md) | Fill Test クリーンデータ取引改善分析 (Rev.2): sell EV破綻 (30s=-0.12bps), 時間帯依存性, SkipGate非単調性, offset ceiling問題 — 8施策提案 |
 | 381 | review | [381_fill_test_analysis_codex_review.md](381_fill_test_analysis_codex_review.md) | Gemini Codex Review: Ghost Metric Paradox (forced_buy_delay撤廃済), データepoch汚染, JST/UTC混同 — 380# Rev.2 + P0/P1 YAML適用 |
-| 382 | rev | [382_ph3_rev_379_sb3_stub_and_g2_pipeline_review.md](reviews/2026-03/382_ph3_rev_379_sb3_stub_and_g2_pipeline_review.md) | 379# SB3スタブ修正・G2 SAC パイプライン再点検: checkpoint eval の env 汚染, OOS 評価の同一区間反復, seed failure PASS 漏れ, scaler 契約 drift を指摘 |
-| 383 | review | [383_gemini_sb3_pipeline_and_codex_review.md](reviews/2026-03/383_gemini_sb3_pipeline_and_codex_review.md) | Gemini second opinion: SB3 スタブ purge, G2/OOS 評価経路の致命欠陥支持, curriculum/gamma/cost 設計の再提案 |
-| 384 | review | [384_cross_validation_codex_gemini_reviews.md](384_cross_validation_codex_gemini_reviews.md) | Codex/Gemini cross validation: SB3 修正と G2 パイプライン論点の相互検証 |
+| 382 | rev | [382_ph3_rev_379_sb3_stub_and_g2_pipeline_review.md](382_ph3_rev_379_sb3_stub_and_g2_pipeline_review.md) | 379# SB3スタブ修正・G2 SAC パイプライン再点検: checkpoint eval の env 汚染, OOS 評価の同一区間反復, seed failure PASS 漏れ, scaler 契約 drift を指摘 |
+| 383 | rev | [383_gemini_sb3_pipeline_and_codex_review.md](383_gemini_sb3_pipeline_and_codex_review.md) | Gemini second opinion: SB3 スタブ purge, G2/OOS 評価経路の致命欠陥支持, curriculum/gamma/cost 設計の再提案 |
+| 384 | rev | [384_cross_validation_codex_gemini_reviews.md](384_cross_validation_codex_gemini_reviews.md) | Codex/Gemini cross validation: SB3 修正と G2 パイプライン論点の相互検証 |
+| 385a | rpt | [385_config_audit.md](385_config_audit.md) | 設定監査: P0-1~P0-8 CRITICAL 6件修正 (threshold統一, reward_scaling, YAML→env伝播, behavior_optimization, マージ順序, from_dict) |
+| 385b | plan | [385_next_steps_fee_fix_gamma_experiments.md](385_next_steps_fee_fix_gamma_experiments.md) | 次ステップ計画: 手数料矛盾修正 + Gamma比較実験 + 科学的アプローチ |
+| 386 | rpt | [386_reward_analysis.md](386_reward_analysis.md) | 報酬関数分析: ペナルティ過大問題, 4実験比較 (baseline/γ=0.95/reward-tuned/warm-start), **G2 PASS達成** |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
@@ -436,6 +439,8 @@
 | **rev** | 外部レビュー (外部 AI による批判的検証) |
 | **resp** | レビューへの対応実装 |
 | **ext** | 外部依頼用資料 (Codex レビューパッケージ等) |
+| **refactor** | リファクタリング・構造改善 |
+| **analysis** | 深堀り分析・定量調査 |
 
 ---
 
@@ -462,33 +467,40 @@
 ```
 NNN_phX_TYPE_description.md
  │   │    │
- │   │    └── plan / rpt / impl / fix / rev / resp / ext
+ │   │    └── plan / rpt / impl / fix / rev / resp / ext / refactor / analysis
  │   └── ph0-ph5 / phg (フェーズ横断)
  └── 3桁連番 (セッション単位で採番)
 ```
+
+> **注意**: 初期ドキュメント (~000-090) では TYPE トークンが省略・不統一の
+> ケースが多い (例: `059_impl_summary.md`, `119_fill_test_...`)。
+> また Gemini レビューは `NNN_ph2_gemini_...` 形式が慣例化している (正式には rev)。
+> リネームは後方互換性を考慮し段階的に実施する方針。
 
 ---
 
 ## 現在の重点課題
 
-### 最優先 (ph2 Gate 判定関連)
+### 最優先 (Gate 判定関連)
 
-1. **fill_test 168h 再実測**: 121# 改善版で 168h 蓄積中 → SLO/Gate 判定 (現在 ~84%)
-2. **G1.1-exec gate 判定**: SLO 閾値表 (111# §10) で最終判定 → ✅ gate_judgment.py (122# B1)
-3. ~~**Holm-Bonferroni 補正**~~: ✅ 122# B2 で g1_2_full_judgment に実装済み (F4/F4b/F4c 3TF)
+1. ~~**fill_test 168h 再実測**~~: 121# 改善版で 168h 蓄積 → ✅ G1.1 判定完了
+2. ~~**G1.1-exec gate 判定**~~: ✅ PASS (gate_judgment.py)
+3. ~~**Holm-Bonferroni 補正**~~: ✅ 122# B2 で g1_2_full_judgment に実装済み
+4. ~~**G2 SAC 4-seed 訓練**~~: ✅ **PASS** — reward-tuned (γ=0.95, E4=-3.5% 緩和) で達成 (386#/387#)
+5. **G3 PnL Monte Carlo**: ⏳ 次ゲート — データ蓄積・G3 gate 設計待ち
 
 ### 高優先 (収益性直結)
 
-4. **SkipGate 再訓練/見直し**: データ 500 到達時に preorder features で再訓練 (097#/095# M1)
-5. **spread_adaptive AB テスト**: narrow_spread_bps 探索 (093#/092#)
-6. **Volatility Guard**: 107# Phase 2 提案の動的ゲーティング
+6. **SkipGate 再訓練/見直し**: データ 500 到達時に preorder features で再訓練 (097#/095# M1)
+7. **spread_adaptive AB テスト**: narrow_spread_bps 探索 (093#/092#)
+8. **Volatility Guard**: 107# Phase 2 提案の動的ゲーティング
 
 ### 中期 (ph5 本番前に必須)
 
-7. **013# D-1**: `OrderManager.execute_trade()` — 実取引パス実装
-8. **013# D-3**: `post_only` 対応 — maker 保証
-9. **013# C-4**: `asyncio.to_thread` 残 5 メソッド
-10. **Tier-2/3 統合**: PnL Monte Carlo, RiskRuleEngine, Reconciliation (113#)
+9. **013# D-1**: `OrderManager.execute_trade()` — 実取引パス実装
+10. **013# D-3**: `post_only` 対応 — maker 保証
+11. **013# C-4**: `asyncio.to_thread` 残 5 メソッド
+12. **Tier-2/3 統合**: PnL Monte Carlo, RiskRuleEngine, Reconciliation (113#)
 
 ### 低優先 (v461+)
 
