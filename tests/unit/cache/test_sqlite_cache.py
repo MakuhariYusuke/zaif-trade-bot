@@ -118,19 +118,14 @@ class TestSQLiteCache:
             db_path = Path(tmp_dir) / "test.db"
             cache = SQLiteCache(db_path=db_path, enable_memory_cache=False)
             try:
-                with patch(
-                    "ztb.cache.sqlite_cache.time.time",
-                    side_effect=[1000.0, 1000.0, 1001.0, 1001.0],
-                ):
+                with patch("ztb.cache.sqlite_cache.time.time", return_value=1000.0):
                     cache.set("ttl_key", "ttl_value", ttl_sec=1)
-
-                    # Should exist immediately
                     result = cache.get("ttl_key")
-                    assert result == "ttl_value"
+                assert result == "ttl_value"
 
-                    # Expire exactly on the TTL boundary
+                with patch("ztb.cache.sqlite_cache.time.time", return_value=1001.0):
                     result = cache.get("ttl_key")
-                    assert result is None
+                assert result is None
             finally:
                 cache.close()
 

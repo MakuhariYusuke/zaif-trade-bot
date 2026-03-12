@@ -5017,6 +5017,15 @@ python scripts/unified_trainer.py \
   - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 35.76s`
   - full `tests/ -x` now advances past the earlier 15% failure point; the first next blocker was `test_v4_feature_extractor::test_news_sentiment_integration`, and that was fixed in this batch
 
+- Continued steady-state cleanup after the previous blocker batch:
+  - made [tests/unit/cache/test_sqlite_cache.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/cache/test_sqlite_cache.py) `test_set_with_ttl` phase-based (`return_value`) instead of relying on fragile `side_effect` consumption order under broad-suite neighbors
+  - collapsed [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py) `HeavyTradingEnv` integration setup onto a single `_create_training_env(...)` bundle so reset/step/info reuse the same env instance
+  - tightened [tests/unit/v460/test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py) real-data ladder from `120/140/160` to `120/130/140` after rechecking current trainable sample counts
+- Re-verified with:
+  - focused `test_356_g2_sac_blockers.py test_enricher_skip_gate.py::Test058Integration`: `49 passed in 5.83s`
+  - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 36.09s`
+  - full `tests/ -x` advances to `19%` without surfacing a new blocker after the `sqlite_cache` fix
+
 - 2026-03-11: closed remaining `prompts/codex_test_cleanup_and_perf.md` cleanup items for safe skip/legacy handling and test helper reuse.
   - added shared `write_yaml_file` fixture in `tests/conftest.py` and reused it in config/scheduler/v460 YAML setup tests
   - moved `test_custom_ppo_integration.py` to an import-safe module-level skip and marked it `integration`/`slow`

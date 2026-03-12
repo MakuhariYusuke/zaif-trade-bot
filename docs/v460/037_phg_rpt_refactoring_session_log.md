@@ -4892,6 +4892,38 @@ Date: 2026-03-12
 - 次の blocker として [tests/unit/core/features/test_v4_feature_extractor.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/core/features/test_v4_feature_extractor.py) `test_news_sentiment_integration` を検出し、この batch で修正した。
 - 2 回目の `tests/ -x` は 34% 超まで追加 failure なしで進行したが、全量完走はこの batch では未了。
 
+## 2026-03-12 / Session 037 Follow-up: v460 Setup Tightening
+
+### 目的
+- `v460` broad 上位の `test_356` / `test_enricher_skip_gate` setup をもう一段縮める。
+- `tests/` broad で再発した `sqlite_cache` の brittle TTL test を固定する。
+
+### 実施内容
+- [tests/unit/cache/test_sqlite_cache.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/cache/test_sqlite_cache.py)
+  - `test_set_with_ttl` を `side_effect` 順依存から `return_value` 切替型に変更
+  - broad 隣接テストの clock 消費順に左右されないようにした
+- [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py)
+  - `HeavyTradingEnv` integration を `_create_training_env(...)` 1 回生成の bundle に統合
+  - reset/step/info が同じ env instance を再利用するように変更
+- [tests/unit/v460/test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+  - real-data ladder を `120/130/140` に圧縮
+  - 現行データで `120 rows -> 40 trainable` を確認した上で縮小
+
+### 検証
+- focused:
+  - `tests/unit/cache/test_sqlite_cache.py::TestSQLiteCache::test_set_with_ttl`
+  - `1 passed in 4.44s`
+- focused:
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py::Test058Integration`
+  - `49 passed in 5.83s`
+- filtered broad `tests/unit/v460/`
+  - `4620 passed, 13 warnings in 36.09s`
+
+### full-suite 状況
+- `tests/ -x --no-cov ...` は `19%` まで追加 failure なしで進行したところで停止。
+- 直近で broad を止めていた `sqlite_cache` TTL test は解消済み。
+
 ## 2026-03-12 / Session 379-SB3-Critical
 
 ### 概要
