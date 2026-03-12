@@ -44,6 +44,7 @@ from scripts.v460.lib.evaluator import (
     make_xgboost_classifier,
     make_xgboost_regressor,
 )
+from scripts.v460.lib.gate_judgment_core import evaluate_g2_checks, evaluate_g3_checks
 from scripts.v460.lib.manifest import ManifestWriter
 from scripts.v460.lib.tasks.feature_info import task_feature_info
 from scripts.v460.lib.tasks.sac_train import task_sac_train
@@ -212,13 +213,18 @@ def _evaluate_gate(gate: str, results: dict, cfg: dict) -> str:
                 logger.warning("gate_thresholds.yaml not found for G2: %s", e)
                 thresholds = {}
 
-            judgment = _evaluate_g2_from_results(results, thresholds)
+            convergence = results.get("convergence", {})
+            judgment = evaluate_g2_checks(seed_results, convergence, thresholds)
             results["g2_judgment_cache"] = judgment
 
             # 396# G3 auto-evaluation: seed_metrics があれば G3 も判定
-            seed_metrics = results.get("seed_metrics", [])
-            if seed_metrics:
-                g3_judgment = _evaluate_g3_from_results(results)
+            seed_metrics_list = results.get("seed_metrics", [])
+            if seed_metrics_list:
+                try:
+                    g3_thresholds = gate_cfg.get("g3_pnl", {})
+                except Exception:
+                    g3_thresholds = {}
+                g3_judgment = evaluate_g3_checks(seed_metrics_list, g3_thresholds)
                 if g3_judgment:
                     results["g3_judgment_cache"] = g3_judgment
                     logger.info(f"G3-pnl auto-evaluation: {g3_judgment.get('gate_result', '?')}")
@@ -336,160 +342,8 @@ def _compute_convergence(
     return {"roi_variance_pct_after_30k": round(roi_range * 100, 4)}
 
 
-def _evaluate_g2_from_results(
-    results: dict,
-    thresholds: dict,
-) -> dict[str, object]:
-    """G2 gate evaluation from in-memory results (dict-based).
-
-    356# B4: run_g2_judgment のロジックを dict 入力で再現.
-    """
-    from statistics import stdev
-
-    seed_results = results.get("seed_results", [])
-    if not seed_results:
-        return {"gate": "G2-train", "gate_result": "FAIL", "checks": {}, "reason": "no seed_results"}
-
-    # 384# HIGH-1: seed crash → ROI=0.0 がゲートを通過する問題を修正
-    # error キーを持つ seed は明示的に検出し、gate_result に反映する
-    error_seeds = [s for s in seed_results if "error" in s]
-    if error_seeds:
-        error_info = [
-            f"seed={s.get('seed', '?')}: {s.get('error', '?')}" for s in error_seeds
-        ]
-        return {
-            "gate": "G2-train",
-            "gate_result": "ERROR",
-            "checks": {},
-            "reason": f"{len(error_seeds)} seed(s) crashed: {'; '.join(error_info)}",
-        }
-
-    checks: dict[str, dict[str, object]] = {}
-
-    # E1: gross > 0 の seed 比率 >= 75%
-    min_ratio = float(thresholds.get("min_positive_seed_ratio", 0.75))
-    positive_seeds = sum(1 for s in seed_results if float(s.get("gross_roi", 0)) > 0)
-    ratio = positive_seeds / len(seed_results)
-    checks["positive_seed_ratio"] = {
-        "value": ratio, "threshold": min_ratio, "pass": ratio >= min_ratio,
-    }
-
-    # E2: seed 間標準偏差チェック
-    # 363# A4 で roi_seed_std へ移行したが、旧 max_ic_seed_std 設定も当面は互換維持。
-    if "max_roi_seed_std" in thresholds:
-        max_seed_std = float(thresholds.get("max_roi_seed_std", 0.03))
-        seed_std_values = [float(s.get("gross_roi", 0)) for s in seed_results]
-        check_name = "roi_seed_std"
-    else:
-        max_seed_std = float(thresholds.get("max_ic_seed_std", 0.03))
-        seed_std_values = [float(s.get("ic_mean", 0)) for s in seed_results]
-        check_name = "ic_seed_std"
-    seed_std = stdev(seed_std_values) if len(seed_std_values) >= 2 else 0.0
-    checks[check_name] = {
-        "value": seed_std,
-        "threshold": max_seed_std,
-        "pass": seed_std <= max_seed_std,
-    }
-
-    # E3: 30K以降の ROI 変動 <= 5%
-    max_roi_var = float(thresholds.get("max_roi_variance_pct", 5.0))
-    convergence = results.get("convergence", {})
-    roi_var = float(convergence.get("roi_variance_pct_after_30k", 0.0)) if isinstance(convergence, dict) else 0.0
-    checks["convergence"] = {
-        "value": roi_var, "threshold": max_roi_var, "pass": roi_var <= max_roi_var,
-    }
-
-    # E4: worst-seed ROI > -2%
-    worst_min = float(thresholds.get("worst_seed_min_roi", -0.02))
-    roi_list = [float(s.get("gross_roi", 0)) for s in seed_results]
-    worst_roi = min(roi_list) if roi_list else 0.0
-    checks["worst_seed_roi"] = {
-        "value": worst_roi, "threshold": worst_min, "pass": worst_roi > worst_min,
-    }
-
-    all_pass = all(c["pass"] for c in checks.values())
-    return {
-        "gate": "G2-train",
-        "gate_result": "PASS" if all_pass else "FAIL",
-        "checks": checks,
-    }
-
-
-def _evaluate_g3_from_results(
-    results: dict,
-    thresholds: dict | None = None,
-) -> dict[str, object]:
-    """G3-pnl gate evaluation from in-memory results (dict-based).
-
-    396# : run_g3_judgment のロジックを dict 入力で再現.
-    run_gate_check.py 側はファイルパス入力なので、
-    evaluate_gate() 内でのインライン判定用に本関数を使う.
-    """
-    import statistics as _stats
-
-    if thresholds is None:
-        try:
-            thresholds = load_gate_thresholds().get("g3_pnl", {})
-        except Exception:
-            thresholds = {}
-
-    seed_metrics = results.get("seed_metrics", [])
-    if not seed_metrics:
-        return {"gate": "G3-pnl", "gate_result": "NO_DATA", "error": "No seed metrics"}
-
-    checks: dict[str, dict[str, object]] = {}
-
-    # E1: PF median > 1.05
-    min_pf_median = float(thresholds.get("min_pf_median", 1.05))
-    pfs = sorted(float(s.get("pf", 0)) for s in seed_metrics)
-    pf_median = _stats.median(pfs)
-    checks["pf_median"] = {
-        "value": pf_median, "threshold": min_pf_median,
-        "pass": pf_median > min_pf_median,
-    }
-
-    # E2: PF worst > 0.95
-    min_pf_worst = float(thresholds.get("min_pf_worst", 0.95))
-    pf_worst = min(pfs)
-    checks["pf_worst"] = {
-        "value": pf_worst, "threshold": min_pf_worst,
-        "pass": pf_worst > min_pf_worst,
-    }
-
-    # E3: gross > fee
-    gross_gt_fee_required = bool(thresholds.get("gross_gt_fee", True))
-    total_gross = sum(float(s.get("avg_gross_per_trade", 0)) for s in seed_metrics)
-    total_fee = sum(float(s.get("avg_fee_per_trade", 0)) for s in seed_metrics)
-    gross_gt_fee = total_gross > total_fee
-    checks["gross_gt_fee"] = {
-        "value": gross_gt_fee, "threshold": gross_gt_fee_required,
-        "pass": gross_gt_fee if gross_gt_fee_required else True,
-    }
-
-    # E4: Max DD < 15%
-    max_dd_threshold = float(thresholds.get("max_drawdown", 0.15))
-    worst_dd = max(float(s.get("max_drawdown", 0)) for s in seed_metrics)
-    checks["max_drawdown"] = {
-        "value": worst_dd, "threshold": max_dd_threshold,
-        "pass": worst_dd < max_dd_threshold,
-    }
-
-    # E5: Sharpe annual median > 0.8
-    min_sharpe = float(thresholds.get("min_sharpe_annual", 0.8))
-    sharpes = [float(s.get("sharpe_annual", 0)) for s in seed_metrics]
-    sharpe_median = _stats.median(sharpes)
-    checks["sharpe_annual"] = {
-        "value": sharpe_median, "threshold": min_sharpe,
-        "pass": sharpe_median > min_sharpe,
-    }
-
-    all_pass = all(c["pass"] for c in checks.values())
-    return {
-        "gate": "G3-pnl",
-        "gate_result": "PASS" if all_pass else "FAIL",
-        "checks": checks,
-        "n_seeds": len(seed_metrics),
-    }
+# 399# G2/G3 判定は gate_judgment_core に統合済み。
+# evaluate_g2_checks, evaluate_g3_checks を直接使用。
 
 
 # ======================================================================

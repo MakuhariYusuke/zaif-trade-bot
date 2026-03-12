@@ -37,9 +37,6 @@ from ztb.types.common import ConfigSection
 
 logger = logging.getLogger(__name__)
 
-# Protocol aliases (後方互換)
-SACTrainModelProtocol = SACModelProtocol
-
 
 def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
     """G2 SAC training task.
@@ -334,7 +331,7 @@ def _create_sac_model(
     env: TrainingEnvProtocol,
     sac_cfg: ConfigSection,
     seed: int,
-) -> SACTrainModelProtocol:
+) -> SACModelProtocol:
     """SB3 SAC モデルを作成."""
     from stable_baselines3 import SAC
 
@@ -355,11 +352,11 @@ def _create_sac_model(
         seed=seed,
     )
 
-    return cast(SACTrainModelProtocol, model)
+    return cast(SACModelProtocol, model)
 
 
 def _train_with_checkpoints(
-    model: SACTrainModelProtocol,
+    model: SACModelProtocol,
     env: TrainingEnvProtocol,
     total_timesteps: int,
     cfg: ConfigSection,
@@ -414,7 +411,7 @@ _CHECKPOINT_EVAL_MAX_STEPS = 5_000
 
 
 def _checkpoint_eval_roi(
-    model: SACTrainModelProtocol,
+    model: SACModelProtocol,
     env: TrainingEnvProtocol,
     max_steps: int = _CHECKPOINT_EVAL_MAX_STEPS,
 ) -> float:
@@ -441,7 +438,7 @@ def _checkpoint_eval_roi(
 
 
 def _evaluate_trained_model(
-    model: SACTrainModelProtocol,
+    model: SACModelProtocol,
     env: TrainingEnvProtocol,
     cfg: ConfigSection,
 ) -> dict[str, object]:
@@ -461,7 +458,7 @@ def _evaluate_trained_model(
 
 
 def _save_model_schema(
-    model: SACTrainModelProtocol,
+    model: SACModelProtocol,
     env: TrainingEnvProtocol,
     env_info: dict[str, int | str | bool],
     cfg: ConfigSection,
@@ -478,9 +475,7 @@ def _save_model_schema(
         model_name = f"sac_v460_seed{seed}"
         manager = FeatureSchemaManager(model_name=model_name)
 
-        feature_cfg = section(cfg, "features")
-        selected_raw = feature_cfg.get("selected", [])
-        feature_names = [str(col) for col in selected_raw] if isinstance(selected_raw, list) else []
+        feature_names = _resolve_feature_columns(cfg)
         if not feature_names:
             logger.warning("No feature names in config — schema will be minimal")
             obs_dim = int(env_info["obs_dim"])  # S-2: int 保証

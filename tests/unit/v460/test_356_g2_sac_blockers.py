@@ -12,8 +12,8 @@ import pandas as pd
 import pyarrow.parquet as pq
 import pytest
 
+from scripts.v460.lib.sac_common import SACModelProtocol
 from scripts.v460.lib.tasks.sac_train import (
-    SACTrainModelProtocol,
     _build_environment_config,
     _create_training_env,
     _resolve_feature_columns,
@@ -184,7 +184,7 @@ class TestB3FeatureInjection:
 
 
 class TestB4G2GateEvaluation:
-    """_evaluate_g2_from_results が G2 gate 条件を正しく判定すること."""
+    """evaluate_g2_checks が G2 gate 条件を正しく判定すること."""
 
     @pytest.fixture()
     def thresholds(self) -> dict:
@@ -197,7 +197,7 @@ class TestB4G2GateEvaluation:
         }
 
     def test_all_pass(self, thresholds: dict) -> None:
-        from scripts.v460.run_experiment import _evaluate_g2_from_results
+        from scripts.v460.lib.gate_judgment_core import evaluate_g2_checks
 
         results = {
             "seed_results": [
@@ -209,12 +209,12 @@ class TestB4G2GateEvaluation:
             "convergence": {"roi_variance_pct_after_30k": 3.0},
         }
 
-        judgment = _evaluate_g2_from_results(results, thresholds)
+        judgment = evaluate_g2_checks(results.get("seed_results", []), results.get("convergence", {}), thresholds)
         assert judgment["gate_result"] == "PASS"
         assert all(c["pass"] for c in judgment["checks"].values())
 
     def test_e1_fail_insufficient_positive_seeds(self, thresholds: dict) -> None:
-        from scripts.v460.run_experiment import _evaluate_g2_from_results
+        from scripts.v460.lib.gate_judgment_core import evaluate_g2_checks
 
         # 363# A4: ROI stdev(0.015) <= 0.03 → E2 PASS, 1/4 positive → E1 FAIL
         results = {
@@ -227,13 +227,13 @@ class TestB4G2GateEvaluation:
             "convergence": {"roi_variance_pct_after_30k": 3.0},
         }
 
-        judgment = _evaluate_g2_from_results(results, thresholds)
+        judgment = evaluate_g2_checks(results.get("seed_results", []), results.get("convergence", {}), thresholds)
         assert judgment["gate_result"] == "FAIL"
         assert judgment["checks"]["positive_seed_ratio"]["pass"] is False
 
     def test_e2_fail_high_roi_variance(self, thresholds: dict) -> None:
         """363# A4: seed 間 ROI 標準偏差 > 0.03 で E2 FAIL."""
-        from scripts.v460.run_experiment import _evaluate_g2_from_results
+        from scripts.v460.lib.gate_judgment_core import evaluate_g2_checks
 
         # stdev([0.10, 0.01, 0.08, 0.001]) ≈ 0.0496 > 0.03 → E2 FAIL
         results = {
@@ -246,12 +246,12 @@ class TestB4G2GateEvaluation:
             "convergence": {"roi_variance_pct_after_30k": 3.0},
         }
 
-        judgment = _evaluate_g2_from_results(results, thresholds)
+        judgment = evaluate_g2_checks(results.get("seed_results", []), results.get("convergence", {}), thresholds)
         assert judgment["gate_result"] == "FAIL"
         assert judgment["checks"]["roi_seed_std"]["pass"] is False
 
     def test_e3_fail_convergence(self, thresholds: dict) -> None:
-        from scripts.v460.run_experiment import _evaluate_g2_from_results
+        from scripts.v460.lib.gate_judgment_core import evaluate_g2_checks
 
         results = {
             "seed_results": [
@@ -263,12 +263,12 @@ class TestB4G2GateEvaluation:
             "convergence": {"roi_variance_pct_after_30k": 8.0},
         }
 
-        judgment = _evaluate_g2_from_results(results, thresholds)
+        judgment = evaluate_g2_checks(results.get("seed_results", []), results.get("convergence", {}), thresholds)
         assert judgment["gate_result"] == "FAIL"
         assert judgment["checks"]["convergence"]["pass"] is False
 
     def test_e4_fail_worst_seed(self, thresholds: dict) -> None:
-        from scripts.v460.run_experiment import _evaluate_g2_from_results
+        from scripts.v460.lib.gate_judgment_core import evaluate_g2_checks
 
         # 363# A4: stdev([0.03, 0.02, 0.03, -0.025]) ≈ 0.026 <= 0.03 → E2 PASS
         results = {
@@ -281,20 +281,20 @@ class TestB4G2GateEvaluation:
             "convergence": {"roi_variance_pct_after_30k": 3.0},
         }
 
-        judgment = _evaluate_g2_from_results(results, thresholds)
+        judgment = evaluate_g2_checks(results.get("seed_results", []), results.get("convergence", {}), thresholds)
         assert judgment["gate_result"] == "FAIL"
         assert judgment["checks"]["worst_seed_roi"]["pass"] is False
 
     def test_empty_seed_results(self, thresholds: dict) -> None:
-        from scripts.v460.run_experiment import _evaluate_g2_from_results
+        from scripts.v460.lib.gate_judgment_core import evaluate_g2_checks
 
         results: dict[str, object] = {"seed_results": [], "convergence": {}}
-        judgment = _evaluate_g2_from_results(results, thresholds)
-        assert judgment["gate_result"] == "FAIL"
+        judgment = evaluate_g2_checks(results.get("seed_results", []), results.get("convergence", {}), thresholds)
+        assert judgment["gate_result"] == "NO_DATA"
 
     def test_boundary_e1_exactly_75_percent(self, thresholds: dict) -> None:
         """3/4 = 75% は PASS."""
-        from scripts.v460.run_experiment import _evaluate_g2_from_results
+        from scripts.v460.lib.gate_judgment_core import evaluate_g2_checks
 
         results = {
             "seed_results": [
@@ -306,12 +306,12 @@ class TestB4G2GateEvaluation:
             "convergence": {"roi_variance_pct_after_30k": 1.0},
         }
 
-        judgment = _evaluate_g2_from_results(results, thresholds)
+        judgment = evaluate_g2_checks(results.get("seed_results", []), results.get("convergence", {}), thresholds)
         assert judgment["checks"]["positive_seed_ratio"]["pass"] is True
 
     def test_error_seed_returns_error_gate(self, thresholds: dict) -> None:
         """384# HIGH-1: seed crash で error キーがあれば gate_result=ERROR."""
-        from scripts.v460.run_experiment import _evaluate_g2_from_results
+        from scripts.v460.lib.gate_judgment_core import evaluate_g2_checks
 
         results = {
             "seed_results": [
@@ -323,13 +323,13 @@ class TestB4G2GateEvaluation:
             "convergence": {"roi_variance_pct_after_30k": 1.0},
         }
 
-        judgment = _evaluate_g2_from_results(results, thresholds)
+        judgment = evaluate_g2_checks(results.get("seed_results", []), results.get("convergence", {}), thresholds)
         assert judgment["gate_result"] == "ERROR"
         assert "1 seed(s) crashed" in str(judgment.get("reason", ""))
 
     def test_multiple_error_seeds(self, thresholds: dict) -> None:
         """384# HIGH-1: 複数 seed crash の場合."""
-        from scripts.v460.run_experiment import _evaluate_g2_from_results
+        from scripts.v460.lib.gate_judgment_core import evaluate_g2_checks
 
         results = {
             "seed_results": [
@@ -341,7 +341,7 @@ class TestB4G2GateEvaluation:
             "convergence": {"roi_variance_pct_after_30k": 1.0},
         }
 
-        judgment = _evaluate_g2_from_results(results, thresholds)
+        judgment = evaluate_g2_checks(results.get("seed_results", []), results.get("convergence", {}), thresholds)
         assert judgment["gate_result"] == "ERROR"
         assert "2 seed(s) crashed" in str(judgment.get("reason", ""))
 
@@ -730,7 +730,7 @@ class TestTrainValSplit:
 
     def test_e2_roi_seed_std_pass(self) -> None:
         """363# A4: seed 間 ROI 標準偏差が閾値以下で E2 PASS."""
-        from scripts.v460.run_experiment import _evaluate_g2_from_results
+        from scripts.v460.lib.gate_judgment_core import evaluate_g2_checks
 
         thresholds = {"min_positive_seed_ratio": 0.75, "max_roi_seed_std": 0.03,
                        "convergence_window_start": 30000, "max_roi_variance_pct": 5.0,
@@ -745,7 +745,7 @@ class TestTrainValSplit:
             ],
             "convergence": {"roi_variance_pct_after_30k": 3.0},
         }
-        judgment = _evaluate_g2_from_results(results, thresholds)
+        judgment = evaluate_g2_checks(results.get("seed_results", []), results.get("convergence", {}), thresholds)
         assert judgment["checks"]["roi_seed_std"]["pass"] is True
         assert judgment["gate_result"] == "PASS"
 
@@ -787,8 +787,8 @@ class TestReplayBufferPersistence:
             SACAlgorithm.load("totally_nonexistent_model_path_xyz")
 
     def test_sac_train_protocol_has_buffer_methods(self) -> None:
-        """SACTrainModelProtocol に buffer メソッドが定義されている."""
-        members = [m[0] for m in inspect.getmembers(SACTrainModelProtocol)]
+        """SACModelProtocol に buffer メソッドが定義されている."""
+        members = [m[0] for m in inspect.getmembers(SACModelProtocol)]
         assert "save_replay_buffer" in members
         assert "load_replay_buffer" in members
 

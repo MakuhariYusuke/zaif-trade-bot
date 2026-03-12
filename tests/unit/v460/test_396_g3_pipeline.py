@@ -1,10 +1,11 @@
 """396# G3 パイプラインのテスト.
 
 _compute_g3_metrics (sac_common.py) および
-_evaluate_g3_from_results (run_experiment.py) を検証。
+evaluate_g3_checks (gate_judgment_core.py) を検証。
 
 389# P0-3: reward-PnL alignment (reward_profit_corr)
-389# P1-1: G3 gate 接続 (seed_metrics → _evaluate_g3_from_results)
+389# P1-1: G3 gate 接続 (seed_metrics → evaluate_g3_checks)
+399# 統合: _evaluate_g3_from_results → evaluate_g3_checks
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ import math
 import numpy as np
 import pytest
 from scripts.v460.lib.sac_common import _compute_g3_metrics
-from scripts.v460.run_experiment import _evaluate_g3_from_results
+from scripts.v460.lib.gate_judgment_core import evaluate_g3_checks
 
 
 # =====================================================================
@@ -177,12 +178,12 @@ def _g3_thresholds() -> dict:
 
 
 class TestEvaluateG3FromResults:
-    """_evaluate_g3_from_results の単体テスト."""
+    """evaluate_g3_checks の単体テスト."""
 
     def test_pass(self) -> None:
         """全チェック PASS のケース."""
-        results = {"seed_metrics": _make_seed_metrics()}
-        judgment = _evaluate_g3_from_results(results, _g3_thresholds())
+        metrics = _make_seed_metrics()
+        judgment = evaluate_g3_checks(metrics, _g3_thresholds())
         assert judgment["gate"] == "G3-pnl"
         assert judgment["gate_result"] == "PASS"
         assert judgment["n_seeds"] == 4
@@ -190,13 +191,13 @@ class TestEvaluateG3FromResults:
 
     def test_no_data(self) -> None:
         """seed_metrics なし → NO_DATA."""
-        judgment = _evaluate_g3_from_results({}, _g3_thresholds())
+        judgment = evaluate_g3_checks([], _g3_thresholds())
         assert judgment["gate_result"] == "NO_DATA"
 
     def test_low_pf_median(self) -> None:
         """PF median < 1.05 → FAIL."""
-        results = {"seed_metrics": _make_seed_metrics(pf=0.8)}
-        judgment = _evaluate_g3_from_results(results, _g3_thresholds())
+        metrics = _make_seed_metrics(pf=0.8)
+        judgment = evaluate_g3_checks(metrics, _g3_thresholds())
         assert judgment["gate_result"] == "FAIL"
         assert not judgment["checks"]["pf_median"]["pass"]
 
@@ -205,45 +206,42 @@ class TestEvaluateG3FromResults:
         metrics = _make_seed_metrics(pf=1.2)
         # 1 seed の PF を極端に下げる
         metrics[0]["pf"] = 0.5
-        results = {"seed_metrics": metrics}
-        judgment = _evaluate_g3_from_results(results, _g3_thresholds())
+        judgment = evaluate_g3_checks(metrics, _g3_thresholds())
         assert judgment["gate_result"] == "FAIL"
         assert not judgment["checks"]["pf_worst"]["pass"]
 
     def test_high_drawdown(self) -> None:
         """MaxDD > 15% → FAIL."""
-        results = {"seed_metrics": _make_seed_metrics(max_dd=0.20)}
-        judgment = _evaluate_g3_from_results(results, _g3_thresholds())
+        metrics = _make_seed_metrics(max_dd=0.20)
+        judgment = evaluate_g3_checks(metrics, _g3_thresholds())
         assert judgment["gate_result"] == "FAIL"
         assert not judgment["checks"]["max_drawdown"]["pass"]
 
     def test_low_sharpe(self) -> None:
         """Sharpe median < 0.8 → FAIL."""
-        results = {"seed_metrics": _make_seed_metrics(sharpe=0.3)}
-        judgment = _evaluate_g3_from_results(results, _g3_thresholds())
+        metrics = _make_seed_metrics(sharpe=0.3)
+        judgment = evaluate_g3_checks(metrics, _g3_thresholds())
         assert judgment["gate_result"] == "FAIL"
         assert not judgment["checks"]["sharpe_annual"]["pass"]
 
     def test_gross_lt_fee(self) -> None:
         """gross < fee → FAIL."""
-        results = {"seed_metrics": _make_seed_metrics(gross=0.001, fee=0.005)}
-        judgment = _evaluate_g3_from_results(results, _g3_thresholds())
+        metrics = _make_seed_metrics(gross=0.001, fee=0.005)
+        judgment = evaluate_g3_checks(metrics, _g3_thresholds())
         assert judgment["gate_result"] == "FAIL"
         assert not judgment["checks"]["gross_gt_fee"]["pass"]
 
     def test_default_thresholds(self) -> None:
-        """thresholds=None のとき gate_thresholds.yaml を読む."""
-        results = {"seed_metrics": _make_seed_metrics()}
-        # gate_thresholds.yaml が存在しない場合もデフォルト値で動作
-        judgment = _evaluate_g3_from_results(results)
-        # デフォルト閾値でも良い値なら PASS
+        """thresholds={} のときデフォルト値で動作."""
+        metrics = _make_seed_metrics()
+        judgment = evaluate_g3_checks(metrics, {})
         assert judgment["gate"] == "G3-pnl"
         assert judgment["gate_result"] in ("PASS", "FAIL")  # 動作すれば OK
 
     def test_checks_structure(self) -> None:
         """checks の構造を検証."""
-        results = {"seed_metrics": _make_seed_metrics()}
-        judgment = _evaluate_g3_from_results(results, _g3_thresholds())
+        metrics = _make_seed_metrics()
+        judgment = evaluate_g3_checks(metrics, _g3_thresholds())
         expected_checks = {
             "pf_median", "pf_worst", "gross_gt_fee",
             "max_drawdown", "sharpe_annual",
