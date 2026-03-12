@@ -71,6 +71,25 @@ def _build_date_filter_from_timestamp_bounds(
     }
 
 
+def _derive_fill_date_filter(
+    fill_df: pd.DataFrame,
+    *,
+    trade_window_sec: int,
+) -> set[str] | None:
+    """fill_df から raw 読込用 UTC date filter を導出する."""
+    if fill_df.empty or "timestamp" not in fill_df.columns:
+        return None
+
+    ts_min = float(fill_df["timestamp"].min())
+    ts_max = float(fill_df["timestamp"].max())
+    margin = max(trade_window_sec, 300)
+    return _build_date_filter_from_timestamp_bounds(
+        ts_min,
+        ts_max,
+        margin_sec=margin,
+    )
+
+
 def _select_raw_files(
     data_dir: Path,
     date_filter: Optional[set[str]],
@@ -725,18 +744,12 @@ def enrich_fill_records(
             avg_trade_size, price_velocity_bps, vpin_60s,
             + 060# v2 features (multi-timeframe, volatility, momentum)
     """
+    if fill_df.empty:
+        return fill_df.copy()
+
     # 130# 日付限定ロード: fill records のタイムスタンプから必要日を算出
-    date_filter: set[str] | None = None
-    if "timestamp" in fill_df.columns and len(fill_df) > 0:
-        ts_min = float(fill_df["timestamp"].min())
-        ts_max = float(fill_df["timestamp"].max())
-        # 前後 trade_window_sec 分のマージンを確保
-        margin = max(trade_window_sec, 300)
-        date_filter = _build_date_filter_from_timestamp_bounds(
-            ts_min,
-            ts_max,
-            margin_sec=margin,
-        )
+    date_filter = _derive_fill_date_filter(fill_df, trade_window_sec=trade_window_sec)
+    if date_filter is not None:
         logger.info(f"130# Date filter: {sorted(date_filter)} ({len(date_filter)} days)")
 
     ob_entry = _load_raw_orderbook_entry(raw_dir, date_filter=date_filter)

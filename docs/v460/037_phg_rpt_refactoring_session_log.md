@@ -5523,3 +5523,40 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 3. `test_286_comprehensive_resolution.py::TestBuyDynamicKillInvRelaxation::test_config_inv_relaxation_fields_exist` call `0.24s`
 4. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.21s`
 5. `test_157_regime_features.py::TestRetrainPipelineIntegrity::test_retrain_config_loads_from_yaml` call `0.20s`
+
+## 2026-03-13 / Wave: Config Audit Default Checks and Env Helper Extraction
+
+### 実施内容
+- [tests/unit/v460/test_385_config_audit.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_385_config_audit.py)
+  - experiment YAML loader を `lru_cache` 化
+  - `reward_scaling` の default 検査を `EnvironmentConfig.__dataclass_fields__` に変更
+- [scripts/v460/ml/feature_enricher.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/feature_enricher.py)
+  - `_derive_fill_date_filter(...)` を抽出
+  - `fill_df.empty` の early return を追加
+- [scripts/v460/lib/tasks/sac_train.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/tasks/sac_train.py)
+  - `_resolve_feature_columns(...)`
+  - `_build_environment_config(...)`
+  - `_build_env_info(...)`
+  を追加し、`_create_training_env(...)` の責務を分割
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_385_config_audit.py`
+  - `tests/unit/v460/test_336_fill_config_parser.py`
+  - `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py::Test058Integration`
+  - `tests/test_reward_config_integration.py`
+  - 結果: `104 passed in 5.34s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4643 passed, 13 warnings in 40.36s`
+
+### 見立て
+- config audit / parser drift では default-only 検査の dataclass field 直参照を今後も横展開できる。
+- `feature_enricher` の date-filter 抽出は real-data integration 系の共通 helper 候補。
+- `sac_train` の env helper 分割は `test_356` 側の assertion-only 検証を切り出す土台になる。

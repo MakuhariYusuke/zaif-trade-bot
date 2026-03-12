@@ -8,6 +8,7 @@ P0-5: reward_settings YAML→env 伝播バグ検証 (387# 修正)。
 from __future__ import annotations
 
 import inspect
+from functools import lru_cache
 
 import numpy as np
 import pytest
@@ -21,13 +22,20 @@ from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettin
 from ztb.training.unified_trainer.algorithms.sac_trainer import SACTrainer
 from ztb.utils.dataclass_utils import shallow_asdict
 
+_ENV_CONFIG_FIELDS = EnvironmentConfig.__dataclass_fields__
+
+
+@lru_cache(maxsize=None)
+def _load_experiment_config(path: str) -> dict[str, object]:
+    return load_config(path)
+
 
 class TestThresholdConsistency:
     """continuous_to_discrete_threshold の整合性チェック."""
 
     def test_yaml_threshold_value(self) -> None:
         """g2_sac_train.yaml の threshold が 0.10 であること."""
-        cfg = load_config("configs/v460/experiments/g2_sac_train.yaml")
+        cfg = _load_experiment_config("configs/v460/experiments/g2_sac_train.yaml")
         env_cfg = cfg.get("environment", {})
         threshold = float(env_cfg.get("continuous_to_discrete_threshold", 0.0))
         assert threshold == pytest.approx(0.10), (
@@ -36,7 +44,7 @@ class TestThresholdConsistency:
 
     def test_yaml_neg_threshold_value(self) -> None:
         """negative threshold も 0.10 であること."""
-        cfg = load_config("configs/v460/experiments/g2_sac_train.yaml")
+        cfg = _load_experiment_config("configs/v460/experiments/g2_sac_train.yaml")
         env_cfg = cfg.get("environment", {})
         neg = float(env_cfg.get("continuous_to_discrete_threshold_neg", 0.0))
         assert neg == pytest.approx(-0.10)
@@ -79,10 +87,10 @@ class TestRewardScalingFixed:
 
     def test_reward_scaling_default_is_sac_value(self) -> None:
         """EnvironmentConfig の reward_scaling デフォルトが 1.0 (387# 修正後)."""
-        config = EnvironmentConfig()
         # 387# FIX: PPO 値 6.0 → SAC 値 1.0
-        assert config.reward_scaling == pytest.approx(1.0), (
-            f"Expected SAC default 1.0, got {config.reward_scaling}"
+        default = _ENV_CONFIG_FIELDS["reward_scaling"].default
+        assert default == pytest.approx(1.0), (
+            f"Expected SAC default 1.0, got {default}"
         )
 
     def test_pnl_reward_with_unit_scaling(self) -> None:
@@ -120,7 +128,7 @@ class TestRewardScalingFixed:
 
     def test_yaml_reward_scaling_explicit(self) -> None:
         """387# FIX: SAC YAML に reward_scaling=1.0 が明示されていること."""
-        cfg = load_config("configs/v460/experiments/g2_sac_train.yaml")
+        cfg = _load_experiment_config("configs/v460/experiments/g2_sac_train.yaml")
         env_cfg = cfg.get("environment", {})
         scaling = env_cfg.get("reward_scaling")
         assert scaling is not None, "reward_scaling が YAML に明示されていない"
@@ -133,23 +141,23 @@ class TestGammaConfigModelDir:
     """gamma 実験用 YAML が別 model_dir を使用していること."""
 
     def test_gamma095_separate_model_dir(self) -> None:
-        cfg = load_config("configs/v460/experiments/g2_sac_gamma095.yaml")
+        cfg = _load_experiment_config("configs/v460/experiments/g2_sac_gamma095.yaml")
         model_dir = cfg.get("output", {}).get("model_dir", "")
         assert "gamma095" in str(model_dir), (
             f"gamma095 config should use separate model dir, got: {model_dir}"
         )
 
     def test_gamma099_separate_model_dir(self) -> None:
-        cfg = load_config("configs/v460/experiments/g2_sac_gamma099.yaml")
+        cfg = _load_experiment_config("configs/v460/experiments/g2_sac_gamma099.yaml")
         model_dir = cfg.get("output", {}).get("model_dir", "")
         assert "gamma099" in str(model_dir), (
             f"gamma099 config should use separate model dir, got: {model_dir}"
         )
 
     def test_baseline_and_gamma_model_dirs_differ(self) -> None:
-        base = load_config("configs/v460/experiments/g2_sac_train.yaml")
-        g095 = load_config("configs/v460/experiments/g2_sac_gamma095.yaml")
-        g099 = load_config("configs/v460/experiments/g2_sac_gamma099.yaml")
+        base = _load_experiment_config("configs/v460/experiments/g2_sac_train.yaml")
+        g095 = _load_experiment_config("configs/v460/experiments/g2_sac_gamma095.yaml")
+        g099 = _load_experiment_config("configs/v460/experiments/g2_sac_gamma099.yaml")
 
         base_dir = str(base.get("output", {}).get("model_dir", ""))
         g095_dir = str(g095.get("output", {}).get("model_dir", ""))
@@ -210,7 +218,7 @@ class TestRewardSettingsPropagation:
 
     def test_reward_tuned_yaml_has_reward_settings(self) -> None:
         """reward-tuned YAML に reward_settings が存在すること."""
-        cfg = load_config(
+        cfg = _load_experiment_config(
             "configs/v460/experiments/g2_sac_gamma095_reward_tuned.yaml"
         )
         env = cfg.get("environment", {})
@@ -226,7 +234,7 @@ class TestRewardSettingsPropagation:
 
     def test_reward_tuned_yaml_behavior_optimization(self) -> None:
         """reward-tuned YAML の behavior_optimization が正しく構成されていること."""
-        cfg = load_config(
+        cfg = _load_experiment_config(
             "configs/v460/experiments/g2_sac_gamma095_reward_tuned.yaml"
         )
         env = cfg.get("environment", {})

@@ -257,6 +257,51 @@ def _build_val_env_config(
     return val_cfg  # type: ignore[return-value]
 
 
+def _resolve_feature_columns(cfg: ConfigSection) -> list[str]:
+    """features.selected を env 注入用の列名リストへ正規化する."""
+    feature_cfg = section(cfg, "features")
+    selected_raw = feature_cfg.get("selected", [])
+    if not isinstance(selected_raw, list):
+        return []
+    return [str(col) for col in selected_raw]
+
+
+def _build_environment_config(
+    cfg: ConfigSection,
+    *,
+    feature_columns: list[str],
+) -> "EnvironmentConfig":
+    """HeavyTradingEnv 用 EnvironmentConfig を構築する."""
+    from ztb.trading.environment.utils.config import EnvironmentConfig
+
+    env_cfg = section(cfg, "environment")
+    env_config = EnvironmentConfig.from_dict(env_cfg) if env_cfg else EnvironmentConfig()
+    if feature_columns:
+        env_config.feature_names = feature_columns
+    return env_config
+
+
+def _build_env_info(
+    env: TrainingEnvProtocol,
+    *,
+    feature_columns: list[str],
+) -> dict[str, int | str | bool]:
+    """可観測性用 env_info を一箇所で組み立てる."""
+    obs_dim = env.observation_space.shape[0] if env.observation_space.shape else 0
+    action_dim = (
+        env.action_space.shape[0]
+        if hasattr(env.action_space, "shape") and env.action_space.shape
+        else int(getattr(env.action_space, "n", 0))
+    )
+    return {
+        "obs_dim": obs_dim,
+        "action_dim": action_dim,
+        "env_type": "HeavyTradingEnv",
+        "feature_columns_count": len(feature_columns),
+        "feature_columns_injected": bool(feature_columns),
+    }
+
+
 def _create_training_env(
     df: pd.DataFrame, cfg: ConfigSection
 ) -> tuple[TrainingEnvProtocol, dict[str, int | str | bool]]:
@@ -268,44 +313,21 @@ def _create_training_env(
     356# B3: feature_columns を EnvironmentConfig.feature_names に注入.
     """
     from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-    from ztb.trading.environment.utils.config import EnvironmentConfig
-
-    env_cfg = section(cfg, "environment")
-    feature_cfg = section(cfg, "features")
-    selected_raw = feature_cfg.get("selected", [])
-    feature_columns = [str(col) for col in selected_raw] if isinstance(selected_raw, list) else []
+    feature_columns = _resolve_feature_columns(cfg)
 
     # Construct EnvironmentConfig
     # 387# FIX P0-8: from_dict() を使用して behavior_optimization → reward_settings
     # マッピングと reward_settings dict → RewardSettings 変換を正しく実行する。
     # 旧: EnvironmentConfig(**env_cfg) は reward_settings を dict のまま格納し、
     # HeavyTradingEnv で shallow_asdict() TypeError を引き起こしていた。
-    env_config = EnvironmentConfig.from_dict(env_cfg) if env_cfg else EnvironmentConfig()
-
-    # 356# B3: 明示的に feature_names を注入
-    # config.features.selected で指定した特徴量のみを observation space に含める
-    if feature_columns:
-        env_config.feature_names = feature_columns
+    env_config = _build_environment_config(cfg, feature_columns=feature_columns)
 
     env = HeavyTradingEnv(
         df=df,
         config=env_config,
     )
 
-    obs_dim = env.observation_space.shape[0] if env.observation_space.shape else 0
-    action_dim = (
-        env.action_space.shape[0]
-        if hasattr(env.action_space, "shape") and env.action_space.shape
-        else int(getattr(env.action_space, "n", 0))
-    )
-
-    env_info: dict[str, int | str | bool] = {
-        "obs_dim": obs_dim,
-        "action_dim": action_dim,
-        "env_type": "HeavyTradingEnv",
-        "feature_columns_count": len(feature_columns),
-        "feature_columns_injected": bool(feature_columns),  # 356# B3 可観測性
-    }
+    env_info = _build_env_info(env, feature_columns=feature_columns)
 
     return cast(TrainingEnvProtocol, env), env_info
 

@@ -5148,3 +5148,10 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused `test_356_g2_sac_blockers.py test_303_review_implementations.py test_336_fill_config_parser.py test_336_yaml_code_drift_prevention.py test_v460_core.py::TestDataLoader::test_load_parquet_select_cols test_enricher_skip_gate.py::Test058Integration`: `106 passed in 5.67s`
     - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 38.87s`
+- 2026-03-13: expanded dataclass-default checks into config audit and extracted more reusable config/raw helpers.
+  - added a cached experiment-config loader in `test_385_config_audit.py` and changed the reward-scaling default check to inspect `EnvironmentConfig.__dataclass_fields__` directly
+  - added `_derive_fill_date_filter(...)` plus an empty-DataFrame early return to `scripts/v460/ml/feature_enricher.py`
+  - extracted `_resolve_feature_columns(...)`, `_build_environment_config(...)`, and `_build_env_info(...)` from `scripts/v460/lib/tasks/sac_train.py` so env construction responsibilities are explicit and reusable
+  - re-verified with:
+    - focused `test_385_config_audit.py test_336_fill_config_parser.py test_336_yaml_code_drift_prevention.py test_356_g2_sac_blockers.py test_enricher_skip_gate.py::Test058Integration tests/test_reward_config_integration.py`: `104 passed in 5.34s`
+    - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 40.36s`
