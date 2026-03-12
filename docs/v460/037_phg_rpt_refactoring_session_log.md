@@ -5358,3 +5358,38 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 3. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.32s`
 4. `test_141_side_specific_models.py::TestRetrainSideSpecificFunction::test_history_written` call `0.30s`
 5. `test_275_dry_separation_and_theory.py::TestMarketTheoryDocstrings275::test_spread_anomaly_detector_theory` call `0.26s`
+
+## 2026-03-12 / Wave: JSONL Fast Path and Quick Wins
+
+### 実施内容
+- [ztb/io/jsonl.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/io/jsonl.py)
+  - `append_jsonl()` を line-by-line write から payload 一括 write に変更
+- [tests/unit/utils/test_jsonl.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/utils/test_jsonl.py)
+  - `append_jsonl()` の順序保持テストを追加
+- [tests/unit/v460/test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py)
+  - unknown-fill fast helper の fake clock step を `1.0` に変更
+- [tests/unit/v460/test_275_dry_separation_and_theory.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_275_dry_separation_and_theory.py)
+  - theory docstring を import-time constant にキャッシュ
+
+### 検証
+- focused:
+  - `tests/unit/utils/test_jsonl.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_275_dry_separation_and_theory.py`
+  - `tests/unit/v460/test_141_side_specific_models.py`
+  - `-k 'append_jsonl or UnknownFillHandling or spread_anomaly_detector_theory or history_written'`
+  - 結果: `6 passed, 281 deselected in 2.42s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4620 passed, 13 warnings in 36.10s`
+
+### 現在の上位
+1. `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction` setup `1.16s`
+2. `test_275_dry_separation_and_theory.py::TestMarketTheoryDocstrings275::test_spread_anomaly_detector_theory` call `0.34s`
+3. `test_141_side_specific_models.py::TestRetrainSideSpecificFunction::test_history_written` call `0.21s`
+4. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.15s`
+5. `test_fill_quality.py::TestUnknownFillHandling::test_status_none_twice_becomes_cancelled_status_unknown` call `0.10s`

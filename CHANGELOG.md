@@ -5111,3 +5111,12 @@ python scripts/unified_trainer.py \
     - focused `test_141_side_specific_models.py test_276_blocking_policy_dry.py test_356_g2_sac_blockers.py`: `126 passed, 1 warning in 5.60s`
     - focused `test_137_p1_features.py test_143_regime_utilization.py test_277_magic_number_grounding.py test_141_side_specific_models.py`: `153 passed, 1 warning in 3.49s`
     - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 37.38s`
+
+- 2026-03-12: added a small production I/O fast path and another v460 quick-win wave.
+  - changed `ztb/io/jsonl.py::append_jsonl()` to serialize all payloads first and write once instead of line-by-line writes
+  - added regression coverage in `tests/unit/utils/test_jsonl.py`
+  - increased the fake clock step in `test_fill_quality.py` unknown-fill cases to cut remaining retry-loop cost without changing assertions
+  - cached theory docstrings once per module in `test_275_dry_separation_and_theory.py`
+  - re-verified with:
+    - focused `test_jsonl.py test_fill_quality.py test_275_dry_separation_and_theory.py test_141_side_specific_models.py -k 'append_jsonl or UnknownFillHandling or spread_anomaly_detector_theory or history_written'`: `6 passed, 281 deselected in 2.42s`
+    - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 36.10s`
