@@ -5026,6 +5026,14 @@ python scripts/unified_trainer.py \
   - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 36.09s`
   - full `tests/ -x` advances to `19%` without surfacing a new blocker after the `sqlite_cache` fix
 
+- Started the next horizontal cleanup wave while `tests/ -x --no-cov ...` continues in the background:
+  - reduced method-local imports in [tests/unit/v460/test_sidecar_sac_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_sidecar_sac_integration.py) by lifting `sidecar_types`, `sidecar_signal_io`, `CycleGateAggregator`, `_get_latest_obs`, `FillRecord`, and `numpy` imports to module scope
+  - reduced method-local imports in [tests/unit/v460/test_385_config_audit.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_385_config_audit.py) by lifting `load_config`, `SACTrainer`, reward calculator/config types, constants, and `inspect`/`numpy` to module scope
+  - replaced repeated inline `yaml.safe_load(...)` blocks in [tests/unit/v460/test_183_log_analysis_improvements.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_183_log_analysis_improvements.py) with a typed `_yaml_dict(...)` helper
+- Re-verified with:
+  - `tests/unit/v460/test_183_log_analysis_improvements.py tests/unit/v460/test_sidecar_sac_integration.py tests/unit/v460/test_385_config_audit.py`
+  - `99 passed in 3.65s`
+
 - 2026-03-11: closed remaining `prompts/codex_test_cleanup_and_perf.md` cleanup items for safe skip/legacy handling and test helper reuse.
   - added shared `write_yaml_file` fixture in `tests/conftest.py` and reused it in config/scheduler/v460 YAML setup tests
   - moved `test_custom_ppo_integration.py` to an import-safe module-level skip and marked it `integration`/`slow`

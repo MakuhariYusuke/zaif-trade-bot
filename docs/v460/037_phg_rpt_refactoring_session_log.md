@@ -4924,6 +4924,41 @@ Date: 2026-03-12
 - `tests/ -x --no-cov ...` は `19%` まで追加 failure なしで進行したところで停止。
 - 直近で broad を止めていた `sqlite_cache` TTL test は解消済み。
 
+## 2026-03-12 / Session 037 Follow-up: Horizontal Cleanup Wave 1
+
+### 目的
+- full-suite のバックグラウンド実行中に、横展開しやすい DRY/保守性改善を先行して消化する。
+- 計算量よりも import boilerplate / YAML 直読の残件を削る。
+
+### 実施内容
+- [tests/unit/v460/test_sidecar_sac_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_sidecar_sac_integration.py)
+  - `sidecar_types`, `sidecar_signal_io`, `CycleGateAggregator`, `_get_latest_obs`, `SACRetrainConfig`, `FillRecord`, `numpy` を module scope に集約
+  - helper/stub クラス内の local `numpy` import も除去
+- [tests/unit/v460/test_385_config_audit.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_385_config_audit.py)
+  - `load_config`, `SACTrainer`, `RewardCalculator`, `EnvironmentConfig`, `RewardSettings`, constants, `inspect`, `numpy`, `shallow_asdict` を module scope に集約
+- [tests/unit/v460/test_183_log_analysis_improvements.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_183_log_analysis_improvements.py)
+  - repeated inline `yaml.safe_load(...)` を `_yaml_dict(...)` helper 経由へ変更
+
+### 検証
+- `tests/unit/v460/test_183_log_analysis_improvements.py`
+- `tests/unit/v460/test_sidecar_sac_integration.py`
+- `tests/unit/v460/test_385_config_audit.py`
+- 結果: `99 passed in 3.65s`
+
+### 残課題メモ
+- 機械集計上の残件上位:
+  - method-local import:
+    - `test_sac_retrain_scheduler.py`
+    - `test_374_proportional_boost.py`
+    - `test_372_skip_gate_move_and_vg_jsonl.py`
+  - `inspect.getsource`:
+    - `test_259_as_vol_ratio_adaptation_hasattr.py`
+    - `test_145_s14_structural_refactors.py`
+  - YAML 直読:
+    - `test_config_validation.py`
+    - `test_fill_test_config.py`
+- `test_212_live_trader_config.py` の `time.sleep(` は実待機ではなく source assertion 側の文字列参照であり、実行時間 hotspot ではないことを確認。
+
 ## 2026-03-12 / Session 379-SB3-Critical
 
 ### 概要
