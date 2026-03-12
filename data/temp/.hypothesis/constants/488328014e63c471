@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\ensemble.py
-# hypothesis_version: 6.140.3
-
-[0.0, 1e-10, 0.001, 0.02, 0.2, 1.0, 5.0, 100.0, 1000.0, '__len__', '__main__', 'action', 'confidence', 'daily_loss_limit', 'feature_set', 'feature_sets', 'full', 'max_order_size', 'max_position_size', 'min_order_size', 'model_configs', 'model_paths', 'num_models', 'path', 'policy', 'risk_check_passed', 'shape', 'weight', 'weights']

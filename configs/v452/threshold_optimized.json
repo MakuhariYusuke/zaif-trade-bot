@@ -1,9 +1,0 @@
-{
-    "trend_follow": 0.5,
-    "trend_oppose": 5.0,
-    "bull_trend_oppose": 20.0,
-    "bear_trend_oppose": 5.0,
-    "range_chop": 10.0,
-    "range_scalp": 0.5,
-    "volatility_scalp": 0.4
-}

@@ -5155,3 +5155,12 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused `test_385_config_audit.py test_336_fill_config_parser.py test_336_yaml_code_drift_prevention.py test_356_g2_sac_blockers.py test_enricher_skip_gate.py::Test058Integration tests/test_reward_config_integration.py`: `104 passed in 5.34s`
     - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 40.36s`
+- 2026-03-13: pushed another v460 batch on config-default checks, YAML caching, and heavy-env setup trimming.
+  - changed `test_093_side_params.py` to read config defaults directly from `FillTestConfig.__dataclass_fields__` and switched read-only production YAML assertions to a module-cached mapping
+  - added a cached retrain-config helper in `test_157_regime_features.py` for the production `fill_test.yaml` load path
+  - reduced `test_build_features_pipeline.py` proxy feature row counts to `72/24/72`, removed the duplicate output-shape fixture, and reused the default proxy feature output for shape assertions
+  - changed `test_356_g2_sac_blockers.py` to validate feature injection through `_resolve_feature_columns(...)` / `_build_environment_config(...)` without constructing a full env, and patched `gc.collect()` in the integration fixture to cut reset/close fixed cost
+  - re-verified with:
+    - focused `test_093_side_params.py test_157_regime_features.py test_build_features_pipeline.py test_356_g2_sac_blockers.py`: `121 passed in 6.56s`
+    - focused `test_build_features_pipeline.py test_356_g2_sac_blockers.py`: `61 passed in 7.64s`
+    - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 50.97s`

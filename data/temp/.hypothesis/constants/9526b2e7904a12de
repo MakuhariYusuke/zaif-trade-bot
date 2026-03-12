@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\ci_utils.py
-# hypothesis_version: 6.140.3
-
-[1024, 5763719, '/', 'CI Build Results', 'CPU Usage', 'Coverage', 'DISCORD_WEBHOOK', 'Memory', 'N/A', 'Platform', 'color', 'content', 'coverage_percent', 'cpu_percent', 'description', 'discord', 'disk_usage', 'embeds', 'fields', 'inline', 'memory_mb', 'memory_percent', 'name', 'percent_covered', 'platform', 'python_version', 'slack', 'timestamp', 'title', 'totals', 'uptime_seconds', 'value']

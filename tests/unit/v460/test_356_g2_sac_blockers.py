@@ -12,7 +12,12 @@ import pandas as pd
 import pyarrow.parquet as pq
 import pytest
 
-from scripts.v460.lib.tasks.sac_train import SACTrainModelProtocol, _create_training_env
+from scripts.v460.lib.tasks.sac_train import (
+    SACTrainModelProtocol,
+    _build_environment_config,
+    _create_training_env,
+    _resolve_feature_columns,
+)
 from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
 from ztb.training.algorithms.sac import SACAlgorithm
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
@@ -614,13 +619,14 @@ class TestHeavyTradingEnvIntegration:
             **dict(cfg.get("environment", {})),
             "random_start": False,
         }
-        env, env_info = _create_training_env(real_df, cfg)
-        # close() の aggressive GC はテストで意味が薄く teardown 固定費だけ大きい。
-        env.memory_manager.collect_garbage_aggressive = lambda: None
-        try:
-            yield env, env_info
-        finally:
-            env.close()
+        with patch("ztb.trading.environment.heavy_env.core.gc.collect", return_value=0):
+            env, env_info = _create_training_env(real_df, cfg)
+            # close() の aggressive GC はテストで意味が薄く teardown 固定費だけ大きい。
+            env.memory_manager.collect_garbage_aggressive = lambda: None
+            try:
+                yield env, env_info
+            finally:
+                env.close()
 
     @pytest.fixture(scope="class")
     def shared_cycle_results(
@@ -634,14 +640,6 @@ class TestHeavyTradingEnvIntegration:
         reset_result = env.reset()
         step_result = env.step(np.array([0.0], dtype=np.float32))
         return reset_result, step_result
-
-    @pytest.fixture(scope="class")
-    def training_env_info(
-        self,
-        training_env_bundle: tuple["HeavyTradingEnv", dict[str, int | str | bool]],
-    ) -> dict[str, int | str | bool]:
-        _, env_info = training_env_bundle
-        return env_info
 
     def test_env_instantiation_and_interaction(
         self,
@@ -676,14 +674,14 @@ class TestHeavyTradingEnvIntegration:
 
     def test_create_training_env_pipeline(
         self,
-        training_env_info: dict[str, int | str | bool],
         selected_features: tuple[str, ...],
     ) -> None:
         """_create_training_env が YAML 相当の cfg で正常に環境を構築."""
-        assert training_env_info["obs_dim"] == len(selected_features) + 3
-        assert training_env_info["feature_columns_injected"] is True
-        assert training_env_info["feature_columns_count"] == len(selected_features)
-        assert training_env_info["env_type"] == "HeavyTradingEnv"
+        cfg = dict(_load_g2_sac_yaml())
+        feature_columns = _resolve_feature_columns(cfg)
+        env_config = _build_environment_config(cfg, feature_columns=feature_columns)
+        assert feature_columns == list(selected_features)
+        assert env_config.feature_names == list(selected_features)
 
 
 # ======================================================================

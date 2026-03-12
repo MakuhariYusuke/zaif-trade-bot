@@ -47,9 +47,11 @@ def _make_ohlcv(n: int = 200) -> pd.DataFrame:
     })
 
 
-_PROXY_DEFAULT_ROWS = 96
-_PROXY_ZERO_VOLUME_ROWS = 48
-_PROXY_WINDOW_VARIANT_ROWS = 96
+_PROXY_DEFAULT_ROWS = 72
+_PROXY_ZERO_VOLUME_ROWS = 24
+_PROXY_WINDOW_VARIANT_ROWS = 72
+_PROXY_OUTPUT_SHAPE_ROWS = _PROXY_DEFAULT_ROWS
+_PROXY_SMALL_INPUT_ROWS = 5
 
 
 @pytest.fixture(scope="module")
@@ -73,6 +75,12 @@ def proxy_window_variants() -> tuple[pd.DataFrame, pd.DataFrame]:
     return build_proxy_features(df, window=10), build_proxy_features(df, window=30)
 
 
+@pytest.fixture(scope="module")
+def proxy_features_small_input() -> pd.DataFrame:
+    """最小入力ケースの共有出力."""
+    return build_proxy_features(_make_ohlcv(_PROXY_SMALL_INPUT_ROWS), window=3)
+
+
 # =====================================================================
 # Proxy Mode テスト
 # =====================================================================
@@ -87,11 +95,9 @@ class TestBuildProxyFeatures:
         for feat in V460_FEATURES:
             assert feat in proxy_features_default.columns, f"Missing feature: {feat}"
 
-    def test_output_shape(self) -> None:
+    def test_output_shape(self, proxy_features_default: pd.DataFrame) -> None:
         """行数が入力と一致."""
-        df = _make_ohlcv(150)
-        result = build_proxy_features(df)
-        assert len(result) == 150
+        assert len(proxy_features_default) == _PROXY_OUTPUT_SHAPE_ROWS
 
     def test_no_inf_values(self, proxy_features_default: pd.DataFrame) -> None:
         """無限大が含まれない."""
@@ -127,11 +133,9 @@ class TestBuildProxyFeatures:
             r30["trade_flow_imbalance"].dropna().values[-50:],
         )
 
-    def test_small_input(self) -> None:
+    def test_small_input(self, proxy_features_small_input: pd.DataFrame) -> None:
         """最小入力 (n=5) でもクラッシュしない."""
-        df = _make_ohlcv(5)
-        result = build_proxy_features(df, window=3)
-        assert len(result) == 5
+        assert len(proxy_features_small_input) == _PROXY_SMALL_INPUT_ROWS
 
     def test_zero_volume_handling(self, proxy_features_zero_volume: pd.DataFrame) -> None:
         """volume=0 でも除算エラーにならない (eps ガード)."""

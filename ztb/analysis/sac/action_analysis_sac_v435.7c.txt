@@ -1,8 +1,0 @@
-=== Action Analysis for sac_v435.7c ===
-Sample size: 252
-Raw actions - Mean: 0.0000, Std: 0.0000, Min: 0.0000, Max: 0.0000
-Mapped actions - Mean: -1.0000, Std: 0.0000, Min: -1.0000, Max: -1.0000
-Action distribution - BUY: 0, HOLD: 0, SELL: 252
-Buy threshold: 0.3333, Sell threshold: -0.3333
-Unique raw values: 1
-Unique mapped values: 1

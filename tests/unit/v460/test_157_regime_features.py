@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import asyncio
+from functools import lru_cache
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -39,6 +40,13 @@ from ztb.risk.sell_dynamic_kill import (
     SellDynamicKillManager,
     SellKillConfig,
 )
+
+_V460_FILL_TEST_YAML_PATH = Path(__file__).resolve().parents[3] / "configs" / "v460" / "fill_test.yaml"
+
+
+@lru_cache(maxsize=1)
+def _load_cached_retrain_config() -> dict[str, object]:
+    return load_retrain_config(_V460_FILL_TEST_YAML_PATH)
 
 
 # =====================================================================
@@ -341,9 +349,9 @@ class TestRetrainPipelineIntegrity:
         trigger.update_regime("ranging")
         assert trigger.get_effective_interval() == 5400  # 3600 * 1.5
 
-    def test_retrain_config_loads_from_yaml(self, v460_fill_test_yaml_path: Path) -> None:
+    def test_retrain_config_loads_from_yaml(self) -> None:
         """load_retrain_config が fill_test.yaml から正常に設定を読み込む."""
-        cfg = load_retrain_config(v460_fill_test_yaml_path)
+        cfg = _load_cached_retrain_config()
         assert cfg["mode"] == "pnl"
         assert "model_path" in cfg
 

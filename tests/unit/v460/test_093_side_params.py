@@ -24,6 +24,12 @@ from tests.unit.v460._fill_test_source import (
     read_fill_test_method_source,
     read_source_text,
 )
+from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
+
+_FILL_CONFIG_FIELDS = FillTestConfig.__dataclass_fields__
+_FILL_TEST_YAML = load_yaml_mapping(
+    Path(__file__).resolve().parents[3] / "configs" / "v460" / "fill_test.yaml"
+)
 
 
 # =====================================================================
@@ -35,13 +41,11 @@ class TestSpreadAdaptiveSideConfig:
 
     def test_narrow_spread_boost_buy_default_none(self) -> None:
         """narrow_spread_boost_buy のデフォルトは None (共通値使用)."""
-        cfg = FillTestConfig()
-        assert cfg.narrow_spread_boost_buy is None
+        assert _FILL_CONFIG_FIELDS["narrow_spread_boost_buy"].default is None
 
     def test_narrow_spread_boost_sell_default_none(self) -> None:
         """narrow_spread_boost_sell のデフォルトは None (共通値使用)."""
-        cfg = FillTestConfig()
-        assert cfg.narrow_spread_boost_sell is None
+        assert _FILL_CONFIG_FIELDS["narrow_spread_boost_sell"].default is None
 
     def test_narrow_spread_boost_buy_explicit(self) -> None:
         """narrow_spread_boost_buy を明示指定可能."""
@@ -55,8 +59,7 @@ class TestSpreadAdaptiveSideConfig:
 
     def test_common_boost_unchanged(self) -> None:
         """共通値 narrow_spread_boost は従来どおり 2.0."""
-        cfg = FillTestConfig()
-        assert cfg.narrow_spread_boost == pytest.approx(2.0)
+        assert _FILL_CONFIG_FIELDS["narrow_spread_boost"].default == pytest.approx(2.0)
 
 
 # =====================================================================
@@ -67,20 +70,16 @@ class TestFastFillDefenseSideConfig:
     """093# fast_fill_defense サイド別パラメータの Config テスト."""
 
     def test_threshold_sec_buy_default_none(self) -> None:
-        cfg = FillTestConfig()
-        assert cfg.fast_fill_threshold_sec_buy is None
+        assert _FILL_CONFIG_FIELDS["fast_fill_threshold_sec_buy"].default is None
 
     def test_threshold_sec_sell_default_none(self) -> None:
-        cfg = FillTestConfig()
-        assert cfg.fast_fill_threshold_sec_sell is None
+        assert _FILL_CONFIG_FIELDS["fast_fill_threshold_sec_sell"].default is None
 
     def test_offset_boost_buy_default_none(self) -> None:
-        cfg = FillTestConfig()
-        assert cfg.fast_fill_offset_boost_buy is None
+        assert _FILL_CONFIG_FIELDS["fast_fill_offset_boost_buy"].default is None
 
     def test_offset_boost_sell_default_none(self) -> None:
-        cfg = FillTestConfig()
-        assert cfg.fast_fill_offset_boost_sell is None
+        assert _FILL_CONFIG_FIELDS["fast_fill_offset_boost_sell"].default is None
 
     def test_threshold_sec_sell_explicit(self) -> None:
         cfg = FillTestConfig(fast_fill_threshold_sec_sell=15.0)
@@ -91,12 +90,10 @@ class TestFastFillDefenseSideConfig:
         assert cfg.fast_fill_offset_boost_sell == pytest.approx(2.5)
 
     def test_common_threshold_unchanged(self) -> None:
-        cfg = FillTestConfig()
-        assert cfg.fast_fill_threshold_sec == pytest.approx(5.0)
+        assert _FILL_CONFIG_FIELDS["fast_fill_threshold_sec"].default == pytest.approx(5.0)
 
     def test_common_boost_unchanged(self) -> None:
-        cfg = FillTestConfig()
-        assert cfg.fast_fill_offset_boost == pytest.approx(2.0)
+        assert _FILL_CONFIG_FIELDS["fast_fill_offset_boost"].default == pytest.approx(2.0)
 
 
 # =====================================================================
@@ -135,9 +132,9 @@ class TestSpreadAdaptiveSideYAML:
         assert cfg.narrow_spread_boost_buy is None
         assert cfg.narrow_spread_boost_sell is None
 
-    def test_production_yaml_has_side_boost(self, v460_fill_test_yaml: dict[str, object]) -> None:
+    def test_production_yaml_has_side_boost(self) -> None:
         """本番 YAML に 093# side 別 boost が設定されている."""
-        sa = v460_fill_test_yaml["spread_adaptive"]
+        sa = _FILL_TEST_YAML["spread_adaptive"]
         assert "narrow_spread_boost_buy" in sa
         assert "narrow_spread_boost_sell" in sa
         assert sa["narrow_spread_boost_buy"] == pytest.approx(2.0)   # 183# 1.5→2.0 (spread<2kでAS32%対策)
@@ -183,9 +180,9 @@ class TestFastFillDefenseSideYAML:
         assert cfg.fast_fill_offset_boost_buy is None
         assert cfg.fast_fill_offset_boost_sell is None
 
-    def test_production_yaml_has_side_defense(self, v460_fill_test_yaml: dict[str, object]) -> None:
+    def test_production_yaml_has_side_defense(self) -> None:
         """本番 YAML に 093# side 別 fast_fill_defense が設定されている."""
-        ffd = v460_fill_test_yaml["fast_fill_defense"]
+        ffd = _FILL_TEST_YAML["fast_fill_defense"]
         assert ffd.get("threshold_sec_sell") == pytest.approx(15.0)
         assert ffd.get("offset_boost_sell") == pytest.approx(2.5)
 

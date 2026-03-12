@@ -5560,3 +5560,49 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - config audit / parser drift では default-only 検査の dataclass field 直参照を今後も横展開できる。
 - `feature_enricher` の date-filter 抽出は real-data integration 系の共通 helper 候補。
 - `sac_train` の env helper 分割は `test_356` 側の assertion-only 検証を切り出す土台になる。
+
+## 2026-03-13 / Wave: Config Field Defaults, YAML Cache, and Heavy Env Trim
+
+### 実施内容
+- [tests/unit/v460/test_093_side_params.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_093_side_params.py)
+  - `FillTestConfig.__dataclass_fields__` を使う default-only 検査へ変更
+  - production YAML の read-only 検査を module-cached mapping へ変更
+- [tests/unit/v460/test_157_regime_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_157_regime_features.py)
+  - `load_retrain_config(fill_test.yaml)` の結果を `lru_cache` helper で再利用
+- [tests/unit/v460/test_build_features_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_build_features_pipeline.py)
+  - proxy rows を `72/24/72` に削減
+  - output-shape 専用 fixture を削除して既存 proxy fixture を再利用
+- [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py)
+  - feature injection 検査を `_resolve_feature_columns(...)` / `_build_environment_config(...)` ベースの assertion-only path に整理
+  - heavy integration fixture では `gc.collect()` を patch して reset/close 固定費を削減
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_093_side_params.py`
+  - `tests/unit/v460/test_157_regime_features.py`
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - 結果: `121 passed in 6.56s`
+- focused:
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - 結果: `61 passed in 7.64s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4643 passed, 13 warnings in 50.97s`
+
+### 更新後の上位
+1. `test_v460_core.py::TestBuildFeatures::test_proxy_features_generation` call `0.80s`
+2. `test_fill_quality.py::TestUnknownFillHandling::test_status_none_twice_becomes_cancelled_status_unknown` call `0.77s`
+3. `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction` setup `0.27s`
+4. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.21s`
+5. `test_build_features_pipeline.py::TestBuildProxyFeatures::test_small_input` setup `0.19s`
+
+### 見立て
+- `test_356` は heavy env 本体より周辺の GC/teardown 固定費がまだ残っていたので、patch で十分に下がった。
+- `test_build_features_pipeline` は fixture 重複と row 数削減が効いたが、なお `proxy_features_generation` は本体側の計算コストが支配的。
+- `test_093` と `test_157` は read-only YAML / config load を module cache に寄せたので、今後の同種テストにも横展開しやすい。
