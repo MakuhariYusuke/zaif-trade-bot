@@ -28,6 +28,32 @@ from tests.unit.v460._fill_test_source import (
     read_class_method_source,
 )
 
+_ORDER_MONITOR_RESOLVE_REGIME_SOURCE = read_class_method_source(
+    ORDER_MONITOR,
+    "OrderMonitor",
+    "_resolve_regime_name",
+)
+_ADAPTATION_ENGINE_TRY_AUTO_ADAPT_SOURCE = read_class_method_source(
+    ADAPTATION_ENGINE,
+    "AdaptationEngine",
+    "try_auto_adapt",
+)
+_MAKER_PRICE_INIT_SOURCE = read_class_method_source(
+    MAKER_PRICE,
+    "MakerPriceCalculator",
+    "__init__",
+)
+_MAKER_PRICE_COMPUTE_SOURCE = read_class_method_source(
+    MAKER_PRICE,
+    "MakerPriceCalculator",
+    "compute",
+)
+_MAKER_RISK_GUARDS_VG_SOURCE = read_class_method_source(
+    MAKER_RISK_GUARDS,
+    "RiskGuardsMixin",
+    "_apply_volatility_guard",
+)
+
 
 # ======================================================================
 # helpers
@@ -80,10 +106,11 @@ class TestRegimeDetectorProtocol:
         assert not isinstance(object(), RegimeDetectorLike)
 
     def test_protocol_accepts_mock_with_correct_attrs(self) -> None:
-        """current_regime と last_volatility_ratio を持つ mock は Protocol 準拠."""
-        mock_det = MagicMock(spec=["current_regime", "last_volatility_ratio"])
+        """current_regime, last_volatility_ratio, current_confidence を持つ mock は Protocol 準拠."""
+        mock_det = MagicMock(spec=["current_regime", "last_volatility_ratio", "current_confidence"])
         mock_det.current_regime = FillTestRegime.RANGING
         mock_det.last_volatility_ratio = 1.0
+        mock_det.current_confidence = 0.8
         assert isinstance(mock_det, RegimeDetectorLike)
 
     def test_maker_price_accepts_protocol_detector(self) -> None:
@@ -107,31 +134,16 @@ class TestRegimeDetectorProtocol:
 
     def test_resolve_regime_no_getattr_in_source(self) -> None:
         """257# _resolve_regime_name に getattr/hasattr が残っていない."""
-        src = read_class_method_source(
-            ORDER_MONITOR,
-            "OrderMonitor",
-            "_resolve_regime_name",
-        )
-        assert "getattr" not in src
-        assert "hasattr" not in src
+        assert "getattr" not in _ORDER_MONITOR_RESOLVE_REGIME_SOURCE
+        assert "hasattr" not in _ORDER_MONITOR_RESOLVE_REGIME_SOURCE
 
     def test_adaptation_engine_accepts_protocol(self) -> None:
         """adaptation_engine の regime_detector パラメータが Protocol 型."""
-        src = read_class_method_source(
-            ADAPTATION_ENGINE,
-            "AdaptationEngine",
-            "try_auto_adapt",
-        )
-        assert "RegimeDetectorLike" in src
+        assert "RegimeDetectorLike" in _ADAPTATION_ENGINE_TRY_AUTO_ADAPT_SOURCE
 
     def test_maker_price_constructor_uses_protocol_type(self) -> None:
         """maker_price.__init__ が RegimeDetectorLike 型を使用."""
-        src = read_class_method_source(
-            MAKER_PRICE,
-            "MakerPriceCalculator",
-            "__init__",
-        )
-        assert "RegimeDetectorLike" in src
+        assert "RegimeDetectorLike" in _MAKER_PRICE_INIT_SOURCE
 
 
 # ======================================================================
@@ -247,12 +259,7 @@ class TestASReservationShift:
 
     def test_pipeline_includes_as_reservation(self) -> None:
         """compute() パイプラインに _apply_as_reservation_shift が含まれる."""
-        src = read_class_method_source(
-            MAKER_PRICE,
-            "MakerPriceCalculator",
-            "compute",
-        )
-        assert "_apply_as_reservation_shift" in src
+        assert "_apply_as_reservation_shift" in _MAKER_PRICE_COMPUTE_SOURCE
 
 
 # ======================================================================
@@ -408,13 +415,11 @@ class TestVPINContinuousModulator:
 
     def test_vg_source_no_binary_vpin_when_continuous(self) -> None:
         """VG ソースに continuous mode 分岐が存在."""
-        src = read_class_method_source(
-            MAKER_RISK_GUARDS,
-            "RiskGuardsMixin",
-            "_apply_volatility_guard",
+        assert "vg_vpin_continuous_enabled" in _MAKER_RISK_GUARDS_VG_SOURCE
+        assert (
+            "quadratic" in _MAKER_RISK_GUARDS_VG_SOURCE.lower()
+            or "_norm * _norm" in _MAKER_RISK_GUARDS_VG_SOURCE
         )
-        assert "vg_vpin_continuous_enabled" in src
-        assert "quadratic" in src.lower() or "_norm * _norm" in src
 
 
 # ======================================================================

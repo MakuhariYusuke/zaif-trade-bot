@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-13 (395# SHA-fenced 実証: 393#/394# 全指摘確認, 391# 因果推論4/5修正)
+> 最終更新: 2026-03-13 (397# confidence[0.7,0.9) offset boost + JST 23h ガード強化)
 
 ---
 
@@ -390,6 +390,7 @@
 | 393 | rev | [393_ph3_rev_391_fill_test_root_cause_validation.md](393_ph3_rev_391_fill_test_root_cause_validation.md) | 391# 妥当性監査: mixed-SHA汚染, headline再現不能, EV=price-direction誤読, rapid-fire 5分禁止の過剰さを補正 |
 | 394 | rev | [394_ph3_rev_391_393_fill_test_second_opinion.md](394_ph3_rev_391_393_fill_test_second_opinion.md) | Gemini second opinion: 393#全面支持, EV confident-wrong是正, HFT哲学堅持, Ghost Metric再発警告, 雷火豊の符合 |
 | 395 | rpt | [395_ph3_rev_393_394_empirical_validation.md](395_ph3_rev_393_394_empirical_validation.md) | **SHA-fenced実証**: 393#/394#の全指摘をコード+データで裏付け。391#因果推論5本中4本がcurrentSHAで消失。構造的問題はconfidence[0.7,0.9)のみ |
+| 397 | impl | [397_ph3_confidence_band_jst23h_fix.md](397_ph3_confidence_band_jst23h_fix.md) | confidence[0.7,0.9) offset×1.2 boost + JST 23h sell_hour_boost 1.3→1.5 / skip_gate 0.3→0.5 強化 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

@@ -128,6 +128,7 @@ class RegimeDetectorLike(Protocol):
     maker_price / order_monitor / adaptation_engine 共用。
     ``object | None`` → ``RegimeDetectorLike | None`` に置換し、
     getattr / hasattr を排除する。
+    397#: current_confidence を追加 (confidence band 別 offset 制御).
     """
 
     @property
@@ -135,6 +136,9 @@ class RegimeDetectorLike(Protocol):
 
     @property
     def last_volatility_ratio(self) -> float: ...
+
+    @property
+    def current_confidence(self) -> float: ...
 
 
 class FillTestRegime(str, Enum):

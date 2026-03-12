@@ -151,6 +151,12 @@ regime:
   # 227# C1: OBI方向非対称 — ranging市場でOBIに基づく方向性シグナル
   ranging_obi_asymmetry_factor: 0.3  # 344#: 0.0→0.3 有効化 (ranging市場OBI方向シグナル)
   ranging_obi_threshold: 0.1         # OBI非対称適用の最小imbalance閾値
+  # 397# mid-confidence paradox guard (395# SHA-fenced 実証)
+  # confidence [0.7,0.9) は全 SHA で paradoxical underperformance (−0.734, WR=46%)
+  # offset を 1.2x に拡大しリスク低減 (レジーム判定が medium-confident だが不正確な帯域)
+  mid_confidence_offset_boost: 1.2
+  mid_confidence_lo: 0.7
+  mid_confidence_hi: 0.9
   # 168# §9.10: 低ボラティリティ offset boost (time_filter 根本対策)
   # vol_ratio < threshold の低ボラ環境で offset を 1.4 倍に拡大
   # データ根拠: 損失時間帯 vol_ratio=0.661 vs 利益時間帯 0.918 (t=-2.01)
@@ -379,7 +385,7 @@ skip_gate:
   # ログ分析: 01h JST(=16UTC)64%AS, 03h(=18UTC)50%, 06h(=21UTC)36%, 17h(=08UTC)42%, 23h(=14UTC)43%
   # PnLモード: 正方向=厳格化 (より高い予測PnLがないとskip)
   hour_offsets:
-    14: 0.3    # 23h JST: AS43%, -134.5bps/日 → 厳格化
+    14: 0.5    # 397# 23h JST: 395# current SHA n=6 WR=0% → 0.3→0.5 厳格化
     16: 0.5    # 01h JST: AS64%, -79.8bps/日 → 最も厳格化
     18: 0.3    # 03h JST: AS50%, -54.8bps/日 → 厳格化
     21: 0.3    # 06h JST: AS36%, -125.8bps/日 → 厳格化 (PnL損失最大時間帯)
@@ -586,7 +592,7 @@ sell_hour_offset_boost:
   8: 1.5      # 306# UTC 08h = JST 17h: AS 63%
   12: 2.0     # 381# JST 21h: sell 30s=-7.369bps (極悪)
   13: 1.3     # 306# UTC 13h = JST 22h: AS 42% (クリーンデータで+2.713bpsに改善済)
-  14: 1.3     # 306# UTC 14h = JST 23h: AS 43%
+  14: 1.5     # 397# UTC 14h = JST 23h: 395# current SHA n=6 WR=0% −6.996bps → 1.3→1.5 強化
   16: 1.5     # 306# UTC 16h = JST 01h: AS 61%
 
 # ---- 133# 止血施策 (P0-08/09/10) ----

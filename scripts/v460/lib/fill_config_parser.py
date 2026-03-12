@@ -816,6 +816,10 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
         # 227# C1: Ranging × OBI 方向別非対称 offset
         "ranging_obi_asymmetry_factor": "ranging_obi_asymmetry_factor",
         "ranging_obi_threshold": "ranging_obi_threshold",
+        # 397# mid-confidence paradox guard
+        "mid_confidence_offset_boost": "regime_mid_confidence_offset_boost",
+        "mid_confidence_lo": "regime_mid_confidence_lo",
+        "mid_confidence_hi": "regime_mid_confidence_hi",
         "low_vol_offset_boost_enabled": "low_vol_offset_boost_enabled", # 168#
         "low_vol_offset_boost": "low_vol_offset_boost",               # 168#
         "low_vol_threshold": "low_vol_threshold",                     # 168#

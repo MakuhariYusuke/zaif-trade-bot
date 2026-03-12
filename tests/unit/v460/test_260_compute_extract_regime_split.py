@@ -76,25 +76,26 @@ class TestComputeExtractMethod:
 
 
 # ======================================================================
-# P2-3: _apply_regime_boosts() 5-split
+# P2-3: _apply_regime_boosts() 6-split (397# mid_confidence 追加)
 # ======================================================================
 
 
 class TestRegimeBoostsSplit:
-    """260# P2-3: _apply_regime_boosts() → 5 sub-method 分割."""
+    """260# P2-3: _apply_regime_boosts() → 6 sub-method 分割."""
 
     @staticmethod
     def _maker_price_source(method_name: str) -> str:
         return read_class_method_source(MAKER_REGIME_BOOST, "RegimeBoostMixin", method_name)
 
     def test_regime_boosts_is_dispatcher(self) -> None:
-        """_apply_regime_boosts() が 5 sub-method を呼び出すディスパッチャー."""
+        """_apply_regime_boosts() が 6 sub-method を呼び出すディスパッチャー."""
         src = self._maker_price_source("_apply_regime_boosts")
         assert "_regime_boost_trending(" in src
         assert "_regime_boost_high_vol(" in src
         assert "_regime_boost_ranging(" in src
         assert "_regime_boost_low_vol(" in src
         assert "_regime_boost_unknown_buy(" in src
+        assert "_regime_boost_mid_confidence(" in src  # 397#
 
     def test_regime_boosts_line_count(self) -> None:
         """_apply_regime_boosts() が 30 行以下のディスパッチャー."""
@@ -134,6 +135,13 @@ class TestRegimeBoostsSplit:
         assert "UNKNOWN" in src
         assert 'side == "buy"' in src
 
+    def test_mid_confidence_method_exists(self) -> None:
+        """397# _regime_boost_mid_confidence() が存在し confidence 帯域チェックを含む."""
+        assert hasattr(MakerPrice, "_regime_boost_mid_confidence")
+        src = self._maker_price_source("_regime_boost_mid_confidence")
+        assert "mid_confidence_offset_boost" in src
+        assert "current_confidence" in src
+
     def test_each_sub_method_under_50_lines(self) -> None:
         """各 sub-method が 50 行以下."""
         methods = [
@@ -142,6 +150,7 @@ class TestRegimeBoostsSplit:
             "_regime_boost_ranging",
             "_regime_boost_low_vol",
             "_regime_boost_unknown_buy",
+            "_regime_boost_mid_confidence",  # 397#
         ]
         for name in methods:
             src = self._maker_price_source(name)

@@ -169,6 +169,12 @@ class FillTestConfig:
     trending_up_sell_offset_boost: float | None = None
     trending_down_buy_offset_boost: float | None = None
     trending_down_sell_offset_boost: float | None = None
+    # 397# mid-confidence paradox guard: confidence [0.7,0.9) の逆転ゾーン対策
+    # 395# 実証: SHA-fenced でも再現した唯一の構造的問題
+    # confidence [0.7,0.9) は全 SHA で paradoxical underperformance (−0.734 bps, WR=46%)
+    regime_mid_confidence_offset_boost: float = 1.0  # 1.0=無効, >1.0 で offset 拡大
+    regime_mid_confidence_lo: float = 0.7   # 対象 confidence 帯域の下限
+    regime_mid_confidence_hi: float = 0.9   # 対象 confidence 帯域の上限
     # 143# R-1a: レジーム別 offset 調整
     regime_high_vol_offset_boost: float = 1.2   # high_vol 時に offset × 1.2 (+20% 拡張)
     regime_ranging_offset_discount: float = 1.0 # ranging 時に offset × N (1.0=無効, <1.0で縮小)

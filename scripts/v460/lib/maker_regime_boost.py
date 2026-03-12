@@ -61,20 +61,22 @@ class RegimeBoostMixin:
     def _apply_regime_boosts(
         self, side: str, effective_offset_ratio: float,
     ) -> float:
-        """052# 143# 130# regime 別 offset 補正.
+        """052# 143# 130# 397# regime 別 offset 補正.
 
-        260# P2-3: 5 独立ステージに分割。
+        260# P2-3: 6 独立ステージに分割。
         - trending: buy/sell 非対称 boost
         - high_vol: offset 拡大 (AS リスク上昇)
         - ranging: offset 縮小 (安定市場で利幅確保)
         - low_vol: offset 拡大 (過剰アグレッシブ抑制)
         - unknown: buy guard offset boost
+        - mid_confidence: confidence [0.7,0.9) paradox guard (397#)
         """
         effective_offset_ratio = self._regime_boost_trending(side, effective_offset_ratio)
         effective_offset_ratio = self._regime_boost_high_vol(side, effective_offset_ratio)
         effective_offset_ratio = self._regime_boost_ranging(side, effective_offset_ratio)
         effective_offset_ratio = self._regime_boost_low_vol(side, effective_offset_ratio)
         effective_offset_ratio = self._regime_boost_unknown_buy(side, effective_offset_ratio)
+        effective_offset_ratio = self._regime_boost_mid_confidence(side, effective_offset_ratio)
         return effective_offset_ratio
 
     # ------------------------------------------------------------------
@@ -236,6 +238,37 @@ class RegimeBoostMixin:
                 f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
                 f"(regime=unknown, boost={_applied_mult:.2f})"
             )
+        return effective_offset_ratio
+
+    def _regime_boost_mid_confidence(
+        self, side: str, effective_offset_ratio: float,
+    ) -> float:
+        """397# mid-confidence paradox guard.
+
+        395# SHA-fenced 実証: confidence [0.7,0.9) は全 SHA で
+        paradoxical underperformance (−0.734 bps, WR=46%)。
+        レジーム判定が medium-confident だが実際は不正確な帯域で、
+        offset を拡大しリスクを低減する。
+        """
+        cfg = self._config
+        if (
+            cfg.regime_mid_confidence_offset_boost > 1.0
+            and self._regime_detector is not None
+        ):
+            conf = self._regime_detector.current_confidence
+            if cfg.regime_mid_confidence_lo <= conf < cfg.regime_mid_confidence_hi:
+                pre_offset = effective_offset_ratio
+                effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                    effective_offset_ratio,
+                    cfg.regime_mid_confidence_offset_boost,
+                    max_ratio=cfg.max_offset_ratio,
+                )
+                logger.info(
+                    f"[397# mid_conf_guard] {side} confidence={conf:.3f} "
+                    f"in [{cfg.regime_mid_confidence_lo},{cfg.regime_mid_confidence_hi}) "
+                    f"→ offset boosted: {pre_offset:.4f}→{effective_offset_ratio:.4f} "
+                    f"(boost={_applied_mult:.2f})"
+                )
         return effective_offset_ratio
 
     # ------------------------------------------------------------------

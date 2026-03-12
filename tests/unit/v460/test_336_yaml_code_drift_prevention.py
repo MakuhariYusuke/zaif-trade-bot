@@ -117,6 +117,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "post_fill_wait_sec_sell",
     "regime_adaptive_extra_buy",
     "regime_adaptive_extra_sell",
+    "regime_mid_confidence_offset_boost",   # 397# mid-confidence paradox guard
     "regime_ranging_offset_discount",
     "regime_trending_offset_boost_buy",
     "regime_trending_offset_boost_sell",
