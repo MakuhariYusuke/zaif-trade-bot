@@ -504,15 +504,15 @@ class BayesianRegimeFilter:
 
     def get_state(self) -> dict:
         """永続化用の状態辞書."""
+        # 387# fix: deque はスライス非対応 → list 変換してからスライス
+        history_list = list(self._regime_history)
         return {
             "posterior": self._posterior.tolist(),
             "transition": self._transition.tolist(),
             "emission_mu": self._emission_mu.tolist(),
             "emission_sigma": self._emission_sigma.tolist(),
             "update_count": self._update_count,
-            "regime_history_tail": self._regime_history[-200:]
-            if len(self._regime_history) > 200
-            else list(self._regime_history),
+            "regime_history_tail": history_list[-200:],
         }
 
     def restore_state(self, state: dict) -> bool:

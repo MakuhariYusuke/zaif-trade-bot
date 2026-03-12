@@ -474,3 +474,46 @@ class TestReviewGaps:
         result = f.update(1e6)
         assert np.all(np.isfinite(result.posterior))
         assert abs(result.posterior.sum() - 1.0) < 1e-10
+
+
+# =====================================================================
+# 387# get_state deque slice regression
+# =====================================================================
+
+
+class TestGetStateDequeSlice:
+    """387# fix: deque はスライス非対応 — get_state で TypeError を起こさないこと."""
+
+    def test_get_state_under_200(self) -> None:
+        """history < 200 で get_state が正常に動作."""
+        f = BayesianRegimeFilter()
+        for _ in range(50):
+            f.update(0.001)
+        state = f.get_state()
+        assert isinstance(state["regime_history_tail"], list)
+        assert len(state["regime_history_tail"]) == 50
+
+    def test_get_state_over_200_no_type_error(self) -> None:
+        """387# 再現テスト: history > 200 で TypeError が発生しないこと.
+
+        修正前: deque[-200:] → TypeError: sequence index must be integer, not 'slice'
+        """
+        f = BayesianRegimeFilter()
+        for _ in range(250):
+            f.update(0.001)
+        # 修正前はここで TypeError
+        state = f.get_state()
+        assert isinstance(state["regime_history_tail"], list)
+        assert len(state["regime_history_tail"]) == 200
+
+    def test_get_state_roundtrip_over_200(self) -> None:
+        """get_state → restore_state が > 200 history でも正常に往復."""
+        f = BayesianRegimeFilter()
+        for i in range(300):
+            f.update(0.001 * (i % 5 - 2))
+        state = f.get_state()
+        f2 = BayesianRegimeFilter()
+        assert f2.restore_state(state) is True
+        # 復元後も get_state が正常動作
+        state2 = f2.get_state()
+        assert state2["regime_history_tail"] == state["regime_history_tail"]
