@@ -4959,6 +4959,79 @@ Date: 2026-03-12
     - `test_fill_test_config.py`
 - `test_212_live_trader_config.py` の `time.sleep(` は実待機ではなく source assertion 側の文字列参照であり、実行時間 hotspot ではないことを確認。
 
+## 2026-03-12 / Session 037 Follow-up: Horizontal Cleanup Wave 2
+
+### 目的
+- Wave 1 の残件だった method-local import / split-source assertion / YAML 直読を追加で横展開する。
+- 同時に、本体側では flat dataclass の deep-copy 固定費を shallow 化で削る。
+
+### 実施内容
+- [tests/unit/v460/test_sac_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_sac_retrain_scheduler.py)
+  - `SACRetrainConfig`, `SACRetrainTrigger`, `RetrainResult`, scheduler helpers、sidecar I/O helpers、`SidecarSignal`, `pandas` を module scope に集約
+  - 残っていた `_update_sidecar_signal` / `time` local import も除去
+- [tests/unit/v460/test_374_proportional_boost.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_374_proportional_boost.py)
+  - sidecar / config / parser / validation / aggregator 系 import を module scope に集約
+  - `scripts.v460.lib.sidecar_types` module import は `math` module-level import 確認用に 1 箇所へ固定
+- [tests/unit/v460/test_372_skip_gate_move_and_vg_jsonl.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_372_skip_gate_move_and_vg_jsonl.py)
+  - canonical/shim `SkipGate` / `SkipDecision` / feature cols / VG JSONL helpers を module scope に集約
+  - `dataclasses` も top-level に寄せた
+- [tests/unit/v460/test_259_as_vol_ratio_adaptation_hasattr.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_259_as_vol_ratio_adaptation_hasattr.py)
+  - `inspect.getsource(...)` をやめ、`_fill_test_source.py` の `read_class_method_source(...)` に統一
+  - `_estimate_sigma` は現 split 先 `maker_microstructure.py::MicrostructureMixin` を参照
+- [tests/unit/v460/test_145_s14_structural_refactors.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_145_s14_structural_refactors.py)
+  - `FillTestRunner.run_single_cycle` の source assertion を `read_fill_test_method_source(...)` に統一
+  - `CoincheckAdapter` method source は module file path + `read_class_method_source(...)` で取得
+- [tests/unit/v460/test_373_critical_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_373_critical_fixes.py)
+  - `maker_microstructure` / `fill_cycle_executor` / `order_monitor` の source assertion を shared helper に統一
+- [tests/unit/v460/test_config_validation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_config_validation.py)
+  - `_load_yaml_mapping(...)` を追加し、`base.yaml` 直読を cache 付き helper に統一
+- [tests/unit/v460/test_fill_test_config.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_test_config.py)
+  - `_yaml_mapping(...)` を追加し、inline YAML round-trip を typed helper 化
+- [tests/unit/v460/test_202_log_improvements.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_202_log_improvements.py)
+  - `_yaml_mapping(...)` を追加し、202 系 YAML 断片を helper 化
+- [ztb/utils/config_fingerprint.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/utils/config_fingerprint.py)
+  - `asdict(...)` を `shallow_asdict(...)` へ変更
+- [scripts/v460/ml/run_ml_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/run_ml_pipeline.py)
+  - `ASModelMetrics` / `FillModelMetrics` の JSON 直列化を `shallow_asdict(...)` に変更
+- [scripts/v460/analysis/oracle_baseline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/analysis/oracle_baseline.py)
+  - `OracleMetrics` の report 生成を `shallow_asdict(...)` へ変更
+- [ztb/io/json_io.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/io/json_io.py)
+- [ztb/utils/file_utils.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/utils/file_utils.py)
+  - `sort_keys` passthrough を追加
+  - `ConfigFingerprint.save()` が期待していた `safe_json_dump(..., sort_keys=True)` 契約に整合
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/unit/v460/test_374_proportional_boost.py`
+  - `tests/unit/v460/test_372_skip_gate_move_and_vg_jsonl.py`
+  - `tests/unit/v460/test_259_as_vol_ratio_adaptation_hasattr.py`
+  - `tests/unit/v460/test_145_s14_structural_refactors.py`
+  - `tests/unit/v460/test_config_validation.py`
+  - `tests/unit/v460/test_fill_test_config.py`
+  - 結果: `263 passed in 3.63s`
+- focused follow-up:
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/unit/v460/test_202_log_improvements.py`
+  - `tests/unit/v460/test_373_critical_fixes.py`
+  - 結果: `71 passed in 2.27s`
+- config / ml / oracle side:
+  - `tests/unit/scripts/test_preflight_schema_scaler_check.py`
+  - `tests/unit/v460/test_ml_pipeline.py -k 'ConfigFingerprint or ASClassifier or OracleBaseline'`
+  - 結果: `15 passed, 108 deselected in 2.17s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4620 passed, 13 warnings in 32.50s`
+
+### メモ
+- Wave 2 対象ファイルでは `inspect.getsource(...)` / method-local import は実質解消済み。
+- YAML 直読は helper 本体の `yaml.safe_load(...)` 3 箇所だけが残る状態まで縮小した。
+- `tests/ -x --no-cov ...` のバックグラウンド lane は継続中で、少なくともプロセス自体は生存している。
+
 ## 2026-03-12 / Session 379-SB3-Critical
 
 ### 概要

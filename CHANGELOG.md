@@ -5041,3 +5041,14 @@ python scripts/unified_trainer.py \
   - aligned `test_356_g2_sac_blockers.py` with current 17-feature / single-seed config drift without touching the YAML owned by the separate 17-feature task
   - trimmed `test_enricher_skip_gate.py` real-data ladder (`120/160/180`) and reduced `test_356` real-data slice to 32 rows
   - replaced `MagicMock` pipelines in `test_141_side_specific_models.py` regime-threshold tests with a lightweight predict stub
+
+- 2026-03-12: completed Wave 2/3/4/6 cleanup across `v460` tests and low-risk serialization paths.
+  - lifted repeated scheduler/sidecar/proportional-boost/VG imports to module scope in `test_sac_retrain_scheduler.py`, `test_374_proportional_boost.py`, and `test_372_skip_gate_move_and_vg_jsonl.py`
+  - replaced remaining split-source assertions in `test_259_as_vol_ratio_adaptation_hasattr.py`, `test_145_s14_structural_refactors.py`, and `test_373_critical_fixes.py` with `_fill_test_source.py` helpers
+  - converted direct YAML parsing in `test_config_validation.py`, `test_fill_test_config.py`, and `test_202_log_improvements.py` into typed local helpers
+  - changed `ztb/utils/config_fingerprint.py`, `scripts/v460/ml/run_ml_pipeline.py`, and `scripts/v460/analysis/oracle_baseline.py` to `shallow_asdict(...)` where dataclasses are flat / shallow-owned
+  - restored `sort_keys` passthrough support in `ztb/io/json_io.py` and `ztb/utils/file_utils.py` so `ConfigFingerprint.save()` and other callers match their current API expectations
+  - re-verified with:
+    - focused wave subset: `263 passed in 3.63s`
+    - focused scheduler/source/YAML follow-up: `71 passed in 2.27s`
+    - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 32.50s`
