@@ -5178,3 +5178,12 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused `test_skip_gate_v3.py test_262_protocol_cancel_recheck.py test_092_gap_fixes.py`: `61 passed in 1.93s`
     - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 33.37s`
+- 2026-03-13: trimmed another v460 quick-win wave around sidecar cache and simple threshold tests.
+  - changed `test_sac_retrain_scheduler.py::TestReadSidecarCache::test_cache_invalidated_on_new_write` to force `mtime` via `os.utime(...)` instead of sleeping
+  - replaced `AsyncMock` in `test_websocket_client.py::test_dispatch_short_list_ignored` with a tiny await recorder
+  - reduced `test_264_kelly_criterion.py::test_max_fraction_cap` sample size from `90/10` to `45/5` while preserving the same Kelly cap condition
+  - removed an unnecessary `FillTestConfig(...)` construction from `test_093_side_params.py::test_sell_threshold_broader_than_buy`
+  - re-verified with:
+    - focused `test_sac_retrain_scheduler.py test_websocket_client.py test_264_kelly_criterion.py test_093_side_params.py`: `128 passed in 3.34s`
+    - focused `test_sac_retrain_scheduler.py -k 'cache_invalidated_on_new_write'`: `1 passed, 30 deselected in 0.66s`
+    - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 32.14s`

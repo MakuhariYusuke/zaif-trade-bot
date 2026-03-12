@@ -5686,3 +5686,46 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - broad の支配点が `fill_quality` / `skip_gate_v3` / `protocol_cancel_recheck` からさらに後退した。
 - 次は `sac_retrain_scheduler` の sidecar cache、`websocket_client` の dispatch path、`kelly_criterion` の単発 call が本命。
 - `test_356` と `test_enricher_skip_gate` は setup 上位に残るが、絶対値としてはかなり低くなっている。
+
+## 2026-03-13 / Wave: Sidecar Cache and Threshold Quick Wins
+
+### 実施内容
+- [tests/unit/v460/test_sac_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_sac_retrain_scheduler.py)
+  - `test_cache_invalidated_on_new_write` を `time.sleep(...)` から `os.utime(...)` ベースへ変更
+- [tests/unit/v460/test_websocket_client.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_websocket_client.py)
+  - `_AwaitRecorder` を追加
+  - `test_dispatch_short_list_ignored` の `AsyncMock` を軽量 await recorder に置換
+- [tests/unit/v460/test_264_kelly_criterion.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_264_kelly_criterion.py)
+  - `test_max_fraction_cap` の sample を `90/10` から `45/5` に圧縮
+- [tests/unit/v460/test_093_side_params.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_093_side_params.py)
+  - `test_sell_threshold_broader_than_buy` で不要な `FillTestConfig(...)` 構築を削除
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/unit/v460/test_websocket_client.py`
+  - `tests/unit/v460/test_264_kelly_criterion.py`
+  - `tests/unit/v460/test_093_side_params.py`
+  - 結果: `128 passed in 3.34s`
+- focused:
+  - `tests/unit/v460/test_sac_retrain_scheduler.py -k 'cache_invalidated_on_new_write'`
+  - 結果: `1 passed, 30 deselected in 0.66s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4643 passed, 13 warnings in 32.14s`
+
+### 更新後の上位
+1. `test_273_kill_time_limit_halt_untick_recovery_grace.py::TestKillTimeLimit::test_kill_expires_after_duration` call `0.29s`
+2. `test_websocket_client.py::TestCoincheckPrivateWS::test_dispatch_short_list_ignored` call `0.29s`
+3. `test_094_stale_order.py::TestSkipGateThresholdOffset::test_skip_gate_evaluate_accepts_threshold_offset` call `0.22s`
+4. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.21s`
+5. `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction` setup `0.18s`
+
+### 見立て
+- `sidecar cache` の sleep は完全に解消できた。
+- `websocket_client` は `AsyncMock` を軽くしてもなお上位なので、残コストは `_dispatch_private(...)` 本体側または `CoincheckPrivateWS(...)` 初期化にある可能性が高い。
+- broad の次の本命は `kill_time_limit`、`websocket_client`、`stale_order` の 3 本。
