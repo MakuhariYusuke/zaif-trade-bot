@@ -265,26 +265,12 @@ class TestSpreadAdaptiveSideEffective:
 
     def test_buy_gets_lower_boost(self) -> None:
         """buy 側は 1.5× boost → 0.05 * 1.5 = 0.075."""
-        cfg = FillTestConfig(
-            spread_adaptive_enabled=True,
-            narrow_spread_bps=10.0,
-            narrow_spread_boost=2.0,
-            narrow_spread_boost_buy=1.5,
-            spread_offset_ratio=0.05,
-        )
         # Buy: base 0.05, spread_adaptive 1.5× → 0.075
         expected_buy = 0.05 * 1.5
         assert expected_buy == pytest.approx(0.075)
 
     def test_sell_keeps_existing_boost(self) -> None:
         """sell 側は 2.0× boost → 0.12 * 2.0 = 0.24."""
-        cfg = FillTestConfig(
-            spread_adaptive_enabled=True,
-            narrow_spread_bps=10.0,
-            narrow_spread_boost=2.0,
-            narrow_spread_boost_sell=2.0,
-            spread_offset_ratio_sell=0.12,
-        )
         expected_sell = 0.12 * 2.0
         assert expected_sell == pytest.approx(0.24)
 

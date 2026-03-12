@@ -5203,3 +5203,10 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused `test_266_market_theory_protocol.py test_websocket_client.py test_094_stale_order.py`: `136 passed in 2.42s`
     - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 37.15s`
+- 2026-03-13: reduced another v460 setup wave by moving HeavyTradingEnv registry initialization behind the existing preinitialized-feature guard and replacing pure MakerPrice formula tests with lightweight stubs.
+  - changed `ztb/trading/environment/heavy_env/core.py` so `FeatureRegistry.initialize()` and `FeatureSetConfig()` only run when the env still needs registry-driven feature discovery
+  - refactored `test_258_as_reservation_vpin_continuous_protocol.py` to call AS reservation / VPIN guard mixin methods with `SimpleNamespace` stubs instead of constructing full `MakerPriceCalculator` instances for pure formula cases
+  - removed two unused `FillTestConfig(...)` constructions from `test_093_side_params.py`
+  - re-verified with:
+    - focused `test_258_as_reservation_vpin_continuous_protocol.py test_093_side_params.py test_356_g2_sac_blockers.py`: `105 passed in 4.53s`
+    - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 30.85s`
