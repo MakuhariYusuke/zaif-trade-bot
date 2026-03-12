@@ -37,6 +37,7 @@ from ztb.risk.sell_dynamic_kill import DynamicKillConfig, DynamicKillManager
 
 _FILL_TEST_CLI_SOURCE = read_source_text(FILL_TEST_CLI)
 _FILL_TEST_CLI_TREE = parse_source_tree(FILL_TEST_CLI)
+_FILL_CONFIG_FIELDS = FillTestConfig.__dataclass_fields__
 
 
 # ======================================================================
@@ -220,10 +221,9 @@ class TestBuyDynamicKillInvRelaxation:
 
     def test_config_inv_relaxation_fields_exist(self):
         """FillTestConfig に在庫連動緩和フィールドが存在すること."""
-        fields = FillTestConfig.__dataclass_fields__
-        assert fields["buy_dynamic_kill_inv_relaxation_enabled"].default is False
-        assert fields["buy_dynamic_kill_inv_relaxation_scale"].default == 0.5
-        assert fields["buy_dynamic_kill_inv_relaxation_max_bps"].default == 0.3  # 341# revert: 340#符号修正後の正常値
+        assert _FILL_CONFIG_FIELDS["buy_dynamic_kill_inv_relaxation_enabled"].default is False
+        assert _FILL_CONFIG_FIELDS["buy_dynamic_kill_inv_relaxation_scale"].default == 0.5
+        assert _FILL_CONFIG_FIELDS["buy_dynamic_kill_inv_relaxation_max_bps"].default == 0.3  # 341# revert: 340#符号修正後の正常値
 
 
 

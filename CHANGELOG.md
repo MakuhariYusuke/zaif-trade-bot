@@ -5134,3 +5134,10 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused `test_build_features_pipeline.py test_286_comprehensive_resolution.py::TestBuyDynamicKillInvRelaxation::test_config_inv_relaxation_fields_exist test_141_side_specific_models.py::TestEvaluatorSideDispatch::test_side_model_file_missing_uses_unified`: `16 passed in 2.20s`
     - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 35.14s`
+- 2026-03-13: trimmed another v460 env/setup wave and pushed more tests onto existing fast paths.
+  - patched `test_356_g2_sac_blockers.py` to skip `collect_garbage_aggressive()` during test teardown while still calling the real `env.close()` path
+  - cached `FillTestConfig.__dataclass_fields__` once per module in `test_286_comprehensive_resolution.py`
+  - switched `test_v460_core.py::test_load_parquet_select_cols` to the existing `max_rows` parquet fast path
+  - re-verified with:
+    - focused `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction test_286_comprehensive_resolution.py::TestBuyDynamicKillInvRelaxation::test_config_inv_relaxation_fields_exist test_v460_core.py::TestDataLoader::test_load_parquet_select_cols test_enricher_skip_gate.py::Test058RawLoadCache::test_orderbook_cache_invalidates_on_file_update test_enricher_skip_gate.py::Test058Integration`: `6 passed in 4.10s`
+    - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 42.27s` (run-to-run durations remain noisy)

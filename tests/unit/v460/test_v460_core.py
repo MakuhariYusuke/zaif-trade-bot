@@ -281,7 +281,7 @@ class TestDataLoader:
         return p
 
     def test_load_parquet(self, basic_parquet_path: Path) -> None:
-        loaded = load_parquet(basic_parquet_path)
+        loaded = load_parquet(basic_parquet_path, max_rows=3)
         assert len(loaded) == 3
         assert "close" in loaded.columns
 
@@ -291,7 +291,7 @@ class TestDataLoader:
         assert list(loaded["close"]) == [100, 101]
 
     def test_load_parquet_select_cols(self, selective_parquet_path: Path) -> None:
-        loaded = load_parquet(selective_parquet_path, feature_cols=["a", "b"])
+        loaded = load_parquet(selective_parquet_path, feature_cols=["a", "b"], max_rows=3)
         assert "a" in loaded.columns
         assert "close" in loaded.columns  # always kept
 

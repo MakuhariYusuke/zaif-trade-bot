@@ -5459,3 +5459,33 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 3. `test_286_comprehensive_resolution.py::TestBuyDynamicKillInvRelaxation::test_config_inv_relaxation_fields_exist` call `0.21s`
 4. `test_enricher_skip_gate.py::Test058RawLoadCache::test_orderbook_cache_invalidates_on_file_update` call `0.19s`
 5. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.16s`
+
+## 2026-03-13 / Wave: Heavy Env Teardown Trim and Additional Fast Paths
+
+### 実施内容
+- [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py)
+  - `training_env_bundle` で `env.memory_manager.collect_garbage_aggressive` を no-op 化し、`env.close()` の本体は通したまま teardown 固定費だけ削減
+- [tests/unit/v460/test_286_comprehensive_resolution.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_286_comprehensive_resolution.py)
+  - `FillTestConfig.__dataclass_fields__` を module-level cache 化
+- [tests/unit/v460/test_v460_core.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_v460_core.py)
+  - `test_load_parquet_select_cols` を `max_rows=3` fast-path に変更
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction`
+  - `tests/unit/v460/test_286_comprehensive_resolution.py::TestBuyDynamicKillInvRelaxation::test_config_inv_relaxation_fields_exist`
+  - `tests/unit/v460/test_v460_core.py::TestDataLoader::test_load_parquet_select_cols`
+  - `tests/unit/v460/test_enricher_skip_gate.py::Test058RawLoadCache::test_orderbook_cache_invalidates_on_file_update`
+  - `tests/unit/v460/test_enricher_skip_gate.py::Test058Integration`
+  - 結果: `6 passed in 4.10s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4620 passed, 13 warnings in 42.27s`
+
+### 見立て
+- focused では `test_356` setup が `0.69s` まで低下した一方、broad は run-to-run noise が大きい。
+- 次に効くのは `test_356` の env creation 本体より、`test_enricher_skip_gate` の real-data setup と `test_303_review_implementations.py` の単発重 call。 
