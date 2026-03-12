@@ -1,5 +1,5 @@
 # G2: SAC 4-seed Training — gamma=0.95 + reward-tuned 実験
-# 387# (予定): gamma=0.95 + ペナルティ縮小の複合効果検証
+# 387# 報酬関数分析レポート: gamma=0.95 + ペナルティ縮小の複合効果検証
 #
 # 使用方法:
 #   python scripts/v460/run_experiment.py \
@@ -10,7 +10,7 @@
 #   - hold_penalty_weight: 0.01 → 0.001 (過剰取引抑制)
 #   - consistency_penalty: -0.05 → -0.01 (トレンド転換対応改善)
 #   - confidence_penalty_threshold: 0.05 → 0.2 (過剰検出緩和)
-# 根拠: docs/v460/386_reward_analysis.md
+# 根拠: docs/v460/387_ph3_rpt_reward_analysis.md
 
 _base: configs/v460/base.yaml
 _gate: G2-train
@@ -56,7 +56,7 @@ environment:
   continuous_to_discrete_threshold: 0.10
   continuous_to_discrete_threshold_neg: -0.10
   # ---- behavior_optimization (EnvironmentConfig.behavior_optimization → reward_calculator) ----
-  # 386# 分析: PnL reward O(1-50 JPY) に対してペナルティが過大
+  # 387# 分析: PnL reward O(1-50 JPY) に対してペナルティが過大
   behavior_optimization:
     # P0-3: balance_penalty 縮小 (1.0 → 0.1)
     # パス: EnvironmentConfig.behavior_optimization → reward_calculator.balance_penalty

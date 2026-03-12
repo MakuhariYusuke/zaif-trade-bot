@@ -384,7 +384,9 @@
 | 387 | rpt | [387_ph3_rpt_reward_analysis.md](387_ph3_rpt_reward_analysis.md) | 報酬関数分析: ペナルティ過大問題, 4実験比較 (baseline/γ=0.95/reward-tuned/warm-start), **G2 PASS達成** |
 | 388 | plan | [388_ph3_plan_g3_pnl_preparation.md](388_ph3_plan_g3_pnl_preparation.md) | G3-pnl Gate 準備計画: 評価パイプライン構築, PF/MaxDD/Sharpe 計測, FAIL 時対策 |
 | 389 | rev | [389_ph3_rev_383_388_profit_systems_market_review.md](389_ph3_rev_383_388_profit_systems_market_review.md) | 383#-388# Profit-first 再整理: G2 PASS の artifact/curr threshold 整合, reward-PnL 逆相関, G3 二重実装回避, friction 未考慮リスクを点検 |
+| 390 | rev | [390_comprehensive_review_and_second_opinion.md](390_comprehensive_review_and_second_opinion.md) | Gemini second opinion: 384#-389# 総合レビュー, パイプライン修復の評価, G3 DRY原則警告, 500K/γ=0.99 提案 |
 | 391 | rpt | [391_fill_test_deep_dive_root_cause.md](391_fill_test_deep_dive_root_cause.md) | Fill Test 根本原因分析: sell tail 2.7x, EV confident-wrong, rapid-fire −0.43bps, offset ceiling 59%張付き, **P0施策で+100bps改善余地** |
+| 392 | resp | [392_ph3_resp_389_390_review_validity.md](392_ph3_resp_389_390_review_validity.md) | 389#/390# レビュー妥当性評価: P0-3 reward-PnL逆相関(corr=-0.38)を最重要指摘として採用, G3 checker新設撤回, 500K提案は時期尚早 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
