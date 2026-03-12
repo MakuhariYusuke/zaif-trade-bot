@@ -35,6 +35,9 @@ from tests.unit.v460._fill_test_source import (
 from ztb.metrics.fill_quality import FillRecord, detect_split_brain
 from ztb.risk.sell_dynamic_kill import DynamicKillConfig, DynamicKillManager
 
+_FILL_TEST_CLI_SOURCE = read_source_text(FILL_TEST_CLI)
+_FILL_TEST_CLI_TREE = parse_source_tree(FILL_TEST_CLI)
+
 
 # ======================================================================
 # 1. LockManager portalocker + zombie wait
@@ -164,8 +167,8 @@ class TestEventsStartStopGuarantee:
 
     def test_stop_event_logged_on_crash(self):
         """crash 時も stop イベントが記録されること (コード検査)."""
-        source = read_source_text(FILL_TEST_CLI)
-        parse_source_tree(FILL_TEST_CLI)  # syntax check
+        source = _FILL_TEST_CLI_SOURCE
+        assert isinstance(_FILL_TEST_CLI_TREE, ast.AST)
 
         assert 'not stop_reason.startswith("crash:")' not in source, (
             "286# fix: crash 時も stop イベントを記録するべき"
@@ -217,10 +220,10 @@ class TestBuyDynamicKillInvRelaxation:
 
     def test_config_inv_relaxation_fields_exist(self):
         """FillTestConfig に在庫連動緩和フィールドが存在すること."""
-        cfg = FillTestConfig()
-        assert cfg.buy_dynamic_kill_inv_relaxation_enabled is False
-        assert cfg.buy_dynamic_kill_inv_relaxation_scale == 0.5
-        assert cfg.buy_dynamic_kill_inv_relaxation_max_bps == 0.3  # 341# revert: 340#符号修正後の正常値
+        fields = FillTestConfig.__dataclass_fields__
+        assert fields["buy_dynamic_kill_inv_relaxation_enabled"].default is False
+        assert fields["buy_dynamic_kill_inv_relaxation_scale"].default == 0.5
+        assert fields["buy_dynamic_kill_inv_relaxation_max_bps"].default == 0.3  # 341# revert: 340#符号修正後の正常値
 
 
 

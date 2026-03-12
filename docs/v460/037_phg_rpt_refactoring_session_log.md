@@ -5428,3 +5428,34 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 3. `test_141_side_specific_models.py::TestEvaluatorSideDispatch::test_side_model_file_missing_uses_unified` setup `0.21s`
 4. `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_create_training_env_pipeline` teardown `0.20s`
 5. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.14s`
+
+## 2026-03-12 / Wave: Config Default Checks and Proxy-Feature Setup Trim
+
+### 実施内容
+- [tests/unit/v460/test_286_comprehensive_resolution.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_286_comprehensive_resolution.py)
+  - `FillTestConfig()` 実初期化をやめ、`__dataclass_fields__` の default 値で `buy_dynamic_kill_inv_relaxation_*` を検証
+- [tests/unit/v460/test_141_side_specific_models.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_141_side_specific_models.py)
+  - `test_side_model_file_missing_uses_unified` を pickle save/load から切り離し、`_load_gate_from_path(...)` / `_read_model_hash(...)` patch で constructor fallback だけを検証
+- [tests/unit/v460/test_build_features_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_build_features_pipeline.py)
+  - synthetic proxy rows を `96/48/96` に短縮して window 条件を維持したまま setup 固定費を削減
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `tests/unit/v460/test_286_comprehensive_resolution.py::TestBuyDynamicKillInvRelaxation::test_config_inv_relaxation_fields_exist`
+  - `tests/unit/v460/test_141_side_specific_models.py::TestEvaluatorSideDispatch::test_side_model_file_missing_uses_unified`
+  - 結果: `16 passed in 2.20s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4620 passed, 13 warnings in 35.14s`
+
+### 更新後の上位
+1. `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction` setup `0.98s`
+2. `test_141_side_specific_models.py::TestEvaluatorSideDispatch::test_side_model_file_missing_uses_unified` setup `0.30s`
+3. `test_286_comprehensive_resolution.py::TestBuyDynamicKillInvRelaxation::test_config_inv_relaxation_fields_exist` call `0.21s`
+4. `test_enricher_skip_gate.py::Test058RawLoadCache::test_orderbook_cache_invalidates_on_file_update` call `0.19s`
+5. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.16s`

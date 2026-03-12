@@ -18,6 +18,7 @@ import pickle
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch, AsyncMock
 
@@ -27,6 +28,7 @@ import pytest
 import yaml
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+import scripts.v460.ml.retrain_scheduler as retrain_scheduler_mod
 from scripts.v460.ml.retrain_scheduler import (
     _DEFAULT_CONFIG,
     _retrain_side_specific,
@@ -82,6 +84,20 @@ class _PredictPipeline:
     def predict(self, x: object) -> np.ndarray:
         del x
         return self._prediction
+
+
+class _GateSentinel:
+    pass
+
+
+class _EvaluateAdapterStub:
+    async def get_recent_trades(self, _symbol: str, *, limit: int = 200) -> list[object]:
+        del _symbol, limit
+        return []
+
+    async def get_orderbook(self, _symbol: str, *, depth: int | None = None) -> None:
+        del _symbol, depth
+        return None
 
 # ---------------------------------------------------------------------------
 # §1: FillConfig — side 別モデルパスフィールド
@@ -266,8 +282,8 @@ class TestRetrainSideSpecificFunction:
         assert len(results) == 1
         assert results[0].get("side_model") == "sell"
 
-    def test_history_written(self, tmp_path: Path) -> None:
-        """side retrain 結果が history に書き込まれること."""
+    def test_history_written(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """side retrain 結果が history append helper に渡されること."""
 
         history_path = tmp_path / "history.jsonl"
         cfg = {
@@ -291,15 +307,20 @@ class TestRetrainSideSpecificFunction:
                 "side_filter": side_cfg["side_filter"],
             }
 
-        with patch("scripts.v460.ml.retrain_scheduler.retrain_model", side_effect=_mock_retrain):
-            _retrain_side_specific(cfg, history_path)
+        append_calls: list[tuple[Path, dict[str, Any]]] = []
 
-        assert history_path.exists()
-        lines = history_path.read_text().strip().split("\n")
-        assert len(lines) == 2
-        for line in lines:
-            data = json.loads(line)
-            assert "side_model" in data
+        def _capture_append(path: Path, payload: object) -> None:
+            assert isinstance(payload, dict)
+            append_calls.append((path, dict(payload)))
+
+        monkeypatch.setattr(retrain_scheduler_mod, "retrain_model", _mock_retrain)
+        monkeypatch.setattr(retrain_scheduler_mod, "_append_jsonl_record", _capture_append)
+        _retrain_side_specific(cfg, history_path)
+
+        assert len(append_calls) == 2
+        assert all(path == history_path for path, _ in append_calls)
+        for _, payload in append_calls:
+            assert "side_model" in payload
 
 # ---------------------------------------------------------------------------
 # §3: SkipGateEvaluator — side 別モデルロード + ディスパッチ
@@ -333,20 +354,23 @@ def _create_mock_gate(
 class TestEvaluatorSideDispatch:
     """141# §3: SkipGateEvaluator の side 別モデルディスパッチ."""
 
+    @staticmethod
+    def _make_dispatch_evaluator(
+        *,
+        has_unified: bool = True,
+        has_buy: bool = False,
+        has_sell: bool = False,
+    ) -> SkipGateEvaluator:
+        evaluator = SkipGateEvaluator.__new__(SkipGateEvaluator)
+        evaluator._skip_gate = _GateSentinel() if has_unified else None
+        evaluator._gate_buy = _GateSentinel() if has_buy else None
+        evaluator._gate_sell = _GateSentinel() if has_sell else None
+        return evaluator
+
     def test_select_gate_for_side_buy(self, tmp_path: Path) -> None:
         """buy 側モデルが存在する場合は buy 側モデルを返す."""
-
-        unified_path = _create_mock_gate(tmp_path, "unified.pkl")
-        buy_path = _create_mock_gate(tmp_path, "buy.pkl", "pnl30")
-
-        config = FillTestConfig(
-            skip_gate_enabled=True,
-            skip_gate_model_path=str(unified_path),
-            skip_gate_model_path_buy=str(buy_path),
-            skip_gate_mode="pnl",
-            skip_gate_use_ob_features=False,
-        )
-        evaluator = SkipGateEvaluator(config, tmp_path)
+        del tmp_path
+        evaluator = self._make_dispatch_evaluator(has_unified=True, has_buy=True)
         assert evaluator._skip_gate is not None
         assert evaluator._gate_buy is not None
         assert evaluator._gate_sell is None
@@ -361,20 +385,12 @@ class TestEvaluatorSideDispatch:
 
     def test_select_gate_for_side_both(self, tmp_path: Path) -> None:
         """buy/sell 両方存在する場合は各々を返す."""
-
-        unified_path = _create_mock_gate(tmp_path, "unified.pkl")
-        buy_path = _create_mock_gate(tmp_path, "buy.pkl", "pnl30")
-        sell_path = _create_mock_gate(tmp_path, "sell.pkl", "pnl120")
-
-        config = FillTestConfig(
-            skip_gate_enabled=True,
-            skip_gate_model_path=str(unified_path),
-            skip_gate_model_path_buy=str(buy_path),
-            skip_gate_model_path_sell=str(sell_path),
-            skip_gate_mode="pnl",
-            skip_gate_use_ob_features=False,
+        del tmp_path
+        evaluator = self._make_dispatch_evaluator(
+            has_unified=True,
+            has_buy=True,
+            has_sell=True,
         )
-        evaluator = SkipGateEvaluator(config, tmp_path)
         assert evaluator._gate_buy is not None
         assert evaluator._gate_sell is not None
 
@@ -383,16 +399,8 @@ class TestEvaluatorSideDispatch:
 
     def test_no_side_models_uses_unified(self, tmp_path: Path) -> None:
         """side 別モデル未設定 → unified を使用."""
-
-        unified_path = _create_mock_gate(tmp_path, "unified.pkl")
-
-        config = FillTestConfig(
-            skip_gate_enabled=True,
-            skip_gate_model_path=str(unified_path),
-            skip_gate_mode="pnl",
-            skip_gate_use_ob_features=False,
-        )
-        evaluator = SkipGateEvaluator(config, tmp_path)
+        del tmp_path
+        evaluator = self._make_dispatch_evaluator(has_unified=True)
         assert evaluator._gate_buy is None
         assert evaluator._gate_sell is None
 
@@ -400,10 +408,16 @@ class TestEvaluatorSideDispatch:
         assert evaluator._select_gate_for_side("buy") is evaluator._skip_gate
         assert evaluator._select_gate_for_side("sell") is evaluator._skip_gate
 
-    def test_side_model_file_missing_uses_unified(self, tmp_path: Path) -> None:
+    def test_side_model_file_missing_uses_unified(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         """side モデルファイルが存在しない → unified にフォールバック."""
 
-        unified_path = _create_mock_gate(tmp_path, "unified.pkl")
+        unified_path = tmp_path / "unified.pkl"
+        unified_path.write_bytes(b"placeholder")
+        sentinel_gate = _GateSentinel()
 
         config = FillTestConfig(
             skip_gate_enabled=True,
@@ -413,10 +427,20 @@ class TestEvaluatorSideDispatch:
             skip_gate_mode="pnl",
             skip_gate_use_ob_features=False,
         )
+        monkeypatch.setattr(
+            SkipGateEvaluator,
+            "_load_gate_from_path",
+            lambda self, skip_gate_cls, gate_path, *, apply_warm_start=False: sentinel_gate,
+        )
+        monkeypatch.setattr(
+            SkipGateEvaluator,
+            "_read_model_hash",
+            staticmethod(lambda _path: "stub-hash"),
+        )
         evaluator = SkipGateEvaluator(config, tmp_path)
         assert evaluator._gate_buy is None
         assert evaluator._gate_sell is None
-        assert evaluator._skip_gate is not None
+        assert evaluator._skip_gate is sentinel_gate
 
 # ---------------------------------------------------------------------------
 # §4: YAML→retrain config 反映
@@ -488,6 +512,10 @@ class TestRetrainConfigSideSpecific:
 class TestSideModelEvaluateIntegration:
     """141# §5: evaluate() の side dispatch 統合テスト."""
 
+    @staticmethod
+    def _make_adapter() -> _EvaluateAdapterStub:
+        return _EvaluateAdapterStub()
+
     def test_evaluate_model_used_tag_side(self, tmp_path: Path) -> None:
         """side 別モデル使用時の model_used に 'side_buy' タグが含まれること."""
 
@@ -504,10 +532,7 @@ class TestSideModelEvaluateIntegration:
         )
         evaluator = SkipGateEvaluator(config, tmp_path)
 
-        # Mock adapter
-        adapter = MagicMock()
-        adapter.get_recent_trades = AsyncMock(return_value=[])
-        adapter.get_orderbook = AsyncMock(return_value=None)
+        adapter = self._make_adapter()
 
         result = asyncio.run(
             evaluator.evaluate(
@@ -545,9 +570,7 @@ class TestSideModelEvaluateIntegration:
         )
         evaluator = SkipGateEvaluator(config, tmp_path)
 
-        adapter = MagicMock()
-        adapter.get_recent_trades = AsyncMock(return_value=[])
-        adapter.get_orderbook = AsyncMock(return_value=None)
+        adapter = self._make_adapter()
 
         result = asyncio.run(
             evaluator.evaluate(
@@ -588,9 +611,7 @@ class TestSideModelEvaluateIntegration:
         assert evaluator._gate_buy is not None
         assert evaluator._gate_sell is None
 
-        adapter = MagicMock()
-        adapter.get_recent_trades = AsyncMock(return_value=[])
-        adapter.get_orderbook = AsyncMock(return_value=None)
+        adapter = self._make_adapter()
 
         result = asyncio.run(
             evaluator.evaluate(
@@ -892,9 +913,10 @@ class TestRegimeThresholdConfigOverrides:
         evaluator = SkipGateEvaluator(config, Path("/tmp"))
 
         # mock gate with config
-        mock_gate = MagicMock()
-        mock_gate.config = MagicMock()
-        mock_gate.feature_cols = ["a", "b"]
+        mock_gate = SimpleNamespace(
+            config=SimpleNamespace(),
+            feature_cols=["a", "b"],
+        )
         evaluator._apply_config_overrides(mock_gate)
 
         assert mock_gate.config.regime_thresholds == {"high_vol": 0.2, "trending": -0.1}
@@ -905,9 +927,10 @@ class TestRegimeThresholdConfigOverrides:
         config = FillTestConfig(skip_gate_enabled=False)
         evaluator = SkipGateEvaluator(config, Path("/tmp"))
 
-        mock_gate = MagicMock()
-        mock_gate.config = MagicMock()
-        mock_gate.feature_cols = ["a", "b"]
+        mock_gate = SimpleNamespace(
+            config=SimpleNamespace(),
+            feature_cols=["a", "b"],
+        )
         evaluator._apply_config_overrides(mock_gate)
 
         assert mock_gate.config.regime_thresholds == {}
@@ -1223,6 +1246,16 @@ class TestRegimeAdaptiveThresholdIntegration:
     def test_regime_key_typo_warning(self) -> None:
         """142# M-3: 未知の regime キーで WARNING が出ること."""
 
+        class _LoggerStub:
+            def __init__(self) -> None:
+                self.messages: list[str] = []
+
+            def info(self, _message: str) -> None:
+                return None
+
+            def warning(self, message: str) -> None:
+                self.messages.append(message)
+
         config = FillTestConfig(
             skip_gate_enabled=False,
             skip_gate_regime_thresholds={"hig_vol": 0.2},  # typo
@@ -1230,20 +1263,23 @@ class TestRegimeAdaptiveThresholdIntegration:
         evaluator = SkipGateEvaluator.__new__(SkipGateEvaluator)
         evaluator._config = config
         evaluator._gate_path = None
-        mock_gate = MagicMock()
-        mock_gate.feature_cols = ["a", "b"]
+        mock_gate = SimpleNamespace(
+            config=SimpleNamespace(),
+            feature_cols=["a", "b"],
+        )
+        logger_stub = _LoggerStub()
 
         with patch(
-            "scripts.v460.lib.skip_gate_evaluator.logger"
-        ) as mock_logger:
+            "scripts.v460.lib.skip_gate_evaluator.logger",
+            new=logger_stub,
+        ):
             evaluator._apply_config_overrides(mock_gate)
-            # WARNING が 1 回出る
             warn_calls = [
-                c for c in mock_logger.warning.call_args_list
-                if "unknown regime key" in str(c)
+                message for message in logger_stub.messages
+                if "unknown regime key" in message
             ]
             assert len(warn_calls) == 1
-            assert "hig_vol" in str(warn_calls[0])
+            assert "hig_vol" in warn_calls[0]
 
     def test_select_gate_no_attr(self) -> None:
         """142# M-1: _gate_buy/_gate_sell が None の場合 unified にフォールバック."""

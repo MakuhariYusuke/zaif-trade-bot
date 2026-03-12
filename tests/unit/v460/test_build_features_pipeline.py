@@ -47,9 +47,9 @@ def _make_ohlcv(n: int = 200) -> pd.DataFrame:
     })
 
 
-_PROXY_DEFAULT_ROWS = 120
-_PROXY_ZERO_VOLUME_ROWS = 80
-_PROXY_WINDOW_VARIANT_ROWS = 120
+_PROXY_DEFAULT_ROWS = 96
+_PROXY_ZERO_VOLUME_ROWS = 48
+_PROXY_WINDOW_VARIANT_ROWS = 96
 
 
 @pytest.fixture(scope="module")
