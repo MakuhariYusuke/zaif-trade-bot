@@ -4801,6 +4801,97 @@ Date: 2026-03-12
 - [tests/integration/test_market_regime_adaptation_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/integration/test_market_regime_adaptation_integration.py) の setup 共有化の継続
 - environment 系の [tests/unit/environment/test_forced_actions.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_forced_actions.py) / [tests/unit/environment/test_pnl_invariants.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_pnl_invariants.py) に対する shared env fixture 化
 
+## 2026-03-12 / Session 037-109
+
+### 概要
+未整理だった成果物の増分について、ディレクトリを段階的に高層化した。あわせて broad 上位だった `target_entropy` と persistence 周辺をもう一段軽量化した。
+
+### 実施内容
+- [ztb/training/entropy_temperature.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/entropy_temperature.py)
+  - `alpha_optimizer` を lazy property 化した。
+  - module 末尾に残っていた手動実行用の smoke block を削除した。
+- [ztb/training/unified_optimizer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/unified_optimizer.py)
+  - `OptimizationResultPersistence` を年月階層保存に変更した。
+  - 新規保存先は `optimization_results/YYYY/YYYY-MM/...` 形式にした。
+- [tests/unit/training/test_target_entropy.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/test_target_entropy.py)
+  - 反復回数を最小限に縮め、`print(...)` と `__main__` 実行経路を削除した。
+  - `convergence_simulation` は出力確認ではなく state assertion に変更した。
+- ディレクトリ整理
+  - [docs/v460/reviews/2026-03/382_ph3_rev_379_sb3_stub_and_g2_pipeline_review.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/reviews/2026-03/382_ph3_rev_379_sb3_stub_and_g2_pipeline_review.md)
+  - [docs/v460/reviews/2026-03/383_gemini_sb3_pipeline_and_codex_review.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/reviews/2026-03/383_gemini_sb3_pipeline_and_codex_review.md)
+  - [optimization_results/2026/2026-03/integration_test_v0091_20260311.json](/mnt/c/Users/Admin/dev/zaif-trade-bot/optimization_results/2026/2026-03/integration_test_v0091_20260311.json)
+  - [optimization_results/2026/2026-03/workflow_test_v0092_20260311.json](/mnt/c/Users/Admin/dev/zaif-trade-bot/optimization_results/2026/2026-03/workflow_test_v0092_20260311.json)
+  - [optimization_results/2026/2026-03/integration_test_v0093_20260312.json](/mnt/c/Users/Admin/dev/zaif-trade-bot/optimization_results/2026/2026-03/integration_test_v0093_20260312.json)
+  - [optimization_results/2026/2026-03/workflow_test_v0094_20260312.json](/mnt/c/Users/Admin/dev/zaif-trade-bot/optimization_results/2026/2026-03/workflow_test_v0094_20260312.json)
+  - [docs/v460/index.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/index.md) と [optimization_results/index.json](/mnt/c/Users/Admin/dev/zaif-trade-bot/optimization_results/index.json) は新パスへ更新した。
+
+### 検証結果
+- `python -m pytest tests/unit/training/test_target_entropy.py tests/unit/training/test_unified_optimizer.py -q --no-cov --tb=short --show-capture=no --durations=20`
+  - `37 passed in 6.34s`
+- `python -m pytest tests/training/ tests/integration/ tests/unit/environment/ tests/unit/analysis/ tests/unit/training/ -q --no-cov --tb=short --show-capture=no --maxfail=5 --durations=30`
+  - `999 passed, 27 skipped, 36 warnings in 70.52s`
+  - 再計測では `72.26s` の run もあり、cold-start/import の揺れはまだ残る
+
+### 所見
+- `optimization_results` はこれで「今後増える成果物」から自然に年月階層へ移行できる状態になった。
+- `docs/v460` も review 系から `reviews/YYYY-MM/` に切り出し始めたので、今後の追加分を同じルールに寄せやすくなった。
+- broad の支配要因は依然として `target_entropy` の update-heavy test、`signal_guidance` setup、`market_regime_adaptation` setup、environment 系 invariant 群。
+
+## 2026-03-12 / Session 037 Follow-up: Full-Suite Blocker Hardening
+
+### 目的
+- `prompts/codex_test_cleanup_and_perf.md` の phase-5 残課題を進め、`tests/` broad を止めていた non-`v460` blocker を低リスクで削減する。
+- `v460` filtered broad の green を維持する。
+
+### 実施内容
+- `SelfSupervisedTrainer` synthetic data 生成の broad-suite 耐性を強化
+  - [ztb/training/unified_trainer/algorithms/self_supervised_trainer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/unified_trainer/algorithms/self_supervised_trainer.py)
+  - `torch.randn(...)` の戻りが degraded stub / `MagicMock` でも shape が壊れないよう `_make_synthetic_tensor()` を追加
+  - [tests/training/unified_trainer/test_algorithms.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/unified_trainer/test_algorithms.py) に回帰を追加
+- timing / autograd / brittle mock の broad blocker を修正
+  - [ztb/multimodal/optimization/quantization.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/multimodal/optimization/quantization.py)
+    - `avg_time <= 0` で `fps=inf`
+  - [ztb/training/gradient_accumulation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/gradient_accumulation.py)
+    - backward を `torch.enable_grad()` 内で実行
+  - [tests/unit/cache/test_sqlite_cache.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/cache/test_sqlite_cache.py)
+    - TTL test を `try/finally` で close 保証
+    - mocked clock side_effect を 4 tick に拡張
+- feature / config drift を修正
+  - [ztb/features/unified_feature.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/features/unified_feature.py)
+    - news sentiment stack 不在時も neutral 列を返すように変更
+  - [tests/unit/v460/test_385_config_audit.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_385_config_audit.py)
+    - `reward_settings` を top-level 固定ではなく `environment.reward_settings` 優先に追随
+
+### 検証
+- targeted blocker bundle
+  - `tests/unit/core/features/test_v4_feature_extractor.py::TestV4FeatureExtractor::test_news_sentiment_integration`
+  - `tests/multimodal/test_multimodal_optimization.py::TestQuantizationUtils::test_measure_inference_time`
+  - `tests/training/test_gradient_accumulation.py`
+  - `tests/unit/cache/test_sqlite_cache.py::TestSQLiteCache::test_set_with_ttl`
+  - `tests/training/unified_trainer/test_algorithms.py`
+  - 結果: `43 passed, 3 skipped, 1 warning in 6.36s`
+- prompt-origin subset
+  - `tests/unit/action_validation/test_signal_guidance_system.py`
+  - `tests/unit/action_validation/test_signal_performance_analyzer.py`
+  - `tests/unit/algorithms/test_ab_test_framework.py`
+  - `tests/integration/test_custom_ppo_integration.py`
+  - `tests/legacy_tests/training/v430_1000_steps_legacy.py`
+  - 結果: `36 passed, 11 skipped, 15 subtests passed in 3.71s`
+- filtered broad `tests/unit/v460/`
+  - 結果: `4620 passed, 13 warnings in 35.76s`
+
+### full-suite 状況
+- `tests/ -x --no-cov ...` で再走査し、以前の early blockers
+  - `test_trend_and_curriculum_integration`
+  - `test_signal_guidance_integration`
+  - `test_algorithms::test_load_data_synthetic`
+  - `test_multimodal_optimization::test_measure_inference_time`
+  - `test_gradient_accumulation::*`
+  - `test_sqlite_cache::test_set_with_ttl`
+  を解消済み。
+- 次の blocker として [tests/unit/core/features/test_v4_feature_extractor.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/core/features/test_v4_feature_extractor.py) `test_news_sentiment_integration` を検出し、この batch で修正した。
+- 2 回目の `tests/ -x` は 34% 超まで追加 failure なしで進行したが、全量完走はこの batch では未了。
+
 ## 2026-03-12 / Session 379-SB3-Critical
 
 ### 概要

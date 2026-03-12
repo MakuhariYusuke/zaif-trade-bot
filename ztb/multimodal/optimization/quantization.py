@@ -203,11 +203,12 @@ class QuantizationUtils:
 
         avg_time = sum(times) / len(times)
         std_time = torch.tensor(times).std().item()
+        fps = float("inf") if avg_time <= 0.0 else 1.0 / avg_time
 
         return {
             "avg_inference_time": avg_time,
             "std_inference_time": std_time,
-            "fps": 1.0 / avg_time,
+            "fps": fps,
         }
 
     @staticmethod

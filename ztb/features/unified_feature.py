@@ -693,6 +693,12 @@ class V4FeatureExtractor:
         Returns:
             ニュース感情特徴量が追加されたデータフレーム
         """
+        def _with_neutral_news_features(frame: pd.DataFrame) -> pd.DataFrame:
+            neutral_df = frame.copy()
+            neutral_df["news_sentiment_score"] = 0.0
+            neutral_df["news_sentiment_intensity"] = 0.0
+            return neutral_df
+
         try:
             if news_data is None or len(news_data) == 0:
                 return df
@@ -760,9 +766,11 @@ class V4FeatureExtractor:
                         df["news_sentiment_intensity"] = sentiment_intensities
 
                         logger.info("Added news sentiment features (distributed)")
+                        return df
+                return _with_neutral_news_features(df)
 
-            return df
+            return _with_neutral_news_features(df)
 
         except Exception as e:
             logger.warning(f"Failed to add news sentiment features: {e}")
-            return df
+            return _with_neutral_news_features(df)

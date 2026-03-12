@@ -116,23 +116,23 @@ class TestSQLiteCache:
         """Test set with custom TTL."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path = Path(tmp_dir) / "test.db"
-            with patch(
-                "ztb.cache.sqlite_cache.time.time",
-                side_effect=[1000.0, 1000.0, 1001.0],
-            ):
-                cache = SQLiteCache(db_path=db_path, enable_memory_cache=False)
+            cache = SQLiteCache(db_path=db_path, enable_memory_cache=False)
+            try:
+                with patch(
+                    "ztb.cache.sqlite_cache.time.time",
+                    side_effect=[1000.0, 1000.0, 1001.0, 1001.0],
+                ):
+                    cache.set("ttl_key", "ttl_value", ttl_sec=1)
 
-                cache.set("ttl_key", "ttl_value", ttl_sec=1)
+                    # Should exist immediately
+                    result = cache.get("ttl_key")
+                    assert result == "ttl_value"
 
-                # Should exist immediately
-                result = cache.get("ttl_key")
-                assert result == "ttl_value"
-
-                # Expire exactly on the TTL boundary
-                result = cache.get("ttl_key")
-                assert result is None
-
-            cache.close()
+                    # Expire exactly on the TTL boundary
+                    result = cache.get("ttl_key")
+                    assert result is None
+            finally:
+                cache.close()
 
     def test_touch(self):
         """Test touch method."""

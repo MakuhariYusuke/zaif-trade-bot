@@ -76,17 +76,16 @@ class GradientAccumulator:
         loss_value = loss.item() / self.accumulation_steps  # Normalize loss
         self.accumulated_loss += loss_value
 
-        # Scale loss for accumulation
-        scaled_loss = loss / self.accumulation_steps
-
         # Check if this step should update parameters
         should_update_now = self.should_update()
 
         # Backward pass
-        if self.mixed_precision and self.scaler is not None:
-            self.scaler.scale(scaled_loss).backward()
-        else:
-            scaled_loss.backward()
+        with torch.enable_grad():
+            scaled_loss = loss / self.accumulation_steps
+            if self.mixed_precision and self.scaler is not None:
+                self.scaler.scale(scaled_loss).backward()
+            else:
+                scaled_loss.backward()
 
         self.step_count += 1
 

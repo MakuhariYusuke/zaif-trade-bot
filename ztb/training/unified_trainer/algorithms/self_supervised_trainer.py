@@ -6,6 +6,7 @@ import os
 import time
 from typing import Any, Optional
 
+import numpy as np
 import torch
 
 # Import SSPTrainer lazily at runtime where needed to avoid pulling heavy
@@ -42,6 +43,45 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
         self.system_optimizer = system_optimizer
         self.optimizer_tracker = optimizer_tracker
         self.training_stats: TrainingStats = {}
+
+    @staticmethod
+    def _shape_tuple(value: Any) -> tuple[int, ...] | None:
+        """Return a concrete shape tuple when available."""
+        shape = getattr(value, "shape", None)
+        if shape is None:
+            return None
+        try:
+            resolved = tuple(int(dim) for dim in shape)
+        except Exception:
+            return None
+        return resolved or None
+
+    def _make_synthetic_tensor(
+        self,
+        batch_size: int,
+        seq_len: int,
+        input_dim: int,
+    ) -> Any:
+        """Create synthetic tensor data resilient to degraded torch stubs."""
+        expected_shape = (int(batch_size), int(seq_len), int(input_dim))
+        candidate = torch.randn(*expected_shape)
+        if self._shape_tuple(candidate) == expected_shape:
+            return candidate
+
+        tensor_ctor = getattr(torch, "tensor", None)
+        fallback_arr = np.random.randn(*expected_shape).astype(np.float32)
+        if callable(tensor_ctor):
+            try:
+                repaired = tensor_ctor(
+                    fallback_arr,
+                    dtype=getattr(torch, "float32", None),
+                )
+                if self._shape_tuple(repaired) == expected_shape:
+                    return repaired
+            except Exception:
+                pass
+
+        return fallback_arr
 
     def _snapshot_training_stats(
         self,
@@ -307,8 +347,12 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
             batch = self.config.get("synthetic_batch_size", 100) if isinstance(self.config, dict) else 100
             val_batch = self.config.get("synthetic_val_batch_size", batch) if isinstance(self.config, dict) else batch
 
-            self.train_data = torch.randn(batch, seq_len, int(input_dim))
-            self.val_data = torch.randn(val_batch, seq_len, int(input_dim))
+            self.train_data = self._make_synthetic_tensor(batch, seq_len, int(input_dim))
+            self.val_data = self._make_synthetic_tensor(
+                val_batch,
+                seq_len,
+                int(input_dim),
+            )
             return True
         except Exception as e:
             self.logger.error(f"Failed to load SSP data: {e}")

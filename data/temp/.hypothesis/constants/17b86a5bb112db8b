@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\training\policy_utils.py
-# hypothesis_version: 6.140.3
-
-[0.0, 0.5, '__getitem__', 'action_net', 'bias', 'ent_coef', 'mlp_extractor', 'policy_net']

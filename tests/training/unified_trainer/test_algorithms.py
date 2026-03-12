@@ -260,6 +260,25 @@ class TestSelfSupervisedTrainer:
         assert trainer.val_data.shape == (5, 75, 156)
         mock_load_csv.assert_not_called()
 
+    @patch(
+        "ztb.training.unified_trainer.algorithms.self_supervised_trainer.DataLoader.load_csv_strict"
+    )
+    @patch("ztb.training.unified_trainer.algorithms.self_supervised_trainer.torch.randn")
+    def test_load_data_synthetic_falls_back_when_randn_is_degraded(
+        self,
+        mock_randn,
+        mock_load_csv,
+        basic_config,
+    ):
+        """Synthetic data generation should survive a degraded torch stub."""
+        mock_randn.return_value = MagicMock(shape=MagicMock())
+
+        trainer = SelfSupervisedTrainer(basic_config)
+        assert trainer._load_data() is True
+        assert tuple(trainer.train_data.shape) == (100, 100, 156)
+        assert tuple(trainer.val_data.shape) == (100, 100, 156)
+        mock_load_csv.assert_not_called()
+
     @patch("pandas.read_csv")
     @patch(
         "ztb.training.unified_trainer.algorithms.self_supervised_trainer.DataLoader.load_csv_strict"

@@ -245,8 +245,11 @@ class TestRewardSettingsPropagation:
         cfg = load_config(
             "configs/v460/experiments/g2_sac_gamma095_reward_tuned.yaml"
         )
-        rs = cfg.get("reward_settings")
-        assert rs is not None, "reward_settings section missing from reward-tuned YAML"
+        env = cfg.get("environment", {})
+        rs = env.get("reward_settings") or cfg.get("reward_settings")
+        assert rs is not None, (
+            "reward_settings section missing from reward-tuned YAML/environment"
+        )
         assert isinstance(rs, dict)
         # hold_penalty_weight は直接キーなので reward_settings に存在
         assert rs.get("hold_penalty_weight") == 0.001, (

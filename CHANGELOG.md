@@ -5004,6 +5004,19 @@ python scripts/unified_trainer.py \
   - focused `test_sac_retrain_scheduler.py test_sidecar_sac_integration.py`: `90 passed in 2.34s`
   - filtered broad `tests/unit/v460/`: `4579 passed, 13 warnings in 34.91s`
 
+- Continued phase-5 full-suite cleanup and hardened remaining non-`v460` blockers while keeping `v460` green:
+  - made [ztb/training/unified_trainer/algorithms/self_supervised_trainer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/unified_trainer/algorithms/self_supervised_trainer.py) synthetic tensor creation resilient to degraded `torch.randn` states, and added a regression in [tests/training/unified_trainer/test_algorithms.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/unified_trainer/test_algorithms.py)
+  - guarded zero-duration timing in [ztb/multimodal/optimization/quantization.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/multimodal/optimization/quantization.py) so `fps` no longer divides by zero on coarse timers
+  - wrapped gradient scaling/backward in `torch.enable_grad()` in [ztb/training/gradient_accumulation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/gradient_accumulation.py) to survive leaked global `no_grad` state from broad-suite neighbors
+  - stabilized TTL cleanup in [tests/unit/cache/test_sqlite_cache.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/cache/test_sqlite_cache.py) by guaranteeing `cache.close()` and extending mocked clock values
+  - added neutral fallback `news_sentiment_score` / `news_sentiment_intensity` columns in [ztb/features/unified_feature.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/features/unified_feature.py) when the multimodal news stack is unavailable
+  - updated [tests/unit/v460/test_385_config_audit.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_385_config_audit.py) to follow the current `environment.reward_settings` contract in `g2_sac_gamma095_reward_tuned.yaml`
+- Re-verified current state with:
+  - focused blockers: `43 passed, 3 skipped, 1 warning in 6.36s`
+  - prompt-origin subset: `36 passed, 11 skipped, 15 subtests passed in 3.71s`
+  - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 35.76s`
+  - full `tests/ -x` now advances past the earlier 15% failure point; the first next blocker was `test_v4_feature_extractor::test_news_sentiment_integration`, and that was fixed in this batch
+
 - 2026-03-11: closed remaining `prompts/codex_test_cleanup_and_perf.md` cleanup items for safe skip/legacy handling and test helper reuse.
   - added shared `write_yaml_file` fixture in `tests/conftest.py` and reused it in config/scheduler/v460 YAML setup tests
   - moved `test_custom_ppo_integration.py` to an import-safe module-level skip and marked it `integration`/`slow`
