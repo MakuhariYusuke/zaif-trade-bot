@@ -8,19 +8,12 @@ C: VG sell-side 補完 (velocity_bps ベース)
 from __future__ import annotations
 
 import pytest
-import yaml
 
 from scripts.v460.lib.fast_fill_defense import FastFillDefense
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
 from scripts.v460.lib.maker_price import MakerPriceCalculator
-
-
-def _yaml_mapping(yaml_text: str) -> dict[str, object]:
-    data = yaml.safe_load(yaml_text)
-    if not isinstance(data, dict):
-        raise TypeError("expected YAML mapping")
-    return data
+from tests.unit.v460._yaml_test_helpers import parse_yaml_mapping
 
 
 # ============================================================
@@ -50,7 +43,7 @@ class TestLossCooldownConfig:
   loss_cooldown_interval_mult: 3.0
   one_sided_balance_rescue_offset: false
 """
-        data = _yaml_mapping(yaml_str)
+        data = parse_yaml_mapping(yaml_str)
         cfg = FillTestConfig.from_yaml(data)
         assert cfg.loss_cooldown_threshold_bps == -8.0
         assert cfg.loss_cooldown_interval_mult == 3.0

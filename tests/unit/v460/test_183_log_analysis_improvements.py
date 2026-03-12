@@ -13,19 +13,13 @@ from __future__ import annotations
 import copy
 
 import pytest
-import yaml
 
 from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
 from scripts.v460.lib.fill_config import FillTestConfig
-
-def _yaml_dict(payload: str) -> dict[str, object]:
-    data = yaml.safe_load(payload)
-    if not isinstance(data, dict):
-        raise TypeError("expected YAML mapping")
-    return data
+from tests.unit.v460._yaml_test_helpers import parse_yaml_mapping
 
 
-_BUY_VELOCITY_SKIP_YAML = _yaml_dict("""
+_BUY_VELOCITY_SKIP_YAML = parse_yaml_mapping("""
 skip_gate:
   enabled: true
   mode: pnl
@@ -35,7 +29,7 @@ skip_gate:
   sell_velocity_skip_threshold_bps: 6.0
 """)
 
-_HOUR_OFFSETS_YAML = _yaml_dict("""
+_HOUR_OFFSETS_YAML = parse_yaml_mapping("""
 skip_gate:
   enabled: true
   mode: pnl
@@ -47,7 +41,7 @@ skip_gate:
     23: 0.2
 """)
 
-_NARROW_SPREAD_GUARD_YAML = _yaml_dict("""
+_NARROW_SPREAD_GUARD_YAML = parse_yaml_mapping("""
 skip_gate:
   enabled: true
   mode: pnl
@@ -55,7 +49,7 @@ skip_gate:
   skip_gate_narrow_spread_offset: 0.2
 """)
 
-_VOLATILITY_GUARD_YAML = _yaml_dict("""
+_VOLATILITY_GUARD_YAML = parse_yaml_mapping("""
 volatility_guard:
   enabled: true
   velocity_threshold_bps: 12.0
@@ -63,14 +57,14 @@ volatility_guard:
   offset_boost_factor: 2.0
 """)
 
-_VOLATILITY_GUARD_TIGHT_YAML = _yaml_dict("""
+_VOLATILITY_GUARD_TIGHT_YAML = parse_yaml_mapping("""
 volatility_guard:
   enabled: true
   velocity_threshold_bps: 12.0
   vpin_threshold: 0.60
 """)
 
-_SPREAD_ADAPTIVE_YAML = _yaml_dict("""
+_SPREAD_ADAPTIVE_YAML = parse_yaml_mapping("""
 spread_adaptive:
   enabled: true
   narrow_spread_bps: 2.5

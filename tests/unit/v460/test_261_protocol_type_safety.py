@@ -31,6 +31,7 @@ _MAKER_PRICE_INIT_SOURCE = read_class_method_source(
     "MakerPriceCalculator",
     "__init__",
 )
+_BALANCE_CHECK_HINTS = typing.get_type_hints(BalanceChecker.check)
 _EXTRACT_PRICE_SOURCE = read_function_source(OB_UTILS, "extract_price")
 _EXTRACT_SIZE_SOURCE = read_function_source(OB_UTILS, "extract_size")
 _OB_RECORDER_NORMALIZE_SOURCE = read_function_source(OB_RECORDER, "_normalize_levels")
@@ -175,8 +176,7 @@ class TestBalanceAdapterProtocol:
 
     def test_check_signature_typed(self) -> None:
         """check() の adapter 引数が BalanceAdapterProtocol."""
-        hints = typing.get_type_hints(BalanceChecker.check)
-        adapter_hint = hints.get("adapter")
+        adapter_hint = _BALANCE_CHECK_HINTS.get("adapter")
         assert adapter_hint is not None
         assert "BalanceAdapterProtocol" in str(adapter_hint)
 

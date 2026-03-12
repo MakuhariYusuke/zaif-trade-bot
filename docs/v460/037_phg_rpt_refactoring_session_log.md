@@ -5116,3 +5116,82 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - 50Kステップ以上の訓練（100K, 200K）での収束改善
 - curriculum_learning / action_discovery 有効化の検討
 - G2 gate 評価（E1: positive_seed_ratio ≥ 0.75 は未達）
+
+## 2026-03-12 / Wave: YAML + Source Helper Consolidation
+
+### 実施内容
+- [tests/unit/v460/_yaml_test_helpers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_yaml_test_helpers.py)
+  - `parse_yaml_mapping(...)` / `load_yaml_mapping(...)` を追加
+- [tests/unit/v460/conftest.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/conftest.py)
+  - `v460_fill_test_yaml_base` を shared YAML loader 再利用へ変更
+- [tests/unit/v460/_fill_test_source.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_fill_test_source.py)
+  - `read_inspect_source(...)` を追加
+- [tests/unit/v460/test_fill_test_config.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_test_config.py)
+- [tests/unit/v460/test_202_log_improvements.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_202_log_improvements.py)
+- [tests/unit/v460/test_183_log_analysis_improvements.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_183_log_analysis_improvements.py)
+- [tests/unit/v460/test_config_validation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_config_validation.py)
+  - local YAML helper を shared helper に統一
+- [tests/unit/v460/test_143_regime_utilization.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_143_regime_utilization.py)
+- [tests/unit/v460/test_139_review_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_139_review_fixes.py)
+- [tests/unit/v460/test_146_multi_exchange.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_146_multi_exchange.py)
+- [tests/unit/v460/test_013_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_013_fixes.py)
+- [tests/unit/v460/test_regime_detector.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_regime_detector.py)
+  - local `_source(obj)` を shared helper / split-source helper に統一
+- [ztb/utils/run_manifest.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/utils/run_manifest.py)
+  - `inference_config_to_dict()` を `shallow_asdict(...)` 化
+- [scripts/v460/lib/maker_price.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/maker_price.py)
+  - `set_fill_prob_model(...)` を追加
+- [scripts/v460/run_fill_test.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/run_fill_test.py)
+  - `_fill_prob_model` 直接代入を setter 呼び出しへ変更し、`type: ignore[attr-defined]` を除去
+
+### 検証
+- focused YAML/source wave:
+  - `tests/unit/v460/test_fill_test_config.py`
+  - `tests/unit/v460/test_202_log_improvements.py`
+  - `tests/unit/v460/test_183_log_analysis_improvements.py`
+  - `tests/unit/v460/test_config_validation.py`
+  - `tests/unit/v460/test_143_regime_utilization.py`
+  - `tests/unit/v460/test_139_review_fixes.py`
+  - `tests/unit/v460/test_146_multi_exchange.py`
+  - `tests/unit/v460/test_013_fixes.py`
+  - `tests/unit/v460/test_regime_detector.py`
+  - 結果: `403 passed in 6.14s`
+- focused `run_manifest` subset:
+  - `tests/unit/utils/test_run_manifest.py`
+  - `tests/unit/v460/test_retrain_hot_reload.py -k 'run_manifest or compute_file_hash or post_deploy or inference_config'`
+  - 結果: `17 passed, 80 deselected in 20.58s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4620 passed, 13 warnings in 40.59s`
+
+## 2026-03-12 / Wave: Next Duration Hotspot Trim
+
+### 実施内容
+- [tests/unit/v460/test_261_protocol_type_safety.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_261_protocol_type_safety.py)
+  - `typing.get_type_hints(BalanceChecker.check)` を import-time cache 化
+- [tests/unit/v460/test_141_side_specific_models.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_141_side_specific_models.py)
+  - `_select_gate_for_side` の dispatch-only テストから file I/O / pickle roundtrip を除去
+  - `SkipGateEvaluator.__new__` + stub gate で分岐だけ検証する helper を追加
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_261_protocol_type_safety.py`
+  - `tests/unit/v460/test_141_side_specific_models.py`
+  - 結果: `67 passed, 1 warning in 2.34s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4620 passed, 13 warnings in 36.19s`
+
+### 現在の上位
+1. `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction` setup `1.01s`
+2. `test_141_side_specific_models.py::TestRegimeAdaptiveThresholdIntegration::test_regime_key_typo_warning` call `0.25s`
+3. `test_262_protocol_cancel_recheck.py::TestAdaptationEngineProtocols::test_update_dynamic_loss_cap_with_mock_adapter` call `0.23s`
+4. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.16s`

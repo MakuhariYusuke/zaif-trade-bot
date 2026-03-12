@@ -5061,3 +5061,20 @@ python scripts/unified_trainer.py \
     - focused `test_356_g2_sac_blockers.py test_261_protocol_type_safety.py`: `66 passed in 4.68s`
     - focused `test_145_s14_structural_refactors.py test_261_protocol_type_safety.py`: `47 passed in 1.78s`
     - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 30.73s`
+
+- 2026-03-12: unified shared YAML/source helpers across `v460` tests and removed another `run_fill_test` type-ignore path.
+  - added `tests/unit/v460/_yaml_test_helpers.py` and reused it from `tests/unit/v460/conftest.py`, `test_fill_test_config.py`, `test_202_log_improvements.py`, `test_183_log_analysis_improvements.py`, and `test_config_validation.py`
+  - added `_fill_test_source.read_inspect_source(...)` and replaced remaining local `_source(obj)` caches in `test_143_regime_utilization.py`, `test_139_review_fixes.py`, `test_146_multi_exchange.py`, `test_013_fixes.py`, and `test_regime_detector.py`
+  - changed `ztb/utils/run_manifest.py` to use `shallow_asdict(...)` for dataclass inference-config serialization
+  - added `MakerPriceCalculator.set_fill_prob_model(...)` and switched `scripts/v460/run_fill_test.py` to use it, removing the remaining `_fill_prob_model` attr-defined ignore path
+  - re-verified with:
+    - focused YAML/source wave: `403 passed in 6.14s`
+    - focused `run_manifest`/retrain subset: `17 passed, 80 deselected in 20.58s`
+    - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 40.59s`
+
+- 2026-03-12: trimmed the next measured `v460` call hotspots after the helper wave.
+  - cached `typing.get_type_hints(BalanceChecker.check)` at import time in `test_261_protocol_type_safety.py`
+  - replaced file-backed side-dispatch setup with lightweight `__new__`/stub evaluators in `test_141_side_specific_models.py` for `_select_gate_for_side` dispatch-only tests
+  - re-verified with:
+    - focused `test_261_protocol_type_safety.py test_141_side_specific_models.py`: `67 passed, 1 warning in 2.34s`
+    - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 36.19s`

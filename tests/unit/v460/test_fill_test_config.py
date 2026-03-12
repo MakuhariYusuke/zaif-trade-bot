@@ -9,7 +9,6 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-import yaml
 
 from scripts.v460.lib.config_loader import load_fill_test_config
 from scripts.v460.lib.side_selector import SideSelector
@@ -22,6 +21,7 @@ from tests.unit.v460._fill_test_source import (
     read_fill_test_runner_source,
     read_source_text,
 )
+from tests.unit.v460._yaml_test_helpers import parse_yaml_mapping
 from ztb.metrics.fill_quality import (
     FillRecord,
     RoundTripRecord,
@@ -29,13 +29,6 @@ from ztb.metrics.fill_quality import (
 )
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-
-
-def _yaml_mapping(yaml_text: str) -> dict[str, object]:
-    data = yaml.safe_load(yaml_text)
-    if not isinstance(data, dict):
-        raise TypeError("expected YAML mapping")
-    return data
 
 
 class _LightweightFillTestRunner:
@@ -1163,7 +1156,7 @@ time_filter:
   skip_utc_hours_sell: [4]
   max_086_consecutive_wait: 7
 """
-        yaml_dict = _yaml_mapping(yaml_text)
+        yaml_dict = parse_yaml_mapping(yaml_text)
         cfg = FillTestConfig.from_yaml(yaml_dict)
         assert cfg.enable_time_filter is True
         assert cfg.skip_utc_hours == [16]

@@ -8,12 +8,10 @@ gate_thresholds.yaml の整合性をテスト.
 from __future__ import annotations
 
 import copy
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import pytest
-import yaml
 
 from scripts.v460.lib.config_loader import (
     _deep_merge,
@@ -21,17 +19,9 @@ from scripts.v460.lib.config_loader import (
     load_config,
     load_gate_thresholds,
 )
+from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-
-
-@lru_cache(maxsize=None)
-def _load_yaml_mapping(path: Path) -> dict[str, Any]:
-    with path.open(encoding="utf-8") as handle:
-        data = yaml.safe_load(handle)
-    if not isinstance(data, dict):
-        raise TypeError(f"expected YAML mapping in {path}")
-    return data
 
 
 # ======================================================================
@@ -173,7 +163,7 @@ class TestLoadConfig:
     def test_base_yaml_trading_config(self) -> None:
         """base.yaml にmaker_zero / maker_only が設定されていること."""
         base_path = _PROJECT_ROOT / "configs" / "v460" / "base.yaml"
-        base = _load_yaml_mapping(base_path)
+        base = load_yaml_mapping(base_path)
         assert base["trading"]["fee_model"] == "maker_zero"
         assert base["trading"]["order_type"] == "maker_only"
         assert base["trading"]["symbol"] == "btc_jpy"
@@ -247,7 +237,7 @@ class TestBaseFeatureConsistency:
 
     def test_base_candidates_not_empty(self) -> None:
         base_path = _PROJECT_ROOT / "configs" / "v460" / "base.yaml"
-        base = _load_yaml_mapping(base_path)
+        base = load_yaml_mapping(base_path)
         candidates = base.get("features", {}).get("candidates", [])
         assert len(candidates) >= 5, "base.yaml should have ≥5 feature candidates"
 
@@ -258,7 +248,7 @@ class TestBaseFeatureConsistency:
     def test_sac_config_in_base(self) -> None:
         """SAC 設定が base.yaml に存在すること (G2 準備)."""
         base_path = _PROJECT_ROOT / "configs" / "v460" / "base.yaml"
-        base = _load_yaml_mapping(base_path)
+        base = load_yaml_mapping(base_path)
         sac = base.get("sac", {})
         assert sac.get("total_steps", 0) > 0
         assert isinstance(sac.get("seeds"), list)
