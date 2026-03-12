@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-12 (391# fill test deep dive root cause analysis)
+> 最終更新: 2026-03-13 (395# SHA-fenced 実証: 393#/394# 全指摘確認, 391# 因果推論4/5修正)
 
 ---
 
@@ -387,6 +387,9 @@
 | 390 | rev | [390_comprehensive_review_and_second_opinion.md](390_comprehensive_review_and_second_opinion.md) | Gemini second opinion: 384#-389# 総合レビュー, パイプライン修復の評価, G3 DRY原則警告, 500K/γ=0.99 提案 |
 | 391 | rpt | [391_fill_test_deep_dive_root_cause.md](391_fill_test_deep_dive_root_cause.md) | Fill Test 根本原因分析: sell tail 2.7x, EV confident-wrong, rapid-fire −0.43bps, offset ceiling 59%張付き, **P0施策で+100bps改善余地** |
 | 392 | resp | [392_ph3_resp_389_390_review_validity.md](392_ph3_resp_389_390_review_validity.md) | 389#/390# レビュー妥当性評価: P0-3 reward-PnL逆相関(corr=-0.38)を最重要指摘として採用, G3 checker新設撤回, 500K提案は時期尚早 |
+| 393 | rev | [393_ph3_rev_391_fill_test_root_cause_validation.md](393_ph3_rev_391_fill_test_root_cause_validation.md) | 391# 妥当性監査: mixed-SHA汚染, headline再現不能, EV=price-direction誤読, rapid-fire 5分禁止の過剰さを補正 |
+| 394 | rev | [394_ph3_rev_391_393_fill_test_second_opinion.md](394_ph3_rev_391_393_fill_test_second_opinion.md) | Gemini second opinion: 393#全面支持, EV confident-wrong是正, HFT哲学堅持, Ghost Metric再発警告, 雷火豊の符合 |
+| 395 | rpt | [395_ph3_rev_393_394_empirical_validation.md](395_ph3_rev_393_394_empirical_validation.md) | **SHA-fenced実証**: 393#/394#の全指摘をコード+データで裏付け。391#因果推論5本中4本がcurrentSHAで消失。構造的問題はconfidence[0.7,0.9)のみ |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
