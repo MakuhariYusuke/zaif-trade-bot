@@ -25,9 +25,8 @@ import dataclasses
 from functools import lru_cache
 from pathlib import Path
 
-import yaml
-
 from scripts.v460.lib.fill_config import FillTestConfig
+from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
 
 _YAML_PATH = Path(__file__).resolve().parents[3] / "configs" / "v460" / "fill_test.yaml"
 
@@ -174,9 +173,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
 
 @lru_cache(maxsize=1)
 def _load_yaml_config() -> FillTestConfig:
-    with open(_YAML_PATH) as f:
-        raw = yaml.safe_load(f)
-    return FillTestConfig.from_yaml(raw)
+    return FillTestConfig.from_yaml(load_yaml_mapping(_YAML_PATH))
 
 
 @lru_cache(maxsize=1)
@@ -250,8 +247,7 @@ class TestYamlCodeDefaultDrift:
 
     def test_field_count_sanity(self) -> None:
         """FillTestConfig のフィールド数が大幅に変化していないこと (God Object 監視)."""
-        cfg = FillTestConfig()
-        n_fields = len(dataclasses.fields(cfg))
+        n_fields = len(dataclasses.fields(FillTestConfig))
         # 336# 時点: 390 fields. ±20 は許容、それ以上は要レビュー
         assert 350 <= n_fields <= 450, (
             f"FillTestConfig のフィールド数が {n_fields} です。"

@@ -5489,3 +5489,37 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 ### 見立て
 - focused では `test_356` setup が `0.69s` まで低下した一方、broad は run-to-run noise が大きい。
 - 次に効くのは `test_356` の env creation 本体より、`test_enricher_skip_gate` の real-data setup と `test_303_review_implementations.py` の単発重 call。 
+
+## 2026-03-13 / Wave: Field Cache and Config Default Reuse
+
+### 実施内容
+- [tests/unit/v460/test_303_review_implementations.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_303_review_implementations.py)
+  - `FillRecord` field 名集合を module-level cache 化し、review implementation 系の repeated `dataclasses.fields(...)` を除去
+- [tests/unit/v460/test_336_fill_config_parser.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_336_fill_config_parser.py)
+  - `_DEFAULT_FILL_CONFIG` を追加し、empty-dict default 比較で再利用
+- [tests/unit/v460/test_336_yaml_code_drift_prevention.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_336_yaml_code_drift_prevention.py)
+  - field-count sanity を `dataclasses.fields(FillTestConfig)` ベースに変更
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `tests/unit/v460/test_303_review_implementations.py`
+  - `tests/unit/v460/test_336_fill_config_parser.py`
+  - `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
+  - `tests/unit/v460/test_v460_core.py::TestDataLoader::test_load_parquet_select_cols`
+  - `tests/unit/v460/test_enricher_skip_gate.py::Test058Integration`
+  - 結果: `106 passed in 5.67s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4620 passed, 13 warnings in 38.87s`
+
+### 更新後の上位
+1. `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction` setup `1.09s`
+2. `test_141_side_specific_models.py::TestEvaluatorSideDispatch::test_side_model_file_missing_uses_unified` setup `0.38s`
+3. `test_286_comprehensive_resolution.py::TestBuyDynamicKillInvRelaxation::test_config_inv_relaxation_fields_exist` call `0.24s`
+4. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.21s`
+5. `test_157_regime_features.py::TestRetrainPipelineIntegrity::test_retrain_config_loads_from_yaml` call `0.20s`

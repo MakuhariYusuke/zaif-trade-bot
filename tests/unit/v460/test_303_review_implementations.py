@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 from copy import copy
 
 import numpy as np
@@ -23,9 +24,12 @@ from scripts.v460.lib.daily_drawdown_guard import (
     DrawdownAction,
 )
 from scripts.v460.lib.fill_config import FillTestConfig
+from tests.unit.v460._fill_test_source import MAKER_PRICE, read_class_method_source
 from ztb.io.json_io import JSONObject
+from ztb.metrics.fill_quality import FillRecord
 
 _FIXED_TS = 1_700_000_000.0
+_FILL_RECORD_FIELD_NAMES = {f.name for f in dataclasses.fields(FillRecord)}
 
 
 # ======================================================================
@@ -265,10 +269,11 @@ class TestNoneRegimePassiveMM:
         旧実装は 'none' のみチェックしていたため、FillTestRegime.UNKNOWN
         ('unknown') では発火しなかった。修正後は ('none', 'unknown') 両方対応。
         """
-        import inspect
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-
-        source = inspect.getsource(MakerPriceCalculator.compute)
+        source = read_class_method_source(
+            MAKER_PRICE,
+            "MakerPriceCalculator",
+            "compute",
+        )
         # 旧: `if _current_regime == "none":` → 新: `in ("none", "unknown")`
         assert 'in ("none", "unknown")' in source, (
             "318# F5-1: Passive MM bypass should check for both 'none' AND 'unknown'"
@@ -280,17 +285,11 @@ class TestNoneRegimePassiveMM:
 
     def test_fill_record_has_regime_at_order(self) -> None:
         """318# F5-3: FillRecord に regime_at_order フィールドが存在."""
-        from ztb.metrics.fill_quality import FillRecord
-        import dataclasses
-
-        field_names = {f.name for f in dataclasses.fields(FillRecord)}
-        assert "regime_at_order" in field_names
-        assert "regime_observation_count" in field_names
+        assert "regime_at_order" in _FILL_RECORD_FIELD_NAMES
+        assert "regime_observation_count" in _FILL_RECORD_FIELD_NAMES
 
     def test_fill_record_regime_at_order_default_none(self) -> None:
         """318# F5-3: regime_at_order のデフォルト値は None."""
-        from ztb.metrics.fill_quality import FillRecord
-
         r = FillRecord(
             cycle_id="test", timestamp=0.0, side="buy",
             order_price=100.0, order_quantity=0.001,
@@ -300,11 +299,7 @@ class TestNoneRegimePassiveMM:
 
     def test_fill_record_has_mid_at_order(self) -> None:
         """319# S-3: FillRecord に mid_at_order フィールドが存在し、デフォルト None."""
-        from ztb.metrics.fill_quality import FillRecord
-        import dataclasses
-
-        field_names = {f.name for f in dataclasses.fields(FillRecord)}
-        assert "mid_at_order" in field_names
+        assert "mid_at_order" in _FILL_RECORD_FIELD_NAMES
 
         r = FillRecord(
             cycle_id="test", timestamp=0.0, side="sell",
@@ -314,8 +309,6 @@ class TestNoneRegimePassiveMM:
 
     def test_fill_record_mid_at_order_roundtrip(self) -> None:
         """319# S-3: mid_at_order が to_dict / from_dict でラウンドトリップ."""
-        from ztb.metrics.fill_quality import FillRecord
-
         r = FillRecord(
             cycle_id="test", timestamp=0.0, side="sell",
             order_price=100.0, order_quantity=0.001,

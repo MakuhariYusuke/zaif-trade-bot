@@ -5141,3 +5141,10 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction test_286_comprehensive_resolution.py::TestBuyDynamicKillInvRelaxation::test_config_inv_relaxation_fields_exist test_v460_core.py::TestDataLoader::test_load_parquet_select_cols test_enricher_skip_gate.py::Test058RawLoadCache::test_orderbook_cache_invalidates_on_file_update test_enricher_skip_gate.py::Test058Integration`: `6 passed in 4.10s`
     - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 42.27s` (run-to-run durations remain noisy)
+- 2026-03-13: pushed the next v460 helper/default wave and removed another source-field fixed cost.
+  - cached `FillRecord` field names once per module in `test_303_review_implementations.py` instead of re-running `dataclasses.fields(...)` inside each test
+  - introduced a shared `_DEFAULT_FILL_CONFIG` in `test_336_fill_config_parser.py` and removed one more ad-hoc default-config construction
+  - switched `test_336_yaml_code_drift_prevention.py::test_field_count_sanity` to `dataclasses.fields(FillTestConfig)` so field-count sanity no longer instantiates a full config object
+  - re-verified with:
+    - focused `test_356_g2_sac_blockers.py test_303_review_implementations.py test_336_fill_config_parser.py test_336_yaml_code_drift_prevention.py test_v460_core.py::TestDataLoader::test_load_parquet_select_cols test_enricher_skip_gate.py::Test058Integration`: `106 passed in 5.67s`
+    - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 38.87s`
