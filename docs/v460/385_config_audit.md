@@ -39,6 +39,29 @@ g2_sac_train.yaml と関連設定の包括的な監査を実施。
   - `_extract_expected_reward_params` にもフォールバック追加 (検証ログ用)
 - テスト: `TestRewardSettingsPropagation` 3テスト追加 (トップレベル/ネスト/YAML存在確認)
 
+### P0-6: `behavior_optimization` dict 未保存 — **386# 修正済み**
+
+- `EnvironmentConfig.from_dict()` で `behavior_optimization` の keys を `reward_settings` にマッピング
+  していたが、元の dict 自体を `instance.behavior_optimization` に保存していなかった
+- `RewardCalculator` が `config.behavior_optimization` を参照するため、設定が効かなかった
+- **386# 修正**: `instance.behavior_optimization = behavior_opt` を追加
+
+### P0-7: `reward_settings` オーバーライト順序バグ — **386# 修正済み**
+
+- `from_dict()` で `behavior_optimization` → `reward_settings` 処理の後、
+  `config_dict` ループで `reward_settings` キーが `RewardSettings.from_dict(value)` で
+  全体を **上書き** → `behavior_optimization` からの設定 (consistency_penalty 等) が消失
+- **386# 修正**: `reward_settings` 処理時に既存値とマージする方式に変更
+
+### P0-8: experiment runner `EnvironmentConfig(**env_cfg)` TypeError — **386# 修正済み**
+
+- `scripts/v460/lib/tasks/sac_train.py` の `_create_training_env` が
+  `EnvironmentConfig(**env_cfg)` を使用 → `reward_settings` が dict のまま格納
+- `HeavyTradingEnv.__init__` で `shallow_asdict(reward_settings_dict)` が
+  dict に対して呼ばれ `TypeError` が発生 (reward-tuned 実験で確実にクラッシュ)
+- `behavior_optimization` → `reward_settings` マッピングも `from_dict()` なしでは非実行
+- **386# 修正**: `EnvironmentConfig.from_dict(env_cfg)` に変更
+
 ## P1: HIGH — 潜在的な結果影響
 
 ### P1-1: `action_space_type: "continuous_1d"` の無声書き換え
@@ -109,6 +132,9 @@ max_position_size: float = 1.0          # 1 BTC ≠ YAML 0.01
 | P0-1 | threshold 統一 | 386# | CRITICAL | ✅ 修正済み |
 | P0-2 | reward_scaling 修正 | 386# | CRITICAL | ✅ 修正済み |
 | P0-5 | reward_settings YAML→env 伝播 | 386# | CRITICAL | ✅ 修正済み |
+| P0-6 | behavior_optimization dict 保存 | 386# | CRITICAL | ✅ 修正済み |
+| P0-7 | reward_settings マージ順序 | 386# | CRITICAL | ✅ 修正済み |
+| P0-8 | experiment runner from_dict 変更 | 386# | CRITICAL | ✅ 修正済み |
 | P1-2 | base.yaml の sac.gamma 削除/整理 | 386# | MEDIUM | ⬜ 未対応 |
 | P1-3 | 旧 EnvironmentConfig 廃止計画 | v461 | MEDIUM | ⬜ 未対応 |
 | P1-4 | FeeModel フォールバック防御強化 | 386# | MEDIUM | ⬜ 未対応 |
