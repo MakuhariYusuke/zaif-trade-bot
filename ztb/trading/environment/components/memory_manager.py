@@ -12,6 +12,7 @@ from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import ensure_dir
 
 logger = get_logger(__name__)
+_CURRENT_PROCESS = psutil.Process()
 
 class MemoryManager:
     """Handles memory management and logging for the trading environment."""
@@ -23,7 +24,7 @@ class MemoryManager:
         memory_log_interval_steps: int = 2000,
         gc_step_interval: int = 0,
     ):
-        self._process = psutil.Process()
+        self._process = _CURRENT_PROCESS
         self._memory_log_path = Path(memory_log_path) if memory_log_path else None
         self._memory_logging_enabled = memory_logging_enabled
         self._memory_log_interval_steps = memory_log_interval_steps

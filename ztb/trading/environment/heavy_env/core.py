@@ -105,6 +105,7 @@ if TYPE_CHECKING:
     from ztb.trading.live.data.stream_to_bars import StreamToBarsConverter
 
 logger = get_logger(__name__)
+_CURRENT_PROCESS = psutil.Process()
 
 def deep_merge_dict(base: ObjectMap, update: ObjectMap) -> ObjectMap:
     """Deep merge two dictionaries."""
@@ -442,7 +443,7 @@ class HeavyTradingEnv(
             # Mirror the positive threshold to avoid unintentional BUY/SELL bias
             self.negative_action_threshold = -abs(float(self.action_threshold))
 
-        self._process = psutil.Process()
+        self._process = _CURRENT_PROCESS
         self.stream_to_bars_converter = stream_to_bars_converter
 
         self.reward_settings: RewardSettings = RewardSettings.from_dict(
