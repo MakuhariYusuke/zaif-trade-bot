@@ -19,7 +19,7 @@ from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
 
 _G2_SAC_YAML_PATH = Path("configs/v460/experiments/g2_sac_train.yaml")
-_G2_REAL_ROWS = 3
+_G2_REAL_ROWS = 2
 
 
 @lru_cache(maxsize=1)

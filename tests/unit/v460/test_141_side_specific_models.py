@@ -84,6 +84,20 @@ class _PredictPipeline:
         del x
         return self._prediction
 
+
+class _GateSentinel:
+    pass
+
+
+class _EvaluateAdapterStub:
+    async def get_recent_trades(self, _symbol: str, *, limit: int = 200) -> list[object]:
+        del _symbol, limit
+        return []
+
+    async def get_orderbook(self, _symbol: str, *, depth: int | None = None) -> None:
+        del _symbol, depth
+        return None
+
 # ---------------------------------------------------------------------------
 # §1: FillConfig — side 別モデルパスフィールド
 # ---------------------------------------------------------------------------
@@ -342,9 +356,9 @@ class TestEvaluatorSideDispatch:
         has_sell: bool = False,
     ) -> SkipGateEvaluator:
         evaluator = SkipGateEvaluator.__new__(SkipGateEvaluator)
-        evaluator._skip_gate = MagicMock() if has_unified else None
-        evaluator._gate_buy = MagicMock() if has_buy else None
-        evaluator._gate_sell = MagicMock() if has_sell else None
+        evaluator._skip_gate = _GateSentinel() if has_unified else None
+        evaluator._gate_buy = _GateSentinel() if has_buy else None
+        evaluator._gate_sell = _GateSentinel() if has_sell else None
         return evaluator
 
     def test_select_gate_for_side_buy(self, tmp_path: Path) -> None:
@@ -476,6 +490,10 @@ class TestRetrainConfigSideSpecific:
 class TestSideModelEvaluateIntegration:
     """141# §5: evaluate() の side dispatch 統合テスト."""
 
+    @staticmethod
+    def _make_adapter() -> _EvaluateAdapterStub:
+        return _EvaluateAdapterStub()
+
     def test_evaluate_model_used_tag_side(self, tmp_path: Path) -> None:
         """side 別モデル使用時の model_used に 'side_buy' タグが含まれること."""
 
@@ -492,10 +510,7 @@ class TestSideModelEvaluateIntegration:
         )
         evaluator = SkipGateEvaluator(config, tmp_path)
 
-        # Mock adapter
-        adapter = MagicMock()
-        adapter.get_recent_trades = AsyncMock(return_value=[])
-        adapter.get_orderbook = AsyncMock(return_value=None)
+        adapter = self._make_adapter()
 
         result = asyncio.run(
             evaluator.evaluate(
@@ -533,9 +548,7 @@ class TestSideModelEvaluateIntegration:
         )
         evaluator = SkipGateEvaluator(config, tmp_path)
 
-        adapter = MagicMock()
-        adapter.get_recent_trades = AsyncMock(return_value=[])
-        adapter.get_orderbook = AsyncMock(return_value=None)
+        adapter = self._make_adapter()
 
         result = asyncio.run(
             evaluator.evaluate(
@@ -576,9 +589,7 @@ class TestSideModelEvaluateIntegration:
         assert evaluator._gate_buy is not None
         assert evaluator._gate_sell is None
 
-        adapter = MagicMock()
-        adapter.get_recent_trades = AsyncMock(return_value=[])
-        adapter.get_orderbook = AsyncMock(return_value=None)
+        adapter = self._make_adapter()
 
         result = asyncio.run(
             evaluator.evaluate(

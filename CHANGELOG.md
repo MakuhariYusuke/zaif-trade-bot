@@ -5099,3 +5099,15 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused `test_276_blocking_policy_dry.py test_141_side_specific_models.py test_356_g2_sac_blockers.py`: `126 passed, 1 warning in 5.16s`
     - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 30.26s`
+
+- 2026-03-12: tightened the next v460 source/yaml/setup wave after the 30s broad run.
+  - cached `fill_test_cli.py` source/tree once per module in `test_286_comprehensive_resolution.py`
+  - stubbed `FillTestRunner._get_git_sha()` in `test_102_structural_fixes.py` init-only helper cases to remove git subprocess cost while keeping the same init assertions
+  - switched `test_v460_core.py::TestDataLoader::test_load_parquet` to the existing `max_rows` fast path
+  - replaced `MagicMock`/`AsyncMock` in the next heavy side-dispatch and `_execute_skip` tests with lightweight stubs in `test_141_side_specific_models.py` and `test_276_blocking_policy_dry.py`
+  - removed unused `tmp_path` setup from YAML-only tests in `test_137_p1_features.py` and `test_143_regime_utilization.py`, and replaced a `MagicMock` config object with `SimpleNamespace` in `test_277_magic_number_grounding.py`
+  - re-verified with:
+    - focused `test_286_comprehensive_resolution.py test_102_structural_fixes.py test_v460_core.py`: `97 passed in 4.63s`
+    - focused `test_141_side_specific_models.py test_276_blocking_policy_dry.py test_356_g2_sac_blockers.py`: `126 passed, 1 warning in 5.60s`
+    - focused `test_137_p1_features.py test_143_regime_utilization.py test_277_magic_number_grounding.py test_141_side_specific_models.py`: `153 passed, 1 warning in 3.49s`
+    - filtered broad `tests/unit/v460/`: `4620 passed, 13 warnings in 37.38s`

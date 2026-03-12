@@ -5301,3 +5301,60 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 3. `test_143_regime_utilization.py::TestRegimeOffsetBoostFunctional::test_no_boost_when_regime_none` call `0.20s`
 4. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.16s`
 5. `test_102_structural_fixes.py::TestSoftLossCapResume::test_soft_cap_snapshot_set_on_init` call `0.13s`
+
+## 2026-03-12 / Wave: Source+YAML Follow-up and Stub Tightening
+
+### 実施内容
+- [tests/unit/v460/test_286_comprehensive_resolution.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_286_comprehensive_resolution.py)
+  - `fill_test_cli.py` の source/tree を import-time cache に変更
+- [tests/unit/v460/test_102_structural_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_102_structural_fixes.py)
+  - init-only helper `_make_runner()` で `FillTestRunner._get_git_sha()` を stub 化
+  - `MagicMock` adapter を軽量 stub に置換
+- [tests/unit/v460/test_v460_core.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_v460_core.py)
+  - `TestDataLoader::test_load_parquet` を `max_rows=3` fast path へ変更
+- [tests/unit/v460/test_141_side_specific_models.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_141_side_specific_models.py)
+  - side dispatch の sentinel 化
+  - evaluate integration の adapter を lightweight async stub に置換
+- [tests/unit/v460/test_276_blocking_policy_dry.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_276_blocking_policy_dry.py)
+  - `FillLoopOrchestratorMixin` / `RunSessionState` の import を module scope 化
+  - `_effective_sleep` を custom async stub に置換
+- [tests/unit/v460/test_137_p1_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_137_p1_features.py)
+  - YAML-only tests の不要 `tmp_path` fixture を除去
+- [tests/unit/v460/test_143_regime_utilization.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_143_regime_utilization.py)
+  - YAML mapping tests の不要 `tmp_path` fixture を除去
+- [tests/unit/v460/test_277_magic_number_grounding.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_277_magic_number_grounding.py)
+  - `_check_regime_stop_conditions` テストの config/object を `SimpleNamespace` 化
+- [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py)
+  - real-data rows を `2` に短縮
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_286_comprehensive_resolution.py`
+  - `tests/unit/v460/test_102_structural_fixes.py`
+  - `tests/unit/v460/test_v460_core.py`
+  - 結果: `97 passed in 4.63s`
+- focused:
+  - `tests/unit/v460/test_141_side_specific_models.py`
+  - `tests/unit/v460/test_276_blocking_policy_dry.py`
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - 結果: `126 passed, 1 warning in 5.60s`
+- focused:
+  - `tests/unit/v460/test_137_p1_features.py`
+  - `tests/unit/v460/test_143_regime_utilization.py`
+  - `tests/unit/v460/test_277_magic_number_grounding.py`
+  - `tests/unit/v460/test_141_side_specific_models.py`
+  - 結果: `153 passed, 1 warning in 3.49s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4620 passed, 13 warnings in 37.38s`
+
+### 現在の上位
+1. `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction` setup `1.19s`
+2. `test_fill_quality.py::TestUnknownFillHandling::test_status_none_twice_becomes_cancelled_status_unknown` call `0.38s`
+3. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.32s`
+4. `test_141_side_specific_models.py::TestRetrainSideSpecificFunction::test_history_written` call `0.30s`
+5. `test_275_dry_separation_and_theory.py::TestMarketTheoryDocstrings275::test_spread_anomaly_detector_theory` call `0.26s`

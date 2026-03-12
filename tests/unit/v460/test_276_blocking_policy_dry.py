@@ -17,9 +17,9 @@ import asyncio
 import inspect
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin, RunSessionState
 from tests.unit.v460._fill_test_source import read_fill_test_runner_source
 
 
@@ -32,7 +32,6 @@ class TestExecuteSkipSignature:
 
     @pytest.fixture(autouse=True)
     def _setup(self) -> None:
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         self.mixin = FillLoopOrchestratorMixin
 
     def test_method_exists(self) -> None:
@@ -234,6 +233,22 @@ class TestHaltSleepMultiplierConfig:
 class TestExecuteSkipBehavior:
     """_execute_skip の動作を mock ベースで検証."""
 
+    class _SleepStub:
+        def __init__(self) -> None:
+            self.calls: list[tuple[float, float]] = []
+
+        async def __call__(self, *, multiplier: float = 1.0, max_override: float = 0.0) -> None:
+            self.calls.append((multiplier, max_override))
+
+        def assert_awaited_once(self) -> None:
+            assert len(self.calls) == 1
+
+        def assert_not_awaited(self) -> None:
+            assert self.calls == []
+
+        def assert_awaited_once_with(self, *, multiplier: float, max_override: float) -> None:
+            assert self.calls == [(multiplier, max_override)]
+
     class _BatchPersistenceStub:
         def __init__(self) -> None:
             self.calls: list[tuple[list[object], str]] = []
@@ -249,7 +264,7 @@ class TestExecuteSkipBehavior:
             self._batch_persistence = TestExecuteSkipBehavior._BatchPersistenceStub()
             self._heartbeat_calls = 0
             self._state_save_calls: list[tuple[object, str]] = []
-            self._effective_sleep = AsyncMock()
+            self._effective_sleep = TestExecuteSkipBehavior._SleepStub()
             self._last_side = "buy"
 
         def _make_loop_skip_record(self, **kwargs: object) -> object:
@@ -265,15 +280,12 @@ class TestExecuteSkipBehavior:
     @pytest.fixture
     def orchestrator_mock(self) -> "_OrchestratorStub":
         """オーケストレータの最小 stub."""
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-
         orch = self._OrchestratorStub(FillLoopOrchestratorMixin._execute_skip)
         orch._execute_skip = FillLoopOrchestratorMixin._execute_skip.__get__(orch)
         return orch
 
     @pytest.fixture
     def session_state(self) -> "RunSessionState":
-        from scripts.v460.lib.fill_loop_orchestrator import RunSessionState
         return RunSessionState()
 
     @pytest.mark.asyncio
