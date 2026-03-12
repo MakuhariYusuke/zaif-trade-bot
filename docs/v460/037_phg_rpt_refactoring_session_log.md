@@ -5850,3 +5850,36 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - `HeavyTradingEnv` 生成コストのうち、registry 初期化の固定費は production 側から一段削れた。
 - `test_258` は full object 依存をかなり落とせたので、同型の `MakerPrice` pure-formula テストにも横展開できる。
 - broad 上位は 0.3 秒未満の単発 call に再集中しており、次は `feature_enricher` / `stale_order` / `websocket` の残固定費を小さく刈る段階。
+
+## 2026-03-13 / Wave: Smaller Proxy and Real-Mode Feature Inputs
+
+### 実施内容
+- [tests/unit/v460/test_build_features_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_build_features_pipeline.py)
+  - proxy rows を `50 / 12 / 50` に圧縮
+  - real-mode aggregate minutes を `24` に短縮
+  - shared fixture の slice rows を `24` に揃えた
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - `tests/unit/v460/test_v460_core.py`
+  - 結果: `70 passed in 2.46s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4643 passed, 13 warnings in 29.73s`
+
+### 更新後の上位
+1. `test_266_market_theory_protocol.py::TestKyleLambda::test_disabled` call `0.21s`
+2. `test_094_stale_order.py::TestStaleOrderLogic::test_fill_monitor_result_has_reprice_drift_bps` call `0.19s`
+3. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.14s`
+4. `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction` setup `0.12s`
+5. `test_fill_quality.py::TestUnknownFillHandling::test_status_none_twice_becomes_cancelled_status_unknown` call `0.10s`
+
+### 見立て
+- broad は 30 秒を切った。
+- 残上位は 0.2 秒前後の単発 call/setup に集中しており、ここからは test-side helper より production 側の初期化固定費と import ノイズの比重が大きい。
+- 次は `feature_enricher` / `gate_check` / `stale_order` / `market theory` の pure-call 群を小さく刈るのが筋。

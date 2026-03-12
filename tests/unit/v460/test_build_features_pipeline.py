@@ -47,9 +47,9 @@ def _make_ohlcv(n: int = 200) -> pd.DataFrame:
     })
 
 
-_PROXY_DEFAULT_ROWS = 60
-_PROXY_ZERO_VOLUME_ROWS = 16
-_PROXY_WINDOW_VARIANT_ROWS = 60
+_PROXY_DEFAULT_ROWS = 50
+_PROXY_ZERO_VOLUME_ROWS = 12
+_PROXY_WINDOW_VARIANT_ROWS = 50
 _PROXY_OUTPUT_SHAPE_ROWS = _PROXY_DEFAULT_ROWS
 _PROXY_SMALL_INPUT_ROWS = 5
 
@@ -208,8 +208,8 @@ def _aggregate_raw_records(
         return MarketDataCollector.aggregate_to_1min(ob_path, tr_path, output_path=None)
 
 
-_REAL_MODE_AGG_MINUTES = 32
-_REAL_MODE_AGG_SLICE_ROWS = 30
+_REAL_MODE_AGG_MINUTES = 24
+_REAL_MODE_AGG_SLICE_ROWS = 24
 
 
 @pytest.fixture(scope="module")

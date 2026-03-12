@@ -5210,3 +5210,8 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused `test_258_as_reservation_vpin_continuous_protocol.py test_093_side_params.py test_356_g2_sac_blockers.py`: `105 passed in 4.53s`
     - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 30.85s`
+- 2026-03-13: trimmed another build-features setup wave in the v460 broad suite.
+  - reduced `tests/unit/v460/test_build_features_pipeline.py` proxy and real-mode aggregate inputs to `50 / 12 / 50` rows and `24` aggregate minutes while preserving the same pipeline assertions
+  - re-verified with:
+    - focused `test_build_features_pipeline.py test_v460_core.py`: `70 passed in 2.46s`
+    - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 29.73s`
