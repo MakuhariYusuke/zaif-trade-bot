@@ -1,4 +1,0 @@
-{
-  "training.sac_hyperparameters.learning_rate": [0.0001, 0.00015],
-  "environment.behavioral_penalty.balance_penalty": [0.02, 0.03]
-}

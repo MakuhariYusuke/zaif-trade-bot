@@ -18,6 +18,7 @@ import pickle
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch, AsyncMock
 
@@ -333,20 +334,23 @@ def _create_mock_gate(
 class TestEvaluatorSideDispatch:
     """141# §3: SkipGateEvaluator の side 別モデルディスパッチ."""
 
+    @staticmethod
+    def _make_dispatch_evaluator(
+        *,
+        has_unified: bool = True,
+        has_buy: bool = False,
+        has_sell: bool = False,
+    ) -> SkipGateEvaluator:
+        evaluator = SkipGateEvaluator.__new__(SkipGateEvaluator)
+        evaluator._skip_gate = MagicMock() if has_unified else None
+        evaluator._gate_buy = MagicMock() if has_buy else None
+        evaluator._gate_sell = MagicMock() if has_sell else None
+        return evaluator
+
     def test_select_gate_for_side_buy(self, tmp_path: Path) -> None:
         """buy 側モデルが存在する場合は buy 側モデルを返す."""
-
-        unified_path = _create_mock_gate(tmp_path, "unified.pkl")
-        buy_path = _create_mock_gate(tmp_path, "buy.pkl", "pnl30")
-
-        config = FillTestConfig(
-            skip_gate_enabled=True,
-            skip_gate_model_path=str(unified_path),
-            skip_gate_model_path_buy=str(buy_path),
-            skip_gate_mode="pnl",
-            skip_gate_use_ob_features=False,
-        )
-        evaluator = SkipGateEvaluator(config, tmp_path)
+        del tmp_path
+        evaluator = self._make_dispatch_evaluator(has_unified=True, has_buy=True)
         assert evaluator._skip_gate is not None
         assert evaluator._gate_buy is not None
         assert evaluator._gate_sell is None
@@ -361,20 +365,12 @@ class TestEvaluatorSideDispatch:
 
     def test_select_gate_for_side_both(self, tmp_path: Path) -> None:
         """buy/sell 両方存在する場合は各々を返す."""
-
-        unified_path = _create_mock_gate(tmp_path, "unified.pkl")
-        buy_path = _create_mock_gate(tmp_path, "buy.pkl", "pnl30")
-        sell_path = _create_mock_gate(tmp_path, "sell.pkl", "pnl120")
-
-        config = FillTestConfig(
-            skip_gate_enabled=True,
-            skip_gate_model_path=str(unified_path),
-            skip_gate_model_path_buy=str(buy_path),
-            skip_gate_model_path_sell=str(sell_path),
-            skip_gate_mode="pnl",
-            skip_gate_use_ob_features=False,
+        del tmp_path
+        evaluator = self._make_dispatch_evaluator(
+            has_unified=True,
+            has_buy=True,
+            has_sell=True,
         )
-        evaluator = SkipGateEvaluator(config, tmp_path)
         assert evaluator._gate_buy is not None
         assert evaluator._gate_sell is not None
 
@@ -383,16 +379,8 @@ class TestEvaluatorSideDispatch:
 
     def test_no_side_models_uses_unified(self, tmp_path: Path) -> None:
         """side 別モデル未設定 → unified を使用."""
-
-        unified_path = _create_mock_gate(tmp_path, "unified.pkl")
-
-        config = FillTestConfig(
-            skip_gate_enabled=True,
-            skip_gate_model_path=str(unified_path),
-            skip_gate_mode="pnl",
-            skip_gate_use_ob_features=False,
-        )
-        evaluator = SkipGateEvaluator(config, tmp_path)
+        del tmp_path
+        evaluator = self._make_dispatch_evaluator(has_unified=True)
         assert evaluator._gate_buy is None
         assert evaluator._gate_sell is None
 
@@ -892,9 +880,10 @@ class TestRegimeThresholdConfigOverrides:
         evaluator = SkipGateEvaluator(config, Path("/tmp"))
 
         # mock gate with config
-        mock_gate = MagicMock()
-        mock_gate.config = MagicMock()
-        mock_gate.feature_cols = ["a", "b"]
+        mock_gate = SimpleNamespace(
+            config=SimpleNamespace(),
+            feature_cols=["a", "b"],
+        )
         evaluator._apply_config_overrides(mock_gate)
 
         assert mock_gate.config.regime_thresholds == {"high_vol": 0.2, "trending": -0.1}
@@ -905,9 +894,10 @@ class TestRegimeThresholdConfigOverrides:
         config = FillTestConfig(skip_gate_enabled=False)
         evaluator = SkipGateEvaluator(config, Path("/tmp"))
 
-        mock_gate = MagicMock()
-        mock_gate.config = MagicMock()
-        mock_gate.feature_cols = ["a", "b"]
+        mock_gate = SimpleNamespace(
+            config=SimpleNamespace(),
+            feature_cols=["a", "b"],
+        )
         evaluator._apply_config_overrides(mock_gate)
 
         assert mock_gate.config.regime_thresholds == {}
@@ -1230,8 +1220,10 @@ class TestRegimeAdaptiveThresholdIntegration:
         evaluator = SkipGateEvaluator.__new__(SkipGateEvaluator)
         evaluator._config = config
         evaluator._gate_path = None
-        mock_gate = MagicMock()
-        mock_gate.feature_cols = ["a", "b"]
+        mock_gate = SimpleNamespace(
+            config=SimpleNamespace(),
+            feature_cols=["a", "b"],
+        )
 
         with patch(
             "scripts.v460.lib.skip_gate_evaluator.logger"

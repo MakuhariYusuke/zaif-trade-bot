@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\features\utils\rolling.py
-# hypothesis_version: 6.140.3
-
-[0.0, 1000, 'after_bytes', 'before_bytes', 'computation_time_ms', 'feature_performance', 'max_nan_rate', 'memory_optimization', 'memory_usage_mb', 'nan_rate', 'percent_reduction', 'reports', 'saved_bytes', 'step', 'summary', 'timestamp', 'total_features']

@@ -16,7 +16,7 @@ import json
 import logging
 import math
 from collections import deque
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Final, Iterable, Iterator, Mapping, Sequence
 import numpy as np
 from scipy import stats
 from ztb.io.jsonl import iter_jsonl_objects
-from ztb.utils.dataclass_utils import get_dataclass_field_names
+from ztb.utils.dataclass_utils import get_dataclass_field_names, shallow_asdict
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +174,7 @@ class FillRecord:
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""
-        return asdict(self)
+        return shallow_asdict(self)
 
     @classmethod
     def from_dict(cls, d: Mapping[str, object]) -> FillRecord:
@@ -363,7 +363,7 @@ class FillMetrics:
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""
-        return asdict(self)
+        return shallow_asdict(self)
 
 @dataclass
 class PnlAccumulator:

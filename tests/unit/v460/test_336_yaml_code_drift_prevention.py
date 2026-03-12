@@ -25,9 +25,8 @@ import dataclasses
 from functools import lru_cache
 from pathlib import Path
 
-import yaml
-
 from scripts.v460.lib.fill_config import FillTestConfig
+from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
 
 _YAML_PATH = Path(__file__).resolve().parents[3] / "configs" / "v460" / "fill_test.yaml"
 
@@ -174,9 +173,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
 
 @lru_cache(maxsize=1)
 def _load_yaml_config() -> FillTestConfig:
-    with open(_YAML_PATH) as f:
-        raw = yaml.safe_load(f)
-    return FillTestConfig.from_yaml(raw)
+    return FillTestConfig.from_yaml(load_yaml_mapping(_YAML_PATH))
 
 
 @lru_cache(maxsize=1)

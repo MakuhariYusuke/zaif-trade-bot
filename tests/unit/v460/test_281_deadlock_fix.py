@@ -15,12 +15,15 @@
 
 from __future__ import annotations
 
-import inspect
-
 import pytest
 
 from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
-from tests.unit.v460._fill_test_source import ORCHESTRATOR_BALANCE, read_source_text
+from tests.unit.v460._fill_test_source import (
+    ORCHESTRATOR_BALANCE,
+    ORCHESTRATOR_PRE_CYCLE,
+    read_class_method_source,
+    read_source_text,
+)
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -40,8 +43,11 @@ class TestUntickRemoval:
         330#: run_continuous → _resolve_side_vetos に抽出。
         continue → return True に変更。
         """
-        from scripts.v460.lib.orchestrator_pre_cycle import OrchestratorPreCycleMixin
-        src = inspect.getsource(OrchestratorPreCycleMixin._resolve_side_vetos)
+        src = read_class_method_source(
+            ORCHESTRATOR_PRE_CYCLE,
+            "OrchestratorPreCycleMixin",
+            "_resolve_side_vetos",
+        )
         # per_side_dd_both_halt セクションを抽出
         block_start = src.index("per_side_dd_both_halt")
         block_section = src[block_start:block_start + 1000]

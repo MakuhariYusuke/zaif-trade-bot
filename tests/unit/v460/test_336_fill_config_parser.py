@@ -18,7 +18,6 @@ import copy
 from pathlib import Path
 
 import pytest
-import yaml
 
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.fill_config_parser import (
@@ -29,6 +28,7 @@ from scripts.v460.lib.fill_config_parser import (
     _parse_trading_features,
     parse_fill_config_yaml,
 )
+from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
 
 YAML_PATH = Path("configs/v460/fill_test.yaml")
 
@@ -286,8 +286,7 @@ class TestProductionYamlRoundTrip:
     @pytest.fixture(scope="class")
     def yaml_cfg(self) -> dict:
         """configs/v460/fill_test.yaml をロード."""
-        with open(YAML_PATH, encoding="utf-8") as f:
-            return yaml.safe_load(f)
+        return dict(load_yaml_mapping(YAML_PATH))
 
     @pytest.fixture(scope="class")
     def direct_cfg(self, yaml_cfg: dict) -> FillTestConfig:

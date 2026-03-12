@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\trading\environment\components\position_manager.py
-# hypothesis_version: 6.140.3
-
-[0.0, 1.0, 'Long', 'PositionManager', 'Short', 'entry_price', 'max_position_size', 'position', 'realized_pnl', 'total_pnl', 'trades_count', 'unrealized_pnl']
