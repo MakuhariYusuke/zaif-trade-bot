@@ -5645,3 +5645,44 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - `proxy_features_generation` は broad 上位から外れた。ここは production 側の rolling 再利用が効いた。
 - 次の本命は `fill_quality` unknown-fill と `skip_gate_v3` / `protocol_cancel_recheck` の call 側。
 - `test_356` は setup `0.18s` まで落ちており、以後は heavy env より他テストの単発 call が支配的になっている。
+
+## 2026-03-13 / Wave: Call-Side Stub Cleanup
+
+### 実施内容
+- [tests/unit/v460/test_skip_gate_v3.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_skip_gate_v3.py)
+  - `_make_bypassed_evaluator(...)` を追加
+  - `_AdapterStub` を追加
+  - unknown/trending rule テストの evaluator 準備を共通化
+  - `AsyncMock` / `MagicMock` 依存を一部 `SimpleNamespace` と lightweight stub に置換
+- [tests/unit/v460/test_262_protocol_cancel_recheck.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_262_protocol_cancel_recheck.py)
+  - `_CancelAdapterStub` を追加
+  - fallback price 検証で不要な `AsyncMock` 構成を削除
+- [tests/unit/v460/test_092_gap_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_092_gap_fixes.py)
+  - `_make_one_sided_records(...)` を追加
+  - `E7` の unbalanced case を helper 再利用へ変更
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_skip_gate_v3.py`
+  - `tests/unit/v460/test_262_protocol_cancel_recheck.py`
+  - `tests/unit/v460/test_092_gap_fixes.py`
+  - 結果: `61 passed in 1.93s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4643 passed, 13 warnings in 33.37s`
+
+### 更新後の上位
+1. `test_sac_retrain_scheduler.py::TestReadSidecarCache::test_cache_invalidated_on_new_write` call `0.36s`
+2. `test_websocket_client.py::TestCoincheckPrivateWS::test_dispatch_short_list_ignored` call `0.34s`
+3. `test_264_kelly_criterion.py::TestComputeKellyFraction::test_max_fraction_cap` call `0.33s`
+4. `test_093_side_params.py::TestFastFillDefenseSideEffective::test_sell_threshold_broader_than_buy` call `0.23s`
+5. `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction` setup `0.17s`
+
+### 見立て
+- broad の支配点が `fill_quality` / `skip_gate_v3` / `protocol_cancel_recheck` からさらに後退した。
+- 次は `sac_retrain_scheduler` の sidecar cache、`websocket_client` の dispatch path、`kelly_criterion` の単発 call が本命。
+- `test_356` と `test_enricher_skip_gate` は setup 上位に残るが、絶対値としてはかなり低くなっている。

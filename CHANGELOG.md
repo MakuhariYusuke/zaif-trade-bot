@@ -5171,3 +5171,10 @@ python scripts/unified_trainer.py \
     - focused `test_v460_core.py test_build_features_pipeline.py`: `70 passed in 4.64s`
     - focused `test_fill_quality.py -k 'status_none_twice_becomes_cancelled_status_unknown'`: `1 passed, 205 deselected in 1.73s`
     - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 37.59s`
+- 2026-03-13: reduced more v460 call-side overhead and removed repeated mock scaffolding.
+  - added a shared bypassed-evaluator helper plus lightweight async adapter stub in `test_skip_gate_v3.py`
+  - replaced one more cancel-recheck `AsyncMock` setup in `test_262_protocol_cancel_recheck.py` with a minimal adapter stub
+  - extracted `_make_one_sided_records(...)` in `test_092_gap_fixes.py` to remove repeated `FillRecord(...)` construction loops
+  - re-verified with:
+    - focused `test_skip_gate_v3.py test_262_protocol_cancel_recheck.py test_092_gap_fixes.py`: `61 passed in 1.93s`
+    - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 33.37s`
