@@ -275,7 +275,11 @@ def _create_training_env(
     feature_columns = [str(col) for col in selected_raw] if isinstance(selected_raw, list) else []
 
     # Construct EnvironmentConfig
-    env_config = EnvironmentConfig(**env_cfg) if env_cfg else EnvironmentConfig()
+    # 386# FIX P0-8: from_dict() を使用して behavior_optimization → reward_settings
+    # マッピングと reward_settings dict → RewardSettings 変換を正しく実行する。
+    # 旧: EnvironmentConfig(**env_cfg) は reward_settings を dict のまま格納し、
+    # HeavyTradingEnv で shallow_asdict() TypeError を引き起こしていた。
+    env_config = EnvironmentConfig.from_dict(env_cfg) if env_cfg else EnvironmentConfig()
 
     # 356# B3: 明示的に feature_names を注入
     # config.features.selected で指定した特徴量のみを observation space に含める

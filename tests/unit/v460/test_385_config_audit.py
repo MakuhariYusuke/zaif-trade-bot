@@ -329,3 +329,45 @@ class TestRewardSettingsPropagation:
         assert hp == pytest.approx(-0.001), (
             f"Expected hold_penalty=-0.001 for HOLD, got {hp}"
         )
+
+    def test_experiment_runner_from_dict_path(self) -> None:
+        """P0-8: experiment runner が from_dict() を使い reward_settings を正しく変換すること.
+
+        EnvironmentConfig(**env_cfg) だと reward_settings が dict のまま格納され、
+        HeavyTradingEnv で shallow_asdict() TypeError が発生していた。
+        """
+        from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
+        from ztb.utils.dataclass_utils import shallow_asdict
+
+        # 実験ランナーが受け取る環境設定 (YAML environment セクション)
+        env_cfg = {
+            "reward_scaling": 1.0,
+            "transaction_cost": 0.0,
+            "behavior_optimization": {
+                "balance_penalty": 0.1,
+                "consistency_penalty": 0.01,
+            },
+            "reward_settings": {
+                "hold_penalty_weight": 0.001,
+                "confidence_penalty_threshold": 0.2,
+            },
+        }
+
+        # from_dict() パスで構築 (386# P0-8 修正後)
+        env_config = EnvironmentConfig.from_dict(env_cfg)
+
+        # reward_settings が RewardSettings インスタンスであること
+        assert isinstance(env_config.reward_settings, RewardSettings), (
+            f"Expected RewardSettings instance, got {type(env_config.reward_settings)}"
+        )
+
+        # shallow_asdict() が TypeError を起こさないこと
+        rs_dict = shallow_asdict(env_config.reward_settings)
+        assert isinstance(rs_dict, dict)
+
+        # behavior_optimization のマッピングが有効であること
+        assert env_config.reward_settings.consistency_penalty == pytest.approx(0.01)
+
+        # reward_settings のカスタムパラメータが正しいこと
+        custom = env_config.reward_settings.custom_reward_params
+        assert float(custom.get("hold_penalty_weight", 0.01)) == pytest.approx(0.001)
