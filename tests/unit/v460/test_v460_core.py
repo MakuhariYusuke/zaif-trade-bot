@@ -10,6 +10,7 @@ import json
 import tempfile
 from functools import lru_cache
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
@@ -548,8 +549,20 @@ class TestDataLoaderEdgeCases:
     def test_column_order_deterministic(self, ordered_parquet_path: Path) -> None:
         """003# #13: column order is stable across calls."""
 
-        cols1 = list(load_parquet(ordered_parquet_path, feature_cols=["z", "a", "m"]).columns)
-        cols2 = list(load_parquet(ordered_parquet_path, feature_cols=["m", "z", "a"]).columns)
+        cols1 = list(
+            load_parquet(
+                ordered_parquet_path,
+                feature_cols=["z", "a", "m"],
+                max_rows=1,
+            ).columns
+        )
+        cols2 = list(
+            load_parquet(
+                ordered_parquet_path,
+                feature_cols=["m", "z", "a"],
+                max_rows=1,
+            ).columns
+        )
         assert cols1 == cols2  # Same order regardless of input
 
     def test_missing_column_raises(self, missing_col_parquet_path: Path) -> None:
@@ -571,7 +584,16 @@ class TestGateCheckG0FeatureColumns:
         p = tmp_path / "test.parquet"
         df.to_parquet(p)
 
-        result = run_g0(str(p), thresholds={"min_feature_columns": 2, "max_nan_ratio": 0.01})
+        manifest_stub = SimpleNamespace(path=SimpleNamespace(exists=lambda: True))
+        with (
+            patch("scripts.v460.run_gate_check.compute_data_hash", return_value="deadbeef"),
+            patch(
+                "scripts.v460.run_gate_check.check_nan_ratio",
+                return_value={"actual": 0.0, "threshold": 0.01, "pass": True},
+            ),
+            patch("scripts.v460.run_gate_check.ManifestWriter", return_value=manifest_stub),
+        ):
+            result = run_g0(str(p), thresholds={"min_feature_columns": 2, "max_nan_ratio": 0.01})
         check = result["checks"]["feature_column_count"]
         # Should count feat_a, feat_b only (not close, not target_*)
         assert check["actual"] == 2

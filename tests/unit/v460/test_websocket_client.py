@@ -487,8 +487,8 @@ class TestMonitorStopRules:
 
     def test_cumulative_loss_above_threshold(self) -> None:
         from scripts.v460.monitor_fill_test import _check_cumulative_loss
-        # 大きな損失: -20 bps × 10M × 0.001 = -20 JPY per record
-        records = [self._make_record(pnl_bps=-20.0) for _ in range(600)]
+        # 大きな損失: -120 bps × 10M × 0.001 = -120 JPY per record
+        records = [self._make_record(pnl_bps=-120.0) for _ in range(100)]
         assert _check_cumulative_loss(records) is True  # 12,000 > 10,000
 
     def test_evaluate_stop_rules_skip_low_n(self) -> None:

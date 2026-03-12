@@ -67,6 +67,16 @@ def _load_g2_real_df() -> pd.DataFrame:
 
 
 @lru_cache(maxsize=1)
+def _load_g2_test_cfg() -> dict:
+    cfg = dict(_load_g2_sac_yaml())
+    cfg["environment"] = {
+        **dict(cfg.get("environment", {})),
+        "random_start": False,
+    }
+    return cfg
+
+
+@lru_cache(maxsize=1)
 def _load_g2_yaml_text() -> str:
     return _G2_SAC_YAML_PATH.read_text(encoding="utf-8")
 
@@ -614,11 +624,7 @@ class TestHeavyTradingEnvIntegration:
         self,
         real_df: "pd.DataFrame",
     ) -> tuple["HeavyTradingEnv", dict[str, int | str | bool]]:
-        cfg = dict(_load_g2_sac_yaml())
-        cfg["environment"] = {
-            **dict(cfg.get("environment", {})),
-            "random_start": False,
-        }
+        cfg = dict(_load_g2_test_cfg())
         with patch("ztb.trading.environment.heavy_env.core.gc.collect", return_value=0):
             env, env_info = _create_training_env(real_df, cfg)
             # close() の aggressive GC はテストで意味が薄く teardown 固定費だけ大きい。

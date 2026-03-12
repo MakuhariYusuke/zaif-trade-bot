@@ -107,6 +107,17 @@ def _make_microstructure_config(**overrides: object) -> SimpleNamespace:
     return SimpleNamespace(**defaults)
 
 
+_DISABLED_KYLE_STUB = _make_microstructure_stub(
+    _make_microstructure_config(kyle_lambda_enabled=False)
+)
+_ZERO_DEPTH_KYLE_STUB = _make_microstructure_stub(
+    _make_microstructure_config(kyle_lambda_enabled=True)
+)
+_DISABLED_AMIHUD_STUB = _make_microstructure_stub(
+    _make_microstructure_config(amihud_illiq_enabled=False)
+)
+
+
 def _make_regime_detector(vol_ratio: float = 1.0) -> SimpleNamespace:
     return SimpleNamespace(
         current_regime=FillTestRegime.RANGING,
@@ -289,14 +300,24 @@ class TestKyleLambda:
 
     def test_disabled(self) -> None:
         """kyle_lambda_enabled=False なら無影響."""
-        mp = _make_microstructure_stub(_make_microstructure_config(kyle_lambda_enabled=False))
-        result = MakerPrice._apply_kyle_lambda(mp, "buy", 100.0, 10_000_000.0, 0.05)
+        result = MakerPrice._apply_kyle_lambda(
+            _DISABLED_KYLE_STUB,
+            "buy",
+            100.0,
+            10_000_000.0,
+            0.05,
+        )
         assert result == 0.05
 
     def test_zero_depth_no_effect(self) -> None:
         """depth=0 なら無影響."""
-        mp = _make_microstructure_stub(_make_microstructure_config(kyle_lambda_enabled=True))
-        result = MakerPrice._apply_kyle_lambda(mp, "buy", 100.0, 10_000_000.0, 0.05)
+        result = MakerPrice._apply_kyle_lambda(
+            _ZERO_DEPTH_KYLE_STUB,
+            "buy",
+            100.0,
+            10_000_000.0,
+            0.05,
+        )
         assert result == 0.05
 
     def test_positive_depth_adds_offset(self) -> None:
@@ -354,8 +375,13 @@ class TestAmihudILLIQ:
 
     def test_disabled(self) -> None:
         """amihud_illiq_enabled=False なら無影響."""
-        mp = _make_microstructure_stub(_make_microstructure_config(amihud_illiq_enabled=False))
-        result = MakerPrice._apply_amihud_illiq(mp, "buy", 100.0, 10_000_000.0, 0.05)
+        result = MakerPrice._apply_amihud_illiq(
+            _DISABLED_AMIHUD_STUB,
+            "buy",
+            100.0,
+            10_000_000.0,
+            0.05,
+        )
         assert result == 0.05
 
     def test_sufficient_liquidity(self) -> None:

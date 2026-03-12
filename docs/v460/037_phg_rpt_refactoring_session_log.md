@@ -5914,3 +5914,63 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - `test_266` と `test_094` の broad 上位化は focused では再現しなかった。単発ノイズの比率が高い。
 - 一方で `test_enricher_skip_gate` の setup と `test_fill_quality` unknown-fill は focused で確実に下がっている。
 - 次は broad の再測定結果に合わせて、`test_356` / `test_enricher_skip_gate` / `test_fill_quality` の順で再度詰める。
+
+## 2026-03-13 / Wave: Shared SkipGate Roundtrip Helper + Source/Payload Isolation
+
+### 実施内容
+- [tests/unit/v460/_skip_gate_test_helpers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_skip_gate_test_helpers.py)
+  - `save_and_load_skip_gate(...)` を追加
+- [tests/unit/v460/test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+- [tests/unit/v460/test_retrain_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_retrain_hot_reload.py)
+- [tests/unit/v460/test_skip_gate_d8.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_skip_gate_d8.py)
+  - SkipGate の save/load roundtrip を shared helper に統一
+- [tests/unit/v460/test_094_stale_order.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_094_stale_order.py)
+  - `OrderMonitor.monitor` source を module-level cache 化
+- [tests/unit/v460/test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py)
+  - unknown-fill / cancel-race の `get_order_status` / `cancel_order` を plain async helper に置換
+  - fast-cycle helper では既存の no-op logger / phantom guard 無効化を継続利用
+- [tests/unit/v460/test_v460_core.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_v460_core.py)
+  - `load_parquet(..., max_rows=1)` を `test_column_order_deterministic` に適用
+  - `run_g0` feature-column-count テストでは hash / manifest / NaN ratio を patch して関心を isolation
+- [tests/unit/v460/test_ob_recorder.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ob_recorder.py)
+  - timestamp 検証 2 件を `append_jsonl_gz(...)` payload capture に変更
+- [tests/unit/v460/test_093_side_params.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_093_side_params.py)
+  - `maker_price.py` / `_process_post_cycle` source を import-time cache 化
+- [tests/unit/v460/test_274_pattern_c_theory_cleanup.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_274_pattern_c_theory_cleanup.py)
+  - default `FillTestConfig` を共有し、default gate 構築コストを削減
+- [tests/unit/v460/test_266_market_theory_protocol.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_266_market_theory_protocol.py)
+  - disabled pure-call stub を module-level 定数へ寄せた
+- [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py)
+  - 1-row 下限は `step()` が `n_steps=1` で失敗することを確認し、`2 rows` を実運用下限として維持
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_skip_gate_d8.py::TestSkipGateSaveLoad::test_save_load_roundtrip`
+  - `tests/unit/v460/test_retrain_hot_reload.py::TestPostDeployVerification::test_deployed_verified_status`
+  - `tests/unit/v460/test_enricher_skip_gate.py::Test058Integration`
+  - `tests/unit/v460/test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction`
+  - `tests/unit/v460/test_fill_quality.py::TestUnknownFillHandling`
+  - `tests/unit/v460/test_094_stale_order.py::TestStaleOrderLogic::test_stale_order_updates_mid_at_order`
+  - `tests/unit/v460/test_v460_core.py::TestDataLoaderEdgeCases::test_column_order_deterministic`
+  - `tests/unit/v460/test_266_market_theory_protocol.py::TestAmihudILLIQ::test_disabled`
+  - 結果: `11 passed in 4.77s`
+- focused:
+  - `tests/unit/v460/test_093_side_params.py`
+  - `tests/unit/v460/test_274_pattern_c_theory_cleanup.py`
+  - `tests/unit/v460/test_ob_recorder.py`
+  - `tests/unit/v460/test_v460_core.py`
+  - `tests/unit/v460/test_websocket_client.py`
+  - 結果: `162 passed in 4.54s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4643 passed, 13 warnings in 39.22s`
+
+### 見立て
+- `SkipGate` roundtrip helper は 3 ファイルに展開できたので、今後の save/load 契約変更点が 1 箇所に集まる。
+- `OrderMonitor.monitor` / `maker_price.py` の source cache は broad 上位ノイズを減らす方向に効く。
+- `ob_recorder` timestamp 系は payload を見れば十分で、gzip 実書込は flush 系テストに限定するのが妥当。
+- broad の wall time 自体は揺れるが、残上位は heavy env setup、real-data enrichment、一部 pure-call 単発に再集中している。

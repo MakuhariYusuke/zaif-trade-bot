@@ -34,6 +34,7 @@ from ztb.metrics.fill_quality import FillRecord
 _FILL_CONFIG_FIELDS = FillTestConfig.__dataclass_fields__
 _FILL_MONITOR_RESULT_FIELDS = FillMonitorResult.__dataclass_fields__
 _SKIP_GATE_EVALUATE_SIGNATURE = inspect.signature(SkipGate.evaluate)
+_ORDER_MONITOR_SOURCE = read_class_method_source(ORDER_MONITOR, "OrderMonitor", "monitor")
 
 
 # =====================================================================
@@ -245,7 +246,7 @@ class TestStaleOrderLogic:
 
     @staticmethod
     def _monitor_source() -> str:
-        return read_class_method_source(ORDER_MONITOR, "OrderMonitor", "monitor")
+        return _ORDER_MONITOR_SOURCE
 
     def test_run_single_cycle_has_stale_order_logic(self) -> None:
         """run_single_cycle (or delegated _monitor_fill_polling) に stale_order 関連ロジックがある."""

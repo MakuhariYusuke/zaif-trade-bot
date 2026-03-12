@@ -15,6 +15,7 @@ from collections.abc import Callable
 from contextlib import ExitStack
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
@@ -131,6 +132,23 @@ async def _run_single_cycle_without_sleep(runner: "FillTestRunner") -> FillRecor
         for logger_path in _FAST_CYCLE_LOGGER_PATHS:
             stack.enter_context(patch(logger_path, new=_NoopLogger()))
         return await runner.run_single_cycle()
+
+
+async def _async_return(value: object) -> object:
+    return value
+
+
+async def _async_raise(exc: Exception) -> object:
+    raise exc
+
+
+def _make_status_side_effect(*values: object) -> Callable[[str], object]:
+    values_iter = iter(values)
+
+    async def _side_effect(_order_id: str) -> object:
+        return next(values_iter)
+
+    return _side_effect
 
 
 def _build_daily_records(
@@ -1864,7 +1882,7 @@ class TestUnknownFillHandling:
         """get_order_status が 2 回 None → cancelled, cancel_reason=postonly_reject or status_unknown."""
         runner = self._make_runner(tmp_path)
         # 初回も retry も None
-        runner.adapter.get_order_status.return_value = None
+        runner.adapter.get_order_status = _make_status_side_effect(None, None, None, None)  # type: ignore[assignment]
 
         record = await _run_single_cycle_without_sleep(runner)
 
@@ -1882,11 +1900,9 @@ class TestUnknownFillHandling:
         """get_order_status が None → retry で filled → filled=True."""
 
         runner = self._make_runner(tmp_path)
-        filled_order = MagicMock()
-        filled_order.status = "filled"
-        filled_order.price = 15000500.0
+        filled_order = SimpleNamespace(status="filled", price=15000500.0)
         # 1 回目 None, 2 回目 filled
-        runner.adapter.get_order_status.side_effect = [None, filled_order]
+        runner.adapter.get_order_status = _make_status_side_effect(None, filled_order)  # type: ignore[assignment]
 
         record = await _run_single_cycle_without_sleep(runner)
 
@@ -1901,10 +1917,8 @@ class TestUnknownFillHandling:
         """get_order_status が直接 filled → 通常の filled 処理."""
 
         runner = self._make_runner(tmp_path)
-        filled_order = MagicMock()
-        filled_order.status = "filled"
-        filled_order.price = 15000200.0
-        runner.adapter.get_order_status.return_value = filled_order
+        filled_order = SimpleNamespace(status="filled", price=15000200.0)
+        runner.adapter.get_order_status = lambda _order_id: _async_return(filled_order)  # type: ignore[assignment]
 
         record = await _run_single_cycle_without_sleep(runner)
 
@@ -1929,24 +1943,14 @@ class TestBug11CancelRaceCondition:
 
         runner = self._make_runner(tmp_path)
         # cancel_order fails with "Failed to cancel"
-        runner.adapter.cancel_order.side_effect = Exception(
+        cancel_exc = Exception(
             'Coincheck API error: 400 | body={"success":false,"error":"Failed to cancel the order."}'
         )
+        runner.adapter.cancel_order = lambda _order_id: _async_raise(cancel_exc)  # type: ignore[assignment]
 
         # First 2 calls return None (polling), then filled on recheck
-        filled_order = MagicMock()
-        filled_order.status = "filled"
-        filled_order.price = 15000500.0
-        call_count = 0
-
-        async def side_effect_status(order_id: str) -> object:
-            nonlocal call_count
-            call_count += 1
-            if call_count <= 2:
-                return None
-            return filled_order
-
-        runner.adapter.get_order_status = side_effect_status  # type: ignore[assignment]
+        filled_order = SimpleNamespace(status="filled", price=15000500.0)
+        runner.adapter.get_order_status = _make_status_side_effect(None, None, filled_order)  # type: ignore[assignment]
 
         record = await _run_single_cycle_without_sleep(runner)
         assert record.filled is True
@@ -1956,10 +1960,11 @@ class TestBug11CancelRaceCondition:
     async def test_cancel_fail_no_fill(self, tmp_path: Path) -> None:
         """cancel 失敗かつ recheck でも None → unfilled のまま."""
         runner = self._make_runner(tmp_path)
-        runner.adapter.get_order_status.return_value = None
-        runner.adapter.cancel_order.side_effect = Exception(
+        runner.adapter.get_order_status = _make_status_side_effect(None, None, None, None)  # type: ignore[assignment]
+        cancel_exc = Exception(
             'body={"success":false,"error":"Failed to cancel the order."}'
         )
+        runner.adapter.cancel_order = lambda _order_id: _async_raise(cancel_exc)  # type: ignore[assignment]
 
         record = await _run_single_cycle_without_sleep(runner)
         assert record.filled is False

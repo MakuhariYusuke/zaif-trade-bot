@@ -5225,3 +5225,14 @@ python scripts/unified_trainer.py \
     - focused `test_266_market_theory_protocol.py Test058Integration unknown-fill/bad-cancel bundles`: `47 passed in 2.76s`
     - focused `test_094_stale_order.py test_266_market_theory_protocol.py test_enricher_skip_gate.py::Test058Integration test_fill_quality.py::TestUnknownFillHandling`: `97 passed in 2.99s`
     - filtered broad `tests/unit/v460/`: latest rerun pending / previous pass green
+- 2026-03-13: unified another v460 cleanup wave around SkipGate roundtrip helpers, source caches, and isolated heavy assertions.
+  - added `tests/unit/v460/_skip_gate_test_helpers.py::save_and_load_skip_gate(...)` and reused it from `test_enricher_skip_gate.py`, `test_retrain_hot_reload.py`, and `test_skip_gate_d8.py`
+  - cached `OrderMonitor.monitor` source text in `test_094_stale_order.py` and cached `maker_price` / `_process_post_cycle` source reads in `test_093_side_params.py`
+  - changed `test_fill_quality.py` unknown-fill / cancel-race cases from `AsyncMock` stateful methods to plain async helper callables and kept the existing fast-cycle logger/phantom-guard suppression
+  - changed `test_v460_core.py` data-loader edge tests to use `max_rows` fast-paths and isolated the `run_g0` feature-column-count assertion from unrelated hash / manifest / NaN checks
+  - changed `test_ob_recorder.py` timestamp-serialization checks to capture `append_jsonl_gz(...)` payloads directly instead of round-tripping through gzip files when file I/O itself was not the test target
+  - reused a default gate config in `test_274_pattern_c_theory_cleanup.py` and minimal disabled stubs in `test_266_market_theory_protocol.py`
+  - re-verified with:
+    - focused `test_skip_gate_d8.py::TestSkipGateSaveLoad::test_save_load_roundtrip test_retrain_hot_reload.py::TestPostDeployVerification::test_deployed_verified_status test_enricher_skip_gate.py::Test058Integration test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction test_fill_quality.py::TestUnknownFillHandling test_094_stale_order.py::TestStaleOrderLogic::test_stale_order_updates_mid_at_order test_v460_core.py::TestDataLoaderEdgeCases::test_column_order_deterministic test_266_market_theory_protocol.py::TestAmihudILLIQ::test_disabled`: `11 passed in 4.77s`
+    - focused `test_093_side_params.py test_274_pattern_c_theory_cleanup.py test_ob_recorder.py test_v460_core.py test_websocket_client.py`: `162 passed in 4.54s`
+    - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 39.22s`

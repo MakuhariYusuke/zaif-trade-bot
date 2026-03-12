@@ -30,6 +30,8 @@ _FILL_CONFIG_FIELDS = FillTestConfig.__dataclass_fields__
 _FILL_TEST_YAML = load_yaml_mapping(
     Path(__file__).resolve().parents[3] / "configs" / "v460" / "fill_test.yaml"
 )
+_MAKER_PRICE_SOURCE = read_source_text(MAKER_PRICE)
+_POST_CYCLE_SOURCE = read_fill_test_method_source("_process_post_cycle")
 
 
 # =====================================================================
@@ -199,13 +201,13 @@ class TestSpreadAdaptiveSideLogic:
 
         120#: _compute_maker_price は maker_price.py に抽出済み.
         """
-        source = read_source_text(MAKER_PRICE)
+        source = _MAKER_PRICE_SOURCE
         assert "narrow_spread_boost_buy" in source
         assert "narrow_spread_boost_sell" in source
 
     def test_sa_boost_variable_name(self) -> None:
         """093# で sa_boost 変数を使ってサイド別分岐している."""
-        source = read_source_text(MAKER_PRICE)
+        source = _MAKER_PRICE_SOURCE
         assert "sa_boost" in source
 
 
@@ -251,7 +253,7 @@ class TestFastFillDefenseSideLogic:
         265# extract: post-cycle 処理は _process_post_cycle に分離されたため、
         そちらのソースコードを検査する。
         """
-        source = read_fill_test_method_source("_process_post_cycle")
+        source = _POST_CYCLE_SOURCE
         assert "fast_fill_defense" in source
         assert "evaluate_fill" in source
 

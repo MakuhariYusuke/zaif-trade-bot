@@ -42,6 +42,7 @@ from scripts.v460.ml.skip_gate import (
     warm_start_skip_gate_thresholds,
 )
 from scripts.v460.ml.data_loader import build_as_features, load_fill_records as load_fill_records_df
+from tests.unit.v460._skip_gate_test_helpers import save_and_load_skip_gate
 from ztb.io.jsonl import read_tail_jsonl_objects
 
 _REAL_DATA_SAMPLE_ROWS = 94
@@ -196,15 +197,6 @@ def _make_micro_feature_fill_df() -> pd.DataFrame:
 @lru_cache(maxsize=1)
 def _cached_micro_feature_fill_df() -> pd.DataFrame:
     return _make_micro_feature_fill_df()
-
-
-def _save_and_load_gate(
-    gate: SkipGate,
-    path: Path,
-) -> SkipGate:
-    """SkipGate の save/load roundtrip を共通化."""
-    gate.save(path)
-    return SkipGate.load(path)
 
 
 def _make_basic_gate() -> SkipGate:
@@ -594,7 +586,7 @@ class Test058SkipGate:
         """save → load で復元."""
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "test_gate.pkl"
-            loaded = _save_and_load_gate(trained_gate, path)
+            loaded = save_and_load_skip_gate(trained_gate, path)
             assert path.exists()
             assert loaded.feature_cols == trained_gate.feature_cols
             assert loaded.config.threshold_bps == trained_gate.config.threshold_bps
@@ -656,7 +648,7 @@ class Test061SkipGateASMode:
         """AS モードの save → load roundtrip."""
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "test_as_gate.pkl"
-            loaded = _save_and_load_gate(as_gate, path)
+            loaded = save_and_load_skip_gate(as_gate, path)
             assert loaded.config.mode == "as"
             assert loaded.config.as_threshold == 0.6
 
@@ -1319,7 +1311,7 @@ class Test059PickleHash:
 
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "gate.pkl"
-            _save_and_load_gate(gate, path)
+            save_and_load_skip_gate(gate, path)
             # ハッシュファイルを削除
             hash_path = path.with_suffix(".pkl.sha256")
             hash_path.unlink()
