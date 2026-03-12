@@ -1,0 +1,82 @@
+# 399# Production: SAC gamma=0.95 + reward-tuned (20K steps × 4 seeds)
+# Based on g2_sac_gamma095_reward_tuned.yaml with val_ratio=0.02 for faster OOS
+# 20K steps × 4 seeds ≈ 30-40 min total
+#
+# 使用方法:
+#   python scripts/v460/run_experiment.py \
+#     --config configs/v460/experiments/g2_sac_gamma095_reward_tuned_fast.yaml
+
+_base: configs/v460/base.yaml
+_gate: G2-train
+_task: sac_train
+
+data:
+  ohlcv_path: "data/btc_jpy_1m_full_registry_features.parquet"
+  v460_features_path: null
+  train_end_index: 973544
+
+features:
+  selected:
+    - price_velocity
+    - micro_trend
+    - price_acceleration
+    - volume_surge
+    - momentum_divergence
+    - tick_volume_ratio
+    - order_flow_imbalance
+    - micro_volatility
+    - spread_pressure
+    - momentum_burst
+    - liquidity_surge
+    - realized_volatility
+    - parkinson_sigma
+    - vpin_proxy
+    - kyle_lambda_proxy
+    - amihud_illiq
+    - ema_velocity_bps
+
+environment:
+  transaction_cost: 0.0
+  reward_scaling: 1.0
+  max_position_size: 0.01
+  initial_portfolio_value: 10000000.0
+  use_continuous_actions: true
+  action_space_type: "continuous_1d"
+  exchange: coincheck
+  timeframe: "1m"
+  continuous_to_discrete_threshold: 0.10
+  continuous_to_discrete_threshold_neg: -0.10
+  behavior_optimization:
+    balance_penalty: 0.1
+    balance_penalty_tolerance: 0.05
+    consistency_penalty: 0.01
+  reward_settings:
+    hold_penalty_weight: 0.001
+    confidence_penalty_threshold: 0.2
+    position_penalty_weight: 0.01
+    pnl_reward_multiplier: 1.0
+
+sac_hyperparameters:
+  gamma: 0.95
+  ent_coef: "auto"
+  learning_rate: 3.0e-4
+  batch_size: 256
+  buffer_size: 50000
+  learning_starts: 1000
+  tau: 0.005
+  train_freq: 1
+  gradient_steps: 1
+
+training:
+  total_timesteps: 20000
+  checkpoint_interval: 5000
+  val_ratio: 0.02                  # 399#: 高速版 (24K rows/seed)
+
+evaluation:
+  n_episodes: 1
+
+seeds: [42, 123, 456, 789]
+
+output:
+  results_dir: "results/v460"
+  model_dir: "models/v460/gamma095_reward_tuned"

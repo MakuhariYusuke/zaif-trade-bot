@@ -273,6 +273,11 @@ def _build_environment_config(
     env_config = EnvironmentConfig.from_dict(env_cfg) if env_cfg else EnvironmentConfig()
     if feature_columns:
         env_config.feature_names = feature_columns
+    # 399# P1: data.train_end_index を注入 (scaler リーク防止)
+    data_cfg = section(cfg, "data")
+    train_end_index = data_cfg.get("train_end_index") if data_cfg else None
+    if train_end_index is not None:
+        env_config.train_end_index = int(train_end_index)
     return env_config
 
 
