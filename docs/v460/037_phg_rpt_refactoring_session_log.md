@@ -4801,6 +4801,278 @@ Date: 2026-03-12
 - [tests/integration/test_market_regime_adaptation_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/integration/test_market_regime_adaptation_integration.py) の setup 共有化の継続
 - environment 系の [tests/unit/environment/test_forced_actions.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_forced_actions.py) / [tests/unit/environment/test_pnl_invariants.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/environment/test_pnl_invariants.py) に対する shared env fixture 化
 
+## 2026-03-12 / Session 037-109
+
+### 概要
+未整理だった成果物の増分について、ディレクトリを段階的に高層化した。あわせて broad 上位だった `target_entropy` と persistence 周辺をもう一段軽量化した。
+
+### 実施内容
+- [ztb/training/entropy_temperature.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/entropy_temperature.py)
+  - `alpha_optimizer` を lazy property 化した。
+  - module 末尾に残っていた手動実行用の smoke block を削除した。
+- [ztb/training/unified_optimizer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/unified_optimizer.py)
+  - `OptimizationResultPersistence` を年月階層保存に変更した。
+  - 新規保存先は `optimization_results/YYYY/YYYY-MM/...` 形式にした。
+- [tests/unit/training/test_target_entropy.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/test_target_entropy.py)
+  - 反復回数を最小限に縮め、`print(...)` と `__main__` 実行経路を削除した。
+  - `convergence_simulation` は出力確認ではなく state assertion に変更した。
+- ディレクトリ整理
+  - [docs/v460/reviews/2026-03/382_ph3_rev_379_sb3_stub_and_g2_pipeline_review.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/reviews/2026-03/382_ph3_rev_379_sb3_stub_and_g2_pipeline_review.md)
+  - [docs/v460/reviews/2026-03/383_gemini_sb3_pipeline_and_codex_review.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/reviews/2026-03/383_gemini_sb3_pipeline_and_codex_review.md)
+  - [optimization_results/2026/2026-03/integration_test_v0091_20260311.json](/mnt/c/Users/Admin/dev/zaif-trade-bot/optimization_results/2026/2026-03/integration_test_v0091_20260311.json)
+  - [optimization_results/2026/2026-03/workflow_test_v0092_20260311.json](/mnt/c/Users/Admin/dev/zaif-trade-bot/optimization_results/2026/2026-03/workflow_test_v0092_20260311.json)
+  - [optimization_results/2026/2026-03/integration_test_v0093_20260312.json](/mnt/c/Users/Admin/dev/zaif-trade-bot/optimization_results/2026/2026-03/integration_test_v0093_20260312.json)
+  - [optimization_results/2026/2026-03/workflow_test_v0094_20260312.json](/mnt/c/Users/Admin/dev/zaif-trade-bot/optimization_results/2026/2026-03/workflow_test_v0094_20260312.json)
+  - [docs/v460/index.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/index.md) と [optimization_results/index.json](/mnt/c/Users/Admin/dev/zaif-trade-bot/optimization_results/index.json) は新パスへ更新した。
+
+### 検証結果
+- `python -m pytest tests/unit/training/test_target_entropy.py tests/unit/training/test_unified_optimizer.py -q --no-cov --tb=short --show-capture=no --durations=20`
+  - `37 passed in 6.34s`
+- `python -m pytest tests/training/ tests/integration/ tests/unit/environment/ tests/unit/analysis/ tests/unit/training/ -q --no-cov --tb=short --show-capture=no --maxfail=5 --durations=30`
+  - `999 passed, 27 skipped, 36 warnings in 70.52s`
+  - 再計測では `72.26s` の run もあり、cold-start/import の揺れはまだ残る
+
+### 所見
+- `optimization_results` はこれで「今後増える成果物」から自然に年月階層へ移行できる状態になった。
+- `docs/v460` も review 系から `reviews/YYYY-MM/` に切り出し始めたので、今後の追加分を同じルールに寄せやすくなった。
+- broad の支配要因は依然として `target_entropy` の update-heavy test、`signal_guidance` setup、`market_regime_adaptation` setup、environment 系 invariant 群。
+
+## 2026-03-12 / Session 037 Follow-up: Full-Suite Blocker Hardening
+
+### 目的
+- `prompts/codex_test_cleanup_and_perf.md` の phase-5 残課題を進め、`tests/` broad を止めていた non-`v460` blocker を低リスクで削減する。
+- `v460` filtered broad の green を維持する。
+
+### 実施内容
+- `SelfSupervisedTrainer` synthetic data 生成の broad-suite 耐性を強化
+  - [ztb/training/unified_trainer/algorithms/self_supervised_trainer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/unified_trainer/algorithms/self_supervised_trainer.py)
+  - `torch.randn(...)` の戻りが degraded stub / `MagicMock` でも shape が壊れないよう `_make_synthetic_tensor()` を追加
+  - [tests/training/unified_trainer/test_algorithms.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/unified_trainer/test_algorithms.py) に回帰を追加
+- timing / autograd / brittle mock の broad blocker を修正
+  - [ztb/multimodal/optimization/quantization.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/multimodal/optimization/quantization.py)
+    - `avg_time <= 0` で `fps=inf`
+  - [ztb/training/gradient_accumulation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/gradient_accumulation.py)
+    - backward を `torch.enable_grad()` 内で実行
+  - [tests/unit/cache/test_sqlite_cache.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/cache/test_sqlite_cache.py)
+    - TTL test を `try/finally` で close 保証
+    - mocked clock side_effect を 4 tick に拡張
+- feature / config drift を修正
+  - [ztb/features/unified_feature.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/features/unified_feature.py)
+    - news sentiment stack 不在時も neutral 列を返すように変更
+  - [tests/unit/v460/test_385_config_audit.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_385_config_audit.py)
+    - `reward_settings` を top-level 固定ではなく `environment.reward_settings` 優先に追随
+
+### 検証
+- targeted blocker bundle
+  - `tests/unit/core/features/test_v4_feature_extractor.py::TestV4FeatureExtractor::test_news_sentiment_integration`
+  - `tests/multimodal/test_multimodal_optimization.py::TestQuantizationUtils::test_measure_inference_time`
+  - `tests/training/test_gradient_accumulation.py`
+  - `tests/unit/cache/test_sqlite_cache.py::TestSQLiteCache::test_set_with_ttl`
+  - `tests/training/unified_trainer/test_algorithms.py`
+  - 結果: `43 passed, 3 skipped, 1 warning in 6.36s`
+- prompt-origin subset
+  - `tests/unit/action_validation/test_signal_guidance_system.py`
+  - `tests/unit/action_validation/test_signal_performance_analyzer.py`
+  - `tests/unit/algorithms/test_ab_test_framework.py`
+  - `tests/integration/test_custom_ppo_integration.py`
+  - `tests/legacy_tests/training/v430_1000_steps_legacy.py`
+  - 結果: `36 passed, 11 skipped, 15 subtests passed in 3.71s`
+- filtered broad `tests/unit/v460/`
+  - 結果: `4620 passed, 13 warnings in 35.76s`
+
+### full-suite 状況
+- `tests/ -x --no-cov ...` で再走査し、以前の early blockers
+  - `test_trend_and_curriculum_integration`
+  - `test_signal_guidance_integration`
+  - `test_algorithms::test_load_data_synthetic`
+  - `test_multimodal_optimization::test_measure_inference_time`
+  - `test_gradient_accumulation::*`
+  - `test_sqlite_cache::test_set_with_ttl`
+  を解消済み。
+- 次の blocker として [tests/unit/core/features/test_v4_feature_extractor.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/core/features/test_v4_feature_extractor.py) `test_news_sentiment_integration` を検出し、この batch で修正した。
+- 2 回目の `tests/ -x` は 34% 超まで追加 failure なしで進行したが、全量完走はこの batch では未了。
+
+## 2026-03-12 / Session 037 Follow-up: v460 Setup Tightening
+
+### 目的
+- `v460` broad 上位の `test_356` / `test_enricher_skip_gate` setup をもう一段縮める。
+- `tests/` broad で再発した `sqlite_cache` の brittle TTL test を固定する。
+
+### 実施内容
+- [tests/unit/cache/test_sqlite_cache.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/cache/test_sqlite_cache.py)
+  - `test_set_with_ttl` を `side_effect` 順依存から `return_value` 切替型に変更
+  - broad 隣接テストの clock 消費順に左右されないようにした
+- [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py)
+  - `HeavyTradingEnv` integration を `_create_training_env(...)` 1 回生成の bundle に統合
+  - reset/step/info が同じ env instance を再利用するように変更
+- [tests/unit/v460/test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+  - real-data ladder を `120/130/140` に圧縮
+  - 現行データで `120 rows -> 40 trainable` を確認した上で縮小
+
+### 検証
+- focused:
+  - `tests/unit/cache/test_sqlite_cache.py::TestSQLiteCache::test_set_with_ttl`
+  - `1 passed in 4.44s`
+- focused:
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py::Test058Integration`
+  - `49 passed in 5.83s`
+- filtered broad `tests/unit/v460/`
+  - `4620 passed, 13 warnings in 36.09s`
+
+### full-suite 状況
+- `tests/ -x --no-cov ...` は `19%` まで追加 failure なしで進行したところで停止。
+- 直近で broad を止めていた `sqlite_cache` TTL test は解消済み。
+
+## 2026-03-12 / Session 037 Follow-up: Horizontal Cleanup Wave 1
+
+### 目的
+- full-suite のバックグラウンド実行中に、横展開しやすい DRY/保守性改善を先行して消化する。
+- 計算量よりも import boilerplate / YAML 直読の残件を削る。
+
+### 実施内容
+- [tests/unit/v460/test_sidecar_sac_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_sidecar_sac_integration.py)
+  - `sidecar_types`, `sidecar_signal_io`, `CycleGateAggregator`, `_get_latest_obs`, `SACRetrainConfig`, `FillRecord`, `numpy` を module scope に集約
+  - helper/stub クラス内の local `numpy` import も除去
+- [tests/unit/v460/test_385_config_audit.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_385_config_audit.py)
+  - `load_config`, `SACTrainer`, `RewardCalculator`, `EnvironmentConfig`, `RewardSettings`, constants, `inspect`, `numpy`, `shallow_asdict` を module scope に集約
+- [tests/unit/v460/test_183_log_analysis_improvements.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_183_log_analysis_improvements.py)
+  - repeated inline `yaml.safe_load(...)` を `_yaml_dict(...)` helper 経由へ変更
+
+### 検証
+- `tests/unit/v460/test_183_log_analysis_improvements.py`
+- `tests/unit/v460/test_sidecar_sac_integration.py`
+- `tests/unit/v460/test_385_config_audit.py`
+- 結果: `99 passed in 3.65s`
+
+### 残課題メモ
+- 機械集計上の残件上位:
+  - method-local import:
+    - `test_sac_retrain_scheduler.py`
+    - `test_374_proportional_boost.py`
+    - `test_372_skip_gate_move_and_vg_jsonl.py`
+  - `inspect.getsource`:
+    - `test_259_as_vol_ratio_adaptation_hasattr.py`
+    - `test_145_s14_structural_refactors.py`
+  - YAML 直読:
+    - `test_config_validation.py`
+    - `test_fill_test_config.py`
+- `test_212_live_trader_config.py` の `time.sleep(` は実待機ではなく source assertion 側の文字列参照であり、実行時間 hotspot ではないことを確認。
+
+## 2026-03-12 / Session 037 Follow-up: Horizontal Cleanup Wave 2
+
+### 目的
+- Wave 1 の残件だった method-local import / split-source assertion / YAML 直読を追加で横展開する。
+- 同時に、本体側では flat dataclass の deep-copy 固定費を shallow 化で削る。
+
+### 実施内容
+- [tests/unit/v460/test_sac_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_sac_retrain_scheduler.py)
+  - `SACRetrainConfig`, `SACRetrainTrigger`, `RetrainResult`, scheduler helpers、sidecar I/O helpers、`SidecarSignal`, `pandas` を module scope に集約
+  - 残っていた `_update_sidecar_signal` / `time` local import も除去
+- [tests/unit/v460/test_374_proportional_boost.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_374_proportional_boost.py)
+  - sidecar / config / parser / validation / aggregator 系 import を module scope に集約
+  - `scripts.v460.lib.sidecar_types` module import は `math` module-level import 確認用に 1 箇所へ固定
+- [tests/unit/v460/test_372_skip_gate_move_and_vg_jsonl.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_372_skip_gate_move_and_vg_jsonl.py)
+  - canonical/shim `SkipGate` / `SkipDecision` / feature cols / VG JSONL helpers を module scope に集約
+  - `dataclasses` も top-level に寄せた
+- [tests/unit/v460/test_259_as_vol_ratio_adaptation_hasattr.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_259_as_vol_ratio_adaptation_hasattr.py)
+  - `inspect.getsource(...)` をやめ、`_fill_test_source.py` の `read_class_method_source(...)` に統一
+  - `_estimate_sigma` は現 split 先 `maker_microstructure.py::MicrostructureMixin` を参照
+- [tests/unit/v460/test_145_s14_structural_refactors.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_145_s14_structural_refactors.py)
+  - `FillTestRunner.run_single_cycle` の source assertion を `read_fill_test_method_source(...)` に統一
+  - `CoincheckAdapter` method source は module file path + `read_class_method_source(...)` で取得
+- [tests/unit/v460/test_373_critical_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_373_critical_fixes.py)
+  - `maker_microstructure` / `fill_cycle_executor` / `order_monitor` の source assertion を shared helper に統一
+- [tests/unit/v460/test_config_validation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_config_validation.py)
+  - `_load_yaml_mapping(...)` を追加し、`base.yaml` 直読を cache 付き helper に統一
+- [tests/unit/v460/test_fill_test_config.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_test_config.py)
+  - `_yaml_mapping(...)` を追加し、inline YAML round-trip を typed helper 化
+- [tests/unit/v460/test_202_log_improvements.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_202_log_improvements.py)
+  - `_yaml_mapping(...)` を追加し、202 系 YAML 断片を helper 化
+- [ztb/utils/config_fingerprint.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/utils/config_fingerprint.py)
+  - `asdict(...)` を `shallow_asdict(...)` へ変更
+- [scripts/v460/ml/run_ml_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/run_ml_pipeline.py)
+  - `ASModelMetrics` / `FillModelMetrics` の JSON 直列化を `shallow_asdict(...)` に変更
+- [scripts/v460/analysis/oracle_baseline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/analysis/oracle_baseline.py)
+  - `OracleMetrics` の report 生成を `shallow_asdict(...)` へ変更
+- [ztb/io/json_io.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/io/json_io.py)
+- [ztb/utils/file_utils.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/utils/file_utils.py)
+  - `sort_keys` passthrough を追加
+  - `ConfigFingerprint.save()` が期待していた `safe_json_dump(..., sort_keys=True)` 契約に整合
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/unit/v460/test_374_proportional_boost.py`
+  - `tests/unit/v460/test_372_skip_gate_move_and_vg_jsonl.py`
+  - `tests/unit/v460/test_259_as_vol_ratio_adaptation_hasattr.py`
+  - `tests/unit/v460/test_145_s14_structural_refactors.py`
+  - `tests/unit/v460/test_config_validation.py`
+  - `tests/unit/v460/test_fill_test_config.py`
+  - 結果: `263 passed in 3.63s`
+- focused follow-up:
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/unit/v460/test_202_log_improvements.py`
+  - `tests/unit/v460/test_373_critical_fixes.py`
+  - 結果: `71 passed in 2.27s`
+- config / ml / oracle side:
+  - `tests/unit/scripts/test_preflight_schema_scaler_check.py`
+  - `tests/unit/v460/test_ml_pipeline.py -k 'ConfigFingerprint or ASClassifier or OracleBaseline'`
+  - 結果: `15 passed, 108 deselected in 2.17s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4620 passed, 13 warnings in 32.50s`
+
+### メモ
+- Wave 2 対象ファイルでは `inspect.getsource(...)` / method-local import は実質解消済み。
+- YAML 直読は helper 本体の `yaml.safe_load(...)` 3 箇所だけが残る状態まで縮小した。
+- `tests/ -x --no-cov ...` のバックグラウンド lane は継続中で、少なくともプロセス自体は生存している。
+
+## 2026-03-12 / Session 037 Follow-up: Duration Wave 3
+
+### 目的
+- filtered broad `--durations` 上位へ戻ってきた source-assertion call と `HeavyTradingEnv` setup をもう一段削る。
+
+### 実施内容
+- [tests/unit/v460/test_261_protocol_type_safety.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_261_protocol_type_safety.py)
+  - `extract_price`, `extract_size`, `_normalize_levels` の source を import-time cache 化
+- [tests/unit/v460/test_145_s14_structural_refactors.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_145_s14_structural_refactors.py)
+  - `run_single_cycle`, `_make_api_request`, `_create_signature`, `_place_order_real` の source を import-time cache 化
+- [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py)
+  - `_G2_REAL_ROWS` を `8 -> 6`
+  - `shared_reset_result` / `shared_step_result` を `shared_cycle_results` 1 本へ統合
+- [tests/unit/v460/test_sac_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_sac_retrain_scheduler.py)
+  - `_update_sidecar_signal` / `time` の local import を除去
+- [tests/unit/v460/test_373_critical_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_373_critical_fixes.py)
+  - `maker_microstructure` / `fill_cycle_executor` の参照先メソッドを現 split 実装に合わせて修正
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `tests/unit/v460/test_261_protocol_type_safety.py`
+  - 結果: `66 passed in 4.68s`
+- focused:
+  - `tests/unit/v460/test_145_s14_structural_refactors.py`
+  - `tests/unit/v460/test_261_protocol_type_safety.py`
+  - 結果: `47 passed in 1.78s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4620 passed, 13 warnings in 30.73s`
+
+### 効果
+- `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction`
+  - filtered broad setup: `1.30s -> 1.04s`
+  - focused setup: `1.30s -> 0.75s`
+- `test_145_s14_structural_refactors.py` と `test_261_protocol_type_safety.py` の source-based assertions は call 上位からかなり後退した。
+
 ## 2026-03-12 / Session 379-SB3-Critical
 
 ### 概要
@@ -4844,3 +5116,188 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - 50Kステップ以上の訓練（100K, 200K）での収束改善
 - curriculum_learning / action_discovery 有効化の検討
 - G2 gate 評価（E1: positive_seed_ratio ≥ 0.75 は未達）
+
+## 2026-03-12 / Wave: YAML + Source Helper Consolidation
+
+### 実施内容
+- [tests/unit/v460/_yaml_test_helpers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_yaml_test_helpers.py)
+  - `parse_yaml_mapping(...)` / `load_yaml_mapping(...)` を追加
+- [tests/unit/v460/conftest.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/conftest.py)
+  - `v460_fill_test_yaml_base` を shared YAML loader 再利用へ変更
+- [tests/unit/v460/_fill_test_source.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_fill_test_source.py)
+  - `read_inspect_source(...)` を追加
+- [tests/unit/v460/test_fill_test_config.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_test_config.py)
+- [tests/unit/v460/test_202_log_improvements.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_202_log_improvements.py)
+- [tests/unit/v460/test_183_log_analysis_improvements.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_183_log_analysis_improvements.py)
+- [tests/unit/v460/test_config_validation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_config_validation.py)
+  - local YAML helper を shared helper に統一
+- [tests/unit/v460/test_143_regime_utilization.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_143_regime_utilization.py)
+- [tests/unit/v460/test_139_review_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_139_review_fixes.py)
+- [tests/unit/v460/test_146_multi_exchange.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_146_multi_exchange.py)
+- [tests/unit/v460/test_013_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_013_fixes.py)
+- [tests/unit/v460/test_regime_detector.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_regime_detector.py)
+  - local `_source(obj)` を shared helper / split-source helper に統一
+- [ztb/utils/run_manifest.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/utils/run_manifest.py)
+  - `inference_config_to_dict()` を `shallow_asdict(...)` 化
+- [scripts/v460/lib/maker_price.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/maker_price.py)
+  - `set_fill_prob_model(...)` を追加
+- [scripts/v460/run_fill_test.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/run_fill_test.py)
+  - `_fill_prob_model` 直接代入を setter 呼び出しへ変更し、`type: ignore[attr-defined]` を除去
+
+### 検証
+- focused YAML/source wave:
+  - `tests/unit/v460/test_fill_test_config.py`
+  - `tests/unit/v460/test_202_log_improvements.py`
+  - `tests/unit/v460/test_183_log_analysis_improvements.py`
+  - `tests/unit/v460/test_config_validation.py`
+  - `tests/unit/v460/test_143_regime_utilization.py`
+  - `tests/unit/v460/test_139_review_fixes.py`
+  - `tests/unit/v460/test_146_multi_exchange.py`
+  - `tests/unit/v460/test_013_fixes.py`
+  - `tests/unit/v460/test_regime_detector.py`
+  - 結果: `403 passed in 6.14s`
+- focused `run_manifest` subset:
+  - `tests/unit/utils/test_run_manifest.py`
+  - `tests/unit/v460/test_retrain_hot_reload.py -k 'run_manifest or compute_file_hash or post_deploy or inference_config'`
+  - 結果: `17 passed, 80 deselected in 20.58s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4620 passed, 13 warnings in 40.59s`
+
+## 2026-03-12 / Wave: Next Duration Hotspot Trim
+
+### 実施内容
+- [tests/unit/v460/test_261_protocol_type_safety.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_261_protocol_type_safety.py)
+  - `typing.get_type_hints(BalanceChecker.check)` を import-time cache 化
+- [tests/unit/v460/test_141_side_specific_models.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_141_side_specific_models.py)
+  - `_select_gate_for_side` の dispatch-only テストから file I/O / pickle roundtrip を除去
+  - `SkipGateEvaluator.__new__` + stub gate で分岐だけ検証する helper を追加
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_261_protocol_type_safety.py`
+  - `tests/unit/v460/test_141_side_specific_models.py`
+  - 結果: `67 passed, 1 warning in 2.34s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4620 passed, 13 warnings in 36.19s`
+
+### 現在の上位
+1. `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction` setup `1.01s`
+2. `test_141_side_specific_models.py::TestRegimeAdaptiveThresholdIntegration::test_regime_key_typo_warning` call `0.25s`
+3. `test_262_protocol_cancel_recheck.py::TestAdaptationEngineProtocols::test_update_dynamic_loss_cap_with_mock_adapter` call `0.23s`
+4. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.16s`
+
+## 2026-03-12 / Wave: Shared Helper Expansion + Second-Pass Hotspot Trim
+
+### 実施内容
+- shared YAML helper 横展開
+  - [tests/unit/v460/test_336_yaml_code_drift_prevention.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_336_yaml_code_drift_prevention.py)
+  - [tests/unit/v460/test_336_fill_config_parser.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_336_fill_config_parser.py)
+  - [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py)
+  - local `yaml.safe_load(...)` を [tests/unit/v460/_yaml_test_helpers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_yaml_test_helpers.py) の loader に統一
+- shared source helper 横展開
+  - [tests/unit/v460/test_281_deadlock_fix.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_281_deadlock_fix.py)
+  - [tests/unit/v460/test_303_review_implementations.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_303_review_implementations.py)
+  - [tests/unit/v460/test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py)
+  - `inspect.getsource(...)` / local `_source(obj)` を [_fill_test_source.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_fill_test_source.py) に寄せた
+- production type-safety / low-risk runtime
+  - [scripts/v460/ml/sac_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/sac_retrain_scheduler.py)
+    - `_get_latest_obs(...)` の `type: ignore[attr-defined]` を typed helper に置換
+    - `load_config(...)` を `ztb.io.yaml_io.read_yaml(...)` 再利用へ変更
+  - [ztb/metrics/fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py)
+    - `FillRecord.to_dict()` / `FillMetrics.to_dict()` を `shallow_asdict(...)` 化
+- second-pass hotspot trim
+  - [tests/unit/v460/test_143_regime_utilization.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_143_regime_utilization.py)
+    - functional adapter/FFD を lightweight stub 化
+  - [tests/unit/v460/test_261_protocol_type_safety.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_261_protocol_type_safety.py)
+    - `type: ignore[union-attr]` 検査を import-time bool へ前計算
+  - [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py)
+    - real-data rows `4`、`environment.random_start=False`
+  - [tests/unit/v460/test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+    - real-data ladder を `95/100/105` に短縮
+  - [tests/unit/v460/test_141_side_specific_models.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_141_side_specific_models.py)
+    - config override 用 gate を `SimpleNamespace` 化
+  - [tests/unit/v460/test_262_protocol_cancel_recheck.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_262_protocol_cancel_recheck.py)
+    - `update_dynamic_loss_cap` の adapter/balance を lightweight stub 化
+
+### 検証
+- focused YAML/source wave
+  - `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
+  - `tests/unit/v460/test_336_fill_config_parser.py`
+  - `tests/unit/v460/test_281_deadlock_fix.py`
+  - `tests/unit/v460/test_303_review_implementations.py`
+  - 結果: `67 passed in 1.62s`
+- focused hotspot wave
+  - `tests/unit/v460/test_141_side_specific_models.py`
+  - `tests/unit/v460/test_262_protocol_cancel_recheck.py`
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py::Test058Integration`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - 結果: `156 passed, 1 warning in 7.36s`
+- focused fill-quality wave
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_gate_judgment.py`
+  - `tests/unit/v460/test_regime_detector.py`
+  - `tests/unit/v460/test_fill_test_config.py`
+  - 結果: `400 passed, 6 warnings in 5.57s`
+- focused second-pass hotspot wave
+  - `tests/unit/v460/test_261_protocol_type_safety.py`
+  - `tests/unit/v460/test_143_regime_utilization.py`
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py::Test058Integration`
+  - 結果: `128 passed in 5.85s`
+- filtered broad
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4620 passed, 13 warnings in 34.37s`
+
+### 次の上位
+1. `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction` setup `1.13s`
+2. `test_276_blocking_policy_dry.py::TestExecuteSkipBehavior::test_heartbeat_called` call `0.26s`
+3. `test_141_side_specific_models.py::TestRegimeAdaptiveThresholdIntegration::test_regime_key_typo_warning` call `0.25s`
+4. `test_102_structural_fixes.py::TestSoftLossCapResume::test_soft_cap_snapshot_set_on_init` call `0.20s`
+5. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.20s`
+
+## 2026-03-12 / Wave: Immediate Top-Duration Follow-up
+
+### 実施内容
+- [tests/unit/v460/test_276_blocking_policy_dry.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_276_blocking_policy_dry.py)
+  - `_execute_skip` 用の MagicMock-heavy fixture を lightweight stub に置換
+  - heartbeat / state-save / flush / sleep の観測は stub 側の call log で確認する形に変更
+- [tests/unit/v460/test_141_side_specific_models.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_141_side_specific_models.py)
+  - `test_regime_key_typo_warning` の logger patch を最小 logger stub に変更
+- [tests/unit/v460/test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py)
+  - `HeavyTradingEnv` integration の real-data rows を `3` に短縮
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_276_blocking_policy_dry.py`
+  - `tests/unit/v460/test_141_side_specific_models.py`
+  - `tests/unit/v460/test_356_g2_sac_blockers.py`
+  - 結果: `126 passed, 1 warning in 5.16s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4620 passed, 13 warnings in 30.26s`
+
+### 現在の上位
+1. `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction` setup `1.01s`
+2. `test_286_comprehensive_resolution.py::TestEventsStartStopGuarantee::test_stop_event_logged_on_crash` call `0.24s`
+3. `test_143_regime_utilization.py::TestRegimeOffsetBoostFunctional::test_no_boost_when_regime_none` call `0.20s`
+4. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.16s`
+5. `test_102_structural_fixes.py::TestSoftLossCapResume::test_soft_cap_snapshot_set_on_init` call `0.13s`

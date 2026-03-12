@@ -1,4 +1,0 @@
-# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\resource\process_priority.py
-# hypothesis_version: 6.140.3
-
-['aggressive', 'config', 'cpu_affinity_enabled', 'generalization', 'nice', 'nice_values', 'normal', 'parallel_training', 'rl_config.json', 'sched_setaffinity']
