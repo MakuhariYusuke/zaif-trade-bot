@@ -1,0 +1,37 @@
+{
+  "model_name": "sac_v444_default",
+  "algorithm": "sac",
+  "total_timesteps": 50000,
+  "data_source": "csv",
+  "data_path": "data/btc_jpy_1h.csv",
+  "sac_hyperparameters": {
+    "learning_rate": 0.0003,
+    "buffer_size": 50000,
+    "learning_starts": 1000,
+    "batch_size": 256,
+    "tau": 0.005,
+    "gamma": 0.99,
+    "train_freq": 1,
+    "gradient_steps": 1,
+    "ent_coef": "auto",
+    "target_update_interval": 1,
+    "target_entropy": "auto"
+  },
+  "environment": {
+    "initial_balance": 100000.0,
+    "transaction_cost": 0.001,
+    "max_position_size": 1.0,
+    "use_continuous_actions": true,
+    "curriculum_stage": "forced_balance",
+    "reward_settings": {
+      "balance_penalty": -100.0,
+      "reward_clip_min": -80.0,
+      "reward_clip_max": 80.0
+    },
+    "behavior_optimization": {
+        "balance_penalty": -100.0
+    }
+  },
+  "checkpoint_interval": 5000,
+  "notes": "Default configuration for SAC v444 to debug SELL-lock issue."
+}

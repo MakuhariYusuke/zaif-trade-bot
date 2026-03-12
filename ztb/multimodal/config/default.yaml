@@ -1,0 +1,142 @@
+# デフォルト設定ファイル
+# MultiModal Learning Module for SAC v421 Trading AI
+
+# バージョン情報
+version: "1.0.0"
+
+# データ収集設定
+data:
+  # 価格データ
+  price:
+    symbols: ["USDJPY", "EURUSD", "GBPUSD"]
+    timeframe: "1m"
+    lookback_days: 30
+
+  # ニュースデータ
+  news:
+    sources: ["newsapi", "alphavantage"]
+    keywords: ["forex", "currency", "economic"]
+    sentiment_threshold: 0.1
+
+  # 経済指標
+  economic:
+    indicators: ["GDP", "CPI", "UNEMPLOYMENT"]
+    countries: ["US", "JP", "EU"]
+
+# 特徴量エンジニアリング設定
+features:
+  # テキスト特徴量
+  text:
+    model_name: "distilbert-base-uncased-finetuned-sst-2-english"
+    max_length: 512
+    embedding_dim: 768
+
+  # 数値特徴量
+  numeric:
+    normalization: "standard"
+    outlier_threshold: 3.0
+
+  # クロスモーダル特徴量
+  cross_modal:
+    attention_heads: 8
+    fusion_layers: 2
+
+# モデルアーキテクチャ設定
+model:
+  # エンコーダー設定
+  encoders:
+    price_encoder:
+      hidden_dims: [128, 64]
+      dropout: 0.1
+
+    text_encoder:
+      model_name: "bert-base-uncased"
+      fine_tune: true
+
+    economic_encoder:
+      hidden_dims: [64, 32]
+
+  # 融合層設定
+  fusion:
+    attention_dim: 256
+    num_heads: 8
+    dropout: 0.1
+
+  # SACエージェント設定
+  sac:
+    actor_hidden_dims: [256, 128]
+    critic_hidden_dims: [256, 128]
+    gamma: 0.99
+    tau: 0.005
+    alpha: 0.2
+
+# トレーニング設定
+training:
+  # 基本設定
+  batch_size: 64
+  learning_rate: 3e-4
+  epochs: 100
+
+  # 最適化設定
+  optimizer:
+    type: "adam"
+    weight_decay: 1e-4
+
+  # 損失関数設定
+  loss:
+    reconstruction_weight: 1.0
+    kl_weight: 0.1
+    cross_modal_weight: 1.0
+
+  # 早期停止
+  early_stopping:
+    patience: 10
+    min_delta: 1e-4
+
+# 評価設定
+evaluation:
+  # メトリクス
+  metrics:
+    - "sharpe_ratio"
+    - "max_drawdown"
+    - "win_rate"
+    - "profit_factor"
+
+  # 検証設定
+  validation:
+    test_split: 0.2
+    cross_validation_folds: 5
+
+  # 説明可能性
+  explainability:
+    attention_maps: true
+    feature_importance: true
+
+# ロギング設定
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/multimodal_training.log"
+
+# ハードウェア設定
+hardware:
+  device: "auto"  # auto, cpu, cuda
+  num_workers: 4
+  pin_memory: true
+
+# API設定
+api:
+  # NewsAPI
+  newsapi:
+    key: "${NEWSAPI_KEY}"
+    base_url: "https://newsapi.org/v2"
+
+  # Alpha Vantage
+  alphavantage:
+    key: "${ALPHAVANTAGE_KEY}"
+    base_url: "https://www.alphavantage.co"
+
+  # FRED
+  fred:
+    key: "${FRED_KEY}"
+    base_url: "https://api.stlouisfed.org"

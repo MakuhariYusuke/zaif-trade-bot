@@ -1,0 +1,279 @@
+# 349# 分析ツール整理 + 重複コード削減
+
+## 概要
+
+分析ツールの乱雑化に対処し、散在していたスクリプトを一元化。
+併せて DRY 原則に基づき重複 JSONL 読み込み・deprecated モジュールを整理。
+再起動後ログの直接分析も実施。
+
+## 1. 分析ツール整理 (25463555d)
+
+### ディレクトリ統合
+
+| 操作 | 対象 | 内容 |
+|------|------|------|
+| 移動 | `tools/analysis/analyze_fill_logs.py` | → `scripts/v460/analysis/` |
+| 移動 | `tools/analysis/print_ab_summary.py` | → `scripts/v460/analysis/` |
+| アーカイブ | `tools/analysis/v443_2_analysis/` | → `archived/` |
+| 保持 | `scripts/v460/analysis/oracle_test.py` 他3件 | テスト依存のため維持 |
+
+整理後: `scripts/v460/analysis/` に全分析ツールを一元化。
+
+### PnL 分析 (7日間)
+
+| 指標 | 値 |
+|------|-----|
+| Total fills | 700 |
+| Fill rate | 21.1% |
+| Win rate | 49% |
+| Total PnL | -94.6 bps (≈ ¥-70k) |
+| Buy PnL | -97.3 bps |
+| Sell PnL | +2.7 bps |
+| Worst segment | buy_ranging: -102.9 bps |
+
+## 2. 重複コード削減 (a051b6a8c)
+
+### P0: analyze_fill_logs.py — ztb 共有 API 移行 (-85行)
+
+`load_records()` (42行) と `apply_filters()` (43行) が手動 `json.loads` ループ +
+日付プリフィルタ + run_id/git_sha/date フィルタを独自実装していた。
+
+**置換先:**
+- `ztb.metrics.fill_quality.load_fill_record_objects_glob()` — glob + 日付プリフィルタ + 重複排除
+- `ztb.metrics.fill_quality.apply_fill_record_filters()` — run_id/git_sha/date フィルタ
+
+side/regime フィルタのみローカルに残留（共有 API 側に存在しないため）。
+
+### P2: iter_fill_records() — iter_jsonl_objects 活用 (-15行)
+
+`fill_quality.py` の `iter_fill_records()` が独自に `open()` → `json.loads(line)` →
+BOM 処理・malformed スキップを実装していたが、同モジュールが既にインポート済みの
+`ztb.io.jsonl.iter_jsonl_objects()` に全く同じ機能がある。
+
+`FillRecord.from_dict()` 変換 + cycle_id 重複排除のみ維持し、パースを委譲。
+
+### P3: deprecated regime_evaluation.py 削除 (-341行)
+
+`ztb.analysis.regime.regime_evaluation` は自身が冒頭で `DeprecationWarning` を発行しており、
+プロジェクト全体でインポート実績ゼロ（grep 確認済み）。
+
+後継: `ztb.analysis.regime.regime_eval` / `UnifiedEvaluator(EvaluationType.REGIME)`
+
+### P1: PnL 集計パターン共通化 (見送り)
+
+`analyze_fill_logs.py` の各 `section_*` 関数が独自に numpy で
+avg/p10/p90/勝率を算出（15箇所以上反復）。`PnlAccumulator` への統合は
+CLI レポート出力形式との差異が大きく、p10/p90 メソッド追加 +
+グルーピングユーティリティ新設が前提。コスト対効果で今回は見送り。
+
+## 3. 再起動後ログ分析 (05:13 JST～)
+
+### Fill 結果 (5件)
+
+| 時刻 | Side | PnL (bps) | Regime | EV |
+|------|------|-----------|--------|-----|
+| 05:13 | buy | -1.92 | ranging | 0.07 |
+| 05:17 | sell | -10.71 | ranging | -1.08 |
+| 05:46 | buy | +6.59 | ranging | -0.22 |
+| 07:32 | sell | -5.84 | trending_down | 3.17 |
+| 08:06 | buy | -6.67 | ranging | 0.83 |
+
+**合計: -18.54 bps, 勝率 20% (1/5)**
+
+### 動作パターン
+
+- 93 skips: `buy_dynamic_kill` / `sell_dynamic_kill` が支配的
+- ~30分 kill → TIME LIMIT 解除 → 1 trade → 即 kill の繰り返し
+- JPY 残高 ¥1,342 < 最低必要額 ~¥10,500 → buy 永久ブロック
+
+## 4. dynamic_kill EWMA 深堀り分析
+
+### 発見した問題
+
+再起動後ログで `sell_dynamic_kill` の rolling mean が **-10.710bps**（05:17 の sell fill PnL そのまま）に
+固定され、30分ごとの TIME LIMIT → 即再 kill を 24 回繰り返す異常パターンを確認。
+
+根本原因を 3 つ特定:
+
+#### P0 (Critical Bug): EWMA 状態が永続化されていない
+
+`export_state()` / `import_state()` に `_ewma_value` が含まれていなかった。
+
+**影響チェーン:**
+1. 再起動 → `import_state()` で状態復元 → `_ewma_value = None`
+2. `_get_rolling_mean()` が EWMA モードで `None` を返す → kill 判定スキップ
+3. ガード無しで 1 trade 許可 → fill の PnL がそのまま EWMA seed に（α=1.0 相当）
+4. 05:17 sell -10.71bps が seed → EWMA = -10.710 固定
+5. threshold -0.5bps を大幅に下回る → 即 kill → TIME LIMIT 30分 → 解除 → 再 kill の無限ループ
+
+**修正:** `export_state()` に `ewma_value` を追加、`import_state()` で復元。
+欠落時は `_rebuild_ewma_from_history()` で pnl_history から再構築。
+
+#### P1: EWMA シードが単一観測値で脆弱
+
+EWMA の初回シードが `pnl_bps`（単一値）で行われていた。
+α=0.05 の場合、この単一値が EWMA に残留する影響は 0.95^n で指数減衰するが、
+-10.71bps のような外れ値では ~45 fills で threshold に収束 — 事実上、回復不能。
+
+**修正:** 初回シードを `pnl_history` の算術平均に変更。
+複数データがあれば外れ値の影響が希釈され、安定起動が可能に。
+
+#### P2: TIME LIMIT 解除が EWMA をリセットしない
+
+273# の TIME LIMIT は cooldown と kill_activated_at をリセットするが、
+EWMA 値はそのまま維持されるため、次の `check_kill()` で即再 kill される。
+
+**実際のログパターン:**
+```
+05:52 sell kill TIME LIMIT expired → auto-releasing
+05:54 sell dynamic kill activated: rolling50 mean=-10.710bps < -0.6bps
+```
+解除後わずか 2 分で再 kill。EWMA が -10.710 のまま変わらないため。
+
+**修正:** TIME LIMIT 解除時に EWMA を `threshold * 0.8` にリセット。
+kill 閾値のすぐ上に置くことで、次の悪い fill では再 kill されるが、
+良い fill なら回復の余地がある。
+
+### ログ実証データ
+
+```
+00:10 warmup: sell=64 records → rolling50 mean=-0.553bps
+00:10 sell kill activated (mean=-0.553 < -0.5)  ← 正常な kill
+
+05:13 RESTART → import_state でEWMAがNullに!
+05:17 sell FILL -10.71bps → EWMA seed = -10.710 (単一値)
+05:22 sell kill activated: mean=-10.710 < -0.5  ← 修復不能
+05:52 TIME LIMIT → release → 05:54 即再kill (EWMA 変わらず)
+07:01 TIME LIMIT → release → 07:02 即再kill
+...以降 24 回繰り返し...
+```
+
+### 修正内容
+
+| 修正 | ファイル | 内容 |
+|------|---------|------|
+| P0 | `sell_dynamic_kill.py` | `export_state()`/`import_state()` に `ewma_value` 追加 + `_rebuild_ewma_from_history()` |
+| P1 | `sell_dynamic_kill.py` | `track()` 初回シードを history 平均に変更 |
+| P2 | `sell_dynamic_kill.py` | TIME LIMIT 解除時に EWMA を `threshold * 0.8` にリセット |
+| テスト | `test_349_ewma_fixes.py` | 13 test cases (永続化・シード・decay・reset) |
+
+## 5. 横展開: orchestrator warmup 非対称バグ修正
+
+### 問題
+
+`orchestrator_lifecycle._warmup_kill_managers_from_records()` の発火条件が
+sell 側の `pnl_history` のみをチェックしていた。
+
+```python
+# Before: sell 側のみチェック → buy に history が無くても warmup スキップの可能性
+if existing_records and len(self._sell_kill_mgr._pnl_history) == 0:
+```
+
+### 修正
+
+1. **発火条件**: sell/buy 両方を OR で独立チェック
+2. **二重 track 防止**: warmup 関数内で、既に `pnl_history` がある側をスキップ
+3. **restore ログ強化**: `import_state` 後のログに `ewma` 値を追加
+
+## 6. 付随修正
+
+- `tests/test_analyze_fill_logs.py`: import パスを `tools.analysis.` → `scripts.v460.analysis.` に修正
+- `docs/evaluation/extended_evaluation.md`: regime_evaluation セクションを後継モジュールへの案内に更新
+
+## 変更サマリ
+
+| ファイル | 行数変動 |
+|----------|---------|
+| `scripts/v460/analysis/analyze_fill_logs.py` | -84 → +43 (net -41) |
+| `ztb/metrics/fill_quality.py` | -34 → +19 (net -15) |
+| `ztb/analysis/regime/regime_evaluation.py` | **削除** (-341) |
+| `ztb/risk/sell_dynamic_kill.py` | P0/P1/P2 EWMA 修正 (+50) |
+| `scripts/v460/lib/orchestrator_lifecycle.py` | warmup 条件修正 + ログ強化 |
+| `tests/unit/v460/test_349_ewma_fixes.py` | **新規** (13 tests) |
+| `tests/test_analyze_fill_logs.py` | import パス修正 |
+| `docs/evaluation/extended_evaluation.md` | deprecated 案内 |
+
+## 7. EWMA 修正後トレード分析 (09:51–15:54 JST)
+
+### 7.1 修正効果の定量比較
+
+| 指標 | 修正前 (05:13–09:50) | 修正後 (09:51–15:54) | 改善 |
+|------|---------------------|---------------------|------|
+| Fills | 5 | 41 | **×8.2** |
+| Win rate | 20% (1/5) | 46.3% (19/41) | **+26.3pp** |
+| Total PnL | -18.54 bps | -7.08 bps | **+11.46 bps** |
+| Avg PnL / fill | -3.71 bps | -0.17 bps | **+3.54 bps** |
+| Worst trade | -10.71 | -15.06 | (外れ値) |
+| Best trade | +6.59 | +25.77 | **+19.18** |
+
+### 7.2 サイド別内訳
+
+| Side | Fills | Sum PnL | WR | 所見 |
+|------|-------|---------|-----|------|
+| sell | 21 | -19.70 bps | 42.9% | 大損失 5 件集中 (§7.3 パターン1) |
+| buy | 20 | +12.62 bps | 50.0% | 安定、長待ち時の逆選択が課題 |
+
+### 7.3 EWMA 修正動作のログ実証
+
+```
+09:50:12 [349# P0] sell EWMA rebuilt from 75 records: ewma=-0.7475
+09:50:12 [349# P0] buy EWMA rebuilt from 150 records: ewma=-0.2173
+10:21:17 [349# P2] sell EWMA decay on TIME LIMIT: -0.748 → -0.400bps (threshold=-0.5)
+12:09:12 [349# P2] sell EWMA decay on TIME LIMIT: -1.073 → -0.240bps (threshold=-0.3)
+12:46:45 [349# P2] sell EWMA decay on TIME LIMIT: -0.863 → -0.400bps (threshold=-0.5)
+13:52:03 [349# P2] sell EWMA decay on TIME LIMIT: -0.515 → -0.400bps (threshold=-0.5)
+```
+
+**P0 効果:** sell EWMA が -0.748bps に正しく再構築された（修正前は -10.710 に毒化）。
+**P2 効果:** TIME LIMIT 解除 4 回すべてで decay が動作し、即再 kill を回避。
+
+### 7.4 損失パターン分析
+
+#### パターン 1: 即約定 + 逆選択 (最重要)
+
+| Cycle | Side | Wait | PnL | 特徴 |
+|-------|------|------|-----|------|
+| 8785 | sell | 6.1s | **-15.06** | VPIN=0.82, ev_score=+0.319 (偽陽性) |
+| 8732 | sell | 5.9s | **-14.73** | EWMA 修正直後、初期調整期 |
+| 8736 | sell | 6.1s | **-12.70** | TIME LIMIT 解除後の 1st trade |
+| 8743 | buy | 5.7s | **-9.07** | ev_score=-0.824, fast_fill_defense 発動 |
+| 8730 | sell | 6.2s | **-7.66** | 短待ち sell 連敗パターン |
+
+**共通特徴:** wait < 7s（即約定）。情報トレーダーが流動性を取っている。
+sell 側に 4/5 集中 → sell offset の下限設定 or VPIN 連動の offset 拡大が必要。
+
+**根本原因:**
+- VPIN が 0.82 と高いにもかかわらず `volatility_guard` が sell offset を 0.3000 に据え置き
+- `ev_score` が +0.319 を返したが実際は -15.06bps → EV モデルの予測精度問題
+- TIME LIMIT 解除直後の最初のトレードが高リスク（market state 変化の遅延反映）
+
+#### パターン 2: レジーム遷移境界
+
+| Cycle | Side | Wait | PnL | 遷移 |
+|-------|------|------|-----|------|
+| 8783 | sell | 6.0s | -4.49 | trending_up → ranging |
+| 8768 | buy | 33.1s | -3.75 | trending_down → ranging |
+
+**原因:** trending regime の offset multiplier (×1.5) が適用された後にレジームが
+ranging に遷移し、over-offset による機会損失ではなく under-offset による逆選択が発生。
+
+#### パターン 3: 長待ち buy 逆選択
+
+| Cycle | Side | Wait | PnL | 特徴 |
+|-------|------|------|-----|------|
+| 8792 | buy | 39.1s | -4.18 | トレンド中の遅延約定 |
+| 8764 | buy | 38.2s | -2.35 | 長待ち→反転 |
+| 8742 | buy | 49.6s | -3.19 | 最長待ち→微損 |
+
+**原因:** buy が長時間待機 → 約定 = その間に価格がさらに下がった（トレンド追従型の逆選択）。
+wait > 30s の buy は勝率が低い。
+
+### 7.5 残存課題と改善方向
+
+| # | 課題 | 深刻度 | 改善案 |
+|---|------|--------|--------|
+| 1 | VPIN 高値時の sell offset 未連動 | **高** | `volatility_guard` に VPIN ≥ 0.7 時の offset boost 追加 |
+| 2 | ev_score 偽陽性 | 中 | EV モデルの特徴量に VPIN / regime を含めるか、高 VPIN 時の EV gate 強化 |
+| 3 | TIME LIMIT 解除直後の高リスク | 中 | 解除後 N cycles は offset を拡大、または cooldown 導入 |
+| 4 | sell 側損失集中 | 中 | sell/buy 非対称 offset tuning、sell VPIN threshold 引き下げ |
+| 5 | 長待ち buy 逆選択 | 低 | wait > 30s 時の position size 縮小 or 成行キャンセル検討 |

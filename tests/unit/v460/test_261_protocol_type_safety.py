@@ -26,16 +26,11 @@ from tests.unit.v460._fill_test_source import (
 
 _CONFIG_HOT_RELOADER_SOURCE = read_source_text(CONFIG_HOT_RELOAD)
 _BALANCE_CHECKER_SOURCE = read_source_text(BALANCE_CHECKER)
-_BALANCE_CHECKER_HAS_TYPE_IGNORE_UNION_ATTR = "type: ignore[union-attr]" in _BALANCE_CHECKER_SOURCE
 _MAKER_PRICE_INIT_SOURCE = read_class_method_source(
     MAKER_PRICE,
     "MakerPriceCalculator",
     "__init__",
 )
-_BALANCE_CHECK_HINTS = typing.get_type_hints(BalanceChecker.check)
-_EXTRACT_PRICE_SOURCE = read_function_source(OB_UTILS, "extract_price")
-_EXTRACT_SIZE_SOURCE = read_function_source(OB_UTILS, "extract_size")
-_OB_RECORDER_NORMALIZE_SOURCE = read_function_source(OB_RECORDER, "_normalize_levels")
 
 
 # ======================================================================
@@ -67,12 +62,14 @@ class TestOrderBookLevelLikeProtocol:
 
     def test_extract_price_no_getattr(self) -> None:
         """extract_price に getattr(level, 'price'...) が存在しない."""
-        assert 'getattr(level, "price"' not in _EXTRACT_PRICE_SOURCE
+        src = read_function_source(OB_UTILS, "extract_price")
+        assert 'getattr(level, "price"' not in src
 
     def test_extract_size_no_nested_getattr(self) -> None:
         """extract_size にネストした getattr(...getattr...) が存在しない."""
+        src = read_function_source(OB_UTILS, "extract_size")
         # 旧: getattr(level, "quantity", getattr(level, "size", 0.0))
-        assert 'getattr(level, "quantity", getattr' not in _EXTRACT_SIZE_SOURCE
+        assert 'getattr(level, "quantity", getattr' not in src
 
     def test_ob_type_alias_not_bare_object(self) -> None:
         """OrderBookLevel TypeAlias が bare 'object' でない."""
@@ -108,8 +105,9 @@ class TestOrderBookLevelLikeProtocol:
 
     def test_ob_recorder_uses_protocol_check(self) -> None:
         """ob_recorder._normalize_levels が OrderBookLevelLike isinstance を使用."""
-        assert "OrderBookLevelLike" in _OB_RECORDER_NORMALIZE_SOURCE
-        assert "isinstance(level, OrderBookLevelLike)" in _OB_RECORDER_NORMALIZE_SOURCE
+        src = read_function_source(OB_RECORDER, "_normalize_levels")
+        assert "OrderBookLevelLike" in src
+        assert "isinstance(level, OrderBookLevelLike)" in src
 
 
 # ======================================================================
@@ -177,13 +175,14 @@ class TestBalanceAdapterProtocol:
 
     def test_check_signature_typed(self) -> None:
         """check() の adapter 引数が BalanceAdapterProtocol."""
-        adapter_hint = _BALANCE_CHECK_HINTS.get("adapter")
+        hints = typing.get_type_hints(BalanceChecker.check)
+        adapter_hint = hints.get("adapter")
         assert adapter_hint is not None
         assert "BalanceAdapterProtocol" in str(adapter_hint)
 
     def test_no_type_ignore_union_attr(self) -> None:
         """balance_checker に type: ignore[union-attr] が残っていない."""
-        assert not _BALANCE_CHECKER_HAS_TYPE_IGNORE_UNION_ATTR
+        assert "type: ignore[union-attr]" not in _BALANCE_CHECKER_SOURCE
 
     def test_balance_like_protocol(self) -> None:
         """_BalanceLike Protocol が free プロパティを持つ."""

@@ -44,9 +44,9 @@ from scripts.v460.ml.skip_gate import (
 from scripts.v460.ml.data_loader import build_as_features, load_fill_records as load_fill_records_df
 from ztb.io.jsonl import read_tail_jsonl_objects
 
-_REAL_DATA_SAMPLE_ROWS = 95
-_REAL_DATA_FALLBACK_SAMPLE_ROWS = 100
-_REAL_DATA_EXPANDED_SAMPLE_ROWS = 105
+_REAL_DATA_SAMPLE_ROWS = 120
+_REAL_DATA_FALLBACK_SAMPLE_ROWS = 140
+_REAL_DATA_EXPANDED_SAMPLE_ROWS = 160
 _REAL_DATA_MIN_TRAIN_SAMPLES = 31
 
 

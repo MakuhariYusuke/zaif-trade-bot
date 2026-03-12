@@ -1,0 +1,357 @@
+{
+  "version": "1.0",
+  "algorithm": "sac",
+  "model_name": "sac_v444_2_integrated_regime_adaptation",
+  "description": "SAC v444.2: Ultimate Integrated Configuration - Combining Advanced Regime Adaptation, Risk Management, Enhanced Features, and PnL Optimization",
+  "max_features": 120,
+  "min_features": 50,
+  "regime_adaptation": {
+    "enabled": true,
+    "regime_classifier_config": {
+      "regime_scheme": "comprehensive",
+      "use_multi_timeframe": true,
+      "confidence_threshold": 0.6,
+      "regime_smoothing": 0.3,
+      "trend_threshold": 0.02,
+      "volatility_threshold": 0.015
+    },
+    "adaptation_rules": {
+      "hyperparameter_adjustment": true,
+      "reward_scaling": true,
+      "exploration_adjustment": true,
+      "feature_adaptation": true,
+      "risk_management_adaptation": true
+    },
+    "regime_specific_params": {
+      "strong_bull": {
+        "ent_coef": 0.01,
+        "learning_rate": 0.0003,
+        "reward_scale": 1.2,
+        "action_balance_target": 0.75,
+        "position_size_multiplier": 1.3
+      },
+      "strong_bear": {
+        "ent_coef": 0.01,
+        "learning_rate": 0.0003,
+        "reward_scale": 1.2,
+        "action_balance_target": 0.85,
+        "position_size_multiplier": 0.7
+      },
+      "high_volatility_range": {
+        "ent_coef": 0.05,
+        "learning_rate": 0.0005,
+        "reward_scale": 0.8,
+        "action_balance_target": 0.85,
+        "position_size_multiplier": 0.6
+      },
+      "consolidation": {
+        "ent_coef": 0.02,
+        "learning_rate": 0.0001,
+        "reward_scale": 1.5,
+        "action_balance_target": 0.9,
+        "position_size_multiplier": 0.8
+      },
+      "trending_market": {
+        "ent_coef": 0.008,
+        "learning_rate": 0.00025,
+        "reward_scale": 1.3,
+        "action_balance_target": 0.7,
+        "position_size_multiplier": 1.4
+      },
+      "ranging_market": {
+        "ent_coef": 0.012,
+        "learning_rate": 0.0002,
+        "reward_scale": 1.1,
+        "action_balance_target": 0.9,
+        "position_size_multiplier": 0.9
+      },
+      "volatile_market": {
+        "ent_coef": 0.015,
+        "learning_rate": 0.0004,
+        "reward_scale": 0.9,
+        "action_balance_target": 0.85,
+        "position_size_multiplier": 0.5
+      }
+    },
+    "adaptation_frequency": 50,
+    "performance_tracking_window": 1000
+  },
+  "market_adaptive_ensemble": {
+    "enabled": true,
+    "regime_detection_window": 50,
+    "adaptation_frequency": 20,
+    "ensemble_size": 3,
+    "attention_layer": {
+      "enabled": true,
+      "attention_heads": 8,
+      "attention_dim": 64
+    }
+  },
+  "risk_management": {
+    "enabled": true,
+    "max_drawdown_limit": 0.15,
+    "daily_loss_limit": 0.05,
+    "position_sizing": {
+      "volatility_adjusted": true,
+      "regime_adjusted": true,
+      "base_position_size": 0.5,
+      "volatility_multiplier": 0.8,
+      "trend_multiplier": 1.2,
+      "max_position_size": 1.0,
+      "min_position_size": 0.01
+    },
+    "stop_loss": {
+      "enabled": true,
+      "trailing_stop": true,
+      "stop_loss_percentage": 0.05,
+      "trailing_stop_distance": 0.03,
+      "regime_adjusted_stops": true
+    },
+    "take_profit": {
+      "enabled": true,
+      "profit_targets": [
+        0.02,
+        0.05,
+        0.1
+      ],
+      "partial_exits": [
+        0.3,
+        0.3,
+        0.4
+      ]
+    }
+  },
+  "training": {
+    "algorithm": "sac",
+    "model_name": "sac_v444_2_integrated_regime_adaptation",
+    "total_timesteps": 2000,
+    "data_config": {
+      "csv_path": "data/btc_jpy_featured_dataset.csv",
+      "data_path": "data/btc_jpy_featured_dataset.csv",
+      "use_real_data": true,
+      "validation_split": 0.2,
+      "test_split": 0.1
+    },
+    "sac_hyperparameters": {
+      "learning_rate": 0.0003,
+      "buffer_size": 1000000,
+      "learning_starts": 1000,
+      "batch_size": 256,
+      "tau": 0.005,
+      "gamma": 0.99,
+      "ent_coef": "auto_1.0",
+      "target_entropy": "auto",
+      "target_update_interval": 1,
+      "seed": 42
+    },
+    "curriculum_learning": {
+      "enabled": true,
+      "curriculum_stage": "forced_balance",
+      "stage_progression": [
+        "exploration",
+        "balanced",
+        "strong_penalty_trading",
+        "stability_optimized"
+      ],
+      "stage_timesteps": [
+        10000,
+        20000,
+        30000,
+        50000
+      ]
+    }
+  },
+  "environment": {
+    "initial_balance": 200000.0,
+    "transaction_cost": 0.001,
+    "commission": 0.001,
+    "max_position_size": 1.0,
+    "enable_action_masking": true,
+    "use_continuous_actions": true,
+    "use_standardized_observations": true,
+    "random_start": true,
+    "continuous_to_discrete_threshold": 0.08,
+    "behavior_optimization": {
+      "action_balance_target": 0.333,
+      "entropy_regularization": 0.01,
+      "action_smoothing": 0.1,
+      "consistency_penalty": 0.05,
+      "balance_penalty": 1000.0,
+      "redundant_trade_penalty": 5.0
+    },
+    "action_bonuses": {
+      "buy_action_bonus": 5.0,
+      "sell_action_bonus": 0.0,
+      "hold_action_bonus": 0.0
+    },
+    "base_action_penalty": 1.0
+  },
+  "features": {
+    "feature_set": "v443_enhanced",
+    "target_dimensions": 150,
+    "include_regime_indicators": true,
+    "include_volatility_features": true,
+    "include_momentum_features": true,
+    "include_volume_features": true,
+    "include_trend_features": true,
+    "include_bearish_signal_features": true,
+    "sell_bias_mitigation": {
+      "enabled": true,
+      "bearish_signal_weight": 1.2,
+      "divergence_sensitivity": 0.8,
+      "pattern_recognition_threshold": 0.7
+    },
+    "enhanced_features": {
+      "enabled": true,
+      "feature_engineering": {
+        "regime_features": true,
+        "correlation_features": true,
+        "ensemble_features": true,
+        "risk_features": true,
+        "momentum_features": true,
+        "volatility_features": true,
+        "volume_features": true,
+        "trend_features": true,
+        "bearish_signal_features": true,
+        "sell_signal_oscillators": true,
+        "bearish_volume_features": true
+      },
+      "advanced_indicators": [
+        "rsi",
+        "macd",
+        "stochastic",
+        "williams_r",
+        "cci",
+        "bollinger_bands",
+        "atr",
+        "ichimoku",
+        "supertrend",
+        "kama",
+        "tema",
+        "parabolic_sar"
+      ],
+      "bearish_indicators": [
+        "bearish_rsi_divergence",
+        "bearish_macd_divergence",
+        "bearish_engulfing",
+        "shooting_star",
+        "hammer_bearish",
+        "bearish_momentum_acceleration",
+        "bearish_trend_continuation",
+        "bearish_volatility_surge"
+      ]
+    },
+    "correlation_reduction": {
+      "enabled": true,
+      "correlation_threshold": 0.85,
+      "reduction_method": "pca",
+      "max_features": 120
+    },
+    "adaptive_feature_selection": {
+      "enabled": true,
+      "selection_window": 100,
+      "importance_threshold": 0.05,
+      "max_features": 100,
+      "regime_aware_selection": true
+    },
+    "trading_frequency_control": {
+      "enabled": true,
+      "min_steps_between_trades": 5,
+      "max_trades_per_episode": 50,
+      "trading_penalty_coefficient": 0.001,
+      "frequency_penalty": 0.1,
+      "cooldown_period": 6
+    }
+  },
+  "reward_function": {
+    "use_simple_reward": false,
+    "reward_scale": 100.0,
+    "pnl_weight": 1.0,
+    "transaction_cost_weight": 0.1,
+    "hold_penalty": 0.01,
+    "trading_bonus": 0.01,
+    "profit_bonuses": {
+      "enabled": true,
+      "thresholds": [
+        0.001,
+        0.005,
+        0.01,
+        0.02
+      ],
+      "multipliers": [
+        1.0,
+        1.5,
+        2.0,
+        3.0
+      ],
+      "small_profit": 0.005,
+      "medium_profit": 0.01,
+      "large_profit": 0.02,
+      "small_bonus": 5.0,
+      "medium_bonus": 10.0,
+      "large_bonus": 20.0
+    },
+    "frequency_penalty": {
+      "enabled": true,
+      "threshold": 0.1,
+      "penalty": -0.01
+    },
+    "dynamic_reward_shaping": {
+      "enabled": true,
+      "market_regime_awareness": true,
+      "volatility_adjusted_rewards": true,
+      "trend_strength_bonus": true,
+      "regime_detection_window": 20,
+      "adaptation_frequency": 10,
+      "regime_coefficients": {
+        "bull_market_bonus_coeff": 1.2,
+        "bear_market_penalty_coeff": 0.8,
+        "sideways_market_penalty_coeff": 0.9,
+        "volatile_market_bonus_coeff": 1.1,
+        "trending_market_bonus_coeff": 1.3,
+        "ranging_market_penalty_coeff": 0.85
+      },
+      "volatility_coefficients": {
+        "high_volatility_threshold": 0.02,
+        "low_volatility_threshold": 0.005,
+        "high_volatility_bonus": 1.3,
+        "low_volatility_penalty": 0.7
+      },
+      "trend_coefficients": {
+        "trend_strength_threshold": 0.001,
+        "strong_trend_bonus": 1.2,
+        "weak_trend_penalty": 0.8
+      }
+    },
+    "action_diversity_bonus": 0.1,
+    "successful_trade_bonus": 5.0,
+    "consecutive_hold_penalty": 0.05,
+    "trading_frequency_bonus": 0.3
+  },
+  "evaluation": {
+    "enabled": true,
+    "evaluation_frequency": 5000,
+    "n_eval_episodes": 10,
+    "deterministic": true,
+    "render": false,
+    "evaluation_metrics": [
+      "total_return",
+      "sharpe_ratio",
+      "max_drawdown",
+      "win_rate",
+      "profit_factor",
+      "calmar_ratio"
+    ]
+  },
+  "logging": {
+    "enabled": true,
+    "log_frequency": 1000,
+    "tensorboard_log": "tensorboard/sac_v444_2",
+    "checkpoint_frequency": 5000,
+    "save_best_model": true,
+    "best_model_criteria": "total_return"
+  },
+  "checkpoint_dir": "models/sac_v444_2_training_states",
+  "model_save_path": "models/sac_v444_2_final_model",
+  "memory_threshold_mb": 600.0
+}

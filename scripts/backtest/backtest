@@ -1,0 +1,402 @@
+#!/usr/bin/env python3
+"""
+SAC v445.2 Backtest Script - Simplified Aggressive Performance Validation
+
+Backtest the trained SAC v445.2 simplified aggressive model.
+Evaluates performance and validates the 10k-step training results.
+"""
+
+import argparse
+import json
+import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+
+# Add project root to path
+project_root = Path(__file__).parent
+sys.path.insert(0, str(project_root))
+
+try:
+    import gymnasium as gym
+    from stable_baselines3 import SAC
+except ImportError as e:
+    print(f"Import error: {e}")
+    sys.exit(1)
+
+from ztb.utils.logging_utils import get_logger
+
+logger = get_logger(__name__)
+
+
+class SACV445Backtester:
+    """Backtester for SAC v445.2 simplified aggressive model."""
+
+    def __init__(
+        self, model_path: str, config_path: str, data_path: Optional[str] = None
+    ):
+        """Initialize backtester with model and config."""
+        self.model_path = Path(model_path)
+        self.config_path = Path(config_path)
+        self.data_path = Path(data_path) if data_path else None
+
+        self.config = self._load_config()
+        self.model = self._load_model()
+        self.env = None
+
+        # Results storage
+        self.backtest_results = {}
+        self.portfolio_history = []
+        self.action_history = []
+        self.price_history = []
+
+    def _load_config(self) -> Dict[str, Any]:
+        """Load configuration from JSON file."""
+        if not self.config_path.exists():
+            raise FileNotFoundError(f"Config file not found: {self.config_path}")
+
+        with open(self.config_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def _load_model(self) -> SAC:
+        """Load the trained SAC model."""
+        if not self.model_path.exists():
+            raise FileNotFoundError(f"Model file not found: {self.model_path}")
+
+        logger.info(f"Loading model from {self.model_path}")
+        model = SAC.load(str(self.model_path))
+        logger.info("Model loaded successfully")
+        return model
+
+    def _create_environment(self) -> gym.Env:
+        """Create test environment for backtesting."""
+        # Use Pendulum environment for consistency with training
+        env = gym.make("Pendulum-v1")
+        return env
+
+    def run_backtest(
+        self, num_episodes: int = 10, max_steps_per_episode: int = 200
+    ) -> Dict[str, Any]:
+        """Run backtest evaluation."""
+        logger.info("🚀 Starting SAC v445.2 Backtest")
+        logger.info(f"Model: {self.model_path}")
+        logger.info(f"Config: {self.config_path}")
+        logger.info(
+            f"Episodes: {num_episodes}, Max steps per episode: {max_steps_per_episode}"
+        )
+
+        self.env = self._create_environment()
+
+        episode_rewards = []
+        episode_lengths = []
+        all_actions = []
+        all_rewards = []
+
+        start_time = datetime.now()
+
+        for episode in range(num_episodes):
+            logger.info(f"Running episode {episode + 1}/{num_episodes}")
+
+            obs, _ = self.env.reset()
+            episode_reward = 0
+            episode_length = 0
+            episode_actions = []
+            episode_rewards_list = []
+
+            done = False
+            truncated = False
+
+            while not (done or truncated) and episode_length < max_steps_per_episode:
+                # Get action from model
+                action, _ = self.model.predict(obs, deterministic=True)
+                episode_actions.append(
+                    float(action[0]) if hasattr(action, "__len__") else float(action)
+                )
+
+                # Execute action
+                obs, reward, done, truncated, info = self.env.step(action)
+                episode_reward += reward
+                episode_length += 1
+                episode_rewards_list.append(float(reward))
+
+            episode_rewards.append(float(episode_reward))
+            episode_lengths.append(episode_length)
+            all_actions.extend(episode_actions)
+            all_rewards.extend(episode_rewards_list)
+
+            logger.info(
+                f"Episode {episode + 1}: Reward={episode_reward:.2f}, Length={episode_length}"
+            )
+
+        end_time = datetime.now()
+        backtest_duration = end_time - start_time
+
+        # Calculate comprehensive metrics
+        self.backtest_results = self._calculate_metrics(
+            episode_rewards,
+            episode_lengths,
+            all_actions,
+            all_rewards,
+            backtest_duration,
+        )
+
+        logger.info("✅ Backtest completed successfully!")
+        return self.backtest_results
+
+    def _calculate_metrics(
+        self,
+        episode_rewards: List[float],
+        episode_lengths: List[int],
+        all_actions: List[float],
+        all_rewards: List[float],
+        duration,
+    ) -> Dict[str, Any]:
+        """Calculate comprehensive backtest metrics."""
+
+        # Basic statistics
+        mean_reward = float(np.mean(episode_rewards))
+        std_reward = float(np.std(episode_rewards))
+        mean_episode_length = float(np.mean(episode_lengths))
+
+        # Action distribution analysis
+        actions_array = np.array(all_actions)
+        action_mean = float(np.mean(actions_array))
+        action_std = float(np.std(actions_array))
+        action_min = float(np.min(actions_array))
+        action_max = float(np.max(actions_array))
+
+        # Action categories (Pendulum: -2 to 2 range)
+        hold_threshold = 0.1
+        hold_actions = np.sum(np.abs(actions_array) < hold_threshold)
+        buy_actions = np.sum(actions_array > hold_threshold)
+        sell_actions = np.sum(actions_array < -hold_threshold)
+        total_actions = len(actions_array)
+
+        # Reward analysis
+        rewards_array = np.array(all_rewards)
+        reward_mean = float(np.mean(rewards_array))
+        reward_std = float(np.std(rewards_array))
+        reward_min = float(np.min(rewards_array))
+        reward_max = float(np.max(rewards_array))
+
+        # Positive/negative reward analysis
+        positive_rewards = rewards_array[rewards_array > 0]
+        negative_rewards = rewards_array[rewards_array < 0]
+
+        # Risk metrics
+        if len(episode_rewards) > 1:
+            sharpe_ratio = mean_reward / std_reward if std_reward > 0 else 0
+        else:
+            sharpe_ratio = 0
+
+        # Maximum drawdown (simplified for episode-based)
+        cumulative_rewards = np.cumsum(episode_rewards)
+        peak = np.maximum.accumulate(cumulative_rewards)
+        drawdown = cumulative_rewards - peak
+        max_drawdown = float(np.min(drawdown)) if len(drawdown) > 0 else 0
+
+        # Win rate (episodes with positive reward)
+        win_rate = float(np.sum(np.array(episode_rewards) > 0) / len(episode_rewards))
+
+        # Profit factor
+        if len(negative_rewards) > 0 and len(positive_rewards) > 0:
+            profit_factor = (np.sum(positive_rewards) / len(positive_rewards)) / (
+                abs(np.sum(negative_rewards)) / len(negative_rewards)
+            )
+        else:
+            profit_factor = float("inf") if len(positive_rewards) > 0 else 0
+
+        return {
+            "timestamp": datetime.now().isoformat(),
+            "model_path": str(self.model_path),
+            "config_path": str(self.config_path),
+            "backtest_duration": str(duration),
+            "num_episodes": len(episode_rewards),
+            "max_steps_per_episode": max(episode_lengths),
+            # Episode-level metrics
+            "episode_metrics": {
+                "mean_reward": mean_reward,
+                "std_reward": std_reward,
+                "mean_episode_length": mean_episode_length,
+                "total_episodes": len(episode_rewards),
+            },
+            # Action analysis
+            "action_analysis": {
+                "mean": action_mean,
+                "std": action_std,
+                "min": action_min,
+                "max": action_max,
+                "distribution": {
+                    "hold": hold_actions / total_actions,
+                    "buy": buy_actions / total_actions,
+                    "sell": sell_actions / total_actions,
+                },
+            },
+            # Reward analysis
+            "reward_analysis": {
+                "mean": reward_mean,
+                "std": reward_std,
+                "min": reward_min,
+                "max": reward_max,
+                "positive_count": len(positive_rewards),
+                "negative_count": len(negative_rewards),
+                "positive_mean": float(np.mean(positive_rewards))
+                if len(positive_rewards) > 0
+                else 0,
+                "negative_mean": float(np.mean(negative_rewards))
+                if len(negative_rewards) > 0
+                else 0,
+            },
+            # Risk metrics
+            "risk_metrics": {
+                "sharpe_ratio": sharpe_ratio,
+                "max_drawdown": max_drawdown,
+                "win_rate": win_rate,
+                "profit_factor": profit_factor,
+            },
+            # Training config reference
+            "training_config": self.config,
+            # Health checks
+            "health_checks": self._perform_health_checks(actions_array, rewards_array),
+        }
+
+    def _perform_health_checks(
+        self, actions: np.ndarray, rewards: np.ndarray
+    ) -> Dict[str, Any]:
+        """Perform health checks on the backtest results."""
+        checks = {}
+
+        # Action distribution health
+        action_mean = np.mean(actions)
+        action_std = np.std(actions)
+
+        checks["action_distribution"] = {
+            "mean_in_range": abs(action_mean) < 1.0,  # Should be centered around 0
+            "reasonable_variance": 0.1 < action_std < 2.0,  # Reasonable action variance
+            "no_extreme_actions": np.max(np.abs(actions))
+            < 2.5,  # Within Pendulum bounds
+        }
+
+        # Reward stability
+        reward_std = np.std(rewards)
+        reward_mean = np.mean(rewards)
+
+        checks["reward_stability"] = {
+            "reasonable_volatility": reward_std
+            < abs(reward_mean) * 2,  # Not excessively volatile
+            "no_extreme_rewards": np.max(np.abs(rewards)) < 1000,  # No extreme values
+            "consistent_performance": reward_std > 0,  # Some variation expected
+        }
+
+        # Overall health score
+        health_score = (
+            checks["action_distribution"]["mean_in_range"]
+            + checks["action_distribution"]["reasonable_variance"]
+            + checks["action_distribution"]["no_extreme_actions"]
+            + checks["reward_stability"]["reasonable_volatility"]
+            + checks["reward_stability"]["no_extreme_rewards"]
+            + checks["reward_stability"]["consistent_performance"]
+        ) / 6
+
+        checks["overall_health_score"] = float(health_score)
+        checks["healthy"] = bool(health_score >= 0.8)
+
+        # Convert numpy bools to Python bools for JSON serialization
+        for key in checks["action_distribution"]:
+            checks["action_distribution"][key] = bool(
+                checks["action_distribution"][key]
+            )
+        for key in checks["reward_stability"]:
+            checks["reward_stability"][key] = bool(checks["reward_stability"][key])
+
+        return checks
+
+    def save_results(self, output_path: Optional[str] = None) -> str:
+        """Save backtest results to JSON file."""
+        if output_path is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_path = f"backtest_results_sac_v445.2_{timestamp}.json"
+
+        output_file = Path(output_path)
+        output_file.parent.mkdir(exist_ok=True)
+
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(self.backtest_results, f, indent=2, ensure_ascii=False)
+
+        logger.info(f"Results saved to {output_file}")
+        return str(output_file)
+
+
+def main():
+    """Main function to run backtest."""
+    parser = argparse.ArgumentParser(description="SAC v445.2 Backtest Script")
+    parser.add_argument(
+        "--model", type=str, required=True, help="Path to trained model file (.zip)"
+    )
+    parser.add_argument(
+        "--config", type=str, required=True, help="Path to configuration file (.json)"
+    )
+    parser.add_argument(
+        "--episodes", type=int, default=10, help="Number of episodes to run"
+    )
+    parser.add_argument(
+        "--max-steps", type=int, default=200, help="Maximum steps per episode"
+    )
+    parser.add_argument(
+        "--output", type=str, default=None, help="Output file path for results"
+    )
+
+    args = parser.parse_args()
+
+    try:
+        # Initialize backtester
+        backtester = SACV445Backtester(model_path=args.model, config_path=args.config)
+
+        # Run backtest
+        results = backtester.run_backtest(
+            num_episodes=args.episodes, max_steps_per_episode=args.max_steps
+        )
+
+        # Save results
+        output_file = backtester.save_results(args.output)
+
+        # Print summary
+        print("\n" + "=" * 60)
+        print("🎯 SAC v445.2 BACKTEST RESULTS SUMMARY")
+        print("=" * 60)
+
+        episode_metrics = results["episode_metrics"]
+        risk_metrics = results["risk_metrics"]
+        health_checks = results["health_checks"]
+
+        print(f"📊 Episodes: {episode_metrics['total_episodes']}")
+        print(f"💰 Mean Reward: {episode_metrics['mean_reward']:.2f}")
+        print(f"📈 Reward Std: {episode_metrics['std_reward']:.2f}")
+        print(f"⏱️  Mean Episode Length: {episode_metrics['mean_episode_length']:.1f}")
+        print(f"📊 Sharpe Ratio: {risk_metrics['sharpe_ratio']:.3f}")
+        print(f"📉 Max Drawdown: {risk_metrics['max_drawdown']:.2f}")
+        print(f"🏆 Win Rate: {risk_metrics['win_rate']:.1%}")
+        print(f"💹 Profit Factor: {risk_metrics['profit_factor']:.2f}")
+        print(
+            f"🏥 Health Score: {health_checks['overall_health_score']:.2f} ({'✅ Healthy' if health_checks['healthy'] else '⚠️ Needs Attention'})"
+        )
+        print(f"💾 Results saved to: {output_file}")
+
+        if health_checks["healthy"]:
+            print("✅ Backtest completed successfully with healthy metrics!")
+        else:
+            print("⚠️ Backtest completed but some health checks failed. Review results.")
+
+    except Exception as e:
+        logger.error(f"Backtest failed: {e}")
+        print(f"❌ Backtest failed: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

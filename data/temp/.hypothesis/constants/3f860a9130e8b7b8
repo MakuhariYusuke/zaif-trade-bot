@@ -1,0 +1,4 @@
+# file: C:\Users\Admin\dev\zaif-trade-bot\ztb\utils\checkpoint.py
+# hypothesis_version: 6.140.3
+
+[0.0, 1.0, 100, 1000, 1024, 5000, 10000, 50000, '.', '.lz4', '.pkl', '.zst', 'No checkpoints found', '_', 'added', 'archive', 'archive_checkpoints', 'auto', 'checkpoint', 'checkpoint*.pkl*', 'checkpoint_*.pkl*', 'checkpoint_diff_', 'compressed_size_mb', 'diff', 'differential_saves', 'error', 'full', 'full_checkpoints', 'is_differential', 'light', 'light_checkpoints', 'lz4', 'lz4 not available', 'metadata', 'metrics', 'model_state', 'models/checkpoints', 'modified', 'obj', 'obj_diff', 'optimizer_state', 'rb', 'removed', 'saved_count', 'step', 'timestamp', 'total_checkpoints', 'total_save_time', 'type', 'wb', 'zlib', 'zstd', 'zstd not available']

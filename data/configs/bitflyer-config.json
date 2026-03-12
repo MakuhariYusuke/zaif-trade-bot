@@ -1,0 +1,32 @@
+{
+  "venue": "bitflyer",
+  "api": {
+    "key": "",
+    "secret": "",
+    "base_url": "https://api.bitflyer.com",
+    "ws_url": "wss://ws.lightstream.bitflyer.com/json-rpc"
+  },
+  "symbols": {
+    "primary": "BTC_JPY",
+    "supported": ["BTC_JPY", "ETH_JPY", "XRP_JPY"]
+  },
+  "fee_model": {
+    "type": "exchange",
+    "exchange_fees": {
+      "bitflyer": {
+        "buy": 0.001,
+        "sell": 0.001
+      }
+    }
+  },
+  "trading": {
+    "max_position_size": 0.1,
+    "min_order_size": 0.001,
+    "price_precision": 0,
+    "quantity_precision": 8
+  },
+  "rate_limits": {
+    "requests_per_second": 500,
+    "orders_per_second": 10
+  }
+}

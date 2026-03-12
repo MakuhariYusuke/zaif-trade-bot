@@ -1,0 +1,125 @@
+{
+  "version": "1.0",
+  "training": {
+    "model_name": "sac_v435",
+    "algorithm": "sac",
+    "total_timesteps": 1000000,
+    "data_config": {
+      "csv_path": "btc_jpy_featured_dataset.csv",
+      "use_real_data": true
+    },
+    "environment": {
+      "initial_balance": 100000.0,
+      "transaction_cost": 0.0015,
+      "max_position_size": 0.1,
+      "enable_action_masking": true,
+      "use_continuous_actions": true,
+      "use_standardized_observations": true,
+      "random_start": true,
+      "curriculum_stage": "risk_aware_trading",
+      "continuous_to_discrete_threshold": 0.1,
+      "feature_set": "v435_risk_managed_no_multi_timeframe",
+      "adaptive_feature_selection": {
+        "enabled": true,
+        "regime_classifier": {
+          "adx_threshold": 25.0,
+          "volatility_percentile": 70.0
+        },
+        "attention_layer": {
+          "enabled": true,
+          "hidden_dim": 128
+        },
+        "min_weight_threshold": 0.3
+      },
+      "reward_settings": {
+        "use_simple_reward": false,
+        "reward_scale": 100.0,
+        "trading_bonus": 0.01,
+        "profit_bonuses": {
+          "trading_bonus": 0.01,
+          "profit_multiplier": 5.0,
+          "loss_penalty": -1.0
+        },
+        "action_penalties": {
+          "hold_penalty": 0.15,
+          "action_frequency_penalty": 0.05
+        },
+        "risk_penalties": {
+          "volatility_penalty": 0.02,
+          "correlation_penalty": 0.01
+        }
+      },
+      "risk_management": {
+        "enabled": true,
+        "dynamic_position_sizing": true,
+        "drawdown_control": true,
+        "max_drawdown_limit": 0.1,
+        "volatility_adjustment": true,
+        "correlation_risk": true,
+        "market_adaptation": true
+      }
+    },
+    "features": {
+      "features": {
+        "rsi_14": {"enabled": true},
+        "macd": {"enabled": true},
+        "macd_signal": {"enabled": true},
+        "macd_hist": {"enabled": true},
+        "bb_upper": {"enabled": true},
+        "bb_middle": {"enabled": true},
+        "bb_lower": {"enabled": true},
+        "bb_width": {"enabled": true},
+        "stoch_k": {"enabled": true},
+        "stoch_d": {"enabled": true},
+        "williams_r": {"enabled": true},
+        "ichimoku_tenkan": {"enabled": true},
+        "ichimoku_kijun": {"enabled": true},
+        "ichimoku_senkou_a": {"enabled": true},
+        "ichimoku_senkou_b": {"enabled": true},
+        "atr_14": {"enabled": true},
+        "cci_14": {"enabled": true},
+        "mfi_14": {"enabled": true},
+        "roc_12": {"enabled": true},
+        "mom_10": {"enabled": true}
+      },
+      "feature_set": "v435_risk_managed",
+      "feature_names": ["volume", "rsi_14", "macd", "macd_hist", "bb_position"],
+      "adaptive_feature_selection": {
+        "enabled": true,
+        "regime_classifier": {
+          "adx_threshold": 25.0,
+          "volatility_percentile": 70.0
+        },
+        "attention_layer": {
+          "enabled": true,
+          "hidden_dim": 128
+        },
+        "min_weight_threshold": 0.3
+      }
+    },
+    "sac_hyperparameters": {
+      "learning_rate": 0.0003,
+      "buffer_size": 1000000,
+      "learning_starts": 1000,
+      "batch_size": 256,
+      "tau": 0.005,
+      "gamma": 0.99,
+      "ent_coef": 0.01,
+      "target_update_interval": 1,
+      "target_entropy": -2.0
+    }
+  },
+  "evaluation": {
+    "thresholds": {
+      "re_evaluate": 0.05,
+      "monitor": 0.01
+    },
+    "min_samples": 10000,
+    "risk_metrics": ["sharpe", "sortino", "max_drawdown"],
+    "performance_metrics": ["total_return", "win_rate", "profit_factor"]
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  }
+}

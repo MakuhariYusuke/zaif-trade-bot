@@ -1,0 +1,18 @@
+{
+  "curriculum_stage": "pnl_focused",
+  "transaction_cost": 0.0015,
+  "max_position_size": 1.0,
+  "reward_scaling": 1.0,
+  "enable_correlation_reduction": true,
+  "correlation_threshold": 0.85,
+  "random_start": true,
+  "action_space_type": "continuous",
+  "_description": "v434.2環境設定（最大ポジション100%）",
+  "_improvements": [
+    "取引コストを実取引に近づける（0.15%）",
+    "最大ポジションサイズを100%に設定（当座の間）",
+    "相関削減を有効化して特徴量数を削減",
+    "ランダムスタートを有効化して決定論的行動を回避",
+    "SAC用に連続行動空間を使用"
+  ]
+}

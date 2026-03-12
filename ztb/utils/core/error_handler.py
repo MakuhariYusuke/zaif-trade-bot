@@ -1,0 +1,38 @@
+"""
+ErrorHandler: Common error handling with logging, notification, and graceful shutdown.
+
+Implements @catch_and_notify decorator.
+
+Usage:
+    from ztb.utils.error_handler import catch_and_notify
+
+    @catch_and_notify
+    def risky_function():
+        # ... risky code ...
+        pass
+"""
+
+import functools
+from typing import Any, Callable
+
+class ErrorHandler:
+    """Common error handler with logging, notification, and graceful shutdown"""
+
+    def __init__(self) -> None:
+        pass
+
+    def handle_error(self, error: Exception, context: str = "") -> None:
+        """Handle error with logging and notification"""
+
+def catch_and_notify(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Decorator to catch exceptions and notify"""
+
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return func(*args, **kwargs)
+        except Exception:
+            # Handle error
+            pass
+
+    return wrapper

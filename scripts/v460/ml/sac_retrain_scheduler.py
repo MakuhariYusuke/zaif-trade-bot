@@ -34,11 +34,9 @@ import torch
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Protocol, cast
+from typing import cast
 
 logger = logging.getLogger(__name__)
-
-from ztb.io.yaml_io import read_yaml
 
 # ── graceful shutdown ──────────────────────────────────────
 _shutdown_event = threading.Event()
@@ -249,23 +247,6 @@ class RetrainResult:
             "trade_count": self.trade_count,
             "error_message": self.error_message,
         }
-
-
-class _LatestObservationEnvProtocol(Protocol):
-    current_step: int
-
-    def _get_observation(self) -> object:
-        ...
-
-
-def _as_latest_observation_env(env: object) -> _LatestObservationEnvProtocol | None:
-    current_step = getattr(env, "current_step", None)
-    get_observation = getattr(env, "_get_observation", None)
-    if not isinstance(current_step, int):
-        return None
-    if not callable(get_observation):
-        return None
-    return cast(_LatestObservationEnvProtocol, env)
 
 
 def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
@@ -700,18 +681,17 @@ def _get_latest_obs(env: TrainingEnvProtocol) -> object:
         obs, _ = env.reset()
         return obs
 
-    latest_env = _as_latest_observation_env(env)
-    if latest_env is None:
-        obs, _ = env.reset()
-        return obs
-
     # current_step を末尾に設定して observation を取得
-    saved_step = latest_env.current_step
+    saved_step = getattr(env, "current_step", 0)
     try:
-        latest_env.current_step = last_step
-        obs = latest_env._get_observation()
+        env.current_step = last_step  # type: ignore[attr-defined]
+        if hasattr(env, "_get_observation"):
+            obs = env._get_observation()  # type: ignore[attr-defined]
+        else:
+            # _get_observation がない場合のフォールバック
+            obs, _ = env.reset()
     finally:
-        latest_env.current_step = saved_step
+        env.current_step = saved_step  # type: ignore[attr-defined]
 
     return obs
 
@@ -811,15 +791,14 @@ def _append_history(path: Path, result: RetrainResult) -> None:
 
 def load_config(config_path: str | Path) -> SACRetrainConfig:
     """YAML ファイルから SACRetrainConfig を構築."""
+    import yaml
+
     path = Path(config_path)
     if not path.exists():
         raise FileNotFoundError(f"Config not found: {path}")
 
-    raw = read_yaml(path)
-    if raw is None:
-        raw = {}
-    if not isinstance(raw, dict):
-        raise TypeError(f"Expected YAML mapping in {path}")
+    with open(path, encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
 
     return SACRetrainConfig.from_yaml_dict(raw)
 

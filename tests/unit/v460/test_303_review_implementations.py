@@ -23,7 +23,6 @@ from scripts.v460.lib.daily_drawdown_guard import (
     DrawdownAction,
 )
 from scripts.v460.lib.fill_config import FillTestConfig
-from tests.unit.v460._fill_test_source import MAKER_PRICE, read_class_method_source
 from ztb.io.json_io import JSONObject
 
 _FIXED_TS = 1_700_000_000.0
@@ -266,11 +265,10 @@ class TestNoneRegimePassiveMM:
         旧実装は 'none' のみチェックしていたため、FillTestRegime.UNKNOWN
         ('unknown') では発火しなかった。修正後は ('none', 'unknown') 両方対応。
         """
-        source = read_class_method_source(
-            MAKER_PRICE,
-            "MakerPriceCalculator",
-            "compute",
-        )
+        import inspect
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+
+        source = inspect.getsource(MakerPriceCalculator.compute)
         # 旧: `if _current_regime == "none":` → 新: `in ("none", "unknown")`
         assert 'in ("none", "unknown")' in source, (
             "318# F5-1: Passive MM bypass should check for both 'none' AND 'unknown'"

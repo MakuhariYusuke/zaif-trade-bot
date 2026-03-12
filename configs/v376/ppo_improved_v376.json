@@ -1,0 +1,118 @@
+{
+  "session_id": "ppo_improved_v376",
+  "algorithm": "ppo",
+  "description": "Improved configuration based on 512-step success analysis - Full data, Full features, Longer training with early stopping",
+
+  "comment_experiment": "v376: Fix short-step overfitting by expanding data/features and using random_start",
+  "comment_strategy": "5000+ data rows, 110 features (full), random_start=true, 20k-50k timesteps, frequent eval",
+  "comment_target": "HOLD <40%, Reward >0, Maintain 512-step success over long training",
+
+  "comment_analysis_findings": [
+    "Problem: 512 steps succeed (reward 383, HOLD 40%), but 2560+ steps degrade (reward -135, HOLD 63%)",
+    "Root cause 1: Data exhaustion - 500 rows repeated → policy overfits to HOLD safety",
+    "Root cause 2: Feature limitation - max_features=60 reduces information diversity",
+    "Root cause 3: No random start → same sequence reinforces bias",
+    "Root cause 4: Entropy decay unchecked → exploration dies after 512 steps",
+    "Solution: Expand data to 5000+, use all 110 features, enable random_start, maintain entropy"
+  ],
+
+  "max_features": null,
+  "enable_correlation_reduction": true,
+  "correlation_threshold": 0.95,
+
+  "data_rows_limit": null,
+
+  "ppo": {
+    "learning_rate": 0.0003,
+    "n_steps": 512,
+    "batch_size": 128,
+    "n_epochs": 6,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "clip_range_vf": null,
+    "ent_coef": 0.06,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "use_sde": false,
+    "sde_sample_freq": -1,
+    "target_kl": 0.03,
+    "policy_kwargs": {
+      "net_arch": [
+        {"pi": [128, 128], "vf": [128, 128]}
+      ]
+    }
+  },
+
+  "environment": {
+    "initial_balance": 10000,
+    "transaction_cost": 0.0001,
+    "max_position_size": 1.0,
+    "enable_action_masking": true,
+    "random_start": true,
+    "reward_settings": {
+      "hold_penalty_weight": 0.005,
+      "consecutive_hold_penalty": 0.002,
+      "trading_frequency_bonus": 0.05,
+      "profit_reward_multiplier": 1.5,
+      "action_diversity_bonus": 0.01
+    }
+  },
+
+  "training": {
+    "total_timesteps": 30000,
+    "checkpoint_interval": 2000,
+    "enable_autohalt": true,
+    "eval_freq": 1000,
+    "n_eval_episodes": 10,
+    "reward_scaling": 1.0
+  },
+
+  "custom_ppo": {
+    "enabled": true,
+    "use_pan": true,
+    "use_target_entropy": true,
+    "target_entropy": -0.8,
+    "use_gradient_probe_guard": false,
+    "pan_epsilon": 1e-8,
+    "enable_evaluation_gates": true,
+    "gate_thresholds": {
+      "variance_threshold": 0.01,
+      "distribution_check_enabled": true
+    }
+  },
+
+  "data_path": "ml-dataset-enhanced-balanced.csv",
+
+  "comment_changes": "Key improvements from v371/v373:",
+  "changes": [
+    "data_rows_limit: 500 → null (use all 1000+ rows available)",
+    "max_features: 60 → null (use all ~110 features with correlation filtering)",
+    "enable_correlation_reduction: false → true (intelligent feature selection)",
+    "random_start: NEW true (prevent same-sequence overfitting)",
+    "ent_coef: 0.05 → 0.06 (maintain exploration longer)",
+    "target_kl: NEW 0.03 (early stop on policy divergence)",
+    "total_timesteps: 5000 → 30000 (allow longer learning)",
+    "eval_freq: 2000 → 1000 (more frequent evaluation for manual monitoring)",
+    "n_eval_episodes: 5 → 10 (better eval statistics)",
+    "checkpoint_interval: 5000 → 2000 (more checkpoints)",
+    "target_entropy: NEW -0.8 (maintain exploration automatically)"
+  ],
+
+  "expected_behavior": {
+    "hold_rate_target": "<40%",
+    "buy_sell_rate_target": ">60%",
+    "reward_target": ">0 (positive)",
+    "exploration_level": "very high, sustained (ent_coef=0.06, target_entropy=-0.8)",
+    "trade_pattern": "Active trading maintained over long training",
+    "data_diversity": "High (full dataset + random start)",
+    "convergence": "Gradual, with early stopping to prevent HOLD bias"
+  },
+
+  "validation_plan": {
+    "step_1": "Run for 5000 steps - expect similar to baseline (reward ~300, HOLD ~40%)",
+    "step_2": "Continue to 10000 steps - check if HOLD stays <50% with random_start",
+    "step_3": "Continue to 20000 steps - verify entropy maintained and reward stable",
+    "step_4": "Full 30000 steps - confirm no degradation, or early stop if plateau detected"
+  }
+}

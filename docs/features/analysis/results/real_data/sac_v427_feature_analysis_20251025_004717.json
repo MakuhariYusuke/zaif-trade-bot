@@ -1,0 +1,1977 @@
+{
+  "timestamp": "20251025_004717",
+  "data_source": "data/btc_jpy_yahoo_real_20251021_featured.csv",
+  "analysis_type": "enhanced_sac_v427_feature_analysis",
+  "summary": {
+    "total_features": 117,
+    "harmful_features_count": 67,
+    "excellent_quality_count": 50,
+    "poor_quality_count": 0
+  },
+  "quality_analysis": {
+    "timestamp": "2025-10-25T00:47:00.407819",
+    "total_features": 117,
+    "harmful_features": {
+      "open": {
+        "issues": [
+          "over_correlated:7_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 3758771569359.543,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "high": {
+        "issues": [
+          "over_correlated:7_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 3687217844140.278,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "low": {
+        "issues": [
+          "over_correlated:7_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 3771890888932.592,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "close": {
+        "issues": [
+          "over_correlated:7_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 3696074802030.364,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "volume": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 1.4968955961200673e+25,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "dividends": {
+        "issues": [
+          "low_variance:0.00e+00",
+          "excessive_zeros:100.00%"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.0,
+        "zero_rate": 1.0,
+        "severity": "critical",
+        "severity_score": 5,
+        "recommendation": "即時削除推奨 - 学習に悪影響を及ぼす可能性が高い"
+      },
+      "stock splits": {
+        "issues": [
+          "low_variance:0.00e+00",
+          "excessive_zeros:100.00%"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.0,
+        "zero_rate": 1.0,
+        "severity": "critical",
+        "severity_score": 5,
+        "recommendation": "即時削除推奨 - 学習に悪影響を及ぼす可能性が高い"
+      },
+      "returns": {
+        "issues": [
+          "over_correlated:4_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.0006363305693806237,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "log_returns": {
+        "issues": [
+          "over_correlated:4_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.0006288012879563458,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "volatility": {
+        "issues": [
+          "over_correlated:2_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 7.846112116477164e-05,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "sma_20": {
+        "issues": [
+          "over_correlated:4_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 3567555512167.9424,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "sma_50": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 2286293925738.473,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "rsi": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 257.43625572005226,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "price_change_1d": {
+        "issues": [
+          "over_correlated:4_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.0006363305693806237,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "price_change_3d": {
+        "issues": [
+          "over_correlated:2_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.0017126595393294707,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "price_change_5d": {
+        "issues": [
+          "over_correlated:3_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.0027564469235958227,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "price_change_10d": {
+        "issues": [
+          "over_correlated:2_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.005556181560792399,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "log_return_1d": {
+        "issues": [
+          "over_correlated:4_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.0006288012879563458,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "log_return_3d": {
+        "issues": [
+          "over_correlated:2_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.0016782731666260592,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "log_return_5d": {
+        "issues": [
+          "over_correlated:3_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.0026751682459454054,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "price_position": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.077937042283544,
+        "zero_rate": 0.002840909090909091,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "high_low_ratio": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.0005413796869809134,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "sma_5": {
+        "issues": [
+          "over_correlated:8_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 3718918815937.366,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "price_ma_5_diff": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.000670385071189318,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "sma_10": {
+        "issues": [
+          "over_correlated:9_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 3708712985365.5454,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "price_ma_10_diff": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.001576904472954682,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "price_ma_20_diff": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.004076051098212081,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "price_ma_50_diff": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.0070335882122006385,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "volatility_20d": {
+        "issues": [
+          "over_correlated:2_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 7.846112116477164e-05,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "daily_range": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.00047759038362081194,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "gap_up": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.24889115514115515,
+        "zero_rate": 0.5426136363636364,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "gap_down": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.2500566563066563,
+        "zero_rate": 0.4744318181818182,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "rsi_14": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 257.43625572005226,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "macd": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 128379849554.4626,
+        "zero_rate": 0.002840909090909091,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "macd_signal": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 114190003446.73549,
+        "zero_rate": 0.002840909090909091,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "stoch_k_14": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 818.6993351536014,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "stoch_k_21": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 828.6799874638978,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "williams_r_14": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 818.6993351536014,
+        "zero_rate": 0.002840909090909091,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "williams_r_21": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 828.6799874638978,
+        "zero_rate": 0.002840909090909091,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "roc_5": {
+        "issues": [
+          "over_correlated:3_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.002756446923595823,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "roc_10": {
+        "issues": [
+          "over_correlated:2_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.005556181560792401,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "support_level": {
+        "issues": [
+          "over_correlated:2_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 4151469524493.823,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "resistance_level": {
+        "issues": [
+          "over_correlated:4_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 3054431293292.1055,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "higher_highs": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 1.2492796555296553,
+        "zero_rate": 0.03125,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "higher_lows": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 1.3732760295260296,
+        "zero_rate": 0.005681818181818182,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "lower_highs": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 1.2472157472157472,
+        "zero_rate": 0.04261363636363636,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "lower_lows": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 1.3385133385133385,
+        "zero_rate": 0.07386363636363637,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "sma_short": {
+        "issues": [
+          "over_correlated:4_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 3567555512167.9424,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "trend_strength_short": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.004076051098212081,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "volatility_short": {
+        "issues": [
+          "over_correlated:2_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 7.846112116477164e-05,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "sma_medium": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 2286293925738.473,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "trend_strength_medium": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.0070335882122006385,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "sma_long": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 1033530798728.2124,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "volatility_long": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 2.3245809880298948e-05,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "risk_score_volatile": {
+        "issues": [
+          "extreme_outliers:7.39%"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.0013806499547896493,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "regime_change": {
+        "issues": [
+          "excessive_zeros:88.07%"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.10538073038073037,
+        "zero_rate": 0.8806818181818182,
+        "severity": "minor",
+        "severity_score": 2,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "regime_persistence": {
+        "issues": [
+          "regime_out_of_bounds"
+        ],
+        "nan_rate": 0.0,
+        "variance": 97.28460890960889,
+        "zero_rate": 0.11931818181818182,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "close_zscore": {
+        "issues": [
+          "over_correlated:7_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 1.002849002849003,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "volume_zscore": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 1.0028490028490027,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "price_change_1d_zscore": {
+        "issues": [
+          "over_correlated:4_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 1.002849002849003,
+        "zero_rate": 0.002840909090909091,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "price_change_3d_zscore": {
+        "issues": [
+          "over_correlated:2_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 1.0028490028490031,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "price_change_5d_zscore": {
+        "issues": [
+          "over_correlated:3_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 1.0028490028490027,
+        "zero_rate": 0.014204545454545454,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "price_change_10d_zscore": {
+        "issues": [
+          "over_correlated:2_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 1.002849002849003,
+        "zero_rate": 0.028409090909090908,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "price_position_zscore": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 1.0028490028490025,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "price_ma_5_diff_zscore": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 1.002849002849003,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "price_ma_10_diff_zscore": {
+        "issues": [
+          "over_correlated:1_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 1.002849002849003,
+        "zero_rate": 0.02556818181818182,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      },
+      "close_percentile": {
+        "issues": [
+          "over_correlated:6_features"
+        ],
+        "nan_rate": 0.0,
+        "variance": 0.08357007575757576,
+        "zero_rate": 0.0,
+        "severity": "minor",
+        "severity_score": 1,
+        "recommendation": "注意 - 状況に応じて削除を検討"
+      }
+    },
+    "quality_scores": {
+      "open": 1.0,
+      "high": 1.0,
+      "low": 1.0,
+      "close": 1.0,
+      "volume": 0.9948863636363636,
+      "dividends": 0.39999999999999997,
+      "stock splits": 0.39999999999999997,
+      "returns": 0.8880681818181818,
+      "log_returns": 0.8886363636363637,
+      "volatility": 0.8965909090909091,
+      "sma_20": 1.0,
+      "sma_50": 1.0,
+      "rsi": 1.0,
+      "price_change_1d": 0.8880681818181818,
+      "price_change_3d": 0.9897727272727272,
+      "price_change_5d": 0.9943181818181818,
+      "price_change_10d": 0.9943181818181818,
+      "log_return_1d": 0.8886363636363637,
+      "log_return_3d": 0.9897727272727272,
+      "log_return_5d": 0.9943181818181818,
+      "price_position": 1.0,
+      "high_low_ratio": 0.8880681818181818,
+      "sma_5": 1.0,
+      "price_ma_5_diff": 0.8914772727272727,
+      "ma_5_slope": 0.9960227272727272,
+      "sma_10": 1.0,
+      "price_ma_10_diff": 0.9965909090909091,
+      "ma_10_slope": 0.9960227272727272,
+      "price_ma_20_diff": 0.9926136363636363,
+      "ma_20_slope": 0.9988636363636364,
+      "price_ma_50_diff": 1.0,
+      "ma_50_slope": 1.0,
+      "volatility_5d": 0.8875000000000001,
+      "volatility_skew_5d": 1.0,
+      "volatility_kurt_5d": 1.0,
+      "volatility_10d": 0.8835227272727273,
+      "volatility_skew_10d": 0.9943181818181818,
+      "volatility_kurt_10d": 0.9880681818181818,
+      "volatility_20d": 0.8965909090909091,
+      "volatility_skew_20d": 1.0,
+      "volatility_kurt_20d": 0.9892045454545455,
+      "volatility_30d": 0.9,
+      "volatility_skew_30d": 0.9988636363636364,
+      "volatility_kurt_30d": 0.9994318181818181,
+      "volatility_trend": 0.9846590909090909,
+      "daily_range": 0.8880681818181818,
+      "range_volatility": 0.9,
+      "gap_up": 0.837215909090909,
+      "gap_down": 1.0,
+      "gap_size": 0.8829545454545454,
+      "rsi_6": 1.0,
+      "rsi_14": 1.0,
+      "rsi_21": 1.0,
+      "macd": 1.0,
+      "macd_signal": 0.9982954545454545,
+      "macd_histogram": 0.9977272727272727,
+      "stoch_k_14": 1.0,
+      "stoch_d_14": 1.0,
+      "stoch_k_21": 1.0,
+      "stoch_d_21": 1.0,
+      "williams_r_14": 1.0,
+      "williams_r_21": 1.0,
+      "roc_5": 0.9943181818181818,
+      "roc_10": 0.9943181818181818,
+      "roc_20": 0.9806818181818182,
+      "volume_change_1d": 0.9892045454545455,
+      "volume_change_5d": 0.9846590909090909,
+      "volume_ma_5": 0.9982954545454545,
+      "volume_ratio_5": 0.9948863636363636,
+      "volume_ma_10": 1.0,
+      "volume_ratio_10": 0.9931818181818182,
+      "volume_ma_20": 1.0,
+      "volume_ratio_20": 0.9954545454545455,
+      "volume_volatility": 1.0,
+      "obv": 1.0,
+      "vpt": 0.9914772727272727,
+      "support_level": 1.0,
+      "resistance_level": 1.0,
+      "distance_from_support": 0.9914772727272727,
+      "distance_from_resistance": 0.9988636363636364,
+      "higher_highs": 0.9852272727272727,
+      "higher_lows": 1.0,
+      "lower_highs": 0.9852272727272727,
+      "lower_lows": 1.0,
+      "sma_short": 1.0,
+      "trend_strength_short": 0.9926136363636363,
+      "volatility_short": 0.8965909090909091,
+      "sma_medium": 1.0,
+      "trend_strength_medium": 1.0,
+      "volatility_medium": 0.9,
+      "sma_long": 0.9801136363636364,
+      "trend_strength_long": 0.9988636363636364,
+      "volatility_long": 0.9,
+      "regime_confidence": 1.0,
+      "momentum_score_sideways": 1.0,
+      "risk_score_sideways": 1.0,
+      "momentum_score_volatile": 1.0,
+      "risk_score_volatile": 1.0,
+      "momentum_score_bull": 1.0,
+      "risk_score_bull": 1.0,
+      "momentum_score_bear": 0.9875,
+      "risk_score_bear": 1.0,
+      "regime_change": 0.7357954545454546,
+      "regime_persistence": 0.9943181818181818,
+      "close_zscore": 1.0,
+      "volume_zscore": 0.9948863636363636,
+      "price_change_1d_zscore": 0.9880681818181818,
+      "price_change_3d_zscore": 0.9897727272727272,
+      "price_change_5d_zscore": 0.9943181818181818,
+      "price_change_10d_zscore": 0.9943181818181818,
+      "price_position_zscore": 1.0,
+      "price_ma_5_diff_zscore": 0.9914772727272727,
+      "price_ma_10_diff_zscore": 0.99375,
+      "price_ma_20_diff_zscore": 0.9897727272727272,
+      "price_ma_50_diff_zscore": 0.9988636363636364,
+      "close_percentile": 1.0,
+      "volume_percentile": 1.0
+    },
+    "categories": {
+      "excellent": [
+        "ma_5_slope",
+        "ma_10_slope",
+        "ma_20_slope",
+        "ma_50_slope",
+        "volatility_5d",
+        "volatility_skew_5d",
+        "volatility_kurt_5d",
+        "volatility_10d",
+        "volatility_skew_10d",
+        "volatility_kurt_10d",
+        "volatility_skew_20d",
+        "volatility_kurt_20d",
+        "volatility_30d",
+        "volatility_skew_30d",
+        "volatility_kurt_30d",
+        "volatility_trend",
+        "range_volatility",
+        "gap_size",
+        "rsi_6",
+        "rsi_21",
+        "macd_histogram",
+        "stoch_d_14",
+        "stoch_d_21",
+        "roc_20",
+        "volume_change_1d",
+        "volume_change_5d",
+        "volume_ma_5",
+        "volume_ratio_5",
+        "volume_ma_10",
+        "volume_ratio_10",
+        "volume_ma_20",
+        "volume_ratio_20",
+        "volume_volatility",
+        "obv",
+        "vpt",
+        "distance_from_support",
+        "distance_from_resistance",
+        "volatility_medium",
+        "trend_strength_long",
+        "regime_confidence",
+        "momentum_score_sideways",
+        "risk_score_sideways",
+        "momentum_score_volatile",
+        "momentum_score_bull",
+        "risk_score_bull",
+        "momentum_score_bear",
+        "risk_score_bear",
+        "price_ma_20_diff_zscore",
+        "price_ma_50_diff_zscore",
+        "volume_percentile"
+      ],
+      "good": [],
+      "fair": [],
+      "poor": [],
+      "harmful": [
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "dividends",
+        "stock splits",
+        "returns",
+        "log_returns",
+        "volatility",
+        "sma_20",
+        "sma_50",
+        "rsi",
+        "price_change_1d",
+        "price_change_3d",
+        "price_change_5d",
+        "price_change_10d",
+        "log_return_1d",
+        "log_return_3d",
+        "log_return_5d",
+        "price_position",
+        "high_low_ratio",
+        "sma_5",
+        "price_ma_5_diff",
+        "sma_10",
+        "price_ma_10_diff",
+        "price_ma_20_diff",
+        "price_ma_50_diff",
+        "volatility_20d",
+        "daily_range",
+        "gap_up",
+        "gap_down",
+        "rsi_14",
+        "macd",
+        "macd_signal",
+        "stoch_k_14",
+        "stoch_k_21",
+        "williams_r_14",
+        "williams_r_21",
+        "roc_5",
+        "roc_10",
+        "support_level",
+        "resistance_level",
+        "higher_highs",
+        "higher_lows",
+        "lower_highs",
+        "lower_lows",
+        "sma_short",
+        "trend_strength_short",
+        "volatility_short",
+        "sma_medium",
+        "trend_strength_medium",
+        "sma_long",
+        "volatility_long",
+        "risk_score_volatile",
+        "regime_change",
+        "regime_persistence",
+        "close_zscore",
+        "volume_zscore",
+        "price_change_1d_zscore",
+        "price_change_3d_zscore",
+        "price_change_5d_zscore",
+        "price_change_10d_zscore",
+        "price_position_zscore",
+        "price_ma_5_diff_zscore",
+        "price_ma_10_diff_zscore",
+        "close_percentile"
+      ]
+    },
+    "sac_v427_analysis": {
+      "regime_features": [
+        "regime_confidence",
+        "regime_change",
+        "regime_persistence"
+      ],
+      "correlation_features": [],
+      "ensemble_features": [],
+      "technical_features": [
+        "sma_20",
+        "sma_50",
+        "rsi",
+        "sma_5",
+        "sma_10",
+        "rsi_6",
+        "rsi_14",
+        "rsi_21",
+        "macd",
+        "macd_signal",
+        "macd_histogram",
+        "sma_short",
+        "sma_medium",
+        "sma_long"
+      ],
+      "market_features": [
+        "volume",
+        "volatility",
+        "volatility_5d",
+        "volatility_skew_5d",
+        "volatility_kurt_5d",
+        "volatility_10d",
+        "volatility_skew_10d",
+        "volatility_kurt_10d",
+        "volatility_20d",
+        "volatility_skew_20d",
+        "volatility_kurt_20d",
+        "volatility_30d",
+        "volatility_skew_30d",
+        "volatility_kurt_30d",
+        "volatility_trend",
+        "range_volatility",
+        "volume_change_1d",
+        "volume_change_5d",
+        "volume_ma_5",
+        "volume_ratio_5",
+        "volume_ma_10",
+        "volume_ratio_10",
+        "volume_ma_20",
+        "volume_ratio_20",
+        "volume_volatility",
+        "volatility_short",
+        "volatility_medium",
+        "volatility_long",
+        "volume_zscore",
+        "volume_percentile"
+      ],
+      "category_stats": {
+        "regime_features": {
+          "count": 3,
+          "avg_quality": 0.9100378787878788,
+          "excellent_count": 2,
+          "poor_count": 0
+        },
+        "technical_features": {
+          "count": 14,
+          "avg_quality": 0.9982954545454545,
+          "excellent_count": 14,
+          "poor_count": 0
+        },
+        "market_features": {
+          "count": 30,
+          "avg_quality": 0.9653598484848486,
+          "excellent_count": 30,
+          "poor_count": 0
+        }
+      }
+    },
+    "recommendations": [
+      "⚠️  67個のharmful特徴量を検出（うち2個がcritical）",
+      "   → 即時削除を推奨"
+    ]
+  },
+  "harmful_features": {
+    "open": {
+      "issues": [
+        "over_correlated:7_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 3758771569359.543,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "high": {
+      "issues": [
+        "over_correlated:7_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 3687217844140.278,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "low": {
+      "issues": [
+        "over_correlated:7_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 3771890888932.592,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "close": {
+      "issues": [
+        "over_correlated:7_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 3696074802030.364,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "volume": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 1.4968955961200673e+25,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "dividends": {
+      "issues": [
+        "low_variance:0.00e+00",
+        "excessive_zeros:100.00%"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.0,
+      "zero_rate": 1.0,
+      "severity": "critical",
+      "severity_score": 5,
+      "recommendation": "即時削除推奨 - 学習に悪影響を及ぼす可能性が高い"
+    },
+    "stock splits": {
+      "issues": [
+        "low_variance:0.00e+00",
+        "excessive_zeros:100.00%"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.0,
+      "zero_rate": 1.0,
+      "severity": "critical",
+      "severity_score": 5,
+      "recommendation": "即時削除推奨 - 学習に悪影響を及ぼす可能性が高い"
+    },
+    "returns": {
+      "issues": [
+        "over_correlated:4_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.0006363305693806237,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "log_returns": {
+      "issues": [
+        "over_correlated:4_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.0006288012879563458,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "volatility": {
+      "issues": [
+        "over_correlated:2_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 7.846112116477164e-05,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "sma_20": {
+      "issues": [
+        "over_correlated:4_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 3567555512167.9424,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "sma_50": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 2286293925738.473,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "rsi": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 257.43625572005226,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "price_change_1d": {
+      "issues": [
+        "over_correlated:4_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.0006363305693806237,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "price_change_3d": {
+      "issues": [
+        "over_correlated:2_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.0017126595393294707,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "price_change_5d": {
+      "issues": [
+        "over_correlated:3_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.0027564469235958227,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "price_change_10d": {
+      "issues": [
+        "over_correlated:2_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.005556181560792399,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "log_return_1d": {
+      "issues": [
+        "over_correlated:4_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.0006288012879563458,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "log_return_3d": {
+      "issues": [
+        "over_correlated:2_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.0016782731666260592,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "log_return_5d": {
+      "issues": [
+        "over_correlated:3_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.0026751682459454054,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "price_position": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.077937042283544,
+      "zero_rate": 0.002840909090909091,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "high_low_ratio": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.0005413796869809134,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "sma_5": {
+      "issues": [
+        "over_correlated:8_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 3718918815937.366,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "price_ma_5_diff": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.000670385071189318,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "sma_10": {
+      "issues": [
+        "over_correlated:9_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 3708712985365.5454,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "price_ma_10_diff": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.001576904472954682,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "price_ma_20_diff": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.004076051098212081,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "price_ma_50_diff": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.0070335882122006385,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "volatility_20d": {
+      "issues": [
+        "over_correlated:2_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 7.846112116477164e-05,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "daily_range": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.00047759038362081194,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "gap_up": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.24889115514115515,
+      "zero_rate": 0.5426136363636364,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "gap_down": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.2500566563066563,
+      "zero_rate": 0.4744318181818182,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "rsi_14": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 257.43625572005226,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "macd": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 128379849554.4626,
+      "zero_rate": 0.002840909090909091,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "macd_signal": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 114190003446.73549,
+      "zero_rate": 0.002840909090909091,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "stoch_k_14": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 818.6993351536014,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "stoch_k_21": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 828.6799874638978,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "williams_r_14": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 818.6993351536014,
+      "zero_rate": 0.002840909090909091,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "williams_r_21": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 828.6799874638978,
+      "zero_rate": 0.002840909090909091,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "roc_5": {
+      "issues": [
+        "over_correlated:3_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.002756446923595823,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "roc_10": {
+      "issues": [
+        "over_correlated:2_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.005556181560792401,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "support_level": {
+      "issues": [
+        "over_correlated:2_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 4151469524493.823,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "resistance_level": {
+      "issues": [
+        "over_correlated:4_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 3054431293292.1055,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "higher_highs": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 1.2492796555296553,
+      "zero_rate": 0.03125,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "higher_lows": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 1.3732760295260296,
+      "zero_rate": 0.005681818181818182,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "lower_highs": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 1.2472157472157472,
+      "zero_rate": 0.04261363636363636,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "lower_lows": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 1.3385133385133385,
+      "zero_rate": 0.07386363636363637,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "sma_short": {
+      "issues": [
+        "over_correlated:4_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 3567555512167.9424,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "trend_strength_short": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.004076051098212081,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "volatility_short": {
+      "issues": [
+        "over_correlated:2_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 7.846112116477164e-05,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "sma_medium": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 2286293925738.473,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "trend_strength_medium": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.0070335882122006385,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "sma_long": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 1033530798728.2124,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "volatility_long": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 2.3245809880298948e-05,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "risk_score_volatile": {
+      "issues": [
+        "extreme_outliers:7.39%"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.0013806499547896493,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "regime_change": {
+      "issues": [
+        "excessive_zeros:88.07%"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.10538073038073037,
+      "zero_rate": 0.8806818181818182,
+      "severity": "minor",
+      "severity_score": 2,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "regime_persistence": {
+      "issues": [
+        "regime_out_of_bounds"
+      ],
+      "nan_rate": 0.0,
+      "variance": 97.28460890960889,
+      "zero_rate": 0.11931818181818182,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "close_zscore": {
+      "issues": [
+        "over_correlated:7_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 1.002849002849003,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "volume_zscore": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 1.0028490028490027,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "price_change_1d_zscore": {
+      "issues": [
+        "over_correlated:4_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 1.002849002849003,
+      "zero_rate": 0.002840909090909091,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "price_change_3d_zscore": {
+      "issues": [
+        "over_correlated:2_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 1.0028490028490031,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "price_change_5d_zscore": {
+      "issues": [
+        "over_correlated:3_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 1.0028490028490027,
+      "zero_rate": 0.014204545454545454,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "price_change_10d_zscore": {
+      "issues": [
+        "over_correlated:2_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 1.002849002849003,
+      "zero_rate": 0.028409090909090908,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "price_position_zscore": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 1.0028490028490025,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "price_ma_5_diff_zscore": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 1.002849002849003,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "price_ma_10_diff_zscore": {
+      "issues": [
+        "over_correlated:1_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 1.002849002849003,
+      "zero_rate": 0.02556818181818182,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    },
+    "close_percentile": {
+      "issues": [
+        "over_correlated:6_features"
+      ],
+      "nan_rate": 0.0,
+      "variance": 0.08357007575757576,
+      "zero_rate": 0.0,
+      "severity": "minor",
+      "severity_score": 1,
+      "recommendation": "注意 - 状況に応じて削除を検討"
+    }
+  },
+  "sac_v427_analysis": {
+    "regime_features": [
+      "regime_confidence",
+      "regime_change",
+      "regime_persistence"
+    ],
+    "correlation_features": [],
+    "ensemble_features": [],
+    "technical_features": [
+      "sma_20",
+      "sma_50",
+      "rsi",
+      "sma_5",
+      "sma_10",
+      "rsi_6",
+      "rsi_14",
+      "rsi_21",
+      "macd",
+      "macd_signal",
+      "macd_histogram",
+      "sma_short",
+      "sma_medium",
+      "sma_long"
+    ],
+    "market_features": [
+      "volume",
+      "volatility",
+      "volatility_5d",
+      "volatility_skew_5d",
+      "volatility_kurt_5d",
+      "volatility_10d",
+      "volatility_skew_10d",
+      "volatility_kurt_10d",
+      "volatility_20d",
+      "volatility_skew_20d",
+      "volatility_kurt_20d",
+      "volatility_30d",
+      "volatility_skew_30d",
+      "volatility_kurt_30d",
+      "volatility_trend",
+      "range_volatility",
+      "volume_change_1d",
+      "volume_change_5d",
+      "volume_ma_5",
+      "volume_ratio_5",
+      "volume_ma_10",
+      "volume_ratio_10",
+      "volume_ma_20",
+      "volume_ratio_20",
+      "volume_volatility",
+      "volatility_short",
+      "volatility_medium",
+      "volatility_long",
+      "volume_zscore",
+      "volume_percentile"
+    ],
+    "category_stats": {
+      "regime_features": {
+        "count": 3,
+        "avg_quality": 0.9100378787878788,
+        "excellent_count": 2,
+        "poor_count": 0
+      },
+      "technical_features": {
+        "count": 14,
+        "avg_quality": 0.9982954545454545,
+        "excellent_count": 14,
+        "poor_count": 0
+      },
+      "market_features": {
+        "count": 30,
+        "avg_quality": 0.9653598484848486,
+        "excellent_count": 30,
+        "poor_count": 0
+      }
+    }
+  },
+  "recommendations": [
+    {
+      "priority": "high",
+      "action": "remove_harmful_features",
+      "description": "Remove 67 harmful features (2 critical, 0 moderate)",
+      "features": [
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "dividends",
+        "stock splits",
+        "returns",
+        "log_returns",
+        "volatility",
+        "sma_20",
+        "sma_50",
+        "rsi",
+        "price_change_1d",
+        "price_change_3d",
+        "price_change_5d",
+        "price_change_10d",
+        "log_return_1d",
+        "log_return_3d",
+        "log_return_5d",
+        "price_position",
+        "high_low_ratio",
+        "sma_5",
+        "price_ma_5_diff",
+        "sma_10",
+        "price_ma_10_diff",
+        "price_ma_20_diff",
+        "price_ma_50_diff",
+        "volatility_20d",
+        "daily_range",
+        "gap_up",
+        "gap_down",
+        "rsi_14",
+        "macd",
+        "macd_signal",
+        "stoch_k_14",
+        "stoch_k_21",
+        "williams_r_14",
+        "williams_r_21",
+        "roc_5",
+        "roc_10",
+        "support_level",
+        "resistance_level",
+        "higher_highs",
+        "higher_lows",
+        "lower_highs",
+        "lower_lows",
+        "sma_short",
+        "trend_strength_short",
+        "volatility_short",
+        "sma_medium",
+        "trend_strength_medium",
+        "sma_long",
+        "volatility_long",
+        "risk_score_volatile",
+        "regime_change",
+        "regime_persistence",
+        "close_zscore",
+        "volume_zscore",
+        "price_change_1d_zscore",
+        "price_change_3d_zscore",
+        "price_change_5d_zscore",
+        "price_change_10d_zscore",
+        "price_position_zscore",
+        "price_ma_5_diff_zscore",
+        "price_ma_10_diff_zscore",
+        "close_percentile"
+      ],
+      "impact": "Improve model stability and reduce overfitting"
+    }
+  ]
+}

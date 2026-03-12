@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Sequence
 from unittest.mock import AsyncMock, MagicMock
@@ -44,39 +43,6 @@ def _make_config(**overrides: object) -> FillTestConfig:
     )
     defaults.update(overrides)
     return FillTestConfig(**defaults)
-
-
-@dataclass(slots=True)
-class _BalanceLikeStub:
-    currency: str
-    total: float
-
-
-class _LossCapAdapterStub:
-    def __init__(
-        self,
-        *,
-        price: float | Exception,
-        balances: Sequence[_LossCapBalanceLike] | Exception,
-    ) -> None:
-        self._price = price
-        self._balances = balances
-        self.last_symbol: str | None = None
-        self.price_calls = 0
-        self.balance_calls = 0
-
-    async def get_current_price(self, symbol: str) -> float:
-        self.price_calls += 1
-        self.last_symbol = symbol
-        if isinstance(self._price, Exception):
-            raise self._price
-        return self._price
-
-    async def get_balance(self) -> Sequence[_LossCapBalanceLike]:
-        self.balance_calls += 1
-        if isinstance(self._balances, Exception):
-            raise self._balances
-        return self._balances
 
 
 # ======================================================================
@@ -151,13 +117,18 @@ class TestAdaptationEngineProtocols:
         )
         engine = AdaptationEngine(cfg, yaml_cfg={}, results_dir=Path("/tmp"))
 
-        adapter = _LossCapAdapterStub(
-            price=10_000_000.0,
-            balances=[
-                _BalanceLikeStub(currency="JPY", total=100000.0),
-                _BalanceLikeStub(currency="BTC", total=0.01),
-            ],
-        )
+        # モック adapter
+        balance_jpy = MagicMock()
+        balance_jpy.currency = "JPY"
+        balance_jpy.total = 100000.0
+
+        balance_btc = MagicMock()
+        balance_btc.currency = "BTC"
+        balance_btc.total = 0.01
+
+        adapter = AsyncMock()
+        adapter.get_current_price = AsyncMock(return_value=10_000_000.0)
+        adapter.get_balance = AsyncMock(return_value=[balance_jpy, balance_btc])
 
         result = asyncio.run(
             engine.update_dynamic_loss_cap(adapter, "btc_jpy")
@@ -167,19 +138,16 @@ class TestAdaptationEngineProtocols:
         # 残高 = 100000 + 0.01*10000000 = 200000
         # cap = 200000 * 0.5 = 100000
         assert result == 100000.0
-        assert adapter.last_symbol == "btc_jpy"
-        assert adapter.price_calls == 1
-        assert adapter.balance_calls == 1
+        adapter.get_current_price.assert_awaited_once_with("btc_jpy")
+        adapter.get_balance.assert_awaited_once()
 
     def test_update_dynamic_loss_cap_returns_none_on_error(self) -> None:
         """adapter エラー時に None を返す."""
         cfg = _make_config(loss_cap_jpy=50000.0)
         engine = AdaptationEngine(cfg, yaml_cfg={}, results_dir=Path("/tmp"))
 
-        adapter = _LossCapAdapterStub(
-            price=Exception("API error"),
-            balances=[],
-        )
+        adapter = AsyncMock()
+        adapter.get_current_price = AsyncMock(side_effect=Exception("API error"))
 
         result = asyncio.run(
             engine.update_dynamic_loss_cap(adapter, "btc_jpy")
