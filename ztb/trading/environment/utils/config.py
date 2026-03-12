@@ -182,7 +182,7 @@ class EnvironmentConfig:
     """Configuration for HeavyTradingEnv with proper typing."""
 
     # Core settings
-    # 386# FIX: reward_scaling default を PPO 値 6.0 → 中立値 1.0 に変更。
+    # 387# FIX: reward_scaling default を PPO 値 6.0 → 中立値 1.0 に変更。
     # PPO/SAC 各 YAML で明示的に設定すること。
     reward_scaling: float = 1.0
     transaction_cost: float = 0.0
@@ -432,7 +432,7 @@ class EnvironmentConfig:
 
         # Handle behavior_optimization dict
         if behavior_opt is not None:
-            # 386# FIX: Store raw dict so reward_calculator can access config.behavior_optimization
+            # 387# FIX: Store raw dict so reward_calculator can access config.behavior_optimization
             instance.behavior_optimization = behavior_opt
             if not instance.reward_settings:
                 instance.reward_settings = RewardSettings()
@@ -592,7 +592,7 @@ class EnvironmentConfig:
                         setattr(instance, key, converted_bonuses)
                     elif key == "reward_settings" and isinstance(value, dict):
                         # Handle reward_settings dict
-                        # 386# FIX: Merge instead of replace to preserve behavior_optimization overrides
+                        # 387# FIX: Merge instead of replace to preserve behavior_optimization overrides
                         new_rs = RewardSettings.from_dict(value)
                         if instance.reward_settings is not None:
                             from ztb.utils.dataclass_utils import shallow_asdict

@@ -276,7 +276,7 @@ def _create_training_env(
     feature_columns = [str(col) for col in selected_raw] if isinstance(selected_raw, list) else []
 
     # Construct EnvironmentConfig
-    # 386# FIX P0-8: from_dict() を使用して behavior_optimization → reward_settings
+    # 387# FIX P0-8: from_dict() を使用して behavior_optimization → reward_settings
     # マッピングと reward_settings dict → RewardSettings 変換を正しく実行する。
     # 旧: EnvironmentConfig(**env_cfg) は reward_settings を dict のまま格納し、
     # HeavyTradingEnv で shallow_asdict() TypeError を引き起こしていた。

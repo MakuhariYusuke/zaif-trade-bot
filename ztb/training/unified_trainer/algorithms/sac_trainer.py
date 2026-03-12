@@ -176,7 +176,7 @@ class SACTrainer(BaseAlgorithmTrainer):
             elif isinstance(reward_settings, RewardSettings):
                 expected.update(shallow_asdict(reward_settings))
 
-        # 386# FIX: Fallback to top-level reward_settings
+        # 387# FIX: Fallback to top-level reward_settings
         if not expected or "balance_penalty_value" not in expected:
             top_level_rs = config.get("reward_settings")
             if isinstance(top_level_rs, dict):
@@ -633,7 +633,7 @@ class SACTrainer(BaseAlgorithmTrainer):
             # Extract the actual config from the environment section (could be nested)
             actual_env_config = env_config.get("config", env_config)
 
-            # 386# FIX: Merge top-level reward_settings into environment config
+            # 387# FIX: Merge top-level reward_settings into environment config
             # reward_settings can be defined at YAML top-level for readability,
             # but EnvironmentConfig.from_dict() expects it inside the env dict.
             if isinstance(actual_env_config, dict) and "reward_settings" not in actual_env_config:

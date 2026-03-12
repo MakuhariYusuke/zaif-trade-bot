@@ -1,4 +1,6 @@
-# 386# 報酬関数分析レポート
+# 387# 報酬関数分析レポート
+
+> **旧番号**: 386# → 番号衝突解消により 387# に繰上げ (2026-03-13)
 
 ## 概要
 
@@ -42,7 +44,7 @@ calculate_reward():
 | position_penalty_weight | `position_penalty_weight` | `reward_settings.custom_reward_params` | 0.01 |
 | confidence_penalty_threshold | `confidence_penalty_threshold` | `reward_settings.custom_reward_params` | 0.05 |
 
-### YAML 設定マッピング (386# 修正後)
+### YAML 設定マッピング (387# 修正後)
 
 ```yaml
 environment:
@@ -88,12 +90,12 @@ reward_settings:               # → RewardSettings.custom_reward_params
 | 456 | -0.44% | hold_penalty → 過剰取引 + balance_penalty → 不適切なバランス取引 |
 | 789 | +2.00% | 42 と類似、強い PnL シグナルがペナルティを上回る |
 
-## 推奨調整案 (387# 予定)
+## 推奨調整案
 
 gamma=0.95 実験結果を待ち、G2 PASS 不達の場合に適用。
 YAML: `configs/v460/experiments/g2_sac_gamma095_reward_tuned.yaml`
 
-### 数値効果検証 (386# 実測)
+### 数値効果検証 (本文書 実測)
 
 | 対象 | 現行値 | 推奨値 | 削減率 | YAML セクション |
 |------|--------|--------|--------|----------------|
@@ -102,7 +104,7 @@ YAML: `configs/v460/experiments/g2_sac_gamma095_reward_tuned.yaml`
 | `consistency_penalty` | 0.05 | **0.01** | 80%↓ | `environment.behavior_optimization` |
 | `confidence_penalty_threshold` | 0.05 | **0.2** | — | `reward_settings` |
 
-### 386# P0-5: YAML→env 伝播バグ修正
+### 387# P0-5: YAML→env 伝播バグ修正
 
 reward-tuned YAML を準備する過程で発見した伝播バグ:
 1. `reward_settings` がYAMLトップレベルにある場合、`sac_trainer.py` が消失させていた → **修正済み**
@@ -118,9 +120,9 @@ reward-tuned YAML を準備する過程で発見した伝播バグ:
 
 ### 科学的アプローチ
 
-1. **386# (現在)**: gamma=0.95 のみ変更 → 報酬ペナルティの影響を切り分け
-2. **387# (予定)**: gamma=0.95 + reward tuning → 複合効果の検証
-3. **388# (予定)**: 最適 gamma + 最適 reward → G2 PASS 達成
+1. **実験1**: gamma=0.95 のみ変更 → 報酬ペナルティの影響を切り分け
+2. **実験2**: gamma=0.95 + reward tuning → 複合効果の検証 → **G2 PASS 達成**
+3. ~~**実験3**: 最適 gamma + 最適 reward~~ → 実験2 で G2 PASS のため不要
 
 ## PnL スケーリングについて
 
@@ -133,7 +135,7 @@ scaled:  PnL(25 JPY) vs balance_penalty(-0.5) → SNR = 50
 
 → penalty 縮小 + PnL スケーリングの組み合わせが最も効果的。
 
-## 実験結果 (387#)
+## 実験結果
 
 ### gamma=0.95 (100Kステップ, ペナルティ変更なし)
 
@@ -171,7 +173,7 @@ G2 Gate: **PASS** (E4閾値-3.5%適用後)
 - worst seedが毎回異なるシード (789→456→ランダム) ≒ 構造的問題ではなくランダム性
 - -3.5%は1σ相当の余裕を持たせつつ壊滅的損失を防止
 
-### warm-start 実験 (387# 結果: 失敗)
+### warm-start 実験 (結果: 失敗)
 
 γ=0.95の100Kステップ訓練済みモデルから、reward-tuned設定で50K追加訓練。
 

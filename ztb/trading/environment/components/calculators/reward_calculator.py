@@ -1846,11 +1846,11 @@ class RewardCalculator:
         Args:
             reward_scaling: PnL reward multiplier. Flows through from
                 EnvironmentConfig.reward_scaling via inspect.signature
-                filtering. 385# で dead code だった問題を 386# で修正。
+                filtering. 385# で dead code だった問題を 387# で修正。
         """
         self._last_reward_components = {"stage": "default"}
 
-        # PnL reward (386# FIX: hardcoded 1.0 → config-driven reward_scaling)
+        # PnL reward (387# FIX: hardcoded 1.0 → config-driven reward_scaling)
         pnl_reward = self._calculate_pnl_reward(pnl, reward_scaling)
         self._last_reward_components["pnl_reward"] = pnl_reward
 

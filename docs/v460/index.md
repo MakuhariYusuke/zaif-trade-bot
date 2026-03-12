@@ -378,10 +378,11 @@
 | 381 | review | [381_fill_test_analysis_codex_review.md](381_fill_test_analysis_codex_review.md) | Gemini Codex Review: Ghost Metric Paradox (forced_buy_delay撤廃済), データepoch汚染, JST/UTC混同 — 380# Rev.2 + P0/P1 YAML適用 |
 | 382 | rev | [382_ph3_rev_379_sb3_stub_and_g2_pipeline_review.md](382_ph3_rev_379_sb3_stub_and_g2_pipeline_review.md) | 379# SB3スタブ修正・G2 SAC パイプライン再点検: checkpoint eval の env 汚染, OOS 評価の同一区間反復, seed failure PASS 漏れ, scaler 契約 drift を指摘 |
 | 383 | rev | [383_gemini_sb3_pipeline_and_codex_review.md](383_gemini_sb3_pipeline_and_codex_review.md) | Gemini second opinion: SB3 スタブ purge, G2/OOS 評価経路の致命欠陥支持, curriculum/gamma/cost 設計の再提案 |
-| 384 | rev | [384_cross_validation_codex_gemini_reviews.md](384_cross_validation_codex_gemini_reviews.md) | Codex/Gemini cross validation: SB3 修正と G2 パイプライン論点の相互検証 |
-| 385a | rpt | [385_config_audit.md](385_config_audit.md) | 設定監査: P0-1~P0-8 CRITICAL 6件修正 (threshold統一, reward_scaling, YAML→env伝播, behavior_optimization, マージ順序, from_dict) |
-| 385b | plan | [385_next_steps_fee_fix_gamma_experiments.md](385_next_steps_fee_fix_gamma_experiments.md) | 次ステップ計画: 手数料矛盾修正 + Gamma比較実験 + 科学的アプローチ |
-| 386 | rpt | [386_reward_analysis.md](386_reward_analysis.md) | 報酬関数分析: ペナルティ過大問題, 4実験比較 (baseline/γ=0.95/reward-tuned/warm-start), **G2 PASS達成** |
+| 384 | rev | [384_ph3_rev_cross_validation_codex_gemini.md](384_ph3_rev_cross_validation_codex_gemini.md) | Codex/Gemini cross validation: SB3 修正と G2 パイプライン論点の相互検証 |
+| 385 | rpt | [385_ph3_rpt_config_audit.md](385_ph3_rpt_config_audit.md) | 設定監査: P0-1~P0-8 CRITICAL 6件修正 (threshold統一, reward_scaling, YAML→env伝播, behavior_optimization, マージ順序, from_dict) |
+| 386 | plan | [386_ph3_plan_fee_fix_gamma_experiments.md](386_ph3_plan_fee_fix_gamma_experiments.md) | 次ステップ計画: 手数料矛盾修正 + Gamma比較実験 + 科学的アプローチ |
+| 387 | rpt | [387_ph3_rpt_reward_analysis.md](387_ph3_rpt_reward_analysis.md) | 報酬関数分析: ペナルティ過大問題, 4実験比較 (baseline/γ=0.95/reward-tuned/warm-start), **G2 PASS達成** |
+| 388 | plan | [388_ph3_plan_g3_pnl_preparation.md](388_ph3_plan_g3_pnl_preparation.md) | G3-pnl Gate 準備計画: 評価パイプライン構築, PF/MaxDD/Sharpe 計測, FAIL 時対策 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

@@ -1,4 +1,4 @@
-# 385# 設定監査レポート
+﻿# 385# 設定監査レポート
 
 ## 概要
 
@@ -8,19 +8,19 @@ g2_sac_train.yaml と関連設定の包括的な監査を実施。
 
 ## P0: CRITICAL — 運用に直接影響
 
-### P0-1: `continuous_to_discrete_threshold` 訓練/ライブ乖離 — **386# 修正済み**
+### P0-1: `continuous_to_discrete_threshold` 訓練/ライブ乖離 — **387# 修正済み**
 
-| 場所 | 旧値 | 新値 (386#) | 備考 |
+| 場所 | 旧値 | 新値 (387#) | 備考 |
 |------|------|------------|------|
 | **g2_sac_train.yaml** | **0.10** | 0.10 (変更なし) | 379# で設定済み |
-| SAC_CONTINUOUS_THRESHOLD (constants.py) | ~~0.3333~~ | **0.10** | 386# で統一 |
-| **live_trader/config.py** | ~~0.33~~ | **0.10** | 386# で統一 |
+| SAC_CONTINUOUS_THRESHOLD (constants.py) | ~~0.3333~~ | **0.10** | 387# で統一 |
+| **live_trader/config.py** | ~~0.33~~ | **0.10** | 387# で統一 |
 | backtest/adapters.py | 0.01 | 0.01 (未変更) | バックテスト用ハードコード |
 
-**386# 修正**: `SAC_CONTINUOUS_THRESHOLD` と `live_trader/config.py` のデフォルトを
+**387# 修正**: `SAC_CONTINUOUS_THRESHOLD` と `live_trader/config.py` のデフォルトを
 0.10 に統一。`ZTB_CONTINUOUS_TO_DISCRETE_THRESHOLD` 環境変数による上書きも引き続き可能。
 
-### P0-2: `reward_scaling = 6.0` の暗黙適用 → デッドコード — **386# 修正済み**
+### P0-2: `reward_scaling = 6.0` の暗黙適用 → デッドコード — **387# 修正済み**
 
 - ~~EnvironmentConfig デフォルト: `reward_scaling = 6.0` (PPO由来)~~ → **1.0 に変更**
 - ~~`_calculate_default_reward()` に `reward_scaling` パラメータなし~~ → **追加済み**
@@ -29,38 +29,38 @@ g2_sac_train.yaml と関連設定の包括的な監査を実施。
 - `DEFAULT_TRADING_ENV_CONFIG["reward_scaling"]` も 6.0 → 1.0 に変更
 - `EnvironmentConfig.reward_scaling` デフォルトを `DEFAULT_REWARD_SCALING` (PPO) → 直接 `1.0` に変更
 
-### P0-5: `reward_settings` YAML→env 伝播バグ — **386# 修正済み**
+### P0-5: `reward_settings` YAML→env 伝播バグ — **387# 修正済み**
 
 - YAML の `reward_settings:` がトップレベルに配置された場合、`sac_trainer.py` が
   `config.get("environment", {})` でenv セクションのみ抽出するため `reward_settings` が消失
 - `curriculum_learning` には手動注入コードがあったが `reward_settings` にはなかった
-- **386# 修正**: `sac_trainer.py` にトップレベル `reward_settings` のフォールバックマージを追加
+- **387# 修正**: `sac_trainer.py` にトップレベル `reward_settings` のフォールバックマージを追加
   - `actual_env_config` 構築後にトップレベルの `reward_settings` を検出・注入
   - `_extract_expected_reward_params` にもフォールバック追加 (検証ログ用)
 - テスト: `TestRewardSettingsPropagation` 3テスト追加 (トップレベル/ネスト/YAML存在確認)
 
-### P0-6: `behavior_optimization` dict 未保存 — **386# 修正済み**
+### P0-6: `behavior_optimization` dict 未保存 — **387# 修正済み**
 
 - `EnvironmentConfig.from_dict()` で `behavior_optimization` の keys を `reward_settings` にマッピング
   していたが、元の dict 自体を `instance.behavior_optimization` に保存していなかった
 - `RewardCalculator` が `config.behavior_optimization` を参照するため、設定が効かなかった
-- **386# 修正**: `instance.behavior_optimization = behavior_opt` を追加
+- **387# 修正**: `instance.behavior_optimization = behavior_opt` を追加
 
-### P0-7: `reward_settings` オーバーライト順序バグ — **386# 修正済み**
+### P0-7: `reward_settings` オーバーライト順序バグ — **387# 修正済み**
 
 - `from_dict()` で `behavior_optimization` → `reward_settings` 処理の後、
   `config_dict` ループで `reward_settings` キーが `RewardSettings.from_dict(value)` で
   全体を **上書き** → `behavior_optimization` からの設定 (consistency_penalty 等) が消失
-- **386# 修正**: `reward_settings` 処理時に既存値とマージする方式に変更
+- **387# 修正**: `reward_settings` 処理時に既存値とマージする方式に変更
 
-### P0-8: experiment runner `EnvironmentConfig(**env_cfg)` TypeError — **386# 修正済み**
+### P0-8: experiment runner `EnvironmentConfig(**env_cfg)` TypeError — **387# 修正済み**
 
 - `scripts/v460/lib/tasks/sac_train.py` の `_create_training_env` が
   `EnvironmentConfig(**env_cfg)` を使用 → `reward_settings` が dict のまま格納
 - `HeavyTradingEnv.__init__` で `shallow_asdict(reward_settings_dict)` が
   dict に対して呼ばれ `TypeError` が発生 (reward-tuned 実験で確実にクラッシュ)
 - `behavior_optimization` → `reward_settings` マッピングも `from_dict()` なしでは非実行
-- **386# 修正**: `EnvironmentConfig.from_dict(env_cfg)` に変更
+- **387# 修正**: `EnvironmentConfig.from_dict(env_cfg)` に変更
 
 ## P1: HIGH — 潜在的な結果影響
 
@@ -155,7 +155,7 @@ max_position_size: float = 1.0          # 1 BTC ≠ YAML 0.01
 - 全チェックポイントROIは全シードで一貫してプラス (in-sample 学習は収束)
 - OOS での seed 間分散が課題
 
-### Gamma=0.95 + Reward-Tuned (100K steps) — **実行中** (387# 予定)
+### Gamma=0.95 + Reward-Tuned (100K steps) — **完了** (387# に結果記載)
 
 - config: `configs/v460/experiments/g2_sac_gamma095_reward_tuned.yaml`
 - PID 20352, 開始 2026-03-12 16:31
@@ -167,13 +167,13 @@ max_position_size: float = 1.0          # 1 BTC ≠ YAML 0.01
 
 | ID | 対策 | 対応時期 | 影響度 | 状態 |
 |----|------|---------|--------|------|
-| P0-1 | threshold 統一 | 386# | CRITICAL | ✅ 修正済み |
-| P0-2 | reward_scaling 修正 | 386# | CRITICAL | ✅ 修正済み |
-| P0-5 | reward_settings YAML→env 伝播 | 386# | CRITICAL | ✅ 修正済み |
-| P0-6 | behavior_optimization dict 保存 | 386# | CRITICAL | ✅ 修正済み |
-| P0-7 | reward_settings マージ順序 | 386# | CRITICAL | ✅ 修正済み |
-| P0-8 | experiment runner from_dict 変更 | 386# | CRITICAL | ✅ 修正済み |
-| P1-2 | base.yaml の sac.gamma 削除/整理 | 386# | MEDIUM | ⬜ 未対応 |
+| P0-1 | threshold 統一 | 387# | CRITICAL | ✅ 修正済み |
+| P0-2 | reward_scaling 修正 | 387# | CRITICAL | ✅ 修正済み |
+| P0-5 | reward_settings YAML→env 伝播 | 387# | CRITICAL | ✅ 修正済み |
+| P0-6 | behavior_optimization dict 保存 | 387# | CRITICAL | ✅ 修正済み |
+| P0-7 | reward_settings マージ順序 | 387# | CRITICAL | ✅ 修正済み |
+| P0-8 | experiment runner from_dict 変更 | 387# | CRITICAL | ✅ 修正済み |
+| P1-2 | base.yaml の sac.gamma 削除/整理 | 387# | MEDIUM | ⬜ 未対応 |
 | P1-3 | 旧 EnvironmentConfig 廃止計画 | v461 | MEDIUM | ⬜ 未対応 |
-| P1-4 | FeeModel フォールバック防御強化 | 386# | MEDIUM | ⬜ 未対応 |
+| P1-4 | FeeModel フォールバック防御強化 | 387# | MEDIUM | ⬜ 未対応 |
 | P2-* | 段階的なデフォルト値整理 | v461 | LOW | ⬜ 未対応 |

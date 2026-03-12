@@ -26,7 +26,7 @@ MULTIPLIER_INDEX_SELL = 1
 MULTIPLIER_INDEX_HOLD = 2
 
 # SAC continuous action discretization thresholds
-# 386# FIX: 0.3333 → 0.10 — 379# で訓練YAMLを 0.10 に変更済み、デフォルトも統一。
+# 387# FIX: 0.3333 → 0.10 — 379# で訓練YAMLを 0.10 に変更済み、デフォルトも統一。
 # SAC tanh squashing 初期出力 ≈ N(0, ~0.3) で threshold=0.33 だと HOLD 過多、
 # ROI=0 の原因だった (379# レポート参照)。
 SAC_CONTINUOUS_THRESHOLD = 0.10  # HOLD zone: [-0.10, 0.10] = 10% of action space

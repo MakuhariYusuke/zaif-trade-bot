@@ -1,13 +1,25 @@
 """385# 設定監査: 閾値整合性テスト.
 
 P0-1: continuous_to_discrete_threshold が訓練とライブで乖離するリスクを検証。
-P0-2: reward_scaling デッドコードの検証 (386# 修正済み。修正後の正常動作を確認)。
-P0-5: reward_settings YAML→env 伝播バグ検証 (386# 修正)。
+P0-2: reward_scaling デッドコードの検証 (387# 修正済み。修正後の正常動作を確認)。
+P0-5: reward_settings YAML→env 伝播バグ検証 (387# 修正)。
 """
 
 from __future__ import annotations
 
+import inspect
+
+import numpy as np
 import pytest
+
+from scripts.v460.lib.config_loader import load_config
+from ztb.trading.constants import ACTION_HOLD, SAC_CONTINUOUS_THRESHOLD
+from ztb.trading.environment.components.calculators.reward_calculator import (
+    RewardCalculator,
+)
+from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
+from ztb.training.unified_trainer.algorithms.sac_trainer import SACTrainer
+from ztb.utils.dataclass_utils import shallow_asdict
 
 
 class TestThresholdConsistency:
@@ -15,8 +27,6 @@ class TestThresholdConsistency:
 
     def test_yaml_threshold_value(self) -> None:
         """g2_sac_train.yaml の threshold が 0.10 であること."""
-        from scripts.v460.lib.config_loader import load_config
-
         cfg = load_config("configs/v460/experiments/g2_sac_train.yaml")
         env_cfg = cfg.get("environment", {})
         threshold = float(env_cfg.get("continuous_to_discrete_threshold", 0.0))
@@ -26,18 +36,14 @@ class TestThresholdConsistency:
 
     def test_yaml_neg_threshold_value(self) -> None:
         """negative threshold も 0.10 であること."""
-        from scripts.v460.lib.config_loader import load_config
-
         cfg = load_config("configs/v460/experiments/g2_sac_train.yaml")
         env_cfg = cfg.get("environment", {})
         neg = float(env_cfg.get("continuous_to_discrete_threshold_neg", 0.0))
         assert neg == pytest.approx(-0.10)
 
     def test_live_default_threshold_documented(self) -> None:
-        """386# FIX: ライブ・訓練・定数の閾値が統一されていること."""
-        from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD
-
-        # SAC_CONTINUOUS_THRESHOLD が 0.10 であること (386# 修正)
+        """387# FIX: ライブ・訓練・定数の閾値が統一されていること."""
+        # SAC_CONTINUOUS_THRESHOLD が 0.10 であること (387# 修正)
         assert SAC_CONTINUOUS_THRESHOLD == pytest.approx(0.10), (
             f"SAC_CONTINUOUS_THRESHOLD should be 0.10, got {SAC_CONTINUOUS_THRESHOLD}"
         )
@@ -53,28 +59,18 @@ class TestThresholdConsistency:
 
 
 class TestRewardScalingFixed:
-    """reward_scaling が _calculate_default_reward に正しく流れることの検証 (386# 修正)."""
+    """reward_scaling が _calculate_default_reward に正しく流れることの検証 (387# 修正)."""
 
     def test_default_reward_accepts_scaling(self) -> None:
-        """_calculate_default_reward が reward_scaling を受け取ること (386# 修正)."""
-        import inspect
-        from ztb.trading.environment.components.calculators.reward_calculator import (
-            RewardCalculator,
-        )
-
+        """_calculate_default_reward が reward_scaling を受け取ること (387# 修正)."""
         sig = inspect.signature(RewardCalculator._calculate_default_reward)
         params = set(sig.parameters.keys())
         assert "reward_scaling" in params, (
-            "386# FIX: reward_scaling が _calculate_default_reward に存在すること"
+            "387# FIX: reward_scaling が _calculate_default_reward に存在すること"
         )
 
     def test_pnl_focused_accepts_scaling(self) -> None:
         """_calculate_pnl_focused_reward は reward_scaling を受け取ること."""
-        import inspect
-        from ztb.trading.environment.components.calculators.reward_calculator import (
-            RewardCalculator,
-        )
-
         sig = inspect.signature(RewardCalculator._calculate_pnl_focused_reward)
         params = set(sig.parameters.keys())
         assert "reward_scaling" in params, (
@@ -82,22 +78,15 @@ class TestRewardScalingFixed:
         )
 
     def test_reward_scaling_default_is_sac_value(self) -> None:
-        """EnvironmentConfig の reward_scaling デフォルトが 1.0 (386# 修正後)."""
-        from ztb.trading.environment.utils.config import EnvironmentConfig
-
+        """EnvironmentConfig の reward_scaling デフォルトが 1.0 (387# 修正後)."""
         config = EnvironmentConfig()
-        # 386# FIX: PPO 値 6.0 → SAC 値 1.0
+        # 387# FIX: PPO 値 6.0 → SAC 値 1.0
         assert config.reward_scaling == pytest.approx(1.0), (
             f"Expected SAC default 1.0, got {config.reward_scaling}"
         )
 
     def test_pnl_reward_with_unit_scaling(self) -> None:
         """_calculate_pnl_reward(pnl, 1.0) は生の PnL × 1.0 を返す."""
-        from ztb.trading.environment.components.calculators.reward_calculator import (
-            RewardCalculator,
-        )
-        from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
-
         config = EnvironmentConfig()
         settings = RewardSettings()
         calc = RewardCalculator(config, settings, initial_portfolio_value=10_000_000.0)
@@ -106,14 +95,7 @@ class TestRewardScalingFixed:
         assert result == pytest.approx(100.0), f"Expected 100.0, got {result}"
 
     def test_reward_scaling_flows_through_default_reward(self) -> None:
-        """386# FIX: reward_scaling が default_reward に正しく伝搬すること."""
-        import numpy as np
-
-        from ztb.trading.environment.components.calculators.reward_calculator import (
-            RewardCalculator,
-        )
-        from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
-
+        """387# FIX: reward_scaling が default_reward に正しく伝搬すること."""
         config = EnvironmentConfig()
         settings = RewardSettings()
         calc = RewardCalculator(config, settings, initial_portfolio_value=10_000_000.0)
@@ -137,9 +119,7 @@ class TestRewardScalingFixed:
         )
 
     def test_yaml_reward_scaling_explicit(self) -> None:
-        """386# FIX: SAC YAML に reward_scaling=1.0 が明示されていること."""
-        from scripts.v460.lib.config_loader import load_config
-
+        """387# FIX: SAC YAML に reward_scaling=1.0 が明示されていること."""
         cfg = load_config("configs/v460/experiments/g2_sac_train.yaml")
         env_cfg = cfg.get("environment", {})
         scaling = env_cfg.get("reward_scaling")
@@ -153,8 +133,6 @@ class TestGammaConfigModelDir:
     """gamma 実験用 YAML が別 model_dir を使用していること."""
 
     def test_gamma095_separate_model_dir(self) -> None:
-        from scripts.v460.lib.config_loader import load_config
-
         cfg = load_config("configs/v460/experiments/g2_sac_gamma095.yaml")
         model_dir = cfg.get("output", {}).get("model_dir", "")
         assert "gamma095" in str(model_dir), (
@@ -162,8 +140,6 @@ class TestGammaConfigModelDir:
         )
 
     def test_gamma099_separate_model_dir(self) -> None:
-        from scripts.v460.lib.config_loader import load_config
-
         cfg = load_config("configs/v460/experiments/g2_sac_gamma099.yaml")
         model_dir = cfg.get("output", {}).get("model_dir", "")
         assert "gamma099" in str(model_dir), (
@@ -171,8 +147,6 @@ class TestGammaConfigModelDir:
         )
 
     def test_baseline_and_gamma_model_dirs_differ(self) -> None:
-        from scripts.v460.lib.config_loader import load_config
-
         base = load_config("configs/v460/experiments/g2_sac_train.yaml")
         g095 = load_config("configs/v460/experiments/g2_sac_gamma095.yaml")
         g099 = load_config("configs/v460/experiments/g2_sac_gamma099.yaml")
@@ -187,12 +161,10 @@ class TestGammaConfigModelDir:
 
 
 class TestRewardSettingsPropagation:
-    """386# FIX: reward_settings YAML→env 伝播の検証."""
+    """387# FIX: reward_settings YAML→env 伝播の検証."""
 
     def test_top_level_reward_settings_merged_into_env_config(self) -> None:
         """トップレベル reward_settings が actual_env_config にマージされること."""
-        from ztb.training.unified_trainer.algorithms.sac_trainer import SACTrainer
-
         # Simulate a config with top-level reward_settings
         config = {
             "environment": {
@@ -216,8 +188,6 @@ class TestRewardSettingsPropagation:
 
     def test_env_nested_reward_settings_takes_priority(self) -> None:
         """environment 内の reward_settings がトップレベルより優先されること."""
-        from ztb.training.unified_trainer.algorithms.sac_trainer import SACTrainer
-
         config = {
             "environment": {
                 "transaction_cost": 0.0,
@@ -240,13 +210,14 @@ class TestRewardSettingsPropagation:
 
     def test_reward_tuned_yaml_has_reward_settings(self) -> None:
         """reward-tuned YAML に reward_settings が存在すること."""
-        from scripts.v460.lib.config_loader import load_config
-
         cfg = load_config(
             "configs/v460/experiments/g2_sac_gamma095_reward_tuned.yaml"
         )
-        rs = cfg.get("reward_settings")
-        assert rs is not None, "reward_settings section missing from reward-tuned YAML"
+        env = cfg.get("environment", {})
+        rs = env.get("reward_settings") or cfg.get("reward_settings")
+        assert rs is not None, (
+            "reward_settings section missing from reward-tuned YAML/environment"
+        )
         assert isinstance(rs, dict)
         # hold_penalty_weight は直接キーなので reward_settings に存在
         assert rs.get("hold_penalty_weight") == 0.001, (
@@ -255,8 +226,6 @@ class TestRewardSettingsPropagation:
 
     def test_reward_tuned_yaml_behavior_optimization(self) -> None:
         """reward-tuned YAML の behavior_optimization が正しく構成されていること."""
-        from scripts.v460.lib.config_loader import load_config
-
         cfg = load_config(
             "configs/v460/experiments/g2_sac_gamma095_reward_tuned.yaml"
         )
@@ -272,8 +241,6 @@ class TestRewardSettingsPropagation:
 
     def test_behavior_optimization_flows_to_env_config(self) -> None:
         """behavior_optimization が EnvironmentConfig に正しくマッピングされること."""
-        from ztb.trading.environment.utils.config import EnvironmentConfig
-
         config_dict = {
             "behavior_optimization": {
                 "balance_penalty": 0.1,
@@ -288,12 +255,6 @@ class TestRewardSettingsPropagation:
 
     def test_e2e_reward_tuned_penalty_values(self) -> None:
         """E2E: reward-tuned 設定でペナルティ値が正しく伝播すること."""
-        from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
-        from ztb.trading.environment.components.calculators.reward_calculator import (
-            RewardCalculator,
-        )
-        from ztb.trading.constants import ACTION_HOLD
-
         # Simulate the env config from reward-tuned YAML
         config_dict = {
             "behavior_optimization": {
@@ -336,9 +297,6 @@ class TestRewardSettingsPropagation:
         EnvironmentConfig(**env_cfg) だと reward_settings が dict のまま格納され、
         HeavyTradingEnv で shallow_asdict() TypeError が発生していた。
         """
-        from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
-        from ztb.utils.dataclass_utils import shallow_asdict
-
         # 実験ランナーが受け取る環境設定 (YAML environment セクション)
         env_cfg = {
             "reward_scaling": 1.0,
@@ -353,7 +311,7 @@ class TestRewardSettingsPropagation:
             },
         }
 
-        # from_dict() パスで構築 (386# P0-8 修正後)
+        # from_dict() パスで構築 (387# P0-8 修正後)
         env_config = EnvironmentConfig.from_dict(env_cfg)
 
         # reward_settings が RewardSettings インスタンスであること

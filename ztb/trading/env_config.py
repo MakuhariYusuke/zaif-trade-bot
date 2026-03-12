@@ -23,7 +23,7 @@ class TradingEnvConfig(TypedDict, total=False):
 
 # Default trading environment configuration
 DEFAULT_TRADING_ENV_CONFIG: TradingEnvConfig = {
-    "reward_scaling": 1.0,  # 386# FIX: PPO値6.0→SAC用1.0 (SAC YAML明示で上書き可)
+    "reward_scaling": 1.0,  # 387# FIX: PPO値6.0→SAC用1.0 (SAC YAML明示で上書き可)
     "transaction_cost": 0.0,  # 385# FIX: maker 0% (000# 前提準拠)
     "position_penalty_scale": 0.01,
     "inventory_penalty_scale": 0.001,
