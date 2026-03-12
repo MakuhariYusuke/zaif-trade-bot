@@ -214,6 +214,15 @@ def _evaluate_gate(gate: str, results: dict, cfg: dict) -> str:
 
             judgment = _evaluate_g2_from_results(results, thresholds)
             results["g2_judgment_cache"] = judgment
+
+            # 396# G3 auto-evaluation: seed_metrics があれば G3 も判定
+            seed_metrics = results.get("seed_metrics", [])
+            if seed_metrics:
+                g3_judgment = _evaluate_g3_from_results(results)
+                if g3_judgment:
+                    results["g3_judgment_cache"] = g3_judgment
+                    logger.info(f"G3-pnl auto-evaluation: {g3_judgment.get('gate_result', '?')}")
+
             return "PASS" if judgment["gate_result"] == "PASS" else "FAIL"
 
     return "PENDING"
@@ -259,10 +268,20 @@ def _run_multi_seed(
         else:
             gross_roi = 0.0
 
-        seed_results.append({
+        seed_entry: dict[str, object] = {
             "seed": seed,
             "gross_roi": gross_roi,
-        })
+        }
+
+        # 396# G3 指標を seed_results に追加 (389# P1-1: run_g3_judgment 入力形式)
+        if isinstance(eval_metrics, dict):
+            for g3_key in ("pf", "sharpe_annual", "max_drawdown",
+                           "avg_gross_per_trade", "avg_fee_per_trade",
+                           "reward_profit_corr"):
+                if g3_key in eval_metrics:
+                    seed_entry[g3_key] = float(eval_metrics[g3_key])
+
+        seed_results.append(seed_entry)
 
         checkpoint_metrics = result.get("checkpoint_metrics", [])
         all_checkpoint_metrics.append(
@@ -280,6 +299,15 @@ def _run_multi_seed(
         "seeds": seeds,
         "algorithm": "sac",
     }
+
+    # 396# G3 seed_metrics: run_g3_judgment() が直接消費できる形式
+    # seed_results に G3 指標が含まれていれば seed_metrics にコピー
+    seed_metrics = [
+        sr for sr in seed_results
+        if "pf" in sr and "sharpe_annual" in sr and "max_drawdown" in sr
+    ]
+    if seed_metrics:
+        aggregated["seed_metrics"] = seed_metrics
 
     return aggregated
 
@@ -384,6 +412,83 @@ def _evaluate_g2_from_results(
         "gate": "G2-train",
         "gate_result": "PASS" if all_pass else "FAIL",
         "checks": checks,
+    }
+
+
+def _evaluate_g3_from_results(
+    results: dict,
+    thresholds: dict | None = None,
+) -> dict[str, object]:
+    """G3-pnl gate evaluation from in-memory results (dict-based).
+
+    396# : run_g3_judgment のロジックを dict 入力で再現.
+    run_gate_check.py 側はファイルパス入力なので、
+    evaluate_gate() 内でのインライン判定用に本関数を使う.
+    """
+    import statistics as _stats
+
+    if thresholds is None:
+        try:
+            thresholds = load_gate_thresholds().get("g3_pnl", {})
+        except Exception:
+            thresholds = {}
+
+    seed_metrics = results.get("seed_metrics", [])
+    if not seed_metrics:
+        return {"gate": "G3-pnl", "gate_result": "NO_DATA", "error": "No seed metrics"}
+
+    checks: dict[str, dict[str, object]] = {}
+
+    # E1: PF median > 1.05
+    min_pf_median = float(thresholds.get("min_pf_median", 1.05))
+    pfs = sorted(float(s.get("pf", 0)) for s in seed_metrics)
+    pf_median = _stats.median(pfs)
+    checks["pf_median"] = {
+        "value": pf_median, "threshold": min_pf_median,
+        "pass": pf_median > min_pf_median,
+    }
+
+    # E2: PF worst > 0.95
+    min_pf_worst = float(thresholds.get("min_pf_worst", 0.95))
+    pf_worst = min(pfs)
+    checks["pf_worst"] = {
+        "value": pf_worst, "threshold": min_pf_worst,
+        "pass": pf_worst > min_pf_worst,
+    }
+
+    # E3: gross > fee
+    gross_gt_fee_required = bool(thresholds.get("gross_gt_fee", True))
+    total_gross = sum(float(s.get("avg_gross_per_trade", 0)) for s in seed_metrics)
+    total_fee = sum(float(s.get("avg_fee_per_trade", 0)) for s in seed_metrics)
+    gross_gt_fee = total_gross > total_fee
+    checks["gross_gt_fee"] = {
+        "value": gross_gt_fee, "threshold": gross_gt_fee_required,
+        "pass": gross_gt_fee if gross_gt_fee_required else True,
+    }
+
+    # E4: Max DD < 15%
+    max_dd_threshold = float(thresholds.get("max_drawdown", 0.15))
+    worst_dd = max(float(s.get("max_drawdown", 0)) for s in seed_metrics)
+    checks["max_drawdown"] = {
+        "value": worst_dd, "threshold": max_dd_threshold,
+        "pass": worst_dd < max_dd_threshold,
+    }
+
+    # E5: Sharpe annual median > 0.8
+    min_sharpe = float(thresholds.get("min_sharpe_annual", 0.8))
+    sharpes = [float(s.get("sharpe_annual", 0)) for s in seed_metrics]
+    sharpe_median = _stats.median(sharpes)
+    checks["sharpe_annual"] = {
+        "value": sharpe_median, "threshold": min_sharpe,
+        "pass": sharpe_median > min_sharpe,
+    }
+
+    all_pass = all(c["pass"] for c in checks.values())
+    return {
+        "gate": "G3-pnl",
+        "gate_result": "PASS" if all_pass else "FAIL",
+        "checks": checks,
+        "n_seeds": len(seed_metrics),
     }
 
 

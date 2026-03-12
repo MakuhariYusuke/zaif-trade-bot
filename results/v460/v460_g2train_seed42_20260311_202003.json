@@ -1,0 +1,330 @@
+{
+  "seed_results": [
+    {
+      "seed": 42,
+      "gross_roi": 0.043740124499999915
+    },
+    {
+      "seed": 123,
+      "gross_roi": -0.003931991999999993
+    },
+    {
+      "seed": 456,
+      "gross_roi": -0.004369017999999784
+    },
+    {
+      "seed": 789,
+      "gross_roi": 0.01997490150000006
+    }
+  ],
+  "convergence": {
+    "roi_variance_pct_after_30k": 0.1883
+  },
+  "raw_results": {
+    "42": {
+      "algorithm": "sac",
+      "seed": 42,
+      "total_timesteps": 50000,
+      "training_time_sec": 1210.2,
+      "model_path": "models\\v460\\sac_v460_seed42.zip",
+      "env_info": {
+        "obs_dim": 20,
+        "action_dim": 1,
+        "env_type": "HeavyTradingEnv",
+        "feature_columns_count": 17,
+        "feature_columns_injected": true
+      },
+      "checkpoint_metrics": [
+        {
+          "timesteps": 5000,
+          "roi": 0.0016241394999999552
+        },
+        {
+          "timesteps": 10000,
+          "roi": 0.0010647884999999777
+        },
+        {
+          "timesteps": 15000,
+          "roi": 0.0013482055000001564
+        },
+        {
+          "timesteps": 20000,
+          "roi": 0.0007916535000000149
+        },
+        {
+          "timesteps": 25000,
+          "roi": 0.0017237224999999627
+        },
+        {
+          "timesteps": 30000,
+          "roi": 0.0010621894999999553
+        },
+        {
+          "timesteps": 35000,
+          "roi": 0.0022777175000000746
+        },
+        {
+          "timesteps": 40000,
+          "roi": 0.001013231500000134
+        },
+        {
+          "timesteps": 45000,
+          "roi": 0.0020987585000000896
+        },
+        {
+          "timesteps": 50000,
+          "roi": 0.0012748625
+        }
+      ],
+      "eval_metrics": {
+        "gross_roi": 0.043740124499999915,
+        "mean_reward": 104677.24968343912,
+        "trade_count": 53557,
+        "n_episodes": 1,
+        "gross_pnl": 437142.9149999986
+      },
+      "train_val_split": {
+        "val_ratio": 0.2,
+        "train_rows": 973544,
+        "val_rows": 243386
+      }
+    },
+    "123": {
+      "algorithm": "sac",
+      "seed": 123,
+      "total_timesteps": 50000,
+      "training_time_sec": 1258.7,
+      "model_path": "models\\v460\\sac_v460_seed123.zip",
+      "env_info": {
+        "obs_dim": 20,
+        "action_dim": 1,
+        "env_type": "HeavyTradingEnv",
+        "feature_columns_count": 17,
+        "feature_columns_injected": true
+      },
+      "checkpoint_metrics": [
+        {
+          "timesteps": 5000,
+          "roi": 0.0015500484999999404
+        },
+        {
+          "timesteps": 10000,
+          "roi": 0.0004523445000000298
+        },
+        {
+          "timesteps": 15000,
+          "roi": 0.0014267125
+        },
+        {
+          "timesteps": 20000,
+          "roi": 0.0014861275000000373
+        },
+        {
+          "timesteps": 25000,
+          "roi": 0.0014775675000000745
+        },
+        {
+          "timesteps": 30000,
+          "roi": 0.0014250115000000224
+        },
+        {
+          "timesteps": 35000,
+          "roi": 0.0016695344999998808
+        },
+        {
+          "timesteps": 40000,
+          "roi": 0.0014774105000000448
+        },
+        {
+          "timesteps": 45000,
+          "roi": 0.001032565499999933
+        },
+        {
+          "timesteps": 50000,
+          "roi": 0.0003948195000000298
+        }
+      ],
+      "eval_metrics": {
+        "gross_roi": -0.003931991999999993,
+        "mean_reward": 11810.869938472359,
+        "trade_count": 22819,
+        "n_episodes": 1,
+        "gross_pnl": -40169.72000000005
+      },
+      "train_val_split": {
+        "val_ratio": 0.2,
+        "train_rows": 973544,
+        "val_rows": 243386
+      }
+    },
+    "456": {
+      "algorithm": "sac",
+      "seed": 456,
+      "total_timesteps": 50000,
+      "training_time_sec": 1212.7,
+      "model_path": "models\\v460\\sac_v460_seed456.zip",
+      "env_info": {
+        "obs_dim": 20,
+        "action_dim": 1,
+        "env_type": "HeavyTradingEnv",
+        "feature_columns_count": 17,
+        "feature_columns_injected": true
+      },
+      "checkpoint_metrics": [
+        {
+          "timesteps": 5000,
+          "roi": 0.0010139
+        },
+        {
+          "timesteps": 10000,
+          "roi": 0.0005040855000000447
+        },
+        {
+          "timesteps": 15000,
+          "roi": 6.877750000003726e-05
+        },
+        {
+          "timesteps": 20000,
+          "roi": 0.00022740850000008942
+        },
+        {
+          "timesteps": 25000,
+          "roi": 0.0007205915000000969
+        },
+        {
+          "timesteps": 30000,
+          "roi": 0.0005409294999999926
+        },
+        {
+          "timesteps": 35000,
+          "roi": 0.0005266245000001043
+        },
+        {
+          "timesteps": 40000,
+          "roi": 0.0008165695000000298
+        },
+        {
+          "timesteps": 45000,
+          "roi": 0.0005326925000000745
+        },
+        {
+          "timesteps": 50000,
+          "roi": 0.0007248544999999925
+        }
+      ],
+      "eval_metrics": {
+        "gross_roi": -0.004369017999999784,
+        "mean_reward": -24718.56232333297,
+        "trade_count": 59469,
+        "n_episodes": 1,
+        "gross_pnl": -43754.36999999809
+      },
+      "train_val_split": {
+        "val_ratio": 0.2,
+        "train_rows": 973544,
+        "val_rows": 243386
+      }
+    },
+    "789": {
+      "algorithm": "sac",
+      "seed": 789,
+      "total_timesteps": 50000,
+      "training_time_sec": 1182.0,
+      "model_path": "models\\v460\\sac_v460_seed789.zip",
+      "env_info": {
+        "obs_dim": 20,
+        "action_dim": 1,
+        "env_type": "HeavyTradingEnv",
+        "feature_columns_count": 17,
+        "feature_columns_injected": true
+      },
+      "checkpoint_metrics": [
+        {
+          "timesteps": 5000,
+          "roi": 0.0009155535000000149
+        },
+        {
+          "timesteps": 10000,
+          "roi": 0.001545172500000149
+        },
+        {
+          "timesteps": 15000,
+          "roi": 0.0020900734999999403
+        },
+        {
+          "timesteps": 20000,
+          "roi": 0.0011081974999999627
+        },
+        {
+          "timesteps": 25000,
+          "roi": 0.0017818824999999254
+        },
+        {
+          "timesteps": 30000,
+          "roi": 0.001322356499999948
+        },
+        {
+          "timesteps": 35000,
+          "roi": 0.0021501685000000523
+        },
+        {
+          "timesteps": 40000,
+          "roi": 0.0019013344999998809
+        },
+        {
+          "timesteps": 45000,
+          "roi": 0.0013892424999998882
+        },
+        {
+          "timesteps": 50000,
+          "roi": 0.0009240165000000968
+        }
+      ],
+      "eval_metrics": {
+        "gross_roi": 0.01997490150000006,
+        "mean_reward": 8462.597309628676,
+        "trade_count": 41171,
+        "n_episodes": 1,
+        "gross_pnl": 199692.9449999997
+      },
+      "train_val_split": {
+        "val_ratio": 0.2,
+        "train_rows": 973544,
+        "val_rows": 243386
+      }
+    }
+  },
+  "seeds": [
+    42,
+    123,
+    456,
+    789
+  ],
+  "algorithm": "sac",
+  "g2_judgment_cache": {
+    "gate": "G2-train",
+    "gate_result": "FAIL",
+    "checks": {
+      "positive_seed_ratio": {
+        "value": 0.5,
+        "threshold": 0.75,
+        "pass": false
+      },
+      "roi_seed_std": {
+        "value": 0.022942433525896318,
+        "threshold": 0.03,
+        "pass": true
+      },
+      "convergence": {
+        "value": 0.1883,
+        "threshold": 5.0,
+        "pass": true
+      },
+      "worst_seed_roi": {
+        "value": -0.004369017999999784,
+        "threshold": -0.035,
+        "pass": true
+      }
+    }
+  }
+}
