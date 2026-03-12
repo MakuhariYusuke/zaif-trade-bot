@@ -5187,3 +5187,13 @@ python scripts/unified_trainer.py \
     - focused `test_sac_retrain_scheduler.py test_websocket_client.py test_264_kelly_criterion.py test_093_side_params.py`: `128 passed in 3.34s`
     - focused `test_sac_retrain_scheduler.py -k 'cache_invalidated_on_new_write'`: `1 passed, 30 deselected in 0.66s`
     - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 32.14s`
+- 2026-03-13: trimmed another v460 wave around time patching, websocket callback mocks, stale-order defaults, and SAC env-config cloning.
+  - changed `test_273_kill_time_limit_halt_untick_recovery_grace.py` to manipulate `_kill_activated_at` directly instead of patching the entire `time` module for kill-expiry checks
+  - replaced more `AsyncMock` callback placeholders in `test_websocket_client.py` with `_AwaitRecorder` or removed callbacks entirely when only stats were under test
+  - changed `test_094_stale_order.py` default-only assertions to inspect dataclass field defaults directly and routed inline YAML parsing through the shared YAML helper
+  - reduced proxy-feature test input sizes again in `test_build_features_pipeline.py` and `test_v460_core.py`
+  - changed `scripts/v460/lib/tasks/sac_train.py::_build_val_env_config(...)` from `copy.deepcopy(dict(cfg))` to a top-level dict copy plus copied `environment` section, since only that branch is mutated
+  - refactored `test_266_market_theory_protocol.py` Kyle/Amihud disabled+depth-only cases to use a minimal microstructure stub instead of constructing full `MakerPriceCalculator` instances
+  - re-verified with:
+    - focused `test_273_kill_time_limit_halt_untick_recovery_grace.py test_websocket_client.py test_094_stale_order.py test_266_market_theory_protocol.py test_v460_core.py test_build_features_pipeline.py`: `229 passed in 5.24s`
+    - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 35.52s`

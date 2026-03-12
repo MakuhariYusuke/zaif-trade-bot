@@ -277,15 +277,13 @@ class TestCoincheckPublicWS:
     @pytest.mark.asyncio
     async def test_dispatch_non_list_ignored(self) -> None:
         ws = CoincheckPublicWS()
-        ws.on_trade = AsyncMock()
+        ws.on_trade = _AwaitRecorder()
         await ws._dispatch({"type": "heartbeat"})
-        ws.on_trade.assert_not_awaited()
+        assert ws.on_trade.await_count == 0
 
     @pytest.mark.asyncio
     async def test_stats_increment(self) -> None:
         ws = CoincheckPublicWS()
-        ws.on_trade = AsyncMock()
-
         data = [[1700000000.0, 1, "btc_jpy", 10000000.0, 0.01, "buy"]]
         await ws._dispatch(data)
         assert ws.stats.trades_received == 1
@@ -377,19 +375,19 @@ class TestCoincheckPrivateWS:
     @pytest.mark.asyncio
     async def test_dispatch_unknown_channel_ignored(self) -> None:
         ws = CoincheckPrivateWS(api_key="k", api_secret="s")
-        ws.on_order_event = AsyncMock()
-        ws.on_execution_event = AsyncMock()
+        ws.on_order_event = _AwaitRecorder()
+        ws.on_execution_event = _AwaitRecorder()
 
         await ws._dispatch_private(["unknown-channel", {"data": True}])
-        ws.on_order_event.assert_not_awaited()
-        ws.on_execution_event.assert_not_awaited()
+        assert ws.on_order_event.await_count == 0
+        assert ws.on_execution_event.await_count == 0
 
     @pytest.mark.asyncio
     async def test_dispatch_non_list_ignored(self) -> None:
         ws = CoincheckPrivateWS(api_key="k", api_secret="s")
-        ws.on_order_event = AsyncMock()
+        ws.on_order_event = _AwaitRecorder()
         await ws._dispatch_private({"type": "something"})
-        ws.on_order_event.assert_not_awaited()
+        assert ws.on_order_event.await_count == 0
 
     @pytest.mark.asyncio
     async def test_dispatch_short_list_ignored(self) -> None:

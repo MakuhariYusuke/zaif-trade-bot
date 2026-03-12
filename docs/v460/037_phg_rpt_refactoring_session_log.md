@@ -5729,3 +5729,53 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - `sidecar cache` の sleep は完全に解消できた。
 - `websocket_client` は `AsyncMock` を軽くしてもなお上位なので、残コストは `_dispatch_private(...)` 本体側または `CoincheckPrivateWS(...)` 初期化にある可能性が高い。
 - broad の次の本命は `kill_time_limit`、`websocket_client`、`stale_order` の 3 本。
+
+## 2026-03-13 / Wave: Time Patch, WebSocket, and Stale-Order Cleanup
+
+### 実施内容
+- [tests/unit/v460/test_273_kill_time_limit_halt_untick_recovery_grace.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_273_kill_time_limit_halt_untick_recovery_grace.py)
+  - kill expiry 系 4 ケースを module-level `time` patch から `_kill_activated_at` 直接操作へ変更
+- [tests/unit/v460/test_websocket_client.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_websocket_client.py)
+  - ignored/dispatch-only callback を `_AwaitRecorder` へ統一
+  - `test_stats_increment` は callback 自体を外し、stats だけを直接検証
+- [tests/unit/v460/test_094_stale_order.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_094_stale_order.py)
+  - `FillTestConfig.__dataclass_fields__` と `FillMonitorResult.__dataclass_fields__` を使う default-only 検査へ変更
+  - inline YAML parsing を shared `parse_yaml_mapping(...)` に統一
+  - `SkipGate.evaluate` signature を import-time cache 化
+- [tests/unit/v460/test_build_features_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_build_features_pipeline.py)
+  - proxy rows を `60/16/60` に縮小
+- [tests/unit/v460/test_v460_core.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_v460_core.py)
+  - proxy rows を `96/160` に縮小
+- [scripts/v460/lib/tasks/sac_train.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/tasks/sac_train.py)
+  - `_build_val_env_config(...)` を top-level dict copy + environment copy に整理
+- [tests/unit/v460/test_266_market_theory_protocol.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_266_market_theory_protocol.py)
+  - Kyle / Amihud の disabled・depth-only ケースを minimal microstructure stub に置換
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_273_kill_time_limit_halt_untick_recovery_grace.py`
+  - `tests/unit/v460/test_websocket_client.py`
+  - `tests/unit/v460/test_094_stale_order.py`
+  - `tests/unit/v460/test_266_market_theory_protocol.py`
+  - `tests/unit/v460/test_v460_core.py`
+  - `tests/unit/v460/test_build_features_pipeline.py`
+  - 結果: `229 passed in 5.24s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20`
+  - `--ignore=test_113_resilience.py`
+  - `--ignore=test_152_parallel_tasks.py`
+  - `--ignore=test_260_compute_extract_regime_split.py`
+  - `--deselect=test_306_proposals.py::TestProposalsConfigSync::test_yaml_has_microprice_side`
+  - 結果: `4643 passed, 13 warnings in 35.52s`
+
+### 更新後の上位
+1. `test_094_stale_order.py::TestStaleOrderLogic::test_fill_monitor_result_has_reprice_drift_bps` call `0.31s`
+2. `test_266_market_theory_protocol.py::TestKyleLambda::test_disabled` call `0.28s`
+3. `test_websocket_client.py::TestCoincheckPublicWS::test_stats_increment` call `0.28s`
+4. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.21s`
+5. `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction` setup `0.18s`
+
+### 見立て
+- `time` module patch と ignored callback 用 `AsyncMock` はかなり整理できた。
+- それでも broad の上位に残る `test_094` / `test_266` / `test_websocket_client` は、call 計測上のノイズではなく、初回 import/initialization 固定費がなお強い可能性が高い。
+- 次は `feature_enricher` / `HeavyTradingEnv` setup 系と、`gate_check` / `ml_pipeline` の単発重 call を優先して切るのが妥当。
