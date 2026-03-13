@@ -5992,3 +5992,18 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 
 ### 成果物
 - [408_dead_code_analysis.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/408_dead_code_analysis.md)
+
+## 2026-03-13 / Task 409: Broad Discovery Scan
+
+### 実施内容
+- `ztb/trading/environment/`, `scripts/v460/lib/`, `scripts/v460/ml/`, `ztb/trading/live/`, `configs/v460/`, `tests/` を横断して、ロジックバグ・性能・設定ドリフト・例外安全性・テスト品質・設計負債をスキャン
+- `rg` とファイル読取りで、非テスト caller と representative code path を確認
+- 既知の 408 修正済み事項を除外したうえで、docs-only の発見レポートを作成
+
+### 成果物
+- [409_phg_rpt_broad_discovery_scan.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/409_phg_rpt_broad_discovery_scan.md)
+
+### 主な結論
+- 最優先は `IdempotencyStore` の非原子的 lock、`HeavyTradingEnv` の reward telemetry 不整合、`EnvironmentConfig.from_dict()` 周辺の SSOT 崩れ
+- live/training 双方で、固定 sleep・強制 GC・broad exception capture が継続的な wall time と障害解析性を悪化させている
+- `RewardCalculator` と `HeavyTradingEnv` は引き続き分割境界を具体化した refactor が必要
