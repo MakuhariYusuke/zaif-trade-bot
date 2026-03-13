@@ -400,7 +400,7 @@
 | 404 | rev | [404_ph3_rev_402_403_time_guard_second_opinion.md](404_ph3_rev_402_403_time_guard_second_opinion.md) | Gemini セカンドオピニオン: _scale_offset_ratio 中間キャップのデッドロック証明, AS予測モデルへの統合推奨 |
 | 405 | impl | [405_offset_ceiling_pipeline_fix_selfreview.md](405_offset_ceiling_pipeline_fix_selfreview.md) | Offset Ceiling Pipeline Fix: sell側中間キャップを0.30→0.50に拡大, 14箇所修正, 14新規テスト |
 | 406 | rev | [406_selfreview_400_405_deep_dive.md](406_selfreview_400_405_deep_dive.md) | セルフレビュー: 400#–405# 深堀り分析 — session037ゴーストファイル問題発見, CHANGELOG上書き修正, 未コミット成果物整理 |
-| 407 | fix/perf | — | Ghost File Cleanup: 71ファイル再追跡, デッドコード11ファイル削除, S4タプルバグ修正, P1設定キャッシュ, P3二重GC統合, 11新規テスト |
+| 407 | fix/perf | [407_phg_fix_ghost_file_cleanup.md](407_phg_fix_ghost_file_cleanup.md) | Ghost File Cleanup: 71ファイル再追跡, デッドコード11ファイル削除, S4タプルバグ修正, P1設定キャッシュ, P3二重GC統合, 11新規テスト |
 | 408 | rpt/fix | [408_phg_rpt_dead_code_analysis.md](408_phg_rpt_dead_code_analysis.md) | F6 OOS best-checkpoint実装 + F4デフォルト統一 + B1-B5盲点修正 + Codexデッドコード調査 (RewardCalculator 2252行/50メソッド God Object 分割提案) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
