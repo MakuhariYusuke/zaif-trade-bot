@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 406# Self-Review: 400#–405# 深堀り分析 (2026-03-13)
+
+### Added
+- **406# セルフレビュー**: docs/v460/406_selfreview_400_405_deep_dive.md
+  - session037 ゴーストファイル問題 (75 削除 → 68 ゴースト、clone 不能状態) の発見
+  - 400#–405# 全コミットの横断的品質レビュー
+  - 未コミット成果物 (401#, 404#) の識別と対応計画
+
+## 401# Deep Investigation + F3/F5 Fix + Reward-Clean Experiment (2026-03-13)
+
+### Added
+- **401# 深層調査レポート**: docs/v460/401_deep_investigation_findings.md — 7件の発見事項 (F1~F7)
+- **F1 報酬飽和分析**: `reward_scaling=100 → clip[-1,1]` でほぼ全報酬が ±1 に飽和する構造的問題を特定
+- **F6 OOS best-checkpoint 設計案**: 50K崩壊対策として val_env でのチェックポイント評価+best保存の設計
+
+### Fixed
+- **401# F3**: `balance_penalty_tolerance` が `behavior_optimization` YAML から `RewardSettings` へマッピングされない問題を修正 (ゴーストファイル config.py)
+- **401# F5**: `EnvironmentConfig.from_dict()` で未知設定キーが `logger.debug` で黙殺される問題を `logger.warning` に変更 (ゴーストファイル config.py)
+
+### Experiment Results
+- **reward-clean 20K×4seeds**: G2 PASS / G3 PASS (初達成!)
+  - 全4 seed 正の ROI (0.33%~0.69%)
+  - PF median=1.145, Sharpe median=5.70
+  - Seed 456 の reward-profit 相関が負 (-0.203) — 報酬飽和 (F1) の影響の可能性
+
 ## 400# Reward Clean — v459知見フル適用 + scale_adjustment修正
 
 ### Fixed
@@ -19,13 +44,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - reward_clip [-1,1] (v459: +3500%改善の核心)
   - SAC: ent_coef=0.01固定, gradient_steps=2, batch_size=128, lr=5e-4
 - **400# 分析レポート**: docs/v460/400_reward_clean_analysis.md
-  - vXXXシリーズ全体の報酬関数教訓マトリクス
-  - 3つの構造的欠陥の特定と改善設計
 
 ### Analysis (vXXXシリーズ横断)
 - v455/v456/v457.2: ペナルティ積層は3回失敗 — 「罰を避ける」学習 ≠ 利益最大化
-- v459 B→C: hold_penalty=0 + clip[-1,1] → **+3,500%改善** 🥇
-- v459 D→E: ent_coef=0.01固定 + gradient_steps=2 → **+295%改善** 🥈
+- v459 B→C: hold_penalty=0 + clip[-1,1] → **+3,500%改善**
+- v459 D→E: ent_coef=0.01固定 + gradient_steps=2 → **+295%改善**
 - balance_shaping(value=0.5) がデフォルト有効で放置 → PnL信号を汚染
 
 ## Session 039 379# fill_test Crash Investigation + Watchdog Bug Fix (2026-03-12)

@@ -399,6 +399,7 @@
 | 403 | rev | [403_ph3_rev_402_time_guard_fill_test_multifaceted_review.md](403_ph3_rev_402_time_guard_fill_test_multifaceted_review.md) | 402# 再点検: mixed-SHA注意, AS rawは事後ラベル, 397#の真の制約はsell ceilingよりglobal 0.30 cap, hard skip解除は選択バイアスあり |
 | 404 | rev | [404_ph3_rev_402_403_time_guard_second_opinion.md](404_ph3_rev_402_403_time_guard_second_opinion.md) | Gemini セカンドオピニオン: _scale_offset_ratio 中間キャップのデッドロック証明, AS予測モデルへの統合推奨 |
 | 405 | impl | [405_offset_ceiling_pipeline_fix_selfreview.md](405_offset_ceiling_pipeline_fix_selfreview.md) | Offset Ceiling Pipeline Fix: sell側中間キャップを0.30→0.50に拡大, 14箇所修正, 14新規テスト |
+| 406 | rev | [406_selfreview_400_405_deep_dive.md](406_selfreview_400_405_deep_dive.md) | セルフレビュー: 400#–405# 深堀り分析 — session037ゴーストファイル問題発見, CHANGELOG上書き修正, 未コミット成果物整理 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
