@@ -1,0 +1,40 @@
+name: Rollup Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      correlation_id:
+        description: 'Correlation ID for the training session'
+        required: true
+        type: string
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC
+
+jobs:
+  rollup:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install jsonschema
+
+    - name: Run rollup
+      run: python -m ztb.training.rollup_artifacts --correlation-id ${{ inputs.correlation_id || 'latest' }}
+
+    - name: Upload summary artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: training-summary-${{ inputs.correlation_id || 'latest' }}
+        path: |
+          artifacts/${{ inputs.correlation_id || 'latest' }}/summary.json
+          artifacts/${{ inputs.correlation_id || 'latest' }}/summary.md

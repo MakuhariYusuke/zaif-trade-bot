@@ -1,0 +1,7 @@
+parquet:
+  compression: "snappy"   # "snappy" | "lz4"
+  row_group_size: 50000   # 2e4, 5e4, 1e5 の候補
+  use_columns: []         # 空なら全列、指定があれば列投影
+  engine: "pyarrow"
+limits:
+  peak_memory_mb: 1200

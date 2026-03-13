@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 408# F-Series + Blind Spot Fixes (2026-03-13)
+
+### Added
+- **F6 OOS Best-Checkpoint**: `_train_with_checkpoints()` に OOS 評価環境を追加。各チェックポイントで OOS ROI を計測し、最良モデルを自動保存。`_extract_best_checkpoint()` ヘルパー関数追加
+- **19件の新規テスト**: tests/unit/v460/test_408_f_series_blindspot.py (F6/F4/B1-B5 検証)
+
+### Fixed
+- **F4 デフォルト値不整合**: `balance_penalty` (1.0→0.1)、`consistency_penalty` (0.05→0.0) を `RewardSettings` SSOT に統一 (RC + BPC 両方)
+- **B1 `_record_action` 二重呼び出し**: 8つのステージメソッドから `_record_action()` を除去、`calculate_reward()` の1回のみに統一。テスト側も対応修正
+- **B2 BPC else-branch 属性欠損**: `reward_settings=None` パスに14属性を追加 (`consistency_min_actions`, `trend_adjustment_*`, `balance_shaping_*`, `action_entropy_*`, `skewness_*`, `emergency_intervention_*`)
+- **B3 `continuous_action_value` シャドーイング**: `calculate_reward_simple()` 内のローカル再代入を除去
+- **B4 `avg_gross_per_trade` 計算誤り**: `sum(abs(p))` → `sum(p)` に修正 (abs() は損失の絶対値を加算し意味的に誤り)
+- **B5 `train_val_split` 空 DataFrame ガード**: 空の train_df/val_df 生成時に `ValueError` を送出
+- **`forced_balance.py` ゼロ除算防御**: `min_actions=0` かつ `total_actions=0` 時のガードを追加
+- **壊れたテストアーカイブ**: `test_comprehensive_fixes.py` (存在しないモジュールimport) を archived/ へ移動
+
+### Assessed (No Code Change)
+- **F1 報酬飽和**: コードバグではなくハイパーパラメータ選択の問題。現行設定で G2+G3 PASS。F6 が 50K 崩壊の安全弁を提供
+
 ## 407# Ghost File Cleanup + Performance + Stability (2026-03-13)
 
 ### Fixed

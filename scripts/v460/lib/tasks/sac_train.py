@@ -118,11 +118,35 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
         env, env_info = _create_training_env(train_df, cfg)
         logger.info(f"Training env: obs_dim={env_info['obs_dim']}, action_dim={env_info['action_dim']}")
 
+        # ── Output dir (resolved early for F6 best-model save) ──
+        output_cfg = section(cfg, "output")
+        model_dir_raw = output_cfg.get("model_dir", "models/v460")
+        model_dir = Path(str(model_dir_raw))
+        model_dir.mkdir(parents=True, exist_ok=True)
+
         # ── 384# CRITICAL-1: Checkpoint eval env (training env と完全分離) ──
         # 382#/383# Review: 訓練中の env を checkpoint eval で reset/step すると
         # SB3 の _last_obs とデータ位置がズレ、学習バイアスが発生する。
         checkpoint_eval_env, _ = _create_training_env(train_df, cfg)
         logger.info("Checkpoint eval env: separate instance created")
+
+        # ── 408# F6: OOS checkpoint eval env (best-model selection) ──
+        # 401# F6: 各 checkpoint で OOS ROI を評価し、最良時点のモデルを保存。
+        # 50K 崩壊問題 (v459 Day9b: 25K→50K = -30.54% ROI 劣化) への対策。
+        oos_eval_env: TrainingEnvProtocol | None = None
+        best_model_path: Path | None = None
+        try:
+            oos_val_cfg = _build_val_env_config(env, cfg)
+            oos_eval_env, _ = _create_training_env(val_df, oos_val_cfg)
+            best_model_path = model_dir / f"sac_v460_seed{seed}_best.zip"
+            logger.info(
+                f"OOS checkpoint eval env: created for F6 best-model selection "
+                f"(val_rows={val_size}, best_path={best_model_path})"
+            )
+        except Exception as e:
+            logger.warning(f"F6: OOS eval env creation failed (non-fatal): {e}")
+            oos_eval_env = None
+            best_model_path = None
 
         # ── Model creation (or warm-start from pretrained) ──
         # 365# P1: Warm-start incremental training with replay buffer
@@ -156,6 +180,8 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
         checkpoint_metrics = _train_with_checkpoints(
             model, env, total_timesteps, cfg,
             checkpoint_eval_env=checkpoint_eval_env,
+            oos_eval_env=oos_eval_env,
+            best_model_path=best_model_path,
         )
         elapsed = time.time() - start_time
         logger.info(f"Training completed in {elapsed:.1f}s")
@@ -168,11 +194,7 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
         logger.info(f"Validation env: {val_size} rows (out-of-sample, train scaler injected)")
         eval_metrics = _evaluate_trained_model(model, eval_env, cfg)
 
-        # ── Save model ──
-        output_cfg = section(cfg, "output")
-        model_dir_raw = output_cfg.get("model_dir", "models/v460")
-        model_dir = Path(str(model_dir_raw))
-        model_dir.mkdir(parents=True, exist_ok=True)
+        # ── Save final model ──
         model_path = model_dir / f"sac_v460_seed{seed}.zip"
         model.save(str(model_path))
         logger.info(f"Model saved: {model_path}")
@@ -190,17 +212,22 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
 
     finally:
         # C2: 環境を確実にクローズしてメモリ解放
-        cleanup_envs(eval_env, checkpoint_eval_env, env)
+        cleanup_envs(eval_env, checkpoint_eval_env, oos_eval_env, env)
         # DataFrame 参照を明示的に解放
         del train_df, val_df
 
     # ── Results ──
+    # 408# F6: best checkpoint 情報をresultsに含める
+    best_checkpoint_info = _extract_best_checkpoint(checkpoint_metrics)
+
     results: dict[str, object] = {
         "algorithm": "sac",
         "seed": seed,
         "total_timesteps": total_timesteps,
         "training_time_sec": round(elapsed, 1),
         "model_path": str(model_path),
+        "best_model_path": str(best_model_path) if best_model_path and best_model_path.exists() else None,
+        "best_checkpoint": best_checkpoint_info,
         "env_info": env_info,
         "checkpoint_metrics": checkpoint_metrics,
         "eval_metrics": eval_metrics,
@@ -367,6 +394,8 @@ def _train_with_checkpoints(
     cfg: ConfigSection,
     *,
     checkpoint_eval_env: TrainingEnvProtocol | None = None,
+    oos_eval_env: TrainingEnvProtocol | None = None,
+    best_model_path: Path | None = None,
 ) -> list[dict[str, int | float]]:
     """チェックポイント毎に指標を収集しながら訓練.
 
@@ -375,6 +404,10 @@ def _train_with_checkpoints(
 
     384# CRITICAL-1: checkpoint eval は training env とは別の env で実行する。
     model.learn() が内部で持つ _last_obs / env state と衝突するのを防止。
+
+    408# F6: OOS (out-of-sample) 評価を追加。各チェックポイントで val_env での
+    ROI を計測し、最良時点のモデルを best_model_path に保存する。
+    v459 Day9b の 50K 崩壊問題 (25K→50K = -30.54% ROI 劣化) への対策。
     """
     training_cfg = section(cfg, "training")
     checkpoint_interval_raw = training_cfg.get("checkpoint_interval", 10_000)
@@ -383,6 +416,12 @@ def _train_with_checkpoints(
 
     # 384# CRITICAL-1: eval は分離 env を使用 (fallback: training env)
     eval_target_env = checkpoint_eval_env if checkpoint_eval_env is not None else env
+
+    # 408# F6: OOS best tracking
+    best_oos_roi: float = float("-inf")
+    oos_enabled = oos_eval_env is not None and best_model_path is not None
+    if oos_enabled:
+        logger.info("F6: OOS best-checkpoint tracking enabled")
 
     remaining = total_timesteps
     trained = 0
@@ -393,7 +432,7 @@ def _train_with_checkpoints(
         trained += steps
         remaining -= steps
 
-        # 359# L-3: Checkpoint ROI — 1-episode deterministic eval
+        # 359# L-3: Checkpoint ROI — 1-episode deterministic eval (in-sample)
         # 384# CRITICAL-1: training env を汚さないよう別 env で評価
         roi = _checkpoint_eval_roi(model, eval_target_env)
 
@@ -401,12 +440,52 @@ def _train_with_checkpoints(
             "timesteps": trained,
             "roi": roi,
         }
+
+        # 408# F6: OOS evaluation + best-model save
+        if oos_enabled:
+            assert oos_eval_env is not None  # type narrowing
+            assert best_model_path is not None
+            oos_roi = _checkpoint_eval_roi(model, oos_eval_env)
+            metrics["oos_roi"] = oos_roi
+            if oos_roi > best_oos_roi:
+                best_oos_roi = oos_roi
+                model.save(str(best_model_path))
+                metrics["is_best"] = 1
+                logger.info(
+                    f"  F6: New best OOS ROI={oos_roi:.4f} @ {trained} steps → saved"
+                )
+            else:
+                metrics["is_best"] = 0
+
         checkpoint_metrics.append(metrics)
-        logger.info(
-            f"  Checkpoint @ {trained}/{total_timesteps} steps | roi={roi:.4f}"
-        )
+        log_parts = [f"Checkpoint @ {trained}/{total_timesteps} steps | roi={roi:.4f}"]
+        if "oos_roi" in metrics:
+            log_parts.append(f"oos_roi={metrics['oos_roi']:.4f}")
+            if metrics.get("is_best"):
+                log_parts.append("★BEST")
+        logger.info(f"  {'  |  '.join(log_parts)}")
+
+    # 408# F6: 最終サマリ
+    if oos_enabled and best_oos_roi > float("-inf"):
+        logger.info(f"F6: Best OOS ROI = {best_oos_roi:.4f} (saved to {best_model_path})")
 
     return checkpoint_metrics
+
+
+def _extract_best_checkpoint(
+    checkpoint_metrics: list[dict[str, int | float]],
+) -> dict[str, object] | None:
+    """408# F6: checkpoint_metrics から best OOS checkpoint 情報を抽出."""
+    best_entries = [m for m in checkpoint_metrics if m.get("is_best") == 1]
+    if not best_entries:
+        return None
+    # 最後の is_best=1 エントリが最終的な best
+    best = best_entries[-1]
+    return {
+        "timesteps": best["timesteps"],
+        "oos_roi": best.get("oos_roi", 0.0),
+        "in_sample_roi": best.get("roi", 0.0),
+    }
 
 
 # 379# Perf: チェックポイント評価のステップ上限

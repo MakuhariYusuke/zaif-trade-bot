@@ -1,0 +1,47 @@
+{
+  "model_name": "sac_v395a_test_5k",
+  "algorithm": "sac",
+  "total_timesteps": 5000,
+  "data_source": "csv",
+  "data_path": "btc_jpy_real_dataset.csv",
+  "data_config": {
+    "csv_path": "btc_jpy_real_dataset.csv",
+    "use_real_data": true
+  },
+  "sac_hyperparameters": {
+    "learning_rate": 0.0003,
+    "buffer_size": 10000,
+    "learning_starts": 100,
+    "batch_size": 64,
+    "tau": 0.005,
+    "gamma": 0.99,
+    "train_freq": 1,
+    "gradient_steps": 1,
+    "ent_coef": "auto",
+    "target_update_interval": 1,
+    "target_entropy": "auto"
+  },
+  "environment": {
+    "initial_balance": 200000.0,
+    "transaction_cost": 0.0005,
+    "max_position_size": 0.01,
+    "enable_action_masking": false,
+    "use_continuous_actions": true,
+    "random_start": true,
+    "reward_settings": {
+      "hold_penalty_weight": 0.1,
+      "consecutive_hold_penalty": 0.05,
+      "consecutive_hold_exponential": true,
+      "consecutive_hold_threshold": 5,
+      "trading_frequency_bonus": 0.3,
+      "profit_reward_multiplier": 10.0,
+      "action_diversity_bonus": 0.1,
+      "successful_trade_bonus": 5.0,
+      "volatility_adjusted_penalty": true,
+      "trend_adjusted_bonus": true,
+      "range_market_hold_tolerance": 0.5
+    }
+  },
+  "checkpoint_interval": 1000,
+  "notes": "SAC v395a: 5k timesteps test run"
+}

@@ -225,7 +225,8 @@ class BehavioralPenaltyCalculator:
                 _rs_get("consistency_penalty_enabled", True)
             )
             # Ensure penalty is negative (penalty magnitude is stored as positive in configs)
-            self.penalty_value = -abs(float(_rs_get("consistency_penalty", 0.05)))  # type: ignore
+            # 408# F4: default aligned to RewardSettings.consistency_penalty (0.0)
+            self.penalty_value = -abs(float(_rs_get("consistency_penalty", 0.0)))  # type: ignore
             self.lookback = int(_rs_get("consistency_lookback", 50))  # type: ignore
             # Treat lookback == 0 as disabled; negative values are clamped to 0
             if self.lookback < 0:
@@ -237,7 +238,8 @@ class BehavioralPenaltyCalculator:
             self.balance_penalty_enabled = bool(
                 _rs_get("balance_penalty_enabled", True)
             )
-            self.balance_penalty_value = float(_rs_get("balance_penalty", 1.0))  # type: ignore
+            # 408# F4: default aligned to RewardSettings.balance_penalty (0.1)
+            self.balance_penalty_value = float(_rs_get("balance_penalty", 0.1))  # type: ignore
             self.balance_penalty_tolerance = float(
                 _rs_get("balance_penalty_tolerance", 0.05)
             )  # type: ignore
@@ -304,11 +306,14 @@ class BehavioralPenaltyCalculator:
             )
         else:
             # Default values if reward_settings is None or not a dict
+            # 408# F4: defaults aligned to RewardSettings SSOT
             self.consistency_penalty_enabled = True
-            self.penalty_value = -0.05
+            self.penalty_value = 0.0  # RewardSettings.consistency_penalty = 0.0
             self.lookback = 50
+            # 408# B2: consistency_min_actions was missing → AttributeError
+            self.consistency_min_actions = 2
             self.balance_penalty_enabled = True
-            self.balance_penalty_value = 1.0
+            self.balance_penalty_value = 0.1  # RewardSettings.balance_penalty = 0.1
             self.balance_penalty_tolerance = 0.05
             self.balance_penalty_min_actions = 10
             self.hold_target = 0.4
@@ -316,6 +321,20 @@ class BehavioralPenaltyCalculator:
             self.sell_target = 0.3
             self.forced_balance_min_actions = 0
             self.emergency_intervention_enabled = False
+            # 408# B2: 12 attributes were missing in else-branch → AttributeError
+            self.emergency_intervention_threshold = 0.30
+            self.emergency_intervention_penalty = -500.0
+            self.trend_adjustment_enabled = False
+            self.trend_adjustment_strength = 0.1
+            self.balance_shaping_enabled = False
+            self.balance_shaping_value = 0.5
+            self.action_entropy_shaping_enabled = False
+            self.action_entropy_shaping_value = 0.01
+            self.action_entropy_lookback = 10
+            self.skewness_penalty_enabled = False
+            self.skewness_penalty_value = 0.0
+            self.skewness_penalty_tolerance = 0.05
+            self.skewness_lookback = 10
 
         if self.lookback < 0:
             self.lookback = 0  # 0 disables consistency penalty

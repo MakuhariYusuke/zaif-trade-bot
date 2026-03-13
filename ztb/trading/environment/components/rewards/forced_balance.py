@@ -198,6 +198,10 @@ class ForcedBalanceReward(RewardComponent):
             self.last_reward_details["base_reward"] = exploration_reward
             return exploration_reward
 
+        # 408# B1 防御: min_actions=0 かつ total_actions=0 のゼロ除算回避
+        if total_actions == 0:
+            return 0.0
+
         # Calculate ratios and deviations
         action_ratios = [count / total_actions for count in action_counts]
 

@@ -209,12 +209,12 @@ model.save(final_path)  ← 最終モデルも保存
 
 | # | Finding | 深刻度 | 対策 | 状態 |
 |---|---------|--------|------|------|
-| F1 | 報酬飽和 | CRITICAL | reward_scaling / clip 再調整 | ⬜ 要検討 (G2/G3 PASS だが seed 456 の r<0 が懸念) |
-| F6 | OOS Best-Checkpoint | HIGH | _train_with_checkpoints に OOS 評価 + best 保存 | ⬜ 50K 拡張前に必須 |
+| F1 | 報酬飽和 | CRITICAL | reward_scaling / clip 再調整 | 📋 評価済: コードバグでなくHP選択。F6が安全弁 |
+| F6 | OOS Best-Checkpoint | HIGH | _train_with_checkpoints に OOS 評価 + best 保存 | ✅ 408# 実装済 |
 | F5 | タイポ黙殺 | HIGH | from_dict に WARNING ログ | ✅ 修正済 |
 | F3 | balance_penalty_tolerance 無視 | MEDIUM | from_dict マッピング追加 | ✅ 修正済 |
 | F2 | Double Clip | LOW | 将来統合 | ⬜ 現時点無害 |
-| F4 | デフォルト不一致 | LOW | デフォルト値統一 | ⬜ 次回整理 |
+| F4 | デフォルト不一致 | LOW | デフォルト値統一 | ✅ 408# 修正済 |
 | F7 | G3 E3 形骸化 | INFO | cost>0 時に再評価 | ⬜ |
 
 ---

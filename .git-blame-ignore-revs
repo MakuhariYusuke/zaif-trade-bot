@@ -1,0 +1,5 @@
+# Large-scale snapshot commits for workspace-wide Git cleanup.
+# Keep these out of blame by setting:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+40eacd2f3
+b060005ba

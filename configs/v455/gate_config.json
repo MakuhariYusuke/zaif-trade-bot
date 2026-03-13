@@ -1,0 +1,16 @@
+{
+    "ewma_tau": 1000.0,
+    "n_min": 5.0,
+    "fee_rate": 0.0,
+    "c_spread": 0.01,
+    "c_vol": 0.01,
+    "c_imp": 0.01,
+    "gamma": 0.5,
+    "min_volume": 0.01,
+    "latency_sec": 1.0,
+    "order_size_btc": 0.01,
+    "probability_mode": "ucb",
+    "prior_avg_win": 1000.0,
+    "prior_avg_loss": 1000.0,
+    "fee_rate": 0.0005
+}

@@ -1,0 +1,96 @@
+[
+  {
+    "model_name": "single_model",
+    "model_type": "single",
+    "metrics": {
+      "total_return": 14618.90129809915,
+      "avg_return": 1461.890129809915,
+      "win_rate": 1.0,
+      "sharpe_ratio": 0.0,
+      "sortino_ratio": 0.0,
+      "calmar_ratio": 0.0,
+      "max_drawdown": 0.0,
+      "total_trades": 2720,
+      "buy_actions": 1880,
+      "sell_actions": 840,
+      "hold_actions": 7270,
+      "returns": [
+        1461.890129809915,
+        1461.890129809915,
+        1461.890129809915,
+        1461.890129809915,
+        1461.890129809915,
+        1461.890129809915,
+        1461.890129809915,
+        1461.890129809915,
+        1461.890129809915,
+        1461.890129809915
+      ],
+      "cumulative_returns": [
+        1461.890129809915,
+        2923.78025961983,
+        4385.670389429744,
+        5847.56051923966,
+        7309.450649049575,
+        8771.34077885949,
+        10233.230908669406,
+        11695.121038479321,
+        13157.011168289237,
+        14618.901298099152
+      ],
+      "drawdowns": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "extended_evaluation": {},
+      "comprehensive_score": 0.0,
+      "risk_adjusted_score": 0.0,
+      "robustness_score": 0.0
+    },
+    "config": {
+      "model_path": "models\\final_model.zip"
+    }
+  },
+  {
+    "model_name": "single_cv",
+    "model_type": "single",
+    "metrics": {
+      "total_return": 0.0,
+      "avg_return": 0.0,
+      "win_rate": 0.0,
+      "sharpe_ratio": 0.0,
+      "sortino_ratio": 0.0,
+      "calmar_ratio": 0.0,
+      "max_drawdown": 0.0,
+      "total_trades": 0,
+      "buy_actions": 0,
+      "sell_actions": 0,
+      "hold_actions": 0,
+      "returns": [],
+      "cumulative_returns": [],
+      "drawdowns": [],
+      "extended_evaluation": {},
+      "comprehensive_score": 0.0,
+      "risk_adjusted_score": 0.0,
+      "robustness_score": 0.0
+    },
+    "config": {
+      "n_splits": 5,
+      "cv_scores": [
+        2701.448323811119,
+        3470.9631175622317,
+        2599.9866640814234,
+        2402.8895933431695,
+        3046.255902435792
+      ]
+    }
+  }
+]

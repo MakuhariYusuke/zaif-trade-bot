@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "train_data": {"type": "string"},
+        "test_data": {"type": "string"},
+        "validation_data": {"type": "string"}
+      },
+      "required": ["train_data", "test_data", "validation_data"]
+    },
+    "training": {
+      "type": "object",
+      "properties": {
+        "total_timesteps": {"type": "integer", "minimum": 1},
+        "eval_freq": {"type": "integer", "minimum": 1},
+        "n_eval_episodes": {"type": "integer", "minimum": 1},
+        "batch_size": {"type": "integer", "minimum": 1},
+        "n_steps": {"type": "integer", "minimum": 1},
+        "gamma": {"type": "number", "minimum": 0, "maximum": 1},
+        "learning_rate": {"type": "number", "minimum": 0},
+        "ent_coef": {"type": "number", "minimum": 0},
+        "clip_range": {"type": "number", "minimum": 0},
+        "n_epochs": {"type": "integer", "minimum": 1},
+        "gae_lambda": {"type": "number", "minimum": 0, "maximum": 1},
+        "max_grad_norm": {"type": "number", "minimum": 0},
+        "vf_coef": {"type": "number", "minimum": 0},
+        "verbose": {"type": "integer", "minimum": 0},
+        "seed": {"type": "integer"}
+      },
+      "required": ["total_timesteps", "eval_freq", "n_eval_episodes"]
+    },
+    "environment": {
+      "type": "object",
+      "properties": {
+        "reward_scaling": {"type": "number"},
+        "transaction_cost": {"type": "number", "minimum": 0},
+        "max_position_size": {"type": "number", "minimum": 0},
+        "risk_free_rate": {"type": "number"},
+        "reward_type": {"type": "string", "enum": ["aggressive", "conservative", "balanced"]}
+      }
+    },
+    "optimization": {
+      "type": "object",
+      "properties": {
+        "n_trials": {"type": "integer", "minimum": 1},
+        "timeout": {"type": "integer", "minimum": 0},
+        "metric": {"type": "string"},
+        "retrain_best": {"type": "boolean"},
+        "full_timesteps": {"type": "integer", "minimum": 1}
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "properties": {
+        "n_eval_episodes": {"type": "integer", "minimum": 1},
+        "n_episodes": {"type": "integer", "minimum": 1},
+        "max_steps_per_episode": {"type": "integer", "minimum": 1},
+        "deterministic": {"type": "boolean"},
+        "plot_style": {"type": "string"}
+      }
+    },
+    "paths": {
+      "type": "object",
+      "properties": {
+        "log_dir": {"type": "string"},
+        "model_dir": {"type": "string"},
+        "results_dir": {"type": "string"},
+        "opt_dir": {"type": "string"},
+        "tensorboard_log": {"type": "string"}
+      },
+      "required": ["log_dir", "model_dir", "results_dir"]
+    },
+    "experiment": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "seed": {"type": "integer"}
+      }
+    },
+    "data_quality": {
+      "type": "object",
+      "properties": {
+        "outlier_threshold_percent": {"type": "number", "minimum": 0, "maximum": 100}
+      }
+    },
+    "notifications": {
+      "type": "object",
+      "properties": {
+        "win_rate_threshold_percent": {"type": "number", "minimum": 0, "maximum": 100}
+      }
+    },
+    "parallel_training": {
+      "type": "object",
+      "properties": {
+        "generalization_priority": {"type": "string", "enum": ["high", "medium", "low"]},
+        "aggressive_priority": {"type": "string", "enum": ["high", "medium", "low"]},
+        "cpu_affinity_enabled": {"type": "boolean"},
+        "nice_values": {
+          "type": "object",
+          "properties": {
+            "high": {"type": "integer"},
+            "low": {"type": "integer"}
+          }
+        }
+      }
+    },
+    "fee_model": {
+      "type": "object",
+      "properties": {
+        "default_fee_rate": {"type": "number", "minimum": 0},
+        "exchange_fees": {
+          "type": "object",
+          "patternProperties": {
+            ".*": {"type": "number", "minimum": 0}
+          }
+        }
+      }
+    }
+  },
+  "required": ["data", "training", "paths"]
+}

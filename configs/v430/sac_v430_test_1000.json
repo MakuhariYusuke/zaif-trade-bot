@@ -1,0 +1,46 @@
+{
+  "version": "1.0",
+  "training": {
+    "model_name": "sac_v430_test",
+    "algorithm": "sac",
+    "total_timesteps": 1000,
+    "data_config": {
+      "csv_path": "btc_jpy_real_dataset.csv",
+      "use_real_data": true
+    },
+    "environment": {
+      "initial_balance": 200000.0,
+      "transaction_cost": 0.0005,
+      "max_position_size": 0.01,
+      "enable_action_masking": false,
+      "use_continuous_actions": true,
+      "use_standardized_observations": true,
+      "reward_settings": {
+        "reward_scale": 140.26367385248548,
+        "trading_bonus": 0.0041079974127759735,
+        "sell_penalty": -0.35240053723313824,
+        "buy_bonus": -0.427338600085897,
+        "action_balance_weight": 0.270731511102946,
+        "hold_penalty": 0.0052929478390304745,
+        "profit_focus": false,
+        "risk_penalty": 0.0642814422601983
+      }
+    },
+    "sac_hyperparameters": {
+      "learning_rate": 0.00016093166779077603,
+      "gamma": 0.9796652702743582,
+      "tau": 0.005,
+      "ent_coef": 0.01,
+      "target_entropy": -2.0,
+      "batch_size": 128,
+      "buffer_size": 50000,
+      "learning_starts": 500,
+      "gradient_steps": 1,
+      "train_freq": [
+        1,
+        "step"
+      ],
+      "target_update_interval": 1
+    }
+  }
+}

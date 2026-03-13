@@ -1,0 +1,38 @@
+training:
+  total_timesteps: 500000
+  n_envs: 2
+  seed: 12345
+  eval_interval: 5000
+  log_interval: 500
+  learning_rate: 0.0003
+  batch_size: 32
+  n_epochs: 5
+
+checkpoint:
+  async_save: true
+  compress: "zstd"
+  max_pending: 2
+  retention: 3
+  interval_steps: 5000
+  light_mode: false
+
+streaming:
+  enabled: false
+  batch_size: 32
+  buffer_policy: "drop_oldest"
+  prefetch_factor: 1
+
+evaluation:
+  dsr_trials: 500
+  bootstrap_resamples: 500
+  bootstrap_block: null
+  bootstrap_overlap: null
+  eval_freq: 25000
+  benchmark_strategies:
+    - "sma"
+    - "buy_hold"
+    - "random"
+
+experiment_name: "example_experiment"
+log_level: "DEBUG"
+output_dir: "example_artifacts"

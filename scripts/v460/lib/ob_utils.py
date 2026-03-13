@@ -1,0 +1,180 @@
+"""145# §9-#3 / §10.2-#1 / §10.1-#3: OB (orderbook) 正規化ユーティリティ.
+
+OrderBookSnapshot.bids/asks は list[tuple[float, float]] だが、
+一部モジュール (skip_gate_evaluator) では .price/.quantity アクセスをしていた。
+tuple/object 両対応の安全な抽出関数を提供し、散在する dual-format ロジックを一元化する。
+
+§10.1-#3: MarketDataAccessor — adapter を薄くラップし、
+best_bid_ask / depth_volume / spread 等の市場データ取得を型安全に提供。
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Protocol, Sequence, TypeAlias, Union, cast, runtime_checkable
+
+logger = logging.getLogger(__name__)
+
+
+# 266# 共有 Protocol: OrderBookSnapshot (maker_price.py から移管)
+class OrderBookSnapshot(Protocol):
+    """板スナップショット — .bids / .asks を持つ object."""
+
+    @property
+    def bids(self) -> Sequence[tuple[float, float]]: ...
+
+    @property
+    def asks(self) -> Sequence[tuple[float, float]]: ...
+
+
+# 261# P2-1: OrderBookLevelLike Protocol — getattr 排除
+@runtime_checkable
+class OrderBookLevelLike(Protocol):
+    """板データの 1 レベルを表す構造的型.
+
+    Coincheck adapter は NamedTuple/dataclass で price/quantity を返す場合がある。
+    tuple[float, float] 以外の object に対して .price / .quantity で安全にアクセスする。
+    """
+
+    @property
+    def price(self) -> float: ...
+
+    @property
+    def quantity(self) -> float: ...
+
+
+# 156# D-1: 型安全向上 — OB レベルの型を明示
+# tuple[float, float] (price, size) or NamedTuple/dataclass with .price/.quantity
+OrderBookLevel: TypeAlias = Union[tuple[float, float], OrderBookLevelLike]
+OrderBookLevels: TypeAlias = Sequence[OrderBookLevel]
+
+
+def extract_price(level: OrderBookLevel) -> float:
+    """板レベルから price を抽出 (tuple / object 両対応)."""
+    if isinstance(level, (list, tuple)):
+        if not level:
+            return 0.0
+        return float(level[0])
+    # 261# P2-1: OrderBookLevelLike Protocol — 直接アクセス
+    return float(level.price)
+
+
+def extract_size(level: OrderBookLevel) -> float:
+    """板レベルから size (quantity) を抽出 (tuple / object 両対応)."""
+    if isinstance(level, (list, tuple)):
+        if len(level) < 2:
+            return 0.0
+        return float(level[1])
+    # 261# P2-1: OrderBookLevelLike Protocol — 直接アクセス
+    # quantity を優先し、size フォールバック (一部 adapter は size 名称)
+    if hasattr(level, "quantity"):
+        return float(level.quantity)
+    return float(getattr(level, "size", 0.0))
+
+
+def best_bid_ask(
+    ob: OrderBookSnapshot | object | None,
+) -> tuple[float | None, float | None]:
+    """OrderBookSnapshot から best bid/ask を安全に抽出.
+
+    Returns:
+        (best_bid, best_ask) — データ不足時は None.
+    """
+    if ob is None:
+        return None, None
+    # 266# getattr 排除: hasattr で存在確認後に直接アクセス
+    bids = _coerce_levels(ob.bids if hasattr(ob, "bids") else None)
+    asks = _coerce_levels(ob.asks if hasattr(ob, "asks") else None)
+    bid = extract_price(bids[0]) if bids else None
+    ask = extract_price(asks[0]) if asks else None
+    return bid, ask
+
+
+def depth_volume(levels: OrderBookLevels, depth: int = 5) -> float:
+    """板の指定深さまでの合計出来高を計算."""
+    return sum(extract_size(lv) for lv in levels[:depth])
+
+
+def _coerce_levels(levels: object) -> OrderBookLevels:
+    if isinstance(levels, Sequence):
+        return cast(OrderBookLevels, levels)
+    return ()
+
+
+# ---------------------------------------------------------------------------
+# §10.1-#3: MarketDataAccessor — adapter wrapper
+# ---------------------------------------------------------------------------
+
+class _HasGetOrderbook(Protocol):
+    """Protocol for adapter with get_orderbook method."""
+
+    async def get_orderbook(self, symbol: str, depth: int = ...) -> OrderBookSnapshot | None: ...
+
+
+class MarketDataAccessor:
+    """薄い adapter ラッパー: OB 正規化を一手に引き受ける.
+
+    §10.1-#3: 散在する ``bids[0].price if hasattr ...`` の dual-format
+    ロジックを排除し、呼び出し側は ``accessor.best_bid_ask()`` で完結。
+    """
+
+    def __init__(self, adapter: _HasGetOrderbook, symbol: str = "btc_jpy") -> None:
+        self._adapter = adapter
+        self._symbol = symbol
+
+    async def best_bid_ask(
+        self, depth: int = 1
+    ) -> tuple[float | None, float | None]:
+        """Get best bid/ask via adapter, normalised through ob_utils.
+
+        Returns:
+            (best_bid, best_ask) — API 失敗時は (None, None).
+        """
+        try:
+            ob = await self._adapter.get_orderbook(self._symbol, depth=depth)
+            return best_bid_ask(ob)
+        except Exception as e:
+            logger.debug("MarketDataAccessor.best_bid_ask failed: %s", e)
+            return None, None
+
+    async def spread(self, depth: int = 1) -> float | None:
+        """Best ask - best bid. None if data unavailable."""
+        bid, ask = await self.best_bid_ask(depth)
+        if bid is not None and ask is not None:
+            return ask - bid
+        return None
+
+    async def mid_price(self, depth: int = 1) -> float | None:
+        """Mid-price = (bid + ask) / 2. None if data unavailable."""
+        bid, ask = await self.best_bid_ask(depth)
+        if bid is not None and ask is not None:
+            return (bid + ask) / 2.0
+        return None
+
+    async def bid_depth_volume(self, depth: int = 5) -> float:
+        """Bid-side depth volume up to *depth* levels."""
+        try:
+            ob = await self._adapter.get_orderbook(self._symbol, depth=depth)
+            if ob is None:
+                return 0.0
+            # 266# getattr 排除: OrderBookSnapshot 直接アクセス
+            bids = _coerce_levels(ob.bids)
+            return depth_volume(bids, depth) if bids else 0.0
+        except Exception as e:
+            # 255# bare except → debug log (OB fetch 例外可観測化)
+            logger.debug("bid_depth_volume fetch failed: %s", e, exc_info=True)
+            return 0.0
+
+    async def ask_depth_volume(self, depth: int = 5) -> float:
+        """Ask-side depth volume up to *depth* levels."""
+        try:
+            ob = await self._adapter.get_orderbook(self._symbol, depth=depth)
+            if ob is None:
+                return 0.0
+            # 266# getattr 排除: OrderBookSnapshot 直接アクセス
+            asks = _coerce_levels(ob.asks)
+            return depth_volume(asks, depth) if asks else 0.0
+        except Exception as e:
+            # 255# bare except → debug log (OB fetch 例外可観測化)
+            logger.debug("ask_depth_volume fetch failed: %s", e, exc_info=True)
+            return 0.0

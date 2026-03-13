@@ -1,0 +1,152 @@
+{
+  "session_id": "ppo_reward_v382_aggressive_optimized",
+  "algorithm": "ppo",
+  "description": "Aggressive Optimized: v380 aggressive scaling (85%) + v379 market adaptation + binary search optimized hyperparameters",
+
+  "comment_strategy": "積極的統合戦略 - v380の積極性85% + v379の市場適応 + 二分探索最適化",
+  "comment_use_case": "v381で取引活動が不足している場合に使用 - よりアグレッシブな設定",
+  "comment_components": [
+    "✅ v379: 動的市場適応型報酬（volatility/trend/range detection）",
+    "✅ v380: 積極的HOLD抑制を85%採用（バランスを保ちつつ積極的）",
+    "✅ Optimized: batch_size=256, learning_rate=0.007503, max_grad_norm=5.05, n_steps=1024",
+    "✅ Lagrange: r_target=0.175, tolerance=0.042625, eta=0.062875, lambda_max=3.875, warmup=3874"
+  ],
+
+  "comment_reward_balance": "v380の強度を85%採用 - hold_penalty: 0.05→0.0425, profit_multiplier: 5.0→4.25, trading_bonus: 0.3→0.255",
+  "comment_expected_behavior": "期待されるHOLD率: 30-40%, 積極的取引活動, SELL暴走リスクは中程度",
+
+  "curated_features_list": "curated_features.py::CURATED_FEATURES",
+  "enable_feature_filtering": true,
+  "feature_filter_mode": "whitelist",
+
+  "max_features": null,
+  "enable_correlation_reduction": false,
+  "data_rows_limit": null,
+
+  "ppo": {
+    "comment_note": "v381_revisedの知見: target_kl/vf_coef/clip_rangeに問題あり",
+    "learning_rate": 0.007503,
+    "n_steps": 1024,
+    "batch_size": 256,
+    "n_epochs": 16,
+    "gamma": 0.8475,
+    "gae_lambda": 0.8,
+    "clip_range": 0.1,
+    "clip_range_vf": null,
+    "ent_coef": 0.001,
+    "vf_coef": 0.1,
+    "max_grad_norm": 5.05,
+    "use_sde": false,
+    "sde_sample_freq": -1,
+    "target_kl": 0.001,
+    "normalize_advantage": true,
+    "verbose": 1,
+    "comment_recommendation": "v382_revised_aggressiveの使用を推奨（KL/Clip問題修正済み）",
+    "policy_kwargs": {
+      "net_arch": [
+        {"pi": [128, 128], "vf": [128, 128]}
+      ]
+    }
+  },
+
+  "environment": {
+    "initial_balance": 10000,
+    "transaction_cost": 0.0001,
+    "max_position_size": 1.0,
+    "enable_action_masking": true,
+    "random_start": true,
+    "reward_settings": {
+      "comment_base_penalties": "v380の85%強度 - より積極的",
+      "hold_penalty_weight": 0.0425,
+      "consecutive_hold_penalty": 0.0255,
+      "consecutive_hold_exponential": true,
+      "consecutive_hold_threshold": 3,
+
+      "comment_trading_incentives": "v380の85%強度",
+      "trading_frequency_bonus": 0.255,
+      "profit_reward_multiplier": 4.25,
+      "action_diversity_bonus": 0.085,
+      "successful_trade_bonus": 0.85,
+
+      "comment_dynamic_adaptation": "v379の市場適応型機能を完全採用",
+      "volatility_adjusted_penalty": true,
+      "trend_adjusted_bonus": true,
+      "range_market_hold_tolerance": 0.5,
+
+      "comment_opportunity_cost": "v380から85%採用",
+      "hold_opportunity_cost": 0.017
+    }
+  },
+
+  "training": {
+    "total_timesteps": 100000,
+    "checkpoint_interval": 5000,
+    "enable_autohalt": true,
+    "eval_freq": 2000,
+    "n_eval_episodes": 10,
+    "reward_scaling": 0.1,
+    "progress_bar": false
+  },
+
+  "custom_ppo": {
+    "enabled": true,
+    "use_pan": true,
+    "use_target_entropy": true,
+    "target_entropy": -0.8,
+    "use_gradient_probe_guard": false,
+    "pan_epsilon": 1e-8,
+    "enable_evaluation_gates": true,
+    "gate_thresholds": {
+      "variance_threshold": 0.01,
+      "distribution_check_enabled": true
+    }
+  },
+
+  "comment_lagrange_source": "ppo_100k_optimized.json - 二分探索最適化結果を完全採用",
+  "lagrange": {
+    "r_target": 0.175,
+    "tolerance": 0.042625,
+    "eta": 0.062875,
+    "lambda_max": 3.875,
+    "warmup_steps": 3874
+  },
+
+  "data_path": "ml-dataset-enhanced-balanced.csv",
+
+  "comment_comparison_with_v381": {
+    "v381_hybrid": {
+      "hold_penalty": "0.035 * volatility",
+      "profit_multiplier": 3.5,
+      "trading_bonus": "0.2 * trend",
+      "aggression_level": "66% of v380",
+      "risk": "Medium",
+      "use_case": "バランス重視、安全性優先"
+    },
+    "v382_aggressive": {
+      "hold_penalty": "0.0425 * volatility",
+      "profit_multiplier": 4.25,
+      "trading_bonus": "0.255 * trend",
+      "aggression_level": "85% of v380",
+      "risk": "Medium-High",
+      "use_case": "取引活動促進、v381で不足の場合"
+    }
+  },
+
+  "comment_usage": [
+    "前提条件: v381を先に試して、取引活動が不足していることを確認してから使用",
+    "",
+    "Step 1: 30k短期テストで動作確認",
+    "  python run_training.py --config configs/training/ppo_reward_v382_aggressive_optimized.json --timesteps 30000",
+    "",
+    "Step 2: v381との比較",
+    "  - v381のHOLD率が45-50%だった → v382を試す価値あり",
+    "  - v381のHOLD率が35-45%だった → v381を継続使用推奨",
+    "",
+    "Step 3: 100k本番トレーニング",
+    "  python run_training.py --config configs/training/ppo_reward_v382_aggressive_optimized.json",
+    "",
+    "監視ポイント:",
+    "  - 目標: HOLD 30-40%, BUY 30-35%, SELL 25-30%",
+    "  - SELLが35%超える場合: v381に戻すか、lambda_maxを3.5に削減"
+  ]
+}

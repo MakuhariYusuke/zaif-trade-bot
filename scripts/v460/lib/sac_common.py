@@ -255,7 +255,10 @@ def _compute_g3_metrics(
     if total_trades > 0 and pnl_steps:
         trade_pnls = [p for p in pnl_steps if p != 0.0]
         if trade_pnls:
-            metrics["avg_gross_per_trade"] = sum(abs(p) for p in trade_pnls) / len(trade_pnls)
+            # 408# B4: abs() を除去。avg_gross = 取引あたり平均損益（手数料控除前）。
+            # abs() だと損失の絶対値が加算され意味的に誤り。
+            # G3 E3「avg_gross > avg_fee」は「平均利益 > 平均コスト」を意図。
+            metrics["avg_gross_per_trade"] = sum(trade_pnls) / len(trade_pnls)
         else:
             metrics["avg_gross_per_trade"] = 0.0
         metrics["avg_fee_per_trade"] = 0.0  # maker 0%
@@ -309,6 +312,20 @@ def train_val_split(
     split_idx = int(len(df) * (1.0 - ratio))
     train_df = df.iloc[:split_idx].copy()
     val_df = df.iloc[split_idx:].copy()
+
+    # 408# B5: 空 DataFrame ガード — HeavyTradingEnv に空データを渡すとクラッシュ
+    if len(train_df) == 0:
+        raise ValueError(
+            f"train_val_split produced empty train_df "
+            f"(df rows={len(df)}, val_ratio={val_ratio})"
+        )
+    if len(val_df) == 0:
+        raise ValueError(
+            f"train_val_split produced empty val_df "
+            f"(df rows={len(df)}, val_ratio={val_ratio}). "
+            f"Set val_ratio > 0 or provide more data."
+        )
+
     return train_df, val_df
 
 

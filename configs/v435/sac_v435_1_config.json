@@ -1,0 +1,92 @@
+{
+  "model_name": "sac_v435_1",
+  "version": "4.3.5.1",
+  "description": "SAC v435.1 - Conservative Risk Management Variant",
+
+  "training": {
+    "total_timesteps": 1000000,
+    "learning_rate": 2e-4,
+    "batch_size": 128,
+    "buffer_size": 500000,
+    "learning_starts": 2000,
+    "tau": 0.005,
+    "gamma": 0.995,
+    "ent_coef": "auto_0.5",
+    "target_entropy": "auto",
+    "curriculum_learning": true
+  },
+
+  "environment": {
+    "transaction_cost": 0.0015,
+    "max_position_size": 0.05,
+    "random_start": true,
+    "enable_correlation_reduction": true,
+    "correlation_threshold": 0.9,
+    "max_features": 80,
+    "feature_adaptation": true,
+    "market_regime_detection": true
+  },
+
+  "reward_function": {
+    "base_profit_bonus_atr_coeff": 3.0,
+    "base_profit_bonus_portfolio_coeff": 8.0,
+    "base_action_penalty": 0.2,
+    "loss_penalty_coeff": -1.5,
+    "action_frequency_penalty": 0.08,
+    "long_short_asymmetry": true,
+    "risk_adjusted_bonus": true,
+    "market_regime_penalty": true
+  },
+
+  "features": {
+    "technical_indicators": [
+      "rsi_14", "macd", "macd_signal", "macd_hist",
+      "bb_upper", "bb_middle", "bb_lower",
+      "stoch_k", "stoch_d",
+      "ichimoku_tenkan", "ichimoku_kijun",
+      "atr_14", "cci_14", "mfi_14"
+    ],
+    "price_features": [
+      "price_change", "returns", "log_returns",
+      "sma_10", "sma_20", "sma_50",
+      "volatility_10d", "volatility_20d"
+    ],
+    "adaptive_selection": true,
+    "correlation_filtering": true,
+    "importance_weighting": true
+  },
+
+  "risk_management": {
+    "dynamic_position_sizing": true,
+    "drawdown_control": true,
+    "max_drawdown_limit": 0.05,
+    "volatility_adjustment": true,
+    "correlation_risk": true,
+    "conservative_mode": true
+  },
+
+  "data": {
+    "primary_dataset": "data/btc_jpy_featured_dataset.csv",
+    "validation_split": 0.2,
+    "test_split": 0.1,
+    "feature_engineering": true,
+    "data_augmentation": false
+  },
+
+  "evaluation": {
+    "backtest_episodes": 50,
+    "performance_metrics": [
+      "total_return", "win_rate", "max_drawdown",
+      "sharpe_ratio", "sortino_ratio", "calmar_ratio"
+    ],
+    "comparison_models": ["v430", "v434.2", "v435"],
+    "robustness_tests": true
+  },
+
+  "output": {
+    "model_dir": "models/v435_1",
+    "config_dir": "config/v435",
+    "results_dir": "results/v435_1",
+    "tensorboard_log": "tensorboard/v435_1"
+  }
+}

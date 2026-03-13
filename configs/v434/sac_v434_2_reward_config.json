@@ -1,0 +1,33 @@
+{
+  "curriculum_stage": "pnl_focused",
+  "base_profit_bonus_atr_coeff": 5.0,
+  "base_profit_bonus_portfolio_coeff": 10.0,
+  "base_action_penalty": 0.15,
+  "hold_penalty_base": 0.02,
+  "hold_penalty_position_factor": 0.08,
+  "loss_penalty_coeff": -1.0,
+  "action_frequency_penalty": 0.05,
+  "max_consecutive_trades": 3,
+  "trade_interval_bonus": 0.03,
+  "min_trade_interval": 5,
+  "profit_realization_bonus": 2.0,
+  "min_profit_threshold": 100.0,
+  "position_penalty_base": 0.001,
+  "position_penalty_scaling": 0.01,
+  "reward_scaling": 1.0,
+  "profit_scaling": 2.0,
+  "reward_clip_min": -200.0,
+  "reward_clip_max": 200.0,
+  "trend_analysis_weight": 1.5,
+  "volatility_penalty": 0.02,
+  "_description": "v434.2報酬関数改良設定",
+  "_improvements": [
+    "取引コストを10倍に強化（0.015→0.15）で過度な取引を抑制",
+    "利益ボーナスを大幅増加（ATR係数3.3倍、ポートフォリオ係数8.3倍）",
+    "損失ペナルティを5倍に強化（-0.2→-1.0）",
+    "アクション頻度ペナルティを追加（連続取引抑制）",
+    "取引間隔ボーナスを追加（取引間隔を奨励）",
+    "利益実現ボーナスを追加（大きな利益を奨励）",
+    "報酬クリッピング範囲を拡大（より大きな報酬/ペナルティを許可）"
+  ]
+}

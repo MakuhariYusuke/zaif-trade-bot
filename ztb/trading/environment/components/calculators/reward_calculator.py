@@ -169,12 +169,14 @@ class RewardCalculator:
             try:
                 self.balance_penalty = float(behavior_opt["balance_penalty"])
             except (TypeError, ValueError):
+                # 408# F4: default aligned to RewardSettings.balance_penalty (0.1)
                 self.balance_penalty = self.get_setting_float(
-                    "behavior_optimization.balance_penalty", 1.0
+                    "behavior_optimization.balance_penalty", 0.1
                 )
         else:
+            # 408# F4: default aligned to RewardSettings.balance_penalty (0.1)
             self.balance_penalty = self.get_setting_float(
-                "behavior_optimization.balance_penalty", 1.0
+                "behavior_optimization.balance_penalty", 0.1
             )
         self.balance_penalty_tolerance = self.get_setting_float(
             "behavior_optimization.balance_penalty_tolerance", 0.05
@@ -1395,7 +1397,8 @@ class RewardCalculator:
             if action in [ACTION_BUY, ACTION_SELL]:  # 1 = BUY, 2 = SELL
                 reward += trade_frequency_bonus
 
-            continuous_action_value: float | None = None  # S4 fix: was (None,) tuple
+            # 408# B3: removed `continuous_action_value = None` that shadowed the
+            # function parameter (S4 fix already corrected the default in 407#).
             position_change = abs(position - old_position)
             position_change_penalty = self.get_setting_float(
                 "position_change_penalty", 0.0
@@ -1494,8 +1497,8 @@ class RewardCalculator:
         # _record_action handles syncing and respects manual resets performed by tests
         # (e.g. setting self._action_counts = [0,0,0]). Pre-syncing here could override
         # intentional manual resets and lead to unexpected behavior in tests.
+        # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ (二重記録防止)
         action = action
-        self._record_action(action)
 
         # Build Context
         context_kwargs = kwargs.copy()
@@ -1503,7 +1506,8 @@ class RewardCalculator:
         context = self._build_reward_context(**context_kwargs)
 
         # If global balance penalty is disabled, the forced_balance stage should be neutral.
-        if getattr(self, "balance_penalty", 1.0) == 0.0:
+        # 408# F4: default aligned to RewardSettings.balance_penalty (0.1)
+        if getattr(self, "balance_penalty", 0.1) == 0.0:
             self._last_reward_components["stage"] = "forced_balance"
             self._last_reward_components["base_reward"] = 0.0
             return 0.0
@@ -1539,7 +1543,7 @@ class RewardCalculator:
         than requiring immediate profit. Used in early curriculum stages
         to overcome conservative HOLD bias.
         """
-        self._record_action(action)
+        # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ
         self._last_reward_components = {"stage": "action_discovery"}
 
         # Use continuous magnitude if available to reward stronger signals
@@ -1568,7 +1572,7 @@ class RewardCalculator:
         Delegates to SmartIncentiveReward component.
         """
         action = kwargs.get("action")
-        self._record_action(action)
+        # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ
 
         context = self._build_reward_context(**kwargs)
         reward = self.smart_incentive_reward.calculate(context)
@@ -1592,7 +1596,7 @@ class RewardCalculator:
         reward_scaling: float,
     ) -> float:
         """Stage 1: Normal reward with balance penalty."""
-        self._record_action(action)
+        # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ
         total_actions = sum(self._action_counts)
 
         self._last_reward_components = {"stage": "balanced_transition"}
@@ -1661,7 +1665,7 @@ class RewardCalculator:
         **kwargs,
     ) -> float:
         """Stage: Trading-focused reward that heavily penalizes HOLD and encourages trading."""
-        self._record_action(action)
+        # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ
         self._last_reward_components = {"stage": "trading_focused"}
 
         # Delegate to TradingFocusedReward component
@@ -1706,7 +1710,7 @@ class RewardCalculator:
         **kwargs,
     ) -> float:
         """Stage: Profit-optimized reward that maximizes profitable trading while minimizing losses."""
-        self._record_action(action)
+        # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ
         self._last_reward_components = {"stage": "profit_optimized"}
 
         # Delegate to ProfitOptimizedReward component
@@ -2153,7 +2157,7 @@ class RewardCalculator:
         observation: np.ndarray | None,
     ) -> float:
         """Stage: Risk management reward with unrealized loss penalty."""
-        self._record_action(action)
+        # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ
         self._last_reward_components = {"stage": "risk_management"}
 
         # 1. Calculate base reward from PnL and other factors
@@ -2210,7 +2214,7 @@ class RewardCalculator:
         observation: np.ndarray | None,
     ) -> float:
         """Stage: Opportunity cost reward to penalize inaction when flat."""
-        self._record_action(action)
+        # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ
         self._last_reward_components = {"stage": "opportunity_cost"}
 
         # 1. Calculate base reward
