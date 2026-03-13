@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 410# G3 PASS 深堀り分析 + G3.1-stress 正式定義 (2026-03-13)
+
+### Added
+- **G3.1-stress Gate 正式定義** (000# §3.5.1): slippage 1tick / maker miss 30% / 複合 stress の 5 条件 (S1-S5) を定義。G3 PASS 後の friction 耐性検証を制度化
+- **410# 深堀り分析レポート**: G3 PASS 結果の多角的分析 — seed456 corr=-0.20 根本分析、slippage 耐性推算 (PF≈0.99)、100K 検証ポイント定義
+
+### Changed
+- **000# §2 Phase 表**: ph4.1 (摩擦耐性検証 / G3.1-stress) を追加
+- **000# 目次**: §3.5.1 G3.1-stress リンク追加
+- **000# Appendix A**: 改訂履歴に G3.1-stress 定義の記録追加
+
 ## 409# Codex T1-T16 + G3 Gate Enhancement + SAC Reward-Clean G3 PASS (2026-03-13)
 
 ### Added

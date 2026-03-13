@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-13 (409# Broad Discovery Scan + C1/C3/H3 修正)
+> 最終更新: 2026-03-13 (410# G3 PASS 深堀り分析 + G3.1-stress 正式定義)
 
 ---
 
@@ -403,6 +403,7 @@
 | 407 | fix/perf | [407_phg_fix_ghost_file_cleanup.md](407_phg_fix_ghost_file_cleanup.md) | Ghost File Cleanup: 71ファイル再追跡, デッドコード11ファイル削除, S4タプルバグ修正, P1設定キャッシュ, P3二重GC統合, 11新規テスト |
 | 408 | rpt/fix | [408_phg_rpt_dead_code_analysis.md](408_phg_rpt_dead_code_analysis.md) | F6 OOS best-checkpoint実装 + F4デフォルト統一 + B1-B5盲点修正 + Codexデッドコード調査 (RewardCalculator 2252行/50メソッド God Object 分割提案) |
 | 409 | rpt/fix | [409_phg_rpt_broad_discovery_scan.md](409_phg_rpt_broad_discovery_scan.md) | 広域課題スキャン (6カテゴリ24項目) + Codex T1-T16実行 (17項目対処) + G3 reward_profit_corr gate追加 + SAC reward-clean **G2+G3 PASS** (40テスト追加) |
+| 410 | rpt | [410_ph4_rpt_g3_pass_deep_dive.md](410_ph4_rpt_g3_pass_deep_dive.md) | G3 PASS 深堀り分析: seed456 corr=-0.20 根本分析, slippage 耐性推算 (PF≈0.99), 100K検証ポイント定義, G3.1-stress 橋渡し |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
@@ -510,7 +511,7 @@ NNN_phX_TYPE_description.md
 4. ~~**G2 SAC 4-seed 訓練**~~: ✅ **PASS** — reward-tuned (γ=0.95, E4=-3.5% 緩和) で達成 (386#/387#)
 5. ~~**G3 PnL Monte Carlo**~~: ✅ **PASS** — reward-clean (400#) で G3 全条件クリア (409#, PF=1.145, Sharpe=5.70, MaxDD=0.26%)
 6. **100K 拡大訓練**: ⏳ reward-clean 20K G3 PASS → 本番規模 100K × 4 seeds で再検証
-7. **G3.1 stress 条件**: slippage 1tick, maker miss penalty の感度分析 (392# P2-A)
+7. **G3.1 stress 条件**: slippage 1tick, maker miss penalty の感度分析 (392# P2-A) — **000# §3.5.1 で正式定義済み** (410#)
 
 ### 高優先 (収益性直結)
 

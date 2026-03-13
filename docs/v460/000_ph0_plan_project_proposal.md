@@ -13,7 +13,7 @@
 - [§2 Phase 定義](#2-phase-定義)
 - [§3 Gate 定義](#3-gate-定義)
   - [§3.1 G0-data](#31-g0-data) / [§3.2 G1-info](#32-g1-info) / [§3.3 G1.1-exec](#33-g11-exec)
-  - [§3.4 G2-train](#34-g2-train) / [§3.5 G3-pnl](#35-g3-pnl) / [§3.6 G4-live](#36-g4-live)
+  - [§3.4 G2-train](#34-g2-train) / [§3.5 G3-pnl](#35-g3-pnl) / [§3.5.1 G3.1-stress](#351-g31-stress) / [§3.6 G4-live](#36-g4-live)
   - [§3.7 統計検定仕様](#37-統計検定仕様)
   - [§3.8 Gate 枝番規則](#38-gate-枝番規則)
 - [§4 技術概要](#4-技術概要)
@@ -57,6 +57,7 @@ v459 の 119 文書・全 Phase 実験から得られた 4 教訓:
 | **ph2** | maker 執行可能性検証 | G1.1-exec | fill rate 実測データ |
 | **ph3** | SAC 学習安定性検証 | G2-train | 4 seed 訓練結果 |
 | **ph4** | 収益性検証 (コスト込み) | G3-pnl | PF / Sharpe / DD レポート |
+| **ph4.1** | 摩擦耐性検証 (stress) | G3.1-stress | slippage / miss 感度レポート |
 | **ph5** | Paper trading 運用検証 | G4-live | 1 週間連続稼働データ |
 
 Phase 枝番規則: `.1` 刻み整数連番 (e.g. ph1.1)、ファイル名では `ph1-1`。最大 2 枝。詳細は [v459/119# §8.2](../v459/119_v460_launch_integrated_policy.md)
@@ -206,6 +207,32 @@ Gate 判定データの品質を保証するため、以下を前提とする:
 | Sharpe (年率) | > 0.8 | 日次リターン（median） |
 
 **FAIL 時**: モデル改善 or 取引頻度調整。全 seed FAIL なら v461 検討。
+
+### §3.5.1 G3.1-stress
+
+**目的**: G3-pnl PASS 済みモデルを現実的な摩擦条件下で再評価し、paper trading (G4) 投入前に収益耐性を確認する。
+
+**前提**: G3-pnl PASS が確定していること。G3.1 は G3 の枝番であり、G3 PASS 条件を変更しない（§3.8 枝番規則に準拠）。
+
+**背景**: maker 0% 環境でも queue miss（注文が板に残らず約定しない）、adverse selection（約定直後の逆行）、約定遅延による slippage は実コストとして存在する。G3 は理想的な即時約定を前提としており、これらの friction を織り込んでいない（392# P1-2）。
+
+| # | 条件 | 閾値 | stress パラメータ | 根拠 |
+|---|------|------|------------------|------|
+| S1 | PF (median) under slippage | > 1.00 | slippage_ticks: 1 (= 1 JPY) | 1tick slippage は maker 最小摩擦。PF>1.0 で損益分岐以上 |
+| S2 | PF (worst-seed) under slippage | > 0.90 | slippage_ticks: 1 | worst-seed でも壊滅的損失を回避 |
+| S3 | MaxDD under slippage | < 15% | slippage_ticks: 1 | G3 と同一基準を維持 |
+| S4 | maker miss 感度 | PF > 0.95 at miss_rate=30% | maker_miss_rate: 0.30 | G1.2-full F1 の fill_rate≥70% と整合（30% miss は worst case） |
+| S5 | 複合 stress | PF > 0.90 | slippage_ticks: 1 + miss_rate: 0.15 | slippage と miss の同時発生を想定した保守的条件 |
+
+**測定方法**: G3 PASS 時と同一の OOS データ・同一モデルで、stress パラメータを注入して再評価。4 seed 全てで実施。
+
+**stress パラメータの注入方法**:
+- **slippage_ticks**: 各約定時に `slippage_ticks × tick_size` (1 JPY) を不利方向に加算。Buy なら価格+1、Sell なら価格-1。
+- **maker_miss_rate**: 各約定判定時に確率 `miss_rate` で約定を無効化（ポジション変動なし）。seed 固定の乱数で再現性を保証。
+
+**FAIL 時**: S1-S3 FAIL → slippage 耐性不足。取引頻度削減・エントリ閾値引き上げで改善。S4-S5 FAIL → maker miss 耐性不足。fill_rate 改善施策（offset 調整等）を G4 前に実施。全条件 FAIL でも v461 には移行せず、パラメータ調整で対処（G3 PASS 済みのため基本収益性は確認済み）。
+
+**判定出力**: G3 判定 JSON に `g3_1_stress_judgment_cache` として追記。`stress_params` と各 seed の stress 下指標を記録。
 
 ### §3.6 G4-live
 
@@ -396,6 +423,7 @@ NNN_phX_type_subject.md
 | 2026-02-21 | §5 | 番号体系 (ドキュメント番号 vs セッション番号) を追記。123# から移設 | 128# |
 | 2026-02-21 | §5, §3.3 | コード内コメント番号付与ポリシー追記 (Q5)。Gate 判定前提条件 (同一 SHA・YAML 72h) 追記 (E.5 #3)。YAML 反映を「反映確認済み」で管理する運用規約追記 | 130# D.1 |
 | 2026-02-27 | §3.10 | Gate 例外ルール (Exception-1: Oracle Gap 継続例外) 追加。Gate FAIL 時の限定的継続許可条件を制度化 | 170# §10.3, 172# |
+| 2026-03-13 | §3.5.1 | G3.1-stress Gate 正式定義。slippage 1tick / maker miss 30% / 複合 stress の 5 条件。G3 PASS 後の friction 耐性検証を制度化 | 392# P1-2, 409# |
 
 
 
