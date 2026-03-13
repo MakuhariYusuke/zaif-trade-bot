@@ -461,14 +461,26 @@ from ...calculators.simplified_reward_calculator import SimplifiedRewardCalculat
 
 ---
 
+## 409# セッションで対処済みの項目
+
+本スキャン結果を受け、同セッション内で以下を修正済み（11 テスト追加、2208 全テスト通過確認）:
+
+| ID | 修正内容 | 対象ファイル |
+|---|---|---|
+| C1 (独自) | `StatisticsCalculator` の deque に `maxlen=512` を付与し無制限増大を防止 | `statistics_calculator.py` |
+| C3 (独自) | `RewardCalculator._record_action()` 他 3 箇所の `except: pass` を `logger.warning(..., exc_info=True)` に置換 | `reward_calculator.py` |
+| H3 (独自) | `DynamicRewardShaper` で価格ゼロ時の `ZeroDivisionError` ガード追加 | `dynamic_reward_shaper.py` |
+
+テストファイル: `tests/unit/v460/test_409_improvement_fixes.py` (11 tests)
+
 ## 総括
 
 優先度の高い着手順は次のとおりです。
 
-1. `IdempotencyStore` の非原子的ロックを修正する
-2. `HeavyTradingEnv` の reward telemetry 不整合を修正する
-3. `behavior_optimization` / `reward_settings` / `behavioral_penalty` の SSOT を 1 系統に整理する
-4. `tests/conftest.py` の import 例外握り潰しを縮小する
-5. `RewardCalculator` の `RewardPipeline` / `RewardStrategy` / `RewardPostProcessor` 分割を着手する
+1. `IdempotencyStore` の非原子的ロックを修正する (C1-1)
+2. `HeavyTradingEnv` の reward telemetry 不整合を修正する (C1-2)
+3. `behavior_optimization` / `reward_settings` / `behavioral_penalty` の SSOT を 1 系統に整理する (C3-1/C3-2)
+4. `tests/conftest.py` の import 例外握り潰しを縮小する (C5-1)
+5. `RewardCalculator` の `RewardPipeline` / `RewardStrategy` / `RewardPostProcessor` 分割を着手する (C6-1)
 
 上記 1-3 は、収益性・安全性・再現性に直接効くため、設計改善より先に処置すべきです。

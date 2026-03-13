@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-13 (408# F-Series + Blind Spot Fixes + Dead Code Analysis)
+> 最終更新: 2026-03-13 (409# Broad Discovery Scan + C1/C3/H3 修正)
 
 ---
 
@@ -402,6 +402,7 @@
 | 406 | rev | [406_selfreview_400_405_deep_dive.md](406_selfreview_400_405_deep_dive.md) | セルフレビュー: 400#–405# 深堀り分析 — session037ゴーストファイル問題発見, CHANGELOG上書き修正, 未コミット成果物整理 |
 | 407 | fix/perf | [407_phg_fix_ghost_file_cleanup.md](407_phg_fix_ghost_file_cleanup.md) | Ghost File Cleanup: 71ファイル再追跡, デッドコード11ファイル削除, S4タプルバグ修正, P1設定キャッシュ, P3二重GC統合, 11新規テスト |
 | 408 | rpt/fix | [408_phg_rpt_dead_code_analysis.md](408_phg_rpt_dead_code_analysis.md) | F6 OOS best-checkpoint実装 + F4デフォルト統一 + B1-B5盲点修正 + Codexデッドコード調査 (RewardCalculator 2252行/50メソッド God Object 分割提案) |
+| 409 | rpt/fix | [409_phg_rpt_broad_discovery_scan.md](409_phg_rpt_broad_discovery_scan.md) | 広域課題スキャン (6カテゴリ24項目) + C1 StatisticsCalculator maxlen + C3 例外ログ追加 + H3 ゼロ除算ガード (11テスト) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

@@ -587,7 +587,10 @@ class RewardCalculator:
                     arr, maxlen=maxlen
                 )
         except Exception:
-            pass
+            # 409# C3: Log sync failures instead of silently passing
+            logging.getLogger(__name__).warning(
+                "_record_action: deque/count sync failed", exc_info=True
+            )
 
         logging.getLogger(__name__).debug(f"_record_action: before record: action={action}, _action_counts={self._action_counts}")
         self.behavioral_penalty_calculator.record_action(action)
@@ -1176,6 +1179,8 @@ class RewardCalculator:
                 self.behavioral_penalty_calculator.calculate_skewness_penalty()
             )
         except Exception:
+            # 409# C3: Log reward component failures
+            self.logger.warning("skewness_penalty calculation failed, using 0.0", exc_info=True)
             skew_penalty = 0.0
         base_reward += skew_penalty
         self._last_reward_components["skew_penalty"] = skew_penalty
@@ -1186,6 +1191,7 @@ class RewardCalculator:
                 self.behavioral_penalty_calculator.calculate_balance_shaping(action)
             )
         except Exception:
+            self.logger.warning("balance_shaping calculation failed, using 0.0", exc_info=True)
             balance_shaping = 0.0
         base_reward += balance_shaping
         self._last_reward_components["balance_shaping"] = balance_shaping
@@ -1196,6 +1202,7 @@ class RewardCalculator:
                 self.behavioral_penalty_calculator.calculate_action_entropy_shaping()
             )
         except Exception:
+            self.logger.warning("entropy_shaping calculation failed, using 0.0", exc_info=True)
             entropy_shaping = 0.0
         base_reward += entropy_shaping
         self._last_reward_components["entropy_shaping"] = entropy_shaping

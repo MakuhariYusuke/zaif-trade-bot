@@ -27,12 +27,22 @@ class StatisticsCalculator:
     - Performance analysis
     """
 
-    def __init__(self):
-        """Initialize StatisticsCalculator."""
-        self.reward_history: deque[float] = deque()
-        self.position_history: deque[float] = deque()
-        self.portfolio_value_history: deque[float] = deque()
-        self.action_history: deque[int] = deque()
+    # 409# C1: Match HeavyTradingEnv.DEFAULT_MAX_HISTORY_LENGTH to prevent
+    # unbounded memory growth during long training runs.
+    DEFAULT_MAX_HISTORY = 512
+
+    def __init__(self, max_history: int | None = None):
+        """Initialize StatisticsCalculator.
+
+        Args:
+            max_history: Maximum history length for deques.
+                         Defaults to DEFAULT_MAX_HISTORY (512).
+        """
+        maxlen = max_history if max_history is not None else self.DEFAULT_MAX_HISTORY
+        self.reward_history: deque[float] = deque(maxlen=maxlen)
+        self.position_history: deque[float] = deque(maxlen=maxlen)
+        self.portfolio_value_history: deque[float] = deque(maxlen=maxlen)
+        self.action_history: deque[int] = deque(maxlen=maxlen)
 
     def reset(self) -> None:
         """Reset all statistics."""

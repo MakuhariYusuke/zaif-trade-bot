@@ -169,7 +169,8 @@ class DynamicRewardShaper(IDynamicRewardShaper):
             and len(self.market_regime_detector.price_history) >= 10
         ):
             prices = self.market_regime_detector.price_history[-20:]  # Last 20 prices
-            returns = [prices[i + 1] / prices[i] - 1 for i in range(len(prices) - 1)]
+            # 409# H3: Guard against zero prices to prevent ZeroDivisionError
+            returns = [prices[i + 1] / prices[i] - 1 for i in range(len(prices) - 1) if prices[i] != 0]
             if returns:
                 mean_return = sum(returns) / len(returns)
                 variance = sum((r - mean_return) ** 2 for r in returns) / len(returns)
