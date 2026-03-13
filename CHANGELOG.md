@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 411# Seed 感度の構造的原因分析 + policy_kwargs 実装 (2026-03-14)
+
+### Added
+- **411# Seed感度構造分析レポート**: 5箇所の乱数注入点マッピング (R1-R5)、過パラメータ化10.8x定量化、M1-M5構造的対策提案
+- **policy_kwargs 転送機能**: `_create_sac_model()` で YAML 設定から `net_arch` / `optimizer_kwargs` (weight_decay等) を SAC に転送可能に
+- **g2_sac_reward_clean_small.yaml**: [128,128] net_arch + weight_decay=1e-4 + learning_starts=5000 + 8 seeds の実験構成
+
+### Changed
+- **sac_train.py**: `_create_sac_model()` に `policy_kwargs` パラメータ転送ロジック追加 (411# M1/M2)
+
 ## 410# G3 PASS 深堀り分析 + G3.1-stress 正式定義 (2026-03-13)
 
 ### Added

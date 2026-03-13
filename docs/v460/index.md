@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-13 (410# G3 PASS 深堀り分析 + G3.1-stress 正式定義)
+> 最終更新: 2026-03-14 (411# Seed 感度構造分析 + policy_kwargs 実装)
 
 ---
 
@@ -404,6 +404,7 @@
 | 408 | rpt/fix | [408_phg_rpt_dead_code_analysis.md](408_phg_rpt_dead_code_analysis.md) | F6 OOS best-checkpoint実装 + F4デフォルト統一 + B1-B5盲点修正 + Codexデッドコード調査 (RewardCalculator 2252行/50メソッド God Object 分割提案) |
 | 409 | rpt/fix | [409_phg_rpt_broad_discovery_scan.md](409_phg_rpt_broad_discovery_scan.md) | 広域課題スキャン (6カテゴリ24項目) + Codex T1-T16実行 (17項目対処) + G3 reward_profit_corr gate追加 + SAC reward-clean **G2+G3 PASS** (40テスト追加) |
 | 410 | rpt | [410_ph4_rpt_g3_pass_deep_dive.md](410_ph4_rpt_g3_pass_deep_dive.md) | G3 PASS 深堀り分析: seed456 corr=-0.20 根本分析, slippage 耐性推算 (PF≈0.99), 100K検証ポイント定義, G3.1-stress 橋渡し |
+| 411 | rpt/impl | [411_phg_rpt_seed_sensitivity_analysis.md](411_phg_rpt_seed_sensitivity_analysis.md) | Seed感度構造分析: 5乱数注入箇所特定, 過パラメータ化10.8x定量化, M1-M5対策提案, policy_kwargs転送実装, reward-clean-small config作成 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

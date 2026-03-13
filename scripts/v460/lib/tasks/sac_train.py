@@ -378,8 +378,22 @@ def _create_sac_model(
     sac_cfg: ConfigSection,
     seed: int,
 ) -> SACModelProtocol:
-    """SB3 SAC モデルを作成."""
+    """SB3 SAC モデルを作成.
+
+    411# M1/M2: policy_kwargs (net_arch, optimizer_kwargs 等) を YAML から転送可能にした。
+    過パラメータ化 (215K params / 20K data = 10.8x) による seed 感度を構造的に低減する。
+    """
     from stable_baselines3 import SAC
+
+    # 411# M1/M2: policy_kwargs を YAML 設定から取得
+    # 例: policy_kwargs:
+    #       net_arch: [128, 128]
+    #       optimizer_kwargs:
+    #         weight_decay: 1.0e-4
+    raw_policy_kwargs = sac_cfg.get("policy_kwargs", None)
+    policy_kwargs: dict[str, object] | None = (
+        dict(raw_policy_kwargs) if raw_policy_kwargs else None
+    )
 
     # Defaults aligned with unified SACTrainer constants
     model = SAC(
@@ -394,9 +408,14 @@ def _create_sac_model(
         train_freq=sac_cfg.get("train_freq", 1),
         gradient_steps=sac_cfg.get("gradient_steps", 1),
         ent_coef=sac_cfg.get("ent_coef", "auto"),
+        policy_kwargs=policy_kwargs,
         verbose=0,
         seed=seed,
     )
+
+    if policy_kwargs:
+        net_arch = policy_kwargs.get("net_arch", "[default]")
+        logger.info("411# policy_kwargs applied: net_arch=%s", net_arch)
 
     return cast(SACModelProtocol, model)
 
