@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 400# Reward Clean — v459知見フル適用 + scale_adjustment修正
+
+### Fixed
+- **scale_adjustment 100x増幅問題**: `max_position_size=0.01` → `scale_adjustment=100x` → clip[-80,80]で利益方向の勾配信号が破壊されていた
+  - `scale_adjustment_enabled` フラグ追加 (YAML設定で制御可能、デフォルト: true で後方互換保持)
+  - reward_calculator.py: calculate_reward() 内の scale_adjustment ロジックを条件付きに
+
+### Added
+- **g2_sac_reward_clean.yaml**: v459 E設定の知見をフル適用した新実験config
+  - ペナルティ全撤廃 (hold/consistency/balance/position/confidence_penalty = 0)
+  - balance_shaping / entropy_shaping を明示的に無効化 (デフォルトで放置されていた)
+  - reward_clip [-1,1] (v459: +3500%改善の核心)
+  - SAC: ent_coef=0.01固定, gradient_steps=2, batch_size=128, lr=5e-4
+- **400# 分析レポート**: docs/v460/400_reward_clean_analysis.md
+  - vXXXシリーズ全体の報酬関数教訓マトリクス
+  - 3つの構造的欠陥の特定と改善設計
+
+### Analysis (vXXXシリーズ横断)
+- v455/v456/v457.2: ペナルティ積層は3回失敗 — 「罰を避ける」学習 ≠ 利益最大化
+- v459 B→C: hold_penalty=0 + clip[-1,1] → **+3,500%改善** 🥇
+- v459 D→E: ent_coef=0.01固定 + gradient_steps=2 → **+295%改善** 🥈
+- balance_shaping(value=0.5) がデフォルト有効で放置 → PnL信号を汚染
+
 ## Session 039 379# fill_test Crash Investigation + Watchdog Bug Fix (2026-03-12)
 
 ### Fixed
