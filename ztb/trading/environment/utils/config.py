@@ -5,7 +5,7 @@ This module contains configuration classes for the Heavy Trading Environment.
 """
 
 import dataclasses
-from typing import Any
+from typing import Any, get_args, get_origin
 
 from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD, SAC_CONTINUOUS_THRESHOLD_NEG
 from ztb.trading.environment.utils.domain_randomizer import DomainRandomizationConfig
@@ -34,6 +34,24 @@ from ztb.training.config.ppo_config import (
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
+
+
+def _coerce_reward_setting_value(field_type: Any, value: Any) -> Any:
+    """Coerce a config value to the declared RewardSettings field type."""
+    origin = get_origin(field_type)
+    if origin is not None:
+        args = [arg for arg in get_args(field_type) if arg is not type(None)]
+        if args:
+            return _coerce_reward_setting_value(args[0], value)
+    if field_type is bool:
+        return EnvironmentConfig._as_bool(value)
+    if field_type is int:
+        return int(value)
+    if field_type is float:
+        return float(value)
+    if field_type is str:
+        return str(value)
+    return value
 
 @dataclasses.dataclass
 class RewardSettings:
@@ -436,37 +454,21 @@ class EnvironmentConfig:
             instance.behavior_optimization = behavior_opt
             if not instance.reward_settings:
                 instance.reward_settings = RewardSettings()
-            # Map behavior_optimization keys to reward_settings
             if isinstance(instance.reward_settings, RewardSettings):
-                if "action_balance_target" in behavior_opt:
-                    instance.reward_settings.action_balance_target = float(
-                        behavior_opt["action_balance_target"]
+                reward_setting_fields = {
+                    field.name: field.type
+                    for field in dataclasses.fields(RewardSettings)
+                }
+                for rs_key, rs_value in behavior_opt.items():
+                    if rs_key not in reward_setting_fields:
+                        logger.warning(
+                            "Unknown behavior_optimization key ignored: %s", rs_key
+                        )
+                        continue
+                    coerced_value = _coerce_reward_setting_value(
+                        reward_setting_fields[rs_key], rs_value
                     )
-                if "balance_penalty" in behavior_opt:
-                    instance.reward_settings.balance_penalty = float(
-                        behavior_opt["balance_penalty"]
-                    )
-                if "entropy_regularization" in behavior_opt:
-                    instance.reward_settings.entropy_regularization = float(
-                        behavior_opt["entropy_regularization"]
-                    )
-                if "action_smoothing" in behavior_opt:
-                    instance.reward_settings.action_smoothing = float(
-                        behavior_opt["action_smoothing"]
-                    )
-                if "consistency_penalty" in behavior_opt:
-                    instance.reward_settings.consistency_penalty = float(
-                        behavior_opt["consistency_penalty"]
-                    )
-                if "redundant_trade_penalty" in behavior_opt:
-                    instance.reward_settings.redundant_trade_penalty = float(
-                        behavior_opt["redundant_trade_penalty"]
-                    )
-                # 401# F3: balance_penalty_tolerance was silently ignored
-                if "balance_penalty_tolerance" in behavior_opt:
-                    instance.reward_settings.balance_penalty_tolerance = float(
-                        behavior_opt["balance_penalty_tolerance"]
-                    )
+                    setattr(instance.reward_settings, rs_key, coerced_value)
 
         # Update fields from config_dict
         bool_fields = {

@@ -15,21 +15,33 @@ class HealthMonitor:
         self._cleanup_counter = 0
         self._cleanup_interval = 100
         self._last_health_check = time.time()
+        try:
+            import psutil  # type: ignore[import-untyped]
+        except ImportError:
+            self._psutil = None
+            self._process = None
+        else:
+            self._psutil = psutil
+            self._process = psutil.Process()
 
     def get_health_status(self) -> dict[str, Any]:
         """Get comprehensive health status."""
-        import psutil  # type: ignore[import-untyped]
+        if self._psutil is None or self._process is None:
+            return {
+                "status": "degraded",
+                "error": "psutil unavailable",
+                "timestamp": time.time(),
+            }
 
         try:
             # System resources
-            cpu_percent = psutil.cpu_percent(interval=1)
-            memory = psutil.virtual_memory()
-            disk = psutil.disk_usage("/")
+            cpu_percent = self._psutil.cpu_percent(interval=None)
+            memory = self._psutil.virtual_memory()
+            disk = self._psutil.disk_usage("/")
 
             # Process info
-            process = psutil.Process()
-            process_memory = process.memory_info()
-            process_cpu = process.cpu_percent()
+            process_memory = self._process.memory_info()
+            process_cpu = self._process.cpu_percent(interval=None)
 
             return {
                 "status": "healthy",
@@ -46,7 +58,7 @@ class HealthMonitor:
                     "cpu_percent": process_cpu,
                     "memory_rss_mb": process_memory.rss / (1024**2),
                     "memory_vms_mb": process_memory.vms / (1024**2),
-                    "threads": process.num_threads(),
+                    "threads": self._process.num_threads(),
                 },
                 "uptime": time.time() - self._last_health_check,
             }

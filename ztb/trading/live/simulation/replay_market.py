@@ -83,7 +83,7 @@ class ReplayMarket(MarketDataSource):
 
     def get_progress(self) -> float:
         """Get replay progress (0.0 to 1.0)."""
-        if self._data is None:
+        if self._data is None or len(self._data) == 0:
             return 0.0
         return min(1.0, self._current_index / len(self._data))
 

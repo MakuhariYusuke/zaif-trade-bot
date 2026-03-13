@@ -402,7 +402,7 @@
 | 406 | rev | [406_selfreview_400_405_deep_dive.md](406_selfreview_400_405_deep_dive.md) | セルフレビュー: 400#–405# 深堀り分析 — session037ゴーストファイル問題発見, CHANGELOG上書き修正, 未コミット成果物整理 |
 | 407 | fix/perf | [407_phg_fix_ghost_file_cleanup.md](407_phg_fix_ghost_file_cleanup.md) | Ghost File Cleanup: 71ファイル再追跡, デッドコード11ファイル削除, S4タプルバグ修正, P1設定キャッシュ, P3二重GC統合, 11新規テスト |
 | 408 | rpt/fix | [408_phg_rpt_dead_code_analysis.md](408_phg_rpt_dead_code_analysis.md) | F6 OOS best-checkpoint実装 + F4デフォルト統一 + B1-B5盲点修正 + Codexデッドコード調査 (RewardCalculator 2252行/50メソッド God Object 分割提案) |
-| 409 | rpt/fix | [409_phg_rpt_broad_discovery_scan.md](409_phg_rpt_broad_discovery_scan.md) | 広域課題スキャン (6カテゴリ24項目) + C1 StatisticsCalculator maxlen + C3 例外ログ追加 + H3 ゼロ除算ガード (11テスト) |
+| 409 | rpt/fix | [409_phg_rpt_broad_discovery_scan.md](409_phg_rpt_broad_discovery_scan.md) | 広域課題スキャン (6カテゴリ24項目) + Codex T1-T16実行 (17項目対処) + G3 reward_profit_corr gate追加 + SAC reward-clean **G2+G3 PASS** (40テスト追加) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
@@ -508,25 +508,29 @@ NNN_phX_TYPE_description.md
 2. ~~**G1.1-exec gate 判定**~~: ✅ PASS (gate_judgment.py)
 3. ~~**Holm-Bonferroni 補正**~~: ✅ 122# B2 で g1_2_full_judgment に実装済み
 4. ~~**G2 SAC 4-seed 訓練**~~: ✅ **PASS** — reward-tuned (γ=0.95, E4=-3.5% 緩和) で達成 (386#/387#)
-5. **G3 PnL Monte Carlo**: ⏳ 次ゲート — データ蓄積・G3 gate 設計待ち
+5. ~~**G3 PnL Monte Carlo**~~: ✅ **PASS** — reward-clean (400#) で G3 全条件クリア (409#, PF=1.145, Sharpe=5.70, MaxDD=0.26%)
+6. **100K 拡大訓練**: ⏳ reward-clean 20K G3 PASS → 本番規模 100K × 4 seeds で再検証
+7. **G3.1 stress 条件**: slippage 1tick, maker miss penalty の感度分析 (392# P2-A)
 
 ### 高優先 (収益性直結)
 
-6. **SkipGate 再訓練/見直し**: データ 500 到達時に preorder features で再訓練 (097#/095# M1)
-7. **spread_adaptive AB テスト**: narrow_spread_bps 探索 (093#/092#)
-8. **Volatility Guard**: 107# Phase 2 提案の動的ゲーティング
+8. **SkipGate 再訓練/見直し**: データ 500 到達時に preorder features で再訓練 (097#/095# M1)
+9. **spread_adaptive AB テスト**: narrow_spread_bps 探索 (093#/092#)
+10. **Volatility Guard**: 107# Phase 2 提案の動的ゲーティング
+11. **SAC sidecar 起動**: Phase 3.1 scheduler 初回実行 → sidecar_signal.json 生成 (377#)
 
 ### 中期 (ph5 本番前に必須)
 
-9. **013# D-1**: `OrderManager.execute_trade()` — 実取引パス実装
-10. **013# D-3**: `post_only` 対応 — maker 保証
-11. **013# C-4**: `asyncio.to_thread` 残 5 メソッド
-12. **Tier-2/3 統合**: PnL Monte Carlo, RiskRuleEngine, Reconciliation (113#)
+12. **013# D-1**: `OrderManager.execute_trade()` — 実取引パス実装
+13. **013# D-3**: `post_only` 対応 — maker 保証
+14. **013# C-4**: `asyncio.to_thread` 残 5 メソッド
+15. **Tier-2/3 統合**: PnL Monte Carlo, RiskRuleEngine, Reconciliation (113#)
 
 ### 低優先 (v461+)
 
-11. **106# R3**: SkipGate 単体テスト拡充
-12. **106# R5**: lib → ztb 移動 (残 4 モジュール)
-13. **106# R6**: utils 70+ ファイル分割
-14. **106# R7**: config/ vs configs/ 重複ディレクトリ整理
-15. **109# DUP3**: UnifiedTrainer God Object (2835行)
+16. **106# R3**: SkipGate 単体テスト拡充
+17. **106# R5**: lib → ztb 移動 (残 4 モジュール)
+18. **106# R6**: utils 70+ ファイル分割
+19. **106# R7**: config/ vs configs/ 重複ディレクトリ整理
+20. **109# DUP3**: UnifiedTrainer God Object (2835行)
+21. **408# RewardCalculator 分割**: God Object 2252行 → RewardSettingsAccessor / StageRouter / PostProcessor 段階分割

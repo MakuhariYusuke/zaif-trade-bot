@@ -76,6 +76,8 @@ g3_pnl:
   max_drawdown: 0.15
   min_sharpe_annual: 0.8
   gross_gt_fee: true
+  # 392# P0-3: reward-profit alignment — median corr(reward, PnL) > 0
+  min_reward_profit_corr_median: 0.0
 
 g4_live:
   min_paper_days: 7

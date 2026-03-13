@@ -325,8 +325,7 @@ def _start_retrain_scheduler(
                     f"[126#] retrain_scheduler started (PID {retrain_proc.pid}), "
                     f"stderr → {retrain_stderr_path}"
                 )
-                time.sleep(10)
-                if retrain_proc.poll() is not None:
+                if not _wait_for_process_start(retrain_proc):
                     logger.error(
                         f"[127#] retrain_scheduler DIED immediately "
                         f"(exit code {retrain_proc.returncode}). "
@@ -340,6 +339,25 @@ def _start_retrain_scheduler(
                     retrain_stderr_fh = None
                 logger.warning(f"[126#] retrain_scheduler start failed: {e}")
     return retrain_proc, retrain_stderr_fh
+
+
+def _wait_for_process_start(
+    process: subprocess.Popen,
+    *,
+    max_wait_sec: float = 10.0,
+    poll_interval_sec: float = 0.5,
+    success_grace_sec: float = 1.0,
+) -> bool:
+    """Return True when process survives a short startup grace period."""
+    waited_sec = 0.0
+    while waited_sec < max_wait_sec:
+        if process.poll() is not None:
+            return False
+        if waited_sec >= success_grace_sec:
+            return True
+        time.sleep(poll_interval_sec)
+        waited_sec += poll_interval_sec
+    return process.poll() is None
 
 
 def _compute_final_judgment(records: list[FillRecord]) -> dict[str, object]:

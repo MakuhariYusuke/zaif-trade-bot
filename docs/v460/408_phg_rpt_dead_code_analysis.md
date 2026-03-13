@@ -441,3 +441,16 @@ ztb/trading/environment/components/reward/
 - **現行 v460 の本流は `RewardCalculator` + `_calculate_default_reward()` だけ**であり、報酬コードの大半は「現在は到達しない分岐」か「legacy 互換 path」である。
 - 死コードそのものもあるが、より大きい問題は **proxy・legacy・policy・support が同一 package に混在している構造崩壊**。
 - まずは `RewardCalculator` の self-test / accessor / post-process / forced-balance helper の切り出しを行い、その後に `reward/` と `rewards/` の統合へ進むのが最も低リスク。
+
+## Codex 修正済み項目
+
+| タスク | 修正内容 | 主対象 |
+|---|---|---|
+| T11 | dead file を archive へ移動し live export から `SimplifiedRewardCalculator` を除去 | `components/calculators/simplified_reward_calculator.py`, `components/reward/metrics.py`, `bridge.py`, `components/__init__.py`, `components/calculators/__init__.py` |
+| T12 | `RewardCalculator.test_reward_calculation()` を本番コードから削除し、外部 regression test へ移動 | `components/calculators/reward_calculator.py`, `tests/unit/v460/test_codex_408_409_fixes.py` |
+| T13 | `get_current_regime()` / `reset_episode_state()` に `DeprecationWarning` を追加 | `components/calculators/reward_calculator.py` |
+| T14 | forced-balance penalty/bonus mapping を `ForcedBalanceReward` static helper に一本化 | `components/rewards/forced_balance.py`, `components/calculators/reward_calculator.py` |
+
+補足:
+- `scripts/testing/test_simplified_reward_calculator.py` も cascade で dead reference と判定し `archived/scripts/testing/` へ退避した。
+- 回帰テストは `tests/unit/v460/test_codex_408_409_fixes.py` に集約した。

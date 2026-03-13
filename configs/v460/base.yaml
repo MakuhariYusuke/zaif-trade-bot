@@ -51,12 +51,14 @@ xgboost:
   colsample_bytree: 0.8
 
 # ---- SAC (G2 以降) ----
+# NOTE: 実験YAML の sac_hyperparameters セクションが優先される。
+# 以下は将来のデフォルト値参照用。
 sac:
   total_steps: 50000
   seeds: [42, 123, 456, 789]
   batch_size: 256
   lr: 0.0003
-  gamma: 0.99
+  gamma: 0.99  # 385# P1-2: 実験YAML側で0.80/0.95を明示指定
   tau: 0.005
 
 # ---- 結果出力 ----

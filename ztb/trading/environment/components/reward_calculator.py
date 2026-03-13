@@ -7,11 +7,8 @@ This shim re-exports the main classes to maintain backward compatibility.
 from ztb.trading.environment.components.calculators.reward_calculator import (
     RewardCalculator,
 )
-from ztb.trading.environment.components.calculators.simplified_reward_calculator import (
-    SimplifiedRewardCalculator,
-)
 from ztb.trading.environment.components.calculators.v457_reward_calculator import (
     V457RewardCalculator,
 )
 
-__all__ = ["RewardCalculator", "SimplifiedRewardCalculator", "V457RewardCalculator"]
+__all__ = ["RewardCalculator", "V457RewardCalculator"]

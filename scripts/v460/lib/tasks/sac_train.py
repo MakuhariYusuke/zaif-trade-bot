@@ -329,6 +329,20 @@ def _build_env_info(
     }
 
 
+def _validate_oos_eval_requirements(
+    oos_enabled: bool,
+    oos_eval_env: TrainingEnvProtocol | None,
+    best_model_path: Path | None,
+) -> None:
+    """Validate OOS evaluation prerequisites before checkpoint scoring."""
+    if not oos_enabled:
+        return
+    if oos_eval_env is None:
+        raise ValueError("OOS evaluation enabled but oos_eval_env is None")
+    if best_model_path is None:
+        raise ValueError("OOS evaluation enabled but best_model_path is None")
+
+
 def _create_training_env(
     df: pd.DataFrame, cfg: ConfigSection
 ) -> tuple[TrainingEnvProtocol, dict[str, int | str | bool]]:
@@ -443,8 +457,11 @@ def _train_with_checkpoints(
 
         # 408# F6: OOS evaluation + best-model save
         if oos_enabled:
-            assert oos_eval_env is not None  # type narrowing
-            assert best_model_path is not None
+            _validate_oos_eval_requirements(
+                oos_enabled=oos_enabled,
+                oos_eval_env=oos_eval_env,
+                best_model_path=best_model_path,
+            )
             oos_roi = _checkpoint_eval_roi(model, oos_eval_env)
             metrics["oos_roi"] = oos_roi
             if oos_roi > best_oos_roi:

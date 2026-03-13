@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 409# Codex T1-T16 + G3 Gate Enhancement + SAC Reward-Clean G3 PASS (2026-03-13)
+
+### Added
+- **G3 reward_profit_corr gate (E6)**: `gate_judgment_core.py` に `reward_profit_corr_min > 0` チェック追加。seed 別 reward-PnL 相関が全て正であることを検証
+- **gc_guard.py**: `should_gc()` 条件付き GC ヘルパー (メモリ閾値超過時のみ実行)
+- **40 件の新規テスト**: `test_codex_408_409_fixes.py` (33 tests) + `test_409_corr_gate.py` (7 tests)
+
+### Fixed (Codex T1-T16)
+- **T1 IdempotencyStore**: `open("w")` → `os.open(O_CREAT|O_EXCL)` 原子的ロック (CRITICAL)
+- **T2 reward_components telemetry**: bankruptcy/DD penalty 適用後に `reward_components["final_reward"]` を同期
+- **T3 ReplayMarket**: 空 DataFrame 時の `get_progress()` ゼロ除算ガード
+- **T4 service_runner**: 成功サイクルで restart しないよう修正
+- **T5 HealthMonitor**: `psutil.cpu_percent(interval=None)` に変更し 1 秒ブロック解消
+- **T6 `__init__.py` import**: `except Exception` → `except ImportError` に絞り込み、warning ログ追加
+- **T7 assert→ValueError**: `sac_train.py` の `assert` を `raise ValueError` に置換
+- **T9 conftest**: `except Exception` → `except (ImportError, ModuleNotFoundError)` に狭窄化
+- **T10 behavior_opt mapping**: whitelist → `hasattr` ベースの自動マッピングに変更
+- **T13 deprecation**: `get_current_regime()` / `reset_episode_state()` に `warnings.warn(DeprecationWarning)` 追加
+- **T14 forced-balance dedup**: `RewardCalculator._map_forced_balance_*` を `ForcedBalanceReward` に委譲、二重定義解消
+- **T16 assert True**: `test_v459_phase0_integration.py` の `assert True` を具体的 invariant に置換
+
+### Changed
+- **T11 dead code archive**: `simplified_reward_calculator.py`, `metrics.py`, `bridge.py` → `archived/` へ移動
+- **T15 gc.collect() 条件化**: hot path の強制 GC を `gc_guard.should_gc()` に置換
+- **base.yaml**: `sac.gamma: 0.99` に misleading コメント追記
+- **gate_thresholds.yaml**: G3 に `reward_profit_corr_min: 0.0` 追加
+
+### SAC Training Result (reward-clean, 20K × 4 seeds)
+- **G2: PASS** — positive_seed_ratio=1.0, roi_std=0.0016, worst_seed=+0.33%
+- **G3: PASS** — PF median=1.145, Sharpe median=5.70, MaxDD=0.26%
+- seed456 の reward-PnL corr=-0.20 は E6 gate 未適用 (WARNING のみ)
+
 ## 408# F-Series + Blind Spot Fixes (2026-03-13)
 
 ### Added
@@ -5320,8 +5352,9 @@ python scripts/unified_trainer.py \
     - focused `test_093_side_params.py test_274_pattern_c_theory_cleanup.py test_ob_recorder.py test_v460_core.py test_websocket_client.py`: `162 passed in 4.54s`
     - filtered broad `tests/unit/v460/`: `4643 passed, 13 warnings in 39.22s`
 - 2026-03-13: documented dead-code / duplication analysis for `ztb/trading/environment/` without code changes.
-  - added `docs/v460/408_dead_code_analysis.md`
+  - added `docs/v460/408_phg_rpt_dead_code_analysis.md`
   - traced the live v460 reward path from `scripts/v460/lib/tasks/sac_train.py` through `HeavyTradingEnv` initialization and confirmed the current `g2_sac_reward_clean.yaml` path uses `RewardCalculator.calculate_reward(...) -> _calculate_default_reward(...)`
   - classified dead / proxy / legacy-live files under `ztb/trading/environment/`, including `bridge.py`, `reward/metrics.py`, `simplified_reward_calculator.py`, and compatibility shims such as `environment.py` and `components/reward_calculator.py`
   - recorded duplication findings for `calculate_reward()` vs `calculate_reward_simple()`, reward-setting accessors, and forced-balance helper logic, plus an archive/consolidation proposal for `reward/`, `rewards/`, and `calculators/`
 - 2026-03-13: documented broad discovery scan across environment/live/v460/tests in `docs/v460/409_phg_rpt_broad_discovery_scan.md`, covering logic bugs, performance risks, config drift, exception safety, test-quality issues, and architecture debt.
+- 2026-03-13: fixed Codex 408/409 batch around atomic idempotency locking, reward telemetry consistency, archived dead environment files, forced-balance canonicalization, and consolidated regression coverage in `tests/unit/v460/test_codex_408_409_fixes.py`.

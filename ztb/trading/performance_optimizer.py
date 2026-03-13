@@ -9,6 +9,7 @@ import cProfile
 import gc
 import io
 import multiprocessing as mp
+import os
 import pstats
 import threading
 import time
@@ -494,14 +495,15 @@ class MemoryOptimizer(OptimizationComponentBase):
         thread_count = 0
 
         if process is not None:
-            try:
-                open_files_obj = process.open_files()
-            except Exception:
-                open_files_obj = []
-            try:
-                connections_obj = process.connections()
-            except Exception:
-                connections_obj = []
+            if os.name != "nt":
+                try:
+                    open_files_obj = process.open_files()
+                except Exception:
+                    open_files_obj = []
+                try:
+                    connections_obj = process.connections()
+                except Exception:
+                    connections_obj = []
             try:
                 meminfo = process.memory_info()
                 rss_gb = meminfo.rss / (1024**3)

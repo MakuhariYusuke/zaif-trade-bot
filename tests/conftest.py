@@ -20,7 +20,7 @@ try:
         np_major = (
             int(_np.__version__.split(".")[0]) if hasattr(_np, "__version__") else 0
         )
-    except Exception:
+    except (ImportError, ModuleNotFoundError):
         np_major = 0
 
     if np_major >= 2:
@@ -30,7 +30,7 @@ try:
         torch = None
     else:
         import torch
-except Exception:
+except (ImportError, ModuleNotFoundError):
     # Keep going; tests that require torch will explicitly mark/skip as needed
     torch = None  # type: ignore
 
@@ -39,7 +39,7 @@ try:
     from ztb.utils.path_utils import get_project_root
 
     project_root = get_project_root()
-except Exception:
+except (ImportError, ModuleNotFoundError):
     # Fallback: assume repository root is two levels up from tests/
     project_root = Path(__file__).resolve().parent.parent
 
@@ -49,8 +49,13 @@ try:
     from ztb.support.sb3_compat import ensure_sb3_compat
 
     ensure_sb3_compat()
-except Exception:
-    pass
+except (ImportError, ModuleNotFoundError):
+    import logging
+
+    logging.getLogger(__name__).debug(
+        "ensure_sb3_compat unavailable during collection",
+        exc_info=True,
+    )
 
 # Ensure project root is on sys.path for test collection
 proj_root_str = str(project_root)

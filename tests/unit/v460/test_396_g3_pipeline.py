@@ -95,12 +95,12 @@ class TestComputeG3Metrics:
         assert result["sharpe_annual"] == 0.0
 
     def test_per_trade_averages(self) -> None:
-        """取引あたり平均: 非ゼロ PnL の |p| 平均."""
+        """取引あたり平均: 非ゼロ PnL の符号付き平均."""
         # PnL: +10, 0, -5, +3, 0 → trade_pnls = [10, -5, 3]
-        # avg_gross = (10+5+3)/3 = 6.0
+        # avg_gross = (10-5+3)/3 = 8/3
         pnl = [10.0, 0.0, -5.0, 3.0, 0.0]
         result = _compute_g3_metrics([100.0] * 5, pnl, [0.0] * 5, 3)
-        assert result["avg_gross_per_trade"] == pytest.approx(6.0)
+        assert result["avg_gross_per_trade"] == pytest.approx(8.0 / 3.0)
         assert result["avg_fee_per_trade"] == 0.0
 
     def test_per_trade_no_trades(self) -> None:
@@ -151,6 +151,7 @@ def _make_seed_metrics(
     max_dd: float = 0.08,
     gross: float = 0.005,
     fee: float = 0.002,
+    reward_profit_corr: float = 0.5,
 ) -> list[dict]:
     """seed_metrics テストデータ生成."""
     rng = np.random.RandomState(42)
@@ -162,6 +163,7 @@ def _make_seed_metrics(
             "max_drawdown": rng.uniform(max_dd * 0.5, max_dd),
             "avg_gross_per_trade": gross,
             "avg_fee_per_trade": fee,
+            "reward_profit_corr": rng.normal(reward_profit_corr, 0.05),
         }
         for i in range(n_seeds)
     ]
@@ -244,7 +246,7 @@ class TestEvaluateG3FromResults:
         judgment = evaluate_g3_checks(metrics, _g3_thresholds())
         expected_checks = {
             "pf_median", "pf_worst", "gross_gt_fee",
-            "max_drawdown", "sharpe_annual",
+            "max_drawdown", "sharpe_annual", "reward_profit_corr_median",
         }
         assert set(judgment["checks"].keys()) == expected_checks
         for check in judgment["checks"].values():

@@ -267,7 +267,7 @@ class TestPhase0Integration:
         assert first_trade[trade_type_key] == "long_open"
         
         # 全コンポーネントが正常動作
-        assert True
+        assert len(reporter.trade_history) == 1
 
 
 class TestDataLeakagePrevention:

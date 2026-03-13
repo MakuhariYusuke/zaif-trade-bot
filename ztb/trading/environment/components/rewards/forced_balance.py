@@ -82,38 +82,21 @@ class ForcedBalanceReward(RewardComponent):
 
         return super()._get_setting(context, key, default, cast=cast)
 
-    def _map_forced_balance_penalty(
-        self, context: RewardContext, deviation: float, severity: float
+    @staticmethod
+    def _map_forced_balance_penalty_static(
+        deviation: float,
+        severity: float,
+        penalty_scale: float,
+        thresh_small: float,
+        thresh_medium: float,
+        thresh_large: float,
+        penalty_small: float,
+        penalty_medium: float,
+        penalty_large: float,
+        penalty_very_large: float,
     ) -> float:
         """Convert deviation above target into a scaled penalty value."""
-        penalty_scale = self._get_setting_float(
-            context, "forced_balance.penalty.scale", 1.0
-        )
         severity_multiplier = 1.0 + 0.5 * min(1.0, severity)
-
-        thresh_small = self._get_setting_float(
-            context, "forced_balance.penalty.threshold_small", 0.05
-        )
-        thresh_medium = self._get_setting_float(
-            context, "forced_balance.penalty.threshold_medium", 0.1
-        )
-        thresh_large = self._get_setting_float(
-            context, "forced_balance.penalty.threshold_large", 0.2
-        )
-
-        penalty_small = self._get_setting_float(
-            context, "forced_balance.penalty.value_small_deviation", 1.0
-        )
-        penalty_medium = self._get_setting_float(
-            context, "forced_balance.penalty.value_medium_deviation", 2.5
-        )
-        penalty_large = self._get_setting_float(
-            context, "forced_balance.penalty.value_large_deviation", 5.0
-        )
-        penalty_very_large = self._get_setting_float(
-            context, "forced_balance.penalty.value_very_large_deviation", 10.0
-        )
-
         if deviation < thresh_small:
             base_penalty = penalty_small
         elif deviation < thresh_medium:
@@ -122,43 +105,86 @@ class ForcedBalanceReward(RewardComponent):
             base_penalty = penalty_large
         else:
             base_penalty = penalty_very_large
-        # Scale penalty by deviation to be sensitive to the magnitude of imbalance
-        return base_penalty * (1.0 + deviation) * penalty_scale * severity_multiplier
+        return base_penalty * penalty_scale * severity_multiplier
 
-    def _map_forced_balance_bonus(
-        self, context: RewardContext, deviation: float, severity: float
+    @staticmethod
+    def _map_forced_balance_bonus_static(
+        deviation: float,
+        severity: float,
+        bonus_scale: float,
+        thresh_small: float,
+        thresh_medium: float,
+        bonus_small: float,
+        bonus_medium: float,
+        bonus_large: float,
     ) -> float:
         """Convert deviation below target into a bonus encouraging corrective actions."""
-        bonus_scale = self._get_setting_float(
-            context, "forced_balance.bonus.scale", 1.0
-        )
         severity_multiplier = 1.0 + 0.5 * min(1.0, severity)
-
-        thresh_small = self._get_setting_float(
-            context, "forced_balance.bonus.threshold_small", 0.05
-        )
-        thresh_medium = self._get_setting_float(
-            context, "forced_balance.bonus.threshold_medium", 0.1
-        )
-
-        bonus_small = self._get_setting_float(
-            context, "forced_balance.bonus.value_small_deviation", 6.0
-        )
-        bonus_medium = self._get_setting_float(
-            context, "forced_balance.bonus.value_medium_deviation", 12.0
-        )
-        bonus_large = self._get_setting_float(
-            context, "forced_balance.bonus.value_large_deviation", 20.0
-        )
-
         if deviation < thresh_small:
             base_bonus = bonus_small
         elif deviation < thresh_medium:
             base_bonus = bonus_medium
         else:
             base_bonus = bonus_large
-        # Scale bonus by deviation magnitude for more continuous responsiveness
-        return base_bonus * (1.0 + deviation) * bonus_scale * severity_multiplier
+        return base_bonus * bonus_scale * severity_multiplier
+
+    def _map_forced_balance_penalty(
+        self, context: RewardContext, deviation: float, severity: float
+    ) -> float:
+        return self._map_forced_balance_penalty_static(
+            deviation=deviation,
+            severity=severity,
+            penalty_scale=self._get_setting_float(
+                context, "forced_balance.penalty.scale", 1.0
+            ),
+            thresh_small=self._get_setting_float(
+                context, "forced_balance.penalty.threshold_small", 0.05
+            ),
+            thresh_medium=self._get_setting_float(
+                context, "forced_balance.penalty.threshold_medium", 0.1
+            ),
+            thresh_large=self._get_setting_float(
+                context, "forced_balance.penalty.threshold_large", 0.2
+            ),
+            penalty_small=self._get_setting_float(
+                context, "forced_balance.penalty.value_small_deviation", 1.0
+            ),
+            penalty_medium=self._get_setting_float(
+                context, "forced_balance.penalty.value_medium_deviation", 2.5
+            ),
+            penalty_large=self._get_setting_float(
+                context, "forced_balance.penalty.value_large_deviation", 5.0
+            ),
+            penalty_very_large=self._get_setting_float(
+                context, "forced_balance.penalty.value_very_large_deviation", 10.0
+            ),
+        )
+
+    def _map_forced_balance_bonus(
+        self, context: RewardContext, deviation: float, severity: float
+    ) -> float:
+        return self._map_forced_balance_bonus_static(
+            deviation=deviation,
+            severity=severity,
+            bonus_scale=self._get_setting_float(
+                context, "forced_balance.bonus.scale", 1.0
+            ),
+            thresh_small=self._get_setting_float(
+                context, "forced_balance.bonus.threshold_small", 0.05
+            ),
+            thresh_medium=self._get_setting_float(
+                context, "forced_balance.bonus.threshold_medium", 0.1
+            ),
+            bonus_small=self._get_setting_float(
+                context, "forced_balance.bonus.value_small_deviation", 6.0
+            ),
+            bonus_medium=self._get_setting_float(
+                context, "forced_balance.bonus.value_medium_deviation", 12.0
+            ),
+            bonus_large=self._get_setting_float(
+                context, "forced_balance.bonus.value_large_deviation", 20.0
+            ),
+        )
 
     def calculate(self, context: RewardContext) -> float:
         self.last_reward_details = {}

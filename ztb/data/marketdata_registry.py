@@ -14,7 +14,6 @@ import pandas as pd
 
 from ztb.data.coin_gecko_stream import CoinGeckoStream
 from ztb.data.streaming_pipeline import StreamingPipeline
-from ztb.trading.live.replay_market import ReplayMarket
 from ztb.utils.logging_utils import get_logger
 
 class MarketDataSourceConfig(TypedDict, total=False):
@@ -92,7 +91,7 @@ class ReplayMarketDataFactory(MarketDataSourceFactory):
             raise ValueError("data_path is required")
         # For now, return a simple replay source
         # This would be expanded to support actual replay functionality
-
+        from ztb.trading.live.simulation.replay_market import ReplayMarket
         replay = ReplayMarket(str(data_path), **kwargs)
         return cast(MarketDataSource, replay)
 

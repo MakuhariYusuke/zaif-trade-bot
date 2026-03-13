@@ -5981,7 +5981,7 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - `ztb/trading/environment/` 配下（`archived/` 除外）の全 `.py` を棚卸しし、実スキャン値として `57 files / 17,764 LOC` を集計
 - `configs/v460/experiments/g2_sac_reward_clean.yaml`、`scripts/v460/lib/tasks/sac_train.py`、`heavy_env/mixins/initialization.py`、`RewardCalculator` を突き合わせて、現行 v460 の live reward path を特定
 - `components/calculators/`、`components/reward/`、`components/rewards/`、`environment/` 直下ファイルの非テスト参照を `rg` で追跡
-- dead / proxy / legacy-live / duplication を整理し、`docs/v460/408_dead_code_analysis.md` に提案を出力
+- dead / proxy / legacy-live / duplication を整理し、`docs/v460/408_phg_rpt_dead_code_analysis.md` に提案を出力
 
 ### 主要な結論
 - 現行 v460 の live path は `RewardCalculator.calculate_reward(...) -> _calculate_default_reward(...)`
@@ -5991,7 +5991,7 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - `reward/` と `rewards/` の 2 系統は責務分割ではなく履歴分裂に近く、`RewardCalculator` 分割と同時に統合すべき
 
 ### 成果物
-- [408_dead_code_analysis.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/408_dead_code_analysis.md)
+- [408_phg_rpt_dead_code_analysis.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/408_phg_rpt_dead_code_analysis.md)
 
 ## 2026-03-13 / Task 409: Broad Discovery Scan
 
@@ -6007,3 +6007,39 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - 最優先は `IdempotencyStore` の非原子的 lock、`HeavyTradingEnv` の reward telemetry 不整合、`EnvironmentConfig.from_dict()` 周辺の SSOT 崩れ
 - live/training 双方で、固定 sleep・強制 GC・broad exception capture が継続的な wall time と障害解析性を悪化させている
 - `RewardCalculator` と `HeavyTradingEnv` は引き続き分割境界を具体化した refactor が必要
+
+## 2026-03-13 / Task 408/409: CRITICAL/HIGH Fix Batch
+
+### 実施内容
+- `IdempotencyStore` の process lock を `O_CREAT | O_EXCL` ベースへ置換し、stale PID 回収と timeout を追加
+- `HeavyTradingEnv` の bankruptcy / drawdown penalty を `reward_components` と同期し、`final_reward` telemetry を追加
+- `ReplayMarket.get_progress()` 空 DataFrame ガード、`TradingService._should_restart(True) -> False`、`HealthMonitor` の non-blocking 化を反映
+- `environment.__init__` の optional import を `ImportError` のみに縮小し、unit test しやすい injectable loader へ整理
+- `sac_train` OOS assert を `ValueError` helper に置換、`fill_test_cli` の fixed wait を startup poll helper 化
+- `tests/conftest.py` 先頭の broad catch を縮小
+- `behavior_optimization` を `RewardSettings` dataclass field 自動マップへ変更
+- dead file を archive へ移動:
+  - `ztb/trading/environment/components/calculators/simplified_reward_calculator.py`
+  - `ztb/trading/environment/components/reward/metrics.py`
+  - `ztb/trading/environment/bridge.py`
+- `RewardCalculator.test_reward_calculation()` を削除し、deprecation warning と forced-balance canonical helper を追加
+- 新規 regression を [test_codex_408_409_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_codex_408_409_fixes.py) に集約
+
+### カスケード発見
+- `gc_guard.py` の import が先行しており、実体ファイルが欠落していたため追加
+- `marketdata_registry.py` の `ReplayMarket` import が path typo + circular import を起こしていたため local import へ変更
+- `scripts/testing/test_simplified_reward_calculator.py` は archived module を参照する dead testing script と判定し `archived/scripts/testing/` へ退避
+- 詳細は [CASCADE_DISCOVERIES.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/CASCADE_DISCOVERIES.md) を参照
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_codex_408_409_fixes.py`
+  - `33 passed in 3.75s`
+- focused regression bundle:
+  - `tests/unit/v460/test_codex_408_409_fixes.py`
+  - `tests/unit/reward/test_reward_calculation.py`
+  - `tests/unit/reward/test_reward_components_fix.py`
+  - `tests/unit/trading/components/test_reward_calculator.py`
+  - `tests/unit/v460/test_385_config_audit.py`
+  - `tests/unit/v460/test_fill_test_cli_diagnostics.py`
+  - `79 passed in 8.12s`

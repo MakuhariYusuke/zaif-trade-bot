@@ -107,6 +107,42 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 _CURRENT_PROCESS = psutil.Process()
 
+
+def _apply_terminal_reward_adjustments(
+    reward: float,
+    *,
+    info: dict[str, object],
+    portfolio_value: float,
+    initial_portfolio_value: float,
+    config: EnvironmentConfig,
+) -> tuple[float, dict[str, float]]:
+    """Apply terminal penalties and return telemetry components for final reward sync."""
+    reward_components: dict[str, float] = {}
+
+    bankruptcy_threshold = getattr(config, "bankruptcy_threshold", 2000.0)
+    if portfolio_value < bankruptcy_threshold:
+        bankruptcy_penalty = getattr(config, "bankruptcy_penalty", 1000.0)
+        bankruptcy_delta = -(bankruptcy_penalty * config.reward_scaling)
+        reward += bankruptcy_delta
+        info["bankruptcy"] = True
+        reward_components["bankruptcy_penalty"] = bankruptcy_delta
+
+    drawdown_penalty_threshold = getattr(config, "drawdown_penalty_threshold", 0.20)
+    if initial_portfolio_value > 0:
+        current_drawdown = 1.0 - (portfolio_value / initial_portfolio_value)
+        if current_drawdown > drawdown_penalty_threshold:
+            drawdown_penalty_factor = getattr(config, "drawdown_penalty_factor", 0.1)
+            excess_drawdown = current_drawdown - drawdown_penalty_threshold
+            drawdown_penalty = (
+                excess_drawdown * drawdown_penalty_factor * config.reward_scaling
+            )
+            reward -= drawdown_penalty
+            info["drawdown_penalty"] = drawdown_penalty
+            reward_components["drawdown_penalty"] = -drawdown_penalty
+
+    reward_components["final_reward"] = reward
+    return reward, reward_components
+
 def deep_merge_dict(base: ObjectMap, update: ObjectMap) -> ObjectMap:
     """Deep merge two dictionaries."""
     result: ObjectMap = base.copy()
@@ -1392,7 +1428,6 @@ class HeavyTradingEnv(
         info = self._get_info(current_regime=current_regime)
         info["effective_action"] = effective_action  # v453: Expose effective action
         reward_components = self.reward_calculator.get_last_reward_components()
-        info.update(reward_components)
         # Add trend signal to info for diagnostics and downstream use
         try:
             if (
@@ -1422,8 +1457,6 @@ class HeavyTradingEnv(
                 ] = self.reward_calculator.curriculum_manager.get_stage_info()
         except Exception:
             self.logger.exception("Failed to append curriculum stage to info")
-        # Store reward_components as a separate key for easy extraction in callbacks
-        info["reward_components"] = reward_components.copy()
         info.update(debug_info)
 
         # Enhanced debug logging for SAC continuous action and reward analysis
@@ -1453,36 +1486,21 @@ class HeavyTradingEnv(
         # terminate the episode to prevent infinite loops of failed trades.
         # Using 2000 JPY as a safe buffer (min trade is ~1000 JPY + fees)
         bankruptcy_threshold = getattr(self.config, "bankruptcy_threshold", 2000.0)
-        if portfolio_value < bankruptcy_threshold:
+        reward, terminal_reward_components = _apply_terminal_reward_adjustments(
+            reward,
+            info=info,
+            portfolio_value=portfolio_value,
+            initial_portfolio_value=self.initial_portfolio_value,
+            config=self.config,
+        )
+        if "bankruptcy_penalty" in terminal_reward_components:
             done = True
-            # Apply severe penalty for bankruptcy
-            bankruptcy_penalty = getattr(self.config, "bankruptcy_penalty", 1000.0)
-            reward -= bankruptcy_penalty * self.config.reward_scaling
-            info["bankruptcy"] = True
             self.logger.warning(
                 f"Episode terminated due to bankruptcy: PV={portfolio_value:.2f} < {bankruptcy_threshold}"
             )
-
-        # Drawdown Penalty
-        # Apply penalty if drawdown exceeds threshold to discourage deep losses before bankruptcy
-        drawdown_penalty_threshold = getattr(
-            self.config, "drawdown_penalty_threshold", 0.20
-        )
-        if self.initial_portfolio_value > 0:
-            current_drawdown = 1.0 - (portfolio_value / self.initial_portfolio_value)
-            if current_drawdown > drawdown_penalty_threshold:
-                drawdown_penalty_factor = getattr(
-                    self.config, "drawdown_penalty_factor", 0.1
-                )
-                # Penalty proportional to excess drawdown
-                excess_drawdown = current_drawdown - drawdown_penalty_threshold
-                drawdown_penalty = (
-                    excess_drawdown
-                    * drawdown_penalty_factor
-                    * self.config.reward_scaling
-                )
-                reward -= drawdown_penalty
-                info["drawdown_penalty"] = drawdown_penalty
+        reward_components.update(terminal_reward_components)
+        info.update(reward_components)
+        info["reward_components"] = reward_components.copy()
 
         next_obs = self._get_observation()
 

@@ -9,6 +9,7 @@ Refactored to follow SOLID principles with component-based architecture.
 
 import inspect
 import logging
+import warnings
 from typing import Sequence
 
 import numpy as np
@@ -194,7 +195,16 @@ class RewardCalculator:
         self._setup_logging()
 
     def get_current_regime(self, current_price: float, step: int) -> str:
-        """Compatibility wrapper around the active market regime detector."""
+        """Compatibility wrapper around the active market regime detector.
+
+        .. deprecated:: 409
+           Use the injected market regime detector directly.
+        """
+        warnings.warn(
+            "RewardCalculator.get_current_regime() is deprecated",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         detector = getattr(self, "market_regime_detector", None)
         if detector is None:
             return "sideways"
@@ -602,73 +612,55 @@ class RewardCalculator:
 
     def _map_forced_balance_penalty(self, deviation: float, severity: float) -> float:
         """Convert deviation above target into a scaled penalty value."""
-        penalty_scale = self.get_setting_float("forced_balance.penalty.scale", 1.0)
-        severity_multiplier = 1.0 + 0.5 * min(1.0, severity)
-
-        # Get deviation thresholds and penalty values from settings with descriptive names
-        thresh_small = self.get_setting_float(
-            "forced_balance.penalty.threshold_small", 0.05
+        return ForcedBalanceReward._map_forced_balance_penalty_static(
+            deviation=deviation,
+            severity=severity,
+            penalty_scale=self.get_setting_float("forced_balance.penalty.scale", 1.0),
+            thresh_small=self.get_setting_float(
+                "forced_balance.penalty.threshold_small", 0.05
+            ),
+            thresh_medium=self.get_setting_float(
+                "forced_balance.penalty.threshold_medium", 0.1
+            ),
+            thresh_large=self.get_setting_float(
+                "forced_balance.penalty.threshold_large", 0.2
+            ),
+            penalty_small=self.get_setting_float(
+                "forced_balance.penalty.value_small_deviation", 1.0
+            ),
+            penalty_medium=self.get_setting_float(
+                "forced_balance.penalty.value_medium_deviation", 2.5
+            ),
+            penalty_large=self.get_setting_float(
+                "forced_balance.penalty.value_large_deviation", 5.0
+            ),
+            penalty_very_large=self.get_setting_float(
+                "forced_balance.penalty.value_very_large_deviation", 10.0
+            ),
         )
-        thresh_medium = self.get_setting_float(
-            "forced_balance.penalty.threshold_medium", 0.1
-        )
-        thresh_large = self.get_setting_float(
-            "forced_balance.penalty.threshold_large", 0.2
-        )
-
-        penalty_small = self.get_setting_float(
-            "forced_balance.penalty.value_small_deviation", 1.0
-        )
-        penalty_medium = self.get_setting_float(
-            "forced_balance.penalty.value_medium_deviation", 2.5
-        )
-        penalty_large = self.get_setting_float(
-            "forced_balance.penalty.value_large_deviation", 5.0
-        )
-        penalty_very_large = self.get_setting_float(
-            "forced_balance.penalty.value_very_large_deviation", 10.0
-        )
-
-        if deviation < thresh_small:
-            base_penalty = penalty_small
-        elif deviation < thresh_medium:
-            base_penalty = penalty_medium
-        elif deviation < thresh_large:
-            base_penalty = penalty_large
-        else:
-            base_penalty = penalty_very_large
-        return base_penalty * penalty_scale * severity_multiplier
 
     def _map_forced_balance_bonus(self, deviation: float, severity: float) -> float:
         """Convert deviation below target into a bonus encouraging corrective actions."""
-        bonus_scale = self.get_setting_float("forced_balance.bonus.scale", 1.0)
-        severity_multiplier = 1.0 + 0.5 * min(1.0, severity)
-
-        # Get deviation thresholds and bonus values from settings with descriptive names
-        thresh_small = self.get_setting_float(
-            "forced_balance.bonus.threshold_small", 0.05
+        return ForcedBalanceReward._map_forced_balance_bonus_static(
+            deviation=deviation,
+            severity=severity,
+            bonus_scale=self.get_setting_float("forced_balance.bonus.scale", 1.0),
+            thresh_small=self.get_setting_float(
+                "forced_balance.bonus.threshold_small", 0.05
+            ),
+            thresh_medium=self.get_setting_float(
+                "forced_balance.bonus.threshold_medium", 0.1
+            ),
+            bonus_small=self.get_setting_float(
+                "forced_balance.bonus.value_small_deviation", 6.0
+            ),
+            bonus_medium=self.get_setting_float(
+                "forced_balance.bonus.value_medium_deviation", 12.0
+            ),
+            bonus_large=self.get_setting_float(
+                "forced_balance.bonus.value_large_deviation", 20.0
+            ),
         )
-        thresh_medium = self.get_setting_float(
-            "forced_balance.bonus.threshold_medium", 0.1
-        )
-
-        bonus_small = self.get_setting_float(
-            "forced_balance.bonus.value_small_deviation", 6.0
-        )
-        bonus_medium = self.get_setting_float(
-            "forced_balance.bonus.value_medium_deviation", 12.0
-        )
-        bonus_large = self.get_setting_float(
-            "forced_balance.bonus.value_large_deviation", 20.0
-        )
-
-        if deviation < thresh_small:
-            base_bonus = bonus_small
-        elif deviation < thresh_medium:
-            base_bonus = bonus_medium
-        else:
-            base_bonus = bonus_large
-        return base_bonus * bonus_scale * severity_multiplier
 
     def reset(self) -> None:
         """Resets the internal state of the calculator for a new episode."""
@@ -708,7 +700,16 @@ class RewardCalculator:
         self._recent_actions = []
 
     def reset_episode_state(self) -> None:
-        """Alias for resetting episode-level state (compatibility with tests)."""
+        """Alias for resetting episode-level state.
+
+        .. deprecated:: 409
+           Use reset() instead.
+        """
+        warnings.warn(
+            "RewardCalculator.reset_episode_state() is deprecated",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.reset()
 
     def get_setting_float(self, key: str, default: float) -> float:
@@ -1950,69 +1951,6 @@ class RewardCalculator:
         if np.sign(pnl) == np.sign(portfolio_value_delta):
             return correlation_bonus_weight * abs(pnl)
         return 0.0
-
-    def test_reward_calculation(self) -> None:
-        """Test reward calculation with sample inputs."""
-        # Sample inputs
-        test_cases = [
-            {
-                "action": ACTION_HOLD,
-                "pnl": 100.0,
-                "position": 0.01,
-                "portfolio_value": 200000.0,
-                "atr": 500.0,
-                "current_price": 5000000.0,
-                "old_position": 0.0,
-                "step": 1,
-                "description": "HOLD with small profit",
-            },
-            {
-                "action": ACTION_BUY,
-                "pnl": 200.0,
-                "position": 0.02,
-                "portfolio_value": 200000.0,
-                "atr": 500.0,
-                "current_price": 5000000.0,
-                "old_position": 0.01,
-                "step": 1,
-                "description": "BUY with profit",
-            },
-            {
-                "action": ACTION_SELL,
-                "pnl": -100.0,
-                "position": 0.0,
-                "portfolio_value": 200000.0,
-                "atr": 500.0,
-                "current_price": 5000000.0,
-                "old_position": 0.02,
-                "step": 1,
-                "description": "SELL with loss",
-            },
-        ]
-
-        self.logger.debug("Testing reward calculation...")
-        for i, case in enumerate(test_cases):
-            reward = self.calculate_reward(
-                action=case["action"],  # type: ignore
-                current_price=case["current_price"],  # type: ignore
-                position=case["position"],  # type: ignore
-                portfolio_value=case["portfolio_value"],  # type: ignore
-                atr=case["atr"],  # type: ignore
-                transaction_cost=10.0,
-                reward_scaling=10.0,  # Scale rewards for testing
-                pnl=case["pnl"],  # type: ignore
-                old_position=case["old_position"],  # type: ignore
-                step=case["step"],  # type: ignore
-                observation=None,
-                reward_history=[],
-                portfolio_value_history=[case["portfolio_value"]] * 30,  # type: ignore  # type: ignore
-            )
-            self.logger.debug(
-                f"Test {i+1}: {case['description']} -> Reward: {reward:.4f}"
-            )
-            self.logger.debug(
-                f"  Components: pnl={case['pnl']:.2f}, position={case['position']:.4f}, atr={case['atr']:.2f}"
-            )
 
     def _calculate_stability_optimized_reward(
         self,

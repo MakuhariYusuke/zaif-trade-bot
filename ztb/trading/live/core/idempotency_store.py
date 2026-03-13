@@ -16,7 +16,11 @@ class IdempotencyStore:
     """SQLite-based idempotency store for order IDs."""
 
     def __init__(
-        self, db_path: str = ":memory:", table_name: str = "order_idempotency"
+        self,
+        db_path: str = ":memory:",
+        table_name: str = "order_idempotency",
+        lock_timeout_sec: float = 5.0,
+        lock_retry_interval_sec: float = 0.01,
     ) -> None:
         """
         Initialize idempotency store.
@@ -27,6 +31,8 @@ class IdempotencyStore:
         """
         self.db_path = db_path
         self.table_name = table_name
+        self.lock_timeout_sec = lock_timeout_sec
+        self.lock_retry_interval_sec = lock_retry_interval_sec
         self._local = threading.local()
         self._lock_file = None
 
@@ -39,6 +45,53 @@ class IdempotencyStore:
         # Create table if it doesn't exist
         # self._ensure_table()
 
+    @staticmethod
+    def _pid_exists(pid: int) -> bool:
+        """Return True if a process appears to be alive."""
+        if pid <= 0:
+            return False
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            return False
+        return True
+
+    def _read_lock_pid(self) -> int | None:
+        """Read the lock owner PID from disk."""
+        if self._lock_file is None or not self._lock_file.exists():
+            return None
+        try:
+            return int(self._lock_file.read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            return None
+
+    def _try_acquire_process_lock(self) -> bool:
+        """Attempt to create the lock file atomically."""
+        if self._lock_file is None:
+            return True
+        try:
+            fd = os.open(str(self._lock_file), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            return False
+        try:
+            os.write(fd, str(os.getpid()).encode("utf-8"))
+        finally:
+            os.close(fd)
+        return True
+
+    def _recover_stale_lock(self) -> bool:
+        """Remove a stale lock when the recorded PID no longer exists."""
+        if self._lock_file is None or not self._lock_file.exists():
+            return False
+        lock_pid = self._read_lock_pid()
+        if lock_pid is not None and self._pid_exists(lock_pid):
+            return False
+        try:
+            self._lock_file.unlink()
+            return True
+        except OSError:
+            return False
+
     @contextmanager
     def _process_lock(self) -> Generator[None, None, None]:
         """Process-level file locking for cross-process synchronization."""
@@ -49,15 +102,18 @@ class IdempotencyStore:
 
         lock_acquired = False
         try:
-            # Simple file-based locking (works on Windows)
+            deadline = time.monotonic() + self.lock_timeout_sec
             while not lock_acquired:
-                try:
-                    with open(self._lock_file, "w") as f:
-                        f.write(str(os.getpid()))
-                    lock_acquired = True
-                except (OSError, IOError):
-                    # Lock file exists, wait and retry
-                    time.sleep(0.01)
+                lock_acquired = self._try_acquire_process_lock()
+                if lock_acquired:
+                    break
+                if self._recover_stale_lock():
+                    continue
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(
+                        f"Timed out acquiring process lock: {self._lock_file}"
+                    )
+                time.sleep(self.lock_retry_interval_sec)
 
             yield
 

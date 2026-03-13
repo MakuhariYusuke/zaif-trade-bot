@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pandas as pd
 
+from ztb.trading.environment.utils.gc_guard import maybe_collect_garbage
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.memory.dtypes import optimize_dtypes
 
@@ -115,7 +116,7 @@ class DataProcessor:
 
         del df_processed
         if not self._gc_step_interval:
-            gc.collect()
+            maybe_collect_garbage()
 
         return optimized
 

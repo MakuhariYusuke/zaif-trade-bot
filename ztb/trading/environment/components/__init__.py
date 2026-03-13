@@ -6,9 +6,6 @@ from ztb.trading.environment.components.action_validator import ActionValidator
 from ztb.trading.environment.components.calculators.reward_calculator import (
     RewardCalculator,
 )
-from ztb.trading.environment.components.calculators.simplified_reward_calculator import (
-    SimplifiedRewardCalculator,
-)
 from ztb.trading.environment.components.calculators.v457_reward_calculator import (
     V457RewardCalculator,
 )
@@ -29,7 +26,6 @@ __all__ = [
     "PositionManager",
     "RewardCalculator",
     "V457RewardCalculator",
-    "SimplifiedRewardCalculator",
     "RewardUtils",
     "FastIntradayAccounting",
     "FastIntradayActionProcessor",

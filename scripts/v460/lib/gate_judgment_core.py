@@ -197,6 +197,19 @@ def evaluate_g3_checks(
         "pass": sharpe_median > min_sharpe,
     }
 
+    # E6: reward-profit alignment — median corr > 0 (392# P0-3)
+    min_corr = float(thresholds.get("min_reward_profit_corr_median", 0.0))
+    corrs = [float(s.get("reward_profit_corr", 0)) for s in seed_metrics]
+    if corrs:
+        corr_median = _stats.median(corrs)
+    else:
+        corr_median = 0.0
+    checks["reward_profit_corr_median"] = {
+        "value": corr_median,
+        "threshold": min_corr,
+        "pass": corr_median > min_corr,
+    }
+
     all_pass = all(c["pass"] for c in checks.values())
     return {
         "gate": "G3-pnl",

@@ -29,6 +29,7 @@ from ztb.trading.environment.components.statistics_calculator import (
     StatisticsCalculator,
 )
 from ztb.trading.environment.components.threshold_manager import ThresholdManager
+from ztb.trading.environment.utils.gc_guard import maybe_collect_garbage
 from ztb.trading.environment.heavy_env.components.state_manager import StateManager
 from ztb.trading.environment.heavy_env.components.validation_manager import (
     ValidationManager,
@@ -189,7 +190,7 @@ def _initialize_data(self: Any, df: pd.DataFrame | None) -> None:
     self.df = self.data_processor.preprocess_data(base_df)
     if df is None:
         del base_df
-    gc.collect()
+    maybe_collect_garbage()
     self.memory_manager.log_memory_usage("post_init", df_override=self.df)
 
     if not self.df.index.is_monotonic_increasing:
@@ -320,7 +321,7 @@ def _initialize_features_and_spaces(self: Any, max_features: int | None) -> None
                     # Clear mtf_data to free memory
                     del mtf_data
                     del mtf_system
-                    gc.collect()
+                    maybe_collect_garbage()
             except Exception as e:
                 logger.warning(f"Failed to add multi-timeframe features: {e}")
 

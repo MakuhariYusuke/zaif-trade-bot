@@ -129,8 +129,7 @@ class TradingService:
     def _should_restart(self, cycle_success: bool) -> bool:
         """Determine if we should restart after a cycle."""
         if cycle_success:
-            # Successful cycle - restart for continuous operation
-            return True
+            return False
 
         # Failed cycle - check restart limits
         self.restart_count += 1
