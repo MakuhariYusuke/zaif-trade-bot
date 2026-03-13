@@ -129,7 +129,8 @@ class HeavyTradingEnv(
 
     # Class constants for better maintainability
     DEFAULT_MEMORY_LOG_INTERVAL = 2000
-    DEFAULT_GC_STEP_INTERVAL = 50000  # 112# Perf: 1000→50000。毎ステップGCは、2-5xの速度低下を引き起こす
+    # P3: DEFAULT_GC_STEP_INTERVAL removed — GC is now unified through MemoryManager.
+    # MemoryManager.gc_step_interval (default: 50000) controls all GC scheduling.
     _REGIME_STATS_MAXLEN = 1000  # C1: regime_rewards/actions の deque 上限
     DEFAULT_MAX_HISTORY_LENGTH = 512
     DEFAULT_MAX_ACTION_HISTORY = 256
@@ -1522,10 +1523,8 @@ class HeavyTradingEnv(
         if self.memory_manager.should_log_memory(self.current_step):
             self.memory_manager.log_memory_usage(f"step_{self.current_step}")
 
+        # P3: Unified GC scheduling through MemoryManager (was double-GC before 407#)
         if self.memory_manager.should_collect_garbage_at_step(self.current_step):
-            self.memory_manager.collect_garbage(generation=0)
-
-        if self.current_step % self.DEFAULT_GC_STEP_INTERVAL == 0:
             self.memory_manager.collect_garbage()
 
         return next_obs, reward, done, False, info

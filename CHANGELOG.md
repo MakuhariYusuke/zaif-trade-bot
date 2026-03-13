@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 407# Ghost File Cleanup + Performance + Stability (2026-03-13)
+
+### Fixed
+- **S4 CRITICAL**: `continuous_action_value: float | None = (None,)` → `= None` (tuple代入バグ)
+- **P3 二重GC統合**: `DEFAULT_GC_STEP_INTERVAL` ハードコードを削除、MemoryManagerに一元化 (default 50000)
+- **P5**: `collect_garbage()`/`collect_garbage_aggressive()` が収集オブジェクト数を`int`で返すように
+- **ゴーストファイル再追跡**: session037で削除された71ファイルを全てgitに再追跡 (clone不能問題解決)
+
+### Changed
+- **P1 設定値キャッシュ**: `_get_nested_setting()` に`_settings_cache`導入、毎ステップ~30回の文字列解析を根絶
+- **デッドコード削除**: orphaned reward/ 10ファイル + fixed_ttl_wrapper.py → archived/dead_reward_components/
+- **reward/__init__.py 整理**: 削除済モジュールのimportを除去、アクティブのみエクスポート
+- **`should_collect_garbage` プロパティ削除**: `is_gc_enabled` に統一 (紛らわしい名前の重複解消)
+- **streaming.py**: 直接`gc.collect()` → `memory_manager.collect_garbage()` 委譲
+
+### Added
+- **11件の新規テスト**: tests/unit/v460/test_407_ghost_cleanup.py (S4/P1/P3/P5/DeadCode検証)
+
 ## 406# Self-Review: 400#–405# 深堀り分析 (2026-03-13)
 
 ### Added

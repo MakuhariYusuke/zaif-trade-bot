@@ -43,6 +43,9 @@ from ..rewards.trading_focused import TradingFocusedReward
 from ..rewards.ultra_profit import UltraProfitReward
 from ..signal_integrator import SignalIntegrator
 
+# Sentinel for cache miss detection (None is a valid cached value)
+_SENTINEL = object()
+
 # Add get_logger function for compatibility
 def get_logger(name: str) -> logging.Logger:
     """Get a logger instance."""
@@ -116,6 +119,8 @@ class RewardCalculator:
         self._previous_portfolio_value = initial_portfolio_value
         self._last_reward_components: dict[str, str | float] = {}
         self._recent_actions: list[int] = []  # Reset this list as well
+        # P1: Config setting cache — avoid repeated _get_nested_setting() per step
+        self._settings_cache: dict[str, object] = {}
         self.mtf_scheduler = None
 
         # Initialize components
@@ -742,7 +747,16 @@ class RewardCalculator:
     def _get_nested_setting(
         self, key: str
     ) -> int | float | bool | str | dict | list | RewardSettings | None:
-        """Get nested setting value using dot notation."""
+        """Get nested setting value using dot notation.
+
+        Results are cached in ``_settings_cache`` to avoid repeated
+        string-split + attribute traversal on every step (~30 calls/step).
+        """
+        # P1: fast-path — return cached value
+        cached = self._settings_cache.get(key, _SENTINEL)
+        if cached is not _SENTINEL:
+            return cached  # type: ignore[return-value]
+
         keys = key.split(".")
         value: int | float | bool | str | dict | list | RewardSettings | None = self.reward_settings
 
@@ -767,6 +781,7 @@ class RewardCalculator:
                     custom_params = self.reward_settings.custom_reward_params
                     direct_value = custom_params.get(key)
                     if direct_value is not None:
+                        self._settings_cache[key] = direct_value
                         return direct_value
 
                     nested_value: object = custom_params
@@ -779,6 +794,7 @@ class RewardCalculator:
                             nested_value = None
                             break
                     if nested_value is not None:
+                        self._settings_cache[key] = nested_value
                         return nested_value
             except Exception:
                 pass
@@ -794,10 +810,13 @@ class RewardCalculator:
                             break
                         cfg_val = cfg_val.get(p)
                     if cfg_val is not None:
+                        self._settings_cache[key] = cfg_val
                         return cfg_val
                 except Exception:
                     pass
 
+        # P1: store in cache for future lookups
+        self._settings_cache[key] = value
         return value
 
     def _update_dynamic_weights(self) -> None:
@@ -1376,7 +1395,7 @@ class RewardCalculator:
             if action in [ACTION_BUY, ACTION_SELL]:  # 1 = BUY, 2 = SELL
                 reward += trade_frequency_bonus
 
-            continuous_action_value: float | None = (None,)
+            continuous_action_value: float | None = None  # S4 fix: was (None,) tuple
             position_change = abs(position - old_position)
             position_change_penalty = self.get_setting_float(
                 "position_change_penalty", 0.0
