@@ -176,7 +176,7 @@ loss landscape (概念図)
 | アーキテクチャ | パラメータ数 | @20K 比率 | @100K 比率 | 推奨 |
 |--------------|------------|----------|----------|------|
 | [256,256] (現行) | 215,044 | 10.8x | 2.15x | — |
-| **[128,128]** | **58,372** | **2.9x** | **0.58x** | ✅ **100K なら最適** |
+| **[128,128]** | **58,372** | **2.9x** | **0.58x** | ✅ **100K 第一候補** |
 | [64,64] | 16,900 | 0.8x | 0.17x | ✅ 20K 短期実験向け |
 | [32,32] | 5,380 | 0.3x | 0.05x | ⚠️ capacity 不足リスク |
 
@@ -224,10 +224,15 @@ seeds: [42, 123, 456, 789, 0, 1, 2, 3]
 
 #### M5: Checkpoint Ensemble
 
-単一 best checkpoint ではなく、OOS ROI が正の全 checkpoint の重み平均を最終モデルとする。
+単一 best checkpoint ではなく、複数の正 OOS checkpoint を活用する。
 
 **効果**: 単一チェックポイントへの依存を排除。seed789 型の「best 以外全て OOS 負」問題を緩和。
-**実装**: `model.policy.state_dict()` の加重平均。SB3 API で実現可能。
+
+> ⚠️ 412#/413# レビュー補正: `state_dict()` の重み平均は SAC では**非推奨**。
+> 異なるチェックポイントは loss landscape の異なる谷に収束しているため、
+> 重みの平均化は「谷と谷の間の空中」にモデルを配置するリスクがある。
+> 実用的な代替: **推論時の action 平均化**（各 checkpoint の出力を平均）、
+> または SWA（同一谷内の近接 checkpoint のみ平均）。
 
 ### §5.3 対策の優先順位
 
@@ -237,21 +242,29 @@ seeds: [42, 123, 456, 789, 0, 1, 2, 3]
 | **P0** | M2: weight_decay 1e-4 | 低 (YAML追加) | ⭐⭐ | ✅ |
 | P1 | M3: learning_starts 5000 | 低 (YAML変更) | ⭐⭐ | ✅ |
 | P1 | M4: seeds 8個 | なし (YAML変更) | ⭐⭐ | ✅ |
-| P2 | M5: Checkpoint Ensemble | 中 (コード追加) | ⭐ | △ |
+| P3 | M5: Checkpoint Ensemble (推論時) | 中 (コード追加) | ⭐ | △ |
 
 ---
 
 ## §6 推奨実験計画
 
-### §6.1 Phase 1: 高速検証 (20K × 8 seeds)
+### §6.1 Phase 1: 高速検証 (20K × 4 seeds)
 
 100K 訓練の前に、対策の有効性を 20K で検証する。
+412# §4.3 に従い、**attribution を明確化するため config を段階分離**した。
 
 ```
 実験A (baseline): 現行設定         [256,256], wd=0,    ls=1000, 4 seeds
+  → g2_sac_reward_clean.yaml
+
 実験B (M1 only):  net_arch 縮小    [128,128], wd=0,    ls=1000, 4 seeds
+  → g2_sac_reward_clean_m1.yaml
+
 実験C (M1+M2):    net_arch + wd    [128,128], wd=1e-4, ls=1000, 4 seeds
+  → g2_sac_reward_clean_m1m2.yaml
+
 実験D (M1+M2+M3): full mitigation  [128,128], wd=1e-4, ls=5000, 4 seeds
+  → g2_sac_reward_clean_small.yaml (※learning_starts=5000, 8 seeds)
 ```
 
 **判定基準**: corr の seed 間標準偏差が baseline より小さければ対策有効。

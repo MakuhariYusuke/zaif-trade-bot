@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 413# レビュー反映: 410-413 検証 + 実験config分離 (2026-03-14)
+
+### Fixed
+- **410# §3.1 `reward_profit_corr` 定義修正**: 「episode平均」→「ステップ累積相関」に実装準拚で補正 (412# §2.1)
+- **411# M5 Checkpoint Ensemble**: state_dict平均→推論時action平均に訂正、優先度P2→P3に格下げ (412#/413# 合意)
+- **411# M1 「最適」表現緩和**: 「100Kなら最適」→「100K第一候補」に修正 (412# §3.1)
+
+### Added
+- **実験config M1/M2 分離**: `g2_sac_reward_clean_m1.yaml` (M1単独) + `g2_sac_reward_clean_m1m2.yaml` (M1+M2) — 412# §4.3 attribution分離指摘への対応
+- **412#/413# レビュードキュメント**: Codexレビュー + Geminiセカンドオピニオン
+
 ## 411# Seed 感度の構造的原因分析 + policy_kwargs 実装 (2026-03-14)
 
 ### Added

@@ -59,10 +59,18 @@ reward-clean 設定 (400#) による SAC 20K step × 4 seed 訓練で **G3-pnl P
 
 ### §3.1 corr=-0.20 の意味
 
-`reward_profit_corr` は `corr(episode_mean_reward, episode_gross_pnl)` で計算される。
-corr=-0.20 は「報酬が上がると利益が下がる（逆方向）」を意味する。
+`reward_profit_corr` は **ステップごとの reward 累積 (`cumsum(reward_steps)`) と realized PnL 累積 (`cumsum(pnl_steps)`) の Pearson 相関** で計算される（`sac_common.py:269`）。
+reward 側は mark-to-market 方式の密な報酬（含み損益を含む）、PnL 側は realized PnL の差分（決済時のみ非ゼロ）であり、**両者の時間的粒度が異なる**。
 
-これは reward shaping の失敗ではなく、**学習初期化 seed に依存したローカル最適への収束** と推測される。
+corr=-0.20 は直ちに「学習失敗の証明」とは言えない。以下のいずれでも負相関は発生しうる:
+
+1. 保有中は含み損（reward 負）が続くが、決済でまとめて利益化する
+2. reward clip [-1,1] により magnitude 情報が潰れ、累積形状だけが残る
+3. inventory 調整と alpha 取りが時間的にずれる
+
+とはいえ、他 3 seed が corr > +0.5 であることを考えると、**seed456 固有の alignment 警戒シグナル** であることは確かである。
+
+> ⚠️ 412# 補正: 当初の記述「`corr(episode_mean_reward, episode_gross_pnl)`」は実装と乖離していたため修正。
 
 ### §3.2 reward-tuned との比較
 
