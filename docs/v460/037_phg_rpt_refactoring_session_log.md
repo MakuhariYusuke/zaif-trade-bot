@@ -5974,3 +5974,21 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - `OrderMonitor.monitor` / `maker_price.py` の source cache は broad 上位ノイズを減らす方向に効く。
 - `ob_recorder` timestamp 系は payload を見れば十分で、gzip 実書込は flush 系テストに限定するのが妥当。
 - broad の wall time 自体は揺れるが、残上位は heavy env setup、real-data enrichment、一部 pure-call 単発に再集中している。
+
+## 2026-03-13 / Task 408: Dead-Code Analysis for `ztb/trading/environment/`
+
+### 実施内容
+- `ztb/trading/environment/` 配下（`archived/` 除外）の全 `.py` を棚卸しし、実スキャン値として `57 files / 17,764 LOC` を集計
+- `configs/v460/experiments/g2_sac_reward_clean.yaml`、`scripts/v460/lib/tasks/sac_train.py`、`heavy_env/mixins/initialization.py`、`RewardCalculator` を突き合わせて、現行 v460 の live reward path を特定
+- `components/calculators/`、`components/reward/`、`components/rewards/`、`environment/` 直下ファイルの非テスト参照を `rg` で追跡
+- dead / proxy / legacy-live / duplication を整理し、`docs/v460/408_dead_code_analysis.md` に提案を出力
+
+### 主要な結論
+- 現行 v460 の live path は `RewardCalculator.calculate_reward(...) -> _calculate_default_reward(...)`
+- `V457RewardCalculator`、`calculate_reward_simple()`、stage-specific `_calculate_*_reward()` 群は現行 `g2_sac_reward_clean.yaml` では通らない
+- `bridge.py`、`components/reward/metrics.py`、`components/calculators/simplified_reward_calculator.py`、`RewardCalculator.test_reward_calculation()` は dead / 準dead 候補
+- `environment.py` と `components/reward_calculator.py` は proxy-only だが、現時点では caller が残っているため即削除不可
+- `reward/` と `rewards/` の 2 系統は責務分割ではなく履歴分裂に近く、`RewardCalculator` 分割と同時に統合すべき
+
+### 成果物
+- [408_dead_code_analysis.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/408_dead_code_analysis.md)
