@@ -89,6 +89,7 @@ def _make_microstructure_stub(
         _last_amihud_illiq=0.0,
         _get_depth=lambda side: bid_depth if side == "buy" else ask_depth,
         _scale_offset_ratio=MakerPrice._scale_offset_ratio,
+        _effective_max_ratio=lambda side: getattr(config, 'max_offset_ratio', 0.30),
     )
 
 

@@ -106,6 +106,11 @@ def _make_as_reservation_stub(
         _decayed_imbalance=lambda _now: imbalance,
         _estimate_sigma=lambda spread, mid_price: (spread / mid_price, vol_ratio),
         _dynamic_tau=_dynamic_tau,
+        _effective_max_ratio=lambda side: (
+            max(config.max_offset_ratio, config.offset_ceiling_ratio_sell or 0)
+            if side == "sell"
+            else max(config.max_offset_ratio, config.offset_ceiling_ratio_buy or 0)
+        ),
     )
 
 
@@ -127,6 +132,11 @@ def _make_vpin_guard_stub(
             current,
             boost,
             max_ratio=max_ratio,
+        ),
+        _effective_max_ratio=lambda side: (
+            max(config.max_offset_ratio, config.offset_ceiling_ratio_sell or 0)
+            if side == "sell"
+            else max(config.max_offset_ratio, config.offset_ceiling_ratio_buy or 0)
         ),
     )
 

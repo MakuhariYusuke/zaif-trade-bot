@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-13 (402# 時間帯パフォーマンス根本原因分析 + 397# 再起動後検証)
+> 最終更新: 2026-03-13 (405# Offset Ceiling Pipeline Fix)
 
 ---
 
@@ -396,6 +396,9 @@
 | 400 | rpt | [400_reward_clean_analysis.md](400_reward_clean_analysis.md) | Reward Clean 分析 |
 | 401 | rpt | [401_deep_investigation_findings.md](401_deep_investigation_findings.md) | 深層調査知見 |
 | 402 | rpt | [402_time_guard_root_cause_and_397_review.md](402_time_guard_root_cause_and_397_review.md) | 時間帯パフォーマンス根本原因分析: AS率が最大ドライバー、JST 09h sell tail壊滅、confidence≥0.9が全データ最悪(-1.69bps)、397# sell ceiling制約で実質無効 |
+| 403 | rev | [403_ph3_rev_402_time_guard_fill_test_multifaceted_review.md](403_ph3_rev_402_time_guard_fill_test_multifaceted_review.md) | 402# 再点検: mixed-SHA注意, AS rawは事後ラベル, 397#の真の制約はsell ceilingよりglobal 0.30 cap, hard skip解除は選択バイアスあり |
+| 404 | rev | [404_ph3_rev_402_403_time_guard_second_opinion.md](404_ph3_rev_402_403_time_guard_second_opinion.md) | Gemini セカンドオピニオン: _scale_offset_ratio 中間キャップのデッドロック証明, AS予測モデルへの統合推奨 |
+| 405 | impl | [405_offset_ceiling_pipeline_fix_selfreview.md](405_offset_ceiling_pipeline_fix_selfreview.md) | Offset Ceiling Pipeline Fix: sell側中間キャップを0.30→0.50に拡大, 14箇所修正, 14新規テスト |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
