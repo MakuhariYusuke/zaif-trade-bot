@@ -26,8 +26,29 @@
 ## §0 大義と目的
 
 > **本プロジェクトの大義は「短期間での高収益性システム」の実現である。**
+> ただし短期的成果と長期的な健全性のバランスを取ることが重要である。
 
 v459 は OHLCV 派生特徴量 (RSI×7 + ReturnStdDev) に方向予測情報が存在しないことが K2 実験で確定し、No-Go となった。v460 はマイクロストラクチャ特徴量（板情報・約定フロー）の導入と maker-only 執行戦略により、v459 の根本原因を直接解消する。
+
+### §0.1 SAC の役割定義（422#-426# 改訂）
+
+> **SAC は「運転手 (Driver)」ではなく「助言者 (Sidecar Navigator)」である。**
+
+426# S1/S1' 実験により、SAC 単体での収益性には構造的限界が確認された:
+
+- **レジーム汎化限界**: 20K step 学習は ~60 日以降の市場レジーム変動に対応できない（8 seed 中 6 seed で OOS mid 期崩壊）
+- **評価と本番の乖離**: OOS シミュレーションと本番環境（clamp 100% 発火, Sidecar 停止）は根本的に異なる（431#）
+- **学習容量の天井**: 100K step に増やしても改善せず悪化（422#）。step 数ではなく方策空間（1 次元連続行動）の表現力が制約
+
+したがって v460 のアーキテクチャは以下の三層分離を採る（428# 提案, 430# 監査で既存資産の存在を確認済み）:
+
+| 層 | 責務 | 実装 |
+|---|---|---|
+| **Alpha 層** | 方向バイアス生成 | SAC → Sidecar Signal（directional_bias [-1,1]）|
+| **Execution 層** | 注文価格決定・約定管理 | offset chain + Final Clamp（421# 実装済み）|
+| **Safety 層** | リスク制御・緊急停止 | SkipGate, Circuit Breaker, retrain_scheduler（430# 発見: 実装済み・未起動）|
+
+SAC の出力は直接注文価格を決定しない。Sidecar v2（比例変換, sidecar_types.py 実装済み）を介して offset に変換され、Final Clamp で安全範囲内に制約される。
 
 **前提条件**: 全取引は maker 注文（手数料 0%）で執行する。taker 注文は禁止。対象取引所は Coincheck（主）/ Bitflyer / Zaif を含む maker 手数料 0% の国内取引所とし、API 品質・流動性に応じて切替可能な設計とする。
 
@@ -56,6 +77,7 @@ v459 の 119 文書・全 Phase 実験から得られた 4 教訓:
 | **ph1** | 特徴量情報量検証 (非 RL) | G1-info | XGBoost Walk-Forward 結果 |
 | **ph2** | maker 執行可能性検証 | G1.1-exec | fill rate 実測データ |
 | **ph3** | SAC 学習安定性検証 | G2-train | 4 seed 訓練結果 |
+| **ph3.1** | Sidecar 統合・retrain 起動 | — | retrain_scheduler 稼働, Sidecar v2 有効化 |
 | **ph4** | 収益性検証 (コスト込み) | G3-pnl | PF / Sharpe / DD レポート |
 | **ph4.1** | 摩擦耐性検証 (stress) | G3.1-stress | slippage / miss 感度レポート |
 | **ph5** | Paper trading 運用検証 | G4-live | 1 週間連続稼働データ |
@@ -187,10 +209,12 @@ Gate 判定データの品質を保証するため、以下を前提とする:
 
 | 条件 | 閾値 | 測定方法 |
 |------|------|---------|
-| gross > 0 の seed 比率 | ≥ 3/4 (75%) | 4 seed × 50K steps |
-| IC の seed 間標準偏差 | ≤ 0.03 | 4 seed の IC 分散 |
-| 学習曲線の収束 | 30K 以降で ROI 変動 ≤ 5% | checkpoint 別評価 |
+| gross > 0 の seed 比率 | ≥ 3/4 (75%) | 4 seed × 指定 steps |
+| ROI の seed 間標準偏差 | ≤ 0.03 | 4 seed の OOS ROI 分散 |
+| 学習曲線の収束 | 後半 50% で ROI 変動 ≤ 5% | checkpoint 別評価 |
 | worst-seed 下限 | ROI > −2% | 最低 seed でも大幅な損失を出さないこと |
+
+**val_ratio 規定** (426# 改訂): G2 判定の OOS は `val_ratio=0.10` を標準とする。実験では任意の val_ratio を使用可能だが、Gate 判定時は結果 JSON に `val_ratio` を記録し、比較可能性を担保する。val_ratio=0.02 の結果のみで Gate PASS としない（422#-426# で楽観バイアスが確認済み）。
 
 **FAIL 時**: 学習器・報酬設計の見直し。特徴量を疑う前に G1-info を再確認。
 
@@ -205,8 +229,22 @@ Gate 判定データの品質を保証するため、以下を前提とする:
 | avg gross/trade > avg fee/trade | true | 取引あたり収益 > 取引あたり費用（pooled） |
 | Max Drawdown | < 15% | equity curve の最大下落（worst-seed） |
 | Sharpe (年率) | > 0.8 | 日次リターン（median） |
+| reward-profit alignment | corr median > 0 | 報酬とPnLの相関が正（425# 追加） |
 
-**FAIL 時**: モデル改善 or 取引頻度調整。全 seed FAIL なら v461 検討。
+#### G3 評価規定（426# 大幅改訂）
+
+422#-426# の S1/S1' 実験で、val_ratio=0.02 の楽観バイアスと評価系の欺矇が確認された。以下の規定を追加する:
+
+| 規定 | 内容 | 根拠 |
+|------|------|------|
+| **val_ratio 標準化** | G3 判定は `val_ratio ≥ 0.10` で実施。val_ratio=0.02 の結果のみでは PASS としない | 426# §3.1: val_ratio=0.02 → OOS 17 日ではレジーム変動が露呈しない |
+| **multi-slice 診断** | OOS を early/mid/late 3 分割し、各期間の PF/Sharpe/DD を記録。Gate 判定自体には使わないが、崩壊パターンの診断に必須 | 426# §3.2: 8 seed 中 6 seed で mid 期崩壊。multi-slice なしでは根因特定不能 |
+| **best_model 並行評価** | final_model と best_model の両方で OOS 評価を実施し、結果 JSON に両方記録。Gate 判定は final_model で行うが、best_model が優勢な場合は報告 | 422# A1, 426# §3.5: seed 789 で best_model のみ黒字帰還 |
+| **結果 JSON 必須フィールド** | `val_ratio`, `model_dir`, `slice_metrics`, `best_model_eval_metrics`, `train_val_split.train_rows/val_rows` を必須記録 | 比較可能性・再現性の担保 |
+
+**reward 関数方針** (426# §3.3, §7.2): reward_clean（純粋 PnL 信号のみ）を標準とする。補助ペナルティ（balance_penalty, consistency_penalty 等）は PnL 勾配を汚染し、学習効率を低下させることが実証された。
+
+**FAIL 時**: モデル改善 or 取引頻度調整。全 seed FAIL かつ reward_clean でも改善しない場合は、SAC 単体の限界と判断し Sidecar+retrain アーキテクチャ（§0.1）への移行を検討する。v461 検討は Sidecar 統合後を判断時点とする。
 
 ### §3.5.1 G3.1-stress
 
@@ -309,16 +347,66 @@ v459 00# §5.6 を踏襲。実装コードは [001#](001_ph0_plan_technical_spec
 
 ## §4 技術概要
 
+### §4.1 基本仕様
+
 | 項目 | 決定事項 | 備考 |
 |------|---------|------|
 | 対象市場 | BTC/JPY（国内取引所） | Coincheck（主）/ Bitflyer / Zaif。API 品質・流動性で選定 |
 | 時間足 | 1 分足 (OHLCV) + tick/板 | マイクロストラクチャ特徴量の追加 |
 | 特徴量 | 板情報・約定フロー・VWAP 等 | v459 の RSI×7 を置換。候補は 001# |
 | 情報量検証 | XGBoost Walk-Forward → G1-info | K2 パイプライン流用 |
-| RL アルゴリズム | SAC (G1 通過後のみ) | v459 基盤を継承 |
 | 手数料モデル | ExchangeFeeModel（取引所別） | maker-only 前提。Coincheck maker 0% がデフォルト |
 | 実験管理 | 1 ランナー + N 設定 YAML + manifest.jsonl | 119# §3–§5 準拠 |
-| 適応運用 | 段階導入: A (パラメータ適応, ph2–) → B (定期再訓練, ph5–) | C (リアルタイム学習) は v461 判断。028#–030# ||
+
+### §4.2 アーキテクチャ: 三層分離モデル（426#/428#/430# 改訂）
+
+422#-426# の実験と 427#-431# の実装監査により、SAC End-to-End アーキテクチャから三層分離モデルへ転換する。
+
+```
++------------------+     +--------------------+     +------------------+
+| Alpha 層          |     | Execution 層        |     | Safety 層          |
+|                  |     |                    |     |                  |
+| SAC [-1,1]       | --> | Sidecar v2         | --> | Final Clamp      |
+| (directional     |     | (比例変換)         |     | (ceiling/floor)  |
+|  bias 生成)      |     |    +               |     |    +             |
+|                  |     | offset chain       |     | SkipGate         |
+|                  |     | (regime/VG/kyle/   |     |    +             |
+|                  |     |  amihud/EV)        |     | Circuit Breaker  |
++------------------+     +--------------------+     +------------------+
+         ^                                                    |
+         |            +---------------------+                 |
+         +------------|  retrain_scheduler  |<----------------+
+                      |  (定期再訓練)        |
+                      |  430# 発見:         |
+                      |  実装済み・未起動   |
+                      +---------------------+
+```
+
+| 層 | 責務 | 主要コンポーネント | 状態 |
+|---|---|---|---|
+| **Alpha** | 方向バイアス生成 | SAC (1次元 continuous [-1,1]) | 学習済み・運用中 |
+| **Execution** | 注文価格決定 | Sidecar v2 + offset chain | Sidecar v2 実装済み (430#)、v1→v2切替未完 |
+| **Safety** | リスク制御 | Final Clamp (421#) + SkipGate | Clamp 稼働中、buy ceiling 100%発火 (431#) |
+| **適応** | レジーム追従 | retrain_scheduler (~700 LOC) | 完全実装済み・未起動 (430#) |
+
+**重要**: SAC の出力は直接注文価格を決定しない。Sidecar v2 で offset に変換され、Final Clamp で安全範囲に制約される。SAC 単体のレジーム汎化限界（426# §3.2: mid 期崩壊）を、retrain_scheduler による定期再訓練で補完する。
+
+### §4.3 SAC 学習仕様（426# 確定）
+
+| 項目 | 仕様 | 根拠 |
+|------|------|------|
+| アルゴリズム | SAC (G1 通過後のみ) | v459 基盤を継承 |
+| 行動空間 | continuous_1d [-1, 1] | directional bias 。End-to-End 価格決定ではない |
+| reward 関数 | **reward_clean** を標準 | `step_pnl × 100`、補助ペナルティ全無効。426# §3.3 で reward_tuned より頼健と実証 |
+| ent_coef | 0.01 (固定) | auto より 20K step 短期学習では exploitation 集中が合理的 (426# §6.3) |
+| val_ratio | **0.10 を標準** | 0.02 は楽観バイアス (426# C1)。0.20 は 20K 学習に対して過酷 |
+| 評価 | multi-slice OOS + best_model 並行 | 425#-426# で実装済み |
+
+### §4.4 適応運用
+
+段階導入: A (パラメータ適応, ph2–) → B (定期再訓練, ph3.1–) → C (リアルタイム学習) は v461 判断。028#–030# 参照。
+
+**方策B の具体化** (430# 改訂): `sac_retrain_scheduler.py` が完全実装済み (L267-447 retrain loop, L730-793 signal update, L489-545 trigger logic)。ops script 一つで Sidecar pipeline が全通する。ph3.1 で起動する。
 
 詳細なアーキテクチャ・データ仕様・特徴量候補は [001#](001_ph0_plan_technical_specs.md) に記載。
 
@@ -390,14 +478,18 @@ NNN_phX_type_subject.md
 
 ## §6 リスク
 
-| 重要度 | リスク | 緩和策 |
-|--------|--------|--------|
-| ⭐⭐⭐ | マイクロストラクチャ特徴量にも情報がない | G1-info を Phase 1 で即実行。FAIL なら即座に特徴量再設計 |
-| ⭐⭐⭐ | maker 注文が約定しない（薄い板） | G1.1-quick (72h) で早期棄却 + G1.2-full (168h) で品質検証。attempted_fill_rate 70% 未満なら戦略変更 |
-| ⭐⭐⭐ | 取引所 API 品質低下・仕様変更 | 取引所非依存設計 (ExchangeFeeModel)。Zaif → Coincheck / Bitflyer への急遽移行実績あり |
-| ⭐⭐ | v459 と同じ「設計は綺麗だが実験で崩れる」パターン | manifest 強制・Gate 順序厳守。G1 FAIL 時点で止まる設計 |
-| ⭐⭐ | 見込みのない戦略への時間沈没 | §3.9 継続中止ルールで早期撤退を制度化。fill_test 実損キャップ 10,000 JPY |
-| ⭐⭐ | 市場レジーム変化によるモデル陳腐化 | 定期再訓練 (方策B) + G3 指標モニタリング。fill_rate/AS_ratio 7日移動平均で監視。028#–030# |
+| 重要度 | リスク | 緩和策 | 状態 |
+|--------|--------|--------|--------|
+| ⭐⭐⭐ | マイクロストラクチャ特徴量にも情報がない | G1-info を Phase 1 で即実行。FAIL なら即座に特徴量再設計 | G1 PASS 済 |
+| ⭐⭐⭐ | maker 注文が約定しない（薄い板） | G1.1-quick (72h) で早期棄却 + G1.2-full (168h) で品質検証 | G1.1 PASS 済 |
+| ⭐⭐⭐ | 取引所 API 品質低下・仕様変更 | 取引所非依存設計 (ExchangeFeeModel) | 実装済 |
+| ⭐⭐⭐ | **SAC のレジーム汎化限界** (426# 新規) | retrain_scheduler による定期再訓練。SAC を Sidecar Navigatorに降格し単体依存を排除 | **対策実装済み・未起動** (430#) |
+| ⭐⭐⭐ | **評価系と本番の乖離** (431# 新規) | clamp 条件付き OOS 評価の導入 (426# P3)、Sidecar 有効レコードの積み上げ | **対策未着手** |
+| ⭐⭐ | v459 と同じ「設計は綺麗だが実験で崩れる」パターン | manifest 強制・Gate 順序厳守。G1 FAIL 時点で止まる設計 | 運用中 |
+| ⭐⭐ | 見込みのない戦略への時間沈没 | §3.9 継続中止ルールで早期撤退を制度化 | 運用中 |
+| ⭐⭐ | 市場レジーム変化によるモデル陳腐化 | 定期再訓練 (方策B) + G3 指標モニタリング | retrain_scheduler 実装済 (430#) |
+| ⭐⭐ | **val_ratio 交絡による評価楽観** (422# 新規) | G3 判定は val_ratio≥0.10 を標準化。結果 JSON に val_ratio 必須記録 | §3.5 改訂済 |
+| ⭐ | **reward 関数の補助ペナルティ汚染** (426# 新規) | reward_clean (純粋 PnL) を標準とし、reward_tuned は終了 | §4.3 確定済 |
 
 ---
 
@@ -424,6 +516,7 @@ NNN_phX_type_subject.md
 | 2026-02-21 | §5, §3.3 | コード内コメント番号付与ポリシー追記 (Q5)。Gate 判定前提条件 (同一 SHA・YAML 72h) 追記 (E.5 #3)。YAML 反映を「反映確認済み」で管理する運用規約追記 | 130# D.1 |
 | 2026-02-27 | §3.10 | Gate 例外ルール (Exception-1: Oracle Gap 継続例外) 追加。Gate FAIL 時の限定的継続許可条件を制度化 | 170# §10.3, 172# |
 | 2026-03-13 | §3.5.1 | G3.1-stress Gate 正式定義。slippage 1tick / maker miss 30% / 複合 stress の 5 条件。G3 PASS 後の friction 耐性検証を制度化 | 392# P1-2, 409# |
+| 2026-03-15 | §0, §2, §3.4, §3.5, §4, §6 | **422#-431# 大幅改訂**: §0.1 SAC役割定義（Driver→Sidecar Navigator）追加。§2 ph3.1 Sidecar統合Phase追加。§3.4 val_ratio規定・step数汎用化。§3.5 val_ratio標準化(≥0.10)・multi-slice診断・best_model並行評価・reward_clean標準化。§4 三層分離アーキテクチャ(Alpha/Execution/Safety)に全面改訂、SAC学習仕様(§4.3)・適応運用(§4.4)分離。§6 レジーム汎化限界・評価本番乖離・val_ratio交絡・reward汚染を新規リスクとして追加 | 422#-426# S1/S1'実験, 427#-431# 実装監査 |
 
 
 
