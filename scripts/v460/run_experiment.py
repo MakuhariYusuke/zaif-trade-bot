@@ -224,10 +224,21 @@ def _evaluate_gate(gate: str, results: dict, cfg: dict) -> str:
                     g3_thresholds = gate_cfg.get("g3_pnl", {})
                 except Exception:
                     g3_thresholds = {}
-                g3_judgment = evaluate_g3_checks(seed_metrics_list, g3_thresholds)
+                # 426# P4: val_ratio を G3 判定に渡す (000# §3.5 比較可能性担保)
+                training_cfg = cfg.get("training", {})
+                vr = float(training_cfg.get("val_ratio", 0.2))
+                g3_judgment = evaluate_g3_checks(
+                    seed_metrics_list, g3_thresholds, val_ratio=vr,
+                )
                 if g3_judgment:
                     results["g3_judgment_cache"] = g3_judgment
-                    logger.info(f"G3-pnl auto-evaluation: {g3_judgment.get('gate_result', '?')}")
+                    g3_result = g3_judgment.get('gate_result', '?')
+                    logger.info(f"G3-pnl auto-evaluation: {g3_result} (val_ratio={vr:.2f})")
+                    if vr < float(g3_thresholds.get('min_val_ratio', 0.10)):
+                        logger.warning(
+                            f"val_ratio={vr:.2f} < min_val_ratio: "
+                            "G3 PASS は val_ratio≥0.10 でのみ有効 (000# §3.5)"
+                        )
 
             return "PASS" if judgment["gate_result"] == "PASS" else "FAIL"
 
@@ -309,12 +320,17 @@ def _run_multi_seed(
     # Convergence 計算: 30K step 以降の ROI 変動
     convergence = _compute_convergence(all_checkpoint_metrics, window_start=30000)
 
+    # 426# P4: val_ratio を aggregated に記録 (000# §3.5 必須フィールド)
+    training_cfg = cfg.get("training", {})
+    val_ratio = float(training_cfg.get("val_ratio", 0.2))
+
     aggregated: dict[str, object] = {
         "seed_results": seed_results,
         "convergence": convergence,
         "raw_results": raw_results,
         "seeds": seeds,
         "algorithm": "sac",
+        "val_ratio": val_ratio,
     }
 
     # 396# G3 seed_metrics: run_g3_judgment() が直接消費できる形式

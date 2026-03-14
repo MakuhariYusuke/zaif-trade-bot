@@ -124,15 +124,18 @@ def evaluate_g2_checks(
 def evaluate_g3_checks(
     seed_metrics: list[dict],
     thresholds: dict,
+    *,
+    val_ratio: float | None = None,
 ) -> dict[str, object]:
     """G3-pnl gate 判定コアロジック.
 
     Args:
         seed_metrics: [{pf, sharpe_annual, max_drawdown, avg_gross_per_trade, avg_fee_per_trade}, ...]
         thresholds: g3_pnl 閾値 dict
+        val_ratio: 学習時の val_ratio (426# P4: 比較可能性担保のため記録・検証)
 
     Returns:
-        {gate, gate_result, checks, n_seeds} dict
+        {gate, gate_result, checks, n_seeds, val_ratio} dict
     """
     if not seed_metrics:
         return {
@@ -210,10 +213,22 @@ def evaluate_g3_checks(
         "pass": corr_median > min_corr,
     }
 
+    # E7: val_ratio compliance (426# P4 / 000# §3.5)
+    min_val_ratio = float(thresholds.get("min_val_ratio", 0.10))
+    if val_ratio is not None:
+        checks["val_ratio_compliance"] = {
+            "value": val_ratio,
+            "threshold": min_val_ratio,
+            "pass": val_ratio >= min_val_ratio,
+        }
+
     all_pass = all(c["pass"] for c in checks.values())
-    return {
+    result: dict[str, object] = {
         "gate": "G3-pnl",
         "gate_result": "PASS" if all_pass else "FAIL",
         "checks": checks,
         "n_seeds": len(seed_metrics),
     }
+    if val_ratio is not None:
+        result["val_ratio"] = val_ratio
+    return result

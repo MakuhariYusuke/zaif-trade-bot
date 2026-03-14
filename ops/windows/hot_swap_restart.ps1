@@ -278,6 +278,13 @@ if ($confirmed) {
     Log "INFO" " Exchange: $Exchange"
     Log "INFO" " Hours: $Hours"
     Log "INFO" "=========================================="
+
+    # 426# P1: retrain_scheduler の自動再起動
+    $retrainScript = Join-Path $PSScriptRoot "retrain_scheduler.ps1"
+    if (Test-Path $retrainScript) {
+        Log "INFO" "retrain_scheduler を再起動します..."
+        & $retrainScript -Action start -Config $Config
+    }
 } else {
     Log "WARN" "  ${StartupConfirmSec}s 以内に lock 確認できず。プロセスは起動中ですが要確認。"
     Log "WARN" "  PID $newPid  alive=$(($null -ne (Get-Process -Id $newPid -ErrorAction SilentlyContinue)))"

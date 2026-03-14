@@ -275,9 +275,11 @@ def run_g3_judgment(results_path: str, thresholds: dict | None = None) -> dict:
 
     000# §3.5: コスト込みの収益性検証.
     399# 統合: コアロジックを gate_judgment_core.evaluate_g3_checks に委譲.
+    426# P4: val_ratio を結果 JSON から抽出し比較可能性を担保.
 
     Expects results JSON with:
       - seed_metrics: [{pf, sharpe_annual, max_drawdown, avg_gross_per_trade, avg_fee_per_trade}, ...]
+      - val_ratio: float (optional, 426# P4)
     """
     if thresholds is None:
         thresholds = load_gate_thresholds().get("g3_pnl", {})
@@ -285,7 +287,12 @@ def run_g3_judgment(results_path: str, thresholds: dict | None = None) -> dict:
     exp_results = _load_results_payload(results_path)
     seed_metrics = exp_results.get("seed_metrics", [])
 
-    return evaluate_g3_checks(seed_metrics, thresholds)
+    # 426# P4: val_ratio を結果 JSON から取得
+    val_ratio = exp_results.get("val_ratio")
+    if val_ratio is not None:
+        val_ratio = float(val_ratio)
+
+    return evaluate_g3_checks(seed_metrics, thresholds, val_ratio=val_ratio)
 
 
 # ======================================================================

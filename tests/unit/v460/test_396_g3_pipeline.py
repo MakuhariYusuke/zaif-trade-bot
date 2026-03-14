@@ -253,3 +253,66 @@ class TestEvaluateG3FromResults:
             assert "value" in check
             assert "threshold" in check
             assert "pass" in check
+
+
+# =====================================================================
+# 426# P4: val_ratio compliance tests
+# =====================================================================
+
+class TestG3ValRatioCompliance:
+    """evaluate_g3_checks の val_ratio 標準化テスト (426# P4)."""
+
+    def test_val_ratio_compliant_pass(self) -> None:
+        """val_ratio=0.10 → val_ratio_compliance PASS."""
+        metrics = _make_seed_metrics()
+        judgment = evaluate_g3_checks(
+            metrics, _g3_thresholds(), val_ratio=0.10,
+        )
+        assert judgment["checks"]["val_ratio_compliance"]["pass"]
+        assert judgment["val_ratio"] == 0.10
+
+    def test_val_ratio_above_threshold_pass(self) -> None:
+        """val_ratio=0.20 → val_ratio_compliance PASS."""
+        metrics = _make_seed_metrics()
+        judgment = evaluate_g3_checks(
+            metrics, _g3_thresholds(), val_ratio=0.20,
+        )
+        assert judgment["checks"]["val_ratio_compliance"]["pass"]
+
+    def test_val_ratio_below_threshold_fail(self) -> None:
+        """val_ratio=0.02 → val_ratio_compliance FAIL → gate FAIL."""
+        metrics = _make_seed_metrics()
+        judgment = evaluate_g3_checks(
+            metrics, _g3_thresholds(), val_ratio=0.02,
+        )
+        assert not judgment["checks"]["val_ratio_compliance"]["pass"]
+        assert judgment["gate_result"] == "FAIL"
+        assert judgment["val_ratio"] == 0.02
+
+    def test_val_ratio_05_fail(self) -> None:
+        """val_ratio=0.05 < 0.10 → val_ratio_compliance FAIL."""
+        metrics = _make_seed_metrics()
+        judgment = evaluate_g3_checks(
+            metrics, _g3_thresholds(), val_ratio=0.05,
+        )
+        assert not judgment["checks"]["val_ratio_compliance"]["pass"]
+        assert judgment["gate_result"] == "FAIL"
+
+    def test_val_ratio_none_no_check(self) -> None:
+        """val_ratio 未指定 → val_ratio_compliance チェックなし (後方互換)."""
+        metrics = _make_seed_metrics()
+        judgment = evaluate_g3_checks(metrics, _g3_thresholds())
+        assert "val_ratio_compliance" not in judgment["checks"]
+        assert "val_ratio" not in judgment
+        # 他のチェックが全て PASS なら gate も PASS
+        assert judgment["gate_result"] == "PASS"
+
+    def test_val_ratio_custom_threshold(self) -> None:
+        """min_val_ratio をカスタム設定可能."""
+        thresholds = {**_g3_thresholds(), "min_val_ratio": 0.05}
+        metrics = _make_seed_metrics()
+        judgment = evaluate_g3_checks(
+            metrics, thresholds, val_ratio=0.05,
+        )
+        assert judgment["checks"]["val_ratio_compliance"]["pass"]
+        assert judgment["gate_result"] == "PASS"

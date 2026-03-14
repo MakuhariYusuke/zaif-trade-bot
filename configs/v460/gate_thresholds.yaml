@@ -78,6 +78,9 @@ g3_pnl:
   gross_gt_fee: true
   # 392# P0-3: reward-profit alignment — median corr(reward, PnL) > 0
   min_reward_profit_corr_median: 0.0
+  # 426# P4 / 000# §3.5: val_ratio 標準化 — OOS 期間の比較可能性担保
+  # val_ratio < 0.10 の結果のみでは G3 PASS としない (422#-426# 楽観バイアス確認済)
+  min_val_ratio: 0.10
 
 g4_live:
   min_paper_days: 7
