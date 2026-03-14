@@ -144,6 +144,9 @@ class FillTestRunner(
         # 020# O4: データバージョン管理
         self._run_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
         self._git_sha = self._get_git_sha()
+        # 420# P1: run 開始時の SHA を固定保持 (hot_reload で _git_sha は変わるが
+        # _start_git_sha は不変 → コード attribution 分析で使用)
+        self._start_git_sha = self._git_sha
 
         # 044# 単一起動ロック → 158# P2-4: LockManager に委譲
         self._lock_manager = LockManager(

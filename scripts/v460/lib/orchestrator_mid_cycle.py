@@ -397,6 +397,9 @@ class OrchestratorMidCycleMixin:
                 sidecar_offset_bps=gate_result.sidecar_offset_bps,
                 sidecar_bias=gate_result.sidecar_bias if gate_result.sidecar_bias != 0.0 else None,
             )
+            # 420# P1: Side 切替可観測性 — CycleContext の情報を FillRecord に転記
+            record.requested_side = ctx.requested_side
+            record.resolved_side_reason = ctx.resolved_side_reason
             # 154# C-2: 実サイクル実行 → skip カウンタリセット
             self._trending_sell_skip_count = 0
 

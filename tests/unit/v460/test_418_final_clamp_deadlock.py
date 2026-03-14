@@ -459,3 +459,102 @@ class TestFinalClampSpreadNone:
             new_ratio=0.20,
         )
         assert result == 9950
+
+
+# ============================================================
+# 420# P1: start_git_sha / executor_offset_stages / side 可観測性
+# ============================================================
+
+_FR_REQ = dict(
+    cycle_id="test-420",
+    timestamp=1700000000.0,
+    side="buy",
+    order_price=100.0,
+    order_quantity=1.0,
+)
+
+
+class TestStartGitSha:
+    """420# start_git_sha フィールドテスト."""
+
+    def test_fill_record_has_start_git_sha(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+        fr = FillRecord(**_FR_REQ, start_git_sha="abc123def456")
+        assert fr.start_git_sha == "abc123def456"
+
+    def test_fill_record_start_git_sha_default_none(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+        fr = FillRecord(**_FR_REQ)
+        assert fr.start_git_sha is None
+
+    def test_fill_record_roundtrip(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+        fr = FillRecord(
+            **_FR_REQ,
+            git_sha="new_sha",
+            start_git_sha="old_sha",
+        )
+        d = fr.to_dict()
+        assert d["git_sha"] == "new_sha"
+        assert d["start_git_sha"] == "old_sha"
+        fr2 = FillRecord.from_dict(d)
+        assert fr2.start_git_sha == "old_sha"
+
+
+class TestExecutorOffsetStages:
+    """420# executor_offset_stages フィールドテスト."""
+
+    def test_fill_record_has_executor_offset_stages(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+        import json
+        stages = json.dumps({"ev": 1.05, "velocity": None})
+        fr = FillRecord(**_FR_REQ, executor_offset_stages=stages)
+        parsed = json.loads(fr.executor_offset_stages)  # type: ignore[arg-type]
+        assert parsed["ev"] == 1.05
+        assert parsed["velocity"] is None
+
+    def test_fill_record_executor_offset_stages_default_none(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+        fr = FillRecord(**_FR_REQ)
+        assert fr.executor_offset_stages is None
+
+
+class TestSideObservability:
+    """420# requested_side / resolved_side_reason フィールドテスト."""
+
+    def test_fill_record_has_requested_side(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+        fr = FillRecord(**_FR_REQ, requested_side="buy", resolved_side_reason="balance_switch")
+        assert fr.requested_side == "buy"
+        assert fr.resolved_side_reason == "balance_switch"
+
+    def test_fill_record_side_fields_default_none(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+        fr = FillRecord(**_FR_REQ)
+        assert fr.requested_side is None
+        assert fr.resolved_side_reason is None
+
+    def test_cycle_context_has_requested_side(self) -> None:
+        from scripts.v460.lib.orchestrator_pre_cycle import CycleContext
+        ctx = CycleContext(next_side="sell")
+        ctx.requested_side = "buy"
+        ctx.resolved_side_reason = "balance_switch"
+        assert ctx.requested_side == "buy"
+        assert ctx.resolved_side_reason == "balance_switch"
+
+    def test_cycle_context_defaults(self) -> None:
+        from scripts.v460.lib.orchestrator_pre_cycle import CycleContext
+        ctx = CycleContext()
+        assert ctx.requested_side == ""
+        assert ctx.resolved_side_reason is None
+
+
+class TestHardSkipMultConfig:
+    """420# hard_skip_mult 有効化テスト."""
+
+    def test_yaml_has_nonzero_hard_skip_mult(self) -> None:
+        import yaml
+        from pathlib import Path
+        with open(Path("configs/v460/fill_test.yaml")) as f:
+            cfg = yaml.safe_load(f)
+        assert cfg["execution_final_clamp_hard_skip_mult"] == 2.5

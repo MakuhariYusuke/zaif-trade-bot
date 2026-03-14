@@ -299,6 +299,10 @@ class FillRecordBuilderMixin:
         regime_observation_count: int | None = None,
         mid_at_order: float | None = None,
         execution_pre_clamp_offset: float | None = None,
+        executor_offset_stages: str | None = None,
+        start_git_sha: str | None = None,
+        requested_side: str | None = None,
+        resolved_side_reason: str | None = None,
     ) -> FillRecord:
         """188# FillRecord を組み立てる.
 
@@ -315,6 +319,7 @@ class FillRecordBuilderMixin:
             "order_quantity": order_lot,
             "run_id": self._run_id,
             "git_sha": self._git_sha,
+            "start_git_sha": getattr(self, "_start_git_sha", None),  # 420# P1
             "pid": os.getpid(),  # 285# 283# P0-1: Split-Brain 検知用
             # 306# O1: queue position estimation
             "queue_depth_ahead": queue_depth_ahead,
@@ -330,6 +335,11 @@ class FillRecordBuilderMixin:
             "mid_at_order": mid_at_order,
             # 418# P0: Execution Final Clamp 発火記録
             "execution_pre_clamp_offset": execution_pre_clamp_offset,
+            # 420# P1: Executor Offset Stages / start_git_sha / side 切替可観測性
+            "executor_offset_stages": executor_offset_stages,
+            "start_git_sha": start_git_sha,
+            "requested_side": requested_side,
+            "resolved_side_reason": resolved_side_reason,
         }
         payload.update(
             self._build_fill_measurement_fields(

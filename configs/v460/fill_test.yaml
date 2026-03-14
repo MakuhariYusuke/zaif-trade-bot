@@ -584,7 +584,7 @@ offset_ceiling_ratio_sell: 0.50   # 320# sell: 0.15→0.50 (floor(0.30) + regime
 # maker_price ceiling 後の executor multiplier chain (EV/velocity/toxicity 等) が
 # ceiling を迂回する構造欠陥の修正。全 multiplier 適用後に ceiling を再適用。
 execution_final_clamp_enabled: true
-execution_final_clamp_hard_skip_mult: 0.0  # 2.5 推奨 (ceiling×2.5 超で hard skip、要観察後に有効化)
+execution_final_clamp_hard_skip_mult: 2.5  # 420# 有効化: ceiling×2.5 超で hard skip (buy:0.50超, sell:1.25超)
 
 # ---- 310# A: Sell AS Time-of-Day Offset Boost (307# F3, 306# H5) ----
 # 306# deep dive 実証: 高 AS 時間帯の sell offset を拡大し逆選択コストを低減

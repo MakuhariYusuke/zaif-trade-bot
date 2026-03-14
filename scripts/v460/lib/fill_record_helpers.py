@@ -93,6 +93,7 @@ class FillRecordHelpersMixin:
             cancel_reason=cancel_reason,
             run_id=self._run_id,
             git_sha=self._git_sha,
+            start_git_sha=getattr(self, "_start_git_sha", None),  # 420# P1
             spread_at_order=spread_at_order,
             spread_offset_ratio=spread_offset_ratio,
             regime=regime,

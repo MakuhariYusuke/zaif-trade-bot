@@ -53,6 +53,10 @@ class CycleContext:
     """
 
     next_side: str = ""
+    #: 420# P1: SideSelector が最初に返した side (balance/veto 切替前)
+    requested_side: str = ""
+    #: 420# P1: side 切替理由 ("balance_switch" / "route_to_kill_deadlock" / None)
+    resolved_side_reason: str | None = None
     #: 片方のみ残高あり → degraded one-sided 実行
     one_sided_balance: bool = False
     #: 269# Inventory Escape: per-side halt 貫通モード
@@ -619,6 +623,8 @@ class OrchestratorPreCycleMixin:
             next_side=self._next_side(),
             regime_mult=self._regime_lot_multiplier(),
         )
+        # 420# P1: SideSelector が返した初期 side を記録 (切替前)
+        ctx.requested_side = ctx.next_side
 
         # 310# D: None regime observability (307# F5)
         self._total_regime_cycle_count += 1

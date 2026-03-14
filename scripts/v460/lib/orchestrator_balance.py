@@ -91,6 +91,8 @@ class OrchestratorBalanceMixin:
                     state_save=True,
                     state_save_context="route_to_kill_deadlock",
                     update_last_side=True,
+                    requested_side=ctx.requested_side,  # 420# P1
+                    resolved_side_reason="route_to_kill_deadlock",  # 420# P1
                 )
                 return True
 
@@ -104,6 +106,7 @@ class OrchestratorBalanceMixin:
             ctx.next_side = opposite
             next_side = opposite
             self._last_side = opposite
+            ctx.resolved_side_reason = "balance_switch"  # 420# P1
             self._preflight_skip_count = 0
             tried_opposite = True
 

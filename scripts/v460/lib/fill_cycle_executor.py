@@ -659,6 +659,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
 
         # 240# Toxicity Budget (232# §2.2 Glosten-Milgrom): offset 拡大
         # 逆選択リスクに応じた adverse selection premium をスプレッドに加算
+        _tox_mult: float | None = None  # 420# デフォルト初期化
         if toxicity_offset_mult > 1.0:
             order_price, effective_offset_ratio, _tox_mult, _tox_delta = (
                 self._apply_offset_multiplier(
@@ -679,6 +680,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
         # 202# C: VG sell-side 補完 — maker_price VG が未発火かつ velocity が高い sell で
         # 補足的 offset boost を適用。mid_trend_bps は point-to-point のため sell 側で
         # VG が盲点になるケースを velocity_bps で補完する。
+        _vg_supp_mult: float | None = None  # 420# デフォルト初期化
         if (
             side == "sell"
             and not self._maker_price.last_vg_triggered
@@ -706,6 +708,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
         # 215# P0-C: alert_mode offset 乗数 — 全サイド共通
         # 253# getattr → クラスレベルデフォルトで型安全直接参照
         _alert_om = self._alert_offset_mult
+        _a_mult: float | None = None  # 420# デフォルト初期化
         if _alert_om != 1.0:
             order_price, effective_offset_ratio, _a_mult, _a_delta = (
                 self._apply_offset_multiplier(
@@ -742,6 +745,22 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
         # が ceiling を迂回し effective_offset_ratio が際限なく拡大する構造欠陥。
         # 全 multiplier 適用後にサイド別 ceiling を再適用する。
         _execution_pre_clamp_offset: float | None = None
+
+        # 420# P1: executor_offset_stages — 6 multiplier 各々の寄与を JSON 記録
+        import json as _json
+        _exec_stages: dict[str, float | None] = {
+            "ev": _ev_offset_mult_applied,
+            "velocity": _vel_mult if _vel_offset_applied else None,
+            "trending": _trend_mult,
+            "toxicity": _tox_mult,
+            "vg_supp": _vg_supp_mult,
+            "alert": _a_mult,
+        }
+        _executor_offset_stages_json: str | None = None
+        if any(v is not None for v in _exec_stages.values()):
+            _executor_offset_stages_json = _json.dumps(
+                _exec_stages, separators=(",", ":"),
+            )
         if self.config.execution_final_clamp_enabled:
             _fc_ceil = self.config.resolve_offset_ceiling(side)
             if _fc_ceil > 0 and effective_offset_ratio > _fc_ceil:
@@ -1142,6 +1161,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
             regime_observation_count=_regime_obs_count,
             mid_at_order=_mid_at_order,
             execution_pre_clamp_offset=_execution_pre_clamp_offset,
+            executor_offset_stages=_executor_offset_stages_json,  # 420# P1
         )
 
         self._log_cycle_result(

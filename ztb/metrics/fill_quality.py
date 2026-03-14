@@ -175,6 +175,20 @@ class FillRecord:
     # executor multiplier chain 適用後・Final Clamp 適用前の offset ratio。
     # None=clamp 未発火 or 無効。値あり=clamp が発火し、ceiling に切り詰められた。
     execution_pre_clamp_offset: float | None = None
+    # ---- 420# P1: Executor Offset Stages (6 multiplier 寄与記録) ----
+    # JSON: {"ev": 1.05, "velocity": null, "trending": null, "toxicity": 1.15,
+    #        "vg_supp": null, "alert": 1.0}
+    # null = 未適用 / 1.0 = 適用されたが変更なし
+    executor_offset_stages: str | None = None
+    # ---- 420# P1: start_git_sha (run 開始時 SHA 固定) ----
+    # hot_reload で git_sha が変わっても start_git_sha は不変。
+    # コード attribution 分析で run 開始版を特定するために使用。
+    start_git_sha: str | None = None
+    # ---- 420# P1: Side 切替可観測性 (416# §4.2) ----
+    # SideSelector が最初に返した side (balance/veto 切替前)
+    requested_side: str | None = None
+    # 切替理由: "balance_switch" / "route_to_kill_deadlock" / None (切替なし)
+    resolved_side_reason: str | None = None
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""
