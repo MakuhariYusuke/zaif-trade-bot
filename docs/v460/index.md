@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-14 (413# Geminiセカンドオピニオン反映 + 実験config分離)
+> 最終更新: 2026-03-14 (414# 20K Attribution実験 A/B/C 深堀り分析)
 
 ---
 
@@ -407,6 +407,7 @@
 | 411 | rpt/impl | [411_phg_rpt_seed_sensitivity_analysis.md](411_phg_rpt_seed_sensitivity_analysis.md) | Seed感度構造分析: 5乱数注入箇所特定, 過パラメータ化10.8x定量化, M1-M5対策提案, policy_kwargs転送実装, reward-clean-small config作成 |
 | 412 | rev | [412_phg_rev_410_411_sac_hparam_seed_review.md](412_phg_rev_410_411_sac_hparam_seed_review.md) | 410-411レビュー: reward_profit_corr解釈補正, [128,128]は本命候補だが最適断定は保留, weight_decay/learning_starts/M5の採用優先度整理, actor-critic非対称化提案 |
 | 413 | rev | [413_phg_rev_410_412_gemini_second_opinion_and_self_review.md](413_phg_rev_410_412_gemini_second_opinion_and_self_review.md) | Geminiセカンドオピニオン: レジーム多様性観点, Q値平滑化リスク, 初期経験偏向, Reward Hacking仮説, state_dict平均危険性 |
+| 414 | rpt | [414_ph4_rpt_20k_attribution_experiment.md](414_ph4_rpt_20k_attribution_experiment.md) | 20K Attribution実験 A/B/C 深堀り分析: M1(net_arch縮小)20Kで棄却, M2(weight_decay)corr改善だがROI82%減, Baseline[256,256]が最安定, 100K A単独推奨 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
@@ -513,7 +514,7 @@ NNN_phX_TYPE_description.md
 3. ~~**Holm-Bonferroni 補正**~~: ✅ 122# B2 で g1_2_full_judgment に実装済み
 4. ~~**G2 SAC 4-seed 訓練**~~: ✅ **PASS** — reward-tuned (γ=0.95, E4=-3.5% 緩和) で達成 (386#/387#)
 5. ~~**G3 PnL Monte Carlo**~~: ✅ **PASS** — reward-clean (400#) で G3 全条件クリア (409#, PF=1.145, Sharpe=5.70, MaxDD=0.26%)
-6. **100K 拡大訓練**: ⏳ reward-clean 20K G3 PASS → 本番規模 100K × 4 seeds で再検証
+6. **100K 拡大訓練**: ⏳ 20K A/B/C比較実験完了 → **A (Baseline [256,256]) 100K単独実施を推奨** (414#)
 7. **G3.1 stress 条件**: slippage 1tick, maker miss penalty の感度分析 (392# P2-A) — **000# §3.5.1 で正式定義済み** (410#)
 
 ### 高優先 (収益性直結)

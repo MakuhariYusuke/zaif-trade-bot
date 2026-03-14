@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 414# 20K Attribution 実験 A/B/C 深堀り分析 (2026-03-14)
+
+### Added
+- **414# 深堀り分析レポート**: 20K 実験 A(Baseline[256,256]) / B(M1[128,128]) / C(M1+M2[128,128]+wd) の帰属分析
+  - H1棄却: M1(net_arch縮小)は20Kで性能悪化 (ROI -0.21%, Sharpe -1.82)
+  - H2支持: M2(weight_decay)はcorr +0.20改善、ただしROI 82%減
+  - H4支持: 20Kでは overparameterization が有利 (記憶>汎化)
+  - Seed456 のweight_decay応答が他seedと逆転 → 一律適用は危険
+  - **結論: A(Baseline) 100K単独実施を推奨** (ratio 10.8x→2.15x適正化)
+
 ## 413# レビュー反映: 410-413 検証 + 実験config分離 (2026-03-14)
 
 ### Fixed
