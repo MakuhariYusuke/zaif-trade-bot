@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-16 (422# 100K forensic, 417-421 index補完)
+> 最終更新: 2026-03-16 (423# 422 forensic review)
 
 ---
 
@@ -416,6 +416,9 @@
 | 420 | impl | [420_ph2_impl_observability_deferred_items.md](420_ph2_impl_observability_deferred_items.md) | 416#/417# 先送り事項: 可観測性改善 + hard_skip_mult 有効化 |
 | 421 | impl | [421_ph2_impl_execution_final_clamp_and_route_to_kill.md](421_ph2_impl_execution_final_clamp_and_route_to_kill.md) | Execution Final Clamp 実装: SHA `4aa779d27`, DRYヘルパー, 10テスト追加, 419# self-review反映済 |
 | 422 | rpt | [422_ph4_rpt_100k_forensic_analysis.md](422_ph4_rpt_100k_forensic_analysis.md) | 100K Forensic分析: G3 FAIL根因=val_ratio交絡 (20K:0.02→100K:0.20), F6 best_model未使用, 5000-step OOS切詰め盲点 |
+| 423 | rev | [423_ph4_rev_422_100k_training_review_and_next_options.md](423_ph4_rev_422_100k_training_review_and_next_options.md) | 422# 再点検: val_ratio単独犯ではなく評価設計+レジーム脆弱性の複合と整理, best_model差替え単独では不足, walk-forward / full-OOS比較 / sidecar化を提案 |
+| 424 | rev | [424_ph4_rev_422_423_gemini_second_opinion_and_self_review.md](424_ph4_rev_422_423_gemini_second_opinion_and_self_review.md) | Gemini second opinion: 時間スケールのミスマッチ, 5K step=OOS先頭への過学習, SAC万能主義限界, セルフレビュー付き |
+| 425 | rev | [425_ph4_rev_423_424_validity_and_blind_spots.md](425_ph4_rev_423_424_validity_and_blind_spots.md) | 423#/424# 妥当性評価: val_ratio=0.02でもG3 FAIL 3/6, reward設計×val_ratio交互作用, S1'併走提案, corr paradox |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
