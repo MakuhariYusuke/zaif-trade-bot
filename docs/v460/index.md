@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-15 (428# 427 global direction review)
+> 最終更新: 2026-03-15 (431# clamp observability + fill data 分析)
 
 ---
 
@@ -424,6 +424,7 @@
 | 428 | rev | [428_ph4_rev_427_global_direction_and_sidecar_review.md](428_ph4_rev_427_global_direction_and_sidecar_review.md) | 427# 再整理: 文化論は補助線に留め、既存Sidecar/Final Clampの live証明と効能検証を最優先化。walk-forward/ztb再利用, ML責務限定, clamp観測強化を提案 |
 | 429 | rev | [429_ph4_rev_428_actionable_sidecar_roadmap.md](429_ph4_rev_428_actionable_sidecar_roadmap.md) | 428# アクション化: Sidecar蘇生Step1-4, Clamp observabilityフィールド追加, SAC責務縮小。ただし修辞過剰・実態乖離あり |
 | 430 | rev | [430_ph4_rev_428_429_validity_and_implementation_audit.md](430_ph4_rev_428_429_validity_and_implementation_audit.md) | 428#/429# 妥当性評価+既存実装監査: retrain_scheduler完全実装済み発見, Sidecar v2(比例変換)存在, fill_recordsフィールド既存, 統合ロードマップ |
+| 431 | impl | [431_ph2_impl_clamp_observability_and_data_analysis.md](431_ph2_impl_clamp_observability_and_data_analysis.md) | Clamp Observability実装 + fill data分析: ceiling clamp rate 100%発見, EV相関0.017, offset chain装飾的, 428#/430# P3完了 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
