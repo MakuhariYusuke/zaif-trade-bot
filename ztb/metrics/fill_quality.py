@@ -171,6 +171,10 @@ class FillRecord:
     # ---- 372# F1: SAC Sidecar offset 記録 ----
     sidecar_offset_bps: float | None = None       # 適用された sidecar offset (bps, 正=攻撃的)
     sidecar_bias: float | None = None             # SAC directional_bias [-1,+1]
+    # ---- 418# P0: Execution Final Clamp 記録 ----
+    # executor multiplier chain 適用後・Final Clamp 適用前の offset ratio。
+    # None=clamp 未発火 or 無効。値あり=clamp が発火し、ceiling に切り詰められた。
+    execution_pre_clamp_offset: float | None = None
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

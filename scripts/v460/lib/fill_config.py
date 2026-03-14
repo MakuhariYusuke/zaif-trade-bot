@@ -321,6 +321,11 @@ class FillTestConfig:
     # None=共通値(offset_ceiling_ratio)使用、>0 でサイド別上限
     offset_ceiling_ratio_buy: float | None = None
     offset_ceiling_ratio_sell: float | None = None
+    # ---- 418# P0: Execution Final Clamp (416#/417# review: post-ceiling leak) ----
+    # maker_price ceiling 後の executor 側 multiplier chain が ceiling を迂回する問題の修正。
+    # 全 multiplier 適用後に ceiling を再適用し、offset ratio の暴走を防止。
+    execution_final_clamp_enabled: bool = True   # Final Clamp 有効化 (安全のためデフォルト有効)
+    execution_final_clamp_hard_skip_mult: float = 0.0  # >0: pre-clamp が ceiling×この倍率を超えたら hard skip (0=無効)
     # 054# S3: テール損失カット (post-fill早期監視)
     early_exit_enabled: bool = False
     early_exit_threshold_bps: float = 5.0  # 損失閾値 (bps)

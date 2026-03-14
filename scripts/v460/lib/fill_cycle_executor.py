@@ -736,6 +736,49 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                 f"→ delta={_sidecar_delta:+.0f}JPY, price={order_price:.0f}"
             )
 
+        # ── 418# P0: Execution Final Clamp ──────────────────────────
+        # 416#/417# review で発見: maker_price ceiling 後の 6 executor 側
+        # multiplier (EV, velocity, trending, toxicity, VG supplement, alert)
+        # が ceiling を迂回し effective_offset_ratio が際限なく拡大する構造欠陥。
+        # 全 multiplier 適用後にサイド別 ceiling を再適用する。
+        _execution_pre_clamp_offset: float | None = None
+        if self.config.execution_final_clamp_enabled:
+            _fc_ceil = self.config.offset_ceiling_ratio
+            if side == "buy" and self.config.offset_ceiling_ratio_buy is not None:
+                _fc_ceil = self.config.offset_ceiling_ratio_buy
+            elif side == "sell" and self.config.offset_ceiling_ratio_sell is not None:
+                _fc_ceil = self.config.offset_ceiling_ratio_sell
+            if _fc_ceil > 0 and effective_offset_ratio > _fc_ceil:
+                _execution_pre_clamp_offset = effective_offset_ratio
+                # 417# self-review: hard skip — boost が極端な場合は clamp だけでなく skip
+                _hs_mult = self.config.execution_final_clamp_hard_skip_mult
+                if _hs_mult > 0 and effective_offset_ratio > _fc_ceil * _hs_mult:
+                    logger.warning(
+                        f"[418# final_clamp] HARD SKIP: {side} "
+                        f"pre_clamp_offset={effective_offset_ratio:.4f} "
+                        f"> ceiling({_fc_ceil:.4f})×{_hs_mult:.1f} — "
+                        f"market too extreme, skipping cycle"
+                    )
+                    return self._make_cycle_skip_record(
+                        side=side,
+                        cancel_reason=CR.FINAL_CLAMP_HARD_SKIP,
+                        cycle_id=cycle_id,
+                        order_price=order_price,
+                        spread_at_order=spread_at_order,
+                        spread_offset_ratio=effective_offset_ratio,
+                    )
+                # normal clamp: ceiling に切り詰めて price 再計算
+                order_price = self._recalc_price_with_new_offset(
+                    side, order_price, spread_at_order,
+                    effective_offset_ratio, _fc_ceil,
+                )
+                logger.info(
+                    f"[418# final_clamp] {side}: offset "
+                    f"{effective_offset_ratio:.4f}→{_fc_ceil:.4f} "
+                    f"(clamped, price={order_price:.0f})"
+                )
+                effective_offset_ratio = _fc_ceil
+
         # 2. 発注 (CM-2: リトライ付き)
         t_submit = time.time()
         order: object | None = None
@@ -1094,6 +1137,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
             regime_at_order=_regime_at_order,
             regime_observation_count=_regime_obs_count,
             mid_at_order=_mid_at_order,
+            execution_pre_clamp_offset=_execution_pre_clamp_offset,
         )
 
         self._log_cycle_result(

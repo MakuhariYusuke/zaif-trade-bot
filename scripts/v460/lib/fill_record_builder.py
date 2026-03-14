@@ -298,6 +298,7 @@ class FillRecordBuilderMixin:
         regime_at_order: str | None = None,
         regime_observation_count: int | None = None,
         mid_at_order: float | None = None,
+        execution_pre_clamp_offset: float | None = None,
     ) -> FillRecord:
         """188# FillRecord を組み立てる.
 
@@ -327,6 +328,8 @@ class FillRecordBuilderMixin:
             "regime_observation_count": regime_observation_count,
             # 319# S-3: mid_at_order (316# S-3: spread capture 精度向上)
             "mid_at_order": mid_at_order,
+            # 418# P0: Execution Final Clamp 発火記録
+            "execution_pre_clamp_offset": execution_pre_clamp_offset,
         }
         payload.update(
             self._build_fill_measurement_fields(

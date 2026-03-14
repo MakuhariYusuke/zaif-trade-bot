@@ -72,6 +72,28 @@ class OrchestratorBalanceMixin:
 
         if not await self._check_balance_for_side(opposite, regime_mult=_regime_mult):
             # 反対 side は残高 OK → 即座に切替
+            # ── 418# P0: Route-to-Kill Deadlock 防止 ──
+            # 反対 side が kill-gated (sell_dynamic_kill / buy_dynamic_kill) の場合、
+            # 切替しても gate で即ブロックされ高速ループのデッドスピラルになる。
+            # kill-gated なら切替せずに preflight failure として処理する。
+            if self._is_side_killed(opposite):
+                logger.warning(
+                    f"[418#] Route-to-Kill deadlock: {next_side} insufficient, "
+                    f"{opposite} has balance but is kill-gated — "
+                    f"treating as both-side blocked"
+                )
+                self._inc_guard_fire("route_to_kill_deadlock")
+                await self._execute_skip(
+                    st, side=next_side,
+                    cancel_reason=CR.ROUTE_TO_KILL_DEADLOCK,
+                    order_quantity=self._current_lot,
+                    flush_context="route_to_kill_deadlock",
+                    state_save=True,
+                    state_save_context="route_to_kill_deadlock",
+                    update_last_side=True,
+                )
+                return True
+
             logger.info(
                 f"[balance] {next_side} insufficient, "
                 f"switching to {opposite} immediately (091#)"
