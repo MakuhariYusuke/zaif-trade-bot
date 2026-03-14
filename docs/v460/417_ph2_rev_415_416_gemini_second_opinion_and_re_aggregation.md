@@ -3,7 +3,7 @@
 **Date**: 2026-03-14
 **Phase**: ph2
 **Type**: rev / data-analysis (レビュー・セカンドオピニオン・再集計)
-**対象**: `docs/v460/415_fill_test_log_analysis.md`, `docs/v460/416_ph2_rev_415_fill_test_improvement_and_blindspots.md`
+**対象**: `docs/v460/415_ph2_rpt_fill_test_log_analysis.md`, `docs/v460/416_ph2_rev_415_fill_test_improvement_and_blindspots.md`
 **Reviewer**: Gemini
 
 ---
