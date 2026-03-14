@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-14 (414# 20K Attribution実験 A/B/C 深堀り分析)
+> 最終更新: 2026-03-15 (419# 418# self-review)
 
 ---
 
@@ -408,6 +408,9 @@
 | 412 | rev | [412_phg_rev_410_411_sac_hparam_seed_review.md](412_phg_rev_410_411_sac_hparam_seed_review.md) | 410-411レビュー: reward_profit_corr解釈補正, [128,128]は本命候補だが最適断定は保留, weight_decay/learning_starts/M5の採用優先度整理, actor-critic非対称化提案 |
 | 413 | rev | [413_phg_rev_410_412_gemini_second_opinion_and_self_review.md](413_phg_rev_410_412_gemini_second_opinion_and_self_review.md) | Geminiセカンドオピニオン: レジーム多様性観点, Q値平滑化リスク, 初期経験偏向, Reward Hacking仮説, state_dict平均危険性 |
 | 414 | rpt | [414_ph4_rpt_20k_attribution_experiment.md](414_ph4_rpt_20k_attribution_experiment.md) | 20K Attribution実験 A/B/C 深堀り分析: M1(net_arch縮小)20Kで棄却, M2(weight_decay)corr改善だがROI82%減, Baseline[256,256]が最安定, 100K A単独推奨 |
+| 415 | rpt | [415_fill_test_log_analysis.md](415_fill_test_log_analysis.md) | fill_test ログ分析 (3/11-3/14): sell_dynamic_kill爆発, 405# offset fix後のsell AS悪化仮説, SkipGate/VG/時間帯の整理, 改善案 P0-P3 |
+| 416 | rev | [416_ph2_rev_415_fill_test_improvement_and_blindspots.md](416_ph2_rev_415_fill_test_improvement_and_blindspots.md) | 415# レビュー: pre-405から存在するpost-ceiling offset leakを特定, SDKをroute-to-kill相互作用として再定義, SkipGate提案の一部は既実装, same-SHA再集計を最優先化 |
+| 418 | impl | [418_ph2_impl_execution_final_clamp_and_route_to_kill.md](418_ph2_impl_execution_final_clamp_and_route_to_kill.md) | Execution Final Clamp (post-ceiling offset leak修正) + Route-to-Kill Deadlock防止 + 419# self-review (9件不備修正, DRYヘルパー, 10テスト追加) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
