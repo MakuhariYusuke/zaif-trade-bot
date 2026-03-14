@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-16 (423# 422 forensic review)
+> 最終更新: 2026-03-15 (428# 427 global direction review)
 
 ---
 
@@ -419,6 +419,11 @@
 | 423 | rev | [423_ph4_rev_422_100k_training_review_and_next_options.md](423_ph4_rev_422_100k_training_review_and_next_options.md) | 422# 再点検: val_ratio単独犯ではなく評価設計+レジーム脆弱性の複合と整理, best_model差替え単独では不足, walk-forward / full-OOS比較 / sidecar化を提案 |
 | 424 | rev | [424_ph4_rev_422_423_gemini_second_opinion_and_self_review.md](424_ph4_rev_422_423_gemini_second_opinion_and_self_review.md) | Gemini second opinion: 時間スケールのミスマッチ, 5K step=OOS先頭への過学習, SAC万能主義限界, セルフレビュー付き |
 | 425 | rev | [425_ph4_rev_423_424_validity_and_blind_spots.md](425_ph4_rev_423_424_validity_and_blind_spots.md) | 423#/424# 妥当性評価: val_ratio=0.02でもG3 FAIL 3/6, reward設計×val_ratio交互作用, S1'併走提案, corr paradox |
+| 426 | — | *(予約: S1/S1' 実験結果文書)* | S1/S1' 実験結果と考察 — val_ratio×reward交互作用の実証 |
+| 427 | plan | [427_global_quant_cultures_and_sidecar_plan.md](427_global_quant_cultures_and_sidecar_plan.md) | 世界のクオンツ文化とSidecar/Final Clamp構想: 日中ハイブリッド方針, 実装計画案 |
+| 428 | rev | [428_ph4_rev_427_global_direction_and_sidecar_review.md](428_ph4_rev_427_global_direction_and_sidecar_review.md) | 427# 再整理: 文化論は補助線に留め、既存Sidecar/Final Clampの live証明と効能検証を最優先化。walk-forward/ztb再利用, ML責務限定, clamp観測強化を提案 |
+| 429 | rev | [429_ph4_rev_428_actionable_sidecar_roadmap.md](429_ph4_rev_428_actionable_sidecar_roadmap.md) | 428# アクション化: Sidecar蘇生Step1-4, Clamp observabilityフィールド追加, SAC責務縮小。ただし修辞過剰・実態乖離あり |
+| 430 | rev | [430_ph4_rev_428_429_validity_and_implementation_audit.md](430_ph4_rev_428_429_validity_and_implementation_audit.md) | 428#/429# 妥当性評価+既存実装監査: retrain_scheduler完全実装済み発見, Sidecar v2(比例変換)存在, fill_recordsフィールド既存, 統合ロードマップ |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
