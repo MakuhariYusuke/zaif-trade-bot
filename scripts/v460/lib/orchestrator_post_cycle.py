@@ -147,10 +147,11 @@ class OrchestratorPostCycleMixin:
         # 431# clamp observability: ceiling clamp 発火検出
         # 306# ceiling + 418# final_clamp の両方を検出。
         # offset_stages JSON パース不要: effective_offset == ceiling なら clamp 発火。
-        if not record.skip_gate_skipped and record.effective_offset_used is not None:
+        # 431# SR-1 fix: skip_gate_skipped は bool|None — `not None` は True なので
+        # 明示的に `is False` で比較（gate 評価済み＆非 skip の record のみ計上）。
+        if record.skip_gate_skipped is False and record.effective_offset_used is not None:
             st.ceiling_check_count += 1
-            _side = record.side or ""
-            _ceil = self.config.resolve_offset_ceiling(_side)
+            _ceil = self.config.resolve_offset_ceiling(record.side)
             if _ceil > 0 and abs(record.effective_offset_used - _ceil) < 1e-6:
                 st.clamp_fire_count += 1
         st.batch.append(record)

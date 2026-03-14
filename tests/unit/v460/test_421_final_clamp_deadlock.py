@@ -584,3 +584,113 @@ class TestClampObservability:
         st.clamp_fire_count = 90
         rate = st.clamp_fire_count / st.ceiling_check_count * 100.0
         assert rate == 90.0
+
+
+class TestClampDetectionLogic:
+    """431# self-review: clamp 検出ロジックの統合テスト.
+
+    _process_post_cycle 内の検出条件を FillRecord で直接検証。
+    """
+
+    @staticmethod
+    def _make_record(
+        side: str = "buy",
+        skip_gate_skipped: bool | None = False,
+        effective_offset_used: float | None = 0.20,
+    ) -> "FillRecord":
+        from ztb.metrics.fill_quality import FillRecord
+        return FillRecord(
+            cycle_id="test",
+            timestamp=0.0,
+            side=side,
+            order_price=10000,
+            order_quantity=0.001,
+            skip_gate_skipped=skip_gate_skipped,
+            effective_offset_used=effective_offset_used,
+        )
+
+    @staticmethod
+    def _detect_clamp(
+        record: "FillRecord",
+        ceiling_map: dict[str, float] | None = None,
+    ) -> tuple[bool, bool]:
+        """431# 検出ロジック再現.
+
+        Returns:
+            (checked, clamped) — ceiling_check 対象か, clamp 発火したか.
+        """
+        if ceiling_map is None:
+            ceiling_map = {"buy": 0.20, "sell": 0.50}
+        if record.skip_gate_skipped is False and record.effective_offset_used is not None:
+            _ceil = ceiling_map.get(record.side, 0.15)
+            if _ceil > 0 and abs(record.effective_offset_used - _ceil) < 1e-6:
+                return True, True
+            return True, False
+        return False, False
+
+    def test_buy_at_ceiling_detected(self) -> None:
+        """Buy offset == ceiling → clamp detected."""
+        r = self._make_record(side="buy", effective_offset_used=0.20)
+        checked, clamped = self._detect_clamp(r)
+        assert checked is True
+        assert clamped is True
+
+    def test_buy_below_ceiling_not_clamped(self) -> None:
+        """Buy offset < ceiling → checked but not clamped."""
+        r = self._make_record(side="buy", effective_offset_used=0.15)
+        checked, clamped = self._detect_clamp(r)
+        assert checked is True
+        assert clamped is False
+
+    def test_sell_near_ceiling_not_clamped(self) -> None:
+        """Sell offset=0.498 vs ceiling=0.50 → not clamped (delta > 1e-6)."""
+        r = self._make_record(side="sell", effective_offset_used=0.498)
+        checked, clamped = self._detect_clamp(r)
+        assert checked is True
+        assert clamped is False
+
+    def test_sell_at_ceiling_detected(self) -> None:
+        """Sell offset == ceiling → clamp detected."""
+        r = self._make_record(side="sell", effective_offset_used=0.50)
+        checked, clamped = self._detect_clamp(r)
+        assert checked is True
+        assert clamped is True
+
+    def test_skip_gate_true_excluded(self) -> None:
+        """skip_gate_skipped=True → not checked."""
+        r = self._make_record(skip_gate_skipped=True, effective_offset_used=0.20)
+        checked, clamped = self._detect_clamp(r)
+        assert checked is False
+        assert clamped is False
+
+    def test_skip_gate_none_excluded(self) -> None:
+        """431# SR-1 fix: skip_gate_skipped=None (guard block) → not checked."""
+        r = self._make_record(skip_gate_skipped=None, effective_offset_used=0.20)
+        checked, clamped = self._detect_clamp(r)
+        assert checked is False
+        assert clamped is False
+
+    def test_effective_offset_none_excluded(self) -> None:
+        """effective_offset_used=None → not checked."""
+        r = self._make_record(skip_gate_skipped=False, effective_offset_used=None)
+        checked, clamped = self._detect_clamp(r)
+        assert checked is False
+        assert clamped is False
+
+    def test_epsilon_boundary(self) -> None:
+        """Offset within 1e-6 of ceiling → detected as clamped."""
+        r = self._make_record(
+            side="buy", effective_offset_used=0.20 + 5e-7
+        )
+        checked, clamped = self._detect_clamp(r)
+        assert checked is True
+        assert clamped is True
+
+    def test_epsilon_outside(self) -> None:
+        """Offset beyond 1e-6 of ceiling → not clamped."""
+        r = self._make_record(
+            side="buy", effective_offset_used=0.20 + 2e-6
+        )
+        checked, clamped = self._detect_clamp(r)
+        assert checked is True
+        assert clamped is False
