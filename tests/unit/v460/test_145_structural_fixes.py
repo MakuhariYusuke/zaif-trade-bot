@@ -180,6 +180,8 @@ class TestCancelReasons:
             CR.ONE_SIDED_FREEZE_SKIP,          # 234# one-sided
             CR.SKIP_GATE_RULE_UNKNOWN_SELL,    # 296# unknown sell
             CR.POLL_ERROR_LIMIT,               # 373# F9 poll error
+            CR.FINAL_CLAMP_HARD_SKIP,          # 418# P0 Final Clamp
+            CR.ROUTE_TO_KILL_DEADLOCK,          # 418# P0 Route-to-Kill
         }
         assert CR.AUDIT_CANCEL_REASONS == expected
 

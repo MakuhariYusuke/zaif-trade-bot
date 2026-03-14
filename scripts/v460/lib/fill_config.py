@@ -326,6 +326,21 @@ class FillTestConfig:
     # 全 multiplier 適用後に ceiling を再適用し、offset ratio の暴走を防止。
     execution_final_clamp_enabled: bool = True   # Final Clamp 有効化 (安全のためデフォルト有効)
     execution_final_clamp_hard_skip_mult: float = 0.0  # >0: pre-clamp が ceiling×この倍率を超えたら hard skip (0=無効)
+
+    def resolve_offset_ceiling(self, side: str) -> float:
+        """418# DRY: サイド別 offset ceiling を解決する共通ヘルパー.
+
+        maker_price.py L1015 / fill_cycle_executor.py Final Clamp で
+        同一パターンが3重複していたため統一。
+        Returns: ceiling 値 (0.0 = 無効)。
+        """
+        ceil = self.offset_ceiling_ratio
+        if side == "buy" and self.offset_ceiling_ratio_buy is not None:
+            ceil = self.offset_ceiling_ratio_buy
+        elif side == "sell" and self.offset_ceiling_ratio_sell is not None:
+            ceil = self.offset_ceiling_ratio_sell
+        return ceil
+
     # 054# S3: テール損失カット (post-fill早期監視)
     early_exit_enabled: bool = False
     early_exit_threshold_bps: float = 5.0  # 損失閾値 (bps)

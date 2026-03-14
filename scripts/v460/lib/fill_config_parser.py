@@ -981,6 +981,13 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
         kwargs["offset_ceiling_ratio_buy"] = float(yaml_cfg["offset_ceiling_ratio_buy"])
     if "offset_ceiling_ratio_sell" in yaml_cfg:
         kwargs["offset_ceiling_ratio_sell"] = float(yaml_cfg["offset_ceiling_ratio_sell"])
+    # ---- 418# P0: Execution Final Clamp ----
+    if "execution_final_clamp_enabled" in yaml_cfg:
+        kwargs["execution_final_clamp_enabled"] = bool(yaml_cfg["execution_final_clamp_enabled"])
+    if "execution_final_clamp_hard_skip_mult" in yaml_cfg:
+        kwargs["execution_final_clamp_hard_skip_mult"] = float(
+            yaml_cfg["execution_final_clamp_hard_skip_mult"]
+        )
 
     # ---- 366# 市場理論システム M2-M5 ----
     # M2: Bayesian Regime Filter

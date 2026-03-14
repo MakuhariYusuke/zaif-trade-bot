@@ -580,6 +580,11 @@ offset_stage_recording:
 offset_ceiling_ratio: 0.15        # 共通デフォルト (サイド別が未設定時に使用)
 offset_ceiling_ratio_buy: 0.20    # 381# 0.15→0.20 (380# 6-A: クリーンデータ >=0.15:+0.065bps, <0.15:+0.586bps)
 offset_ceiling_ratio_sell: 0.50   # 320# sell: 0.15→0.50 (floor(0.30) + regime boost(×1.8) = 0.54 → ceil(0.50) で表現力回復)
+# ---- 418# P0: Execution Final Clamp (416#/417# review) ----
+# maker_price ceiling 後の executor multiplier chain (EV/velocity/toxicity 等) が
+# ceiling を迂回する構造欠陥の修正。全 multiplier 適用後に ceiling を再適用。
+execution_final_clamp_enabled: true
+execution_final_clamp_hard_skip_mult: 0.0  # 2.5 推奨 (ceiling×2.5 超で hard skip、要観察後に有効化)
 
 # ---- 310# A: Sell AS Time-of-Day Offset Boost (307# F3, 306# H5) ----
 # 306# deep dive 実証: 高 AS 時間帯の sell offset を拡大し逆選択コストを低減

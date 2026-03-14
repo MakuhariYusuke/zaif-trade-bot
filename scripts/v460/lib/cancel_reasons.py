@@ -202,4 +202,7 @@ CancelReason = Literal[
     "skip_gate_rule_unknown_sell",
     # 373# F9: poll error limit
     "poll_error_limit",
+    # 418# P0: Final Clamp + Route-to-Kill
+    "final_clamp_hard_skip",
+    "route_to_kill_deadlock",
 ]

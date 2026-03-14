@@ -489,6 +489,9 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     # 320# サイド別 ceiling (321# hot-reload 追加)
     "offset_ceiling_ratio_buy",
     "offset_ceiling_ratio_sell",
+    # 418# P0: Execution Final Clamp
+    "execution_final_clamp_enabled",
+    "execution_final_clamp_hard_skip_mult",
     # --- 374# Phase 3.1: SAC Sidecar Proportional Boost ---
     "sidecar_enabled",
     "sidecar_max_boost_bps",

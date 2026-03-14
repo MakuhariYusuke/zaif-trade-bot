@@ -743,11 +743,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
         # 全 multiplier 適用後にサイド別 ceiling を再適用する。
         _execution_pre_clamp_offset: float | None = None
         if self.config.execution_final_clamp_enabled:
-            _fc_ceil = self.config.offset_ceiling_ratio
-            if side == "buy" and self.config.offset_ceiling_ratio_buy is not None:
-                _fc_ceil = self.config.offset_ceiling_ratio_buy
-            elif side == "sell" and self.config.offset_ceiling_ratio_sell is not None:
-                _fc_ceil = self.config.offset_ceiling_ratio_sell
+            _fc_ceil = self.config.resolve_offset_ceiling(side)
             if _fc_ceil > 0 and effective_offset_ratio > _fc_ceil:
                 _execution_pre_clamp_offset = effective_offset_ratio
                 # 417# self-review: hard skip — boost が極端な場合は clamp だけでなく skip
@@ -768,10 +764,18 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                         spread_offset_ratio=effective_offset_ratio,
                     )
                 # normal clamp: ceiling に切り詰めて price 再計算
-                order_price = self._recalc_price_with_new_offset(
-                    side, order_price, spread_at_order,
-                    effective_offset_ratio, _fc_ceil,
-                )
+                # spread 不明時は price 再計算不可 → ratio のみ clamp するが
+                # price との不整合が生じるため warning を出す
+                if spread_at_order is not None and spread_at_order > 0:
+                    order_price = self._recalc_price_with_new_offset(
+                        side, order_price, spread_at_order,
+                        effective_offset_ratio, _fc_ceil,
+                    )
+                else:
+                    logger.warning(
+                        f"[418# final_clamp] {side}: spread unavailable — "
+                        f"ratio clamped but price NOT recalculated"
+                    )
                 logger.info(
                     f"[418# final_clamp] {side}: offset "
                     f"{effective_offset_ratio:.4f}→{_fc_ceil:.4f} "

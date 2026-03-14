@@ -336,3 +336,126 @@ class TestCeilingResolution:
 
     def test_sell_fallback_to_common(self) -> None:
         assert self._resolve_ceiling("sell", 0.15, None, None) == 0.15
+
+
+# ============================================================
+# 418# self-review: resolve_offset_ceiling DRY ヘルパーテスト
+# ============================================================
+
+
+class TestResolveOffsetCeilingHelper:
+    """FillTestConfig.resolve_offset_ceiling() のテスト."""
+
+    def test_buy_uses_buy_specific(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        cfg = FillTestConfig(
+            offset_ceiling_ratio=0.15,
+            offset_ceiling_ratio_buy=0.20,
+            offset_ceiling_ratio_sell=0.50,
+        )
+        assert cfg.resolve_offset_ceiling("buy") == 0.20
+
+    def test_sell_uses_sell_specific(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        cfg = FillTestConfig(
+            offset_ceiling_ratio=0.15,
+            offset_ceiling_ratio_buy=0.20,
+            offset_ceiling_ratio_sell=0.50,
+        )
+        assert cfg.resolve_offset_ceiling("sell") == 0.50
+
+    def test_fallback_to_common(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        cfg = FillTestConfig(offset_ceiling_ratio=0.15)
+        assert cfg.resolve_offset_ceiling("buy") == 0.15
+        assert cfg.resolve_offset_ceiling("sell") == 0.15
+
+
+# ============================================================
+# 418# self-review: fill_config_parser YAML roundtrip テスト
+# ============================================================
+
+
+class TestFillConfigParserFinalClamp:
+    """execution_final_clamp 設定の YAML パーステスト."""
+
+    def test_parser_reads_enabled(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        cfg = FillTestConfig.from_yaml({
+            "execution_final_clamp_enabled": False,
+        })
+        assert cfg.execution_final_clamp_enabled is False
+
+    def test_parser_reads_hard_skip_mult(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        cfg = FillTestConfig.from_yaml({
+            "execution_final_clamp_hard_skip_mult": 2.5,
+        })
+        assert cfg.execution_final_clamp_hard_skip_mult == 2.5
+
+    def test_parser_default_when_absent(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        cfg = FillTestConfig.from_yaml({})
+        assert cfg.execution_final_clamp_enabled is True
+        assert cfg.execution_final_clamp_hard_skip_mult == 0.0
+
+
+# ============================================================
+# 418# self-review: guard_reason_classifier テスト
+# ============================================================
+
+
+class TestGuardReasonClassifier418:
+    """route_to_kill_deadlock の分類テスト."""
+
+    def test_route_to_kill_is_recovery(self) -> None:
+        from scripts.v460.lib.guard_reason_classifier import (
+            GuardCategory,
+            classify_guard,
+        )
+        assert classify_guard("route_to_kill_deadlock") == GuardCategory.RECOVERY
+
+
+# ============================================================
+# 418# self-review: config_hot_reload 対象テスト
+# ============================================================
+
+
+class TestConfigHotReload418:
+    """Final Clamp 設定が hot-reload 対象であることを確認."""
+
+    def test_final_clamp_fields_in_hot_reloadable(self) -> None:
+        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
+        assert "execution_final_clamp_enabled" in _HOT_RELOADABLE_FIELDS
+        assert "execution_final_clamp_hard_skip_mult" in _HOT_RELOADABLE_FIELDS
+
+
+# ============================================================
+# 418# self-review: spread_at_order=None edge case
+# ============================================================
+
+
+class TestFinalClampSpreadNone:
+    """spread_at_order=None 時の Final Clamp 挙動テスト."""
+
+    def test_recalc_with_none_spread_returns_original(self) -> None:
+        """spread=None → price 変更なし."""
+        result = PreOrderAdjustmentsMixin._recalc_price_with_new_offset(
+            side="sell",
+            order_price=10050,
+            spread_at_order=None,
+            old_ratio=1.0,
+            new_ratio=0.50,
+        )
+        assert result == 10050
+
+    def test_recalc_with_zero_spread_returns_original(self) -> None:
+        """spread=0 → price 変更なし."""
+        result = PreOrderAdjustmentsMixin._recalc_price_with_new_offset(
+            side="buy",
+            order_price=9950,
+            spread_at_order=0.0,
+            old_ratio=1.0,
+            new_ratio=0.20,
+        )
+        assert result == 9950
