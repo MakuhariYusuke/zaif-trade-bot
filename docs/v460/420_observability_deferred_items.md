@@ -1,6 +1,6 @@
 # 420# 416#/417# 先送り事項: 可観測性改善 + hard_skip_mult 有効化
 
-> **前提**: 418# Execution Final Clamp + Route-to-Kill 実装時に先送りとなった
+> **前提**: 421# Execution Final Clamp + Route-to-Kill 実装時に先送りとなった
 > 416# (Codex review) / 417# (Gemini second opinion) の指摘事項を整理・実装。
 
 ## §1 対象事項と優先度
@@ -113,7 +113,7 @@ trending レジームの interval=60s に対し、sell worst case (75s timeout +
 
 ## §4 テスト
 
-- `tests/unit/v460/test_418_final_clamp_deadlock.py` に 10 テスト追加
+- `tests/unit/v460/test_421_final_clamp_deadlock.py` に 10 テスト追加
   - `TestStartGitSha` (3 tests)
   - `TestExecutorOffsetStages` (2 tests)
   - `TestSideObservability` (4 tests)
@@ -136,4 +136,4 @@ trending レジームの interval=60s に対し、sell worst case (75s timeout +
 | `scripts/v460/lib/orchestrator_balance.py` | side 切替理由記録 |
 | `scripts/v460/lib/orchestrator_mid_cycle.py` | record 転写 |
 | `configs/v460/fill_test.yaml` | `hard_skip_mult` 0.0→2.5 |
-| `tests/unit/v460/test_418_final_clamp_deadlock.py` | 10 テスト追加 |
+| `tests/unit/v460/test_421_final_clamp_deadlock.py` | 10 テスト追加 |

@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-15 (419# 418# self-review)
+> 最終更新: 2026-03-16 (422# 100K forensic, 417-421 index補完)
 
 ---
 
@@ -410,7 +410,12 @@
 | 414 | rpt | [414_ph4_rpt_20k_attribution_experiment.md](414_ph4_rpt_20k_attribution_experiment.md) | 20K Attribution実験 A/B/C 深堀り分析: M1(net_arch縮小)20Kで棄却, M2(weight_decay)corr改善だがROI82%減, Baseline[256,256]が最安定, 100K A単独推奨 |
 | 415 | rpt | [415_fill_test_log_analysis.md](415_fill_test_log_analysis.md) | fill_test ログ分析 (3/11-3/14): sell_dynamic_kill爆発, 405# offset fix後のsell AS悪化仮説, SkipGate/VG/時間帯の整理, 改善案 P0-P3 |
 | 416 | rev | [416_ph2_rev_415_fill_test_improvement_and_blindspots.md](416_ph2_rev_415_fill_test_improvement_and_blindspots.md) | 415# レビュー: pre-405から存在するpost-ceiling offset leakを特定, SDKをroute-to-kill相互作用として再定義, SkipGate提案の一部は既実装, same-SHA再集計を最優先化 |
-| 418 | impl | [418_ph2_impl_execution_final_clamp_and_route_to_kill.md](418_ph2_impl_execution_final_clamp_and_route_to_kill.md) | Execution Final Clamp (post-ceiling offset leak修正) + Route-to-Kill Deadlock防止 + 419# self-review (9件不備修正, DRYヘルパー, 10テスト追加) |
+| 417 | rev | [417_ph2_rev_415_416_gemini_second_opinion_and_re_aggregation.md](417_ph2_rev_415_416_gemini_second_opinion_and_re_aggregation.md) | Gemini セカンドオピニオン & 再集計: 415#/416# fill_test ログ深堀り |
+| 418 | rpt | [418_execution_final_clamp_deadlock.md](418_execution_final_clamp_deadlock.md) | Execution Final Clamp + Route-to-Kill Deadlock修正: post-ceiling offset leak (×4.35倍膨張) + buy→sell デッドスピラル (416#/417# 起票) |
+| 419 | rev | [419_self_review_421_final_clamp_deadlock.md](419_self_review_421_final_clamp_deadlock.md) | Self-Review: 421# Execution Final Clamp + Route-to-Kill Deadlock (9項目検査, 不備修正) |
+| 420 | impl | [420_observability_deferred_items.md](420_observability_deferred_items.md) | 416#/417# 先送り事項: 可観測性改善 + hard_skip_mult 有効化 |
+| 421 | impl | [421_ph2_impl_execution_final_clamp_and_route_to_kill.md](421_ph2_impl_execution_final_clamp_and_route_to_kill.md) | Execution Final Clamp 実装: SHA `4aa779d27`, DRYヘルパー, 10テスト追加, 419# self-review反映済 |
+| 422 | rpt | [422_ph4_rpt_100k_forensic_analysis.md](422_ph4_rpt_100k_forensic_analysis.md) | 100K Forensic分析: G3 FAIL根因=val_ratio交絡 (20K:0.02→100K:0.20), F6 best_model未使用, 5000-step OOS切詰め盲点 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
@@ -517,7 +522,7 @@ NNN_phX_TYPE_description.md
 3. ~~**Holm-Bonferroni 補正**~~: ✅ 122# B2 で g1_2_full_judgment に実装済み
 4. ~~**G2 SAC 4-seed 訓練**~~: ✅ **PASS** — reward-tuned (γ=0.95, E4=-3.5% 緩和) で達成 (386#/387#)
 5. ~~**G3 PnL Monte Carlo**~~: ✅ **PASS** — reward-clean (400#) で G3 全条件クリア (409#, PF=1.145, Sharpe=5.70, MaxDD=0.26%)
-6. **100K 拡大訓練**: ⏳ 20K A/B/C比較実験完了 → **A (Baseline [256,256]) 100K単独実施を推奨** (414#)
+6. **100K 拡大訓練**: ❌ **G3 FAIL** — val_ratio交絡 (0.02→0.20) で20K G3 PASSが偽陽性の疑い, F6 best_model未使用 (422#). 次: val_ratio統一再実験
 7. **G3.1 stress 条件**: slippage 1tick, maker miss penalty の感度分析 (392# P2-A) — **000# §3.5.1 で正式定義済み** (410#)
 
 ### 高優先 (収益性直結)

@@ -1,4 +1,4 @@
-# 415# 100K Training Result — Deep Forensic Analysis
+﻿# 422# 100K Training Result — Deep Forensic Analysis
 
 **Date**: 2026-03-14  
 **Experiment**: Baseline A (reward-clean [256,256]) × 100K timesteps  
@@ -24,7 +24,7 @@
 **最重要発見**: 20K G3 PASSは **val_ratio=0.02 (偽陽性の疑い)** によるもので、  
 100K の val_ratio=0.20 がより信頼性の高い評価であった可能性が極めて高い。
 
-**416# レビューで追加発見した重大盲点 2件**:
+**423# レビューで追加発見した重大盲点 2件**:
 1. **F6 checkpoint 評価 = 5,000 ステップ打切り** → 100K の OOS 243K 行の **2.1%** しか評価せず best_model 選択
 2. **G3 最終評価は F6 best_model ではなく 100K 完了後の final_model で実行** → F6 は保存するだけで使われていない
 
@@ -170,7 +170,7 @@ Step     s42      s123     s456     s789     Mean
   - 好運なシード (42): 市場パターンに合致する戦略を偶然発見
   - 不運なシード (789): 逆方向の戦略を学習
 
-**★416# レビュー追記**: シード分散の増大は「val_ratioの差異」でも説明可能。
+**★423# レビュー追記**: シード分散の増大は「val_ratioの差異」でも説明可能。
 val_ratio=0.02 (24K行 = ~17日) は燭い期間のため、どのシードでも似た ROI になりやすい。
 val_ratio=0.20 (243K行 = ~169日) は多様な市場環境を含むため、
 シードごとの戦略差が ROI に大きく反映される。
@@ -209,9 +209,9 @@ val_ratio=0.20 (243K行 = ~169日) は多様な市場環境を含むため、
 | **E (提案)** | **20K** | **0.20** | val_ratio 効果の分離 |
 | **F (提案)** | **100K** | **0.02** | timesteps 効果の分離 |
 
-### 6.2 F6 Best-Model と最終評価の乖離 ★416# レビュー追記
+### 6.2 F6 Best-Model と最終評価の乖離 ★423# レビュー追記
 
-**416# レビューで特定した乖離の2つの根本原因**:
+**423# レビューで特定した乖離の2つの根本原因**:
 
 #### 原因 1: F6 checkpoint eval = 5,000 ステップ打切り
 
@@ -273,7 +273,7 @@ val_ratio: 0.20  # ← 変更点
 
 ### 優先度 A: 戦略的に重要
 
-#### A1: F6 best_model を G3 評価に使用する修正 ★416# 具体化
+#### A1: F6 best_model を G3 評価に使用する修正 ★423# 具体化
 
 現在 G3 eval は final_model (100K完了後) で実行されている。
 F6 が保存した best_model で G3 eval を実行するよう修正すべき:
@@ -360,7 +360,7 @@ val_ratio に応じて動的に調整すべき（100K では 2.1% しか見て�
 
 ---
 
-## Appendix A: Trade Frequency 安定性 (416# レビュー追加)
+## Appendix A: Trade Frequency 安定性 (423# レビュー追加)
 
 トレード頻度 (trades/row) は 20K⇔100K でほぼ一致しており、
 モデルの行動パターン自体は大きく変わっていない:
@@ -381,3 +381,4 @@ val_ratio に応じて動的に調整すべき（100K では 2.1% しか見て�
 - 20K Baseline: `results/v460/v460_g2train_seed42_20260313_101021.json`
 - Training Log: `temp/reward_clean_100k_log.txt` (UTF-16)
 - Config: `configs/v460/experiments/g2_sac_reward_clean_100k.yaml`
+

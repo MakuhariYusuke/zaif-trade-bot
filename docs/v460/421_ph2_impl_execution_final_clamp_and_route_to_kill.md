@@ -1,4 +1,4 @@
-# 418# Execution Final Clamp + Route-to-Kill Deadlock 防止
+# 421# Execution Final Clamp + Route-to-Kill Deadlock 防止
 
 > **種別**: impl (実装)  
 > **日付**: 2026-03-14  
@@ -47,7 +47,7 @@ ceiling を迂回。`_apply_offset_multiplier()` にはクランプなし。
 
 ## テスト
 
-- `test_418_final_clamp_deadlock.py`: 25テスト全パス
+- `test_421_final_clamp_deadlock.py`: 25テスト全パス
 
 ---
 
@@ -82,9 +82,9 @@ ceiling を迂回。`_apply_offset_multiplier()` にはクランプなし。
 | `test_145_structural_fixes.py` | AUDIT frozenset 期待値修正 |
 | `test_113_resilience.py` | 行数制限 755→810 |
 | `test_253_*.py` | 行数制限 1120→1170 |
-| `test_418_final_clamp_deadlock.py` | 25→35テスト (10件追加) |
+| `test_421_final_clamp_deadlock.py` | 25→35テスト (10件追加) |
 
 ### テスト結果
 
-- 418# テスト: 35 passed
+- 421# テスト: 35 passed
 - 全 v460 テスト: 3569 passed, 7 skipped, 0 failed
