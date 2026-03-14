@@ -144,6 +144,15 @@ class OrchestratorPostCycleMixin:
                                 f"[daily_drawdown] min lot reached ({old_lot:.4f} BTC), "
                                 f"applying 3x interval multiplier instead of lot reduction"
                             )
+        # 431# clamp observability: ceiling clamp 発火検出
+        # 306# ceiling + 418# final_clamp の両方を検出。
+        # offset_stages JSON パース不要: effective_offset == ceiling なら clamp 発火。
+        if not record.skip_gate_skipped and record.effective_offset_used is not None:
+            st.ceiling_check_count += 1
+            _side = record.side or ""
+            _ceil = self.config.resolve_offset_ceiling(_side)
+            if _ceil > 0 and abs(record.effective_offset_used - _ceil) < 1e-6:
+                st.clamp_fire_count += 1
         st.batch.append(record)
         self._recent_records.append(record)
 
@@ -271,6 +280,16 @@ class OrchestratorPostCycleMixin:
                     f"market={_cat_totals['market']}, "
                     f"system={_cat_totals['system']}, "
                     f"recovery={_cat_totals['recovery']}"
+                )
+            # 431# clamp observability (428#/430# P3)
+            if st.ceiling_check_count > 0:
+                _clamp_rate = (
+                    st.clamp_fire_count / st.ceiling_check_count * 100.0
+                )
+                _log_fn = logger.warning if _clamp_rate >= 90.0 else logger.info
+                _log_fn(
+                    f"[431# clamp] clampFires={st.clamp_fire_count}/"
+                    f"{st.ceiling_check_count} ({_clamp_rate:.1f}%)"
                 )
             # 348# balance_forced 撤廃: forced buy/sell KPI 分離ログを削除
 

@@ -79,6 +79,9 @@ class RunSessionState:
     cumulative_adverse_count: int = 0
     cumulative_adverse_bps: float = 0.0
     # 348# balance_forced 撤廃: forced KPI 分離フィールドを削除
+    # 431# clamp observability (428#/429#/430# 指摘対応)
+    clamp_fire_count: int = 0
+    ceiling_check_count: int = 0
     batch: list[FillRecord] = field(default_factory=list)
     batch_size: int = 10
 

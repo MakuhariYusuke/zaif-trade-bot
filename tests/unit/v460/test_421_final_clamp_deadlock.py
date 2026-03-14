@@ -1,4 +1,4 @@
-"""418# テスト: Execution Final Clamp + Route-to-Kill Deadlock 防止.
+"""421# テスト: Execution Final Clamp + Route-to-Kill Deadlock 防止.
 
 416#/417# レビューで発見された2つの構造欠陥の修正を検証:
 1. Final Clamp: maker_price ceiling 後の executor 側 multiplier chain が
@@ -21,7 +21,7 @@ from scripts.v460.lib.pre_order_adjustments import PreOrderAdjustmentsMixin
 
 
 class TestCancelReasons418:
-    """418# で追加された cancel_reason 定数のテスト."""
+    """421# で追加された cancel_reason 定数のテスト."""
 
     def test_final_clamp_hard_skip_exists(self) -> None:
         assert CR.FINAL_CLAMP_HARD_SKIP == "final_clamp_hard_skip"
@@ -42,7 +42,7 @@ class TestCancelReasons418:
 
 
 class TestFillConfigFinalClamp:
-    """418# Final Clamp 設定フィールドのテスト."""
+    """421# Final Clamp 設定フィールドのテスト."""
 
     def test_default_enabled(self) -> None:
         from scripts.v460.lib.fill_config import FillTestConfig
@@ -66,7 +66,7 @@ class TestFillConfigFinalClamp:
 
 
 class TestFillRecordPreClampField:
-    """418# FillRecord.execution_pre_clamp_offset のテスト."""
+    """421# FillRecord.execution_pre_clamp_offset のテスト."""
 
     def test_field_exists_default_none(self) -> None:
         from ztb.metrics.fill_quality import FillRecord
@@ -339,7 +339,7 @@ class TestCeilingResolution:
 
 
 # ============================================================
-# 418# self-review: resolve_offset_ceiling DRY ヘルパーテスト
+# 421# self-review: resolve_offset_ceiling DRY ヘルパーテスト
 # ============================================================
 
 
@@ -372,7 +372,7 @@ class TestResolveOffsetCeilingHelper:
 
 
 # ============================================================
-# 418# self-review: fill_config_parser YAML roundtrip テスト
+# 421# self-review: fill_config_parser YAML roundtrip テスト
 # ============================================================
 
 
@@ -401,7 +401,7 @@ class TestFillConfigParserFinalClamp:
 
 
 # ============================================================
-# 418# self-review: guard_reason_classifier テスト
+# 421# self-review: guard_reason_classifier テスト
 # ============================================================
 
 
@@ -417,7 +417,7 @@ class TestGuardReasonClassifier418:
 
 
 # ============================================================
-# 418# self-review: config_hot_reload 対象テスト
+# 421# self-review: config_hot_reload 対象テスト
 # ============================================================
 
 
@@ -431,7 +431,7 @@ class TestConfigHotReload418:
 
 
 # ============================================================
-# 418# self-review: spread_at_order=None edge case
+# 421# self-review: spread_at_order=None edge case
 # ============================================================
 
 
@@ -558,3 +558,29 @@ class TestHardSkipMultConfig:
         with open(Path("configs/v460/fill_test.yaml")) as f:
             cfg = yaml.safe_load(f)
         assert cfg["execution_final_clamp_hard_skip_mult"] == 2.5
+
+
+class TestClampObservability:
+    """431# clamp observability — RunSessionState counters."""
+
+    def test_session_state_has_clamp_counters(self) -> None:
+        from scripts.v460.lib.fill_loop_orchestrator import RunSessionState
+        st = RunSessionState()
+        assert st.clamp_fire_count == 0
+        assert st.ceiling_check_count == 0
+
+    def test_clamp_counter_increments(self) -> None:
+        from scripts.v460.lib.fill_loop_orchestrator import RunSessionState
+        st = RunSessionState()
+        st.ceiling_check_count += 1
+        st.clamp_fire_count += 1
+        assert st.clamp_fire_count == 1
+        assert st.ceiling_check_count == 1
+
+    def test_clamp_rate_calculation(self) -> None:
+        from scripts.v460.lib.fill_loop_orchestrator import RunSessionState
+        st = RunSessionState()
+        st.ceiling_check_count = 100
+        st.clamp_fire_count = 90
+        rate = st.clamp_fire_count / st.ceiling_check_count * 100.0
+        assert rate == 90.0
