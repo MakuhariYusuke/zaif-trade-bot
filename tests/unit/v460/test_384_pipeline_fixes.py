@@ -111,6 +111,39 @@ class TestEvaluateModelOOS:
 
         assert abs(result["gross_roi"] - 0.05) < 1e-6
 
+    def test_multi_slice_metrics_present(self) -> None:
+        """425# multi-slice: 十分なステップがある場合 slice_metrics が出力される."""
+        from scripts.v460.lib.sac_common import evaluate_model_oos
+
+        model = MagicMock()
+        model.predict.return_value = (np.array([0.0]), None)
+
+        # 4320+ steps で 3分割が有効 (1440×3 以上)
+        env = self._make_mock_env(n_steps=5000)
+        result = evaluate_model_oos(model, env, n_episodes=1)
+
+        assert "slice_metrics" in result
+        slices = result["slice_metrics"]
+        assert len(slices) == 3
+        labels = [s["label"] for s in slices]
+        assert labels == ["early", "mid", "late"]
+        # 全スライスに pf, max_drawdown キーがある
+        for s in slices:
+            assert "pf" in s
+            assert "max_drawdown" in s
+
+    def test_multi_slice_not_present_short_data(self) -> None:
+        """425# multi-slice: ステップが少ない場合は slice_metrics がない."""
+        from scripts.v460.lib.sac_common import evaluate_model_oos
+
+        model = MagicMock()
+        model.predict.return_value = (np.array([0.0]), None)
+
+        env = self._make_mock_env(n_steps=100)
+        result = evaluate_model_oos(model, env, n_episodes=1)
+
+        assert "slice_metrics" not in result
+
 
 # ════════════════════════════════════════════════════════════════
 # HIGH-2: scaler 転送

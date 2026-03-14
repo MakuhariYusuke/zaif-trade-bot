@@ -194,6 +194,33 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
         logger.info(f"Validation env: {val_size} rows (out-of-sample, train scaler injected)")
         eval_metrics = _evaluate_trained_model(model, eval_env, cfg)
 
+        # ── 425# P0-4: best_model 並行 OOS 評価 ──
+        # final_model と best_model を同一条件 (full OOS) で比較し、
+        # F6 checkpoint 選定の有効性を検証する diagnostic データを提供。
+        best_model_eval_metrics: dict[str, object] | None = None
+        if best_model_path and best_model_path.exists():
+            try:
+                from stable_baselines3 import SAC as SB3_SAC
+
+                best_model_loaded = SB3_SAC.load(
+                    str(best_model_path), env=None, device="auto"
+                )
+                best_eval_env, _ = _create_training_env(val_df, val_env_cfg)
+                try:
+                    best_model_eval_metrics = _evaluate_trained_model(
+                        best_model_loaded, best_eval_env, cfg
+                    )
+                    logger.info(
+                        f"425# best_model OOS: "
+                        f"roi={best_model_eval_metrics.get('gross_roi', 'N/A'):.6f}, "
+                        f"pf={best_model_eval_metrics.get('pf', 'N/A')}, "
+                        f"sharpe={best_model_eval_metrics.get('sharpe_annual', 'N/A')}"
+                    )
+                finally:
+                    cleanup_envs(best_eval_env)
+            except Exception as e:
+                logger.warning(f"425# best_model eval failed (non-fatal): {e}")
+
         # ── Save final model ──
         model_path = model_dir / f"sac_v460_seed{seed}.zip"
         model.save(str(model_path))
@@ -231,6 +258,7 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
         "env_info": env_info,
         "checkpoint_metrics": checkpoint_metrics,
         "eval_metrics": eval_metrics,
+        "best_model_eval_metrics": best_model_eval_metrics,
         "train_val_split": {
             "val_ratio": val_ratio,
             "train_rows": train_size,

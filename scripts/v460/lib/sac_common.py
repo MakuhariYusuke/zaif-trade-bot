@@ -188,6 +188,28 @@ def evaluate_model_oos(
     )
     result.update(g3)
 
+    # 425# P0-3: Multi-slice OOS 評価 (先頭/中間/末尾 3分割)
+    # OOS 後半での performance 劣化を検出するための診断指標。
+    # F6 checkpoint eval が OOS 先頭 5K step のみで best_model を選定
+    # する問題の diagnostic データを提供する。
+    n_steps = len(all_portfolio_values)
+    if n_steps >= 4320:  # 3日分 (1440×3) 以上あれば 3分割意味がある
+        slice_size = n_steps // 3
+        slice_metrics_list: list[dict[str, float]] = []
+        slice_labels = ["early", "mid", "late"]
+        for i in range(3):
+            s_start = i * slice_size
+            s_end = s_start + slice_size if i < 2 else n_steps
+            s_pv = all_portfolio_values[s_start:s_end]
+            s_pnl = all_pnl_steps[s_start:s_end]
+            s_reward = all_reward_steps[s_start:s_end]
+            # per-trade count は分割不能なので 0 で代替
+            s_g3 = _compute_g3_metrics(s_pv, s_pnl, s_reward, 0)
+            s_g3["label"] = slice_labels[i]  # type: ignore[assignment]
+            s_g3["steps"] = float(s_end - s_start)
+            slice_metrics_list.append(s_g3)
+        result["slice_metrics"] = slice_metrics_list  # type: ignore[assignment]
+
     return result
 
 

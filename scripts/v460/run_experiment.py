@@ -286,6 +286,17 @@ def _run_multi_seed(
                            "reward_profit_corr"):
                 if g3_key in eval_metrics:
                     seed_entry[g3_key] = float(eval_metrics[g3_key])
+            # 425# multi-slice 結果を seed_entry に追加
+            if "slice_metrics" in eval_metrics:
+                seed_entry["slice_metrics"] = eval_metrics["slice_metrics"]
+
+        # 425# best_model eval 結果を seed_entry に追加
+        best_eval = result.get("best_model_eval_metrics")
+        if isinstance(best_eval, dict):
+            seed_entry["best_model_eval"] = {
+                k: float(v) if isinstance(v, (int, float)) else v
+                for k, v in best_eval.items()
+            }
 
         seed_results.append(seed_entry)
 
