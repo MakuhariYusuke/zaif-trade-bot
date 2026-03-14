@@ -419,7 +419,7 @@
 | 423 | rev | [423_ph4_rev_422_100k_training_review_and_next_options.md](423_ph4_rev_422_100k_training_review_and_next_options.md) | 422# 再点検: val_ratio単独犯ではなく評価設計+レジーム脆弱性の複合と整理, best_model差替え単独では不足, walk-forward / full-OOS比較 / sidecar化を提案 |
 | 424 | rev | [424_ph4_rev_422_423_gemini_second_opinion_and_self_review.md](424_ph4_rev_422_423_gemini_second_opinion_and_self_review.md) | Gemini second opinion: 時間スケールのミスマッチ, 5K step=OOS先頭への過学習, SAC万能主義限界, セルフレビュー付き |
 | 425 | rev | [425_ph4_rev_423_424_validity_and_blind_spots.md](425_ph4_rev_423_424_validity_and_blind_spots.md) | 423#/424# 妥当性評価: val_ratio=0.02でもG3 FAIL 3/6, reward設計×val_ratio交互作用, S1'併走提案, corr paradox |
-| 426 | — | *(予約: S1/S1' 実験結果文書)* | S1/S1' 実験結果と考察 — val_ratio×reward交互作用の実証 |
+| 426 | rpt | [426_ph4_rpt_s1_s1prime_val_ratio_experiment_results.md](426_ph4_rpt_s1_s1prime_val_ratio_experiment_results.md) | S1/S1' val_ratio分離実験: S1 marginal FAIL (pf 1.049), S1' 構造的FAIL (pf 1.031). mid期崩壊パターン6/8seed. 根因=20K SACのレジーム汎化限界, val_ratio=0.02は隠蔽 |
 | 427 | plan | [427_global_quant_cultures_and_sidecar_plan.md](427_global_quant_cultures_and_sidecar_plan.md) | 世界のクオンツ文化とSidecar/Final Clamp構想: 日中ハイブリッド方針, 実装計画案 |
 | 428 | rev | [428_ph4_rev_427_global_direction_and_sidecar_review.md](428_ph4_rev_427_global_direction_and_sidecar_review.md) | 427# 再整理: 文化論は補助線に留め、既存Sidecar/Final Clampの live証明と効能検証を最優先化。walk-forward/ztb再利用, ML責務限定, clamp観測強化を提案 |
 | 429 | rev | [429_ph4_rev_428_actionable_sidecar_roadmap.md](429_ph4_rev_428_actionable_sidecar_roadmap.md) | 428# アクション化: Sidecar蘇生Step1-4, Clamp observabilityフィールド追加, SAC責務縮小。ただし修辞過剰・実態乖離あり |
