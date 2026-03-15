@@ -44,11 +44,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **439# observability doc update**: `439_ph4_cross_venue_lead_lag_guard.md` を更新し、FillRecord に加えて event log も live observability の一部として明文化
+- **439# helper dedup**:
+  - `cross_venue_lead_lag.py` に `build_cross_venue_fill_fields(...)` / `build_cross_venue_event_details(...)` を追加
+  - builder と executor event log で同じ flat payload を再利用
 - **v460 broad cleanup**:
   - `test_259_as_vol_ratio_adaptation_hasattr.py` の source 読込を import-time cache 化
   - `test_259_as_vol_ratio_adaptation_hasattr.py` の detector stub を `MagicMock` から `SimpleNamespace` に変更
   - `test_088_features.py` の adaptive threshold 系 pipeline を lightweight stub に変更
   - `test_407_ghost_cleanup.py` の config stub を `SimpleNamespace` に変更
+  - `test_fill_quality.py` の unknown-fill adapter を lightweight async stub に変更
+  - `test_ml_pipeline.py` の real-data sample helper を見直し、最小化しすぎず broad 安定性を優先
 
 ## 414# 20K Attribution 実験 A/B/C 深堀り分析 (2026-03-14)
 

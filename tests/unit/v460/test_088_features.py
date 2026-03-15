@@ -404,7 +404,7 @@ class TestCalibrateThresholdEdgeCases:
     def test_all_same_probability(self) -> None:
         """全て同じ P(AS) → 閾値は近似的にその値に収束."""
         gate = self._make_gate(adaptive_step=0.50)
-        gate._pas_history_buy = [0.50] * 10
+        gate._pas_history_buy = [0.50] * 5
         result = gate._calibrate_threshold("buy", 0.50, 0.50)
         assert result == pytest.approx(0.50, abs=0.01)
 

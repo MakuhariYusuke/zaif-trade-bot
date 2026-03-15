@@ -12,6 +12,8 @@ from scripts.v460.lib.cross_venue_lead_lag import (
     CrossVenueLeadLagHint,
     VenueMidSnapshot,
     build_reference_adapter,
+    build_cross_venue_event_details,
+    build_cross_venue_fill_fields,
     compute_cross_venue_lead_lag_hint,
 )
 from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
@@ -112,6 +114,34 @@ def _make_hint(
 
 
 class TestCrossVenueLeadLagHelper:
+    def test_build_event_details(self) -> None:
+        hint = _make_hint(spread_bps=7.5, velocity_bps=2.0, age_sec=0.4)
+        assert build_cross_venue_event_details(hint) == {
+            "reference_exchange": "bitflyer",
+            "direction": "up",
+            "adverse_side": "sell",
+            "spread_bps": 7.5,
+            "velocity_bps": 2.0,
+            "age_sec": 0.4,
+        }
+
+    def test_build_fill_fields_disabled_returns_empty_payload(self) -> None:
+        assert build_cross_venue_fill_fields(
+            enabled=False,
+            hint=None,
+            side="buy",
+            vetoed=False,
+        ) == {
+            "cross_venue_reference_exchange": None,
+            "cross_venue_lead_lag_direction": None,
+            "cross_venue_lead_lag_adverse_side": None,
+            "cross_venue_lead_lag_spread_bps": None,
+            "cross_venue_lead_lag_velocity_bps": None,
+            "cross_venue_lead_lag_age_sec": None,
+            "cross_venue_lead_lag_applied": None,
+            "cross_venue_lead_lag_vetoed": None,
+        }
+
     def test_upward_move_suppresses_sell(self) -> None:
         hint = compute_cross_venue_lead_lag_hint(
             local_snapshot=VenueMidSnapshot("coincheck", 100.0, 100.0),

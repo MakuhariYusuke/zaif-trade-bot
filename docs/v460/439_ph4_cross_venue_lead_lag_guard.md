@@ -193,8 +193,15 @@ dry-run でも参照 adapter は primary adapter の `dry_run` flag を引き継
 - `cross_venue_lead_lag_applied`
 - `cross_venue_lead_lag_vetoed`
 
-実装位置は `FillRecordBuilderMixin._build_fill_cross_venue_fields(...)` とし、
-sidecar / executor stage と同様に builder 1 箇所で組み立てる形に寄せた。
+実装位置は pure helper を基底にして:
+
+- `build_cross_venue_fill_fields(...)`
+- `build_cross_venue_event_details(...)`
+
+を追加し、以下から再利用する形に寄せた。
+
+- `FillRecordBuilderMixin._build_fill_cross_venue_fields(...)`
+- `FillCycleExecutorMixin._update_cross_venue_lead_lag_hint()`
 
 加えて、`FillCycleExecutorMixin._update_cross_venue_lead_lag_hint()` で
 `cross_venue_hint` event を `fill_test_events.jsonl` に出すようにした。
@@ -217,6 +224,9 @@ payload は:
 - hint が cycle 実行時に event log へ流れていたか
 
 を fill record 単位で追える。
+
+この形にしておくと、将来 sidecar 特徴量化へ進める場合も
+同じ flat payload を使い回せるため、観測値の重複定義を避けられる。
 
 逆に、次はまだやらない方がよい。
 

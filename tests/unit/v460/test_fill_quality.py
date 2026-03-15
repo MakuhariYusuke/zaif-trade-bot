@@ -13,6 +13,7 @@ import tempfile
 import time
 from collections.abc import Callable
 from contextlib import ExitStack
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -140,6 +141,55 @@ async def _async_return(value: object) -> object:
 
 async def _async_raise(exc: Exception) -> object:
     raise exc
+
+
+@dataclass
+class _BalanceEntry:
+    free: float
+
+
+@dataclass
+class _OrderbookView:
+    bids: list[tuple[float, float]]
+    asks: list[tuple[float, float]]
+
+
+@dataclass
+class _PlacedOrder:
+    order_id: str
+
+
+class _FastCycleAdapter:
+    def __init__(self, *, order_id: str) -> None:
+        self.dry_run = True
+        self._orderbook = _OrderbookView(
+            bids=[(15000000.0, 0.1)],
+            asks=[(15001000.0, 0.1)],
+        )
+        self._placed_order = _PlacedOrder(order_id=order_id)
+
+    async def get_orderbook(self, _symbol: str, depth: int = 1) -> _OrderbookView:
+        assert depth == 1
+        return self._orderbook
+
+    async def place_order(self, **_kwargs: object) -> _PlacedOrder:
+        return self._placed_order
+
+    async def get_balance(self, currency: str) -> list[_BalanceEntry]:
+        if currency == "BTC":
+            return [_BalanceEntry(free=1.0)]
+        if currency == "JPY":
+            return [_BalanceEntry(free=100_000_000.0)]
+        return []
+
+    async def get_current_price(self, _symbol: str) -> float:
+        return 15_000_500.0
+
+    async def get_order_status(self, _order_id: str) -> object:
+        return None
+
+    async def cancel_order(self, _order_id: str) -> None:
+        return None
 
 
 def _make_status_side_effect(*values: object) -> Callable[[str], object]:
@@ -367,15 +417,7 @@ def _make_fast_cycle_runner(
 ) -> "FillTestRunner":
     """status/cancel race テスト向けの最小待機 runner."""
 
-    adapter = AsyncMock()
-    ob_mock = MagicMock()
-    ob_mock.bids = [(15000000.0, 0.1)]
-    ob_mock.asks = [(15001000.0, 0.1)]
-    adapter.get_orderbook.return_value = ob_mock
-
-    order_mock = MagicMock()
-    order_mock.order_id = order_id
-    adapter.place_order.return_value = order_mock
+    adapter = _FastCycleAdapter(order_id=order_id)
 
     config = FillTestConfig(
         results_dir=str(tmp_path / "results"),
@@ -1918,7 +1960,7 @@ class TestUnknownFillHandling:
 
         runner = self._make_runner(tmp_path)
         filled_order = SimpleNamespace(status="filled", price=15000200.0)
-        runner.adapter.get_order_status = lambda _order_id: _async_return(filled_order)  # type: ignore[assignment]
+        runner.adapter.get_order_status = lambda _order_id: _async_return(filled_order)  # type: ignore[method-assign]
 
         record = await _run_single_cycle_without_sleep(runner)
 
