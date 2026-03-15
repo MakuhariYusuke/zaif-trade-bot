@@ -31,7 +31,7 @@
 ### §1.1 C1: ranging_buy_low_vol_as_offset = false
 
 - **ファイル**: `configs/v460/fill_test.yaml` L176
-- **コードパス**: `ztb/core/cycle_gate_aggregator.py` L495
+- **コードパス**: `scripts/v460/lib/cycle_gate_aggregator.py` L495
   - `true` → low_vol_offset_boost (1.4x) で maker_price 調整のみ (ソフトスキップ)
   - `false` → `GateCheckResult(blocked=True)` 即座にサイクル遮断 (ハードスキップ)
 - **経緯**: 169# B1' で初導入 (hard skip)。195# B1' で soft 化 (offset 委譲)。
@@ -41,7 +41,7 @@
 ### §1.2 C2: max_reprice_buy = 0
 
 - **ファイル**: `configs/v460/fill_test.yaml` L243
-- **コードパス**: `ztb/core/order_monitor.py` L441
+- **コードパス**: `scripts/v460/lib/order_monitor.py` L441
   - `reprice_count < _stale_max_rp` → `0 < 0 = False` → reprice スキップ
   - **adverse drift cancel は independent** (max_reprice とは別ロジック、引き続き機能)
   - favorable drift 時は original price で待機 (追随しない = 432# データで最適戦略)
@@ -51,7 +51,7 @@
 ### §1.3 C3: buy_dynamic_kill.regime_thresholds.ranging = -0.7
 
 - **ファイル**: `configs/v460/fill_test.yaml` L695
-- **コードパス**: `ztb/core/orchestrator_guards.py` L88-96 → `ztb/core/sell_dynamic_kill.py` L633-641
+- **コードパス**: `scripts/v460/lib/orchestrator_guards.py` L88-96 → `ztb/risk/sell_dynamic_kill.py` L633-641
   - regime_thresholds lookup → EWMA decay target として使用
   - `inv_relaxation` (max_bps=0.3) → effective threshold = -0.7 - 0.3 = **-1.0**
   - **旧 effective**: -1.0 - 0.3 = -1.3 → **0.3bps 厳格化**
@@ -68,8 +68,10 @@
 ```
 サイクル開始
   ├→ [C1] cycle_gate_aggregator: ranging+buy+low_vol → blocked=True (ゲート段階)
+  │     (scripts/v460/lib/cycle_gate_aggregator.py)
   │     ↓ (C1 を通過した場合)
   ├→ [C3] buy_dynamic_kill: EWMA rolling PnL < -0.7 → kill (キル段階)
+  │     (scripts/v460/lib/orchestrator_guards.py → ztb/risk/sell_dynamic_kill.py)
   │     ↓ (C3 を通過した場合)
   ├→ 発注実行
   │     ↓
