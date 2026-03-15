@@ -6386,3 +6386,53 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - `tests/unit/v460/test_260_compute_extract_regime_split.py`: 17 passed
 - `tests/unit/v460/test_143_regime_utilization.py`: 60 passed
 - `tests/unit/v460/test_176_trending_offset_asymmetry.py`: 36 passed
+
+## 2026-03-16 / Broad Similarity Sweep 2
+
+### 目的
+- `tests/unit/v460/` に残っていた `inspect.signature(...)` / `inspect.getsource(...)` の類似パターンをもう一段洗い、既存 helper で代用できるものは寄せ、代用先がないものだけ import-time cache 化する。
+- 併せて shallow 化候補も見直し、`EnvironmentConfig.as_dict()` のように挙動差リスクがある箇所は無理に触らない。
+
+### 変更
+- [test_145_structural_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_145_structural_fixes.py)
+  - `_evaluate_skip_gate` / `_check_balance_for_side` signature を import-time cache 化
+- [test_173_code_review_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_173_code_review_fixes.py)
+  - `MakerPriceCalculator` の type-annotation signature を cache 化
+- [test_179_regime_policy_cycle_strategy.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_179_regime_policy_cycle_strategy.py)
+  - `OrderMonitor.monitor` / `PnlMeasurer.measure` signature を module-level cache 化
+- [test_228_inv_decay_hasattr_removal.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_228_inv_decay_hasattr_removal.py)
+  - `fill_loop_orchestrator` source を `read_inspect_source(...)` へ寄せた
+- [test_240_toxicity_budget.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_240_toxicity_budget.py)
+  - `run_single_cycle` signature を cache 化
+- [test_252_sell_asymmetric_phantom_ternary.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_252_sell_asymmetric_phantom_ternary.py)
+  - `_maybe_register_phantom` source を import-time cache 化
+- [test_276_blocking_policy_dry.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_276_blocking_policy_dry.py)
+  - `_execute_skip` signature を cache 化
+- [test_385_config_audit.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_385_config_audit.py)
+  - reward signature checks を cache 化
+
+### 調査メモ
+- `rg "inspect\.(getsource|signature)\(" tests/unit/v460` で broad scan を再実施。
+- `ztb/trading/environment/utils/config.py::EnvironmentConfig.as_dict()` の `dataclasses.asdict(self)` は確認したが、nested dataclass を含むため `shallow_asdict()` への置換は今回は見送り。
+- 残る上位は inspection より、real-data / sidecar-cache / env setup の単発 call が中心になった。
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_145_structural_fixes.py`
+  - `tests/unit/v460/test_173_code_review_fixes.py`
+  - `tests/unit/v460/test_179_regime_policy_cycle_strategy.py`
+  - `tests/unit/v460/test_228_inv_decay_hasattr_removal.py`
+  - `tests/unit/v460/test_240_toxicity_budget.py`
+  - `tests/unit/v460/test_252_sell_asymmetric_phantom_ternary.py`
+  - `tests/unit/v460/test_276_blocking_policy_dry.py`
+  - `tests/unit/v460/test_385_config_audit.py`
+  - `317 passed, 2 skipped in 3.77s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `4850 passed, 2 skipped, 13 warnings in 30.06s`
+
+### 次の候補
+1. `test_sac_retrain_scheduler.py::TestReadSidecarCache::test_cache_invalidated_on_new_write`
+2. `test_enricher_skip_gate.py::Test059SkipRateHistory::test_skip_rate_records_final_decision`
+3. `test_262_protocol_cancel_recheck.py::test_cancel_recheck_returns_none`
+4. `test_356_g2_sac_blockers.py` heavy env setup

@@ -5513,3 +5513,30 @@ python scripts/unified_trainer.py \
     - focused `test_fill_quality.py -k 'interim_3_days_200_samples or final_7_days'`: `2 passed`
     - focused `test_408_f_series_blindspot.py test_175_code_review_sweep2.py test_274_pattern_c_theory_cleanup.py`: `58 passed in 1.89s`
     - filtered broad `tests/unit/v460/`: `4850 passed, 2 skipped, 13 warnings in 34.37s`
+- 2026-03-16: swept another broad pattern-cleanup wave across source/signature inspections.
+  - cached repeated `inspect.getsource(...)` / `inspect.signature(...)` lookups in:
+    - `test_145_s13_boundary_guards.py`
+    - `test_155_hindsight_review.py`
+    - `test_190_ev_weighted_safety.py`
+    - `test_196_velocity_proportional_trending_soft.py`
+    - `test_227_ranging_obi_velocity_ema_import_fix.py`
+    - `test_229_cleanup_counter_rename.py`
+    - `test_256_recent_records_fix.py`
+    - `test_262_protocol_cancel_recheck.py`
+  - re-verified with:
+    - focused `...test_145... test_155... test_190... test_196... test_227... test_229... test_256... test_262...`: `202 passed in 4.05s`
+    - filtered broad `tests/unit/v460/`: `4850 passed, 2 skipped, 13 warnings in 35.45s`
+- 2026-03-16: widened the v460 inspection-cache sweep and rechecked remaining similar hotspots.
+  - cached additional repeated `inspect.signature(...)` / `inspect.getsource(...)` lookups in:
+    - `test_145_structural_fixes.py`
+    - `test_173_code_review_fixes.py`
+    - `test_179_regime_policy_cycle_strategy.py`
+    - `test_228_inv_decay_hasattr_removal.py`
+    - `test_240_toxicity_budget.py`
+    - `test_252_sell_asymmetric_phantom_ternary.py`
+    - `test_276_blocking_policy_dry.py`
+    - `test_385_config_audit.py`
+  - explicitly reviewed `ztb/trading/environment/utils/config.py::EnvironmentConfig.as_dict()` but left it unchanged because shallow conversion would risk nested dataclass behavior drift
+  - re-verified with:
+    - focused cache-sweep bundle: `317 passed, 2 skipped in 3.77s`
+    - filtered broad `tests/unit/v460/`: `4850 passed, 2 skipped, 13 warnings in 30.06s`
