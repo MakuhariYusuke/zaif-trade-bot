@@ -175,13 +175,12 @@ dry-run でも参照 adapter は primary adapter の `dry_run` flag を引き継
 
 安全に広げるなら次の順が良い。
 
-1. hint を FillRecord / event log に露出して観測
-2. `offset_boost` の side/regime 別倍率化
-3. BitFlyer WebSocket 化で stale を縮小
-4. sidecar 特徴量化 (`bf_cc_spread_bps`, `bf_price_velocity_1s`)
-5. multi-venue aggregation
+1. `offset_boost` の side/regime 別倍率化
+2. BitFlyer WebSocket 化で stale を縮小
+3. sidecar 特徴量化 (`bf_cc_spread_bps`, `bf_price_velocity_1s`)
+4. multi-venue aggregation
 
-### 7.1 追加実装: FillRecord observability
+### 7.1 追加実装: FillRecord / event log observability
 
 今回、最初の拡張余地として `FillRecord` に以下を追加した。
 
@@ -197,11 +196,25 @@ dry-run でも参照 adapter は primary adapter の `dry_run` flag を引き継
 実装位置は `FillRecordBuilderMixin._build_fill_cross_venue_fields(...)` とし、
 sidecar / executor stage と同様に builder 1 箇所で組み立てる形に寄せた。
 
+加えて、`FillCycleExecutorMixin._update_cross_venue_lead_lag_hint()` で
+`cross_venue_hint` event を `fill_test_events.jsonl` に出すようにした。
+payload は:
+
+- `reference_exchange`
+- `direction`
+- `adverse_side`
+- `spread_bps`
+- `velocity_bps`
+- `age_sec`
+
+で、`run_id` / `git_sha` も既存 event logger 契約に合わせて付与する。
+
 これにより、後続の分析では
 
 - hint 自体が出ていたか
 - 現在の side に対して guard が実際に効いたか
 - veto まで発火したか
+- hint が cycle 実行時に event log へ流れていたか
 
 を fill record 単位で追える。
 

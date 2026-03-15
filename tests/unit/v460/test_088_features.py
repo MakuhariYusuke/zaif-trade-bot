@@ -26,6 +26,19 @@ from scripts.v460.lib.param_adapter import (
 )
 
 
+class _ProbPipelineStub:
+    def __init__(self, prob: float = 0.5) -> None:
+        self._prob = prob
+        self.steps: list[tuple[str, object]] = []
+
+    def set_output(self, *, transform: str) -> "_ProbPipelineStub":
+        assert transform == "pandas"
+        return self
+
+    def predict_proba(self, _x: object) -> np.ndarray:
+        return np.array([[1.0 - self._prob, self._prob]], dtype=float)
+
+
 # =====================================================================
 # SkipGate 動的閾値較正テスト
 # =====================================================================
@@ -64,14 +77,13 @@ class TestSkipGateAdaptiveThreshold:
             adaptive_floor=adaptive_floor,
             adaptive_ceiling=adaptive_ceiling,
         )
-        # モック Pipeline で予測確率を制御
-        mock_pipeline = MagicMock()
+        pipeline = _ProbPipelineStub()
         gate = SkipGate(
-            model=MagicMock(),
-            scaler=MagicMock(),
+            model=object(),
+            scaler=object(),
             feature_cols=["spread_jpy", "offset_ratio", "regime_trending"],
             config=config,
-            pipeline=mock_pipeline,
+            pipeline=pipeline,
         )
         return gate
 
@@ -170,7 +182,7 @@ class TestSkipGateAdaptiveThreshold:
         """evaluate() が AS モード + adaptive で _calibrate_threshold を呼ぶ."""
         gate = self._make_gate(adaptive=True)
         # Pipeline モックの predict_proba 設定
-        gate._pipeline.predict_proba.return_value = np.array([[0.45, 0.55]])
+        gate._pipeline._prob = 0.55
         features = self._make_features()
 
         decision = gate.evaluate(features, side="buy")
@@ -182,7 +194,7 @@ class TestSkipGateAdaptiveThreshold:
     def test_evaluate_no_calibrate_when_disabled(self) -> None:
         """adaptive_threshold=False ならば較正しない."""
         gate = self._make_gate(adaptive=False)
-        gate._pipeline.predict_proba.return_value = np.array([[0.40, 0.60]])
+        gate._pipeline._prob = 0.60
         features = self._make_features()
 
         decision = gate.evaluate(features, side="buy")
@@ -192,7 +204,7 @@ class TestSkipGateAdaptiveThreshold:
     def test_evaluate_no_calibrate_when_no_side(self) -> None:
         """side=None ならば較正しない."""
         gate = self._make_gate(adaptive=True)
-        gate._pipeline.predict_proba.return_value = np.array([[0.40, 0.60]])
+        gate._pipeline._prob = 0.60
         features = self._make_features()
 
         decision = gate.evaluate(features, side=None)
@@ -203,11 +215,11 @@ class TestSkipGateAdaptiveThreshold:
     def test_pas_history_independent_per_side(self) -> None:
         """buy/sell の P(AS) 履歴が独立."""
         gate = self._make_gate(adaptive=True)
-        gate._pipeline.predict_proba.return_value = np.array([[0.40, 0.60]])
+        gate._pipeline._prob = 0.60
         features = self._make_features()
 
         gate.evaluate(features, side="buy")
-        gate._pipeline.predict_proba.return_value = np.array([[0.30, 0.70]])
+        gate._pipeline._prob = 0.70
         gate.evaluate(features, side="sell")
 
         assert len(gate._pas_history_buy) == 1
@@ -382,10 +394,11 @@ class TestCalibrateThresholdEdgeCases:
         defaults.update(kwargs)  # type: ignore[arg-type]
         config = SkipGateConfig(mode="as", **defaults)  # type: ignore[arg-type]
         return SkipGate(
-            model=MagicMock(),
-            scaler=MagicMock(),
+            model=object(),
+            scaler=object(),
             feature_cols=["f1"],
             config=config,
+            pipeline=_ProbPipelineStub(),
         )
 
     def test_all_same_probability(self) -> None:

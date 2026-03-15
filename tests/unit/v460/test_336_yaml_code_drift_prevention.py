@@ -119,6 +119,8 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "regime_adaptive_extra_sell",
     "regime_mid_confidence_offset_boost",   # 397# mid-confidence paradox guard
     "regime_ranging_offset_discount",
+    "regime_ranging_offset_discount_buy",
+    "regime_ranging_offset_discount_sell",
     "regime_trending_offset_boost_buy",
     "regime_trending_offset_boost_sell",
     "sell_dynamic_kill_regime_thresholds",
@@ -165,6 +167,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "trending_up_buy_offset_boost",
     "trending_up_sell_offset_boost",
     "unknown_buy_offset_boost",
+    "unknown_sell_offset_boost",
     "volatility_guard_velocity_threshold_bps",
     "volatility_guard_vpin_threshold",
     "vpin_vol_sync_enabled",

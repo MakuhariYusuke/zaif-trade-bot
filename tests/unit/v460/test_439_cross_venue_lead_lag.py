@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 
@@ -222,10 +223,13 @@ class TestCrossVenueLeadLagExecutorInjection:
             cross_venue_lead_lag_enabled=True,
             cross_venue_lead_lag_spread_bps_threshold=2.0,
             cross_venue_lead_lag_velocity_bps_threshold=1.0,
+            results_dir="results/v460/fill_test",
         )
         runner = _DummyExecutor()
         runner.config = config
         runner.adapter = SimpleNamespace()
+        runner._run_id = "run-439"
+        runner._git_sha = "abc1234"
         runner._maker_price = _make_calc(config)
         runner._maker_price._last_ob_snapshot = _OB(
             timestamp=100.0,
@@ -242,12 +246,21 @@ class TestCrossVenueLeadLagExecutorInjection:
             timestamp=99.5,
         )
 
-        asyncio.run(runner._update_cross_venue_lead_lag_hint())
+        with patch("scripts.v460.lib.event_logger.log_event") as mock_log_event:
+            asyncio.run(runner._update_cross_venue_lead_lag_hint())
 
         hint = runner._maker_price.cross_venue_lead_lag_hint
         assert hint is not None
         assert hint.adverse_side == "sell"
         assert runner._cross_venue_prev_reference_snapshot is not None
+        mock_log_event.assert_called_once()
+        assert mock_log_event.call_args.args == (
+            "cross_venue_hint",
+            "results/v460/fill_test",
+        )
+        assert mock_log_event.call_args.kwargs["run_id"] == "run-439"
+        assert mock_log_event.call_args.kwargs["git_sha"] == "abc1234"
+        assert mock_log_event.call_args.kwargs["details"]["adverse_side"] == "sell"
 
     def test_reference_failure_fails_open(self) -> None:
         config = FillTestConfig(

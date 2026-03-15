@@ -96,6 +96,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
 
     async def _update_cross_venue_lead_lag_hint(self) -> None:
         """439# Cross-venue lead-lag hint を更新して maker_price に注入する."""
+        from scripts.v460.lib.event_logger import log_event
+
         self._maker_price.set_cross_venue_lead_lag_hint(None)
         if not self.config.cross_venue_lead_lag_enabled:
             return
@@ -163,6 +165,28 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                     hint.spread_bps,
                     hint.reference_velocity_bps,
                     hint.age_sec,
+                )
+                try:
+                    run_id = self._run_id
+                except AttributeError:
+                    run_id = ""
+                try:
+                    git_sha = self._git_sha
+                except AttributeError:
+                    git_sha = ""
+                log_event(
+                    "cross_venue_hint",
+                    self.config.results_dir,
+                    run_id=str(run_id),
+                    git_sha=str(git_sha),
+                    details={
+                        "reference_exchange": hint.reference_exchange,
+                        "direction": hint.direction,
+                        "adverse_side": hint.adverse_side,
+                        "spread_bps": hint.spread_bps,
+                        "velocity_bps": hint.reference_velocity_bps,
+                        "age_sec": hint.age_sec,
+                    },
                 )
         except Exception as exc:
             logger.debug("cross-venue hint update skipped: %s", exc, exc_info=True)

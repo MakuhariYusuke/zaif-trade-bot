@@ -10,7 +10,8 @@ Verifies:
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 from tests.unit.v460._fill_test_source import read_inspect_source
@@ -26,8 +27,7 @@ def reward_calculator_default():
         RewardSettings,
     )
 
-    config = MagicMock(spec=EnvironmentConfig)
-    config.behavior_optimization = {}
+    config = SimpleNamespace(behavior_optimization={})
     rs = RewardSettings()
     config.reward_settings = rs
     return RewardCalculator(config, rs, 100000.0)
@@ -43,8 +43,7 @@ def reward_calculator_custom():
         RewardSettings,
     )
 
-    config = MagicMock(spec=EnvironmentConfig)
-    config.behavior_optimization = {}
+    config = SimpleNamespace(behavior_optimization={})
     rs = RewardSettings(custom_reward_params={"test_key": 42.0})
     config.reward_settings = rs
     return RewardCalculator(config, rs, 100000.0)
