@@ -6319,6 +6319,42 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - `test_ml_pipeline` と `test_enricher_skip_gate` の real-data 判定/抽出は helper 1 箇所に寄ったので、以後の sample 調整も追いやすい
 - `fill_quality` の broad 最上位だった 2 本は quick win で落とせた
 
+## 2026-03-15 / Task 439 Follow-up 8: Source Cache Sweep + Minimum Sample Cleanup
+
+### 実施内容
+- [test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py)
+  - `TestInterimJudgment` の件数を `210/210` から `201/203` へ圧縮
+- [test_408_f_series_blindspot.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_408_f_series_blindspot.py)
+  - `inspect.signature(...)`
+  - `RewardCalculator.__init__`
+  - `RewardCalculator.calculate_reward`
+  - `RewardCalculator.calculate_reward_simple`
+  を import-time cache 化
+- [test_175_code_review_sweep2.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_175_code_review_sweep2.py)
+  - `MakerPriceCalculator._apply_ffd_boost`
+  - `SkipGateEvaluator._check_and_reload_model`
+  - `MakerPriceCalculator.update_inventory`
+  - `OrderMonitor.monitor` signature
+  を import-time cache 化
+- [test_274_pattern_c_theory_cleanup.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_274_pattern_c_theory_cleanup.py)
+  - `DailyDrawdownGuard` / `time` を module scope import 化
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_fill_quality.py -k 'interim_3_days_200_samples or final_7_days'`
+  - `2 passed`
+- focused:
+  - `tests/unit/v460/test_408_f_series_blindspot.py`
+  - `tests/unit/v460/test_175_code_review_sweep2.py`
+  - `tests/unit/v460/test_274_pattern_c_theory_cleanup.py`
+  - `58 passed in 1.89s`
+- filtered broad:
+  - `4850 passed, 2 skipped, 13 warnings in 34.37s`
+
+### メモ
+- source-contract / signature 系は import-time cache に寄せた方が、broad では安定して効く
+- 次の本丸は `test_ml_pipeline.py` の synthetic/real-data call 群
+
 ## 2026-03-16 / Task 440: Toxicity Veto 調査 → Regime-Side Offset 非対称化
 
 ### 背景

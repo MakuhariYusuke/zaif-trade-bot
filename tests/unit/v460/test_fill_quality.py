@@ -2028,7 +2028,7 @@ class TestInterimJudgment:
         records = _make_uniform_daily_records(
             prefix="interim",
             days=3,
-            per_day=70,
+            per_day=67,
             base_ts=1700006400.0,
             queue_wait_sec=10.0,
             post_fill_30s_pnl=0.5,
@@ -2044,7 +2044,7 @@ class TestInterimJudgment:
         records = _make_uniform_daily_records(
             prefix="final",
             days=7,
-            per_day=30,
+            per_day=29,
             base_ts=1700006400.0,
             queue_wait_sec=10.0,
             post_fill_30s_pnl=0.5,

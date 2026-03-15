@@ -5483,3 +5483,11 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused `test_gate_check.py test_v460_core.py test_ml_pipeline.py test_enricher_skip_gate.py`: `194 passed in 7.82s`
     - filtered broad `tests/unit/v460/`: `4850 passed, 2 skipped, 13 warnings in 34.83s`
+- 2026-03-15: pushed another low-risk v460 wave around source caches and minimal sample counts.
+  - reduced `test_fill_quality.py::TestInterimJudgment` sample counts from `210/210` to the minimum passing `201/203`
+  - cached `inspect.signature(...)` / `inspect.getsource(...)` at import time in `test_408_f_series_blindspot.py` and `test_175_code_review_sweep2.py`
+  - moved `DailyDrawdownGuard` and `time` imports in `test_274_pattern_c_theory_cleanup.py` to module scope
+  - re-verified with:
+    - focused `test_fill_quality.py -k 'interim_3_days_200_samples or final_7_days'`: `2 passed`
+    - focused `test_408_f_series_blindspot.py test_175_code_review_sweep2.py test_274_pattern_c_theory_cleanup.py`: `58 passed in 1.89s`
+    - filtered broad `tests/unit/v460/`: `4850 passed, 2 skipped, 13 warnings in 34.37s`
