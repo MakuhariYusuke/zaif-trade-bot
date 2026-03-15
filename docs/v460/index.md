@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-15 (434# 426/432/433 横断レビュー)
+> 最終更新: 2026-03-15 (441# SAC Retrain + A/B Offset 比較ツール)
 
 ---
 
@@ -428,6 +428,13 @@
 | 432 | rpt | [432_ph2_rpt_fill_records_deep_dive_analysis.md](432_ph2_rpt_fill_records_deep_dive_analysis.md) | Fill Records深掘り分析: Skip Gate相関 -0.010, buy+ranging PF 0.766, reprice悪化, balance_forcedの短期悪化/中期改善 |
 | 433 | plan | [433_ph4_advanced_microstructure_edge_ideas.md](433_ph4_advanced_microstructure_edge_ideas.md) | Advanced Microstructure Edge Ideas: toxicity veto, BitFlyer lead-lag, queue heuristic, committee sidecar の次期バックログ案 |
 | 434 | rev | [434_ph2_ph4_rev_426_432_433_multifaceted_validation.md](434_ph2_ph4_rev_426_432_433_multifaceted_validation.md) | 426#/432#/433# 横断レビュー: SAC OOS・live fill・sidecar backlog を profit-first に再整列。toxicity veto 優先, ceiling再測定, walk-forward化を提案 |
+| 435 | rev | [435_ph4_gemini_second_opinion_on_434_cross_review.md](435_ph4_gemini_second_opinion_on_434_cross_review.md) | Gemini second opinion: 434# 全結論に追認、Ceiling Observability 急務性を強調 |
+| 436 | rpt | [436_ph4_rpt_cross_review_synthesis_and_sac_mandate.md](436_ph4_rpt_cross_review_synthesis_and_sac_mandate.md) | 統合検証+SAC責務再定義: 全7資産production-ready検証、Phase 1-3ロードマップ、正誤表 |
+| 437 | rev | [437_ph4_rev_432_436_cross_review_and_val_ratio_curve.md](437_ph4_rev_432_436_cross_review_and_val_ratio_curve.md) | 432#-436# 横断レビュー: val_ratio感度曲線完成(崩壊cliff edge 42-84日)、retrain推奨21-30日、Toxicity Veto最優先 |
+| 438 | impl | [438_ph2_impl_buy_ranging_defense_triple_config.md](438_ph2_impl_buy_ranging_defense_triple_config.md) | buy+ranging 防御3重設定の実装 |
+| 439 | rev | [439_ph4_cross_venue_lead_lag_guard.md](439_ph4_cross_venue_lead_lag_guard.md) | Cross-Venue Lead-Lag Guard: BitFlyer連携の実装検証と観測性強化 |
+| 440 | impl | [440_ph4_toxicity_veto_investigation_and_regime_side_offset.md](440_ph4_toxicity_veto_investigation_and_regime_side_offset.md) | Toxicity Veto調査: AS Classifier ROC-AUC≈0.50で棄却、代替としてregime-side offset非対称化を実装 |
+| 441 | impl | [441_ph2_impl_sac_retrain_and_ab_offset_comparison.md](441_ph2_impl_sac_retrain_and_ab_offset_comparison.md) | SAC Retrain YAML設定完成 + 440# A/B Offset比較ツール構築、ベースライン取得済 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

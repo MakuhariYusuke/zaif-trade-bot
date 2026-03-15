@@ -126,3 +126,22 @@ output:
   results_dir: "results/v460"
   model_dir: "models/v460"
   manifest_path: "results/v460/manifest.jsonl"
+
+# ---- 441# SAC Sidecar 定期再訓練 ----
+# sac_retrain_scheduler.py が読む設定セクション
+# Usage: python scripts/v460/ml/sac_retrain_scheduler.py --config <this_file>
+sac_retrain:
+  rolling_window_days: 7             # OHLCV rolling window (直近7日分)
+  model_name: "sac_sidecar.zip"      # deploy 先モデルファイル名
+  buffer_name: "sac_sidecar.buffer.pkl"
+  signal_path: "cache/sidecar_signal.json"
+  incremental_timesteps: 15000       # warm-start 追加ステップ数
+  check_interval_sec: 300            # polling 間隔 (5分)
+  retrain_interval_sec: 7200         # 最短再訓練間隔 (2h)
+  retrain_interval_max_sec: 14400    # 最長再訓練間隔 (4h)
+  min_new_rows: 120                  # 再訓練に必要な新規行数 (2h分)
+  min_gross_roi: 0.0                 # OOS gate: gross_roi > 0 で通過
+  n_eval_episodes: 1                 # 384# 準拠: holdout 全走査
+  min_trade_count: 3                 # 372# Deploy Gate
+  confidence_roi_full: 0.005         # confidence=1.0 閾値
+  history_path: "logs/sac_retrain_history.jsonl"
