@@ -6493,3 +6493,43 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 2. `test_enricher_skip_gate.py::Test059SkipRateHistory::test_skip_rate_records_final_decision`
 3. `test_013_fixes.py::TestC7OrderTypeMapping::*`
 4. `test_ml_pipeline.py::Test057Integration::test_load_real_data`
+
+## 2026-03-16 / Top Hotspot Wave
+
+### 目的
+- 直近 broad 上位だった `cancel-recheck`, `real-data integration`, `Coincheck order mapping`, `HeavyTradingEnv` setup をまとめて軽量化する。
+- 既存 helper / stub を優先的に再利用し、production 側の大きい挙動変更は避ける。
+
+### 変更
+- [test_262_protocol_cancel_recheck.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_262_protocol_cancel_recheck.py)
+  - `_CancelAdapterStub` へ寄せて `AsyncMock` ベースの cancel/recheck ケースを軽量化
+- [test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+  - `Test059SkipRateHistory::test_skip_rate_records_final_decision` の dummy fit サイズを 10→4 へ縮小
+- [test_013_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_013_fixes.py)
+  - `_run_place_order_capture(...)` と `_noop_async()` を追加
+  - `CoincheckAdapter.place_order()` patch boilerplate を 4 ケースで共通化
+- [test_ml_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ml_pipeline.py)
+  - `test_load_real_data` の candidate limits を `94,100,160` に整理
+  - 最小 sample を維持しつつ feature row 下限割れを回避
+- [test_356_g2_sac_blockers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_356_g2_sac_blockers.py)
+  - `HeavyTradingEnv` interaction 用 DataFrame を tiny synthetic frame に変更
+  - 実 parquet の存在と schema/selected-features 整合は別テスト群で引き続き確認
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_ml_pipeline.py::Test057Integration::test_load_real_data`
+  - `tests/unit/v460/test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction`
+  - `tests/unit/v460/test_262_protocol_cancel_recheck.py::TestTryCancelWithFillRecheck::test_cancel_recheck_returns_none`
+  - `tests/unit/v460/test_enricher_skip_gate.py::Test059SkipRateHistory::test_skip_rate_records_final_decision`
+  - `tests/unit/v460/test_013_fixes.py::TestC7OrderTypeMapping`
+  - `9 passed in 3.19s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `4850 passed, 2 skipped, 13 warnings in 29.88s`
+
+### broad 上位の更新
+1. `test_fill_quality.py::TestFillTestRunnerSaveResilience::test_cleanup_sync_saves_unsaved_batch`
+2. `test_enricher_skip_gate.py::Test058RawLoadCache::test_orderbook_cache_invalidates_on_file_update`
+3. `test_enricher_skip_gate.py::Test058RawLoadCache::test_trades_cache_invalidates_on_file_update`
+4. `test_276_blocking_policy_dry.py::TestExecuteSkipBehavior::test_heartbeat_called`
+5. `test_ml_pipeline.py::Test057Integration::test_load_real_data`

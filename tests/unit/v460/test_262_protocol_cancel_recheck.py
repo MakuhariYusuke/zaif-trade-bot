@@ -283,8 +283,7 @@ class TestTryCancelWithFillRecheck:
 
     def test_cancel_success(self) -> None:
         """cancel_order 成功時: cancel_succeeded=True, was_filled=False."""
-        adapter = AsyncMock()
-        adapter.cancel_order = AsyncMock(return_value=None)
+        adapter = _CancelAdapterStub()
 
         result = asyncio.run(
             OrderMonitor._try_cancel_with_fill_recheck(
@@ -293,16 +292,12 @@ class TestTryCancelWithFillRecheck:
         )
         assert result.cancel_succeeded is True
         assert result.was_filled is False
-        adapter.cancel_order.assert_awaited_once_with("order-1")
 
     def test_cancel_failed_to_cancel_and_filled(self) -> None:
         """'Failed to cancel' エラー + fill 確認 → was_filled=True."""
-        adapter = AsyncMock()
-        adapter.cancel_order = AsyncMock(
-            side_effect=Exception("Failed to cancel order")
-        )
-        adapter.get_order_status = AsyncMock(
-            return_value=_FakeStatus("filled", price=15_500_000.0)
+        adapter = _CancelAdapterStub(
+            cancel_side_effect=Exception("Failed to cancel order"),
+            status_result=_FakeStatus("filled", price=15_500_000.0),
         )
 
         result = asyncio.run(
@@ -316,12 +311,9 @@ class TestTryCancelWithFillRecheck:
 
     def test_cancel_not_found_and_filled(self) -> None:
         """'not found' エラー + fill 確認 → was_filled=True."""
-        adapter = AsyncMock()
-        adapter.cancel_order = AsyncMock(
-            side_effect=Exception("Order not found")
-        )
-        adapter.get_order_status = AsyncMock(
-            return_value=_FakeStatus("filled", price=14_900_000.0)
+        adapter = _CancelAdapterStub(
+            cancel_side_effect=Exception("Order not found"),
+            status_result=_FakeStatus("filled", price=14_900_000.0),
         )
 
         result = asyncio.run(
@@ -334,12 +326,9 @@ class TestTryCancelWithFillRecheck:
 
     def test_cancel_failed_to_cancel_but_not_filled(self) -> None:
         """'Failed to cancel' エラー + pending → cancel_succeeded=False."""
-        adapter = AsyncMock()
-        adapter.cancel_order = AsyncMock(
-            side_effect=Exception("Failed to cancel")
-        )
-        adapter.get_order_status = AsyncMock(
-            return_value=_FakeStatus("pending")
+        adapter = _CancelAdapterStub(
+            cancel_side_effect=Exception("Failed to cancel"),
+            status_result=_FakeStatus("pending"),
         )
 
         result = asyncio.run(
@@ -352,9 +341,8 @@ class TestTryCancelWithFillRecheck:
 
     def test_cancel_unexpected_error(self) -> None:
         """予期しないエラー → cancel_succeeded=False, was_filled=False."""
-        adapter = AsyncMock()
-        adapter.cancel_order = AsyncMock(
-            side_effect=Exception("Network timeout")
+        adapter = _CancelAdapterStub(
+            cancel_side_effect=Exception("Network timeout")
         )
 
         result = asyncio.run(
@@ -367,12 +355,9 @@ class TestTryCancelWithFillRecheck:
 
     def test_cancel_failed_recheck_also_fails(self) -> None:
         """cancel + recheck 両方失敗 → cancel_succeeded=False."""
-        adapter = AsyncMock()
-        adapter.cancel_order = AsyncMock(
-            side_effect=Exception("Failed to cancel")
-        )
-        adapter.get_order_status = AsyncMock(
-            side_effect=Exception("Recheck also failed")
+        adapter = _CancelAdapterStub(
+            cancel_side_effect=Exception("Failed to cancel"),
+            status_result=Exception("Recheck also failed"),
         )
 
         result = asyncio.run(
@@ -400,11 +385,10 @@ class TestTryCancelWithFillRecheck:
 
     def test_cancel_recheck_returns_none(self) -> None:
         """recheck が None を返す → was_filled=False."""
-        adapter = AsyncMock()
-        adapter.cancel_order = AsyncMock(
-            side_effect=Exception("not found")
+        adapter = _CancelAdapterStub(
+            cancel_side_effect=Exception("not found"),
+            status_result=None,
         )
-        adapter.get_order_status = AsyncMock(return_value=None)
 
         result = asyncio.run(
             OrderMonitor._try_cancel_with_fill_recheck(

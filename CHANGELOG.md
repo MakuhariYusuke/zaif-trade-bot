@@ -5555,3 +5555,12 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused reuse bundle: `352 passed, 1 warning in 4.03s`
     - filtered broad `tests/unit/v460/`: `4850 passed, 2 skipped, 13 warnings in 34.45s`
+- 2026-03-16: trimmed another v460 top-hotspot wave across cancel-recheck, real-data integration, Coincheck order mapping tests, and HeavyTradingEnv setup.
+  - switched `test_262_protocol_cancel_recheck.py` cancel-recheck cases from `AsyncMock` to the existing lightweight `_CancelAdapterStub`
+  - reduced `test_enricher_skip_gate.py::Test059SkipRateHistory` model/scaler fit size from 10 rows to 4 rows without changing the skip-rate-limit contract
+  - refactored `test_013_fixes.py::TestC7OrderTypeMapping` through a shared async capture helper to remove repeated patch boilerplate
+  - tuned `test_ml_pipeline.py::Test057Integration::test_load_real_data` to use narrower real-data candidate limits while keeping the fallback that preserves minimum feature rows
+  - changed `test_356_g2_sac_blockers.py` HeavyTradingEnv interaction setup to use a tiny synthetic frame keyed off YAML-selected feature names, while schema/file existence checks still validate the real parquet separately
+  - re-verified with:
+    - focused hotspot bundle: `9 passed in 3.19s`
+    - filtered broad `tests/unit/v460/`: `4850 passed, 2 skipped, 13 warnings in 29.88s`
