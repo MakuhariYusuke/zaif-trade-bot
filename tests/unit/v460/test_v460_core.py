@@ -574,15 +574,12 @@ class TestGateCheckG0FeatureColumns:
     """003# #18: G0 column count uses feature columns only."""
 
     def test_feature_column_count_excludes_targets(self, tmp_path: Path) -> None:
-
         df = pd.DataFrame({
             "close": [100.0, 101.0, 102.0],
             "feat_a": [1, 2, 3],
             "feat_b": [4, 5, 6],
             "target_direction_h1": [1, 0, 1],
         })
-        p = tmp_path / "test.parquet"
-        df.to_parquet(p)
 
         manifest_stub = SimpleNamespace(path=SimpleNamespace(exists=lambda: True))
         with (
@@ -592,8 +589,12 @@ class TestGateCheckG0FeatureColumns:
                 return_value={"actual": 0.0, "threshold": 0.01, "pass": True},
             ),
             patch("scripts.v460.run_gate_check.ManifestWriter", return_value=manifest_stub),
+            patch("scripts.v460.run_gate_check.load_parquet", return_value=df),
         ):
-            result = run_g0(str(p), thresholds={"min_feature_columns": 2, "max_nan_ratio": 0.01})
+            result = run_g0(
+                str(tmp_path / "test.parquet"),
+                thresholds={"min_feature_columns": 2, "max_nan_ratio": 0.01},
+            )
         check = result["checks"]["feature_column_count"]
         # Should count feat_a, feat_b only (not close, not target_*)
         assert check["actual"] == 2
@@ -610,7 +611,7 @@ class TestBuildFeatures:
     def test_proxy_features_generation(self) -> None:
         """OHLCV から 10 特徴量が生成されること."""
         rng = np.random.RandomState(42)
-        n = 96
+        n = 72
         close = 5000000.0 + np.cumsum(rng.normal(0, 1000, n))
         df = pd.DataFrame({
             "open": close + rng.normal(0, 500, n),
@@ -632,7 +633,7 @@ class TestBuildFeatures:
     def test_all_features_nontrivial(self) -> None:
         """生成された特徴量が定数でないこと（標準偏差 > 0）."""
         rng = np.random.RandomState(123)
-        n = 160
+        n = 120
         close = 5000000.0 + np.cumsum(rng.normal(0, 1000, n))
         df = pd.DataFrame({
             "open": close + rng.normal(0, 500, n),

@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, cast
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.cross_venue_lead_lag import (
     VenueMidSnapshot,
+    build_cross_venue_event_details,
     compute_cross_venue_lead_lag_hint,
 )
 from scripts.v460.lib.fill_config import (
@@ -179,14 +180,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                     self.config.results_dir,
                     run_id=str(run_id),
                     git_sha=str(git_sha),
-                    details={
-                        "reference_exchange": hint.reference_exchange,
-                        "direction": hint.direction,
-                        "adverse_side": hint.adverse_side,
-                        "spread_bps": hint.spread_bps,
-                        "velocity_bps": hint.reference_velocity_bps,
-                        "age_sec": hint.age_sec,
-                    },
+                    details=build_cross_venue_event_details(hint),
                 )
         except Exception as exc:
             logger.debug("cross-venue hint update skipped: %s", exc, exc_info=True)
