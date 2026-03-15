@@ -86,7 +86,7 @@ _CLASSIFICATION: Final[dict[str, GuardCategory]] = {
     "dynamic_kill_force_release_buy": GuardCategory.RECOVERY,
     "dual_kill_bypass": GuardCategory.RECOVERY,
     "per_side_halt_recovery_active": GuardCategory.RECOVERY,
-    # 418# Route-to-Kill: buy 残高不足 × sell kill-gated → 両側封鎖
+    # 421# Route-to-Kill: buy 残高不足 × sell kill-gated → 両側封鎖
     "route_to_kill_deadlock": GuardCategory.RECOVERY,
 }
 

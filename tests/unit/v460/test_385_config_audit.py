@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import inspect
 from functools import lru_cache
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -27,6 +28,8 @@ _ENV_CONFIG_FIELDS = EnvironmentConfig.__dataclass_fields__
 
 @lru_cache(maxsize=None)
 def _load_experiment_config(path: str) -> dict[str, object]:
+    if not Path(path).exists():
+        pytest.skip(f"experiment config missing: {path}")
     return load_config(path)
 
 

@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-15 (431# clamp observability + fill data 分析)
+> 最終更新: 2026-03-15 (434# 426/432/433 横断レビュー)
 
 ---
 
@@ -425,6 +425,9 @@
 | 429 | rev | [429_ph4_rev_428_actionable_sidecar_roadmap.md](429_ph4_rev_428_actionable_sidecar_roadmap.md) | 428# アクション化: Sidecar蘇生Step1-4, Clamp observabilityフィールド追加, SAC責務縮小。ただし修辞過剰・実態乖離あり |
 | 430 | rev | [430_ph4_rev_428_429_validity_and_implementation_audit.md](430_ph4_rev_428_429_validity_and_implementation_audit.md) | 428#/429# 妥当性評価+既存実装監査: retrain_scheduler完全実装済み発見, Sidecar v2(比例変換)存在, fill_recordsフィールド既存, 統合ロードマップ |
 | 431 | impl | [431_ph2_impl_clamp_observability_and_data_analysis.md](431_ph2_impl_clamp_observability_and_data_analysis.md) | Clamp Observability実装 + fill data分析: ceiling clamp rate 100%発見, EV相関0.017, offset chain装飾的, 428#/430# P3完了 |
+| 432 | rpt | [432_ph2_rpt_fill_records_deep_dive_analysis.md](432_ph2_rpt_fill_records_deep_dive_analysis.md) | Fill Records深掘り分析: Skip Gate相関 -0.010, buy+ranging PF 0.766, reprice悪化, balance_forcedの短期悪化/中期改善 |
+| 433 | plan | [433_ph4_advanced_microstructure_edge_ideas.md](433_ph4_advanced_microstructure_edge_ideas.md) | Advanced Microstructure Edge Ideas: toxicity veto, BitFlyer lead-lag, queue heuristic, committee sidecar の次期バックログ案 |
+| 434 | rev | [434_ph2_ph4_rev_426_432_433_multifaceted_validation.md](434_ph2_ph4_rev_426_432_433_multifaceted_validation.md) | 426#/432#/433# 横断レビュー: SAC OOS・live fill・sidecar backlog を profit-first に再整列。toxicity veto 優先, ceiling再測定, walk-forward化を提案 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

@@ -221,7 +221,7 @@ class TestR1MethodExtraction:
         assert "_measure_post_fill_pnl" in source
 
     def test_run_single_cycle_under_400_lines(self) -> None:
-        """run_single_cycle が 810 行以下 (R1 目標 + ... + 418# Final Clamp)."""
+        """run_single_cycle が 810 行以下 (R1 目標 + ... + 421# Final Clamp)."""
         source = read_fill_test_method_source("run_single_cycle")
         line_count = len(source.splitlines())
         assert line_count <= 810, f"run_single_cycle is {line_count} lines (> 810)"
