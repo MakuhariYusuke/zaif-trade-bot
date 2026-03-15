@@ -6097,3 +6097,11 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - focused:
   - `tests/unit/v460/test_439_cross_venue_lead_lag.py`
   - 既存 guard/injection coverage に加えて FillRecord round-trip と builder 観測項目の追加確認
+
+### 追加整理
+- [maker_price.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/maker_price.py) に public accessor を追加
+  - `cross_venue_lead_lag_hint`
+  - `cross_venue_lead_lag_vetoed`
+  - `cross_venue_lead_lag_veto_reason`
+- [fill_record_builder.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_record_builder.py) は private 属性直参照をやめて accessor 経由へ変更
+- [test_439_cross_venue_lead_lag.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_439_cross_venue_lead_lag.py) では `_CrossVenueState` stub を追加し、builder 観測項目テストの `SimpleNamespace` 重複を削減

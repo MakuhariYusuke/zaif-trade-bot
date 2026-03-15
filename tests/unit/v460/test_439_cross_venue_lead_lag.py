@@ -29,6 +29,12 @@ class _OB:
     exchange: str
 
 
+@dataclass
+class _CrossVenueState:
+    cross_venue_lead_lag_hint: CrossVenueLeadLagHint | None
+    cross_venue_lead_lag_vetoed: bool = False
+
+
 class _RegistryStub:
     def __init__(self, adapter: object | None = None) -> None:
         self.adapter = adapter
@@ -238,7 +244,7 @@ class TestCrossVenueLeadLagExecutorInjection:
 
         asyncio.run(runner._update_cross_venue_lead_lag_hint())
 
-        hint = runner._maker_price._cross_venue_lead_lag_hint
+        hint = runner._maker_price.cross_venue_lead_lag_hint
         assert hint is not None
         assert hint.adverse_side == "sell"
         assert runner._cross_venue_prev_reference_snapshot is not None
@@ -263,7 +269,7 @@ class TestCrossVenueLeadLagExecutorInjection:
 
         asyncio.run(runner._update_cross_venue_lead_lag_hint())
 
-        assert runner._maker_price._cross_venue_lead_lag_hint is None
+        assert runner._maker_price.cross_venue_lead_lag_hint is None
 
 
 class TestCrossVenueLeadLagFillRecordObservability:
@@ -296,14 +302,13 @@ class TestCrossVenueLeadLagFillRecordObservability:
     def test_fill_record_builder_exports_cross_venue_fields(self) -> None:
         runner = _DummyFillRecordBuilder()
         runner.config = FillTestConfig(cross_venue_lead_lag_enabled=True)
-        runner._maker_price = SimpleNamespace(
-            _cross_venue_lead_lag_hint=_make_hint(
+        runner._maker_price = _CrossVenueState(
+            cross_venue_lead_lag_hint=_make_hint(
                 adverse_side="sell",
                 spread_bps=7.0,
                 velocity_bps=2.5,
                 age_sec=0.3,
             ),
-            _cross_venue_lead_lag_vetoed=False,
         )
 
         fields = runner._build_fill_cross_venue_fields(side="sell")
@@ -320,12 +325,29 @@ class TestCrossVenueLeadLagFillRecordObservability:
     def test_fill_record_builder_marks_safe_side_as_not_applied(self) -> None:
         runner = _DummyFillRecordBuilder()
         runner.config = FillTestConfig(cross_venue_lead_lag_enabled=True)
-        runner._maker_price = SimpleNamespace(
-            _cross_venue_lead_lag_hint=_make_hint(adverse_side="sell"),
-            _cross_venue_lead_lag_vetoed=False,
+        runner._maker_price = _CrossVenueState(
+            cross_venue_lead_lag_hint=_make_hint(adverse_side="sell"),
         )
 
         fields = runner._build_fill_cross_venue_fields(side="buy")
 
         assert fields["cross_venue_lead_lag_applied"] is False
         assert fields["cross_venue_lead_lag_vetoed"] is False
+
+    def test_fill_record_builder_returns_empty_fields_when_disabled(self) -> None:
+        runner = _DummyFillRecordBuilder()
+        runner.config = FillTestConfig(cross_venue_lead_lag_enabled=False)
+        runner._maker_price = _CrossVenueState(cross_venue_lead_lag_hint=None)
+
+        fields = runner._build_fill_cross_venue_fields(side="buy")
+
+        assert fields == {
+            "cross_venue_reference_exchange": None,
+            "cross_venue_lead_lag_direction": None,
+            "cross_venue_lead_lag_adverse_side": None,
+            "cross_venue_lead_lag_spread_bps": None,
+            "cross_venue_lead_lag_velocity_bps": None,
+            "cross_venue_lead_lag_age_sec": None,
+            "cross_venue_lead_lag_applied": None,
+            "cross_venue_lead_lag_vetoed": None,
+        }

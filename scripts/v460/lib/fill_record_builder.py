@@ -26,6 +26,17 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_EMPTY_CROSS_VENUE_FIELDS: dict[str, object] = {
+    "cross_venue_reference_exchange": None,
+    "cross_venue_lead_lag_direction": None,
+    "cross_venue_lead_lag_adverse_side": None,
+    "cross_venue_lead_lag_spread_bps": None,
+    "cross_venue_lead_lag_velocity_bps": None,
+    "cross_venue_lead_lag_age_sec": None,
+    "cross_venue_lead_lag_applied": None,
+    "cross_venue_lead_lag_vetoed": None,
+}
+
 
 class FillRecordBuilderMixin:
     """FillRecord 構築ヘルパー (Mixin).
@@ -195,20 +206,11 @@ class FillRecordBuilderMixin:
     ) -> dict[str, object]:
         """Cross-venue lead-lag の観測値を FillRecord 向けに整形する."""
         enabled = bool(getattr(self.config, "cross_venue_lead_lag_enabled", False))
-        hint = getattr(self._maker_price, "_cross_venue_lead_lag_hint", None)
-        vetoed = bool(getattr(self._maker_price, "_cross_venue_lead_lag_vetoed", False))
+        hint = getattr(self._maker_price, "cross_venue_lead_lag_hint", None)
+        vetoed = bool(getattr(self._maker_price, "cross_venue_lead_lag_vetoed", False))
 
         if not enabled and hint is None and not vetoed:
-            return {
-                "cross_venue_reference_exchange": None,
-                "cross_venue_lead_lag_direction": None,
-                "cross_venue_lead_lag_adverse_side": None,
-                "cross_venue_lead_lag_spread_bps": None,
-                "cross_venue_lead_lag_velocity_bps": None,
-                "cross_venue_lead_lag_age_sec": None,
-                "cross_venue_lead_lag_applied": None,
-                "cross_venue_lead_lag_vetoed": None,
-            }
+            return dict(_EMPTY_CROSS_VENUE_FIELDS)
 
         applied = bool(hint is not None and hint.adverse_side == side)
         return {

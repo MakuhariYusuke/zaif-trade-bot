@@ -242,6 +242,21 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         self._cross_venue_lead_lag_veto_reason = None
 
     @property
+    def cross_venue_lead_lag_hint(self) -> CrossVenueLeadLagHint | None:
+        """439# 現在の cross-venue lead-lag hint を返す."""
+        return self._cross_venue_lead_lag_hint
+
+    @property
+    def cross_venue_lead_lag_vetoed(self) -> bool:
+        """439# cross-venue lead-lag veto 発火状態."""
+        return self._cross_venue_lead_lag_vetoed
+
+    @property
+    def cross_venue_lead_lag_veto_reason(self) -> str | None:
+        """439# cross-venue lead-lag veto 理由."""
+        return self._cross_venue_lead_lag_veto_reason
+
+    @property
     def last_sigma(self) -> float:
         """306# L1: 最新の σ 推定値 (dynamic cycle interval 用)."""
         return self._last_sigma

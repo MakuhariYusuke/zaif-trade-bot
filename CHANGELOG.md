@@ -5407,3 +5407,4 @@ python scripts/unified_trainer.py \
   - added `cross_venue_lead_lag_veto` cancel-reason support and cleanup for the optional reference adapter
   - added focused coverage in `tests/unit/v460/test_439_cross_venue_lead_lag.py` and extended parser/YAML round-trip coverage in `test_336_fill_config_parser.py`
   - added low-risk `FillRecord` observability fields for cross-venue hint direction/spread/velocity/age plus applied/vetoed state, wired through `FillRecordBuilderMixin`
+  - reduced cross-venue coupling by exposing public `MakerPriceCalculator` accessors for hint/veto state and switched builder/tests away from direct private-attribute reads
