@@ -5408,3 +5408,16 @@ python scripts/unified_trainer.py \
   - added focused coverage in `tests/unit/v460/test_439_cross_venue_lead_lag.py` and extended parser/YAML round-trip coverage in `test_336_fill_config_parser.py`
   - added low-risk `FillRecord` observability fields for cross-venue hint direction/spread/velocity/age plus applied/vetoed state, wired through `FillRecordBuilderMixin`
   - reduced cross-venue coupling by exposing public `MakerPriceCalculator` accessors for hint/veto state and switched builder/tests away from direct private-attribute reads
+- 2026-03-15: trimmed another v460 test cleanup/perf wave around shared real-data helpers and drift fixes.
+  - added `tests/unit/v460/_real_data_test_helpers.py` and reused it from `test_enricher_skip_gate.py` and `test_ml_pipeline.py` to reduce duplicate recent-fill sampling/writing logic
+  - fixed drift regressions in `test_145_structural_fixes.py` and `test_253_hot_reload_dead_config_getattr_bare_except.py` after cross-venue and executor growth
+  - switched read-only YAML checks in `test_253_hot_reload_dead_config_getattr_bare_except.py` to `v460_fill_test_yaml_base` to avoid unnecessary deepcopy setup
+- 2026-03-15: expanded v460 test-helper reuse and trimmed another broad cleanup wave.
+  - added `tests/unit/v460/_real_data_test_helpers.py` and reused it from `test_enricher_skip_gate.py`, `test_ml_pipeline.py`, `test_gate_check.py`, `test_159_side_regime_dashboard.py`, and `test_160_ab_judgment.py` to remove repeated JSONL sample-writing and recent-fill sampling logic
+  - switched `test_092_gap_fixes.py` to shared YAML loading via `tests/unit/v460/_yaml_test_helpers.py`
+  - updated `test_gate_check.py::TestG3Pnl::test_g3_pass` fixture generation to include `reward_profit_corr`, matching the current `run_gate_check.py` contract
+  - reduced setup/call overhead in `test_336_fill_config_parser.py`, `test_384_pipeline_fixes.py`, and `test_407_ghost_cleanup.py` by reusing shared YAML fixtures, lowering OOS mock steps to the minimum slice-producing count, caching inspect sources, and mocking GC-only contract checks
+  - re-verified with:
+    - focused cleanup bundle: `332 passed in 8.34s`
+    - focused parser/pipeline/gc bundle: `212 passed in 6.02s`
+    - filtered broad `tests/unit/v460/`: `4817 passed, 2 skipped, 13 warnings in 35.18s`

@@ -119,7 +119,7 @@ class TestEvaluateModelOOS:
         model.predict.return_value = (np.array([0.0]), None)
 
         # 4320+ steps で 3分割が有効 (1440×3 以上)
-        env = self._make_mock_env(n_steps=5000)
+        env = self._make_mock_env(n_steps=4321)
         result = evaluate_model_oos(model, env, n_episodes=1)
 
         assert "slice_metrics" in result

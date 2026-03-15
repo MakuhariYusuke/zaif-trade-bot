@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import copy
-from pathlib import Path
 
 import pytest
 
@@ -29,9 +28,6 @@ from scripts.v460.lib.fill_config_parser import (
     _parse_trading_features,
     parse_fill_config_yaml,
 )
-from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
-
-YAML_PATH = Path("configs/v460/fill_test.yaml")
 _DEFAULT_FILL_CONFIG = FillTestConfig()
 
 
@@ -314,9 +310,9 @@ class TestProductionYamlRoundTrip:
     """実 YAML ファイルのパース成功確認."""
 
     @pytest.fixture(scope="class")
-    def yaml_cfg(self) -> dict:
-        """configs/v460/fill_test.yaml をロード."""
-        return dict(load_yaml_mapping(YAML_PATH))
+    def yaml_cfg(self, v460_fill_test_yaml_base: dict[str, object]) -> dict[str, object]:
+        """configs/v460/fill_test.yaml を shared session cache から取得."""
+        return v460_fill_test_yaml_base
 
     @pytest.fixture(scope="class")
     def direct_cfg(self, yaml_cfg: dict) -> FillTestConfig:

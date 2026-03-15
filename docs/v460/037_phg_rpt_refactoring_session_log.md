@@ -6105,3 +6105,86 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
   - `cross_venue_lead_lag_veto_reason`
 - [fill_record_builder.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_record_builder.py) は private 属性直参照をやめて accessor 経由へ変更
 - [test_439_cross_venue_lead_lag.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_439_cross_venue_lead_lag.py) では `_CrossVenueState` stub を追加し、builder 観測項目テストの `SimpleNamespace` 重複を削減
+
+## 2026-03-15 / Task 439 Follow-up 2: Test Cleanup / Perf
+
+### 実施内容
+- [tests/unit/v460/_real_data_test_helpers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_real_data_test_helpers.py) を追加
+  - `load_recent_fill_records_df(...)`
+  - `select_minimum_trainable_fill_df(...)`
+  - `write_jsonl_sample(...)`
+  - `write_jsonl_gz(...)`
+- [test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py) と [test_ml_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ml_pipeline.py) で recent real-data sampling の重複を shared helper に寄せた
+- [test_145_structural_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_145_structural_fixes.py) の audit cancel reason expected を cross-venue 追加後の現契約に追随
+- [test_253_hot_reload_dead_config_getattr_bare_except.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_253_hot_reload_dead_config_getattr_bare_except.py)
+  - `fill_cycle_executor.py` 行数上限を現構成に合わせて更新
+  - read-only YAML 検査を `v460_fill_test_yaml_base` へ切替
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_145_structural_fixes.py`
+  - `tests/unit/v460/test_253_hot_reload_dead_config_getattr_bare_except.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_ml_pipeline.py`
+  - `170 passed in 5.53s`
+
+## 2026-03-15 / Task 439 Follow-up 3: Helper Reuse / Broad Perf
+
+### 実施内容
+- 既存 helper の再利用余地を再点検し、以下へ横展開した
+  - [tests/unit/v460/_real_data_test_helpers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_real_data_test_helpers.py)
+    - `write_jsonl_sample(...)`
+    - `write_jsonl_gz(...)`
+    - `load_recent_fill_records_df(...)`
+    - `select_minimum_trainable_fill_df(...)`
+- JSONL 手書きロジックの共通化
+  - [test_gate_check.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_gate_check.py)
+  - [test_159_side_regime_dashboard.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_159_side_regime_dashboard.py)
+  - [test_160_ab_judgment.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_160_ab_judgment.py)
+- YAML 直読の共通化
+  - [test_092_gap_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_092_gap_fixes.py)
+  - shared `load_yaml_mapping(...)` に統一
+- drift fix
+  - [test_gate_check.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_gate_check.py)
+  - G3 用 seed metric に `reward_profit_corr` を追加し、現行 gate 契約に追随
+- broad 上位の quick win
+  - [test_336_fill_config_parser.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_336_fill_config_parser.py)
+    - production YAML round-trip を shared `v460_fill_test_yaml_base` fixture に寄せた
+  - [test_384_pipeline_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_384_pipeline_fixes.py)
+    - multi-slice 発火用の step 数を `5000 -> 4321` に縮小
+  - [test_407_ghost_cleanup.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_407_ghost_cleanup.py)
+    - `read_inspect_source(...)` を利用
+    - `RewardCalculator` 初期化を module-scope fixture へ寄せた
+    - `collect_garbage*()` は実 GC を回さず contract だけ確認する mock ベースへ変更
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_gate_check.py`
+  - `tests/unit/v460/test_159_side_regime_dashboard.py`
+  - `tests/unit/v460/test_160_ab_judgment.py`
+  - `tests/unit/v460/test_092_gap_fixes.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_ml_pipeline.py`
+  - `tests/unit/v460/test_145_structural_fixes.py`
+  - `tests/unit/v460/test_253_hot_reload_dead_config_getattr_bare_except.py`
+  - `332 passed in 8.34s`
+- focused:
+  - `tests/unit/v460/test_336_fill_config_parser.py`
+  - `tests/unit/v460/test_384_pipeline_fixes.py`
+  - `tests/unit/v460/test_407_ghost_cleanup.py`
+  - `tests/unit/v460/test_gate_check.py`
+  - `tests/unit/v460/test_159_side_regime_dashboard.py`
+  - `tests/unit/v460/test_160_ab_judgment.py`
+  - `tests/unit/v460/test_092_gap_fixes.py`
+  - `212 passed in 6.02s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `4817 passed, 2 skipped, 13 warnings in 35.18s`
+
+### メモ
+- 今回の broad 上位は、重い env setup より real-data integration (`test_enricher_skip_gate.py`, `test_ml_pipeline.py`) と source/GC 契約テストへ寄ってきた
+- 次の有力候補は
+  - `test_259_as_vol_ratio_adaptation_hasattr.py`
+  - `test_088_features.py`
+  - `test_enricher_skip_gate.py`
+  - `test_356_g2_sac_blockers.py`

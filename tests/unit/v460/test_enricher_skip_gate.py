@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import gzip
 import json
 import tempfile
 from datetime import datetime as dt
@@ -42,60 +41,17 @@ from scripts.v460.ml.skip_gate import (
     warm_start_skip_gate_thresholds,
 )
 from scripts.v460.ml.data_loader import build_as_features, load_fill_records as load_fill_records_df
+from tests.unit.v460._real_data_test_helpers import (
+    load_recent_fill_records_df as _load_recent_fill_records_df,
+    select_minimum_trainable_fill_df,
+    write_jsonl_gz as _write_jsonl_gz,
+)
 from tests.unit.v460._skip_gate_test_helpers import save_and_load_skip_gate
-from ztb.io.jsonl import read_tail_jsonl_objects
 
 _REAL_DATA_SAMPLE_ROWS = 94
 _REAL_DATA_FALLBACK_SAMPLE_ROWS = 96
 _REAL_DATA_EXPANDED_SAMPLE_ROWS = 100
 _REAL_DATA_MIN_TRAIN_SAMPLES = 31
-
-
-def _write_jsonl_gz(path: Path, rows: list[dict[str, Any]]) -> None:
-    with gzip.open(path, "wt", encoding="utf-8") as f:
-        for row in rows:
-            f.write(json.dumps(row, ensure_ascii=False))
-            f.write("\n")
-
-
-def _load_recent_fill_records_df(
-    *,
-    sample_rows: int,
-    results_dir: Path = Path("results/v460/fill_test"),
-) -> pd.DataFrame:
-    """実データ統合テスト向けに最新側から最大 sample_rows 件を高速取得."""
-    files = sorted(results_dir.glob("fill_records_*.jsonl"))
-    if not files:
-        return pd.DataFrame()
-    if len(files) > 1:
-        # 実行中に伸びうる最新日のファイルを外し、real-data integration を安定化する。
-        files = files[:-1]
-
-    chunks: list[pd.DataFrame] = []
-    remaining = sample_rows
-    for path in reversed(files):
-        if remaining <= 0:
-            break
-        rows = read_tail_jsonl_objects(path, limit=remaining)
-        if not rows:
-            continue
-        frame = pd.DataFrame(rows)
-        if len(frame) > remaining:
-            chunks.append(frame.tail(remaining))
-            remaining = 0
-            break
-        chunks.append(frame)
-        remaining -= len(frame)
-
-    if chunks:
-        return pd.concat(reversed(chunks), ignore_index=True)
-
-    # Fallback: 既存ローダー（キャッシュあり）
-    try:
-        return load_fill_records_df(results_dir=results_dir).tail(sample_rows).copy()
-    except FileNotFoundError:
-        return pd.DataFrame()
-
 
 def _select_real_enriched_training_df(
     *,
@@ -105,28 +61,13 @@ def _select_real_enriched_training_df(
     min_train_samples: int = _REAL_DATA_MIN_TRAIN_SAMPLES,
 ) -> pd.DataFrame:
     """学習成立条件を満たす最小限の real enriched_df を選ぶ."""
-    max_rows = max(initial_rows, fallback_rows, expanded_rows)
-    recent_fill_df = _load_recent_fill_records_df(sample_rows=max_rows)
-    if recent_fill_df.empty:
-        return pd.DataFrame()
-
-    trainable_mask = (
-        recent_fill_df["filled"].astype(bool).to_numpy(copy=False)
-        & recent_fill_df["post_fill_30s_pnl"].notna().to_numpy(copy=False)
+    return select_minimum_trainable_fill_df(
+        initial_rows=initial_rows,
+        fallback_rows=fallback_rows,
+        expanded_rows=expanded_rows,
+        min_train_samples=min_train_samples,
+        enrich_fn=enrich_fill_records,
     )
-    reverse_cumsum = np.cumsum(trainable_mask[::-1], dtype=np.int32)
-    enough_trainable = np.flatnonzero(reverse_cumsum >= min_train_samples)
-    if enough_trainable.size > 0:
-        selected_rows = int(enough_trainable[0]) + 1
-    else:
-        selected_rows = expanded_rows
-
-    # 実データの揺れに備えて、過去に安定だった fallback ladder を下限/上限として維持する。
-    if selected_rows > initial_rows and selected_rows < fallback_rows:
-        selected_rows = fallback_rows
-    selected_rows = min(selected_rows, expanded_rows)
-
-    return enrich_fill_records(recent_fill_df.tail(selected_rows))
 
 
 @lru_cache(maxsize=1)

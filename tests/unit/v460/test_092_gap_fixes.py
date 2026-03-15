@@ -13,7 +13,6 @@ import time
 from pathlib import Path
 
 import pytest
-import yaml
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 import sys
@@ -26,16 +25,13 @@ from ztb.metrics.fill_quality import (
     g1_1_judgment,
     compute_round_trip_metrics,
 )
+from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
 
 
 @pytest.fixture(scope="module")
 def gate_thresholds_yaml() -> dict[str, object]:
     path = _PROJECT_ROOT / "configs" / "v460" / "gate_thresholds.yaml"
-    with open(path, encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
-    if not isinstance(cfg, dict):
-        raise TypeError("gate_thresholds.yaml must deserialize to dict")
-    return cfg
+    return load_yaml_mapping(path)
 
 
 # =====================================================================

@@ -41,6 +41,7 @@ from scripts.v460.lib.ab_judgment import (
     _norm_cdf,
     _pairwise_counts,
 )
+from tests.unit.v460._real_data_test_helpers import write_jsonl_sample
 from ztb.io.json_io import JSONObject
 from ztb.utils.dataclass_utils import filter_known_dataclass_fields
 from ztb.utils.safety import safe_to_finite
@@ -588,9 +589,7 @@ class TestDashboardJudgmentIntegration:
             + _make_records(50, fill_rate=0.5, pnl_mean=0.3, side="buy", regime="ranging")
             + _make_records(30, fill_rate=0.5, pnl_mean=0.4, side="sell", regime="trending_down")
         )
-        with open(jsonl_path, "w", encoding="utf-8") as f:
-            for r in records:
-                f.write(json.dumps(r) + "\n")
+        write_jsonl_sample(jsonl_path, records)
 
         criteria = ABJudgmentCriteria(min_filled_records=5, min_calendar_days=1)
         trending_criteria = TrendingEvalCriteria(min_filled=3, target_filled=10)

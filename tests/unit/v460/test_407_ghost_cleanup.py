@@ -10,10 +10,44 @@ Verifies:
 
 from __future__ import annotations
 
-import gc
 from unittest.mock import MagicMock, patch
 
 import pytest
+from tests.unit.v460._fill_test_source import read_inspect_source
+
+
+@pytest.fixture(scope="module")
+def reward_calculator_default():
+    from ztb.trading.environment.components.calculators.reward_calculator import (
+        RewardCalculator,
+    )
+    from ztb.trading.environment.utils.config import (
+        EnvironmentConfig,
+        RewardSettings,
+    )
+
+    config = MagicMock(spec=EnvironmentConfig)
+    config.behavior_optimization = {}
+    rs = RewardSettings()
+    config.reward_settings = rs
+    return RewardCalculator(config, rs, 100000.0)
+
+
+@pytest.fixture(scope="module")
+def reward_calculator_custom():
+    from ztb.trading.environment.components.calculators.reward_calculator import (
+        RewardCalculator,
+    )
+    from ztb.trading.environment.utils.config import (
+        EnvironmentConfig,
+        RewardSettings,
+    )
+
+    config = MagicMock(spec=EnvironmentConfig)
+    config.behavior_optimization = {}
+    rs = RewardSettings(custom_reward_params={"test_key": 42.0})
+    config.reward_settings = rs
+    return RewardCalculator(config, rs, 100000.0)
 
 
 class TestS4TupleBugFix:
@@ -24,10 +58,9 @@ class TestS4TupleBugFix:
         from ztb.trading.environment.components.calculators.reward_calculator import (
             RewardCalculator,
         )
-        import inspect
 
         # Get the source of calculate_reward_simple
-        source = inspect.getsource(RewardCalculator.calculate_reward_simple)
+        source = read_inspect_source(RewardCalculator.calculate_reward_simple)
         # Filter out comments and check code lines only
         code_lines = [
             line for line in source.split("\n")
@@ -44,62 +77,21 @@ class TestS4TupleBugFix:
 class TestP1SettingsCache:
     """P1: _get_nested_setting should cache results."""
 
-    def test_settings_cache_initialized(self):
+    def test_settings_cache_initialized(self, reward_calculator_default):
         """RewardCalculator should have _settings_cache dict."""
-        from ztb.trading.environment.components.calculators.reward_calculator import (
-            RewardCalculator,
-        )
-        from ztb.trading.environment.utils.config import (
-            EnvironmentConfig,
-            RewardSettings,
-        )
-
-        config = MagicMock(spec=EnvironmentConfig)
-        config.behavior_optimization = {}
-        rs = RewardSettings()
-        config.reward_settings = rs
-
-        rc = RewardCalculator(config, rs, 100000.0)
+        rc = reward_calculator_default
         assert hasattr(rc, "_settings_cache")
         assert isinstance(rc._settings_cache, dict)
 
-    def test_settings_cache_populated_after_init(self):
+    def test_settings_cache_populated_after_init(self, reward_calculator_default):
         """After __init__, cache should contain entries from init-time lookups."""
-        from ztb.trading.environment.components.calculators.reward_calculator import (
-            RewardCalculator,
-        )
-        from ztb.trading.environment.utils.config import (
-            EnvironmentConfig,
-            RewardSettings,
-        )
-
-        config = MagicMock(spec=EnvironmentConfig)
-        config.behavior_optimization = {}
-        rs = RewardSettings()
-        config.reward_settings = rs
-
-        rc = RewardCalculator(config, rs, 100000.0)
+        rc = reward_calculator_default
         # Cache should have been populated by __init__ calls to get_setting_*
         assert len(rc._settings_cache) > 0
 
-    def test_settings_cache_returns_same_value(self):
+    def test_settings_cache_returns_same_value(self, reward_calculator_custom):
         """Repeated get_setting_float should return cached value."""
-        from ztb.trading.environment.components.calculators.reward_calculator import (
-            RewardCalculator,
-        )
-        from ztb.trading.environment.utils.config import (
-            EnvironmentConfig,
-            RewardSettings,
-        )
-
-        config = MagicMock(spec=EnvironmentConfig)
-        config.behavior_optimization = {}
-        rs = RewardSettings(
-            custom_reward_params={"test_key": 42.0}
-        )
-        config.reward_settings = rs
-
-        rc = RewardCalculator(config, rs, 100000.0)
+        rc = reward_calculator_custom
         # First call — cache miss
         val1 = rc.get_setting_float("test_key", 0.0)
         # Second call — cache hit
@@ -130,10 +122,9 @@ class TestP3UnifiedGC:
 
     def test_no_double_gc_in_core(self):
         """core.py should not have DEFAULT_GC_STEP_INTERVAL hardcoded GC."""
-        import inspect
         from ztb.trading.environment.heavy_env import core
 
-        source = inspect.getsource(core.HeavyTradingEnv)
+        source = read_inspect_source(core.HeavyTradingEnv)
         # Should not have the old double-GC pattern
         assert "DEFAULT_GC_STEP_INTERVAL" not in source or "removed" in source
 
@@ -141,21 +132,30 @@ class TestP3UnifiedGC:
 class TestP5CollectGarbageReturn:
     """P5: collect_garbage should return int."""
 
-    def test_collect_garbage_returns_int(self):
+    @patch("ztb.trading.environment.components.memory_manager.gc.collect", return_value=7)
+    def test_collect_garbage_returns_int(self, mock_collect):
         """collect_garbage should return number of collected objects."""
         from ztb.trading.environment.components.memory_manager import MemoryManager
 
         mm = MemoryManager()
         result = mm.collect_garbage()
         assert isinstance(result, int)
+        assert result == 7
+        mock_collect.assert_called_once_with(generation=2)
 
-    def test_collect_garbage_aggressive_returns_int(self):
+    @patch(
+        "ztb.trading.environment.components.memory_manager.gc.collect",
+        side_effect=[1, 2, 3],
+    )
+    def test_collect_garbage_aggressive_returns_int(self, mock_collect):
         """collect_garbage_aggressive should return total collected count."""
         from ztb.trading.environment.components.memory_manager import MemoryManager
 
         mm = MemoryManager()
         result = mm.collect_garbage_aggressive()
         assert isinstance(result, int)
+        assert result == 6
+        assert mock_collect.call_count == 3
 
 
 class TestDeadCodeRemoval:

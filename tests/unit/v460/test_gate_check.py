@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
 import pytest
+from tests.unit.v460._real_data_test_helpers import write_jsonl_sample
 
 # テスト対象を遅延 import (sys.path 挿入済み前提)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -410,9 +411,7 @@ class TestRunG1_1:
     def _write_fill_records(self, records: list[dict], tmp_dir: Path) -> None:
         """JSONL ファイルに write."""
         path = tmp_dir / "fill_records_test.jsonl"
-        with open(path, "w", encoding="utf-8") as f:
-            for r in records:
-                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        write_jsonl_sample(path, records)
 
     def test_g1_1_pass(self) -> None:
         """良好な fill_records → PASS."""
@@ -517,6 +516,7 @@ def _make_g3_results(
     max_dd: float = 0.08,
     gross: float = 0.005,
     fee: float = 0.002,
+    reward_profit_corr: float = 0.2,
 ) -> dict:
     """G3 テスト用の results JSON を生成."""
     rng = np.random.RandomState(42)
@@ -529,6 +529,7 @@ def _make_g3_results(
             "max_drawdown": rng.uniform(max_dd * 0.5, max_dd),
             "avg_gross_per_trade": gross,
             "avg_fee_per_trade": fee,
+            "reward_profit_corr": rng.normal(reward_profit_corr, 0.05),
         })
     return {"seed_metrics": seed_metrics}
 

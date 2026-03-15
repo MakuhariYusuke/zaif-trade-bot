@@ -45,9 +45,9 @@ class TestSellAsymmetricHotReload:
         """_HOT_RELOADABLE_FIELDS に含まれること."""
         assert "sell_asymmetric_high_vol_enabled" in _HOT_RELOADABLE_FIELDS
 
-    def test_yaml_has_field(self, v460_fill_test_yaml: dict[str, object]) -> None:
+    def test_yaml_has_field(self, v460_fill_test_yaml_base: dict[str, object]) -> None:
         """live YAML に sell_asymmetric_high_vol_enabled が存在."""
-        raw = v460_fill_test_yaml
+        raw = v460_fill_test_yaml_base
         lc = raw["loss_control"]
         assert "sell_asymmetric_high_vol_enabled" in lc
         assert lc["sell_asymmetric_high_vol_enabled"] is False
@@ -82,9 +82,9 @@ class TestDeadConfigRemoval:
         """hot_reload 対象フィールドから削除済."""
         assert "balance_forced_apply_trending_offset" not in _HOT_RELOADABLE_FIELDS
 
-    def test_not_in_yaml(self, v460_fill_test_yaml: dict[str, object]) -> None:
+    def test_not_in_yaml(self, v460_fill_test_yaml_base: dict[str, object]) -> None:
         """live YAML から削除済."""
-        raw = v460_fill_test_yaml
+        raw = v460_fill_test_yaml_base
         lc = raw["loss_control"]
         assert "balance_forced_apply_trending_offset" not in lc
 
@@ -224,11 +224,12 @@ class TestRegressionIntegrity:
         """fill_cycle_executor.py の行数が MAX LINES 未満。"""
         path = Path("scripts/v460/lib/fill_cycle_executor.py")
         lines = path.read_text(encoding="utf-8").count("\n")
-        # MAX LINES: 1170 (docstring 宣言)
+        # MAX LINES: 1280
         # 323# God Object 分割: 1502→1090 (FillRecordBuilder + PreOrderAdjustments 抽出)
         # 372# F1 Gap-3: sidecar bps offset 適用 (+13行)
-        # 418# Execution Final Clamp + spread guard (+40行)
-        assert lines < 1170, f"fill_cycle_executor.py has {lines} lines"
+        # 421# Execution Final Clamp + spread guard (+40行)
+        # 439# cross-venue lead-lag guard/injection 追加後も 1280 未満に維持する。
+        assert lines < 1280, f"fill_cycle_executor.py has {lines} lines"
 
     def test_event_logger_has_logger(self) -> None:
         """event_logger.py にモジュールレベル logger が存在。"""

@@ -15,6 +15,7 @@ from scripts.v460.analysis.side_regime_dashboard import (
     _compute_side_metrics,
     run_dashboard,
 )
+from tests.unit.v460._real_data_test_helpers import write_jsonl_sample
 
 
 class TestComputeSideMetrics:
@@ -88,9 +89,7 @@ class TestRunDashboard:
             {"filled": False, "side": "sell", "regime": "ranging", "timestamp": 1771800200},
         ]
         jsonl_path = tmp_path / "fill_records_20260223.jsonl"
-        with open(jsonl_path, "w", encoding="utf-8") as f:
-            for r in records:
-                f.write(json.dumps(r) + "\n")
+        write_jsonl_sample(jsonl_path, records)
 
         result = run_dashboard(results_dir=str(tmp_path))
 
@@ -110,9 +109,7 @@ class TestRunDashboard:
              "adverse_selected": True, "regime": "trending_down", "timestamp": 1771800100},
         ]
         jsonl_path = tmp_path / "fill_records_20260223.jsonl"
-        with open(jsonl_path, "w", encoding="utf-8") as f:
-            for r in records:
-                f.write(json.dumps(r) + "\n")
+        write_jsonl_sample(jsonl_path, records)
 
         result = run_dashboard(results_dir=str(tmp_path))
         assert len(result["trending_daily"]) >= 1

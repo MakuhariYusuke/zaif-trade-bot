@@ -168,6 +168,7 @@ class TestCancelReasons:
             CR.TOXIC_FILL_SIDE_VETO,           # 205# §9.2
             CR.PHANTOM_SIDE_VETO,              # 238# S-2
             CR.TOXICITY_PARTICIPATION_SKIP,    # 240# Toxicity Budget
+            CR.CROSS_VENUE_LEAD_LAG_VETO,      # 439# cross-venue lead-lag
             CR.PER_SIDE_DD_HALT,               # 205# §9.5
             CR.OPERATOR_HALT,                  # 215# alert_mode
             CR.MCB_HALT,                       # 211# P1-B
@@ -180,8 +181,8 @@ class TestCancelReasons:
             CR.ONE_SIDED_FREEZE_SKIP,          # 234# one-sided
             CR.SKIP_GATE_RULE_UNKNOWN_SELL,    # 296# unknown sell
             CR.POLL_ERROR_LIMIT,               # 373# F9 poll error
-            CR.FINAL_CLAMP_HARD_SKIP,          # 418# P0 Final Clamp
-            CR.ROUTE_TO_KILL_DEADLOCK,          # 418# P0 Route-to-Kill
+            CR.FINAL_CLAMP_HARD_SKIP,          # 421# P0 Final Clamp
+            CR.ROUTE_TO_KILL_DEADLOCK,          # 421# P0 Route-to-Kill
         }
         assert CR.AUDIT_CANCEL_REASONS == expected
 

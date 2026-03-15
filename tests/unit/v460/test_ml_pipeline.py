@@ -19,15 +19,7 @@ from scripts.v460.ml.as_classifier import (
 )
 from scripts.v460.ml.data_loader import build_as_features, build_fill_features, load_fill_records
 from scripts.v460.ml.fill_classifier import FillModelMetrics, train_fill_classifier
-
-
-def _tail_jsonl_objects(path: Path, *, limit: int) -> list[dict[str, Any]]:
-    """JSONL の末尾 limit 行ぶんだけを object として読む."""
-    return [
-        row for row in read_tail_jsonl_objects(path, limit=limit)
-        if isinstance(row, dict)
-    ]
-
+from tests.unit.v460._real_data_test_helpers import write_jsonl_sample
 
 def _write_real_fill_sample(
     *,
@@ -35,19 +27,19 @@ def _write_real_fill_sample(
     tmp_path: Path,
     min_rows: int = 30,
     min_feature_rows: int = 15,
-    candidate_limits: tuple[int, ...] = (120, 220, 320),
+    candidate_limits: tuple[int, ...] = (94, 100, 160, 220),
 ) -> pd.DataFrame:
     """実データ統合テスト向けに成立条件を満たす最小限サンプルを選ぶ."""
     last_df = pd.DataFrame()
     for limit in candidate_limits:
-        sample_rows = _tail_jsonl_objects(latest_file, limit=limit)
+        sample_rows = [
+            row for row in read_tail_jsonl_objects(latest_file, limit=limit)
+            if isinstance(row, dict)
+        ]
         if not sample_rows:
             continue
         sample_path = tmp_path / latest_file.name
-        sample_path.write_text(
-            "\n".join(json.dumps(row, ensure_ascii=False) for row in sample_rows) + "\n",
-            encoding="utf-8",
-        )
+        write_jsonl_sample(sample_path, sample_rows)
         df = load_fill_records(tmp_path, max_files=1)
         last_df = df
         if len(df) < min_rows:
