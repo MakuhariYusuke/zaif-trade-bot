@@ -16,7 +16,6 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
-from scripts.v460.lib.cross_venue_lead_lag import build_cross_venue_fill_fields
 from scripts.v460.lib.fill_config import (
     PnlMeasurement as _PnlMeasurement,
 )
@@ -26,6 +25,17 @@ if TYPE_CHECKING:
     from ztb.metrics.fill_quality import FillRecord
 
 logger = logging.getLogger(__name__)
+
+_EMPTY_CROSS_VENUE_FIELDS: dict[str, object] = {
+    "cross_venue_reference_exchange": None,
+    "cross_venue_lead_lag_direction": None,
+    "cross_venue_lead_lag_adverse_side": None,
+    "cross_venue_lead_lag_spread_bps": None,
+    "cross_venue_lead_lag_velocity_bps": None,
+    "cross_venue_lead_lag_age_sec": None,
+    "cross_venue_lead_lag_applied": None,
+    "cross_venue_lead_lag_vetoed": None,
+}
 
 
 class FillRecordBuilderMixin:
@@ -198,12 +208,27 @@ class FillRecordBuilderMixin:
         enabled = bool(getattr(self.config, "cross_venue_lead_lag_enabled", False))
         hint = getattr(self._maker_price, "cross_venue_lead_lag_hint", None)
         vetoed = bool(getattr(self._maker_price, "cross_venue_lead_lag_vetoed", False))
-        return build_cross_venue_fill_fields(
-            enabled=enabled,
-            hint=hint,
-            side=side,
-            vetoed=vetoed,
-        )
+
+        if not enabled and hint is None and not vetoed:
+            return dict(_EMPTY_CROSS_VENUE_FIELDS)
+
+        applied = bool(hint is not None and hint.adverse_side == side)
+        return {
+            "cross_venue_reference_exchange": (
+                hint.reference_exchange if hint is not None else None
+            ),
+            "cross_venue_lead_lag_direction": hint.direction if hint is not None else None,
+            "cross_venue_lead_lag_adverse_side": (
+                hint.adverse_side if hint is not None else None
+            ),
+            "cross_venue_lead_lag_spread_bps": hint.spread_bps if hint is not None else None,
+            "cross_venue_lead_lag_velocity_bps": (
+                hint.reference_velocity_bps if hint is not None else None
+            ),
+            "cross_venue_lead_lag_age_sec": hint.age_sec if hint is not None else None,
+            "cross_venue_lead_lag_applied": applied,
+            "cross_venue_lead_lag_vetoed": vetoed,
+        }
 
     def _build_fill_strategy_fields(
         self,

@@ -6218,40 +6218,6 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - event log 側は既存の [test_148_fill_test_events.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_148_fill_test_events.py) が `log_event()` 契約を持っているため、439 側は wiring 検証に留めた
 - 4 本の外側では `test_407_ghost_cleanup.py` の config stub を軽量化し、既存 helper / 既存契約へ寄せる方向を優先した
 
-## 2026-03-15 / Task 439 Follow-up 5: Pure Helper Reuse + Nearby Test Trim
-
-### 実施内容
-- [cross_venue_lead_lag.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/cross_venue_lead_lag.py)
-  - `build_cross_venue_event_details(...)`
-  - `build_cross_venue_fill_fields(...)`
-  を追加し、cross-venue hint の flat payload 生成を pure helper 化
-- [fill_record_builder.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_record_builder.py)
-  - FillRecord 向け cross-venue フィールド組立を helper 再利用へ変更
-- [fill_cycle_executor.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_cycle_executor.py)
-  - event log details を helper 再利用へ変更
-- [test_439_cross_venue_lead_lag.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_439_cross_venue_lead_lag.py)
-  - new pure helper の focused coverage を追加
-- [test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py)
-  - unknown-fill fast-cycle 用 adapter を lightweight async stub 化
-- [test_088_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_088_features.py)
-  - `all_same_probability` の history を必要最小限に縮小
-- [test_ml_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ml_pipeline.py)
-  - real-data sample helper を再点検し、broad で feature row が不足しない安全 ladder を維持
-
-### 検証
-- focused:
-  - `tests/unit/v460/test_439_cross_venue_lead_lag.py`
-  - `tests/unit/v460/test_fill_quality.py -k UnknownFillHandling`
-  - `tests/unit/v460/test_088_features.py -k 'all_same_probability or AdaptiveThreshold'`
-  - `tests/unit/v460/test_ml_pipeline.py::Test057Integration::test_load_real_data`
-  - `11 passed, 237 deselected in 3.90s`
-
-### メモ
-- 439 側は event log / FillRecord / 将来 sidecar の flat payload を同じ pure helper 群へ寄せる形になった
-- `fill_quality` の unknown-fill は `AsyncMock` / `MagicMock` を外しても挙動が維持できることを確認した
-- filtered broad:
-  - `4838 passed, 2 skipped, 13 warnings in 29.93s`
-
 ## 2026-03-16 / Task 440: Toxicity Veto 調査 → Regime-Side Offset 非対称化
 
 ### 背景

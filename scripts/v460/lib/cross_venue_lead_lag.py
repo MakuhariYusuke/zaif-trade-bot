@@ -33,59 +33,6 @@ class CrossVenueLeadLagHint:
     reference_exchange: str
 
 
-def build_cross_venue_event_details(
-    hint: CrossVenueLeadLagHint,
-) -> dict[str, object]:
-    """Serialize a hint into the event-log payload shape."""
-    return {
-        "reference_exchange": hint.reference_exchange,
-        "direction": hint.direction,
-        "adverse_side": hint.adverse_side,
-        "spread_bps": hint.spread_bps,
-        "velocity_bps": hint.reference_velocity_bps,
-        "age_sec": hint.age_sec,
-    }
-
-
-def build_cross_venue_fill_fields(
-    *,
-    enabled: bool,
-    hint: CrossVenueLeadLagHint | None,
-    side: str,
-    vetoed: bool,
-) -> dict[str, object]:
-    """Serialize a hint into FillRecord-compatible fields."""
-    if not enabled and hint is None and not vetoed:
-        return {
-            "cross_venue_reference_exchange": None,
-            "cross_venue_lead_lag_direction": None,
-            "cross_venue_lead_lag_adverse_side": None,
-            "cross_venue_lead_lag_spread_bps": None,
-            "cross_venue_lead_lag_velocity_bps": None,
-            "cross_venue_lead_lag_age_sec": None,
-            "cross_venue_lead_lag_applied": None,
-            "cross_venue_lead_lag_vetoed": None,
-        }
-
-    applied = bool(hint is not None and hint.adverse_side == side)
-    return {
-        "cross_venue_reference_exchange": (
-            hint.reference_exchange if hint is not None else None
-        ),
-        "cross_venue_lead_lag_direction": hint.direction if hint is not None else None,
-        "cross_venue_lead_lag_adverse_side": (
-            hint.adverse_side if hint is not None else None
-        ),
-        "cross_venue_lead_lag_spread_bps": hint.spread_bps if hint is not None else None,
-        "cross_venue_lead_lag_velocity_bps": (
-            hint.reference_velocity_bps if hint is not None else None
-        ),
-        "cross_venue_lead_lag_age_sec": hint.age_sec if hint is not None else None,
-        "cross_venue_lead_lag_applied": applied,
-        "cross_venue_lead_lag_vetoed": vetoed,
-    }
-
-
 def build_reference_adapter(
     reference_exchange: str,
     *,
