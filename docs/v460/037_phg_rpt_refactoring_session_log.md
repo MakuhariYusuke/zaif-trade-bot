@@ -6436,3 +6436,60 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 2. `test_enricher_skip_gate.py::Test059SkipRateHistory::test_skip_rate_records_final_decision`
 3. `test_262_protocol_cancel_recheck.py::test_cancel_recheck_returns_none`
 4. `test_356_g2_sac_blockers.py` heavy env setup
+
+## 2026-03-16 / Broad Similarity Sweep 3
+
+### 目的
+- `tests/unit/v460/` に残っていた direct YAML parse / direct source read / one-off signature inspection の類似パターンを、既存 helper に寄せながらもう一段整理する。
+- production 側は `lock_manager.py` の lockfile 読込重複だけを low-risk に解消する。
+
+### 変更
+- [test_154_deadlock_prevention.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_154_deadlock_prevention.py)
+  - inline `yaml.safe_load(...)` を `parse_yaml_mapping(...)` に変更
+- [test_158_regime_deadlock_fix.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_158_regime_deadlock_fix.py)
+  - `cycle_gate_aggregator.py` 直読を `read_source_text(CYCLE_GATE_AGGREGATOR)` に統一
+  - YAML 文字列 parse を shared helper に統一
+- [test_169_ranging_buy_skip_and_metrics.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_169_ranging_buy_skip_and_metrics.py)
+  - `cycle_gate_aggregator.py` source を module-level cache 化
+- [test_176_trending_offset_asymmetry.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_176_trending_offset_asymmetry.py)
+  - `cycle_gate_aggregator.py` source を shared helper に寄せた
+- [test_195_velocity_b1_soft.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_195_velocity_b1_soft.py)
+  - fill-cycle / skip-gate / cycle-gate source を shared helper に寄せた
+- [test_145_s14_structural_refactors.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_145_s14_structural_refactors.py)
+  - `FillTestRunner.__init__` signature を import-time cache 化
+- [test_197_boost_optimization_gate_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_197_boost_optimization_gate_integration.py)
+  - `CycleGateAggregator.evaluate` signature を import-time cache 化
+- [test_239_feasible_quote.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_239_feasible_quote.py)
+  - `_make_price_error_skip` signature を import-time cache 化
+- [lock_manager.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/lock_manager.py)
+  - `_read_lockfile_content(...)` を追加
+  - `acquire/release/update_heartbeat` の lockfile 読込重複を集約
+
+### 調査メモ
+- `rg` で `yaml.safe_load(...)`, `Path(...).read_text(...)`, `inspect.signature(...)`, `inspect.getsource(...)` を再走査。
+- `tests/unit/v460/` では、既存 helper に寄せられる source/YAML テストがまだ少量残っていたので、今回の wave で整理。
+- production 側は `EnvironmentConfig.as_dict()` も再確認したが、nested dataclass を含むため shallow 化は今回も見送り。
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_158_regime_deadlock_fix.py`
+  - `tests/unit/v460/test_197_boost_optimization_gate_integration.py`
+  - `tests/unit/v460/test_239_feasible_quote.py`
+  - `tests/unit/v460/test_145_s14_structural_refactors.py`
+  - `tests/unit/v460/test_169_ranging_buy_skip_and_metrics.py`
+  - `tests/unit/v460/test_176_trending_offset_asymmetry.py`
+  - `tests/unit/v460/test_195_velocity_b1_soft.py`
+  - `tests/unit/v460/test_154_deadlock_prevention.py`
+  - `tests/unit/v460/test_166_hotfixes.py`
+  - `tests/unit/v460/test_286_comprehensive_resolution.py`
+  - `tests/unit/v460/test_regime_detector.py`
+  - `352 passed, 1 warning in 4.03s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `4850 passed, 2 skipped, 13 warnings in 34.45s`
+
+### 次の候補
+1. `test_262_protocol_cancel_recheck.py::TestTryCancelWithFillRecheck::test_cancel_recheck_returns_none`
+2. `test_enricher_skip_gate.py::Test059SkipRateHistory::test_skip_rate_records_final_decision`
+3. `test_013_fixes.py::TestC7OrderTypeMapping::*`
+4. `test_ml_pipeline.py::Test057Integration::test_load_real_data`

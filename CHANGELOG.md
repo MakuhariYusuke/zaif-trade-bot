@@ -5540,3 +5540,18 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused cache-sweep bundle: `317 passed, 2 skipped in 3.77s`
     - filtered broad `tests/unit/v460/`: `4850 passed, 2 skipped, 13 warnings in 30.06s`
+- 2026-03-16: widened helper reuse across another v460 source/YAML wave and cleaned a small production duplication point.
+  - switched more tests from direct YAML/source reads to shared helpers in:
+    - `test_154_deadlock_prevention.py`
+    - `test_158_regime_deadlock_fix.py`
+    - `test_169_ranging_buy_skip_and_metrics.py`
+    - `test_176_trending_offset_asymmetry.py`
+    - `test_195_velocity_b1_soft.py`
+  - cached additional signature checks in:
+    - `test_145_s14_structural_refactors.py`
+    - `test_197_boost_optimization_gate_integration.py`
+    - `test_239_feasible_quote.py`
+  - reduced repeated lockfile read logic in `scripts/v460/lib/lock_manager.py` via a shared helper without changing lock semantics
+  - re-verified with:
+    - focused reuse bundle: `352 passed, 1 warning in 4.03s`
+    - filtered broad `tests/unit/v460/`: `4850 passed, 2 skipped, 13 warnings in 34.45s`
