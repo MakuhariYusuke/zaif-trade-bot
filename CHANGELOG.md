@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 442# Cross-Venue有効化 + L5板深度拡張 + Microprice + Depth Imbalance (2026-03-17)
+
+### Added
+- **442# ドキュメント**: `docs/v460/442_cross_venue_activation_ob_depth_enhancement.md`
+- **Microprice (Gatheral 2018)**: L1 深度非対称を反映した加重中間価格をローカル/参照双方で計算
+  - `VenueMidSnapshot.microprice` フィールド追加
+  - `CrossVenueLeadLagHint.microprice_spread_bps`: 参照 microprice vs ローカル mid 乖離
+- **Depth Imbalance**: 参照板の bid/ask 厚みの偏り (−1〜+1)
+  - `VenueMidSnapshot.bid_depth` / `ask_depth` フィールド追加
+  - `CrossVenueLeadLagHint.depth_imbalance` フィールド追加
+  - DI 確認ブースト: direction と DI が一致する場合、`depth_imbalance_boost` (1.15x) 追加適用
+- **FillRecord 新フィールド**: `cross_venue_microprice_spread_bps`, `cross_venue_depth_imbalance`
+- **Config**: `reference_ob_depth`, `microprice_enabled`, `depth_imbalance_enabled`, `depth_imbalance_boost`
+
+### Changed
+- **Cross-Venue ガード有効化**: `fill_test.yaml` で `enabled: true`, `veto_enabled: true`
+- **参照板深度拡張**: L1 → L5 (設定可能、`reference_ob_depth: 5`)
+- **`_update_cross_venue_lead_lag_hint()`**: ローカル microprice + 参照 L5 OB + depth 計算を統合
+- **`_apply_cross_venue_lead_lag_guard()`**: 既存 offset boost に加え DI 確認ブースト追加
+- **行数上限テスト**: run_single_cycle 810→830, fill_cycle_executor 1300→1340
+- **KNOWN_YAML_OVERRIDES**: 4 新フィールド追加
+
 ## 440# Toxicity Veto 調査 → Regime-Side Offset 非対称化 (2026-03-16)
 
 ### Added
