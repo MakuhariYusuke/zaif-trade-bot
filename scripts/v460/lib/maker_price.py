@@ -23,6 +23,7 @@ import math
 import time
 from typing import TYPE_CHECKING, Final, NamedTuple, Protocol
 
+from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fast_fill_defense import FastFillDefense
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_microstructure import MicrostructureMixin
@@ -81,6 +82,7 @@ class ImbalanceResult(NamedTuple):
 from scripts.v460.lib.constants import BPS_FACTOR as _BPS_FACTOR
 
 if TYPE_CHECKING:
+    from scripts.v460.lib.cross_venue_lead_lag import CrossVenueLeadLagHint
     from scripts.v460.lib.fill_probability_model import FillProbabilityModel
 
 
@@ -100,6 +102,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
     ║              → _apply_kyle_lambda()           (266#)       ║
     ║              → _apply_amihud_illiq()           (266#)       ║
     ║              → _apply_volatility_guard()                   ║
+    ║              → _apply_cross_venue_lead_lag_guard()         ║
     ║              → _apply_imbalance_risk()                     ║
     ║              → _apply_loss_boost()            (260#)       ║
     ║              → _apply_ffd_boost()             (260#)       ║
@@ -129,6 +132,9 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         "_last_vg_velocity_bps",
         "_last_vg_vpin",
         "_last_vg_boost_factor",
+        "_cross_venue_lead_lag_hint",
+        "_cross_venue_lead_lag_vetoed",
+        "_cross_venue_lead_lag_veto_reason",
         "_inv_fill_history",        # 162# inventory skewing fill deque
         "_inv_net_imbalance",        # 162# normalized net imbalance [-1,1]
         "_inv_buy_count",            # 226# P5: O(1) incremental buy counter
@@ -180,6 +186,9 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         self._last_vg_velocity_bps: float | None = None
         self._last_vg_vpin: float | None = None
         self._last_vg_boost_factor: float | None = None
+        self._cross_venue_lead_lag_hint: CrossVenueLeadLagHint | None = None
+        self._cross_venue_lead_lag_vetoed: bool = False
+        self._cross_venue_lead_lag_veto_reason: str | None = None
         # 129# OB recorder: 生スナップショットキャッシュ
         # 261# P2-5: object → OrderBookSnapshot (型安全化)
         self._last_ob_snapshot: OrderBookSnapshot | None = None
@@ -222,6 +231,15 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
     def set_fill_prob_model(self, model: FillProbabilityModel | None) -> None:
         """366# M4: GLFT fill probability model を注入する."""
         self._fill_prob_model = model
+
+    def set_cross_venue_lead_lag_hint(
+        self,
+        hint: CrossVenueLeadLagHint | None,
+    ) -> None:
+        """439# Cross-venue lead-lag hint を注入する."""
+        self._cross_venue_lead_lag_hint = hint
+        self._cross_venue_lead_lag_vetoed = False
+        self._cross_venue_lead_lag_veto_reason = None
 
     @property
     def last_sigma(self) -> float:
@@ -970,6 +988,21 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         if _stage_tracking:
             _stages["vol_guard"] = effective_offset_ratio
 
+        # 439# cross-venue lead-lag guard: adverse-side retreat / veto
+        effective_offset_ratio = self._apply_cross_venue_lead_lag_guard(
+            side, effective_offset_ratio,
+        )
+        if _stage_tracking:
+            _stages["cross_venue"] = effective_offset_ratio
+        if self._cross_venue_lead_lag_vetoed:
+            raise InfeasibleQuoteError(
+                reason=CR.CROSS_VENUE_LEAD_LAG_VETO,
+                msg=(
+                    self._cross_venue_lead_lag_veto_reason
+                    or "cross-venue lead-lag veto"
+                ),
+            )
+
         # 163# ステージ抽出: _apply_imbalance_risk()
         effective_offset_ratio = self._apply_imbalance_risk(
             side, imb, effective_offset_ratio,
@@ -1012,7 +1045,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
 
         # 306# E1: offset ceiling — 300# T1-3 指摘の上限制御
         # 320# C-1: サイド別 ceiling — sell floor(0.30) > ceiling(0.15) 矛盾解消
-        # 418# DRY: resolve_offset_ceiling ヘルパーに統一
+        # 421# DRY: resolve_offset_ceiling ヘルパーに統一
         _ceil = cfg.resolve_offset_ceiling(side)
         if _ceil > 0 and effective_offset_ratio > _ceil:
             logger.info(

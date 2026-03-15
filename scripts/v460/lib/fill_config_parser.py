@@ -179,6 +179,32 @@ def _parse_trading_features(yaml_cfg: dict) -> dict:
     return kwargs
 
 
+def _parse_cross_venue_section(yaml_cfg: dict) -> dict:
+    """439# cross-venue lead-lag guard YAML mapping."""
+    kwargs: dict[str, object] = {}
+    cv = yaml_cfg.get("cross_venue_lead_lag", {})
+    if not isinstance(cv, dict):
+        return kwargs
+
+    if cv.get("enabled") is not None:
+        kwargs["cross_venue_lead_lag_enabled"] = cv["enabled"]
+
+    cv_map = {
+        "reference_exchange": "cross_venue_reference_exchange",
+        "max_age_sec": "cross_venue_lead_lag_max_age_sec",
+        "spread_bps_threshold": "cross_venue_lead_lag_spread_bps_threshold",
+        "velocity_bps_threshold": "cross_venue_lead_lag_velocity_bps_threshold",
+        "offset_boost": "cross_venue_lead_lag_offset_boost",
+        "veto_enabled": "cross_venue_lead_lag_veto_enabled",
+        "veto_threshold_bps": "cross_venue_lead_lag_veto_threshold_bps",
+    }
+    for yaml_key, config_key in cv_map.items():
+        if yaml_key in cv:
+            kwargs[config_key] = cv[yaml_key]
+
+    return kwargs
+
+
 def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
     """062# S5: SkipGate ML フィルター YAML マッピング."""
     kwargs: dict = {}
@@ -902,6 +928,9 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
     # 163# ステージ抽出: trading features
     kwargs.update(_parse_trading_features(yaml_cfg))
 
+    # 439# cross-venue lead-lag guard
+    kwargs.update(_parse_cross_venue_section(yaml_cfg))
+
     # 163# ステージ抽出: skip_gate ML filter
     kwargs.update(_parse_skip_gate_section(yaml_cfg))
 
@@ -981,7 +1010,7 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
         kwargs["offset_ceiling_ratio_buy"] = float(yaml_cfg["offset_ceiling_ratio_buy"])
     if "offset_ceiling_ratio_sell" in yaml_cfg:
         kwargs["offset_ceiling_ratio_sell"] = float(yaml_cfg["offset_ceiling_ratio_sell"])
-    # ---- 418# P0: Execution Final Clamp ----
+    # ---- 421# P0: Execution Final Clamp ----
     if "execution_final_clamp_enabled" in yaml_cfg:
         kwargs["execution_final_clamp_enabled"] = bool(yaml_cfg["execution_final_clamp_enabled"])
     if "execution_final_clamp_hard_skip_mult" in yaml_cfg:

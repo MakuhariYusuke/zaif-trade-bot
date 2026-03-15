@@ -21,6 +21,7 @@ import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.fill_config_parser import (
+    _parse_cross_venue_section,
     _parse_infra_section,
     _parse_skip_gate_section,
     _parse_stale_vg_section,
@@ -171,6 +172,35 @@ class TestParseTradingFeatures:
         assert result["e3_sampling_ratio"] == 0.1
 
 
+class TestParseCrossVenueSection:
+    """_parse_cross_venue_section: cross-venue lead-lag guard."""
+
+    def test_empty_returns_empty(self) -> None:
+        assert _parse_cross_venue_section({}) == {}
+
+    def test_cross_venue_values(self) -> None:
+        result = _parse_cross_venue_section({
+            "cross_venue_lead_lag": {
+                "enabled": True,
+                "reference_exchange": "bitflyer",
+                "max_age_sec": 2.5,
+                "spread_bps_threshold": 3.0,
+                "velocity_bps_threshold": 1.5,
+                "offset_boost": 1.4,
+                "veto_enabled": True,
+                "veto_threshold_bps": 7.0,
+            },
+        })
+        assert result["cross_venue_lead_lag_enabled"] is True
+        assert result["cross_venue_reference_exchange"] == "bitflyer"
+        assert result["cross_venue_lead_lag_max_age_sec"] == 2.5
+        assert result["cross_venue_lead_lag_spread_bps_threshold"] == 3.0
+        assert result["cross_venue_lead_lag_velocity_bps_threshold"] == 1.5
+        assert result["cross_venue_lead_lag_offset_boost"] == 1.4
+        assert result["cross_venue_lead_lag_veto_enabled"] is True
+        assert result["cross_venue_lead_lag_veto_threshold_bps"] == 7.0
+
+
 class TestParseSkipGateSection:
     """_parse_skip_gate_section: ML skip gate パラメータ."""
 
@@ -318,6 +348,22 @@ class TestProductionYamlRoundTrip:
         assert direct_cfg.sell_dynamic_kill_inv_relaxation_enabled == sell_inv["enabled"]
         assert direct_cfg.sell_dynamic_kill_inv_relaxation_scale == sell_inv["scale"]
         assert direct_cfg.sell_dynamic_kill_inv_relaxation_max_bps == sell_inv["max_bps"]
+
+    def test_cross_venue_defaults_match_yaml(
+        self,
+        yaml_cfg: dict,
+        direct_cfg: FillTestConfig,
+    ) -> None:
+        cross_venue = yaml_cfg["cross_venue_lead_lag"]
+        assert direct_cfg.cross_venue_lead_lag_enabled == cross_venue["enabled"]
+        assert (
+            direct_cfg.cross_venue_reference_exchange
+            == cross_venue["reference_exchange"]
+        )
+        assert (
+            direct_cfg.cross_venue_lead_lag_veto_threshold_bps
+            == cross_venue["veto_threshold_bps"]
+        )
 
     def test_from_yaml_matches_direct_parse(
         self,

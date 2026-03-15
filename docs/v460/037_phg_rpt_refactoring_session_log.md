@@ -6043,3 +6043,57 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
   - `tests/unit/v460/test_385_config_audit.py`
   - `tests/unit/v460/test_fill_test_cli_diagnostics.py`
   - `79 passed in 8.12s`
+
+## 2026-03-15 / Task 439: Cross-Venue Lead-Lag Guard
+
+### 実施内容
+- [433_ph4_advanced_microstructure_edge_ideas.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/433_ph4_advanced_microstructure_edge_ideas.md) §3 と [434_ph2_ph4_rev_426_432_433_multifaceted_validation.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/434_ph2_ph4_rev_426_432_433_multifaceted_validation.md) §4.2 を突き合わせ、BitFlyer 案を hard directional flip ではなく adverse-side retreat/veto として実装
+- 新規 helper [cross_venue_lead_lag.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/cross_venue_lead_lag.py) を追加
+  - `VenueMidSnapshot`
+  - `CrossVenueLeadLagHint`
+  - `compute_cross_venue_lead_lag_hint(...)`
+  - `build_reference_adapter(...)`
+- [fill_config.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config.py), [fill_config_parser.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config_parser.py), [fill_test.yaml](/mnt/c/Users/Admin/dev/zaif-trade-bot/configs/v460/fill_test.yaml) に disabled-default の `cross_venue_lead_lag` 設定を追加
+- [maker_risk_guards.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/maker_risk_guards.py) と [maker_price.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/maker_price.py) に adverse-side retreat / optional veto stage を追加
+- [fill_cycle_executor.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_cycle_executor.py) で local/ref orderbook から hint を計算して注入
+- [run_fill_test.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/run_fill_test.py) で optional reference adapter を registry から生成
+- [orchestrator_lifecycle.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/orchestrator_lifecycle.py) で reference adapter cleanup を追加
+- 実装メモを [439_ph4_cross_venue_lead_lag_guard.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/439_ph4_cross_venue_lead_lag_guard.md) に記録
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_439_cross_venue_lead_lag.py`
+  - `tests/unit/v460/test_336_fill_config_parser.py`
+  - `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
+  - `tests/unit/v460/test_239_feasible_quote.py`
+  - `65 passed in 1.70s`
+- focused config integration:
+  - `tests/unit/v460/test_fill_test_config.py`
+  - `tests/unit/v460/test_169_c1_c3_c4_config.py`
+  - `126 passed`
+  - `tests/unit/v460/test_385_config_audit.py` は既存の欠落 YAML (`g2_sac_gamma095_reward_tuned.yaml`) 参照で unrelated failure 2 件を確認
+
+### 補足
+- 初期投入は safe-first とし、Directional override は入れていない
+- reference venue 取得失敗時は fail-open
+- YAML は defaults と同値で追加しているため drift prevention への追加 allowlist は不要
+
+## 2026-03-15 / Task 439 Follow-up: Cross-Venue Observability
+
+### 実施内容
+- [fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py) の `FillRecord` に cross-venue lead-lag 観測項目を追加
+  - `cross_venue_reference_exchange`
+  - `cross_venue_lead_lag_direction`
+  - `cross_venue_lead_lag_adverse_side`
+  - `cross_venue_lead_lag_spread_bps`
+  - `cross_venue_lead_lag_velocity_bps`
+  - `cross_venue_lead_lag_age_sec`
+  - `cross_venue_lead_lag_applied`
+  - `cross_venue_lead_lag_vetoed`
+- [fill_record_builder.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_record_builder.py) に ` _build_fill_cross_venue_fields(...)` を追加し、cross-venue の観測値を builder 1 箇所に集約
+- [439_ph4_cross_venue_lead_lag_guard.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/439_ph4_cross_venue_lead_lag_guard.md) に observability follow-up を追記
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_439_cross_venue_lead_lag.py`
+  - 既存 guard/injection coverage に加えて FillRecord round-trip と builder 観測項目の追加確認

@@ -48,6 +48,8 @@ TOXIC_FILL_SIDE_VETO = "toxic_fill_side_veto"
 PHANTOM_SIDE_VETO = "phantom_side_veto"
 # 240# Toxicity Budget: 確率的不参加 (232# §2.2 Glosten-Milgrom)
 TOXICITY_PARTICIPATION_SKIP = "toxicity_participation_skip"
+# 439# cross-venue lead-lag veto
+CROSS_VENUE_LEAD_LAG_VETO = "cross_venue_lead_lag_veto"
 # 205# §9.5: 片側 DD Halt (サイド別累積損失超過で片側封鎖)
 PER_SIDE_DD_HALT = "per_side_dd_halt"
 # 215# P0-C: alert_mode.json によるオペレータ緊急停止
@@ -70,9 +72,9 @@ ONE_SIDED_FREEZE_SKIP = "one_sided_freeze_skip"
 SKIP_GATE_RULE_UNKNOWN_SELL = "skip_gate_rule_unknown_sell"
 # 373# F9: order_monitor poll エラー連続限度超過
 POLL_ERROR_LIMIT = "poll_error_limit"
-# 418# P0: Execution Final Clamp hard skip (全 multiplier 適用後に offset が極端)
+# 421# P0: Execution Final Clamp hard skip (全 multiplier 適用後に offset が極端)
 FINAL_CLAMP_HARD_SKIP = "final_clamp_hard_skip"
-# 418# P0: Route-to-Kill Deadlock (buy残高不足×sell kill-gated ⇒ 両側封鎖)
+# 421# P0: Route-to-Kill Deadlock (buy残高不足×sell kill-gated ⇒ 両側封鎖)
 ROUTE_TO_KILL_DEADLOCK = "route_to_kill_deadlock"
 
 AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
@@ -97,6 +99,7 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     TOXIC_FILL_SIDE_VETO,
     PHANTOM_SIDE_VETO,
     TOXICITY_PARTICIPATION_SKIP,
+    CROSS_VENUE_LEAD_LAG_VETO,
     PER_SIDE_DD_HALT,
     OPERATOR_HALT,
     MCB_HALT,
@@ -168,6 +171,7 @@ CancelReason = Literal[
     "toxic_fill_side_veto",
     "phantom_side_veto",
     "toxicity_participation_skip",
+    "cross_venue_lead_lag_veto",
     "per_side_dd_halt",
     "operator_halt",
     "mcb_halt",
@@ -202,7 +206,7 @@ CancelReason = Literal[
     "skip_gate_rule_unknown_sell",
     # 373# F9: poll error limit
     "poll_error_limit",
-    # 418# P0: Final Clamp + Route-to-Kill
+    # 421# P0: Final Clamp + Route-to-Kill
     "final_clamp_hard_skip",
     "route_to_kill_deadlock",
 ]

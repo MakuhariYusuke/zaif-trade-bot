@@ -5400,3 +5400,10 @@ python scripts/unified_trainer.py \
   - recorded duplication findings for `calculate_reward()` vs `calculate_reward_simple()`, reward-setting accessors, and forced-balance helper logic, plus an archive/consolidation proposal for `reward/`, `rewards/`, and `calculators/`
 - 2026-03-13: documented broad discovery scan across environment/live/v460/tests in `docs/v460/409_phg_rpt_broad_discovery_scan.md`, covering logic bugs, performance risks, config drift, exception safety, test-quality issues, and architecture debt.
 - 2026-03-13: fixed Codex 408/409 batch around atomic idempotency locking, reward telemetry consistency, archived dead environment files, forced-balance canonicalization, and consolidated regression coverage in `tests/unit/v460/test_codex_408_409_fixes.py`.
+- 2026-03-15: implemented a safe first-step cross-venue lead-lag guard for 433# §3 and documented the rollout in `docs/v460/439_ph4_cross_venue_lead_lag_guard.md`.
+  - added `scripts/v460/lib/cross_venue_lead_lag.py` with pure hint calculation and broker-registry-backed reference adapter creation
+  - added disabled-default `cross_venue_lead_lag` settings to `FillTestConfig`, `fill_config_parser.py`, and `configs/v460/fill_test.yaml`
+  - injected the hint into `FillCycleExecutorMixin` and applied the guard inside `MakerPriceCalculator` / `RiskGuardsMixin` as adverse-side retreat or optional veto only
+  - added `cross_venue_lead_lag_veto` cancel-reason support and cleanup for the optional reference adapter
+  - added focused coverage in `tests/unit/v460/test_439_cross_venue_lead_lag.py` and extended parser/YAML round-trip coverage in `test_336_fill_config_parser.py`
+  - added low-risk `FillRecord` observability fields for cross-venue hint direction/spread/velocity/age plus applied/vetoed state, wired through `FillRecordBuilderMixin`

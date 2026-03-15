@@ -133,6 +133,8 @@ class FillTestRunner(
         self._config_yaml_path = config_yaml_path  # 169# hot-reload 用 YAML パス
         self._results_dir = Path(config.results_dir)
         self._results_dir.mkdir(parents=True, exist_ok=True)
+        self._cross_venue_reference_adapter: IBroker | None = None
+        self._cross_venue_prev_reference_snapshot = None
         self._cycle_count = 0
         # 121# SideSelector に side 決定ロジックを委譲
         self._side_selector = SideSelector(config)
@@ -195,6 +197,33 @@ class FillTestRunner(
             base_offset_ratio_buy=config.spread_offset_ratio_buy,
             base_offset_ratio_sell=config.spread_offset_ratio_sell,
         )
+        if config.cross_venue_lead_lag_enabled:
+            from scripts.v460.lib.cross_venue_lead_lag import (
+                build_reference_adapter,
+            )
+
+            try:
+                self._cross_venue_reference_adapter = build_reference_adapter(
+                    config.cross_venue_reference_exchange,
+                    primary_adapter=adapter,
+                )
+                if self._cross_venue_reference_adapter is None:
+                    logger.warning(
+                        "[cross_venue] reference adapter unavailable: %s",
+                        config.cross_venue_reference_exchange,
+                    )
+                else:
+                    logger.info(
+                        "[cross_venue] enabled: reference=%s",
+                        config.cross_venue_reference_exchange,
+                    )
+            except Exception as exc:
+                logger.warning(
+                    "[cross_venue] failed to create reference adapter %s: %s",
+                    config.cross_venue_reference_exchange,
+                    exc,
+                )
+                self._cross_venue_reference_adapter = None
 
         # 120# God Object 分割: OrderMonitor に約定ポーリングを委譲
         self._order_monitor = OrderMonitor(config)

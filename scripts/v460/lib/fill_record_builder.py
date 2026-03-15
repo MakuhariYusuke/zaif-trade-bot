@@ -135,7 +135,7 @@ class FillRecordBuilderMixin:
         sidecar_bias: float | None = None,
     ) -> dict[str, object]:
         """FillRecord の市場観測/実行メタ系フィールドを構築."""
-        return {
+        fields: dict[str, object] = {
             "spread_at_order": spread_at_order,
             "spread_offset_ratio": effective_offset_ratio,
             "regime": regime_str,
@@ -184,6 +184,48 @@ class FillRecordBuilderMixin:
             # 372# F1: SAC Sidecar offset 記録
             "sidecar_offset_bps": sidecar_offset_bps,
             "sidecar_bias": sidecar_bias,
+        }
+        fields.update(self._build_fill_cross_venue_fields(side=side))
+        return fields
+
+    def _build_fill_cross_venue_fields(
+        self,
+        *,
+        side: str,
+    ) -> dict[str, object]:
+        """Cross-venue lead-lag の観測値を FillRecord 向けに整形する."""
+        enabled = bool(getattr(self.config, "cross_venue_lead_lag_enabled", False))
+        hint = getattr(self._maker_price, "_cross_venue_lead_lag_hint", None)
+        vetoed = bool(getattr(self._maker_price, "_cross_venue_lead_lag_vetoed", False))
+
+        if not enabled and hint is None and not vetoed:
+            return {
+                "cross_venue_reference_exchange": None,
+                "cross_venue_lead_lag_direction": None,
+                "cross_venue_lead_lag_adverse_side": None,
+                "cross_venue_lead_lag_spread_bps": None,
+                "cross_venue_lead_lag_velocity_bps": None,
+                "cross_venue_lead_lag_age_sec": None,
+                "cross_venue_lead_lag_applied": None,
+                "cross_venue_lead_lag_vetoed": None,
+            }
+
+        applied = bool(hint is not None and hint.adverse_side == side)
+        return {
+            "cross_venue_reference_exchange": (
+                hint.reference_exchange if hint is not None else None
+            ),
+            "cross_venue_lead_lag_direction": hint.direction if hint is not None else None,
+            "cross_venue_lead_lag_adverse_side": (
+                hint.adverse_side if hint is not None else None
+            ),
+            "cross_venue_lead_lag_spread_bps": hint.spread_bps if hint is not None else None,
+            "cross_venue_lead_lag_velocity_bps": (
+                hint.reference_velocity_bps if hint is not None else None
+            ),
+            "cross_venue_lead_lag_age_sec": hint.age_sec if hint is not None else None,
+            "cross_venue_lead_lag_applied": applied,
+            "cross_venue_lead_lag_vetoed": vetoed,
         }
 
     def _build_fill_strategy_fields(
@@ -333,7 +375,7 @@ class FillRecordBuilderMixin:
             "regime_observation_count": regime_observation_count,
             # 319# S-3: mid_at_order (316# S-3: spread capture 精度向上)
             "mid_at_order": mid_at_order,
-            # 418# P0: Execution Final Clamp 発火記録
+            # 421# P0: Execution Final Clamp 発火記録
             "execution_pre_clamp_offset": execution_pre_clamp_offset,
             # 420# P1: Executor Offset Stages / start_git_sha / side 切替可観測性
             "executor_offset_stages": executor_offset_stages,

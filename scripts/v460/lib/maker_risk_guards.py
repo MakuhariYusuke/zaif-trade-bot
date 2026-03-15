@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 from scripts.v460.lib.hour_rules import current_utc_hour, resolve_optional_hour_float
 
 if TYPE_CHECKING:
+    from scripts.v460.lib.cross_venue_lead_lag import CrossVenueLeadLagHint
     from scripts.v460.lib.fill_config import FillTestConfig
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,9 @@ class RiskGuardsMixin:
     _last_vg_velocity_bps: float | None
     _last_vg_vpin: float | None
     _last_vg_boost_factor: float | None
+    _cross_venue_lead_lag_hint: CrossVenueLeadLagHint | None
+    _cross_venue_lead_lag_vetoed: bool
+    _cross_venue_lead_lag_veto_reason: str | None
 
     @staticmethod
     def _scale_offset_ratio(  # type: ignore[empty-body]  # Protocol stub
@@ -204,6 +208,64 @@ class RiskGuardsMixin:
             self._last_vg_vpin = None
             self._last_vg_boost_factor = None
 
+        return effective_offset_ratio
+
+    def _apply_cross_venue_lead_lag_guard(
+        self,
+        side: str,
+        effective_offset_ratio: float,
+    ) -> float:
+        """439# Cross-venue lead-lag guard.
+
+        433# §3 の BitFlyer 案を 434# §4.2 に沿って安全側へ補正し、
+        adverse-side の retreat / veto のみを行う。
+        """
+        self._cross_venue_lead_lag_vetoed = False
+        self._cross_venue_lead_lag_veto_reason = None
+
+        cfg = self._config
+        hint = self._cross_venue_lead_lag_hint
+        if (
+            not cfg.cross_venue_lead_lag_enabled
+            or hint is None
+            or hint.adverse_side != side
+            or hint.age_sec > cfg.cross_venue_lead_lag_max_age_sec
+        ):
+            return effective_offset_ratio
+
+        if (
+            cfg.cross_venue_lead_lag_veto_enabled
+            and abs(hint.spread_bps) >= cfg.cross_venue_lead_lag_veto_threshold_bps
+        ):
+            self._cross_venue_lead_lag_vetoed = True
+            self._cross_venue_lead_lag_veto_reason = (
+                f"cross_venue_veto: {side} suppressed by "
+                f"{hint.reference_exchange} {hint.direction} lead "
+                f"(spread={hint.spread_bps:+.2f}bps, "
+                f"velocity={hint.reference_velocity_bps:+.2f}bps/s, "
+                f"age={hint.age_sec:.2f}s)"
+            )
+            logger.info("[%s] %s", "cross_venue", self._cross_venue_lead_lag_veto_reason)
+            return effective_offset_ratio
+
+        pre_offset = effective_offset_ratio
+        effective_offset_ratio, applied_mult = self._scale_offset_ratio(
+            effective_offset_ratio,
+            cfg.cross_venue_lead_lag_offset_boost,
+            max_ratio=self._effective_max_ratio(side),
+        )
+        logger.info(
+            "[cross_venue] %s adverse hint from %s: offset %.4f->%.4f "
+            "(mult=%.2f, spread=%+.2fbps, velocity=%+.2fbps/s, age=%.2fs)",
+            side,
+            hint.reference_exchange,
+            pre_offset,
+            effective_offset_ratio,
+            applied_mult,
+            hint.spread_bps,
+            hint.reference_velocity_bps,
+            hint.age_sec,
+        )
         return effective_offset_ratio
 
     def _apply_imbalance_risk(

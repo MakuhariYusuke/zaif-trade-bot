@@ -22,6 +22,10 @@ import time
 from typing import TYPE_CHECKING, cast
 
 from scripts.v460.lib import cancel_reasons as CR
+from scripts.v460.lib.cross_venue_lead_lag import (
+    VenueMidSnapshot,
+    compute_cross_venue_lead_lag_hint,
+)
 from scripts.v460.lib.fill_config import (
     SkipGateResult as _SkipGateResult,
     FillMonitorResult as _FillMonitorResult,
@@ -37,6 +41,7 @@ if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
     from scripts.v460.lib.order_monitor import OrderLike
     from scripts.v460.lib.phantom_position_guard import PhantomPositionGuard
+    from ztb.trading.live.exchanges.base.broker_interfaces import IBroker
     from ztb.metrics.fill_quality import FillRecord
 
 logger = logging.getLogger(__name__)
@@ -72,6 +77,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
     # 303# B: DD soft lot side 分離 — side 別 lot 倍率
     _dd_soft_lot_scale_buy: float = 1.0
     _dd_soft_lot_scale_sell: float = 1.0
+    _cross_venue_reference_adapter: IBroker | None = None
+    _cross_venue_prev_reference_snapshot: VenueMidSnapshot | None = None
 
     async def _compute_orderbook_imbalance(self, depth: int = 5) -> tuple[float, float, float]:
         """054# S1: 板不均衡を計算 — 120# MakerPriceCalculator に委譲."""
@@ -86,6 +93,80 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
         """maker limit 価格を算出 — 120# MakerPriceCalculator に委譲."""
         r = await self._maker_price.compute(side, self.adapter, self.config.symbol)
         return r.price, r.spread, r.effective_offset_ratio
+
+    async def _update_cross_venue_lead_lag_hint(self) -> None:
+        """439# Cross-venue lead-lag hint を更新して maker_price に注入する."""
+        self._maker_price.set_cross_venue_lead_lag_hint(None)
+        if not self.config.cross_venue_lead_lag_enabled:
+            return
+
+        reference_adapter = self._cross_venue_reference_adapter
+        if reference_adapter is None:
+            return
+
+        local_ob = self._maker_price._last_ob_snapshot
+        if local_ob is None:
+            return
+        local_bid, local_ask = best_bid_ask(local_ob)
+        if (
+            local_bid is None
+            or local_ask is None
+            or local_bid <= 0.0
+            or local_ask <= 0.0
+        ):
+            return
+
+        local_snapshot = VenueMidSnapshot(
+            exchange=str(getattr(local_ob, "exchange", "") or "local"),
+            mid_price=(local_bid + local_ask) / 2.0,
+            timestamp=float(getattr(local_ob, "timestamp", time.time())),
+        )
+
+        try:
+            reference_ob = await reference_adapter.get_orderbook(
+                self.config.symbol,
+                depth=1,
+            )
+            ref_bid, ref_ask = best_bid_ask(reference_ob)
+            if (
+                ref_bid is None
+                or ref_ask is None
+                or ref_bid <= 0.0
+                or ref_ask <= 0.0
+            ):
+                return
+
+            current_reference = VenueMidSnapshot(
+                exchange=str(
+                    getattr(reference_ob, "exchange", "")
+                    or self.config.cross_venue_reference_exchange
+                ),
+                mid_price=(ref_bid + ref_ask) / 2.0,
+                timestamp=float(getattr(reference_ob, "timestamp", time.time())),
+            )
+            previous_reference = self._cross_venue_prev_reference_snapshot
+            hint = compute_cross_venue_lead_lag_hint(
+                local_snapshot=local_snapshot,
+                reference_snapshot=current_reference,
+                previous_reference_snapshot=previous_reference,
+                max_age_sec=self.config.cross_venue_lead_lag_max_age_sec,
+                spread_bps_threshold=self.config.cross_venue_lead_lag_spread_bps_threshold,
+                velocity_bps_threshold=self.config.cross_venue_lead_lag_velocity_bps_threshold,
+            )
+            self._maker_price.set_cross_venue_lead_lag_hint(hint)
+            self._cross_venue_prev_reference_snapshot = current_reference
+            if hint is not None:
+                logger.info(
+                    "[cross_venue] hint direction=%s adverse_side=%s spread=%+.2fbps velocity=%+.2fbps/s age=%.2fs",
+                    hint.direction,
+                    hint.adverse_side,
+                    hint.spread_bps,
+                    hint.reference_velocity_bps,
+                    hint.age_sec,
+                )
+        except Exception as exc:
+            logger.debug("cross-venue hint update skipped: %s", exc, exc_info=True)
+            self._maker_price.set_cross_venue_lead_lag_hint(None)
 
     def _make_price_error_skip(
         self,
@@ -434,6 +515,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
         if self._regime_detector is not None:
             _regime_obs_count = self._regime_detector.observation_count
 
+        await self._update_cross_venue_lead_lag_hint()
+
         # 1. maker limit 価格算出
         spread_at_order: float | None = None
         effective_offset_ratio: float = self.config.spread_offset_ratio
@@ -739,7 +822,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                 f"→ delta={_sidecar_delta:+.0f}JPY, price={order_price:.0f}"
             )
 
-        # ── 418# P0: Execution Final Clamp ──────────────────────────
+        # ── 421# P0: Execution Final Clamp ──────────────────────────
         # 416#/417# review で発見: maker_price ceiling 後の 6 executor 側
         # multiplier (EV, velocity, trending, toxicity, VG supplement, alert)
         # が ceiling を迂回し effective_offset_ratio が際限なく拡大する構造欠陥。
@@ -769,7 +852,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                 _hs_mult = self.config.execution_final_clamp_hard_skip_mult
                 if _hs_mult > 0 and effective_offset_ratio > _fc_ceil * _hs_mult:
                     logger.warning(
-                        f"[418# final_clamp] HARD SKIP: {side} "
+                        f"[421# final_clamp] HARD SKIP: {side} "
                         f"pre_clamp_offset={effective_offset_ratio:.4f} "
                         f"> ceiling({_fc_ceil:.4f})×{_hs_mult:.1f} — "
                         f"market too extreme, skipping cycle"
@@ -792,11 +875,11 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                     )
                 else:
                     logger.warning(
-                        f"[418# final_clamp] {side}: spread unavailable — "
+                        f"[421# final_clamp] {side}: spread unavailable — "
                         f"ratio clamped but price NOT recalculated"
                     )
                 logger.info(
-                    f"[418# final_clamp] {side}: offset "
+                    f"[421# final_clamp] {side}: offset "
                     f"{effective_offset_ratio:.4f}→{_fc_ceil:.4f} "
                     f"(clamped, price={order_price:.0f})"
                 )

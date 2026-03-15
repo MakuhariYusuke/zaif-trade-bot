@@ -546,5 +546,15 @@ class OrchestratorLifecycleMixin:
             except Exception as e:
                 logger.error(f"Cleanup failed: {e}")
 
+        # 439# cross-venue 参照 adapter のクリーンアップ
+        reference_adapter = getattr(self, "_cross_venue_reference_adapter", None)
+        if reference_adapter is not None:
+            close = getattr(reference_adapter, "close", None)
+            if callable(close):
+                try:
+                    close()
+                except Exception as e:
+                    logger.debug("Cross-venue adapter cleanup failed: %s", e, exc_info=True)
+
         # 044# Bug7: ロックファイル解放
         self._release_lock()

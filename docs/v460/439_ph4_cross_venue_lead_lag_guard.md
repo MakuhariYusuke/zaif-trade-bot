@@ -181,6 +181,30 @@ dry-run でも参照 adapter は primary adapter の `dry_run` flag を引き継
 4. sidecar 特徴量化 (`bf_cc_spread_bps`, `bf_price_velocity_1s`)
 5. multi-venue aggregation
 
+### 7.1 追加実装: FillRecord observability
+
+今回、最初の拡張余地として `FillRecord` に以下を追加した。
+
+- `cross_venue_reference_exchange`
+- `cross_venue_lead_lag_direction`
+- `cross_venue_lead_lag_adverse_side`
+- `cross_venue_lead_lag_spread_bps`
+- `cross_venue_lead_lag_velocity_bps`
+- `cross_venue_lead_lag_age_sec`
+- `cross_venue_lead_lag_applied`
+- `cross_venue_lead_lag_vetoed`
+
+実装位置は `FillRecordBuilderMixin._build_fill_cross_venue_fields(...)` とし、
+sidecar / executor stage と同様に builder 1 箇所で組み立てる形に寄せた。
+
+これにより、後続の分析では
+
+- hint 自体が出ていたか
+- 現在の side に対して guard が実際に効いたか
+- veto まで発火したか
+
+を fill record 単位で追える。
+
 逆に、次はまだやらない方がよい。
 
 - hard directional override

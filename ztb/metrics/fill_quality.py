@@ -171,7 +171,16 @@ class FillRecord:
     # ---- 372# F1: SAC Sidecar offset 記録 ----
     sidecar_offset_bps: float | None = None       # 適用された sidecar offset (bps, 正=攻撃的)
     sidecar_bias: float | None = None             # SAC directional_bias [-1,+1]
-    # ---- 418# P0: Execution Final Clamp 記録 ----
+    # ---- 439# P1: Cross-Venue Lead-Lag 可観測性 ----
+    cross_venue_reference_exchange: str | None = None
+    cross_venue_lead_lag_direction: str | None = None
+    cross_venue_lead_lag_adverse_side: str | None = None
+    cross_venue_lead_lag_spread_bps: float | None = None
+    cross_venue_lead_lag_velocity_bps: float | None = None
+    cross_venue_lead_lag_age_sec: float | None = None
+    cross_venue_lead_lag_applied: bool | None = None
+    cross_venue_lead_lag_vetoed: bool | None = None
+    # ---- 421# P0: Execution Final Clamp 記録 ----
     # executor multiplier chain 適用後・Final Clamp 適用前の offset ratio。
     # None=clamp 未発火 or 無効。値あり=clamp が発火し、ceiling に切り詰められた。
     execution_pre_clamp_offset: float | None = None

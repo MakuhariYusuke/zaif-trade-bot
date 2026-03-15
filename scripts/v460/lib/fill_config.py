@@ -321,14 +321,14 @@ class FillTestConfig:
     # None=共通値(offset_ceiling_ratio)使用、>0 でサイド別上限
     offset_ceiling_ratio_buy: float | None = None
     offset_ceiling_ratio_sell: float | None = None
-    # ---- 418# P0: Execution Final Clamp (416#/417# review: post-ceiling leak) ----
+    # ---- 421# P0: Execution Final Clamp (416#/417# review: post-ceiling leak) ----
     # maker_price ceiling 後の executor 側 multiplier chain が ceiling を迂回する問題の修正。
     # 全 multiplier 適用後に ceiling を再適用し、offset ratio の暴走を防止。
     execution_final_clamp_enabled: bool = True   # Final Clamp 有効化 (安全のためデフォルト有効)
     execution_final_clamp_hard_skip_mult: float = 0.0  # >0: pre-clamp が ceiling×この倍率を超えたら hard skip (0=無効)
 
     def resolve_offset_ceiling(self, side: str) -> float:
-        """418# DRY: サイド別 offset ceiling を解決する共通ヘルパー.
+        """421# DRY: サイド別 offset ceiling を解決する共通ヘルパー.
 
         maker_price.py L1015 / fill_cycle_executor.py Final Clamp で
         同一パターンが3重複していたため統一。
@@ -354,6 +354,17 @@ class FillTestConfig:
     narrow_spread_boost_sell: float | None = None   # 093# sell 側 boost (None=共通値)
     wide_spread_bps: float = 25.0          # 広スプレッド閾値 (bps)
     wide_spread_ratio: float = 0.5         # 広い時の offset 割引
+    # 439# 433# §3 / 434# §4.2: cross-venue lead-lag guard
+    # BitFlyer 等の高流動 venue を directional override ではなく、
+    # adverse-side retreat / veto の補助票として使う。
+    cross_venue_lead_lag_enabled: bool = False
+    cross_venue_reference_exchange: str = "bitflyer"
+    cross_venue_lead_lag_max_age_sec: float = 3.0
+    cross_venue_lead_lag_spread_bps_threshold: float = 2.0
+    cross_venue_lead_lag_velocity_bps_threshold: float = 1.0
+    cross_venue_lead_lag_offset_boost: float = 1.25
+    cross_venue_lead_lag_veto_enabled: bool = False
+    cross_venue_lead_lag_veto_threshold_bps: float = 6.0
     # 062# S5: SkipGate ML フィルター (AS 分類器ベースの注文スキップ)
     skip_gate_enabled: bool = False
     # 118# A3: side 別有効/無効 (sell 逆選別対策)
