@@ -64,7 +64,6 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "offset_stage_recording_enabled",
     "per_side_dd_enabled",
     "queue_position_tracking_enabled",
-    "ranging_buy_low_vol_as_offset",
     "regime_adaptive_enabled",
     "sell_dynamic_kill_enabled",
     "sell_dynamic_kill_inv_relaxation_enabled",
@@ -98,6 +97,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "dd_cooldown_rearm_budget_bps",
     "dd_cooldown_release_sec",
     "e3_sampling_ratio",
+    "execution_final_clamp_hard_skip_mult",  # 421# P0: Execution Final Clamp
     "fast_fill_offset_boost_sell",
     "fast_fill_threshold_sec_buy",
     "fast_fill_threshold_sec_sell",

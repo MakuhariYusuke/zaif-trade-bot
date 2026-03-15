@@ -173,7 +173,9 @@ regime:
   skip_ranging_buy_low_vol: true
   # 195# B1' ソフト化: hard skip → maker_price low_vol_offset_boost に委譲
   # ranging_buy_low_vol の hard skip を無効化し、low_vol_offset_boost (1.4x) のみで対応
-  ranging_buy_low_vol_as_offset: true
+  # 438# hard skip 復帰: 432# buy+ranging PF=0.766 (最大ボリューム×最悪PF)
+  #   soft offset (1.4x) では損失抑制不十分。hard skip で toxic participation 回避
+  ranging_buy_low_vol_as_offset: false
   # 189# D: MacroRegime (長周期レジーム) — micro との conflict 検出
   macro:
     enabled: true               # 274# 観測モード有効化 (conflict_action=log)。macro_trend データ蓄積開始
@@ -238,7 +240,9 @@ stale_order:
   check_after_sec_sell: 20.0   # 157# §19: 30→20s (buy 15s との差を縮める、stale 検出の迅速化)
   drift_bps_buy: 4.0           # buy 側: 4bps で stale 判定 (buy AS 狙い撃ち回避)
   drift_bps_sell: 5.0          # sell 側: 5bps (据え置き)
-  max_reprice_buy: 1           # buy 側: 1回限定 (追随コスト制限)
+  # 438# 0に変更: 432# §7 reprice悪化 (0回-0.22→1回-0.73→2回-2.21 bps)
+  #   adverse drift cancel は max_reprice とは独立で引き続き機能
+  max_reprice_buy: 0           # buy 側: reprice 無効化 (追随は常に悪化)
   # 137# P1-06: sell 側 reprice 上限 2→1 に縮小。
   # reprice=2 の平均は -3.44bps (134# §3 分析) で損失源。
   # AB: 1→2 に戻す場合は YAML でこの値を 2 に変更。
@@ -298,6 +302,20 @@ spread_adaptive:
   narrow_spread_boost_sell: 2.5 # 183# 2.0→2.5 (spread<2kでAS32%: sell側のoffset拡大で逆選択回避強化)
   wide_spread_bps: 4.5         # 120# 25.0→4.5: P95相当。max(5.03)に近い帯で wide 判定
   wide_spread_ratio: 0.5       # 広スプレッド時の offset 割引
+
+# ---- 439# Cross-Venue Lead-Lag Guard (433# §3 / 434# §4.2) ----
+# "タイムマシン・アービトラージ" の safe first step。
+# BitFlyer 等の先行気味な public 板を directional flip ではなく、
+# adverse-side の retreat / veto hint としてのみ使う。
+cross_venue_lead_lag:
+  enabled: false
+  reference_exchange: bitflyer
+  max_age_sec: 3.0
+  spread_bps_threshold: 2.0
+  velocity_bps_threshold: 1.0
+  offset_boost: 1.25
+  veto_enabled: false
+  veto_threshold_bps: 6.0
 
 # ---- 062# S5: SkipGate ML フィルター (AS 分類器ベース) ----
 # 071# OB 特徴量除去: 価格・取引データのみで判断 (v459 方式回帰)
@@ -580,7 +598,7 @@ offset_stage_recording:
 offset_ceiling_ratio: 0.15        # 共通デフォルト (サイド別が未設定時に使用)
 offset_ceiling_ratio_buy: 0.20    # 381# 0.15→0.20 (380# 6-A: クリーンデータ >=0.15:+0.065bps, <0.15:+0.586bps)
 offset_ceiling_ratio_sell: 0.50   # 320# sell: 0.15→0.50 (floor(0.30) + regime boost(×1.8) = 0.54 → ceil(0.50) で表現力回復)
-# ---- 418# P0: Execution Final Clamp (416#/417# review) ----
+# ---- 421# P0: Execution Final Clamp (416#/417# review) ----
 # maker_price ceiling 後の executor multiplier chain (EV/velocity/toxicity 等) が
 # ceiling を迂回する構造欠陥の修正。全 multiplier 適用後に ceiling を再適用。
 execution_final_clamp_enabled: true
@@ -690,7 +708,9 @@ loss_control:
       trending_down: -0.5          # 341# revert: 下降トレンド時buyは逆張り→厳しめ
       trending_up: -1.5            # 上昇トレンド時は buy に寛容 (順張り) — 据置き
       high_vol: -0.5               # 341# revert: 高ボラ時は慎重に
-      ranging: -1.0                # 370# TUNE-4R: レンジ相場でBDK緩和 (SDK TUNE-3成功の横展開, 14/21 BDK kills解消狙い)
+      ranging: -0.7                # 438# -1.0→-0.7: 432# buy+ranging PF=0.766 対策
+                                     # effective -0.7-0.3=-1.0 (inv_relax込), 旧-1.3 より 0.3bps 厳格化
+                                     # SDK ranging(-0.7+0.5=-1.2) と概ねバランス
   # 286# 283# P1-4: 在庫連動 buy_dynamic_kill 緩和 (Ho & Stoll 1981)
   # BTC 不足 (inv_net_imbalance < 0) 時に kill 閾値を offset して在庫補充 buy を許容
   buy_dynamic_kill_inv_relaxation:
