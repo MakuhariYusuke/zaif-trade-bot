@@ -5,7 +5,7 @@
 | 番号 | 437# |
 | 分類 | ph4_rev (Phase4 Review) |
 | 対象 | 432# / 433# / 434# / 435# / 436# |
-| 前提 | 426# P0-P4 実装完了 (27d58c7db), S2 結果取得済, S3 実行中 |
+| 前提 | 426# P0-P4 実装完了 (27d58c7db), S2 結果取得済, S3 結果取得済 |
 | 目的 | 5文書のクロスレビュー + 実装済P4の反映確認 + val_ratio感度曲線の構築 |
 
 ---
@@ -20,7 +20,7 @@
 
 | # | 指摘 | 種別 |
 |---|---|---|
-| F1 | S2 (val_ratio=0.05) が G3 PASS (pf=1.150) — val_ratio 感度曲線の勾配が急 | 新事実 |
+| F1 | S2 (val_ratio=0.05) が G3 PASS (pf=1.150)、S3 (val_ratio=0.10) が G3 FAIL (pf=1.029) — 崩壊は 42-84日の間 | 新事実 |
 | F2 | P4 (val_ratio compliance E7) を実装済。S2 は E7 未適用で走ったため G3 PASS は無効 | 実装反映 |
 | F3 | 436# の toxicity grading 実装場所が誤記 (cycle_gate_aggregator → orchestrator_mid_cycle) | 事実修正 |
 | F4 | 435# が全面同意しかしていない — second opinion の体をなしていない | 構造的懸念 |
@@ -33,13 +33,13 @@
 
 ### §1.1 完成した4点データ
 
-S2 (val_ratio=0.05) の結果 JSON を検証した（`v460_g2train_seed42_20260314_224332.json`）。
+S2 (`v460_g2train_seed42_20260314_224332.json`) および S3 (`v460_g2train_seed42_20260315_001238.json`) の結果 JSON を検証した。
 
 | 実験 | val_ratio | OOS日数 | pf_median | sharpe | roi_seed_std | G3判定 | E7 (≥0.10) |
 |---|---|---|---|---|---|---|---|
 | Original | 0.02 | ~17 | 1.145 | 5.72 | 0.0016 | PASS | **不適合** |
-| **S2** | **0.05** | **~42** | **1.150** | **7.16** | **N/A** | **PASS** | **不適合** |
-| S3 | 0.10 | ~84 | ? | ? | ? | 実行中 | 適合 |
+| S2 | 0.05 | ~42 | 1.150 | 7.16 | N/A | PASS | **不適合** |
+| **S3** | **0.10** | **~84** | **1.029** | **1.23** | **seed間極大** | **FAIL** | **適合 ✓** |
 | S1 | 0.20 | ~169 | 1.049 | 1.01 | 0.0360 | FAIL (marginal) | 適合 |
 
 ### §1.2 S2 結果の解釈
@@ -48,29 +48,60 @@ S2 の pf_median=1.150 は Original (val_ratio=0.02, pf=1.145) と**ほぼ同値
 
 1. **val_ratio=0.02→0.05 で劣化がない**: OOS を 17 日→42 日に倍以上延長しても pf が下がらない。つまり最初の 42 日間は SAC の学習が有効に機能している
 2. **崩壊は 42日以降に始まる**: S1 (val_ratio=0.20, OOS 169日) の pf 急落 (1.150→1.049) は、42日～169日の区間で崩壊が集中していることを示す
-3. **S3 (val_ratio=0.10, OOS ~84日) が分水嶺**: 42日まで健全、169日で崩壊なら、84日の S3 結果が崩壊の開始時期を特定する
+3. **S3 (val_ratio=0.10, OOS ~84日) が分水嶺** → §1.3 で確認
 
-### §1.3 426# §5.1 の「mid 期崩壊」仮説との整合
+### §1.3 S3 結果: 崩壊は 42-84日の間に発生
 
-426# は multi-slice で mid 期（~57-113日）崩壊を報告。S2 の結果はこれと完全に整合:
+S3 (val_ratio=0.10, OOS ~84日) の結果:
+
+- **G3 FAIL** (pf_median=1.029, threshold=1.05)
+- **pf_worst=0.856** — S1 (pf_worst=0.95 付近) より悪い
+- **val_ratio_compliance (E7): PASS** — P4 実装後に走った初の実験で E7 が正常動作
+
+**seed 別データ**:
+
+| seed | pf | sharpe | max_dd | gross_roi | 評価 |
+|---|---|---|---|---|---|
+| 42 | 1.121 | 5.42 | 0.004 | +1.74% | ◎ 健全 |
+| 123 | 1.446 | 12.66 | 0.006 | +7.13% | ◎ 最良 |
+| 456 | 0.856 | -8.07 | 0.031 | -2.40% | ★ 壊滅 |
+| 789 | 0.938 | -2.96 | 0.016 | -1.17% | ★ 不良 |
+
+**seed 間分散が極大**: seed 123 (pf=1.446) と seed 456 (pf=0.856) の差は 0.59。20K step の SAC は初期重みに対して**極めて不安定**。half の seed が壊滅的に失敗する。
+
+### §1.4 val_ratio 感度曲線の全貌
 
 ```
-OOS 日数: 0----17----42---------84----------169
-          |    |      |          |            |
-         0.02 ← OK → 0.05     0.10         0.20
-          pf=1.145     pf=1.150  pf=?         pf=1.049
-                                 ↑ 崩壊開始?
+pf_median
+1.15 ┤ ●─────────●
+     │ (0.02)    (0.05)
+1.10 ┤
+     │
+1.05 ┤- - - - - - - - - - - - - G3 threshold - -
+     │                     ●         ●
+1.03 ┤                    (0.10)    (0.20)
+     │
+     └──────────────────────────────────────── OOS日数
+      17        42        84       169
 ```
 
-**S3 結果が PASS なら崩壊は 84日以降に始まる。FAIL なら崩壊は 42-84日の間に始まる。** これにより retrain 間隔の上界が推定可能になる。
+**崩壊の cliff edge は 42-84日の間に存在**する。pf は 0.05→0.10 で 1.150→1.029 に急落（-0.121）。426# が報告した mid 期崩壊（~57-113日）と完全に整合。
 
-### §1.4 P4 val_ratio compliance の影響
+### §1.5 P4 val_ratio compliance の影響
 
 本セッションで実装した G3 E7 チェック (val_ratio >= min_val_ratio=0.10):
 
 - S2 は P4 コード変更**前**に走ったため、結果 JSON に `val_ratio_compliance` チェックがない
 - 仮に E7 が適用されていた場合、S2 (val_ratio=0.05) は **G3 FAIL** となる
 - **これは意図通りの動作**: 000# §3.5 の規定に従い、val_ratio < 0.10 の G3 PASS は公式に認めない
+
+### §1.6 retrain 間隔の上界推定
+
+感度曲線から、SAC モデルの有効期間は **最大 ~42日**。安全マージンを含めると:
+
+- **推奨 retrain 間隔: 21-30日** (有効期間の 50-70%)
+- retrain_scheduler.py のデフォルト retrain_interval_sec=7200 (2時間) は大幅に短い — これは sidecar 用の incremental retrain であり、full retrain とは用途が異なる
+- 436# Phase 2 のretrain有効化は S3 結果に基づき「30日以内の定期 retrain」として具体化すべき
 
 S2 の PASS は「42日以内では SAC が機能する」という情報として有用だが、G3 Gate としては不適合。
 
@@ -218,7 +249,7 @@ fill率は全体で約31% (3,535 fills / 11,136 records)。Toxicity Veto を追�
 
 | 426# 項目 | 434# の評価 | 実装状況 | 備考 |
 |---|---|---|---|
-| P0: val_ratio=0.05/0.10 実験 | 「未実証を認めつつ方向性は妥当」 | ✅ S2完了 (PASS), S3実行中 | S2は E7適用前 |
+| P0: val_ratio=0.05/0.10 実験 | 「未実証を認めつつ方向性は妥当」 | ✅ S2完了 (PASS), S3完了 (FAIL) | S2は E7適用前。S3でE7初PASS |
 | P1: retrain_scheduler 起動 | 「walk-forward を val_ratio 探しより優先」と強化 | ✅ ops スクリプト完了 | 実際の起動は Phase 2 |
 | P2: reward_tuned 終了 | 全文書で同意 | ✅ 3 configs archived | 27d58c7db |
 | P3: clamp 条件付き OOS | 「sim-live gap 閉じるべき」と追認 | ⏳ 未着手 | 依存: clamp observability |
@@ -243,7 +274,7 @@ fill率は全体で約31% (3,535 fills / 11,136 records)。Toxicity Veto を追�
 
 | # | 分岐点 | 立場A | 立場B | 解決手段 |
 |---|---|---|---|---|
-| D1 | val_ratio=0.10 は正しい標準か | 436#: val_ratio探索は止めるべき | 426#: 0.05-0.10が適正 | **S3結果で判定** |
+| D1 | val_ratio=0.10 は正しい標準か | 436#: val_ratio探索は止めるべき | 426#: 0.05-0.10が適正 | **S3 FAIL で決着**: val_ratio=0.10 は G3 FAIL。E7 標準としては正しいが、モデルの有効 OOS は ~42日が限界 |
 | D2 | SAC の step 増加は完全に無意味か | 436#/434#: 無意味 | 426# §5: 「step増加は解にならない」は強すぎる | 100K+val_ratio=0.10 実験（優先度低） |
 | D3 | ceiling 動的化 vs toxicity veto どちらが先か | 432#: ceiling動的化がP0 | 434#/436#: toxicity vetoがP0 | **toxicity veto が先** (理由: ceiling変更はAS検知精度に依存するため、先に検知器を作るべき) |
 | D4 | 1D action space は主犯か | 426# §5: plausible | 434# §2.2: 未証明 | 検証コスト高、優先度低 |
@@ -254,8 +285,8 @@ fill率は全体で約31% (3,535 fills / 11,136 records)。Toxicity Veto を追�
 
 436# §4 のロードマップを、本レビューの知見で更新する:
 
-### Phase 0: 即時 (今週)
-1. **S3 結果待ち** → val_ratio 感度曲線完成 → retrain 間隔の上界推定
+### Phase 0: 完了
+1. ✅ **S3 結果取得** → val_ratio 感度曲線完成 → retrain 間隔上界 ~42日、推奨 21-30日
 2. **432# 正誤表の反映**: 本文に 436# §5 の修正を追記（or 本文書で代替）
 
 ### Phase 1: Toxicity Veto 構築 (1-2週)
@@ -267,7 +298,7 @@ fill率は全体で約31% (3,535 fills / 11,136 records)。Toxicity Veto を追�
 
 ### Phase 2: SAC Retrain 有効化
 1. `retrain_scheduler.ps1` で retrain_scheduler を起動
-2. retrain 間隔: S3 結果から推定（暫定 7 日）
+2. retrain 間隔: **21-30日** (§1.6 推定。S3 で有効 OOS ~42日が確定)
 3. Sidecar v2 proportional boost で SAC bias を注入
 
 ### Phase 3: 評価改善
@@ -283,9 +314,15 @@ fill率は全体で約31% (3,535 fills / 11,136 records)。Toxicity Veto を追�
 
 **合意は堅い**: 全文書が「SAC 強化より toxic participation 回避」を指している。これは 432# のデータ、426# の実験結果、434# の理論的整理、436# の資産検証で多角的に支持されている。
 
-**不足しているのは実行**: 資産は揃っている (7/7 production-ready)、分析も揃っている、レビューも3巡した。残りは S3 結果の取得と、toxicity veto の skip simulation による定量的な有効性確認。
+**不足しているのは実行**: 資産は揃っている (7/7 production-ready)、分析も揃っている、レビューも3巡した。
 
-S3 が完了次第、val_ratio 感度曲線を完成させ、retrain 間隔を確定する。並行して Phase 1 の toxicity veto 構築に着手すべき。
+**S3 結果により確定した事項**:
+- val_ratio 感度曲線は4点で完成。崩壊の cliff edge は **42-84日の間**
+- 推奨 retrain 間隔は **21-30日**
+- val_ratio=0.10 の E7 標準は正しいが、G3 PASS には至らない（seed 間分散が極大）
+- S3 の seed 間分散 (pf 0.856-1.446) は、84日 OOS での SAC の不安定性を決定的に示す
+
+次の一手は **Phase 1: Toxicity Veto** の skip simulation による定量的有効性確認へ着手すべき。
 
 ---
 
