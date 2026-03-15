@@ -260,6 +260,8 @@ def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
         "skip_sell_unknown_regime": "skip_sell_unknown_regime",
         # 130# unknown buy offset boost
         "unknown_buy_offset_boost": "unknown_buy_offset_boost",
+        # 440# unknown sell offset boost
+        "unknown_sell_offset_boost": "unknown_sell_offset_boost",
         # 165# AS-R1: velocity-based skip
         "sell_velocity_skip_enabled": "sell_velocity_skip_enabled",
         "sell_velocity_skip_threshold_bps": "sell_velocity_skip_threshold_bps",
@@ -839,6 +841,9 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
         "trending_down_sell_offset_boost": "trending_down_sell_offset_boost",
         "high_vol_offset_boost": "regime_high_vol_offset_boost",       # 143# R-1a
         "ranging_offset_discount": "regime_ranging_offset_discount",   # 143# R-1a
+        # 440# ranging offset buy/sell 非対称化
+        "ranging_offset_discount_buy": "regime_ranging_offset_discount_buy",
+        "ranging_offset_discount_sell": "regime_ranging_offset_discount_sell",
         # 227# C1: Ranging × OBI 方向別非対称 offset
         "ranging_obi_asymmetry_factor": "ranging_obi_asymmetry_factor",
         "ranging_obi_threshold": "ranging_obi_threshold",

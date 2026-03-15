@@ -142,7 +142,10 @@ class RegimeBoostMixin:
     def _regime_boost_ranging(
         self, side: str, effective_offset_ratio: float,
     ) -> float:
-        """143# R-1a: ranging 時にオフセットを縮小 (安定市場で利幅確保).
+        """143# R-1a 440#: ranging 時のオフセット調整 (side 非対称).
+
+        440# buy+ranging は最悪バケット (PnL=-0.41, PF=0.766)。
+        side 別 discount で buy=拡大, sell=縮小 の非対称化を実現。
 
         227# C1: OBI (Order Book Imbalance) を活用した方向別非対称 discount.
         AS理論: ranging (mean-reverting) 市場では板不均衡がリバージョン方向を予測。
@@ -151,9 +154,18 @@ class RegimeBoostMixin:
         if (
             self._regime_detector is not None
             and self._regime_detector.current_regime == FillTestRegime.RANGING
-            and cfg.regime_ranging_offset_discount < 1.0
         ):
-            _ranging_mult = cfg.regime_ranging_offset_discount
+            # 440# side 別 discount 解決 (None → 共通値フォールバック)
+            if side == "buy" and cfg.regime_ranging_offset_discount_buy is not None:
+                _ranging_mult = cfg.regime_ranging_offset_discount_buy
+            elif side == "sell" and cfg.regime_ranging_offset_discount_sell is not None:
+                _ranging_mult = cfg.regime_ranging_offset_discount_sell
+            else:
+                _ranging_mult = cfg.regime_ranging_offset_discount
+
+            if _ranging_mult == 1.0:
+                return effective_offset_ratio
+
             # 227# C1: OBI 方向別非対称化
             if cfg.ranging_obi_asymmetry_factor > 0.0:
                 _imb = self._last_imbalance
@@ -165,17 +177,26 @@ class RegimeBoostMixin:
                     else:
                         _ranging_mult = _ranging_mult * (1.0 + _obi_adj)
                     _ranging_mult = max(cfg.min_offset_ratio / max(effective_offset_ratio, 1e-6),
-                                        min(_ranging_mult, 1.0))
+                                        min(_ranging_mult, self._effective_max_ratio(side) / max(effective_offset_ratio, 1e-6)))
             pre_offset = effective_offset_ratio
-            effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
-                effective_offset_ratio,
-                _ranging_mult,
-                min_ratio=cfg.min_offset_ratio,
-            )
+            if _ranging_mult < 1.0:
+                effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                    effective_offset_ratio,
+                    _ranging_mult,
+                    min_ratio=cfg.min_offset_ratio,
+                )
+                _direction = "discounted"
+            else:
+                effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                    effective_offset_ratio,
+                    _ranging_mult,
+                    max_ratio=self._effective_max_ratio(side),
+                )
+                _direction = "boosted"
             logger.debug(
-                f"[regime] ranging → offset discounted: "
+                f"[regime] ranging → {side} offset {_direction}: "
                 f"{pre_offset:.4f} → {effective_offset_ratio:.4f} "
-                f"(discount={_applied_mult:.2f}, obi={self._last_imbalance:+.3f})"
+                f"(mult={_applied_mult:.2f}, obi={self._last_imbalance:+.3f})"
             )
         return effective_offset_ratio
 
@@ -218,28 +239,34 @@ class RegimeBoostMixin:
     def _regime_boost_unknown_buy(
         self, side: str, effective_offset_ratio: float,
     ) -> float:
-        """130# unknown regime buy guard: offset boost で AS 回避."""
+        """130# 440# unknown regime buy/sell guard: offset boost で AS 回避.
+
+        440# sell+unknown (PnL=-0.39, AS=52.2%) 対策として sell 側 boost を追加。
+        """
         cfg = self._config
         if (
-            cfg.unknown_buy_offset_boost > 1.0
-            and side == "buy"
-            and self._regime_detector is not None
+            self._regime_detector is not None
             and (
                 self._regime_detector.current_regime is None
                 or self._regime_detector.current_regime == FillTestRegime.UNKNOWN
             )
         ):
-            pre_offset = effective_offset_ratio
-            effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
-                effective_offset_ratio,
-                cfg.unknown_buy_offset_boost,
-                max_ratio=self._effective_max_ratio(side),
+            _boost = (
+                cfg.unknown_buy_offset_boost if side == "buy"
+                else cfg.unknown_sell_offset_boost
             )
-            logger.info(
-                f"[unknown_buy_guard] 130# buy offset boosted: "
-                f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
-                f"(regime=unknown, boost={_applied_mult:.2f})"
-            )
+            if _boost > 1.0:
+                pre_offset = effective_offset_ratio
+                effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                    effective_offset_ratio,
+                    _boost,
+                    max_ratio=self._effective_max_ratio(side),
+                )
+                logger.info(
+                    f"[unknown_{side}_guard] 130#/440# {side} offset boosted: "
+                    f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
+                    f"(regime=unknown, boost={_applied_mult:.2f})"
+                )
         return effective_offset_ratio
 
     def _regime_boost_mid_confidence(

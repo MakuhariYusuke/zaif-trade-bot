@@ -178,6 +178,12 @@ class FillTestConfig:
     # 143# R-1a: レジーム別 offset 調整
     regime_high_vol_offset_boost: float = 1.2   # high_vol 時に offset × 1.2 (+20% 拡張)
     regime_ranging_offset_discount: float = 1.0 # ranging 時に offset × N (1.0=無効, <1.0で縮小)
+    # 440# ranging offset の buy/sell 非対称化 (432# buy+ranging PF=0.766 対策)
+    # None=共通値(regime_ranging_offset_discount)使用
+    # buy: 1.15 推奨 (現行 0.90 は逆効果 — offset 縮小が AS リスク増大)
+    # sell: 0.85 推奨 (near-breakeven — fill_rate 向上優先)
+    regime_ranging_offset_discount_buy: float | None = None
+    regime_ranging_offset_discount_sell: float | None = None
     # 303# C: none レジーム Passive MM フォールバック
     # regime 未確定 (warmup/欠損) 時に 13 段パイプラインをバイパスし固定 offset で指値
     # AS 43% の根本対策: 情報不足時はパッシブに待機
@@ -437,6 +443,9 @@ class FillTestConfig:
     skip_sell_unknown_regime: bool = False
     # 130# unknown regime での buy offset boost (AS 回避)
     unknown_buy_offset_boost: float = 1.0  # 1.0 = 無効, >1.0 で boost (例: 2.0 = VG相当)
+    # 440# unknown regime sell offset boost (440# §4.3)
+    # sell+unknown PnL=-0.39, AS=52.2% → buy ほど深刻ではないが要対策
+    unknown_sell_offset_boost: float = 1.0  # 1.0 = 無効, >1.0 で boost
     # 165# AS-R1: velocity-based sell/buy skip (SkipGate pre-ML rule)
     sell_velocity_skip_enabled: bool = False
     sell_velocity_skip_threshold_bps: float = 8.0  # price_velocity_bps > this AND sell -> skip

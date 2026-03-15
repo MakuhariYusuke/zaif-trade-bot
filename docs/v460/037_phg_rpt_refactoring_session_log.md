@@ -6188,3 +6188,64 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
   - `test_088_features.py`
   - `test_enricher_skip_gate.py`
   - `test_356_g2_sac_blockers.py`
+
+## 2026-03-15 / Task 439 Follow-up 4: Event Log Observability + Near-Top Cleanup
+
+### 実施内容
+- [fill_cycle_executor.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_cycle_executor.py)
+  - cross-venue hint 更新時に `cross_venue_hint` event を `fill_test_events.jsonl` へ出力
+  - `run_id` / `git_sha` / hint details を既存 event logger 契約に揃えた
+- [test_439_cross_venue_lead_lag.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_439_cross_venue_lead_lag.py)
+  - executor wiring テストで event log call を追加確認
+- [test_259_as_vol_ratio_adaptation_hasattr.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_259_as_vol_ratio_adaptation_hasattr.py)
+  - source 読込を import-time cache 化
+  - `RegimeDetectorLike` stub を `SimpleNamespace` に変更
+- [test_088_features.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_088_features.py)
+  - `SkipGate` pipeline を lightweight stub 化
+- [test_407_ghost_cleanup.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_407_ghost_cleanup.py)
+  - `RewardCalculator` 初期化用 config stub を `SimpleNamespace` に変更
+- [439_ph4_cross_venue_lead_lag_guard.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/439_ph4_cross_venue_lead_lag_guard.md)
+  - event log observability を追記
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_439_cross_venue_lead_lag.py`
+  - `tests/unit/v460/test_259_as_vol_ratio_adaptation_hasattr.py`
+  - `tests/unit/v460/test_088_features.py`
+  - `49 passed in 2.57s`
+
+### メモ
+- event log 側は既存の [test_148_fill_test_events.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_148_fill_test_events.py) が `log_event()` 契約を持っているため、439 側は wiring 検証に留めた
+- 4 本の外側では `test_407_ghost_cleanup.py` の config stub を軽量化し、既存 helper / 既存契約へ寄せる方向を優先した
+
+## 2026-03-16 / Task 440: Toxicity Veto 調査 → Regime-Side Offset 非対称化
+
+### 背景
+437# §7 Phase 1 規定の ML-based Toxicity Veto を検証。
+AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
+代替として regime-side offset 非対称化を実装。
+
+### AS 分類器調査結果
+- Walk-Forward AS: ROC-AUC=0.507, skip20=-0.09 bps **FAIL**
+- TSCV GB/LR: ROC-AUC=0.491/0.498 **FAIL**
+- 全16特徴量 |r| < 0.05 → pre-order 情報に AS 予測信号なし
+- 結論: ML-based per-trade toxicity veto は棄却
+
+### 代替設計: regime-side offset 非対称化
+- **発見**: `ranging_offset_discount: 0.90` が buy 側で逆効果（buy+ranging PnL=-0.41, PF=0.766）
+- `regime_ranging_offset_discount_buy: 1.15` (offset 拡大、AS 回避)
+- `regime_ranging_offset_discount_sell: 0.85` (offset 縮小、fill_rate 改善)
+- `unknown_sell_offset_boost: 1.3` (sell+unknown PnL=-0.39 対策)
+
+### 変更ファイル
+- `scripts/v460/lib/fill_config.py`: 3 フィールド追加
+- `scripts/v460/lib/maker_regime_boost.py`: `_regime_boost_ranging()` side 非対称化、`_regime_boost_unknown_buy()` sell 対応
+- `scripts/v460/lib/fill_config_parser.py`: 新 YAML キーパース
+- `configs/v460/fill_test.yaml`: キャリブレーション値設定
+- `docs/v460/440_ph4_toxicity_veto_investigation_and_regime_side_offset.md`: 調査・設計ドキュメント
+
+### 検証
+- `tests/unit/v460/test_440_regime_side_offset.py`: 19 passed
+- `tests/unit/v460/test_260_compute_extract_regime_split.py`: 17 passed
+- `tests/unit/v460/test_143_regime_utilization.py`: 60 passed
+- `tests/unit/v460/test_176_trending_offset_asymmetry.py`: 36 passed

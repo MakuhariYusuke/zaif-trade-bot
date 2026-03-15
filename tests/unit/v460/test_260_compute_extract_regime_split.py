@@ -67,11 +67,11 @@ class TestComputeExtractMethod:
         assert hints.get("return") == tuple[float, float]
 
     def test_compute_line_count_reduced(self) -> None:
-        """compute() が 295 行以下に維持されている (214→180→192, 266# pipeline, 303# C passive MM, 305# OB cache, 306# stage recording + ceiling, 310# sell_hour_boost, 320# C-1 side-specific ceiling)."""
+        """compute() が 310 行以下に維持されている (214→180→192, 266# pipeline, 303# C passive MM, 305# OB cache, 306# stage recording + ceiling, 310# sell_hour_boost, 320# C-1 side-specific ceiling, 421# final clamp, 439# cross-venue)."""
         src = self._maker_price_source("compute")
         line_count = len(src.strip().splitlines())
-        assert line_count <= 295, (
-            f"compute() should be <= 295 lines (was 214, now {line_count})"
+        assert line_count <= 310, (
+            f"compute() should be <= 310 lines (was 214, now {line_count})"
         )
 
 
@@ -129,11 +129,13 @@ class TestRegimeBoostsSplit:
         assert "last_volatility_ratio" in src
 
     def test_unknown_buy_method_exists(self) -> None:
-        """_regime_boost_unknown_buy() が存在し UNKNOWN + buy ガードを含む."""
+        """_regime_boost_unknown_buy() が存在し UNKNOWN + buy/sell ガードを含む."""
         assert hasattr(MakerPrice, "_regime_boost_unknown_buy")
         src = self._maker_price_source("_regime_boost_unknown_buy")
         assert "UNKNOWN" in src
-        assert 'side == "buy"' in src
+        # 440# buy/sell 両対応化
+        assert "unknown_buy_offset_boost" in src
+        assert "unknown_sell_offset_boost" in src
 
     def test_mid_confidence_method_exists(self) -> None:
         """397# _regime_boost_mid_confidence() が存在し confidence 帯域チェックを含む."""
@@ -142,8 +144,8 @@ class TestRegimeBoostsSplit:
         assert "mid_confidence_offset_boost" in src
         assert "current_confidence" in src
 
-    def test_each_sub_method_under_50_lines(self) -> None:
-        """各 sub-method が 50 行以下."""
+    def test_each_sub_method_under_60_lines(self) -> None:
+        """各 sub-method が 60 行以下 (440# ranging side 非対称化で増加)."""
         methods = [
             "_regime_boost_trending",
             "_regime_boost_high_vol",
@@ -155,4 +157,4 @@ class TestRegimeBoostsSplit:
         for name in methods:
             src = self._maker_price_source(name)
             lines = len(src.strip().splitlines())
-            assert lines <= 50, f"{name} should be <= 50 lines, got {lines}"
+            assert lines <= 60, f"{name} should be <= 60 lines, got {lines}"

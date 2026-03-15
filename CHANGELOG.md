@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 440# Toxicity Veto 調査 → Regime-Side Offset 非対称化 (2026-03-16)
+
+### Added
+- **440# investigation doc**: `docs/v460/440_ph4_toxicity_veto_investigation_and_regime_side_offset.md`
+  - 437# §7 Phase 1 AS分類器 skip simulation: ROC-AUC≈0.50 (ランダム同等), 全受入基準 FAIL
+  - 根因分析: 全16特徴量の |r| < 0.05, pre-order 情報に AS 予測信号なし (EMH-consistent)
+  - 代替設計: ML veto → データ駆動 regime-side offset 非対称化
+- **`regime_ranging_offset_discount_buy/sell`**: ranging offset の buy/sell 非対称化 (`fill_config.py`, `maker_regime_boost.py`)
+  - buy+ranging (PnL=-0.41, PF=0.766): offset 拡大 (1.15x) で AS 回避
+  - sell+ranging (PnL=-0.13): offset 縮小 (0.85x) で fill_rate 改善
+  - None 時は共通値 `regime_ranging_offset_discount` にフォールバック (後方互換)
+- **`unknown_sell_offset_boost`**: unknown regime sell offset boost (`fill_config.py`, `maker_regime_boost.py`)
+  - sell+unknown PnL=-0.39, AS=52.2% → 1.3x boost で AS リスク低減
+- **test suite**: `test_440_regime_side_offset.py` (19 tests)
+
+### Changed
+- **`_regime_boost_ranging()`**: side 別 discount 解決ロジック追加。discount > 1.0 (boost) にも対応
+- **`_regime_boost_unknown_buy()`**: sell 側 boost を追加 (buy 既存挙動は維持)
+- **`fill_config_parser.py`**: 新 YAML キー (`ranging_offset_discount_buy/sell`, `unknown_sell_offset_boost`) パース追加
+- **`fill_test.yaml`**: `ranging_offset_discount_buy: 1.15`, `ranging_offset_discount_sell: 0.85`, `unknown_sell_offset_boost: 1.3`
+- **line count tests**: `test_260` compute() 上限 295→310, sub-method 上限 50→60 (440# 拡張分)
+
+### Fixed
+- **設定ミス修正**: `ranging_offset_discount: 0.90` が buy 側で逆効果だった問題を side 別設定で解消
+
+## 439# Cross-Venue Observability Follow-up + v460 Broad Cleanup (2026-03-15)
+
+### Added
+- **cross_venue_hint event log**: `fill_cycle_executor.py` で cross-venue hint 生成時に `fill_test_events.jsonl` へ event を出力
+  - `reference_exchange`
+  - `direction`
+  - `adverse_side`
+  - `spread_bps`
+  - `velocity_bps`
+  - `age_sec`
+- **focused test coverage**: `test_439_cross_venue_lead_lag.py` に event log wiring 検証を追加
+
+### Changed
+- **439# observability doc update**: `439_ph4_cross_venue_lead_lag_guard.md` を更新し、FillRecord に加えて event log も live observability の一部として明文化
+- **v460 broad cleanup**:
+  - `test_259_as_vol_ratio_adaptation_hasattr.py` の source 読込を import-time cache 化
+  - `test_259_as_vol_ratio_adaptation_hasattr.py` の detector stub を `MagicMock` から `SimpleNamespace` に変更
+  - `test_088_features.py` の adaptive threshold 系 pipeline を lightweight stub に変更
+  - `test_407_ghost_cleanup.py` の config stub を `SimpleNamespace` に変更
+
 ## 414# 20K Attribution 実験 A/B/C 深堀り分析 (2026-03-14)
 
 ### Added

@@ -148,6 +148,11 @@ regime:
   trending_down_sell_offset_boost: 0.7
   # 156# §18: ranging 時に offset 縮小 → 安定市場で fill_rate+利幅確保
   ranging_offset_discount: 0.90   # ranging 時 offset × 0.90 (控えめ開始、A/B で 0.85 検証予定)
+  # 440# ranging offset buy/sell 非対称化 (432# buy+ranging PF=0.766 対策)
+  # buy+ranging PnL=-0.41 (最悪): 共通 0.90 は offset 縮小 → AS リスク増大 (逆効果)
+  # sell+ranging PnL=-0.13 (near breakeven): 縮小で fill_rate 向上が有効
+  ranging_offset_discount_buy: 1.15   # buy: offset 拡大 (wider spread で AS 回避)
+  ranging_offset_discount_sell: 0.85  # sell: offset 縮小 (fill_rate 優先)
   # 227# C1: OBI方向非対称 — ranging市場でOBIに基づく方向性シグナル
   ranging_obi_asymmetry_factor: 0.3  # 344#: 0.0→0.3 有効化 (ranging市場OBI方向シグナル)
   ranging_obi_threshold: 0.1         # OBI非対称適用の最小imbalance閾値
@@ -388,6 +393,8 @@ skip_gate:
   skip_sell_unknown_regime: true
   # 130# unknown regime buy offset boost (128# 分析: unknown buy -1.384bps)
   unknown_buy_offset_boost: 2.0  # VG 相当の 2x boost (1.0 = 無効)
+  # 440# unknown sell offset boost (sell+unknown PnL=-0.39, AS=52.2%)
+  unknown_sell_offset_boost: 1.3  # buy ほど深刻ではないが defensive に 1.3x
   # 165# AS-R1: velocity-based pre-ML skip
   sell_velocity_skip_enabled: true
   sell_velocity_skip_threshold_bps: 6.0   # 183# 8.0→6.0 (AS率28%対策: VG vel adverse med=-0.95, sell急騰局面の捕捉率向上)
