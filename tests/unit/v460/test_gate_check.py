@@ -123,15 +123,17 @@ class TestRunG0:
     @patch("scripts.v460.run_gate_check.ManifestWriter")
     @patch("scripts.v460.run_gate_check.check_nan_ratio")
     @patch("scripts.v460.run_gate_check.load_parquet")
+    @patch("scripts.v460.run_gate_check.count_feature_columns")
     @patch("scripts.v460.run_gate_check.compute_data_hash")
     @patch("scripts.v460.run_gate_check.load_gate_thresholds")
     def test_g0_pass_all(
-        self, mock_thresh, mock_hash, mock_load, mock_nan, mock_manifest,
+        self, mock_thresh, mock_hash, mock_count, mock_load, mock_nan, mock_manifest,
     ) -> None:
         """全チェック PASS のケース."""
 
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "abcdef1234567890abcdef1234567890"
+        mock_count.return_value = 10
         mock_load.return_value = _make_feature_df(100, 10)
         mock_nan.return_value = {"overall_nan_ratio": 0.001, "pass": True}
         mw_inst = MagicMock()
@@ -148,15 +150,17 @@ class TestRunG0:
     @patch("scripts.v460.run_gate_check.ManifestWriter")
     @patch("scripts.v460.run_gate_check.check_nan_ratio")
     @patch("scripts.v460.run_gate_check.load_parquet")
+    @patch("scripts.v460.run_gate_check.count_feature_columns")
     @patch("scripts.v460.run_gate_check.compute_data_hash")
     @patch("scripts.v460.run_gate_check.load_gate_thresholds")
     def test_g0_hash_mismatch(
-        self, mock_thresh, mock_hash, mock_load, mock_nan, mock_manifest,
+        self, mock_thresh, mock_hash, mock_count, mock_load, mock_nan, mock_manifest,
     ) -> None:
         """ハッシュ不一致 → FAIL."""
 
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "aaaa1111bbbb2222"
+        mock_count.return_value = 10
         mock_load.return_value = _make_feature_df(100, 10)
         mock_nan.return_value = {"overall_nan_ratio": 0.0, "pass": True}
         mw_inst = MagicMock()
@@ -172,15 +176,17 @@ class TestRunG0:
     @patch("scripts.v460.run_gate_check.ManifestWriter")
     @patch("scripts.v460.run_gate_check.check_nan_ratio")
     @patch("scripts.v460.run_gate_check.load_parquet")
+    @patch("scripts.v460.run_gate_check.count_feature_columns")
     @patch("scripts.v460.run_gate_check.compute_data_hash")
     @patch("scripts.v460.run_gate_check.load_gate_thresholds")
     def test_g0_no_expected_hash_passes(
-        self, mock_thresh, mock_hash, mock_load, mock_nan, mock_manifest,
+        self, mock_thresh, mock_hash, mock_count, mock_load, mock_nan, mock_manifest,
     ) -> None:
         """expected_hash=None → hash チェック skip (PASS)."""
 
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "abcdef1234567890"
+        mock_count.return_value = 10
         mock_load.return_value = _make_feature_df(100, 10)
         mock_nan.return_value = {"overall_nan_ratio": 0.0, "pass": True}
         mw_inst = MagicMock()
@@ -195,15 +201,17 @@ class TestRunG0:
     @patch("scripts.v460.run_gate_check.ManifestWriter")
     @patch("scripts.v460.run_gate_check.check_nan_ratio")
     @patch("scripts.v460.run_gate_check.load_parquet")
+    @patch("scripts.v460.run_gate_check.count_feature_columns")
     @patch("scripts.v460.run_gate_check.compute_data_hash")
     @patch("scripts.v460.run_gate_check.load_gate_thresholds")
     def test_g0_too_few_columns(
-        self, mock_thresh, mock_hash, mock_load, mock_nan, mock_manifest,
+        self, mock_thresh, mock_hash, mock_count, mock_load, mock_nan, mock_manifest,
     ) -> None:
         """特徴量カラム < 4 → FAIL."""
 
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "abcdef1234567890"
+        mock_count.return_value = 2
         mock_load.return_value = _make_feature_df(100, 2)  # close + 2 feats = 2 feature cols
         mock_nan.return_value = {"overall_nan_ratio": 0.0, "pass": True}
         mw_inst = MagicMock()
@@ -219,15 +227,17 @@ class TestRunG0:
     @patch("scripts.v460.run_gate_check.ManifestWriter")
     @patch("scripts.v460.run_gate_check.check_nan_ratio")
     @patch("scripts.v460.run_gate_check.load_parquet")
+    @patch("scripts.v460.run_gate_check.count_feature_columns")
     @patch("scripts.v460.run_gate_check.compute_data_hash")
     @patch("scripts.v460.run_gate_check.load_gate_thresholds")
     def test_g0_high_nan_ratio(
-        self, mock_thresh, mock_hash, mock_load, mock_nan, mock_manifest,
+        self, mock_thresh, mock_hash, mock_count, mock_load, mock_nan, mock_manifest,
     ) -> None:
         """NaN 比率超過 → FAIL."""
 
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "abcdef1234567890"
+        mock_count.return_value = 10
         mock_load.return_value = _make_feature_df(100, 10)
         mock_nan.return_value = {"overall_nan_ratio": 0.05, "pass": False}
         mw_inst = MagicMock()
@@ -243,15 +253,17 @@ class TestRunG0:
     @patch("scripts.v460.run_gate_check.ManifestWriter")
     @patch("scripts.v460.run_gate_check.check_nan_ratio")
     @patch("scripts.v460.run_gate_check.load_parquet")
+    @patch("scripts.v460.run_gate_check.count_feature_columns")
     @patch("scripts.v460.run_gate_check.compute_data_hash")
     @patch("scripts.v460.run_gate_check.load_gate_thresholds")
     def test_g0_no_manifest(
-        self, mock_thresh, mock_hash, mock_load, mock_nan, mock_manifest,
+        self, mock_thresh, mock_hash, mock_count, mock_load, mock_nan, mock_manifest,
     ) -> None:
         """manifest 不在 → FAIL."""
 
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "abcdef1234567890"
+        mock_count.return_value = 10
         mock_load.return_value = _make_feature_df(100, 10)
         mock_nan.return_value = {"overall_nan_ratio": 0.0, "pass": True}
         mw_inst = MagicMock()

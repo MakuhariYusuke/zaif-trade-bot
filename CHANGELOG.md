@@ -5474,3 +5474,12 @@ python scripts/unified_trainer.py \
     - focused cleanup bundle: `332 passed in 8.34s`
     - focused parser/pipeline/gc bundle: `212 passed in 6.02s`
     - filtered broad `tests/unit/v460/`: `4817 passed, 2 skipped, 13 warnings in 35.18s`
+- 2026-03-15: tightened another v460 wave around schema-based G0 checks, real-data helper reuse, and fill-quality hotspot tests.
+  - added `scripts/v460/lib/data_loader.py::count_feature_columns(...)` and changed `run_gate_check.py::run_g0(...)` to count feature columns from parquet schema before loading row data
+  - moved `test_ml_pipeline.py` real-data sample selection onto `tests/unit/v460/_real_data_test_helpers.py` via `latest_fill_records_file(...)`, `has_fill_records(...)`, and `write_minimum_feature_ready_fill_sample(...)`
+  - switched `test_enricher_skip_gate.py` real-data availability checks to the same shared helper
+  - removed redundant parquet reads in `test_v460_core.py::TestG0HashPrefix` by patching the `run_g0` load path after computing the real file hash, and updated `test_gate_check.py` mocks to the new schema-count path
+  - reduced `test_fill_quality.py` hotspot cost by caching `OrderMonitor` source text at import time and patching `FillTestRunner._get_git_sha()` in the time-filter initialization test
+  - re-verified with:
+    - focused `test_gate_check.py test_v460_core.py test_ml_pipeline.py test_enricher_skip_gate.py`: `194 passed in 7.82s`
+    - filtered broad `tests/unit/v460/`: `4850 passed, 2 skipped, 13 warnings in 34.83s`

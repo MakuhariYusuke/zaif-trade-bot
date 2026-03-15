@@ -20,6 +20,7 @@ from scripts.v460.build_features import V460_FEATURES, build_proxy_features
 from scripts.v460.lib.config_loader import _deep_merge, load_config
 from scripts.v460.lib.data_loader import (
     check_nan_ratio,
+    count_feature_columns,
     compute_data_hash,
     generate_targets,
     load_parquet,
@@ -325,6 +326,9 @@ class TestDataLoader:
         h = compute_data_hash(p)
         assert len(h) == 64  # SHA-256 hex
 
+    def test_count_feature_columns(self, selective_parquet_path: Path) -> None:
+        assert count_feature_columns(selective_parquet_path) == 3
+
 
 # =====================================================================
 # manifest
@@ -588,6 +592,7 @@ class TestGateCheckG0FeatureColumns:
                 "scripts.v460.run_gate_check.check_nan_ratio",
                 return_value={"actual": 0.0, "threshold": 0.01, "pass": True},
             ),
+            patch("scripts.v460.run_gate_check.count_feature_columns", return_value=2),
             patch("scripts.v460.run_gate_check.ManifestWriter", return_value=manifest_stub),
             patch("scripts.v460.run_gate_check.load_parquet", return_value=df),
         ):
@@ -668,8 +673,12 @@ class TestG0HashPrefix:
         prefix = full_hash[:16]
 
         # Full hash and prefix should both match
-        result = run_g0(str(p), expected_hash=prefix,
-                        thresholds={"min_feature_columns": 4, "max_nan_ratio": 0.01})
+        with patch("scripts.v460.run_gate_check.load_parquet", return_value=df):
+            result = run_g0(
+                str(p),
+                expected_hash=prefix,
+                thresholds={"min_feature_columns": 4, "max_nan_ratio": 0.01},
+            )
         assert result["checks"]["data_hash"]["pass"] is True
         assert result["gate_result"] == "PASS"
 
@@ -685,8 +694,12 @@ class TestG0HashPrefix:
         p = tmp_path / "test.parquet"
         df.to_parquet(p)
 
-        result = run_g0(str(p), expected_hash="0000000000000000",
-                        thresholds={"min_feature_columns": 4, "max_nan_ratio": 0.01})
+        with patch("scripts.v460.run_gate_check.load_parquet", return_value=df):
+            result = run_g0(
+                str(p),
+                expected_hash="0000000000000000",
+                thresholds={"min_feature_columns": 4, "max_nan_ratio": 0.01},
+            )
         assert result["checks"]["data_hash"]["pass"] is False
 
 

@@ -10,7 +10,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import pytest
-from ztb.io.jsonl import read_tail_jsonl_objects
 
 from scripts.v460.ml.as_classifier import (
     ASModelMetrics,
@@ -19,38 +18,11 @@ from scripts.v460.ml.as_classifier import (
 )
 from scripts.v460.ml.data_loader import build_as_features, build_fill_features, load_fill_records
 from scripts.v460.ml.fill_classifier import FillModelMetrics, train_fill_classifier
-from tests.unit.v460._real_data_test_helpers import write_jsonl_sample
-
-def _write_real_fill_sample(
-    *,
-    latest_file: Path,
-    tmp_path: Path,
-    min_rows: int = 30,
-    min_feature_rows: int = 15,
-    candidate_limits: tuple[int, ...] = (94, 100, 160, 220),
-) -> pd.DataFrame:
-    """実データ統合テスト向けに成立条件を満たす最小限サンプルを選ぶ."""
-    last_df = pd.DataFrame()
-    for limit in candidate_limits:
-        sample_rows = [
-            row for row in read_tail_jsonl_objects(latest_file, limit=limit)
-            if isinstance(row, dict)
-        ]
-        if not sample_rows:
-            continue
-        sample_path = tmp_path / latest_file.name
-        write_jsonl_sample(sample_path, sample_rows)
-        df = load_fill_records(tmp_path, max_files=1)
-        last_df = df
-        if len(df) < min_rows:
-            continue
-        try:
-            X, _ = build_as_features(df)
-        except ValueError:
-            continue
-        if len(X) >= min_feature_rows:
-            return df
-    return last_df
+from tests.unit.v460._real_data_test_helpers import (
+    has_fill_records,
+    latest_fill_records_file,
+    write_minimum_feature_ready_fill_sample,
+)
 
 
 # ======================================================================
@@ -387,15 +359,20 @@ class Test057Integration:
     @pytest.fixture
     def real_data_available(self) -> bool:
         """実データの有無."""
-        return any(Path("results/v460/fill_test").glob("fill_records_*.jsonl"))
+        return has_fill_records()
 
     def test_load_real_data(self, real_data_available: bool, tmp_path: Path) -> None:
         """実データのロードと AS 特徴量構築."""
         if not real_data_available:
             pytest.skip("No real fill records")
-        results_dir = Path("results/v460/fill_test")
-        latest_file = max(results_dir.glob("fill_records_*.jsonl"))
-        df = _write_real_fill_sample(latest_file=latest_file, tmp_path=tmp_path)
+        latest_file = latest_fill_records_file()
+        assert latest_file is not None
+        df = write_minimum_feature_ready_fill_sample(
+            latest_file=latest_file,
+            tmp_path=tmp_path,
+            load_fn=lambda path: load_fill_records(path, max_files=1),
+            feature_builder=build_as_features,
+        )
         assert len(df) >= 30
         X, y = build_as_features(df)
         assert len(X) >= 15

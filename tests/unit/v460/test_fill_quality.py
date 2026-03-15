@@ -89,6 +89,7 @@ _FAST_CYCLE_LOGGER_PATHS = (
     "scripts.v460.lib.order_monitor.logger",
     "scripts.v460.lib.phantom_position_guard.logger",
 )
+_ORDER_MONITOR_SOURCE = read_inspect_source(OrderMonitor)
 
 
 async def _instant_async_sleep(_delay: float) -> None:
@@ -2119,7 +2120,8 @@ class TestTimeFilterLogThrottle:
 
         adapter = AsyncMock()
         config = FillTestConfig(enable_time_filter=True, skip_utc_hours=[0, 1])
-        runner = FillTestRunner(adapter, config)
+        with patch.object(FillTestRunner, "_get_git_sha", return_value="test-sha"):
+            runner = FillTestRunner(adapter, config)
         assert runner._time_filter.in_filter is False
 
 
@@ -3242,9 +3244,8 @@ class Test107TimeFilterDynamicGating:
 
     def test_p2c3_reprice_skip_gate_offset_in_code(self) -> None:
         """168# P2-C3: order_monitor.py で reprice_skip_gate_offset が使用されている."""
-        source = read_inspect_source(OrderMonitor)
-        assert "stale_reprice_skip_gate_offset" in source
-        assert "threshold_offset" in source  # evaluate に offset を渡している
+        assert "stale_reprice_skip_gate_offset" in _ORDER_MONITOR_SOURCE
+        assert "threshold_offset" in _ORDER_MONITOR_SOURCE  # evaluate に offset を渡している
 
 
 

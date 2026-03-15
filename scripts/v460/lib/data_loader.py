@@ -174,6 +174,16 @@ def compute_data_hash(path: str | Path) -> str:
     return _compute_shared_file_hash(p)
 
 
+def count_feature_columns(path: str | Path) -> int:
+    """Count feature columns from parquet schema without loading full rows."""
+    p = Path(path)
+    if not p.is_absolute():
+        p = _PROJECT_ROOT / p
+
+    schema_cols = _read_schema_names(p)
+    return sum(1 for c in schema_cols if not c.startswith("target_") and c != "close")
+
+
 NaNRatioCheck = TypedDict(
     "NaNRatioCheck",
     {

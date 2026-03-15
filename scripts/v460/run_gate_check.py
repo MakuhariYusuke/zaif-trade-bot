@@ -29,7 +29,12 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 
 from scripts.v460.lib.config_loader import load_gate_thresholds
 from scripts.v460.lib.gate_judgment_core import evaluate_g2_checks, evaluate_g3_checks
-from scripts.v460.lib.data_loader import check_nan_ratio, compute_data_hash, load_parquet
+from scripts.v460.lib.data_loader import (
+    check_nan_ratio,
+    compute_data_hash,
+    count_feature_columns,
+    load_parquet,
+)
 from scripts.v460.lib.manifest import ManifestWriter
 from ztb.io.json_io import read_json_object, write_json
 
@@ -84,9 +89,8 @@ def run_g0(
 
     # Column count — feature columns only (exclude target_, close, etc.)
     # 003# #18: use feature columns, not all columns
+    n_feature_cols = count_feature_columns(data_path)
     df = load_parquet(data_path)
-    feature_cols = [c for c in df.columns if not c.startswith("target_") and c != "close"]
-    n_feature_cols = len(feature_cols)
     results["checks"]["feature_column_count"] = {
         "actual": n_feature_cols,
         "threshold": min_cols,

@@ -14,6 +14,21 @@ from ztb.io.jsonl import read_tail_jsonl_objects
 _DEFAULT_RESULTS_DIR = Path("results/v460/fill_test")
 
 
+def latest_fill_records_file(
+    results_dir: Path = _DEFAULT_RESULTS_DIR,
+) -> Path | None:
+    files = sorted(results_dir.glob("fill_records_*.jsonl"))
+    if not files:
+        return None
+    return files[-1]
+
+
+def has_fill_records(
+    results_dir: Path = _DEFAULT_RESULTS_DIR,
+) -> bool:
+    return latest_fill_records_file(results_dir) is not None
+
+
 def write_jsonl_sample(path: Path, rows: list[dict[str, Any]]) -> None:
     path.write_text(
         "\n".join(json.dumps(row, ensure_ascii=False) for row in rows) + "\n",
@@ -59,6 +74,40 @@ def load_recent_fill_records_df(
     if chunks:
         return pd.concat(reversed(chunks), ignore_index=True)
     return pd.DataFrame()
+
+
+def write_minimum_feature_ready_fill_sample(
+    *,
+    latest_file: Path,
+    tmp_path: Path,
+    load_fn: Callable[[Path], pd.DataFrame],
+    feature_builder: Callable[[pd.DataFrame], tuple[pd.DataFrame, object]],
+    min_rows: int = 30,
+    min_feature_rows: int = 15,
+    candidate_limits: tuple[int, ...] = (94, 100, 160, 220),
+) -> pd.DataFrame:
+    """成立条件を満たす最小限の実データ sample を tmp_path へ書いて返す."""
+    last_df = pd.DataFrame()
+    for limit in candidate_limits:
+        sample_rows = [
+            row for row in read_tail_jsonl_objects(latest_file, limit=limit)
+            if isinstance(row, dict)
+        ]
+        if not sample_rows:
+            continue
+        sample_path = tmp_path / latest_file.name
+        write_jsonl_sample(sample_path, sample_rows)
+        df = load_fn(tmp_path)
+        last_df = df
+        if len(df) < min_rows:
+            continue
+        try:
+            X, _ = feature_builder(df)
+        except ValueError:
+            continue
+        if len(X) >= min_feature_rows:
+            return df
+    return last_df
 
 
 def select_minimum_trainable_fill_df(

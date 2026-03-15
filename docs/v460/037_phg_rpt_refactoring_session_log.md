@@ -6278,6 +6278,47 @@ SAC訓練が ROI=0.0000 を出力する致命的バグの発見・修正。
 - `fill_quality` の unknown-fill は focused で `0.03s` まで低下
 - broad 上位は `fill_quality` の time-filter 系、`test_356`, `test_ml_pipeline`, `test_v460_core::TestG0HashPrefix` に再配置された
 
+## 2026-03-15 / Task 439 Follow-up 7: Schema-Based G0 + Shared Real-Data Sample Helper
+
+### 実施内容
+- [data_loader.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/data_loader.py)
+  - `count_feature_columns(...)` を追加
+  - parquet schema から feature 列数だけを数える軽量経路を用意
+- [run_gate_check.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/run_gate_check.py)
+  - `run_g0(...)` の feature-column count を schema ベースへ変更
+- [\_real_data_test_helpers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_real_data_test_helpers.py)
+  - `latest_fill_records_file(...)`
+  - `has_fill_records(...)`
+  - `write_minimum_feature_ready_fill_sample(...)`
+  を追加
+- [test_ml_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ml_pipeline.py)
+  - local 実データ sample helper を削除して shared helper に統一
+- [test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+  - real-data availability を shared helper へ変更
+- [test_v460_core.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_v460_core.py)
+  - `count_feature_columns(...)` テストを追加
+  - `TestG0HashPrefix` は hash 用 parquet だけ実書込し、`run_g0.load_parquet(...)` は patched return に変更
+- [test_gate_check.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_gate_check.py)
+  - G0 mock 群を `count_feature_columns(...)` 経路に追随
+- [test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py)
+  - `OrderMonitor` source を import-time cache 化
+  - `test_in_time_filter_flag_init` で `_get_git_sha()` を patch
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_gate_check.py`
+  - `tests/unit/v460/test_v460_core.py`
+  - `tests/unit/v460/test_ml_pipeline.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `194 passed in 7.82s`
+- filtered broad:
+  - `4850 passed, 2 skipped, 13 warnings in 34.83s`
+
+### メモ
+- `run_g0` は hash/NaN で row 読込は残るが、列数確認だけなら full DataFrame を先に作らなくなった
+- `test_ml_pipeline` と `test_enricher_skip_gate` の real-data 判定/抽出は helper 1 箇所に寄ったので、以後の sample 調整も追いやすい
+- `fill_quality` の broad 最上位だった 2 本は quick win で落とせた
+
 ## 2026-03-16 / Task 440: Toxicity Veto 調査 → Regime-Side Offset 非対称化
 
 ### 背景
