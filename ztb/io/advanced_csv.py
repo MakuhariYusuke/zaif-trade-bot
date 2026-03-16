@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import mmap
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from pathlib import Path
@@ -18,6 +19,14 @@ import pandas as pd
 
 from ztb.io.data_loader import DataLoader
 from ztb.trading.environment.constants import BYTES_PER_MB
+
+_ReadCsvCache = OrderedDict[str, pd.DataFrame]
+
+
+def _get_read_csv_cache() -> _ReadCsvCache:
+    if not hasattr(read_csv_cached, "_cache"):
+        read_csv_cached._cache = OrderedDict()  # type: ignore[attr-defined]
+    return read_csv_cached._cache  # type: ignore[attr-defined]
 
 def read_csv_mmap(
     file_path: str | Path,
@@ -121,12 +130,7 @@ def read_csv_cached(
     **kwargs,
 ) -> pd.DataFrame:
     """Read a CSV with a simple in-memory LRU cache."""
-    # Local import to avoid heavy module-level cache dependencies.
-    from collections import OrderedDict
-
-    if not hasattr(read_csv_cached, "_cache"):
-        read_csv_cached._cache = OrderedDict()  # type: ignore[attr-defined]
-    cache: "OrderedDict[str, pd.DataFrame]" = read_csv_cached._cache  # type: ignore[attr-defined]
+    cache = _get_read_csv_cache()
 
     path = Path(file_path)
     cache_key = str(path.resolve())
@@ -142,3 +146,17 @@ def read_csv_cached(
         while len(cache) > max_cache_entries:
             cache.popitem(last=False)
     return df
+
+
+def clear_read_csv_cache() -> None:
+    """Clear the in-memory CSV cache."""
+    if hasattr(read_csv_cached, "_cache"):
+        _get_read_csv_cache().clear()
+
+
+def get_read_csv_cache_stats() -> dict[str, int]:
+    """Return small diagnostics for the in-memory CSV cache."""
+    if not hasattr(read_csv_cached, "_cache"):
+        return {"entries": 0}
+    cache = _get_read_csv_cache()
+    return {"entries": len(cache)}

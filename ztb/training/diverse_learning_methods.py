@@ -9,6 +9,7 @@ Provides integration with multiple optimization frameworks for efficient hyperpa
 
 import json
 import time
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Callable
 
@@ -29,7 +30,8 @@ class DiverseLearningMethods:
 
     def __init__(self, config_path: str | None = None):
         self.config_path = config_path or "config/optimization_config.json"
-        self.results_cache = {}
+        self.max_results_cache_entries = 8
+        self.results_cache: OrderedDict[str, dict[str, Any]] = OrderedDict()
         self.frameworks = {
             "ray_tune": self._setup_ray_tune,
             "hyperopt": self._setup_hyperopt,
@@ -83,8 +85,53 @@ class DiverseLearningMethods:
             f"Optimization completed in {results['optimization_time']:.2f} seconds"
         )
         logger.info(f"Best value: {results.get('best_value', 'N/A')}")
+        self._store_result_cache(
+            framework=framework,
+            search_space=search_space,
+            max_evals=max_evals,
+            results=results,
+        )
 
         return results
+
+    def clear_results_cache(self) -> None:
+        """Clear cached optimization summaries."""
+        self.results_cache.clear()
+
+    def get_results_cache_stats(self) -> dict[str, int]:
+        """Return lightweight diagnostics for the results cache."""
+        return {
+            "entries": len(self.results_cache),
+            "max_entries": self.max_results_cache_entries,
+        }
+
+    def _store_result_cache(
+        self,
+        *,
+        framework: str,
+        search_space: dict[str, Any],
+        max_evals: int,
+        results: dict[str, Any],
+    ) -> None:
+        cache_key = self._make_result_cache_key(
+            framework=framework,
+            search_space=search_space,
+            max_evals=max_evals,
+        )
+        self.results_cache[cache_key] = dict(results)
+        self.results_cache.move_to_end(cache_key)
+        while len(self.results_cache) > self.max_results_cache_entries:
+            self.results_cache.popitem(last=False)
+
+    def _make_result_cache_key(
+        self,
+        *,
+        framework: str,
+        search_space: dict[str, Any],
+        max_evals: int,
+    ) -> str:
+        search_keys = ",".join(sorted(search_space.keys()))
+        return f"{framework}:{max_evals}:{search_keys}"
 
     def _setup_ray_tune(self):
         """Setup Ray Tune optimizer."""

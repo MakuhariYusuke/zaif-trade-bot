@@ -6916,3 +6916,33 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 ### 補足
 - `tests/unit/v460/` broad は今回差分でなく、workspace 上で `configs/v460/fill_test.yaml` が欠落しているため、config/YAML 依存テストが collection/実行途中で失敗する状態だった
 - 今回のメモリ対策差分 자체の focused 回帰は通過している
+
+## 2026-03-16 追加 wave: 補助 cache の bounded/clearable 化
+
+### 実施
+- [advanced_csv.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/io/advanced_csv.py)
+  - `read_csv_cached()` の cache 取得を helper 化
+  - `clear_read_csv_cache()`
+  - `get_read_csv_cache_stats()`
+  を追加
+- [diverse_learning_methods.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/diverse_learning_methods.py)
+  - `results_cache` を bounded `OrderedDict` 化
+  - `clear_results_cache()`
+  - `get_results_cache_stats()`
+  を追加
+  - optimize 後に summary を bounded cache へ保持するよう整理
+
+### テスト
+- [test_advanced_csv.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/utils/test_advanced_csv.py)
+  - CSV cache bounded / clear 契約を追加
+- [test_diverse_learning_methods.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/training/test_diverse_learning_methods.py)
+  - results cache bounded / clear 契約を追加
+
+### 検証
+- focused:
+  - `tests/unit/utils/test_advanced_csv.py tests/unit/training/test_diverse_learning_methods.py -q --no-cov --tb=short`
+  - `4 passed in 3.18s`
+
+### 見立て
+- `advanced_csv` は既に bounded だったが、明示 clear/stats がなかったため長寿命プロセス視点では扱いにくかった
+- `diverse_learning_methods.results_cache` は未使用寄りだったが、将来利用時の unbounded growth を避けるため先回りで bounded 化した

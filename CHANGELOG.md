@@ -5684,3 +5684,9 @@ python scripts/unified_trainer.py \
     - focused cache bundle: `5 passed` / `6 passed` / `36 passed`
     - focused retrain bundle: `56 passed, 74 deselected in 3.13s`
     - filtered broad `tests/unit/v460/`: `4902 passed, 2 skipped, 13 warnings in 30.13s`
+- 2026-03-16: bounded two additional memory-retention candidates outside the immediate fill-test route.
+  - added `clear_read_csv_cache()` / `get_read_csv_cache_stats()` to `ztb/io/advanced_csv.py` and kept `read_csv_cached()` LRU-bounded
+  - bounded `ztb/training/diverse_learning_methods.py` `results_cache` and added `clear_results_cache()` / `get_results_cache_stats()`
+  - validation:
+    - `tests/unit/utils/test_advanced_csv.py tests/unit/training/test_diverse_learning_methods.py -q --no-cov --tb=short`
+    - `4 passed in 3.18s`
