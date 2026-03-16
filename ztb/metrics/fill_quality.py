@@ -208,6 +208,9 @@ class FillRecord:
     requested_side: str | None = None
     # 切替理由: "balance_switch" / "route_to_kill_deadlock" / None (切替なし)
     resolved_side_reason: str | None = None
+    # ---- 452# Micro-timeout (TIF Emulation) ----
+    requote_attempts: int | None = None  # サブサイクル re-quote 回数 (0=初回で約定, None=micro_timeout 無効)
+    micro_timeout_partial_filled_qty: float | None = None  # re-quote ループ中の部分約定合計
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

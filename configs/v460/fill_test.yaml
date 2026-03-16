@@ -620,6 +620,19 @@ offset_ceiling_ratio_sell: 0.50   # 320# sell: 0.15→0.50 (floor(0.30) + regime
 execution_final_clamp_enabled: true
 execution_final_clamp_hard_skip_mult: 2.5  # 420# 有効化: ceiling×2.5 超で hard skip (buy:0.50超, sell:1.25超)
 
+# ---- 452# Micro-timeouts (TIF Emulation) ----
+# 指値の生存時間を短縮し、サブサイクル re-quote で逆選択リスクを低減。
+# 理論: 長時間放置される固定板は HFT/大口の格好のターゲット。
+#        15s 以内に埋まらなければキャンセル→最新価格で再発注を繰り返す。
+# enabled: false → 従来の order_timeout_sec (90s) ベースの単一監視に fallback。
+micro_timeout:
+  enabled: false                   # true で micro-timeout サブサイクルを有効化
+  wait_sec: 15.0                   # 1 回あたりの最大配置時間 (秒)
+  wait_sec_sell: 10.0              # sell 側の配置時間 (既存の sell timeout 優遇を踏襲)
+  max_requote_per_cycle: 4         # 1 サイクル内の最大 re-quote 回数
+  requote_cooloff_sec: 5.0         # キャンセル→再発注の冷却期間 (HFT ノイズ回避)
+  cancel_on_cross_venue_flip: true # Cross-Venue 反転時に即キャンセル (将来拡張用)
+
 # ---- 310# A: Sell AS Time-of-Day Offset Boost (307# F3, 306# H5) ----
 # 306# deep dive 実証: 高 AS 時間帯の sell offset を拡大し逆選択コストを低減
 # Ho-Stoll (1981): 情報非対称性の日内変動

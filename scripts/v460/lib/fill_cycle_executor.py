@@ -1212,11 +1212,123 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
             )
         order = cast("OrderLike", order)
 
-        # 113# R1: ポーリング監視 + 未約定キャンセルを _monitor_fill_polling() に委譲
-        monitor = await self._monitor_fill_polling(
-            order, order_price, side, t_submit, spread_at_order, effective_offset_ratio,
-            order_lot=_order_lot,
-        )
+        # ---- 452# Micro-timeout sub-cycle loop ----
+        # micro_timeout 有効時: order → monitor(短 timeout) → cancel → re-quote を繰り返す
+        # 無効時: 従来どおり単一 monitor 呼び出し
+        _micro_enabled = self.config.micro_timeout_enabled
+        _requote_attempts = 0
+        _micro_partial_qty = 0.0
+        _remaining_lot = _order_lot
+
+        if _micro_enabled:
+            _mt_wait = (
+                self.config.micro_timeout_wait_sec_sell
+                if side == "sell" and self.config.micro_timeout_wait_sec_sell is not None
+                else self.config.micro_timeout_wait_sec
+            )
+            _mt_max = self.config.micro_timeout_max_requote
+            _mt_cooloff = self.config.micro_timeout_requote_cooloff_sec
+            _original_timeout = self.config.order_timeout_sec
+            _original_timeout_sell = self.config.order_timeout_sec_sell
+
+            for _mt_attempt in range(_mt_max):
+                if self._kill_switch.is_killed():
+                    break
+
+                # micro_timeout: OrderMonitor に短い timeout を使わせる
+                # (dataclass のフィールドを一時的に差し替え)
+                object.__setattr__(self.config, "order_timeout_sec", _mt_wait)
+                object.__setattr__(self.config, "order_timeout_sec_sell", None)
+                try:
+                    monitor = await self._monitor_fill_polling(
+                        order, order_price, side, t_submit, spread_at_order,
+                        effective_offset_ratio, order_lot=_remaining_lot,
+                    )
+                finally:
+                    # 復元
+                    object.__setattr__(self.config, "order_timeout_sec", _original_timeout)
+                    object.__setattr__(self.config, "order_timeout_sec_sell", _original_timeout_sell)
+
+                if monitor.filled:
+                    logger.info(
+                        "[452# micro_timeout] Filled on attempt %d/%d (wait=%.1fs)",
+                        _mt_attempt + 1, _mt_max, _mt_wait,
+                    )
+                    break
+
+                # 部分約定チェック: cancel 後に約定数量があれば残量を減算
+                if monitor.fill_price is not None:
+                    # cancel_failed_likely_filled — 実質的に約定扱い
+                    if monitor.cancel_failed_likely_filled:
+                        logger.info(
+                            "[452# micro_timeout] Cancel failed likely filled on attempt %d",
+                            _mt_attempt + 1,
+                        )
+                        break
+
+                _requote_attempts = _mt_attempt + 1
+
+                # 最終ラウンドなら再注文せずに終了
+                if _mt_attempt >= _mt_max - 1:
+                    logger.info(
+                        "[452# micro_timeout] Max requote reached (%d), giving up",
+                        _mt_max,
+                    )
+                    break
+
+                # Cooloff 待機
+                if _mt_cooloff > 0:
+                    await asyncio.sleep(_mt_cooloff)
+
+                # 最新 mid 取得 → re-quote 価格計算
+                try:
+                    _rq_mid = await self._get_mid_price()
+                except Exception as e:
+                    logger.warning("[452# micro_timeout] Mid price fetch failed: %s", e)
+                    break
+
+                # offset ratio は固定 (Policy Phase で計算済み) → 新しい mid で価格更新
+                if side == "buy":
+                    order_price = _rq_mid * (1 - effective_offset_ratio)
+                else:
+                    order_price = _rq_mid * (1 + effective_offset_ratio)
+
+                # ---- Tick / lot 丸め (既存の precision を踏襲) ----
+                order_price = round(order_price)  # JPY ペアのため整数丸め
+
+                logger.info(
+                    "[452# micro_timeout] Re-quote %d/%d: new_price=%.0f (mid=%.0f, offset=%.4f)",
+                    _mt_attempt + 1, _mt_max, order_price, _rq_mid, effective_offset_ratio,
+                )
+
+                # 再注文
+                t_submit = time.time()
+                try:
+                    order = await self.adapter.place_order(
+                        pair=self.config.symbol,
+                        side=side,
+                        price=order_price,
+                        amount=_remaining_lot,
+                    )
+                except Exception as e:
+                    logger.warning("[452# micro_timeout] Re-quote order failed: %s", e)
+                    # 最後の monitor 結果をそのまま使う
+                    break
+
+                if order is None or not isinstance(getattr(order, "order_id", None), str):
+                    logger.warning("[452# micro_timeout] Re-quote returned invalid order")
+                    break
+
+                order = cast("OrderLike", order)
+
+        else:
+            # 従来パス: 単一 monitor 呼び出し
+            # 113# R1: ポーリング監視 + 未約定キャンセルを _monitor_fill_polling() に委譲
+            monitor = await self._monitor_fill_polling(
+                order, order_price, side, t_submit, spread_at_order,
+                effective_offset_ratio, order_lot=_order_lot,
+            )
+
         filled = monitor.filled
         fill_price = monitor.fill_price
         queue_wait = monitor.queue_wait
@@ -1372,6 +1484,12 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
         # 237# phantom guard: status_unknown 時の再照合待ちフラグ
         if _pending_reconciliation:
             record.pending_reconciliation = True
+
+        # 452# Micro-timeout: re-quote 回数を記録
+        if _micro_enabled:
+            record.requote_attempts = _requote_attempts
+            if _micro_partial_qty > 0:
+                record.micro_timeout_partial_filled_qty = _micro_partial_qty
 
         # 113# resilience: API 成功を CircuitBreaker に記録
         await self._circuit_breaker.async_on_success()

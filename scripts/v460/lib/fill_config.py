@@ -803,6 +803,16 @@ class FillTestConfig:
     records_cache_ttl_sec: float = 10.0             # 適応エンジン キャッシュ TTL
     trades_recorder_fetch_limit: int = 100          # TradesRecorder 取得件数
     balance_freeze_cycles: int = 3                  # 残高不足 side の凍結サイクル数
+    # ---- 452# Micro-timeouts (TIF Emulation) ----
+    # 指値の生存時間を短縮し、逆選択リスクを低減するサブサイクル再クオート方式。
+    # order_timeout_sec (90s) の代わりに wait_sec (15s) 単位で繰り返しキャンセル→再発注。
+    # Adverse Selection 防御: 長時間放置される板を排除し HFT/大口のターゲット化を回避。
+    micro_timeout_enabled: bool = False
+    micro_timeout_wait_sec: float = 15.0           # 1回あたりの最大配置時間 (秒)
+    micro_timeout_wait_sec_sell: float | None = None  # sell 側の配置時間 (None=共通値)
+    micro_timeout_max_requote: int = 4             # 1サイクル内の最大 re-quote 回数
+    micro_timeout_requote_cooloff_sec: float = 5.0 # キャンセル→再発注間の冷却期間 (秒)
+    micro_timeout_cancel_on_cv_flip: bool = True   # Cross-Venue 反転時に即キャンセル
 
     def __post_init__(self) -> None:
         """103# バリデーション: YAML 誤設定による本番クラッシュ防止.

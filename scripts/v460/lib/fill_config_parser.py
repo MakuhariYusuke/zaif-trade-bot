@@ -1082,4 +1082,20 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
     if "use_v2" in sc:
         kwargs["sidecar_use_v2"] = bool(sc["use_v2"])
 
+    # ---- 452# Micro-timeouts (TIF Emulation) ----
+    mt = yaml_cfg.get("micro_timeout", {})
+    if isinstance(mt, dict) and mt:
+        if mt.get("enabled") is not None:
+            kwargs["micro_timeout_enabled"] = bool(mt["enabled"])
+        mt_map = {
+            "wait_sec": "micro_timeout_wait_sec",
+            "wait_sec_sell": "micro_timeout_wait_sec_sell",
+            "max_requote_per_cycle": "micro_timeout_max_requote",
+            "requote_cooloff_sec": "micro_timeout_requote_cooloff_sec",
+            "cancel_on_cross_venue_flip": "micro_timeout_cancel_on_cv_flip",
+        }
+        for yaml_key, config_key in mt_map.items():
+            if yaml_key in mt:
+                kwargs[config_key] = mt[yaml_key]
+
     return _FillTestConfig(**kwargs)
