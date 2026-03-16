@@ -5564,3 +5564,13 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused hotspot bundle: `9 passed in 3.19s`
     - filtered broad `tests/unit/v460/`: `4850 passed, 2 skipped, 13 warnings in 29.88s`
+- 2026-03-16: reduced another v460 save/cache/mock overhead wave and fixed the real-data regressions it exposed.
+  - changed `test_fill_quality.py` cleanup-sync tests to assert `emergency_dump()` contract directly, while keeping file-creation coverage in the dedicated emergency-dump test
+  - unified `test_enricher_skip_gate.py` raw cache invalidation tests behind a shared helper and retuned real-data sampling to `120/160/220` with a `20`-sample minimum that matches current live data
+  - replaced the remaining heavy `MagicMock` HTTP session/response setup in `test_013_fixes.py::TestC3SignatureConsistency` with lightweight stubs
+  - switched `test_fill_test_config.py::test_yaml_roundtrip_skip_gate` to the read-only session-cached YAML fixture instead of per-test deepcopy
+  - reduced `test_fill_quality.py` retry-path cost by allowing failure-only tests to construct `BatchPersistence` with the minimum retry count needed for the contract
+  - updated `test_ml_pipeline.py::Test057Integration::test_load_real_data` and `test_253_hot_reload_dead_config_getattr_bare_except.py` to follow current real-data and `fill_cycle_executor.py` growth
+  - re-verified with:
+    - focused regression bundle: `17 passed in 6.47s`
+    - filtered broad `tests/unit/v460/`: `4850 passed, 2 skipped, 13 warnings in 36.12s`
