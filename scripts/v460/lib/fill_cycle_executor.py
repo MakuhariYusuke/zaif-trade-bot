@@ -228,8 +228,20 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                     git_sha=str(git_sha),
                     details=build_cross_venue_event_details(hint),
                 )
+            else:
+                # 443# hint=None の理由を可視化 (first_call=prev None, or thresholds)
+                _ref_mid = current_reference.mid_price
+                _loc_mid = local_snapshot.mid_price
+                _spread = (_ref_mid - _loc_mid) / _loc_mid * 10_000.0 if _loc_mid > 0 else 0.0
+                _prev_label = "first_call" if previous_reference is None else "below_threshold"
+                logger.debug(
+                    "[cross_venue] hint=None reason=%s ref_mid=%.0f local_mid=%.0f "
+                    "spread=%.2fbps prev=%s",
+                    _prev_label, _ref_mid, _loc_mid, _spread,
+                    f"mid={previous_reference.mid_price:.0f}" if previous_reference else "N/A",
+                )
         except Exception as exc:
-            logger.debug("cross-venue hint update skipped: %s", exc, exc_info=True)
+            logger.warning("cross-venue hint update error: %s", exc, exc_info=True)
             self._maker_price.set_cross_venue_lead_lag_hint(None)
 
     def _make_price_error_skip(
