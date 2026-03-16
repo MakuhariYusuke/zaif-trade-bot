@@ -66,7 +66,7 @@ micro_timeout:
 **設計判断**:
 - **Policy/Execution 分離**: 特徴量抽出・offset 計算は 1 回のみ。re-quote は mid 基準を更新するだけ。
 - **OrderMonitor の timeout 一時差替**: `object.__setattr__` で `order_timeout_sec` を micro_timeout_wait_sec に一時差替え → 復元。OrderMonitor 内部ロジックの改修は最小限。
-- **整数丸め**: JPY ペアのため `round(order_price)` で tick 丸め。
+- **丸めなし**: Coincheck は 1 円以下の価格を許容するため、re-quote 価格は丸めず浮動小数点値をそのまま使用。
 - **デフォルト無効**: 本番稼働中のシステムに影響なし。有効化は YAML の `enabled: true` のみ。
 
 ### 2.4 FillRecord 記録
@@ -139,6 +139,7 @@ hot-reload 対応: YAML 変更 → 次サイクルで自動反映。
 | R5 | MISSING | サブサイクル合計時間が `cycle_interval_sec` を超過する設定への警告なし | 合計 > cycle_interval_sec 時に `warnings.warn` |
 | R6 | MISSING | `stale_order_enabled` 同時有効時の二重価格制御の警告なし | `stale_order_enabled=True` + `micro_timeout_enabled=True` 時に `warnings.warn` |
 | R7 | DEAD_CODE | `_remaining_lot`, `_micro_partial_qty` が初期化のみで更新なし | 将来の Partial Fill 対応基盤として意図的に残置 (453# §5 で記載済み) |
+| R8 | FIX | re-quote 価格に `round()` 整数丸めが不要 — Coincheck は 1 円以下の価格を許容 | `round(order_price)` 削除、浮動小数点値をそのまま使用 |
 
 ### 7.2 追加バリデーションルール (fill_config_validation.py)
 

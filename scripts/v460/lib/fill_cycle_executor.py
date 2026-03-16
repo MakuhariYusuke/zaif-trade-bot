@@ -1293,11 +1293,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                 else:
                     order_price = _rq_mid * (1 + effective_offset_ratio)
 
-                # ---- Tick / lot 丸め (既存の precision を踏襲) ----
-                order_price = round(order_price)  # JPY ペアのため整数丸め
-
                 logger.info(
-                    "[452# micro_timeout] Re-quote %d/%d: new_price=%.0f (mid=%.0f, offset=%.4f)",
+                    "[452# micro_timeout] Re-quote %d/%d: new_price=%s (mid=%s, offset=%.4f)",
                     _mt_attempt + 1, _mt_max, order_price, _rq_mid, effective_offset_ratio,
                 )
 
