@@ -69,7 +69,7 @@ class CrossVenueLeadLagHint:
 
     direction: str
     adverse_side: str
-    spread_bps: float
+    spread_bps: float                             # EMAモード: ema_spread_bps / Legacy: point spread
     reference_velocity_bps: float
     age_sec: float
     reference_exchange: str
@@ -78,6 +78,8 @@ class CrossVenueLeadLagHint:
     depth_imbalance: float | None = None          # (bid_depth - ask_depth) / total
     # 445# confidence scoring
     confidence: float = 1.0                       # 0.0〜1.0, gate/boost の強度制御
+    # 448# F3修正: direction/veto/boost に使う spread と診断用の生値を分離
+    point_spread_bps: float | None = None         # 瞬間 point spread (EMAモード時のみ記録)
 
 
 def build_cross_venue_event_details(
@@ -89,6 +91,7 @@ def build_cross_venue_event_details(
         "direction": hint.direction,
         "adverse_side": hint.adverse_side,
         "spread_bps": hint.spread_bps,
+        "point_spread_bps": hint.point_spread_bps,
         "velocity_bps": hint.reference_velocity_bps,
         "age_sec": hint.age_sec,
         "microprice_spread_bps": hint.microprice_spread_bps,
@@ -111,6 +114,7 @@ def build_cross_venue_fill_fields(
             "cross_venue_lead_lag_direction": None,
             "cross_venue_lead_lag_adverse_side": None,
             "cross_venue_lead_lag_spread_bps": None,
+            "cross_venue_lead_lag_point_spread_bps": None,
             "cross_venue_lead_lag_velocity_bps": None,
             "cross_venue_lead_lag_age_sec": None,
             "cross_venue_lead_lag_applied": None,
@@ -130,6 +134,9 @@ def build_cross_venue_fill_fields(
             hint.adverse_side if hint is not None else None
         ),
         "cross_venue_lead_lag_spread_bps": hint.spread_bps if hint is not None else None,
+        "cross_venue_lead_lag_point_spread_bps": (
+            hint.point_spread_bps if hint is not None else None
+        ),
         "cross_venue_lead_lag_velocity_bps": (
             hint.reference_velocity_bps if hint is not None else None
         ),
@@ -310,14 +317,19 @@ def compute_cross_venue_lead_lag_hint(
     if use_confidence and confidence < min_confidence:
         return None
 
+    # 448# F3修正: EMAモードではspread_bpsをema_spread_bpsに統一
+    # direction/veto/boost が全て同じ情報源(EMA)を使うようにする
+    effective_spread = ema_spread_bps if use_confidence else spread_bps
+
     return CrossVenueLeadLagHint(
         direction=direction,
         adverse_side=adverse_side,
-        spread_bps=spread_bps,
+        spread_bps=effective_spread,
         reference_velocity_bps=reference_velocity_bps,
         age_sec=age_sec,
         reference_exchange=reference_snapshot.exchange,
         microprice_spread_bps=microprice_spread_bps,
         depth_imbalance=depth_imbalance,
         confidence=confidence,
+        point_spread_bps=spread_bps if use_confidence else None,
     )

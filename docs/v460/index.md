@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-16 (445# Cross-Venue EMA平滑化 + Confidence Scoring)
+> 最終更新: 2026-03-16 (448# EMA spread 混線修正 + No-Op 可視化)
 
 ---
 
@@ -439,6 +439,9 @@
 | 443 | fix | [443_ph4_fix_cross_venue_threshold_logging.md](443_ph4_fix_cross_venue_threshold_logging.md) | Cross-Venue 閾値修正 + ログ・FillRecord バグ修正 |
 | 444 | fix | [444_ph4_fix_cross_venue_threshold_tuning.md](444_ph4_fix_cross_venue_threshold_tuning.md) | Cross-Venue 閾値チューニング + hint=None ログ可視化 |
 | 445 | impl | [445_ph4_impl_cross_venue_ema_confidence.md](445_ph4_impl_cross_venue_ema_confidence.md) | Cross-Venue EMA平滑化 + Confidence Scoring: sign_disagree解消 + 比例ブースト |
+| 446 | rev | [446_ph2_ph4_rev_435_445_profitability_and_systemic_gaps.md](446_ph2_ph4_rev_435_445_profitability_and_systemic_gaps.md) | 435#-445# 横断レビュー: mixed-SHAでA/B因果が未分離, cross_venueはlive presence薄くno-op多発, 既存 toxicity / deadlock 系の再監査を優先と整理 |
+| 447 | rev | [447_ph4_gemini_second_opinion_and_new_paradigms.md](447_ph4_gemini_second_opinion_and_new_paradigms.md) | Gemini Second Opinion: 446# 検証確認 + EMAねじれ自己批判 + 新パラダイム提案 (Inventory Sponging / Micro-Timeout / Spread Shadowing) |
+| 448 | resp | [448_ph4_resp_446_447_ema_spread_fix_and_noop_visibility.md](448_ph4_resp_446_447_ema_spread_fix_and_noop_visibility.md) | 446/447# レビュー応答: F3 EMA spread 混線修正 + F2 cap_hit no-op 可視化 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

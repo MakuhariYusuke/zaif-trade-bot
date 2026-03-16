@@ -51,6 +51,10 @@ class RiskGuardsMixin:
     _cross_venue_lead_lag_hint: CrossVenueLeadLagHint | None
     _cross_venue_lead_lag_vetoed: bool
     _cross_venue_lead_lag_veto_reason: str | None
+    # 448# F2修正: cap_hit (no-op) 可視化
+    _cross_venue_lead_lag_pre_offset: float | None
+    _cross_venue_lead_lag_post_offset: float | None
+    _cross_venue_lead_lag_cap_hit: bool
 
     @staticmethod
     def _scale_offset_ratio(  # type: ignore[empty-body]  # Protocol stub
@@ -223,6 +227,10 @@ class RiskGuardsMixin:
         """
         self._cross_venue_lead_lag_vetoed = False
         self._cross_venue_lead_lag_veto_reason = None
+        # 448# F2: no-op 可視化
+        self._cross_venue_lead_lag_pre_offset = None
+        self._cross_venue_lead_lag_post_offset = None
+        self._cross_venue_lead_lag_cap_hit = False
 
         cfg = self._config
         hint = self._cross_venue_lead_lag_hint
@@ -242,9 +250,10 @@ class RiskGuardsMixin:
             self._cross_venue_lead_lag_veto_reason = (
                 f"cross_venue_veto: {side} suppressed by "
                 f"{hint.reference_exchange} {hint.direction} lead "
-                f"(spread={hint.spread_bps:+.2f}bps, "
-                f"velocity={hint.reference_velocity_bps:+.2f}bps/s, "
-                f"age={hint.age_sec:.2f}s)"
+                f"(spread={hint.spread_bps:+.2f}bps"
+                f"{f', pt_spread={hint.point_spread_bps:+.2f}bps' if hint.point_spread_bps is not None else ''}"
+                f", velocity={hint.reference_velocity_bps:+.2f}bps/s"
+                f", age={hint.age_sec:.2f}s)"
             )
             logger.info("[%s] %s", "cross_venue", self._cross_venue_lead_lag_veto_reason)
             return effective_offset_ratio
@@ -281,20 +290,34 @@ class RiskGuardsMixin:
                 )
                 depth_imb_applied = True
 
+        # 448# F3修正: point_spread も出力して診断性向上
+        # 448# F2: cap_hit (no-op) 検出 — boost したのに変わらなかった場合
+        total_mult = effective_offset_ratio / pre_offset if pre_offset > 0 else 1.0
+        cap_hit = abs(total_mult - 1.0) < 1e-6 and actual_boost > 1.0 + 1e-6
+        self._cross_venue_lead_lag_pre_offset = pre_offset
+        self._cross_venue_lead_lag_post_offset = effective_offset_ratio
+        self._cross_venue_lead_lag_cap_hit = cap_hit
+        ps_info = (
+            f", pt_spread={hint.point_spread_bps:+.2f}bps"
+            if hint.point_spread_bps is not None
+            else ""
+        )
         logger.info(
             "[cross_venue] %s adverse hint from %s: offset %.4f->%.4f "
-            "(mult=%.2f, conf=%.2f, spread=%+.2fbps, velocity=%+.2fbps/s, age=%.2fs"
-            "%s)",
+            "(mult=%.2f, conf=%.2f, spread=%+.2fbps%s, velocity=%+.2fbps/s, age=%.2fs"
+            "%s%s)",
             side,
             hint.reference_exchange,
             pre_offset,
             effective_offset_ratio,
-            effective_offset_ratio / pre_offset if pre_offset > 0 else 1.0,
+            total_mult,
             hint.confidence,
             hint.spread_bps,
+            ps_info,
             hint.reference_velocity_bps,
             hint.age_sec,
             f", depth_imb={hint.depth_imbalance:+.3f} BOOST" if depth_imb_applied else "",
+            ", CAP_HIT=NO-OP" if cap_hit else "",
         )
         return effective_offset_ratio
 
