@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 451# P0-4 / P1-2 / P1-3: git_sha filter + compound suppression + toxicity budget (2026-03-16)
+
+### Changed
+- **ab_offset_comparison.py**: `--git-sha` / `--run-id` CLI フィルタ追加 (P0-4: mixed-SHA A/B 汚染排除)
+- **cycle_gate_aggregator.py**: `speculative_checks` フィールド追加 (P1-2: ranging_low_vol × buy_dynamic_kill compound suppression 可視化)
+- **orchestrator_mid_cycle.py**: `compound_{gate_name}` guard fire カウンタ記録
+- **configs/v460/fill_test.yaml**: toxicity_budget_enabled=true (P1-3: sell/buy 個別に Glosten-Milgrom 段階的応答を有効化)
+
+### Added
+- `TestLoadRecordsFilter` (4 tests): _load_records git_sha/run_id フィルタテスト
+- `TestCompoundSuppression` (3 tests): speculative gate check テスト
+
 ## 445# Cross-Venue EMA平滑化 + Confidence Scoring (2026-03-16)
 
 ### Background
@@ -5672,13 +5684,3 @@ python scripts/unified_trainer.py \
     - focused cache bundle: `5 passed` / `6 passed` / `36 passed`
     - focused retrain bundle: `56 passed, 74 deselected in 3.13s`
     - filtered broad `tests/unit/v460/`: `4902 passed, 2 skipped, 13 warnings in 30.13s`
-- 2026-03-16: strengthened fill-test memory diagnostics and unified ML cache cleanup across long-lived scripts.
-  - added `scripts/v460/ml/cache_cleanup.py::clear_ml_data_caches_with_log(...)` and switched every `scripts/v460/ml/*` entrypoint using `load_fill_records()` / `enrich_fill_records()` to run cleanup in `finally`
-  - expanded `scripts/v460/lib/fill_test_cli.py` exit dumps with GC counts, ML cache stats, runner buffer sizes, and health-monitor memory diagnostics
-  - added pressure-triggered GC with cooldown and a public diagnostics snapshot to `scripts/v460/lib/resilience.py::FillTestHealthMonitor`
-  - added focused regression coverage for the new cleanup helper, fill-test diagnostics payload, and pressure-GC cooldown behavior
-  - validation:
-    - `12 passed in 1.51s` (`test_fill_test_cli_diagnostics.py`, `test_health_monitor_resilience.py`, `test_ml_cache_cleanup.py`)
-    - `33 passed in 1.58s` (`test_sac_retrain_scheduler.py`, `test_train_sg_v3.py`)
-    - `5 passed, 89 deselected in 1.56s` (`test_ml_pipeline.py -k DataLoaderCache`, `test_enricher_skip_gate.py -k RawLoadCache`)
-    - filtered broad is currently blocked by a workspace-level missing `configs/v460/fill_test.yaml`, which now fails unrelated config/YAML tests during collection
