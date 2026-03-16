@@ -6721,3 +6721,44 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - ここまでで `inspect` / AST parse / `TemporaryDirectory` / 重い `MagicMock` のような
   “軽い固定費” はかなり掃除できた
 - broad 上位は、helper 化より実処理コストが支配的なテストへ移っている
+
+## 2026-03-16 追加 wave: externalizable helper の昇格
+
+### 実施
+- [ztb/ml/artifact_paths.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/ml/artifact_paths.py)
+  - public helper を追加
+  - `atomic_pickle_tmp_path(...)`
+  - `hash_sidecar_path(...)`
+- [ztb/ml/skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/ml/skip_gate.py)
+  - hash sidecar path 計算を shared helper へ移行
+- [scripts/v460/ml/retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/retrain_scheduler.py)
+  - enriched cache save / atomic deploy の `.pkl.tmp` と `.sha256` path 計算を shared helper へ移行
+- [test_retrain_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_retrain_hot_reload.py)
+  - helper import を production helper に合わせた
+- [test_skip_gate_d8.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_skip_gate_d8.py)
+- [test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+  - hash path 検証を shared helper に追随
+
+### 切り分け
+- 外でも使えるもの:
+  - `atomic_pickle_tmp_path(...)`
+  - `hash_sidecar_path(...)`
+- test-local のまま維持したもの:
+  - `_make_runner(...)`
+  - `_make_threshold_config(...)`
+  - `_model_paths(...)`
+  - `_gate_artifact_path(...)`
+  - `_parse_repo_python(...)`
+- 理由:
+  - 前者は production/test の両方で同じ計算を行っていた
+  - 後者は test 文脈依存が強く、shared に上げるとかえって責務がぼやける
+
+### 確認
+- focused:
+  - `tests/unit/v460/test_retrain_hot_reload.py`
+  - `tests/unit/v460/test_skip_gate_d8.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `15 passed, 178 deselected in 2.69s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `4864 passed, 2 skipped, 13 warnings in 28.00s`

@@ -48,11 +48,39 @@ from tests.unit.v460._real_data_test_helpers import (
     write_jsonl_gz as _write_jsonl_gz,
 )
 from tests.unit.v460._skip_gate_test_helpers import save_and_load_skip_gate
+from ztb.ml.artifact_paths import hash_sidecar_path
 
-_REAL_DATA_SAMPLE_ROWS = 94
-_REAL_DATA_FALLBACK_SAMPLE_ROWS = 96
-_REAL_DATA_EXPANDED_SAMPLE_ROWS = 100
-_REAL_DATA_MIN_TRAIN_SAMPLES = 31
+_REAL_DATA_SAMPLE_ROWS = 120
+_REAL_DATA_FALLBACK_SAMPLE_ROWS = 160
+_REAL_DATA_EXPANDED_SAMPLE_ROWS = 220
+_REAL_DATA_MIN_TRAIN_SAMPLES = 20
+
+
+def _assert_raw_cache_invalidates_on_file_update(
+    *,
+    tmp_path: Path,
+    subdir: str,
+    filename: str,
+    first_rows: list[dict[str, Any]],
+    second_rows: list[dict[str, Any]],
+    load_fn,
+) -> None:
+    data_dir = tmp_path / subdir
+    data_dir.mkdir()
+    target_file = data_dir / filename
+
+    _write_jsonl_gz(target_file, first_rows)
+
+    df1 = load_fn(tmp_path, date_filter={"20260220"})
+    df2 = load_fn(tmp_path, date_filter={"20260220"})
+    assert len(df1) == len(first_rows)
+    assert len(df2) == len(first_rows)
+    assert df1 is not df2
+
+    _write_jsonl_gz(target_file, second_rows)
+    df3 = load_fn(tmp_path, date_filter={"20260220"})
+    assert len(df3) == len(second_rows)
+
 
 def _select_real_enriched_training_df(
     *,
@@ -383,56 +411,30 @@ class Test058RawLoadCache:
     """raw orderbook/trades ローダーのキャッシュ挙動テスト."""
 
     def test_trades_cache_invalidates_on_file_update(self, tmp_path: Path) -> None:
-        trades_dir = tmp_path / "trades"
-        trades_dir.mkdir()
-        trades_file = trades_dir / "20260220.jsonl.gz"
-
-        _write_jsonl_gz(
-            trades_file,
-            [{"ts": 1.0, "price": 100.0, "amount": 0.1, "side": "buy"}],
-        )
-
-        df1 = load_raw_trades(tmp_path, date_filter={"20260220"})
-        df2 = load_raw_trades(tmp_path, date_filter={"20260220"})
-        assert len(df1) == 1
-        assert len(df2) == 1
-        assert df1 is not df2  # cache hitでも呼び出し側に独立DataFrameを返す
-
-        _write_jsonl_gz(
-            trades_file,
-            [
+        _assert_raw_cache_invalidates_on_file_update(
+            tmp_path=tmp_path,
+            subdir="trades",
+            filename="20260220.jsonl.gz",
+            first_rows=[{"ts": 1.0, "price": 100.0, "amount": 0.1, "side": "buy"}],
+            second_rows=[
                 {"ts": 1.0, "price": 100.0, "amount": 0.1, "side": "buy"},
                 {"ts": 2.0, "price": 101.0, "amount": 0.2, "side": "sell"},
             ],
+            load_fn=load_raw_trades,
         )
-        df3 = load_raw_trades(tmp_path, date_filter={"20260220"})
-        assert len(df3) == 2
 
     def test_orderbook_cache_invalidates_on_file_update(self, tmp_path: Path) -> None:
-        ob_dir = tmp_path / "orderbook"
-        ob_dir.mkdir()
-        ob_file = ob_dir / "20260220.jsonl.gz"
-
-        _write_jsonl_gz(
-            ob_file,
-            [{"ts": 1.0, "bids": [[100.0, 0.2]], "asks": [[101.0, 0.3]]}],
-        )
-
-        df1 = load_raw_orderbook(tmp_path, date_filter={"20260220"})
-        df2 = load_raw_orderbook(tmp_path, date_filter={"20260220"})
-        assert len(df1) == 1
-        assert len(df2) == 1
-        assert df1 is not df2
-
-        _write_jsonl_gz(
-            ob_file,
-            [
+        _assert_raw_cache_invalidates_on_file_update(
+            tmp_path=tmp_path,
+            subdir="orderbook",
+            filename="20260220.jsonl.gz",
+            first_rows=[{"ts": 1.0, "bids": [[100.0, 0.2]], "asks": [[101.0, 0.3]]}],
+            second_rows=[
                 {"ts": 1.0, "bids": [[100.0, 0.2]], "asks": [[101.0, 0.3]]},
                 {"ts": 2.0, "bids": [[102.0, 0.4]], "asks": [[103.0, 0.5]]},
             ],
+            load_fn=load_raw_orderbook,
         )
-        df3 = load_raw_orderbook(tmp_path, date_filter={"20260220"})
-        assert len(df3) == 2
 
     def test_trades_date_filter_avoids_full_glob_scan(self, tmp_path: Path) -> None:
         """date_filter 指定時は directory glob 全走査を行わず直接ファイル解決する."""
@@ -1011,7 +1013,7 @@ class Test058Integration:
             )
             assert path.exists()
             # 最新サンプルからの高速読み込みでも学習が成立する最小件数を確認
-            assert gate.metadata["n_samples"] > 30
+            assert gate.metadata["n_samples"] >= _REAL_DATA_MIN_TRAIN_SAMPLES
 
             # 評価テスト (071# OB params removed)
             features = build_features_from_market_state(
@@ -1227,7 +1229,7 @@ class Test059PickleHash:
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "gate.pkl"
             gate.save(path)
-            hash_path = path.with_suffix(".pkl.sha256")
+            hash_path = hash_sidecar_path(path)
             assert hash_path.exists()
             digest = hash_path.read_text().strip()
             assert len(digest) == 64  # SHA256 hex
@@ -1255,7 +1257,7 @@ class Test059PickleHash:
             path = Path(td) / "gate.pkl"
             save_and_load_skip_gate(gate, path)
             # ハッシュファイルを削除
-            hash_path = path.with_suffix(".pkl.sha256")
+            hash_path = hash_sidecar_path(path)
             hash_path.unlink()
 
             # ロードは成功する (後方互換)

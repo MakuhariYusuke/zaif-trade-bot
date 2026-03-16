@@ -24,6 +24,7 @@ from scripts.v460.ml.skip_gate import (
     warm_start_skip_gate_thresholds,
 )
 from tests.unit.v460._skip_gate_test_helpers import save_and_load_skip_gate
+from ztb.ml.artifact_paths import hash_sidecar_path
 
 
 class _PickleStub:
@@ -565,7 +566,7 @@ class TestSkipGateSaveLoad:
         gate = self._make_picklable_gate()
         path = _gate_artifact_path(tmp_path)
         gate.save(path)
-        hash_path = path.with_suffix(".pkl.sha256")
+        hash_path = hash_sidecar_path(path)
         assert hash_path.exists()
         assert len(hash_path.read_text().strip()) == 64  # SHA256 hex
 

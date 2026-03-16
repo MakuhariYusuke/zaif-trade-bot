@@ -41,7 +41,6 @@ from scripts.v460.ml.retrain_scheduler import (
     _evaluate_wf,
     _evaluate_wf_multi,
     _evaluate_wf_single,
-    _hash_sidecar_path,
     _load_enriched_cache,
     _safe_import_ztb_module,
     _save_enriched_cache,
@@ -56,6 +55,7 @@ from scripts.v460.lib.lot_sizer import LotSizingConfig, compute_lot_size
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from tests.unit.v460._skip_gate_test_helpers import save_and_load_skip_gate
 from ztb.metrics.fill_quality import FillRecord
+from ztb.ml.artifact_paths import atomic_pickle_tmp_path, hash_sidecar_path
 from ztb.utils.run_manifest import compute_file_hash
 
 try:
@@ -85,7 +85,7 @@ def _write_stub_gate_artifact(_gate: object, path: Path) -> None:
     """SkipGate.save の代替: 最小 deploy artifact と sidecar hash を生成する."""
     payload = b"stub-gate"
     path.write_bytes(payload)
-    path.with_suffix(path.suffix + ".sha256").write_text(
+    hash_sidecar_path(path).write_text(
         hashlib.sha256(payload).hexdigest(),
         encoding="utf-8",
     )
@@ -175,7 +175,7 @@ def _save_gate_to(gate: SkipGate, path: Path) -> None:
 def _write_corrupt_gate(path: Path, *, hash_text: str = "deadbeef") -> None:
     """壊れた gate 本体 + sidecar hash を共通生成する."""
     path.write_bytes(b"corrupt data")
-    _hash_sidecar_path(path).write_text(hash_text)
+    hash_sidecar_path(path).write_text(hash_text)
 
 
 def _cache_path(tmp_path: Path, name: str = "test_cache.pkl") -> Path:
@@ -186,7 +186,7 @@ def _cache_path(tmp_path: Path, name: str = "test_cache.pkl") -> Path:
 def _model_paths(tmp_path: Path, name: str = "model.pkl") -> tuple[Path, Path]:
     """model path と atomic save 用 tmp path を返す."""
     model_path = tmp_path / name
-    return model_path, model_path.with_suffix(".pkl.tmp")
+    return model_path, atomic_pickle_tmp_path(model_path)
 
 
 def _identity_enrich(fill_df: pd.DataFrame, **_: object) -> pd.DataFrame:
@@ -1206,11 +1206,11 @@ class TestAtomicHashMove:
         """tmp_path.with_suffix(tmp_path.suffix + '.sha256') で正しいパスが得られる."""
         # 再現: retrain_scheduler の hash 移動ロジック
         model_path = Path("models/v460/skip_gate_lgbm_pnl120.pkl")
-        tmp_path = model_path.with_suffix(".pkl.tmp")
+        tmp_path = atomic_pickle_tmp_path(model_path)
 
         # 修正後のロジック
-        tmp_hash = tmp_path.with_suffix(tmp_path.suffix + ".sha256")
-        real_hash = model_path.with_suffix(model_path.suffix + ".sha256")
+        tmp_hash = hash_sidecar_path(tmp_path)
+        real_hash = hash_sidecar_path(model_path)
 
         assert str(tmp_hash).endswith(".pkl.tmp.sha256")
         assert str(real_hash).endswith(".pkl.sha256")
@@ -1221,7 +1221,7 @@ class TestAtomicHashMove:
     def test_old_buggy_path_was_wrong(self) -> None:
         """旧コードが二重 .pkl を生成していたことを確認 (regression guard)."""
         model_path = Path("models/v460/skip_gate_lgbm_pnl120.pkl")
-        tmp_path = model_path.with_suffix(".pkl.tmp")
+        tmp_path = atomic_pickle_tmp_path(model_path)
 
         # 旧コード: tmp_path.with_suffix(".pkl.tmp.sha256") → 二重 .pkl
         buggy_hash = tmp_path.with_suffix(".pkl.tmp.sha256")
@@ -1235,8 +1235,8 @@ class TestAtomicHashMove:
         gate.save(tmp_model_path)
         os.replace(str(tmp_model_path), str(model_path))
 
-        tmp_hash = _hash_sidecar_path(tmp_model_path)
-        real_hash = _hash_sidecar_path(model_path)
+        tmp_hash = hash_sidecar_path(tmp_model_path)
+        real_hash = hash_sidecar_path(model_path)
         assert tmp_hash.exists(), f"tmp hash should exist at {tmp_hash}"
         os.replace(str(tmp_hash), str(real_hash))
 

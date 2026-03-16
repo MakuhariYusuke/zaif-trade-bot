@@ -5648,3 +5648,10 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused regression bundle: `26 passed in 14.69s`
     - filtered broad `tests/unit/v460/`: `4864 passed, 2 skipped, 13 warnings in 42.05s`
+- 2026-03-16: promoted the reusable skip-gate artifact path logic into a shared production helper.
+  - added [ztb/ml/artifact_paths.py] with public `atomic_pickle_tmp_path(...)` and `hash_sidecar_path(...)`
+  - updated `ztb/ml/skip_gate.py` and `scripts/v460/ml/retrain_scheduler.py` to use the shared helper instead of local/private path arithmetic
+  - aligned `test_retrain_hot_reload.py`, `test_skip_gate_d8.py`, and `test_enricher_skip_gate.py` to the same helper so production/test path rules stay in sync
+  - re-verified with:
+    - focused skip-gate bundle: `15 passed, 178 deselected in 2.69s`
+    - filtered broad `tests/unit/v460/`: `4864 passed, 2 skipped, 13 warnings in 28.00s`

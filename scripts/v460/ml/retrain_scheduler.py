@@ -60,6 +60,7 @@ from scripts.v460.ml.skip_gate import (
     get_gate_feature_cols,
 )
 from ztb.io.jsonl import append_jsonl
+from ztb.ml.artifact_paths import atomic_pickle_tmp_path, hash_sidecar_path
 from ztb.utils.safety import ensure_dict, safe_to_bool, safe_to_float, safe_to_int
 
 # 127# X1: module-level FileHandler を廃止。main() 内で初期化する。
@@ -507,7 +508,7 @@ def _save_enriched_cache(
             "n_records": len(enriched),
         }
         # 160# fix: アトミック書き込み (中断時の破損 cache 防止)
-        tmp_path = cache_path.with_suffix(".pkl.tmp")
+        tmp_path = atomic_pickle_tmp_path(cache_path)
         with open(tmp_path, "wb") as f:
             pickle.dump(payload, f)
         tmp_path.replace(cache_path)
@@ -519,12 +520,6 @@ def _save_enriched_cache(
             tmp_path.unlink(missing_ok=True)  # type: ignore[possibly-undefined]
         except Exception:  # noqa: R-18 cleanup best-effort
             pass
-
-
-def _hash_sidecar_path(path: Path) -> Path:
-    """対応する SHA256 sidecar path を返す."""
-    return path.with_suffix(path.suffix + ".sha256")
-
 
 def _build_lgbm_regressor(
     cfg: ConfigMap,
@@ -1725,7 +1720,7 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
 
     # Step 6: アトミック書き込み
     model_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = model_path.with_suffix(".pkl.tmp")
+    tmp_path = atomic_pickle_tmp_path(model_path)
     try:
         gate.save(tmp_path)
         # アトミック rename (Windows: os.replace)
@@ -1733,8 +1728,8 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
         # SHA256 も更新 (save が tmp に書いたハッシュを本体パスに移動)
         # 131# A.1 #1 fix: with_suffix は最終 suffix のみ置換。
         # 旧コードは ".pkl.tmp.sha256" で二重 .pkl が発生していた。
-        tmp_hash = _hash_sidecar_path(tmp_path)
-        real_hash = _hash_sidecar_path(model_path)
+        tmp_hash = hash_sidecar_path(tmp_path)
+        real_hash = hash_sidecar_path(model_path)
         if tmp_hash.exists():
             os.replace(str(tmp_hash), str(real_hash))
             logger.info(f"SHA256 hash atomically moved to {real_hash}")
@@ -1751,7 +1746,7 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
         logger.info(f"Model atomically deployed to {model_path}")
     except Exception as e:
         # tmp 残留防止
-        tmp_hash_cleanup = _hash_sidecar_path(tmp_path)
+        tmp_hash_cleanup = hash_sidecar_path(tmp_path)
         for p in [tmp_path, tmp_hash_cleanup]:
             if p.exists():
                 p.unlink()
