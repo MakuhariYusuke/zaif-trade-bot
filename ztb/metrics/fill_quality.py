@@ -183,6 +183,8 @@ class FillRecord:
     # ---- 442# Cross-Venue microprice + depth imbalance ----
     cross_venue_microprice_spread_bps: float | None = None
     cross_venue_depth_imbalance: float | None = None
+    # ---- 445# Cross-Venue confidence scoring ----
+    cross_venue_confidence: float | None = None
     # ---- 421# P0: Execution Final Clamp 記録 ----
     # executor multiplier chain 適用後・Final Clamp 適用前の offset ratio。
     # None=clamp 未発火 or 無効。値あり=clamp が発火し、ceiling に切り詰められた。

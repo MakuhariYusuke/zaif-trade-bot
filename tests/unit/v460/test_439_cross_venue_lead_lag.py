@@ -9,12 +9,14 @@ import pytest
 
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.cross_venue_lead_lag import (
+    CrossVenueEMAState,
     CrossVenueLeadLagHint,
     VenueMidSnapshot,
     build_reference_adapter,
     build_cross_venue_event_details,
     build_cross_venue_fill_fields,
     compute_cross_venue_lead_lag_hint,
+    update_cross_venue_ema,
 )
 from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import FillTestConfig
@@ -273,6 +275,7 @@ class TestCrossVenueLeadLagExecutorInjection:
             mid_price=100.8,
             timestamp=99.5,
         )
+        runner._cross_venue_ema_state = None
 
         with patch("scripts.v460.lib.event_logger.log_event") as mock_log_event:
             asyncio.run(runner._update_cross_venue_lead_lag_hint())
@@ -307,6 +310,7 @@ class TestCrossVenueLeadLagExecutorInjection:
         )
         runner._cross_venue_reference_adapter = _FailingOrderbookAdapter()
         runner._cross_venue_prev_reference_snapshot = None
+        runner._cross_venue_ema_state = None
 
         asyncio.run(runner._update_cross_venue_lead_lag_hint())
 
@@ -387,3 +391,216 @@ class TestCrossVenueLeadLagFillRecordObservability:
         assert fields["cross_venue_lead_lag_vetoed"] is None
         assert fields["cross_venue_microprice_spread_bps"] is None
         assert fields["cross_venue_depth_imbalance"] is None
+
+
+# ---- 445# EMA + Confidence Scoring Tests ----
+
+
+class TestUpdateCrossVenueEMA:
+    """445# update_cross_venue_ema() のユニットテスト."""
+
+    def test_first_call_initializes_state(self) -> None:
+        state = update_cross_venue_ema(None, ref_mid=100.0, spread_bps=2.0, timestamp=1.0, alpha=0.3)
+        assert state.ema_ref_mid == 100.0
+        assert state.ema_spread_bps == 2.0
+        assert state.n_updates == 1
+
+    def test_subsequent_call_blends_ema(self) -> None:
+        s1 = update_cross_venue_ema(None, ref_mid=100.0, spread_bps=2.0, timestamp=1.0, alpha=0.3)
+        s2 = update_cross_venue_ema(s1, ref_mid=110.0, spread_bps=5.0, timestamp=2.0, alpha=0.3)
+        assert s2.ema_ref_mid == pytest.approx(0.3 * 110.0 + 0.7 * 100.0)
+        assert s2.ema_spread_bps == pytest.approx(0.3 * 5.0 + 0.7 * 2.0)
+        assert s2.n_updates == 2
+
+
+class TestConfidenceModeCompute:
+    """445# confidence mode (ema_spread_bps 指定時) のテスト."""
+
+    _LOCAL = VenueMidSnapshot("coincheck", 100.0, 100.0)
+
+    def test_sign_disagree_fires_with_reduced_confidence(self) -> None:
+        """Legacy mode では sign_disagree で None 扱いだった状況が、
+        confidence mode では hint 発火 (confidence<1.0) になることを確認."""
+        hint = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._LOCAL,
+            reference_snapshot=VenueMidSnapshot("bitflyer", 100.6, 100.5),
+            previous_reference_snapshot=VenueMidSnapshot("bitflyer", 100.8, 99.5),
+            max_age_sec=3.0,
+            spread_bps_threshold=2.0,
+            velocity_bps_threshold=1.0,
+            ema_spread_bps=60.0,   # large positive EMA
+            min_confidence=0.0,
+            confidence_reference_spread_bps=3.0,
+        )
+        assert hint is not None
+        assert hint.direction == "up"
+        assert hint.adverse_side == "sell"
+        # velocity disagrees → vel_factor=0.5, base_conf=1.0 → confidence=0.5
+        assert hint.confidence == pytest.approx(0.5)
+
+    def test_velocity_agree_gives_full_confidence(self) -> None:
+        hint = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._LOCAL,
+            reference_snapshot=VenueMidSnapshot("bitflyer", 100.6, 100.5),
+            previous_reference_snapshot=VenueMidSnapshot("bitflyer", 100.2, 99.5),
+            max_age_sec=3.0,
+            spread_bps_threshold=2.0,
+            velocity_bps_threshold=1.0,
+            ema_spread_bps=60.0,
+            min_confidence=0.0,
+            confidence_reference_spread_bps=3.0,
+        )
+        assert hint is not None
+        assert hint.confidence == pytest.approx(1.0)
+
+    def test_small_ema_spread_returns_none(self) -> None:
+        hint = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._LOCAL,
+            reference_snapshot=VenueMidSnapshot("bitflyer", 100.6, 100.5),
+            previous_reference_snapshot=VenueMidSnapshot("bitflyer", 100.2, 99.5),
+            max_age_sec=3.0,
+            spread_bps_threshold=2.0,
+            velocity_bps_threshold=1.0,
+            ema_spread_bps=0.5,  # below threshold
+            min_confidence=0.0,
+            confidence_reference_spread_bps=3.0,
+        )
+        assert hint is None
+
+    def test_min_confidence_gate(self) -> None:
+        """confidence < min_confidence → None."""
+        hint = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._LOCAL,
+            reference_snapshot=VenueMidSnapshot("bitflyer", 100.6, 100.5),
+            previous_reference_snapshot=VenueMidSnapshot("bitflyer", 100.8, 99.5),
+            max_age_sec=3.0,
+            spread_bps_threshold=2.0,
+            velocity_bps_threshold=1.0,
+            ema_spread_bps=60.0,
+            min_confidence=0.6,  # 0.5 < 0.6 → filtered
+            confidence_reference_spread_bps=3.0,
+        )
+        assert hint is None
+
+    def test_small_ema_spread_reduces_base_confidence(self) -> None:
+        """ema_spread が reference の 50% → base_conf ≈ 0.5."""
+        hint = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._LOCAL,
+            reference_snapshot=VenueMidSnapshot("bitflyer", 100.6, 100.5),
+            previous_reference_snapshot=VenueMidSnapshot("bitflyer", 100.2, 99.5),
+            max_age_sec=3.0,
+            spread_bps_threshold=1.0,
+            velocity_bps_threshold=1.0,
+            ema_spread_bps=1.5,  # 1.5 / 3.0 = 0.5, clamped to max(0.33, 0.5) = 0.5
+            min_confidence=0.0,
+            confidence_reference_spread_bps=3.0,
+        )
+        assert hint is not None
+        # velocity agrees → vel_factor=1.0 → confidence=0.5
+        assert hint.confidence == pytest.approx(0.5)
+
+    def test_microprice_disagree_halves_confidence(self) -> None:
+        """microprice 方向が EMA spread 方向と逆 → mp_factor=0.5."""
+        hint = compute_cross_venue_lead_lag_hint(
+            local_snapshot=VenueMidSnapshot("coincheck", 100.0, 100.0, microprice=100.0),
+            reference_snapshot=VenueMidSnapshot("bitflyer", 100.6, 100.5, microprice=99.5),
+            previous_reference_snapshot=VenueMidSnapshot("bitflyer", 100.2, 99.5),
+            max_age_sec=3.0,
+            spread_bps_threshold=2.0,
+            velocity_bps_threshold=1.0,
+            ema_spread_bps=60.0,  # direction=up
+            min_confidence=0.0,
+            confidence_reference_spread_bps=3.0,
+        )
+        assert hint is not None
+        # microprice_spread_bps = (99.5 - 100.0)/100.0 * 10000 = -50bps (disagrees with "up")
+        # base=1.0, vel agrees=1.0, mp_factor=0.5 → confidence=0.5
+        assert hint.confidence == pytest.approx(0.5)
+
+    def test_direction_from_ema_not_point_spread(self) -> None:
+        """EMA spread が負 → direction=down (point spread が正でも)."""
+        hint = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._LOCAL,
+            reference_snapshot=VenueMidSnapshot("bitflyer", 100.6, 100.5),
+            previous_reference_snapshot=VenueMidSnapshot("bitflyer", 100.2, 99.5),
+            max_age_sec=3.0,
+            spread_bps_threshold=2.0,
+            velocity_bps_threshold=1.0,
+            ema_spread_bps=-3.0,  # negative → down
+            min_confidence=0.0,
+            confidence_reference_spread_bps=3.0,
+        )
+        assert hint is not None
+        assert hint.direction == "down"
+        assert hint.adverse_side == "buy"
+
+    def test_confidence_in_event_details(self) -> None:
+        hint = _make_hint()
+        details = build_cross_venue_event_details(hint)
+        assert "confidence" in details
+        assert details["confidence"] == 1.0
+
+    def test_confidence_in_fill_fields(self) -> None:
+        fields = build_cross_venue_fill_fields(
+            enabled=True, hint=_make_hint(), side="sell", vetoed=False,
+        )
+        assert "cross_venue_confidence" in fields
+        assert fields["cross_venue_confidence"] == 1.0
+
+    def test_fill_fields_disabled_includes_confidence_none(self) -> None:
+        fields = build_cross_venue_fill_fields(
+            enabled=False, hint=None, side="buy", vetoed=False,
+        )
+        assert fields["cross_venue_confidence"] is None
+
+
+class TestConfidenceProportionalBoost:
+    """445# confidence-proportional boost のテスト."""
+
+    def test_full_confidence_gets_full_boost(self) -> None:
+        config = FillTestConfig(
+            min_spread_jpy=1.0,
+            cross_venue_lead_lag_enabled=True,
+            cross_venue_lead_lag_offset_boost=1.5,
+        )
+        calc = _make_calc(config)
+        adapter = _OrderbookAdapter([
+            _OB(100.0, [(10_000_000.0, 1.0)], [(10_002_000.0, 1.0)], "coincheck"),
+        ])
+        calc.set_cross_venue_lead_lag_hint(
+            _make_hint(spread_bps=8.0, velocity_bps=3.0)  # confidence=1.0
+        )
+        result = asyncio.run(calc.compute("sell", adapter, "btc_jpy"))
+        full_ratio = result.effective_offset_ratio
+
+        # Same config without hint (baseline)
+        calc2 = _make_calc(config)
+        baseline = asyncio.run(calc2.compute("sell", adapter, "btc_jpy"))
+
+        # full confidence → full boost (1.5x)
+        assert full_ratio == pytest.approx(baseline.effective_offset_ratio * 1.5, rel=0.01)
+
+    def test_half_confidence_gets_half_boost(self) -> None:
+        config = FillTestConfig(
+            min_spread_jpy=1.0,
+            cross_venue_lead_lag_enabled=True,
+            cross_venue_lead_lag_offset_boost=1.5,
+        )
+        calc = _make_calc(config)
+        adapter = _OrderbookAdapter([
+            _OB(100.0, [(10_000_000.0, 1.0)], [(10_002_000.0, 1.0)], "coincheck"),
+        ])
+        hint = CrossVenueLeadLagHint(
+            direction="up", adverse_side="sell", spread_bps=8.0,
+            reference_velocity_bps=3.0, age_sec=0.5, reference_exchange="bitflyer",
+            confidence=0.5,
+        )
+        calc.set_cross_venue_lead_lag_hint(hint)
+        result = asyncio.run(calc.compute("sell", adapter, "btc_jpy"))
+
+        calc2 = _make_calc(config)
+        baseline = asyncio.run(calc2.compute("sell", adapter, "btc_jpy"))
+
+        # confidence=0.5 → boost = 1 + (1.5-1)*0.5 = 1.25
+        expected_ratio = baseline.effective_offset_ratio * 1.25
+        assert result.effective_offset_ratio == pytest.approx(expected_ratio, rel=0.01)

@@ -376,6 +376,10 @@ class FillTestConfig:
     cross_venue_microprice_enabled: bool = False
     cross_venue_depth_imbalance_enabled: bool = False
     cross_venue_depth_imbalance_boost: float = 1.15
+    # 445# EMA 平滑化 + confidence scoring
+    cross_venue_ema_alpha: float = 0.3
+    cross_venue_min_confidence: float = 0.2
+    cross_venue_confidence_reference_spread_bps: float = 3.0
     # 062# S5: SkipGate ML フィルター (AS 分類器ベースの注文スキップ)
     skip_gate_enabled: bool = False
     # 118# A3: side 別有効/無効 (sell 逆選別対策)

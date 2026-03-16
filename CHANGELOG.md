@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 445# Cross-Venue EMA平滑化 + Confidence Scoring (2026-03-16)
+
+### Background
+- 444# の実運用ログ分析: hint 発火率 17% (4/23)
+- **sign_disagree**: 30% (7/23) が velocity 符号不一致で脱落 — 最大のボトルネック
+- **根本原因**: 120s cycle での velocity は Hasbrouck lead-lag の特性時間 (100ms〜5s) 対比
+  で遅すぎ、mean-reversion ノイズを拾い sign_disagree が不当に多発
+- **設計問題**: binary gate (発火/非発火) → spread 3.75bps でも velocity -0.09 で全滅
+- **未活用データ**: microprice は計算済みだが gating 意思決定に未使用
+
+### Changed
+- **cross_venue_lead_lag.py**: EMA 平滑化 + confidence-weighted scoring
+  - `CrossVenueEMAState`: spread の exponential moving average を追跡
+  - dual-mode 設計: Legacy (ema=None, binary gates) / Confidence (ema 指定時)
+  - velocity: hard gate → confidence modifier (0.5=disagree, 0.8=negligible, 1.0=agree)
+  - microprice: 未使用 → confidence modifier (0.5=disagree, 0.9=negligible, 1.0=agree)
+  - `confidence: float` フィールドを `CrossVenueLeadLagHint` に追加 (0.0〜1.0)
+- **fill_cycle_executor.py**: EMA state 管理 + confidence パラメータ転送
+- **maker_risk_guards.py**: 固定 1.25x boost → `1 + (max_boost - 1) * confidence`
+  - confidence=1.0 → 1.25x (従来同等), confidence=0.5 → 1.125x (比例退避)
+- **fill_config.py / fill_test.yaml**: 新パラメータ追加
+  - `cross_venue_ema_alpha: 0.3` (EMA 減衰係数)
+  - `cross_venue_min_confidence: 0.2` (最低 confidence 閾値)
+  - `cross_venue_confidence_reference_spread_bps: 3.0` (base_confidence=1.0 の基準)
+- **fill_quality.py**: `cross_venue_confidence` フィールド追加
+
+### Expected Impact
+- sign_disagree ケースの回復: 7/23 → confidence=0.5 で発火 (適度なブースト付き)
+- 発火率: 17% → 推定 40-50% (EMA によるspread 安定化 + velocity soft gate)
+- 過剰退避の防止: 弱い信号 = 弱いブースト (比例スケーリング)
+
 ## 444# Cross-Venue 閾値チューニング + ログ可視化 (2026-03-16)
 
 ### Background

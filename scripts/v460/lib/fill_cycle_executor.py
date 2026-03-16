@@ -26,6 +26,7 @@ from scripts.v460.lib.cross_venue_lead_lag import (
     VenueMidSnapshot,
     build_cross_venue_event_details,
     compute_cross_venue_lead_lag_hint,
+    update_cross_venue_ema,
 )
 from scripts.v460.lib.fill_config import (
     SkipGateResult as _SkipGateResult,
@@ -99,6 +100,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
         """439# Cross-venue lead-lag hint を更新して maker_price に注入する.
 
         442# 拡張: L5 microprice + depth imbalance 信号。
+        445# EMA 平滑化 + confidence scoring。
         """
         from scripts.v460.lib.event_logger import log_event
         from scripts.v460.lib.ob_utils import depth_volume
@@ -179,17 +181,34 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                     if denom > 0:
                         ref_microprice = (Pb * Qa + Pa * Qb) / denom
 
+            ref_mid = (ref_bid + ref_ask) / 2.0
             current_reference = VenueMidSnapshot(
                 exchange=str(
                     getattr(reference_ob, "exchange", "")
                     or self.config.cross_venue_reference_exchange
                 ),
-                mid_price=(ref_bid + ref_ask) / 2.0,
+                mid_price=ref_mid,
                 timestamp=float(getattr(reference_ob, "timestamp", time.time())),
                 microprice=ref_microprice,
                 bid_depth=ref_bid_depth,
                 ask_depth=ref_ask_depth,
             )
+
+            # 445# EMA 更新: spread を平滑化して安定的な方向判定を行う
+            loc_mid = local_snapshot.mid_price
+            point_spread_bps = (
+                (ref_mid - loc_mid) / loc_mid * 10_000.0 if loc_mid > 0 else 0.0
+            )
+            ema_state = self._cross_venue_ema_state
+            ema_state = update_cross_venue_ema(
+                ema_state,
+                ref_mid=ref_mid,
+                spread_bps=point_spread_bps,
+                timestamp=current_reference.timestamp,
+                alpha=self.config.cross_venue_ema_alpha,
+            )
+            self._cross_venue_ema_state = ema_state
+
             previous_reference = self._cross_venue_prev_reference_snapshot
             hint = compute_cross_venue_lead_lag_hint(
                 local_snapshot=local_snapshot,
@@ -198,20 +217,27 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                 max_age_sec=self.config.cross_venue_lead_lag_max_age_sec,
                 spread_bps_threshold=self.config.cross_venue_lead_lag_spread_bps_threshold,
                 velocity_bps_threshold=self.config.cross_venue_lead_lag_velocity_bps_threshold,
+                # 445# confidence mode
+                ema_spread_bps=ema_state.ema_spread_bps,
+                min_confidence=self.config.cross_venue_min_confidence,
+                confidence_reference_spread_bps=self.config.cross_venue_confidence_reference_spread_bps,
             )
             self._maker_price.set_cross_venue_lead_lag_hint(hint)
             self._cross_venue_prev_reference_snapshot = current_reference
             if hint is not None:
                 logger.info(
                     "[cross_venue] hint direction=%s adverse_side=%s spread=%+.2fbps "
-                    "velocity=%+.2fbps/s age=%.2fs microprice_spread=%s depth_imb=%s",
+                    "velocity=%+.2fbps/s age=%.2fs conf=%.2f microprice_spread=%s "
+                    "depth_imb=%s ema_spread=%+.2fbps",
                     hint.direction,
                     hint.adverse_side,
                     hint.spread_bps,
                     hint.reference_velocity_bps,
                     hint.age_sec,
+                    hint.confidence,
                     f"{hint.microprice_spread_bps:+.2f}bps" if hint.microprice_spread_bps is not None else "N/A",
                     f"{hint.depth_imbalance:+.3f}" if hint.depth_imbalance is not None else "N/A",
+                    ema_state.ema_spread_bps,
                 )
                 try:
                     run_id = self._run_id
@@ -229,7 +255,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                     details=build_cross_venue_event_details(hint),
                 )
             else:
-                # 444# hint=None の理由を具体値付きで可視化
+                # 445# hint=None の理由を具体値付きで可視化
                 _ref_mid = current_reference.mid_price
                 _loc_mid = local_snapshot.mid_price
                 _spread = (_ref_mid - _loc_mid) / _loc_mid * 10_000.0 if _loc_mid > 0 else 0.0
@@ -245,19 +271,17 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                         else 0.0
                     )
                     _vel_s = f"{_vel:+.4f}bps/s"
+                    _ema_spr = ema_state.ema_spread_bps
                     _spr_thr = self.config.cross_venue_lead_lag_spread_bps_threshold
-                    _vel_thr = self.config.cross_venue_lead_lag_velocity_bps_threshold
-                    if abs(_spread) < _spr_thr:
-                        _reason = f"spread({_spread:+.2f})<{_spr_thr}"
-                    elif abs(_vel) < _vel_thr:
-                        _reason = f"velocity({_vel:+.4f})<{_vel_thr}"
-                    elif _spread * _vel <= 0:
-                        _reason = f"sign_disagree(spr={_spread:+.2f},vel={_vel:+.4f})"
+                    _min_conf = self.config.cross_venue_min_confidence
+                    if abs(_ema_spr) < _spr_thr:
+                        _reason = f"ema_spread({_ema_spr:+.2f})<{_spr_thr}"
                     else:
-                        _reason = "unknown"
+                        _reason = f"low_confidence(<{_min_conf})"
                 logger.info(
-                    "[cross_venue] hint=None reason=%s spread=%+.2fbps vel=%s",
-                    _reason, _spread, _vel_s,
+                    "[cross_venue] hint=None reason=%s spread=%+.2fbps "
+                    "ema=%+.2fbps vel=%s",
+                    _reason, _spread, ema_state.ema_spread_bps, _vel_s,
                 )
         except Exception as exc:
             logger.warning("cross-venue hint update error: %s", exc, exc_info=True)

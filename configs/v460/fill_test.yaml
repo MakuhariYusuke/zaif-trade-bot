@@ -326,6 +326,10 @@ cross_venue_lead_lag:
   microprice_enabled: true         # weighted mid = (Pb·Qa + Pa·Qb)/(Qa+Qb) を使用
   depth_imbalance_enabled: true    # reference 板の bid/ask depth 不均衡を信号化
   depth_imbalance_boost: 1.15      # adverse-side + depth 不均衡時の追加 offset boost
+  # 445# EMA 平滑化 + confidence scoring
+  ema_alpha: 0.3                   # EMA 減衰係数 (小 = 平滑化強)
+  min_confidence: 0.2              # 閾値未満 → hint=None
+  confidence_reference_spread_bps: 3.0  # base_confidence=1.0 となる spread
 
 # ---- 062# S5: SkipGate ML フィルター (AS 分類器ベース) ----
 # 071# OB 特徴量除去: 価格・取引データのみで判断 (v459 方式回帰)

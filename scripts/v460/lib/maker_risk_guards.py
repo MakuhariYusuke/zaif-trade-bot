@@ -250,10 +250,14 @@ class RiskGuardsMixin:
             return effective_offset_ratio
 
         # 439# base offset boost (adverse-side retreat)
+        # 445# confidence-proportional: boost = 1 + (max_boost - 1) * confidence
         pre_offset = effective_offset_ratio
+        actual_boost = 1.0 + (
+            cfg.cross_venue_lead_lag_offset_boost - 1.0
+        ) * hint.confidence
         effective_offset_ratio, applied_mult = self._scale_offset_ratio(
             effective_offset_ratio,
-            cfg.cross_venue_lead_lag_offset_boost,
+            actual_boost,
             max_ratio=self._effective_max_ratio(side),
         )
 
@@ -279,13 +283,14 @@ class RiskGuardsMixin:
 
         logger.info(
             "[cross_venue] %s adverse hint from %s: offset %.4f->%.4f "
-            "(mult=%.2f, spread=%+.2fbps, velocity=%+.2fbps/s, age=%.2fs"
+            "(mult=%.2f, conf=%.2f, spread=%+.2fbps, velocity=%+.2fbps/s, age=%.2fs"
             "%s)",
             side,
             hint.reference_exchange,
             pre_offset,
             effective_offset_ratio,
             effective_offset_ratio / pre_offset if pre_offset > 0 else 1.0,
+            hint.confidence,
             hint.spread_bps,
             hint.reference_velocity_bps,
             hint.age_sec,

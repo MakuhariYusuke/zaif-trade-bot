@@ -3,6 +3,7 @@
 433# §3 の BitFlyer 案を 434# §4.2 に沿って安全側へ補正した実装基盤。
 初手は directional override ではなく、adverse-side の retreat / veto hint
 のみを返す。
+445# EMA平滑化 + confidence-weighted scoring 追加。
 """
 
 from __future__ import annotations
@@ -25,6 +26,43 @@ class VenueMidSnapshot:
     ask_depth: float = 0.0              # 板 ask 側合計出来高
 
 
+@dataclass
+class CrossVenueEMAState:
+    """445# EMA state for smoothed cross-venue spread tracking.
+
+    120s cycle interval でのpoint velocity ノイズを平滑化し、
+    sign_disagree による hint 脱落を防ぐ。
+    """
+
+    ema_ref_mid: float
+    ema_spread_bps: float
+    last_timestamp: float
+    n_updates: int = 0
+
+
+def update_cross_venue_ema(
+    state: CrossVenueEMAState | None,
+    ref_mid: float,
+    spread_bps: float,
+    timestamp: float,
+    alpha: float,
+) -> CrossVenueEMAState:
+    """445# Update or initialize EMA state with new observation."""
+    if state is None or state.n_updates == 0:
+        return CrossVenueEMAState(
+            ema_ref_mid=ref_mid,
+            ema_spread_bps=spread_bps,
+            last_timestamp=timestamp,
+            n_updates=1,
+        )
+    return CrossVenueEMAState(
+        ema_ref_mid=alpha * ref_mid + (1.0 - alpha) * state.ema_ref_mid,
+        ema_spread_bps=alpha * spread_bps + (1.0 - alpha) * state.ema_spread_bps,
+        last_timestamp=timestamp,
+        n_updates=state.n_updates + 1,
+    )
+
+
 @dataclass(frozen=True)
 class CrossVenueLeadLagHint:
     """Lead-lag hint derived from reference venue movement."""
@@ -38,6 +76,8 @@ class CrossVenueLeadLagHint:
     # 442# L5 拡張
     microprice_spread_bps: float | None = None   # microprice ベースの spread
     depth_imbalance: float | None = None          # (bid_depth - ask_depth) / total
+    # 445# confidence scoring
+    confidence: float = 1.0                       # 0.0〜1.0, gate/boost の強度制御
 
 
 def build_cross_venue_event_details(
@@ -53,6 +93,7 @@ def build_cross_venue_event_details(
         "age_sec": hint.age_sec,
         "microprice_spread_bps": hint.microprice_spread_bps,
         "depth_imbalance": hint.depth_imbalance,
+        "confidence": hint.confidence,
     }
 
 
@@ -76,6 +117,7 @@ def build_cross_venue_fill_fields(
             "cross_venue_lead_lag_vetoed": None,
             "cross_venue_microprice_spread_bps": None,
             "cross_venue_depth_imbalance": None,
+            "cross_venue_confidence": None,
         }
 
     applied = bool(hint is not None and hint.adverse_side == side)
@@ -99,6 +141,9 @@ def build_cross_venue_fill_fields(
         ),
         "cross_venue_depth_imbalance": (
             hint.depth_imbalance if hint is not None else None
+        ),
+        "cross_venue_confidence": (
+            hint.confidence if hint is not None else None
         ),
     }
 
@@ -136,16 +181,25 @@ def compute_cross_venue_lead_lag_hint(
     max_age_sec: float,
     spread_bps_threshold: float,
     velocity_bps_threshold: float,
+    # 445# EMA-based confidence scoring
+    ema_spread_bps: float | None = None,
+    min_confidence: float = 0.0,
+    confidence_reference_spread_bps: float = 3.0,
 ) -> CrossVenueLeadLagHint | None:
     """Compute a safe lead-lag hint from local/reference venue mids.
 
-    Returns ``None`` unless:
-      - local/reference snapshots are fresh enough
-      - reference venue has a valid previous snapshot
-      - reference spread and velocity agree in sign
-      - both magnitudes exceed the configured thresholds
+    445# Two operation modes:
+      - **Legacy (ema_spread_bps=None)**: Binary thresholds with hard velocity/sign
+        gates. Returns hint or None.
+      - **Confidence (ema_spread_bps provided)**: Continuous confidence scoring.
+        Velocity and microprice become *modifiers* (0.5–1.0) instead of hard gates.
+        Returns hint with ``confidence`` field (0.0–1.0), or None if below
+        ``min_confidence``.
 
-    ``reference_velocity_bps`` is normalised to a per-second basis.
+    Returns ``None`` when:
+      - snapshots are invalid or stale
+      - EMA spread (or point spread in legacy mode) below threshold
+      - confidence below min_confidence (confidence mode only)
     """
     if (
         local_snapshot.mid_price <= 0.0
@@ -172,16 +226,47 @@ def compute_cross_venue_lead_lag_hint(
         / previous_reference_snapshot.mid_price
     ) * 10_000.0 / dt_sec
 
-    if abs(spread_bps) < spread_bps_threshold:
-        return None
-    if abs(reference_velocity_bps) < velocity_bps_threshold:
-        return None
-    if spread_bps == 0.0 or reference_velocity_bps == 0.0:
-        return None
-    if spread_bps * reference_velocity_bps <= 0.0:
-        return None
+    # 445# Confidence mode vs Legacy mode
+    use_confidence = ema_spread_bps is not None
 
-    direction = "up" if spread_bps > 0.0 else "down"
+    if use_confidence:
+        # --- Confidence mode: EMA-based gating + continuous scoring ---
+        gating_spread = ema_spread_bps
+        if abs(gating_spread) < spread_bps_threshold:
+            return None
+
+        # Direction from EMA spread (more stable than point spread)
+        direction = "up" if gating_spread > 0.0 else "down"
+
+        # Base confidence from spread magnitude (0.33–1.0)
+        base_conf = min(
+            1.0,
+            max(0.33, abs(gating_spread) / confidence_reference_spread_bps),
+        )
+
+        # Velocity factor (0.5–1.0): agreement boosts, disagreement dampens
+        if abs(reference_velocity_bps) < velocity_bps_threshold:
+            vel_factor = 0.8   # negligible velocity → neutral
+        elif gating_spread * reference_velocity_bps > 0.0:
+            vel_factor = 1.0   # agrees → full confidence
+        else:
+            vel_factor = 0.5   # disagrees → halved (not killed)
+
+        confidence = base_conf * vel_factor
+    else:
+        # --- Legacy mode: original binary thresholds ---
+        if abs(spread_bps) < spread_bps_threshold:
+            return None
+        if abs(reference_velocity_bps) < velocity_bps_threshold:
+            return None
+        if spread_bps == 0.0 or reference_velocity_bps == 0.0:
+            return None
+        if spread_bps * reference_velocity_bps <= 0.0:
+            return None
+
+        direction = "up" if spread_bps > 0.0 else "down"
+        confidence = 1.0
+
     adverse_side = "sell" if direction == "up" else "buy"
 
     # 442# microprice ベースの spread (存在すれば)
@@ -201,6 +286,17 @@ def compute_cross_venue_lead_lag_hint(
             / local_snapshot.mid_price
         ) * 10_000.0
 
+    # 445# Microprice confidence modifier (confidence mode only)
+    if use_confidence and microprice_spread_bps is not None:
+        direction_sign = 1.0 if direction == "up" else -1.0
+        if microprice_spread_bps * direction_sign > 0.0:
+            mp_factor = 1.0   # microprice agrees with direction → full
+        elif abs(microprice_spread_bps) < 0.5:
+            mp_factor = 0.9   # negligible disagreement → nearly full
+        else:
+            mp_factor = 0.5   # microprice disagrees → halved
+        confidence *= mp_factor
+
     # 442# depth imbalance: (bid - ask) / (bid + ask)
     depth_imbalance: float | None = None
     ref_total = reference_snapshot.bid_depth + reference_snapshot.ask_depth
@@ -208,6 +304,11 @@ def compute_cross_venue_lead_lag_hint(
         depth_imbalance = (
             (reference_snapshot.bid_depth - reference_snapshot.ask_depth) / ref_total
         )
+
+    # 445# Clamp confidence and apply min_confidence gate
+    confidence = max(0.0, min(1.0, confidence))
+    if use_confidence and confidence < min_confidence:
+        return None
 
     return CrossVenueLeadLagHint(
         direction=direction,
@@ -218,4 +319,5 @@ def compute_cross_venue_lead_lag_hint(
         reference_exchange=reference_snapshot.exchange,
         microprice_spread_bps=microprice_spread_bps,
         depth_imbalance=depth_imbalance,
+        confidence=confidence,
     )
