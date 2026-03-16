@@ -6801,3 +6801,118 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - filtered broad:
   - `tests/unit/v460/`
   - `4872 passed, 2 skipped, 13 warnings in 40.14s`
+
+## 2026-03-16 追加 wave: ML cache retention と scheduler cycle cleanup
+
+### 実施
+- [feature_enricher.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/feature_enricher.py)
+  - raw orderbook/trades cache を `OrderedDict` 化
+  - `clear_raw_load_caches()`
+  - `get_raw_load_cache_stats()`
+  を追加
+- [data_loader.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/data_loader.py)
+  - fill-records cache を `OrderedDict` 化
+  - `clear_fill_records_cache()`
+  - `get_fill_records_cache_stats()`
+  を追加
+- [retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/retrain_scheduler.py)
+  - scheduler cycle ごとに `clear_fill_records_cache()` / `clear_raw_load_caches()` を `finally` で実行
+- [sqlite_cache.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/cache/sqlite_cache.py)
+  - duplicate global initialization を削除
+  - `close()` を idempotent 化
+- [memory_cache.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/cache/memory_cache.py)
+  - `_custom_ttl_caches` を bounded `OrderedDict` 化
+  - empty TTL bucket を expiration 後に prune
+
+### テスト
+- [test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+  - raw cache bounded/clearable 契約を追加
+- [test_ml_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ml_pipeline.py)
+  - fill-records cache bounded/clearable 契約を追加
+- [test_sqlite_cache.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/cache/test_sqlite_cache.py)
+  - close idempotence に追随
+- [test_memory_cache.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/cache/test_memory_cache.py)
+  - custom TTL cache variants の bounded/prune 契約を追加
+- [test_253_hot_reload_dead_config_getattr_bare_except.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_253_hot_reload_dead_config_getattr_bare_except.py)
+  - line-count guard を現行 executor サイズに追随
+- [test_336_yaml_code_drift_prevention.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_336_yaml_code_drift_prevention.py)
+  - `micro_timeout_wait_sec_sell` を intentional YAML override に追加
+
+### 見立て
+- 強いリーク候補だったのは「無制限 growth」より「長寿命プロセスで重い DataFrame を cycle 間で握り続ける」タイプだった
+- とくに `retrain_scheduler` は module-level cache を持つ `feature_enricher` / `data_loader` を繰り返し呼ぶため、cycle ごとの clear が効く
+- `sqlite_cache` の duplicate global はメモリというより接続/寿命管理の負債だったので、今回ついでに解消
+- `diverse_learning_methods.results_cache` は未使用の dead field 寄りで、今回のリーク主因ではないと判断して保留
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_enricher_skip_gate.py -k RawLoadCache`
+  - `5 passed, 66 deselected in 1.62s`
+- focused:
+  - `tests/unit/v460/test_ml_pipeline.py -k DataLoaderCache`
+  - `6 passed, 17 deselected in 2.53s`
+- focused:
+  - `tests/unit/cache/test_sqlite_cache.py tests/unit/cache/test_memory_cache.py`
+  - `36 passed in 3.84s`
+- focused:
+  - `tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_141_side_specific_models.py -k 'retrain_model or side_specific or enriched_cache or AtomicHashMove or PostDeployVerification'`
+  - `56 passed, 74 deselected, 1 warning in 3.13s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `4902 passed, 2 skipped, 13 warnings in 30.13s`
+
+## 2026-03-16 追加 wave: fill test 経路のメモリ診断強化 + ML cleanup finally 統一
+
+### 実施
+- [cache_cleanup.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/cache_cleanup.py)
+  - `clear_ml_data_caches_with_log(...)` を追加
+  - `load_fill_records()` / `enrich_fill_records()` を使う長寿命 CLI が同じ finally cleanup 契約を使えるように統一
+- ML entrypoints
+  - [run_ml_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/run_ml_pipeline.py)
+  - [train_sg_v2.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/train_sg_v2.py)
+  - [train_sg_v3.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/train_sg_v3.py)
+  - [train_alt_horizon.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/train_alt_horizon.py)
+  - [tune_as_classifier.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/tune_as_classifier.py)
+  - [walk_forward_as.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/walk_forward_as.py)
+  - [deploy_sg_v3.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/deploy_sg_v3.py)
+  - [deploy_sg_v4.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/deploy_sg_v4.py)
+  - [run_070_deep_analysis.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/run_070_deep_analysis.py)
+  - [run_070_final_analysis.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/run_070_final_analysis.py)
+  - [run_070_model_search.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/run_070_model_search.py)
+  - [retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/retrain_scheduler.py)
+  - 上記を `main()/cycle finally -> clear_ml_data_caches_with_log(..., collect_garbage=True)` へ統一
+- [fill_test_cli.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_test_cli.py)
+  - `_collect_fill_test_memory_diagnostics(...)` を追加
+  - exit dump に以下を追加:
+    - `gc_counts`
+    - `gc_thresholds`
+    - `ml_cache_stats`
+    - `runner_buffer_stats`
+    - `health_monitor`
+- [resilience.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/resilience.py)
+  - `FillTestHealthMonitor` に pressure GC cooldown を追加
+  - warning/critical RSS で即時 `gc.collect()` を走らせる経路を追加
+  - `snapshot_memory_diagnostics(...)` を追加して fill_test exit dump から参照可能にした
+
+### テスト
+- [test_fill_test_cli_diagnostics.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_test_cli_diagnostics.py)
+  - extra payload と runner/cache diagnostics を追加確認
+- [test_health_monitor_resilience.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_health_monitor_resilience.py)
+  - pressure GC 発火と cooldown を追加確認
+- [test_ml_cache_cleanup.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ml_cache_cleanup.py)
+  - shared helper の集約/GC/logging と entrypoint wiring を追加確認
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_fill_test_cli_diagnostics.py tests/unit/v460/test_health_monitor_resilience.py tests/unit/v460/test_ml_cache_cleanup.py -q --no-cov --tb=short`
+  - `12 passed in 1.51s`
+- focused:
+  - `tests/unit/v460/test_sac_retrain_scheduler.py tests/unit/v460/test_train_sg_v3.py -q --no-cov --tb=short`
+  - `33 passed in 1.58s`
+- focused:
+  - `tests/unit/v460/test_ml_pipeline.py -k DataLoaderCache tests/unit/v460/test_enricher_skip_gate.py -k RawLoadCache -q --no-cov --tb=short`
+  - `5 passed, 89 deselected in 1.56s`
+
+### 補足
+- `tests/unit/v460/` broad は今回差分でなく、workspace 上で `configs/v460/fill_test.yaml` が欠落しているため、config/YAML 依存テストが collection/実行途中で失敗する状態だった
+- 今回のメモリ対策差分 자체の focused 回帰は通過している

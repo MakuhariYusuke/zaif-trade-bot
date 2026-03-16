@@ -46,9 +46,10 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from scripts.v460.ml.data_loader import load_fill_records
+from scripts.v460.ml.data_loader import clear_fill_records_cache, load_fill_records
 from scripts.v460.ml.feature_enricher import (
     build_preorder_as_features,
+    clear_raw_load_caches,
     enrich_fill_records,
 )
 from scripts.v460.ml.skip_eval_utils import compute_skip_slice_metrics
@@ -2039,6 +2040,10 @@ def run_scheduler(cfg: ConfigMap, config_path: Path | None = None) -> None:
         except Exception as e:
             logger.error(f"Retrain cycle failed: {e}", exc_info=True)
             trigger.record_result("error")
+        finally:
+            # 長寿命 scheduler では module-level DataFrame cache を毎 cycle で解放する。
+            clear_fill_records_cache()
+            clear_raw_load_caches()
 
         effective_interval = trigger.get_effective_interval()
         logger.info(f"Next retrain in {effective_interval}s ({effective_interval / 3600:.1f}h)")

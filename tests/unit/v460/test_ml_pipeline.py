@@ -6,17 +6,25 @@ import json
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
 import pytest
 
+import scripts.v460.ml.data_loader as ml_data_loader
 from scripts.v460.ml.as_classifier import (
     ASModelMetrics,
     evaluate_skip_policy,
     train_as_classifier,
 )
-from scripts.v460.ml.data_loader import build_as_features, build_fill_features, load_fill_records
+from scripts.v460.ml.data_loader import (
+    build_as_features,
+    build_fill_features,
+    clear_fill_records_cache,
+    get_fill_records_cache_stats,
+    load_fill_records,
+)
 from scripts.v460.ml.fill_classifier import FillModelMetrics, train_fill_classifier
 from tests.unit.v460._real_data_test_helpers import (
     latest_fill_records_file,
@@ -393,6 +401,34 @@ class Test057Integration:
 
 class Test057DataLoaderCache:
     """load_fill_records のファイル更新連動キャッシュ."""
+
+    def test_cache_is_bounded_and_clearable(self, tmp_path: Path) -> None:
+        clear_fill_records_cache()
+        for idx in range(3):
+            subdir = tmp_path / f"run_{idx}"
+            subdir.mkdir()
+            payload = {
+                "cycle_id": f"c{idx}",
+                "timestamp": 1700000000.0 + idx,
+                "side": "buy",
+                "order_price": 15000000.0 + idx,
+                "order_quantity": 0.001,
+                "filled": True,
+                "adverse_selected_raw": True,
+                "queue_wait_sec": 10.0,
+            }
+            (subdir / "fill_records_20260101.jsonl").write_text(
+                json.dumps(payload) + "\n",
+                encoding="utf-8",
+            )
+
+        with patch.object(ml_data_loader, "_FILL_RECORDS_CACHE_MAX_ENTRIES", 2):
+            for idx in range(3):
+                load_fill_records(tmp_path / f"run_{idx}")
+
+        assert get_fill_records_cache_stats()["fill_records_cache_entries"] <= 2
+        clear_fill_records_cache()
+        assert get_fill_records_cache_stats()["fill_records_cache_entries"] == 0
 
     def test_cache_invalidates_when_file_changes(self, tmp_path: Path) -> None:
         p = tmp_path / "fill_records_20260101.jsonl"

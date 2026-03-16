@@ -110,6 +110,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "loss_boost_offset_mult",
     "max_consecutive_trending_sell_skip",
     "min_spread_jpy",
+    "micro_timeout_wait_sec_sell",
     "narrow_spread_boost_buy",
     "narrow_spread_boost_sell",
     "narrow_spread_bps",

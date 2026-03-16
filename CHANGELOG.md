@@ -5662,3 +5662,23 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused shared-helper bundle: `19 passed, 218 deselected in 5.29s`
     - filtered broad `tests/unit/v460/`: `4872 passed, 2 skipped, 13 warnings in 40.14s`
+- 2026-03-16: tightened likely memory-retention hotspots around ML caches and long-lived retrain scheduling.
+  - switched `scripts/v460/ml/feature_enricher.py` and `scripts/v460/ml/data_loader.py` module caches to `OrderedDict` LRU-style pruning and added explicit clear/stats helpers
+  - updated `scripts/v460/ml/retrain_scheduler.py` to clear fill-record/raw caches at the end of each scheduler cycle so large DataFrames do not stay resident across loops
+  - removed duplicate global cache initialization from `ztb/cache/sqlite_cache.py` and made `close()` idempotent
+  - bounded `ztb/cache/memory_cache.py` custom-TTL cache buckets and prune empty TTL buckets after expiration
+  - aligned regression tests with new cache contracts and current `fill_cycle_executor.py` / YAML override state
+  - re-verified with:
+    - focused cache bundle: `5 passed` / `6 passed` / `36 passed`
+    - focused retrain bundle: `56 passed, 74 deselected in 3.13s`
+    - filtered broad `tests/unit/v460/`: `4902 passed, 2 skipped, 13 warnings in 30.13s`
+- 2026-03-16: strengthened fill-test memory diagnostics and unified ML cache cleanup across long-lived scripts.
+  - added `scripts/v460/ml/cache_cleanup.py::clear_ml_data_caches_with_log(...)` and switched every `scripts/v460/ml/*` entrypoint using `load_fill_records()` / `enrich_fill_records()` to run cleanup in `finally`
+  - expanded `scripts/v460/lib/fill_test_cli.py` exit dumps with GC counts, ML cache stats, runner buffer sizes, and health-monitor memory diagnostics
+  - added pressure-triggered GC with cooldown and a public diagnostics snapshot to `scripts/v460/lib/resilience.py::FillTestHealthMonitor`
+  - added focused regression coverage for the new cleanup helper, fill-test diagnostics payload, and pressure-GC cooldown behavior
+  - validation:
+    - `12 passed in 1.51s` (`test_fill_test_cli_diagnostics.py`, `test_health_monitor_resilience.py`, `test_ml_cache_cleanup.py`)
+    - `33 passed in 1.58s` (`test_sac_retrain_scheduler.py`, `test_train_sg_v3.py`)
+    - `5 passed, 89 deselected in 1.56s` (`test_ml_pipeline.py -k DataLoaderCache`, `test_enricher_skip_gate.py -k RawLoadCache`)
+    - filtered broad is currently blocked by a workspace-level missing `configs/v460/fill_test.yaml`, which now fails unrelated config/YAML tests during collection

@@ -19,11 +19,14 @@ from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
+import scripts.v460.ml.feature_enricher as feature_enricher_module
 from scripts.v460.ml.feature_enricher import (
     MICRO_FEATURE_COLS,
     build_enriched_as_features,
+    clear_raw_load_caches,
     build_pnl_features,
     enrich_fill_records,
+    get_raw_load_cache_stats,
     load_raw_orderbook,
     load_raw_trades,
     _compute_trade_features,
@@ -409,6 +412,34 @@ class Test058EnrichFillRecords:
 
 class Test058RawLoadCache:
     """raw orderbook/trades ローダーのキャッシュ挙動テスト."""
+
+    def test_raw_load_cache_is_bounded_and_clearable(self, tmp_path: Path) -> None:
+        clear_raw_load_caches()
+        for subdir, row_factory in (
+            (
+                "trades",
+                lambda ts: [{"ts": ts, "price": 100.0 + ts, "amount": 0.1, "side": "buy"}],
+            ),
+            (
+                "orderbook",
+                lambda ts: [{"ts": ts, "bids": [[100.0 + ts, 0.2]], "asks": [[101.0 + ts, 0.3]]}],
+            ),
+        ):
+            target_dir = tmp_path / subdir
+            target_dir.mkdir(exist_ok=True)
+            for day_index, day in enumerate(("20260220", "20260221", "20260222"), start=1):
+                _write_jsonl_gz(target_dir / f"{day}.jsonl.gz", row_factory(float(day_index)))
+
+        with patch.object(feature_enricher_module, "_RAW_LOAD_CACHE_MAX_ENTRIES", 2):
+            for day in ("20260220", "20260221", "20260222"):
+                load_raw_trades(tmp_path, date_filter={day})
+                load_raw_orderbook(tmp_path, date_filter={day})
+
+        stats = get_raw_load_cache_stats()
+        assert stats["trades_cache_entries"] <= 2
+        assert stats["orderbook_cache_entries"] <= 2
+        clear_raw_load_caches()
+        assert get_raw_load_cache_stats()["total_cache_entries"] == 0
 
     def test_trades_cache_invalidates_on_file_update(self, tmp_path: Path) -> None:
         _assert_raw_cache_invalidates_on_file_update(
