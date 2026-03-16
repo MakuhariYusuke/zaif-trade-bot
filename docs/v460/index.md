@@ -435,10 +435,10 @@
 | 439 | impl | [439_ph4_cross_venue_lead_lag_guard.md](439_ph4_cross_venue_lead_lag_guard.md) | Cross-Venue Lead-Lag Guard: BitFlyer 参照信号基盤構築 (disabled default) |
 | 440 | impl | [440_ph4_toxicity_veto_investigation_and_regime_side_offset.md](440_ph4_toxicity_veto_investigation_and_regime_side_offset.md) | Toxicity Veto調査: AS Classifier ROC-AUC≈0.50で棄却、代替としてregime-side offset非対称化を実装 |
 | 441 | impl | [441_ph2_impl_sac_retrain_and_ab_offset_comparison.md](441_ph2_impl_sac_retrain_and_ab_offset_comparison.md) | SAC Retrain YAML設定完成 + 440# A/B Offset比較ツール構築、ベースライン取得済 |
-| 442 | impl | [442_cross_venue_activation_ob_depth_enhancement.md](442_cross_venue_activation_ob_depth_enhancement.md) | Cross-Venue有効化 + L5板深度 + Microprice + Depth Imbalance |
-| 443 | fix | [443_cross_venue_threshold_logging_fix.md](443_cross_venue_threshold_logging_fix.md) | Cross-Venue 閾値修正 + ログ・FillRecord バグ修正 |
-| 444 | fix | [444_cross_venue_threshold_tuning.md](444_cross_venue_threshold_tuning.md) | Cross-Venue 閾値チューニング + hint=None ログ可視化 |
-| 445 | impl | [445_cross_venue_ema_confidence_scoring.md](445_cross_venue_ema_confidence_scoring.md) | Cross-Venue EMA平滑化 + Confidence Scoring: sign_disagree解消 + 比例ブースト |
+| 442 | impl | [442_ph4_impl_cross_venue_activation_ob_depth.md](442_ph4_impl_cross_venue_activation_ob_depth.md) | Cross-Venue有効化 + L5板深度 + Microprice + Depth Imbalance |
+| 443 | fix | [443_ph4_fix_cross_venue_threshold_logging.md](443_ph4_fix_cross_venue_threshold_logging.md) | Cross-Venue 閾値修正 + ログ・FillRecord バグ修正 |
+| 444 | fix | [444_ph4_fix_cross_venue_threshold_tuning.md](444_ph4_fix_cross_venue_threshold_tuning.md) | Cross-Venue 閾値チューニング + hint=None ログ可視化 |
+| 445 | impl | [445_ph4_impl_cross_venue_ema_confidence.md](445_ph4_impl_cross_venue_ema_confidence.md) | Cross-Venue EMA平滑化 + Confidence Scoring: sign_disagree解消 + 比例ブースト |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
