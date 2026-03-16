@@ -48,6 +48,12 @@
 | `scripts/v460/lib/cross_venue_lead_lag.py` | VenueMidSnapshot/Hint 拡張, event/fill fields 拡張 |
 | `scripts/v460/lib/fill_cycle_executor.py` | `_update_cross_venue_lead_lag_hint()` 全面書換え |
 | `scripts/v460/lib/maker_risk_guards.py` | DI 確認ブースト追加 |
+
+## 後続チケット
+
+- 443#: velocity_bps_threshold 修正 (1.0→0.05)、ログレベル修正、FillRecord バグ修正
+- 444#: spread_bps_threshold (2.0→1.0)、velocity (0.05→0.01)、hint=None 理由ログ
+- 445#: EMA平滑化 + confidence scoring (binary gate → continuous)
 | `tests/unit/v460/test_439_cross_venue_lead_lag.py` | 新スキーマ対応 |
 | `tests/unit/v460/test_113_resilience.py` | 行数上限調整 (810→830) |
 | `tests/unit/v460/test_253_*.py` | executor 行数上限調整 (1300→1340) |

@@ -202,6 +202,10 @@ def _parse_cross_venue_section(yaml_cfg: dict) -> dict:
         "microprice_enabled": "cross_venue_microprice_enabled",
         "depth_imbalance_enabled": "cross_venue_depth_imbalance_enabled",
         "depth_imbalance_boost": "cross_venue_depth_imbalance_boost",
+        # 445# EMA平滑化 + confidence scoring
+        "ema_alpha": "cross_venue_ema_alpha",
+        "min_confidence": "cross_venue_min_confidence",
+        "confidence_reference_spread_bps": "cross_venue_confidence_reference_spread_bps",
     }
     for yaml_key, config_key in cv_map.items():
         if yaml_key in cv:
