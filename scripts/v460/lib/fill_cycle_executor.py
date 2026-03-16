@@ -221,6 +221,9 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                 ema_spread_bps=ema_state.ema_spread_bps,
                 min_confidence=self.config.cross_venue_min_confidence,
                 confidence_reference_spread_bps=self.config.cross_venue_confidence_reference_spread_bps,
+                # 449# DRY: 既計算の point_spread_bps を渡して重複排除
+                precomputed_point_spread_bps=point_spread_bps,
+                confidence_floor=self.config.cross_venue_confidence_floor,
             )
             self._maker_price.set_cross_venue_lead_lag_hint(hint)
             self._cross_venue_prev_reference_snapshot = current_reference
@@ -239,33 +242,24 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                     f"{hint.depth_imbalance:+.3f}" if hint.depth_imbalance is not None else "N/A",
                     ema_state.ema_spread_bps,
                 )
-                try:
-                    run_id = self._run_id
-                except AttributeError:
-                    run_id = ""
-                try:
-                    git_sha = self._git_sha
-                except AttributeError:
-                    git_sha = ""
+                # 449# 安定性: try/except AttributeError → getattr に統一
                 log_event(
                     "cross_venue_hint",
                     self.config.results_dir,
-                    run_id=str(run_id),
-                    git_sha=str(git_sha),
+                    run_id=str(getattr(self, "_run_id", "")),
+                    git_sha=str(getattr(self, "_git_sha", "")),
                     details=build_cross_venue_event_details(hint),
                 )
             else:
                 # 445# hint=None の理由を具体値付きで可視化
-                _ref_mid = current_reference.mid_price
-                _loc_mid = local_snapshot.mid_price
-                _spread = (_ref_mid - _loc_mid) / _loc_mid * 10_000.0 if _loc_mid > 0 else 0.0
+                # 449# DRY: _spread は L200 の point_spread_bps を再利用
                 if previous_reference is None:
                     _reason = "first_call"
                     _vel_s = "N/A"
                 else:
                     _dt = current_reference.timestamp - previous_reference.timestamp
                     _vel = (
-                        (_ref_mid - previous_reference.mid_price)
+                        (current_reference.mid_price - previous_reference.mid_price)
                         / previous_reference.mid_price * 10_000.0 / _dt
                         if _dt > 0 and previous_reference.mid_price > 0
                         else 0.0
@@ -281,7 +275,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                 logger.info(
                     "[cross_venue] hint=None reason=%s spread=%+.2fbps "
                     "ema=%+.2fbps vel=%s",
-                    _reason, _spread, ema_state.ema_spread_bps, _vel_s,
+                    _reason, point_spread_bps, ema_state.ema_spread_bps, _vel_s,
                 )
         except Exception as exc:
             logger.warning("cross-venue hint update error: %s", exc, exc_info=True)

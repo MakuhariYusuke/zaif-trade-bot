@@ -278,9 +278,11 @@ class RiskGuardsMixin:
         ):
             # direction=up (price rising) → bid_depth > ask_depth → imbalance > 0 → sell が adverse
             # direction=down → bid_depth < ask_depth → imbalance < 0 → buy が adverse
+            # 449# threshold を config 化 (従来はハードコード 0.1)
+            _di_thr = cfg.cross_venue_depth_imbalance_threshold
             adverse_confirmed = (
-                (hint.direction == "up" and hint.depth_imbalance > 0.1)
-                or (hint.direction == "down" and hint.depth_imbalance < -0.1)
+                (hint.direction == "up" and hint.depth_imbalance > _di_thr)
+                or (hint.direction == "down" and hint.depth_imbalance < -_di_thr)
             )
             if adverse_confirmed:
                 effective_offset_ratio, di_mult = self._scale_offset_ratio(

@@ -604,3 +604,97 @@ class TestConfidenceProportionalBoost:
         # confidence=0.5 → boost = 1 + (1.5-1)*0.5 = 1.25
         expected_ratio = baseline.effective_offset_ratio * 1.25
         assert result.effective_offset_ratio == pytest.approx(expected_ratio, rel=0.01)
+
+
+# ---- 449# DRY / config 拡張テスト ----
+
+
+class TestPrecomputedSpreadBps:
+    """449# precomputed_point_spread_bps パラメータの動作確認."""
+
+    _LOCAL = VenueMidSnapshot("coincheck", 100.0, 100.0)
+
+    def test_precomputed_value_used_instead_of_recompute(self) -> None:
+        """caller が渡した point_spread_bps が関数内部で再利用されることを確認."""
+        ref = VenueMidSnapshot("bitflyer", 100.6, 100.5)
+        prev = VenueMidSnapshot("bitflyer", 100.2, 99.5)
+        # point_spread_bps を明示的に指定
+        hint = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._LOCAL,
+            reference_snapshot=ref,
+            previous_reference_snapshot=prev,
+            max_age_sec=3.0,
+            spread_bps_threshold=1.0,
+            velocity_bps_threshold=1.0,
+            precomputed_point_spread_bps=42.0,  # 実際の値とは異なる値を注入
+        )
+        assert hint is not None
+        # legacy mode: spread_bps = precomputed value
+        assert hint.spread_bps == pytest.approx(42.0)
+
+    def test_precomputed_none_falls_back_to_calculation(self) -> None:
+        """precomputed=None の場合、従来通り内部計算が行われる."""
+        ref = VenueMidSnapshot("bitflyer", 100.6, 100.5)
+        prev = VenueMidSnapshot("bitflyer", 100.2, 99.5)
+        hint_auto = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._LOCAL,
+            reference_snapshot=ref,
+            previous_reference_snapshot=prev,
+            max_age_sec=3.0,
+            spread_bps_threshold=1.0,
+            velocity_bps_threshold=1.0,
+        )
+        hint_explicit = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._LOCAL,
+            reference_snapshot=ref,
+            previous_reference_snapshot=prev,
+            max_age_sec=3.0,
+            spread_bps_threshold=1.0,
+            velocity_bps_threshold=1.0,
+            precomputed_point_spread_bps=None,
+        )
+        assert hint_auto is not None
+        assert hint_explicit is not None
+        assert hint_auto.spread_bps == pytest.approx(hint_explicit.spread_bps)
+
+
+class TestConfidenceFloorParam:
+    """449# confidence_floor パラメータの動作確認."""
+
+    _LOCAL = VenueMidSnapshot("coincheck", 100.0, 100.0)
+
+    def test_custom_confidence_floor(self) -> None:
+        """confidence_floor=0.5 → base_conf が 0.5 以上にクランプされる."""
+        hint = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._LOCAL,
+            reference_snapshot=VenueMidSnapshot("bitflyer", 100.6, 100.5),
+            previous_reference_snapshot=VenueMidSnapshot("bitflyer", 100.2, 99.5),
+            max_age_sec=3.0,
+            spread_bps_threshold=1.0,
+            velocity_bps_threshold=1.0,
+            ema_spread_bps=1.5,  # 1.5 / 3.0 = 0.5, threshold OK
+            min_confidence=0.0,
+            confidence_reference_spread_bps=3.0,
+            confidence_floor=0.6,  # 0.5 < 0.6 → floor にクランプ
+        )
+        assert hint is not None
+        # base_conf = max(0.6, 0.5) = 0.6, vel agrees → 1.0 → confidence = 0.6
+        assert hint.confidence == pytest.approx(0.6)
+
+    def test_default_confidence_floor_is_033(self) -> None:
+        """デフォルト floor=0.33 の動作確認 (既存動作の後方互換)."""
+        hint = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._LOCAL,
+            reference_snapshot=VenueMidSnapshot("bitflyer", 100.6, 100.5),
+            previous_reference_snapshot=VenueMidSnapshot("bitflyer", 100.2, 99.5),
+            max_age_sec=3.0,
+            spread_bps_threshold=0.1,
+            velocity_bps_threshold=1.0,
+            ema_spread_bps=0.5,  # 0.5 / 3.0 = 0.167
+            min_confidence=0.0,
+            confidence_reference_spread_bps=3.0,
+            # confidence_floor=0.33 (default)
+        )
+        assert hint is not None
+        # base_conf = max(0.33, 0.167) = 0.33, vel agrees → 1.0 → confidence = 0.33
+        assert hint.confidence == pytest.approx(0.33)

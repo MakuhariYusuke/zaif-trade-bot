@@ -192,6 +192,10 @@ def compute_cross_venue_lead_lag_hint(
     ema_spread_bps: float | None = None,
     min_confidence: float = 0.0,
     confidence_reference_spread_bps: float = 3.0,
+    # 449# DRY: caller が既に計算済みの point_spread_bps を渡せる
+    precomputed_point_spread_bps: float | None = None,
+    # 449# confidence floor を外部設定可能に (市場理論根拠: Kyle 1985 λ の最小信頼区間)
+    confidence_floor: float = 0.33,
 ) -> CrossVenueLeadLagHint | None:
     """Compute a safe lead-lag hint from local/reference venue mids.
 
@@ -224,10 +228,14 @@ def compute_cross_venue_lead_lag_hint(
     if dt_sec <= 0.0:
         return None
 
-    spread_bps = (
-        (reference_snapshot.mid_price - local_snapshot.mid_price)
-        / local_snapshot.mid_price
-    ) * 10_000.0
+    # 449# DRY: caller が既に計算済みなら再計算をスキップ
+    if precomputed_point_spread_bps is not None:
+        spread_bps = precomputed_point_spread_bps
+    else:
+        spread_bps = (
+            (reference_snapshot.mid_price - local_snapshot.mid_price)
+            / local_snapshot.mid_price
+        ) * 10_000.0
     reference_velocity_bps = (
         (reference_snapshot.mid_price - previous_reference_snapshot.mid_price)
         / previous_reference_snapshot.mid_price
@@ -245,10 +253,12 @@ def compute_cross_venue_lead_lag_hint(
         # Direction from EMA spread (more stable than point spread)
         direction = "up" if gating_spread > 0.0 else "down"
 
-        # Base confidence from spread magnitude (0.33–1.0)
+        # Base confidence from spread magnitude
+        # confidence_floor: Kyle (1985) λ の最小信頼区間に相当。
+        # spread が小さくても完全に無視しない (information floor)。
         base_conf = min(
             1.0,
-            max(0.33, abs(gating_spread) / confidence_reference_spread_bps),
+            max(confidence_floor, abs(gating_spread) / confidence_reference_spread_bps),
         )
 
         # Velocity factor (0.5–1.0): agreement boosts, disagreement dampens

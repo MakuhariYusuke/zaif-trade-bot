@@ -376,10 +376,15 @@ class FillTestConfig:
     cross_venue_microprice_enabled: bool = False
     cross_venue_depth_imbalance_enabled: bool = False
     cross_venue_depth_imbalance_boost: float = 1.15
+    # 449# depth imbalance 判定閾値 (板不均衡がこの値を超えたら adverse 裏付け)
+    cross_venue_depth_imbalance_threshold: float = 0.1
     # 445# EMA 平滑化 + confidence scoring
     cross_venue_ema_alpha: float = 0.3
     cross_venue_min_confidence: float = 0.2
     cross_venue_confidence_reference_spread_bps: float = 3.0
+    # 449# confidence floor: spread 小でも完全無視しない最低信頼度
+    # Kyle (1985) λ に基づく information floor — 小さな乖離にも情報価値を認める
+    cross_venue_confidence_floor: float = 0.33
     # 062# S5: SkipGate ML フィルター (AS 分類器ベースの注文スキップ)
     skip_gate_enabled: bool = False
     # 118# A3: side 別有効/無効 (sell 逆選別対策)
