@@ -1,0 +1,56 @@
+{
+  "_comment": "SAC v450 Template: Dynamic thresholds + action discovery curriculum",
+  "version": "4.5.0-v450.template",
+  "training": {
+    "model_name": "sac_v450_template",
+    "algorithm": "sac",
+    "total_timesteps": 3000,
+    "eval_freq": 1000,
+    "checkpoint_interval": 1000,
+    "data_config": {
+      "use_real_data": true,
+      "data_path": "data/btc_jpy_1m_dataset.csv",
+      "validation_split": 0.2
+    },
+    "environment": {
+      "timeframe": "1m",
+      "initial_balance": 200000.0,
+      "transaction_cost": 0.001,
+      "max_position_size": 1.0,
+      "enable_action_masking": true,
+      "use_continuous_actions": true,
+      "curriculum_stage": "action_discovery",
+      "dynamic_threshold_mode": "z_score",
+      "z_score_window": 50,
+      "z_score_threshold": 3.0,
+      "z_score_method": "mad",
+      "min_action_threshold": 0.002,
+      "max_action_threshold": 0.08,
+      "regime_detection_config": {
+        "use_relative": true,
+        "reference_window": 1000,
+        "percentile_threshold": 90,
+        "volatility_percentile_window": 500
+      },
+      "signal_guidance_enabled": true,
+      "reward_settings": {
+        "use_smart_incentive": true,
+        "smart_incentive_mode": "regime_adaptive",
+        "action_discovery": {
+          "enabled": true,
+          "scale": 0.5,
+          "magnitude_bonus": true,
+          "direction_bonus": true
+        }
+      }
+    },
+    "sac_hyperparameters": {
+      "learning_rate": 0.0003,
+      "buffer_size": 10000,
+      "learning_starts": 100,
+      "batch_size": 256,
+      "ent_coef": "auto"
+    }
+  },
+  "logging": { "log_level": "INFO" }
+}

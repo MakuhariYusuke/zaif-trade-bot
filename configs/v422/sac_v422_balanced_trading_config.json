@@ -1,0 +1,101 @@
+{
+  "model_name": "sac_v421_balanced_trading",
+  "algorithm": "sac",
+  "total_timesteps": 1000,
+  "data_source": "csv",
+  "data_path": "data/btc_jpy_real_dataset.csv",
+  "data_config": {
+    "csv_path": "btc_jpy_real_dataset.csv",
+    "use_real_data": true
+  },
+  "sac_hyperparameters": {
+    "learning_rate": 0.0003,
+    "buffer_size": 20000,
+    "learning_starts": 500,
+    "batch_size": 128,
+    "tau": 0.005,
+    "gamma": 0.99,
+    "train_freq": 1,
+    "gradient_steps": 1,
+    "ent_coef": 0.01,
+    "target_update_interval": 1,
+    "target_entropy": -1.0
+  },
+  "environment": {
+    "initial_balance": 200000.0,
+    "transaction_cost": 1e-05,
+    "max_position_size": 1.0,
+    "enable_action_masking": false,
+    "use_continuous_actions": true,
+    "use_standardized_observations": true,
+    "random_start": true,
+    "curriculum_stage": "profit_optimized",
+    "continuous_to_discrete_threshold": 0.1,
+    "feature_set": "curated",
+    "adaptive_feature_selection": {
+      "enabled": true,
+      "regime_classifier": {
+        "adx_threshold": 25.0,
+        "volatility_percentile": 70.0
+      },
+      "attention_layer": {
+        "enabled": false,
+        "hidden_dim": 64
+      },
+      "min_weight_threshold": 0.4
+    }
+  },
+  "reward_settings": {
+    "reward_scale": 500.0,
+    "reward_clip_min": -200.0,
+    "reward_clip_max": 200.0,
+    "profit_bonuses": {
+      "base_profit_atr_coefficient": 1.5,
+      "base_profit_portfolio_coefficient": 1.2,
+      "profit_multipliers": [
+        2.0,
+        0.6,
+        0.4
+      ],
+      "trading_bonus": 0.01,
+      "trading_bonus_multiplier": 4.0
+    },
+    "action_bonuses": {
+      "buy_action_bonus": 0.005,
+      "sell_action_bonus": 0.005,
+      "hold_action_bonus": 0.02,
+      "win_rate_bonus": 0.1,
+      "momentum_bonus": 0.05,
+      "diversity_bonus": 0.02
+    },
+    "behavior_penalties": {
+      "loss_penalty_multiplier": 3.0,
+      "balance_penalty": 3.0,
+      "balance_penalty_tolerance": 0.05,
+      "action_frequency_penalty": 0.01,
+      "inactivity_penalty_rate": 0.005,
+      "opportunity_cost_rate": 0.005
+    },
+    "risk_penalties": {
+      "volatility_penalty": 0.02,
+      "position_penalty_soft_cap": 0.8,
+      "constraint_penalty": 1.0
+    },
+    "flags": {
+      "enable_forced_diversity": true,
+      "enable_inactivity_penalty": true,
+      "enable_opportunity_cost": true,
+      "enable_trade_execution_bonus": true
+    }
+  },
+  "checkpoint_interval": 1000,
+  "notes": "SAC v421: Balanced trading strategy - neutral action bonuses, increased hold preference, enhanced diversity",
+  "fixes_implemented": {
+    "fix_1": "Neutralized buy/sell action bonuses (0.005 each) to reduce BUY bias",
+    "fix_2": "Increased hold_action_bonus to 0.02 to encourage more balanced position management",
+    "fix_3": "Increased action_frequency_penalty to 0.01 to reduce excessive trading",
+    "fix_4": "Restored inactivity_penalty_rate and opportunity_cost_rate to 0.005",
+    "fix_5": "Enabled forced_diversity to promote action variety",
+    "fix_6": "Target: More realistic trading frequency with balanced BUY/SELL actions"
+  }
+}

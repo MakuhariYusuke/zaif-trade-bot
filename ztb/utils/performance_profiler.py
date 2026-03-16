@@ -1,0 +1,460 @@
+#!/usr/bin/env python3
+"""
+Performance profiling tools for identifying bottlenecks in feature computation.
+パフォーマンスプロファイリングツール - 特徴量計算のボトルネック特定
+"""
+
+import cProfile
+import io
+import pstats
+import time
+from contextlib import contextmanager
+from functools import wraps
+from typing import Any, Callable, Generator, Optional
+
+import pandas as pd
+import psutil
+
+from ztb.features import FeatureRegistry
+from ztb.analysis.common.types import PerformanceMonitorProtocol
+
+# Constants
+BYTES_PER_MB = 1024 * 1024
+
+class PerformanceProfiler(PerformanceMonitorProtocol):
+    """Performance profiling utilities for feature computation"""
+
+    def __init__(self) -> None:
+        self.process = psutil.Process()
+        self._profile_stats: pstats.Stats | None = None
+
+    @classmethod
+    def profile(cls, func: Callable) -> Callable:
+        """Decorator for profiling functions"""
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            profiler = cls()
+            with profiler.profile_context(func.__name__):
+                return func(*args, **kwargs)
+
+        return wrapper
+
+    @contextmanager
+    def profile_context(self, name: str = "operation") -> Generator[None, None, None]:
+        """Context manager for profiling code blocks"""
+        profiler = cProfile.Profile()
+        profiler.enable()
+
+        start_time = time.time()
+        start_memory = self.process.memory_info().rss / BYTES_PER_MB
+
+        try:
+            yield
+        finally:
+            end_time = time.time()
+            end_memory = self.process.memory_info().rss / BYTES_PER_MB
+
+            profiler.disable()
+
+            elapsed = end_time - start_time
+            memory_delta = end_memory - start_memory
+
+            print(f"[{name}] Time: {elapsed:.3f}s, Memory: {memory_delta:+.2f}MB")
+
+            # Store stats for later analysis
+            s = io.StringIO()
+            ps = pstats.Stats(profiler, stream=s).sort_stats("cumulative")
+            ps.print_stats(20)  # Top 20 functions
+            self._profile_stats = ps
+
+    def get_profile_summary(self) -> str:
+        """Get profiling summary"""
+        if self._profile_stats is None:
+            return "No profiling data available"
+
+        s = io.StringIO()
+        self._profile_stats.stream = s  # type: ignore[attr-defined]
+        self._profile_stats.print_stats(10)
+        return s.getvalue()
+
+    def benchmark_features(
+        self,
+        df: pd.DataFrame,
+        feature_names: list[str] | None = None,
+        iterations: int = 3,
+    ) -> dict[str, dict[str, float]]:
+        """
+        Benchmark individual feature computation performance
+
+        Returns:
+            dict mapping feature names to performance metrics
+        """
+        if feature_names is None:
+            feature_names = FeatureRegistry.list()
+
+        results = {}
+
+        for feature_name in feature_names:
+            if feature_name not in FeatureRegistry.list():
+                continue
+
+            times = []
+            memories = []
+
+            for i in range(iterations):
+                start_memory = self.process.memory_info().rss / BYTES_PER_MB
+
+                start_time = time.time()
+                feature_func = FeatureRegistry.get(feature_name)
+                result = feature_func(df)
+                end_time = time.time()
+
+                end_memory = self.process.memory_info().rss / BYTES_PER_MB
+
+                times.append(end_time - start_time)
+                memories.append(end_memory - start_memory)
+
+            # Calculate statistics
+            avg_time = sum(times) / len(times)
+            min_time = min(times)
+            max_time = max(times)
+            avg_memory = sum(memories) / len(memories)
+
+            results[feature_name] = {
+                "avg_time_ms": avg_time * 1000,
+                "min_time_ms": min_time * 1000,
+                "max_time_ms": max_time * 1000,
+                "avg_memory_mb": avg_memory,
+                "per_sample_us": (avg_time / len(df))
+                * 1_000_000,  # microseconds per sample
+                "output_shape": (
+                    result.shape if hasattr(result, "shape") else len(result)
+                ),
+                "output_dtype": (
+                    str(result.dtype) if hasattr(result, "dtype") else "unknown"
+                ),
+            }
+
+        return results
+
+    def identify_bottlenecks(
+        self,
+        benchmark_results: dict[str, dict[str, float]],
+        time_threshold_ms: float = 1.0,
+        memory_threshold_mb: float = 10.0,
+    ) -> dict[str, list[str]]:
+        """
+        Identify performance bottlenecks based on benchmarks
+
+        Returns:
+            dict with 'slow_features' and 'memory_hungry_features' lists
+        """
+        slow_features = []
+        memory_hungry_features = []
+
+        for feature_name, metrics in benchmark_results.items():
+            if metrics["avg_time_ms"] > time_threshold_ms:
+                slow_features.append(f"{feature_name} ({metrics['avg_time_ms']:.2f}ms)")
+
+            if metrics["avg_memory_mb"] > memory_threshold_mb:
+                memory_hungry_features.append(
+                    f"{feature_name} ({metrics['avg_memory_mb']:.2f}MB)"
+                )
+
+        return {
+            "slow_features": slow_features,
+            "memory_hungry_features": memory_hungry_features,
+        }
+
+    def print_benchmark_report(
+        self, benchmark_results: dict[str, dict[str, float]], top_n: int = 10
+    ) -> None:
+        """Print a formatted benchmark report"""
+        print("=" * 80)
+        print("FEATURE PERFORMANCE BENCHMARK REPORT")
+        print("=" * 80)
+
+        # Sort by average time (slowest first)
+        sorted_by_time = sorted(
+            benchmark_results.items(), key=lambda x: x[1]["avg_time_ms"], reverse=True
+        )
+
+        print(f"\nTOP {top_n} SLOWEST FEATURES:")
+        print("-" * 60)
+        for i, (name, metrics) in enumerate(sorted_by_time[:top_n]):
+            print(
+                f"{i+1:2d}. {name:<25} {metrics['avg_time_ms']:>8.2f}ms "
+                f"({metrics['per_sample_us']:>6.1f}μs/sample)"
+            )
+
+        # Sort by memory usage
+        sorted_by_memory = sorted(
+            benchmark_results.items(), key=lambda x: x[1]["avg_memory_mb"], reverse=True
+        )
+
+        print(f"\nTOP {top_n} MEMORY-HUNGRIEST FEATURES:")
+        print("-" * 60)
+        for i, (name, metrics) in enumerate(sorted_by_memory[:top_n]):
+            print(
+                f"{i+1:2d}. {name:<25} {metrics['avg_memory_mb']:>8.2f}MB "
+                f"({metrics['output_dtype']})"
+            )
+
+        # Summary statistics
+        if benchmark_results:
+            times = [m["avg_time_ms"] for m in benchmark_results.values()]
+            memories = [m["avg_memory_mb"] for m in benchmark_results.values()]
+
+            print("\nSUMMARY STATISTICS:")
+            print("-" * 60)
+            print(f"Total features tested: {len(benchmark_results)}")
+            print(f"Average time per feature: {sum(times)/len(times):.2f}ms")
+            print(f"Average memory per feature: {sum(memories)/len(memories):.2f}MB")
+            print(
+                f"Slowest feature: {sorted_by_time[0][0]} ({sorted_by_time[0][1]['avg_time_ms']:.2f}ms)"
+            )
+            print(
+                f"Most memory hungry: {sorted_by_memory[0][0]} ({sorted_by_memory[0][1]['avg_memory_mb']:.2f}MB)"
+            )
+        else:
+            print("\nSUMMARY STATISTICS:")
+            print("-" * 60)
+            print("No features were successfully tested")
+
+def run_performance_analysis(
+    df: pd.DataFrame, feature_subset: list[str] | None = None
+) -> None:
+    """
+    Run complete performance analysis on feature computation
+
+    Args:
+        df: Test DataFrame with OHLCV data
+        feature_subset: Optional list of features to test (None for all)
+    """
+    print("🚀 Starting Feature Performance Analysis")
+    print("=" * 50)
+
+    # Initialize features
+    FeatureRegistry.initialize()
+
+    profiler = PerformanceProfiler()
+
+    # Run benchmarks
+    print("Running benchmarks...")
+    benchmark_results = profiler.benchmark_features(df, feature_subset, iterations=3)
+
+    # Print detailed report
+    profiler.print_benchmark_report(benchmark_results)
+
+    # Identify bottlenecks
+    bottlenecks = profiler.identify_bottlenecks(benchmark_results)
+    print("\nBOTTLENECK ANALYSIS:")
+    print("-" * 60)
+
+    if bottlenecks["slow_features"]:
+        print(f"⚠️  Slow features (>1ms): {len(bottlenecks['slow_features'])}")
+        for feature in bottlenecks["slow_features"][:5]:  # Show top 5
+            print(f"   • {feature}")
+    else:
+        print("✅ No slow features detected")
+
+    if bottlenecks["memory_hungry_features"]:
+        print(
+            f"⚠️  Memory hungry features (>10MB): {len(bottlenecks['memory_hungry_features'])}"
+        )
+        for feature in bottlenecks["memory_hungry_features"][:5]:  # Show top 5
+            print(f"   • {feature}")
+    else:
+        print("✅ No memory hungry features detected")
+
+    print("\n✅ Performance analysis complete!")
+
+if __name__ == "__main__":
+    # Example usage
+    import numpy as np
+
+    # Generate test data
+    np.random.seed(42)
+    n_samples = 5000
+    dates = pd.date_range("2023-01-01", periods=n_samples, freq="1min")
+    df = pd.DataFrame(
+        {
+            "close": np.random.uniform(100, 200, n_samples),
+            "high": np.random.uniform(105, 210, n_samples),
+            "low": np.random.uniform(95, 190, n_samples),
+            "open": np.random.uniform(98, 202, n_samples),
+            "volume": np.random.uniform(1000, 10000, n_samples),
+        },
+        index=dates,
+    )
+
+    # Add technical indicators
+    df["rsi_14"] = np.random.uniform(20, 80, n_samples)
+    df["macd"] = np.random.uniform(-5, 5, n_samples)
+    df["macd_hist"] = np.random.uniform(-2, 2, n_samples)
+    df["atr_14"] = np.random.uniform(1, 5, n_samples)
+
+    # Initialize features
+    FeatureRegistry.initialize()
+
+    # Run analysis on key features
+    key_features = [
+        "RegimeClustering",
+        "KalmanFilter",
+        "KalmanVelocity",
+        "ADX",
+        "RSI",
+        "MACD",
+    ]
+    run_performance_analysis(df, key_features)
+
+class MemoryProfiler:
+    """
+    Advanced memory profiling utilities for tracking memory usage patterns.
+
+    Provides detailed memory analysis including peak usage, leaks detection,
+    and memory allocation patterns.
+    """
+
+    def __init__(self):
+        try:
+            import tracemalloc
+
+            import psutil
+
+            self.psutil_available = True
+            self.tracemalloc_available = True
+            self.process = psutil.Process()
+            tracemalloc.start()
+        except ImportError:
+            self.psutil_available = False
+            self.tracemalloc_available = False
+            self.process = None
+
+    def get_memory_stats(self) -> dict[str, Any]:
+        """
+        Get comprehensive memory statistics.
+
+        Returns:
+            Dictionary with memory statistics
+        """
+        if not self.psutil_available:
+            return {"error": "psutil not available"}
+
+        memory_info = self.process.memory_info()
+        memory_percent = self.process.memory_percent()
+
+        stats = {
+            "rss_mb": memory_info.rss / BYTES_PER_MB,
+            "vms_mb": memory_info.vms / BYTES_PER_MB,
+            "percent": memory_percent,
+        }
+
+        if self.tracemalloc_available:
+            import tracemalloc
+
+            current, peak = tracemalloc.get_traced_memory()
+            stats.update(
+                {
+                    "current_traced_mb": current / BYTES_PER_MB,
+                    "peak_traced_mb": peak / BYTES_PER_MB,
+                }
+            )
+
+        return stats
+
+    def detect_memory_leaks(self, threshold_mb: float = 50.0) -> dict[str, Any]:
+        """
+        Detect potential memory leaks by analyzing allocation patterns.
+
+        Args:
+            threshold_mb: Memory increase threshold to consider as leak
+
+        Returns:
+            Dictionary with leak detection results
+        """
+        if not self.tracemalloc_available:
+            return {"error": "tracemalloc not available"}
+
+        import tracemalloc
+
+        # Get top memory allocations
+        snapshot = tracemalloc.take_snapshot()
+        top_stats = snapshot.statistics("lineno")
+
+        leaks = []
+        for stat in top_stats[:10]:  # Top 10 allocations
+            if stat.size / BYTES_PER_MB > threshold_mb:
+                leaks.append(
+                    {
+                        "size_mb": stat.size / BYTES_PER_MB,
+                        "count": stat.count,
+                        "traceback": str(stat.traceback),
+                    }
+                )
+
+        return {
+            "potential_leaks": leaks,
+            "total_traced_mb": sum(stat.size for stat in top_stats) / BYTES_PER_MB,
+        }
+
+    def profile_memory_usage(self, func: Callable, *args, **kwargs) -> dict[str, Any]:
+        """
+        Profile memory usage of a function call.
+
+        Args:
+            func: Function to profile
+            *args: Positional arguments for the function
+            **kwargs: Keyword arguments for the function
+
+        Returns:
+            Dictionary with profiling results
+        """
+        if not self.psutil_available:
+            return {"error": "psutil not available"}
+
+        initial_memory = self.process.memory_info().rss / BYTES_PER_MB
+
+        if self.tracemalloc_available:
+            import tracemalloc
+
+            tracemalloc.reset_peak()
+
+        # Execute function
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+
+        final_memory = self.process.memory_info().rss / BYTES_PER_MB
+        memory_delta = final_memory - initial_memory
+
+        profile_result = {
+            "execution_time": end_time - start_time,
+            "memory_delta_mb": memory_delta,
+            "initial_memory_mb": initial_memory,
+            "final_memory_mb": final_memory,
+        }
+
+        if self.tracemalloc_available:
+            import tracemalloc
+
+            current, peak = tracemalloc.get_traced_memory()
+            profile_result.update(
+                {
+                    "peak_memory_mb": peak / BYTES_PER_MB,
+                    "current_memory_mb": current / BYTES_PER_MB,
+                }
+            )
+
+        return profile_result
+
+    # Protocol implementation methods
+    def record_decision(self, decision: Any) -> None:
+        """Record a decision for performance monitoring."""
+        # Implementation for performance monitoring
+        pass
+
+    def get_metrics(self) -> dict[str, Any]:
+        """Get current performance metrics."""
+        return self.get_memory_usage()

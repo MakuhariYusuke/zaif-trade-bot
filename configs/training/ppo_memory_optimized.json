@@ -1,0 +1,53 @@
+{
+  "comment": "Memory-optimized configuration for low-memory environments - aggressive memory reduction",
+  "algorithm": "ppo",
+  "session_id": "ppo_memory_optimized",
+  "data_path": "ml-dataset-enhanced.csv",
+  "model_dir": "models",
+  "checkpoint_dir": "checkpoints",
+  "tensorboard_log": "tensorboard",
+
+  "total_timesteps": 30000,
+  "checkpoint_interval": 15000,
+
+  "learning_rate": 0.0003,
+  "n_steps": 256,
+  "batch_size": 16,
+  "n_epochs": 3,
+  "gamma": 0.99,
+  "gae_lambda": 0.95,
+  "clip_range": 0.2,
+  "clip_range_vf": null,
+  "normalize_advantage": true,
+  "ent_coef": 0.1,
+  "vf_coef": 0.5,
+  "max_grad_norm": 0.5,
+  "use_sde": false,
+  "sde_sample_freq": -1,
+  "target_kl": null,
+  "verbose": 1,
+
+  "reward_scaling": 6.0,
+  "transaction_cost": 0.001,
+  "max_position_size": 1.0,
+
+  "enable_sell_mitigation": true,
+  "enable_lagrange": true,
+  "enable_probes": false,
+  "enable_weights": false,
+  "enable_pan": true,
+  "enable_target_entropy": true,
+  "enable_stratified_sampling": false,
+  "allow_reverse": true,
+
+  "curriculum_stage": "forced_balance",
+  "lagrange_r_target": 0.33,
+  "lagrange_tolerance": 0.05,
+  "lagrange_eta": 0.05,
+  "lagrange_lambda_max": 2.0,
+  "lagrange_warmup_steps": 1000,
+
+  "entropy_target_entropy": 0.769,
+  "entropy_beta": 0.001,
+  "entropy_epsilon": 1e-6
+}

@@ -1,0 +1,81 @@
+# 100k Reinforcement Learning Experiment Configuration
+experiment:
+  name: "100k_rl_experiment"
+  description: "100k step reinforcement learning with parallel processing"
+  total_steps: 100000
+  episodes: 1000
+  max_steps_per_episode: 100
+
+# Environment Configuration
+environment:
+  type: "trading"
+  data_source: "binance_1m"
+  symbols: ["BTC_JPY"]
+  start_date: "2024-01-01"
+  end_date: "2024-12-31"
+  initial_balance: 1000000
+  fee_rate: 0.001
+
+# Model Configuration
+model:
+  type: "ppo"
+  policy: "MlpPolicy"
+  learning_rate: 3e-4
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.0
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+
+# Features Configuration
+features:
+  registry: "ztb.features.registry.FeatureRegistry"
+  enabled_features:
+    - "momentum"
+    - "trend"
+    - "volatility"
+    - "volume"
+  feature_params:
+    window_sizes: [5, 10, 20, 50]
+    normalize: true
+
+# Risk Management
+risk:
+  daily_loss_limit: 0.02  # 2%
+  max_consecutive_losses: 5
+  circuit_breaker_threshold: 0.10  # ±10%
+
+# Checkpoint Configuration
+checkpoint:
+  light_interval: [1000, 5000]  # 1k, 5k
+  full_interval: 10000  # 10k
+  archive_interval: 50000  # 50k
+  save_path: "checkpoints/100k_experiment"
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  prometheus_enabled: true
+  prometheus_port: 8000
+  discord_webhook: true
+  discord_heartbeat_interval: 3600  # 1 hour
+  discord_metrics_interval: 1000  # 1k steps
+  discord_report_interval: 10000  # 10k steps
+
+# Parallel Processing
+parallel:
+  jobs: 10
+  backend: "loky"
+  n_jobs: 8  # min(physical_cores, 8)
+
+# Output Configuration
+output:
+  base_dir: "runs/100k_experiment"
+  metrics_file: "metrics.json"
+  results_file: "results.csv"
+  logs_dir: "logs"
+  plots_dir: "plots"

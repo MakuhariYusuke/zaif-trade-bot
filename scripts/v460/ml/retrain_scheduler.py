@@ -46,10 +46,10 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from scripts.v460.ml.data_loader import clear_fill_records_cache, load_fill_records
+from scripts.v460.ml.cache_cleanup import clear_ml_data_caches_with_log
+from scripts.v460.ml.data_loader import load_fill_records
 from scripts.v460.ml.feature_enricher import (
     build_preorder_as_features,
-    clear_raw_load_caches,
     enrich_fill_records,
 )
 from scripts.v460.ml.skip_eval_utils import compute_skip_slice_metrics
@@ -2041,9 +2041,11 @@ def run_scheduler(cfg: ConfigMap, config_path: Path | None = None) -> None:
             logger.error(f"Retrain cycle failed: {e}", exc_info=True)
             trigger.record_result("error")
         finally:
-            # 長寿命 scheduler では module-level DataFrame cache を毎 cycle で解放する。
-            clear_fill_records_cache()
-            clear_raw_load_caches()
+            clear_ml_data_caches_with_log(
+                logger,
+                context="retrain_scheduler.cycle",
+                collect_garbage=True,
+            )
 
         effective_interval = trigger.get_effective_interval()
         logger.info(f"Next retrain in {effective_interval}s ({effective_interval / 3600:.1f}h)")
@@ -2054,6 +2056,17 @@ def run_scheduler(cfg: ConfigMap, config_path: Path | None = None) -> None:
 
 
 def main() -> None:
+    try:
+        _run_retrain_scheduler_main()
+    finally:
+        clear_ml_data_caches_with_log(
+            logger,
+            context="retrain_scheduler.exit",
+            collect_garbage=True,
+        )
+
+
+def _run_retrain_scheduler_main() -> None:
     """CLI エントリポイント."""
     parser = argparse.ArgumentParser(description="126# SkipGate retrain scheduler")
     parser.add_argument(

@@ -1,0 +1,102 @@
+# 411# 実験C: M1+M2 — net_arch [128,128] + weight_decay 1e-4
+#
+# 412# §4.3 attribution 分離: M1 に M2 を加えた効果を測定。
+# g2_sac_reward_clean_m1.yaml からの差分: weight_decay=1e-4 追加。
+# learning_starts=1000, 4 seeds のまま。
+#
+# 使用方法:
+#   python scripts/v460/run_experiment.py \
+#     --config configs/v460/experiments/g2_sac_reward_clean_m1m2.yaml
+
+_base: configs/v460/base.yaml
+_gate: G2-train
+_task: sac_train
+
+# ---- データ ----
+data:
+  ohlcv_path: "data/btc_jpy_1m_full_registry_features.parquet"
+  v460_features_path: null
+  train_end_index: 973544
+
+# ---- 特徴量 ----
+features:
+  selected:
+    - price_velocity
+    - micro_trend
+    - price_acceleration
+    - volume_surge
+    - momentum_divergence
+    - tick_volume_ratio
+    - order_flow_imbalance
+    - micro_volatility
+    - spread_pressure
+    - momentum_burst
+    - liquidity_surge
+    - realized_volatility
+    - parkinson_sigma
+    - vpin_proxy
+    - kyle_lambda_proxy
+    - amihud_illiq
+    - ema_velocity_bps
+
+# ---- 環境 ----
+environment:
+  transaction_cost: 0.0
+  reward_scaling: 100.0
+  max_position_size: 0.01
+  initial_portfolio_value: 10000000.0
+  use_continuous_actions: true
+  action_space_type: "continuous_1d"
+  exchange: coincheck
+  timeframe: "1m"
+  continuous_to_discrete_threshold: 0.10
+  continuous_to_discrete_threshold_neg: -0.10
+  behavior_optimization:
+    balance_penalty: 0.0
+    balance_penalty_tolerance: 0.05
+    consistency_penalty: 0.0
+    balance_shaping_enabled: false
+    action_entropy_shaping_enabled: false
+  reward_settings:
+    hold_penalty_weight: 0.0
+    confidence_penalty_threshold: 1.0
+    position_penalty_weight: 0.0
+    pnl_reward_multiplier: 1.0
+    scale_adjustment_enabled: false
+    reward_clip_min: -1.0
+    reward_clip_max: 1.0
+
+# ---- SAC ハイパーパラメータ ----
+sac_hyperparameters:
+  gamma: 0.95
+  ent_coef: 0.01
+  learning_rate: 5.0e-4
+  batch_size: 128
+  buffer_size: 50000
+  learning_starts: 1000             # baseline と同じ (M3 未適用)
+  tau: 0.005
+  train_freq: 1
+  gradient_steps: 2
+  # 411# M1+M2: net_arch 縮小 + L2 正則化
+  policy_kwargs:
+    net_arch: [128, 128]             # 411# M1: 215K → 58K params
+    optimizer_kwargs:
+      weight_decay: 1.0e-4           # 411# M2: L2 正則化
+
+# ---- 訓練 ----
+training:
+  total_timesteps: 20000
+  checkpoint_interval: 5000
+  val_ratio: 0.02
+
+# ---- 評価 ----
+evaluation:
+  n_episodes: 1
+
+# ---- Multi-seed ----
+seeds: [42, 123, 456, 789]          # baseline と同じ 4 seeds
+
+# ---- 出力 ----
+output:
+  results_dir: "results/v460"
+  model_dir: "models/v460/reward_clean_m1m2"

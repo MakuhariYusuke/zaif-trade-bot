@@ -317,3 +317,48 @@ offset 0.3000->0.3000
 
 が正解です。  
 その上で 447# の新提案を選ぶなら、最有力は **Micro-Timeout** です。
+
+---
+
+## §7 P0 解消ログ (450# session)
+
+### P0-1 FillRecord スキーマ穴修正 ✅
+
+**commit**: `0b7e392e7`
+
+`ztb/metrics/fill_quality.py` の `FillRecord` に 4 field を追加:
+
+- `cross_venue_lead_lag_point_spread_bps: float | None`
+- `cross_venue_lead_lag_pre_offset: float | None`
+- `cross_venue_lead_lag_post_offset: float | None`
+- `cross_venue_lead_lag_cap_hit: bool | None`
+
+`_sanitize_fill_record_fields()` は `_FILL_RECORD_FIELD_NAMES` (dataclass 自動生成) を参照するため、
+field 追加だけで builder → FillRecord → JSONL のパイプラインが開通。
+
+### P0-2 統合テスト追加 ✅
+
+**commit**: `0b7e392e7`
+
+`tests/unit/v460/test_439_cross_venue_lead_lag.py::TestFillRecordSchemaIncludesNewFields`
+
+- `test_point_spread_bps_round_trip`: FillRecord ↔ dict ラウンドトリップ
+- `test_cap_hit_and_offsets_round_trip`: pre/post/cap_hit ラウンドトリップ
+- `test_builder_fields_accepted_by_fill_record`: builder 全 key ∈ `_FILL_RECORD_FIELD_NAMES` (今後のスキーマ穴回帰防止)
+
+### P0-3 クリーン再起動 ✅
+
+**実施**: 2026-03-16 16:56
+
+- `ops/windows/hot_swap_restart.ps1 -Hours 24` で実行
+- 旧 PID 52336 (SHA `a9714ad9af85` / 445#) を停止
+- 新 PID 41152 (SHA `52627ffe1b16` / 450#) で起動確認
+- zombie retrain_scheduler 9 個も全停止
+- ログ確認: `[schema_health] OK: run_id=1773647776_af7958c7, git_sha=52627ffe1b16, clean=10766`
+
+### P0-4 ab_offset_comparison git_sha filter → 次セッションへ繰越
+
+### 副次修正
+
+- `scripts/v460/lib/fill_cycle_executor.py`: `_run_id` / `_git_sha` にクラスレベルデフォルト宣言 (test_253 ポリシー準拠)
+- テスト DRY: `PickleStub` / `make_reward_calculator` を shared helper に昇格 (commit `52627ffe1`)

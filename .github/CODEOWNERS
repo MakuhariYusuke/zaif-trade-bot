@@ -1,0 +1,38 @@
+# Code Owners
+# This file defines who owns and is responsible for code in this repository.
+# When a pull request is opened, the users listed here will be automatically
+# requested for review.
+
+# Global owners (catch-all)
+* @MakuhariYusuke
+
+# Core trading logic
+ztb/live/ @MakuhariYusuke
+ztb/backtest/ @MakuhariYusuke
+
+# Risk management
+ztb/risk/ @MakuhariYusuke
+
+# Data processing and features
+ztb/data/ @MakuhariYusuke
+ztb/features/ @MakuhariYusuke
+
+# Utilities and infrastructure
+ztb/utils/ @MakuhariYusuke
+scripts/ @MakuhariYusuke
+
+# Documentation
+docs/ @MakuhariYusuke
+README.md @MakuhariYusuke
+
+# CI/CD and configuration
+.github/ @MakuhariYusuke
+*.yml @MakuhariYusuke
+*.yaml @MakuhariYusuke
+requirements*.txt @MakuhariYusuke
+pyproject.toml @MakuhariYusuke
+package.json @MakuhariYusuke
+
+# Tests
+tests/ @MakuhariYusuke
+__tests__/ @MakuhariYusuke

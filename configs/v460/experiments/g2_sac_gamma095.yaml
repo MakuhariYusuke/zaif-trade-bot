@@ -1,0 +1,89 @@
+# G2: SAC 4-seed Training — gamma=0.95 比較実験
+# 385# B4: gamma=0.80(短期) vs 0.95(中期) 比較
+#
+# 使用方法:
+#   python scripts/v460/run_experiment.py \
+#     --config configs/v460/experiments/g2_sac_gamma095.yaml
+#
+# 変更点 (g2_sac_train.yaml からの差分):
+#   - gamma: 0.80 → 0.95 (t+10 の割引: 0.107 → 0.599, 報酬の時間的視野が広がる)
+#   - total_timesteps: 50000 → 100000 (gamma 大 = 学習収束が遅い → steps 増量)
+#   - checkpoint_interval: 5000 → 10000 (比例調整)
+
+_base: configs/v460/base.yaml
+_gate: G2-train
+_task: sac_train
+
+# ---- データ ----
+data:
+  ohlcv_path: "data/btc_jpy_1m_full_registry_features.parquet"
+  v460_features_path: null
+  train_end_index: 973544
+
+# ---- 特徴量 ----
+features:
+  selected:
+    - price_velocity
+    - micro_trend
+    - price_acceleration
+    - volume_surge
+    - momentum_divergence
+    - tick_volume_ratio
+    - order_flow_imbalance
+    - micro_volatility
+    - spread_pressure
+    - momentum_burst
+    - liquidity_surge
+    - realized_volatility
+    - parkinson_sigma
+    - vpin_proxy
+    - kyle_lambda_proxy
+    - amihud_illiq
+    - ema_velocity_bps
+
+# ---- 環境 ----
+environment:
+  # 385# FIX: maker 0% (000# 前提条件)
+  transaction_cost: 0.0            # 0% (Coincheck Maker)
+  reward_scaling: 1.0              # 386# FIX: SAC用明示設定
+  max_position_size: 0.01
+  initial_portfolio_value: 10000000.0
+  use_continuous_actions: true
+  action_space_type: "continuous_1d"
+  exchange: coincheck
+  timeframe: "1m"
+  continuous_to_discrete_threshold: 0.10
+  continuous_to_discrete_threshold_neg: -0.10
+
+# ---- SAC ハイパーパラメータ ----
+# 385# B4: gamma=0.95 — より長期の報酬を考慮
+# gamma=0.80 だと step+10 で 89% discount → 即時報酬偏重
+# gamma=0.95 だと step+10 で 40% discount → トレンド追従が可能
+sac_hyperparameters:
+  gamma: 0.95                      # 385# B4: 中期割引
+  ent_coef: "auto"
+  learning_rate: 3.0e-4
+  batch_size: 256
+  buffer_size: 200000              # 100K steps → buffer 2x = 200K
+  learning_starts: 1000
+  tau: 0.005
+  train_freq: 1
+  gradient_steps: 1
+
+# ---- 訓練 ----
+training:
+  total_timesteps: 100000          # 385# B4: gamma 大 → 収束遅 → 2x steps
+  checkpoint_interval: 10000
+  val_ratio: 0.2
+
+# ---- 評価 ----
+evaluation:
+  n_episodes: 1
+
+# ---- Multi-seed ----
+seeds: [42, 123, 456, 789]
+
+# ---- 出力 ----
+output:
+  results_dir: "results/v460"
+  model_dir: "models/v460/gamma095"    # ベースライン上書き防止

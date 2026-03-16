@@ -1,0 +1,72 @@
+{
+  "model_name": "sac_v444_test_fix",
+  "version": "4.4.4_test",
+  "algorithm": "sac",
+  "total_timesteps": 500,
+  "description": "Quick test of balance penalty fix",
+
+  "training": {
+    "algorithm": "sac",
+    "curriculum_stage": "balanced_penalty",
+    "data_config": {
+      "data_path": "data/btc_jpy_yahoo_real_20251021_featured_corrected.csv",
+      "validation_split": 0.2,
+      "test_split": 0.1
+    },
+    "total_timesteps": 500,
+    "sac_hyperparameters": {
+      "learning_rate": 3e-4,
+      "batch_size": 256,
+      "buffer_size": 100000,
+      "learning_starts": 100,
+      "tau": 0.005,
+      "gamma": 0.99,
+      "ent_coef": "auto_1.0",
+      "target_entropy": "auto"
+    },
+    "environment": {
+      "initial_balance": 10000,
+      "transaction_cost": 0.0,
+      "max_position_size": 1.0,
+      "random_start": true,
+      "use_continuous_actions": true
+    }
+  },
+
+  "reward_settings": {
+    "base_profit_bonus_atr_coeff": 5.0,
+    "base_profit_bonus_portfolio_coeff": 10.0,
+    "base_action_penalty": 0.15,
+    "loss_penalty_coeff": -1.0,
+    "action_frequency_penalty": 0.0,
+    "action_bonuses": {
+      "buy": 10.0,
+      "sell": 5.0,
+      "hold": 2.0
+    },
+    "behavior_optimization": {
+      "curriculum_stage": "balanced_penalty",
+      "action_balance_target": 0.333,
+      "balance_penalty": 200.0
+    }
+  },
+
+  "environment": {
+    "initial_balance": 10000,
+    "transaction_cost": 0.0,
+    "max_position_size": 1.0,
+    "random_start": true
+  },
+
+  "logging": {
+    "tensorboard_log": "./tensorboard/sac_v444_test_fix",
+    "verbose": 1,
+    "log_interval": 50
+  },
+
+  "checkpoint": {
+    "save_freq": 500,
+    "save_path": "./checkpoints",
+    "save_replay_buffer": false
+  }
+}

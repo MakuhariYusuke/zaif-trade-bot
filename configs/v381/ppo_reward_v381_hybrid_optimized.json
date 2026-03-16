@@ -1,0 +1,166 @@
+{
+  "session_id": "ppo_reward_v381_hybrid_optimized",
+  "algorithm": "ppo",
+  "description": "Hybrid Optimized: v379 dynamic market adaptation + v380 aggressive scaling + binary search optimized hyperparameters",
+
+  "comment_strategy": "統合戦略 - v379の市場適応性 + v380の2/3の積極性 + 二分探索最適化PPOパラメータ",
+  "comment_components": [
+    "✅ v379: 動的市場適応型報酬（volatility/trend/range detection）",
+    "✅ v380: 積極的HOLD抑制を2/3に緩和（過激すぎるリスクを軽減）",
+    "✅ Optimized: batch_size=256, learning_rate=0.007503, max_grad_norm=5.05, n_steps=1024",
+    "✅ Lagrange: r_target=0.175, tolerance=0.042625, eta=0.062875, lambda_max=3.875, warmup=3874"
+  ],
+
+  "comment_reward_balance": "v380の強度を66%に調整 - hold_penalty: 0.05→0.035, profit_multiplier: 5.0→3.5, trading_bonus: 0.3→0.2",
+  "comment_expected_behavior": "期待されるHOLD率: 35-45%, 市場適応型で安定した取引活動, SELL暴走リスク低減",
+
+  "curated_features_list": "curated_features.py::CURATED_FEATURES",
+  "enable_feature_filtering": true,
+  "feature_filter_mode": "whitelist",
+
+  "max_features": null,
+  "enable_correlation_reduction": false,
+  "data_rows_limit": null,
+
+  "ppo": {
+    "learning_rate": 0.007503,
+    "n_steps": 1024,
+    "batch_size": 256,
+    "n_epochs": 16,
+    "gamma": 0.8475,
+    "gae_lambda": 0.8,
+    "clip_range": 0.1,
+    "clip_range_vf": null,
+    "ent_coef": 0.001,
+    "vf_coef": 0.1,
+    "max_grad_norm": 5.05,
+    "use_sde": false,
+    "sde_sample_freq": -1,
+    "target_kl": 0.001,
+    "normalize_advantage": true,
+    "verbose": 1,
+    "policy_kwargs": {
+      "net_arch": [
+        {"pi": [128, 128], "vf": [128, 128]}
+      ]
+    }
+  },
+
+  "environment": {
+    "initial_balance": 10000,
+    "transaction_cost": 0.0001,
+    "max_position_size": 1.0,
+    "enable_action_masking": true,
+    "random_start": true,
+    "reward_settings": {
+      "comment_base_penalties": "v380の66%強度 - 過激すぎるリスクを軽減",
+      "hold_penalty_weight": 0.035,
+      "consecutive_hold_penalty": 0.02,
+      "consecutive_hold_exponential": true,
+      "consecutive_hold_threshold": 4,
+
+      "comment_trading_incentives": "v380の66%強度",
+      "trading_frequency_bonus": 0.2,
+      "profit_reward_multiplier": 3.5,
+      "action_diversity_bonus": 0.07,
+      "successful_trade_bonus": 0.7,
+
+      "comment_dynamic_adaptation": "v379の市場適応型機能を完全採用",
+      "volatility_adjusted_penalty": true,
+      "trend_adjusted_bonus": true,
+      "range_market_hold_tolerance": 0.5,
+
+      "comment_opportunity_cost": "v380から採用（v379の50%）",
+      "hold_opportunity_cost": 0.01
+    }
+  },
+
+  "training": {
+    "total_timesteps": 100000,
+    "checkpoint_interval": 5000,
+    "enable_autohalt": true,
+    "eval_freq": 2000,
+    "n_eval_episodes": 10,
+    "reward_scaling": 0.1,
+    "progress_bar": false
+  },
+
+  "custom_ppo": {
+    "enabled": true,
+    "use_pan": true,
+    "use_target_entropy": true,
+    "target_entropy": -0.8,
+    "use_gradient_probe_guard": false,
+    "pan_epsilon": 1e-8,
+    "enable_evaluation_gates": true,
+    "gate_thresholds": {
+      "variance_threshold": 0.01,
+      "distribution_check_enabled": true
+    }
+  },
+
+  "comment_lagrange_source": "ppo_100k_optimized.json - 二分探索最適化結果を完全採用",
+  "lagrange": {
+    "r_target": 0.175,
+    "tolerance": 0.042625,
+    "eta": 0.062875,
+    "lambda_max": 3.875,
+    "warmup_steps": 3874
+  },
+
+  "data_path": "ml-dataset-enhanced-balanced.csv",
+
+  "comment_comparison_table": "3つの設定の比較",
+  "comparison": {
+    "v379_dynamic": {
+      "hold_penalty": "0.02 * volatility_factor",
+      "profit_multiplier": 3.0,
+      "trading_bonus": "0.15 * trend_factor",
+      "market_adaptation": "Full (volatility/trend/range)",
+      "expected_hold_rate": "40-50%",
+      "risk": "Medium-High",
+      "strength": "市場適応性"
+    },
+    "v380_aggressive": {
+      "hold_penalty": 0.05,
+      "profit_multiplier": 5.0,
+      "trading_bonus": 0.3,
+      "market_adaptation": "None",
+      "expected_hold_rate": "30-40%",
+      "risk": "High (SELL暴走リスク)",
+      "strength": "強力な取引活動促進"
+    },
+    "v381_hybrid_optimized": {
+      "hold_penalty": "0.035 * volatility_factor",
+      "profit_multiplier": 3.5,
+      "trading_bonus": "0.2 * trend_factor",
+      "market_adaptation": "Full (v379継承)",
+      "expected_hold_rate": "35-45%",
+      "risk": "Medium",
+      "strength": "バランスと最適化",
+      "ppo_optimization": "二分探索結果を完全適用",
+      "lagrange_optimization": "SELL暴走防止を強化"
+    }
+  },
+
+  "comment_usage": [
+    "Step 1: 30k短期テストで動作確認",
+    "  python run_training.py --config configs/training/ppo_reward_v381_hybrid_optimized.json --timesteps 30000",
+    "",
+    "Step 2: 100k本番トレーニング",
+    "  python run_training.py --config configs/training/ppo_reward_v381_hybrid_optimized.json",
+    "",
+    "Step 3: アクション分布の確認",
+    "  - 目標: HOLD 35-45%, BUY 30-35%, SELL 25-30%",
+    "  - HOLDが50%超える場合: hold_penalty_weightを0.04に増加",
+    "  - SELLが35%超える場合: Lagrange lambda_maxを3.5に削減"
+  ],
+
+  "comment_fine_tuning": [
+    "パラメータ微調整ガイド:",
+    "- HOLDが多すぎる → hold_penalty_weight: 0.035 → 0.04 → 0.045",
+    "- SELLが多すぎる → lambda_max: 3.875 → 3.5 → 3.0",
+    "- 取引が少なすぎる → trading_frequency_bonus: 0.2 → 0.25",
+    "- 利益が低い → profit_reward_multiplier: 3.5 → 4.0"
+  ]
+}

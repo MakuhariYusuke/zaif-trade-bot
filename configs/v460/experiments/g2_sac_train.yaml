@@ -1,0 +1,147 @@
+# G2: SAC 4-seed Training — Microstructure Edge
+# 356# B1: ph3 SAC 訓練用実験 YAML
+#
+# 使用方法:
+#   python scripts/v460/run_experiment.py \
+#     --config configs/v460/experiments/g2_sac_train.yaml
+#
+# G2-train Gate 条件 (gate_thresholds.yaml):
+#   E1: positive_seed_ratio ≥ 0.75
+#   E2: roi_seed_std ≤ 0.03 (363# A4: ic → roi)
+#   E3: convergence (30K以降 ROI変動 ≤ 5%)
+#   E4: worst_seed_roi > -0.02
+
+_base: configs/v460/base.yaml
+_gate: G2-train
+_task: sac_train
+
+# ---- データ ----
+data:
+  # P3A-1: v451 stub → full_registry (82列, 1.2M行, 12特徴量全載)
+  ohlcv_path: "data/btc_jpy_1m_full_registry_features.parquet"
+  # data.v460_features_path が base.yaml で指定されているため明示的に無効化
+  v460_features_path: null
+  # train_end_index: base.yaml で null になっているため指定が必要(1.2M行のうち学習に使う量)
+  # 1,216,930行 × 0.8 ≈ 973,544 (残り 20% は OOS 評価用)
+  train_end_index: 973544
+
+# ---- 特徴量 (FeatureRegistry 系統) ----
+# 356# §4.3: OHLCV ベースの FeatureRegistry 特徴量を使用
+# v460 microstructure features は ph4 で統合
+# 379# P3-B3: 12 既存 + 5 市場理論(pre-366#) = 17 特徴量
+#   市場理論 5 特徴量: z-score clipping ±5.0 適用済み
+features:
+  selected:
+    - price_velocity
+    - micro_trend
+    - price_acceleration
+    - volume_surge
+    - momentum_divergence
+    - tick_volume_ratio
+    - order_flow_imbalance
+    - micro_volatility
+    - spread_pressure
+    - momentum_burst
+    - liquidity_surge
+    - realized_volatility
+    # 379# pre-366# market theory features
+    - parkinson_sigma
+    - vpin_proxy
+    - kyle_lambda_proxy
+    - amihud_illiq
+    - ema_velocity_bps
+
+# ---- 環境 (EnvironmentConfig フィールド準拠) ----
+# 365# §3.2: 以下の市場理論機構は明示的に無設定 = 無効:
+#   - curriculum_learning / curriculum_stage → "simple" fallback (報酬非定常化を回避)
+#   - hybrid_config → entry/exit override 無効 (SACのcredit assignment保護)
+#   - domain_randomization → 無効 (Q値variance削減)
+#   - advanced_market_regime → 無効 (報酬スケール安定化)
+#   - signal_guidance_enabled → False (reward hacking回避)
+#   - adaptive_threshold_mode → False (閾値非定常化回避)
+#   - enable_forced_diversity → False (行動分布制約なし)
+# ★ これらを有効化する場合は 365# §3.5 の注意事項を必ず参照
+#
+# 385# 監査注記:
+#   - reward_scaling: 386# で修正済み — _calculate_default_reward に reward_scaling
+#     パラメータを追加。SAC YAML で明示的に 1.0 を指定。
+#   - continuous_to_discrete_threshold: 386# で統一済み。
+#     SAC_CONTINUOUS_THRESHOLD (constants.py) と live_trader デフォルトを 0.10 に変更。
+environment:
+  # 385# FIX: 000# 前提 "全取引はmaker注文（手数料0%）で執行" に準拠
+  # 旧: 0.001 (0.1%) — 000# 教訓4 "taker 0.1% × 1min足は Oracle でも不成立" と矛盾
+  # ExchangeFeeModel.coincheck = {"buy": 0.0, "sell": 0.0}
+  # TradeExecutionEngine.coincheck.maker_fee = 0.0
+  transaction_cost: 0.0            # 0% (Coincheck Maker — 000# §前提条件)
+  # 386# FIX: reward_scaling dead code 修正。明示的に 1.0 を指定。
+  # PPO デフォルト 6.0 が EnvironmentConfig 経由で暗黙適用される誤りを防止。
+  # SAC の entropy regularization があるため PnL スケーリングは 1.0 が適切。
+  reward_scaling: 1.0
+  max_position_size: 0.01          # 0.01 BTC
+  initial_portfolio_value: 10000000.0  # 1000万円 (v459 踏襲)
+  use_continuous_actions: true     # SAC 用連続行動空間
+  action_space_type: "continuous_1d"
+  exchange: coincheck
+  timeframe: "1m"
+  # 379# ROI=0修正: 閾値を 0.3333→0.10 に引下げ (HOLDゾーン 66.7%→20%)
+  # SACのtanh squashing初期出力 ≈ N(0, ~0.3) が閾値を超えやすくする
+  continuous_to_discrete_threshold: 0.10
+  continuous_to_discrete_threshold_neg: -0.10
+
+# ---- SAC ハイパーパラメータ ----
+# v459 短期指向チューニングを踏襲 (111# / 356# §2.3)
+sac_hyperparameters:
+  gamma: 0.80                      # 短期スキャルピング (v451 由来)
+  ent_coef: "auto"
+  learning_rate: 3.0e-4
+  batch_size: 256
+  buffer_size: 100000              # v459 踏襲 (50K steps では十分)
+  learning_starts: 1000            # 379# 100→1000: バッファに多様なサンプルを蓄積してから学習開始
+  tau: 0.005
+  train_freq: 1
+  gradient_steps: 1
+
+# ---- 訓練 ----
+training:
+  # G2 gate 基準: 50K steps × 4 seeds
+  total_timesteps: 50000          
+  checkpoint_interval: 5000        
+  val_ratio: 0.2                   # 363# A3: holdout 20% for OOS evaluation
+  # 365# P1: Warm-start (2回目以降に有効化)
+  # pretrained_model_path: "models/v460/sac_v460_seed42.zip"
+  # pretrained_buffer_path: "models/v460/sac_v460_seed42.buffer.pkl"
+  # incremental_timesteps: 15000   # warm-start 時の追加ステップ数
+
+# ---- 評価 ----
+evaluation:
+  # 384# CRITICAL-2: n_episodes=1 で holdout 全走査に変更
+  # 旧: n_episodes=3 → random_start=False 環境では同一データを3回繰り返すだけ
+  n_episodes: 1
+
+# ---- Multi-seed (G2 gate: 4 seed) ----
+seeds: [42, 123, 456, 789]
+
+# ---- 出力 ----
+output:
+  results_dir: "results/v460"
+  model_dir: "models/v460"
+  manifest_path: "results/v460/manifest.jsonl"
+
+# ---- 441# SAC Sidecar 定期再訓練 ----
+# sac_retrain_scheduler.py が読む設定セクション
+# Usage: python scripts/v460/ml/sac_retrain_scheduler.py --config <this_file>
+sac_retrain:
+  rolling_window_days: 7             # OHLCV rolling window (直近7日分)
+  model_name: "sac_sidecar.zip"      # deploy 先モデルファイル名
+  buffer_name: "sac_sidecar.buffer.pkl"
+  signal_path: "cache/sidecar_signal.json"
+  incremental_timesteps: 15000       # warm-start 追加ステップ数
+  check_interval_sec: 300            # polling 間隔 (5分)
+  retrain_interval_sec: 7200         # 最短再訓練間隔 (2h)
+  retrain_interval_max_sec: 14400    # 最長再訓練間隔 (4h)
+  min_new_rows: 120                  # 再訓練に必要な新規行数 (2h分)
+  min_gross_roi: 0.0                 # OOS gate: gross_roi > 0 で通過
+  n_eval_episodes: 1                 # 384# 準拠: holdout 全走査
+  min_trade_count: 3                 # 372# Deploy Gate
+  confidence_roi_full: 0.005         # confidence=1.0 閾値
+  history_path: "logs/sac_retrain_history.jsonl"
