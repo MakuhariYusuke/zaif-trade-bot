@@ -6762,3 +6762,42 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - filtered broad:
   - `tests/unit/v460/`
   - `4864 passed, 2 skipped, 13 warnings in 28.00s`
+
+## 2026-03-16 追加 wave: shared test helper への昇格
+
+### 実施
+- [tests/unit/v460/_reward_calculator_test_helpers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_reward_calculator_test_helpers.py)
+  - `make_reward_calculator(...)` を追加
+- [test_codex_408_409_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_codex_408_409_fixes.py)
+- [test_409_improvement_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_409_improvement_fixes.py)
+  - `RewardCalculator` 構築を shared helper に統一
+- [tests/unit/v460/_skip_gate_test_helpers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_skip_gate_test_helpers.py)
+  - `PickleStub` を追加
+- [test_retrain_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_retrain_hot_reload.py)
+- [test_skip_gate_d8.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_skip_gate_d8.py)
+  - `PickleStub` を shared helper に統一
+
+### 切り分け
+- shared に上げたもの:
+  - `make_reward_calculator(...)`
+  - `PickleStub`
+- shared に上げなかったもの:
+  - `_make_threshold_config(...)`
+  - `_make_runner(...)`
+  - `_model_paths(...)`
+  - `_gate_artifact_path(...)`
+- 理由:
+  - 前者は複数ファイルで同型・同責務
+  - 後者はファイル固有の前提や assertion 文脈を強く持つ
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_retrain_hot_reload.py`
+  - `tests/unit/v460/test_skip_gate_d8.py`
+  - `tests/unit/v460/test_codex_408_409_fixes.py`
+  - `tests/unit/v460/test_409_improvement_fixes.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `19 passed, 218 deselected in 5.29s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `4872 passed, 2 skipped, 13 warnings in 40.14s`

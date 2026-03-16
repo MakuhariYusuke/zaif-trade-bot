@@ -53,7 +53,7 @@ from scripts.v460.analysis.oracle_baseline import (
 )
 from scripts.v460.lib.lot_sizer import LotSizingConfig, compute_lot_size
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-from tests.unit.v460._skip_gate_test_helpers import save_and_load_skip_gate
+from tests.unit.v460._skip_gate_test_helpers import PickleStub, save_and_load_skip_gate
 from ztb.metrics.fill_quality import FillRecord
 from ztb.ml.artifact_paths import atomic_pickle_tmp_path, hash_sidecar_path
 from ztb.utils.run_manifest import compute_file_hash
@@ -67,14 +67,6 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Fixture helpers
 # ---------------------------------------------------------------------------
-
-
-class _PickleStub:
-    """SkipGate save/load 用の最小 picklable object."""
-
-    def __init__(self, name: str) -> None:
-        self.name = name
-
 
 def _write_placeholder_model(path: Path) -> None:
     """SkipGateEvaluator 初期化向けの最小ファイルを配置する."""
@@ -152,8 +144,8 @@ def _make_picklable_gate(
 ) -> SkipGate:
     """pickle 可能な SkipGate を作成."""
     config = SkipGateConfig(mode=mode)
-    model = _PickleStub("model")
-    scaler = _PickleStub("scaler")
+    model = PickleStub("model")
+    scaler = PickleStub("scaler")
     feature_cols = ["spread_jpy", "offset_ratio", "regime_trending"]
     gate = SkipGate(
         model=model, scaler=scaler, feature_cols=feature_cols,

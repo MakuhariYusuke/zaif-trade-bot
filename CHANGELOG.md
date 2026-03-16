@@ -5655,3 +5655,10 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused skip-gate bundle: `15 passed, 178 deselected in 2.69s`
     - filtered broad `tests/unit/v460/`: `4864 passed, 2 skipped, 13 warnings in 28.00s`
+- 2026-03-16: promoted the next reusable test contracts into shared helpers instead of leaving them duplicated per file.
+  - added [tests/unit/v460/_reward_calculator_test_helpers.py] with `make_reward_calculator(...)` and switched both `test_codex_408_409_fixes.py` and `test_409_improvement_fixes.py` to it
+  - extended [tests/unit/v460/_skip_gate_test_helpers.py] with `PickleStub` and reused it from `test_retrain_hot_reload.py` and `test_skip_gate_d8.py`
+  - kept threshold/runner/path helpers test-local where the setup semantics remain file-specific
+  - re-verified with:
+    - focused shared-helper bundle: `19 passed, 218 deselected in 5.29s`
+    - filtered broad `tests/unit/v460/`: `4872 passed, 2 skipped, 13 warnings in 40.14s`

@@ -16,6 +16,7 @@ import pytest
 
 from scripts.v460.lib.fill_test_cli import _wait_for_process_start
 from scripts.v460.lib.tasks.sac_train import _validate_oos_eval_requirements
+from tests.unit.v460._reward_calculator_test_helpers import make_reward_calculator
 from ztb.trading.environment import _load_environment_exports
 from ztb.trading.environment.components.calculators.reward_calculator import (
     RewardCalculator,
@@ -44,18 +45,6 @@ def _read_repo_text(*parts: str) -> str:
 @lru_cache(maxsize=None)
 def _parse_repo_python(*parts: str) -> ast.AST:
     return ast.parse(_read_repo_text(*parts))
-
-
-def _make_reward_calculator() -> RewardCalculator:
-    config = EnvironmentConfig()
-    config.max_position_size = 1.0
-    config.reward_settings = RewardSettings()
-    config.venue_settings = {}
-    return RewardCalculator(
-        config=config,
-        reward_settings=config.reward_settings,
-        initial_portfolio_value=100000.0,
-    )
 
 
 class _FakeProcess:
@@ -410,7 +399,7 @@ class TestT12RewardCalculatorSelfTestRemoval:
             mock_signal_integrator.return_value.enabled = False
             mock_signal_integrator.return_value.integrate_signal.return_value = 0.0
 
-            calculator = _make_reward_calculator()
+            calculator = make_reward_calculator()
             reward = calculator.calculate_reward(
                 action=1,
                 current_price=5_000_000.0,

@@ -15,21 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
-def _make_reward_calculator():
-    from ztb.trading.environment.components.calculators.reward_calculator import (
-        RewardCalculator,
-    )
-    from ztb.trading.environment.utils.config import (
-        EnvironmentConfig,
-        RewardSettings,
-    )
-
-    config = EnvironmentConfig()
-    config.behavior_optimization = {}
-    reward_settings = RewardSettings()
-    config.reward_settings = reward_settings
-    return RewardCalculator(config, reward_settings, 100000.0)
+from tests.unit.v460._reward_calculator_test_helpers import make_reward_calculator
 
 
 def _make_threshold_config() -> SimpleNamespace:
@@ -124,7 +110,7 @@ class TestC3RewardCalculatorExceptionLogging:
 
     def test_record_action_sync_failure_logs_warning(self):
         """If deque/count sync fails in _record_action, it should log a warning."""
-        rc = _make_reward_calculator()
+        rc = make_reward_calculator()
 
         # Sabotage behavioral_penalty_calculator to trigger the except block
         rc.behavioral_penalty_calculator.recent_actions = MagicMock(
@@ -141,7 +127,7 @@ class TestC3RewardCalculatorExceptionLogging:
 
     def test_skewness_penalty_failure_logs_warning(self, caplog):
         """If skewness_penalty calculation fails, it should log and return 0."""
-        rc = _make_reward_calculator()
+        rc = make_reward_calculator()
         rc.behavioral_penalty_calculator.calculate_skewness_penalty = MagicMock(
             side_effect=RuntimeError("test error")
         )

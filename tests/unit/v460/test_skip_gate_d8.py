@@ -23,15 +23,8 @@ from scripts.v460.ml.skip_gate import (
     build_features_from_market_state,
     warm_start_skip_gate_thresholds,
 )
-from tests.unit.v460._skip_gate_test_helpers import save_and_load_skip_gate
+from tests.unit.v460._skip_gate_test_helpers import PickleStub, save_and_load_skip_gate
 from ztb.ml.artifact_paths import hash_sidecar_path
-
-
-class _PickleStub:
-    """SkipGate save/load 用の最小 picklable object."""
-
-    def __init__(self, name: str) -> None:
-        self.name = name
 
 
 class _CallableStub:
@@ -96,8 +89,8 @@ def _make_gate(
     )
     mock_pipeline = _PipelineStub(predict_prob)
     gate = SkipGate(
-        model=_PickleStub("model"),
-        scaler=_PickleStub("scaler"),
+        model=PickleStub("model"),
+        scaler=PickleStub("scaler"),
         feature_cols=["spread_jpy", "offset_ratio", "regime_trending"],
         config=config,
         pipeline=mock_pipeline,
@@ -543,8 +536,8 @@ class TestSkipGateSaveLoad:
             as_threshold_buy=kwargs.get("as_threshold_buy", 0.55),  # type: ignore[arg-type]
             sell_enabled=kwargs.get("sell_enabled", False),  # type: ignore[arg-type]
         )
-        model = _PickleStub("model")
-        scaler = _PickleStub("scaler")
+        model = PickleStub("model")
+        scaler = PickleStub("scaler")
         feature_cols = ["spread_jpy", "offset_ratio", "regime_trending"]
         return SkipGate(
             model=model, scaler=scaler, feature_cols=feature_cols,
