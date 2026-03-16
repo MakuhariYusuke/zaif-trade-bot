@@ -148,6 +148,11 @@ class MacroRegimeDetector:
         bucket_age = timestamp - self._current_bucket_start
         self._current_bucket_prices.append(mid_price)
 
+        # 458# メモリリーク防止: バケット未確定のまま蓄積される場合の上限
+        _max_samples_per_bucket = 200  # 30s bucket / ~0.15s cycle ≈ 200
+        if len(self._current_bucket_prices) > _max_samples_per_bucket:
+            self._current_bucket_prices = self._current_bucket_prices[-_max_samples_per_bucket:]
+
         if bucket_age >= self.config.bucket_sec and self._current_bucket_prices:
             # バケット確定 → 平均価格を記録
             avg = sum(self._current_bucket_prices) / len(self._current_bucket_prices)

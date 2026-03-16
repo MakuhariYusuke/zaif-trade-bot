@@ -136,6 +136,13 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     # 189# D: MacroRegime
     "enable_macro_regime",
     "macro_regime_conflict_action",
+    # 458# macro sell/buy boost + timeout
+    "macro_sell_boost_weak_up",
+    "macro_sell_boost_strong_up",
+    "macro_buy_boost_weak_down",
+    "macro_buy_boost_strong_down",
+    "macro_sell_timeout_weak_up",
+    "macro_sell_timeout_strong_up",
     # --- dynamic kill ---
     "sell_dynamic_kill_enabled",
     "sell_dynamic_kill_window",

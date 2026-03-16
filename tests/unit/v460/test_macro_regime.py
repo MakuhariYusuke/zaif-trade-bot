@@ -214,3 +214,42 @@ class TestFillRecordMacroBoost:
         )
         assert hasattr(r, "macro_boost_applied")
         assert r.macro_boost_applied is None
+
+
+# ============================================================
+# §6 Hot-reload 配線テスト
+# ============================================================
+
+class TestHotReloadWiring:
+    """458# 新フィールドが _HOT_RELOADABLE_FIELDS に含まれる."""
+
+    def test_macro_boost_fields_in_hot_reload(self) -> None:
+        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
+        for f in [
+            "macro_sell_boost_weak_up",
+            "macro_sell_boost_strong_up",
+            "macro_buy_boost_weak_down",
+            "macro_buy_boost_strong_down",
+            "macro_sell_timeout_weak_up",
+            "macro_sell_timeout_strong_up",
+        ]:
+            assert f in _HOT_RELOADABLE_FIELDS, f"{f} missing from hot-reload"
+
+
+# ============================================================
+# §7 メモリリーク防止テスト
+# ============================================================
+
+class TestMemoryLeakPrevention:
+    """_current_bucket_prices が無制限成長しないことを検証."""
+
+    def test_bucket_prices_capped(self) -> None:
+        """バケットが閉じないシナリオで _current_bucket_prices が上限内に収まる."""
+        cfg = MacroRegimeConfig(bucket_sec=30.0)
+        det = MacroRegimeDetector(cfg)
+        base_ts = 1_000_000.0
+        # 同一タイムスタンプで 300 回更新 (バケット閉じない)
+        for i in range(300):
+            det.update(base_ts, 10_000_000.0 + i)
+        # 200 以下にキャップされる
+        assert len(det._current_bucket_prices) <= 200
