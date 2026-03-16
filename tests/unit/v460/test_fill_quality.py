@@ -1769,20 +1769,14 @@ class TestAdapterRealModeP20:
 class TestFillTestRunnerSaveResilience:
     """024# R1-R4: BatchPersistence (119# 委譲) のテスト."""
 
-    def _make_persistence(
-        self,
-        tmp_path: Path,
-        *,
-        max_retries: int = 3,
-        save_fail_threshold: int = 3,
-    ) -> "BatchPersistence":
+    def _make_persistence(self, tmp_path: Path) -> "BatchPersistence":
         """テスト用の BatchPersistence を作成."""
         results_dir = tmp_path / "results"
         results_dir.mkdir(parents=True, exist_ok=True)
         return BatchPersistence(
             results_dir=results_dir,
-            max_retries=max_retries,
-            save_fail_threshold=save_fail_threshold,
+            max_retries=3,
+            save_fail_threshold=3,
             retry_backoff_sec=0.0,
             flush_interval_sec=600.0,
         )
@@ -1842,7 +1836,7 @@ class TestFillTestRunnerSaveResilience:
 
     def test_try_save_batch_retry_on_failure(self, tmp_path: Path) -> None:
         """保存失敗時にリトライし、最終的に失敗を返す."""
-        bp = self._make_persistence(tmp_path, max_retries=1)
+        bp = self._make_persistence(tmp_path)
         batch = [self._make_record()]
 
         with patch.object(bp, "_save_batch_by_date", side_effect=IOError("disk full")):
@@ -1854,7 +1848,7 @@ class TestFillTestRunnerSaveResilience:
 
     def test_try_save_batch_emergency_dump_after_3_failures(self, tmp_path: Path) -> None:
         """3回連続失敗で緊急ダンプが発動する."""
-        bp = self._make_persistence(tmp_path, max_retries=1)
+        bp = self._make_persistence(tmp_path)
         bp._save_fail_count = 2  # 既に2回失敗
         batch = [self._make_record()]
 
@@ -1902,20 +1896,21 @@ class TestFillTestRunnerSaveResilience:
         runner = self._make_cleanup_runner(tmp_path)
         runner._batch_persistence._unsaved_batch = [self._make_record()]
 
-        with patch.object(runner._batch_persistence, "emergency_dump") as mock_dump:
-            runner._cleanup_sync()
+        runner._cleanup_sync()
 
         assert runner._batch_persistence.unsaved_batch == []
-        mock_dump.assert_called_once()
+        emergency_files = list((tmp_path / "results" / "emergency").glob("emergency_atexit_*.jsonl"))
+        assert len(emergency_files) == 1
 
     def test_cleanup_sync_no_unsaved_no_dump(self, tmp_path: Path) -> None:
         """未保存バッチが空なら緊急ダンプは作成されない."""
         runner = self._make_cleanup_runner(tmp_path)
 
-        with patch.object(runner._batch_persistence, "emergency_dump") as mock_dump:
-            runner._cleanup_sync()
+        runner._cleanup_sync()
 
-        mock_dump.assert_not_called()
+        emergency_dir = tmp_path / "results" / "emergency"
+        if emergency_dir.exists():
+            assert len(list(emergency_dir.glob("*.jsonl"))) == 0
 
 
 class TestUnknownFillHandling:

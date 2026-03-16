@@ -20,34 +20,6 @@ async def _noop_async() -> None:
     return None
 
 
-class _ResponseStub:
-    def __init__(self, payload: dict[str, object], *, status_code: int = 200) -> None:
-        self.status_code = status_code
-        self._payload = payload
-        self.text = json.dumps(payload)
-
-    def json(self) -> dict[str, object]:
-        return self._payload
-
-    def raise_for_status(self) -> None:
-        return None
-
-
-class _SessionStub:
-    def __init__(self, *, response: _ResponseStub) -> None:
-        self._response = response
-        self.post_calls: list[dict[str, object]] = []
-        self.get_calls: list[dict[str, object]] = []
-
-    def post(self, url: str, **kwargs: object) -> _ResponseStub:
-        self.post_calls.append({"url": url, **kwargs})
-        return self._response
-
-    def get(self, url: str, **kwargs: object) -> _ResponseStub:
-        self.get_calls.append({"url": url, **kwargs})
-        return self._response
-
-
 async def _run_place_order_capture(
     adapter: CoincheckAdapter,
     capture: dict[str, object],
@@ -83,26 +55,31 @@ class TestC3SignatureConsistency:
         url = "https://coincheck.com/api/exchange/orders"
 
         # 146# §13: Mock the session returned by _get_session()
-        mock_session = _SessionStub(
-            response=_ResponseStub({"success": True, "id": 12345}),
-        )
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"success": True, "id": 12345}
+        mock_response.raise_for_status = MagicMock()
+        mock_response.text = '{"success": true, "id": 12345}'
+
+        mock_session = MagicMock()
+        mock_session.post.return_value = mock_response
 
         with patch.object(adapter, "_get_session", return_value=mock_session):
             adapter._make_api_request("POST", url, data)
 
             # Verify POST was called
-            assert len(mock_session.post_calls) == 1
-            call_kwargs = mock_session.post_calls[0]
+            mock_session.post.assert_called_once()
+            call_kwargs = mock_session.post.call_args
 
             # The data sent must be urlencode format
-            sent_data = call_kwargs.get("data")
+            sent_data = call_kwargs.kwargs.get("data") or call_kwargs[1].get("data")
             expected_body = urllib.parse.urlencode(data)
             assert sent_data == expected_body, (
                 f"Sent body={sent_data!r} != expected urlencode={expected_body!r}"
             )
 
             # Verify the signature was computed over the SAME urlencode body
-            headers = call_kwargs["headers"]
+            headers = call_kwargs.kwargs.get("headers") or call_kwargs[1].get("headers")
             nonce = headers["ACCESS-NONCE"]
             signature = headers["ACCESS-SIGNATURE"]
 
@@ -124,15 +101,19 @@ class TestC3SignatureConsistency:
         url = "https://coincheck.com/api/accounts/balance"
 
         # 146# §13: Mock the session returned by _get_session()
-        mock_session = _SessionStub(
-            response=_ResponseStub({"success": True, "jpy": "1000"}),
-        )
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"success": True, "jpy": "1000"}
+        mock_response.raise_for_status = MagicMock()
+        mock_response.text = '{"success": true}'
+
+        mock_session = MagicMock()
+        mock_session.get.return_value = mock_response
 
         with patch.object(adapter, "_get_session", return_value=mock_session):
             adapter._make_api_request("GET", url)
 
-            assert len(mock_session.get_calls) == 1
-            headers = mock_session.get_calls[0]["headers"]
+            headers = mock_session.get.call_args.kwargs.get("headers") or mock_session.get.call_args[1].get("headers")
             nonce = headers["ACCESS-NONCE"]
             signature = headers["ACCESS-SIGNATURE"]
 

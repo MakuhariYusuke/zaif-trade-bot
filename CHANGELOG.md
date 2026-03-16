@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 444# Cross-Venue 閾値チューニング + ログ可視化 (2026-03-16)
+
+### Background
+- 442# / 443# でcross-venue lead-lag機能を有効化したが、実運用で hint が一度も発火しなかった
+- 診断の結果、3つの閾値問題を特定:
+  - `spread_bps_threshold=2.0`: CC-BF間の実測スプレッドは通常0.5〜1.7bps → 閾値超えない
+  - `velocity_bps_threshold=1.0→0.05→0.02`: 120s cycle間隔ではper-sec換算で極小化
+  - hint=None 時のログが `logger.debug` で本番で不可視
+
+### Changed
+- **spread_bps_threshold**: 2.0 → 1.0 (実測中央値~1.0bps に合わせ捕捉率向上)
+- **velocity_bps_threshold**: 0.05 → 0.01 (120s間隔での5.98bps乖離+vel=0.012を捕捉)
+- **hint=None ログ**: `logger.debug` → `logger.info` + 具体的な阻止理由を表示
+  - `spread(+0.68)<1.0`, `velocity(+0.0117)<0.02`, `sign_disagree(spr=+1.89,vel=-0.02)` 等
+- Config defaults in `fill_config.py` を YAML と同期
+
+### Results (初回実運用データ)
+- Hint 発火: 2/13 cycles (15%) — spread>1bps + vel>0.01bps/s + 符号一致
+- sign_disagree: 5/13 (38%) — 最大のブロッカー（設計通り: 逆行時に発火抑制）
+- spread 不足: 4/13 (30%) — 通常時はCC-BF乖離が1bps未満
+- 発火例: spread=+3.19bps, vel=+0.18bps/s, depth_imb=+0.453 → adverse_side=sell
+
 ## 442# Cross-Venue有効化 + L5板深度拡張 + Microprice + Depth Imbalance (2026-03-17)
 
 ### Added

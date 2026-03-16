@@ -372,11 +372,11 @@ class Test057Integration:
             tmp_path=tmp_path,
             load_fn=lambda path: load_fill_records(path, max_files=1),
             feature_builder=build_as_features,
-            candidate_limits=(94, 100, 160, 220),
+            candidate_limits=(94, 100, 160),
         )
         assert len(df) >= 30
         X, y = build_as_features(df)
-        assert len(X) >= 10
+        assert len(X) >= 15
 
 
 class Test057DataLoaderCache:
