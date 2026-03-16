@@ -6619,3 +6619,42 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 3. `test_305_p0_improvements.py::TestPnlDecomposition::test_no_decomposition_without_fill_price`
 4. `test_409_improvement_fixes.py::TestC3RewardCalculatorExceptionLogging::test_record_action_sync_failure_logs_warning`
 5. `test_384_pipeline_fixes.py::TestEvaluateModelOOS::test_multi_slice_metrics_present`
+
+## 2026-03-16 / ML-Pipeline and PnlMeasurer Helper Sweep
+
+### 目的
+- 直前の helper-reuse パターンを、まだ素直に寄せられる real-data setup と measurer construction に広げる。
+- `ml_pipeline` の integration setup を 1 箇所にまとめ、sell-hold 系テストも config/build boilerplate を減らす。
+
+### 変更
+- [test_ml_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ml_pipeline.py)
+  - `_REAL_DATA_CANDIDATE_LIMITS` を定数化
+  - `_cached_latest_fill_records_file()` を追加
+  - `_load_minimum_real_as_fill_df(tmp_path)` を追加
+  - `Test057Integration::test_load_real_data` を shared helper 経由に統一
+- [test_168_pnl_measurer_sell_hold.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_168_pnl_measurer_sell_hold.py)
+  - `_make_measurer(...)` を追加
+  - sell-hold / early-exit 系の `FillTestConfig -> PnlMeasurer` 構築重複を削減
+
+### 横展開メモ
+- `latest_fill_records_file()` + `write_minimum_feature_ready_fill_sample(...)` の組み合わせは
+  `test_ml_pipeline.py` では helper 化が自然だった
+- ただし他ファイルでは既に `select_minimum_trainable_fill_df(...)` を使っており、
+  そこへ無理に統一するより現状の 2 系統維持のほうが責務が明確
+- `PnlMeasurer` の生成 helper は `test_168` で効果があり、他の sell-hold/fee 系にも横展開余地あり
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_ml_pipeline.py -k 'test_load_real_data'`
+  - `tests/unit/v460/test_168_pnl_measurer_sell_hold.py`
+  - `10 passed in 3.63s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `4864 passed, 2 skipped, 13 warnings in 33.82s`
+
+### broad 上位の更新
+1. `test_regime_detector.py::TestSingleInstanceLock::test_lockfile_created_and_removed`
+2. `test_retrain_hot_reload.py::TestAtomicHashMove::test_atomic_save_roundtrip`
+3. `test_retrain_hot_reload.py::TestE4EnrichedCache::test_cache_roundtrip`
+4. `test_codex_408_409_fixes.py::TestT9ConftestCatchNarrowing::test_conftest_early_section_has_no_broad_exception_handlers`
+5. `test_409_improvement_fixes.py::TestC3RewardCalculatorExceptionLogging::test_record_action_sync_failure_logs_warning`

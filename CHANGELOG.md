@@ -5634,3 +5634,9 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused hotspot bundle: `11 passed in 4.24s`
     - filtered broad `tests/unit/v460/`: `4850 passed, 2 skipped, 13 warnings in 28.39s`
+- 2026-03-16: extended the helper-reuse wave into `ml_pipeline` real-data setup and `pnl_measurer_sell_hold` test construction.
+  - added a cached latest-fill-file + `_load_minimum_real_as_fill_df(...)` helper in `test_ml_pipeline.py` so the real-data integration path uses one shared construction route
+  - added `_make_measurer(...)` in `test_168_pnl_measurer_sell_hold.py` to remove repeated `FillTestConfig -> PnlMeasurer` boilerplate
+  - re-verified with:
+    - focused helper bundle: `10 passed in 3.63s`
+    - filtered broad `tests/unit/v460/`: `4864 passed, 2 skipped, 13 warnings in 33.82s`

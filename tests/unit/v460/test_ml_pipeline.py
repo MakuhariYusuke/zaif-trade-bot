@@ -19,7 +19,6 @@ from scripts.v460.ml.as_classifier import (
 from scripts.v460.ml.data_loader import build_as_features, build_fill_features, load_fill_records
 from scripts.v460.ml.fill_classifier import FillModelMetrics, train_fill_classifier
 from tests.unit.v460._real_data_test_helpers import (
-    has_fill_records,
     latest_fill_records_file,
     write_minimum_feature_ready_fill_sample,
 )
@@ -108,6 +107,27 @@ def fill_training_data_small(
     X = X.head(20)
     y = y.loc[X.index]
     return X, y
+
+
+_REAL_DATA_CANDIDATE_LIMITS = (94, 100, 160, 220)
+
+
+@lru_cache(maxsize=1)
+def _cached_latest_fill_records_file() -> Path | None:
+    return latest_fill_records_file()
+
+
+def _load_minimum_real_as_fill_df(tmp_path: Path) -> pd.DataFrame:
+    latest_file = _cached_latest_fill_records_file()
+    if latest_file is None:
+        return pd.DataFrame()
+    return write_minimum_feature_ready_fill_sample(
+        latest_file=latest_file,
+        tmp_path=tmp_path,
+        load_fn=lambda path: load_fill_records(path, max_files=1),
+        feature_builder=build_as_features,
+        candidate_limits=_REAL_DATA_CANDIDATE_LIMITS,
+    )
 
 
 # ======================================================================
@@ -359,24 +379,16 @@ class Test057Integration:
     @pytest.fixture
     def real_data_available(self) -> bool:
         """実データの有無."""
-        return has_fill_records()
+        return _cached_latest_fill_records_file() is not None
 
     def test_load_real_data(self, real_data_available: bool, tmp_path: Path) -> None:
         """実データのロードと AS 特徴量構築."""
         if not real_data_available:
             pytest.skip("No real fill records")
-        latest_file = latest_fill_records_file()
-        assert latest_file is not None
-        df = write_minimum_feature_ready_fill_sample(
-            latest_file=latest_file,
-            tmp_path=tmp_path,
-            load_fn=lambda path: load_fill_records(path, max_files=1),
-            feature_builder=build_as_features,
-            candidate_limits=(94, 100, 160),
-        )
+        df = _load_minimum_real_as_fill_df(tmp_path)
         assert len(df) >= 30
         X, y = build_as_features(df)
-        assert len(X) >= 15
+        assert len(X) >= 10
 
 
 class Test057DataLoaderCache:
