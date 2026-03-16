@@ -5640,3 +5640,11 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused helper bundle: `10 passed in 3.63s`
     - filtered broad `tests/unit/v460/`: `4864 passed, 2 skipped, 13 warnings in 33.82s`
+- 2026-03-16: widened the same cleanup policy across the remaining `v460` roundtrip/lock/AST-scan hotspots.
+  - added `_hash_sidecar_path(...)` in `scripts/v460/ml/retrain_scheduler.py` and aligned the atomic save tests to the same production helper
+  - replaced `TemporaryDirectory()` roundtrip tests in `test_retrain_hot_reload.py`, `test_skip_gate_d8.py`, and `test_215_dd_fix_alert_mode.py` with `tmp_path`-based helpers where the filesystem contract was unchanged
+  - cached AST parsing in `test_codex_408_409_fixes.py` and replaced repeated `FillTestRunner(MagicMock(), FillTestConfig(...))` setup in `test_regime_detector.py` with a lightweight runner helper
+  - replaced a few remaining broad `MagicMock` config/detector stubs in `test_409_improvement_fixes.py` with small typed/simple stubs
+  - re-verified with:
+    - focused regression bundle: `26 passed in 14.69s`
+    - filtered broad `tests/unit/v460/`: `4864 passed, 2 skipped, 13 warnings in 42.05s`

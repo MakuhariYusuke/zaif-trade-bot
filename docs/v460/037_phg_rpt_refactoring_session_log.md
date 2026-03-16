@@ -6658,3 +6658,66 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 3. `test_retrain_hot_reload.py::TestE4EnrichedCache::test_cache_roundtrip`
 4. `test_codex_408_409_fixes.py::TestT9ConftestCatchNarrowing::test_conftest_early_section_has_no_broad_exception_handlers`
 5. `test_409_improvement_fixes.py::TestC3RewardCalculatorExceptionLogging::test_record_action_sync_failure_logs_warning`
+
+## 2026-03-16 追加 wave: roundtrip / lock / AST-scan の横断整理
+
+### 実施
+- [retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/retrain_scheduler.py)
+  - `_hash_sidecar_path(...)` を追加
+  - atomic deploy と cleanup の sidecar path 計算を共通化
+- [test_retrain_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_retrain_hot_reload.py)
+  - `TestE4EnrichedCache`
+  - `TestAtomicHashMove`
+  - `TestPostDeployVerification`
+  を `tmp_path` + shared path helper に寄せた
+- [test_skip_gate_d8.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_skip_gate_d8.py)
+  - `save/load` roundtrip を `tmp_path` 化
+- [test_codex_408_409_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_codex_408_409_fixes.py)
+  - repo file の AST parse を import-time cache helper に寄せた
+- [test_regime_detector.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_regime_detector.py)
+  - lock / cleanup / loss-cap 周辺の `FillTestRunner(MagicMock(), FillTestConfig(...))` を `_make_runner(...)` へ集約
+- [test_409_improvement_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_409_improvement_fixes.py)
+  - `RewardCalculator` の最小生成 helper
+  - threshold config の `SimpleNamespace` helper
+  - zero-price detector の lightweight stub
+- [test_215_dd_fix_alert_mode.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_215_dd_fix_alert_mode.py)
+  - guard-fire-count persistence の roundtrip を `tmp_path` 化
+
+### 横展開判断
+- `TemporaryDirectory()` は roundtrip / save-load 契約に限定して `tmp_path` へ寄せた
+  - stateful class setup を前提にしている箇所までは無理に広げていない
+- AST scan は file ごとに parse 結果が不変なので、repo file cache 化が自然だった
+- `RewardCalculator` の config stub は、`MagicMock(spec=...)` より
+  実 `EnvironmentConfig` + 最小上書きのほうが壊れにくいと判断した
+- `EnvironmentConfig.as_dict()` の shallow 化は、nested dataclass を含むため今回も見送り
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_regime_detector.py -k 'TestSingleInstanceLock or TestPreflightSkipLimit or TestCleanupSyncImproved or TestLossCapPeriodicUpdate or TestSoftHardLossCap'`
+  - `12 passed, 80 deselected in 3.41s`
+- focused:
+  - `tests/unit/v460/test_retrain_hot_reload.py -k 'TestE4EnrichedCache or TestAtomicHashMove or TestPostDeployVerification'`
+  - `10 passed, 72 deselected in 4.01s`
+- focused:
+  - `tests/unit/v460/test_codex_408_409_fixes.py -k 'TestT9ConftestCatchNarrowing or TestT16IntegrationAssertionCleanup'`
+  - `tests/unit/v460/test_409_improvement_fixes.py`
+  - `tests/unit/v460/test_215_dd_fix_alert_mode.py`
+  - `12 passed in 4.69s`
+- focused:
+  - `tests/unit/v460/test_skip_gate_d8.py -k 'TestSkipGateSaveLoad'`
+  - `2 passed, 39 deselected in 2.58s`
+- filtered broad:
+  - `tests/unit/v460/`
+  - `4864 passed, 2 skipped, 13 warnings in 42.05s`
+
+### 今回の sweep 後に残った上位
+1. `test_aggregate_to_1min.py` の実集約ロジック
+2. `test_gate_check.py::TestCLI::test_cli_g4`
+3. `test_286_comprehensive_resolution.py::TestDetectSplitBrain::test_split_brain_overlapping_run_ids`
+4. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data`
+5. `test_356_g2_sac_blockers.py::TestHeavyTradingEnvIntegration::test_env_instantiation_and_interaction`
+
+### 見立て
+- ここまでで `inspect` / AST parse / `TemporaryDirectory` / 重い `MagicMock` のような
+  “軽い固定費” はかなり掃除できた
+- broad 上位は、helper 化より実処理コストが支配的なテストへ移っている
