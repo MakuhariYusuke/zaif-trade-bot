@@ -79,7 +79,7 @@ micro_timeout:
 ## 3. テスト結果
 
 ```
-12 passed in 14.38s
+21 passed in 23.26s
 ```
 
 | テストクラス | テスト数 | 内容 |
@@ -89,6 +89,7 @@ micro_timeout:
 | `TestFillMonitorResultRequoteFields` | 2 | FillMonitorResult 新フィールド |
 | `TestFillRecordRequoteFields` | 2 | FillRecord 新フィールド + to_dict |
 | `TestProductionYamlMicroTimeout` | 2 | 本番 YAML セクション存在確認 |
+| `TestMicroTimeoutValidation` | 9 | 値域バリデーション + 構造的整合性警告 |
 
 既存テスト回帰なし: `test_fill_test_config.py` 83 テスト全 PASSED。
 
@@ -124,3 +125,46 @@ hot-reload 対応: YAML 変更 → 次サイクルで自動反映。
 | 二重発注 | cancel 失敗時の phantom 注文 | 既存の phantom guard (237#) が検出・照合 |
 | Offset stale | re-quote 時は mid のみ更新、offset pipeline 再計算なし | Offset は Policy Phase で計算済み。15s 程度なら stale にならない |
 | 既存挙動への影響 | 無効化時 (デフォルト) は一切のコードパスが変わらない | if-else 分岐で従来パスを完全に保持 |
+
+## 7. セルフレビュー (453# review)
+
+### 7.1 修正事項
+
+| # | 種別 | 内容 | 修正 |
+|---|------|------|------|
+| R1 | BUG | `cancel_failed_likely_filled` が `fill_price is not None` 内にネストされており、fill_price=None の場合に到達不能 | ネストを解除、独立した if 文に変更 |
+| R2 | BUG | `cancel_reason` が micro-timeout の短 timeout by design の cancel でも `"timeout"` のまま。通常 timeout と区別不能 | 未約定 + micro_timeout 有効時は `"micro_timeout"` に上書き |
+| R3 | BUG | `queue_wait` が re-quote 後の `t_submit` 基準 (最後の注文の待ち時間) になる。初回発注→最終約定の通算が正しい | `_first_t_submit` を保持し、約定時は `time.time() - _first_t_submit` を使用 |
+| R4 | MISSING | `micro_timeout_*` フィールドにバリデーションなし。無効値 (wait=0, max_requote=0, 負値) が素通り | `fill_config_validation.py` に 5 件の値域チェック追加 |
+| R5 | MISSING | サブサイクル合計時間が `cycle_interval_sec` を超過する設定への警告なし | 合計 > cycle_interval_sec 時に `warnings.warn` |
+| R6 | MISSING | `stale_order_enabled` 同時有効時の二重価格制御の警告なし | `stale_order_enabled=True` + `micro_timeout_enabled=True` 時に `warnings.warn` |
+| R7 | DEAD_CODE | `_remaining_lot`, `_micro_partial_qty` が初期化のみで更新なし | 将来の Partial Fill 対応基盤として意図的に残置 (453# §5 で記載済み) |
+
+### 7.2 追加バリデーションルール (fill_config_validation.py)
+
+```python
+# 452# Micro-timeout バリデーション
+micro_timeout_wait_sec > 0
+micro_timeout_wait_sec_sell > 0 or None
+micro_timeout_max_requote >= 1
+micro_timeout_requote_cooloff_sec >= 0
+# 構造的整合性警告
+max_requote * (wait_sec + cooloff) <= cycle_interval_sec  # 超過時 warn
+stale_order_enabled + micro_timeout_enabled 同時有効 → warn
+```
+
+### 7.3 テスト追加
+
+| テストクラス | テスト数 | 内容 |
+|-------------|---------|------|
+| `TestMicroTimeoutValidation` | 9 | 値域バリデーション (negative/zero/warn 等) |
+
+合計: **21 passed** (12 既存 + 9 新規)
+
+### 7.4 残存リスク (許容判断)
+
+| リスク | 判断 | 理由 |
+|--------|------|------|
+| `_remaining_lot` 未更新 | 許容 | Partial Fill API が Coincheck 側で未安定。基盤変数のみ先行配置 |
+| `object.__setattr__` config mutation | 許容 | シングルスレッド async。try/finally で復元保証。代替は Context Manager 化 (over-engineering) |
+| stale_order との競合 | 許容 (警告追加) | デフォルト `stale_order_enabled=False`。同時有効は `warnings.warn` で検出可能 |

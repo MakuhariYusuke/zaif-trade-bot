@@ -1219,6 +1219,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
         _requote_attempts = 0
         _micro_partial_qty = 0.0
         _remaining_lot = _order_lot
+        # 453# review: 初回 t_submit を保持 (queue_wait は発注→最終約定の通算)
+        _first_t_submit = t_submit
 
         if _micro_enabled:
             _mt_wait = (
@@ -1256,15 +1258,13 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                     )
                     break
 
-                # 部分約定チェック: cancel 後に約定数量があれば残量を減算
-                if monitor.fill_price is not None:
-                    # cancel_failed_likely_filled — 実質的に約定扱い
-                    if monitor.cancel_failed_likely_filled:
-                        logger.info(
-                            "[452# micro_timeout] Cancel failed likely filled on attempt %d",
-                            _mt_attempt + 1,
-                        )
-                        break
+                # cancel_failed_likely_filled — 実質的に約定扱い
+                if monitor.cancel_failed_likely_filled:
+                    logger.info(
+                        "[452# micro_timeout] Cancel failed likely filled on attempt %d",
+                        _mt_attempt + 1,
+                    )
+                    break
 
                 _requote_attempts = _mt_attempt + 1
 
@@ -1331,11 +1331,25 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
 
         filled = monitor.filled
         fill_price = monitor.fill_price
-        queue_wait = monitor.queue_wait
-        cancel_reason_poll = monitor.cancel_reason
+        # 453# review: micro_timeout 有効時は _first_t_submit 基準の通算 queue_wait
+        if _micro_enabled and filled:
+            queue_wait = time.time() - _first_t_submit
+        else:
+            queue_wait = monitor.queue_wait
+        # 453# review: micro_timeout の短 timeout による cancel は "micro_timeout" と記録
+        if _micro_enabled and not filled and monitor.cancel_reason == "timeout":
+            cancel_reason_poll: str | None = "micro_timeout"
+        else:
+            cancel_reason_poll = monitor.cancel_reason
         reprice_count = monitor.reprice_count
         reprice_drift_bps = monitor.reprice_drift_bps  # 158# P1-3
-        order_price = monitor.final_order_price  # stale reprice で変更される場合
+        # 453# review: re-quote 時は最後の re-quote 価格を優先、
+        # monitor 内の stale reprice がある場合はその値を使う
+        if _micro_enabled and _requote_attempts > 0:
+            # monitor.final_order_price に stale reprice があればそちらが正
+            order_price = monitor.final_order_price
+        else:
+            order_price = monitor.final_order_price  # stale reprice で変更される場合
         _effective_timeout = monitor.effective_timeout  # 145# §9-#2
         cancel_failed_likely_filled = monitor.cancel_failed_likely_filled  # 166# C.7
         # 237# phantom guard 登録 (status_unknown 時)

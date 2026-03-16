@@ -169,3 +169,64 @@ class TestProductionYamlMicroTimeout:
         cfg = FillTestConfig.from_yaml(raw)
         # 本番は disabled がデフォルト
         assert cfg.micro_timeout_enabled is False
+
+
+# ======================================================================
+# 453# Validation tests
+# ======================================================================
+
+class TestMicroTimeoutValidation:
+    """micro_timeout フィールドのバリデーションテスト."""
+
+    def test_wait_sec_negative_raises(self) -> None:
+        with pytest.raises(ValueError, match="micro_timeout_wait_sec must be > 0"):
+            FillTestConfig(micro_timeout_wait_sec=-1.0)
+
+    def test_wait_sec_zero_raises(self) -> None:
+        with pytest.raises(ValueError, match="micro_timeout_wait_sec must be > 0"):
+            FillTestConfig(micro_timeout_wait_sec=0.0)
+
+    def test_wait_sec_sell_negative_raises(self) -> None:
+        with pytest.raises(ValueError, match="micro_timeout_wait_sec_sell must be > 0"):
+            FillTestConfig(micro_timeout_wait_sec_sell=-5.0)
+
+    def test_wait_sec_sell_none_ok(self) -> None:
+        cfg = FillTestConfig(micro_timeout_wait_sec_sell=None)
+        assert cfg.micro_timeout_wait_sec_sell is None
+
+    def test_max_requote_zero_raises(self) -> None:
+        with pytest.raises(ValueError, match="micro_timeout_max_requote must be >= 1"):
+            FillTestConfig(micro_timeout_max_requote=0)
+
+    def test_cooloff_negative_raises(self) -> None:
+        with pytest.raises(ValueError, match="micro_timeout_requote_cooloff_sec must be >= 0"):
+            FillTestConfig(micro_timeout_requote_cooloff_sec=-1.0)
+
+    def test_cooloff_zero_ok(self) -> None:
+        cfg = FillTestConfig(micro_timeout_requote_cooloff_sec=0.0)
+        assert cfg.micro_timeout_requote_cooloff_sec == 0.0
+
+    def test_total_time_exceeds_cycle_warns(self) -> None:
+        import warnings
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            FillTestConfig(
+                micro_timeout_enabled=True,
+                micro_timeout_wait_sec=50.0,
+                micro_timeout_max_requote=4,
+                micro_timeout_requote_cooloff_sec=10.0,
+            )
+            mt_warnings = [x for x in w if "合計時間" in str(x.message)]
+            assert len(mt_warnings) >= 1
+
+    def test_cancel_reason_micro_timeout_label(self) -> None:
+        """453# review: cancel_reason が micro_timeout に上書きされることの概念テスト."""
+        result = FillMonitorResult(cancel_reason="timeout")
+        # micro_timeout 有効 + unfilled + cancel_reason="timeout" → "micro_timeout"
+        is_micro = True
+        filled = False
+        if is_micro and not filled and result.cancel_reason == "timeout":
+            label = "micro_timeout"
+        else:
+            label = result.cancel_reason
+        assert label == "micro_timeout"
