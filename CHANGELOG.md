@@ -5596,3 +5596,10 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused regression bundle: `17 passed in 6.47s`
     - filtered broad `tests/unit/v460/`: `4850 passed, 2 skipped, 13 warnings in 36.12s`
+- 2026-03-16: widened the latest hotspot fixes into a broader helper-reuse pass around gate checks, OOS slicing, and PnL measurement tests.
+  - replaced repeated `ManifestWriter` `MagicMock` setup in `test_gate_check.py::TestRunG0` with a dedicated lightweight stub
+  - trimmed `test_384_pipeline_fixes.py::TestEvaluateModelOOS::test_multi_slice_metrics_present` to the exact 4320-step boundary required by the production multi-slice logic
+  - switched `test_305_p0_improvements.py::TestPnlDecomposition` to a class-scoped `PnlMeasurer` fixture since the measurer is stateless across those cases
+  - re-verified with:
+    - focused hotspot bundle: `11 passed in 4.24s`
+    - filtered broad `tests/unit/v460/`: `4850 passed, 2 skipped, 13 warnings in 28.39s`
