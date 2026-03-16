@@ -317,7 +317,7 @@ cross_venue_lead_lag:
   reference_exchange: bitflyer
   max_age_sec: 3.0
   spread_bps_threshold: 1.0       # 444# 実測0.5-1.7bps → 2.0では発火せず → 1.0
-  velocity_bps_threshold: 0.02    # 444# 120s cycleでは~0.03bps/s → 0.05では不足 → 0.02
+  velocity_bps_threshold: 0.01    # 444# 120s cycleではvel~0.01-0.07bps/s: 5.98bps乖離捕捉に0.01必要
   offset_boost: 1.25
   veto_enabled: true               # 442# Hard veto 有効化 (6bps超の大乖離で注文抑止)
   veto_threshold_bps: 6.0
