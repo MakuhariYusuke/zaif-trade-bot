@@ -1,22 +1,24 @@
 <#
 .SYNOPSIS
-    286# fill_test ホットスワップ再起動スクリプト
+    286#/458# fill_test ホットスワップ再起動スクリプト
 .DESCRIPTION
     現在稼働中の fill_test を安全に停止し、最新コードで再起動する。
     IDE が落ちても独立動作するよう設計。
 
     手順:
+      0. Pre-flight: config 存在確認 + git SHA 表示
       1. 現在の lock ファイルから稼働 PID を特定
-      2. 旧プロセスに SIGTERM 相当 (CloseMainWindow → WaitForExit → Kill)
+      2. 全 run_fill_test プロセスを停止 (lock PID + 孤児プロセス)
       3. lock ファイルの stale 化を確認・除去
       4. 新プロセスを起動 (Start-Process, バックグラウンド)
-      5. 起動確認 (lock ファイル + heartbeat 確認)
+      5. 起動確認 (lock ファイル + heartbeat 更新確認)
 
     使用例:
       powershell -ExecutionPolicy Bypass -File ops\windows\hot_swap_restart.ps1
       powershell -ExecutionPolicy Bypass -File ops\windows\hot_swap_restart.ps1 -Hours 24 -DryRun
 .NOTES
     286# 2026-03-06 作成
+    458# 2026-03-17 改善: CIM置換, 孤児プロセスkill, taskkillエラー処理, pre-flight, heartbeat検証
 #>
 
 param(
@@ -35,13 +37,16 @@ $RootDir = Resolve-Path (Join-Path $ScriptDir "..\..") | Select-Object -ExpandPr
 Set-Location $RootDir
 
 $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+$scriptStart = Get-Date
+$gitSha = (git rev-parse --short HEAD 2>$null)
+if (-not $gitSha) { $gitSha = "unknown" }
 Write-Host "=========================================="
-Write-Host " fill_test hot-swap restart (286#)"
-Write-Host " $timestamp"
+Write-Host " fill_test hot-swap restart (286#/458#)"
+Write-Host " $timestamp  SHA: $gitSha"
 Write-Host "=========================================="
 
 # ======================================================================
-# Step 0: ログ準備
+# Step 0: Pre-flight チェック
 # ======================================================================
 $logDir = Join-Path $ResultsDir "logs"
 if (-not (Test-Path $logDir)) {
@@ -56,6 +61,18 @@ function Log {
     Write-Host $line
     Add-Content -Path $logPath -Value $line
 }
+
+# Pre-flight: config 存在確認
+if (-not (Test-Path $Config)) {
+    Log "ERROR" "Config ファイルが見つかりません: $Config"
+    exit 1
+}
+$pythonExe = Join-Path $RootDir ".venv\Scripts\python.exe"
+if (-not (Test-Path $pythonExe)) {
+    Log "ERROR" "Python 実行ファイルが見つかりません: $pythonExe"
+    exit 1
+}
+Log "INFO" "Pre-flight OK: config=$Config, python=$pythonExe, sha=$gitSha"
 
 # ======================================================================
 # Step 1: 現在の稼働プロセスを特定
@@ -84,12 +101,13 @@ if (Test-Path $lockPath) {
     Log "INFO" "  lock ファイルなし。プロセスは稼働していない可能性。"
 }
 
-# WMI でも確認
-$wmiProcs = Get-WmiObject Win32_Process -Filter "Name='python.exe'" |
+# WMI でも確認 (458# Get-CimInstance に置換)
+$wmiProcs = Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
     Where-Object { $_.CommandLine -like "*run_fill_test*" }
 if ($wmiProcs) {
     foreach ($p in $wmiProcs) {
-        Log "INFO" "  WMI 発見: PID=$($p.ProcessId) CMD=$($p.CommandLine.Substring(0, [Math]::Min(120, $p.CommandLine.Length)))"
+        $cmdSnippet = $p.CommandLine.Substring(0, [Math]::Min(120, $p.CommandLine.Length))
+        Log "INFO" "  CIM 発見: PID=$($p.ProcessId) CMD=$cmdSnippet"
     }
 }
 
@@ -101,16 +119,13 @@ if ($oldPid) {
 
     $proc = Get-Process -Id $oldPid -ErrorAction SilentlyContinue
     if ($proc) {
-        # まず graceful shutdown を試行
-        # fill_test は SIGINT (Ctrl+C) で graceful shutdown する設計
-        # Windows では GenerateConsoleCtrlEvent は別コンソールには送れないため
-        # taskkill で CTRL_BREAK_EVENT を送る
-        try {
-            # taskkill /PID は SIGTERM 相当 (WM_CLOSE)
-            $null = & taskkill /PID $oldPid 2>&1
+        # 458# taskkill エラー処理改善: try/catch では native command の
+        # エラーを適切に捕捉できないため $LASTEXITCODE を確認
+        $tkOutput = & taskkill /PID $oldPid 2>&1 | Out-String
+        if ($LASTEXITCODE -eq 0) {
             Log "INFO" "  taskkill 送信完了。graceful shutdown 待機中..."
-        } catch {
-            Log "WARN" "  taskkill 失敗: $_"
+        } else {
+            Log "WARN" "  taskkill 失敗 (exit=$LASTEXITCODE): $($tkOutput.Trim())"
         }
 
         # 待機
@@ -146,8 +161,24 @@ if ($oldPid) {
     Log "INFO" "Step 2: 停止対象プロセスなし。スキップ。"
 }
 
+# 458# 孤児プロセスの掃除: lock PID 以外の run_fill_test プロセスも停止
+$orphanProcs = Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
+    Where-Object { $_.CommandLine -like "*run_fill_test*" -and $_.ProcessId -ne $oldPid }
+if ($orphanProcs) {
+    Log "WARN" "孤児 run_fill_test プロセスを発見。停止します..."
+    foreach ($op in $orphanProcs) {
+        try {
+            Stop-Process -Id $op.ProcessId -Force -ErrorAction SilentlyContinue
+            Log "INFO" "  孤児 PID $($op.ProcessId) 停止"
+        } catch {
+            Log "WARN" "  孤児 PID $($op.ProcessId) 停止失敗: $_"
+        }
+    }
+    Start-Sleep -Seconds 2
+}
+
 # retrain_scheduler も停止 (同じコードベースを使うため)
-$retrainProcs = Get-WmiObject Win32_Process -Filter "Name='python.exe'" |
+$retrainProcs = Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
     Where-Object { $_.CommandLine -like "*retrain_scheduler*" }
 if ($retrainProcs) {
     Log "INFO" "  retrain_scheduler も停止します..."
@@ -183,12 +214,6 @@ if (Test-Path $osLockPath) {
 # Step 4: 新プロセス起動
 # ======================================================================
 Log "INFO" "Step 4: 新プロセス起動..."
-
-$pythonExe = Join-Path $RootDir ".venv\Scripts\python.exe"
-if (-not (Test-Path $pythonExe)) {
-    Log "ERROR" "  Python 実行ファイルが見つかりません: $pythonExe"
-    exit 1
-}
 
 $arguments = @(
     "-m", "scripts.v460.run_fill_test",
@@ -262,6 +287,16 @@ while ($waited -lt $StartupConfirmSec) {
         Log "INFO" "  lock 確認: PID=$newLockPid (alive=$lockPidAlive) [${waited}s]"
         if ($lockPidAlive) {
             $newPid = [int]$newLockPid  # 実際の PID に更新
+
+            # 458# heartbeat 更新確認: lock が作られただけでなく、実際に動作しているか確認
+            if ($newParts.Length -ge 4) {
+                $hbEpoch = [long]$newParts[3]
+                $hbAge = [int]([DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - $hbEpoch)
+                Log "INFO" "  heartbeat age: ${hbAge}s"
+                if ($hbAge -gt 120) {
+                    Log "WARN" "  heartbeat が ${hbAge}s 前。プロセスがハングしている可能性。"
+                }
+            }
             $confirmed = $true
             break
         }
@@ -271,12 +306,15 @@ while ($waited -lt $StartupConfirmSec) {
 }
 
 if ($confirmed) {
+    $elapsed = [int]((Get-Date) - $scriptStart).TotalSeconds
     Log "INFO" "=========================================="
     Log "INFO" " Hot-swap 完了！"
     Log "INFO" " 新 PID: $newPid"
+    Log "INFO" " SHA: $gitSha"
     Log "INFO" " Config: $Config"
     Log "INFO" " Exchange: $Exchange"
     Log "INFO" " Hours: $Hours"
+    Log "INFO" " 所要時間: ${elapsed}s"
     Log "INFO" "=========================================="
 
     # 426# P1: retrain_scheduler の自動再起動
@@ -296,7 +334,7 @@ $record = @{
     timestamp = (Get-Date).ToUniversalTime().ToString("o")
     event     = "hot_swap_restart"
     run_id    = $null
-    git_sha   = (git rev-parse --short HEAD 2>$null)
+    git_sha   = $gitSha
     pid       = $newPid
     reason    = "286# hot-swap deploy"
     details   = @{

@@ -2,7 +2,7 @@
 
 > **状態**: 実装完了・テスト済  
 > **前提**: [454#](454_ph2_plan_uptrend_sell_loss_countermeasures.md) 設計案 → [455#](455_ph2_rev_454_uptrend_sell_loss_countermeasures_review.md) Codex レビュー → [456#](456_ph2_plan_uptrend_sell_centric_paradigm.md) Sell-Centric パラダイム → [457#](457_ph2_rev_456_sell_centric_paradigm_review.md) 456# レビュー  
-> **SHA**: (未コミット)
+> **SHA**: `73c36b86f` (実装), `d0769f283` (SR修正)
 
 ---
 
@@ -167,7 +167,9 @@
 | §3 compose_regimes | 3 | ✅ PASS |
 | §4 Config Defaults | 2 | ✅ PASS |
 | §5 FillRecord macro_boost_applied | 1 | ✅ PASS |
-| **合計** | **13** | **✅ ALL PASS** |
+| §6 Hot-reload wiring (SR-1) | 1 | ✅ PASS |
+| §7 Memory leak prevention (SR-2) | 1 | ✅ PASS |
+| **合計** | **15** | **✅ ALL PASS** |
 
 ---
 
@@ -175,14 +177,15 @@
 
 | ファイル | 変更種別 |
 |---------|----------|
-| `scripts/v460/lib/macro_regime.py` | MODIFIED — hysteresis 追加 |
+| `scripts/v460/lib/macro_regime.py` | MODIFIED — hysteresis 追加 + `_current_bucket_prices` 200件キャップ (SR-2) |
 | `scripts/v460/lib/fill_cycle_executor.py` | MODIFIED — F-lite boost + H timeout + macro state 永続化 |
 | `scripts/v460/lib/fill_config.py` | MODIFIED — 6 フィールド追加 |
 | `scripts/v460/lib/fill_config_parser.py` | MODIFIED — YAML マッピング 6 件追加 |
 | `scripts/v460/lib/fill_record_builder.py` | MODIFIED — macro_boost_applied パラメータ追加 |
 | `ztb/metrics/fill_quality.py` | MODIFIED — FillRecord フィールド追加 |
 | `configs/v460/fill_test.yaml` | MODIFIED — threshold 変更 + boost/timeout 設定追加 |
-| `tests/unit/v460/test_macro_regime.py` | NEW — 13 テスト |
+| `scripts/v460/lib/config_hot_reload.py` | MODIFIED — 6 フィールド hot-reload 配線追加 (SR-1) |
+| `tests/unit/v460/test_macro_regime.py` | NEW — 15 テスト |
 
 ---
 
@@ -207,7 +210,22 @@
 
 ---
 
-## §7 残課題
+## §7 セルフレビュー (SR)
+
+| # | 問題 | 重大度 | 対策 |
+|---|------|--------|------|
+| **SR-1** | 6 新フィールドが `_HOT_RELOADABLE_FIELDS` 未登録 — YAML 変更しても live 反映されない | HIGH | `config_hot_reload.py` に 6 フィールド追加 (`d0769f283`) |
+| **SR-2** | `_current_bucket_prices` にバウンドなし — バケット未確定時に無制限成長の理論的リスク | MED | `macro_regime.py` に 200 件キャップ追加 (`d0769f283`) |
+
+**問題なし確認済**:
+- `_buckets` は `max_buckets=60` で既にキャップ済
+- ヒステリシス状態はスカラー 4 変数のみ（蓄積なし）
+- `_last_macro_trend` は単一 `str | None`（蓄積なし）
+- `from ... import MacroTrend` はループ内だが Python がモジュールキャッシュするため O(1)
+
+---
+
+## §8 残課題
 
 | ID | 内容 | 優先度 |
 |----|------|--------|
