@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-16 (449# DRY + 安定性 + Config 拡張)
+> 最終更新: 2026-03-16 (450# 447#-449# 検証レビュー)
 
 ---
 
@@ -443,6 +443,7 @@
 | 447 | rev | [447_ph4_gemini_second_opinion_and_new_paradigms.md](447_ph4_gemini_second_opinion_and_new_paradigms.md) | Gemini Second Opinion: 446# 検証確認 + EMAねじれ自己批判 + 新パラダイム提案 (Inventory Sponging / Micro-Timeout / Spread Shadowing) |
 | 448 | resp | [448_ph4_resp_446_447_ema_spread_fix_and_noop_visibility.md](448_ph4_resp_446_447_ema_spread_fix_and_noop_visibility.md) | 446/447# レビュー応答: F3 EMA spread 混線修正 + F2 cap_hit no-op 可視化 |
 | 449 | impl | [449_ph4_impl_cross_venue_dry_stability_config.md](449_ph4_impl_cross_venue_dry_stability_config.md) | DRY + 安定性: spread_bps 3重計算排除 + confidence_floor/depth_imb_threshold config化 + getattr統一 |
+| 450 | rev | [450_ph2_ph4_rev_447_449_validation_and_remaining_gaps.md](450_ph2_ph4_rev_447_449_validation_and_remaining_gaps.md) | 447#-449# 検証レビュー: repo上の修正は確認したが live未反映と FillRecordスキーマ穴が残存、same-SHA再実走と観測整備を優先と整理 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

@@ -81,6 +81,9 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
     _dd_soft_lot_scale_sell: float = 1.0
     _cross_venue_reference_adapter: IBroker | None = None
     _cross_venue_prev_reference_snapshot: VenueMidSnapshot | None = None
+    # 449# getattr 排除: orchestrator が設定する run/sha 属性
+    _run_id: str = ""
+    _git_sha: str = ""
 
     async def _compute_orderbook_imbalance(self, depth: int = 5) -> tuple[float, float, float]:
         """054# S1: 板不均衡を計算 — 120# MakerPriceCalculator に委譲."""
@@ -242,12 +245,12 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                     f"{hint.depth_imbalance:+.3f}" if hint.depth_imbalance is not None else "N/A",
                     ema_state.ema_spread_bps,
                 )
-                # 449# 安定性: try/except AttributeError → getattr に統一
+                # 449# 安定性: クラスレベルデフォルト宣言により直接参照
                 log_event(
                     "cross_venue_hint",
                     self.config.results_dir,
-                    run_id=str(getattr(self, "_run_id", "")),
-                    git_sha=str(getattr(self, "_git_sha", "")),
+                    run_id=str(self._run_id),
+                    git_sha=str(self._git_sha),
                     details=build_cross_venue_event_details(hint),
                 )
             else:

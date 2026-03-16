@@ -698,3 +698,71 @@ class TestConfidenceFloorParam:
         assert hint is not None
         # base_conf = max(0.33, 0.167) = 0.33, vel agrees → 1.0 → confidence = 0.33
         assert hint.confidence == pytest.approx(0.33)
+
+
+# ---- 450# P0: FillRecord スキーマ統合テスト ----
+
+
+class TestFillRecordSchemaIncludesNewFields:
+    """450# P0: builder が生成する 448# 新フィールドが FillRecord まで到達するか検証.
+
+    450# レビューで指摘された「コードはある → JSONL に落ちない」穴を防ぐ。
+    """
+
+    def test_point_spread_bps_round_trip(self) -> None:
+        """cross_venue_lead_lag_point_spread_bps が FillRecord→dict→FillRecord で保持される."""
+        record = FillRecord(
+            cycle_id="schema-1",
+            timestamp=100.0,
+            side="sell",
+            order_price=1_000_000.0,
+            order_quantity=0.01,
+            cross_venue_lead_lag_point_spread_bps=5.5,
+        )
+        d = record.to_dict()
+        assert d["cross_venue_lead_lag_point_spread_bps"] == pytest.approx(5.5)
+        restored = FillRecord.from_dict(d)
+        assert restored.cross_venue_lead_lag_point_spread_bps == pytest.approx(5.5)
+
+    def test_cap_hit_and_offsets_round_trip(self) -> None:
+        """pre_offset / post_offset / cap_hit が FillRecord round-trip で保持される."""
+        record = FillRecord(
+            cycle_id="schema-2",
+            timestamp=100.0,
+            side="sell",
+            order_price=1_000_000.0,
+            order_quantity=0.01,
+            cross_venue_lead_lag_pre_offset=0.15,
+            cross_venue_lead_lag_post_offset=0.15,
+            cross_venue_lead_lag_cap_hit=True,
+        )
+        d = record.to_dict()
+        assert d["cross_venue_lead_lag_pre_offset"] == pytest.approx(0.15)
+        assert d["cross_venue_lead_lag_post_offset"] == pytest.approx(0.15)
+        assert d["cross_venue_lead_lag_cap_hit"] is True
+        restored = FillRecord.from_dict(d)
+        assert restored.cross_venue_lead_lag_pre_offset == pytest.approx(0.15)
+        assert restored.cross_venue_lead_lag_post_offset == pytest.approx(0.15)
+        assert restored.cross_venue_lead_lag_cap_hit is True
+
+    def test_builder_fields_accepted_by_fill_record(self) -> None:
+        """fill_record_builder が生成する dict が FillRecord に通ることを確認."""
+        runner = _DummyFillRecordBuilder()
+        runner.config = FillTestConfig(cross_venue_lead_lag_enabled=True)
+        hint = _make_hint(adverse_side="sell", spread_bps=7.0)
+        state = _CrossVenueState(cross_venue_lead_lag_hint=hint)
+        # 448# no-op 可視化フィールドをスタブに追加
+        state._cross_venue_lead_lag_pre_offset = 0.20  # type: ignore[attr-defined]
+        state._cross_venue_lead_lag_post_offset = 0.25  # type: ignore[attr-defined]
+        state._cross_venue_lead_lag_cap_hit = False  # type: ignore[attr-defined]
+        runner._maker_price = state
+
+        fields = runner._build_fill_cross_venue_fields(side="sell")
+
+        # 全フィールドが FillRecord のフィールド名と一致する (sanitize で落ちない)
+        from ztb.metrics.fill_quality import _FILL_RECORD_FIELD_NAMES
+        for key in fields:
+            assert key in _FILL_RECORD_FIELD_NAMES, (
+                f"builder field '{key}' is NOT in FillRecord schema — "
+                f"it will be silently dropped by _sanitize_fill_record_fields"
+            )

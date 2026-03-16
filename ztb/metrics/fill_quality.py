@@ -185,6 +185,11 @@ class FillRecord:
     cross_venue_depth_imbalance: float | None = None
     # ---- 445# Cross-Venue confidence scoring ----
     cross_venue_confidence: float | None = None
+    # ---- 448# Cross-Venue EMA/点spread分離 + No-Op可視化 ----
+    cross_venue_lead_lag_point_spread_bps: float | None = None
+    cross_venue_lead_lag_pre_offset: float | None = None
+    cross_venue_lead_lag_post_offset: float | None = None
+    cross_venue_lead_lag_cap_hit: bool | None = None
     # ---- 421# P0: Execution Final Clamp 記録 ----
     # executor multiplier chain 適用後・Final Clamp 適用前の offset ratio。
     # None=clamp 未発火 or 無効。値あり=clamp が発火し、ceiling に切り詰められた。
