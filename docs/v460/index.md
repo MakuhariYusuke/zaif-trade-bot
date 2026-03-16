@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-16 (450# 447#-449# 検証レビュー)
+> 最終更新: 2026-03-18 (458# macro sell protection 実装)
 
 ---
 
@@ -448,6 +448,10 @@
 | 452 | plan | [452_ph2_plan_micro_timeout_design.md](452_ph2_plan_micro_timeout_design.md) | Micro-timeouts (TIF Emulation) 詳細設計案 |
 | 453 | impl | [453_micro_timeout_implementation.md](453_micro_timeout_implementation.md) | Micro-timeouts (TIF Emulation) 実装結果 (disabled by default) |
 | 454 | plan | [454_ph2_plan_uptrend_sell_loss_countermeasures.md](454_ph2_plan_uptrend_sell_loss_countermeasures.md) | 上昇トレンドにおける Sell 損失対策: 10案の深堀り + 3フェーズ推奨実装順序 |
+| 455 | rev | [455_ph2_rev_454_uptrend_sell_loss_countermeasures_review.md](455_ph2_rev_454_uptrend_sell_loss_countermeasures_review.md) | 454# Codex レビュー: R3 表現修正 (micro 保護は既存)、S1/S2 再定式化、F-lite→B→H 推奨順序 |
+| 456 | plan | [456_ph2_plan_uptrend_sell_centric_paradigm.md](456_ph2_plan_uptrend_sell_centric_paradigm.md) | Sell-Centric パラダイム: 上昇トレンド = seller's market、A Liquidity Mirage / B Dynamic Offloading / C Cross-Venue |
+| 457 | rev | [457_ph2_rev_456_sell_centric_paradigm_review.md](457_ph2_rev_456_sell_centric_paradigm_review.md) | 456# レビュー: A-lite のみ抽出 (×1.2-1.8)、B/C 棄却、"sell はプレミアム機会" |
+| 458 | impl | [458_ph2_impl_macro_sell_protection.md](458_ph2_impl_macro_sell_protection.md) | マクロ連動 Sell 防御: 455#/456#/457# 統合実装 — Hysteresis + F-lite boost + threshold 引下げ + micro-timeout 連動 + 観測フィールド |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

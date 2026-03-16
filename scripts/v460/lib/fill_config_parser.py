@@ -883,6 +883,14 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
             "slope_threshold": "macro_regime_slope_threshold",
             "strong_threshold": "macro_regime_strong_threshold",
             "conflict_action": "macro_regime_conflict_action",
+            # 458# F-lite: macro → offset boost
+            "sell_boost_weak_up": "macro_sell_boost_weak_up",
+            "sell_boost_strong_up": "macro_sell_boost_strong_up",
+            "buy_boost_weak_down": "macro_buy_boost_weak_down",
+            "buy_boost_strong_down": "macro_buy_boost_strong_down",
+            # 458# H: macro → micro-timeout 連動
+            "sell_timeout_weak_up": "macro_sell_timeout_weak_up",
+            "sell_timeout_strong_up": "macro_sell_timeout_strong_up",
         }
         for yaml_key, config_key in macro_map.items():
             if yaml_key in macro_cfg:

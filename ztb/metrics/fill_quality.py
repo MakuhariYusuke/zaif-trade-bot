@@ -146,6 +146,8 @@ class FillRecord:
     macro_slope_5m: float | None = None          # 5分 slope (bps/min)
     macro_slope_15m: float | None = None         # 15分 slope (bps/min)
     macro_aligned: bool | None = None            # micro/macro 一致フラグ
+    # 458# F-lite: macro offset boost 適用フラグ
+    macro_boost_applied: bool | None = None      # macro→offset boost が発火したか
     # 285# 283# P0-1: Split-Brain 検知用 — プロセス ID 記録
     # 同一時刻帯に複数 run_id/pid が存在すれば多重起動を検出可能
     pid: int | None = None                       # os.getpid() at record creation

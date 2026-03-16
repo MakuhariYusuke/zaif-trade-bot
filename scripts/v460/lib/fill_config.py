@@ -215,6 +215,14 @@ class FillTestConfig:
     macro_regime_slope_threshold: float = 1.0  # bps/min — trending 判定閾値
     macro_regime_strong_threshold: float = 3.0  # bps/min — strong trending 閾値
     macro_regime_conflict_action: str = "log"  # "log" or "downgrade" — 矛盾時動作
+    # 458# F-lite: macro trend → sell/buy offset boost
+    macro_sell_boost_weak_up: float = 1.3   # WEAK_UP 時の sell offset 乗数
+    macro_sell_boost_strong_up: float = 1.6  # STRONG_UP 時の sell offset 乗数
+    macro_buy_boost_weak_down: float = 1.3  # WEAK_DOWN 時の buy offset 乗数
+    macro_buy_boost_strong_down: float = 1.6  # STRONG_DOWN 時の buy offset 乗数
+    # 458# H: macro → micro-timeout 連動
+    macro_sell_timeout_weak_up: float | None = None    # WEAK_UP 時の sell timeout (秒, None=変更なし)
+    macro_sell_timeout_strong_up: float | None = None  # STRONG_UP 時の sell timeout (秒)
     # 041# 時間帯フィルター (AS 高リスク時間帯のスキップ)
     enable_time_filter: bool = False
     skip_utc_hours: list[int] | None = None

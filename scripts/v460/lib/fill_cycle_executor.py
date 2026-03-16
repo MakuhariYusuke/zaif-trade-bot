@@ -84,6 +84,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
     # 449# getattr 排除: orchestrator が設定する run/sha 属性
     _run_id: str = ""
     _git_sha: str = ""
+    # 458# F-lite: 前サイクルの macro_trend を保持 → 今サイクルの offset に使用
+    _last_macro_trend: str | None = None
 
     async def _compute_orderbook_imbalance(self, depth: int = 5) -> tuple[float, float, float]:
         """054# S1: 板不均衡を計算 — 120# MakerPriceCalculator に委譲."""
@@ -904,6 +906,42 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                     f"(delta={_vg_supp_delta:+.0f}JPY, price={order_price:.0f})"
                 )
 
+        # 458# F-lite: macro_trend → sell/buy offset boost (premium 化)
+        # 455#/457# 合意: hard skip ではなく offset premium で sell を保護
+        _macro_offset_mult: float | None = None
+        _macro_boost_applied = False
+        _lt = self._last_macro_trend
+        if _lt is not None:
+            from scripts.v460.lib.macro_regime import MacroTrend
+            _m_mult = 1.0
+            if side == "sell":
+                if _lt == MacroTrend.STRONG_UP.value:
+                    _m_mult = self.config.macro_sell_boost_strong_up
+                elif _lt == MacroTrend.WEAK_UP.value:
+                    _m_mult = self.config.macro_sell_boost_weak_up
+            elif side == "buy":
+                if _lt == MacroTrend.STRONG_DOWN.value:
+                    _m_mult = self.config.macro_buy_boost_strong_down
+                elif _lt == MacroTrend.WEAK_DOWN.value:
+                    _m_mult = self.config.macro_buy_boost_weak_down
+            if _m_mult > 1.0:
+                order_price, effective_offset_ratio, _macro_offset_mult, _macro_delta = (
+                    self._apply_offset_multiplier(
+                        side=side,
+                        order_price=order_price,
+                        spread_at_order=spread_at_order,
+                        effective_offset_ratio=effective_offset_ratio,
+                        offset_mult=_m_mult,
+                    )
+                )
+                if _macro_offset_mult is not None and _macro_delta is not None:
+                    _macro_boost_applied = True
+                    logger.info(
+                        "[458# macro_boost] %s: macro_trend=%s "
+                        "→ offset_mult=%.2f (delta=%+.0fJPY, price=%.0f)",
+                        side, _lt, _macro_offset_mult, _macro_delta, order_price,
+                    )
+
         # 215# P0-C: alert_mode offset 乗数 — 全サイド共通
         # 253# getattr → クラスレベルデフォルトで型安全直接参照
         _alert_om = self._alert_offset_mult
@@ -1228,6 +1266,16 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                 if side == "sell" and self.config.micro_timeout_wait_sec_sell is not None
                 else self.config.micro_timeout_wait_sec
             )
+            # 458# H: macro_trend=UP 時に sell timeout を動的短縮
+            _lt = self._last_macro_trend
+            if side == "sell" and _lt is not None:
+                from scripts.v460.lib.macro_regime import MacroTrend
+                if _lt == MacroTrend.STRONG_UP.value and self.config.macro_sell_timeout_strong_up is not None:
+                    _mt_wait = self.config.macro_sell_timeout_strong_up
+                    logger.info("[458# H] sell timeout shortened: macro=STRONG_UP → %.1fs", _mt_wait)
+                elif _lt == MacroTrend.WEAK_UP.value and self.config.macro_sell_timeout_weak_up is not None:
+                    _mt_wait = self.config.macro_sell_timeout_weak_up
+                    logger.info("[458# H] sell timeout shortened: macro=WEAK_UP → %.1fs", _mt_wait)
             _mt_max = self.config.micro_timeout_max_requote
             _mt_cooloff = self.config.micro_timeout_requote_cooloff_sec
             _original_timeout = self.config.order_timeout_sec
@@ -1429,6 +1477,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                                 "(micro=%s, macro=%s, aligned=False)",
                                 regime_str, _macro_trend,
                             )
+                # 458# F-lite: 次サイクル用に macro_trend を保持
+                self._last_macro_trend = _macro_trend
 
         _decision_path = self._derive_decision_path(
             ev_score_pretrade=_ev_score_pretrade,
@@ -1472,6 +1522,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
             macro_slope_5m=_macro_slope_5m,
             macro_slope_15m=_macro_slope_15m,
             macro_aligned=_macro_aligned,
+            macro_boost_applied=_macro_boost_applied if _macro_boost_applied else None,
             ev_score_pretrade=_ev_score_pretrade,
             ev_offset_mult_applied=_ev_offset_mult_applied,
             decision_path=_decision_path,

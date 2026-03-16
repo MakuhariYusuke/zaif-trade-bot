@@ -71,6 +71,12 @@ class MacroRegimeConfig:
     # micro regime との矛盾時に macro を優先する confidence 閾値
     macro_override_confidence: float = 0.7
 
+    # 458# ヒステリシス: トレンド判定のフラッピング防止
+    # トレンド遷移に必要な連続一致回数 (update 呼び出しベース)
+    hysteresis_count: int = 3
+    # 確定後の最小保持回数 (この回数に達するまで同方向維持)
+    hold_count: int = 2
+
 
 @dataclass
 class MacroRegimeResult:
@@ -112,6 +118,11 @@ class MacroRegimeDetector:
         self._buckets: list[tuple[float, float]] = []  # (ts_center, avg_price)
         self._current_bucket_prices: list[float] = []
         self._current_bucket_start: float = 0.0
+        # 458# ヒステリシス状態
+        self._confirmed_trend: MacroTrend = MacroTrend.NEUTRAL
+        self._pending_trend: MacroTrend = MacroTrend.NEUTRAL
+        self._pending_count: int = 0   # pending 方向の連続回数
+        self._hold_remaining: int = 0  # 確定後の残り保持回数
 
     @property
     def buckets_available(self) -> int:
@@ -162,7 +173,10 @@ class MacroRegimeDetector:
         )
 
         # トレンド分類
-        trend, confidence = self._classify(slope_5m, slope_15m)
+        raw_trend, confidence = self._classify(slope_5m, slope_15m)
+
+        # 458# ヒステリシス: フラッピング防止
+        trend = self._apply_hysteresis(raw_trend)
 
         return MacroRegimeResult(
             trend=trend,
@@ -171,6 +185,42 @@ class MacroRegimeDetector:
             confidence=confidence,
             buckets_available=len(self._buckets),
         )
+
+    def _apply_hysteresis(self, raw_trend: MacroTrend) -> MacroTrend:
+        """458# ヒステリシス: 連続 N 回一致でトレンド確定、確定後は最低 M 回保持.
+
+        フラッピング防止用。raw の classify 結果をフィルタし、安定したトレンドのみ返す。
+        """
+        hyst_n = self.config.hysteresis_count
+        hold_m = self.config.hold_count
+
+        # 保持期間中は確定済みトレンドを維持
+        if self._hold_remaining > 0:
+            self._hold_remaining -= 1
+            if raw_trend == self._confirmed_trend:
+                # 同方向なら保持カウンタをリセット（延命）
+                self._hold_remaining = hold_m
+            return self._confirmed_trend
+
+        # 新しい raw が pending と同じなら連続カウント加算
+        if raw_trend == self._pending_trend:
+            self._pending_count += 1
+        else:
+            self._pending_trend = raw_trend
+            self._pending_count = 1
+
+        # 連続 N 回到達で確定
+        if self._pending_count >= hyst_n:
+            if self._confirmed_trend != raw_trend:
+                logger.debug(
+                    "[458# macro_hyst] trend confirmed: %s → %s (after %d consecutive)",
+                    self._confirmed_trend.value, raw_trend.value, hyst_n,
+                )
+            self._confirmed_trend = raw_trend
+            self._hold_remaining = hold_m
+            self._pending_count = 0
+
+        return self._confirmed_trend
 
     def _compute_slope(self, window: int) -> float:
         """直近 window バケットの OLS 線形回帰スロープを bps/min で返す.

@@ -227,6 +227,7 @@ class FillRecordBuilderMixin:
         macro_slope_5m: float | None,
         macro_slope_15m: float | None,
         macro_aligned: bool | None,
+        macro_boost_applied: bool | None = None,
     ) -> dict[str, object]:
         """FillRecord の strategy/macro 系フィールドを構築."""
         ev_weighted = self._compute_ev_weighted(
@@ -254,6 +255,7 @@ class FillRecordBuilderMixin:
             "macro_slope_5m": macro_slope_5m,
             "macro_slope_15m": macro_slope_15m,
             "macro_aligned": macro_aligned,
+            "macro_boost_applied": macro_boost_applied,
         }
 
     # ------------------------------------------------------------------
@@ -318,6 +320,7 @@ class FillRecordBuilderMixin:
         macro_slope_5m: float | None = None,
         macro_slope_15m: float | None = None,
         macro_aligned: bool | None = None,
+        macro_boost_applied: bool | None = None,
         ev_score_pretrade: float | None = None,
         ev_offset_mult_applied: float | None = None,
         decision_path: str | None = None,
@@ -423,6 +426,7 @@ class FillRecordBuilderMixin:
                 macro_slope_5m=macro_slope_5m,
                 macro_slope_15m=macro_slope_15m,
                 macro_aligned=macro_aligned,
+                macro_boost_applied=macro_boost_applied,
             )
         )
         return build_fill_record(**payload)
