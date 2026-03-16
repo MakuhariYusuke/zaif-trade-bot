@@ -444,6 +444,10 @@
 | 448 | resp | [448_ph4_resp_446_447_ema_spread_fix_and_noop_visibility.md](448_ph4_resp_446_447_ema_spread_fix_and_noop_visibility.md) | 446/447# レビュー応答: F3 EMA spread 混線修正 + F2 cap_hit no-op 可視化 |
 | 449 | impl | [449_ph4_impl_cross_venue_dry_stability_config.md](449_ph4_impl_cross_venue_dry_stability_config.md) | DRY + 安定性: spread_bps 3重計算排除 + confidence_floor/depth_imb_threshold config化 + getattr統一 |
 | 450 | rev | [450_ph2_ph4_rev_447_449_validation_and_remaining_gaps.md](450_ph2_ph4_rev_447_449_validation_and_remaining_gaps.md) | 447#-449# 検証レビュー: repo上の修正は確認したが live未反映と FillRecordスキーマ穴が残存、same-SHA再実走と観測整備を優先と整理 |
+| 451 | impl | [451_ph2_p04_p12_p13_git_sha_compound_toxicity.md](451_ph2_p04_p12_p13_git_sha_compound_toxicity.md) | P0-4 git_sha フィルタ / P1-2 compound suppression 分析 / P1-3 toxicity_budget 有効化 |
+| 452 | plan | [452_ph2_plan_micro_timeout_design.md](452_ph2_plan_micro_timeout_design.md) | Micro-timeouts (TIF Emulation) 詳細設計案 |
+| 453 | impl | [453_micro_timeout_implementation.md](453_micro_timeout_implementation.md) | Micro-timeouts (TIF Emulation) 実装結果 (disabled by default) |
+| 454 | plan | [454_ph2_plan_uptrend_sell_loss_countermeasures.md](454_ph2_plan_uptrend_sell_loss_countermeasures.md) | 上昇トレンドにおける Sell 損失対策: 10案の深堀り + 3フェーズ推奨実装順序 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
