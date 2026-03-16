@@ -229,16 +229,35 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
                     details=build_cross_venue_event_details(hint),
                 )
             else:
-                # 443# hint=None の理由を可視化 (first_call=prev None, or thresholds)
+                # 444# hint=None の理由を具体値付きで可視化
                 _ref_mid = current_reference.mid_price
                 _loc_mid = local_snapshot.mid_price
                 _spread = (_ref_mid - _loc_mid) / _loc_mid * 10_000.0 if _loc_mid > 0 else 0.0
-                _prev_label = "first_call" if previous_reference is None else "below_threshold"
-                logger.debug(
-                    "[cross_venue] hint=None reason=%s ref_mid=%.0f local_mid=%.0f "
-                    "spread=%.2fbps prev=%s",
-                    _prev_label, _ref_mid, _loc_mid, _spread,
-                    f"mid={previous_reference.mid_price:.0f}" if previous_reference else "N/A",
+                if previous_reference is None:
+                    _reason = "first_call"
+                    _vel_s = "N/A"
+                else:
+                    _dt = current_reference.timestamp - previous_reference.timestamp
+                    _vel = (
+                        (_ref_mid - previous_reference.mid_price)
+                        / previous_reference.mid_price * 10_000.0 / _dt
+                        if _dt > 0 and previous_reference.mid_price > 0
+                        else 0.0
+                    )
+                    _vel_s = f"{_vel:+.4f}bps/s"
+                    _spr_thr = self.config.cross_venue_lead_lag_spread_bps_threshold
+                    _vel_thr = self.config.cross_venue_lead_lag_velocity_bps_threshold
+                    if abs(_spread) < _spr_thr:
+                        _reason = f"spread({_spread:+.2f})<{_spr_thr}"
+                    elif abs(_vel) < _vel_thr:
+                        _reason = f"velocity({_vel:+.4f})<{_vel_thr}"
+                    elif _spread * _vel <= 0:
+                        _reason = f"sign_disagree(spr={_spread:+.2f},vel={_vel:+.4f})"
+                    else:
+                        _reason = "unknown"
+                logger.info(
+                    "[cross_venue] hint=None reason=%s spread=%+.2fbps vel=%s",
+                    _reason, _spread, _vel_s,
                 )
         except Exception as exc:
             logger.warning("cross-venue hint update error: %s", exc, exc_info=True)

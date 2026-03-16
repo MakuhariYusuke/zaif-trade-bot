@@ -366,8 +366,8 @@ class FillTestConfig:
     cross_venue_lead_lag_enabled: bool = False
     cross_venue_reference_exchange: str = "bitflyer"
     cross_venue_lead_lag_max_age_sec: float = 3.0
-    cross_venue_lead_lag_spread_bps_threshold: float = 2.0
-    cross_venue_lead_lag_velocity_bps_threshold: float = 0.05
+    cross_venue_lead_lag_spread_bps_threshold: float = 1.0  # 444#
+    cross_venue_lead_lag_velocity_bps_threshold: float = 0.02  # 444#
     cross_venue_lead_lag_offset_boost: float = 1.25
     cross_venue_lead_lag_veto_enabled: bool = False
     cross_venue_lead_lag_veto_threshold_bps: float = 6.0
