@@ -251,6 +251,9 @@ class OrchestratorMidCycleMixin:
             st, f"gate_blocks={self._consecutive_gate_blocks}",
         )
 
+        # 459# ゲートブロック中も config hot-reload を検出
+        self._config_reloader.maybe_reload(self)
+
         _q_sleep = (
             self.config.quiescence_sleep_sec
             if _in_quiescence and self.config.quiescence_sleep_sec > 0
