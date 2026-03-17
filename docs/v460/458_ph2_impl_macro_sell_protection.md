@@ -280,6 +280,25 @@ hot-reload 対応済み (再起動不要)。
 | forced_buy_delay (300回) | ✅ 問題なし | 348# で balance_forced 概念廃止済 (レガシーカウンタ) |
 | quiescence_sleep_sec (1800s) | ⚠️ 要観察 | 長時間デッドロックを「正常」化する副作用。今回の横展開で reload は確保 |
 
+### 8.5 459# 耐再起動性調査
+
+#### 調査結果
+
+| 項目 | 状態 | 詳細 |
+|------|------|------|
+| **起動時滞留注文クリア** | ✅ 実装済 (042#) | `_cancel_stale_orders()` で `get_open_orders` → 全キャンセル |
+| **JSONL アトミック書き込み** | ✅ 実装済 (032#17) | tempfile → fsync → append → fsync |
+| **JSON state アトミック書き込み** | ✅ 実装済 | `atomic_write_text()` = tempfile → `os.replace` |
+| **DD halt 状態復元** | ✅ 日境界チェック済 | `saved_day != today` → 破棄 + warmup 修復 |
+| **regime 状態復元** | ✅ fallback 付き | state.json → fill records warmup の2段階 |
+| **lock ファイル管理** | ✅ 堅牢 | OS-level lock + heartbeat + stale 検出 |
+
+#### 修正箇所: `_cleanup_sync` 最終状態保存
+
+**問題**: `_cleanup_sync` (atexit) は sync ハンドラだが、状態保存は `_finalize_run` (async) でのみ実行されていた。SIGTERM/Ctrl+C での正常終了時に最終状態が保存されないケースがあった。
+
+**修正**: `_cleanup_sync` 末尾（lock 解放直前）に `_build_state_snapshot` → `_state_persistence.save` を追加。`_session_state` インスタンス参照経由で `RunSessionState` のカウンタにアクセス。
+
 ---
 
 ## §9 残課題

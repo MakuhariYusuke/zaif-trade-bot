@@ -172,6 +172,8 @@ class FillLoopOrchestratorMixin(
     _recent_records: deque[FillRecord] = deque(maxlen=200)  # type: ignore[assignment]
     # 254# _heartbeat_task: run_continuous 内で代入、cleanup_heartbeat で参照
     _heartbeat_task: asyncio.Task[None] | None = None
+    # 459# 耐再起動性: _cleanup_sync からの最終状態保存用
+    _session_state: RunSessionState | None = None
 
 
     # ------------------------------------------------------------------
@@ -332,6 +334,7 @@ class FillLoopOrchestratorMixin(
 
         # 265# extract: 初期化ロジック (~200行) を分離
         st = await self._init_run_session()
+        self._session_state = st  # 459# cleanup_sync からの最終状態保存用
 
         # 148# P0: heartbeat 更新タスク — stale 誤判定防止
         async def _heartbeat_loop() -> None:

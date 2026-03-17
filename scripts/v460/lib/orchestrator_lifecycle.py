@@ -556,5 +556,18 @@ class OrchestratorLifecycleMixin:
                 except Exception as e:
                     logger.debug("Cross-venue adapter cleanup failed: %s", e, exc_info=True)
 
+        # 459# 耐再起動性: 最終状態スナップショットを同期的に保存
+        st = getattr(self, "_session_state", None)
+        if st is not None:
+            try:
+                self._state_persistence.save(self._build_state_snapshot(
+                    total_count=st.total_count,
+                    filled_count=st.filled_count,
+                    cumulative_pnl_jpy=st.cumulative_pnl_jpy,
+                ))
+                logger.info("[cleanup] Final state snapshot saved")
+            except Exception as e:
+                logger.error(f"[cleanup] Final state save failed: {e}")
+
         # 044# Bug7: ロックファイル解放
         self._release_lock()
