@@ -379,18 +379,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         Returns:
             True = pending_reconciliation (FillRecord に設定する)
         """
-        if (
-            monitor.filled
-            or monitor.cancel_reason is None
-            or not monitor.cancel_reason.startswith("status_unknown")
-            or monitor.order_id_for_reconciliation is None
-        ):
-            # 467#: status_unknown 以外 → 連続カウンタリセット
-            if monitor.cancel_reason != "status_unknown_fast":
-                self._consecutive_status_unknown_fast = 0
-            return False
-
-        # 467#: status_unknown_fast 連続検知
+        # 467#: status_unknown_fast 連続検知 (ファントム登録判定とは独立)
         if monitor.cancel_reason == "status_unknown_fast":
             self._consecutive_status_unknown_fast += 1
             if self._consecutive_status_unknown_fast >= 3:
@@ -401,6 +390,14 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                 )
         else:
             self._consecutive_status_unknown_fast = 0
+
+        if (
+            monitor.filled
+            or monitor.cancel_reason is None
+            or not monitor.cancel_reason.startswith("status_unknown")
+            or monitor.order_id_for_reconciliation is None
+        ):
+            return False
 
         if self._phantom_guard is not None:
             # 251# getattr → 型安全な property 直接参照 (238# C-2 完全化)
