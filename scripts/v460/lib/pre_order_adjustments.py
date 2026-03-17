@@ -1,6 +1,6 @@
 """323# Mixin: PreOrderAdjustmentsMixin -- 発注前の価格・offset 調整ヘルパー.
 
-fill_cycle_executor.py からの God Object 分割 (322# パターン準拠)。
+fill_cycle_executor.py からの God Object 分割 (323# 分割計画)。
 offset 倍率適用・offset 変更後の価格再計算を担当。
 
 WARNING -- AI Coding Agent / 人間開発者への注意:

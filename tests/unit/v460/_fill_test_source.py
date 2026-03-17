@@ -23,6 +23,7 @@ _FILL_TEST_RUNNER_SOURCES: list[Path] = [
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_cycle_executor.py",
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_record_builder.py",
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "pre_order_adjustments.py",
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "offset_pipeline.py",          # 460#
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_guards.py",
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_lifecycle.py",
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_post_cycle.py",
@@ -47,6 +48,9 @@ FILL_RECORD_BUILDER = (
 )
 PRE_ORDER_ADJUSTMENTS = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "pre_order_adjustments.py"
+)
+OFFSET_PIPELINE = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "offset_pipeline.py"
 )
 ORCHESTRATOR_GUARDS = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_guards.py"

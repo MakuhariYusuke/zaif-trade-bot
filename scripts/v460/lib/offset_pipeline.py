@@ -1,6 +1,6 @@
 """460# Mixin: OffsetPipelineMixin -- 発注前 offset 乗数チェーン + lot スケール.
 
-fill_cycle_executor.py からの God Object 分割 (322# パターン準拠)。
+fill_cycle_executor.py からの God Object 分割 (323# 分割計画)。
 9 段の offset adjustment pipeline と lot スケールヘルパーを担当。
 
 WARNING -- AI Coding Agent / 人間開発者への注意:
@@ -49,7 +49,7 @@ class OffsetPipelineMixin(PreOrderAdjustmentsMixin):
       OK: offset 乗数チェーン (EV/Vel/Trend/Tox/VG/Macro/Alert/Sidecar/Clamp)
       OK: lot スケール適用
       NG: FillRecord 構築, SkipGate, 監視, ループ制御
-    MAX LINES: 320
+    MAX LINES: 360
     ────────────────────────────────────────────────────
     460# fill_cycle_executor.py からの抽出
     """

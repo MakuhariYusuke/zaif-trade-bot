@@ -1,6 +1,6 @@
 """323# Mixin: FillRecordBuilderMixin -- FillRecord 構築ヘルパー.
 
-fill_cycle_executor.py からの God Object 分割 (322# パターン準拠)。
+fill_cycle_executor.py からの God Object 分割 (323# 分割計画)。
 FillRecord のフィールド構築・組立・EV 計算・decision path 導出を担当。
 
 WARNING -- AI Coding Agent / 人間開発者への注意:

@@ -31,6 +31,9 @@ _FILL_LOOP_ORCHESTRATOR_SOURCE = Path(
 _FILL_CYCLE_EXECUTOR_SOURCE = Path(
     "scripts/v460/lib/fill_cycle_executor.py",
 ).read_text(encoding="utf-8")
+_OFFSET_PIPELINE_SOURCE = Path(
+    "scripts/v460/lib/offset_pipeline.py",
+).read_text(encoding="utf-8")
 _ORCHESTRATOR_MID_CYCLE_SOURCE = read_source_text(ORCHESTRATOR_MID_CYCLE)
 _RUN_SINGLE_CYCLE_SIG = inspect.signature(FillCycleExecutorMixin.run_single_cycle)
 
@@ -509,9 +512,8 @@ class TestExecutorToxicityParam:
         assert p.default == 1.0
 
     def test_toxicity_offset_applied_in_source(self) -> None:
-        """240# toxicity_offset が _apply_offset_multiplier で適用される."""
-        src = _FILL_CYCLE_EXECUTOR_SOURCE
-        # toxicity_offset_mult が _apply_offset_multiplier に渡されている
+        """240# toxicity_offset が offset_pipeline.py で _apply_offset_multiplier に適用される."""
+        src = _OFFSET_PIPELINE_SOURCE
         assert "toxicity_offset_mult" in src
         assert "_apply_offset_multiplier" in src
 

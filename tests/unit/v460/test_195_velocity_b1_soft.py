@@ -17,11 +17,13 @@ from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from tests.unit.v460._fill_test_source import (
     CYCLE_GATE_AGGREGATOR as CYCLE_GATE_AGGREGATOR_PATH,
     FILL_CYCLE_EXECUTOR,
+    OFFSET_PIPELINE,
     SKIP_GATE_EVALUATOR as SKIP_GATE_EVALUATOR_PATH,
     read_source_text,
 )
 
 _FILL_CYCLE_EXECUTOR_SOURCE = read_source_text(FILL_CYCLE_EXECUTOR)
+_OFFSET_PIPELINE_SOURCE = read_source_text(OFFSET_PIPELINE)
 _SKIP_GATE_EVALUATOR_SOURCE = read_source_text(SKIP_GATE_EVALUATOR_PATH)
 _CYCLE_GATE_AGGREGATOR_SOURCE = read_source_text(CYCLE_GATE_AGGREGATOR_PATH)
 
@@ -496,13 +498,13 @@ class TestDesignConsistency:
     """195# 設計の一貫性: executor は velocity offset を EV offset の後に適用."""
 
     def test_executor_has_velocity_offset_block(self) -> None:
-        """fill_cycle_executor.py に velocity offset ブロックが存在すること."""
-        assert "195# vel_offset" in _FILL_CYCLE_EXECUTOR_SOURCE
+        """offset_pipeline.py に velocity offset ブロックが存在すること."""
+        assert "195# vel_offset" in _OFFSET_PIPELINE_SOURCE
 
     def test_executor_velocity_after_ev(self) -> None:
         """velocity offset ブロックが ev_offset ブロックの後にあること."""
-        ev_pos = _FILL_CYCLE_EXECUTOR_SOURCE.find("193# ev_offset")
-        vel_pos = _FILL_CYCLE_EXECUTOR_SOURCE.find("195# vel_offset")
+        ev_pos = _OFFSET_PIPELINE_SOURCE.find("193# ev_offset")
+        vel_pos = _OFFSET_PIPELINE_SOURCE.find("195# vel_offset")
         assert ev_pos > 0
         assert vel_pos > 0
         assert vel_pos > ev_pos, "velocity offset must come after ev offset"

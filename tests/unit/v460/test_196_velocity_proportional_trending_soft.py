@@ -24,12 +24,14 @@ from scripts.v460.lib.cycle_gate_aggregator import (
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
 from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+from scripts.v460.lib.offset_pipeline import OffsetPipelineMixin
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from scripts.v460.run_fill_test import FillTestRunner
 from tests.unit.v460._fill_test_source import ORCHESTRATOR_MID_CYCLE, read_source_text
 
 _RUN_SINGLE_CYCLE_SIG = inspect.signature(FillTestRunner.run_single_cycle)
 _RUN_SINGLE_CYCLE_SOURCE = inspect.getsource(FillCycleExecutorMixin.run_single_cycle)
+_OFFSET_PIPELINE_SOURCE = inspect.getsource(OffsetPipelineMixin._apply_offset_pipeline)
 _CHECK_TRENDING_SELL_SOURCE = inspect.getsource(CycleGateAggregator._check_trending_sell)
 
 def _make_config(**overrides):
@@ -406,9 +408,9 @@ class TestTrendingOffsetInExecutor:
         assert "trending_offset_mult" in _RUN_SINGLE_CYCLE_SIG.parameters
 
     def test_trending_offset_in_source(self):
-        """fill_cycle_executor に 196# trend_offset ブロックが存在."""
-        assert "196# trend_offset" in _RUN_SINGLE_CYCLE_SOURCE
-        assert "trending_offset_mult" in _RUN_SINGLE_CYCLE_SOURCE
+        """offset_pipeline に 196# trend_offset ブロックが存在."""
+        assert "196# trend_offset" in _OFFSET_PIPELINE_SOURCE
+        assert "trending_offset_mult" in _OFFSET_PIPELINE_SOURCE
 
     def test_offset_helper_ignores_non_protective_multiplier(self):
         """1.0 以下の倍率は適用せず、価格を攻撃的にしない."""

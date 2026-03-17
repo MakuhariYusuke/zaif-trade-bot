@@ -68,6 +68,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "offset_stage_recording_enabled",
     "per_side_dd_enabled",
     "queue_position_tracking_enabled",
+    "ranging_buy_low_vol_as_offset",  # 459# ソフト化
     "regime_adaptive_enabled",
     "sell_dynamic_kill_enabled",
     "sell_dynamic_kill_inv_relaxation_enabled",
@@ -108,6 +109,11 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "glft_dynamic_k_enabled",
     "hard_skip_utc_hours",
     "loss_boost_offset_mult",
+    "low_vol_offset_boost",  # 459# 1.4→1.5 チューニング
+    "macro_regime_slope_threshold",  # 458# macro sell protection
+    "macro_regime_strong_threshold",  # 458# macro sell protection
+    "macro_sell_timeout_strong_up",  # 458# macro sell timeout
+    "macro_sell_timeout_weak_up",  # 458# macro sell timeout
     "max_consecutive_trending_sell_skip",
     "min_spread_jpy",
     "micro_timeout_enabled",  # 454# Step 1: 保守的設定で有効化

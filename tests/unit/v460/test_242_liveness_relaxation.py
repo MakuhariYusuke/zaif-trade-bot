@@ -310,6 +310,8 @@ class TestEffectiveSleepOverride242:
         stub._cycle_strategy.effective_interval.return_value = 120.0
         # _current_regime_value() は _regime_detector=None → "unknown" を返す
         stub._current_regime_value = lambda: "unknown"
+        # 459# _effective_sleep 内の config hot-reload 呼び出し用
+        stub._config_reloader = MagicMock()
         return stub
 
     @pytest.mark.asyncio

@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-18 (458# macro sell protection 実装)
+> 最終更新: 2026-03-17 (460# offset pipeline 抽出)
 
 ---
 
@@ -452,6 +452,7 @@
 | 456 | plan | [456_ph2_plan_uptrend_sell_centric_paradigm.md](456_ph2_plan_uptrend_sell_centric_paradigm.md) | Sell-Centric パラダイム: 上昇トレンド = seller's market、A Liquidity Mirage / B Dynamic Offloading / C Cross-Venue |
 | 457 | rev | [457_ph2_rev_456_sell_centric_paradigm_review.md](457_ph2_rev_456_sell_centric_paradigm_review.md) | 456# レビュー: A-lite のみ抽出 (×1.2-1.8)、B/C 棄却、"sell はプレミアム機会" |
 | 458 | impl | [458_ph2_impl_macro_sell_protection.md](458_ph2_impl_macro_sell_protection.md) | マクロ連動 Sell 防御: 455#/456#/457# 統合実装 — Hysteresis + F-lite boost + threshold 引下げ + micro-timeout 連動 + 観測フィールド |
+| 459 | impl | [459_ph2_impl_hot_reload_lateral_and_restart_resilience.md](459_ph2_impl_hot_reload_lateral_and_restart_resilience.md) | Hot-Reload 横展開 + 再起動耐性 + ranging_buy ソフト化: _effective_sleep reload 統合, _cleanup_sync 最終状態保存 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
@@ -495,6 +496,7 @@
 | 168 | rpt | [168_phg_rpt_comprehensive_improvement_hodl_vs_trading.md](168_phg_rpt_comprehensive_improvement_hodl_vs_trading.md) | HODL vs Trading 定量比較 + 未検討提案棚卸し + 既存資産活用計画 |
 | 331 | rev | [331_phg_review_329_330_self_audit.md](331_phg_review_329_330_self_audit.md) | Self-Review: 329#/330# 自己監査 — BUG-1/2 修正, CycleContext cleanup, validation 追加 |
 | 332 | refactor | [332_phg_refactor_run_continuous_phase4.md](332_phg_refactor_run_continuous_phase4.md) | run_continuous Phase 4: Balance/MidCycle Mixin 抽出 (1228→407 行, 908→~80 行) |
+| 460 | refactor | [460_phg_refactor_offset_pipeline_extraction.md](460_phg_refactor_offset_pipeline_extraction.md) | run_single_cycle 分割 + 重複排除: offset pipeline 9段チェーン抽出, lot chain 統合, 継承チェーン整理 |
 
 ---
 
