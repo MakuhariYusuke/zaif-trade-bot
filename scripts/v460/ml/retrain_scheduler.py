@@ -195,6 +195,9 @@ _DEFAULT_CONFIG: ConfigMap = {
     "feature_pruning_require_consecutive": True,  # 131# B: 連続 dead のみ prune (振動防止)
     # E4: enriched data cache (I/O 削減)
     "enriched_cache_enabled": True,
+    # 465# D1/D2: モデル退化ガード (定数出力モデルの deploy 阻止)
+    "min_deploy_trees": 3,          # 訓練後の木数がこれ未満なら棄却
+    "min_pred_std": 0.01,           # 予測の標準偏差がこれ未満なら棄却 (定数出力検出)
     # C1: WF multi-window evaluation (131# WalkForwardSplitter 統合)
     "wf_multi_window_enabled": True,
     "wf_initial_train_pct": 0.50,
@@ -1645,6 +1648,40 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
     # E2: 実際に使用された木の数を記録
     actual_n_trees = lgbm.booster_.num_trees() if hasattr(lgbm, "booster_") else n_est
     result["actual_n_trees"] = actual_n_trees
+
+    # 465# D1: モデル退化ガード — 1-tree / 定数出力モデルの deploy を阻止
+    # 根本原因: 少数サンプル + min_child_samples + early_stopping → 1 tree → 定数出力
+    # 定数出力モデルは EV スコアを固定値化し、ceiling / deep-night AS の連鎖劣化を引き起こす
+    min_deploy_trees = safe_to_int(cfg.get("min_deploy_trees", 3), 3)
+    if actual_n_trees < min_deploy_trees:
+        logger.warning(
+            f"465# D1: Model degeneration guard REJECT: "
+            f"actual_n_trees={actual_n_trees} < min_deploy_trees={min_deploy_trees}. "
+            f"Model with {len(X_valid)} samples produced only {actual_n_trees} tree(s) — "
+            f"constant-output model would destroy EV discrimination."
+        )
+        return {
+            **result,
+            "status": "rejected",
+            "reason": f"degenerate_model: {actual_n_trees} trees < {min_deploy_trees}",
+        }
+
+    # 465# D2: 予測分散ガード — 定数出力モデルの検出
+    preds = lgbm.predict(X_sc)
+    pred_std = float(np.std(preds))
+    result["pred_std"] = pred_std
+    min_pred_std = safe_to_float(cfg.get("min_pred_std", 0.01), 0.01)
+    if pred_std < min_pred_std:
+        logger.warning(
+            f"465# D2: Prediction variance guard REJECT: "
+            f"pred_std={pred_std:.6f} < min_pred_std={min_pred_std}. "
+            f"Model outputs are effectively constant — no feature discrimination."
+        )
+        return {
+            **result,
+            "status": "rejected",
+            "reason": f"constant_output: pred_std={pred_std:.6f} < {min_pred_std}",
+        }
 
     # Pipeline を再構成 (SkipGate.evaluate が pipeline.predict を使うため)
     pipeline = Pipeline([

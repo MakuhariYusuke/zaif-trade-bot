@@ -407,6 +407,9 @@ class OrchestratorMidCycleMixin:
             # 420# P1: Side 切替可観測性 — CycleContext の情報を FillRecord に転記
             record.requested_side = ctx.requested_side
             record.resolved_side_reason = ctx.resolved_side_reason
+            # 465# balance_forced_switch 一貫性: resolved_side_reason から導出
+            if ctx.resolved_side_reason == "balance_switch":
+                record.balance_forced_switch = True
             # 154# C-2: 実サイクル実行 → skip カウンタリセット
             self._trending_sell_skip_count = 0
 

@@ -309,7 +309,14 @@ class _FastRegressor:
         return self
 
     def predict(self, X: object) -> np.ndarray:
-        return np.full(len(X), self._prediction, dtype=np.float64)
+        x_arr = np.asarray(X, dtype=np.float64)
+        n = x_arr.shape[0] if x_arr.ndim >= 1 else 1
+        # 465# D2 対応: 特徴量ベースの変動を付加 (定数出力ガード回避)
+        if x_arr.ndim >= 2 and x_arr.shape[1] > 0:
+            variation = x_arr[:, 0] * 0.1
+        else:
+            variation = np.zeros(n)
+        return np.full(n, self._prediction, dtype=np.float64) + variation
 
 
 def _build_fast_regressor(
@@ -878,6 +885,8 @@ class TestE2ERetrainHotReload:
             cfg["feature_pruning_enabled"] = False
             cfg["redundancy_pruning_enabled"] = False
             cfg["warm_start_enabled"] = False
+            cfg["min_deploy_trees"] = 0  # 465#: E2E stub は 1-tree — D1 guard bypass
+            cfg["min_pred_std"] = 0.0    # 465#: E2E stub 用 — D2 guard bypass
 
             gate_v1 = _make_picklable_gate(n_samples=10, version="verified")
             with patch(
@@ -987,6 +996,8 @@ class TestBalanceForcedSwitchFilter:
             cfg["feature_pruning_enabled"] = False
             cfg["redundancy_pruning_enabled"] = False
             cfg["warm_start_enabled"] = False
+            cfg["min_deploy_trees"] = 0  # 465#: stub bypass
+            cfg["min_pred_std"] = 0.0    # 465#: stub bypass
 
             with patch(
                 "scripts.v460.ml.retrain_scheduler.load_fill_records",
@@ -2315,3 +2326,175 @@ class TestStatisticalGateInitialTraining:
         target_meta = str(gate.metadata.get("target", ""))
         assert "pnl30" in target_meta
         assert gate.metadata.get("n_samples", 0) > 0
+
+
+# =====================================================================
+# 465# D1/D2: モデル退化ガードテスト
+# =====================================================================
+
+
+class _ConstantRegressor(_FastRegressor):
+    """465# D2 テスト用: 定数出力のみ返す regressor."""
+
+    def predict(self, X: object) -> np.ndarray:
+        return np.full(len(X), self._prediction, dtype=np.float64)  # type: ignore[arg-type]
+
+
+class _SingleTreeRegressor(_FastRegressor):
+    """465# D1 テスト用: 1-tree のみの regressor."""
+
+    def __init__(self, n_estimators: int = 1) -> None:
+        super().__init__(n_estimators=1)  # 常に 1 tree
+
+
+class TestModelDegenerationGuard:
+    """465# D1/D2: モデル退化ガード (定数出力・少数木の deploy 阻止)."""
+
+    @pytest.fixture(autouse=True)
+    def _fast_preorder_features(self) -> object:
+        with patch(
+            "scripts.v460.ml.retrain_scheduler.build_preorder_as_features",
+            side_effect=_build_fast_preorder_as_features,
+        ):
+            yield
+
+    def _base_cfg(self, tmpdir: str) -> dict[str, object]:
+        """共通テスト設定."""
+        return {
+            **_DEFAULT_CONFIG,
+            "results_dir": str(Path(tmpdir) / "results"),
+            "model_path": str(Path(tmpdir) / "model.pkl"),
+            "mode": "pnl",
+            "target": "pnl30",
+            "use_ob_features": False,
+            "min_total_samples": 10,
+            "min_new_samples": 1,
+            "bootstrap_min_total_samples": 10,
+            "bootstrap_min_new_samples": 1,
+            "quality_gate_enabled": False,
+            "latest_run_only": False,
+            "exclude_missing_run_id": False,
+            "lgbm_n_estimators": 4,
+            "enriched_cache_enabled": False,
+            "feature_pruning_enabled": False,
+            "redundancy_pruning_enabled": False,
+            "warm_start_enabled": False,
+        }
+
+    def test_d1_rejects_single_tree_model(self) -> None:
+        """D1: 1-tree モデルは min_deploy_trees=3 で棄却される."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            records_df = _make_retrain_records_df(
+                15, seed=100, cycle_prefix="d1", run_id="d1_run",
+            )
+            cfg = self._base_cfg(tmpdir)
+            cfg["min_deploy_trees"] = 3  # default
+
+            with patch(
+                "scripts.v460.ml.retrain_scheduler.load_fill_records",
+                side_effect=lambda *a, **kw: records_df.copy(deep=True),
+            ), patch(
+                "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
+                side_effect=_identity_enrich,
+            ), patch(
+                "scripts.v460.ml.retrain_scheduler._build_lgbm_regressor",
+                return_value=_SingleTreeRegressor(),
+            ):
+                result = retrain_model(cfg)
+
+            assert result["status"] == "rejected"
+            assert "degenerate_model" in result["reason"]
+            assert result["actual_n_trees"] == 1
+
+    def test_d1_accepts_sufficient_trees(self) -> None:
+        """D1: 十分な木数のモデルは通過する."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            records_df = _make_retrain_records_df(
+                15, seed=101, cycle_prefix="d1ok", run_id="d1ok_run",
+            )
+            cfg = self._base_cfg(tmpdir)
+            cfg["min_deploy_trees"] = 3
+
+            gate_stub = _make_picklable_gate(n_samples=15, version="d1_verified")
+            with patch(
+                "scripts.v460.ml.retrain_scheduler.load_fill_records",
+                side_effect=lambda *a, **kw: records_df.copy(deep=True),
+            ), patch(
+                "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
+                side_effect=_identity_enrich,
+            ), patch(
+                "scripts.v460.ml.retrain_scheduler._build_lgbm_regressor",
+                side_effect=_build_fast_regressor,
+            ), patch(
+                "scripts.v460.ml.retrain_scheduler.SkipGate.load",
+                return_value=gate_stub,
+            ), patch(
+                "scripts.v460.ml.retrain_scheduler.SkipGate.save",
+                autospec=True,
+                side_effect=_write_stub_gate_artifact,
+            ):
+                result = retrain_model(cfg)
+
+            assert result["status"] in ("deployed", "deployed_verified"), (
+                f"Expected deployed*, got {result}"
+            )
+            assert result["actual_n_trees"] >= 3
+
+    def test_d2_rejects_constant_output(self) -> None:
+        """D2: 定数出力モデルは pred_std < min_pred_std で棄却される."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            records_df = _make_retrain_records_df(
+                15, seed=102, cycle_prefix="d2", run_id="d2_run",
+            )
+            cfg = self._base_cfg(tmpdir)
+            cfg["min_deploy_trees"] = 0   # D1 bypass
+            cfg["min_pred_std"] = 0.01    # D2 active
+
+            with patch(
+                "scripts.v460.ml.retrain_scheduler.load_fill_records",
+                side_effect=lambda *a, **kw: records_df.copy(deep=True),
+            ), patch(
+                "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
+                side_effect=_identity_enrich,
+            ), patch(
+                "scripts.v460.ml.retrain_scheduler._build_lgbm_regressor",
+                return_value=_ConstantRegressor(n_estimators=4),
+            ):
+                result = retrain_model(cfg)
+
+            assert result["status"] == "rejected"
+            assert "constant_output" in result["reason"]
+            assert result["pred_std"] < 0.01
+
+    def test_d2_accepts_varied_output(self) -> None:
+        """D2: 十分な分散のあるモデルは通過する."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            records_df = _make_retrain_records_df(
+                15, seed=103, cycle_prefix="d2ok", run_id="d2ok_run",
+            )
+            cfg = self._base_cfg(tmpdir)
+            cfg["min_deploy_trees"] = 0
+            cfg["min_pred_std"] = 0.001
+
+            gate_stub = _make_picklable_gate(n_samples=15, version="d2_verified")
+            with patch(
+                "scripts.v460.ml.retrain_scheduler.load_fill_records",
+                side_effect=lambda *a, **kw: records_df.copy(deep=True),
+            ), patch(
+                "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
+                side_effect=_identity_enrich,
+            ), patch(
+                "scripts.v460.ml.retrain_scheduler._build_lgbm_regressor",
+                side_effect=_build_fast_regressor,
+            ), patch(
+                "scripts.v460.ml.retrain_scheduler.SkipGate.load",
+                return_value=gate_stub,
+            ), patch(
+                "scripts.v460.ml.retrain_scheduler.SkipGate.save",
+                autospec=True,
+                side_effect=_write_stub_gate_artifact,
+            ):
+                result = retrain_model(cfg)
+
+            assert result["status"] in ("deployed", "deployed_verified")
+            assert result["pred_std"] >= 0.001

@@ -890,7 +890,7 @@ retrain:
   min_new_samples: 30              # 再学習に必要な最小新規サンプル数
   min_total_samples: 100           # 再学習に必要な最小合計サンプル数
   # 130# Bootstrap Phase: run切替直後のスタベーション回避
-  bootstrap_min_total_samples: 25  # 130# Y1: 30→25 (初回 deploy 加速。短期高収益の大義優先。品質は本格 retrain で補正)
+  bootstrap_min_total_samples: 50  # 465# D3: 25→50 (25 samples + min_child=20 → 1-tree 退化の根本原因。50 で LightGBM が十分な木数を生成可能)
   bootstrap_min_new_samples: 10    # Bootstrap 段階での最小新規
   bootstrap_threshold: 100         # total < この値なら Bootstrap 段階と判定
   target: pnl30                    # 130# L1: pnl120→pnl30 (e3_sampling_ratio=0.50 で pnl120 カバレッジ 40% → pnl30 は 100%。訓練データ 2.5x)
@@ -955,6 +955,9 @@ retrain:
   feature_pruning_require_consecutive: true  # 131# B: 連続 dead (prev+current WF) のみ prune (振動防止)
   # E4: enriched data cache (I/O 削減)
   enriched_cache_enabled: true
+  # 465# D1/D2: モデル退化ガード (定数出力モデルの deploy 阻止)
+  min_deploy_trees: 3                  # 訓練後の木数がこれ未満なら棄却
+  min_pred_std: 0.01                   # 予測の標準偏差がこれ未満なら棄却
   # 131# C1: WF multi-window evaluation (WalkForwardSplitter 統合)
   wf_multi_window_enabled: true        # multi-window WF 評価を有効化
   wf_initial_train_pct: 0.50           # 初期訓練期間の割合
