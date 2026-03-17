@@ -309,3 +309,19 @@ hot-reload 対応済み (再起動不要)。
 | R-2 | STRONG_UP timeout 6s が AS 市場で逆効果でないか live 検証 | P1 |
 | R-3 | macro-micro 連携の深化 (micro regime が macro を override するケース) | P2 |
 | R-4 | hysteresis パラメータの最適化 (count=3, hold=2 は理論値、live で調整) | P2 |
+
+### 8.6 460# run_single_cycle 分割 + 重複排除 + 契約整理
+
+**背景**: `test_113_resilience::test_run_single_cycle_under_400_lines` が 999 > 830 行で
+長期失敗。offset 乗数チェーン (9 段) が 256 行を占め、method が肥大化。
+
+**変更内容**:
+
+| # | 対象 | 内容 |
+|---|------|------|
+| 1 | `offset_pipeline.py` (新規) | `OffsetPipelineMixin` + `OffsetPipelineResult` dataclass を新設。9 段 offset チェーン (193# EV → 195# Vel → 196# Trend → 240# Tox → 202# VG → 458# Macro → 215# Alert → 372# Sidecar → 421# Clamp) + `_scale_lot` ヘルパーを収容 |
+| 2 | `fill_cycle_executor.py` | `run_single_cycle` から offset pipeline を `_apply_offset_pipeline()` 呼び出しに置換 (997→739 行)。4 つの lot 調整ブロック (alert/recovery/dd_soft/cooldown) を `_scale_lot()` に統合 (重複排除) |
+| 3 | 継承チェーン | `FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin)` に変更。`OffsetPipelineMixin(PreOrderAdjustmentsMixin)` で MRO 維持 |
+| 4 | MAX LINES | `fill_cycle_executor.py`: 1100→1300 (pipeline 抽出後の実態に合わせ更新)。`offset_pipeline.py`: 320 |
+
+**テスト結果**: 2182 passed, 125 skipped, 0 failed (行数テスト含む全テスト通過)

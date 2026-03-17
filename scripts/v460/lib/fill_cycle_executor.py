@@ -12,6 +12,7 @@ WARNING -- AI Coding Agent / 人間開発者への注意:
 323# God Object 分割:
     FillRecordBuilderMixin → fill_record_builder.py (FillRecord 構築)
     PreOrderAdjustmentsMixin → pre_order_adjustments.py (offset/price 調整)
+    OffsetPipelineMixin → offset_pipeline.py (offset 乗数チェーン + lot スケール)
 """
 
 from __future__ import annotations
@@ -36,7 +37,7 @@ from scripts.v460.lib.fill_config import (
 from scripts.v460.lib.fill_record_builder import FillRecordBuilderMixin
 from scripts.v460.lib.maker_price import InfeasibleQuoteError
 from scripts.v460.lib.ob_utils import best_bid_ask  # 200# 10-C: module-level import
-from scripts.v460.lib.pre_order_adjustments import PreOrderAdjustmentsMixin
+from scripts.v460.lib.offset_pipeline import OffsetPipelineMixin
 
 if TYPE_CHECKING:
     from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
@@ -49,17 +50,18 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
+class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
     """run_single_cycle + OB/SkipGate/Fill/PnL ヘルパー (Mixin).
 
     ────────────────────────────────────────────────────
     責務境界 (Single Responsibility):
       OK: 1 取引サイクル実行, OB ラッパー, SkipGate, Fill 監視, PnL 計測
       NG: ループ制御, side kill, time filter, balance forced
-    MAX LINES: 1100
+    MAX LINES: 1300
     ────────────────────────────────────────────────────
     188# _build_fill_record() 抽出済み
     323# FillRecordBuilderMixin / PreOrderAdjustmentsMixin 分離済み
+    460# OffsetPipelineMixin 分離済み
     """
 
     # 201# review: 動的属性のクラスレベル宣言 (mypy 検出 + IDE 補完)
@@ -780,264 +782,30 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
         if sg.early_return_record is not None:
             return sg.early_return_record
 
-        # 193#: ev_weighted → offset 価格調整
-        # SkipGate PASS 後に ev_score を使って order_price を post-hoc 調整
-        # 200# M: DRY — compute_ev_offset_multiplier に共通化 + warning zone
-        _ev_offset_applied = False
-        _ev_score_pretrade: float | None = sg.ev_score   # 292# P0
-        _ev_offset_mult_applied: float | None = None     # 292# P0
-        if (
-            sg.ev_score is not None
-            and self.config.skip_gate_ev_as_offset_enabled
-            and spread_at_order is not None
-            and spread_at_order > 0
-            and order_price > 0
-        ):
-            from scripts.v460.lib.fill_config import compute_ev_offset_multiplier
-            _ev_s = sg.ev_score
-            _ev_mult = compute_ev_offset_multiplier(
-                ev_score=_ev_s,
-                sensitivity=self.config.skip_gate_ev_offset_sensitivity,
-                min_mult=self.config.skip_gate_ev_offset_min_mult,
-                max_mult=self.config.skip_gate_ev_offset_max_mult,
-                warning_threshold=self.config.skip_gate_ev_warning_threshold,
-                warning_factor=self.config.skip_gate_ev_warning_offset_factor,
-            )
-            order_price, effective_offset_ratio, _applied_mult, _delta = self._apply_offset_multiplier(
-                side=side,
-                order_price=order_price,
-                spread_at_order=spread_at_order,
-                effective_offset_ratio=effective_offset_ratio,
-                offset_mult=_ev_mult,
-                aggressive_when_multiplier_gt_one=True,
-            )
-            if _applied_mult is not None and _delta is not None:
-                _ev_offset_applied = True
-                _ev_offset_mult_applied = _applied_mult  # 292# P0
-                logger.info(
-                    f"[193# ev_offset] {side}: ev_score={_ev_s:.3f} "
-                    f"→ offset_mult={_applied_mult:.3f} "
-                    f"(delta={_delta:+.0f}JPY, price={order_price:.0f})"
-                )
-            else:
-                # 292# BS-4: mult=1.0 等で変更なしの場合も計算値を記録
-                # (ev_score_pretrade + decision_path="ev_no_change" と合わせて判別可能)
-                _ev_offset_mult_applied = _ev_mult
-
-        # 195#: velocity_skip ソフトモード — offset boost 適用
-        # velocity が閾値を超えた場合、hard skip ではなく offset を拡大して保守的に発注
-        _vel_offset_applied = False
-        order_price, effective_offset_ratio, _vel_mult, _delta = self._apply_offset_multiplier(
+        # 460# Offset pipeline: 9 段の乗数チェーン + final clamp
+        _offset_result = self._apply_offset_pipeline(
             side=side,
             order_price=order_price,
             spread_at_order=spread_at_order,
             effective_offset_ratio=effective_offset_ratio,
-            offset_mult=sg.velocity_offset_mult,
+            sg_ev_score=sg.ev_score,
+            sg_velocity_offset_mult=sg.velocity_offset_mult,
+            sg_velocity_bps=sg.price_velocity_bps,
+            trending_offset_mult=trending_offset_mult,
+            toxicity_offset_mult=toxicity_offset_mult,
+            sidecar_offset_bps=sidecar_offset_bps,
+            cycle_id=cycle_id,
         )
-        if _vel_mult is not None and _delta is not None:
-            _vel_offset_applied = True
-            logger.info(
-                f"[195# vel_offset] {side}: velocity={sg.price_velocity_bps:.2f}bps "
-                f"→ offset_mult={_vel_mult:.2f} "
-                f"(delta={_delta:+.0f}JPY, price={order_price:.0f})"
-            )
-
-        # 196# trending_sell ソフトモード — offset boost 適用
-        # trending regime での sell を skip せず、offset を拡大して保守的に発注
-        order_price, effective_offset_ratio, _trend_mult, _delta = self._apply_offset_multiplier(
-            side=side,
-            order_price=order_price,
-            spread_at_order=spread_at_order,
-            effective_offset_ratio=effective_offset_ratio,
-            offset_mult=trending_offset_mult if side == "sell" else None,
-        )
-        if _trend_mult is not None and _delta is not None:
-            logger.info(
-                f"[196# trend_offset] sell: trending regime "
-                f"→ offset_mult={_trend_mult:.1f} "
-                f"(delta={_delta:+.0f}JPY, price={order_price:.0f})"
-            )
-
-        # 240# Toxicity Budget (232# §2.2 Glosten-Milgrom): offset 拡大
-        # 逆選択リスクに応じた adverse selection premium をスプレッドに加算
-        _tox_mult: float | None = None  # 420# デフォルト初期化
-        if toxicity_offset_mult > 1.0:
-            order_price, effective_offset_ratio, _tox_mult, _tox_delta = (
-                self._apply_offset_multiplier(
-                    side=side,
-                    order_price=order_price,
-                    spread_at_order=spread_at_order,
-                    effective_offset_ratio=effective_offset_ratio,
-                    offset_mult=toxicity_offset_mult,
-                )
-            )
-            if _tox_mult is not None and _tox_delta is not None:
-                logger.info(
-                    f"[240# toxicity_offset] {side}: "
-                    f"offset_mult={_tox_mult:.2f} "
-                    f"(delta={_tox_delta:+.0f}JPY, price={order_price:.0f})"
-                )
-
-        # 202# C: VG sell-side 補完 — maker_price VG が未発火かつ velocity が高い sell で
-        # 補足的 offset boost を適用。mid_trend_bps は point-to-point のため sell 側で
-        # VG が盲点になるケースを velocity_bps で補完する。
-        _vg_supp_mult: float | None = None  # 420# デフォルト初期化
-        if (
-            side == "sell"
-            and not self._maker_price.last_vg_triggered
-            and _sg_velocity_bps is not None
-            and abs(_sg_velocity_bps) > self.config.volatility_guard_velocity_threshold_bps
-            and not _vel_offset_applied  # 195# で既に補正済みなら二重適用しない
-        ):
-            _vg_supp_boost = self.config.volatility_guard_offset_boost_factor
-            order_price, effective_offset_ratio, _vg_supp_mult, _vg_supp_delta = (
-                self._apply_offset_multiplier(
-                    side=side,
-                    order_price=order_price,
-                    spread_at_order=spread_at_order,
-                    effective_offset_ratio=effective_offset_ratio,
-                    offset_mult=_vg_supp_boost,
-                )
-            )
-            if _vg_supp_mult is not None and _vg_supp_delta is not None:
-                logger.info(
-                    f"[202# C] VG sell supplement: velocity_bps="
-                    f"{_sg_velocity_bps:.1f}bps → offset_mult={_vg_supp_mult:.2f} "
-                    f"(delta={_vg_supp_delta:+.0f}JPY, price={order_price:.0f})"
-                )
-
-        # 458# F-lite: macro_trend → sell/buy offset boost (premium 化)
-        # 455#/457# 合意: hard skip ではなく offset premium で sell を保護
-        _macro_offset_mult: float | None = None
-        _macro_boost_applied = False
-        _lt = self._last_macro_trend
-        if _lt is not None:
-            from scripts.v460.lib.macro_regime import MacroTrend
-            _m_mult = 1.0
-            if side == "sell":
-                if _lt == MacroTrend.STRONG_UP.value:
-                    _m_mult = self.config.macro_sell_boost_strong_up
-                elif _lt == MacroTrend.WEAK_UP.value:
-                    _m_mult = self.config.macro_sell_boost_weak_up
-            elif side == "buy":
-                if _lt == MacroTrend.STRONG_DOWN.value:
-                    _m_mult = self.config.macro_buy_boost_strong_down
-                elif _lt == MacroTrend.WEAK_DOWN.value:
-                    _m_mult = self.config.macro_buy_boost_weak_down
-            if _m_mult > 1.0:
-                order_price, effective_offset_ratio, _macro_offset_mult, _macro_delta = (
-                    self._apply_offset_multiplier(
-                        side=side,
-                        order_price=order_price,
-                        spread_at_order=spread_at_order,
-                        effective_offset_ratio=effective_offset_ratio,
-                        offset_mult=_m_mult,
-                    )
-                )
-                if _macro_offset_mult is not None and _macro_delta is not None:
-                    _macro_boost_applied = True
-                    logger.info(
-                        "[458# macro_boost] %s: macro_trend=%s "
-                        "→ offset_mult=%.2f (delta=%+.0fJPY, price=%.0f)",
-                        side, _lt, _macro_offset_mult, _macro_delta, order_price,
-                    )
-
-        # 215# P0-C: alert_mode offset 乗数 — 全サイド共通
-        # 253# getattr → クラスレベルデフォルトで型安全直接参照
-        _alert_om = self._alert_offset_mult
-        _a_mult: float | None = None  # 420# デフォルト初期化
-        if _alert_om != 1.0:
-            order_price, effective_offset_ratio, _a_mult, _a_delta = (
-                self._apply_offset_multiplier(
-                    side=side,
-                    order_price=order_price,
-                    spread_at_order=spread_at_order,
-                    effective_offset_ratio=effective_offset_ratio,
-                    offset_mult=_alert_om,
-                )
-            )
-            if _a_mult is not None and _a_delta is not None:
-                logger.warning(
-                    f"[215# alert_mode] {side}: offset_mult={_a_mult:.2f} "
-                    f"(delta={_a_delta:+.0f}JPY, price={order_price:.0f})"
-                )
-
-        # 372# F1 Gap-3: SAC Sidecar bps offset — 非対称 maker 調整
-        # sidecar_offset_bps: 正=攻撃的(mid に近い), 負=保守的
-        # buy: 正bps → 価格上昇(mid に近づく) / sell: 正bps → 価格下降(mid に近づく)
-        if sidecar_offset_bps != 0.0 and order_price > 0:
-            _sidecar_delta = round(sidecar_offset_bps / 10000.0 * order_price)
-            if side == "buy":
-                order_price = round(order_price + _sidecar_delta)
-            else:
-                order_price = round(order_price - _sidecar_delta)
-            logger.info(
-                f"[372# sidecar] {side}: offset={sidecar_offset_bps:+.4f}bps "
-                f"→ delta={_sidecar_delta:+.0f}JPY, price={order_price:.0f}"
-            )
-
-        # ── 421# P0: Execution Final Clamp ──────────────────────────
-        # 416#/417# review で発見: maker_price ceiling 後の 6 executor 側
-        # multiplier (EV, velocity, trending, toxicity, VG supplement, alert)
-        # が ceiling を迂回し effective_offset_ratio が際限なく拡大する構造欠陥。
-        # 全 multiplier 適用後にサイド別 ceiling を再適用する。
-        _execution_pre_clamp_offset: float | None = None
-
-        # 420# P1: executor_offset_stages — 6 multiplier 各々の寄与を JSON 記録
-        import json as _json
-        _exec_stages: dict[str, float | None] = {
-            "ev": _ev_offset_mult_applied,
-            "velocity": _vel_mult if _vel_offset_applied else None,
-            "trending": _trend_mult,
-            "toxicity": _tox_mult,
-            "vg_supp": _vg_supp_mult,
-            "alert": _a_mult,
-        }
-        _executor_offset_stages_json: str | None = None
-        if any(v is not None for v in _exec_stages.values()):
-            _executor_offset_stages_json = _json.dumps(
-                _exec_stages, separators=(",", ":"),
-            )
-        if self.config.execution_final_clamp_enabled:
-            _fc_ceil = self.config.resolve_offset_ceiling(side)
-            if _fc_ceil > 0 and effective_offset_ratio > _fc_ceil:
-                _execution_pre_clamp_offset = effective_offset_ratio
-                # 417# self-review: hard skip — boost が極端な場合は clamp だけでなく skip
-                _hs_mult = self.config.execution_final_clamp_hard_skip_mult
-                if _hs_mult > 0 and effective_offset_ratio > _fc_ceil * _hs_mult:
-                    logger.warning(
-                        f"[421# final_clamp] HARD SKIP: {side} "
-                        f"pre_clamp_offset={effective_offset_ratio:.4f} "
-                        f"> ceiling({_fc_ceil:.4f})×{_hs_mult:.1f} — "
-                        f"market too extreme, skipping cycle"
-                    )
-                    return self._make_cycle_skip_record(
-                        side=side,
-                        cancel_reason=CR.FINAL_CLAMP_HARD_SKIP,
-                        cycle_id=cycle_id,
-                        order_price=order_price,
-                        spread_at_order=spread_at_order,
-                        spread_offset_ratio=effective_offset_ratio,
-                    )
-                # normal clamp: ceiling に切り詰めて price 再計算
-                # spread 不明時は price 再計算不可 → ratio のみ clamp するが
-                # price との不整合が生じるため warning を出す
-                if spread_at_order is not None and spread_at_order > 0:
-                    order_price = self._recalc_price_with_new_offset(
-                        side, order_price, spread_at_order,
-                        effective_offset_ratio, _fc_ceil,
-                    )
-                else:
-                    logger.warning(
-                        f"[421# final_clamp] {side}: spread unavailable — "
-                        f"ratio clamped but price NOT recalculated"
-                    )
-                logger.info(
-                    f"[421# final_clamp] {side}: offset "
-                    f"{effective_offset_ratio:.4f}→{_fc_ceil:.4f} "
-                    f"(clamped, price={order_price:.0f})"
-                )
-                effective_offset_ratio = _fc_ceil
+        if _offset_result.early_return_record is not None:
+            return _offset_result.early_return_record
+        order_price = _offset_result.order_price
+        effective_offset_ratio = _offset_result.effective_offset_ratio
+        _ev_offset_applied = _offset_result.ev_offset_applied
+        _ev_score_pretrade = _offset_result.ev_score_pretrade
+        _ev_offset_mult_applied = _offset_result.ev_offset_mult_applied
+        _macro_boost_applied = _offset_result.macro_boost_applied
+        _execution_pre_clamp_offset = _offset_result.execution_pre_clamp_offset
+        _executor_offset_stages_json = _offset_result.executor_offset_stages_json
 
         # 2. 発注 (CM-2: リトライ付き)
         t_submit = time.time()
@@ -1057,50 +825,25 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, PreOrderAdjustmentsMixin):
             dust_sweep_active=self._balance_checker.dust_sweep_active,
         )
 
-        # 215# P0-C: alert_mode lot 乗数 — 縮小運転
+        # 460# Lot adjustment chain — 4 乗数を順次適用
+        _min_lot = self.config.order_quantity
         _alert_lm = self._alert_lot_mult
         if _alert_lm != 1.0:
-            _pre_lot = _order_lot
-            _order_lot = max(self.config.order_quantity, _order_lot * _alert_lm)
-            logger.warning(
-                f"[215# alert_mode] lot_mult={_alert_lm:.2f}: "
-                f"{_pre_lot} → {_order_lot}"
-            )
-
-        # 224# B1: halt解除後ソフトリカバリ lot 縮小
+            _order_lot = self._scale_lot(_order_lot, _alert_lm, _min_lot, "215# alert_mode", warn=True)
         _recovery_lm = self._halt_recovery_lot_mult
         if _recovery_lm < 1.0:
-            _pre_lot = _order_lot
-            _order_lot = max(self.config.order_quantity, _order_lot * _recovery_lm)
-            logger.info(
-                f"[224# B1] Recovery lot_scale={_recovery_lm:.2f}: "
-                f"{_pre_lot:.6f} → {_order_lot:.6f}"
-            )
-
-        # 303# B: DD soft lot reduction — side-aware lot 縮小
+            _order_lot = self._scale_lot(_order_lot, _recovery_lm, _min_lot, "224# B1 Recovery")
         _dd_side_scale = (
             self._dd_soft_lot_scale_buy if side == "buy"
             else self._dd_soft_lot_scale_sell
         )
         if _dd_side_scale < 1.0:
-            _pre_lot = _order_lot
-            _order_lot = max(self.config.order_quantity, _order_lot * _dd_side_scale)
-            logger.info(
-                f"[303# B] DD soft lot side-aware: {side} scale={_dd_side_scale:.2f}: "
-                f"{_pre_lot:.6f} → {_order_lot:.6f}"
-            )
-
-        # 246# DD halt cooldown release lot 縮小
+            _order_lot = self._scale_lot(_order_lot, _dd_side_scale, _min_lot, f"303# B DD soft {side}")
         _dd_guard = self._daily_drawdown_guard
         if _dd_guard is not None:
             _cd_lm = _dd_guard.get_cooldown_lot_scale()
             if _cd_lm < 1.0:
-                _pre_lot = _order_lot
-                _order_lot = max(self.config.order_quantity, _order_lot * _cd_lm)
-                logger.info(
-                    f"[246# cooldown_release] lot_scale={_cd_lm:.2f}: "
-                    f"{_pre_lot:.6f} → {_order_lot:.6f}"
-                )
+                _order_lot = self._scale_lot(_order_lot, _cd_lm, _min_lot, "246# cooldown_release")
 
         # 373# F8: 全乗数チェーン適用後の最終 max_lot クランプ (防御的)
         # 現行乗数は全て ≤ 1.0 だが、将来の拡張で > 1.0 が入った場合の安全弁
