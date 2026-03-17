@@ -151,7 +151,9 @@ class OrchestratorPostCycleMixin:
         # 明示的に `is False` で比較（gate 評価済み＆非 skip の record のみ計上）。
         if record.skip_gate_skipped is False and record.effective_offset_used is not None:
             st.ceiling_check_count += 1
-            _ceil = self.config.resolve_offset_ceiling(record.side)
+            # 467#: hour_ceiling_mult 反映
+            from scripts.v460.lib.hour_rules import current_utc_hour
+            _ceil = self.config.resolve_offset_ceiling(record.side, utc_hour=current_utc_hour())
             if _ceil > 0 and abs(record.effective_offset_used - _ceil) < 1e-6:
                 st.clamp_fire_count += 1
         st.batch.append(record)

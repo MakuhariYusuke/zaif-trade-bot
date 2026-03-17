@@ -278,7 +278,9 @@ class OffsetPipelineMixin(PreOrderAdjustmentsMixin):
                 _exec_stages, separators=(",", ":"),
             )
         if self.config.execution_final_clamp_enabled:
-            _fc_ceil = self.config.resolve_offset_ceiling(side)
+            # 467#: hour_ceiling_mult 反映
+            from scripts.v460.lib.hour_rules import current_utc_hour
+            _fc_ceil = self.config.resolve_offset_ceiling(side, utc_hour=current_utc_hour())
             if _fc_ceil > 0 and effective_offset_ratio > _fc_ceil:
                 _execution_pre_clamp_offset = effective_offset_ratio
                 # 417# hard skip — boost が極端な場合は clamp だけでなく skip

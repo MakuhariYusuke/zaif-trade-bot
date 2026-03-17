@@ -340,12 +340,18 @@ class FillTestConfig:
     # 全 multiplier 適用後に ceiling を再適用し、offset ratio の暴走を防止。
     execution_final_clamp_enabled: bool = True   # Final Clamp 有効化 (安全のためデフォルト有効)
     execution_final_clamp_hard_skip_mult: float = 0.0  # >0: pre-clamp が ceiling×この倍率を超えたら hard skip (0=無効)
+    # ---- 467# deep-night ceiling 緩和 (461# P0 残課題) ----
+    # UTC hour 別の ceiling 乗数。深夜帯 (JST 22-03h = UTC 13-18h) で
+    # AS 率が 57-100% に達する → ceiling を緩和し offset 防御を許容する。
+    # key=UTC hour, value=ceiling multiplier (1.0=無変更, >1.0=緩和)
+    hour_ceiling_mult: dict[int, float] = field(default_factory=dict)
 
-    def resolve_offset_ceiling(self, side: str) -> float:
+    def resolve_offset_ceiling(self, side: str, *, utc_hour: int | None = None) -> float:
         """421# DRY: サイド別 offset ceiling を解決する共通ヘルパー.
 
         maker_price.py L1015 / fill_cycle_executor.py Final Clamp で
         同一パターンが3重複していたため統一。
+        467#: utc_hour 指定時は hour_ceiling_mult を適用。
         Returns: ceiling 値 (0.0 = 無効)。
         """
         ceil = self.offset_ceiling_ratio
@@ -353,6 +359,11 @@ class FillTestConfig:
             ceil = self.offset_ceiling_ratio_buy
         elif side == "sell" and self.offset_ceiling_ratio_sell is not None:
             ceil = self.offset_ceiling_ratio_sell
+        # 467# hour_ceiling_mult: 時間帯別 ceiling 乗数
+        if ceil > 0 and utc_hour is not None and self.hour_ceiling_mult:
+            mult = self.hour_ceiling_mult.get(utc_hour)
+            if mult is not None:
+                ceil *= mult
         return ceil
 
     # 054# S3: テール損失カット (post-fill早期監視)

@@ -86,6 +86,10 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
     # 449# getattr 排除: orchestrator が設定する run/sha 属性
     _run_id: str = ""
     _git_sha: str = ""
+    # 467# config_hash: 設定識別子 (462# 残課題)
+    _config_hash: str = ""
+    # 467# status_unknown_fast 連続検知 (461# P0 残課題)
+    _consecutive_status_unknown_fast: int = 0
     # 458# F-lite: 前サイクルの macro_trend を保持 → 今サイクルの offset に使用
     _last_macro_trend: str | None = None
 
@@ -370,6 +374,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
 
         238# C-2: BalanceChecker の最終クエリ残高を snapshot として渡す。
         これがないと Phase 2 (残高差分検出) が完全に無効。
+        467#: status_unknown_fast 連続検知カウンタを更新。
 
         Returns:
             True = pending_reconciliation (FillRecord に設定する)
@@ -380,7 +385,23 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             or not monitor.cancel_reason.startswith("status_unknown")
             or monitor.order_id_for_reconciliation is None
         ):
+            # 467#: status_unknown 以外 → 連続カウンタリセット
+            if monitor.cancel_reason != "status_unknown_fast":
+                self._consecutive_status_unknown_fast = 0
             return False
+
+        # 467#: status_unknown_fast 連続検知
+        if monitor.cancel_reason == "status_unknown_fast":
+            self._consecutive_status_unknown_fast += 1
+            if self._consecutive_status_unknown_fast >= 3:
+                logger.warning(
+                    f"[467# status_unknown_fast] {self._consecutive_status_unknown_fast} "
+                    f"consecutive status_unknown_fast — possible API degradation or "
+                    f"exchange connectivity issue"
+                )
+        else:
+            self._consecutive_status_unknown_fast = 0
+
         if self._phantom_guard is not None:
             # 251# getattr → 型安全な property 直接参照 (238# C-2 完全化)
             _btc_snap = self._balance_checker.last_btc_free

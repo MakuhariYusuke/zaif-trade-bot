@@ -1061,7 +1061,9 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         # 306# E1: offset ceiling — 300# T1-3 指摘の上限制御
         # 320# C-1: サイド別 ceiling — sell floor(0.30) > ceiling(0.15) 矛盾解消
         # 421# DRY: resolve_offset_ceiling ヘルパーに統一
-        _ceil = cfg.resolve_offset_ceiling(side)
+        # 467#: hour_ceiling_mult 反映
+        from scripts.v460.lib.hour_rules import current_utc_hour
+        _ceil = cfg.resolve_offset_ceiling(side, utc_hour=current_utc_hour())
         if _ceil > 0 and effective_offset_ratio > _ceil:
             logger.info(
                 f"[306# ceiling] offset {effective_offset_ratio:.4f} "

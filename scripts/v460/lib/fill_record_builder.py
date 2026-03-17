@@ -353,6 +353,7 @@ class FillRecordBuilderMixin:
             "run_id": self._run_id,
             "git_sha": self._git_sha,
             "start_git_sha": getattr(self, "_start_git_sha", None),  # 420# P1
+            "config_hash": self._config_hash or None,  # 467# 設定識別子
             "pid": os.getpid(),  # 285# 283# P0-1: Split-Brain 検知用
             # 306# O1: queue position estimation
             "queue_depth_ahead": queue_depth_ahead,

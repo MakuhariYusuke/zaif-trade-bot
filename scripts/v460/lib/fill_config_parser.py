@@ -1028,6 +1028,12 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
         kwargs["sell_hour_offset_boost"] = {
             int(k): float(v) for k, v in shob.items()
         }
+    # 467# hour_ceiling_mult: deep-night ceiling 緩和
+    hcm = yaml_cfg.get("hour_ceiling_mult", {})
+    if hcm:
+        kwargs["hour_ceiling_mult"] = {
+            int(k): float(v) for k, v in hcm.items()
+        }
     # Offset ceiling
     if "offset_ceiling_ratio" in yaml_cfg:
         kwargs["offset_ceiling_ratio"] = float(yaml_cfg["offset_ceiling_ratio"])

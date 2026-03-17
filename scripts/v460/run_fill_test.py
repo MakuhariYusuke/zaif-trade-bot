@@ -150,6 +150,9 @@ class FillTestRunner(
         # 420# P1: run 開始時の SHA を固定保持 (hot_reload で _git_sha は変わるが
         # _start_git_sha は不変 → コード attribution 分析で使用)
         self._start_git_sha = self._git_sha
+        # 467# config_hash: 設定識別子 (462# 残課題)
+        from scripts.v460.lib.manifest import compute_config_hash
+        self._config_hash = compute_config_hash(self._yaml_cfg) if self._yaml_cfg else ""
 
         # 044# 単一起動ロック → 158# P2-4: LockManager に委譲
         self._lock_manager = LockManager(

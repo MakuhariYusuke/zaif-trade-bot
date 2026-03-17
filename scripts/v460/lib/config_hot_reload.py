@@ -499,6 +499,8 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     # 421# P0: Execution Final Clamp
     "execution_final_clamp_enabled",
     "execution_final_clamp_hard_skip_mult",
+    # 467# deep-night ceiling 緩和
+    "hour_ceiling_mult",
     # --- 374# Phase 3.1: SAC Sidecar Proportional Boost ---
     "sidecar_enabled",
     "sidecar_max_boost_bps",
@@ -702,6 +704,13 @@ class ConfigHotReloader:
 
         # YAML cfg も更新 (AdaptationEngine 等が参照)
         self._yaml_cfg.update(new_yaml_cfg)
+
+        # 467# config_hash 更新 (config drift 追跡)
+        try:
+            from scripts.v460.lib.manifest import compute_config_hash
+            runner._config_hash = compute_config_hash(self._yaml_cfg)
+        except Exception:
+            pass  # hash 失敗は非致命的
 
         if _rp_changed:
             try:

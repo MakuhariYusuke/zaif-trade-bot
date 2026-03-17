@@ -205,6 +205,9 @@ class FillRecord:
     # hot_reload で git_sha が変わっても start_git_sha は不変。
     # コード attribution 分析で run 開始版を特定するために使用。
     start_git_sha: str | None = None
+    # ---- 467# config_hash: 設定識別子 (462# 残課題) ----
+    # compute_config_hash(config) で生成。同一 run 中の config drift 検出に使用。
+    config_hash: str | None = None
     # ---- 420# P1: Side 切替可観測性 (416# §4.2) ----
     # SideSelector が最初に返した side (balance/veto 切替前)
     requested_side: str | None = None
