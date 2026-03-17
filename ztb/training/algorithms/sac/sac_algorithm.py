@@ -26,10 +26,9 @@ from ztb.training.models.advanced_networks import LSTMPolicy, TransformerPolicy
 from ztb.training.model_compression import create_compression_pipeline
 from ztb.types.common import SACLikeModelProtocol
 from ztb.utils.safety import ensure_dict, safe_to_float, safe_to_int
+from ztb.utils.types import ConfigMap
 
 logger = logging.getLogger(__name__)
-
-ConfigMap = dict[str, object]
 
 # Default SAC configuration used by the tests
 DEFAULT_SAC_CONFIG = {

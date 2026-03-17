@@ -30,9 +30,9 @@ from .components.evaluation_engine import EvaluationEngine
 from .components.optimization_engine import OptimizationEngine
 from .parameter_space import RewardFunctionParameterSpace
 
-logger = get_logger(__name__)
+from ztb.utils.types import ConfigMap
 
-ConfigMap = dict[str, object]
+logger = get_logger(__name__)
 ScoreMap = dict[str, float]
 HistoryRecord = dict[str, object]
 

@@ -63,11 +63,11 @@ from scripts.v460.ml.skip_gate import (
 from ztb.io.jsonl import append_jsonl
 from ztb.ml.artifact_paths import atomic_pickle_tmp_path, hash_sidecar_path
 from ztb.utils.safety import ensure_dict, safe_to_bool, safe_to_float, safe_to_int
+from ztb.utils.types import ConfigMap
 
 # 127# X1: module-level FileHandler を廃止。main() 内で初期化する。
 logger = logging.getLogger(__name__)
 
-ConfigMap = dict[str, object]
 FoldPnlSamples = tuple[list[float], list[float]]
 
 # 161# SIGTERM graceful shutdown
@@ -525,6 +525,20 @@ def _save_enriched_cache(
         except Exception:  # noqa: R-18 cleanup best-effort
             pass
 
+def _resolve_early_stopping(cfg: ConfigMap) -> tuple[int, int]:
+    """E2: early_stopping_rounds と n_estimators を一括解決 (DRY).
+
+    Returns:
+        (early_stopping_rounds, n_estimators)
+    """
+    early_stop = safe_to_int(cfg.get("early_stopping_rounds", 0), 0)
+    if early_stop > 0:
+        n_est = safe_to_int(cfg.get("lgbm_n_estimators_max", 300), 300)
+    else:
+        n_est = safe_to_int(cfg.get("lgbm_n_estimators", 150), 150)
+    return early_stop, n_est
+
+
 def _build_lgbm_regressor(
     cfg: ConfigMap,
     n_estimators_override: int | None = None,
@@ -654,12 +668,7 @@ def _evaluate_wf_multi(
     total_n_test = 0
     total_n_train = 0
 
-    early_stop = safe_to_int(cfg.get("early_stopping_rounds", 0), 0)
-    n_est = (
-        safe_to_int(cfg.get("lgbm_n_estimators_max", 300), 300)
-        if early_stop > 0
-        else safe_to_int(cfg.get("lgbm_n_estimators", 150), 150)
-    )
+    early_stop, n_est = _resolve_early_stopping(cfg)
     skip_pct = safe_to_float(cfg.get("skip_percentile", 20), 20.0)
     pnl30_all = _extract_numeric_column(enriched, X.index, "post_fill_30s_pnl")
     pnl120_all = _extract_numeric_column(enriched, X.index, "post_fill_120s_pnl")
@@ -720,6 +729,10 @@ def _evaluate_wf_multi(
         total_n_trees += n_trees
         total_n_test += len(X_test)
         total_n_train += len(X_train)
+
+        # 466# メモリリーク防止: per-window オブジェクトを即時解放
+        del lgbm_model, imputer, scaler, X_train_sc, X_test_sc
+        del X_train, y_train, X_val, y_val, X_test
 
     if not window_scores:
         logger.warning("C1: All windows failed, falling back to single-window")
@@ -807,11 +820,7 @@ def _evaluate_wf_single(
     y_test = y.iloc[test_start_idx:]  # noqa: F841
 
     # E2: early stopping 有効時は上限を引き上げ
-    early_stop = safe_to_int(cfg.get("early_stopping_rounds", 0), 0)
-    if early_stop > 0:
-        n_est = safe_to_int(cfg.get("lgbm_n_estimators_max", 300), 300)
-    else:
-        n_est = safe_to_int(cfg.get("lgbm_n_estimators", 150), 150)
+    early_stop, n_est = _resolve_early_stopping(cfg)
 
     lgbm_model = _build_lgbm_regressor(cfg, n_estimators_override=n_est)
 
@@ -1212,6 +1221,7 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
 
     if len(pnl_data) < 10:
         return {**result, "status": "skipped", "reason": f"Insufficient filled samples: {len(pnl_data)}"}
+    del pnl_data  # 466# メモリリーク防止: 以降未使用
 
     # 特徴量構築 (build_preorder_as_features の特徴量ロジックを再利用)
     try:
@@ -1239,6 +1249,7 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
         return {**result, "status": "skipped", "reason": f"{pnl_col} not available"}
 
     y_target = enriched.loc[X_base.index, pnl_col].astype(float)
+    del X_base  # 466# メモリリーク防止: 以降未使用
     valid_mask = y_target.notna()
     X_valid = X_full.loc[valid_mask]
     y_valid = y_target.loc[valid_mask]
@@ -1250,6 +1261,7 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
     n_original_filled = int(pnl_mask.sum())
     result["filled_records"] = n_original_filled
     result["dropped_by_feature_build"] = n_original_filled - int(len(X_full))
+    del X_full  # 466# メモリリーク防止: 以降未使用
 
     # 145# R-2b: 現在レジーム検出 (R-2a weighting の有無に関わらず常に実行)
     # 直近 N 件の多数決で推定し、result に記録 → run_scheduler で trigger に伝搬
@@ -1377,12 +1389,6 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
             "reason": f"insufficient new samples: {new_samples} < {min_new} ({result['phase']})",
         }
 
-    # training path に入る時点で依存を確認 (skip path では import しない)
-    try:
-        import lightgbm as lgb
-    except ImportError:
-        return {"status": "error", "reason": "lightgbm not installed"}
-
     logger.info(
         f"Retraining: {len(X_valid)} samples ({new_samples} new), "
         f"target={target}, use_ob={use_ob}"
@@ -1395,6 +1401,7 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
             prev_booster=prev_booster,
             sample_weight=regime_sample_weight,
         )
+        del enriched  # 466# メモリリーク防止: WF eval 後は未使用
         result["wf_eval"] = wf_result
         logger.info(
             f"WF eval: score={wf_result['score']:.4f}, "
@@ -1604,17 +1611,17 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
     )
 
     # E2: early stopping 有効時は train/val 分割
-    early_stop = safe_to_int(cfg.get("early_stopping_rounds", 0), 0)
-    if early_stop > 0:
-        n_est = safe_to_int(cfg.get("lgbm_n_estimators_max", 300), 300)
-    else:
-        n_est = safe_to_int(cfg.get("lgbm_n_estimators", 150), 150)
+    early_stop, n_est = _resolve_early_stopping(cfg)
 
     lgbm = _build_lgbm_regressor(cfg, n_estimators_override=n_est)
 
     # E1/E2: fit kwargs
     fit_kwargs: dict[str, object] = {}
     if early_stop > 0:
+        try:
+            import lightgbm as lgb
+        except ImportError:
+            return {"status": "error", "reason": "lightgbm not installed"}
         # early stopping 用に内部的に val split (直近20%)
         es_split = int(len(X_sc) * 0.8)
         if es_split > 30 and len(X_sc) - es_split > 10:
@@ -1689,6 +1696,7 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
         ("scaler", scaler),
         ("model", lgbm),
     ])
+    del X_sc, X_imp  # 466# メモリリーク防止: 訓練データは Pipeline 構築後は不要
 
     # SkipGateConfig — 127# C1: mode を設定から取得
     sg_config = SkipGateConfig(

@@ -8,10 +8,9 @@ Separated from the main optimizer to follow Single Responsibility Principle.
 from ztb.training.hyperparameter_optimizer import ParameterSpace
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.safety import safe_to_float
+from ztb.utils.types import ConfigMap
 
 logger = get_logger(__name__)
-
-ConfigMap = dict[str, object]
 
 class RewardFunctionParameterSpace:
     """

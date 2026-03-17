@@ -22,10 +22,11 @@ from ztb.training.core.config_manager import TrainingConfigManager
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.safety import ensure_dict, safe_config_get
 
+from ztb.utils.types import ConfigMap
+
 logger = get_logger(__name__)
 
 # Type aliases
-ConfigMap = dict[str, object]
 MemoryOptimizationConfig = dict[str, int | None]
 EnvironmentConfig = TradingEnvironmentConfig
 PPOCoreConfig = PPOConfig

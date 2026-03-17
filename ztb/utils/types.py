@@ -17,6 +17,7 @@ from typing_extensions import TypedDict
 ActionType = int
 PathLike = str | OsPathLike[str]
 JSONSerializable = dict[str, Any] | list[Any] | str | int | float | bool | None
+ConfigMap = dict[str, object]
 
 # --- Results / metrics ---
 class TrainingResult(TypedDict, total=False):

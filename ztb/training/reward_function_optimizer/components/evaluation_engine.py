@@ -12,9 +12,9 @@ from ztb.metrics.metrics import coefficient_of_variation
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.safety import ensure_dict, safe_to_float
 
-logger = get_logger(__name__)
+from ztb.utils.types import ConfigMap
 
-ConfigMap = dict[str, object]
+logger = get_logger(__name__)
 ScoreMap = dict[str, float]
 EvaluationRecord = dict[str, object]
 

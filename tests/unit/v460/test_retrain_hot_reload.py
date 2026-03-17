@@ -2379,6 +2379,7 @@ class TestModelDegenerationGuard:
             "feature_pruning_enabled": False,
             "redundancy_pruning_enabled": False,
             "warm_start_enabled": False,
+            "early_stopping_rounds": 0,
         }
 
     def test_d1_rejects_single_tree_model(self) -> None:

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-ConfigMap = dict[str, object]
+from ztb.utils.types import ConfigMap
 
 def _as_map(value: object) -> ConfigMap:
     if isinstance(value, dict):
