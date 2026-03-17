@@ -83,8 +83,8 @@ class TestLowVolOffsetBoostConfig:
         raw = v460_fill_test_yaml
         cfg = FillConfig.from_yaml(raw)
         assert cfg.low_vol_offset_boost_enabled is True
-        assert cfg.low_vol_offset_boost == 1.5
-        assert cfg.low_vol_threshold == 0.75
+        assert cfg.low_vol_offset_boost == 1.8
+        assert cfg.low_vol_threshold == 0.65
 
 
 class TestLowVolOffsetBoostMakerPrice:

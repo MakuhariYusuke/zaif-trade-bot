@@ -110,6 +110,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "hard_skip_utc_hours",
     "loss_boost_offset_mult",
     "low_vol_offset_boost",  # 459# 1.4→1.5 チューニング
+    "low_vol_threshold",  # 468# 0.75→0.65 偽陽性削減
     "macro_regime_slope_threshold",  # 458# macro sell protection
     "macro_regime_strong_threshold",  # 458# macro sell protection
     "macro_sell_timeout_strong_up",  # 458# macro sell timeout

@@ -167,8 +167,8 @@ regime:
   # データ根拠: 損失時間帯 vol_ratio=0.661 vs 利益時間帯 0.918 (t=-2.01)
   # 168# §9.11: 0.70→0.75 — order/fill間のvol_ratio遅延に対する安全マージン
   low_vol_offset_boost_enabled: true
-  low_vol_offset_boost: 1.5
-  low_vol_threshold: 0.75
+  low_vol_offset_boost: 1.8              # 468# 1.5→1.8: 真の低vol時に強化防御
+  low_vol_threshold: 0.65                 # 468# 0.75→0.65: 比例モードで偽陽性削減
   # 200# C: 低ボラ boost 比例モード
   low_vol_boost_proportional: true   # vol_ratio に応じた段階的 boost
   low_vol_boost_min: 1.0             # 比例モード時の最小 boost
@@ -428,14 +428,25 @@ skip_gate:
   # ログ分析: 01h JST(=16UTC)64%AS, 03h(=18UTC)50%, 06h(=21UTC)36%, 17h(=08UTC)42%, 23h(=14UTC)43%
   # PnLモード: 正方向=厳格化 (より高い予測PnLがないとskip)
   hour_offsets:
+    13: 0.3    # 468# 22h JST: 461# AS57%, PnL-3.18bps → 新規追加
     14: 0.5    # 397# 23h JST: 395# current SHA n=6 WR=0% → 0.3→0.5 厳格化
+    15: 0.2    # 468# 00h JST: 461# AS18.2%, PnL-1.93bps → 軽い厳格化
     16: 0.5    # 01h JST: AS64%, -79.8bps/日 → 最も厳格化
+    17: 0.3    # 468# 02h JST: 461# AS36.4%, PnL-1.50bps → 厳格化
     18: 0.3    # 03h JST: AS50%, -54.8bps/日 → 厳格化
     21: 0.3    # 06h JST: AS36%, -125.8bps/日 → 厳格化 (PnL損失最大時間帯)
     23: 0.2    # 08h JST: AS28%だがPnL-30.7bps → 軽い厳格化
   # 205# §9.4: 時間帯 Hard Skip (Kyle proxy) — 最悪時間帯はサイクル全停止
   # soft offset では抑制不十分な UTC 時間帯。204# 分析: UTC16(JST01 AS64%), UTC21(JST06 PnL-125.8bps/日)
   hard_skip_utc_hours: [16, 21]
+  # 468# 467# hour_ceiling_mult: deep-night ceiling 緩和 (461# P2)
+  # AS率 57-100% の危険時間帯で offset ceiling を緩和し防御を許容
+  hour_ceiling_mult:
+    13: 1.5    # 22h JST: AS57% → sell ceiling 0.50→0.75
+    14: 2.0    # 23h JST: AS100%, PnL-12.94bps → sell ceiling 0.50→1.00
+    15: 1.3    # 00h JST: AS18.2% → 軽い緩和
+    17: 1.5    # 02h JST: AS36.4% → sell ceiling 0.50→0.75
+    18: 2.0    # 03h JST: AS100%, PnL-6.90bps → sell ceiling 0.50→1.00
   # 183# narrow spread adverse guard: spread < threshold で skip_gate 閾値厳格化
   # ログ分析: spread<2kでAS32% (全体28%), PnL=-0.46bps (全体-0.30bps)
   skip_gate_narrow_spread_threshold_jpy: 2000.0
@@ -654,10 +665,14 @@ sell_hour_offset_boost:
   2: 2.0      # 381# JST 11h: sell 30s=-5.418bps (最悪帯)
   3: 2.0      # 381# JST 12h: sell 30s=-4.802bps (最悪帯)
   8: 1.5      # 306# UTC 08h = JST 17h: AS 63%
+  9: 1.8      # 468# UTC 09h = JST 18h: 461# AS50%, PnL-3.19bps → 新規追加
+  11: 1.3     # 468# UTC 11h = JST 20h: 461# AS33.3%, PnL-1.37bps → 新規追加
   12: 2.0     # 381# JST 21h: sell 30s=-7.369bps (極悪)
-  13: 1.3     # 306# UTC 13h = JST 22h: AS 42% (クリーンデータで+2.713bpsに改善済)
+  13: 2.0     # 468# UTC 13h = JST 22h: 461# AS57%, PnL-3.18bps → 1.3→2.0 強化
   14: 1.5     # 397# UTC 14h = JST 23h: 395# current SHA n=6 WR=0% −6.996bps → 1.3→1.5 強化
+  15: 1.3     # 468# UTC 15h = JST 00h: 461# AS18.2%, PnL-1.93bps → 新規追加
   16: 1.5     # 306# UTC 16h = JST 01h: AS 61%
+  17: 1.5     # 468# UTC 17h = JST 02h: 461# AS36.4%, PnL-1.50bps → 新規追加
 
 # ---- 133# 止血施策 (P0-08/09/10) ----
 loss_control:

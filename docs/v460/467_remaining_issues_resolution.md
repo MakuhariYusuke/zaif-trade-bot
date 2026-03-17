@@ -92,7 +92,7 @@ API 劣化や接続障害のサインを見逃す。
 
 | # | 優先度 | 内容 | 状態 |
 |---|--------|------|------|
-| 461# | P1 | ranging_low_vol_skip: buy-only soft mode の閾値最適化 | 要調査 |
-| 461# | P1 | sell AS defense: 時間帯別 offset boost の実績評価 | 462# hour-matched で可能 |
-| 461# | P2 | deep-night hard_skip_utc_hours 拡張 (現在 [16,21] のみ) | hour_ceiling_mult で代替可能 |
+| 461# | P1 | ranging_low_vol_skip: buy-only soft mode の閾値最適化 | ✅ 468# 解消 |
+| 461# | P1 | sell AS defense: 時間帯別 offset boost の実績評価 | ✅ 468# 解消 |
+| 461# | P2 | deep-night hard_skip_utc_hours 拡張 (現在 [16,21] のみ) | ✅ 468# ceiling_mult で解消 |
 | 464# | - | Adapter Strategy, ConfigMap 2.0, AB Test Framework | 長期提案・別途 |
