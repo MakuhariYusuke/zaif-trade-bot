@@ -39,6 +39,7 @@ from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from tests.unit.v460._fill_test_source import (
     FILL_LOOP_ORCHESTRATOR,
     SKIP_GATE_EVALUATOR,
+    SKIP_GATE_MODEL_LOADER,
     read_class_method_source,
     read_inspect_source,
     read_fill_test_runner_source,
@@ -131,8 +132,8 @@ class TestEvaluatorCalibratorInjection:
     def test_hot_reload_re_injects_calibrator(self) -> None:
         """_check_and_reload_model 内で _inject_calibrator が呼ばれる."""
         source = read_class_method_source(
-            SKIP_GATE_EVALUATOR,
-            "SkipGateEvaluator",
+            SKIP_GATE_MODEL_LOADER,
+            "SkipGateModelLoaderMixin",
             "_check_and_reload_model",
         )
         assert "_inject_calibrator" in source

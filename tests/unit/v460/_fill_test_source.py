@@ -127,6 +127,9 @@ OB_UTILS = (
 SKIP_GATE_EVALUATOR = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "skip_gate_evaluator.py"
 )
+SKIP_GATE_MODEL_LOADER = (
+    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "skip_gate_model_loader.py"
+)
 HINDSIGHT_FILTER = (
     _PROJECT_ROOT / "scripts" / "v460" / "analysis" / "hindsight_filter.py"
 )

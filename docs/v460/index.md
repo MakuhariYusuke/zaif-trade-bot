@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-17 (460# offset pipeline 抽出)
+> 最終更新: 2026-03-17 (461# skip_gate Mixin 分割 + fill test 分析)
 
 ---
 
@@ -497,6 +497,7 @@
 | 331 | rev | [331_phg_review_329_330_self_audit.md](331_phg_review_329_330_self_audit.md) | Self-Review: 329#/330# 自己監査 — BUG-1/2 修正, CycleContext cleanup, validation 追加 |
 | 332 | refactor | [332_phg_refactor_run_continuous_phase4.md](332_phg_refactor_run_continuous_phase4.md) | run_continuous Phase 4: Balance/MidCycle Mixin 抽出 (1228→407 行, 908→~80 行) |
 | 460 | refactor | [460_phg_refactor_offset_pipeline_extraction.md](460_phg_refactor_offset_pipeline_extraction.md) | run_single_cycle 分割 + 重複排除: offset pipeline 9段チェーン抽出, lot chain 統合, 継承チェーン整理 |
+| 461 | refactor/rpt | [461_phg_refactor_skip_gate_split_fill_test_analysis.md](461_phg_refactor_skip_gate_split_fill_test_analysis.md) | skip_gate_evaluator Mixin 分割 (1362→866行) + MAX LINES 3件 + Fill Test 5日間ログ分析 |
 
 ---
 

@@ -3,6 +3,8 @@
 
 328# God Object 分割 Step 3: fill_config.py から YAML パーサーを分離。
 5 つのセクションパーサー + from_yaml エントリポイントを管理する。
+
+MAX LINES: 1100
 """
 
 from __future__ import annotations

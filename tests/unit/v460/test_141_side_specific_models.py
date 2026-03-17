@@ -1270,7 +1270,7 @@ class TestRegimeAdaptiveThresholdIntegration:
         logger_stub = _LoggerStub()
 
         with patch(
-            "scripts.v460.lib.skip_gate_evaluator.logger",
+            "scripts.v460.lib.skip_gate_model_loader.logger",
             new=logger_stub,
         ):
             evaluator._apply_config_overrides(mock_gate)

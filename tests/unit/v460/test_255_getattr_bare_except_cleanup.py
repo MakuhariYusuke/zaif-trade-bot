@@ -17,6 +17,7 @@ from tests.unit.v460._fill_test_source import (
     OB_UTILS,
     ORDER_MONITOR,
     SKIP_GATE_EVALUATOR,
+    SKIP_GATE_MODEL_LOADER,
     read_class_method_source,
 )
 
@@ -71,8 +72,8 @@ class TestGetAttrRemoval:
     def test_hot_reload_no_getattr(self) -> None:
         """_check_and_reload_model が hot_reload_check_interval_sec の getattr を使わない."""
         src = read_class_method_source(
-            SKIP_GATE_EVALUATOR,
-            "SkipGateEvaluator",
+            SKIP_GATE_MODEL_LOADER,
+            "SkipGateModelLoaderMixin",
             "_check_and_reload_model",
         )
         code = _code_lines(src)

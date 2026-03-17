@@ -40,6 +40,7 @@ from tests.unit.v460._fill_test_source import (
     MAKER_REGIME_BOOST,
     ORDER_MONITOR,
     SKIP_GATE_EVALUATOR,
+    SKIP_GATE_MODEL_LOADER,
     read_class_method_source,
     read_fill_test_method_source,
     read_inspect_source,
@@ -59,8 +60,8 @@ _REGIME_RANGING_SOURCE = read_class_method_source(
 )
 _ONLINE_MONITOR_SOURCE = read_inspect_source(online_monitor)
 _SKIP_GATE_RELOAD_SOURCE = read_class_method_source(
-    SKIP_GATE_EVALUATOR,
-    "SkipGateEvaluator",
+    SKIP_GATE_MODEL_LOADER,
+    "SkipGateModelLoaderMixin",
     "_check_and_reload_model",
 )
 _SKIP_GATE_EVALUATE_SOURCE = read_class_method_source(

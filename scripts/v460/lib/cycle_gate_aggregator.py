@@ -8,6 +8,8 @@
   - 全判定の audit trail を CycleGateResult に一元記録
   - 既存テストの後方互換性を最大限維持
 
+MAX LINES: 800
+
 旧アーキテクチャ:
   orchestrator → A10-A14 (scattered if/continue)
   executor     → B3 (narrow_spread_pause)
