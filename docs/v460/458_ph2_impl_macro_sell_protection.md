@@ -2,7 +2,7 @@
 
 > **状態**: 実装完了・テスト済  
 > **前提**: [454#](454_ph2_plan_uptrend_sell_loss_countermeasures.md) 設計案 → [455#](455_ph2_rev_454_uptrend_sell_loss_countermeasures_review.md) Codex レビュー → [456#](456_ph2_plan_uptrend_sell_centric_paradigm.md) Sell-Centric パラダイム → [457#](457_ph2_rev_456_sell_centric_paradigm_review.md) 456# レビュー  
-> **SHA**: `73c36b86f` (実装), `d0769f283` (SR修正)
+> **SHA**: `73c36b86f` (実装), `d0769f283` (SR修正), `459#` (low_vol ソフト化)
 
 ---
 
@@ -225,7 +225,37 @@
 
 ---
 
-## §8 残課題
+## §8 459# ranging_buy_low_vol ソフト化
+
+### 8.1 背景
+
+458# デプロイ後 (3/17 04:37 SHA `d0769f283`)、市場ボラティリティが急落し `ranging_low_vol_skip` ゲートが 08:39 以降 **7h+ 連続ブロック**。BTC 残高ゼロのため buy 不可 → sell も不可のデッドロック状態に陥った。
+
+458# の macro boost は一度も発火しなかった (macro_trend が WEAK_UP/STRONG_UP に到達せず)。
+
+### 8.2 データ根拠
+
+3/16 の低ボラ fill 実績:
+
+| 区分 | n | pnl30 | AS率 |
+|------|---|-------|------|
+| low vol (ratio<0.75) | 12 | **+3.06 bps** | 33% |
+| high vol (ratio>=0.75) | 71 | +0.49 bps | 28% |
+
+低ボラ fills は `low_vol_offset_boost` (1.4x) の保護下で高ボラより良好な PnL。hard skip による機会損失の方が大きいと判断。
+
+### 8.3 変更内容
+
+| 設定 | 変更前 | 変更後 | 理由 |
+|------|--------|--------|------|
+| `ranging_buy_low_vol_as_offset` | `false` | **`true`** | hard skip → offset boost に委譲 |
+| `low_vol_offset_boost` | 1.4 | **1.5** | ソフト化に伴う保護強化 |
+
+hot-reload 対応済み (再起動不要)。
+
+---
+
+## §9 残課題
 
 | ID | 内容 | 優先度 |
 |----|------|--------|

@@ -167,7 +167,7 @@ regime:
   # データ根拠: 損失時間帯 vol_ratio=0.661 vs 利益時間帯 0.918 (t=-2.01)
   # 168# §9.11: 0.70→0.75 — order/fill間のvol_ratio遅延に対する安全マージン
   low_vol_offset_boost_enabled: true
-  low_vol_offset_boost: 1.4
+  low_vol_offset_boost: 1.5
   low_vol_threshold: 0.75
   # 200# C: 低ボラ boost 比例モード
   low_vol_boost_proportional: true   # vol_ratio に応じた段階的 boost
@@ -177,10 +177,11 @@ regime:
   # 低ボラ環境では offset 調整より完全スキップが clean
   skip_ranging_buy_low_vol: true
   # 195# B1' ソフト化: hard skip → maker_price low_vol_offset_boost に委譲
-  # ranging_buy_low_vol の hard skip を無効化し、low_vol_offset_boost (1.4x) のみで対応
-  # 438# hard skip 復帰: 432# buy+ranging PF=0.766 (最大ボリューム×最悪PF)
-  #   soft offset (1.4x) では損失抑制不十分。hard skip で toxic participation 回避
-  ranging_buy_low_vol_as_offset: false
+  # ranging_buy_low_vol の hard skip を無効化し、low_vol_offset_boost (1.5x) のみで対応
+  # 438# hard skip 復帰: 432# buy+ranging PF=0.766 → 459# 再ソフト化
+  #   3/16実績: 低vol fills pnl30=+3.06bps (高vol +0.49bps を上回る)
+  #   7h+ デッドロック (BTC=0 × ranging block) の機会損失が hard skip の利得を超過
+  ranging_buy_low_vol_as_offset: true
   # 189# D: MacroRegime (長周期レジーム) — micro との conflict 検出
   macro:
     enabled: true               # 274# 観測モード有効化 (conflict_action=log)。macro_trend データ蓄積開始
