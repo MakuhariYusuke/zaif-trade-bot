@@ -217,21 +217,22 @@ skip_gate 関連: 648 passed, 28 skipped, 0 failed
 
 | SHA | コミット | 日付 | n | Fill Rate | PnL 30s | AS% | Win% | Buy PnL | Sell PnL | Buy Ceiling% | Sell Ceiling% |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| **0d22298** | — | 3/9 | 212 | 29.2% | **+1.21** | 27.4 | 56.5 | +1.60 | +0.85 | **0%** | **0%** |
-| **eb24cf4** | — | 3/8 | 246 | 36.2% | -0.02 | 22.5 | 52.8 | +0.57 | -0.62 | **0%** | **0%** |
-| 819ec73 | — | 3/9 | 252 | 38.1% | -0.07 | 34.4 | 46.9 | -0.10 | -0.05 | 0% | 0% |
-| 92c588e | — | 3/12 | 258 | **37.2%** | -0.22 | 25.0 | 49.0 | -0.76 | +0.32 | 0% | 0% |
-| 5c3238f | — | 3/13-14 | 541 | 34.6% | -0.27 | 27.8 | 48.1 | -0.60 | +0.07 | 0% | 0% |
-| bff652e | — | 3/12-13 | 379 | 27.4% | -0.47 | 28.8 | 48.1 | -0.49 | -0.45 | 0% | 0% |
-| d0769f2 | 458# hot-reload | 3/16-17 | 317 | **3.8%** | -1.78 | 41.7 | 33.3 | -1.78 | -1.78 | 83.3% | 50.0% |
-| **f840d0e** | 459# fix | 3/17 | 307 | 28.7% | **-1.23** | 31.8 | 47.7 | -0.32 | **-2.15** | **93.2%** | **38.6%** |
+| **0d22298** | — | 3/9 | 212 | 29.2% | **+1.21** | 27.4 | 56.5 | +1.60 | +0.85 | **N/A†** | **N/A†** |
+| **eb24cf4** | — | 3/8 | 246 | 36.2% | -0.02 | 22.5 | 52.8 | +0.57 | -0.62 | **N/A†** | **N/A†** |
+| 819ec73 | — | 3/9 | 252 | 38.1% | -0.07 | 34.4 | 46.9 | -0.10 | -0.05 | N/A† | N/A† |
+| 92c588e | — | 3/12 | 258 | **37.2%** | -0.22 | 25.0 | 49.0 | -0.76 | +0.32 | N/A† | N/A† |
+| 5c3238f | — | 3/13-14 | 541 | 34.6% | -0.27 | 27.8 | 48.1 | -0.60 | +0.07 | N/A† | N/A† |
+| bff652e | — | 3/12-13 | 379 | 27.4% | -0.47 | 28.8 | 48.1 | -0.49 | -0.45 | N/A† | N/A† |
+| d0769f2 | 458# hot-reload | 3/16-17 | 317 | **3.8%** | -1.78 | 41.7 | 33.3 | -1.78 | -1.78 | 100% (5/5) | 100% (3/3) |
+| **f840d0e** | 459# fix | 3/17 | 307 | 28.7% | **-1.23** | 31.8 | 47.7 | -0.32 | **-2.15** | **100% (41/41)** | **100% (17/17)** |
 
-**発見 1**: 正の PnL を達成した SHA (0d22298, eb24cf4) の共通項 — **ceiling clamp ゼロ**。
-offset pipeline がモデル計算値をそのまま使用し、buy offset = 0.117-0.119, sell offset = 0.296-0.323 で約定。
+> **†** `execution_pre_clamp_offset` フィールドが 3/8-3/14 のレコードには不在。ceiling rate は計測不能であり「0%」ではない。463# 検証で確定。
 
-**発見 2**: f840d0e (現行) は全 SHA 中**最悪の PnL** (-1.23bps)。Buy ceiling clamp 93.2% (41/44) が支配的。
+**発見 1** ~~(修正済)~~: 正の PnL を達成した SHA (0d22298, eb24cf4) では ceiling clamp が**計測不能 (N/A)**。`execution_pre_clamp_offset` フィールドが 3/8-3/14 レコードに不在のため、clamp の有無は判断できない。ただし offset 値自体は低い (buy=0.117-0.119, sell=0.296-0.323) ため、pipeline が計算値をそのまま使用していた可能性は残る。
 
-**発見 3**: d0769f2 (458# hot-reload) は fill rate 3.8%。3/17 では **217 レコード全件 `ranging_low_vol_skip` で cancel** = 完全遮断。
+**発見 2**: f840d0e (現行) は全 SHA 中**最悪の PnL** (-1.23bps)。Buy ceiling clamp 100% (41/41, pre_clamp 存在 fills 全件) が支配的。
+
+**発見 3**: d0769f2 (458# hot-reload) は fill rate 3.8%。3/17 では **217 レコード全件 `ranging_low_vol_skip` で cancel** = 完全遮断。d0769f2 の ceiling は **100% (buy 5/5, sell 3/3)** — f840d0e と同様に全件 clamp。
 
 ### 5.3 日別トレンド
 
@@ -309,13 +310,17 @@ f840d0e  07:22-18:20  n=307, fill=88  ← 459# fix 適用後
 | AS% | 22.5% | 27.4% | 31.8% |
 | Buy Offset | 0.119 | 0.117 | 0.198 |
 | Sell Offset | 0.296 | 0.323 | 0.483 |
-| Buy Ceiling | **0/45 (0%)** | **0/30 (0%)** | 41/44 (93.2%) |
-| Sell Ceiling | **0/44 (0%)** | **0/32 (0%)** | 17/44 (38.6%) |
-| Balance Switch | 0% | 0% | 58% (51/88) |
-| Cross-Venue | 未導入 | 未導入 | 42% (37/88) |
+| Buy Ceiling | **N/A†** | **N/A†** | 100% (41/41) |
+| Sell Ceiling | **N/A†** | **N/A†** | 100% (17/17) |
+| Balance Switch | **23.6% (21/89)‡** | 0% (0/62)‡ | 58% (51/88)§ |
+| Cross-Venue | 未導入† | 未導入† | 42% (37/88) |
 | Top Cancel | sell_dynamic_kill(27%) | sell_dynamic_kill(51%) | no_feasible_quote(27%) |
 
-**根本的差異**: 3/8-3/9 の好成績 SHA はシンプルな構成 — ceiling clamp なし、balance switch なし、cross-venue なし。直接モデル出力を offset に反映し、sell_dynamic_kill が自然なフィルターとして機能。
+> **†** 3/8-3/14 のレコードには `execution_pre_clamp_offset`, `cross_venue_lead_lag_applied` フィールドが不在。
+> **‡** `balance_forced_switch` フィールドで計測。eb24cf4 は 21/89 が True (PnL=+0.1bps, AS=23.8% = normal より良好)。初版 461# は `resolved_side_reason` (不在フィールド) を使い 0% と誤記していた。
+> **§** f840d0e は `resolved_side_reason` フィールドで計測 (`balance_forced_switch` は全件 None)。‡ と § は異なるフィールドによる計測であり直接比較は要注意。
+
+**根本的差異** ~~(修正済)~~: 3/8-3/9 の好成績 SHA はシンプルな構成 — **ceiling clamp は計測不能だが offset 値が低い (buy 0.12, sell 0.30)**。cross-venue は未導入。balance switch は eb24cf4 で 23.6% 発火していたが PnL への悪影響は見られず (+0.1bps)、0d22298 では 0%。sell_dynamic_kill が自然なフィルターとして機能していた点は確認済み。
 
 ### 5.5 Cancel 理由のプロファイル変化
 
@@ -333,7 +338,7 @@ cv_veto         —        —       —        —        2.3%   ← 新登場
 range_low_vol   —        —       —        —        (d0769f2 で 94%)
 ```
 
-**sell_dynamic_kill の消滅と no_feasible_quote の台頭**: 458#/459# の変更で sell_dynamic_kill の発火条件が変わり、代わりに no_feasible_quote (26.9%) と timeout (18.3%) が支配的に。これは「積極的に kill する」モデルから「引用不能な状態で漂流する」モデルへの遷移を示す。
+**sell_dynamic_kill の漸進的減少と no_feasible_quote の台頭** ~~(修正済)~~: sell_dynamic_kill は 458#/459# で突然消滅したのではなく、3/10 以降から同一日のSHA間でも高い変動性を示していた (3/12: 92c588e=6%, 66165ee=0%; 3/13: bff652e=73%, 5c3238f=41%; 3/14: 5c3238f=80%, 1a84c04=0%)。f840d0e で 0% となったのは、この漸進的傾向の帰結であり、458#/459# 単独の因果ではない。一方、no_feasible_quote (26.9%) と timeout (18.3%) の台頭は f840d0e 固有の現象。
 
 ### 5.6 時間帯分析 (f840d0e, JST)
 
@@ -366,14 +371,20 @@ range_low_vol   —        —       —        —        (d0769f2 で 94%)
 
 EV < 0.5 と EV > 2.0 の二極化。中間帯 (0.5-2.0) にほぼ約定なし。高 EV (>2.0) でも PnL は -0.36bps = **EV score が正の PnL に変換されていない**。
 
-#### Balance Switch の影響
+> **463# 検証追記**: 全母集団 (filled+cancel) で検証した結果、f840d0e の EV 0.5-1.0 帯は **filled=0, cancel=0, total=0** — cancel 母集団にすら存在しない構造的空白。旧 SHA では同帯が 7-13% 存在 (例: bff652e 13.4%, 92c588e 10.2%)。d0769f2 も 0% であり、**458# 以降で EV 計算に不連続が発生した**ことが全母集団で確認された。
+
+#### Balance Switch の影響 ~~(修正済)~~
+
+> **計測方法の注意**: f840d0e は `resolved_side_reason == "balance_switch"` で計測。`balance_forced_switch` フィールドは全件 None。一方、旧 SHA (eb24cf4) は `balance_forced_switch == True` で計測。両者は異なるフィールドであり、直接の比率比較には限界がある。
 
 | 区分 | n | PnL 30s | AS% |
 |---|---|---|---|
-| balance_switch | 51 (58%) | -1.46 | 35.3% |
+| balance_switch (resolved_side_reason) | 51 (58%) | -1.46 | 35.3% |
 | normal | 37 (42%) | -0.92 | 27.0% |
 
-Balance switch 経由の fill が過半数を占め、PnL も AS もnormal より劣悪。在庫管理が不利な方向への約定を強制している。
+Balance switch 経由の fill が過半数を占め、PnL も AS も normal より劣悪。在庫管理が不利な方向への約定を強制している。
+
+**参考**: eb24cf4 (3/8) では `balance_forced_switch=True` が 21/89 (23.6%) だが、PnL=+0.1bps, AS=23.8% と**むしろ normal (PnL=-0.06) より良好**。balance switch 自体が問題なのではなく、**f840d0e の market 条件下での balance switch コスト** が問題である可能性。
 
 #### Cross-Venue 適用効果
 
@@ -383,6 +394,8 @@ Balance switch 経由の fill が過半数を占め、PnL も AS もnormal よ�
 | cv_not_applied | 51 | -1.86 | 37.3% |
 
 Cross-venue が適用された fill は PnL/AS ともに改善。**有効に機能しているが適用率が 42%** にとどまっている。
+
+> **463# 検証追記 (selection bias)**: Side 分離分析の結果、CV効果は**buy側のみ有効** (buy: cv_on=+0.25bps vs cv_off=-1.43bps)。sell側は cv_on=-2.60bps vs cv_off=-2.05bps と**CV適用時のほうが悪化**。P1-3「適用率 42%→70%」の提案は buy 限定で再評価すべき。
 
 ---
 
@@ -404,7 +417,7 @@ f840d0e におけるバイサイド ceiling clamp 93.2% は**設計上の致命�
 
 この構造は**補正パラメータが制御パラメータを無効化する**典型的な over-constraint。405#/418# で導入された final clamp は本来安全装置だが、現在はほぼ全 fill で発火 = もはや「例外」ではなく「ルール」と化している。
 
-**3/8-3/9 のベンチマーク SHA (0d22298, eb24cf4)** では ceiling clamp = 0% だった。これらの SHA は pipeline の計算値がそのまま使われ、実際に正の PnL を達成した。「安全装置が不要だった頃のほうが安全だった」という逆説が生じている。
+**3/8-3/9 のベンチマーク SHA (0d22298, eb24cf4)** では ceiling clamp は**計測不能** (pre_clamp フィールド不在)。ただし offset 値 (buy 0.12, sell 0.30) が低く、ceiling を必要としない範囲で約定していた可能性がある。「安全装置が不要だった頃のほうが安全だった」という解釈は魅力的だが、**旧SHA市場条件 (3/8-3/9) と新SHA市場条件 (3/17) の比較であり、ceiling の有無だけでは説明できない**。
 
 ### 6.2 Cancel プロファイルの構造変化 — 「積極的遮断」から「漂流」へ
 
@@ -418,6 +431,8 @@ f840d0e におけるバイサイド ceiling clamp 93.2% は**設計上の致命�
 
 sell_dynamic_kill は「条件不適のため積極的にスキップ」。一方 no_feasible_quote/timeout は「引用可能な価格が存在しないまま時間切れ」。後者は pipeline が実行可能な価格を生成できていないことを示す。
 
+> **463# 検証追記**: sell_dynamic_kill の減少は 458#/459# のみに帰すべきではない。3/10 以降から同一日の SHA 間でも 0% と 80% が混在しており、漸進的かつ SHA 間変動の大きい現象。ただし f840d0e で no_feasible_quote/timeout が台頭した事実は新しく、pipeline の構造変化を示唆する。
+
 **設計上の含意**: 458#/459# の変更が sell_dynamic_kill の条件を変質させた結果、trade or not-trade の判断が曖昧化した。明確な kill 条件が失われ、pipeline が「取引できない状態」に長時間留まる。
 
 ### 6.3 ranging_low_vol_skip の全面遮断問題
@@ -430,13 +445,15 @@ d0769f2 (458# hot-reload) の 3/17 前半 7 時間：217 レコード全件が `
 
 **本システムの約定のほぼ全量は ranging 環境で発生している**。ranging_low_vol_skip はトレンド不在時に取引を止める意図だが、板取りメーカーは本質的にレンジ内の mean-reversion から利益を得る戦略であり、ranging 環境こそ本来の主戦場。このゲートが全面的に発火する状態は戦略の自己否定に等しい。
 
-### 6.4 Balance Switch の逆機能
+### 6.4 Balance Switch の逆機能 ~~(修正済)~~
 
-balance_switch fills が 58% (51/88) を占め、normal fills より PnL/AS ともに劣化 (-1.46 vs -0.92, AS 35.3% vs 27.0%)。
+balance_switch fills が 58% (51/88) を占め (`resolved_side_reason` で計測)、normal fills より PnL/AS ともに劣化 (-1.46 vs -0.92, AS 35.3% vs 27.0%)。
 
 balance switch は在庫偏りを解消するために「不利でも反対方向に約定する」メカニズム。しかし：
 - 在庫偏りの解消コストが、偏り放置のコストを上回っている可能性
-- 特に buy ceiling 93.2% の状況下で balance switch → buy を強制すると、ceiling-clamped な不利な価格で在庫を増やすことになる
+- 特に buy ceiling 100% の状況下で balance switch → buy を強制すると、ceiling-clamped な不利な価格で在庫を増やすことになる
+
+> **463# 検証追記**: eb24cf4 では `balance_forced_switch=True` が 21/89 (23.6%) だが PnL=+0.1bps, AS=23.8% と**正常 fill より良好**。balance switch 自体が劣化要因なのではなく、**f840d0e 固有の条件 (ceiling 100%, offset 高) と balance switch の組み合わせ**が問題。また、f840d0e の balance_switch 計測は `resolved_side_reason` (新フィールド)、eb24cf4 は `balance_forced_switch` (従来フィールド) であり、**計測方法が異なる**ことにも留意が必要。
 
 ### 6.5 EV Score の中間帯空白
 
@@ -566,3 +583,220 @@ Level 3: 458#/459# の安全機構追加が積層的に pipeline を制約
 | P2-2 | **sell_dynamic_kill 条件の再設計** (明示的 kill 回復) | cancel 品質向上 | 漂流 → 判断 への回帰 |
 | P2-3 | **時間帯別 offset 係数の導入** | 深夜 AS 防御 | Kyle λ 時間変動 |
 | P2-4 | **安全機構の体系的レビュー** (ceiling/CV/BalSwitch 相互作用) | 全体最適化 | 複雑性削減 |
+
+---
+
+## 9. Reviewer追記 (Codex)
+
+461# は症状の観察としてはかなり良いが、**因果推定の置き方にまだ危うさが残る**。特に「旧SHAは単純で良かった」「新しい安全機構が利益を壊した」という結論は、現状の分析スクリプトの集計方法だと過剰に強い。
+
+### 9.1 HIGH: スキーマ差分を跨いだ比較が未補正
+
+本稿の最重要問題はこれである。
+
+`temp/analyze_fill_test_deep_v2.py` では、以下の late-added フィールドをそのまま同列比較している。
+
+- `execution_pre_clamp_offset`
+- `cross_venue_lead_lag_applied`
+- `resolved_side_reason`
+
+しかしこれらは比較的新しい観測項目であり、古い SHA の fill_records では **未記録 = None/False 扱い** になる。
+
+その結果、
+
+- 「旧SHAは ceiling clamp 0%」
+- 「旧SHAは balance switch 0%」
+- 「旧SHAは cross-venue なし」
+
+という表現のうち、少なくとも前二者は **本当にゼロだった** のではなく、**観測フィールドが存在しないのでゼロに見えているだけ** の可能性が高い。
+
+特に `offset_stats()` は `execution_pre_clamp_offset is not None` のレコードだけを clamp 判定に使いつつ、分母は side fills 全体で計算している。古いレコードに当該列が無ければ、自動的に「unclamped 扱い」で ceiling rate が下がる。
+
+したがって、5.2 / 5.4 / 5.7 の
+
+> 「好成績 SHA の共通項 = ceiling clamp ゼロ」
+
+という主張は、現状のままでは **証明されていない**。ここは強い結論を一段下げるべきである。
+
+### 9.2 HIGH: run_id / start_git_sha を使わず current git_sha だけで切っている
+
+本稿は再起動境界を意識しているのに、分析スクリプトは実質的に `git_sha[:7]` しか使っていない。
+
+しかし現行 FillRecord には、既に
+
+- `run_id`
+- `git_sha`
+- `start_git_sha`
+
+が入っている。さらに `ztb/metrics/fill_quality.py` 側には run_id / git_sha / date でのフィルタ基盤も存在する。
+
+それにもかかわらず、`temp/analyze_fill_test_deep_v2.py` は
+
+- run 単位の分離をしない
+- same-run / restarted-run を混在させる
+- hot-reload 前後を current `git_sha` のみで読む
+
+という設計である。これでは「458#/459# が悪化させた」のではなく、「別 run / 別市場局面 / 別 PID を並べたらそう見えた」可能性を排除できない。
+
+特に 5.4 の再起動境界分析は方向性として正しいのに、**識別子の使い方がまだ甘い**。次版では最低でも
+
+- `run_id` 固定
+- `start_git_sha` 固定
+- できれば日付だけでなく時刻窓固定
+
+が必要である。
+
+### 9.3 HIGH: 「458#/459# が sell_dynamic_kill を変質させた」は現状では言い過ぎ
+
+6.2 や 5.5 では、sell_dynamic_kill の消滅と no_feasible_quote / timeout の増加を、458#/459# の変更による構造変化として読んでいる。
+
+ただし、少なくとも文書ベースで確認できる 458#/459# の中心変更は
+
+- macro sell protection
+- hysteresis
+- micro-timeout 連動
+- ranging_buy_low_vol ソフト化
+- hot-reload 到達性の改善
+
+であり、**sell_dynamic_kill そのものの条件を直接変更した記述はない**。
+
+もちろん間接影響はありうる。だが現状の分析だけで
+
+> 「sell_dynamic_kill の条件が変質した」
+
+と書くのは因果が強すぎる。ここは
+
+> 「cancel population が変わり、結果として sell_dynamic_kill の観測比率が低下した可能性」
+
+までに留めるのが妥当である。
+
+### 9.4 MEDIUM: Cross-Venue の効果推定は selection bias を含む
+
+5.7 の
+
+- cv_applied: -0.36 / AS 24.3%
+- cv_not_applied: -1.86 / AS 37.3%
+
+は一見かなり有望に見える。しかし cross-venue hint は、もともと
+
+- 参照市場の spread/velocity/EMA 条件を満たし
+- confidence gate を通過した
+
+ケースにだけ適用される。つまり `cv_applied` 群は最初から「シグナルが明瞭だったサブセット」である。
+
+そのため、
+
+> 「適用率を 42% → 70% に上げれば AS が 5pp 下がる」
+
+という提案はまだ飛躍がある。必要なのは適用率の単純引上げではなく、
+
+- side/time/regime 固定比較
+- same-SHA 内の applied vs not-applied
+- できれば hint confidence bin 別の効果測定
+
+である。
+
+### 9.5 MEDIUM: EV 0.5-1.0 帯空白から「不連続」を断定するのは早い
+
+f840d0e の filled 88 件だけを見て EV bin が
+
+- `<0.5`: 44
+- `0.5-1.0`: 0
+- `1.0-2.0`: 2
+- `>2.0`: 42
+
+となっているのは事実として面白い。
+
+ただし、ここから直ちに
+
+> 「458#/459# で EV 計算に離散化が入った」
+
+とまでは言えない。理由は 3 つ。
+
+1. filled だけを見ており、cancel された候補を見ていない
+2. sample size が小さい
+3. side / regime / balance_switch が混ざっている
+
+したがってここは「不連続の疑い」までに留め、まずは
+
+- 全 processed population
+- buy/sell 分離
+- pre/post で同じ bin 定義
+
+で再検証すべきである。
+
+### 9.6 本稿の強い点は残る
+
+批判だけではない。本稿で価値が高い点も明確にある。
+
+1. **3/12 をピーク、3/13 以降を悪化局面として整理したこと**
+2. **3/16→3/17 の restart boundary を主要観察点に据えたこと**
+3. **fill rate 改善と PnL 改善が一致しないことを明示したこと**
+4. **deep-night 帯の tail risk を時間帯で可視化したこと**
+5. **balance_switch 群の悪化を症状として抽出したこと**
+
+この 5 点は、次の実装優先順位を決める上で有用である。
+
+### 9.7 私の最終判断
+
+461# は、
+
+- 症状の観察: **高品質**
+- 因果の切り分け: **まだ粗い**
+- 実装提案の方向性: **一部妥当だが強い結論は要減速**
+
+という評価である。
+
+特に次版で優先すべきは新機能追加ではなく、以下の 4 点である。
+
+| 優先 | 追加タスク | 理由 |
+|---|---|---|
+| P0 | `analyze_fill_test_deep_v2.py` に schema-aware 比較を追加 | late-added field の擬似ゼロ問題を除去 |
+| P0 | `run_id` / `start_git_sha` 固定モードを追加 | hot-reload/再起動混線の排除 |
+| P1 | cross-venue を side/time/regime 固定で再評価 | selection bias の除去 |
+| P1 | EV bin を filled ではなく processed 母集団で再計測 | 不連続仮説の検証 |
+
+結論として、本稿は「利益が出ない理由をかなり正しく嗅ぎ当てている」が、**旧SHA単純系が本当に優れていたのか、安全機構が本当に犯人なのかはまだ確定していない**。ここを確定させずに ceiling 緩和や gating 撤去へ走ると、再現性のない改善に終わる危険がある。
+
+---
+
+## 10. 検証補正サマリー (463# に基づく)
+
+> **検証日**: 2026-03-18
+> **検証スクリプト**: `temp/analyze_fill_test_v3.py` (schema-aware, 全 7 パート分析)
+> **検証動機**: 462# レビュー指摘 + §9 Reviewer 追記の各論点を実データで検証
+
+### 10.1 修正箇所一覧
+
+| 箇所 | 原文 | 修正後 | 根拠 |
+|---|---|---|---|
+| §5.2 table Ceiling% (旧SHA全6件) | 0% | **N/A†** | `execution_pre_clamp_offset` が 3/8-3/14 レコードに不在 |
+| §5.2 d0769f2 Ceiling | 83.3%/50.0% | **100% (5/5) / 100% (3/3)** | pre_clamp 存在 fills のみで再計測 |
+| §5.2 f840d0e Ceiling | 93.2%/38.6% | **100% (41/41) / 100% (17/17)** | 同上 |
+| §5.2 発見1 | 「ceiling clamp ゼロ」 | 「計測不能 (N/A)」 | フィールド不在 |
+| §5.4.4 eb24cf4 Balance Switch | 0% | **23.6% (21/89)** | `balance_forced_switch=True` で再計測 |
+| §5.4.4 eb24cf4/0d22298 Ceiling | 0/45(0%), 0/30(0%) | **N/A†** | フィールド不在 |
+| §5.5 sell_dynamic_kill | 「458#/459# で消滅」 | 「漸進的減少 + SHA間変動大」 | v3 PART7 タイムライン分析 |
+| §5.7 CV 効果 | 「適用率を上げれば改善」 | 「buy 限定で有効、sell は逆効果」 | v3 PART6 side分離分析 |
+| §5.7 EV 0.5-1.0 | 「空白 (filled のみ)」 | 「全母集団で確認、構造的空白」 | v3 PART4 全母集団分析 |
+| §6.1 旧SHA ceiling | 「0% だった」 | 「計測不能」 | フィールド不在 |
+| §6.4 Balance Switch | 「逆機能」 | 「f840d0e 条件下での逆機能 + 計測方法差異」 | eb24cf4 では正の効果 |
+
+### 10.2 462# 指摘の検証結果
+
+| 462# §節 | 指摘内容 | 判定 | 備考 |
+|---|---|---|---|
+| §2 Schema Drift | late-added fields で旧SHA比較が不正確 | **CONFIRMED** | 3/8-3/14: 4フィールド全て不在 |
+| §3 Run Drift | git_sha[:7] だけで run を識別 | **CONFIRMED** | 28 runs 中、hot-reload で複数SHA持つ run あり |
+| §4 Config Drift | config identifier が FillRecord に不在 | **VALID (未検証)** | 構造上の欠損、要改善 |
+| §5 Population Drift | filled のみの分析は EV/CV/BalSwitch で不十分 | **PARTIALLY CONFIRMED** | EV は全母集団で構造的空白を確認。CV は selection bias が sell で裏付け |
+| §6 Market Regime Drift | 3/8 vs 3/17 は matched-market 比較ではない | **VALID** | 暗黙の前提として Market同一を仮定していた |
+| §7 Implementation Caution | ceiling 緩和等の提案は根拠不十分 | **PARTIALLY VALID** | ceiling以外の要因 (market, schema) を排除できていない |
+
+### 10.3 新発見
+
+1. **balance_forced_switch vs resolved_side_reason の二重計測問題**: f840d0e は `balance_forced_switch=None` (全件) だが `resolved_side_reason="balance_switch"` が 51 件。旧 SHA は `balance_forced_switch=True/None`。2つのフィールドは異なる計測であり、cross-schema 比較に注意
+
+2. **d0769f2 ceiling = 100%**: 初版 461# は 83.3%/50.0% としていたが、pre_clamp 存在 fills に限れば buy 5/5, sell 3/3 で 100%。f840d0e と同じく全件 clamp
+
+3. **eb24cf4 balance switch は正の効果**: 21/89 fills が balance_switch=True だが PnL=+0.1bps, AS=23.8% で normal (-0.06bps, 22.1%) より良好。「balance switch = 悪」は f840d0e 限定の観察
