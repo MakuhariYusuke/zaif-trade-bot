@@ -265,6 +265,8 @@ class OrchestratorBalanceMixin:
             ))
             st.batch = self._batch_persistence.maybe_flush(st.batch, "preflight_pause")
             self._preflight_skip_count = 0
+            # 459# preflight_pause 中も config hot-reload を検出
+            self._config_reloader.maybe_reload(self)
             await asyncio.sleep(pause_sec)
             return True
 

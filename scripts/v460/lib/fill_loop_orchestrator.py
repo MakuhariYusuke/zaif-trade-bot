@@ -201,6 +201,8 @@ class FillLoopOrchestratorMixin(
         # 242#: max_override > 0 なら quiescence 用の拡大上限を使用
         _max = max_override if max_override > 0 else self.config.max_cycle_sleep_sec
         _sleep = min(_raw, _max) if _max > 0 else _raw
+        # 459# 横展開: 全 skip/halt/error パスが経由する sleep 前に reload 検出
+        self._config_reloader.maybe_reload(self)
         await asyncio.sleep(_sleep)
 
 

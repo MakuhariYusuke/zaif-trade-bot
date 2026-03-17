@@ -251,16 +251,16 @@ class OrchestratorMidCycleMixin:
             st, f"gate_blocks={self._consecutive_gate_blocks}",
         )
 
-        # 459# ゲートブロック中も config hot-reload を検出
-        self._config_reloader.maybe_reload(self)
-
         _q_sleep = (
             self.config.quiescence_sleep_sec
             if _in_quiescence and self.config.quiescence_sleep_sec > 0
             else 0.0
         )
         if gate_result.blocking_reason == "narrow_spread_pause":
-            await asyncio.sleep(self.config.narrow_spread_pause_sec)
+            # 459# narrow_spread_pause も _effective_sleep 経由に統一
+            await self._effective_sleep(
+                max_override=self.config.narrow_spread_pause_sec,
+            )
         else:
             await self._effective_sleep(max_override=_q_sleep)
 

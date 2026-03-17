@@ -253,6 +253,33 @@
 
 hot-reload 対応済み (再起動不要)。
 
+### 8.4 459# 横展開: hot-reload 全パス統合
+
+459# YAML変更を適用したが、**`maybe_reload` が `_post_cycle_sleep` でしか呼ばれておらず**、連続ゲートブロック中は YAML 変更が一切検出されない設計上の欠陥を発見。
+
+#### 根本原因
+
+`config_hot_reload.maybe_reload()` は正常サイクル完了後の `_post_cycle_sleep()` のみで呼ばれていた。ゲートブロック、halt、preflight_pause 等のスキップパスは `_effective_sleep()` を経由するが、`_effective_sleep` 内に reload チェックが無かった。
+
+#### 修正内容 (SHA `f840d0e0a` + 横展開コミット)
+
+| 箇所 | 修正 | カバー範囲 |
+|------|------|------------|
+| `_effective_sleep()` | **`maybe_reload` 挿入** (sleep 直前) | gate_block, halt, toxicity_skip, one_sided_skip, degraded_liquidation, exception, 等 9+ パス一括 |
+| `narrow_spread_pause` | 直接 `asyncio.sleep` → `_effective_sleep(max_override=...)` に統一 | narrow_spread_pause パスも reload 対応 |
+| `preflight_pause` | `asyncio.sleep` 前に明示的 `maybe_reload` 追加 | preflight 5分×3回の独自 sleep パス |
+| `_handle_gate_block` | 個別 `maybe_reload` 削除 | `_effective_sleep` に統合済のため重複排除 |
+
+#### 探索結果: その他不具合
+
+| 項目 | 状態 | 詳細 |
+|------|------|------|
+| route_to_kill_deadlock (109回) | ✅ 正常動作 | buy↔sell 切替先も kill-gate 時の検出・回避機構が適切に動作 |
+| balance_checker ロジック | ✅ 健全 | primary不足→opposite試行→kill判定→エスカレーションの多段フォールバック |
+| `_consecutive_gate_blocks` リセット | ✅ 適切 | ゲート通過時に 0 リセット (L169) |
+| forced_buy_delay (300回) | ✅ 問題なし | 348# で balance_forced 概念廃止済 (レガシーカウンタ) |
+| quiescence_sleep_sec (1800s) | ⚠️ 要観察 | 長時間デッドロックを「正常」化する副作用。今回の横展開で reload は確保 |
+
 ---
 
 ## §9 残課題
