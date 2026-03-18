@@ -29,6 +29,8 @@ from scripts.v460.lib.sac_common import (
     TrainingEnvProtocol,
     adjust_buffer_size,
     cleanup_envs,
+    cleanup_training_resources,
+    create_sac_model,
     evaluate_model_oos,
     extract_roi_from_env,
     train_val_split,
@@ -113,6 +115,7 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
     env: TrainingEnvProtocol | None = None
     eval_env: TrainingEnvProtocol | None = None
     checkpoint_eval_env: TrainingEnvProtocol | None = None
+    model: SACModelProtocol | None = None
     try:
         # ── Training environment (in-sample) ──
         env, env_info = _create_training_env(train_df, cfg)
@@ -217,6 +220,7 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
                         f"sharpe={best_model_eval_metrics.get('sharpe_annual', 'N/A')}"
                     )
                 finally:
+                    del best_model_loaded  # 487# メモリリーク防止
                     cleanup_envs(best_eval_env)
             except Exception as e:
                 logger.warning(f"425# best_model eval failed (non-fatal): {e}")
@@ -238,10 +242,12 @@ def task_sac_train(cfg: ConfigSection) -> dict[str, object]:
         _save_model_schema(model, env, env_info, cfg, seed)
 
     finally:
-        # C2: 環境を確実にクローズしてメモリ解放
-        cleanup_envs(eval_env, checkpoint_eval_env, oos_eval_env, env)
-        # DataFrame 参照を明示的に解放
-        del train_df, val_df
+        # 487# メモリリーク防止: model/env/DataFrame を包括的に解放 + gc.collect
+        cleanup_training_resources(
+            models=[model],
+            envs=[eval_env, checkpoint_eval_env, oos_eval_env, env],
+            dataframes=[train_df, val_df],
+        )
 
     # ── Results ──
     # 408# F6: best checkpoint 情報をresultsに含める
@@ -376,29 +382,17 @@ def _create_training_env(
 ) -> tuple[TrainingEnvProtocol, dict[str, int | str | bool]]:
     """訓練環境を作成.
 
-    現時点では HeavyTradingEnv を使用 (016# F2: 環境切替は別チケット).
-    FastIntradayEnvV456 への移行は段階的に行う.
-
+    487# 重複削減: create_env_from_config に委譲。
     356# B3: feature_columns を EnvironmentConfig.feature_names に注入.
     """
-    from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+    from scripts.v460.lib.sac_common import create_env_from_config
+
     feature_columns = _resolve_feature_columns(cfg)
-
-    # Construct EnvironmentConfig
-    # 387# FIX P0-8: from_dict() を使用して behavior_optimization → reward_settings
-    # マッピングと reward_settings dict → RewardSettings 変換を正しく実行する。
-    # 旧: EnvironmentConfig(**env_cfg) は reward_settings を dict のまま格納し、
-    # HeavyTradingEnv で shallow_asdict() TypeError を引き起こしていた。
     env_config = _build_environment_config(cfg, feature_columns=feature_columns)
-
-    env = HeavyTradingEnv(
-        df=df,
-        config=env_config,
-    )
-
+    env = create_env_from_config(df, env_config)
     env_info = _build_env_info(env, feature_columns=feature_columns)
 
-    return cast(TrainingEnvProtocol, env), env_info
+    return env, env_info
 
 
 def _create_sac_model(
@@ -408,44 +402,28 @@ def _create_sac_model(
 ) -> SACModelProtocol:
     """SB3 SAC モデルを作成.
 
+    487# 重複削減: sac_common.create_sac_model に委譲。
     411# M1/M2: policy_kwargs (net_arch, optimizer_kwargs 等) を YAML から転送可能にした。
-    過パラメータ化 (215K params / 20K data = 10.8x) による seed 感度を構造的に低減する。
     """
-    from stable_baselines3 import SAC
-
-    # 411# M1/M2: policy_kwargs を YAML 設定から取得
-    # 例: policy_kwargs:
-    #       net_arch: [128, 128]
-    #       optimizer_kwargs:
-    #         weight_decay: 1.0e-4
     raw_policy_kwargs = sac_cfg.get("policy_kwargs", None)
     policy_kwargs: dict[str, object] | None = (
         dict(raw_policy_kwargs) if raw_policy_kwargs else None
     )
 
-    # Defaults aligned with unified SACTrainer constants
-    model = SAC(
-        "MlpPolicy",
+    return create_sac_model(
         env,
-        learning_rate=sac_cfg.get("learning_rate", 3e-4),
-        buffer_size=sac_cfg.get("buffer_size", 1_000_000),
-        learning_starts=sac_cfg.get("learning_starts", 1_000),
-        batch_size=sac_cfg.get("batch_size", 256),
-        tau=sac_cfg.get("tau", 0.005),
-        gamma=sac_cfg.get("gamma", 0.99),
-        train_freq=sac_cfg.get("train_freq", 1),
-        gradient_steps=sac_cfg.get("gradient_steps", 1),
-        ent_coef=sac_cfg.get("ent_coef", "auto"),
-        policy_kwargs=policy_kwargs,
-        verbose=0,
+        learning_rate=float(sac_cfg.get("learning_rate", 3e-4)),
+        buffer_size=int(sac_cfg.get("buffer_size", 1_000_000)),
+        learning_starts=int(sac_cfg.get("learning_starts", 1_000)),
+        batch_size=int(sac_cfg.get("batch_size", 256)),
+        tau=float(sac_cfg.get("tau", 0.005)),
+        gamma=float(sac_cfg.get("gamma", 0.99)),
+        train_freq=int(sac_cfg.get("train_freq", 1)),
+        gradient_steps=int(sac_cfg.get("gradient_steps", 1)),
+        ent_coef=str(sac_cfg.get("ent_coef", "auto")),
         seed=seed,
+        policy_kwargs=policy_kwargs,
     )
-
-    if policy_kwargs:
-        net_arch = policy_kwargs.get("net_arch", "[default]")
-        logger.info("411# policy_kwargs applied: net_arch=%s", net_arch)
-
-    return cast(SACModelProtocol, model)
 
 
 def _train_with_checkpoints(

@@ -211,6 +211,9 @@ from scripts.v460.lib.sac_common import (  # noqa: E402
     TrainingEnvProtocol,
     adjust_buffer_size,
     cleanup_envs,
+    cleanup_training_resources,
+    create_env_from_config,
+    create_sac_model,
     evaluate_model_oos,
     extract_roi_from_env,
     train_val_split,
@@ -314,6 +317,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
     # ── 2-3. Model creation + training ──
     env: TrainingEnvProtocol | None = None
     val_env: TrainingEnvProtocol | None = None
+    model: SACModelProtocol | None = None
 
     try:
         # 384# import_real_sb3 廃止 — pip版 SB3 を直接 import
@@ -332,8 +336,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
 
             timesteps = cfg.incremental_timesteps
         else:
-            model = SB3_SAC(
-                "MlpPolicy",
+            model = create_sac_model(
                 env,
                 learning_rate=cfg.learning_rate,
                 buffer_size=adjust_buffer_size(cfg.buffer_size, cfg.total_timesteps),
@@ -344,7 +347,6 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
                 train_freq=cfg.train_freq,
                 gradient_steps=cfg.gradient_steps,
                 ent_coef=cfg.ent_coef,
-                verbose=0,
                 seed=cfg.seed,
             )
             logger.info("Cold-start: new SAC model created")
@@ -436,8 +438,12 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
             error_message=str(e),
         )
     finally:
-        cleanup_envs(val_env, env)
-        del train_df, val_df
+        # 487# メモリリーク防止: model/env/DataFrame を包括的に解放 + gc.collect
+        cleanup_training_resources(
+            models=[model],
+            envs=[val_env, env],
+            dataframes=[train_df, val_df],
+        )
 
 
 # ════════════════════════════════════════════════════════════════
@@ -592,8 +598,7 @@ def _create_env(
     df: object,  # pd.DataFrame
     cfg: SACRetrainConfig,
 ) -> TrainingEnvProtocol:
-    """訓練環境を作成 (sac_train.py の _create_training_env を簡略化)."""
-    from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+    """487# 重複削減: create_env_from_config に委譲."""
     from ztb.trading.environment.utils.config import EnvironmentConfig
 
     env_config = EnvironmentConfig(
@@ -609,8 +614,7 @@ def _create_env(
     if cfg.feature_columns:
         env_config.feature_names = list(cfg.feature_columns)
 
-    env = HeavyTradingEnv(df=df, config=env_config)
-    return cast(TrainingEnvProtocol, env)
+    return create_env_from_config(df, env_config)
 
 
 def _evaluate_model(

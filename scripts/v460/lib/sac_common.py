@@ -366,6 +366,49 @@ def cleanup_envs(*envs: TrainingEnvProtocol | None) -> None:
                 logger.warning(f"Failed to close environment: {e}")
 
 
+def cleanup_training_resources(
+    *,
+    models: list[object] | None = None,
+    envs: list[TrainingEnvProtocol | None] | None = None,
+    dataframes: list[object] | None = None,
+) -> None:
+    """SAC 訓練リソースを包括的に解放.
+
+    487# メモリリーク防止:
+    SB3 SAC model ↔ env の循環参照を gc.collect() で破壊し、
+    大型 DataFrame / replay buffer のメモリを確実に回収する。
+
+    呼び出し順序: model.del → env.close → del dataframes → gc.collect
+    """
+    import gc
+
+    # 1. モデルを先に解放 (env への参照を切る)
+    if models:
+        for m in models:
+            if m is not None:
+                try:
+                    del m
+                except Exception:
+                    pass
+
+    # 2. 環境をクローズ
+    if envs:
+        cleanup_envs(*envs)
+
+    # 3. DataFrame 参照を解放
+    if dataframes:
+        for df in dataframes:
+            if df is not None:
+                try:
+                    del df
+                except Exception:
+                    pass
+
+    # 4. 循環参照を破壊
+    gc.collect()
+    logger.debug("cleanup_training_resources: gc.collect() completed")
+
+
 # ════════════════════════════════════════════════════════════════
 # Buffer サイズ調整
 # ════════════════════════════════════════════════════════════════
@@ -377,6 +420,77 @@ def adjust_buffer_size(raw_buffer: int, total_timesteps: int) -> int:
     H4: デフォルト 1M は 50K 訓練で 20 倍過剰 → obs_dim × buffer_size でメモリ浪費.
     """
     return min(raw_buffer, max(total_timesteps * 2, 10_000))
+
+
+# ════════════════════════════════════════════════════════════════
+# 共通 env 作成 (487# 重複削減)
+# ════════════════════════════════════════════════════════════════
+
+
+def create_env_from_config(
+    df: pd.DataFrame,
+    env_config: object,
+) -> TrainingEnvProtocol:
+    """EnvironmentConfig から HeavyTradingEnv を生成する共通コア.
+
+    487# 重複削減: sac_train._create_training_env と
+    sac_retrain_scheduler._create_env の共通部分を統合。
+    """
+    from typing import cast as _cast
+
+    from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
+
+    env = HeavyTradingEnv(df=df, config=env_config)
+    return _cast(TrainingEnvProtocol, env)
+
+
+def create_sac_model(
+    env: TrainingEnvProtocol,
+    *,
+    learning_rate: float = 3e-4,
+    buffer_size: int = 100_000,
+    learning_starts: int = 1_000,
+    batch_size: int = 256,
+    tau: float = 0.005,
+    gamma: float = 0.99,
+    train_freq: int = 1,
+    gradient_steps: int = 1,
+    ent_coef: str = "auto",
+    seed: int = 42,
+    policy_kwargs: dict[str, object] | None = None,
+) -> SACModelProtocol:
+    """SB3 SAC モデルを作成する共通関数.
+
+    487# 重複削減: sac_train._create_sac_model と
+    sac_retrain_scheduler.retrain_once の inline SAC() 呼び出しを統合。
+    411# M1/M2: policy_kwargs (net_arch, optimizer_kwargs 等) をサポート。
+    """
+    from typing import cast as _cast
+
+    from stable_baselines3 import SAC
+
+    model = SAC(
+        "MlpPolicy",
+        env,
+        learning_rate=learning_rate,
+        buffer_size=buffer_size,
+        learning_starts=learning_starts,
+        batch_size=batch_size,
+        tau=tau,
+        gamma=gamma,
+        train_freq=train_freq,
+        gradient_steps=gradient_steps,
+        ent_coef=ent_coef,
+        policy_kwargs=policy_kwargs,
+        verbose=0,
+        seed=seed,
+    )
+
+    if policy_kwargs:
+        net_arch = policy_kwargs.get("net_arch", "[default]")
+        logger.info("411# policy_kwargs applied: net_arch=%s", net_arch)
+
+    return _cast(SACModelProtocol, model)
 
 
 # 384# import_real_sb3() は削除 — 379# でスタブを _sb3_test_stub/ にリネーム済み。
