@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-20 (476# dust sweep 修正 + 切り捨て廃止 + 残高連動ロット)
+> 最終更新: 2026-03-18 (477# 抑制パラドックス分析 + SAC 100K 再訓練開始)
 
 ---
 
@@ -505,6 +505,7 @@
 | 474 | fix | [474_phg_fix_triple_bugfix_and_orphan_cleanup.md](474_phg_fix_triple_bugfix_and_orphan_cleanup.md) | Triple Bugfix: sell パラメータ修正 + orphan process cleanup (retrain_scheduler 8重起動解消) |
 | 475 | rev | [475_phg_rev_472_proposals_and_474_selfreview.md](475_phg_rev_472_proposals_and_474_selfreview.md) | 472# 三提案評価 + 474# セルフレビュー + 残課題改修 |
 | 476 | fix | [476_phg_fix_dust_sweep_and_truncation_removal.md](476_phg_fix_dust_sweep_and_truncation_removal.md) | Dust sweep 修正 + 0.001 単位切り捨て廃止 + 残高連動ロット |
+| 477 | analysis | [477_phg_analysis_suppression_paradox_and_fill_rate.md](477_phg_analysis_suppression_paradox_and_fill_rate.md) | 抑制パラドックス分析: 20層防御 × fill rate 17.7% の構造的矛盾と改善提案 |
 
 ---
 
