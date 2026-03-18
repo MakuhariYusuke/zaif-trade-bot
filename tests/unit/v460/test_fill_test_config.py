@@ -1113,7 +1113,7 @@ class Test110DeadlockBreak:
 
     def test_runner_has_consecutive_086_counter(self) -> None:
         """FillTestRunner が _time_filter.consecutive_086_wait カウンタを持つ (121# 委譲)."""
-        runner = _make_runner()
+        runner = _LightweightFillTestRunner(FillTestConfig(enable_regime=False))
         assert hasattr(runner, "_time_filter")
         assert runner._time_filter.consecutive_086_wait == 0
 

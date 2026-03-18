@@ -21,6 +21,7 @@ import logging
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import TypedDict, cast
 
@@ -39,6 +40,7 @@ from scripts.v460.lib.metrics_utils import (
     MetricsAccumulator,
     compute_extended_metrics,
 )
+from ztb.io.yaml_io import read_yaml
 from ztb.utils.safety import safe_to_finite
 from scripts.v460.lib.ab_judgment import (
     ABJudgmentCriteria,
@@ -177,6 +179,31 @@ def _load_all_records(results_dir: Path) -> list[MetricRecord]:
             include_emergency=False,
         )
     ]
+
+
+def _yaml_file_signature(path: Path) -> tuple[int, int]:
+    """Return file signature for cached YAML reads."""
+    try:
+        st = path.stat()
+    except OSError:
+        return -1, -1
+    return st.st_mtime_ns, st.st_size
+
+
+@lru_cache(maxsize=8)
+def _read_judgment_mapping_cached(
+    path_str: str,
+    mtime_ns: int,
+    size: int,
+) -> dict[str, object]:
+    del mtime_ns, size  # cache key only
+    raw = read_yaml(path_str)
+    return raw if isinstance(raw, dict) else {}
+
+
+def _read_judgment_mapping(path: Path) -> dict[str, object]:
+    mtime_ns, size = _yaml_file_signature(path)
+    return _read_judgment_mapping_cached(str(path), mtime_ns, size)
 
 
 def run_dashboard(
@@ -453,9 +480,7 @@ def _load_judgment_config(
     if config_path is None:
         config_path = str(_PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml")
     try:
-        import yaml
-        with open(config_path, encoding="utf-8") as f:
-            cfg = yaml.safe_load(f)
+        cfg = _read_judgment_mapping(Path(config_path))
         judgment = cfg.get("judgment", {})
         ab = None
         trending = None

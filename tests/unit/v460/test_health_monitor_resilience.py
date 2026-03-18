@@ -7,6 +7,30 @@ import pytest
 from scripts.v460.lib.resilience import FillTestHealthMonitor, HealthThresholds
 
 
+class _ProcessStub:
+    def __init__(self, *, rss_mb: float, cpu_percent: float, threads: int) -> None:
+        self._rss_bytes = int(rss_mb * 1024 * 1024)
+        self._cpu_percent = cpu_percent
+        self._threads = threads
+
+    def memory_info(self) -> SimpleNamespace:
+        return SimpleNamespace(rss=self._rss_bytes)
+
+    def cpu_percent(self) -> float:
+        return self._cpu_percent
+
+    def num_threads(self) -> int:
+        return self._threads
+
+
+class _PsutilStub:
+    def __init__(self, *, free_gb: float) -> None:
+        self._free_bytes = int(free_gb * 1024**3)
+
+    def disk_usage(self, _path: str) -> SimpleNamespace:
+        return SimpleNamespace(free=self._free_bytes)
+
+
 class TestHealthMonitorYamlDefaults:
     def test_default_check_interval_is_60_seconds(self) -> None:
         hm = FillTestHealthMonitor()
@@ -22,16 +46,8 @@ class TestHealthMonitorWarnings:
             check_interval_sec=0.0,
         ))
         hm._psutil_available = True
-        hm._process = MagicMock()
-        hm._psutil = MagicMock()
-        hm._process.memory_info.return_value = SimpleNamespace(
-            rss=int(150 * 1024 * 1024),
-        )
-        hm._process.cpu_percent.return_value = 12.5
-        hm._process.num_threads.return_value = 8
-        hm._psutil.disk_usage.return_value = SimpleNamespace(
-            free=int(10 * 1024**3),
-        )
+        hm._process = _ProcessStub(rss_mb=150.0, cpu_percent=12.5, threads=8)
+        hm._psutil = _PsutilStub(free_gb=10.0)
 
         status = hm.maybe_check(7)
 
@@ -46,16 +62,8 @@ class TestHealthMonitorWarnings:
             check_interval_sec=0.0,
         ))
         hm._psutil_available = True
-        hm._process = MagicMock()
-        hm._psutil = MagicMock()
-        hm._process.memory_info.return_value = SimpleNamespace(
-            rss=int(150 * 1024 * 1024),
-        )
-        hm._process.cpu_percent.return_value = 12.5
-        hm._process.num_threads.return_value = 8
-        hm._psutil.disk_usage.return_value = SimpleNamespace(
-            free=int(10 * 1024**3),
-        )
+        hm._process = _ProcessStub(rss_mb=150.0, cpu_percent=12.5, threads=8)
+        hm._psutil = _PsutilStub(free_gb=10.0)
 
         with patch("scripts.v460.lib.resilience.time.time", return_value=1000.0), patch(
             "scripts.v460.lib.resilience.gc.collect",

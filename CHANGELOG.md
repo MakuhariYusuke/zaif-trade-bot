@@ -5768,3 +5768,4 @@ python scripts/unified_trainer.py \
   - re-verified with:
     - focused helper/cleanup bundle: `5 passed, 65 deselected in 2.74s`
     - filtered broad `tests/unit/v460/`: `5006 passed, 2 skipped, 13 warnings in 47.65s`
+- 488# v460 test/perf: judgment YAML read を cached helper 化し、health/resilience/SAC テストの GC・YAML・mock 固定費を削減

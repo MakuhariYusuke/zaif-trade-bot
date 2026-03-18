@@ -11,6 +11,7 @@ import json
 import tempfile
 from pathlib import Path
 from typing import Optional
+from unittest.mock import patch
 
 import pytest
 
@@ -75,10 +76,12 @@ class TestHealthMonitor:
     def test_maybe_gc_runs_after_interval(self) -> None:
         """gc_interval_cycles 回呼ぶと GC が実行される."""
         hm = FillTestHealthMonitor(HealthThresholds(gc_interval_cycles=3))
-        hm.maybe_gc()  # counter=1
-        hm.maybe_gc()  # counter=2
-        hm.maybe_gc()  # counter=3 → GC 実行 → reset to 0
+        with patch("scripts.v460.lib.resilience.gc.collect", return_value=7) as mock_gc:
+            hm.maybe_gc()  # counter=1
+            hm.maybe_gc()  # counter=2
+            hm.maybe_gc()  # counter=3 → GC 実行 → reset to 0
         assert hm._gc_counter == 0
+        mock_gc.assert_called_once()
 
 
 class TestStatePersistence:

@@ -643,7 +643,10 @@ class TestDashboardJudgmentIntegration:
 class TestYAMLJudgmentLoad:
     """YAML judgment セクションのロードテスト."""
 
-    def test_load_from_yaml(self, tmp_path: Path) -> None:
+    def test_load_from_yaml(
+        self,
+        write_yaml_file: "Callable[[str | Path, str | dict[str, Any]], Path]",
+    ) -> None:
         """YAML から judgment 設定をロード."""
         yaml_content = """
 judgment:
@@ -657,8 +660,7 @@ judgment:
     target_filled: 50
     avg_pnl30_min_bps: -1.0
 """
-        yaml_file = tmp_path / "test_config.yaml"
-        yaml_file.write_text(yaml_content, encoding="utf-8")
+        yaml_file = write_yaml_file("test_config.yaml", yaml_content)
         ab, trending = _load_judgment_config(str(yaml_file))
 
         assert ab is not None
@@ -676,10 +678,12 @@ judgment:
         assert ab is None
         assert trending is None
 
-    def test_load_no_judgment_section(self, tmp_path: Path) -> None:
+    def test_load_no_judgment_section(
+        self,
+        write_yaml_file: "Callable[[str | Path, str | dict[str, Any]], Path]",
+    ) -> None:
         """judgment セクションなし → None."""
-        yaml_file = tmp_path / "minimal.yaml"
-        yaml_file.write_text("some_key: value\n", encoding="utf-8")
+        yaml_file = write_yaml_file("minimal.yaml", "some_key: value\n")
         ab, trending = _load_judgment_config(str(yaml_file))
         assert ab is None
         assert trending is None

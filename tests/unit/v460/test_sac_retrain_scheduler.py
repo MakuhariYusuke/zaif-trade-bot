@@ -301,7 +301,7 @@ def _make_mock_model():
     return model
 
 
-_MOCK_OHLCV_DF = pd.DataFrame({"close": np.arange(64, dtype=float)})
+_MOCK_OHLCV_DF = pd.DataFrame({"close": np.arange(24, dtype=float)})
 
 
 @contextmanager

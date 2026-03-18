@@ -7165,3 +7165,9 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - `scripts/v460` 側に残すべきなのは fill_test / v460 固有 orchestration だけで、SAC teardown のような generic resource cleanup は `ztb` 側に寄せるのが自然だった
 - real-data helper は `ml_pipeline` だけでなく、今後 `enricher` / `build_features` 系にも広げやすい形になった
 - broad は通っているが、wall time は run ごとの揺れがあるので、次は helper 化より `enricher` / `ml_pipeline` の実処理コストを直接削るフェーズ
+- 488# v460 hotspot follow-up:
+  - `side_regime_dashboard._load_judgment_config()` を `ztb.io.yaml_io.read_yaml()` + file-signature cache に統一
+  - `test_160_ab_judgment.py` を root `write_yaml_file` fixture に寄せた
+  - `test_health_monitor_resilience.py` の psutil/process mock を lightweight stub 化
+  - `test_113_resilience.py` の `maybe_gc()` は実 GC ではなく patched collect 契約検証へ変更
+  - `test_sac_retrain_scheduler.py` の mock OHLCV を 24 rows に縮小
