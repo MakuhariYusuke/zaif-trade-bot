@@ -162,18 +162,26 @@ class LockManager:
 
         watchdog 自動再起動と手動起動が競合するケースで、ロックファイルが
         まだ作成されていない (起動途中の) プロセスを検出する。
+        474#: 親プロセスも除外 (Start-Process ランチャーの誤検出防止)。
         """
         my_pid = os.getpid()
+        # 474#: 親PIDも除外 — Start-Process で起動された場合、
+        # ランチャー(親)のcmdlineにもrun_fill_testが含まれ誤検出する
+        try:
+            parent_pid = psutil.Process(my_pid).ppid()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            parent_pid = None
         for proc in psutil.process_iter(["pid", "cmdline"]):
             try:
-                if proc.info["pid"] == my_pid:
+                pid = proc.info["pid"]
+                if pid == my_pid or pid == parent_pid:
                     continue
                 cmdline_parts: list[str] = proc.info.get("cmdline") or []
                 cmdline = " ".join(cmdline_parts)
                 if "run_fill_test" in cmdline:
                     raise LockConflictError(
                         f"別の run_fill_test プロセスを検出 "
-                        f"(PID={proc.info['pid']}). "
+                        f"(PID={pid}). "
                         f"先にそのプロセスを停止してください。"
                     )
             except (psutil.NoSuchProcess, psutil.AccessDenied):
