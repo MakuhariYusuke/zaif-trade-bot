@@ -1209,6 +1209,7 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
         )
         if safe_to_bool(cfg.get("enriched_cache_enabled", True), True):
             _save_enriched_cache(cache_path, enriched, cache_key=cache_key)
+    del records
 
     # 127# H1: PnL 回帰向け特徴量抽出 (AS ラベル非依存)
     # filled かつ spread 有りのみ (AS ラベルは不要)

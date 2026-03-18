@@ -5739,3 +5739,13 @@ python scripts/unified_trainer.py \
     - focused cleanup/diagnostics bundle: `75 passed, 204 deselected in 6.19s`
     - focused SAC/gate bundle: `6 passed, 60 deselected in 2.60s`
     - filtered broad `tests/unit/v460/`: `4996 passed, 2 skipped, 13 warnings in 33.77s`
+- 2026-03-19: pushed memory diagnostics into external event logs and trimmed a few ML/retrain hot paths.
+  - updated [scripts/v460/lib/fill_test_cli.py] to emit a `memory_diagnostics` event into `fill_test_events.jsonl` alongside the JSON exit dump
+  - updated [scripts/v460/ml/data_loader.py] so `run_id_filter` / `exclude_missing_run_id` are applied before building the DataFrame, reducing unnecessary object retention and work
+  - updated [scripts/v460/ml/retrain_scheduler.py] to release `records` immediately after enriched features are built
+  - trimmed `tests/unit/v460/test_sac_retrain_scheduler.py` by shrinking the mocked OHLCV frame used by warm/cold/OOS retrain paths
+  - reset raw-load caches at the start of `test_enricher_skip_gate.py` cache invalidation helper calls to keep those cases isolated
+  - re-verified with:
+    - focused diagnostics/event bundle: `25 passed in 2.76s`
+    - focused ML/retrain bundle: `14 passed, 112 deselected in 3.39s`
+    - filtered broad `tests/unit/v460/`: `4998 passed, 2 skipped, 13 warnings in 31.54s`

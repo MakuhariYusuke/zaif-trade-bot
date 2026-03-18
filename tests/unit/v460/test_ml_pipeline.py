@@ -246,6 +246,36 @@ class Test057DataLoader:
         df = load_fill_records(tmp_path)
         assert sorted(df["cycle_id"].tolist()) == ["dup_1", "uniq_1"]
 
+    def test_load_fill_records_filters_run_id(self, tmp_path: Path) -> None:
+        keep = {
+            "cycle_id": "keep_1",
+            "timestamp": 1700000000.0,
+            "side": "buy",
+            "order_price": 15000000.0,
+            "order_quantity": 0.001,
+            "filled": True,
+            "run_id": "run_keep",
+            "git_sha": "abc123",
+        }
+        drop = {
+            "cycle_id": "drop_1",
+            "timestamp": 1700000060.0,
+            "side": "sell",
+            "order_price": 15000010.0,
+            "order_quantity": 0.001,
+            "filled": False,
+            "run_id": "run_drop",
+            "git_sha": "abc123",
+        }
+        (tmp_path / "fill_records_20260101.jsonl").write_text(
+            json.dumps(keep) + "\n" + json.dumps(drop) + "\n",
+            encoding="utf-8",
+        )
+
+        df = load_fill_records(tmp_path, run_id_filter="run_keep")
+
+        assert df["cycle_id"].tolist() == ["keep_1"]
+
 
 # ======================================================================
 # AS Classifier Tests

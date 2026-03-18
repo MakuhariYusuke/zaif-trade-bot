@@ -7047,3 +7047,41 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - `advanced_csv` は global cleanup に入れて問題ない module-level cache だった
 - `diverse_learning_methods.results_cache` は instance-local なので global cleanup には混ぜず、bounded のまま維持する判断が妥当
 - fill test 側は recorder だけでなく sidecar cache も終了時 clear することで、長寿命プロセスの残留診断が少し素直になった
+
+## 2026-03-19 追加 wave: memory diagnostics の event log 化 + ML/retrain 小改善
+
+### 実施
+- [fill_test_cli.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_test_cli.py)
+  - `_build_memory_diagnostics_event_details(...)` を追加
+  - exit dump 時に `fill_test_events.jsonl` へ `memory_diagnostics` イベントも記録
+  - JSON dump を見に行かなくても stop/crash 前後の cache/buffer 残量を追いやすくした
+- [data_loader.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/data_loader.py)
+  - `run_id_filter` / `exclude_missing_run_id` を DataFrame 化前に適用
+  - 不要 record の object 保持と DataFrame 構築コストを削減
+- [retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/retrain_scheduler.py)
+  - `enriched` を構築した時点で `records` を早期解放
+- テスト側
+  - [test_fill_test_cli_diagnostics.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_test_cli_diagnostics.py)
+    - `memory_diagnostics` event details 用 helper の focused 回帰を追加
+  - [test_ml_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ml_pipeline.py)
+    - `load_fill_records(..., run_id_filter=...)` の focused 回帰を追加
+  - [test_sac_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_sac_retrain_scheduler.py)
+    - warm/cold/OOS mock data を小さい共通 DataFrame に統一
+  - [test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+    - raw cache invalidation helper の先頭で cache clear してケース間の独立性を強化
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_fill_test_cli_diagnostics.py tests/unit/v460/test_148_fill_test_events.py tests/unit/v460/test_health_monitor_resilience.py -q --no-cov`
+  - `25 passed in 2.76s`
+- focused:
+  - `tests/unit/v460/test_ml_pipeline.py tests/unit/v460/test_sac_retrain_scheduler.py tests/unit/v460/test_enricher_skip_gate.py -k 'load_fill_records_filters_run_id or test_load_real_data or test_cold_start_success or test_warm_start or test_oos_failed or RawLoadCache' -q --no-cov`
+  - `14 passed, 112 deselected in 3.39s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20 --ignore=tests/unit/v460/test_152_parallel_tasks.py --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py`
+  - `4998 passed, 2 skipped, 13 warnings in 31.54s`
+
+### 見立て
+- `fill_test_events.jsonl` に memory summary が載るようになったので、実運用の stop/crash 後分析が少しやりやすくなった
+- `load_fill_records` の早期 filter は大きい変更ではないが、run_id 指定系の無駄 work を減らせる
+- 今の broad 上位は、inspection/helper よりも real-data setup と SAC retrain 本体の call が中心になってきている

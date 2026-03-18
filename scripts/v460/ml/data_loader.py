@@ -157,6 +157,7 @@ def load_fill_records(
         files = files[-max_files_limit:]
 
     run_id_filter_key = _normalize_run_id_filter(run_id_filter)
+    run_id_filter_set = set(run_id_filter_key) if run_id_filter_key is not None else None
     cache_key = (
         str(d.resolve()),
         run_id_filter_key,
@@ -174,18 +175,15 @@ def load_fill_records(
         for record in iter_fill_records(path):
             if record.cycle_id in seen_ids:
                 continue
+            record_run_id = getattr(record, "run_id", None)
+            if exclude_missing_run_id and (record_run_id is None or record_run_id == ""):
+                continue
+            if run_id_filter_set is not None and record_run_id not in run_id_filter_set:
+                continue
             seen_ids.add(record.cycle_id)
             records.append(record)
     df = fill_records_to_dataframe(records)
     total = len(df)
-
-    # 122# E13: run_id フィルタリング (異なるラン設定の混在による交絡防止)
-    if exclude_missing_run_id and "run_id" in df.columns:
-        df = df[df["run_id"].notna() & (df["run_id"] != "")]
-    if run_id_filter is not None and "run_id" in df.columns:
-        if isinstance(run_id_filter, str):
-            run_id_filter = [run_id_filter]
-        df = df[df["run_id"].isin(run_id_filter)]
 
     logger.info(
         f"Loaded {len(df)} records from {len(files)} files"

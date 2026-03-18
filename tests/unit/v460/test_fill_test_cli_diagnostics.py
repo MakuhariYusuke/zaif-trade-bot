@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from scripts.v460.lib.fill_test_cli import (
+    _build_memory_diagnostics_event_details,
     _collect_fill_test_memory_diagnostics,
     _dump_exit_diagnostics,
     _read_lock_heartbeat_age_sec,
@@ -136,3 +137,22 @@ class TestExitDiagnostics:
         assert payload["ml_cache_stats"] == {"total_ml_cache_entries": 5}
         assert payload["sidecar_cache_stats"] == {"entries": 1, "max_entries": 8}
         assert payload["health_monitor"] == {"last_pressure_gc_collected": 9}
+
+    def test_build_memory_diagnostics_event_details_keeps_analysis_fields(self) -> None:
+        details = _build_memory_diagnostics_event_details(
+            trigger="finally",
+            stop_reason="completed",
+            dump_path=Path("results/v460/fill_test/diagnostics/exit.json"),
+            payload={
+                "gc_counts": [1, 2, 3],
+                "ml_cache_stats": {"total_ml_cache_entries": 5},
+                "sidecar_cache_stats": {"entries": 1, "max_entries": 8},
+                "runner_buffer_stats": {"recent_records_count": 2},
+            },
+        )
+
+        assert details["trigger"] == "finally"
+        assert details["stop_reason"] == "completed"
+        assert str(details["dump_path"]).endswith("exit.json")
+        assert details["ml_cache_stats"] == {"total_ml_cache_entries": 5}
+        assert details["sidecar_cache_stats"] == {"entries": 1, "max_entries": 8}

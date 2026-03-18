@@ -301,6 +301,9 @@ def _make_mock_model():
     return model
 
 
+_MOCK_OHLCV_DF = pd.DataFrame({"close": np.arange(64, dtype=float)})
+
+
 @contextmanager
 def _mock_sb3_import(mock_model: MagicMock) -> Iterator[MagicMock]:
     """retrain_once() の SB3 SAC クラスを fake に置き換える.
@@ -347,7 +350,7 @@ class TestRetrainOnce:
         data_file = tmp_path / "data.parquet"
 
         with patch("scripts.v460.lib.data_loader.load_parquet") as mock_load:
-            mock_load.return_value = pd.DataFrame({"close": range(1000)})
+            mock_load.return_value = _MOCK_OHLCV_DF
             with _mock_sb3_import(mock_model) as mock_sac_cls:
                 mock_sac_cls.return_value = mock_model
                 result = retrain_once(cfg)
@@ -381,7 +384,7 @@ class TestRetrainOnce:
         )
 
         with patch("scripts.v460.lib.data_loader.load_parquet") as mock_load:
-            mock_load.return_value = pd.DataFrame({"close": range(1000)})
+            mock_load.return_value = _MOCK_OHLCV_DF
             with _mock_sb3_import(mock_model) as mock_sac_cls:
                 mock_sac_cls.load.return_value = mock_model
                 result = retrain_once(cfg)
@@ -411,7 +414,7 @@ class TestRetrainOnce:
         )
 
         with patch("scripts.v460.lib.data_loader.load_parquet") as mock_load:
-            mock_load.return_value = pd.DataFrame({"close": range(1000)})
+            mock_load.return_value = _MOCK_OHLCV_DF
             mock_model = _make_mock_model()
             with _mock_sb3_import(mock_model) as mock_sac_cls:
                 mock_sac_cls.return_value = mock_model

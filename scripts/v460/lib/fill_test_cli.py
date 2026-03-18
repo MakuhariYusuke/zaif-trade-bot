@@ -262,6 +262,32 @@ def _collect_fill_test_memory_diagnostics(runner: object) -> dict[str, object]:
     return payload
 
 
+def _build_memory_diagnostics_event_details(
+    *,
+    trigger: str,
+    stop_reason: str | None,
+    dump_path: Path | None,
+    payload: dict[str, object],
+) -> dict[str, object]:
+    """外部イベントログへ流す軽量な診断サマリを構築する."""
+    details: dict[str, object] = {
+        "trigger": trigger,
+        "stop_reason": stop_reason,
+        "dump_path": str(dump_path) if dump_path is not None else None,
+    }
+    for key in (
+        "gc_counts",
+        "gc_thresholds",
+        "ml_cache_stats",
+        "sidecar_cache_stats",
+        "runner_buffer_stats",
+        "health_monitor",
+    ):
+        if key in payload:
+            details[key] = payload[key]
+    return details
+
+
 def _build_arg_parser() -> argparse.ArgumentParser:
     """CLI 引数パーサ構築."""
     parser = argparse.ArgumentParser(
@@ -575,13 +601,27 @@ def fill_test_main() -> None:
             else None
         )
         lock_manager = getattr(runner, "_lock_manager", None)
+        diagnostics_payload = _collect_fill_test_memory_diagnostics(runner)
         dump_path = _dump_exit_diagnostics(
             config.results_dir,
             runner._run_id,
             stop_reason=active_stop_reason,
             lock_path=getattr(lock_manager, "lockfile_path", None),
             trigger=trigger,
-            extra_payload=_collect_fill_test_memory_diagnostics(runner),
+            extra_payload=diagnostics_payload,
+        )
+        log_event(
+            "memory_diagnostics",
+            config.results_dir,
+            run_id=runner._run_id,
+            git_sha=runner._git_sha,
+            reason=active_stop_reason,
+            details=_build_memory_diagnostics_event_details(
+                trigger=trigger,
+                stop_reason=active_stop_reason,
+                dump_path=dump_path,
+                payload=diagnostics_payload,
+            ),
         )
         if dump_path is not None:
             diagnostics_state["dumped"] = True

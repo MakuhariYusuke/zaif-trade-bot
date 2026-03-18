@@ -68,6 +68,7 @@ def _assert_raw_cache_invalidates_on_file_update(
     second_rows: list[dict[str, Any]],
     load_fn,
 ) -> None:
+    clear_raw_load_caches()
     data_dir = tmp_path / subdir
     data_dir.mkdir()
     target_file = data_dir / filename
