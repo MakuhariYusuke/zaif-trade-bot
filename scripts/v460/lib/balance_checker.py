@@ -2,14 +2,17 @@
 
 FillTestRunner から残高 pre-flight チェック + ロット自動縮小を分離。
 041# 残高チェック / 052# ロット縮小 / 101# 残高回復ロジックを統合。
-128# dust_sweep: 端数 BTC 一掃売却 (sell 時に全BTC売却で最小取引金額未満の残留を解消)。
+128# dust_sweep: 端数 BTC 一掃売却 (sell 時に全 BTC 売却で残留を解消)。
 372# dust buy-to-clear: btc_free < min_order_btc の micro-dust を
-     buy 0.001 → sell 全額の自動2サイクルで解消。
+     buy min_order → sell 全額の自動2サイクルで解消。
+476#: Coincheck は satoshi 精度 (1e-8) を許容 — 0.001 単位切り捨て廃止。
+     sell/buy ともに残高に応じた動的ロットサイジング。
 
 責務:
   - buy/sell 残高の事前検証
-  - 残高不足時のロット自動縮小 (0.001 BTC 単位)
+  - 残高不足時のロット自動縮小 (satoshi 精度)
   - 残高回復時のロット復元
+  - 476# 残高連動ロット拡大 (buy: JPY→max_lot, sell: dust_sweep 全額売却)
   - 128# sell 時 dust 込み全額売却
   - 372# micro-dust buy-to-clear (sell 不能端数の buy 経由解消)
 """
@@ -152,9 +155,7 @@ class BalanceChecker:
 
         effective_lot = self._current_lot * regime_mult
         if btc_free < effective_lot:
-            # 052#: 最小ロット以上の残高があれば縮小して継続
-            # 145# §8-#1: base ロット = btc_free / regime_mult として算出
-            # 476#: Coincheck は satoshi 精度を許容 — 0.001 単位切り捨て廃止
+            # 052# + 476#: satoshi 精度で base ロットを算出
             max_base = btc_free / regime_mult if regime_mult > 0 else btc_free
             new_lot = round(max_base, 8)
             if new_lot >= self._min_order_btc:
@@ -227,11 +228,9 @@ class BalanceChecker:
         self._last_jpy_free = jpy_free  # 238# C-2: phantom guard snapshot 用キャッシュ
 
         if jpy_free < jpy_needed:
-            # 052#: JPY 残高から発注可能なロットを逆算
-            # 145# §8-#1: レジーム倍率込みで逆算: base = affordable / regime_mult
+            # 052# + 476#: satoshi 精度で JPY から base ロットを逆算
             affordable_effective = jpy_free / (price * self._config.balance_margin_ratio)
             affordable_base = affordable_effective / regime_mult if regime_mult > 0 else affordable_effective
-            # 476#: Coincheck は satoshi 精度を許容 — 0.001 単位切り捨て廃止
             affordable_lot = round(affordable_base, 8)
             if affordable_lot >= self._min_order_btc:
                 old_lot = self._current_lot
@@ -313,14 +312,14 @@ class BalanceChecker:
             abs(effective_lot - btc_free) < 1e-9
             and abs(self._current_lot - self._config.order_quantity) > 1e-9
         ):
-            # 476#: shrink により実効ロットが btc_free に一致済だが通常ロットと異なる
-            # → lot_scale チェーンから保護するため dust_sweep_active を設定
+            # 476#: shrink 後に lot ≈ btc_free だが order_quantity と乖離
+            # → FCE の lot_scale チェーンで縮小されないよう保護フラグを立てる
             self._pre_dust_lot = self._config.order_quantity
             self._dust_sweep_active = True
             logger.info(
-                f"[dust_sweep] Effective lot {effective_lot:.8f} ≈ BTC {btc_free:.8f} "
+                f"[dust_sweep] lot {self._current_lot:.8f} ≈ BTC {btc_free:.8f} "
                 f"(≠ order_qty {self._config.order_quantity:.4f}). "
-                f"Activating protection."
+                f"Activating lot_scale protection."
             )
         return False
 

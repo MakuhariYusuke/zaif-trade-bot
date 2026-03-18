@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 476# Dust sweep 修正 + 0.001 単位切り捨て廃止 + 残高連動ロット (2026-03-18)
+
+### Background
+- dust sweep が lot_scale チェーン (cooldown_release ×0.30) に上書きされ、全額売却が
+  0.001 BTC に縮小 → micro-dust 永続ループ発生
+- Coincheck は satoshi 精度 (1e-8, quantity_precision: 8) を許容するが、コード 5 箇所で
+  `int(x / min_order) * min_order` の 0.001 単位切り捨てが不要な制限を発生させていた
+- `_scale_lot` のフロアが `order_quantity` (= min_order_btc) だったため、
+  DD soft / alert_mode / cooldown のスケールダウンが実質無効化
+
+### Changed
+- **balance_checker.py**: 4 箇所の 0.001 単位切り捨てを `round(x, 8)` に置換
+  - sell/buy lot 縮小、apply_lot_floor、_maybe_dust_sweep
+  - `_maybe_dust_sweep` に `regime_mult` 引数追加 (実効ロットで比較)
+  - sell 側: dust_sweep が btc_free > effective_lot で全額売却に拡張
+  - buy 側: 476# 残高連動ロット拡大 (JPY → max_lot まで動的拡大)
+- **fill_cycle_executor.py**: dust_sweep_active 時に lot_scale チェーン全体をバイパス
+  - `_min_lot` を `order_quantity` → `min_order_btc` に修正 (スケールダウン正常化)
+- **order_monitor.py**: 再価格設定時の lot 切り捨て廃止
+
+### Fixed
+- dust sweep 永続ループ: lot_scale チェーンバイパスで全額売却を保証
+- `_scale_lot` フロア: order_quantity → min_order_btc に修正し DD soft 等が正常機能
+
+### Tests
+- `test_dust_sweep.py`: 新ロジックに合わせ期待値更新 (22 tests ✓)
+- `test_145_structural_fixes.py`: regime_mult テストに dust_sweep_enabled=False 追加
+
 ## 451# P0-4 / P1-2 / P1-3: git_sha filter + compound suppression + toxicity budget (2026-03-16)
 
 ### Changed
