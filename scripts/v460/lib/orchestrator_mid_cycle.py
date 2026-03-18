@@ -546,4 +546,15 @@ class OrchestratorMidCycleMixin:
         _raw_sleep = interval * soft_dd_mult * _loss_cd * _os_mult * _alert_im
         _max_sleep = self.config.max_cycle_sleep_sec
         _clamped = min(_raw_sleep, _max_sleep) if _max_sleep > 0 else _raw_sleep
+        # 475# メモリリーク防止: _effective_sleep を経由しない正常パスでも GC カウンタ進行
+        self._gc_cycle_counter += 1
+        if self._gc_cycle_counter >= self._GC_INTERVAL_CYCLES:
+            import gc
+            self._gc_cycle_counter = 0
+            collected = gc.collect()
+            if collected > 0:
+                import logging as _logging
+                _logging.getLogger(__name__).debug(
+                    f"[475# GC] post-cycle collected {collected} objects"
+                )
         await asyncio.sleep(_clamped)

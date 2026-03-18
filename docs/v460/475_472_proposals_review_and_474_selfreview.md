@@ -172,6 +172,36 @@ soft mode (as_offset=true) では hard skip せず、maker_price の offset boos
 `maker_price.py` — 旧コメント「0.30-0.50 の範囲で有効に機能」を
 「ceiling < base の場合は base を返し、最終段 ceiling clamp が上限を保証」に修正。
 
+### 4.3 メモリリーク防止策 (GC)
+
+**監査結果**: 主要データ構造は適切に制御されている:
+- `deque(maxlen=200)`: fill_history, return_history, recent_prices 等
+- `LRU cache(maxsize=8)`: hour_rules, feature pipeline
+- `TTL cache`: ticker_cache (5s TTL)
+- `_toxic_veto`: 自動デクリメント、キーは buy/sell のみ (bounded)
+- `_guard_fire_counts`: 固定15キー程度 (bounded)
+
+**追加したGC対策**:
+- `fill_loop_orchestrator.py`: 30サイクル毎 (~1h) に `gc.collect()` (`_effective_sleep` 内)
+- `orchestrator_mid_cycle.py`: 正常サイクル側でも同カウンタでGC (`_post_cycle_sleep` 内)
+- `orchestrator_pre_cycle.py`: 日次リセット時に `gc.collect()` + `psutil.Process().memory_info().rss` でRSSログ出力
+
+### 4.4 test_421 修正 (474# _recalc 追従)
+
+474# で `_recalc_price_with_new_offset` が half-spread (/2) → direct delta に修正されたが、
+test_421_final_clamp_deadlock.py のテスト期待値が旧式のままだった:
+- `test_buy_over_ceiling_clamped`: 9990 → 9870
+- `test_sell_over_ceiling_clamped`: 10050 → 10200
+
+production formula (`buy = best_bid + spread * ratio`) に基づく正しい値に更新。
+
+### 4.5 Gate 2b 追加に伴うテスト修正
+
+Gate 2b (`ranging_sell_low_vol`) 追加により gate count が 9→10 に変更:
+- `test_194_cycle_gate.py`: `len(r.checks) == 10`
+- `test_197_boost_optimization_gate_integration.py`: gate_names リスト更新
+- `test_220_deadlock_fixes.py`: `len(r.checks) == 10`
+
 ---
 
 ## §5 次のアクション
@@ -184,4 +214,4 @@ soft mode (as_offset=true) では hard skip せず、maker_price の offset boos
 ---
 
 *作成日: 2026-03-19*
-*対象: 472# §4 提案評価 + 474# セルフレビュー + 470# P2 実装*
+*対象: 472# §4 提案評価 + 474# セルフレビュー + 470# P2 実装 + メモリリーク防止*

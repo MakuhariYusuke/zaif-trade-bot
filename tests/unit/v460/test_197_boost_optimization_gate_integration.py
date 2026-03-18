@@ -450,7 +450,7 @@ class TestBackwardCompatibility197:
             spread_jpy=5000.0, mid_price=15_000_000.0,
         ))
         assert r.blocked is False
-        assert len(r.checks) == 9  # 197#: 7→9 ゲートに拡張
+        assert len(r.checks) == 10  # 197#: 7→9, 475#: 9→10 ゲートに拡張
 
     def test_gate_evaluation_order(self):
         """Gate 1-9 が正しい順序で評価されること."""
@@ -470,6 +470,7 @@ class TestBackwardCompatibility197:
         assert gate_names == [
             "unknown_regime_buy",     # Gate 1
             "ranging_buy_low_vol",    # Gate 2
+            "ranging_sell_low_vol",   # Gate 2b (475#)
             "trending_sell",          # Gate 3
             "buy_dynamic_kill",       # Gate 4
             "sell_dynamic_kill",      # Gate 5

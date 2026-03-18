@@ -144,6 +144,17 @@ class OrchestratorPreCycleMixin:
                 _km.reset()
                 self._inc_guard_fire("day_reset_kill_conflict")
 
+        # 475# メモリリーク防止: 日替わり時に GC 強制実行 + メモリ使用量ロギング
+        import gc
+        collected = gc.collect()
+        import psutil  # type: ignore[import-untyped]
+        proc = psutil.Process()
+        mem_mb = proc.memory_info().rss / (1024 * 1024)
+        logger.info(
+            f"[475# daily GC] collected {collected} objects, "
+            f"RSS={mem_mb:.1f}MB"
+        )
+
     # ------------------------------------------------------------------
     # Phase 2: DD halt チェック
     # ------------------------------------------------------------------

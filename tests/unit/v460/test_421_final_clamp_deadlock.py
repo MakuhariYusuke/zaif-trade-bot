@@ -152,29 +152,27 @@ class TestFinalClampLogic:
         """buy: ceiling 超過時にクランプ."""
         price, ratio = self._simulate_final_clamp(
             side="buy",
-            order_price=9950,  # mid=10000, spread=100, old_ratio=1.0 → 10000-50=9950
+            order_price=9950,  # best_bid + spread*1.0 = 9850+100=9950
             spread_at_order=100.0,
             effective_offset_ratio=1.0,
             ceiling=0.20,
         )
         assert ratio == 0.20
-        # mid = 9950 + 100 * 1.0 / 2 = 10000
-        # new_price = 10000 - 100 * 0.20 / 2 = 9990
-        assert price == 9990
+        # 474# direct delta: new = old - spread*(old-new) = 9950 - 100*0.8 = 9870
+        assert price == 9870
 
     def test_sell_over_ceiling_clamped(self) -> None:
         """sell: ceiling 超過時にクランプ."""
         price, ratio = self._simulate_final_clamp(
             side="sell",
-            order_price=10100,  # mid=10000, spread=200, old_ratio=1.0 → 10000+100=10100
+            order_price=10100,  # best_ask - spread*1.0 = 10300-200=10100
             spread_at_order=200.0,
             effective_offset_ratio=1.0,
             ceiling=0.50,
         )
         assert ratio == 0.50
-        # mid = 10100 - 200 * 1.0 / 2 = 10000
-        # new_price = 10000 + 200 * 0.50 / 2 = 10050
-        assert price == 10050
+        # 474# direct delta: new = old + spread*(old-new) = 10100 + 200*0.5 = 10200
+        assert price == 10200
 
     def test_under_ceiling_no_change(self) -> None:
         """ceiling 以下の場合は変更なし."""

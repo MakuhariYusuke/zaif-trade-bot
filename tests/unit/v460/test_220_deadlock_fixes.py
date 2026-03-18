@@ -268,8 +268,8 @@ class TestDeadlockIntegration:
         assert not r.blocked
 
     def test_all_gates_9_checks_on_full_pass(self) -> None:
-        """全ゲート通過時、9 checks を維持."""
+        """全ゲート通過時、10 checks を維持 (475# Gate 2b 追加)."""
         gate = _make_gate()
         r = gate.evaluate(**_default_ctx(side="buy", regime="ranging"))
         assert not r.blocked
-        assert len(r.checks) == 9
+        assert len(r.checks) == 10

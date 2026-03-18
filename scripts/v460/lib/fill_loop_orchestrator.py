@@ -36,6 +36,7 @@ WARNING -- AI Coding Agent / 人間開発者への注意:
 from __future__ import annotations
 
 import asyncio
+import gc
 import logging
 import time
 from collections import deque
@@ -174,6 +175,9 @@ class FillLoopOrchestratorMixin(
     _heartbeat_task: asyncio.Task[None] | None = None
     # 459# 耐再起動性: _cleanup_sync からの最終状態保存用
     _session_state: RunSessionState | None = None
+    # 475# メモリリーク防止: 定期 GC サイクルカウンタ
+    _gc_cycle_counter: int = 0
+    _GC_INTERVAL_CYCLES: int = 30  # ~1h at 120s cycle
 
 
     # ------------------------------------------------------------------
@@ -205,6 +209,13 @@ class FillLoopOrchestratorMixin(
         _sleep = min(_raw, _max) if _max > 0 else _raw
         # 459# 横展開: 全 skip/halt/error パスが経由する sleep 前に reload 検出
         self._config_reloader.maybe_reload(self)
+        # 475# メモリリーク防止: N サイクルごとに GC 強制実行
+        self._gc_cycle_counter += 1
+        if self._gc_cycle_counter >= self._GC_INTERVAL_CYCLES:
+            self._gc_cycle_counter = 0
+            collected = gc.collect()
+            if collected > 0:
+                logger.debug(f"[475# GC] collected {collected} objects")
         await asyncio.sleep(_sleep)
 
 
