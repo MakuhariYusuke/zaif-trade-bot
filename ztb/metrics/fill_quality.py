@@ -173,6 +173,10 @@ class FillRecord:
     # ---- 372# F1: SAC Sidecar offset 記録 ----
     sidecar_offset_bps: float | None = None       # 適用された sidecar offset (bps, 正=攻撃的)
     sidecar_bias: float | None = None             # SAC directional_bias [-1,+1]
+    # ---- 487# P0: SAC Sidecar attribution 可観測性 ----
+    sidecar_confidence: float | None = None       # SAC confidence [0,1]
+    sidecar_model_version: str | None = None      # モデル識別子 (e.g. 'sac_sidecar_v460_...')
+    sidecar_signal_status: str | None = None      # "fresh"/"stale"/"missing"/"error"
     # ---- 439# P1: Cross-Venue Lead-Lag 可観測性 ----
     cross_venue_reference_exchange: str | None = None
     cross_venue_lead_lag_direction: str | None = None

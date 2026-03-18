@@ -159,6 +159,43 @@ def read_sidecar_signal(
     return signal
 
 
+def read_sidecar_signal_with_status(
+    path: Path | str = DEFAULT_SIGNAL_PATH,
+    ttl_sec: float = DEFAULT_SIGNAL_TTL_SEC,
+) -> tuple[SidecarSignal | None, str]:
+    """487# P0: sidecar signal を読み込み、状態文字列も返す.
+
+    Returns:
+        (signal, status) — status は "fresh"/"stale"/"missing"/"error"
+    """
+    path = Path(path)
+
+    try:
+        mtime = path.stat().st_mtime
+    except FileNotFoundError:
+        return None, "missing"
+    except OSError:
+        return None, "error"
+
+    try:
+        raw = path.read_text(encoding="utf-8")
+        data: dict = json.loads(raw)  # type: ignore[assignment]
+    except FileNotFoundError:
+        return None, "missing"
+    except (json.JSONDecodeError, OSError):
+        return None, "error"
+
+    try:
+        signal = _dict_to_signal(data)
+    except (KeyError, ValueError, TypeError):
+        return None, "error"
+
+    if ttl_sec > 0 and _is_stale(signal.timestamp, ttl_sec):
+        return None, "stale"
+
+    return signal, "fresh"
+
+
 # ── 内部ヘルパー ──────────────────────────────────────────
 
 

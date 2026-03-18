@@ -134,6 +134,10 @@ class FillRecordBuilderMixin:
         decision_path: str | None = None,
         sidecar_offset_bps: float | None = None,
         sidecar_bias: float | None = None,
+        # 487# P0: sidecar attribution 可観測性
+        sidecar_confidence: float | None = None,
+        sidecar_model_version: str | None = None,
+        sidecar_signal_status: str | None = None,
     ) -> dict[str, object]:
         """FillRecord の市場観測/実行メタ系フィールドを構築."""
         fields: dict[str, object] = {
@@ -185,6 +189,10 @@ class FillRecordBuilderMixin:
             # 372# F1: SAC Sidecar offset 記録
             "sidecar_offset_bps": sidecar_offset_bps,
             "sidecar_bias": sidecar_bias,
+            # 487# P0: sidecar attribution 可観測性
+            "sidecar_confidence": sidecar_confidence,
+            "sidecar_model_version": sidecar_model_version,
+            "sidecar_signal_status": sidecar_signal_status,
         }
         fields.update(self._build_fill_cross_venue_fields(side=side))
         return fields
@@ -326,6 +334,10 @@ class FillRecordBuilderMixin:
         decision_path: str | None = None,
         sidecar_offset_bps: float | None = None,
         sidecar_bias: float | None = None,
+        # 487# P0: sidecar attribution 可観測性
+        sidecar_confidence: float | None = None,
+        sidecar_model_version: str | None = None,
+        sidecar_signal_status: str | None = None,
         queue_depth_ahead: float | None = None,
         queue_fill_prob_est: float | None = None,
         regime_at_order: str | None = None,
@@ -415,6 +427,9 @@ class FillRecordBuilderMixin:
                 decision_path=decision_path,
                 sidecar_offset_bps=sidecar_offset_bps,
                 sidecar_bias=sidecar_bias,
+                sidecar_confidence=sidecar_confidence,
+                sidecar_model_version=sidecar_model_version,
+                sidecar_signal_status=sidecar_signal_status,
             )
         )
         payload.update(

@@ -133,9 +133,13 @@ class OrchestratorMidCycleMixin:
         )
 
         # 372# F1 Gap-1: SAC sidecar signal を読み込み gate に注入
-        from scripts.v460.lib.sidecar_signal_io import read_sidecar_signal
+        # 487# P0: signal_status も取得して attribution 可観測性を確保
+        from scripts.v460.lib.sidecar_signal_io import (
+            read_sidecar_signal,
+            read_sidecar_signal_with_status,
+        )
 
-        _sidecar_signal = read_sidecar_signal()
+        _sidecar_signal, _sidecar_signal_status = read_sidecar_signal_with_status()
 
         _gate_result = self._cycle_gate.evaluate(
             side=next_side,
@@ -403,6 +407,14 @@ class OrchestratorMidCycleMixin:
                 toxicity_offset_mult=gate_result.toxicity_offset_mult,
                 sidecar_offset_bps=gate_result.sidecar_offset_bps,
                 sidecar_bias=gate_result.sidecar_bias if gate_result.sidecar_bias != 0.0 else None,
+                # 487# P0: sidecar attribution 可観測性
+                sidecar_confidence=(
+                    _sidecar_signal.confidence if _sidecar_signal is not None else None
+                ),
+                sidecar_model_version=(
+                    _sidecar_signal.model_version if _sidecar_signal is not None else None
+                ),
+                sidecar_signal_status=_sidecar_signal_status,
             )
             # 420# P1: Side 切替可観測性 — CycleContext の情報を FillRecord に転記
             record.requested_side = ctx.requested_side

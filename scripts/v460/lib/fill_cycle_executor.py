@@ -566,16 +566,26 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         filled: bool,
         queue_wait: float,
         post_fill_pnl: float | None,
+        sidecar_offset_bps: float = 0.0,
+        sidecar_signal_status: str | None = None,
     ) -> None:
+        # 487# P0: sidecar summary を cycle log に追記
+        _sidecar_tag = ""
+        if sidecar_signal_status and sidecar_signal_status != "missing":
+            _sidecar_tag = f", sidecar={sidecar_signal_status}"
+            if sidecar_offset_bps != 0.0:
+                _sidecar_tag += f"({sidecar_offset_bps:+.3f}bps)"
         if post_fill_pnl is not None:
             logger.info(
                 f"Cycle {self._cycle_count} result: "
                 f"filled={filled}, wait={queue_wait:.1f}s, pnl={post_fill_pnl:.2f}bps"
+                f"{_sidecar_tag}"
             )
             return
         logger.info(
             f"Cycle {self._cycle_count} result: "
             f"filled={filled}, wait={queue_wait:.1f}s"
+            f"{_sidecar_tag}"
         )
 
     async def run_single_cycle(
@@ -587,6 +597,10 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         toxicity_offset_mult: float = 1.0,
         sidecar_offset_bps: float = 0.0,
         sidecar_bias: float | None = None,
+        # 487# P0: sidecar attribution 可観測性
+        sidecar_confidence: float | None = None,
+        sidecar_model_version: str | None = None,
+        sidecar_signal_status: str | None = None,
     ) -> FillRecord:
         """1 サイクル: 発注 → 監視 → 結果記録."""
         self._cycle_count += 1
@@ -1298,6 +1312,10 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             decision_path=_decision_path,
             sidecar_offset_bps=sidecar_offset_bps if sidecar_offset_bps != 0.0 else None,
             sidecar_bias=sidecar_bias,
+            # 487# P0: sidecar attribution 可観測性
+            sidecar_confidence=sidecar_confidence,
+            sidecar_model_version=sidecar_model_version or None,
+            sidecar_signal_status=sidecar_signal_status,
             queue_depth_ahead=_queue_depth_ahead,
             queue_fill_prob_est=_queue_fill_prob_est,
             regime_at_order=_regime_at_order,
@@ -1311,6 +1329,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             filled=filled,
             queue_wait=queue_wait,
             post_fill_pnl=post_fill_pnl,
+            sidecar_offset_bps=sidecar_offset_bps,
+            sidecar_signal_status=sidecar_signal_status,
         )
 
         # 237# phantom guard: status_unknown 時の再照合待ちフラグ

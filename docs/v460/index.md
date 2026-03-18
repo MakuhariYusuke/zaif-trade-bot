@@ -515,7 +515,7 @@
 | 484 | rev | [484_phg_deep_dive_482_sac_selection_and_live_effect_limits.md](484_phg_deep_dive_482_sac_selection_and_live_effect_limits.md) | 深掘り: seed選定不安定、deploy gate緩い、live sidecar効き幅小 |
 | 485 | rev | [485_phg_verify_483_sac_paradox_and_sidecar_limits.md](485_phg_verify_483_sac_paradox_and_sidecar_limits.md) | 総括: OOS過適合分析 + sidecar実質無風化 + 寄与分解P0提案 |
 | 486 | verify | [486_phg_verify_483_484_485_review_claims.md](486_phg_verify_483_484_485_review_claims.md) | 483-485レビュー検証: 全数値・コード・設定を突合、483/484=A、485=B+ |
-| 487 | fix | — | SAC メモリリーク防止 (gc.collect/model del) + 重複削減 (create_env_from_config/create_sac_model 統合) |
+| 487 | fix | [doc](487_phg_fix_sac_memory_leak_and_dedup.md) | SAC メモリリーク防止 (gc.collect/model del) + 重複削減 (create_env_from_config/create_sac_model 統合) + P0 sidecar attribution 可観測性 |
 
 ---
 
