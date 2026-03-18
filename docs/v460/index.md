@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-19 (482# SAC 100K×4シード結果 + Seed456デプロイ)
+> 最終更新: 2026-03-19 (482# SAC深掘り分析 + 481#ドキュメント補完)
 
 ---
 
@@ -509,7 +509,8 @@
 | 478 | rev | [478_phg_rev_477_improvements_and_fill_suppression_review.md](478_phg_rev_477_improvements_and_fill_suppression_review.md) | 475-477改善レビュー: コホート混在・条件付き確率構造・資本制約の見落とし |
 | 479 | rev | [479_phg_rev_474_478_feasibility_and_liquidity_paradox.md](479_phg_rev_474_478_feasibility_and_liquidity_paradox.md) | Liquidity Paradox 仮説: 価格フィージビリティ制約が真の主犯という立論 |
 | 480 | verify | [480_phg_verify_478_479_review_claims.md](480_phg_verify_478_479_review_claims.md) | 478/479レビュー検証 + veto閾値8.0bps + min_spread 700JPY 段階緩和 |
-| 482 | impl | [482_phg_impl_sac_100k_vr02_results_and_deploy.md](482_phg_impl_sac_100k_vr02_results_and_deploy.md) | SAC 100K×4シード最終結果 + Seed456 bestデプロイ |
+| 481 | fix | [481_phg_fix_veto_spread_nfq_log.md](481_phg_fix_veto_spread_nfq_log.md) | veto 6→8bps + min_spread 1000→700 + NFQ log reason tag |
+| 482 | impl | [482_phg_impl_sac_100k_vr02_results_and_deploy.md](482_phg_impl_sac_100k_vr02_results_and_deploy.md) | SAC 100K×4シード最終結果 + Seed456 bestデプロイ + 深掘り分析 |
 
 ---
 
