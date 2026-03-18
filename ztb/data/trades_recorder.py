@@ -131,6 +131,15 @@ class TradesRecorder:
     def total_written(self) -> int:
         return self._total_written
 
+    def snapshot_stats(self) -> dict[str, int]:
+        """軽量な in-memory 状態を返す."""
+        return {
+            "buffer_size": len(self._buffer),
+            "seen_keys": len(self._seen_keys),
+            "total_written": self._total_written,
+            "flush_fail_count": self._flush_fail_count,
+        }
+
     def record_trades(
         self,
         trades: list[dict[str, object]],
@@ -257,3 +266,17 @@ class TradesRecorder:
         self._buffer_max_key = None
         self._last_flush = time.time()
         return n
+
+    def shutdown(self) -> int:
+        """終了時 flush と transient buffer 解放をまとめて行う."""
+        flushed = self.flush()
+        if self._buffer:
+            logger.warning(
+                "Trades recorder: dropping %d buffered trades during shutdown",
+                len(self._buffer),
+            )
+        self._buffer.clear()
+        self._seen_keys.clear()
+        self._buffer_max_key = None
+        self._flush_fail_count = 0
+        return flushed

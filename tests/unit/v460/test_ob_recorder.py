@@ -62,6 +62,15 @@ class TestOBRecorderBasic:
         assert rec.total_written == 2
         assert rec.buffer_size == 0
 
+    def test_snapshot_stats_reports_buffer_and_failures(self) -> None:
+        rec = OBRecorder(enabled=True)
+        rec.record([[100, 1.0]], [[101, 1.0]], timestamp=1000.0)
+        assert rec.snapshot_stats() == {
+            "buffer_size": 1,
+            "total_written": 0,
+            "flush_fail_count": 0,
+        }
+
     def test_record_preserves_zero_timestamp(self) -> None:
         rec = OBRecorder(enabled=True)
         rec.record([[100, 1.0]], [[101, 1.0]], timestamp=0.0)
@@ -142,6 +151,14 @@ class TestOBRecorderAutoFlush:
         # バッファは flush されているはず
         assert rec.buffer_size == 0
         assert rec.total_written == 1
+
+    def test_shutdown_clears_buffer_after_flush_failure(self) -> None:
+        rec = OBRecorder(enabled=True)
+        rec.record([[100, 1.0]], [[101, 1.0]], timestamp=1000.0)
+        with patch("scripts.v460.lib.ob_recorder.append_jsonl_gz", side_effect=OSError("disk full")):
+            rec.shutdown()
+        assert rec.buffer_size == 0
+        assert rec.snapshot_stats()["flush_fail_count"] == 0
 
 
 class TestOBRecorderFormat:

@@ -47,6 +47,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "buy_dynamic_kill_enabled",
     "cross_venue_lead_lag_enabled",
     "cross_venue_lead_lag_veto_enabled",
+    "cross_venue_lead_lag_veto_threshold_bps",
     "cross_venue_microprice_enabled",
     "cross_venue_depth_imbalance_enabled",
     "buy_dynamic_kill_inv_relaxation_enabled",

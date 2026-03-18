@@ -200,6 +200,25 @@ def _collect_runner_buffer_stats(runner: object) -> dict[str, int | None]:
             except TypeError:
                 stats["unsaved_batch_count"] = None
 
+    for attr_name, prefix in (
+        ("_ob_recorder", "ob_recorder"),
+        ("_trades_recorder", "trades_recorder"),
+    ):
+        recorder = getattr(runner, attr_name, None)
+        snapshot = getattr(recorder, "snapshot_stats", None)
+        if callable(snapshot):
+            try:
+                recorder_stats = snapshot()
+            except Exception as exc:
+                logger.debug("%s snapshot_stats failed: %s", attr_name, exc, exc_info=True)
+            else:
+                if isinstance(recorder_stats, dict):
+                    for key, value in recorder_stats.items():
+                        if isinstance(value, bool):
+                            continue
+                        if isinstance(value, int):
+                            stats[f"{prefix}_{key}"] = value
+
     return stats
 
 

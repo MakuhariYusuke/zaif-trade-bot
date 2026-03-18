@@ -88,9 +88,10 @@ class TestLockManagerConflict:
             lock_stale_heartbeat_sec=60.0,
             lock_acquire_retries=2,
         )
-        mgr.acquire()
-        assert lock_path.exists()
-        mgr.release()
+        with patch.object(mgr, "_check_running_fill_test", return_value=None):
+            mgr.acquire()
+            assert lock_path.exists()
+            mgr.release()
 
 
 # ======================================================================

@@ -358,8 +358,8 @@ class TestYAMLIntegrity190:
         return copy.deepcopy(v460_fill_test_yaml_base)
 
     def test_min_spread_jpy_reduced(self, yaml_config: dict) -> None:
-        """190# C: min_spread_jpy が 1200→1000 に更新."""
-        assert yaml_config.get("min_spread_jpy") == 1000
+        """190# C: min_spread_jpy が現行 YAML の緩和値に追随している."""
+        assert yaml_config.get("min_spread_jpy") == 700
 
     def test_pnl_threshold_relaxed(self, yaml_config: dict) -> None:
         """190# D: pnl_threshold が 0.0→-0.5 に更新."""

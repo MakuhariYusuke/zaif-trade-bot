@@ -5718,3 +5718,13 @@ python scripts/unified_trainer.py \
   - validation:
     - `tests/unit/utils/test_advanced_csv.py tests/unit/training/test_diverse_learning_methods.py -q --no-cov --tb=short`
     - `4 passed in 3.18s`
+- 2026-03-19: hardened fill-test shutdown memory cleanup and removed environment-dependent lock test failures.
+  - added `snapshot_stats()` / `shutdown()` to `scripts/v460/lib/ob_recorder.py` and `ztb/data/trades_recorder.py` so exit-time cleanup can both flush and explicitly drop transient buffers
+  - updated `scripts/v460/lib/orchestrator_lifecycle.py` to use recorder `shutdown()` on `_cleanup_sync()`
+  - extended `scripts/v460/lib/fill_test_cli.py` exit diagnostics to include recorder buffer stats via `snapshot_stats()`
+  - made lock-manager tests environment-independent by disabling real `run_fill_test` process scanning in the affected test scopes
+  - aligned YAML drift/integrity expectations with current config (`min_spread_jpy=700`, `cross_venue_lead_lag_veto_threshold_bps` as intentional override)
+  - re-verified with:
+    - focused regression bundle: `133 passed in 34.69s`
+    - focused lock/source follow-up: `4 passed, 294 deselected in 3.84s`
+    - filtered broad `tests/unit/v460/`: `4993 passed, 2 skipped, 13 warnings in 41.57s`

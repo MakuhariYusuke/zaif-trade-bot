@@ -120,6 +120,18 @@ class TestTradesRecorderBasic:
         assert rec.total_written == 2
         assert rec.buffer_size == 0
 
+    def test_snapshot_stats_reports_buffer_and_failures(self) -> None:
+        rec = TradesRecorder(enabled=True)
+        rec.record_trades([
+            {"ts": 1000.0, "price": 14500000.0, "amount": 0.01, "side": "buy"},
+        ])
+        assert rec.snapshot_stats() == {
+            "buffer_size": 1,
+            "seen_keys": 1,
+            "total_written": 0,
+            "flush_fail_count": 0,
+        }
+
 
 class TestTradesRecorderDedup:
     """TradesRecorder の重複排除."""
@@ -166,6 +178,16 @@ class TestTradesRecorderFlush:
         assert data["ts"] == 1000.5
         assert data["price"] == 14500000.0
         assert data["side"] == "buy"
+
+    def test_shutdown_clears_buffer_after_flush_failure(self) -> None:
+        rec = TradesRecorder(enabled=True)
+        rec.record_trades([
+            {"ts": 1000.5, "price": 14500000.0, "amount": 0.01, "side": "buy"},
+        ])
+        with patch("ztb.data.trades_recorder.append_jsonl_gz", side_effect=OSError("disk full")):
+            rec.shutdown()
+        assert rec.buffer_size == 0
+        assert rec.snapshot_stats()["flush_fail_count"] == 0
 
 
 class TestTradesRecorderFromAdapter:

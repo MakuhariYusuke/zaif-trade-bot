@@ -19,6 +19,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 from scripts.v460.lib.adaptation_engine import AdaptationEngine
+from scripts.v460.lib.lock_manager import LockManager
 from scripts.v460.lib.ob_utils import depth_volume, extract_price, extract_size
 from scripts.v460.lib.regime_detector import (
     FillTestRegime,
@@ -667,6 +668,12 @@ class TestStaleOrderCleanup:
 class TestSingleInstanceLock:
     """044# Bug7: 単一起動ロック (lockfile + PID + stale回収)."""
 
+    @pytest.fixture(autouse=True)
+    def _disable_process_scan(self) -> object:
+        """実環境の run_fill_test プロセスに依存しないよう固定する."""
+        with patch.object(LockManager, "_check_running_fill_test", return_value=None):
+            yield
+
     def test_acquire_release_lock_methods_exist(self) -> None:
         """_acquire_lock / _release_lock メソッドが定義されている."""
 
@@ -725,6 +732,12 @@ class TestPreflightSkipLimit:
 
 class TestCleanupSyncImproved:
     """044# A-4: _cleanup_sync の改善テスト."""
+
+    @pytest.fixture(autouse=True)
+    def _disable_process_scan(self) -> object:
+        """実環境の run_fill_test プロセスに依存しないよう固定する."""
+        with patch.object(LockManager, "_check_running_fill_test", return_value=None):
+            yield
 
     def test_cleanup_releases_lock(self, tmp_path: "Path") -> None:
         """_cleanup_sync がロックファイルを解放する."""

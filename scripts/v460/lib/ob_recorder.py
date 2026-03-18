@@ -123,6 +123,14 @@ class OBRecorder:
     def total_written(self) -> int:
         return self._total_written
 
+    def snapshot_stats(self) -> dict[str, int]:
+        """軽量な in-memory 状態を返す."""
+        return {
+            "buffer_size": len(self._buffer),
+            "total_written": self._total_written,
+            "flush_fail_count": self._flush_fail_count,
+        }
+
     def record(
         self,
         bids: object,
@@ -197,3 +205,15 @@ class OBRecorder:
         self._buffer.clear()
         self._last_flush = time.time()
         return n
+
+    def shutdown(self) -> int:
+        """終了時 flush と transient buffer 解放をまとめて行う."""
+        flushed = self.flush()
+        if self._buffer:
+            logger.warning(
+                "OB recorder: dropping %d buffered snapshots during shutdown",
+                len(self._buffer),
+            )
+            self._buffer.clear()
+        self._flush_fail_count = 0
+        return flushed

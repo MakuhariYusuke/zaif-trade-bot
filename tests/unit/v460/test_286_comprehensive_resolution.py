@@ -15,8 +15,8 @@
 from __future__ import annotations
 
 import ast
-import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -49,72 +49,69 @@ class TestLockManagerPortalocker:
 
     def test_lock_manager_has_os_lock_attribute(self):
         """LockManager に _os_lock_fh 属性があること."""
-        with tempfile.TemporaryDirectory() as td:
-            mgr = LockManager(Path(td), "test_run_id")
-            assert hasattr(mgr, "_os_lock_fh")
-            assert mgr._os_lock_fh is None
+        mgr = LockManager(Path("dummy"), "test_run_id")
+        assert hasattr(mgr, "_os_lock_fh")
+        assert mgr._os_lock_fh is None
 
-    def test_acquire_release_roundtrip(self):
+    def test_acquire_release_roundtrip(self, tmp_path: Path):
         """acquire → release のラウンドトリップが正常動作すること."""
-        with tempfile.TemporaryDirectory() as td:
-            mgr = LockManager(Path(td), "roundtrip_test")
+        mgr = LockManager(tmp_path, "roundtrip_test")
+        with patch.object(mgr, "_check_running_fill_test", return_value=None):
             mgr.acquire()
             mgr.release()
 
-    def test_lock_conflict_second_acquire(self):
+    def test_lock_conflict_second_acquire(self, tmp_path: Path):
         """2つ目の LockManager が acquire すると LockConflictError."""
-        with tempfile.TemporaryDirectory() as td:
-            mgr1 = LockManager(Path(td), "first_run")
+        mgr1 = LockManager(tmp_path, "first_run")
+        with patch.object(mgr1, "_check_running_fill_test", return_value=None):
             mgr1.acquire()
-            try:
-                mgr2 = LockManager(
-                    Path(td), "second_run",
-                    lock_acquire_retries=0,
-                )
+        try:
+            mgr2 = LockManager(
+                tmp_path, "second_run",
+                lock_acquire_retries=0,
+            )
+            with patch.object(mgr2, "_check_running_fill_test", return_value=None):
                 with pytest.raises(LockConflictError):
                     mgr2.acquire()
-            finally:
-                mgr1.release()
+        finally:
+            mgr1.release()
 
-    def test_wait_for_pid_exit_nonexistent_pid(self):
+    def test_wait_for_pid_exit_nonexistent_pid(self, tmp_path: Path):
         """_wait_for_pid_exit に存在しない PID → 即座に完了 (例外なし)."""
-        with tempfile.TemporaryDirectory() as td:
-            mgr = LockManager(Path(td), "wait_test")
-            mgr._wait_for_pid_exit(999999999)  # Should not raise
+        mgr = LockManager(tmp_path, "wait_test")
+        mgr._wait_for_pid_exit(999999999)  # Should not raise
 
     def test_portalocker_import_flag(self):
         """portalocker インポートフラグが設定されていること."""
         assert isinstance(_HAS_PORTALOCKER, bool)
 
-    def test_check_running_fill_test_blocks_duplicate(self):
+    def test_check_running_fill_test_blocks_duplicate(self, tmp_path: Path):
         """469#: 別 run_fill_test プロセスが存在すると LockConflictError."""
         import unittest.mock as mock
 
-        with tempfile.TemporaryDirectory() as td:
-            mgr = LockManager(Path(td), "dup_test")
-            fake_proc = mock.MagicMock()
-            fake_proc.info = {
-                "pid": 99999,
-                "cmdline": ["python", "-m", "scripts.v460.run_fill_test"],
-            }
-            with mock.patch("psutil.process_iter", return_value=[fake_proc]):
-                with pytest.raises(LockConflictError, match="run_fill_test"):
-                    mgr._check_running_fill_test()
+        mgr = LockManager(tmp_path, "dup_test")
+        fake_proc = mock.MagicMock()
+        fake_proc.info = {
+            "pid": 99999,
+            "cmdline": ["python", "-m", "scripts.v460.run_fill_test"],
+        }
+        with mock.patch("psutil.process_iter", return_value=[fake_proc]):
+            with pytest.raises(LockConflictError, match="run_fill_test"):
+                mgr._check_running_fill_test()
 
-    def test_check_running_fill_test_ignores_self(self):
+    def test_check_running_fill_test_ignores_self(self, tmp_path: Path):
         """469#: 自プロセス PID は無視すること."""
         import os
         import unittest.mock as mock
 
-        with tempfile.TemporaryDirectory() as td:
-            mgr = LockManager(Path(td), "self_test")
-            fake_proc = mock.MagicMock()
-            fake_proc.info = {
-                "pid": os.getpid(),
-                "cmdline": ["python", "-m", "scripts.v460.run_fill_test"],
-            }
-            with mock.patch("psutil.process_iter", return_value=[fake_proc]):
-                mgr._check_running_fill_test()  # Should NOT raise
+        mgr = LockManager(tmp_path, "self_test")
+        fake_proc = mock.MagicMock()
+        fake_proc.info = {
+            "pid": os.getpid(),
+            "cmdline": ["python", "-m", "scripts.v460.run_fill_test"],
+        }
+        with mock.patch("psutil.process_iter", return_value=[fake_proc]):
+            mgr._check_running_fill_test()  # Should NOT raise
 
 
 # ======================================================================

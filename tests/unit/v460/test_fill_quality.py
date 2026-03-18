@@ -42,6 +42,7 @@ from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
 from scripts.v460.run_gate_check import run_g1_1
 from tests.unit.v460._fill_test_source import (
     MAKER_PRICE,
+    read_fill_test_method_source,
     ORCHESTRATOR_BALANCE,
     read_fill_test_runner_source,
     read_inspect_source,
@@ -2361,6 +2362,12 @@ class TestAtomicLock:
         with patch.object(LockManager, "_acquire_os_lock", return_value=None):
             yield
 
+    @pytest.fixture(autouse=True)
+    def _disable_process_scan(self) -> object:
+        """実環境の run_fill_test プロセスに依存しないよう固定する."""
+        with patch.object(LockManager, "_check_running_fill_test", return_value=None):
+            yield
+
     def _make_lock_manager(self, tmp_path: Path) -> LockManager:
         results_dir = tmp_path / "results"
         results_dir.mkdir(parents=True, exist_ok=True)
@@ -2666,7 +2673,7 @@ class Test050EffectiveOffsetRecord:
     def test_run_single_cycle_unpacks_3_values(self) -> None:
         """run_single_cycle が 3 値展開を行う."""
 
-        source = read_inspect_source(FillTestRunner.run_single_cycle)
+        source = read_fill_test_method_source("run_single_cycle")
         assert "effective_offset_ratio" in source
 
 

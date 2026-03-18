@@ -6946,3 +6946,56 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 ### 見立て
 - `advanced_csv` は既に bounded だったが、明示 clear/stats がなかったため長寿命プロセス視点では扱いにくかった
 - `diverse_learning_methods.results_cache` は未使用寄りだったが、将来利用時の unbounded growth を避けるため先回りで bounded 化した
+
+## 2026-03-19 追加 wave: fill_test shutdown cleanup + 環境依存 lock test 解消
+
+### 実施
+- [ob_recorder.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/ob_recorder.py)
+  - `snapshot_stats()`
+  - `shutdown()`
+  を追加
+- [trades_recorder.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/data/trades_recorder.py)
+  - `snapshot_stats()`
+  - `shutdown()`
+  を追加
+- [orchestrator_lifecycle.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/orchestrator_lifecycle.py)
+  - `_cleanup_sync()` で recorder `flush()` ではなく `shutdown()` を使うように変更
+- [fill_test_cli.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_test_cli.py)
+  - exit diagnostics の `runner_buffer_stats` に `ob_recorder` / `trades_recorder` の `snapshot_stats()` を追加
+- テスト追随
+  - [test_166_hotfixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_166_hotfixes.py)
+  - [test_286_comprehensive_resolution.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_286_comprehensive_resolution.py)
+  - [test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py)
+  - [test_regime_detector.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_regime_detector.py)
+  - 実環境で生存している `run_fill_test` プロセスに影響されないよう、lock test を環境非依存に整理
+- YAML/ドリフト追随
+  - [test_190_ev_weighted_safety.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_190_ev_weighted_safety.py)
+  - [test_336_yaml_code_drift_prevention.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_336_yaml_code_drift_prevention.py)
+  - 現行 `fill_test.yaml` に合わせて `min_spread_jpy=700` と `cross_venue_lead_lag_veto_threshold_bps` override を反映
+
+### テスト
+- [test_fill_test_cli_diagnostics.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_test_cli_diagnostics.py)
+  - recorder stats の出力を追加確認
+- [test_ob_recorder.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ob_recorder.py)
+  - `snapshot_stats()` / `shutdown()` 契約を追加
+- [test_135_trades_and_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_135_trades_and_gate.py)
+  - `TradesRecorder.snapshot_stats()` / `shutdown()` 契約を追加
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_166_hotfixes.py tests/unit/v460/test_286_comprehensive_resolution.py tests/unit/v460/test_190_ev_weighted_safety.py tests/unit/v460/test_336_yaml_code_drift_prevention.py tests/unit/v460/test_fill_test_cli_diagnostics.py tests/unit/v460/test_ob_recorder.py tests/unit/v460/test_135_trades_and_gate.py -q --no-cov --tb=short`
+  - `133 passed in 34.69s`
+- focused:
+  - `tests/unit/v460/test_fill_quality.py -k TestAtomicLock tests/unit/v460/test_regime_detector.py -k 'TestSingleInstanceLock or TestCleanupSyncImproved' -q --no-cov --tb=short`
+  - `4 passed, 294 deselected in 3.84s`
+- focused:
+  - `tests/unit/v460/test_fill_quality.py::Test050EffectiveOffsetRecord::test_run_single_cycle_unpacks_3_values -q --no-cov --tb=short`
+  - `1 passed in 4.58s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20 --ignore=tests/unit/v460/test_152_parallel_tasks.py --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py`
+  - `4993 passed, 2 skipped, 13 warnings in 41.57s`
+
+### 見立て
+- 今回の leak 対策は「大きな transient buffer を shutdown 時に残さない」「残量を exit diagnostics で観測できるようにする」方向
+- broad failure の主因だった `LockManager` は、本体不具合ではなく実環境で走っている `run_fill_test` を test が拾っていたことだった
+- これで fill_test 経路の belt-and-suspenders 対策を継続しやすい状態に戻せた

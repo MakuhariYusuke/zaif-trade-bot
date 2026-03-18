@@ -492,7 +492,7 @@ class OrchestratorLifecycleMixin:
         """
         # 129# OB recorder: バッファ残を書き出し
         try:
-            n = self._ob_recorder.flush()
+            n = self._ob_recorder.shutdown()
             if n:
                 logger.info(f"OB recorder: flushed {n} snapshots on exit")
         except Exception as e:
@@ -500,7 +500,7 @@ class OrchestratorLifecycleMixin:
 
         # 135# P0-04: trades recorder 最終 flush
         try:
-            n_tr = self._trades_recorder.flush()
+            n_tr = self._trades_recorder.shutdown()
             if n_tr:
                 logger.info(f"Trades recorder: flushed {n_tr} trades on exit")
         except Exception as e:

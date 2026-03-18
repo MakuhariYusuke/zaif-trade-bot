@@ -96,6 +96,12 @@ class TestExitDiagnostics:
         runner = SimpleNamespace(
             _recent_records=[1, 2, 3],
             _batch_persistence=SimpleNamespace(unsaved_batch=["a", "b"]),
+            _ob_recorder=SimpleNamespace(
+                snapshot_stats=lambda: {"buffer_size": 4, "total_written": 11},
+            ),
+            _trades_recorder=SimpleNamespace(
+                snapshot_stats=lambda: {"buffer_size": 5, "flush_fail_count": 1},
+            ),
             _health_monitor=SimpleNamespace(
                 snapshot_memory_diagnostics=lambda: {"last_pressure_gc_collected": 9},
             ),
@@ -119,6 +125,10 @@ class TestExitDiagnostics:
             "recent_records_count": 3,
             "recent_records_maxlen": None,
             "unsaved_batch_count": 2,
+            "ob_recorder_buffer_size": 4,
+            "ob_recorder_total_written": 11,
+            "trades_recorder_buffer_size": 5,
+            "trades_recorder_flush_fail_count": 1,
         }
         assert payload["ml_cache_stats"] == {"total_ml_cache_entries": 5}
         assert payload["health_monitor"] == {"last_pressure_gc_collected": 9}
