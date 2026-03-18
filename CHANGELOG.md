@@ -5728,3 +5728,14 @@ python scripts/unified_trainer.py \
     - focused regression bundle: `133 passed in 34.69s`
     - focused lock/source follow-up: `4 passed, 294 deselected in 3.84s`
     - filtered broad `tests/unit/v460/`: `4993 passed, 2 skipped, 13 warnings in 41.57s`
+- 2026-03-19: extended shared cleanup coverage for SAC/ML caches and added fill-test sidecar cache cleanup/diagnostics.
+  - updated [scripts/v460/ml/cache_cleanup.py] to clear/report `ztb/io/advanced_csv.py` cache alongside fill-record and raw-load caches
+  - updated [scripts/v460/lib/sidecar_signal_io.py] to make sidecar mtime cache bounded/clearable and expose lightweight cache stats
+  - updated [scripts/v460/lib/orchestrator_lifecycle.py] to clear the sidecar cache on `_cleanup_sync()`
+  - updated [scripts/v460/lib/fill_test_cli.py] exit diagnostics to include `sidecar_cache_stats`
+  - hardened [scripts/v460/lib/sac_common.py] cleanup to detach `replay_buffer` / `env` references before GC and opportunistically clear CUDA allocator cache
+  - trimmed a small `gate_check` hotspot by reusing cached tiny feature DataFrames in `tests/unit/v460/test_gate_check.py`
+  - re-verified with:
+    - focused cleanup/diagnostics bundle: `75 passed, 204 deselected in 6.19s`
+    - focused SAC/gate bundle: `6 passed, 60 deselected in 2.60s`
+    - filtered broad `tests/unit/v460/`: `4996 passed, 2 skipped, 13 warnings in 33.77s`

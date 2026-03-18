@@ -382,12 +382,17 @@ def cleanup_training_resources(
     """
     import gc
 
-    # 1. モデルを先に解放 (env への参照を切る)
+    # 1. モデルを先に解放 (env / replay buffer への参照を切る)
     if models:
         for m in models:
             if m is not None:
                 try:
-                    del m
+                    if hasattr(m, "replay_buffer"):
+                        setattr(m, "replay_buffer", None)
+                    if hasattr(m, "env"):
+                        setattr(m, "env", None)
+                    if hasattr(m, "_vec_normalize_env"):
+                        setattr(m, "_vec_normalize_env", None)
                 except Exception:
                     pass
 
@@ -404,9 +409,22 @@ def cleanup_training_resources(
                 except Exception:
                     pass
 
-    # 4. 循環参照を破壊
+    # 4. CUDA allocator / 循環参照を回収
+    cuda_cache_cleared = False
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            cuda_cache_cleared = True
+    except Exception:
+        pass
+
     gc.collect()
-    logger.debug("cleanup_training_resources: gc.collect() completed")
+    logger.debug(
+        "cleanup_training_resources: gc.collect() completed (cuda_cache_cleared=%s)",
+        cuda_cache_cleared,
+    )
 
 
 # ════════════════════════════════════════════════════════════════

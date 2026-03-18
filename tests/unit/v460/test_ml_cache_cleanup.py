@@ -18,18 +18,24 @@ class TestMlCacheCleanup:
         ), patch(
             "scripts.v460.ml.cache_cleanup.get_raw_load_cache_stats",
             return_value={"orderbook_cache_entries": 3, "trades_cache_entries": 4},
+        ), patch(
+            "scripts.v460.ml.cache_cleanup.get_read_csv_cache_stats",
+            return_value={"entries": 5},
         ):
             stats = get_ml_data_cache_stats()
 
         assert stats["fill_records_cache_entries"] == 2
         assert stats["orderbook_cache_entries"] == 3
         assert stats["trades_cache_entries"] == 4
-        assert stats["total_ml_cache_entries"] == 9
+        assert stats["advanced_csv_cache_entries"] == 5
+        assert stats["total_ml_cache_entries"] == 14
 
     def test_clear_ml_data_caches_runs_gc_when_requested(self) -> None:
         with patch("scripts.v460.ml.cache_cleanup.clear_fill_records_cache") as clear_fill, patch(
             "scripts.v460.ml.cache_cleanup.clear_raw_load_caches",
         ) as clear_raw, patch(
+            "scripts.v460.ml.cache_cleanup.clear_read_csv_cache",
+        ) as clear_csv, patch(
             "scripts.v460.ml.cache_cleanup.get_ml_data_cache_stats",
             return_value={"total_ml_cache_entries": 0},
         ), patch(
@@ -40,6 +46,7 @@ class TestMlCacheCleanup:
 
         clear_fill.assert_called_once()
         clear_raw.assert_called_once()
+        clear_csv.assert_called_once()
         assert stats["gc_collected"] == 11
 
     def test_clear_ml_data_caches_with_log_emits_info_for_non_empty_stats(self) -> None:

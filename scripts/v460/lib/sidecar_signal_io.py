@@ -15,6 +15,7 @@ atomic write/read で安全にやり取りする。
 
 from __future__ import annotations
 
+from collections import OrderedDict
 import json
 import logging
 import os
@@ -32,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 # デフォルトのシグナルファイルパス
 DEFAULT_SIGNAL_PATH = Path("cache/sidecar_signal.json")
+_SIDECAR_CACHE_MAX_ENTRIES = 8
 
 
 def write_sidecar_signal(
@@ -80,7 +82,30 @@ def write_sidecar_signal(
     return path
 
 
-_SIDECAR_CACHE: dict[str, tuple[float, SidecarSignal | None]] = {}
+_SIDECAR_CACHE: OrderedDict[str, tuple[float, SidecarSignal | None]] = OrderedDict()
+
+
+def clear_sidecar_signal_cache() -> None:
+    """mtime ベースの sidecar 読み込みキャッシュを空にする."""
+    _SIDECAR_CACHE.clear()
+
+
+def get_sidecar_signal_cache_stats() -> dict[str, int]:
+    """sidecar signal キャッシュの軽量診断情報."""
+    return {
+        "entries": len(_SIDECAR_CACHE),
+        "max_entries": _SIDECAR_CACHE_MAX_ENTRIES,
+    }
+
+
+def _store_sidecar_cache(
+    abs_path: str,
+    entry: tuple[float, SidecarSignal | None],
+) -> None:
+    _SIDECAR_CACHE[abs_path] = entry
+    _SIDECAR_CACHE.move_to_end(abs_path)
+    while len(_SIDECAR_CACHE) > _SIDECAR_CACHE_MAX_ENTRIES:
+        _SIDECAR_CACHE.popitem(last=False)
 
 def read_sidecar_signal(
     path: Path | str = DEFAULT_SIGNAL_PATH,
@@ -118,6 +143,7 @@ def read_sidecar_signal(
     # キャッシュチェック
     if abs_path in _SIDECAR_CACHE:
         cached_mtime, cached_signal = _SIDECAR_CACHE[abs_path]
+        _SIDECAR_CACHE.move_to_end(abs_path)
         if mtime == cached_mtime:
             # TTL は動的 (時間経過) なので、キャッシュヒットしても都度チェック
             if cached_signal is not None and ttl_sec > 0:
@@ -135,14 +161,14 @@ def read_sidecar_signal(
         return None
     except (json.JSONDecodeError, OSError) as e:
         logger.warning(f"Sidecar signal read error: {e}")
-        _SIDECAR_CACHE[abs_path] = (mtime, None)
+        _store_sidecar_cache(abs_path, (mtime, None))
         return None
 
     try:
         signal = _dict_to_signal(data)
     except (KeyError, ValueError, TypeError) as e:
         logger.warning(f"Sidecar signal parse error: {e}")
-        _SIDECAR_CACHE[abs_path] = (mtime, None)
+        _store_sidecar_cache(abs_path, (mtime, None))
         return None
 
     # 初回パース時の TTL チェック
@@ -151,11 +177,11 @@ def read_sidecar_signal(
             f"Sidecar signal stale: timestamp={signal.timestamp}, "
             f"ttl={ttl_sec}s exceeded"
         )
-        _SIDECAR_CACHE[abs_path] = (mtime, None)
+        _store_sidecar_cache(abs_path, (mtime, None))
         return None
 
     # キャッシュ更新
-    _SIDECAR_CACHE[abs_path] = (mtime, signal)
+    _store_sidecar_cache(abs_path, (mtime, signal))
     return signal
 
 

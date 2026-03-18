@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from scripts.v460.lib.tasks.sac_train import _train_with_checkpoints
+from scripts.v460.lib.sac_common import cleanup_training_resources
 from ztb.trading.environment.components.calculators.reward_calculator import (
     RewardCalculator,
 )
@@ -80,6 +81,30 @@ class TestF6OOSBestCheckpoint:
         # Both should be keyword-only
         assert params["oos_eval_env"].kind == inspect.Parameter.KEYWORD_ONLY
         assert params["best_model_path"].kind == inspect.Parameter.KEYWORD_ONLY
+
+
+class TestSACCleanupTrainingResources:
+    def test_cleanup_detaches_model_buffers_and_runs_gc(self) -> None:
+        model = MagicMock()
+        model.replay_buffer = object()
+        model.env = object()
+        model._vec_normalize_env = object()
+        env = MagicMock()
+
+        with patch("gc.collect", return_value=7) as mock_gc:
+            cleanup_training_resources(models=[model], envs=[env], dataframes=[pd.DataFrame({"x": [1]})])
+
+        assert model.replay_buffer is None
+        assert model.env is None
+        assert model._vec_normalize_env is None
+        env.close.assert_called_once()
+        mock_gc.assert_called_once()
+
+    def test_cleanup_ignores_missing_torch(self) -> None:
+        model = MagicMock()
+
+        with patch.dict("sys.modules", {"torch": None}), patch("gc.collect", return_value=3):
+            cleanup_training_resources(models=[model], envs=[], dataframes=[])
 
 
 # ======================================================================

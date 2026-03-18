@@ -506,6 +506,14 @@ class OrchestratorLifecycleMixin:
         except Exception as e:
             logger.error(f"Trades recorder final flush failed: {e}")
 
+        # sidecar signal mtime cache も終了時に破棄
+        try:
+            from scripts.v460.lib.sidecar_signal_io import clear_sidecar_signal_cache
+
+            clear_sidecar_signal_cache()
+        except Exception as e:
+            logger.debug("Sidecar signal cache cleanup failed: %s", e, exc_info=True)
+
         # 未保存バッチの退避
         unsaved = self._batch_persistence.unsaved_batch
         if unsaved:

@@ -116,6 +116,9 @@ class TestExitDiagnostics:
         ), patch(
             "scripts.v460.ml.cache_cleanup.get_ml_data_cache_stats",
             return_value={"total_ml_cache_entries": 5},
+        ), patch(
+            "scripts.v460.lib.sidecar_signal_io.get_sidecar_signal_cache_stats",
+            return_value={"entries": 1, "max_entries": 8},
         ):
             payload = _collect_fill_test_memory_diagnostics(runner)
 
@@ -131,4 +134,5 @@ class TestExitDiagnostics:
             "trades_recorder_flush_fail_count": 1,
         }
         assert payload["ml_cache_stats"] == {"total_ml_cache_entries": 5}
+        assert payload["sidecar_cache_stats"] == {"entries": 1, "max_entries": 8}
         assert payload["health_monitor"] == {"last_pressure_gc_collected": 9}

@@ -46,6 +46,7 @@ class _ExitDiagnosticsRow(TypedDict, total=False):
     gc_counts: list[int]
     gc_thresholds: list[int]
     ml_cache_stats: dict[str, int]
+    sidecar_cache_stats: dict[str, int]
     runner_buffer_stats: dict[str, int | None]
     health_monitor: dict[str, int | float | list[int]]
 
@@ -250,6 +251,13 @@ def _collect_fill_test_memory_diagnostics(runner: object) -> dict[str, object]:
         payload["ml_cache_stats"] = get_ml_data_cache_stats()
     except Exception as exc:
         logger.debug("ml cache diagnostics snapshot failed: %s", exc, exc_info=True)
+
+    try:
+        from scripts.v460.lib.sidecar_signal_io import get_sidecar_signal_cache_stats
+
+        payload["sidecar_cache_stats"] = get_sidecar_signal_cache_stats()
+    except Exception as exc:
+        logger.debug("sidecar cache diagnostics snapshot failed: %s", exc, exc_info=True)
 
     return payload
 

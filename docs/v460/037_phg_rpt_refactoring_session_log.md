@@ -6999,3 +6999,51 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - 今回の leak 対策は「大きな transient buffer を shutdown 時に残さない」「残量を exit diagnostics で観測できるようにする」方向
 - broad failure の主因だった `LockManager` は、本体不具合ではなく実環境で走っている `run_fill_test` を test が拾っていたことだった
 - これで fill_test 経路の belt-and-suspenders 対策を継続しやすい状態に戻せた
+
+## 2026-03-19 追加 wave: shared cache cleanup 拡張 + sidecar cache cleanup
+
+### 実施
+- [cache_cleanup.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/cache_cleanup.py)
+  - `ztb/io/advanced_csv.py` の read cache を shared cleanup/stats へ追加
+- [sidecar_signal_io.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/sidecar_signal_io.py)
+  - sidecar mtime cache を bounded `OrderedDict` 化
+  - `clear_sidecar_signal_cache()`
+  - `get_sidecar_signal_cache_stats()`
+  を追加
+- [orchestrator_lifecycle.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/orchestrator_lifecycle.py)
+  - `_cleanup_sync()` で sidecar signal cache を clear
+- [fill_test_cli.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_test_cli.py)
+  - exit diagnostics に `sidecar_cache_stats` を追加
+- [sac_common.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/sac_common.py)
+  - `cleanup_training_resources(...)` で `replay_buffer` / `env` / `_vec_normalize_env` 参照を切ってから GC
+  - CUDA 利用時は `torch.cuda.empty_cache()` を opportunistic に実行
+- [test_gate_check.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_gate_check.py)
+  - G0 test 用の tiny feature DataFrame を module-level cache 化
+
+### テスト
+- [test_ml_cache_cleanup.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ml_cache_cleanup.py)
+  - `advanced_csv_cache_entries` を shared stats に追加確認
+- [test_fill_test_cli_diagnostics.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_test_cli_diagnostics.py)
+  - `sidecar_cache_stats` 出力を追加確認
+- [test_sidecar_sac_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_sidecar_sac_integration.py)
+  - sidecar cache stats/clear の focused 回帰を追加
+- [test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py)
+  - `_cleanup_sync()` が sidecar cache cleanup を呼ぶことを確認
+- [test_408_f_series_blindspot.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_408_f_series_blindspot.py)
+  - `cleanup_training_resources(...)` が model refs を切って GC まで進むことを確認
+
+### 検証
+- focused:
+  - `tests/unit/v460/test_ml_cache_cleanup.py tests/unit/v460/test_fill_test_cli_diagnostics.py tests/unit/v460/test_sidecar_sac_integration.py tests/unit/v460/test_fill_quality.py -k 'cleanup_sync_saves_unsaved_batch or cache or diagnostics or sidecar' -q --no-cov`
+  - `75 passed, 204 deselected in 6.19s`
+- focused:
+  - `tests/unit/v460/test_408_f_series_blindspot.py tests/unit/v460/test_gate_check.py -k 'cleanup_training_resources or g0_' -q --no-cov`
+  - `6 passed, 60 deselected in 2.60s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --durations=20 --ignore=tests/unit/v460/test_152_parallel_tasks.py --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py`
+  - `4996 passed, 2 skipped, 13 warnings in 33.77s`
+
+### 見立て
+- `advanced_csv` は global cleanup に入れて問題ない module-level cache だった
+- `diverse_learning_methods.results_cache` は instance-local なので global cleanup には混ぜず、bounded のまま維持する判断が妥当
+- fill test 側は recorder だけでなく sidecar cache も終了時 clear することで、長寿命プロセスの残留診断が少し素直になった

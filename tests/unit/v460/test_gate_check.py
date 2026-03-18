@@ -50,6 +50,10 @@ def _make_feature_df(n: int = 100, n_features: int = 10) -> pd.DataFrame:
     return pd.DataFrame(data)
 
 
+_FEATURE_DF_10 = _make_feature_df(16, 10)
+_FEATURE_DF_2 = _make_feature_df(16, 2)
+
+
 def _default_thresholds_g0() -> dict:
     return {"min_feature_columns": 4, "max_nan_ratio": 0.01}
 
@@ -150,7 +154,7 @@ class TestRunG0:
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "abcdef1234567890abcdef1234567890"
         mock_count.return_value = 10
-        mock_load.return_value = _make_feature_df(100, 10)
+        mock_load.return_value = _FEATURE_DF_10
         mock_nan.return_value = {"overall_nan_ratio": 0.001, "pass": True}
         mock_manifest.return_value = _manifest_writer_stub(exists=True)
 
@@ -173,7 +177,7 @@ class TestRunG0:
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "aaaa1111bbbb2222"
         mock_count.return_value = 10
-        mock_load.return_value = _make_feature_df(100, 10)
+        mock_load.return_value = _FEATURE_DF_10
         mock_nan.return_value = {"overall_nan_ratio": 0.0, "pass": True}
         mock_manifest.return_value = _manifest_writer_stub(exists=True)
 
@@ -195,7 +199,7 @@ class TestRunG0:
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "abcdef1234567890"
         mock_count.return_value = 10
-        mock_load.return_value = _make_feature_df(100, 10)
+        mock_load.return_value = _FEATURE_DF_10
         mock_nan.return_value = {"overall_nan_ratio": 0.0, "pass": True}
         mock_manifest.return_value = _manifest_writer_stub(exists=True)
 
@@ -216,7 +220,7 @@ class TestRunG0:
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "abcdef1234567890"
         mock_count.return_value = 2
-        mock_load.return_value = _make_feature_df(100, 2)  # close + 2 feats = 2 feature cols
+        mock_load.return_value = _FEATURE_DF_2
         mock_nan.return_value = {"overall_nan_ratio": 0.0, "pass": True}
         mock_manifest.return_value = _manifest_writer_stub(exists=True)
 
@@ -238,7 +242,7 @@ class TestRunG0:
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "abcdef1234567890"
         mock_count.return_value = 10
-        mock_load.return_value = _make_feature_df(100, 10)
+        mock_load.return_value = _FEATURE_DF_10
         mock_nan.return_value = {"overall_nan_ratio": 0.05, "pass": False}
         mock_manifest.return_value = _manifest_writer_stub(exists=True)
 
@@ -260,7 +264,7 @@ class TestRunG0:
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "abcdef1234567890"
         mock_count.return_value = 10
-        mock_load.return_value = _make_feature_df(100, 10)
+        mock_load.return_value = _FEATURE_DF_10
         mock_nan.return_value = {"overall_nan_ratio": 0.0, "pass": True}
         mock_manifest.return_value = _manifest_writer_stub(exists=False)
 

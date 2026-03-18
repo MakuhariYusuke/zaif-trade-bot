@@ -20,7 +20,9 @@ import pytest
 
 from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator, CycleGateResult
 from scripts.v460.lib.sidecar_signal_io import (
+    clear_sidecar_signal_cache,
     create_neutral_signal,
+    get_sidecar_signal_cache_stats,
     make_timestamp,
     read_sidecar_signal,
     write_sidecar_signal,
@@ -214,6 +216,21 @@ class TestReadSignalErrors:
         p.write_text('{"timestamp": "t"}', encoding="utf-8")  # no directional_bias
         result = read_sidecar_signal(p, ttl_sec=0)
         assert result is None
+
+
+class TestSidecarSignalCache:
+    def test_cache_stats_and_clear(self, tmp_path: Path) -> None:
+        clear_sidecar_signal_cache()
+        out = tmp_path / "sig.json"
+        write_sidecar_signal(create_neutral_signal(), out)
+        assert read_sidecar_signal(out, ttl_sec=0) is not None
+
+        stats = get_sidecar_signal_cache_stats()
+        assert stats["entries"] == 1
+        assert stats["max_entries"] >= 1
+
+        clear_sidecar_signal_cache()
+        assert get_sidecar_signal_cache_stats()["entries"] == 0
 
     def test_invalid_bias_value(self, tmp_path: Path) -> None:
         p = tmp_path / "sig.json"

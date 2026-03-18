@@ -1903,11 +1903,14 @@ class TestFillTestRunnerSaveResilience:
         runner = self._make_cleanup_runner(tmp_path)
         runner._batch_persistence._unsaved_batch = [self._make_record()]
 
-        with patch.object(runner._batch_persistence, "emergency_dump") as mock_dump:
+        with patch.object(runner._batch_persistence, "emergency_dump") as mock_dump, patch(
+            "scripts.v460.lib.sidecar_signal_io.clear_sidecar_signal_cache",
+        ) as mock_clear_sidecar:
             runner._cleanup_sync()
 
         assert runner._batch_persistence.unsaved_batch == []
         mock_dump.assert_called_once()
+        mock_clear_sidecar.assert_called_once()
 
     def test_cleanup_sync_no_unsaved_no_dump(self, tmp_path: Path) -> None:
         """未保存バッチが空なら緊急ダンプは作成されない."""
