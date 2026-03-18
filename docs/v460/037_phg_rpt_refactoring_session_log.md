@@ -7085,3 +7085,46 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - `fill_test_events.jsonl` に memory summary が載るようになったので、実運用の stop/crash 後分析が少しやりやすくなった
 - `load_fill_records` の早期 filter は大きい変更ではないが、run_id 指定系の無駄 work を減らせる
 - 今の broad 上位は、inspection/helper よりも real-data setup と SAC retrain 本体の call が中心になってきている
+
+## 2026-03-19 追加 wave: fill test memory snapshot 拡充 + SAC cleanup helper 共通化
+
+### 実施
+- [fill_test_cli.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_test_cli.py)
+  - `_build_memory_diagnostics_event_details(...)` の重複定義を除去
+  - `memory_diagnostics` event の経路をそのまま維持して、exit diagnostics 実装を整理
+- [resilience.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/resilience.py)
+  - `snapshot_memory_diagnostics()` に `rss_mb` / `cpu_percent` / `threads` を追加
+  - stop/crash 後の event log / exit dump から、その時点のプロセス状態を直接読めるようにした
+- [memory_utils.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/utils/memory_utils.py)
+  - `clear_cuda_cache()` を追加
+  - `cleanup_training_memory(...)` からも同 helper を再利用
+- [sac_common.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/sac_common.py)
+- [sac_trainer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/unified_trainer/algorithms/sac_trainer.py)
+  - CUDA allocator cleanup の小さい重複を `clear_cuda_cache()` に寄せた
+  - `scripts/v460` 側と `ztb` 側で cleanup contract を揃えた
+- [event_logger.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/event_logger.py)
+  - `details` を `dict[str, object] | None` に絞って structured log 契約を明確化
+
+### テスト
+- [test_memory_utils.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/utils/test_memory_utils.py)
+  - `clear_cuda_cache()` の focused 回帰を追加
+- [test_health_monitor_resilience.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_health_monitor_resilience.py)
+  - snapshot に `rss_mb` / `cpu_percent` / `threads` が載ることを確認
+- [test_fill_test_cli_diagnostics.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_test_cli_diagnostics.py)
+  - diagnostics helper 周辺の focused 回帰を維持
+
+### 検証
+- focused:
+  - `tests/unit/utils/test_memory_utils.py tests/unit/v460/test_health_monitor_resilience.py tests/unit/v460/test_fill_test_cli_diagnostics.py -q --no-cov`
+  - `32 passed in 3.07s`
+- focused:
+  - `tests/unit/training/test_sac_trainer.py tests/unit/core/test_logging_and_print_fixes.py -k 'SACTrainer or memory' -q --no-cov`
+  - `19 passed, 9 deselected in 4.00s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --ignore=tests/unit/v460/test_152_parallel_tasks.py --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py`
+  - `4998 passed, 2 skipped, 13 warnings in 39.09s`
+
+### 見立て
+- fill test 側は recorder / sidecar / ML cache だけでなく、停止時点の RSS/threads まで event log 経由で追えるようになった
+- SAC cleanup は大きい共通化ではなく、`torch.cuda.empty_cache()` のような副作用が小さい断片だけ shared helper に寄せるのが安全だった
+- ここから先は helper 掃除より、`enricher` / `ml_pipeline` / `gate_check` など実処理コストの高いパスを削るフェーズに入っている

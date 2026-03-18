@@ -269,7 +269,7 @@ def _build_memory_diagnostics_event_details(
     dump_path: Path | None,
     payload: dict[str, object],
 ) -> dict[str, object]:
-    """外部イベントログへ流す軽量な診断サマリを構築する."""
+    """fill_test_events.jsonl に流す軽量な診断サマリを構築する."""
     details: dict[str, object] = {
         "trigger": trigger,
         "stop_reason": stop_reason,

@@ -24,6 +24,8 @@ from typing import Protocol
 import numpy as np
 import pandas as pd
 
+from ztb.utils.memory_utils import clear_cuda_cache
+
 logger = logging.getLogger(__name__)
 
 
@@ -410,15 +412,7 @@ def cleanup_training_resources(
                     pass
 
     # 4. CUDA allocator / 循環参照を回収
-    cuda_cache_cleared = False
-    try:
-        import torch
-
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            cuda_cache_cleared = True
-    except Exception:
-        pass
+    cuda_cache_cleared = clear_cuda_cache()
 
     gc.collect()
     logger.debug(

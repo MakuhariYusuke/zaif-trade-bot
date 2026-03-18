@@ -51,6 +51,7 @@ from ztb.training.utils.training_stats import TrainingStats
 from ztb.types.common import ConfigDict
 from ztb.utils.checkpoint import TrainingStateManager
 from ztb.utils.logging_utils import StructuredLogger
+from ztb.utils.memory_utils import clear_cuda_cache
 from ztb.utils.training_utils import create_checkpoint_callback
 from ztb.utils.dataclass_utils import shallow_asdict
 
@@ -1375,8 +1376,7 @@ class SACTrainer(BaseAlgorithmTrainer):
             gc.collect()
 
             # Clear any cached data
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+            clear_cuda_cache()
 
             # Clean up metrics collection
             self.cleanup_metrics_collection()
@@ -1392,8 +1392,7 @@ class SACTrainer(BaseAlgorithmTrainer):
         # CUDA out of memory
         if "cuda" in error_str and "memory" in error_str:
             self.logger.info("Attempting CUDA memory recovery")
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+            clear_cuda_cache()
             return True
 
         # Gradient explosion

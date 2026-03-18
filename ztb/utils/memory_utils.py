@@ -22,6 +22,27 @@ logger = get_logger(__name__)
 
 T = TypeVar("T", bound=np.ndarray)
 
+
+def clear_cuda_cache() -> bool:
+    """
+    Clear PyTorch CUDA allocator cache when CUDA is available.
+
+    Returns:
+        True when CUDA cache clear was attempted and completed, otherwise False.
+    """
+    try:
+        import torch
+    except Exception:
+        return False
+
+    try:
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            return True
+    except Exception as exc:
+        logger.debug("CUDA cache clear skipped: %s", exc, exc_info=True)
+    return False
+
 @contextmanager
 def temporary_array(*args: Any, **kwargs: Any) -> Generator[NDArray[Any], None, None]:
     """
@@ -202,6 +223,10 @@ def cleanup_training_memory(
         if optimize_cache:
             default_memory_manager.optimize_memory_usage()
             logger.debug("Optimized memory cache")
+
+        cuda_cache_cleared = clear_cuda_cache()
+        if cuda_cache_cleared:
+            logger.debug("Cleared CUDA cache")
 
         # Force garbage collection
         if force_gc:

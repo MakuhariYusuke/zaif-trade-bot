@@ -11,6 +11,7 @@ from unittest.mock import Mock, patch
 import numpy as np
 
 from ztb.utils.memory_utils import (
+    clear_cuda_cache,
     OperationMemoryTracker,
     check_memory_pressure,
     cleanup_training_memory,
@@ -200,6 +201,39 @@ class TestCleanupTrainingMemory(unittest.TestCase):
 
         # Verify memory manager optimization was not called
         mock_memory_manager.optimize_memory_usage.assert_not_called()
+
+
+class TestClearCudaCache(unittest.TestCase):
+    """Test cases for clear_cuda_cache helper."""
+
+    def test_returns_false_when_torch_import_fails(self):
+        real_import = __import__
+
+        def _raising_import(name, *args, **kwargs):
+            if name == "torch":
+                raise ImportError("torch unavailable")
+            return real_import(name, *args, **kwargs)
+
+        with patch("builtins.__import__", side_effect=_raising_import):
+            self.assertFalse(clear_cuda_cache())
+
+    def test_returns_true_when_cuda_available(self):
+        mock_torch = Mock()
+        mock_torch.cuda.is_available.return_value = True
+
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            self.assertTrue(clear_cuda_cache())
+
+        mock_torch.cuda.empty_cache.assert_called_once()
+
+    def test_returns_false_when_cuda_not_available(self):
+        mock_torch = Mock()
+        mock_torch.cuda.is_available.return_value = False
+
+        with patch.dict("sys.modules", {"torch": mock_torch}):
+            self.assertFalse(clear_cuda_cache())
+
+        mock_torch.cuda.empty_cache.assert_not_called()
 
 
 class TestGetMemoryUsage(unittest.TestCase):

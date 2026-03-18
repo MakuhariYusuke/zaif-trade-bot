@@ -80,3 +80,6 @@ class TestHealthMonitorWarnings:
         snapshot = hm.snapshot_memory_diagnostics(now_ts=1010.0)
         assert snapshot["last_pressure_gc_collected"] == 7
         assert snapshot["last_pressure_gc_age_sec"] == pytest.approx(10.0)
+        assert snapshot["rss_mb"] == pytest.approx(150.0)
+        assert snapshot["cpu_percent"] == pytest.approx(12.5)
+        assert snapshot["threads"] == 8

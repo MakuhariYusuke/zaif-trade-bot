@@ -245,6 +245,20 @@ class FillTestHealthMonitor:
             "last_pressure_gc_collected": self._last_pressure_gc_collected,
             "pressure_gc_cooldown_sec": self._pressure_gc_cooldown_sec,
         }
+        if self._psutil_available and self._process is not None:
+            try:
+                snapshot["rss_mb"] = round(
+                    self._process.memory_info().rss / (1024 * 1024),
+                    1,
+                )
+                snapshot["cpu_percent"] = float(self._process.cpu_percent())
+                snapshot["threads"] = int(self._process.num_threads())
+            except Exception as exc:
+                logger.debug(
+                    "snapshot_memory_diagnostics process snapshot failed: %s",
+                    exc,
+                    exc_info=True,
+                )
         if self._last_pressure_gc_time > 0:
             reference_now = time.time() if now_ts is None else now_ts
             snapshot["last_pressure_gc_age_sec"] = max(

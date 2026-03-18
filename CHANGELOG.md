@@ -5749,3 +5749,13 @@ python scripts/unified_trainer.py \
     - focused diagnostics/event bundle: `25 passed in 2.76s`
     - focused ML/retrain bundle: `14 passed, 112 deselected in 3.39s`
     - filtered broad `tests/unit/v460/`: `4998 passed, 2 skipped, 13 warnings in 31.54s`
+- 2026-03-19: unified a small SAC memory-cleanup contract and enriched fill-test memory snapshots.
+  - updated [ztb/utils/memory_utils.py] to add `clear_cuda_cache()` and reuse it from `cleanup_training_memory(...)`
+  - updated [scripts/v460/lib/sac_common.py] and [ztb/training/unified_trainer/algorithms/sac_trainer.py] to reuse the shared CUDA cache clear helper instead of duplicating inline `torch.cuda.empty_cache()` logic
+  - updated [scripts/v460/lib/resilience.py] so `snapshot_memory_diagnostics()` also captures current `rss_mb`, `cpu_percent`, and `threads` when `psutil` is available
+  - updated [scripts/v460/lib/fill_test_cli.py] to remove a duplicated diagnostics helper definition while keeping the new `memory_diagnostics` event emission path intact
+  - tightened typing in [scripts/v460/lib/event_logger.py] for structured event `details`
+  - re-verified with:
+    - focused diagnostics/utilities bundle: `32 passed in 3.07s`
+    - focused SAC trainer import/regression bundle: `19 passed, 9 deselected in 4.00s`
+    - filtered broad `tests/unit/v460/`: `4998 passed, 2 skipped, 13 warnings in 39.09s`

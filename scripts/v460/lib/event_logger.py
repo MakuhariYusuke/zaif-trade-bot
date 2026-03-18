@@ -21,7 +21,7 @@ def log_event(
     run_id: str = "",
     git_sha: str = "",
     reason: str | None = None,
-    details: dict | None = None,
+    details: dict[str, object] | None = None,
 ) -> None:
     """fill_test_events.jsonl にイベントを記録.
 
