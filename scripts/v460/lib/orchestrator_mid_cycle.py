@@ -135,7 +135,6 @@ class OrchestratorMidCycleMixin:
         # 372# F1 Gap-1: SAC sidecar signal を読み込み gate に注入
         # 487# P0: signal_status も取得して attribution 可観測性を確保
         from scripts.v460.lib.sidecar_signal_io import (
-            read_sidecar_signal,
             read_sidecar_signal_with_status,
         )
 

@@ -127,11 +127,39 @@ orchestrator_mid_cycle.py  (read_sidecar_signal_with_status → signal, status)
 
 ---
 
-## 3. P1 今後の方針
+## 3. P1 対応 (実施済み)
+
+### 3.1 セルフレビュー修正
+
+| 指摘 | 対応 |
+|------|------|
+| `read_sidecar_signal_with_status` が `read_sidecar_signal` のロジックを重複 (DRY 違反) | `_read_sidecar_signal_core()` に統合し両関数が共有。キャッシュ活用も維持 |
+| orchestrator に未使用 `read_sidecar_signal` import が残存 | 削除 |
+
+### 3.2 SAC eval val_ratio ガードレール (P1-1)
+
+**問題**: 483-485 レビューで指摘された「val_ratio=0.02 は G3 gate min_val_ratio=0.10 未満」
+
+**対応**:
+| 対象 | 変更 |
+|------|------|
+| `sac_common.py` `train_val_split()` | `min_val_ratio` パラメータ追加、閾値未満で warning ログ出力 |
+| `g2_sac_reward_clean.yaml` (ベース config) | val_ratio: 0.02 → 0.10 |
+
+**補足**: `n_episodes > 1` は `random_start=False` (デフォルト) では同一データを繰り返すだけと `evaluate_model_oos()` のコメントが明言しているため、変更不要と判断。
+
+### 3.3 テスト追加 (P1-2)
+
+`test_sidecar_sac_integration.py` に 2 クラス/9 テスト追加:
+- `TestReadSidecarSignalWithStatus`: fresh/missing/stale/error の 4 状態 + `read_sidecar_signal` との一貫性
+- `TestFillRecordSidecarAttributionFields`: 新 3 フィールドの存在・設定・round-trip
+
+---
+
+## 4. 今後の方針
 
 | 優先度 | 項目 | 状態 |
 |--------|------|------|
-| P1-1 | SAC eval val_ratio ≥ 0.10 + n_episodes > 1 | YAML パラメータ変更で即時対応可能 |
-| P1-2 | seed123 を対照群として live 比較 | sidecar_model_version フィールドで追跡基盤整備済み |
-| P1-3 | 700JPY 緩和後の fill quality 点検 | sidecar_signal_status フィールドで分離解析が可能に |
+| P1-3 | seed123 を対照群として live 比較 | sidecar_model_version フィールドで追跡基盤整備済み |
+| P1-4 | 700JPY 緩和後の fill quality 点検 | sidecar_signal_status フィールドで分離解析が可能に |
 | P2 | sidecar 権限昇格 (max_boost_bps 拡大) | 整合性確認後の将来課題 |

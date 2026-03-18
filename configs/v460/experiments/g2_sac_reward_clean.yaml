@@ -111,7 +111,7 @@ sac_hyperparameters:
 training:
   total_timesteps: 20000           # fast版 (本番は100K)
   checkpoint_interval: 5000
-  val_ratio: 0.02                  # 高速OOS
+  val_ratio: 0.10                  # 487# P1: 0.02→0.10 (G3 gate min_val_ratio準拠)
 
 # ---- 評価 ----
 evaluation:

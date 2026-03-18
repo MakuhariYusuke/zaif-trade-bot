@@ -687,3 +687,133 @@ class TestDeployGateTradeCount:
         """confidence_roi_full のデフォルトは 0.005."""
         cfg = SACRetrainConfig()
         assert cfg.confidence_roi_full == pytest.approx(0.005)
+
+
+# ════════════════════════════════════════════════════════════════
+# §487 read_sidecar_signal_with_status テスト
+# ════════════════════════════════════════════════════════════════
+
+
+class TestReadSidecarSignalWithStatus:
+    """487# P0: read_sidecar_signal_with_status の 4 状態テスト."""
+
+    def setup_method(self) -> None:
+        clear_sidecar_signal_cache()
+
+    def test_fresh(self, tmp_path: Path) -> None:
+        """正常読込 → ("fresh", signal)."""
+        from scripts.v460.lib.sidecar_signal_io import read_sidecar_signal_with_status
+
+        sig = SidecarSignal(
+            timestamp=make_timestamp(),
+            directional_bias=0.5,
+            model_version="test_v1",
+            confidence=0.8,
+        )
+        p = tmp_path / "signal.json"
+        write_sidecar_signal(sig, p)
+
+        result, status = read_sidecar_signal_with_status(p)
+        assert status == "fresh"
+        assert result is not None
+        assert result.directional_bias == pytest.approx(0.5)
+        assert result.confidence == pytest.approx(0.8)
+        assert result.model_version == "test_v1"
+
+    def test_missing(self, tmp_path: Path) -> None:
+        """ファイル不在 → ("missing", None)."""
+        from scripts.v460.lib.sidecar_signal_io import read_sidecar_signal_with_status
+
+        p = tmp_path / "nonexistent.json"
+        result, status = read_sidecar_signal_with_status(p)
+        assert status == "missing"
+        assert result is None
+
+    def test_stale(self, tmp_path: Path) -> None:
+        """TTL 超過 → ("stale", None)."""
+        from scripts.v460.lib.sidecar_signal_io import read_sidecar_signal_with_status
+
+        old_ts = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat()
+        sig = SidecarSignal(
+            timestamp=old_ts,
+            directional_bias=0.3,
+        )
+        p = tmp_path / "signal.json"
+        write_sidecar_signal(sig, p)
+
+        result, status = read_sidecar_signal_with_status(p, ttl_sec=60)
+        assert status == "stale"
+        assert result is None
+
+    def test_error_bad_json(self, tmp_path: Path) -> None:
+        """JSON パースエラー → ("error", None)."""
+        from scripts.v460.lib.sidecar_signal_io import read_sidecar_signal_with_status
+
+        p = tmp_path / "signal.json"
+        p.write_text("{invalid json", encoding="utf-8")
+
+        result, status = read_sidecar_signal_with_status(p)
+        assert status == "error"
+        assert result is None
+
+    def test_consistent_with_read_sidecar_signal(self, tmp_path: Path) -> None:
+        """read_sidecar_signal と結果が一致する。"""
+        from scripts.v460.lib.sidecar_signal_io import read_sidecar_signal_with_status
+
+        sig = SidecarSignal(
+            timestamp=make_timestamp(),
+            directional_bias=-0.2,
+        )
+        p = tmp_path / "signal.json"
+        write_sidecar_signal(sig, p)
+
+        clear_sidecar_signal_cache()
+        plain = read_sidecar_signal(p)
+        clear_sidecar_signal_cache()
+        with_status, status = read_sidecar_signal_with_status(p)
+
+        assert status == "fresh"
+        assert plain is not None
+        assert with_status is not None
+        assert plain.directional_bias == with_status.directional_bias
+
+
+class TestFillRecordSidecarAttributionFields:
+    """487# P0: FillRecord の sidecar attribution フィールド."""
+
+    def test_new_fields_exist(self) -> None:
+        """sidecar_confidence / model_version / signal_status が定義されている。"""
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+        )
+        assert r.sidecar_confidence is None
+        assert r.sidecar_model_version is None
+        assert r.sidecar_signal_status is None
+
+    def test_set_values(self) -> None:
+        """新フィールドに値を設定できる。"""
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+            sidecar_confidence=0.85,
+            sidecar_model_version="sac_v460_20260319",
+            sidecar_signal_status="fresh",
+        )
+        assert r.sidecar_confidence == pytest.approx(0.85)
+        assert r.sidecar_model_version == "sac_v460_20260319"
+        assert r.sidecar_signal_status == "fresh"
+
+    def test_round_trip(self) -> None:
+        """to_dict/from_dict で新フィールドが復元される。"""
+        r1 = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+            sidecar_confidence=0.7,
+            sidecar_model_version="v1",
+            sidecar_signal_status="stale",
+        )
+        r2 = FillRecord.from_dict(r1.to_dict())
+        assert r2.sidecar_confidence == pytest.approx(0.7)
+        assert r2.sidecar_model_version == "v1"
+        assert r2.sidecar_signal_status == "stale"

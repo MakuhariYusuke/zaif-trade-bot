@@ -322,19 +322,29 @@ def _compute_g3_metrics(
 def train_val_split(
     df: pd.DataFrame,
     val_ratio: float = 0.2,
+    min_val_ratio: float = 0.10,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """時系列インデックス順で train/val 分割.
 
     363# A3: 時系列データは shuffle 禁止。末尾 val_ratio% を OOS に使う。
+    487# P1: val_ratio < min_val_ratio の場合は警告を出す (G3 gate 不整合防止)。
 
     Args:
         df: 元データ (時系列ソート済み前提)
         val_ratio: OOS 比率 (0.0–0.5 にクランプ)
+        min_val_ratio: 警告閾値 (default: 0.10, G3 gate 基準)
 
     Returns:
         (train_df, val_df)
     """
     ratio = max(0.0, min(float(val_ratio), 0.5))
+
+    if ratio < min_val_ratio:
+        logger.warning(
+            f"[487# P1] val_ratio={ratio:.3f} < min_val_ratio={min_val_ratio:.3f}. "
+            f"OOS evaluation may be insufficient for G3 gate compliance."
+        )
+
     split_idx = int(len(df) * (1.0 - ratio))
     train_df = df.iloc[:split_idx].copy()
     val_df = df.iloc[split_idx:].copy()
