@@ -508,7 +508,7 @@
 | 477 | analysis | [477_phg_analysis_suppression_paradox_and_fill_rate.md](477_phg_analysis_suppression_paradox_and_fill_rate.md) | 抑制パラドックス分析: 20層防御 × fill rate 17.7% の構造的矛盾と改善提案 |
 | 478 | rev | [478_phg_rev_477_improvements_and_fill_suppression_review.md](478_phg_rev_477_improvements_and_fill_suppression_review.md) | 475-477改善レビュー: コホート混在・条件付き確率構造・資本制約の見落とし |
 | 479 | rev | [479_phg_rev_474_478_feasibility_and_liquidity_paradox.md](479_phg_rev_474_478_feasibility_and_liquidity_paradox.md) | Liquidity Paradox 仮説: 価格フィージビリティ制約が真の主犯という立論 |
-| 480 | verify | [480_phg_verify_478_479_review_claims.md](480_phg_verify_478_479_review_claims.md) | 478/479レビュー検証: cross_venue_vetoが真犯のNFQ83%, 479の「同根」論は誤読 |
+| 480 | verify | [480_phg_verify_478_479_review_claims.md](480_phg_verify_478_479_review_claims.md) | 478/479レビュー検証 + veto閾値8.0bps + min_spread 700JPY 段階緩和 |
 
 ---
 

@@ -38,7 +38,7 @@ max_preflight_skip: 10        # preflight 連続失敗の上限
 # ---- スプレッド比例オフセット (CM-1) ----
 spread_offset_ratio: 0.05     # 031# 0.2→0.05: AS 低減のため保守化
 min_offset_jpy: 1.0           # 最小オフセット (JPY)
-min_spread_jpy: 1000           # 190# C: 1200→1000 (実測 spread=1140JPY で頻繁遮断。1000JPY≈0.97bps)
+min_spread_jpy: 700            # 481# 1000→700: Phase1段階緩和 (spread<1000が55件/17.1%,700以下は約30件回収見込)
 
 # ---- リトライ (CM-2) ----
 max_order_retries: 2              # 041# 1→2: api_error 削減のため
@@ -334,7 +334,7 @@ cross_venue_lead_lag:
   velocity_bps_threshold: 0.01    # 444# 120s cycleではvel~0.01-0.07bps/s: 5.98bps乖離捕捉に0.01必要
   offset_boost: 1.25
   veto_enabled: true               # 442# Hard veto 有効化 (6bps超の大乖離で注文抑止)
-  veto_threshold_bps: 6.0
+  veto_threshold_bps: 8.0          # 481# 6.0→8.0: 49件中41件(84%)が6-8帯,本当にtoxicな8bps超のみvetoする
   # 442# 板深度拡張: L5 microprice で質的情報を取得
   reference_ob_depth: 5            # BitFlyer 板取得深度 (1→5, microprice 算出用)
   microprice_enabled: true         # weighted mid = (Pb·Qa + Pa·Qb)/(Qa+Qb) を使用

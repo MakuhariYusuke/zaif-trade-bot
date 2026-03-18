@@ -236,3 +236,35 @@ self._current_lot = max(min_lot, int(raw_shrunk / _mob) * _mob)
 479# は理論的枠組み(Liquidity Paradox)として価値があるが、**データ精査が雑** であり、`no_feasible_quote` の error_message を読まずに「spread_too_narrow と同根」と断じた点は明確な誤りである。最大のボトルネックは `spread_too_narrow` (17.1%) と `cross_venue_lead_lag_veto` (15.3%) の**2系統**であり、単一原因に帰着させる 479# の論法は成立しない。
 
 ただし、479# の提起した `min_spread_jpy` の緩和方向自体は妥当であり、閾値の段階的引き下げは検討に値する。重要なのは、**それだけでは fill rate の半分も解決しない** という認識を持つことである。
+
+---
+
+## §8 481# 対応: 実施した改修
+
+本検証結果に基づき、以下の改修を実施した。
+
+### §8.1 YAML 変更 (fill_test.yaml)
+
+| 設定 | Before | After | 根拠 |
+|------|--------|-------|------|
+| `veto_threshold_bps` | 6.0 | **8.0** | 49件中41件(84%)が6-8帯。median=7.07bps。本当にtoxicな8bps超のみvetoする |
+| `min_spread_jpy` | 1000 | **700** | spread<1000が55件(17.1%)。700以下は約30件を回収見込。Phase1段階緩和 |
+
+**期待効果**: cross_venue_veto のうち 41件が解放 + spread 系の一部解放。Buy 側 fill rate の改善。
+
+### §8.2 コード改善 (fill_cycle_executor.py)
+
+NFQ エスカレーション時のログメッセージに `last_reason` を追加:
+
+```
+Before: "consecutive infeasible quotes (buy) — constraint set collapse (min_spread=...)"
+After:  "consecutive infeasible quotes (buy) — last_reason=cross_venue_lead_lag_veto, min_spread=..."
+```
+
+これにより、NFQ の背景にある真因が即座に判別可能になる。
+
+### §8.3 今後の課題 (未着手)
+
+1. NFQ skip record に `cross_venue_lead_lag_spread_bps` を付加して分析効率を向上
+2. Phase 2: `min_spread_jpy: 500` への追加引き下げ判断
+3. PnL 品質改善: AS率 32.3% の根本対策 (offset 戦略)

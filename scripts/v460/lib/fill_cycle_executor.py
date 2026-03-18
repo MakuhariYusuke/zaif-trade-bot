@@ -681,9 +681,10 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                 ob_cancel_reason = CR.NO_FEASIBLE_QUOTE
                 logger.warning(
                     f"[234#] NO_FEASIBLE_QUOTE: {_cnf} "
-                    f"consecutive infeasible quotes ({side}) — constraint set collapse "
-                    f"(min_spread={self.config.min_spread_jpy}, "
-                    f"sell_max_spread={self.config.sell_max_spread_jpy})"
+                    f"consecutive infeasible quotes ({side}) — "
+                    f"last_reason={e.reason}, "
+                    f"min_spread={self.config.min_spread_jpy}, "
+                    f"sell_max_spread={self.config.sell_max_spread_jpy}"
                 )
             return self._make_price_error_skip(
                 side=side, cancel_reason=ob_cancel_reason,
