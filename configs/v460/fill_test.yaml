@@ -33,7 +33,7 @@ post_fill_wait_sec: 30.0      # 約定後 PnL 計測待ち (秒)
 post_fill_wait_sec_sell: 90.0  # 168# §4.1 #1: sell 保持期間延長 (30→90s, PnL120>0 が根拠)
 results_dir: results/v460/fill_test
 start_side: buy               # 開始サイド (buy / sell)
-max_preflight_skip: 10        # 046# 連続 preflight 失敗上限 (SAFE_STOP)
+max_preflight_skip: 10        # preflight 連続失敗の上限
 
 # ---- スプレッド比例オフセット (CM-1) ----
 spread_offset_ratio: 0.05     # 031# 0.2→0.05: AS 低減のため保守化
@@ -814,8 +814,8 @@ loss_control:
   preflight_pause:
     enabled: true                  # SAFE_STOP 前の pause 機構
     threshold: 5                   # 連続 preflight 失敗のpause発動閾値
-    pause_sec: 300.0               # pause 待機秒数 (5分)
-    max_pauses: 3                  # run 内最大 pause 回数 (超過でSAFE_STOP)
+    pause_sec: 300.0               # pause 時の待機秒数
+    max_pauses: 3                  # 最大 pause 回数
 
   # 162# Inventory Skewing: 在庫偏重に応じた非対称 offset (在庫管理の根本対策)
   inventory_skewing:
