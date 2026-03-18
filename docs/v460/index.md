@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-17 (461# skip_gate Mixin 分割 + fill test 分析)
+> 最終更新: 2026-03-20 (476# dust sweep 修正 + 切り捨て廃止 + 残高連動ロット)
 
 ---
 
@@ -498,6 +498,13 @@
 | 332 | refactor | [332_phg_refactor_run_continuous_phase4.md](332_phg_refactor_run_continuous_phase4.md) | run_continuous Phase 4: Balance/MidCycle Mixin 抽出 (1228→407 行, 908→~80 行) |
 | 460 | refactor | [460_phg_refactor_offset_pipeline_extraction.md](460_phg_refactor_offset_pipeline_extraction.md) | run_single_cycle 分割 + 重複排除: offset pipeline 9段チェーン抽出, lot chain 統合, 継承チェーン整理 |
 | 461 | refactor/rpt | [461_phg_refactor_skip_gate_split_fill_test_analysis.md](461_phg_refactor_skip_gate_split_fill_test_analysis.md) | skip_gate_evaluator Mixin 分割 (1362→866行) + MAX LINES 3件 + Fill Test 5日間ログ分析 |
+| 470 | analysis | [470_phg_analysis_fundamental_root_cause.md](470_phg_analysis_fundamental_root_cause.md) | 根本原因分析: 売り側オフセット設計のセマンティック反転バグ解明 (1,342レコード/192約定) |
+| 471 | rev | [471_phg_rev_470_fundamental_root_cause_deep_dive.md](471_phg_rev_470_fundamental_root_cause_deep_dive.md) | 470# レビュー: 根本原因分析の妥当性確認 + 追加深掘り |
+| 472 | rev/plan | [472_phg_rev_470_471_phantom_midpoint_and_market_theory.md](472_phg_rev_470_471_phantom_midpoint_and_market_theory.md) | セカンドオピニオン: ファントム・ミッドポイントの数学的解明 + 市場設計の死角 |
+| 473 | rev | [473_phg_rev_verification_471_472_claims.md](473_phg_rev_verification_471_472_claims.md) | 検証レポート: 471#/472# 主張のコード・データ照合 |
+| 474 | fix | [474_phg_fix_triple_bugfix_and_orphan_cleanup.md](474_phg_fix_triple_bugfix_and_orphan_cleanup.md) | Triple Bugfix: sell パラメータ修正 + orphan process cleanup (retrain_scheduler 8重起動解消) |
+| 475 | rev | [475_phg_rev_472_proposals_and_474_selfreview.md](475_phg_rev_472_proposals_and_474_selfreview.md) | 472# 三提案評価 + 474# セルフレビュー + 残課題改修 |
+| 476 | fix | [476_phg_fix_dust_sweep_and_truncation_removal.md](476_phg_fix_dust_sweep_and_truncation_removal.md) | Dust sweep 修正 + 0.001 単位切り捨て廃止 + 残高連動ロット |
 
 ---
 
