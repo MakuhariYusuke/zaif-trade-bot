@@ -2101,6 +2101,35 @@ def run_scheduler(cfg: ConfigMap, config_path: Path | None = None) -> None:
 
 
 def main() -> None:
+    # 474# 多重起動防止: lockfile で単一プロセスを保証
+    lock_path = Path("logs/retrain_scheduler.lock")
+    lock_path.parent.mkdir(exist_ok=True)
+    try:
+        _lock_fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(_lock_fd, str(os.getpid()).encode())
+        os.close(_lock_fd)
+    except FileExistsError:
+        # 既存ロックの PID 生存チェック
+        try:
+            existing_pid = int(lock_path.read_text().strip())
+            import psutil  # type: ignore[import-untyped]
+            if psutil.pid_exists(existing_pid):
+                proc = psutil.Process(existing_pid)
+                if proc.is_running() and "retrain" in " ".join(proc.cmdline()):
+                    print(
+                        f"[474#] retrain_scheduler already running (PID={existing_pid}). Exiting."
+                    )
+                    sys.exit(0)
+        except Exception:
+            pass
+        # stale lock を回収
+        try:
+            lock_path.unlink()
+        except OSError:
+            pass
+        _lock_fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(_lock_fd, str(os.getpid()).encode())
+        os.close(_lock_fd)
     try:
         _run_retrain_scheduler_main()
     finally:
@@ -2109,6 +2138,10 @@ def main() -> None:
             context="retrain_scheduler.exit",
             collect_garbage=True,
         )
+        try:
+            lock_path.unlink()
+        except OSError:
+            pass
 
 
 def _run_retrain_scheduler_main() -> None:

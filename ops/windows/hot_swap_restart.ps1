@@ -210,6 +210,13 @@ if (Test-Path $osLockPath) {
     Log "INFO" "  .os_lock も除去しました。"
 }
 
+# 474# retrain_scheduler.lock も除去 (多重起動防止用)
+$retrainLockPath = Join-Path $RootDir "logs\retrain_scheduler.lock"
+if (Test-Path $retrainLockPath) {
+    Remove-Item $retrainLockPath -Force -ErrorAction SilentlyContinue
+    Log "INFO" "  retrain_scheduler.lock も除去しました。"
+}
+
 # ======================================================================
 # Step 4: 新プロセス起動
 # ======================================================================

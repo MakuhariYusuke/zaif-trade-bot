@@ -22,9 +22,9 @@ class TestRecalcPriceWithNewOffset:
     """offset 変更後の価格再計算テスト."""
 
     def test_buy_price_recalculated(self) -> None:
-        """buy: mid 逆推定 → 新 offset で再計算."""
-        # mid = 10000 + 100 * 0.5 / 2 = 10025
-        # new_price = 10025 - 100 * 0.8 / 2 = 9985
+        """buy: 474# full-spread 差分式で再計算."""
+        # delta = spread * (old - new) = 100 * (0.5 - 0.8) = -30
+        # buy: new_price = price - delta = 10000 - (-30) = 10030
         result = PreOrderAdjustmentsMixin._recalc_price_with_new_offset(
             side="buy",
             order_price=10000,
@@ -32,12 +32,12 @@ class TestRecalcPriceWithNewOffset:
             old_ratio=0.5,
             new_ratio=0.8,
         )
-        assert result == round(10025 - 100 * 0.8 / 2)
+        assert result == 10030
 
     def test_sell_price_recalculated(self) -> None:
-        """sell: mid 逆推定 → 新 offset で再計算."""
-        # mid = 10000 - 100 * 0.5 / 2 = 9975
-        # new_price = 9975 + 100 * 0.8 / 2 = 10015
+        """sell: 474# full-spread 差分式で再計算."""
+        # delta = spread * (old - new) = 100 * (0.5 - 0.8) = -30
+        # sell: new_price = price + delta = 10000 + (-30) = 9970
         result = PreOrderAdjustmentsMixin._recalc_price_with_new_offset(
             side="sell",
             order_price=10000,
@@ -45,7 +45,7 @@ class TestRecalcPriceWithNewOffset:
             old_ratio=0.5,
             new_ratio=0.8,
         )
-        assert result == round(9975 + 100 * 0.8 / 2)
+        assert result == 9970
 
     def test_spread_none_returns_original(self) -> None:
         """spread=None → order_price そのまま返却."""

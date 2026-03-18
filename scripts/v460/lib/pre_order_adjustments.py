@@ -34,18 +34,20 @@ class PreOrderAdjustmentsMixin:
     ) -> float:
         """304# DRY: offset 変更後の maker 価格再計算.
 
-        mid を逆算し、新しい offset ratio で price を再算出する。
+        474# 修正: half-spread (/ 2) バグを解消。
+        ベース公式 sell = best_ask - spread * ratio = mid + spread*(0.5 - ratio) から
+        mid を介さず直接差分で再計算:
+          sell: new_price = price + spread * (old_ratio - new_ratio)
+          buy:  new_price = price - spread * (old_ratio - new_ratio)
         spread 不明時は order_price をそのまま返す。
         """
         if spread_at_order is None or spread_at_order <= 0:
             return order_price
-        # mid を逆推定: order_price = mid ∓ spread * old_ratio / 2
+        delta = spread_at_order * (old_ratio - new_ratio)
         if side == "buy":
-            mid_est = order_price + spread_at_order * old_ratio / 2
-            return round(mid_est - spread_at_order * new_ratio / 2)
+            return round(order_price - delta)
         else:
-            mid_est = order_price - spread_at_order * old_ratio / 2
-            return round(mid_est + spread_at_order * new_ratio / 2)
+            return round(order_price + delta)
 
     @staticmethod
     def _apply_offset_multiplier(

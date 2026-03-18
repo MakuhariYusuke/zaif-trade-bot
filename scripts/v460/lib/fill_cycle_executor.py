@@ -1097,10 +1097,14 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                     break
 
                 # offset ratio は固定 (Policy Phase で計算済み) → 新しい mid で価格更新
+                # 474# 修正: mid*(1±ratio) → mid ± spread*(0.5 - ratio)
+                # 旧式は ratio(~0.20) を価格割合と誤解釈 (11.8M × 0.20 = 2.36M JPY のズレ)
+                # spread_at_order を再利用 (最新 spread の API コール不要)
+                _rq_spread = spread_at_order if spread_at_order and spread_at_order > 0 else 0.0
                 if side == "buy":
-                    order_price = _rq_mid * (1 - effective_offset_ratio)
+                    order_price = round(_rq_mid + _rq_spread * (effective_offset_ratio - 0.5))
                 else:
-                    order_price = _rq_mid * (1 + effective_offset_ratio)
+                    order_price = round(_rq_mid + _rq_spread * (0.5 - effective_offset_ratio))
 
                 logger.info(
                     "[452# micro_timeout] Re-quote %d/%d: new_price=%s (mid=%s, offset=%.4f)",

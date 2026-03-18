@@ -524,7 +524,7 @@ sell_guard:
   # 320# C-1 解消: sell ceiling 0.50 に引上げ → floor(0.30) が再び有効化
   # floor(0.30) < ceiling(0.50): パイプライン出力は 0.30〜0.50 の範囲で分化可能に
   # regime boost(×1.8), spread_adapt, sell_hour_boost 等の全ステージが復活
-  offset_floor: 0.30           # 246# 0.20→0.30 (Glosten-Milgrom: sell AS premium 増額。245#分析: sell pass_pnl=-1.316bps, win_rate=34.4% DEGRADED → 防御強化)
+  offset_floor: 0.05           # 474# 0.30→0.05 (473#検証: floor=0.30がpipelineを0.30に固定→ceiling=0.50まで全boost吸収。0.05で自然なoffset分布復元)
 
 # ---- 305# Parkinson σ推定器 (Parkinson 1980) ----
 # Roll proxy σ = spread/(2·mid) は薄い板でノイジー → Parkinson High-Low Estimator
@@ -633,7 +633,7 @@ offset_stage_recording:
 # - buy ceiling=0.15 据置 → buy side には十分な制御
 offset_ceiling_ratio: 0.15        # 共通デフォルト (サイド別が未設定時に使用)
 offset_ceiling_ratio_buy: 0.20    # 381# 0.15→0.20 (380# 6-A: クリーンデータ >=0.15:+0.065bps, <0.15:+0.586bps)
-offset_ceiling_ratio_sell: 0.50   # 320# sell: 0.15→0.50 (floor(0.30) + regime boost(×1.8) = 0.54 → ceil(0.50) で表現力回復)
+offset_ceiling_ratio_sell: 0.20   # 474# sell: 0.50→0.20 (473#検証: ratio=0.50→mid+0, 936JPY逆行に耐えられず。0.20→mid+718JPY buffer)
 # ---- 421# P0: Execution Final Clamp (416#/417# review) ----
 # maker_price ceiling 後の executor multiplier chain (EV/velocity/toxicity 等) が
 # ceiling を迂回する構造欠陥の修正。全 multiplier 適用後に ceiling を再適用。
