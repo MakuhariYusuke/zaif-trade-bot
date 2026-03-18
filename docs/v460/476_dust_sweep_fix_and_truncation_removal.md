@@ -40,3 +40,19 @@
 - `test_dust_sweep.py`: 新ロジックに合わせ期待値更新 (22 tests ✓)
 - `test_145_structural_fixes.py`: regime_mult テストに `dust_sweep_enabled=False` 追加
   - buy 側 lot 期待値: 0.003 → 0.00396040 (satoshi 精度)
+
+## 追加修正 (476# 第2コミット)
+
+### _scale_lot フロア修正
+- `fill_cycle_executor.py`: `_min_lot = config.order_quantity` → `config.min_order_btc`
+- **問題**: order_quantity と min_order_btc が同値の場合、DD soft / alert_mode / cooldown の
+  スケールダウンが `max(order_quantity, lot * scale)` で切り捨てられ実質無効化
+- **修正**: 取引所最小 (min_order_btc) をフロアにすることで、order_quantity を引き上げた際に
+  スケールダウンが正しく機能する
+
+### 残高連動ロットの全体像
+| 側面 | 拡大機構 | フロア |
+|------|----------|--------|
+| sell | `_maybe_dust_sweep` (btc_free > effective_lot → 全額売却) | min_order_btc |
+| buy  | 476# balance_lot (JPY → max_lot まで動的拡大) | min_order_btc |
+| 共通 | `_scale_lot` チェーン (DD soft, alert, cooldown) | min_order_btc (修正後) |

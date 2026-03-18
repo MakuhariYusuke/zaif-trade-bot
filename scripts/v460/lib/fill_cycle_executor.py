@@ -846,7 +846,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         # 460# Lot adjustment chain — 4 乗数を順次適用
         # 476#: dust_sweep_active 時は全額売却を保証するためスキップ
         _dust_active = self._balance_checker.dust_sweep_active
-        _min_lot = self.config.order_quantity
+        # 476#: フロアは min_order_btc (取引所最小) — order_quantity ではスケールダウンが死ぬ
+        _min_lot = self.config.min_order_btc
         if not _dust_active:
             _alert_lm = self._alert_lot_mult
             if _alert_lm != 1.0:
