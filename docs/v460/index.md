@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-18 (477# 抑制パラドックス分析 + SAC 100K 再訓練開始)
+> 最終更新: 2026-03-18 (480# 478/479 レビュー検証 — cross_venue_veto 真犯特定)
 
 ---
 
@@ -506,6 +506,9 @@
 | 475 | rev | [475_phg_rev_472_proposals_and_474_selfreview.md](475_phg_rev_472_proposals_and_474_selfreview.md) | 472# 三提案評価 + 474# セルフレビュー + 残課題改修 |
 | 476 | fix | [476_phg_fix_dust_sweep_and_truncation_removal.md](476_phg_fix_dust_sweep_and_truncation_removal.md) | Dust sweep 修正 + 0.001 単位切り捨て廃止 + 残高連動ロット |
 | 477 | analysis | [477_phg_analysis_suppression_paradox_and_fill_rate.md](477_phg_analysis_suppression_paradox_and_fill_rate.md) | 抑制パラドックス分析: 20層防御 × fill rate 17.7% の構造的矛盾と改善提案 |
+| 478 | rev | [478_phg_rev_477_improvements_and_fill_suppression_review.md](478_phg_rev_477_improvements_and_fill_suppression_review.md) | 475-477改善レビュー: コホート混在・条件付き確率構造・資本制約の見落とし |
+| 479 | rev | [479_phg_rev_474_478_feasibility_and_liquidity_paradox.md](479_phg_rev_474_478_feasibility_and_liquidity_paradox.md) | Liquidity Paradox 仮説: 価格フィージビリティ制約が真の主犯という立論 |
+| 480 | verify | [480_phg_verify_478_479_review_claims.md](480_phg_verify_478_479_review_claims.md) | 478/479レビュー検証: cross_venue_vetoが真犯のNFQ83%, 479の「同根」論は誤読 |
 
 ---
 
