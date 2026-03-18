@@ -15,6 +15,7 @@ from ztb.utils.memory_utils import (
     OperationMemoryTracker,
     check_memory_pressure,
     cleanup_training_memory,
+    cleanup_training_resources,
     get_memory_usage,
     memory_efficient_processing,
     optimize_array_dtype,
@@ -201,6 +202,47 @@ class TestCleanupTrainingMemory(unittest.TestCase):
 
         # Verify memory manager optimization was not called
         mock_memory_manager.optimize_memory_usage.assert_not_called()
+
+
+class TestCleanupTrainingResources(unittest.TestCase):
+    """Test cases for cleanup_training_resources helper."""
+
+    @patch("ztb.utils.memory_utils.gc.collect", return_value=9)
+    @patch("ztb.utils.memory_utils.clear_cuda_cache", return_value=True)
+    def test_detaches_models_and_closes_envs(self, mock_cuda_cache, mock_gc):
+        model = Mock()
+        model.replay_buffer = object()
+        model.env = object()
+        model._vec_normalize_env = object()
+        env = Mock()
+
+        stats = cleanup_training_resources(
+            models=[model],
+            envs=[env],
+            dataframes=[object()],
+        )
+
+        self.assertIsNone(model.replay_buffer)
+        self.assertIsNone(model.env)
+        self.assertIsNone(model._vec_normalize_env)
+        env.close.assert_called_once()
+        mock_cuda_cache.assert_called_once()
+        mock_gc.assert_called_once()
+        self.assertEqual(stats["models"], 1)
+        self.assertEqual(stats["envs"], 1)
+        self.assertEqual(stats["dataframes"], 1)
+        self.assertEqual(stats["gc_collected"], 9)
+        self.assertTrue(stats["cuda_cache_cleared"])
+
+    @patch("ztb.utils.memory_utils.gc.collect", return_value=0)
+    @patch("ztb.utils.memory_utils.clear_cuda_cache", return_value=False)
+    @patch("ztb.utils.memory_utils.default_memory_manager")
+    def test_can_optimize_cache(self, mock_memory_manager, mock_cuda_cache, mock_gc):
+        cleanup_training_resources(optimize_cache=True)
+
+        mock_memory_manager.optimize_memory_usage.assert_called_once()
+        mock_cuda_cache.assert_called_once()
+        mock_gc.assert_called_once()
 
 
 class TestClearCudaCache(unittest.TestCase):

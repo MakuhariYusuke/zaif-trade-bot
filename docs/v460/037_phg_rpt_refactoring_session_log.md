@@ -7128,3 +7128,40 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - fill test 側は recorder / sidecar / ML cache だけでなく、停止時点の RSS/threads まで event log 経由で追えるようになった
 - SAC cleanup は大きい共通化ではなく、`torch.cuda.empty_cache()` のような副作用が小さい断片だけ shared helper に寄せるのが安全だった
 - ここから先は helper 掃除より、`enricher` / `ml_pipeline` / `gate_check` など実処理コストの高いパスを削るフェーズに入っている
+
+## 2026-03-19 追加 wave: ztb 側への SAC cleanup 昇格 + real-data helper 横展開
+
+### 実施
+- [memory_utils.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/utils/memory_utils.py)
+  - `cleanup_training_resources(...)` を追加
+  - model の `replay_buffer` / `env` / `_vec_normalize_env` 切り離し、env close、CUDA cache clear、GC を shared helper に集約
+  - `scripts/v460` 専用だった teardown ロジックのうち、`ztb` に置くのが自然な部分を昇格した
+- [sac_common.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/sac_common.py)
+  - v460 側の `cleanup_training_resources(...)` は thin wrapper 化
+  - 実体は `ztb.utils.memory_utils.cleanup_training_resources(...)` を呼ぶよう整理
+- [tests/unit/v460/_real_data_test_helpers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_real_data_test_helpers.py)
+  - recent fill-record tail の cached loader を追加
+  - `load_minimum_feature_ready_fill_df(...)` を追加
+  - `ml_pipeline` の local helper を shared helper に吸収
+- [test_ml_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ml_pipeline.py)
+  - `_cached_latest_fill_records_file()` と local sample helper を削除
+  - shared real-data helper へ追随
+
+### テスト
+- [test_memory_utils.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/utils/test_memory_utils.py)
+  - `cleanup_training_resources(...)` の focused 回帰を追加
+- [test_408_f_series_blindspot.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_408_f_series_blindspot.py)
+  - 既存の `cleanup_training_resources(...)` 契約テストをそのまま維持
+
+### 検証
+- focused:
+  - `tests/unit/utils/test_memory_utils.py tests/unit/v460/test_ml_pipeline.py -k 'load_real_data or run_id_filter or CleanupTrainingResources or clear_cuda_cache' tests/unit/v460/test_408_f_series_blindspot.py -q --no-cov`
+  - `5 passed, 65 deselected in 2.74s`
+- filtered broad:
+  - `tests/unit/v460/ -q --no-cov --tb=short --ignore=tests/unit/v460/test_152_parallel_tasks.py --ignore=tests/unit/v460/test_260_compute_extract_regime_split.py`
+  - `5006 passed, 2 skipped, 13 warnings in 47.65s`
+
+### 見立て
+- `scripts/v460` 側に残すべきなのは fill_test / v460 固有 orchestration だけで、SAC teardown のような generic resource cleanup は `ztb` 側に寄せるのが自然だった
+- real-data helper は `ml_pipeline` だけでなく、今後 `enricher` / `build_features` 系にも広げやすい形になった
+- broad は通っているが、wall time は run ごとの揺れがあるので、次は helper 化より `enricher` / `ml_pipeline` の実処理コストを直接削るフェーズ

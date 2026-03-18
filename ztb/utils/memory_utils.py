@@ -7,6 +7,7 @@ Enhanced with TTLCache memory management integration.
 """
 
 from contextlib import contextmanager
+import gc
 from typing import Any, Generator, TypeVar
 
 import numpy as np
@@ -201,8 +202,6 @@ def cleanup_training_memory(
         force_gc: Whether to force garbage collection
         optimize_cache: Whether to optimize memory cache
     """
-    import gc
-
     try:
         # Clear data cache
         if data_cache is not None:
@@ -237,6 +236,72 @@ def cleanup_training_memory(
 
     except Exception as e:
         logger.warning(f"Memory cleanup failed: {e}")
+
+
+def cleanup_training_resources(
+    *,
+    models: list[object] | None = None,
+    envs: list[Any | None] | None = None,
+    dataframes: list[object] | None = None,
+    optimize_cache: bool = False,
+) -> dict[str, int | bool]:
+    """
+    Release common training resources such as env references, replay buffers, and frames.
+
+    This is the shared production helper for long-running SAC/ML paths that need
+    deterministic teardown without duplicating cleanup order.
+    """
+    model_count = 0
+    env_count = 0
+    dataframe_count = 0
+
+    if models:
+        for model in models:
+            if model is None:
+                continue
+            model_count += 1
+            try:
+                if hasattr(model, "replay_buffer"):
+                    setattr(model, "replay_buffer", None)
+                if hasattr(model, "env"):
+                    setattr(model, "env", None)
+                if hasattr(model, "_vec_normalize_env"):
+                    setattr(model, "_vec_normalize_env", None)
+            except Exception as exc:
+                logger.debug("Model resource detach skipped: %s", exc, exc_info=True)
+
+    if envs:
+        for env in envs:
+            if env is None:
+                continue
+            env_count += 1
+            try:
+                if hasattr(env, "close"):
+                    env.close()
+            except Exception as exc:
+                logger.debug("Environment close skipped: %s", exc, exc_info=True)
+
+    if dataframes:
+        for frame in dataframes:
+            if frame is None:
+                continue
+            dataframe_count += 1
+
+    if optimize_cache:
+        try:
+            default_memory_manager.optimize_memory_usage()
+        except Exception as exc:
+            logger.debug("Cache optimization skipped: %s", exc, exc_info=True)
+
+    cuda_cache_cleared = clear_cuda_cache()
+    gc_collected = gc.collect()
+    return {
+        "models": model_count,
+        "envs": env_count,
+        "dataframes": dataframe_count,
+        "cuda_cache_cleared": cuda_cache_cleared,
+        "gc_collected": gc_collected,
+    }
 
 def get_memory_usage() -> dict[str, float]:
     """

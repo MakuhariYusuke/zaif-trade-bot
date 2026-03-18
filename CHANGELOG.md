@@ -5759,3 +5759,12 @@ python scripts/unified_trainer.py \
     - focused diagnostics/utilities bundle: `32 passed in 3.07s`
     - focused SAC trainer import/regression bundle: `19 passed, 9 deselected in 4.00s`
     - filtered broad `tests/unit/v460/`: `4998 passed, 2 skipped, 13 warnings in 39.09s`
+- 2026-03-19: promoted generic SAC cleanup into `ztb` and widened shared real-data test helpers.
+  - updated [ztb/utils/memory_utils.py] to add shared `cleanup_training_resources(...)` for model/env/replay-buffer teardown plus GC/CUDA cleanup reporting
+  - updated [scripts/v460/lib/sac_common.py] so the v460 SAC path delegates teardown to the shared `ztb` helper instead of owning a parallel implementation
+  - updated [tests/unit/v460/_real_data_test_helpers.py] to cache recent fill-record tails and provide `load_minimum_feature_ready_fill_df(...)`
+  - updated [tests/unit/v460/test_ml_pipeline.py] to use the shared real-data helper instead of local latest-file/sample boilerplate
+  - added focused regression coverage in [tests/unit/utils/test_memory_utils.py] for the shared training-resource cleanup helper
+  - re-verified with:
+    - focused helper/cleanup bundle: `5 passed, 65 deselected in 2.74s`
+    - filtered broad `tests/unit/v460/`: `5006 passed, 2 skipped, 13 warnings in 47.65s`

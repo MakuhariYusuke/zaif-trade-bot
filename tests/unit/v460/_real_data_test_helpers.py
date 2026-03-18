@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gzip
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable
 
@@ -12,6 +13,47 @@ from ztb.io.jsonl import read_tail_jsonl_objects
 
 
 _DEFAULT_RESULTS_DIR = Path("results/v460/fill_test")
+
+
+@lru_cache(maxsize=8)
+def _cached_recent_fill_records_df(
+    *,
+    sample_rows: int,
+    results_dir_str: str,
+) -> pd.DataFrame:
+    results_dir = Path(results_dir_str)
+    files = sorted(results_dir.glob("fill_records_*.jsonl"))
+    if not files:
+        return pd.DataFrame()
+    if len(files) > 1:
+        files = files[:-1]
+
+    chunks: list[pd.DataFrame] = []
+    remaining = sample_rows
+    for path in reversed(files):
+        if remaining <= 0:
+            break
+        rows = read_tail_jsonl_objects(path, limit=remaining)
+        if not rows:
+            continue
+        frame = pd.DataFrame(rows)
+        if len(frame) > remaining:
+            chunks.append(frame.tail(remaining))
+            remaining = 0
+            break
+        chunks.append(frame)
+        remaining -= len(frame)
+
+    if chunks:
+        return pd.concat(reversed(chunks), ignore_index=True)
+    return pd.DataFrame()
+
+
+@lru_cache(maxsize=4)
+def cached_latest_fill_records_file(
+    results_dir: Path = _DEFAULT_RESULTS_DIR,
+) -> Path | None:
+    return latest_fill_records_file(results_dir)
 
 
 def latest_fill_records_file(
@@ -49,31 +91,35 @@ def load_recent_fill_records_df(
     results_dir: Path = _DEFAULT_RESULTS_DIR,
 ) -> pd.DataFrame:
     """最新側から最大 sample_rows 件を高速取得する."""
-    files = sorted(results_dir.glob("fill_records_*.jsonl"))
-    if not files:
+    return _cached_recent_fill_records_df(
+        sample_rows=sample_rows,
+        results_dir_str=str(results_dir.resolve()),
+    ).copy(deep=True)
+
+
+def load_minimum_feature_ready_fill_df(
+    *,
+    tmp_path: Path,
+    load_fn: Callable[[Path], pd.DataFrame],
+    feature_builder: Callable[[pd.DataFrame], tuple[pd.DataFrame, object]],
+    min_rows: int = 30,
+    min_feature_rows: int = 15,
+    candidate_limits: tuple[int, ...] = (94, 100, 160, 220),
+    results_dir: Path = _DEFAULT_RESULTS_DIR,
+) -> pd.DataFrame:
+    """最新 fill_records から成立条件を満たす最小限の sample を構築する."""
+    latest_file = cached_latest_fill_records_file(results_dir)
+    if latest_file is None:
         return pd.DataFrame()
-    if len(files) > 1:
-        files = files[:-1]
-
-    chunks: list[pd.DataFrame] = []
-    remaining = sample_rows
-    for path in reversed(files):
-        if remaining <= 0:
-            break
-        rows = read_tail_jsonl_objects(path, limit=remaining)
-        if not rows:
-            continue
-        frame = pd.DataFrame(rows)
-        if len(frame) > remaining:
-            chunks.append(frame.tail(remaining))
-            remaining = 0
-            break
-        chunks.append(frame)
-        remaining -= len(frame)
-
-    if chunks:
-        return pd.concat(reversed(chunks), ignore_index=True)
-    return pd.DataFrame()
+    return write_minimum_feature_ready_fill_sample(
+        latest_file=latest_file,
+        tmp_path=tmp_path,
+        load_fn=load_fn,
+        feature_builder=feature_builder,
+        min_rows=min_rows,
+        min_feature_rows=min_feature_rows,
+        candidate_limits=candidate_limits,
+    )
 
 
 def write_minimum_feature_ready_fill_sample(

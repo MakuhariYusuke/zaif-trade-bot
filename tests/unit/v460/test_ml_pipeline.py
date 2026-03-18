@@ -27,8 +27,8 @@ from scripts.v460.ml.data_loader import (
 )
 from scripts.v460.ml.fill_classifier import FillModelMetrics, train_fill_classifier
 from tests.unit.v460._real_data_test_helpers import (
-    latest_fill_records_file,
-    write_minimum_feature_ready_fill_sample,
+    cached_latest_fill_records_file,
+    load_minimum_feature_ready_fill_df,
 )
 
 
@@ -118,19 +118,8 @@ def fill_training_data_small(
 
 
 _REAL_DATA_CANDIDATE_LIMITS = (94, 100, 160, 220)
-
-
-@lru_cache(maxsize=1)
-def _cached_latest_fill_records_file() -> Path | None:
-    return latest_fill_records_file()
-
-
 def _load_minimum_real_as_fill_df(tmp_path: Path) -> pd.DataFrame:
-    latest_file = _cached_latest_fill_records_file()
-    if latest_file is None:
-        return pd.DataFrame()
-    return write_minimum_feature_ready_fill_sample(
-        latest_file=latest_file,
+    return load_minimum_feature_ready_fill_df(
         tmp_path=tmp_path,
         load_fn=lambda path: load_fill_records(path, max_files=1),
         feature_builder=build_as_features,
@@ -417,7 +406,7 @@ class Test057Integration:
     @pytest.fixture
     def real_data_available(self) -> bool:
         """実データの有無."""
-        return _cached_latest_fill_records_file() is not None
+        return cached_latest_fill_records_file() is not None
 
     def test_load_real_data(self, real_data_available: bool, tmp_path: Path) -> None:
         """実データのロードと AS 特徴量構築."""

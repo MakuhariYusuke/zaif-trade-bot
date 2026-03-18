@@ -24,7 +24,9 @@ from typing import Protocol
 import numpy as np
 import pandas as pd
 
-from ztb.utils.memory_utils import clear_cuda_cache
+from ztb.utils.memory_utils import (
+    cleanup_training_resources as cleanup_shared_training_resources,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -382,42 +384,14 @@ def cleanup_training_resources(
 
     呼び出し順序: model.del → env.close → del dataframes → gc.collect
     """
-    import gc
-
-    # 1. モデルを先に解放 (env / replay buffer への参照を切る)
-    if models:
-        for m in models:
-            if m is not None:
-                try:
-                    if hasattr(m, "replay_buffer"):
-                        setattr(m, "replay_buffer", None)
-                    if hasattr(m, "env"):
-                        setattr(m, "env", None)
-                    if hasattr(m, "_vec_normalize_env"):
-                        setattr(m, "_vec_normalize_env", None)
-                except Exception:
-                    pass
-
-    # 2. 環境をクローズ
-    if envs:
-        cleanup_envs(*envs)
-
-    # 3. DataFrame 参照を解放
-    if dataframes:
-        for df in dataframes:
-            if df is not None:
-                try:
-                    del df
-                except Exception:
-                    pass
-
-    # 4. CUDA allocator / 循環参照を回収
-    cuda_cache_cleared = clear_cuda_cache()
-
-    gc.collect()
+    stats = cleanup_shared_training_resources(
+        models=models,
+        envs=list(envs) if envs is not None else None,
+        dataframes=dataframes,
+    )
     logger.debug(
-        "cleanup_training_resources: gc.collect() completed (cuda_cache_cleared=%s)",
-        cuda_cache_cleared,
+        "cleanup_training_resources: %s",
+        stats,
     )
 
 
