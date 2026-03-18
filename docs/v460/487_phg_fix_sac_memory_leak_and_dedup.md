@@ -116,6 +116,45 @@ orchestrator_mid_cycle.py  (read_sidecar_signal_with_status → signal, status)
 - signal status (fresh/stale — missing 時は省略)
 - offset_bps 値 (0 以外の場合のみ)
 
+---
+
+## 4. P2: Progress log 可観測性強化
+
+487# P2 では fill_test の Progress log (50 サイクル周期) に以下の情報を追加。
+
+### 4.1 cancel_reason の cycle ログ追記
+
+`_log_cycle_result()` に `cancel_reason` パラメータを追加。unfilled 時にキャンセル理由を表示:
+```
+Cycle 150 result: filled=False, wait=30.0s, reason=timeout
+```
+
+変更: `fill_cycle_executor.py` (`_log_cycle_result` 署名 + 呼出元)
+
+### 4.2 Sidecar activity summary
+
+RunSessionState に fresh/stale/missing カウンタを追加。Progress log で freshRate を出力:
+```
+[487# sidecar] fresh=45, stale=3, missing=2 (freshRate=90.0%)
+```
+
+変更: `fill_loop_orchestrator.py` (RunSessionState), `orchestrator_mid_cycle.py` (カウント), `orchestrator_post_cycle.py` (出力)
+
+### 4.3 cancel_reason distribution (Top 5)
+
+RunSessionState に cancel_reason_counts dict を追加。gate block + unfilled cycle の理由を集計し Progress log で上位5件を出力:
+```
+[487# cancel] top reasons: timeout=25, spread_too_narrow=8, gate_dual_kill=3
+```
+
+変更: `orchestrator_mid_cycle.py` (gate block 時カウント), `orchestrator_post_cycle.py` (unfilled カウント + 出力)
+
+### 4.4 テスト
+
+`test_sidecar_sac_integration.py` に `TestRunSessionStateSidecarTracking` (5 件) を追加:
+- sidecar カウンタのデフォルト値・インクリメント
+- cancel_reason_counts の dict 独立性・累積動作
+
 例: `Cycle 142 result: filled=True, wait=3.2s, pnl=0.85bps, sidecar=fresh(+0.048bps)`
 
 ### 2.5 期待効果

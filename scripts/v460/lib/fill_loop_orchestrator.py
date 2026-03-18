@@ -83,6 +83,12 @@ class RunSessionState:
     # 431# clamp observability (428#/429#/430# 指摘対応)
     clamp_fire_count: int = 0
     ceiling_check_count: int = 0
+    # 487# P2: sidecar activity tracking (progress log 用)
+    sidecar_fresh_count: int = 0
+    sidecar_stale_count: int = 0
+    sidecar_missing_count: int = 0
+    # 487# P2: cancel_reason distribution (progress log 用)
+    cancel_reason_counts: dict[str, int] = field(default_factory=dict)
     batch: list[FillRecord] = field(default_factory=list)
     batch_size: int = 10
 

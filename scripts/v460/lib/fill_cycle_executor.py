@@ -566,6 +566,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         filled: bool,
         queue_wait: float,
         post_fill_pnl: float | None,
+        cancel_reason: str | None = None,
         sidecar_offset_bps: float = 0.0,
         sidecar_signal_status: str | None = None,
     ) -> None:
@@ -575,6 +576,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             _sidecar_tag = f", sidecar={sidecar_signal_status}"
             if sidecar_offset_bps != 0.0:
                 _sidecar_tag += f"({sidecar_offset_bps:+.3f}bps)"
+        # 487# P2: cancel_reason を追記 (unfilled 時に原因可視化)
+        _cancel_tag = f", reason={cancel_reason}" if cancel_reason and not filled else ""
         if post_fill_pnl is not None:
             logger.info(
                 f"Cycle {self._cycle_count} result: "
@@ -585,7 +588,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         logger.info(
             f"Cycle {self._cycle_count} result: "
             f"filled={filled}, wait={queue_wait:.1f}s"
-            f"{_sidecar_tag}"
+            f"{_cancel_tag}{_sidecar_tag}"
         )
 
     async def run_single_cycle(
@@ -1329,6 +1332,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             filled=filled,
             queue_wait=queue_wait,
             post_fill_pnl=post_fill_pnl,
+            cancel_reason=cancel_reason_poll,
             sidecar_offset_bps=sidecar_offset_bps,
             sidecar_signal_status=sidecar_signal_status,
         )

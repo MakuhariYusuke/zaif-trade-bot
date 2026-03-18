@@ -53,6 +53,10 @@ class OrchestratorPostCycleMixin:
         if record.filled:
             st.filled_count += 1
             self._track_side_pnl(record)
+        else:
+            # 487# P2: unfilled cancel_reason tracking
+            _cr = record.cancel_reason or "unknown"
+            st.cancel_reason_counts[_cr] = st.cancel_reason_counts.get(_cr, 0) + 1
             # 202# A: 単一サイクル大損失クールダウン
             if (
                 record.post_fill_30s_pnl is not None
@@ -295,6 +299,31 @@ class OrchestratorPostCycleMixin:
                     f"[431# clamp] clampFires={st.clamp_fire_count}/"
                     f"{st.ceiling_check_count} ({_clamp_rate:.1f}%)"
                 )
+            # 487# P2: sidecar activity summary
+            _sc_total = (
+                st.sidecar_fresh_count
+                + st.sidecar_stale_count
+                + st.sidecar_missing_count
+            )
+            if _sc_total > 0:
+                logger.info(
+                    f"[487# sidecar] fresh={st.sidecar_fresh_count}, "
+                    f"stale={st.sidecar_stale_count}, "
+                    f"missing={st.sidecar_missing_count} "
+                    f"(freshRate="
+                    f"{st.sidecar_fresh_count / _sc_total * 100.0:.1f}%)"
+                )
+            # 487# P2: cancel_reason distribution (top 5)
+            if st.cancel_reason_counts:
+                _sorted_cr = sorted(
+                    st.cancel_reason_counts.items(),
+                    key=lambda x: x[1],
+                    reverse=True,
+                )[:5]
+                _cr_summary = ", ".join(
+                    f"{k}={v}" for k, v in _sorted_cr
+                )
+                logger.info(f"[487# cancel] top reasons: {_cr_summary}")
             # 348# balance_forced 撤廃: forced buy/sell KPI 分離ログを削除
 
         # 113# resilience: HealthMonitor + GC

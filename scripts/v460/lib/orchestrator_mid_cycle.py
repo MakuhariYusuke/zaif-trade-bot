@@ -140,6 +140,14 @@ class OrchestratorMidCycleMixin:
 
         _sidecar_signal, _sidecar_signal_status = read_sidecar_signal_with_status()
 
+        # 487# P2: sidecar activity tracking (progress log 用)
+        if _sidecar_signal_status == "fresh":
+            st.sidecar_fresh_count += 1
+        elif _sidecar_signal_status == "stale":
+            st.sidecar_stale_count += 1
+        else:
+            st.sidecar_missing_count += 1
+
         _gate_result = self._cycle_gate.evaluate(
             side=next_side,
             regime=(
@@ -213,6 +221,10 @@ class OrchestratorMidCycleMixin:
             order_quantity=self._current_lot,
             update_last_side=True, sleep=False,
         )
+
+        # 487# P2: cancel_reason distribution tracking
+        _cr = gate_result.cancel_reason or gate_result.blocking_reason or "unknown"
+        st.cancel_reason_counts[_cr] = st.cancel_reason_counts.get(_cr, 0) + 1
 
         if gate_result.blocking_reason:
             self._inc_guard_fire(f"gate_{gate_result.blocking_reason}")
