@@ -242,6 +242,8 @@ class MemoryMonitor(_ThreadSafeStatsBase):
         self._monitor_thread: threading.Thread | None = None
         self._last_memory_mb = 0.0
         self._memory_history: deque[float] = deque(maxlen=100)
+        self._memory_history_sum = 0.0
+        self._peak_memory_mb = 0.0
         self._cleanup_callbacks: list[Callable[[], None]] = []
 
     def start_monitoring(self) -> None:
@@ -276,11 +278,19 @@ class MemoryMonitor(_ThreadSafeStatsBase):
             memory_mb = float(memory_info.rss) / BYTES_PER_MB
 
             with self._lock:
+                if len(self._memory_history) == self._memory_history.maxlen:
+                    dropped = self._memory_history[0]
+                    self._memory_history_sum -= dropped
                 self._memory_history.append(memory_mb)
+                self._memory_history_sum += memory_mb
                 self._last_memory_mb = memory_mb
-                peak_mb = max(self._memory_history) if self._memory_history else 0.0
+                if memory_mb >= self._peak_memory_mb:
+                    self._peak_memory_mb = memory_mb
+                elif self._peak_memory_mb not in self._memory_history:
+                    self._peak_memory_mb = max(self._memory_history, default=0.0)
+                peak_mb = self._peak_memory_mb
                 average_mb = (
-                    sum(self._memory_history) / len(self._memory_history)
+                    self._memory_history_sum / len(self._memory_history)
                     if self._memory_history
                     else 0.0
                 )

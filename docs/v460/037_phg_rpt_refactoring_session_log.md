@@ -7174,3 +7174,10 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - 489# v460 hotspot follow-up:
   - `test_sac_retrain_scheduler.py` の `retrain_once(cold/warm/oos)` は `_evaluate_model()` を patch し、訓練フロー契約だけを見るように分離
   - `test_enricher_skip_gate.py` の real-data sample ladder を実測に合わせて `72/94/120` へ圧縮
+- 490# perf/stability follow-up:
+  - `MemoryMonitor.get_memory_stats()` の rolling average/peak を O(1) 更新へ変更
+  - `test_gate_check.py` の G1.1 系を `TemporaryDirectory()` から `tmp_path` へ寄せた
+  - `test_build_features_pipeline.py` の proxy rows を `36` ベースへ圧縮
+- 491# v460 stability follow-up:
+  - `test_sidecar_sac_integration.py` の confidence 計算を module-level helper に統一
+  - `TestConfidenceDynamic` / `TestConfidenceDynamicCalc` の重複を削減しつつ、broad を止めていた `_compute_confidence` 欠落を解消

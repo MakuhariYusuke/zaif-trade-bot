@@ -5770,3 +5770,5 @@ python scripts/unified_trainer.py \
     - filtered broad `tests/unit/v460/`: `5006 passed, 2 skipped, 13 warnings in 47.65s`
 - 488# v460 test/perf: judgment YAML read を cached helper 化し、health/resilience/SAC テストの GC・YAML・mock 固定費を削減
 - 489# v460 test/perf: SAC retrain_once の OOS 評価を分離し、enricher real-data integration の sample ladder を `72/94/120` へ圧縮
+- 490# perf/stability: `MemoryMonitor` の rolling stats を O(1) 化し、`gate_check` の G1.1 tempdir boilerplate と `build_features` proxy test 入力を縮小
+- 491# v460 test/stability: `test_sidecar_sac_integration.py` の confidence 計算を module-level helper に統一し、broad を止めていた latent test bug を解消

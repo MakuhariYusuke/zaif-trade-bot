@@ -38,6 +38,19 @@ from tests.unit.v460.conftest import make_gate_config
 from ztb.metrics.fill_quality import FillRecord
 
 
+def _compute_confidence(
+    roi: float,
+    gate_threshold: float = 0.0,
+    full_roi: float = 0.005,
+) -> float:
+    """sac_retrain_scheduler の confidence 計算ロジックを抽出。"""
+    if full_roi <= gate_threshold:
+        return 1.0
+    if roi <= gate_threshold:
+        return 0.0
+    return min(1.0, (roi - gate_threshold) / (full_roi - gate_threshold))
+
+
 # ════════════════════════════════════════════════════════════════
 # §1 sidecar_types テスト
 # ════════════════════════════════════════════════════════════════
@@ -633,45 +646,83 @@ class TestFillRecordSidecarFields:
 class TestConfidenceDynamic:
     """372# confidence 動的計算のテスト."""
 
-    @staticmethod
-    def _compute_confidence(
-        roi: float,
-        gate_threshold: float = 0.0,
-        full_roi: float = 0.005,
-    ) -> float:
-        """sac_retrain_scheduler の confidence 計算ロジックを抽出。"""
-        if full_roi <= gate_threshold:
-            return 1.0
-        if roi <= gate_threshold:
-            return 0.0
-        return min(1.0, (roi - gate_threshold) / (full_roi - gate_threshold))
-
     def test_below_gate_zero(self) -> None:
         """ROI < gate → confidence=0."""
-        assert self._compute_confidence(-0.001) == 0.0
+        assert _compute_confidence(-0.001) == 0.0
+
+
+# ════════════════════════════════════════════════════════════════
+# §8  487# P2 ログ改善テスト
+# ════════════════════════════════════════════════════════════════
+
+
+class TestRunSessionStateSidecarTracking:
+    """487# P2: RunSessionState の sidecar / cancel_reason カウンタ."""
+
+    def test_sidecar_counters_default_zero(self) -> None:
+        from scripts.v460.lib.fill_loop_orchestrator import RunSessionState
+        st = RunSessionState()
+        assert st.sidecar_fresh_count == 0
+        assert st.sidecar_stale_count == 0
+        assert st.sidecar_missing_count == 0
+
+    def test_sidecar_counters_increment(self) -> None:
+        from scripts.v460.lib.fill_loop_orchestrator import RunSessionState
+        st = RunSessionState()
+        st.sidecar_fresh_count += 1
+        st.sidecar_stale_count += 2
+        st.sidecar_missing_count += 3
+        assert st.sidecar_fresh_count == 1
+        assert st.sidecar_stale_count == 2
+        assert st.sidecar_missing_count == 3
+
+    def test_cancel_reason_counts_default_empty(self) -> None:
+        from scripts.v460.lib.fill_loop_orchestrator import RunSessionState
+        st = RunSessionState()
+        assert st.cancel_reason_counts == {}
+
+    def test_cancel_reason_counts_tracking(self) -> None:
+        from scripts.v460.lib.fill_loop_orchestrator import RunSessionState
+        st = RunSessionState()
+        for reason in ["timeout", "timeout", "spread_too_narrow", "timeout"]:
+            st.cancel_reason_counts[reason] = st.cancel_reason_counts.get(reason, 0) + 1
+        assert st.cancel_reason_counts["timeout"] == 3
+        assert st.cancel_reason_counts["spread_too_narrow"] == 1
+
+    def test_cancel_reason_counts_independent(self) -> None:
+        """各インスタンスの cancel_reason_counts が独立."""
+        from scripts.v460.lib.fill_loop_orchestrator import RunSessionState
+        st1 = RunSessionState()
+        st2 = RunSessionState()
+        st1.cancel_reason_counts["x"] = 1
+        assert "x" not in st2.cancel_reason_counts
+
+
+class TestConfidenceDynamicCalc:
+    """372# confidence 動的計算のテスト (§8 分離による継続)."""
 
     def test_at_gate_zero(self) -> None:
         """ROI == gate → confidence=0."""
-        assert self._compute_confidence(0.0) == 0.0
+        assert _compute_confidence(0.0) == 0.0
 
     def test_halfway(self) -> None:
         """ROI halfway between gate and full → confidence=0.5."""
-        c = self._compute_confidence(0.0025, gate_threshold=0.0, full_roi=0.005)
+        c = _compute_confidence(0.0025, gate_threshold=0.0, full_roi=0.005)
         assert c == pytest.approx(0.5)
 
     def test_at_full_roi(self) -> None:
         """ROI == full_roi → confidence=1.0."""
-        c = self._compute_confidence(0.005, gate_threshold=0.0, full_roi=0.005)
+        c = _compute_confidence(0.005, gate_threshold=0.0, full_roi=0.005)
         assert c == pytest.approx(1.0)
 
     def test_above_full_roi_capped(self) -> None:
         """ROI > full_roi → confidence=1.0 (キャップ)."""
-        c = self._compute_confidence(0.01)
+        c = _compute_confidence(0.01)
         assert c == 1.0
 
     def test_misconfigured_full_leq_gate(self) -> None:
         """full_roi <= gate → フォールバック 1.0."""
-        c = self._compute_confidence(0.001, gate_threshold=0.005, full_roi=0.005)
+        c = _compute_confidence(0.001, gate_threshold=0.005, full_roi=0.005)
         assert c == 1.0
 
 

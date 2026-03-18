@@ -421,64 +421,57 @@ class TestRunG1_1:
         path = tmp_dir / "fill_records_test.jsonl"
         write_jsonl_sample(path, records)
 
-    def test_g1_1_pass(self) -> None:
+    def test_g1_1_pass(self, tmp_path: Path) -> None:
         """良好な fill_records → PASS."""
 
         records = _make_fill_records(
             n=50, fill_rate=0.98, pnl_mean=0.2, as_ratio=0.05, queue_wait=20.0,
         )
-        with tempfile.TemporaryDirectory() as tmp:
-            self._write_fill_records(records, Path(tmp))
-            result = run_g1_1(tmp)
+        self._write_fill_records(records, tmp_path)
+        result = run_g1_1(tmp_path)
 
         # 135# P0-12: delegation 後は g1_1_quick_judgment 由来の "G1.1-quick"
         assert result["gate"] == "G1.1-quick"
         assert result["gate_result"] in ("PASS", "WATCH")
 
-    def test_g1_1_low_fill_rate(self) -> None:
+    def test_g1_1_low_fill_rate(self, tmp_path: Path) -> None:
         """低 fill_rate → FAIL (K1_attempted_fill_rate)."""
 
         records = _make_fill_records(n=50, fill_rate=0.50)
-        with tempfile.TemporaryDirectory() as tmp:
-            self._write_fill_records(records, Path(tmp))
-            result = run_g1_1(tmp)
+        self._write_fill_records(records, tmp_path)
+        result = run_g1_1(tmp_path)
 
         assert result["gate_result"] == "FAIL"
         assert result["checks"]["K1_attempted_fill_rate"]["pass"] is False
 
-    def test_g1_1_no_data(self) -> None:
+    def test_g1_1_no_data(self, tmp_path: Path) -> None:
         """データなし → NO_DATA."""
-
-        with tempfile.TemporaryDirectory() as tmp:
-            result = run_g1_1(tmp)
+        result = run_g1_1(tmp_path)
 
         assert result["gate_result"] == "NO_DATA"
 
-    def test_g1_1_negative_pnl(self) -> None:
+    def test_g1_1_negative_pnl(self, tmp_path: Path) -> None:
         """大幅負 PnL → K4_pnl_kill FAIL."""
 
         records = _make_fill_records(
             n=100, fill_rate=0.98, pnl_mean=-2.0, as_ratio=0.05,
         )
-        with tempfile.TemporaryDirectory() as tmp:
-            self._write_fill_records(records, Path(tmp))
-            result = run_g1_1(tmp)
+        self._write_fill_records(records, tmp_path)
+        result = run_g1_1(tmp_path)
 
         # K4 は pValue & mean の複合条件 — 大幅負 PnL + 有意ならFAIL
         assert result["checks"]["K4_pnl_kill"]["pass"] is False
 
-    def test_g1_1_deprecation_warning(self) -> None:
+    def test_g1_1_deprecation_warning(self, tmp_path: Path) -> None:
         """DeprecationWarning が発行されること."""
         import warnings
 
-
-        with tempfile.TemporaryDirectory() as tmp:
-            with warnings.catch_warnings(record=True) as w:
-                warnings.simplefilter("always")
-                run_g1_1(tmp)
-            dep_warns = [x for x in w if issubclass(x.category, DeprecationWarning)]
-            assert len(dep_warns) >= 1
-            assert "gate_judgment" in str(dep_warns[0].message)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            run_g1_1(tmp_path)
+        dep_warns = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert len(dep_warns) >= 1
+        assert "gate_judgment" in str(dep_warns[0].message)
 
 
 # =====================================================================
