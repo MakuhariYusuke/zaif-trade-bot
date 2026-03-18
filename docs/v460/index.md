@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-19 (482# SAC深掘り分析 + 481#ドキュメント補完)
+> 最終更新: 2026-03-19 (486# 483-485レビュー検証)
 
 ---
 
@@ -511,6 +511,10 @@
 | 480 | verify | [480_phg_verify_478_479_review_claims.md](480_phg_verify_478_479_review_claims.md) | 478/479レビュー検証 + veto閾値8.0bps + min_spread 700JPY 段階緩和 |
 | 481 | fix | [481_phg_fix_veto_spread_nfq_log.md](481_phg_fix_veto_spread_nfq_log.md) | veto 6→8bps + min_spread 1000→700 + NFQ log reason tag |
 | 482 | impl | [482_phg_impl_sac_100k_vr02_results_and_deploy.md](482_phg_impl_sac_100k_vr02_results_and_deploy.md) | SAC 100K×4シード最終結果 + Seed456 bestデプロイ + 深掘り分析 |
+| 483 | rev | [483_phg_rev_479_482_feasibility_tuning_and_sac_deploy_review.md](483_phg_rev_479_482_feasibility_tuning_and_sac_deploy_review.md) | 479-482レビュー: feasibility緩和妥当、SAC投入は探索段階 |
+| 484 | rev | [484_phg_deep_dive_482_sac_selection_and_live_effect_limits.md](484_phg_deep_dive_482_sac_selection_and_live_effect_limits.md) | 深掘り: seed選定不安定、deploy gate緩い、live sidecar効き幅小 |
+| 485 | rev | [485_phg_verify_483_sac_paradox_and_sidecar_limits.md](485_phg_verify_483_sac_paradox_and_sidecar_limits.md) | 総括: OOS過適合分析 + sidecar実質無風化 + 寄与分解P0提案 |
+| 486 | verify | [486_phg_verify_483_484_485_review_claims.md](486_phg_verify_483_484_485_review_claims.md) | 483-485レビュー検証: 全数値・コード・設定を突合、483/484=A、485=B+ |
 
 ---
 
