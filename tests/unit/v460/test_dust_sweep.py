@@ -77,10 +77,10 @@ class TestDustSweepDetection:
 
     @pytest.mark.asyncio
     async def test_no_dust_no_sweep(self) -> None:
-        """dust がない場合は通常ロットのまま."""
+        """btc_free == current_lot の場合は dust sweep 不要."""
         config = _make_config()
         checker = BalanceChecker(config)
-        adapter = _make_adapter(btc_free=0.002)
+        adapter = _make_adapter(btc_free=0.001)  # 476#: 正確に lot と一致
 
         skip = await checker.check("sell", adapter, "btc_jpy")
 
@@ -146,13 +146,17 @@ class TestDustSweepLotFloor:
         assert checker.current_lot == pytest.approx(0.00199707, abs=1e-9)
 
     def test_lot_floor_normal_without_dust(self) -> None:
-        """dust sweep 非アクティブ時は通常の lot floor が機能する."""
+        """dust sweep 非アクティブ時は通常の lot floor が機能する.
+
+        476#: Coincheck は satoshi 精度許容のため 0.001 単位切り捨てなし。
+        round(x, 8) + max(min_order) のみ適用。
+        """
         config = _make_config()
         checker = BalanceChecker(config)
         checker.current_lot = 0.00150  # 端数なロット
 
         checker.apply_lot_floor()
-        assert checker.current_lot == 0.001  # min_order_btc 単位にフロア
+        assert checker.current_lot == 0.0015  # 476#: satoshi 精度で維持
 
 
 class TestDustSweepRestore:

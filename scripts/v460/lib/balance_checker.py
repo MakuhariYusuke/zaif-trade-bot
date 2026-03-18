@@ -154,8 +154,9 @@ class BalanceChecker:
         if btc_free < effective_lot:
             # 052#: 最小ロット以上の残高があれば縮小して継続
             # 145# §8-#1: base ロット = btc_free / regime_mult として算出
+            # 476#: Coincheck は satoshi 精度を許容 — 0.001 単位切り捨て廃止
             max_base = btc_free / regime_mult if regime_mult > 0 else btc_free
-            new_lot = int(max_base / self._min_order_btc) * self._min_order_btc
+            new_lot = round(max_base, 8)
             if new_lot >= self._min_order_btc:
                 old_lot = self._current_lot
                 self._current_lot = new_lot
@@ -169,7 +170,7 @@ class BalanceChecker:
                 # 128# 縮小後も dust sweep 判定を通過させる
                 # 372# sell 可能になったら dust_buy_pending 解除
                 self._dust_buy_pending = False
-                return self._maybe_dust_sweep(btc_free)
+                return self._maybe_dust_sweep(btc_free, regime_mult)
             self._log_insufficient(
                 "sell",
                 f"[balance] Insufficient BTC for sell: "
@@ -205,8 +206,8 @@ class BalanceChecker:
                 f"{old_lot:.4f} → {self._current_lot:.4f} BTC"
             )
 
-        # 128# dust sweep: 残高十分でも dust があれば全額売却
-        return self._maybe_dust_sweep(btc_free)
+        # 128# dust sweep: 残高 > current_lot なら全額売却
+        return self._maybe_dust_sweep(btc_free, regime_mult)
 
     async def _check_buy(
         self, adapter: BalanceAdapterProtocol, symbol: str, *, regime_mult: float = 1.0,
@@ -230,7 +231,8 @@ class BalanceChecker:
             # 145# §8-#1: レジーム倍率込みで逆算: base = affordable / regime_mult
             affordable_effective = jpy_free / (price * self._config.balance_margin_ratio)
             affordable_base = affordable_effective / regime_mult if regime_mult > 0 else affordable_effective
-            affordable_lot = int(affordable_base / self._min_order_btc) * self._min_order_btc
+            # 476#: Coincheck は satoshi 精度を許容 — 0.001 単位切り捨て廃止
+            affordable_lot = round(affordable_base, 8)
             if affordable_lot >= self._min_order_btc:
                 old_lot = self._current_lot
                 self._current_lot = affordable_lot
@@ -265,28 +267,60 @@ class BalanceChecker:
                     f"[balance] JPY 残高回復: ロット復元 "
                     f"{old_lot:.4f} → {self._current_lot:.4f} BTC"
                 )
+
+        # 476#: 残高連動ロット拡大 — JPY 残高で買える最大ロットに拡大
+        _max_lot = self._config.max_lot
+        if _max_lot > 0 and self._current_lot < _max_lot and price > 0:
+            max_affordable = jpy_free / (price * self._config.balance_margin_ratio)
+            max_base = max_affordable / regime_mult if regime_mult > 0 else max_affordable
+            target_lot = round(min(max_base, _max_lot), 8)
+            if target_lot > self._current_lot and target_lot >= self._min_order_btc:
+                old_lot = self._current_lot
+                self._current_lot = target_lot
+                logger.info(
+                    f"[476# balance_lot] buy: JPY {jpy_free:.0f} → "
+                    f"lot {old_lot:.6f} → {target_lot:.6f} BTC "
+                    f"(max_lot={_max_lot})"
+                )
+
         return False
 
-    def _maybe_dust_sweep(self, btc_free: float) -> bool:
+    def _maybe_dust_sweep(self, btc_free: float, regime_mult: float = 1.0) -> bool:
         """128# sell 時に dust があれば全BTC残高を売却して一掃.
 
-        dust = btc_free のうち min_order_btc 単位に切り捨てた端数部分。
-        dust > 0 の場合、_current_lot を btc_free 全額に拡張して
-        sell 後に残留ゼロにする。
+        476#: Coincheck は satoshi 精度許容 — 実効ロット (base × regime_mult) と
+        btc_free を比較し、余剰があれば全額売却。regime_mult を考慮して
+        base lot を算出する。
 
         Returns:
             False (= sell 続行) を返す。
         """
         if not self._config.dust_sweep_enabled:
             return False
-        dust = btc_free - int(btc_free / self._min_order_btc) * self._min_order_btc
-        if dust > 1e-9:
+        effective_lot = self._current_lot * regime_mult
+        if btc_free > effective_lot + 1e-9:
+            # 実効ロットを超える BTC → 全額売却に拡張
             self._pre_dust_lot = self._current_lot
-            self._current_lot = round(btc_free, 8)
+            sell_base = btc_free / regime_mult if regime_mult > 0 else btc_free
+            self._current_lot = round(sell_base, 8)
             self._dust_sweep_active = True
             logger.info(
-                f"[dust_sweep] BTC {btc_free:.8f} has dust {dust:.8f}. "
-                f"Selling full balance: {self._current_lot:.8f} BTC"
+                f"[dust_sweep] BTC {btc_free:.8f} > effective "
+                f"{effective_lot:.8f}. Selling full balance: "
+                f"base {self._current_lot:.8f} (×{regime_mult:.2f}) BTC"
+            )
+        elif (
+            abs(effective_lot - btc_free) < 1e-9
+            and abs(self._current_lot - self._config.order_quantity) > 1e-9
+        ):
+            # 476#: shrink により実効ロットが btc_free に一致済だが通常ロットと異なる
+            # → lot_scale チェーンから保護するため dust_sweep_active を設定
+            self._pre_dust_lot = self._config.order_quantity
+            self._dust_sweep_active = True
+            logger.info(
+                f"[dust_sweep] Effective lot {effective_lot:.8f} ≈ BTC {btc_free:.8f} "
+                f"(≠ order_qty {self._config.order_quantity:.4f}). "
+                f"Activating protection."
             )
         return False
 
@@ -313,12 +347,13 @@ class BalanceChecker:
 
         128#: dust sweep アクティブ時はフロア処理をスキップ
         (端数込みの正確な数量を保持する必要があるため)。
+        476#: Coincheck は satoshi 精度を許容 — 0.001 単位切り捨て廃止。
         """
         if self._dust_sweep_active:
             return
         self._current_lot = max(
             self._min_order_btc,
-            int(self._current_lot / self._min_order_btc) * self._min_order_btc,
+            round(self._current_lot, 8),
         )
 
     def restore_lot_after_dust_sweep(self) -> None:

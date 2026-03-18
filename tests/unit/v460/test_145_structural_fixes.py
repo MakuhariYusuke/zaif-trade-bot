@@ -274,6 +274,7 @@ class TestPreflightRegimeMult:
             order_quantity=lot,
             min_order_btc=0.001,
             balance_margin_ratio=1.01,
+            dust_sweep_enabled=False,  # 476#: regime_mult テストは dust sweep と分離
         )
         return BalanceChecker(config)
 
@@ -334,9 +335,10 @@ class TestPreflightRegimeMult:
         adapter = self._mock_adapter_buy(jpy_free, price)
         result = await checker.check("buy", adapter, "BTC_JPY", regime_mult=1.5)
         # Should shrink: affordable_effective = 60000 / (10M * 1.01) = 0.00594
-        # affordable_base = 0.00594 / 1.5 = 0.00396, floor(0.00396/0.001)*0.001 = 0.003
+        # affordable_base = 0.00594 / 1.5 = 0.00396
+        # 476#: Coincheck は satoshi 精度許容 — 0.001 単位切り捨て廃止
         assert result is False
-        assert checker.current_lot == 0.003
+        assert checker.current_lot == pytest.approx(0.00396040, abs=1e-6)
 
     @pytest.mark.asyncio
     async def test_sell_restore_considers_regime_mult(self) -> None:

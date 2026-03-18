@@ -564,9 +564,10 @@ class OrderMonitor:
                                     f"gap {_gap:.0f}→{_tightened_gap:.0f} "
                                     f"(factor={_tighten})"
                                 )
+                            # 476#: Coincheck は satoshi 精度 — 0.001 単位切り捨て廃止
                             reprice_lot = max(
                                 min_order_btc,
-                                int(current_lot / min_order_btc) * min_order_btc,
+                                round(current_lot, 8),
                             )
                             new_order = await adapter.place_order(
                                 symbol=cfg.symbol,

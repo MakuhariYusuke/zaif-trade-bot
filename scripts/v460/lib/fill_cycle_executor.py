@@ -844,24 +844,27 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         )
 
         # 460# Lot adjustment chain — 4 乗数を順次適用
+        # 476#: dust_sweep_active 時は全額売却を保証するためスキップ
+        _dust_active = self._balance_checker.dust_sweep_active
         _min_lot = self.config.order_quantity
-        _alert_lm = self._alert_lot_mult
-        if _alert_lm != 1.0:
-            _order_lot = self._scale_lot(_order_lot, _alert_lm, _min_lot, "215# alert_mode", warn=True)
-        _recovery_lm = self._halt_recovery_lot_mult
-        if _recovery_lm < 1.0:
-            _order_lot = self._scale_lot(_order_lot, _recovery_lm, _min_lot, "224# B1 Recovery")
-        _dd_side_scale = (
-            self._dd_soft_lot_scale_buy if side == "buy"
-            else self._dd_soft_lot_scale_sell
-        )
-        if _dd_side_scale < 1.0:
-            _order_lot = self._scale_lot(_order_lot, _dd_side_scale, _min_lot, f"303# B DD soft {side}")
-        _dd_guard = self._daily_drawdown_guard
-        if _dd_guard is not None:
-            _cd_lm = _dd_guard.get_cooldown_lot_scale()
-            if _cd_lm < 1.0:
-                _order_lot = self._scale_lot(_order_lot, _cd_lm, _min_lot, "246# cooldown_release")
+        if not _dust_active:
+            _alert_lm = self._alert_lot_mult
+            if _alert_lm != 1.0:
+                _order_lot = self._scale_lot(_order_lot, _alert_lm, _min_lot, "215# alert_mode", warn=True)
+            _recovery_lm = self._halt_recovery_lot_mult
+            if _recovery_lm < 1.0:
+                _order_lot = self._scale_lot(_order_lot, _recovery_lm, _min_lot, "224# B1 Recovery")
+            _dd_side_scale = (
+                self._dd_soft_lot_scale_buy if side == "buy"
+                else self._dd_soft_lot_scale_sell
+            )
+            if _dd_side_scale < 1.0:
+                _order_lot = self._scale_lot(_order_lot, _dd_side_scale, _min_lot, f"303# B DD soft {side}")
+            _dd_guard = self._daily_drawdown_guard
+            if _dd_guard is not None:
+                _cd_lm = _dd_guard.get_cooldown_lot_scale()
+                if _cd_lm < 1.0:
+                    _order_lot = self._scale_lot(_order_lot, _cd_lm, _min_lot, "246# cooldown_release")
 
         # 373# F8: 全乗数チェーン適用後の最終 max_lot クランプ (防御的)
         # 現行乗数は全て ≤ 1.0 だが、将来の拡張で > 1.0 が入った場合の安全弁
