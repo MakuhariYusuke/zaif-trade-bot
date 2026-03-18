@@ -301,7 +301,7 @@ def _make_mock_model():
     return model
 
 
-_MOCK_OHLCV_DF = pd.DataFrame({"close": np.arange(24, dtype=float)})
+_MOCK_OHLCV_DF = pd.DataFrame({"close": np.arange(12, dtype=float)})
 
 
 @contextmanager
@@ -328,17 +328,20 @@ class TestRetrainOnce:
     """retrain_once() のテスト (SB3/env をモック化)."""
 
     @patch("scripts.v460.ml.sac_retrain_scheduler._create_env")
+    @patch("scripts.v460.ml.sac_retrain_scheduler._evaluate_model")
     @patch("scripts.v460.ml.sac_retrain_scheduler._atomic_deploy_model")
     @patch("scripts.v460.ml.sac_retrain_scheduler._update_sidecar_signal")
     def test_cold_start_success(
         self,
         mock_update_signal: MagicMock,
         mock_deploy: MagicMock,
+        mock_evaluate_model: MagicMock,
         mock_create_env: MagicMock,
         tmp_path: Path,
     ) -> None:
         mock_env = _make_mock_env()
         mock_create_env.return_value = mock_env
+        mock_evaluate_model.return_value = {"gross_roi": 0.01, "trade_count": 5}
         mock_model = _make_mock_model()
 
         cfg = SACRetrainConfig(
@@ -362,13 +365,16 @@ class TestRetrainOnce:
         mock_update_signal.assert_called_once()
 
     @patch("scripts.v460.ml.sac_retrain_scheduler._create_env")
+    @patch("scripts.v460.ml.sac_retrain_scheduler._evaluate_model")
     def test_warm_start(
         self,
+        mock_evaluate_model: MagicMock,
         mock_create_env: MagicMock,
         tmp_path: Path,
     ) -> None:
         mock_env = _make_mock_env()
         mock_create_env.return_value = mock_env
+        mock_evaluate_model.return_value = {"gross_roi": 0.01, "trade_count": 5}
         mock_model = _make_mock_model()
 
         model_path = tmp_path / "model.zip"
@@ -396,16 +402,17 @@ class TestRetrainOnce:
 
     @patch("scripts.v460.ml.sac_retrain_scheduler._push_neutral_fallback")
     @patch("scripts.v460.ml.sac_retrain_scheduler._create_env")
+    @patch("scripts.v460.ml.sac_retrain_scheduler._evaluate_model")
     def test_oos_failed(
         self,
+        mock_evaluate_model: MagicMock,
         mock_create_env: MagicMock,
         mock_push_neutral: MagicMock,
         tmp_path: Path,
     ) -> None:
         mock_env = _make_mock_env()
-        # OOS failure: negative ROI
-        mock_env.portfolio_value = 9_000_000.0
         mock_create_env.return_value = mock_env
+        mock_evaluate_model.return_value = {"gross_roi": -0.05, "trade_count": 5}
 
         cfg = SACRetrainConfig(
             ohlcv_path=str(tmp_path / "data.parquet"),

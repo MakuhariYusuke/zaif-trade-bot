@@ -7171,3 +7171,6 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `test_health_monitor_resilience.py` の psutil/process mock を lightweight stub 化
   - `test_113_resilience.py` の `maybe_gc()` は実 GC ではなく patched collect 契約検証へ変更
   - `test_sac_retrain_scheduler.py` の mock OHLCV を 24 rows に縮小
+- 489# v460 hotspot follow-up:
+  - `test_sac_retrain_scheduler.py` の `retrain_once(cold/warm/oos)` は `_evaluate_model()` を patch し、訓練フロー契約だけを見るように分離
+  - `test_enricher_skip_gate.py` の real-data sample ladder を実測に合わせて `72/94/120` へ圧縮
