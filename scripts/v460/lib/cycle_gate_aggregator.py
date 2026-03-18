@@ -263,6 +263,14 @@ class CycleGateAggregator:
                     )
             return result
 
+        # --- Gate 2b: 475# ranging_sell_low_vol (buy 側と対称) ---
+        g2b = self._check_ranging_sell_low_vol(side, _regime, vol_ratio)
+        result.checks.append(g2b)
+        if g2b.blocked and not halt_recovery_active:
+            result.blocked = True
+            result.blocking_reason = g2b.reason
+            return result
+
         # --- Gate 3: trending_sell_skip ---
         g3 = self._check_trending_sell(
             side, _regime, inv_net_imbalance,
@@ -531,6 +539,39 @@ class CycleGateAggregator:
                 detail=f"169# B1': vol_ratio={vol_ratio:.4f} < {self._config.low_vol_threshold}",
             )
         return GateCheckResult(gate_name="ranging_buy_low_vol", blocked=False)
+
+    def _check_ranging_sell_low_vol(
+        self, side: str, regime: str, vol_ratio: float | None,
+    ) -> GateCheckResult:
+        """475# B1'-sell: ranging sell at low vol — buy 側と対称のフィルタ.
+
+        ranging + sell + low vol → spread 獲得期待が薄く、逆選択リスクが相対的に高い。
+        soft mode 時は hard skip せず offset boost に委譲。
+        """
+        if (
+            self._config.skip_ranging_sell_low_vol
+            and side == "sell"
+            and regime == "ranging"
+            and vol_ratio is not None
+            and vol_ratio < self._config.low_vol_threshold
+        ):
+            if self._config.ranging_sell_low_vol_as_offset:
+                return GateCheckResult(
+                    gate_name="ranging_sell_low_vol",
+                    blocked=False,
+                    detail=(
+                        f"475# B1'-sell→offset: vol_ratio={vol_ratio:.4f} "
+                        f"< {self._config.low_vol_threshold} "
+                        f"(offset boost で対応)"
+                    ),
+                )
+            return GateCheckResult(
+                gate_name="ranging_sell_low_vol",
+                blocked=True,
+                reason="ranging_sell_low_vol_skip",
+                detail=f"475# B1'-sell: vol_ratio={vol_ratio:.4f} < {self._config.low_vol_threshold}",
+            )
+        return GateCheckResult(gate_name="ranging_sell_low_vol", blocked=False)
 
     def _check_trending_sell(
         self,

@@ -583,13 +583,13 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
     def _effective_max_ratio(self, side: str) -> float:
         """405#: Side-aware intermediate max ratio.
 
-        sell_floor (0.30) == max_offset_ratio (0.30) のデッドロック解消。
-        sell 側では offset_ceiling_ratio_sell を intermediate cap に使い、
-        中間ブーストが 0.30-0.50 の範囲で有効に機能するようにする。
-        buy 側は既存動作を維持 (max_offset_ratio = 0.30)。
-        最終段の offset ceiling で side 別の最終クランプは維持。
+        中間段のブースト上限を決定。最終段の resolve_offset_ceiling() が
+        side 別の最終クランプを担うため、ここでは max(base, ceiling) で
+        中間段の探索幅を確保する設計。
+        ceiling < base の場合 (e.g. 474# sell: 0.20 < 0.30) は base をそのまま返し、
+        最終段の ceiling clamp (0.20) が正しい上限を保証する。
 
-        cf. 403# §3, 404# Action 1
+        cf. 403# §3, 404# Action 1, 474# P0
         """
         cfg = self._config
         base = cfg.max_offset_ratio

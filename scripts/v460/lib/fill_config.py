@@ -209,6 +209,11 @@ class FillTestConfig:
     # 195# B1' ソフト化: hard skip → maker_price low_vol_offset_boost に委譲
     # enabled 時、ranging_buy_low_vol のハードスキップを無効化し offset boost のみで対応
     ranging_buy_low_vol_as_offset: bool = False
+    # 475# B1'-sell: ranging_sell at low_vol — buy 側と対称のフィルタ
+    # ranging レジーム + sell + vol_ratio < low_vol_threshold → スキップ
+    skip_ranging_sell_low_vol: bool = False
+    # 475# B1'-sell ソフト化: hard skip → offset boost に委譲
+    ranging_sell_low_vol_as_offset: bool = False
     # 189# D: Macro Regime 統合
     enable_macro_regime: bool = False  # MacroRegimeDetector 有効化
     macro_regime_bucket_sec: float = 30.0  # 時間バケットサイズ

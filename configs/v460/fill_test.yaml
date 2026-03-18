@@ -182,6 +182,11 @@ regime:
   #   3/16実績: 低vol fills pnl30=+3.06bps (高vol +0.49bps を上回る)
   #   7h+ デッドロック (BTC=0 × ranging block) の機会損失が hard skip の利得を超過
   ranging_buy_low_vol_as_offset: true
+  # 475# B1'-sell: ranging_sell at low_vol — buy 側と対称のフィルタ
+  # ranging + sell + low vol → spread 獲得期待が薄い
+  # P0 (ceiling=0.20) 修正後の効果観察のため soft mode で開始
+  skip_ranging_sell_low_vol: true
+  ranging_sell_low_vol_as_offset: true
   # 189# D: MacroRegime (長周期レジーム) — micro との conflict 検出
   macro:
     enabled: true               # 274# 観測モード有効化 (conflict_action=log)。macro_trend データ蓄積開始
