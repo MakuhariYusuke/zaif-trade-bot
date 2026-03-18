@@ -86,6 +86,36 @@ class TestLockManagerPortalocker:
         """portalocker インポートフラグが設定されていること."""
         assert isinstance(_HAS_PORTALOCKER, bool)
 
+    def test_check_running_fill_test_blocks_duplicate(self):
+        """469#: 別 run_fill_test プロセスが存在すると LockConflictError."""
+        import unittest.mock as mock
+
+        with tempfile.TemporaryDirectory() as td:
+            mgr = LockManager(Path(td), "dup_test")
+            fake_proc = mock.MagicMock()
+            fake_proc.info = {
+                "pid": 99999,
+                "cmdline": ["python", "-m", "scripts.v460.run_fill_test"],
+            }
+            with mock.patch("psutil.process_iter", return_value=[fake_proc]):
+                with pytest.raises(LockConflictError, match="run_fill_test"):
+                    mgr._check_running_fill_test()
+
+    def test_check_running_fill_test_ignores_self(self):
+        """469#: 自プロセス PID は無視すること."""
+        import os
+        import unittest.mock as mock
+
+        with tempfile.TemporaryDirectory() as td:
+            mgr = LockManager(Path(td), "self_test")
+            fake_proc = mock.MagicMock()
+            fake_proc.info = {
+                "pid": os.getpid(),
+                "cmdline": ["python", "-m", "scripts.v460.run_fill_test"],
+            }
+            with mock.patch("psutil.process_iter", return_value=[fake_proc]):
+                mgr._check_running_fill_test()  # Should NOT raise
+
 
 # ======================================================================
 # 2. detect_split_brain() 事後検出

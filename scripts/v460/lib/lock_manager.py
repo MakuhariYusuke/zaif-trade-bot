@@ -135,6 +135,9 @@ class LockManager:
                 pass
             return True
 
+        # 469#: ロックファイル不在時でも別プロセス検出で二重起動を防止
+        self._check_running_fill_test()
+
         # 047# A4: open(path, 'x') で排他的にファイル作成 (atomic)
         for _attempt in range(self._lock_acquire_retries):
             try:
@@ -153,6 +156,28 @@ class LockManager:
                 _check_stale_and_reclaim()
         # リトライ後もダメな場合
         raise LockConflictError(f"ロックファイルの取得に失敗しました: {lock_path}")
+
+    def _check_running_fill_test(self) -> None:
+        """469#: ロックファイル不在時でも実行中プロセスを検出して二重起動を防止.
+
+        watchdog 自動再起動と手動起動が競合するケースで、ロックファイルが
+        まだ作成されていない (起動途中の) プロセスを検出する。
+        """
+        my_pid = os.getpid()
+        for proc in psutil.process_iter(["pid", "cmdline"]):
+            try:
+                if proc.info["pid"] == my_pid:
+                    continue
+                cmdline_parts: list[str] = proc.info.get("cmdline") or []
+                cmdline = " ".join(cmdline_parts)
+                if "run_fill_test" in cmdline:
+                    raise LockConflictError(
+                        f"別の run_fill_test プロセスを検出 "
+                        f"(PID={proc.info['pid']}). "
+                        f"先にそのプロセスを停止してください。"
+                    )
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
 
     def _wait_for_pid_exit(self, pid: int) -> None:
         """286# 284# P0: PID がプロセスツリーから消滅するまで待機.

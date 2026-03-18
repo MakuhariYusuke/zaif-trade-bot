@@ -353,8 +353,14 @@ if (Test-Path $lockPath) {
         Write-WatchdogLog "CONFLICT" "[watchdog] lock PID alive but WMI found nothing. Skipping restart."
         exit 1
     }
-    # PID dead → stale lock → 削除
-    Write-Host "[watchdog] Removing stale lock (PID not alive)"
+    # 469#: PID dead だが heartbeat が fresh な場合、1 サイクル待機
+    # WMI/Get-Process が一時的に失敗するケースに対応
+    if (-not $heartbeatStale) {
+        Write-WatchdogLog "CAUTION" "[watchdog] Lock PID dead but heartbeat fresh ($([int]$heartbeatAge)s ago). Waiting one cycle before restart."
+        exit 1
+    }
+    # PID dead AND heartbeat stale → stale lock → 削除
+    Write-Host "[watchdog] Removing stale lock (PID not alive, heartbeat stale)"
     Remove-Item $lockPath -Force -ErrorAction SilentlyContinue
 }
 
