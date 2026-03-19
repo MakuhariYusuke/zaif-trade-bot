@@ -329,14 +329,17 @@ class Test058NearestOB:
 class Test058EnrichFillRecords:
     """fill records エンリッチメントのテスト."""
 
-    def test_enrichment_adds_columns(self, synthetic_fill_df: pd.DataFrame) -> None:
+    def test_enrichment_adds_columns(
+        self,
+        synthetic_fill_df: pd.DataFrame,
+        tmp_path: Path,
+    ) -> None:
         """エンリッチメントで新規カラムが追加される."""
         # 空の raw_dir を使用 (マッチなし, ただしカラムは追加)
-        with tempfile.TemporaryDirectory() as td:
-            raw_dir = Path(td)
-            (raw_dir / "orderbook").mkdir()
-            (raw_dir / "trades").mkdir()
-            enriched = enrich_fill_records(synthetic_fill_df, raw_dir=raw_dir)
+        raw_dir = tmp_path
+        (raw_dir / "orderbook").mkdir()
+        (raw_dir / "trades").mkdir()
+        enriched = enrich_fill_records(synthetic_fill_df, raw_dir=raw_dir)
 
         assert "spread_bps_ob" in enriched.columns
         assert "trade_count_60s" in enriched.columns
@@ -558,20 +561,19 @@ class Test058SkipGate:
         assert "skip_rate_limit" in result.reason
         assert result.features_used > 0
 
-    def test_save_load_roundtrip(self, trained_gate: SkipGate) -> None:
+    def test_save_load_roundtrip(self, trained_gate: SkipGate, tmp_path: Path) -> None:
         """save → load で復元."""
-        with tempfile.TemporaryDirectory() as td:
-            path = Path(td) / "test_gate.pkl"
-            loaded = save_and_load_skip_gate(trained_gate, path)
-            assert path.exists()
-            assert loaded.feature_cols == trained_gate.feature_cols
-            assert loaded.config.threshold_bps == trained_gate.config.threshold_bps
+        path = tmp_path / "test_gate.pkl"
+        loaded = save_and_load_skip_gate(trained_gate, path)
+        assert path.exists()
+        assert loaded.feature_cols == trained_gate.feature_cols
+        assert loaded.config.threshold_bps == trained_gate.config.threshold_bps
 
-            # 同じ入力で同じ予測
-            features = {col: 0.5 for col in trained_gate.feature_cols}
-            r1 = trained_gate.evaluate(features)
-            r2 = loaded.evaluate(features)
-            assert abs(r1.predicted_pnl_bps - r2.predicted_pnl_bps) < 1e-10
+        # 同じ入力で同じ予測
+        features = {col: 0.5 for col in trained_gate.feature_cols}
+        r1 = trained_gate.evaluate(features)
+        r2 = loaded.evaluate(features)
+        assert abs(r1.predicted_pnl_bps - r2.predicted_pnl_bps) < 1e-10
 
 
 class Test061SkipGateASMode:
@@ -620,18 +622,17 @@ class Test061SkipGateASMode:
         assert not result.should_skip
         assert result.reason == "gate_disabled"
 
-    def test_as_mode_save_load(self, as_gate: SkipGate) -> None:
+    def test_as_mode_save_load(self, as_gate: SkipGate, tmp_path: Path) -> None:
         """AS モードの save → load roundtrip."""
-        with tempfile.TemporaryDirectory() as td:
-            path = Path(td) / "test_as_gate.pkl"
-            loaded = save_and_load_skip_gate(as_gate, path)
-            assert loaded.config.mode == "as"
-            assert loaded.config.as_threshold == 0.6
+        path = tmp_path / "test_as_gate.pkl"
+        loaded = save_and_load_skip_gate(as_gate, path)
+        assert loaded.config.mode == "as"
+        assert loaded.config.as_threshold == 0.6
 
-            features = {col: 0.5 for col in as_gate.feature_cols}
-            r1 = as_gate.evaluate(features)
-            r2 = loaded.evaluate(features)
-            assert abs(r1.predicted_pnl_bps - r2.predicted_pnl_bps) < 1e-10
+        features = {col: 0.5 for col in as_gate.feature_cols}
+        r1 = as_gate.evaluate(features)
+        r2 = loaded.evaluate(features)
+        assert abs(r1.predicted_pnl_bps - r2.predicted_pnl_bps) < 1e-10
 
 
 class Test065SkipGateNoOB:
@@ -1254,47 +1255,44 @@ class Test059TimestampConsistency:
 class Test059PickleHash:
     """059# P2-8: pickle ハッシュ検証テスト."""
 
-    def test_save_creates_hash_file(self) -> None:
+    def test_save_creates_hash_file(self, tmp_path: Path) -> None:
         """save がハッシュファイルを作成する."""
         gate = _make_basic_gate()
 
-        with tempfile.TemporaryDirectory() as td:
-            path = Path(td) / "gate.pkl"
-            gate.save(path)
-            hash_path = hash_sidecar_path(path)
-            assert hash_path.exists()
-            digest = hash_path.read_text().strip()
-            assert len(digest) == 64  # SHA256 hex
+        path = tmp_path / "gate.pkl"
+        gate.save(path)
+        hash_path = hash_sidecar_path(path)
+        assert hash_path.exists()
+        digest = hash_path.read_text().strip()
+        assert len(digest) == 64  # SHA256 hex
 
-    def test_load_detects_corruption(self) -> None:
+    def test_load_detects_corruption(self, tmp_path: Path) -> None:
         """改竄されたファイルを検出する."""
         gate = _make_basic_gate()
 
-        with tempfile.TemporaryDirectory() as td:
-            path = Path(td) / "gate.pkl"
-            gate.save(path)
+        path = tmp_path / "gate.pkl"
+        gate.save(path)
 
-            # ファイルを改竄
-            with open(path, "ab") as f:
-                f.write(b"CORRUPTED")
+        # ファイルを改竄
+        with open(path, "ab") as f:
+            f.write(b"CORRUPTED")
 
-            with pytest.raises(ValueError, match="hash mismatch"):
-                SkipGate.load(path)
+        with pytest.raises(ValueError, match="hash mismatch"):
+            SkipGate.load(path)
 
-    def test_load_without_hash_file_succeeds(self) -> None:
+    def test_load_without_hash_file_succeeds(self, tmp_path: Path) -> None:
         """ハッシュファイルがない場合は警告なしでロード."""
         gate = _make_basic_gate()
 
-        with tempfile.TemporaryDirectory() as td:
-            path = Path(td) / "gate.pkl"
-            save_and_load_skip_gate(gate, path)
-            # ハッシュファイルを削除
-            hash_path = hash_sidecar_path(path)
-            hash_path.unlink()
+        path = tmp_path / "gate.pkl"
+        save_and_load_skip_gate(gate, path)
+        # ハッシュファイルを削除
+        hash_path = hash_sidecar_path(path)
+        hash_path.unlink()
 
-            # ロードは成功する (後方互換)
-            loaded = SkipGate.load(path)
-            assert loaded.feature_cols == ["f1", "f2", "f3"]
+        # ロードは成功する (後方互換)
+        loaded = SkipGate.load(path)
+        assert loaded.feature_cols == ["f1", "f2", "f3"]
 
 
 class Test059SearchsortedOptimization:

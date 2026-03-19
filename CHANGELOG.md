@@ -5776,3 +5776,5 @@ python scripts/unified_trainer.py \
 - 493# v460 test/contract: `test_ml_pipeline.py` の real-data wrapper 下限を現 helper 契約 (`min_rows=20`, `min_feature_rows=10`) に合わせ、filtered broad を再通過
 - 494# raw recorder correctness: `OBRecorder` / `TradesRecorder` flush を「現在日付」ではなく各 record の `ts` ベースで UTC 日別分割する形に修正し、mixed-day flush と health diagnostics fallback の回帰を追加
 - 495# fill_test observability: event log に `timestamp_epoch` / `utc_day` / `utc_hour` を追加し、1サイクルごとの収益分析用 `cycle_revenue_context` event を導入
+- 496# market_data_collector: raw flush を record timestamp の UTC 日別に分割し、multi-day flush 時は day ごとに aggregate を回すよう修正
+- 497# raw path/date DRY: `raw_paths.py` に raw 日付抽出/列挙 helper を追加し、`feature_enricher` / `trades_health` のファイル名処理重複を削減。併せて `test_enricher_skip_gate.py` の一部 roundtrip を `tmp_path` 化

@@ -38,7 +38,12 @@ from ztb.metrics.gate_checks import (
     holm_bonferroni_gate,
     p_mean_gate,
 )
+from ztb.io.jsonl_gz import read_jsonl_gz
 from ztb.trading.live.exchanges.coincheck.adapter import _parse_timestamp
+from ztb.data.raw_paths import (
+    collect_available_raw_days,
+    extract_utc_day_from_raw_path,
+)
 
 try:
     import xgboost  # noqa: F401
@@ -487,6 +492,117 @@ class TestCollectorDedup:
         # Same trades again → should be filtered
         collector._append_raw_trades(trades)
         assert len(collector._tr_buffer) == 2  # No new
+
+
+class TestCollectorDailyFlush:
+    """raw flush の日付分割回帰."""
+
+    def test_flush_raw_splits_records_by_utc_day(self, tmp_path: Path) -> None:
+        from ztb.data.market_data_collector import MarketDataCollector
+
+        collector = MarketDataCollector(
+            SimpleNamespace(),
+            "btc_jpy",
+            raw_dir=tmp_path,
+            agg_dir=tmp_path / "features",
+        )
+        collector._ob_buffer = [
+            {"ts": 86399.0, "bids": [[100.0, 1.0]], "asks": [[101.0, 1.0]], "exchange": "coincheck"},
+            {"ts": 86401.0, "bids": [[200.0, 1.0]], "asks": [[201.0, 1.0]], "exchange": "coincheck"},
+        ]
+        collector._tr_buffer = [
+            {"ts": 86399.0, "price": 100.0, "amount": 0.01, "side": "buy"},
+            {"ts": 86401.0, "price": 101.0, "amount": 0.02, "side": "sell"},
+        ]
+
+        ob_path, tr_path = collector.flush_raw()
+
+        assert ob_path.name == "19700102.jsonl.gz"
+        assert tr_path.name == "19700102.jsonl.gz"
+        assert sorted(p.name for p in (tmp_path / "orderbook").glob("*.jsonl.gz")) == [
+            "19700101.jsonl.gz",
+            "19700102.jsonl.gz",
+        ]
+        assert sorted(p.name for p in (tmp_path / "trades").glob("*.jsonl.gz")) == [
+            "19700101.jsonl.gz",
+            "19700102.jsonl.gz",
+        ]
+        assert [record["ts"] for record in read_jsonl_gz(tmp_path / "orderbook" / "19700101.jsonl.gz")] == [86399.0]
+        assert [record["ts"] for record in read_jsonl_gz(tmp_path / "orderbook" / "19700102.jsonl.gz")] == [86401.0]
+
+    def test_flush_and_aggregate_runs_for_each_flushed_day(self, tmp_path: Path) -> None:
+        from ztb.data.market_data_collector import MarketDataCollector
+
+        collector = MarketDataCollector(
+            SimpleNamespace(),
+            "btc_jpy",
+            raw_dir=tmp_path,
+            agg_dir=tmp_path / "features",
+        )
+        collector._ob_buffer = [
+            {"ts": 86399.0, "bids": [[100.0, 1.0]], "asks": [[101.0, 1.0]], "exchange": "coincheck"},
+            {"ts": 86401.0, "bids": [[200.0, 1.0]], "asks": [[201.0, 1.0]], "exchange": "coincheck"},
+        ]
+        collector._tr_buffer = [
+            {"ts": 86399.0, "price": 100.0, "amount": 0.01, "side": "buy"},
+            {"ts": 86401.0, "price": 101.0, "amount": 0.02, "side": "sell"},
+        ]
+
+        calls: list[tuple[Path, Path, Path]] = []
+
+        def _fake_aggregate(ob_path: Path, tr_path: Path, output_path: Path | None = None) -> pd.DataFrame:
+            assert output_path is not None
+            calls.append((ob_path, tr_path, output_path))
+            return pd.DataFrame()
+
+        with patch.object(MarketDataCollector, "aggregate_to_1min", side_effect=_fake_aggregate):
+            collector._flush_and_aggregate(auto_aggregate=True)
+
+        assert [(ob.name, tr.name, out.name) for ob, tr, out in calls] == [
+            ("19700101.jsonl.gz", "19700101.jsonl.gz", "19700101.parquet"),
+            ("19700102.jsonl.gz", "19700102.jsonl.gz", "19700102.parquet"),
+        ]
+
+    def test_flush_raw_day_str_keeps_explicit_destination(self, tmp_path: Path) -> None:
+        from ztb.data.market_data_collector import MarketDataCollector
+
+        collector = MarketDataCollector(
+            SimpleNamespace(),
+            "btc_jpy",
+            raw_dir=tmp_path,
+            agg_dir=tmp_path / "features",
+        )
+        collector._ob_buffer = [
+            {"ts": 86399.0, "bids": [[100.0, 1.0]], "asks": [[101.0, 1.0]], "exchange": "coincheck"},
+            {"ts": 86401.0, "bids": [[200.0, 1.0]], "asks": [[201.0, 1.0]], "exchange": "coincheck"},
+        ]
+        collector._tr_buffer = [
+            {"ts": 86399.0, "price": 100.0, "amount": 0.01, "side": "buy"},
+            {"ts": 86401.0, "price": 101.0, "amount": 0.02, "side": "sell"},
+        ]
+
+        ob_path, tr_path = collector.flush_raw(day_str="20260220")
+
+        assert ob_path.name == "20260220.jsonl.gz"
+        assert tr_path.name == "20260220.jsonl.gz"
+        assert [record["ts"] for record in read_jsonl_gz(ob_path)] == [86399.0, 86401.0]
+        assert [record["ts"] for record in read_jsonl_gz(tr_path)] == [86399.0, 86401.0]
+
+
+class TestRawPathHelpers:
+    """raw path/date helper の回帰."""
+
+    def test_extract_utc_day_from_raw_path(self) -> None:
+        assert extract_utc_day_from_raw_path(Path("20260220.jsonl.gz")) == "20260220"
+        assert extract_utc_day_from_raw_path(Path("broken.json.gz")) is None
+        assert extract_utc_day_from_raw_path(Path("2026-02-20.jsonl.gz")) is None
+
+    def test_collect_available_raw_days_filters_invalid_names(self, tmp_path: Path) -> None:
+        valid = tmp_path / "20260219.jsonl.gz"
+        valid.write_text("", encoding="utf-8")
+        (tmp_path / "notes.txt").write_text("x", encoding="utf-8")
+        (tmp_path / "2026-02-20.jsonl.gz").write_text("", encoding="utf-8")
+        assert collect_available_raw_days(tmp_path) == ["20260219"]
 
 
 @pytest.mark.skipif(not _HAS_XGBOOST, reason="xgboost not installed")

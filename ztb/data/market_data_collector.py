@@ -15,14 +15,17 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
 import pandas as pd
 
-from ztb.data.raw_paths import resolve_raw_dir
+from ztb.data.raw_paths import (
+    group_records_by_utc_day,
+    resolve_raw_dir,
+    utc_day_str_from_timestamp,
+)
 from ztb.io.jsonl_gz import append_jsonl_gz, read_jsonl_gz
 from ztb.trading.live.exchanges.base.broker_interfaces import (
     IBroker,
@@ -198,7 +201,19 @@ class MarketDataCollector:
     # ------------------------------------------------------------------
 
     def _today_str(self) -> str:
-        return datetime.now(timezone.utc).strftime("%Y%m%d")
+        return utc_day_str_from_timestamp(time.time())
+
+    @staticmethod
+    def _resolve_day_groups(
+        records: list[dict[str, Any]],
+        *,
+        day_str: str | None,
+    ) -> dict[str, list[dict[str, Any]]]:
+        if day_str is not None:
+            return {day_str: list(records)}
+        if not records:
+            return {}
+        return group_records_by_utc_day(records)
 
     def _append_raw_ob(self, ob: OrderBookSnapshot) -> None:
         record = {
@@ -244,24 +259,42 @@ class MarketDataCollector:
 
     def flush_raw(self, day_str: str | None = None) -> tuple[Path, Path]:
         """Flush in-memory buffers to JSONL gzip files and return paths."""
-        day = day_str or self._today_str()
-
-        ob_path = self.raw_dir / "orderbook" / f"{day}.jsonl.gz"
-        tr_path = self.raw_dir / "trades" / f"{day}.jsonl.gz"
-
-        # Append mode — open existing gz and add lines
-        self._write_jsonl_gz(ob_path, self._ob_buffer)
-        self._write_jsonl_gz(tr_path, self._tr_buffer)
-
-        n_ob, n_tr = len(self._ob_buffer), len(self._tr_buffer)
-        self._ob_buffer.clear()
-        self._tr_buffer.clear()
-        logger.info(f"Flushed raw: {n_ob} ob snapshots, {n_tr} trades → {day}")
+        flushed = self._flush_raw_by_day(day_str=day_str)
+        _, ob_path, tr_path = flushed[-1]
         return ob_path, tr_path
 
-    @staticmethod
-    def _write_jsonl_gz(path: Path, records: list[dict[str, Any]]) -> None:
-        append_jsonl_gz(path, records)
+    def _flush_raw_by_day(
+        self,
+        *,
+        day_str: str | None = None,
+    ) -> list[tuple[str, Path, Path]]:
+        """raw buffer を日別に flush し、書き込み先を返す."""
+        ob_groups = self._resolve_day_groups(self._ob_buffer, day_str=day_str)
+        tr_groups = self._resolve_day_groups(self._tr_buffer, day_str=day_str)
+        days = sorted(set(ob_groups) | set(tr_groups))
+        if not days:
+            days = [day_str or self._today_str()]
+
+        flushed: list[tuple[str, Path, Path]] = []
+        total_ob = len(self._ob_buffer)
+        total_tr = len(self._tr_buffer)
+        for day in days:
+            ob_path = self.raw_dir / "orderbook" / f"{day}.jsonl.gz"
+            tr_path = self.raw_dir / "trades" / f"{day}.jsonl.gz"
+            append_jsonl_gz(ob_path, ob_groups.get(day, []))
+            append_jsonl_gz(tr_path, tr_groups.get(day, []))
+            flushed.append((day, ob_path, tr_path))
+
+        self._ob_buffer.clear()
+        self._tr_buffer.clear()
+        logger.info(
+            "Flushed raw: %d ob snapshots, %d trades across %d day files (%s)",
+            total_ob,
+            total_tr,
+            len(flushed),
+            ",".join(days),
+        )
+        return flushed
 
     # ------------------------------------------------------------------
     # 1-min aggregation (raw → Parquet)
@@ -314,14 +347,14 @@ class MarketDataCollector:
 
     def _flush_and_aggregate(self, auto_aggregate: bool) -> None:
         """バッファ flush + オプション集約. DRY ヘルパー."""
-        ob_path, tr_path = self.flush_raw()
+        flushed = self._flush_raw_by_day()
         if auto_aggregate:
-            try:
-                day = self._today_str()
-                agg_out = self.agg_dir / f"{day}.parquet"
-                self.aggregate_to_1min(ob_path, tr_path, agg_out)
-            except Exception as e:
-                logger.warning(f"Auto-aggregate failed: {e}")
+            for day, ob_path, tr_path in flushed:
+                try:
+                    agg_out = self.agg_dir / f"{day}.parquet"
+                    self.aggregate_to_1min(ob_path, tr_path, agg_out)
+                except Exception as e:
+                    logger.warning(f"Auto-aggregate failed for {day}: {e}")
 
     def _check_buffer_cap(self) -> bool:
         """バッファが上限超過時に緊急 flush. メモリ保護."""

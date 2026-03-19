@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from ztb.data.raw_paths import resolve_raw_dir
+from ztb.data.raw_paths import collect_available_raw_days, resolve_raw_dir
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +41,7 @@ class TradesHealthResult:
 
 def _collect_available_days(trades_dir: Path) -> list[str]:
     """trades ディレクトリから YYYYMMDD 日付キーを抽出して昇順返却."""
-    if not trades_dir.exists():
-        return []
-    return sorted(path.stem[:-6] for path in trades_dir.glob("????????.jsonl.gz"))
+    return collect_available_raw_days(trades_dir)
 
 def check_trades_health(
     raw_dir: Path | None = None,

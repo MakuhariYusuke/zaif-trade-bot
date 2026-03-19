@@ -20,7 +20,11 @@ import pandas as pd
 
 from scripts.v460.lib.vpin_volume_sync import compute_vpin_volume_sync
 from scripts.v460.ml.frame_utils import compute_local_hour_cyclic
-from ztb.data.raw_paths import RawDirLike, resolve_raw_dir
+from ztb.data.raw_paths import (
+    RawDirLike,
+    extract_utc_day_from_raw_path,
+    resolve_raw_dir,
+)
 from ztb.io.jsonl_gz import read_jsonl_gz
 
 logger = logging.getLogger(__name__)
@@ -138,11 +142,15 @@ def discover_raw_daily_inputs(
     resolved_root = resolve_raw_dir(raw_dir)
     daily_inputs: dict[str, tuple[Path | None, Path | None]] = {}
     for orderbook_path in _select_raw_files(resolved_root / "orderbook", date_filter=None):
-        date_str = orderbook_path.name.replace(".jsonl.gz", "")
+        date_str = extract_utc_day_from_raw_path(orderbook_path)
+        if date_str is None:
+            continue
         _, trades_path = daily_inputs.get(date_str, (None, None))
         daily_inputs[date_str] = (orderbook_path, trades_path)
     for trades_path in _select_raw_files(resolved_root / "trades", date_filter=None):
-        date_str = trades_path.name.replace(".jsonl.gz", "")
+        date_str = extract_utc_day_from_raw_path(trades_path)
+        if date_str is None:
+            continue
         orderbook_path, _ = daily_inputs.get(date_str, (None, None))
         daily_inputs[date_str] = (orderbook_path, trades_path)
     return daily_inputs

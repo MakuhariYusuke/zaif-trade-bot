@@ -7204,3 +7204,28 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `cycle_revenue_context` event を追加し、spread/offset/skip_gate/regime/sidecar/cross_venue/post-fill PnL を1サイクルごとに event log へ残すよう修正
   - `tests/unit/v460/test_148_fill_test_events.py`
     - 上記時刻メタと revenue event detail の回帰を追加
+- 496# market data date-path follow-up:
+  - `ztb/data/market_data_collector.py`
+    - raw flush を `group_records_by_utc_day(...)` ベースに整理
+    - `flush_raw()` は API を維持しつつ、mixed-day buffer を日別ファイルへ分割
+    - `_flush_and_aggregate()` は flush した各 day ごとに aggregate を実行
+  - `tests/unit/v460/test_v460_core.py`
+    - mixed-day `flush_raw()` 回帰
+    - mixed-day `_flush_and_aggregate()` 回帰
+- 497# raw path/date helper consolidation:
+  - `ztb/data/raw_paths.py`
+    - `extract_utc_day_from_raw_path(...)`
+    - `collect_available_raw_days(...)`
+    を追加
+  - `scripts/v460/ml/feature_enricher.py`
+    - raw daily input discovery の `.jsonl.gz` 日付抽出を shared helper に統一
+  - `ztb/data/trades_health.py`
+    - available day 列挙を shared helper に統一
+  - `ztb/data/market_data_collector.py`
+    - `append_jsonl_gz(...)` への薄い wrapper を削除
+    - flush log に対象 UTC day 群を追加
+  - `tests/unit/v460/test_v460_core.py`
+    - explicit `day_str` 互換回帰
+    - raw path helper 回帰を追加
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - save/load / hash roundtrip の一部を `tmp_path` 化

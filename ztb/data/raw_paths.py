@@ -9,6 +9,7 @@ from typing import Sequence
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_RAW_DIR = _PROJECT_ROOT / "data" / "v460" / "raw"
 RawDirLike = str | Path | None
+_RAW_JSONL_GZ_SUFFIX = ".jsonl.gz"
 
 
 def resolve_raw_dir(raw_dir: RawDirLike = None) -> Path:
@@ -42,6 +43,29 @@ def resolve_available_raw_dates(
 def utc_day_str_from_timestamp(timestamp: float) -> str:
     """UNIX timestamp を UTC 日付文字列 YYYYMMDD に変換する."""
     return datetime.fromtimestamp(timestamp, timezone.utc).strftime("%Y%m%d")
+
+
+def extract_utc_day_from_raw_path(path: Path) -> str | None:
+    """raw JSONL.gz パスから UTC 日付文字列 YYYYMMDD を抽出する."""
+    name = path.name
+    if not name.endswith(_RAW_JSONL_GZ_SUFFIX):
+        return None
+    day = name.removesuffix(_RAW_JSONL_GZ_SUFFIX)
+    if len(day) != 8 or not day.isdigit():
+        return None
+    return day
+
+
+def collect_available_raw_days(directory: Path) -> list[str]:
+    """raw ディレクトリから利用可能な UTC 日付キーを昇順返却する."""
+    if not directory.exists():
+        return []
+    days = {
+        day
+        for path in directory.glob(f"*{_RAW_JSONL_GZ_SUFFIX}")
+        if (day := extract_utc_day_from_raw_path(path)) is not None
+    }
+    return sorted(days)
 
 
 def group_records_by_utc_day(
