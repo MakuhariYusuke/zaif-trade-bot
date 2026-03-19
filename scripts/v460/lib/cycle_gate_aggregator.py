@@ -203,6 +203,8 @@ class CycleGateAggregator:
         halt_recovery_active: bool = False,
         # 365# P5: SAC Sidecar signal
         sidecar_signal: SidecarSignal | None = None,
+        # 496# Recovery Skew: kill gate bypass for inventory recovery
+        recovery_skew: bool = False,
     ) -> CycleGateResult:
         """全 per-cycle ゲートを順次評価.
 
@@ -333,7 +335,9 @@ class CycleGateAggregator:
                     f"allowing {side} through to break deadlock"
                 )
 
-        g4 = self._check_buy_dynamic_kill(side, is_buy_killed, _dual_kill_bypass)
+        g4 = self._check_buy_dynamic_kill(
+            side, is_buy_killed, _dual_kill_bypass or recovery_skew,
+        )
         result.checks.append(g4)
         if g4.blocked:
             result.blocked = True
@@ -345,7 +349,7 @@ class CycleGateAggregator:
         # --- Gate 5: sell_dynamic_kill --- (Hard Gate: Boolean 維持)
         g5 = self._check_sell_dynamic_kill(
             side, is_sell_killed, inv_net_imbalance,
-            dual_kill_bypass=_dual_kill_bypass,
+            dual_kill_bypass=_dual_kill_bypass or recovery_skew,
         )
         result.checks.append(g5)
         if g5.blocked:
@@ -420,6 +424,16 @@ class CycleGateAggregator:
         # --- 365# P5: Sidecar offset injection ---
         if sidecar_signal is not None:
             self._apply_sidecar_offset(result, sidecar_signal, side)
+
+        # --- 496# Recovery Skew: kill gate bypass 時の最低 offset 保証 ---
+        if recovery_skew:
+            _rs_mult = self._config.recovery_skew_offset_mult
+            result.toxicity_offset_mult = max(result.toxicity_offset_mult, _rs_mult)
+            logger.info(
+                f"[496#] Recovery skew: toxicity_offset_mult "
+                f"enforced to {result.toxicity_offset_mult:.1f}× "
+                f"(config={_rs_mult:.1f}×)"
+            )
 
         return result
 

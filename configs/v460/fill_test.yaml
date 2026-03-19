@@ -650,14 +650,16 @@ execution_final_clamp_hard_skip_mult: 2.5  # 420# 有効化: ceiling×2.5 超で
 # 理論: 長時間放置される固定板は HFT/大口の格好のターゲット。
 #        15s 以内に埋まらなければキャンセル→最新価格で再発注を繰り返す。
 # enabled: false → 従来の order_timeout_sec (90s) ベースの単一監視に fallback。
-# 454# Step 1 (保守的): wait=30s, max_requote=2 で段階投入
-#   合計最大 = 2×(30+5) = 70s < cycle_interval (stale reprice 競合なし)
-#   Step 2 → wait=15, max=3 / Step 3 → wait=15, max=4, wait_sell=10
+# 454# Step 1→3 (保守的→積極的): 段階投入
+#   Step 1: wait=30, max=2 / Step 2: wait=15, max=3 / Step 3: wait=15, max=4, wait_sell=10
+#   合計最大 = 4×(15+5) = 80s (sell: 4×(10+5)=60s)
+# 496# 493#/494# review: slow fill 逆選択データ (quick<10s: +0.238, slow>=30s: -3.750)
+#   30s TTL では大半が逆選択領域に滞留。Step 3 投入で TTL 短縮 + requote 増加。
 micro_timeout:
   enabled: true                    # 454# Step 1: micro-timeout 有効化
-  wait_sec: 30.0                   # 454# Step 1: 15→30s (保守的)
-  wait_sec_sell: 20.0              # 454# Step 1: 10→20s (sell 側も保守的)
-  max_requote_per_cycle: 2         # 454# Step 1: 4→2 (保守的)
+  wait_sec: 15.0                   # 496# Step 3: 30→15s (493# slow fill 対策)
+  wait_sec_sell: 10.0              # 496# Step 3: 20→10s (sell AS 高リスク、即再発注)
+  max_requote_per_cycle: 4         # 496# Step 3: 2→4 (再発注機会の最大化)
   requote_cooloff_sec: 5.0         # キャンセル→再発注の冷却期間 (HFT ノイズ回避)
   cancel_on_cross_venue_flip: true # Cross-Venue 反転時に即キャンセル (将来拡張用)
 
@@ -729,6 +731,9 @@ loss_control:
   # 269# P0: Inventory Escape Mode — per-side halt デッドロック解消 (348# balance_forced 撤廃)
   inventory_escape_enabled: true            # Inventory Escape の有効/無効
   inventory_escape_duty_cycle: 5            # N サイクルに 1 回 (halt 貫通は控えめ: 20%)
+  # 496# Recovery Skew (494# §2.2): route-to-kill deadlock → skip ではなく超ワイド指値で通す
+  recovery_skew_enabled: true               # Recovery Skew の有効/無効
+  recovery_skew_offset_mult: 2.0            # ceiling × 2.0 倍を最低 offset として強制
   # 166# HF4: 連続 sell skip 安全弁上限を 3010 に短縮 (7.3 B.4)
   max_consecutive_trending_sell_skip: 10   # 171#: 20→10 (Guard Paradox対策: 安全弁を早期発動して sell 機会確保)
   # 171# Guard Paradox 対策: 在庫偏重時に sell ガードをバイパスする閾値

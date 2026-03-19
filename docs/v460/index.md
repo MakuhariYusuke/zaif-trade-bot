@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-19 (491# 再学習装置堅牢性 + 防御レイヤー定量分析)
+> 最終更新: 2026-03-20 (496# 493/494レビュー実装: micro-timeout TTL cut, recovery skew, blind spot分析)
 
 ---
 
@@ -518,7 +518,13 @@
 | 487 | fix | [doc](487_phg_fix_sac_memory_leak_and_dedup.md) | SAC メモリリーク防止 (gc.collect/model del) + 重複削減 (create_env_from_config/create_sac_model 統合) + P0 sidecar attribution 可観測性 |
 | 488 | review | [488_phg_fill_pipeline_deep_review.md](488_phg_fill_pipeline_deep_review.md) | Fill Test パイプライン総合コードレビュー: 33日ログを踏まえ、logging/例外/設定/guard/DRY 観点から根本原因候補を広く棚卸し |
 | 489 | rev | [489_phg_rev_488_fill_pipeline_multifaceted_review.md](489_phg_rev_488_fill_pipeline_multifaceted_review.md) | 488レビュー: 有効論点と古くなった指摘を分離し、3/19 NameError・cross_venue veto→NO_FEASIBLE_QUOTE・防御過積載を追加補強 |
+| 490 | opinion | [490_phg_second_opinion_architectural_pivot.md](490_phg_second_opinion_architectural_pivot.md) | 488/489レビューへのセカンドオピニオン: 防御過積載を踏まえ、事前ロック型予算管理・複合リスク統合・SAC移管を提案 |
 | 491 | fix | [491_session_remediation_deep_dive.md](491_session_remediation_deep_dive.md) | Sidecar復旧, VPIN修正, 再学習装置堅牢性4件, 防御レイヤー定量分析, Composite Risk Score実装(490# Level2) |
+| 492 | audit | [492_codex_review_pipeline_audit.md](492_codex_review_pipeline_audit.md) | 491全修正と実運用ログを監査し、slow fill逆選択・二重クランプ・Composite Riskの未実証部分を棚卸し |
+| 493 | rev | [493_phg_rev_490_492_profit_first_fill_test_review.md](493_phg_rev_490_492_profit_first_fill_test_review.md) | 490-492レビュー: 新機構導入論を是々非々で整理し、runtime drift・inventory制約・slow fill対策を優先課題として再構成 |
+| 494 | rev | [494_phg_verify_493_action_plan_and_market_theory.md](494_phg_verify_493_action_plan_and_market_theory.md) | 493検証+アクションプラン: micro-timeout TTL cut, inventory recovery skew, runtime drift cold restart の3戦術 |
+| 495 | fix | [495_retrain_scheduler_crash_resilience.md](495_retrain_scheduler_crash_resilience.md) | Retrain Scheduler crash resilience: auto-restart, loop protection, training timeout, memory leak prevention |
+| 496 | impl | [496_review_implementation_and_blind_spots.md](496_review_implementation_and_blind_spots.md) | 493/494レビュー実装: micro-timeout TTL cut, recovery skew, blind spot分析 (ranging_low_vol 16.6%, spread_too_narrow 9.1%) |
 
 ---
 

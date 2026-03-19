@@ -639,7 +639,12 @@ class FillTestConfig:
     # → 完全停止ではなく、halt を一時的に貫通して縮退清算 (degraded liquidation パラメータを流用)
     inventory_escape_enabled: bool = True           # Inventory Escape の有効/無効
     inventory_escape_duty_cycle: int = 5            # N サイクルに 1 回のみ実行 (halt 貫通は控えめ)
-    # 277# unknown regime 連続ブロックのバイパス閾値 (Hamilton 1989 regime-switching)
+    # 496# Route-to-Kill Inventory Recovery Skew (494# §2.2)
+    # buy 残高不足 + sell kill-gated (or vice versa) のデッドロック時、
+    # 完全スキップではなく kill-gate を bypass し超ワイド offset で通す。
+    # Ho & Stoll (1981): 在庫偏重時のスプレッド拡大は合理的リスク管理。
+    recovery_skew_enabled: bool = True              # Recovery Skew の有効/無効
+    recovery_skew_offset_mult: float = 2.0          # ceiling × N 倍を最低 offset として強制
     # unknown が N 回連続したら regime 判定不能として gate を強制バイパス。
     # 10 × cycle_interval(120s) = 20 分 — regime 再評価の猶予期間。
     unknown_regime_max_consecutive: int = 5   # 336# drift fix: YAML=5 (321# M-3)

@@ -170,6 +170,7 @@ class OrchestratorMidCycleMixin:
             sell_toxicity=_sell_tox,
             halt_recovery_active=_halt_recovery_active,
             sidecar_signal=_sidecar_signal,
+            recovery_skew=ctx.recovery_skew,
         )
 
         # 487# P0: sidecar attribution を gate_result に転記

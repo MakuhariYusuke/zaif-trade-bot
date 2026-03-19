@@ -119,8 +119,6 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "max_consecutive_trending_sell_skip",
     "min_spread_jpy",
     "micro_timeout_enabled",  # 454# Step 1: 保守的設定で有効化
-    "micro_timeout_max_requote",  # 454# Step 1: 4→2
-    "micro_timeout_wait_sec",  # 454# Step 1: 15→30s
     "micro_timeout_wait_sec_sell",
     "narrow_spread_boost_buy",
     "narrow_spread_boost_sell",

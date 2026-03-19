@@ -61,6 +61,8 @@ class CycleContext:
     one_sided_balance: bool = False
     #: 269# Inventory Escape: per-side halt 貫通モード
     inventory_escape: bool = False
+    #: 496# Recovery Skew: route-to-kill deadlock 時の kill gate bypass + wide offset
+    recovery_skew: bool = False
     #: レジームベースの lot 倍率 (preflight-lot alignment 用)
     regime_mult: float = 1.0
 

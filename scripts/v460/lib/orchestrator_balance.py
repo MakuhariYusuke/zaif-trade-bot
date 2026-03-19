@@ -75,26 +75,42 @@ class OrchestratorBalanceMixin:
             # ── 421# P0: Route-to-Kill Deadlock 防止 ──
             # 反対 side が kill-gated (sell_dynamic_kill / buy_dynamic_kill) の場合、
             # 切替しても gate で即ブロックされ高速ループのデッドスピラルになる。
-            # kill-gated なら切替せずに preflight failure として処理する。
+            # 496# Recovery Skew: skip ではなく超ワイド offset で通す (494# §2.2)
             if self._is_side_killed(opposite):
-                logger.warning(
-                    f"[421#] Route-to-Kill deadlock: {next_side} insufficient, "
-                    f"{opposite} has balance but is kill-gated — "
-                    f"treating as both-side blocked"
-                )
-                self._inc_guard_fire("route_to_kill_deadlock")
-                await self._execute_skip(
-                    st, side=next_side,
-                    cancel_reason=CR.ROUTE_TO_KILL_DEADLOCK,
-                    order_quantity=self._current_lot,
-                    flush_context="route_to_kill_deadlock",
-                    state_save=True,
-                    state_save_context="route_to_kill_deadlock",
-                    update_last_side=True,
-                    requested_side=ctx.requested_side,  # 420# P1
-                    resolved_side_reason="route_to_kill_deadlock",  # 420# P1
-                )
-                return True
+                if self.config.recovery_skew_enabled:
+                    logger.warning(
+                        f"[496#] Recovery Skew: {next_side} insufficient, "
+                        f"{opposite} kill-gated — bypassing kill with "
+                        f"wide offset (×{self.config.recovery_skew_offset_mult:.1f})"
+                    )
+                    self._inc_guard_fire("recovery_skew_active")
+                    self._side_selector.freeze_side(
+                        next_side, cycles=self.config.balance_freeze_cycles,
+                    )
+                    ctx.next_side = opposite
+                    ctx.recovery_skew = True
+                    ctx.resolved_side_reason = "recovery_skew"
+                    self._last_side = opposite
+                    self._preflight_skip_count = 0
+                else:
+                    logger.warning(
+                        f"[421#] Route-to-Kill deadlock: {next_side} insufficient, "
+                        f"{opposite} has balance but is kill-gated — "
+                        f"treating as both-side blocked"
+                    )
+                    self._inc_guard_fire("route_to_kill_deadlock")
+                    await self._execute_skip(
+                        st, side=next_side,
+                        cancel_reason=CR.ROUTE_TO_KILL_DEADLOCK,
+                        order_quantity=self._current_lot,
+                        flush_context="route_to_kill_deadlock",
+                        state_save=True,
+                        state_save_context="route_to_kill_deadlock",
+                        update_last_side=True,
+                        requested_side=ctx.requested_side,
+                        resolved_side_reason="route_to_kill_deadlock",
+                    )
+                    return True
 
             logger.info(
                 f"[balance] {next_side} insufficient, "
