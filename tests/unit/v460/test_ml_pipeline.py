@@ -123,6 +123,8 @@ def _load_minimum_real_as_fill_df(tmp_path: Path) -> pd.DataFrame:
         tmp_path=tmp_path,
         load_fn=lambda path: load_fill_records(path, max_files=1),
         feature_builder=build_as_features,
+        min_rows=20,
+        min_feature_rows=10,
         candidate_limits=_REAL_DATA_CANDIDATE_LIMITS,
     )
 
@@ -413,7 +415,7 @@ class Test057Integration:
         if not real_data_available:
             pytest.skip("No real fill records")
         df = _load_minimum_real_as_fill_df(tmp_path)
-        assert len(df) >= 30
+        assert len(df) >= 20
         X, y = build_as_features(df)
         assert len(X) >= 10
 

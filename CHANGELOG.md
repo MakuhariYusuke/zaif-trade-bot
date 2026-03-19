@@ -5773,3 +5773,4 @@ python scripts/unified_trainer.py \
 - 490# perf/stability: `MemoryMonitor` の rolling stats を O(1) 化し、`gate_check` の G1.1 tempdir boilerplate と `build_features` proxy test 入力を縮小
 - 491# v460 test/stability: `test_sidecar_sac_integration.py` の confidence 計算を module-level helper に統一し、broad を止めていた latent test bug を解消
 - 492# SAC debug/maintainability: `sac_retrain_scheduler` に training debug summary を追加し、`test_sac_retrain_scheduler.py` の retrain_once boilerplate を helper 化
+- 493# v460 test/contract: `test_ml_pipeline.py` の real-data wrapper 下限を現 helper 契約 (`min_rows=20`, `min_feature_rows=10`) に合わせ、filtered broad を再通過

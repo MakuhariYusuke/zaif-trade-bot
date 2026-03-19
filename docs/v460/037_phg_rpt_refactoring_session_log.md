@@ -7185,3 +7185,7 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `scripts/v460/ml/sac_retrain_scheduler.py` に学習デバッグ用の summary helper を追加し、train/val rows・DataFrame memory・env shape・env metrics を 1 回で記録するよう整理
   - 既存の `ztb.utils.env_metrics` / `ztb.utils.memory_utils` を再利用し、script 側の debug ロジック重複を抑制
   - `tests/unit/v460/test_sac_retrain_scheduler.py` では `retrain_once()` の patch boilerplate を helper 化し、focused `32 passed` を確認
+- 493# v460 contract follow-up:
+  - `tests/unit/v460/test_ml_pipeline.py` の real-data wrapper を `min_rows=20`, `min_feature_rows=10` へ明示化
+  - `Test057Integration::test_load_real_data` の assertion を helper 契約へ追随
+  - filtered broad `tests/unit/v460/ --no-cov` は `5013 passed, 2 skipped, 13 warnings in 39.58s`
