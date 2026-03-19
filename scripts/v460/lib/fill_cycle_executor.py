@@ -1140,10 +1140,11 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                 t_submit = time.time()
                 try:
                     order = await self.adapter.place_order(
-                        pair=self.config.symbol,
+                        symbol=self.config.symbol,
                         side=side,
+                        quantity=_remaining_lot,
                         price=order_price,
-                        amount=_remaining_lot,
+                        order_type="limit",
                     )
                 except Exception as e:
                     logger.warning("[452# micro_timeout] Re-quote order failed: %s", e)
