@@ -45,6 +45,7 @@ from scripts.v460.ml.skip_gate import (
     _BASE_FEATURE_COLS,
 )
 from ztb.io.json_io import write_json
+from ztb.ml.metadata_utils import current_iso_timestamp
 
 logging.basicConfig(
     level=logging.INFO,
@@ -162,7 +163,7 @@ def train_and_save_model(
 
     metadata = {
         "version": "v3_really_bad30",
-        "trained_at": datetime.now().isoformat(),
+        "trained_at": current_iso_timestamp(),
         "n_samples": len(X),
         "n_features": len(_BASE_FEATURE_COLS),
         "target": "really_bad30 (pnl30 < -1.0 bps)",
@@ -290,7 +291,7 @@ def _run_deploy_sg_v3_main() -> None:
 
     # Step 4: レポート保存
     report = {
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": current_iso_timestamp(),
         "source": "124# deploy_sg_v3.py",
         "model_path": str(model_path),
         "model_type": "GBM_sklearn_really_bad30",

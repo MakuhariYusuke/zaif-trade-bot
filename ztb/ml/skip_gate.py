@@ -33,6 +33,7 @@ from sklearn.preprocessing import StandardScaler
 from ztb.io.jsonl import iter_jsonl_objects
 from ztb.metrics.fill_quality import list_fill_record_files
 from ztb.ml.artifact_paths import hash_sidecar_path
+from ztb.ml.metadata_utils import current_iso_timestamp
 
 from scripts.v460.ml.model_protocols import (
     FeatureTransformer,
@@ -1014,7 +1015,7 @@ def train_and_save_skip_gate(
             "std_pnl_bps": float(y.std()),
             "alpha": alpha,
             "feature_importances": dict(sorted_fi),
-            "trained_at": datetime.now().isoformat(),
+            "trained_at": current_iso_timestamp(),
         },
         pipeline=pipe,  # 059# NEW-02: 完全 Pipeline を保存
     )
@@ -1113,7 +1114,7 @@ def train_and_save_as_skip_gate(
             "k": k_actual,
             "selected_features": selected_cols,
             "feature_importances": dict(sorted_fi),
-            "trained_at": datetime.now().isoformat(),
+            "trained_at": current_iso_timestamp(),
         },
         pipeline=pipe,
     )

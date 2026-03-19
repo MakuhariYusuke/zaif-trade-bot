@@ -55,6 +55,12 @@ class TestMlCacheCleanup:
         with patch(
             "scripts.v460.ml.cache_cleanup.clear_ml_data_caches",
             return_value={"total_ml_cache_entries": 2, "gc_collected": 3},
+        ), patch(
+            "scripts.v460.ml.cache_cleanup.get_memory_usage",
+            side_effect=[
+                {"rss": 128.0, "cache_total_entries": 7.0},
+                {"rss": 96.0, "cache_total_entries": 2.0},
+            ],
         ):
             stats = clear_ml_data_caches_with_log(
                 fake_logger,
@@ -64,6 +70,11 @@ class TestMlCacheCleanup:
 
         fake_logger.info.assert_called_once()
         assert stats["total_ml_cache_entries"] == 2
+        assert stats["rss_before_mb"] == 128
+        assert stats["rss_after_mb"] == 96
+        assert stats["rss_delta_mb"] == -32
+        assert stats["memory_cache_total_entries_before"] == 7
+        assert stats["memory_cache_total_entries_after"] == 2
 
 
 class TestMlCacheCleanupIntegration:

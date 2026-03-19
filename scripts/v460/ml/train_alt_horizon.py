@@ -50,6 +50,7 @@ from scripts.v460.ml.skip_gate import (
     get_gate_feature_cols,
 )
 from ztb.io.json_io import write_json
+from ztb.ml.metadata_utils import current_iso_timestamp
 
 logging.basicConfig(
     level=logging.INFO,
@@ -349,7 +350,7 @@ def save_skipgate(
 
     metadata = {
         "version": f"v4_lgbm_{spec['target_label']}_{spec['side']}_alt",
-        "trained_at": datetime.now().isoformat(),
+        "trained_at": current_iso_timestamp(),
         "n_samples": data_stats["n_samples"],
         "n_features": len(_FULL_FEATURE_COLS),
         "target": f"{spec['target_label']} regression ({spec['pnl_col']})",
@@ -408,7 +409,7 @@ def train_one(side: str) -> TrainReport:
     model_path = save_skipgate(pipeline, spec, data_stats, pred_stats)
 
     report: TrainReport = {
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": current_iso_timestamp(),
         "source": "189# train_alt_horizon.py",
         "side": side,
         "model_path": str(model_path),

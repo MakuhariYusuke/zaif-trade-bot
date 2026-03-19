@@ -36,6 +36,7 @@ from scripts.v460.ml.feature_enricher import (
 from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
 from scripts.v460.ml.walk_forward_as import expanding_window_splits, run_walk_forward
 from ztb.io.json_io import write_json
+from ztb.ml.metadata_utils import current_iso_timestamp
 
 logging.basicConfig(
     level=logging.INFO,
@@ -121,7 +122,7 @@ def _save_skip_gate(
             "selected_features": selected_cols,
             "feature_importances": dict(sorted_fi),
             "experiment": experiment_name,
-            "trained_at": datetime.now().isoformat(),
+            "trained_at": current_iso_timestamp(),
             "source": "121# Track B train_sg_v2.py",
         },
         pipeline=pipe,
@@ -398,7 +399,7 @@ def _run_train_sg_v2_main() -> None:
     # --- レポート保存 ---
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     report = {
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": current_iso_timestamp(),
         "source": "121# Track B+D train_sg_v2.py",
         "data_summary": {
             "total_records": len(df),

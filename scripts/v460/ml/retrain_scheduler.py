@@ -62,6 +62,7 @@ from scripts.v460.ml.skip_gate import (
 )
 from ztb.io.jsonl import append_jsonl
 from ztb.ml.artifact_paths import atomic_pickle_tmp_path, hash_sidecar_path
+from ztb.ml.metadata_utils import current_iso_timestamp
 from ztb.utils.safety import ensure_dict, safe_to_bool, safe_to_float, safe_to_int
 from ztb.utils.types import ConfigMap
 
@@ -1727,7 +1728,7 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
 
     metadata = {
         "version": f"v4_lgbm_{target}_retrained",
-        "trained_at": datetime.now().isoformat(),
+        "trained_at": current_iso_timestamp(),
         "n_samples": len(X_valid),
         "n_features": len(feature_cols),
         "target": f"{target} regression",

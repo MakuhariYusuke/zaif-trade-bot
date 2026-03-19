@@ -47,6 +47,7 @@ from scripts.v460.ml.model_protocols import ProbabilisticEstimator, RegressorEst
 from scripts.v460.ml.skip_eval_utils import compute_skip_slice_metrics, safe_finite_mean
 from scripts.v460.ml.walk_forward_as import expanding_window_splits
 from ztb.io.json_io import write_json
+from ztb.ml.metadata_utils import current_iso_timestamp
 
 logging.basicConfig(
     level=logging.INFO,
@@ -968,7 +969,7 @@ def _run_train_sg_v3_main() -> None:
     # --- レポート保存 ---
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     report = {
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": current_iso_timestamp(),
         "source": "124# train_sg_v3.py",
         "data_summary": {
             "total_records": len(df),

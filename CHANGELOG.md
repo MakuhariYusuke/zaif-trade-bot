@@ -5778,3 +5778,4 @@ python scripts/unified_trainer.py \
 - 495# fill_test observability: event log に `timestamp_epoch` / `utc_day` / `utc_hour` を追加し、1サイクルごとの収益分析用 `cycle_revenue_context` event を導入
 - 496# market_data_collector: raw flush を record timestamp の UTC 日別に分割し、multi-day flush 時は day ごとに aggregate を回すよう修正
 - 497# raw path/date DRY: `raw_paths.py` に raw 日付抽出/列挙 helper を追加し、`feature_enricher` / `trades_health` のファイル名処理重複を削減。併せて `test_enricher_skip_gate.py` の一部 roundtrip を `tmp_path` 化
+- 498# ML maintainability/debug: `ztb/ml/metadata_utils.py` に shared metadata timestamp helper を追加し、SkipGate/学習スクリプトの `trained_at` / `generated_at` 重複を整理。`clear_ml_data_caches_with_log()` は cleanup 前後の RSS/cache stats も出すよう強化

@@ -45,6 +45,7 @@ from scripts.v460.ml.skip_gate import (
     get_gate_feature_cols,
 )
 from ztb.io.json_io import write_json
+from ztb.ml.metadata_utils import current_iso_timestamp
 
 logging.basicConfig(
     level=logging.INFO,
@@ -217,7 +218,7 @@ def train_and_save_model(
 
     metadata = {
         "version": "v4_lgbm_pnl120",
-        "trained_at": datetime.now().isoformat(),
+        "trained_at": current_iso_timestamp(),
         "n_samples": len(X),
         "n_features": len(_FULL_FEATURE_COLS),
         "target": "pnl120_regression (post_fill_120s_pnl bps)",
@@ -370,7 +371,7 @@ def _run_deploy_sg_v4_main() -> None:
 
     # Step 4: レポート保存
     report = {
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": current_iso_timestamp(),
         "source": "125# deploy_sg_v4.py",
         "model_path": str(model_path),
         "model_type": "LGBM_pnl120_regression_full",

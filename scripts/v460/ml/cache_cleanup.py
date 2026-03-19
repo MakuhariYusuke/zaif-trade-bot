@@ -18,6 +18,7 @@ from scripts.v460.ml.feature_enricher import (
     get_raw_load_cache_stats,
 )
 from ztb.io.advanced_csv import clear_read_csv_cache, get_read_csv_cache_stats
+from ztb.utils.memory_utils import get_memory_usage
 
 
 def get_ml_data_cache_stats() -> dict[str, int]:
@@ -59,9 +60,25 @@ def clear_ml_data_caches_with_log(
     caches. We keep the cleanup behavior centralized so every entrypoint uses
     the same retention policy and the same observability.
     """
+    before_usage = get_memory_usage()
     stats = clear_ml_data_caches(collect_garbage=collect_garbage)
+    after_usage = get_memory_usage()
+    stats["rss_before_mb"] = int(before_usage.get("rss", 0.0))
+    stats["rss_after_mb"] = int(after_usage.get("rss", 0.0))
+    stats["rss_delta_mb"] = stats["rss_after_mb"] - stats["rss_before_mb"]
+    stats["memory_cache_total_entries_before"] = int(
+        before_usage.get("cache_total_entries", 0.0)
+    )
+    stats["memory_cache_total_entries_after"] = int(
+        after_usage.get("cache_total_entries", 0.0)
+    )
     total_entries = stats.get("total_ml_cache_entries", 0)
     gc_collected = stats.get("gc_collected", 0)
-    log_fn = logger.info if total_entries > 0 or gc_collected > 0 else logger.debug
+    rss_delta = stats.get("rss_delta_mb", 0)
+    log_fn = (
+        logger.info
+        if total_entries > 0 or gc_collected > 0 or rss_delta != 0
+        else logger.debug
+    )
     log_fn("[%s] cleared ML data caches: %s", context, stats)
     return stats

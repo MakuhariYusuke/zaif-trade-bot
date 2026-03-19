@@ -7229,3 +7229,20 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - raw path helper 回帰を追加
   - `tests/unit/v460/test_enricher_skip_gate.py`
     - save/load / hash roundtrip の一部を `tmp_path` 化
+- 498# ML metadata/debug helper consolidation:
+  - `ztb/ml/metadata_utils.py`
+    - `current_iso_timestamp(...)` を追加
+  - `ztb/ml/skip_gate.py`
+  - `scripts/v460/ml/train_sg_v2.py`
+  - `scripts/v460/ml/train_sg_v3.py`
+  - `scripts/v460/ml/train_alt_horizon.py`
+  - `scripts/v460/ml/deploy_sg_v3.py`
+  - `scripts/v460/ml/deploy_sg_v4.py`
+  - `scripts/v460/ml/retrain_scheduler.py`
+    - `trained_at` / `generated_at` の metadata timestamp を shared helper に統一
+  - `scripts/v460/ml/cache_cleanup.py`
+    - cleanup 前後の `rss_mb` / memory-cache entry 数を log stats に追加
+  - `tests/unit/v460/test_ml_cache_cleanup.py`
+    - cleanup diagnostics 増強の回帰を追加
+  - `tests/unit/ml/test_metadata_utils.py`
+    - shared timestamp helper の parseability / UTC 契約を追加
