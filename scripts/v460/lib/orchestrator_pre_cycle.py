@@ -80,7 +80,10 @@ class OrchestratorPreCycleMixin:
     # ------------------------------------------------------------------
     # Phase 1: 日替わりリセット
     # ------------------------------------------------------------------
-    def _process_daily_reset(self) -> None:
+    def _process_daily_reset(
+        self,
+        st: "RunSessionState | None" = None,
+    ) -> None:
         """200# 10-A: 日替わりリセット処理.
 
         330# extract from run_continuous L355-L405.
@@ -90,9 +93,21 @@ class OrchestratorPreCycleMixin:
         - toxic_veto
         - one_sided_consecutive_count
         - dynamic kill (cross-day 矛盾検出)
+        - 499# cumulative_pnl_jpy / soft_loss_cap_triggered (当日スコープ)
         """
         if not self._daily_drawdown_guard.maybe_reset_day():
             return
+
+        # 499# fix: cumulative_pnl_jpy は当日スコープ → 日替わりでゼロリセット
+        if st is not None:
+            _old_pnl = st.cumulative_pnl_jpy
+            st.cumulative_pnl_jpy = 0.0
+            logger.info(
+                f"[499# daily_reset] cumulative_pnl_jpy {_old_pnl:.1f} → 0.0"
+            )
+        if self._soft_loss_cap_triggered:
+            self._soft_loss_cap_triggered = False
+            logger.info("[499# daily_reset] soft_loss_cap_triggered → False")
 
         _old_mult = self._soft_drawdown_interval_multiplier
         if _old_mult != 1.0:

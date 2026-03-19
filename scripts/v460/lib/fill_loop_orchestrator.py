@@ -370,7 +370,7 @@ class FillLoopOrchestratorMixin(
 
         while time.time() < end_time and not self._kill_switch.is_killed():
             # ── 330# Phase 1-2: 日替わりリセット + DD halt ──
-            self._process_daily_reset()
+            self._process_daily_reset(st)
             if await self._handle_dd_halt(st):
                 continue
 

@@ -355,10 +355,18 @@ class OrchestratorLifecycleMixin:
         st.batch_size = self.config.batch_size
 
         # 033# F4: レジューム時の累積 PnL 計算
+        # 499# fix: cumulative_pnl_jpy は当日 UTC 分のみ計上。
+        # 全期間合算だと長期運用で loss_cap を必ず超過し crash loop に陥る。
+        # btc_delta / adverse は全期間分 (観測用 — loss_cap 判定とは独立)。
+        from ztb.data.raw_paths import utc_day_str_from_timestamp
+        _utc_today = datetime.now(timezone.utc).strftime("%Y%m%d")
         for r in clean_records:
             pnl_jpy = compute_record_pnl_jpy(r)
             if pnl_jpy is not None:
-                st.cumulative_pnl_jpy += pnl_jpy
+                # 499#: loss_cap 判定に使う cumulative_pnl_jpy は当日分のみ
+                _r_day = utc_day_str_from_timestamp(r.timestamp)
+                if _r_day == _utc_today:
+                    st.cumulative_pnl_jpy += pnl_jpy
             if r.filled and r.order_quantity is not None:
                 _qty = float(r.order_quantity)
                 if r.side == "buy":
