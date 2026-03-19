@@ -27,6 +27,7 @@ fill pipeline の防御レイヤー多重共線性問題を定量的に解析し
 | 11 | hot_swap config 不整合修正 | ✅ 完了 | hot_swap_restart.ps1 |
 | 12 | hot_swap graceful shutdown | ✅ 完了 | hot_swap_restart.ps1 |
 | 13 | 防御レイヤー実運用定量分析 | ✅ 完了 | ログベース fill rate / blocking 分析 |
+| 14 | Composite Risk Score 実装 | ✅ 完了 | 490# Level 2: Soft Gate→weight加算集約 |
 
 ---
 
@@ -270,20 +271,87 @@ Where-Object {
 
 ---
 
-## §7 次回アクション
+## §7 Composite Risk Score 実装 (Turn 4: 490# Level 2)
+
+### 7.1 設計概要
+
+490# 指摘「Veto/Skip を個別 Boolean で判定するのではなく、連続値の複合リスクスコアに
+合成し、一元的な閾値で判断する構造へ転換」を実装。
+
+```
+アーキテクチャ:
+  Soft Gate (1,2,2b,3,6,7) → 連続値 risk_weight [0.0, 1.0] を返す
+  Hard Gate (4,5,8,9)     → Boolean 短絡維持 (安全性ゲート)
+  集約: Σ(risk_weight) >= threshold → block
+```
+
+### 7.2 ゲート分類と重み設定
+
+| Gate | 分類 | Risk Weight | 理論的根拠 |
+|------|------|-------------|-----------|
+| 1 (unknown_buy) | Soft | 0.6 | Regime uncertainty → conditional EV negative |
+| 2/2b (ranging_lv) | Soft | 0.5 | Low vol → spread capture insufficient |
+| 3 (trending_sell) | Soft | 0.7 | Directional alpha forfeit (Glosten-Milgrom) |
+| 4 (buy_kill) | **Hard** | N/A | Inverse selection cost → EV definitely negative |
+| 5 (sell_kill) | **Hard** | N/A | Inverse selection cost → EV definitely negative |
+| 6 (velocity) | Soft | 0.4 | Kyle λ imprecision → advisory level |
+| 7 (unknown_sell) | Soft | 0.6 | Regime uncertainty (buy と対称) |
+| 8 (narrow_spread) | **Hard** | N/A | Maker advantage vanishes (Roll 1984) |
+| 9 (maker_price_pre) | **Hard** | N/A | Execution quality hard constraint |
+
+### 7.3 動作モード
+
+- `composite_risk_enabled=False` (既定): 従来 AND-chain を完全維持 (後方互換)
+- `composite_risk_enabled=True`: Soft Gate の weight 加算、閾値 (1.5) 超過で block
+- Hard Gate は composite mode でも即座に block (安全性担保)
+- `halt_recovery_active=True` 時は Soft Gate の weight を蓄積しない
+
+### 7.4 期待効果
+
+```
+現状 (AND-chain):
+  Gate 1 blocked → 即 return (Gate 2-7 未評価)
+  → 個別カウントでは blocking 少でも cascade rejection の可能性
+
+Composite mode:
+  Gate 1 weight=0.6 + Gate 7 weight=0.6 = 1.2 < 1.5 → 通過
+  Gate 1 + Gate 6 + Gate 2 = 0.6+0.4+0.5 = 1.5 → block (複合リスク)
+  → 「1つだけなら通す、3つ重なったら止める」の政策的判断が可能に
+```
+
+### 7.5 変更ファイル
+
+| ファイル | 変更内容 |
+|---------|---------|
+| fill_config.py | composite_risk_* 設定 5 フィールド追加 |
+| cycle_gate_aggregator.py | evaluate() リファクタ: Soft Gate→weight加算、Hard Gate→即block維持 |
+| cycle_gate_aggregator.py | CycleGateResult に composite_risk_score/details 追加 |
+| test_491_composite_risk_score.py | 15 テスト (disabled/enabled/hard/soft/combined) |
+| test_336_yaml_code_drift_prevention.py | field_count 上限 450→470 |
+
+### 7.6 テスト結果
+
+```
+57 passed (38 既存cycle_gate + 15 composite + 4 drift)
+```
+
+---
+
+## §8 次回アクション
 
 ### 短期 (次セッション)
 
-1. **sidecar signal 更新確認**: retrain_scheduler 訓練完了後の signal freshness を検証
-2. **VPIN threshold 効果測定**: 24-48h 後の sell_dynamic_kill ブロック率変化
-3. **fill_rate 回復度測定**: 24.2% → 目標 35%+ への改善幅
+1. **Composite Risk Score 有効化**: fill_test.yaml に `composite_risk_enabled: true` 追加し A/B テスト
+2. **sidecar signal 更新確認**: retrain_scheduler 訓練完了後の signal freshness を検証
+3. **VPIN threshold 効果測定**: 24-48h 後の sell_dynamic_kill ブロック率変化
+4. **fill_rate 回復度測定**: 36.3% → 目標 45%+ への改善幅
 
 ### 中期 (2-4週)
 
-4. **Composite Risk Score 設計** (490# Level 2): 5 クラスタの潜在因子を正規化して単一スコアに集約
-5. **Gate 統合 PoC**: クラスタ B (spread 5-6 重) の 統一 → 単一 liquidity_score
+5. **Composite Risk Score チューニング**: weight/threshold のグリッドサーチ
+6. **Gate 統合 PoC**: クラスタ B (spread 5-6 重) の統一 → 単一 liquidity_score
 
 ### 長期 (1-3月)
 
-6. **SAC gate 移行**: 観測化 + 学習最適化 (490# Level 3)
-7. **マルチシード ensemble**: seed42/123 の prediction averaging
+7. **SAC gate 移行**: 観測化 + 学習最適化 (490# Level 3)
+8. **マルチシード ensemble**: seed42/123 の prediction averaging

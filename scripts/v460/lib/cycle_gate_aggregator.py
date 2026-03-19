@@ -75,6 +75,7 @@ _GATE_TO_CANCEL_REASON: dict[str, str] = {
     "spread_too_narrow": "spread_too_narrow",            # 197# Gate 9
     "sell_guard_reject": "sell_guard_reject",             # 197# Gate 9
     "toxicity_participation_skip": "toxicity_participation_skip",  # 240# Toxicity Budget
+    "composite_risk_exceeded": "composite_risk_exceeded",  # 491# Composite Risk Score
 }
 
 
@@ -122,6 +123,9 @@ class CycleGateResult:
     sidecar_confidence: float | None = None
     sidecar_model_version: str | None = None
     sidecar_signal_status: str = "missing"
+    # 491# Composite Risk Score (490# architectural pivot)
+    composite_risk_score: float = 0.0   # soft gate risk weight の加算値
+    composite_risk_details: list[str] = field(default_factory=list)  # gate→weight 内訳
 
     @property
     def audit_summary(self) -> str:
@@ -221,6 +225,9 @@ class CycleGateAggregator:
         result = CycleGateResult()
         _regime = regime or "unknown"
 
+        # 491# Composite Risk Score mode flag
+        _composite = self._config.composite_risk_enabled
+
         # 219# unknown regime 連続バイパス: N サイクル連続 unknown で強制通過
         # 277# config 化: config.unknown_regime_max_consecutive
         # 324# M-2: per-side カウンタ参照
@@ -238,11 +245,16 @@ class CycleGateAggregator:
         # --- Gate 1: unknown_regime_buy_skip ---
         g1 = self._check_unknown_regime_buy(side, _regime, _unknown_bypass)
         result.checks.append(g1)
-        if g1.blocked and not halt_recovery_active:  # 273# recovery grace
-            result.blocked = True
-            result.blocking_reason = g1.reason
-            self._consecutive_unknown_blocks[side] = _side_count + 1  # 324# M-2
-            return result
+        if g1.blocked:
+            if _composite and not halt_recovery_active:
+                w = self._config.composite_risk_weight_unknown_regime
+                result.composite_risk_score += w
+                result.composite_risk_details.append(f"G1:unknown_buy={w:.2f}")
+            elif not halt_recovery_active:
+                result.blocked = True
+                result.blocking_reason = g1.reason
+                self._consecutive_unknown_blocks[side] = _side_count + 1
+                return result
 
         # 229# M-5 fix: Gate 1 通過かつ非 unknown → カウンタリセット
         # Gate 2-6 の early return で reset 漏れを防ぐ
@@ -253,27 +265,36 @@ class CycleGateAggregator:
         # --- Gate 2: B1' ranging_buy_low_vol ---
         g2 = self._check_ranging_buy_low_vol(side, _regime, vol_ratio)
         result.checks.append(g2)
-        if g2.blocked and not halt_recovery_active:  # 273# recovery grace
-            result.blocked = True
-            result.blocking_reason = g2.reason
-            # 451# P1-2: compound suppression 診断 — Gate 4 (buy_dynamic_kill) も投機的に評価
-            if side == "buy" and is_buy_killed:
-                g4_spec = self._check_buy_dynamic_kill(side, is_buy_killed)
-                result.speculative_checks.append(g4_spec)
-                if g4_spec.blocked:
-                    logger.info(
-                        "[451#] compound suppression: ranging_low_vol + "
-                        "buy_dynamic_kill would both block"
-                    )
-            return result
+        if g2.blocked:
+            if _composite and not halt_recovery_active:
+                w = self._config.composite_risk_weight_ranging_low_vol
+                result.composite_risk_score += w
+                result.composite_risk_details.append(f"G2:ranging_buy_lv={w:.2f}")
+            elif not halt_recovery_active:
+                result.blocked = True
+                result.blocking_reason = g2.reason
+                if side == "buy" and is_buy_killed:
+                    g4_spec = self._check_buy_dynamic_kill(side, is_buy_killed)
+                    result.speculative_checks.append(g4_spec)
+                    if g4_spec.blocked:
+                        logger.info(
+                            "[451#] compound suppression: ranging_low_vol + "
+                            "buy_dynamic_kill would both block"
+                        )
+                return result
 
         # --- Gate 2b: 475# ranging_sell_low_vol (buy 側と対称) ---
         g2b = self._check_ranging_sell_low_vol(side, _regime, vol_ratio)
         result.checks.append(g2b)
-        if g2b.blocked and not halt_recovery_active:
-            result.blocked = True
-            result.blocking_reason = g2b.reason
-            return result
+        if g2b.blocked:
+            if _composite and not halt_recovery_active:
+                w = self._config.composite_risk_weight_ranging_low_vol
+                result.composite_risk_score += w
+                result.composite_risk_details.append(f"G2b:ranging_sell_lv={w:.2f}")
+            elif not halt_recovery_active:
+                result.blocked = True
+                result.blocking_reason = g2b.reason
+                return result
 
         # --- Gate 3: trending_sell_skip ---
         g3 = self._check_trending_sell(
@@ -282,32 +303,31 @@ class CycleGateAggregator:
             buy_side_insufficient=buy_side_insufficient,
         )
         result.checks.append(g3)
-        if g3.blocked and not halt_recovery_active:  # 273# recovery grace
-            result.blocked = True
-            result.blocking_reason = g3.reason
-            return result
+        if g3.blocked:
+            if _composite and not halt_recovery_active:
+                w = self._config.composite_risk_weight_trending_sell
+                result.composite_risk_score += w
+                result.composite_risk_details.append(f"G3:trending_sell={w:.2f}")
+            elif not halt_recovery_active:
+                result.blocked = True
+                result.blocking_reason = g3.reason
+                return result
         # 196# trending_sell soft mode: propagate offset mult
         if g3.offset_mult is not None:
             result.trending_offset_mult = g3.offset_mult
 
-        # --- Gate 4: buy_dynamic_kill ---
-        # 219# dual-kill deadlock breaker: buy+sell 両方 kill 時、
-        # PnL が良い方を強制通過させてデッドロックを回避。
-        # 234# dual kill 検出 (348# balance_forced 撤廃: quiescence が専ら機能)
+        # --- Gate 4: buy_dynamic_kill --- (Hard Gate: Boolean 維持)
         _dual_kill = is_buy_killed and is_sell_killed
         _dual_kill_bypass = False
         if _dual_kill:
-            # 249# quiescence mode: dual_kill_bypass を無効化 — 両方 toxic なら静観
             if self._config.dual_kill_quiescence_enabled:
                 logger.info(
                     f"[249#] DUAL KILL quiescence: both buy/sell killed — "
                     f"resting (side={side}, no bypass)"
                 )
-                # bypass しない → 各 kill gate が個別にブロック判定
             else:
-                # 旧挙動 (219#): 両方 kill なら全て通過させてデッドロック回避
                 _dual_kill_bypass = True
-                result.dual_kill_bypassed = True  # 223# metrics 用フラグ
+                result.dual_kill_bypassed = True
                 logger.warning(
                     f"[219#] DUAL KILL bypass: both buy/sell killed — "
                     f"allowing {side} through to break deadlock"
@@ -316,51 +336,55 @@ class CycleGateAggregator:
         g4 = self._check_buy_dynamic_kill(side, is_buy_killed, _dual_kill_bypass)
         result.checks.append(g4)
         if g4.blocked:
-            # 348# balance_forced 撤廃: 縮退清算は inventory_escape 経由でのみ
             result.blocked = True
             result.blocking_reason = g4.reason
             return result
         elif buy_toxicity is not None:
-            # 241# C-1 fix: pre-kill ゾーンで段階的応答を適用
-            # (gate 非 block 時に YELLOW/ORANGE → offset 拡大 + 参加率制限)
             self._apply_toxicity_graded(result, buy_toxicity, g4, side)
 
-        # --- Gate 5: sell_dynamic_kill ---
+        # --- Gate 5: sell_dynamic_kill --- (Hard Gate: Boolean 維持)
         g5 = self._check_sell_dynamic_kill(
             side, is_sell_killed, inv_net_imbalance,
             dual_kill_bypass=_dual_kill_bypass,
         )
         result.checks.append(g5)
         if g5.blocked:
-            # 348# balance_forced 撤廃: 縮退清算は inventory_escape 経由のみ
             result.blocked = True
             result.blocking_reason = g5.reason
             return result
         elif sell_toxicity is not None:
-            # 241# C-1 fix: pre-kill ゾーンで段階的応答を適用
             self._apply_toxicity_graded(result, sell_toxicity, g5, side)
 
         # --- Gate 6: velocity_skip (旧 C4-C5) ---
         g6 = self._check_velocity_skip(side, price_velocity_bps)
         result.checks.append(g6)
-        if g6.blocked and not halt_recovery_active:  # 273# recovery grace
-            result.blocked = True
-            result.blocking_reason = g6.reason
-            return result
+        if g6.blocked:
+            if _composite and not halt_recovery_active:
+                w = self._config.composite_risk_weight_velocity
+                result.composite_risk_score += w
+                result.composite_risk_details.append(f"G6:velocity={w:.2f}")
+            elif not halt_recovery_active:
+                result.blocked = True
+                result.blocking_reason = g6.reason
+                return result
 
         # --- Gate 7: unknown_regime_sell_skip (旧 C2) ---
         g7 = self._check_unknown_regime_sell(side, _regime, _unknown_bypass)
         result.checks.append(g7)
-        if g7.blocked and not halt_recovery_active:  # 273# recovery grace
-            result.blocked = True
-            result.blocking_reason = g7.reason
-            self._consecutive_unknown_blocks[side] = _side_count + 1  # 324# M-2
-            return result
+        if g7.blocked:
+            if _composite and not halt_recovery_active:
+                w = self._config.composite_risk_weight_unknown_regime
+                result.composite_risk_score += w
+                result.composite_risk_details.append(f"G7:unknown_sell={w:.2f}")
+            elif not halt_recovery_active:
+                result.blocked = True
+                result.blocking_reason = g7.reason
+                self._consecutive_unknown_blocks[side] = _side_count + 1
+                return result
 
         # 229# M-5: non-unknown リセットは Gate 1 直後で実施済み
-        # unknown 通過時はカウンタ維持 (bypass 継続のため)
 
-        # --- Gate 8: narrow_spread_pause (197# B3→Gate 統合) ---
+        # --- Gate 8: narrow_spread_pause --- (Hard Gate: Boolean 維持)
         g8 = self._check_narrow_spread(spread_jpy, mid_price)
         result.checks.append(g8)
         if g8.blocked:
@@ -368,13 +392,30 @@ class CycleGateAggregator:
             result.blocking_reason = g8.reason
             return result
 
-        # --- Gate 9: maker_price pre-check (197# D1-D3 事前チェック) ---
+        # --- Gate 9: maker_price pre-check --- (Hard Gate: Boolean 維持)
         g9 = self._check_maker_price_precheck(side, spread_jpy)
         result.checks.append(g9)
         if g9.blocked:
             result.blocked = True
             result.blocking_reason = g9.reason
             return result
+
+        # --- 491# Composite Risk Score 閾値判定 ---
+        if _composite and result.composite_risk_score > 0:
+            _threshold = self._config.composite_risk_threshold
+            if result.composite_risk_score >= _threshold:
+                result.blocked = True
+                result.blocking_reason = "composite_risk_exceeded"
+                logger.info(
+                    f"[491#] Composite risk block: score={result.composite_risk_score:.2f} "
+                    f">= threshold={_threshold:.2f} [{', '.join(result.composite_risk_details)}]"
+                )
+                return result
+            else:
+                logger.debug(
+                    f"[491#] Composite risk pass: score={result.composite_risk_score:.2f} "
+                    f"< threshold={_threshold:.2f} [{', '.join(result.composite_risk_details)}]"
+                )
 
         # --- 365# P5: Sidecar offset injection ---
         if sidecar_signal is not None:

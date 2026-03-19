@@ -833,6 +833,16 @@ class FillTestConfig:
     # Adverse Selection 防御: 長時間放置される板を排除し HFT/大口のターゲット化を回避。
     micro_timeout_enabled: bool = False
     micro_timeout_wait_sec: float = 15.0           # 1回あたりの最大配置時間 (秒)
+    # ---- 491# Composite Risk Score (490# architectural pivot) ----
+    # Soft Gate (1,2,2b,3,6,7) を連続値 risk weight に変換し、加算集約で判定。
+    # Hard Gate (4,5,8,9) は安全性ゲートのため Boolean 短絡維持。
+    # enabled=False (既定) で従来 AND-chain を完全維持 (後方互換)。
+    composite_risk_enabled: bool = False
+    composite_risk_threshold: float = 1.5          # total_risk > threshold → block
+    composite_risk_weight_unknown_regime: float = 0.6   # Gate 1,7: unknown regime
+    composite_risk_weight_ranging_low_vol: float = 0.5  # Gate 2,2b: ranging low vol
+    composite_risk_weight_trending_sell: float = 0.7    # Gate 3: trending sell
+    composite_risk_weight_velocity: float = 0.4         # Gate 6: velocity skip
     micro_timeout_wait_sec_sell: float | None = None  # sell 側の配置時間 (None=共通値)
     micro_timeout_max_requote: int = 4             # 1サイクル内の最大 re-quote 回数
     micro_timeout_requote_cooloff_sec: float = 5.0 # キャンセル→再発注間の冷却期間 (秒)
