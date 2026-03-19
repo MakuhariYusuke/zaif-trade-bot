@@ -167,10 +167,10 @@ class TestProductionYamlMicroTimeout:
         with open(yaml_path) as f:
             raw = yaml.safe_load(f)
         cfg = FillTestConfig.from_yaml(raw)
-        # 454# Step 1: 保守的設定で有効化済み
+        # 454# Step 1: 保守的設定で有効化済み → 496# TTL 短縮
         assert cfg.micro_timeout_enabled is True
-        assert cfg.micro_timeout_wait_sec == 30.0
-        assert cfg.micro_timeout_max_requote == 2
+        assert cfg.micro_timeout_wait_sec == 15.0     # 496# 30→15
+        assert cfg.micro_timeout_max_requote == 4     # 496# 2→4
 
 
 # ======================================================================

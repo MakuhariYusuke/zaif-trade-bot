@@ -514,6 +514,85 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "sidecar_dead_zone",
     "sidecar_shaping",
     "sidecar_use_v2",
+    # ══════════════════════════════════════════════════════════════════
+    # 498# 横展開: micro-timeout / recovery_skew / cross-venue 閾値 等
+    # ══════════════════════════════════════════════════════════════════
+    # --- micro-timeout (fill_cycle_executor 毎サイクル読み) ---
+    "micro_timeout_enabled",
+    "micro_timeout_wait_sec",
+    "micro_timeout_wait_sec_sell",
+    "micro_timeout_max_requote",
+    "micro_timeout_requote_cooloff_sec",
+    "micro_timeout_cancel_on_cv_flip",
+    # --- recovery_skew (orchestrator_balance 毎サイクル読み) ---
+    "recovery_skew_enabled",
+    "recovery_skew_offset_mult",
+    # --- cross-venue 閾値 (maker_risk_guards 毎サイクル読み) ---
+    # ※ cross_venue_lead_lag_enabled / cross_venue_reference_exchange は
+    #   WebSocket 初期化に関わるため除外
+    "cross_venue_lead_lag_max_age_sec",
+    "cross_venue_lead_lag_spread_bps_threshold",
+    "cross_venue_lead_lag_velocity_bps_threshold",
+    "cross_venue_lead_lag_offset_boost",
+    "cross_venue_lead_lag_veto_enabled",
+    "cross_venue_lead_lag_veto_threshold_bps",
+    "cross_venue_reference_ob_depth",
+    "cross_venue_microprice_enabled",
+    "cross_venue_depth_imbalance_enabled",
+    "cross_venue_depth_imbalance_boost",
+    "cross_venue_depth_imbalance_threshold",
+    "cross_venue_ema_alpha",
+    "cross_venue_min_confidence",
+    "cross_venue_confidence_reference_spread_bps",
+    "cross_venue_confidence_floor",
+    # --- macro regime 閾値 (MacroRegimeDetector 毎 update 読み) ---
+    "macro_regime_bucket_sec",
+    "macro_regime_slope_threshold",
+    "macro_regime_strong_threshold",
+    # --- regime detector パラメータ (config 参照で毎サイクル読み) ---
+    "regime_window",
+    "regime_trend_threshold_pct",
+    "regime_hysteresis_count",
+    "regime_min_confidence",
+    "regime_mid_confidence_lo",
+    "regime_mid_confidence_hi",
+    "regime_mid_confidence_offset_boost",
+    "regime_ranging_offset_discount_buy",
+    "regime_ranging_offset_discount_sell",
+    # --- microprice パラメータ ---
+    "microprice_depth",
+    "microprice_min_qty",
+    "microprice_side_min_spread_bps",
+    "microprice_side_regime_gate",
+    # --- sell/unknown offset boost (maker_price 毎サイクル読み) ---
+    "sell_hour_offset_boost",
+    "unknown_sell_offset_boost",
+    # --- ranging sell soft mode (459# 対称) ---
+    "skip_ranging_sell_low_vol",
+    "ranging_sell_low_vol_as_offset",
+    # --- VPIN vol-sync パラメータ ---
+    "vpin_vol_sync_enabled",
+    "vpin_vol_sync_bucket_btc",
+    "vpin_vol_sync_n_buckets",
+    # --- Bayesian regime パラメータ ---
+    "bayesian_regime_enabled",
+    "bayesian_regime_stickiness",
+    "bayesian_regime_emission_lr",
+    # --- GLFT dynamic k ---
+    "glft_dynamic_k_enabled",
+    "glft_dynamic_k_min_samples",
+    # --- sigma clustering 閾値 ---
+    "sigma_clustering_low_threshold",
+    "sigma_clustering_high_threshold",
+    "sigma_clustering_extreme_threshold",
+    "sigma_floor",
+    "vol_ratio_floor",
+    # --- health monitor 閾値 (ランタイム参照) ---
+    "hm_rss_warn_mb",
+    "hm_rss_critical_mb",
+    "hm_disk_free_warn_gb",
+    "hm_gc_interval_cycles",
+    "halt_sleep_multiplier",
 })
 
 # 構造体再構築が必要なコンポーネントのマッピング
