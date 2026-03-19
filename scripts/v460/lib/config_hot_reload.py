@@ -501,6 +501,13 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "execution_final_clamp_hard_skip_mult",
     # 467# deep-night ceiling 緩和
     "hour_ceiling_mult",
+    # --- 491# Composite Risk Score ---
+    "composite_risk_enabled",
+    "composite_risk_threshold",
+    "composite_risk_weight_unknown_regime",
+    "composite_risk_weight_ranging_low_vol",
+    "composite_risk_weight_trending_sell",
+    "composite_risk_weight_velocity",
     # --- 374# Phase 3.1: SAC Sidecar Proportional Boost ---
     "sidecar_enabled",
     "sidecar_max_boost_bps",

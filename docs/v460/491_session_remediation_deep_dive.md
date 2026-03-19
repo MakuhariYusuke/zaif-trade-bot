@@ -430,3 +430,134 @@ sidecar stale、残高不足 (JPY 306 / BTC 0.00232) が寄与。
 - JPY=306, BTC=0.00232 → buy は実質不可 (461 skip)、sell は trade size 制約
 - route-to-kill deadlock: buy 不可 + sell が kill-gated → 両サイド完全停止 (28 events)
 - **残高補充が PnL 改善の前提条件**。offset ceiling 改善だけでは構造的問題は解決しない。
+
+---
+
+## §10 Deep-Dive 定量分析 (Turn 6)
+
+3/19 fill_test ログ (717 cycles, 271 fills) の多角的分析結果。
+
+### §10.1 時間帯別 PnL
+
+| UTC | JST | fills | avg_bps | worst_single | 評価 |
+|-----|-----|-------|---------|-------------|------|
+| 00h | 09h | 27 | **-8.35** | -80.57 | 最悪帯。朝の流動性薄い時間に被弾 |
+| 22h | 07h | 18 | **-6.71** | -42.97 | 早朝、同様に薄い |
+| 03h | 12h | 20 | -4.17 | -28.74 | 昼前後 |
+| 06h | 15h | 1 | -21.48 | -21.48 | 単発大損 |
+| 11h | 20h | 1 | -21.14 | -21.14 | 単発大損 |
+| 18h | 03h | 12 | **+0.44** | -10.14 | 唯一プラス圏 |
+| 16h | 01h | 24 | -0.06 | -18.04 | ほぼ損益分岐 |
+| 19h | 04h | 15 | -0.10 | -10.02 | ほぼ損益分岐 |
+
+**観察**: 00h (JST 09h) と 22h (JST 07h) が突出して悪い。東京市場オープン前後の薄い板に
+逆選択される構図。`hour_ceiling_mult` による deep-night 保護は JST 01-04h をカバーするが
+07-09h は未保護。
+
+### §10.2 Buy/Sell 別 PnL
+
+| side | fills | avg_bps | win | win_rate |
+|------|-------|---------|-----|----------|
+| buy  | 138   | -0.578  | 61  | 44.2%    |
+| sell | 133   | -0.790  | 77  | 57.9%    |
+
+sell は win_rate 57.9% にも関わらず avg PnL が悪い → 負けたときの損失が大きい (fat tail)。
+buy は win_rate 44.2% と低い → 方向バイアス or ceiling 制約の影響。
+
+### §10.3 逆選択分析 (Adverse Selection)
+
+約定までの待ち時間と PnL の相関を分析。
+
+| 区間 | fills | avg_bps | win | win_rate |
+|------|-------|---------|-----|----------|
+| **quick** (<10s) | 131 | **+0.273** | 70 | 53.4% |
+| mid (10-30s) | 110 | -0.983 | 53 | 48.2% |
+| **slow** (>=30s) | 30 | **-3.750** | 15 | 50.0% |
+
+**重要発見**: 約定待ち時間と PnL に明確な負の相関。
+
+- **10秒未満の即時約定はプラス圏** (+0.273 bps) — 市場が自分方向に動いている
+- **30秒以上待つ約定は大損** (-3.750 bps) — 典型的な逆選択パターン
+- マーケットメイクの教科書的結論: 長時間板に晒される注文は informed trader に狩られる
+
+**対策案**:
+- order TTL (time-to-live) を 20-30s に制限し、stale order を自動キャンセル
+- 30s 以上経過でスプレッドを自動拡大 (offset 引き上げ)
+- velocity multiplier と組み合わせ、急変時は即座にキャンセル
+
+### §10.4 Offset Pipeline ボトルネック分析
+
+fill_records_20260319.jsonl からパイプラインステージを抽出。
+
+```
+base=0.05 → regime_adj=0.09 → spread_adapt=0.18 → vol_guard=0.30
+  ↓ (max_offset_ratio=0.30 で天井到達!)
+306# ceiling_clamp=0.20 → velocity×2.25 → ExPre=0.449
+  ↓ (421# final_clamp)
+final_offset=0.20
+```
+
+**構造的問題**:
+1. vol_guard (0.18→0.30) で max_offset_ratio=0.30 に到達する確率が高い
+2. 306# ceiling (0.20) で 0.30→0.20 にクランプ → regime/spread/vol 情報消失
+3. velocity multiplier (avg 1.73×, 82 events) が ceiling 後に適用 → ExPre=0.449
+4. 421# final_clamp が ExPre→0.20 に再クランプ → velocity 情報も消失
+5. 結果: 5段階の signal → 全て 0.20 に圧縮 = **情報理論的に 0 bit**
+
+### §10.5 Ceiling 0.25 影響定量化
+
+ceiling_ratio_buy を 0.20→0.25 に引上げた効果を事前定量。
+
+| pre-clamp 範囲 | 件数 | 割合 |
+|---------------|------|------|
+| 0.20 - 0.22 | 12 | 2.6% |
+| 0.22 - 0.25 | 23 | 5.1% |
+| 0.25 - 0.30 | 29 | 6.4% |
+| **0.30+** | **391** | **85.9%** |
+
+- 新 ceiling 0.25 で clamp 解除: **35/455 = 7.7%** のみ
+- 依然 **420/455 = 92.3%** が ceiling でクランプ
+- 85.9% が max_offset_ratio=0.30 で先に飽和 → ceiling 問題の上流に vol_guard 問題あり
+
+**結論**: ceiling 0.25 の効果は限定的。根本は vol_guard→max_offset_ratio=0.30 飽和。
+
+### §10.6 3日間クランプ vs 非クランプ PnL 比較
+
+**驚くべき発見**: ceiling はむしろ保護的に作用。
+
+| 状態 | fills | avg_pnl_bps |
+|------|-------|-------------|
+| **Clamped** (ceiling 適用) | 702 | **-0.189** |
+| Unclamped (ceiling 未到達) | 814 | -0.338 |
+
+Clamped fills の方が損失が小さい。これは ceiling が「スプレッドを適正範囲内に保つ」
+ことで、広すぎる offset による機会損失 (fill されない → トレンド追随不能) を防いでいるため。
+
+ただし velocity multiplier (82 events, avg 1.73×) は二重 clamp で完全に無効化されており、
+「急変時の保護情報」が 0 bit になっている問題は残存。
+
+### §10.7 Composite Risk Hot-Reload 修正
+
+`composite_risk_enabled` を含む 6 フィールドが `_HOT_RELOADABLE_FIELDS` に
+未登録であったため、YAML 変更が実行時に反映されなかった。
+
+**修正**: `config_hot_reload.py` に以下を追加:
+```python
+# --- 491# Composite Risk Score ---
+"composite_risk_enabled",
+"composite_risk_threshold",
+"composite_risk_weight_unknown_regime",
+"composite_risk_weight_ranging_low_vol",
+"composite_risk_weight_trending_sell",
+"composite_risk_weight_velocity",
+```
+
+### §10.8 次段階の改善提案 (Priority Queue)
+
+| 優先 | 項目 | 根拠 | 効果期待 |
+|------|------|------|---------|
+| **P0** | Order TTL 導入 (20-30s) | §10.3 逆選択: slow fill = -3.75bps | 逆選択損失の大幅削減 |
+| P1 | 306# ceiling 廃止 or max_offset に統一 | §10.4-10.5 二重 clamp = 0 bit | velocity/macro_boost 情報復元 |
+| P1 | 07-09h (JST) hour_ceiling_mult 拡張 | §10.1 00h=-8.35bps | 朝方の逆選択保護 |
+| P2 | vol_guard 飽和対策 | §10.5 85.9% が 0.30 到達 | offset resolution 改善 |
+| P2 | sell fat-tail 損失制限 | §10.2 sell win=57.9% but avg=-0.79 | 負けトレード幅の制限 |
