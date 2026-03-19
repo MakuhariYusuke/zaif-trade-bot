@@ -44,10 +44,14 @@ from scripts.v460.ml.sac_retrain_scheduler import (
     _append_history,
     _atomic_deploy_model,
     _evaluate_model,
+    _MAX_AUTO_RESTARTS,
     _push_neutral_fallback,
+    _RESTART_BACKOFF_SEC,
+    _TRAINING_TIMEOUT_SEC,
     _shutdown_event,
     _update_sidecar_signal,
     load_config,
+    main,
     retrain_once,
     run_scheduler,
 )
@@ -778,3 +782,244 @@ class TestReadSidecarCache:
         result = read_sidecar_signal(signal_path, ttl_sec=0)
         assert result is None
         assert abs_path not in _SIDECAR_CACHE
+
+
+# ════════════════════════════════════════════════════════════════
+# §12 495# Crash Resilience Tests
+# ════════════════════════════════════════════════════════════════
+
+
+class TestCrashResilience495:
+    """495# 再学習スケジューラのクラッシュ耐性テスト."""
+
+    @patch("scripts.v460.ml.sac_retrain_scheduler.retrain_once")
+    @patch("scripts.v460.ml.sac_retrain_scheduler._install_signal_handlers")
+    def test_trigger_exception_does_not_kill_loop(
+        self,
+        mock_signals: MagicMock,
+        mock_retrain: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """trigger.should_retrain() が例外を投げてもループが継続."""
+        data_file = tmp_path / "data.parquet"
+        data_file.write_bytes(b"dummy")
+
+        cfg = SACRetrainConfig(
+            ohlcv_path=str(data_file),
+            check_interval_sec=1,
+            retrain_interval_sec=1,
+            history_path=tmp_path / "history.jsonl",
+        )
+
+        call_count = 0
+        _shutdown_event.clear()
+
+        def limited_wait(timeout: float | None = None) -> bool:
+            nonlocal call_count
+            call_count += 1
+            if call_count >= 2:
+                _shutdown_event.set()
+                return True
+            return False
+
+        # should_retrain が 1回目で例外→ 2回目の wait で shutdown
+        with (
+            patch.object(_shutdown_event, "wait", side_effect=limited_wait),
+            patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
+            patch.object(
+                SACRetrainTrigger,
+                "should_retrain",
+                side_effect=RuntimeError("disk error"),
+            ),
+        ):
+            # 例外が run_scheduler から漏れないことを確認
+            run_scheduler(cfg)
+
+        # retrain_once は呼ばれない (trigger が失敗するため)
+        mock_retrain.assert_not_called()
+        _shutdown_event.clear()
+
+    @patch("scripts.v460.ml.sac_retrain_scheduler.retrain_once")
+    @patch("scripts.v460.ml.sac_retrain_scheduler._install_signal_handlers")
+    def test_record_result_exception_does_not_kill_loop(
+        self,
+        mock_signals: MagicMock,
+        mock_retrain: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """trigger.record_result() が例外を投げてもループが継続."""
+        data_file = tmp_path / "data.parquet"
+        data_file.write_bytes(b"dummy")
+
+        cfg = SACRetrainConfig(
+            ohlcv_path=str(data_file),
+            check_interval_sec=1,
+            retrain_interval_sec=1,
+            history_path=tmp_path / "history.jsonl",
+        )
+
+        mock_retrain.return_value = RetrainResult(status="deployed")
+        call_count = 0
+        _shutdown_event.clear()
+
+        def limited_wait(timeout: float | None = None) -> bool:
+            nonlocal call_count
+            call_count += 1
+            if call_count >= 2:
+                _shutdown_event.set()
+                return True
+            return False
+
+        with (
+            patch.object(_shutdown_event, "wait", side_effect=limited_wait),
+            patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
+            patch.object(
+                SACRetrainTrigger,
+                "record_result",
+                side_effect=RuntimeError("record error"),
+            ),
+        ):
+            run_scheduler(cfg)
+
+        # ループが record_result 例外で死んでいないことを確認
+        # (record_result が _last_retrain_time を更新できなかったため 2 回呼ばれる)
+        assert mock_retrain.call_count >= 1
+        _shutdown_event.clear()
+
+    def test_main_auto_restart_on_scheduler_crash(self, tmp_path: Path) -> None:
+        """run_scheduler が例外で死んでも main() が再起動."""
+        data_file = tmp_path / "data.parquet"
+        data_file.write_bytes(b"dummy")
+        config_file = tmp_path / "test_config.yaml"
+        config_file.write_text(
+            f"data:\n  ohlcv_path: {data_file}\nsac_retrain:\n"
+            f"  check_interval_sec: 1\n  retrain_interval_sec: 1\n"
+            f"  history_path: {tmp_path / 'history.jsonl'}\n",
+            encoding="utf-8",
+        )
+
+        crash_count = 0
+
+        def crashing_scheduler(cfg: SACRetrainConfig) -> None:
+            nonlocal crash_count
+            crash_count += 1
+            if crash_count <= 2:
+                raise RuntimeError(f"crash #{crash_count}")
+            # 3回目は正常終了 (graceful shutdown をシミュレート)
+
+        _shutdown_event.clear()
+
+        with (
+            patch(
+                "scripts.v460.ml.sac_retrain_scheduler.run_scheduler",
+                side_effect=crashing_scheduler,
+            ),
+            patch(
+                "sys.argv",
+                ["sac_retrain_scheduler.py", "--config", str(config_file)],
+            ),
+            patch.object(
+                _shutdown_event,
+                "wait",
+                return_value=False,  # backoff wait → 即復帰
+            ),
+        ):
+            main()
+
+        assert crash_count == 3  # 2回クラッシュ + 1回正常終了
+        _shutdown_event.clear()
+
+    def test_main_auto_restart_limit(self, tmp_path: Path) -> None:
+        """自動リスタートが _MAX_AUTO_RESTARTS で打ち切られる."""
+        data_file = tmp_path / "data.parquet"
+        data_file.write_bytes(b"dummy")
+        config_file = tmp_path / "test_config.yaml"
+        config_file.write_text(
+            f"data:\n  ohlcv_path: {data_file}\nsac_retrain:\n"
+            f"  check_interval_sec: 1\n  retrain_interval_sec: 1\n"
+            f"  history_path: {tmp_path / 'history.jsonl'}\n",
+            encoding="utf-8",
+        )
+
+        crash_count = 0
+
+        def always_crashing(cfg: SACRetrainConfig) -> None:
+            nonlocal crash_count
+            crash_count += 1
+            raise RuntimeError(f"persistent crash #{crash_count}")
+
+        _shutdown_event.clear()
+
+        with (
+            patch(
+                "scripts.v460.ml.sac_retrain_scheduler.run_scheduler",
+                side_effect=always_crashing,
+            ),
+            patch(
+                "sys.argv",
+                ["sac_retrain_scheduler.py", "--config", str(config_file)],
+            ),
+            patch.object(
+                _shutdown_event,
+                "wait",
+                return_value=False,
+            ),
+        ):
+            main()
+
+        # _MAX_AUTO_RESTARTS + 1 回 (limit check が > なので)
+        assert crash_count == _MAX_AUTO_RESTARTS + 1
+        _shutdown_event.clear()
+
+    def test_main_fatal_config_error_logged(self, tmp_path: Path) -> None:
+        """load_config が失敗しても main() が例外で死なない (ログ出力して終了)."""
+        _shutdown_event.clear()
+
+        with (
+            patch(
+                "sys.argv",
+                ["sac_retrain_scheduler.py", "--config", "/nonexistent/path.yaml"],
+            ),
+        ):
+            # FileNotFoundError は try/except で捕捉される → main() は正常終了
+            main()
+
+        _shutdown_event.clear()
+
+    def test_training_timeout_raises(self, tmp_path: Path) -> None:
+        """model.learn() がタイムアウトした場合、TimeoutError で retrain_once がエラー返却."""
+        data_file = tmp_path / "data.parquet"
+        data_file.write_bytes(b"dummy")
+
+        cfg = SACRetrainConfig(
+            ohlcv_path=str(data_file),
+            model_path=tmp_path / "model.zip",
+            buffer_path=tmp_path / "buffer.pkl",
+            signal_path=tmp_path / "signal.json",
+            history_path=tmp_path / "history.jsonl",
+        )
+
+        mock_env = _make_mock_env()
+        mock_model = _make_mock_model()
+
+        # model.learn を長時間ブロックに置き換え
+        def slow_learn(**kwargs: object) -> None:
+            time.sleep(10)
+
+        mock_model.learn.side_effect = slow_learn
+
+        with (
+            patch("scripts.v460.ml.sac_retrain_scheduler._create_env", return_value=mock_env),
+            patch("scripts.v460.ml.sac_retrain_scheduler._evaluate_model"),
+            patch("scripts.v460.lib.data_loader.load_parquet", return_value=_MOCK_OHLCV_DF),
+            _mock_sb3_import(mock_model),
+            # タイムアウトを極短に設定
+            patch(
+                "scripts.v460.ml.sac_retrain_scheduler._TRAINING_TIMEOUT_SEC",
+                0.5,
+            ),
+        ):
+            result = retrain_once(cfg)
+
+        assert result.status == "error"
+        assert "timeout" in result.error_message.lower()

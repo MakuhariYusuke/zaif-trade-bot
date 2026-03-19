@@ -45,6 +45,9 @@ from ztb.utils.memory_utils import get_memory_usage
 # ── graceful shutdown ──────────────────────────────────────
 _shutdown_event = threading.Event()
 
+# 495# 訓練タイムアウト (秒) — model.learn() の無限ハング防止
+_TRAINING_TIMEOUT_SEC = 3600  # 1時間
+
 
 def _install_signal_handlers() -> None:
     """SIGTERM/SIGINT で graceful 停止."""
@@ -415,9 +418,35 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
             logger.info("Cold-start: new SAC model created")
             timesteps = cfg.total_timesteps
 
-        # Training
+        # Training — 495# タイムアウト付き訓練 (Windows対応: threading ベース)
+        _training_error: BaseException | None = None
+
+        def _train_target() -> None:
+            nonlocal _training_error
+            try:
+                model.learn(total_timesteps=timesteps, reset_num_timesteps=not is_warm_start)
+            except BaseException as exc:
+                _training_error = exc
+
         start_time = time.time()
-        model.learn(total_timesteps=timesteps, reset_num_timesteps=not is_warm_start)
+        train_thread = threading.Thread(target=_train_target, daemon=True)
+        train_thread.start()
+        train_thread.join(timeout=_TRAINING_TIMEOUT_SEC)
+
+        if train_thread.is_alive():
+            training_time = time.time() - start_time
+            logger.error(
+                f"[495#] Training TIMEOUT after {training_time:.1f}s "
+                f"(limit={_TRAINING_TIMEOUT_SEC}s) — aborting cycle"
+            )
+            # daemon thread は process 終了時に自動停止
+            raise TimeoutError(
+                f"model.learn() exceeded {_TRAINING_TIMEOUT_SEC}s timeout"
+            )
+
+        if _training_error is not None:
+            raise _training_error
+
         training_time = time.time() - start_time
         logger.info(f"Training completed in {training_time:.1f}s ({timesteps} steps)")
 
@@ -604,6 +633,7 @@ def run_scheduler(cfg: SACRetrainConfig) -> None:
     既存 retrain_scheduler.py (SkipGate) と同一パターン:
       while not shutdown → trigger check → retrain → wait
     """
+    # 495# シグナルハンドラは main() で既にインストール済み — 二重登録は安全
     _install_signal_handlers()
     logger.info("[365# P6] Signal handlers installed (SIGTERM/SIGINT)")
 
@@ -624,7 +654,14 @@ def run_scheduler(cfg: SACRetrainConfig) -> None:
     cfg.history_path.parent.mkdir(parents=True, exist_ok=True)
 
     while not _shutdown_event.is_set():
-        should_run, reason = trigger.should_retrain()
+        # 495# trigger/history 操作を try/except で保護 — ループ死亡を防止
+        try:
+            should_run, reason = trigger.should_retrain()
+        except Exception as e:
+            logger.error(f"[495#] trigger.should_retrain() failed: {e}", exc_info=True)
+            if _shutdown_event.wait(timeout=cfg.check_interval_sec):
+                break
+            continue
 
         if not should_run:
             logger.debug(
@@ -637,10 +674,17 @@ def run_scheduler(cfg: SACRetrainConfig) -> None:
 
         logger.info(f"[365# P6] Trigger fired: {reason}")
         result = retrain_once(cfg)
-        trigger.record_result(result.status)
 
-        # 履歴記録
-        _append_history(cfg.history_path, result)
+        # 495# record_result / _append_history もループ外に漏れないよう保護
+        try:
+            trigger.record_result(result.status)
+        except Exception as e:
+            logger.error(f"[495#] trigger.record_result() failed: {e}", exc_info=True)
+
+        try:
+            _append_history(cfg.history_path, result)
+        except Exception as e:
+            logger.error(f"[495#] _append_history() failed: {e}", exc_info=True)
 
         logger.info(
             f"[365# P6] Cycle complete: status={result.status} | "
@@ -899,8 +943,23 @@ def load_config(config_path: str | Path) -> SACRetrainConfig:
 # ════════════════════════════════════════════════════════════════
 
 
+# 495# 最大連続リスタート回数 (無限ループ防止)
+_MAX_AUTO_RESTARTS = 5
+_RESTART_BACKOFF_SEC = 60
+
+
 def main() -> None:
-    """CLI エントリポイント."""
+    """CLI エントリポイント.
+
+    495# 改修:
+      - シグナルハンドラを起動直後にインストール (load_config 前)
+      - main() 全体を try/except で囲み致命エラーをログ出力
+      - logging.shutdown + stream flush で Windows バッファ消失を防止
+      - run_scheduler() 異常終了時の自動リスタート (上限付き)
+    """
+    # 495# シグナルハンドラを最初にインストール — 起動中の SIGTERM を捕捉
+    _install_signal_handlers()
+
     parser = argparse.ArgumentParser(
         description="365# P6: SAC Sidecar retrain scheduler",
     )
@@ -929,18 +988,57 @@ def main() -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    cfg = load_config(args.config)
-    if args.seed is not None:
-        cfg.seed = args.seed
+    try:
+        cfg = load_config(args.config)
+        if args.seed is not None:
+            cfg.seed = args.seed
 
-    if args.once:
-        logger.info("[365# P6] One-shot mode")
-        result = retrain_once(cfg)
-        # 378# --once でも履歴を記録する (run_scheduler のみだった)
-        _append_history(cfg.history_path, result)
-        logger.info(f"Result: {json.dumps(result.to_dict(), indent=2)}")
-    else:
-        run_scheduler(cfg)
+        if args.once:
+            logger.info("[365# P6] One-shot mode")
+            result = retrain_once(cfg)
+            # 378# --once でも履歴を記録する (run_scheduler のみだった)
+            _append_history(cfg.history_path, result)
+            logger.info(f"Result: {json.dumps(result.to_dict(), indent=2)}")
+        else:
+            # 495# 自動リスタート: run_scheduler が予期せず死んだ場合にリトライ
+            restart_count = 0
+            while not _shutdown_event.is_set():
+                try:
+                    run_scheduler(cfg)
+                    break  # graceful shutdown で正常終了
+                except Exception as e:
+                    restart_count += 1
+                    if restart_count > _MAX_AUTO_RESTARTS:
+                        logger.critical(
+                            f"[495#] Auto-restart limit reached "
+                            f"({_MAX_AUTO_RESTARTS}), giving up: {e}",
+                            exc_info=True,
+                        )
+                        break
+                    backoff = _RESTART_BACKOFF_SEC * restart_count
+                    logger.error(
+                        f"[495#] run_scheduler crashed ({restart_count}/{_MAX_AUTO_RESTARTS}), "
+                        f"restarting in {backoff}s: {e}",
+                        exc_info=True,
+                    )
+                    if _shutdown_event.wait(timeout=backoff):
+                        break  # shutdown 要求中 → リスタートしない
+    except KeyboardInterrupt:
+        logger.info("[495#] KeyboardInterrupt — shutting down")
+    except Exception as e:
+        logger.critical(f"[495#] Fatal error in main: {e}", exc_info=True)
+    finally:
+        # 495# Windows バッファ消失防止: 明示的にログ + ストリームをフラッシュ
+        logger.info("[495#] main() exiting — flushing logs")
+        logging.shutdown()
+        try:
+            sys.stdout.flush()
+        except Exception:
+            pass
+        try:
+            sys.stderr.flush()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
