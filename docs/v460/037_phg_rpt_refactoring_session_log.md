@@ -7181,3 +7181,7 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - 491# v460 stability follow-up:
   - `test_sidecar_sac_integration.py` の confidence 計算を module-level helper に統一
   - `TestConfidenceDynamic` / `TestConfidenceDynamicCalc` の重複を削減しつつ、broad を止めていた `_compute_confidence` 欠落を解消
+- 492# SAC debug/maintainability follow-up:
+  - `scripts/v460/ml/sac_retrain_scheduler.py` に学習デバッグ用の summary helper を追加し、train/val rows・DataFrame memory・env shape・env metrics を 1 回で記録するよう整理
+  - 既存の `ztb.utils.env_metrics` / `ztb.utils.memory_utils` を再利用し、script 側の debug ロジック重複を抑制
+  - `tests/unit/v460/test_sac_retrain_scheduler.py` では `retrain_once()` の patch boilerplate を helper 化し、focused `32 passed` を確認

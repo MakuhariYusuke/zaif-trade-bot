@@ -40,6 +40,7 @@ from scripts.v460.ml.sac_retrain_scheduler import (
     SACRetrainConfig,
     SACRetrainTrigger,
     RetrainResult,
+    _build_training_debug_details,
     _append_history,
     _atomic_deploy_model,
     _evaluate_model,
@@ -302,6 +303,8 @@ def _make_mock_model():
 
 
 _MOCK_OHLCV_DF = pd.DataFrame({"close": np.arange(12, dtype=float)})
+_EVAL_RESULT_PASS = {"gross_roi": 0.01, "trade_count": 5}
+_EVAL_RESULT_FAIL = {"gross_roi": -0.05, "trade_count": 5}
 
 
 @contextmanager
@@ -324,24 +327,36 @@ def _mock_sb3_import(mock_model: MagicMock) -> Iterator[MagicMock]:
         yield fake_sac_cls
 
 
+@contextmanager
+def _run_retrain_once_with_patches(
+    cfg: SACRetrainConfig,
+    *,
+    mock_model: MagicMock,
+    mock_env: MagicMock,
+    eval_result: dict[str, float | int],
+) -> Iterator[tuple[MagicMock, MagicMock]]:
+    """retrain_once() の主要 patch を束ねる."""
+    with (
+        patch("scripts.v460.ml.sac_retrain_scheduler._create_env", return_value=mock_env) as mock_create_env,
+        patch("scripts.v460.ml.sac_retrain_scheduler._evaluate_model", return_value=eval_result) as mock_evaluate_model,
+        patch("scripts.v460.lib.data_loader.load_parquet", return_value=_MOCK_OHLCV_DF),
+        _mock_sb3_import(mock_model) as mock_sac_cls,
+    ):
+        yield mock_sac_cls, mock_evaluate_model
+
+
 class TestRetrainOnce:
     """retrain_once() のテスト (SB3/env をモック化)."""
 
-    @patch("scripts.v460.ml.sac_retrain_scheduler._create_env")
-    @patch("scripts.v460.ml.sac_retrain_scheduler._evaluate_model")
     @patch("scripts.v460.ml.sac_retrain_scheduler._atomic_deploy_model")
     @patch("scripts.v460.ml.sac_retrain_scheduler._update_sidecar_signal")
     def test_cold_start_success(
         self,
         mock_update_signal: MagicMock,
         mock_deploy: MagicMock,
-        mock_evaluate_model: MagicMock,
-        mock_create_env: MagicMock,
         tmp_path: Path,
     ) -> None:
         mock_env = _make_mock_env()
-        mock_create_env.return_value = mock_env
-        mock_evaluate_model.return_value = {"gross_roi": 0.01, "trade_count": 5}
         mock_model = _make_mock_model()
 
         cfg = SACRetrainConfig(
@@ -349,14 +364,14 @@ class TestRetrainOnce:
             model_path=tmp_path / "not_exists.zip",  # cold start
         )
 
-        # Create mock data file
-        data_file = tmp_path / "data.parquet"
-
-        with patch("scripts.v460.lib.data_loader.load_parquet") as mock_load:
-            mock_load.return_value = _MOCK_OHLCV_DF
-            with _mock_sb3_import(mock_model) as mock_sac_cls:
-                mock_sac_cls.return_value = mock_model
-                result = retrain_once(cfg)
+        with _run_retrain_once_with_patches(
+            cfg,
+            mock_model=mock_model,
+            mock_env=mock_env,
+            eval_result=_EVAL_RESULT_PASS,
+        ) as (mock_sac_cls, _):
+            mock_sac_cls.return_value = mock_model
+            result = retrain_once(cfg)
 
         assert result.status == "deployed"
         assert result.warm_start is False
@@ -364,17 +379,11 @@ class TestRetrainOnce:
         mock_deploy.assert_called_once()
         mock_update_signal.assert_called_once()
 
-    @patch("scripts.v460.ml.sac_retrain_scheduler._create_env")
-    @patch("scripts.v460.ml.sac_retrain_scheduler._evaluate_model")
     def test_warm_start(
         self,
-        mock_evaluate_model: MagicMock,
-        mock_create_env: MagicMock,
         tmp_path: Path,
     ) -> None:
         mock_env = _make_mock_env()
-        mock_create_env.return_value = mock_env
-        mock_evaluate_model.return_value = {"gross_roi": 0.01, "trade_count": 5}
         mock_model = _make_mock_model()
 
         model_path = tmp_path / "model.zip"
@@ -389,11 +398,14 @@ class TestRetrainOnce:
             signal_path=tmp_path / "signal.json",
         )
 
-        with patch("scripts.v460.lib.data_loader.load_parquet") as mock_load:
-            mock_load.return_value = _MOCK_OHLCV_DF
-            with _mock_sb3_import(mock_model) as mock_sac_cls:
-                mock_sac_cls.load.return_value = mock_model
-                result = retrain_once(cfg)
+        with _run_retrain_once_with_patches(
+            cfg,
+            mock_model=mock_model,
+            mock_env=mock_env,
+            eval_result=_EVAL_RESULT_PASS,
+        ) as (mock_sac_cls, _):
+            mock_sac_cls.load.return_value = mock_model
+            result = retrain_once(cfg)
 
         assert result.status == "deployed"
         assert result.warm_start is True
@@ -401,18 +413,12 @@ class TestRetrainOnce:
         mock_model.load_replay_buffer.assert_called_once()
 
     @patch("scripts.v460.ml.sac_retrain_scheduler._push_neutral_fallback")
-    @patch("scripts.v460.ml.sac_retrain_scheduler._create_env")
-    @patch("scripts.v460.ml.sac_retrain_scheduler._evaluate_model")
     def test_oos_failed(
         self,
-        mock_evaluate_model: MagicMock,
-        mock_create_env: MagicMock,
         mock_push_neutral: MagicMock,
         tmp_path: Path,
     ) -> None:
         mock_env = _make_mock_env()
-        mock_create_env.return_value = mock_env
-        mock_evaluate_model.return_value = {"gross_roi": -0.05, "trade_count": 5}
 
         cfg = SACRetrainConfig(
             ohlcv_path=str(tmp_path / "data.parquet"),
@@ -420,12 +426,15 @@ class TestRetrainOnce:
             min_gross_roi=0.0,  # > 0 required
         )
 
-        with patch("scripts.v460.lib.data_loader.load_parquet") as mock_load:
-            mock_load.return_value = _MOCK_OHLCV_DF
-            mock_model = _make_mock_model()
-            with _mock_sb3_import(mock_model) as mock_sac_cls:
-                mock_sac_cls.return_value = mock_model
-                result = retrain_once(cfg)
+        mock_model = _make_mock_model()
+        with _run_retrain_once_with_patches(
+            cfg,
+            mock_model=mock_model,
+            mock_env=mock_env,
+            eval_result=_EVAL_RESULT_FAIL,
+        ) as (mock_sac_cls, _):
+            mock_sac_cls.return_value = mock_model
+            result = retrain_once(cfg)
 
         assert result.status == "oos_failed"
         assert result.gross_roi < 0
@@ -445,6 +454,31 @@ class TestRetrainOnce:
 
         assert result.status == "error"
         assert "data_load" in result.error_message
+
+    def test_training_debug_details_contains_shapes(self) -> None:
+        train_df = pd.DataFrame({
+            "timestamp": [1.0, 2.0, 3.0],
+            "close": [100.0, 101.0, 102.0],
+        })
+        val_df = pd.DataFrame({
+            "timestamp": [4.0, 5.0],
+            "close": [103.0, 104.0],
+        })
+        cfg = SACRetrainConfig(feature_columns=["close", "volume"])
+
+        details = _build_training_debug_details(
+            train_df,
+            val_df,
+            cfg,
+            env=_make_mock_env(),
+        )
+
+        assert details["train_rows"] == 3
+        assert details["val_rows"] == 2
+        assert details["feature_columns_configured"] == 2
+        assert details["observation_shape"] == [12]
+        assert details["action_shape"] == [1]
+        assert "process_rss_mb" in details
 
 
 # ════════════════════════════════════════════════════════════════

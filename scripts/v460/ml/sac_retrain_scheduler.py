@@ -39,6 +39,8 @@ from typing import Protocol, cast
 logger = logging.getLogger(__name__)
 
 from ztb.io.yaml_io import read_yaml
+from ztb.utils.env_metrics import extract_env_metrics
+from ztb.utils.memory_utils import get_memory_usage
 
 # ── graceful shutdown ──────────────────────────────────────
 _shutdown_event = threading.Event()
@@ -261,6 +263,56 @@ class _LatestObservationEnvProtocol(Protocol):
         ...
 
 
+def _shape_tuple(space: object) -> tuple[int, ...] | None:
+    """Gym-like space から shape を安全に取得する."""
+    shape = getattr(space, "shape", None)
+    if isinstance(shape, tuple):
+        return tuple(int(v) for v in shape)
+    return None
+
+
+def _build_training_debug_details(
+    train_df: object,
+    val_df: object,
+    cfg: SACRetrainConfig,
+    *,
+    env: TrainingEnvProtocol | None = None,
+) -> dict[str, object]:
+    """学習デバッグ用の軽量サマリーを返す."""
+    train_frame = cast("pd.DataFrame", train_df)
+    val_frame = cast("pd.DataFrame", val_df)
+
+    details: dict[str, object] = {
+        "train_rows": int(len(train_frame)),
+        "val_rows": int(len(val_frame)),
+        "columns": int(len(train_frame.columns)),
+        "feature_columns_configured": int(len(cfg.feature_columns)),
+        "train_memory_mb": round(float(train_frame.memory_usage(deep=True).sum()) / (1024 * 1024), 3),
+        "val_memory_mb": round(float(val_frame.memory_usage(deep=True).sum()) / (1024 * 1024), 3),
+        "process_rss_mb": round(float(get_memory_usage().get("rss", 0.0)), 1),
+    }
+
+    if "timestamp" in train_frame.columns and len(train_frame) > 0:
+        details["train_timestamp_min"] = float(train_frame["timestamp"].min())
+        details["train_timestamp_max"] = float(train_frame["timestamp"].max())
+    if "timestamp" in val_frame.columns and len(val_frame) > 0:
+        details["val_timestamp_min"] = float(val_frame["timestamp"].min())
+        details["val_timestamp_max"] = float(val_frame["timestamp"].max())
+
+    if env is not None:
+        obs_shape = _shape_tuple(getattr(env, "observation_space", None))
+        action_shape = _shape_tuple(getattr(env, "action_space", None))
+        if obs_shape is not None:
+            details["observation_shape"] = list(obs_shape)
+        if action_shape is not None:
+            details["action_shape"] = list(action_shape)
+        env_metrics = extract_env_metrics(env, include_optional=False)
+        if env_metrics:
+            details["env_metrics"] = env_metrics
+
+    return details
+
+
 def _as_latest_observation_env(env: object) -> _LatestObservationEnvProtocol | None:
     current_step = getattr(env, "current_step", None)
     get_observation = getattr(env, "_get_observation", None)
@@ -324,6 +376,13 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
         from stable_baselines3 import SAC as SB3_SAC
 
         env = _create_env(train_df, cfg)
+        logger.info(
+            "SAC retrain debug: %s",
+            json.dumps(
+                _build_training_debug_details(train_df, val_df, cfg, env=env),
+                sort_keys=True,
+            ),
+        )
         is_warm_start = cfg.model_path.exists()
 
         if is_warm_start:
