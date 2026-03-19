@@ -181,19 +181,41 @@ if ($orphanProcs) {
 }
 
 # retrain_scheduler も停止 (同じコードベースを使うため)
+# 491# fix: graceful shutdown — まず SIGTERM 相当の Ctrl+C → 待機 → Force
 $retrainProcs = Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
     Where-Object { $_.CommandLine -like "*retrain_scheduler*" }
 if ($retrainProcs) {
-    Log "INFO" "  retrain_scheduler も停止します..."
+    Log "INFO" "  retrain_scheduler を graceful 停止します..."
     foreach ($rp in $retrainProcs) {
         try {
-            Stop-Process -Id $rp.ProcessId -Force -ErrorAction SilentlyContinue
-            Log "INFO" "  retrain_scheduler PID $($rp.ProcessId) 停止"
+            # まず通常停止を試行 (signal handler が _shutdown_event.set() する)
+            Stop-Process -Id $rp.ProcessId -ErrorAction SilentlyContinue
         } catch {
-            Log "WARN" "  retrain_scheduler PID $($rp.ProcessId) 停止失敗: $_"
+            # 無視して Force へ
         }
     }
-    Start-Sleep -Seconds 2
+    # 15秒待機して graceful shutdown を待つ
+    $waited = 0
+    while ($waited -lt 15) {
+        Start-Sleep -Seconds 3
+        $waited += 3
+        $remaining = Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
+            Where-Object { $_.CommandLine -like "*retrain_scheduler*" }
+        if (-not $remaining) { break }
+    }
+    # まだ残っていれば Force kill
+    $remaining = Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
+        Where-Object { $_.CommandLine -like "*retrain_scheduler*" }
+    if ($remaining) {
+        Log "WARN" "  retrain_scheduler が graceful 停止しなかったため強制停止..."
+        foreach ($rp in $remaining) {
+            Stop-Process -Id $rp.ProcessId -Force -ErrorAction SilentlyContinue
+            Log "INFO" "  retrain_scheduler PID $($rp.ProcessId) 強制停止"
+        }
+        Start-Sleep -Seconds 2
+    } else {
+        Log "INFO" "  retrain_scheduler graceful 停止完了"
+    }
 }
 
 # ======================================================================
@@ -328,10 +350,12 @@ if ($confirmed) {
     Log "INFO" "=========================================="
 
     # 426# P1: retrain_scheduler の自動再起動
+    # 491# fix: fill_test config ではなく SAC 訓練用 config を使用
     $retrainScript = Join-Path $PSScriptRoot "retrain_scheduler.ps1"
+    $retrainConfig = "configs/v460/experiments/g2_sac_train.yaml"
     if (Test-Path $retrainScript) {
-        Log "INFO" "retrain_scheduler を再起動します..."
-        & $retrainScript -Action start -Config $Config
+        Log "INFO" "retrain_scheduler を再起動します... (config: $retrainConfig)"
+        & $retrainScript -Action start -Config $retrainConfig
     }
 } else {
     Log "WARN" "  ${StartupConfirmSec}s 以内に lock 確認できず。プロセスは起動中ですが要確認。"

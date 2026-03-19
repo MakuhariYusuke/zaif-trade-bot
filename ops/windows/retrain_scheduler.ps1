@@ -46,8 +46,13 @@ function Log([string]$Level, [string]$Msg) {
 }
 
 function Get-RetrainProcess {
+    # 491#: venv Python のみを対象 — システム Python ゾンビを除外
+    $venvPython = (Join-Path $ProjectRoot ".venv\Scripts\python.exe").Replace('\', '\\')
     Get-WmiObject Win32_Process -Filter "Name='python.exe'" |
-        Where-Object { $_.CommandLine -like "*retrain_scheduler*" }
+        Where-Object {
+            $_.CommandLine -like "*retrain_scheduler*" -and
+            $_.CommandLine -like "*$($ProjectRoot.Replace('\', '\\'))\.venv*"
+        }
 }
 
 function Stop-Retrain {

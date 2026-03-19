@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-19 (487# SAC メモリリーク防止 + 重複削減)
+> 最終更新: 2026-03-19 (491# 再学習装置堅牢性 + 防御レイヤー定量分析)
 
 ---
 
@@ -516,6 +516,9 @@
 | 485 | rev | [485_phg_verify_483_sac_paradox_and_sidecar_limits.md](485_phg_verify_483_sac_paradox_and_sidecar_limits.md) | 総括: OOS過適合分析 + sidecar実質無風化 + 寄与分解P0提案 |
 | 486 | verify | [486_phg_verify_483_484_485_review_claims.md](486_phg_verify_483_484_485_review_claims.md) | 483-485レビュー検証: 全数値・コード・設定を突合、483/484=A、485=B+ |
 | 487 | fix | [doc](487_phg_fix_sac_memory_leak_and_dedup.md) | SAC メモリリーク防止 (gc.collect/model del) + 重複削減 (create_env_from_config/create_sac_model 統合) + P0 sidecar attribution 可観測性 |
+| 488 | review | [488_phg_fill_pipeline_deep_review.md](488_phg_fill_pipeline_deep_review.md) | Fill Test パイプライン総合コードレビュー: 33日ログを踏まえ、logging/例外/設定/guard/DRY 観点から根本原因候補を広く棚卸し |
+| 489 | rev | [489_phg_rev_488_fill_pipeline_multifaceted_review.md](489_phg_rev_488_fill_pipeline_multifaceted_review.md) | 488レビュー: 有効論点と古くなった指摘を分離し、3/19 NameError・cross_venue veto→NO_FEASIBLE_QUOTE・防御過積載を追加補強 |
+| 491 | fix | [491_session_remediation_deep_dive.md](491_session_remediation_deep_dive.md) | Sidecar復旧, VPIN修正, 再学習装置堅牢性4件(neutral fallback/venv検出/config修正/graceful shutdown), 防御レイヤー定量分析 |
 
 ---
 

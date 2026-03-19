@@ -22,6 +22,11 @@ fill pipeline の防御レイヤー多重共線性問題を定量的に解析し
 | 6 | 防御レイヤー多重共線性分析 | ✅ 完了 | 46+ gate の定量分析 |
 | 7 | retrain_scheduler Timestamp 修正 | ✅ 完了 | sac_retrain_scheduler.py L296 |
 | 8 | retrain_scheduler PYTHONPATH 修正 | ✅ 完了 | retrain_scheduler.ps1 |
+| 9 | P0 訓練例外→信号stale防止 | ✅ 完了 | sac_retrain_scheduler.py (neutral fallback) |
+| 10 | ゾンビ検出 venv限定フィルタ | ✅ 完了 | retrain_scheduler.ps1 |
+| 11 | hot_swap config 不整合修正 | ✅ 完了 | hot_swap_restart.ps1 |
+| 12 | hot_swap graceful shutdown | ✅ 完了 | hot_swap_restart.ps1 |
+| 13 | 防御レイヤー実運用定量分析 | ✅ 完了 | ログベース fill rate / blocking 分析 |
 
 ---
 
@@ -140,6 +145,92 @@ fill_rate: 24.2%
 | 3. アーキテクチャ | SAC に gate 移行 | 1-3月 | 高 |
 
 ---
+
+## §5 再学習装置 堅牢性強化 (Turn 3)
+
+### 5.1 P0: 訓練例外時の信号stale防止
+
+**問題**: `retrain_once()` が `ImportError` や汎用 `Exception` で失敗すると、
+`_push_neutral_fallback()` が呼ばれず `sidecar_signal.json` が stale 状態のまま放置される。
+
+**修正**: `sac_retrain_scheduler.py` — 両方の例外ハンドラに `_push_neutral_fallback()` 呼出しを追加。
+
+```python
+except ImportError as e:
+    _push_neutral_fallback()  # ← 追加
+    ...
+except Exception as e:
+    _push_neutral_fallback()  # ← 追加
+    ...
+```
+
+### 5.2 ゾンビプロセス検出の精緻化
+
+**問題**: `retrain_scheduler.ps1` の `Get-RetrainProcess` がシステム Python も検出し、
+venv 外のプロセスをゾンビ誤判定。実際に PID 78540 (system Python) が検出されていた。
+
+**修正**: `retrain_scheduler.ps1` — venv パス限定フィルタ。
+
+```powershell
+Where-Object {
+    $_.CommandLine -like "*retrain_scheduler*" -and
+    $_.CommandLine -like "*$($ProjectRoot.Replace('\\', '\\\\'))\\.venv*"
+}
+```
+
+### 5.3 hot_swap_restart.ps1 config 不整合
+
+**問題**: retrain_scheduler 再起動時に `$Config` (= fill_test.yaml) を渡していた。
+本来は `g2_sac_train.yaml` が必要。
+
+**修正**: ハードコード `configs/v460/experiments/g2_sac_train.yaml` に変更。
+
+### 5.4 hot_swap graceful shutdown
+
+**問題**: retrain_scheduler を `-Force` で即座に kill しており、
+訓練中のモデル書き込みやチェックポイント保存が中断される可能性。
+
+**修正**: 3段階停止シーケンス。
+
+```
+1. Stop-Process (通常) → _shutdown_event をトリガー
+2. 15秒間隔で 3秒ごとにプロセス生存チェック
+3. 残存時 → Stop-Process -Force
+```
+
+---
+
+## §6 防御レイヤー実運用定量分析 (Turn 3)
+
+### 6.1 直近ログ (613サイクル) の blocking 内訳
+
+| カテゴリ | 件数 | 割合 | 性質 |
+|---------|------|------|------|
+| 残高不足 (JPY) | 409 | 最大 | 資金制約 (非バグ) |
+| 残高不足 (BTC) | 266 | | 資金制約 (非バグ) |
+| no_feasible_quote | 48 | 7.8% | cross_venue_lead_lag_veto burst |
+| sell_dynamic_kill | 34 | 5.5% | VPIN 起因 offset 膨張 |
+| unknown_regime | 19 | 3.1% | レジーム判定不確実 |
+| buy_dynamic_kill | 19 | 3.1% | gate level blocker |
+| ranging_low_vol | 14 | 2.3% | 低 vol 時の保護 |
+| SAD/MCB | 0 | 0% | 正常動作 (非トリガー) |
+
+### 6.2 Fill Rate
+
+```
+総サイクル:   613
+発注済:       345 (56.5%)
+約定:         222 (36.3% of total, 64.3% of placed)
+```
+
+### 6.3 重要な発見
+
+1. **残高不足が最大のブロッカー** — JPY 255円 / BTC 0.000000 で繰り返しスキップ。
+   資金追加無しではこれ以上の fill rate 改善は限定的。
+2. **no_feasible_quote (48件)** — 100% が `cross_venue_lead_lag_veto` 起因。
+   7回連続 burst パターンで NO_FEASIBLE_QUOTE (閾値3回) をトリガー。設計通りだが burst 頻度は注視対象。
+3. **SAD/MCB は 0 トリガー** — スプレッド異常検知は正常域。過剰ブロックなし。
+4. **sell_dynamic_kill (34件)** — VPIN threshold 修正 (0.60→0.80) により改善見込み。24-48h 後に再測定。
 
 ## §5 P1 課題ステータス
 

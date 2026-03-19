@@ -490,12 +490,15 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
 
     except ImportError as e:
         logger.error(f"SB3 import failed: {e}")
+        _push_neutral_fallback()
         return RetrainResult(
             status="error", timestamp=timestamp,
             error_message=f"import: {e}",
         )
     except Exception as e:
         logger.error(f"Retrain failed: {e}", exc_info=True)
+        # 491# P0: 訓練例外時も neutral fallback を push し signal stale を防止
+        _push_neutral_fallback()
         return RetrainResult(
             status="error", timestamp=timestamp,
             error_message=str(e),
