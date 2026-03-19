@@ -7195,3 +7195,12 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `ztb/data/trades_recorder.py` の flush も trade `ts` ごとに UTC 日別分割して書き込むよう修正
   - `tests/unit/v460/test_ob_recorder.py` と `tests/unit/v460/test_135_trades_and_gate.py` に mixed-day flush 回帰を追加
   - `tests/unit/v460/test_health_monitor_resilience.py` に `psutil` 不在時の diagnostics 回帰を追加
+- 495# fill_test observability follow-up:
+  - `scripts/v460/lib/event_logger.py`
+    - event 共通の時刻メタを `_build_event_time_fields(...)` に集約
+    - `timestamp_epoch` / `utc_day` / `utc_hour` を全 event に追加
+    - `build_cycle_revenue_event_details(...)` を追加
+  - `scripts/v460/lib/fill_cycle_executor.py`
+    - `cycle_revenue_context` event を追加し、spread/offset/skip_gate/regime/sidecar/cross_venue/post-fill PnL を1サイクルごとに event log へ残すよう修正
+  - `tests/unit/v460/test_148_fill_test_events.py`
+    - 上記時刻メタと revenue event detail の回帰を追加

@@ -8,11 +8,71 @@ import json
 import logging
 import os
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TextIO
+from typing import TYPE_CHECKING, TextIO
+
+from ztb.data.raw_paths import utc_day_str_from_timestamp
+
+if TYPE_CHECKING:
+    from ztb.metrics.fill_quality import FillRecord
 
 logger = logging.getLogger(__name__)
+
+
+def _build_event_time_fields(now_ts: float | None = None) -> dict[str, object]:
+    """分析しやすい時刻メタを統一して返す."""
+    event_ts = time.time() if now_ts is None else now_ts
+    event_dt = datetime.fromtimestamp(event_ts, timezone.utc)
+    return {
+        "timestamp": event_dt.isoformat(),
+        "timestamp_epoch": event_ts,
+        "utc_day": utc_day_str_from_timestamp(event_ts),
+        "utc_hour": event_dt.hour,
+    }
+
+
+def build_cycle_revenue_event_details(record: "FillRecord") -> dict[str, object]:
+    """収益分析に直結しやすい cycle 文脈を平たく返す."""
+    submitted_at = datetime.fromtimestamp(record.timestamp, timezone.utc)
+    return {
+        "cycle_id": record.cycle_id,
+        "submit_timestamp_epoch": record.timestamp,
+        "submit_utc_day": utc_day_str_from_timestamp(record.timestamp),
+        "submit_utc_hour": submitted_at.hour,
+        "side": record.side,
+        "filled": record.filled,
+        "cancel_reason": record.cancel_reason,
+        "queue_wait_sec": record.queue_wait_sec,
+        "order_price": record.order_price,
+        "order_quantity": record.order_quantity,
+        "order_lot_effective": record.order_lot_effective,
+        "spread_at_order": record.spread_at_order,
+        "spread_bps": record.spread_bps,
+        "effective_offset_used": record.effective_offset_used,
+        "skip_gate_reason": record.skip_gate_reason,
+        "skip_gate_score": record.skip_gate_score,
+        "skip_gate_as_prob": record.skip_gate_as_prob,
+        "skip_gate_threshold_used": record.skip_gate_threshold_used,
+        "regime": record.regime,
+        "regime_confidence": record.regime_confidence,
+        "macro_trend": record.macro_trend,
+        "macro_aligned": record.macro_aligned,
+        "decision_path": record.decision_path,
+        "ev_score_pretrade": record.ev_score_pretrade,
+        "ev_offset_mult_applied": record.ev_offset_mult_applied,
+        "sidecar_offset_bps": record.sidecar_offset_bps,
+        "sidecar_confidence": record.sidecar_confidence,
+        "sidecar_signal_status": record.sidecar_signal_status,
+        "queue_fill_prob_est": record.queue_fill_prob_est,
+        "cross_venue_reference_exchange": record.cross_venue_reference_exchange,
+        "cross_venue_lead_lag_spread_bps": record.cross_venue_lead_lag_spread_bps,
+        "cross_venue_lead_lag_velocity_bps": record.cross_venue_lead_lag_velocity_bps,
+        "cross_venue_lead_lag_applied": record.cross_venue_lead_lag_applied,
+        "cross_venue_lead_lag_vetoed": record.cross_venue_lead_lag_vetoed,
+        "post_fill_30s_pnl": record.post_fill_30s_pnl,
+    }
 
 
 def log_event(
@@ -40,7 +100,7 @@ def log_event(
         events_path = Path(results_dir) / "fill_test_events.jsonl"
         events_path.parent.mkdir(parents=True, exist_ok=True)
         record = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            **_build_event_time_fields(),
             "event": event,
             "run_id": run_id,
             "git_sha": git_sha,

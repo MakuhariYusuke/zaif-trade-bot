@@ -594,6 +594,22 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             f"{_cancel_tag}{_sidecar_tag}"
         )
 
+    def _log_cycle_revenue_context(self, record: "FillRecord") -> None:
+        """収益分析しやすい cycle 文脈を event log に追記する."""
+        from scripts.v460.lib.event_logger import (
+            build_cycle_revenue_event_details,
+            log_event,
+        )
+
+        log_event(
+            "cycle_revenue_context",
+            self.config.results_dir,
+            run_id=str(self._run_id),
+            git_sha=str(self._git_sha),
+            reason=record.cancel_reason if not record.filled else None,
+            details=build_cycle_revenue_event_details(record),
+        )
+
     async def run_single_cycle(
         self,
         side_override: str | None = None,
@@ -1340,6 +1356,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             sidecar_offset_bps=sidecar_offset_bps,
             sidecar_signal_status=sidecar_signal_status,
         )
+        self._log_cycle_revenue_context(record)
 
         # 237# phantom guard: status_unknown 時の再照合待ちフラグ
         if _pending_reconciliation:

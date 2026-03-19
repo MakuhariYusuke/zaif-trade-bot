@@ -9,10 +9,17 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from scripts.v460.lib.event_logger import log_event as _log_event, setup_stderr_mirror as _setup_stderr_mirror, TeeWriter as _TeeWriter
+from scripts.v460.lib.event_logger import (
+    _build_event_time_fields,
+    build_cycle_revenue_event_details,
+)
+from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
+from ztb.metrics.fill_quality import FillRecord
 
 
 class _RecordingWriter:
@@ -55,6 +62,9 @@ class TestLogEvent:
         assert record["run_id"] == "test-001"
         assert record["git_sha"] == "abc123"
         assert "timestamp" in record
+        assert "timestamp_epoch" in record
+        assert "utc_day" in record
+        assert "utc_hour" in record
         assert "pid" in record
 
     def test_stop_event_with_reason(self, tmp_path: Path) -> None:
@@ -94,6 +104,92 @@ class TestLogEvent:
         nested = tmp_path / "sub" / "dir"
         _log_event("start", nested)
         assert (nested / "fill_test_events.jsonl").exists()
+
+    def test_build_event_time_fields_contains_analysis_friendly_utc_parts(self) -> None:
+        fields = _build_event_time_fields(86_401.0)
+
+        assert fields["timestamp_epoch"] == 86_401.0
+        assert fields["utc_day"] == "19700102"
+        assert fields["utc_hour"] == 0
+
+    def test_build_cycle_revenue_event_details_keeps_key_profit_drivers(self) -> None:
+        record = FillRecord(
+            cycle_id="cycle-1",
+            timestamp=3_661.0,
+            side="sell",
+            order_price=1_000_000.0,
+            order_quantity=0.01,
+            filled=True,
+            cancel_reason=None,
+            queue_wait_sec=12.0,
+            spread_at_order=1800.0,
+            spread_bps=12.5,
+            effective_offset_used=0.08,
+            skip_gate_reason="pass",
+            skip_gate_score=0.12,
+            skip_gate_as_prob=0.33,
+            skip_gate_threshold_used=0.45,
+            regime="trending",
+            regime_confidence=0.81,
+            macro_trend="macro_up",
+            macro_aligned=True,
+            decision_path="ev_offset",
+            ev_score_pretrade=0.42,
+            ev_offset_mult_applied=1.2,
+            order_lot_effective=0.02,
+            sidecar_offset_bps=-0.4,
+            sidecar_confidence=0.77,
+            sidecar_signal_status="fresh",
+            queue_fill_prob_est=0.61,
+            cross_venue_reference_exchange="bitflyer",
+            cross_venue_lead_lag_spread_bps=3.4,
+            cross_venue_lead_lag_velocity_bps=1.2,
+            cross_venue_lead_lag_applied=True,
+            cross_venue_lead_lag_vetoed=False,
+            post_fill_30s_pnl=1.8,
+        )
+
+        details = build_cycle_revenue_event_details(record)
+
+        assert details["cycle_id"] == "cycle-1"
+        assert details["submit_utc_day"] == "19700101"
+        assert details["submit_utc_hour"] == 1
+        assert details["skip_gate_as_prob"] == pytest.approx(0.33)
+        assert details["decision_path"] == "ev_offset"
+        assert details["cross_venue_lead_lag_applied"] is True
+        assert details["post_fill_30s_pnl"] == pytest.approx(1.8)
+
+    def test_log_cycle_revenue_context_emits_event(self) -> None:
+        executor = SimpleNamespace(
+            config=SimpleNamespace(results_dir="results/v460/fill_test"),
+            _run_id="run-148",
+            _git_sha="abc1234",
+        )
+        record = FillRecord(
+            cycle_id="cycle-2",
+            timestamp=100.0,
+            side="buy",
+            order_price=1_000_000.0,
+            order_quantity=0.01,
+            cancel_reason="timeout",
+        )
+
+        with pytest.MonkeyPatch.context() as mp:
+            calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+
+            def _fake_log_event(*args: object, **kwargs: object) -> None:
+                calls.append((args, kwargs))
+
+            mp.setattr("scripts.v460.lib.event_logger.log_event", _fake_log_event)
+            FillCycleExecutorMixin._log_cycle_revenue_context(executor, record)
+
+        assert len(calls) == 1
+        args, kwargs = calls[0]
+        assert args == ("cycle_revenue_context", "results/v460/fill_test")
+        assert kwargs["run_id"] == "run-148"
+        assert kwargs["git_sha"] == "abc1234"
+        assert kwargs["reason"] == "timeout"
+        assert kwargs["details"]["cycle_id"] == "cycle-2"
 
 
 # ======================================================================
