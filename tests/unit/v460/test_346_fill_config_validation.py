@@ -339,6 +339,12 @@ class TestSigmaFloorVolRatio:
         with pytest.raises(ValueError, match="sigma_floor"):
             validate_fill_config(cfg)
 
+    def test_sigma_floor_zero(self, cfg: FillTestConfig) -> None:
+        """488# P0-3: sigma_floor=0 は AS 計算で σ²=0 除算を引き起こす."""
+        cfg.sigma_floor = 0.0
+        with pytest.raises(ValueError, match="sigma_floor"):
+            validate_fill_config(cfg)
+
     def test_vol_ratio_floor_zero(self, cfg: FillTestConfig) -> None:
         cfg.vol_ratio_floor = 0
         with pytest.raises(ValueError, match="vol_ratio_floor"):

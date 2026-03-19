@@ -334,9 +334,10 @@ def validate_fill_config(config: FillTestConfig) -> None:
         )
 
     # 331# M-1: sigma_floor / vol_ratio_floor 値域チェック
-    if config.sigma_floor < 0:
+    # 488# P0-3: sigma_floor=0 は AS 計算で σ²=0 除算を引き起こすため禁止
+    if config.sigma_floor <= 0:
         raise ValueError(
-            f"sigma_floor must be >= 0, got {config.sigma_floor}"
+            f"sigma_floor must be > 0, got {config.sigma_floor}"
         )
     if config.vol_ratio_floor <= 0:
         raise ValueError(

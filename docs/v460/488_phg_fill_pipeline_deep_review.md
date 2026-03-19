@@ -447,7 +447,7 @@ if _guardrail_pass and _rg and regime and regime not in _rg:
 | # | タイトル | 対象ファイル | 概要 |
 |---|---|---|---|
 | P0-1 | VPIN boost 上限の段階化 | maker_risk_guards.py L123 | 非危機的 VPIN で offset 膨張を抑制 |
-| P0-2 | inverse skew damping の方向修正 | maker_risk_guards.py L326 | sell 防御を逆に抑制しているバグ |
+| ~~P0-2~~ | ~~inverse skew damping の方向修正~~ | ~~maker_risk_guards.py L326~~ | **非バグ**: damping は compute(side) 内で side-aware に再計算されるため正常動作 |
 | P0-3 | sigma_floor=0 バリデーション追加 | fill_test_config.py L1107 | ゼロ除算防止 |
 
 ### P1 (短期改善 — 安定性)

@@ -445,8 +445,21 @@ class OrchestratorMidCycleMixin:
             logger.info("KeyboardInterrupt — stopping gracefully")
             self._kill_switch.kill("keyboard_interrupt")
             return
+        except (ConnectionError, TimeoutError, OSError) as e:
+            # 488# P1-1: ネットワーク系は WARNING (頻発するため)
+            logger.warning("Cycle execution network error: %s", e)
+            if _recovery_scale < 1.0:
+                self._daily_drawdown_guard.restore_recovery_counter(next_side)
+                logger.info(
+                    "[225# 6.1] Recovery counter restored for %s "
+                    "(cycle aborted by network error)", next_side,
+                )
+            self._balance_checker.restore_lot_after_dust_sweep()
+            self._last_side = next_side
+            await self._effective_sleep()
+            return
         except Exception as e:
-            logger.error(f"Cycle execution error: {e}", exc_info=True)
+            logger.error("Cycle execution error: %s", e, exc_info=True)
             if _recovery_scale < 1.0:
                 self._daily_drawdown_guard.restore_recovery_counter(next_side)
                 logger.info(
