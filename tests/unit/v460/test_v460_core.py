@@ -43,6 +43,8 @@ from ztb.trading.live.exchanges.coincheck.adapter import _parse_timestamp
 from ztb.data.raw_paths import (
     collect_available_raw_days,
     extract_utc_day_from_raw_path,
+    utc_day_strs_in_range,
+    utc_recent_day_strs,
 )
 
 try:
@@ -603,6 +605,18 @@ class TestRawPathHelpers:
         (tmp_path / "notes.txt").write_text("x", encoding="utf-8")
         (tmp_path / "2026-02-20.jsonl.gz").write_text("", encoding="utf-8")
         assert collect_available_raw_days(tmp_path) == ["20260219"]
+
+    def test_utc_day_strs_in_range_respects_margin(self) -> None:
+        days = utc_day_strs_in_range(
+            start_timestamp=1708387200.0,
+            end_timestamp=1708387200.0,
+            margin_sec=86400,
+        )
+        assert days == {"20240219", "20240220", "20240221"}
+
+    def test_utc_recent_day_strs_expands_from_anchor(self) -> None:
+        days = utc_recent_day_strs(anchor_timestamp=1708387200.0, days=1)
+        assert days == {"20240219", "20240220", "20240221"}
 
 
 @pytest.mark.skipif(not _HAS_XGBOOST, reason="xgboost not installed")

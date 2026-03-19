@@ -11,13 +11,13 @@ import argparse
 import logging
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import psutil
 
 from ztb.trading.environment.constants import BYTES_PER_MB
+from ztb.utils.time_utils import current_iso_timestamp
 
 # Local imports
 sys.path.append(str(Path(__file__).parent.parent))
@@ -58,7 +58,7 @@ class SmokeTestExperiment(ExperimentBase):
             self.logger.error(f"Failed to load dataset: {e}")
             return ExperimentResult(
                 experiment_name=self.experiment_name,
-                timestamp=datetime.now().isoformat(),
+                timestamp=current_iso_timestamp(),
                 status="failed",
                 config=self.config,
                 metrics={"error": str(e)},
@@ -104,7 +104,7 @@ class SmokeTestExperiment(ExperimentBase):
                 self.logger.error(f"Error at step {step}: {e}")
                 return ExperimentResult(
                     experiment_name=self.experiment_name,
-                    timestamp=datetime.now().isoformat(),
+                    timestamp=current_iso_timestamp(),
                     status="failed",
                     config=self.config,
                     metrics={"error": str(e), "failed_at_step": step},
@@ -129,7 +129,7 @@ class SmokeTestExperiment(ExperimentBase):
         }
         return ExperimentResult(
             experiment_name=self.experiment_name,
-            timestamp=datetime.now().isoformat(),
+            timestamp=current_iso_timestamp(),
             status="success" if avg_pass_rate > self.PASS_RATE_THRESHOLD else "warning",
             config=self.config,
             metrics=metrics,

@@ -30,6 +30,7 @@ from ztb.types.common import ObjectMap, ObjectRecords
 from ztb.utils.file_utils import safe_json_load
 from ztb.utils.git_utils import get_git_sha
 from ztb.utils.safety import ensure_dict, safe_to_float
+from ztb.utils.time_utils import current_iso_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +97,7 @@ def _execute_training_job(
             "status": "completed",
             "execution_time": time.time() - started_at,
             "result": result,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": current_iso_timestamp(),
         }
     except TimeoutError:
         return {
@@ -104,7 +105,7 @@ def _execute_training_job(
             "status": "timeout",
             "execution_time": time.time() - started_at,
             "error": "Timeout",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": current_iso_timestamp(),
         }
     except Exception as exc:
         return {
@@ -112,7 +113,7 @@ def _execute_training_job(
             "status": "failed",
             "execution_time": time.time() - started_at,
             "error": str(exc),
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": current_iso_timestamp(),
         }
 
 class JobStateDB:

@@ -5779,3 +5779,11 @@ python scripts/unified_trainer.py \
 - 496# market_data_collector: raw flush を record timestamp の UTC 日別に分割し、multi-day flush 時は day ごとに aggregate を回すよう修正
 - 497# raw path/date DRY: `raw_paths.py` に raw 日付抽出/列挙 helper を追加し、`feature_enricher` / `trades_health` のファイル名処理重複を削減。併せて `test_enricher_skip_gate.py` の一部 roundtrip を `tmp_path` 化
 - 498# ML maintainability/debug: `ztb/ml/metadata_utils.py` に shared metadata timestamp helper を追加し、SkipGate/学習スクリプトの `trained_at` / `generated_at` 重複を整理。`clear_ml_data_caches_with_log()` は cleanup 前後の RSS/cache stats も出すよう強化
+- 499# test/helper follow-up: `test_gate_check.py` の G2/G3/G4 tempdir boilerplate を `tmp_path` + `_write_gate_results(...)` に整理し、`run_070_model_search.py` の report timestamp も shared metadata helper に追随
+## 500# Helper Promote / Enricher Date Fallback
+- `ztb.utils.time_utils.current_iso_timestamp()` を追加し、`ztb.ml.metadata_utils` は互換 re-export 化
+- `ztb/experiments/job_manager.py` と `ztb/experiments/smoke_test.py` の timestamp 生成重複を shared helper に統一
+- `ztb.data.raw_paths` に UTC 日付 range/recent helper を追加
+- `feature_enricher` の trades fallback を「現在時刻」ではなく `fill_df.timestamp` 基準へ修正
+- `test_enricher_skip_gate.py` の real-data train を `tmp_path` 化し、negative SkipGate helper と fallback 回帰を追加
+- `test_sac_retrain_scheduler.py` に retrain config builder helper を追加

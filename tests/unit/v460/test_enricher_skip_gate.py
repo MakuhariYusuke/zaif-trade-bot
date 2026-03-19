@@ -108,6 +108,30 @@ def _cached_real_enriched_training_df() -> pd.DataFrame:
     return _select_real_enriched_training_df()
 
 
+def _make_negative_skip_gate(
+    *,
+    feature_cols: list[str],
+    max_skip_rate: float,
+) -> SkipGate:
+    scaler = StandardScaler()
+    X_dummy = np.ones((4, len(feature_cols)))
+    scaler.fit(X_dummy)
+
+    model = Ridge(alpha=1.0)
+    model.fit(X_dummy, np.full(4, -5.0))
+
+    return SkipGate(
+        model=model,
+        scaler=scaler,
+        feature_cols=feature_cols,
+        config=SkipGateConfig(
+            threshold_bps=0.0,
+            max_skip_rate=max_skip_rate,
+            enabled=True,
+        ),
+    )
+
+
 def _make_synthetic_fill_df() -> pd.DataFrame:
     """合成 fill records: 100件のテストデータ."""
     rng = np.random.RandomState(42)
@@ -1033,30 +1057,30 @@ class Test058Integration:
         self,
         real_data_available: bool,
         real_enriched_df: pd.DataFrame,
+        tmp_path: Path,
     ) -> None:
         """実データでの SkipGate 学習."""
         if not real_data_available:
             pytest.skip("No real data")
 
-        with tempfile.TemporaryDirectory() as td:
-            path = Path(td) / "test_gate.pkl"
-            gate = train_and_save_skip_gate(
-                output_path=path,
-                enriched_df=real_enriched_df,
-            )
-            assert path.exists()
-            # 最新サンプルからの高速読み込みでも学習が成立する最小件数を確認
-            assert gate.metadata["n_samples"] >= _REAL_DATA_MIN_TRAIN_SAMPLES
+        path = tmp_path / "test_gate.pkl"
+        gate = train_and_save_skip_gate(
+            output_path=path,
+            enriched_df=real_enriched_df,
+        )
+        assert path.exists()
+        # 最新サンプルからの高速読み込みでも学習が成立する最小件数を確認
+        assert gate.metadata["n_samples"] >= _REAL_DATA_MIN_TRAIN_SAMPLES
 
-            # 評価テスト (071# OB params removed)
-            features = build_features_from_market_state(
-                side="buy",
-                spread_jpy=500.0,
-                offset_ratio=0.05,
-                regime="ranging",
-            )
-            result = gate.evaluate(features)
-            assert isinstance(result.predicted_pnl_bps, float)
+        # 評価テスト (071# OB params removed)
+        features = build_features_from_market_state(
+            side="buy",
+            spread_jpy=500.0,
+            offset_ratio=0.05,
+            regime="ranging",
+        )
+        result = gate.evaluate(features)
+        assert isinstance(result.predicted_pnl_bps, float)
 
 
 # ======================================================================
@@ -1115,25 +1139,8 @@ class Test059SkipRateHistory:
     def test_skip_rate_records_final_decision(self) -> None:
         """force-pass override 後の最終決定が _recent_skips に記録される."""
 
-        # 常に negative PnL を予測するモデル
         feature_cols = ["f1", "f2", "f3", "f4"]
-        scaler = StandardScaler()
-        X_dummy = np.ones((4, 4))
-        scaler.fit(X_dummy)
-
-        model = Ridge(alpha=1.0)
-        model.fit(X_dummy, np.full(4, -5.0))  # 常に負を予測
-
-        gate = SkipGate(
-            model=model,
-            scaler=scaler,
-            feature_cols=feature_cols,
-            config=SkipGateConfig(
-                threshold_bps=0.0,
-                max_skip_rate=0.3,  # 30% で制限
-                enabled=True,
-            ),
-        )
+        gate = _make_negative_skip_gate(feature_cols=feature_cols, max_skip_rate=0.3)
 
         features = {c: 1.0 for c in feature_cols}
 
@@ -1160,21 +1167,7 @@ class Test059SkipRateHistory:
         """059# P0-2: skip 率がスパイクしないこと."""
 
         feature_cols = ["f1", "f2", "f3"]
-        scaler = StandardScaler()
-        scaler.fit(np.ones((5, 3)))
-        model = Ridge(alpha=1.0)
-        model.fit(np.ones((5, 3)), np.full(5, -10.0))
-
-        gate = SkipGate(
-            model=model,
-            scaler=scaler,
-            feature_cols=feature_cols,
-            config=SkipGateConfig(
-                threshold_bps=0.0,
-                max_skip_rate=0.4,
-                enabled=True,
-            ),
-        )
+        gate = _make_negative_skip_gate(feature_cols=feature_cols, max_skip_rate=0.4)
 
         features = {c: 1.0 for c in feature_cols}
         rates = []
@@ -1191,6 +1184,42 @@ class Test059SkipRateHistory:
                 f"Late skip rates should stabilize near max_skip_rate, "
                 f"got max={max(late_rates):.2f}"
             )
+
+    def test_trades_fallback_uses_fill_timestamp_window(self) -> None:
+        fill_df = pd.DataFrame({
+            "timestamp": [1708430400.0],  # 2024-02-20 12:00:00 UTC
+            "side": ["buy"],
+            "filled": [True],
+            "queue_wait_sec": [10.0],
+            "adverse_selected": [True],
+            "adverse_selected_raw": [True],
+            "spread_at_order": [500.0],
+            "spread_offset_ratio": [0.05],
+            "regime": ["ranging"],
+        })
+        empty_entry = feature_enricher_module._RawLoadCacheEntry(
+            file_signature=(),
+            df=pd.DataFrame(),
+        )
+        seen_filters: list[set[str] | None] = []
+
+        def _fake_load_raw_trades_entry(raw_dir=None, date_filter=None):
+            seen_filters.append(None if date_filter is None else set(date_filter))
+            return empty_entry
+
+        with patch.object(
+            feature_enricher_module,
+            "_load_raw_orderbook_entry",
+            return_value=empty_entry,
+        ), patch.object(
+            feature_enricher_module,
+            "_load_raw_trades_entry",
+            side_effect=_fake_load_raw_trades_entry,
+        ):
+            enrich_fill_records(fill_df, trades_fallback_recent_days=1)
+
+        assert seen_filters[0] == {"20240220"}
+        assert seen_filters[1] == {"20240219", "20240220", "20240221"}
 
 
 class Test059TimestampConsistency:

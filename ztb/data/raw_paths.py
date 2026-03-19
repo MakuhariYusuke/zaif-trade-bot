@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Sequence
 
@@ -43,6 +43,35 @@ def resolve_available_raw_dates(
 def utc_day_str_from_timestamp(timestamp: float) -> str:
     """UNIX timestamp を UTC 日付文字列 YYYYMMDD に変換する."""
     return datetime.fromtimestamp(timestamp, timezone.utc).strftime("%Y%m%d")
+
+
+def utc_day_strs_in_range(
+    *,
+    start_timestamp: float,
+    end_timestamp: float,
+    margin_sec: int = 0,
+) -> set[str]:
+    """UTC timestamp 範囲をまたぐ日付文字列集合を返す."""
+    d_start = datetime.fromtimestamp(start_timestamp - margin_sec, tz=timezone.utc).date()
+    d_end = datetime.fromtimestamp(end_timestamp + margin_sec, tz=timezone.utc).date()
+    day_count = (d_end - d_start).days
+    return {
+        (d_start + timedelta(days=offset)).strftime("%Y%m%d")
+        for offset in range(day_count + 1)
+    }
+
+
+def utc_recent_day_strs(
+    *,
+    anchor_timestamp: float,
+    days: int,
+) -> set[str]:
+    """指定 timestamp を中心に ±days の UTC 日付集合を返す."""
+    return utc_day_strs_in_range(
+        start_timestamp=anchor_timestamp,
+        end_timestamp=anchor_timestamp,
+        margin_sec=max(days, 0) * 86400,
+    )
 
 
 def extract_utc_day_from_raw_path(path: Path) -> str | None:

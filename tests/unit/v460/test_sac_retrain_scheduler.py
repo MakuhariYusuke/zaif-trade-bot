@@ -313,6 +313,16 @@ _EVAL_RESULT_PASS = {"gross_roi": 0.01, "trade_count": 5}
 _EVAL_RESULT_FAIL = {"gross_roi": -0.05, "trade_count": 5}
 
 
+def _make_retrain_cfg(tmp_path: Path, **overrides: object) -> SACRetrainConfig:
+    cfg = SACRetrainConfig(
+        ohlcv_path=str(tmp_path / "data.parquet"),
+        model_path=tmp_path / "not_exists.zip",
+    )
+    for key, value in overrides.items():
+        setattr(cfg, key, value)
+    return cfg
+
+
 @contextmanager
 def _mock_sb3_import(mock_model: MagicMock) -> Iterator[MagicMock]:
     """retrain_once() の SB3 SAC クラスを fake に置き換える.
@@ -365,10 +375,7 @@ class TestRetrainOnce:
         mock_env = _make_mock_env()
         mock_model = _make_mock_model()
 
-        cfg = SACRetrainConfig(
-            ohlcv_path=str(tmp_path / "data.parquet"),
-            model_path=tmp_path / "not_exists.zip",  # cold start
-        )
+        cfg = _make_retrain_cfg(tmp_path)
 
         with _run_retrain_once_with_patches(
             cfg,
@@ -397,8 +404,8 @@ class TestRetrainOnce:
         buffer_path = tmp_path / "model.buffer.pkl"
         buffer_path.write_bytes(b"fake")
 
-        cfg = SACRetrainConfig(
-            ohlcv_path=str(tmp_path / "data.parquet"),
+        cfg = _make_retrain_cfg(
+            tmp_path,
             model_path=model_path,
             buffer_path=buffer_path,
             signal_path=tmp_path / "signal.json",
@@ -426,11 +433,7 @@ class TestRetrainOnce:
     ) -> None:
         mock_env = _make_mock_env()
 
-        cfg = SACRetrainConfig(
-            ohlcv_path=str(tmp_path / "data.parquet"),
-            model_path=tmp_path / "not_exists.zip",
-            min_gross_roi=0.0,  # > 0 required
-        )
+        cfg = _make_retrain_cfg(tmp_path, min_gross_roi=0.0)
 
         mock_model = _make_mock_model()
         with _run_retrain_once_with_patches(

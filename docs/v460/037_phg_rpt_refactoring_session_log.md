@@ -7246,3 +7246,16 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - cleanup diagnostics 増強の回帰を追加
   - `tests/unit/ml/test_metadata_utils.py`
     - shared timestamp helper の parseability / UTC 契約を追加
+- 499# gate-check / report-helper follow-up:
+  - `tests/unit/v460/test_gate_check.py`
+    - G2/G3/G4 judgment テストの JSON 書き出しを `_write_gate_results(...)` に統一
+    - `TemporaryDirectory()` を `tmp_path` へ置換して boilerplate を削減
+  - `scripts/v460/ml/run_070_model_search.py`
+    - report timestamp を `current_iso_timestamp()` に統一
+## 500# Helper Promote / Enricher Date Fallback
+- `current_iso_timestamp()` を `ztb.utils.time_utils` に昇格し、ML 専用 helper から汎用 helper へ整理
+- `job_manager` / `smoke_test` でも同 helper を使用し、timestamp 生成の重複を削減
+- `ztb.data.raw_paths` に UTC 日付 range/recent helper を追加
+- `feature_enricher` の trades fallback が `now()` 基準だった問題を修正し、fill timestamp 基準の fallback 回帰を追加
+- `test_enricher_skip_gate.py` の real-data train を `tmp_path` 化し、negative SkipGate builder helper を導入
+- `test_sac_retrain_scheduler.py` に config builder helper を追加して cold/warm/OOS boilerplate を削減

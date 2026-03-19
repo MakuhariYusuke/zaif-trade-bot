@@ -24,6 +24,7 @@ from ztb.data.raw_paths import (
     RawDirLike,
     extract_utc_day_from_raw_path,
     resolve_raw_dir,
+    utc_day_strs_in_range,
 )
 from ztb.io.jsonl_gz import read_jsonl_gz
 
@@ -86,15 +87,11 @@ def _build_date_filter_from_timestamp_bounds(
     margin_sec: int,
 ) -> set[str]:
     """タイムスタンプ範囲から UTC 日付フィルタを生成する."""
-    from datetime import datetime, timedelta, timezone
-
-    d_start = datetime.fromtimestamp(ts_min - margin_sec, tz=timezone.utc).date()
-    d_end = datetime.fromtimestamp(ts_max + margin_sec, tz=timezone.utc).date()
-    day_count = (d_end - d_start).days
-    return {
-        (d_start + timedelta(days=offset)).strftime("%Y%m%d")
-        for offset in range(day_count + 1)
-    }
+    return utc_day_strs_in_range(
+        start_timestamp=ts_min,
+        end_timestamp=ts_max,
+        margin_sec=margin_sec,
+    )
 
 
 def _derive_fill_date_filter(
@@ -792,16 +789,16 @@ def enrich_fill_records(
         # 130# F7 + D.1 Q3: ±N日にフォールバック (デフォルト ±1日)。
         # 特徴量 window は 60s/300s なので、大きな窓は I/O の無駄。
         # trades_fallback_recent_days は YAML からオーバーライド可能。
-        from datetime import datetime as _dt, timedelta as _td, timezone as _tz
-        _now = _dt.now(tz=_tz.utc)
+        # 現在時刻ではなく fill timestamp 範囲を基準に広げる。
         _fallback_days = trades_fallback_recent_days
-        _fb_filter: set[str] = set()
-        for _i in range(_fallback_days + 1):
-            _fb_filter.add((_now - _td(days=_i)).strftime("%Y%m%d"))
-            _fb_filter.add((_now + _td(days=_i)).strftime("%Y%m%d"))  # 未来日付も含む (TZ 差分)
+        _fb_filter = _build_date_filter_from_timestamp_bounds(
+            float(fill_df["timestamp"].min()),
+            float(fill_df["timestamp"].max()),
+            margin_sec=max(trade_window_sec, 300) + (_fallback_days * 86400),
+        )
         logger.info(
             f"130# F7: trades empty with date_filter, "
-            f"falling back to recent ±{_fallback_days} days: {sorted(_fb_filter)}"
+            f"falling back to fill-time ±{_fallback_days} days: {sorted(_fb_filter)}"
         )
         trades_entry = _load_raw_trades_entry(raw_dir, date_filter=_fb_filter)
         trades_df = trades_entry.df.copy(deep=False)
