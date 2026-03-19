@@ -118,6 +118,10 @@ class CycleGateResult:
     sidecar_bias: float = 0.0          # raw bias 値 [-1,+1] (audit用)
     # 451# P1-2: compound suppression 診断用投機的ゲート評価
     speculative_checks: list[GateCheckResult] = field(default_factory=list)
+    # 487# P0: sidecar attribution 可観測性 (orchestrator で設定)
+    sidecar_confidence: float | None = None
+    sidecar_model_version: str | None = None
+    sidecar_signal_status: str = "missing"
 
     @property
     def audit_summary(self) -> str:

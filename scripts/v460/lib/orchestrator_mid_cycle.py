@@ -172,6 +172,12 @@ class OrchestratorMidCycleMixin:
             sidecar_signal=_sidecar_signal,
         )
 
+        # 487# P0: sidecar attribution を gate_result に転記
+        _gate_result.sidecar_signal_status = _sidecar_signal_status
+        if _sidecar_signal is not None:
+            _gate_result.sidecar_confidence = _sidecar_signal.confidence
+            _gate_result.sidecar_model_version = _sidecar_signal.model_version
+
         if _gate_result.blocked:
             await self._handle_gate_block(st, ctx, _gate_result)
             return None
@@ -419,13 +425,9 @@ class OrchestratorMidCycleMixin:
                 sidecar_offset_bps=gate_result.sidecar_offset_bps,
                 sidecar_bias=gate_result.sidecar_bias if gate_result.sidecar_bias != 0.0 else None,
                 # 487# P0: sidecar attribution 可観測性
-                sidecar_confidence=(
-                    _sidecar_signal.confidence if _sidecar_signal is not None else None
-                ),
-                sidecar_model_version=(
-                    _sidecar_signal.model_version if _sidecar_signal is not None else None
-                ),
-                sidecar_signal_status=_sidecar_signal_status,
+                sidecar_confidence=gate_result.sidecar_confidence,
+                sidecar_model_version=gate_result.sidecar_model_version,
+                sidecar_signal_status=gate_result.sidecar_signal_status,
             )
             # 420# P1: Side 切替可観測性 — CycleContext の情報を FillRecord に転記
             record.requested_side = ctx.requested_side

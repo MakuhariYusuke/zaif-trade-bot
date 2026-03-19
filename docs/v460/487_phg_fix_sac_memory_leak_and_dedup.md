@@ -266,3 +266,144 @@ RunSessionState に cancel_reason_counts dict を追加。gate block + unfilled 
 - **100K steps で seed 123 単独再訓練**: 20K ではステップ不足の可能性。seed 123 のみ long-run 確認
 - **best_model checkpoint 戦略**: seed 456 のように final が崩壊するケースに対応し、best-checkpoint を sidecar deploy 候補とする
 - **G2 gate 閾値の見直し**: positive_seed_ratio ≥ 0.75 は 4 seed では 3/4 必須 → seed 数増加 or 閾値調整を検討
+
+---
+
+## 6. P0 バグ修正: `_sidecar_signal` NameError
+
+### 6.1 障害概要
+
+487# P0 コミット (f2accd00c) で導入した sidecar attribution フィールド追加に NameError バグが含まれていた。
+
+- **原因**: `_sidecar_signal` は `_evaluate_and_handle_cycle_gate()` のローカル変数だが、`_execute_and_track_cycle()` メソッドで直接参照 → スコープ外
+- **影響**: watchdog 再起動 (2026-03-19 05:50) 以降、**全サイクルが NameError で失敗**
+- **障害時間**: 約 10.5 時間 (05:50 → 16:28+ 現在進行中)
+- **エラー件数**: 260 回 (約 4 分/回のサイクルペース)
+
+### 6.2 修正
+
+| 対象ファイル | 変更内容 |
+|---|---|
+| `cycle_gate_aggregator.py` | `CycleGateResult` に `sidecar_confidence`, `sidecar_model_version`, `sidecar_signal_status` フィールド追加 |
+| `orchestrator_mid_cycle.py` | `_evaluate_and_handle_cycle_gate()` で `_gate_result` に attribution 情報を転記、`_execute_and_track_cycle()` では `gate_result` 経由でアクセス |
+
+### 6.3 教訓
+
+ローカル変数のスコープ境界を跨ぐ参照は必ずテストで検出すべき。今回のケースでは `_execute_and_track_cycle` の統合テストが不足していた。
+
+---
+
+## 7. Fill Test ログ包括分析 (2026-02-14 〜 03-19)
+
+### 7.1 概要
+
+| 指標 | 値 |
+|------|-----|
+| 分析期間 | 2026-02-14 03:37 〜 2026-03-19 16:28 (約 33 日間) |
+| ログファイル | fill_test.log (2.2MB) + .1 (10MB) + .2 (10MB) |
+| 総約定回数 | 4,035 filled / 1,371 unfilled = **74.6% fill rate** |
+| 総ゲートブロック | 2,397 回 |
+| 累積 PnL | **-986.3 bps** (損失) |
+| Profit Factor | **0.883** |
+| 勝率 | 47.2% (1,906 win / 2,111 loss) |
+| 平均利益 | +3.915 bps (win) / -4.002 bps (loss) |
+| ERROR 件数 | 1,000 件 (うち NameError 260 件) |
+
+### 7.2 日次推移の主要パターン
+
+**PnL 推移** (cumPnL trajectory):
+- 02-14: -48 bps → 急速な損失蓄積開始
+- 02-18〜02-19: +152 bps の2日連続好調 (唯一明確なプラス期間)
+- 02-26: -208 bps の大幅ドローダウン (1日で最大損失)
+- 03-01: -120 bps (soft_loss_cap 頻発)
+- 03-16〜03-19: 安定して日次 -30〜-78 bps
+
+**Fill rate 低下**:
+- 02-14: 86% → 03-07: 34% → 03-19: 30.3%
+- fill rate は一貫して低下。ゲートブロック導入 (02-28〜) により顕著に低下
+
+### 7.3 PnL 分布
+
+| パーセンタイル | 値 (bps) |
+|---|---|
+| P1 | -17.88 |
+| P5 | -9.31 |
+| P10 | -6.39 |
+| P25 | -2.76 |
+| P50 (median) | **-0.17** |
+| P75 | +2.24 |
+| P90 | +5.61 |
+| P95 | +8.99 |
+| P99 | +16.56 |
+| 最大損失 | -51.9 bps |
+| 最大利益 | +74.1 bps |
+
+**分布の特徴**: 左スキュー (median が負)。テール損失が大きく、PF < 1.0。
+- 損失ゾーン (-5 〜 0 bps): 37.9% — 小さな損失が頻発
+- 利益ゾーン (0 〜 +5 bps): 36.3%
+- 大損 (< -10 bps): 4.2% — ここを削減すれば PF 改善
+
+### 7.4 ゲートブロック分析
+
+| 理由 | 回数 | 割合 |
+|---|---|---|
+| sell_dynamic_kill | 979 | 40.8% |
+| ranging_low_vol_skip | 736 | 30.7% |
+| buy_dynamic_kill | 615 | 25.7% |
+| spread_too_narrow | 67 | 2.8% |
+
+- **sell_dynamic_kill 支配的**: sell 側のリスクガードが過度に反応している可能性
+- **ranging_low_vol_skip**: 低ボラ環境でスキップが多発 → offset 調整で対応可能か
+
+### 7.5 リスクイベント
+
+| イベント | 回数 |
+|---|---|
+| Balance insufficient | 5,703 |
+| Cross venue veto | 188 |
+| Toxic fill veto (sell) | 281 |
+| Toxic fill veto (buy) | 186 |
+| Per-side halt (buy) | 256 |
+| Per-side halt (sell) | 90 |
+| Degraded liquidation | 376 |
+| Soft loss cap triggered | 91 |
+| Quiescence events | 59 |
+| Inventory escape | 96 |
+
+**Balance insufficient (5,703 件)** が最大の問題。JPY/BTC 残高が min_lot を下回り、サイクルがスキップされる頻度が非常に高い。
+
+### 7.6 Wait time
+
+| 指標 | 値 |
+|---|---|
+| 件数 | 5,406 |
+| 平均 | 31.2s |
+| 中央値 | 16.5s |
+| P90 | 81.8s |
+
+### 7.7 非 NameError エラー
+
+| エラー | 件数 | 重要度 |
+|---|---|---|
+| Coincheck API 400 Bad Request | 374 | 中 (注文拒否) |
+| Failed to place order: 400 | 88 | 中 |
+| SkipGate pickle hash mismatch | 46 | 低 (hot-reload 時の一時的不整合) |
+| All order attempts failed | 41 | 高 (取引不能) |
+| FillTestConfig.min_lot AttributeError | 19 | 低 (旧コード残骸、修正済) |
+| spread > max guard | 20 | 低 (正常動作) |
+| SAFE_STOP 連続 preflight | 7 | 高 (完全停止) |
+
+### 7.8 診断と改善提案
+
+#### P0 (即時対応)
+1. **✅ _sidecar_signal NameError 修正** → §6 で対応完了。fill_test 再起動が必要
+
+#### P1 (短期改善)
+1. **Balance insufficient 削減**: 5,703 件の残高不足は最大のフリクション。資金管理の見直し or lot サイズの動的調整を検討
+2. **Coincheck 400 Bad Request**: 374 件 → API リクエストのバリデーション強化 or エラー原因の詳細ログ
+3. **sell_dynamic_kill 過剰**: 979 回の gate block → kill threshold の緩和 or タイムアウト短縮を検討
+
+#### P2 (中期改善)
+1. **PF 改善**: 現在 0.883。大損 (< -10 bps, 4.2% の Pnl) をカットするストップロス or offset 拡大
+2. **Fill rate 回復**: 30% → 目標 40%+ への改善。ゲートのチューニング
+3. **SAC sidecar 効果測定**: NameError 修正後、P0 attribution フィールドを使った sidecar 効果の定量分析
