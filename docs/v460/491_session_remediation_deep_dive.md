@@ -355,3 +355,78 @@ Composite mode:
 
 7. **SAC gate 移行**: 観測化 + 学習最適化 (490# Level 3)
 8. **マルチシード ensemble**: seed42/123 の prediction averaging
+
+---
+
+## §9 ログ分析に基づく改善 (491# Turn 5)
+
+**日付**: 2026-03-20
+**対象ログ**: fill_test.log (cycle 12842–13559, ~717 cycles)
+
+### §9.1 定量統計
+
+| 指標 | 値 | 深刻度 |
+|------|-----|--------|
+| 総サイクル | 717 | — |
+| 約定 (filled) | 269 (37.5%) | ⚠ 低 fill rate |
+| 未約定 (unfilled) | 137 | — |
+| PnL 平均 | **-2.728 bps** (600 fills) | 🔴 致命的 |
+| PnL 勝率 | **22.8%** (137/600) | 🔴 致命的 |
+| PnL 合計 | -1636.72 bps | 🔴 |
+| Offset ceiling clamp | **478/717 = 67%** | 🟠 シグナル圧縮 |
+| Pre-clamp offset avg | 0.2982 (min=0.201, max=0.45) | — |
+| HARD SKIP | 34 | ⚠ 極端な市場 |
+| Skip buy (JPY不足) | 461 | 🟠 残高危機 |
+| Skip sell (BTC不足) | 285 | 🟠 残高危機 |
+| route-to-kill deadlock | 28 | ⚠ |
+| sell_dynamic_kill blocking | 多数 (trending_down regime) | — |
+| Sidecar stale | 121 (TTL=7800s 超過) | 🟠 |
+| Macro boost applied | 151 → 全て ceiling で clamp | 🟠 無効化 |
+| Micro-timeout re-quote | 286 | ⚠ |
+| Order not found | 75 | ⚠ API信頼性 |
+| Post-only reject | 12 | — |
+| SDK block | 24 | — |
+| BDK block | 45 | — |
+
+### §9.2 重大発見: 二重クランプ構造欠陥
+
+**問題**: maker_price (306#) と offset_pipeline (421#) が同一の `resolve_offset_ceiling()` (0.20) を使用。
+
+```
+maker_price → base=0.05 → 9-stage boosts → 0.30 → [306# CLAMP → 0.20]
+                                                         ↓
+offset_pipeline → 0.20 × macro_boost(1.6) = 0.32 → [421# CLAMP → 0.20]
+```
+
+**影響**: offset_pipeline の全 multiplier (EV, velocity, macro_boost, toxicity, etc.) が **構造的に無効化**。
+macro_boost が trending_down で 1.6× を適用しても、入力が既に ceiling で丸められているため
+出力も ceiling に再クランプされる。67% のサイクルで信号が圧縮。
+
+**PnL への影響**: 市場が trending_down 時、buy に対する保護 (= 広い offset) が ceiling で制限され、
+不利な約定が増加。avg PnL = -2.728 bps という深刻な損失の主因の一つ。
+
+### §9.3 改善措置
+
+| # | 改善 | 変更 | 根拠 |
+|----|------|------|------|
+| 1 | Buy ceiling 引上げ | `offset_ceiling_ratio_buy: 0.20 → 0.25` | Pre-clamp avg=0.2982。0.25 で約 40% の clamp 解除。macro_boost(1.6×) → 0.40 → 0.25 clamp (元: 0.32 → 0.20) |
+| 2 | Retrain scheduler 再起動 | PID 80936 (dead) → PID 81112 | WorkingSet=16KB = ゾンビ。6h 超 stale signal 解消 |
+| 3 | Composite Risk Score 有効化 | `composite_risk_enabled: true` (threshold=1.5) | 490# Level 2。保守的閾値で段階的導入 |
+
+### §9.4 二重クランプ問題: 将来的解決策
+
+**現行**: 306# と 421# が同一 ceiling → multiplier chain が no-op。
+
+**将来案 (P1)**:
+- **案 A**: 306# ceiling を廃止し 421# final clamp のみに統一 → multiplier が unclamped 値で動作
+- **案 B**: 306# を `max_offset_ratio` (0.30) に引上げ → intermediate exploration を許容
+- **案 C**: regime-aware ceiling multiplier を追加 → trending 時のみ ceiling 緩和
+
+いずれも A/B テスト + PnL 回帰分析が必要。current PnL = -2.73 bps は ceiling 以外にも
+sidecar stale、残高不足 (JPY 306 / BTC 0.00232) が寄与。
+
+### §9.5 残高危機による影響
+
+- JPY=306, BTC=0.00232 → buy は実質不可 (461 skip)、sell は trade size 制約
+- route-to-kill deadlock: buy 不可 + sell が kill-gated → 両サイド完全停止 (28 events)
+- **残高補充が PnL 改善の前提条件**。offset ceiling 改善だけでは構造的問題は解決しない。

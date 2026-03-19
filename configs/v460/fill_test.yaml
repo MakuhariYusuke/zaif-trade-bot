@@ -637,7 +637,7 @@ offset_stage_recording:
 # - sell ceiling=0.50 に引上げ → regime boost(×1.8=0.54)が ceil で 0.50 まで有効化
 # - buy ceiling=0.15 据置 → buy side には十分な制御
 offset_ceiling_ratio: 0.15        # 共通デフォルト (サイド別が未設定時に使用)
-offset_ceiling_ratio_buy: 0.20    # 381# 0.15→0.20 (380# 6-A: クリーンデータ >=0.15:+0.065bps, <0.15:+0.586bps)
+offset_ceiling_ratio_buy: 0.25    # 491# 0.20→0.25 (ログ分析: 478/717=67%が0.20でclamp, pre-clamp avg=0.2982。macro_boost等が二重clampで無効化。PnL avg=-2.73bps→保護強化)
 offset_ceiling_ratio_sell: 0.20   # 474# sell: 0.50→0.20 (473#検証: ratio=0.50→mid+0, 936JPY逆行に耐えられず。0.20→mid+718JPY buffer)
 # ---- 421# P0: Execution Final Clamp (416#/417# review) ----
 # maker_price ceiling 後の executor multiplier chain (EV/velocity/toxicity 等) が
@@ -1100,3 +1100,15 @@ regime_policy:
   trend_exit_confidence: 0.30        # 186# exit閾値 (ヒステリシス: 入りやすく出にくい)
   trend_min_dwell: 3                 # 186# 最低保持サイクル数 (trend 粘着性)
   deadlock_limit_trending: 5         # trending 時の deadlock_limit (base=3 より緩和)
+
+# ---- 491# Composite Risk Score (490# Level 2 recommendation) ----
+# Boolean AND-chain ゲートの Soft Gates (1,2,2b,3,6,7) を連続リスクスコアに変換。
+# Hard Gates (4,5,8,9) は安全上 Boolean 短絡を維持。
+# スコアが threshold 超でサイクルをブロック (composite_risk_exceeded)。
+# 二重クランプ問題 (306# + 421# 同一ceiling値) の緩和策として段階的導入。
+composite_risk_enabled: true
+composite_risk_threshold: 1.5       # 合計リスクスコアの閾値 (高めに設定=保守的導入)
+composite_risk_weight_unknown_regime: 0.6
+composite_risk_weight_ranging_low_vol: 0.5
+composite_risk_weight_trending_sell: 0.7
+composite_risk_weight_velocity: 0.4
