@@ -158,6 +158,17 @@ def _read_sidecar_signal_core(
         _store_sidecar_cache(abs_path, (mtime, None))
         return None, "error"
 
+    # 488#/489# P1: stat/read race condition 対策 (double-check pattern)
+    # read_text() 中にファイルが書き換わった場合、mtime が変わっているはず
+    try:
+        mtime_after = path.stat().st_mtime
+    except (FileNotFoundError, OSError):
+        mtime_after = mtime  # ファイル消失時はそのまま続行
+    if mtime_after != mtime:
+        # read 中にファイルが更新された → キャッシュせず次回再読み込み
+        logger.debug("sidecar signal file changed during read, skipping cache")
+        mtime = mtime_after
+
     try:
         signal = _dict_to_signal(data)
     except (KeyError, ValueError, TypeError) as e:

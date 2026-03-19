@@ -288,8 +288,11 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                     "ema=%+.2fbps vel=%s",
                     _reason, point_spread_bps, ema_state.ema_spread_bps, _vel_s,
                 )
+        except (ConnectionError, TimeoutError, OSError, ValueError, AttributeError) as exc:
+            logger.warning("cross-venue hint update error [%s]: %s", type(exc).__name__, exc)
+            self._maker_price.set_cross_venue_lead_lag_hint(None)
         except Exception as exc:
-            logger.warning("cross-venue hint update error: %s", exc, exc_info=True)
+            logger.error("cross-venue hint unexpected error [%s]: %s", type(exc).__name__, exc, exc_info=True)
             self._maker_price.set_cross_venue_lead_lag_hint(None)
 
     def _make_price_error_skip(
