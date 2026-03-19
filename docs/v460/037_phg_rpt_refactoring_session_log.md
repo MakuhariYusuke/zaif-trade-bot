@@ -7189,3 +7189,9 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/v460/test_ml_pipeline.py` の real-data wrapper を `min_rows=20`, `min_feature_rows=10` へ明示化
   - `Test057Integration::test_load_real_data` の assertion を helper 契約へ追随
   - filtered broad `tests/unit/v460/ --no-cov` は `5013 passed, 2 skipped, 13 warnings in 39.58s`
+- 494# raw recorder correctness / diagnostics follow-up:
+  - `ztb/data/raw_paths.py` に `utc_day_str_from_timestamp(...)` / `group_records_by_utc_day(...)` を追加
+  - `scripts/v460/lib/ob_recorder.py` の flush は snapshot `ts` ごとに UTC 日別分割して書き込むよう修正
+  - `ztb/data/trades_recorder.py` の flush も trade `ts` ごとに UTC 日別分割して書き込むよう修正
+  - `tests/unit/v460/test_ob_recorder.py` と `tests/unit/v460/test_135_trades_and_gate.py` に mixed-day flush 回帰を追加
+  - `tests/unit/v460/test_health_monitor_resilience.py` に `psutil` 不在時の diagnostics 回帰を追加

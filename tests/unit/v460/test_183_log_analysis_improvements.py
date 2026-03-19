@@ -269,7 +269,7 @@ class TestFillTestYAMLIntegration:
 
         # 183# VG tuning
         assert cfg.volatility_guard_velocity_threshold_bps == pytest.approx(12.0)
-        assert cfg.volatility_guard_vpin_threshold == pytest.approx(0.60)
+        assert cfg.volatility_guard_vpin_threshold == pytest.approx(0.80)
 
         # 183# narrow spread boost
         assert cfg.narrow_spread_boost_buy == pytest.approx(2.0)

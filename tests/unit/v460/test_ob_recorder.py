@@ -139,6 +139,26 @@ class TestOBRecorderFlush:
         assert data["bids"] == [[100.0, 1.0]]
         assert data["asks"] == [[101.0, 1.0]]
 
+    def test_flush_splits_records_by_snapshot_utc_day(self, tmp_path: Path) -> None:
+        rec = OBRecorder(raw_dir=tmp_path, enabled=True)
+        rec.record([[100, 1.0]], [[101, 1.0]], timestamp=86399.0)
+        rec.record([[200, 1.0]], [[201, 1.0]], timestamp=86401.0)
+
+        flushed = rec.flush()
+
+        assert flushed == 2
+        files = sorted((tmp_path / "orderbook").glob("*.jsonl.gz"))
+        assert [path.name for path in files] == [
+            "19700101.jsonl.gz",
+            "19700102.jsonl.gz",
+        ]
+        with gzip.open(files[0], "rt", encoding="utf-8") as handle:
+            day1 = [json.loads(line) for line in handle if line.strip()]
+        with gzip.open(files[1], "rt", encoding="utf-8") as handle:
+            day2 = [json.loads(line) for line in handle if line.strip()]
+        assert [row["ts"] for row in day1] == [86399.0]
+        assert [row["ts"] for row in day2] == [86401.0]
+
 
 class TestOBRecorderAutoFlush:
     """flush_interval 経過時の自動 flush."""

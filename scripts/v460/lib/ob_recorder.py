@@ -13,12 +13,11 @@ import logging
 import math
 import time
 from collections.abc import Sequence
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import TypedDict
 
 from scripts.v460.lib.ob_utils import OrderBookLevelLike
-from ztb.data.raw_paths import resolve_raw_dir
+from ztb.data.raw_paths import group_records_by_utc_day, resolve_raw_dir
 from ztb.io.jsonl_gz import append_jsonl_gz
 
 logger = logging.getLogger(__name__)
@@ -179,16 +178,20 @@ class OBRecorder:
         """
         if not self._buffer:
             return 0
-        day = datetime.now(timezone.utc).strftime("%Y%m%d")
         ob_dir = self._raw_dir / "orderbook"
         ob_dir.mkdir(parents=True, exist_ok=True)
-        path = ob_dir / f"{day}.jsonl.gz"
         n = len(self._buffer)
         try:
-            append_jsonl_gz(path, self._buffer)
+            grouped = group_records_by_utc_day(self._buffer)
+            for day, records in grouped.items():
+                append_jsonl_gz(ob_dir / f"{day}.jsonl.gz", records)
             self._total_written += n
             self._flush_fail_count = 0
-            logger.debug(f"OB recorder: flushed {n} snapshots \u2192 {day}")
+            logger.debug(
+                "OB recorder: flushed %d snapshots across %d day files",
+                n,
+                len(grouped),
+            )
         except (OSError, TypeError, ValueError) as e:
             self._flush_fail_count += 1
             logger.error(

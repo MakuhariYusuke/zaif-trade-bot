@@ -18,11 +18,10 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
 
-from ztb.data.raw_paths import resolve_raw_dir
+from ztb.data.raw_paths import group_records_by_utc_day, resolve_raw_dir
 from ztb.io.jsonl_gz import append_jsonl_gz
 
 logger = logging.getLogger(__name__)
@@ -228,13 +227,13 @@ class TradesRecorder:
         """
         if not self._buffer:
             return 0
-        day = datetime.now(timezone.utc).strftime("%Y%m%d")
         tr_dir = self._raw_dir / "trades"
         tr_dir.mkdir(parents=True, exist_ok=True)
-        path = tr_dir / f"{day}.jsonl.gz"
         n = len(self._buffer)
         try:
-            append_jsonl_gz(path, self._buffer)
+            grouped = group_records_by_utc_day(self._buffer)
+            for day, records in grouped.items():
+                append_jsonl_gz(tr_dir / f"{day}.jsonl.gz", records)
             self._total_written += n
             # §9.1 #1: watermark = buffer 内 max key で更新
             max_key = self._buffer_max_key
@@ -242,7 +241,11 @@ class TradesRecorder:
                 self._watermark is None or max_key > self._watermark
             ):
                 self._watermark = max_key
-            logger.debug(f"Trades recorder: flushed {n} trades → {day}")
+            logger.debug(
+                "Trades recorder: flushed %d trades across %d day files",
+                n,
+                len(grouped),
+            )
             self._flush_fail_count = 0
         except (OSError, TypeError, ValueError) as e:
             # §9.1 #2: flush 失敗 → buffer 保持して次回再試行

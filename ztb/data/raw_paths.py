@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Sequence
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_RAW_DIR = _PROJECT_ROOT / "data" / "v460" / "raw"
@@ -35,3 +37,23 @@ def resolve_available_raw_dates(
         if date_str in daily_inputs:
             resolved.append(date_str)
     return resolved
+
+
+def utc_day_str_from_timestamp(timestamp: float) -> str:
+    """UNIX timestamp を UTC 日付文字列 YYYYMMDD に変換する."""
+    return datetime.fromtimestamp(timestamp, timezone.utc).strftime("%Y%m%d")
+
+
+def group_records_by_utc_day(
+    records: Sequence[dict[str, object]],
+    *,
+    timestamp_key: str = "ts",
+) -> dict[str, list[dict[str, object]]]:
+    """レコード列を UTC 日付ごとに安定順で分割する."""
+    grouped: dict[str, list[dict[str, object]]] = {}
+    for record in records:
+        grouped.setdefault(
+            utc_day_str_from_timestamp(float(record[timestamp_key])),
+            [],
+        ).append(record)
+    return grouped

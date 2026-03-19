@@ -91,3 +91,20 @@ class TestHealthMonitorWarnings:
         assert snapshot["rss_mb"] == pytest.approx(150.0)
         assert snapshot["cpu_percent"] == pytest.approx(12.5)
         assert snapshot["threads"] == 8
+
+
+class TestHealthMonitorDiagnostics:
+    def test_snapshot_memory_diagnostics_without_psutil_still_returns_gc_fields(self) -> None:
+        hm = FillTestHealthMonitor()
+        hm._psutil_available = False
+        hm._psutil = None
+        hm._process = None
+
+        snapshot = hm.snapshot_memory_diagnostics(now_ts=1234.0)
+
+        assert "gc_counts" in snapshot
+        assert "gc_thresholds" in snapshot
+        assert "gc_cycle_counter" in snapshot
+        assert "rss_mb" not in snapshot
+        assert "cpu_percent" not in snapshot
+        assert "threads" not in snapshot

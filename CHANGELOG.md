@@ -5774,3 +5774,4 @@ python scripts/unified_trainer.py \
 - 491# v460 test/stability: `test_sidecar_sac_integration.py` の confidence 計算を module-level helper に統一し、broad を止めていた latent test bug を解消
 - 492# SAC debug/maintainability: `sac_retrain_scheduler` に training debug summary を追加し、`test_sac_retrain_scheduler.py` の retrain_once boilerplate を helper 化
 - 493# v460 test/contract: `test_ml_pipeline.py` の real-data wrapper 下限を現 helper 契約 (`min_rows=20`, `min_feature_rows=10`) に合わせ、filtered broad を再通過
+- 494# raw recorder correctness: `OBRecorder` / `TradesRecorder` flush を「現在日付」ではなく各 record の `ts` ベースで UTC 日別分割する形に修正し、mixed-day flush と health diagnostics fallback の回帰を追加

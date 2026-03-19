@@ -189,6 +189,28 @@ class TestTradesRecorderFlush:
         assert rec.buffer_size == 0
         assert rec.snapshot_stats()["flush_fail_count"] == 0
 
+    def test_flush_splits_trades_by_trade_utc_day(self, tmp_path: Path) -> None:
+        rec = TradesRecorder(raw_dir=tmp_path, enabled=True)
+        rec.record_trades(
+            [
+                {"ts": 86399.0, "price": 14500000.0, "amount": 0.01, "side": "buy"},
+                {"ts": 86401.0, "price": 14500100.0, "amount": 0.02, "side": "sell"},
+            ]
+        )
+
+        flushed = rec.flush()
+
+        assert flushed == 2
+        files = sorted((tmp_path / "trades").glob("*.jsonl.gz"))
+        assert [path.name for path in files] == [
+            "19700101.jsonl.gz",
+            "19700102.jsonl.gz",
+        ]
+        day1 = read_jsonl_gz(files[0])
+        day2 = read_jsonl_gz(files[1])
+        assert [record["ts"] for record in day1] == [86399.0]
+        assert [record["ts"] for record in day2] == [86401.0]
+
 
 class TestTradesRecorderFromAdapter:
     """record_from_adapter: TradeRecord オブジェクトからの記録."""
