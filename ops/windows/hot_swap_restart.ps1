@@ -119,9 +119,12 @@ if ($oldPid) {
 
     $proc = Get-Process -Id $oldPid -ErrorAction SilentlyContinue
     if ($proc) {
-        # 458# taskkill エラー処理改善: try/catch では native command の
-        # エラーを適切に捕捉できないため $LASTEXITCODE を確認
+        # 458# taskkill エラー処理改善: native command の stderr を
+        # $ErrorActionPreference="Stop" 下でも安全に捕捉
+        $prevEAP = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
         $tkOutput = & taskkill /PID $oldPid 2>&1 | Out-String
+        $ErrorActionPreference = $prevEAP
         if ($LASTEXITCODE -eq 0) {
             Log "INFO" "  taskkill 送信完了。graceful shutdown 待機中..."
         } else {
