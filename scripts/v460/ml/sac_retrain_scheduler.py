@@ -21,6 +21,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import logging
 import os
@@ -40,13 +41,16 @@ logger = logging.getLogger(__name__)
 
 from ztb.io.yaml_io import read_yaml
 from ztb.utils.env_metrics import extract_env_metrics
-from ztb.utils.memory_utils import get_memory_usage
+from ztb.utils.memory_utils import clear_cuda_cache, get_memory_usage
 
 # ── graceful shutdown ──────────────────────────────────────
 _shutdown_event = threading.Event()
 
 # 495# 訓練タイムアウト (秒) — model.learn() の無限ハング防止
 _TRAINING_TIMEOUT_SEC = 3600  # 1時間
+
+# 495# RSS メモリ警告閾値 (MB) — サイクル間リーク検出
+_RSS_WARNING_MB = 2048
 
 
 def _install_signal_handlers() -> None:
@@ -343,6 +347,13 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
     timestamp = datetime.now(timezone.utc).isoformat()
     model_version = f"sac_sidecar_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}"
 
+    # 495# finally で参照するローカル変数を事前宣言 — NameError 防止
+    train_df: object = None
+    val_df: object = None
+    env: TrainingEnvProtocol | None = None
+    val_env: TrainingEnvProtocol | None = None
+    model: SACModelProtocol | None = None
+
     # ── 1. データ読み込み ──
     try:
         import pandas as pd
@@ -357,30 +368,28 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
             error_message=f"data_load: {e}",
         )
 
-    # Rolling window: 直近 N 日
-    if cfg.rolling_window_days > 0 and len(df) > 0:
-        rows_per_day = 1440  # 1-min bars
-        max_rows = cfg.rolling_window_days * rows_per_day
-        if len(df) > max_rows:
-            df = df.iloc[-max_rows:].copy()
-            logger.info(
-                f"Rolling window: {cfg.rolling_window_days}d → "
-                f"{len(df)} rows (last {max_rows})"
-            )
+    try:
+        # Rolling window: 直近 N 日
+        if cfg.rolling_window_days > 0 and len(df) > 0:
+            rows_per_day = 1440  # 1-min bars
+            max_rows = cfg.rolling_window_days * rows_per_day
+            if len(df) > max_rows:
+                df = df.iloc[-max_rows:].copy()
+                logger.info(
+                    f"Rolling window: {cfg.rolling_window_days}d → "
+                    f"{len(df)} rows (last {max_rows})"
+                )
 
-    # Train/Val split
-    train_df, val_df = train_val_split(df, cfg.val_ratio)
-    del df
+        # Train/Val split
+        train_df, val_df = train_val_split(df, cfg.val_ratio)
+    finally:
+        del df
+
     logger.info(f"Train: {len(train_df)} rows, Val: {len(val_df)} rows")
-
-    # ── 2-3. Model creation + training ──
-    env: TrainingEnvProtocol | None = None
-    val_env: TrainingEnvProtocol | None = None
-    model: SACModelProtocol | None = None
 
     try:
         # 384# import_real_sb3 廃止 — pip版 SB3 を直接 import
-        from stable_baselines3 import SAC as SB3_SAC
+        from stable_baselines3 import SAC as SB3_SAC  # noqa: F811
 
         env = _create_env(train_df, cfg)
         logger.info(
@@ -439,7 +448,10 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
                 f"[495#] Training TIMEOUT after {training_time:.1f}s "
                 f"(limit={_TRAINING_TIMEOUT_SEC}s) — aborting cycle"
             )
-            # daemon thread は process 終了時に自動停止
+            # 495# タイムアウト時のメモリリーク防止:
+            # daemon thread が model/env を掴んだまま残るため
+            # ローカル参照を切ってから例外を投げ、finally の cleanup に任せる
+            model = None
             raise TimeoutError(
                 f"model.learn() exceeded {_TRAINING_TIMEOUT_SEC}s timeout"
             )
@@ -539,6 +551,12 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
             envs=[val_env, env],
             dataframes=[train_df, val_df],
         )
+        # 495# ローカル参照も明示的にクリア — 循環参照 GC 支援
+        model = None
+        env = None
+        val_env = None
+        train_df = None
+        val_df = None
 
 
 # ════════════════════════════════════════════════════════════════
@@ -622,6 +640,45 @@ class SACRetrainTrigger:
 
 
 # ════════════════════════════════════════════════════════════════
+# Memory monitoring
+# ════════════════════════════════════════════════════════════════
+
+_last_cycle_rss_mb: float = 0.0
+
+
+def _post_cycle_memory_check() -> None:
+    """495# サイクル後 RSS モニタリング + PyTorch キャッシュ解放.
+
+    - 各サイクル後に gc.collect() + torch cache clear
+    - RSS 増加がしきい値超え → 警告ログ
+    """
+    global _last_cycle_rss_mb
+
+    # PyTorch 内部キャッシュ + GC
+    clear_cuda_cache()
+    gc.collect()
+
+    mem = get_memory_usage()
+    current_rss = float(mem.get("rss", 0.0))
+
+    if _last_cycle_rss_mb > 0:
+        delta = current_rss - _last_cycle_rss_mb
+        if delta > 100:  # 100MB 以上の増加
+            logger.warning(
+                f"[495#] RSS increased by {delta:.1f}MB "
+                f"({_last_cycle_rss_mb:.1f} → {current_rss:.1f}MB) — possible leak"
+            )
+
+    if current_rss > _RSS_WARNING_MB:
+        logger.warning(
+            f"[495#] RSS {current_rss:.1f}MB exceeds threshold {_RSS_WARNING_MB}MB"
+        )
+
+    _last_cycle_rss_mb = current_rss
+    logger.info(f"[495#] Post-cycle RSS: {current_rss:.1f}MB")
+
+
+# ════════════════════════════════════════════════════════════════
 # Main scheduler loop
 # ════════════════════════════════════════════════════════════════
 
@@ -685,6 +742,9 @@ def run_scheduler(cfg: SACRetrainConfig) -> None:
             _append_history(cfg.history_path, result)
         except Exception as e:
             logger.error(f"[495#] _append_history() failed: {e}", exc_info=True)
+
+        # 495# サイクル後 RSS モニタリング — リーク早期検出
+        _post_cycle_memory_check()
 
         logger.info(
             f"[365# P6] Cycle complete: status={result.status} | "

@@ -45,8 +45,10 @@ from scripts.v460.ml.sac_retrain_scheduler import (
     _atomic_deploy_model,
     _evaluate_model,
     _MAX_AUTO_RESTARTS,
+    _post_cycle_memory_check,
     _push_neutral_fallback,
     _RESTART_BACKOFF_SEC,
+    _RSS_WARNING_MB,
     _TRAINING_TIMEOUT_SEC,
     _shutdown_event,
     _update_sidecar_signal,
@@ -1023,3 +1025,47 @@ class TestCrashResilience495:
 
         assert result.status == "error"
         assert "timeout" in result.error_message.lower()
+
+    def test_post_cycle_memory_check_runs(self) -> None:
+        """_post_cycle_memory_check が例外なく完了."""
+        import scripts.v460.ml.sac_retrain_scheduler as mod
+
+        # RSS 追跡状態をリセット
+        saved = mod._last_cycle_rss_mb
+        try:
+            mod._last_cycle_rss_mb = 0.0
+            _post_cycle_memory_check()
+            # 呼出後 RSS が記録される
+            assert mod._last_cycle_rss_mb > 0
+        finally:
+            mod._last_cycle_rss_mb = saved
+
+    def test_retrain_once_cleans_up_on_error(self, tmp_path: Path) -> None:
+        """retrain_once が例外時も cleanup_training_resources を呼ぶ."""
+        data_file = tmp_path / "data.parquet"
+        data_file.write_bytes(b"dummy")
+
+        cfg = SACRetrainConfig(
+            ohlcv_path=str(data_file),
+            model_path=tmp_path / "model.zip",
+            buffer_path=tmp_path / "buffer.pkl",
+            signal_path=tmp_path / "signal.json",
+            history_path=tmp_path / "history.jsonl",
+        )
+
+        mock_env = _make_mock_env()
+        mock_model = _make_mock_model()
+        mock_model.learn.side_effect = RuntimeError("training crash")
+
+        with (
+            patch("scripts.v460.ml.sac_retrain_scheduler._create_env", return_value=mock_env),
+            patch("scripts.v460.lib.data_loader.load_parquet", return_value=_MOCK_OHLCV_DF),
+            _mock_sb3_import(mock_model),
+            patch(
+                "scripts.v460.ml.sac_retrain_scheduler.cleanup_training_resources"
+            ) as mock_cleanup,
+        ):
+            result = retrain_once(cfg)
+
+        assert result.status == "error"
+        mock_cleanup.assert_called_once()
