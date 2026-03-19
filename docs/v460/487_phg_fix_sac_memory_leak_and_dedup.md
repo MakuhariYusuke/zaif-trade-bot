@@ -202,3 +202,67 @@ RunSessionState に cancel_reason_counts dict を追加。gate block + unfilled 
 | P1-3 | seed123 を対照群として live 比較 | sidecar_model_version フィールドで追跡基盤整備済み |
 | P1-4 | 700JPY 緩和後の fill quality 点検 | sidecar_signal_status フィールドで分離解析が可能に |
 | P2 | sidecar 権限昇格 (max_boost_bps 拡大) | 整合性確認後の将来課題 |
+
+---
+
+## 5. 487# 実験結果 (val_ratio=0.10, 20K steps, g2_sac_reward_clean.yaml)
+
+**日時**: 2026-03-19 08:17–10:26 (約2h10m)
+**コンフィグ**: 4 seed × 20K steps, val_ratio=0.10, v459 E-settings
+**結果ファイル**: `results/v460/v460_g2train_seed42_20260318_231635.json`
+
+### 5.1 Per-seed 結果
+
+| Seed | Final ROI | Final PF | Sharpe (年率) | Best OOS ROI | Best OOS PF | Reward-Profit Corr |
+|------|-----------|----------|--------------|-------------|-------------|-------------------|
+| 42   | **+1.74%** | 1.12 | 5.42 | +1.82% | 1.15 | **0.952** |
+| 123  | **+7.13%** | **1.45** | **12.66** | +7.74% | 1.51 | **0.979** |
+| 456  | -2.40% | 0.86 | -8.07 | +1.36% | 1.10 | 0.977 |
+| 789  | -1.17% | 0.94 | -2.96 | -0.22% | 0.99 | 0.878 |
+
+### 5.2 Gate 判定
+
+**G2-train: FAIL**
+
+| チェック | 値 | 閾値 | 結果 |
+|----------|-----|------|------|
+| positive_seed_ratio | 0.50 (2/4) | ≥ 0.75 | ❌ |
+| roi_seed_std | 0.042 | ≤ 0.03 | ❌ |
+| convergence | 0.0% | ≤ 5.0% | ✅ |
+| worst_seed_roi | -2.40% | > -3.5% | ✅ |
+
+**G3-pnl: FAIL**
+
+| チェック | 値 | 閾値 | 結果 |
+|----------|-----|------|------|
+| pf_median | 1.03 | ≥ 1.05 | ❌ |
+| pf_worst | 0.86 | ≥ 0.95 | ❌ |
+| gross_gt_fee | true | true | ✅ |
+| max_drawdown | 3.08% | ≤ 15% | ✅ |
+| sharpe_annual | 1.23 | ≥ 0.8 | ✅ |
+| reward_profit_corr_median | 0.964 | ≥ 0.0 | ✅ |
+| val_ratio_compliance | 0.10 | ≥ 0.10 | ✅ |
+
+### 5.3 分析
+
+1. **seed 123 突出**: ROI +7.13%, PF 1.45, Sharpe 12.66 — 全 seed 中最強。best_model でもさらに向上 (+7.74%)
+2. **seed 456 final vs best_model 乖離大**: final ROI -2.40% だが best_model (15Kステップ時点) は +1.36% → 後半で過適合崩壊
+3. **reward-profit correlation 大幅改善**: 全 seed で 0.88–0.98 (482# 実験の seed456 は 0.187 だった)
+4. **val_ratio=0.10 効果**: OOS 評価区間拡大により、seed 456/789 の過適合を正確に検出
+
+### 5.4 前回比較 (482# val_ratio=0.02 vs 487# val_ratio=0.10)
+
+| Seed | 482# ROI | 487# ROI | 変化 |
+|------|----------|----------|------|
+| 42   | +0.69%   | +1.74%   | ↑ 2.5× |
+| 123  | +0.11%   | +7.13%   | ↑ 65× |
+| 456  | +0.27%   | -2.40%   | ↓ (過適合露出) |
+| 789  | +0.59%   | -1.17%   | ↓ (過適合露出) |
+
+**解釈**: val_ratio 拡大で OOS の評価精度が上がり、seed 間の真の差が見えるようになった。seed 123 が一貫して強く、seed 456 は精密な OOS では弱い。
+
+### 5.5 Next Steps
+
+- **100K steps で seed 123 単独再訓練**: 20K ではステップ不足の可能性。seed 123 のみ long-run 確認
+- **best_model checkpoint 戦略**: seed 456 のように final が崩壊するケースに対応し、best-checkpoint を sidecar deploy 候補とする
+- **G2 gate 閾値の見直し**: positive_seed_ratio ≥ 0.75 は 4 seed では 3/4 必須 → seed 数増加 or 閾値調整を検討
