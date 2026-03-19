@@ -84,14 +84,8 @@ class OrchestratorBalanceMixin:
                         f"wide offset (×{self.config.recovery_skew_offset_mult:.1f})"
                     )
                     self._inc_guard_fire("recovery_skew_active")
-                    self._side_selector.freeze_side(
-                        next_side, cycles=self.config.balance_freeze_cycles,
-                    )
-                    ctx.next_side = opposite
                     ctx.recovery_skew = True
-                    ctx.resolved_side_reason = "recovery_skew"
-                    self._last_side = opposite
-                    self._preflight_skip_count = 0
+                    # fall through to normal opposite switch logic below
                 else:
                     logger.warning(
                         f"[421#] Route-to-Kill deadlock: {next_side} insufficient, "
@@ -122,7 +116,10 @@ class OrchestratorBalanceMixin:
             ctx.next_side = opposite
             next_side = opposite
             self._last_side = opposite
-            ctx.resolved_side_reason = "balance_switch"  # 420# P1
+            # 496#: recovery_skew 時は attribution を保持
+            ctx.resolved_side_reason = (
+                "recovery_skew" if ctx.recovery_skew else "balance_switch"
+            )
             self._preflight_skip_count = 0
             tried_opposite = True
 
