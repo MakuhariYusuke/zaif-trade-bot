@@ -293,11 +293,15 @@ def _build_training_debug_details(
     }
 
     if "timestamp" in train_frame.columns and len(train_frame) > 0:
-        details["train_timestamp_min"] = float(train_frame["timestamp"].min())
-        details["train_timestamp_max"] = float(train_frame["timestamp"].max())
+        ts_min = train_frame["timestamp"].min()
+        ts_max = train_frame["timestamp"].max()
+        details["train_timestamp_min"] = ts_min.timestamp() if hasattr(ts_min, "timestamp") else float(ts_min)
+        details["train_timestamp_max"] = ts_max.timestamp() if hasattr(ts_max, "timestamp") else float(ts_max)
     if "timestamp" in val_frame.columns and len(val_frame) > 0:
-        details["val_timestamp_min"] = float(val_frame["timestamp"].min())
-        details["val_timestamp_max"] = float(val_frame["timestamp"].max())
+        vs_min = val_frame["timestamp"].min()
+        vs_max = val_frame["timestamp"].max()
+        details["val_timestamp_min"] = vs_min.timestamp() if hasattr(vs_min, "timestamp") else float(vs_min)
+        details["val_timestamp_max"] = vs_max.timestamp() if hasattr(vs_max, "timestamp") else float(vs_max)
 
     if env is not None:
         obs_shape = _shape_tuple(getattr(env, "observation_space", None))

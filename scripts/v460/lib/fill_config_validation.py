@@ -420,3 +420,12 @@ def validate_fill_config(config: FillTestConfig) -> None:
                 "二重価格制御が競合する可能性があります。",
                 stacklevel=3,
             )
+
+    # --- 491# P1-6: VPIN 連続ランプ閾値整合 ---
+    if config.vg_vpin_continuous_enabled:
+        if config.vg_vpin_continuous_min >= config.volatility_guard_vpin_threshold:
+            raise ValueError(
+                f"vg_vpin_continuous_min ({config.vg_vpin_continuous_min}) must be < "
+                f"volatility_guard_vpin_threshold ({config.volatility_guard_vpin_threshold}). "
+                f"連続ランプの下限が閾値以上では勾配が生成されません。"
+            )

@@ -471,7 +471,7 @@ volatility_guard:
   velocity_window_sec: 60       # ウィンドウ (秒)
   velocity_threshold_bps: 12.0  # 183# 15.0→12.0 (VG vel=逆選択最強因子: adverse med=-0.95, non-adverse med=+0.83。感度引上げでoffset boost発動率向上)
   # VPIN (Volume-synchronized Probability of Informed Trading)
-  vpin_threshold: 0.60          # 183# 0.63→0.60 (AS28%対策。AS時VPIN mean=0.427 vs non-AS=0.413。感度引上げ)
+  vpin_threshold: 0.80          # 491# P0-1: 0.60→0.80 (VPIN avg=0.69で常時飽和→勾配有効化。0.40-0.80で二次曲線が分布カバー)
   # 行動: offset を boost (skip は攻撃的すぎる→データ蓄積後に検討)
   offset_boost_factor: 2.0      # guard 発動時の offset 倍率
   # 168# InvSkew/VG 競合解消: InvSkew が sell offset を緩和した場面で

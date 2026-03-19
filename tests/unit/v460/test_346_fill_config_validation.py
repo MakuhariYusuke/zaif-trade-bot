@@ -421,3 +421,31 @@ class TestMiscParams:
         cfg.quiescence_gate_blocks_threshold = -1
         with pytest.raises(ValueError, match="quiescence_gate_blocks_threshold"):
             validate_fill_config(cfg)
+
+
+# ============================================================
+# 491# P1-6: VPIN 連続ランプ閾値整合
+# ============================================================
+
+class TestVpinContinuousThreshold:
+    """vpin_continuous_min < vpin_threshold の整合チェック."""
+
+    def test_min_eq_threshold_raises(self, cfg: FillTestConfig) -> None:
+        cfg.vg_vpin_continuous_enabled = True
+        cfg.vg_vpin_continuous_min = 0.60
+        cfg.volatility_guard_vpin_threshold = 0.60
+        with pytest.raises(ValueError, match="vg_vpin_continuous_min"):
+            validate_fill_config(cfg)
+
+    def test_min_gt_threshold_raises(self, cfg: FillTestConfig) -> None:
+        cfg.vg_vpin_continuous_enabled = True
+        cfg.vg_vpin_continuous_min = 0.70
+        cfg.volatility_guard_vpin_threshold = 0.60
+        with pytest.raises(ValueError, match="vg_vpin_continuous_min"):
+            validate_fill_config(cfg)
+
+    def test_valid_range_passes(self, cfg: FillTestConfig) -> None:
+        cfg.vg_vpin_continuous_enabled = True
+        cfg.vg_vpin_continuous_min = 0.40
+        cfg.volatility_guard_vpin_threshold = 0.80
+        validate_fill_config(cfg)

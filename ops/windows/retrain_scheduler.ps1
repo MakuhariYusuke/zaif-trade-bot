@@ -96,6 +96,9 @@ function Start-Retrain {
     $stdOut = Join-Path $LogDir "retrain_scheduler_stdout.log"
     $stdErr = Join-Path $LogDir "retrain_scheduler_stderr.log"
 
+    # ztb パッケージ解決: Start-Process では sys.path[0] がスクリプト
+    # ディレクトリになるため、プロジェクトルートを PYTHONPATH に追加
+    $env:PYTHONPATH = $ProjectRoot
     $proc = Start-Process -FilePath $Python `
         -ArgumentList $args `
         -WorkingDirectory $ProjectRoot `
