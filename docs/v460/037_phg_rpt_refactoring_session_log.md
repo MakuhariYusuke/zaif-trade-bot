@@ -7663,3 +7663,21 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - focused:
   - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py`: `23 passed in 1.01s`
   - `tests/unit/v460/test_157_regime_features.py tests/unit/v460/test_155_hindsight_review.py tests/unit/v460/test_143_regime_utilization.py tests/unit/v460/test_fill_quality.py tests/unit/v460/test_retrain_hot_reload.py`: `422 passed, 5 warnings in 9.38s`
+## 524# skip_gate context split / canonical import follow-up
+- `scripts/v460/lib/skip_gate_evaluator.py`
+  - `_SkipFillRecordContext` を追加
+  - `_make_skip_fill_record(...)` / `_set_early_skip_result(...)` は
+    local context object + canonical extra payload を受ける構造に整理
+  - これにより Phase 3 の残りは「v460 実行文脈の FillRecord 最終組立」へさらに絞れた
+- `tests/unit/v460/test_168_low_vol_offset_boost.py`
+  - `FastFillDefense` / `regime_detector` import を canonical path に変更
+- `tests/unit/v460/test_ob_recorder.py`
+  - `FastFillDefense` import を canonical path に変更
+- `tests/unit/v460/test_regime_detector.py`
+  - `regime_detector` import を canonical path に変更
+- セルフレビュー
+  - `skip_gate_evaluator` は shared 化しすぎず、local value object で境界を締めたのがよかった
+  - functional test 側の canonical import 収束も継続できており、Phase 4 の残りはさらに限定的
+- focused:
+  - `tests/unit/v460/test_skip_gate_v3.py tests/unit/v460/test_514_skip_gate_runtime_migration.py tests/unit/v460/test_516_skip_gate_result_fields_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_ob_recorder.py tests/unit/v460/test_regime_detector.py`: `147 passed in 4.83s`
+  - `tests/unit/v460/test_enricher_skip_gate.py -k 'RawLoadCache or save_load_roundtrip or as_mode_save_load'`: `7 passed, 65 deselected in 2.25s`

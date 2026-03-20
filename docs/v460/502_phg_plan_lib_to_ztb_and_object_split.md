@@ -443,6 +443,10 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
  - `maker_price` 側でも pure finalization を `ztb.trading.pricing.price_finalization` へ抽出済み
    - spread cross fallback は canonical helper
    - stateful stage orchestration と logging 文脈だけを script 側へ残す形に進んでいる
+ - `skip_gate_evaluator` 側では `_SkipFillRecordContext` を導入し、
+   local な v460 実行文脈の core fields と canonical extra payload の境界を固定した
+   - 次に残るのは `FillRecord` 最終組立そのもの
+   - ここは script ownership を維持したまま締める方針でよい
 
 ## テスト方針
 

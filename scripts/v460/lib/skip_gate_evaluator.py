@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import logging
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
@@ -53,6 +54,23 @@ if TYPE_CHECKING:
     from ztb.metrics.fill_quality import FillRecord
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class _SkipFillRecordContext:
+    """v460-specific core fields for skip FillRecord assembly."""
+
+    cycle_id: str
+    timestamp: float
+    side: str
+    order_price: float
+    order_quantity: float
+    cancel_reason: str
+    spread_at_order: float | None
+    spread_offset_ratio: float
+    run_id: str
+    git_sha: str | None
+    regime_value: str | None
 
 
 class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
@@ -208,32 +226,22 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
     @staticmethod
     def _make_skip_fill_record(
         *,
-        cycle_id: str,
-        timestamp: float,
-        side: str,
-        order_price: float,
-        order_quantity: float,
-        cancel_reason: str,
-        spread_at_order: float | None,
-        spread_offset_ratio: float,
-        run_id: str,
-        git_sha: str | None,
-        regime: str | None,
+        context: _SkipFillRecordContext,
         extra_fields: SkipFillRecordExtraFields,
     ) -> "FillRecord":
         """skip 系の early return 用 FillRecord を共通生成."""
         return build_skip_fill_record(
-            cycle_id=cycle_id,
-            timestamp=timestamp,
-            side=side,
-            order_price=order_price,
-            order_quantity=order_quantity,
-            cancel_reason=cancel_reason,
-            run_id=run_id,
-            git_sha=git_sha,
-            spread_at_order=spread_at_order,
-            spread_offset_ratio=spread_offset_ratio,
-            regime=regime,
+            cycle_id=context.cycle_id,
+            timestamp=context.timestamp,
+            side=context.side,
+            order_price=context.order_price,
+            order_quantity=context.order_quantity,
+            cancel_reason=context.cancel_reason,
+            run_id=context.run_id,
+            git_sha=context.git_sha,
+            spread_at_order=context.spread_at_order,
+            spread_offset_ratio=context.spread_offset_ratio,
+            regime=context.regime_value,
             skip_gate_skipped=extra_fields.skip_gate_skipped,
             skip_gate_score=extra_fields.skip_gate_score,
             skip_gate_reason=extra_fields.skip_gate_reason,
@@ -309,20 +317,10 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         self,
         result: SkipGateResult,
         *,
-        cycle_id: str,
-        timestamp: float,
-        side: str,
-        order_price: float,
-        order_quantity: float,
-        cancel_reason: str,
-        spread_at_order: float | None,
-        spread_offset_ratio: float,
+        context: _SkipFillRecordContext,
         score: float,
         reason: str,
         model_used: str,
-        run_id: str,
-        git_sha: str | None,
-        regime_value: str | None,
         last_imbalance: float | None,
         last_bid_depth: float | None,
         last_ask_depth: float | None,
@@ -364,17 +362,7 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             price_velocity_bps=price_velocity_bps,
         )
         result.early_return_record = self._make_skip_fill_record(
-            cycle_id=cycle_id,
-            timestamp=timestamp,
-            side=side,
-            order_price=order_price,
-            order_quantity=order_quantity,
-            cancel_reason=cancel_reason,
-            spread_at_order=spread_at_order,
-            spread_offset_ratio=spread_offset_ratio,
-            run_id=run_id,
-            git_sha=git_sha,
-            regime=regime_value,
+            context=context,
             extra_fields=extra_fields,
         )
 
@@ -459,12 +447,7 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             and (regime_value is None or regime_value == "unknown")
         ):
             event_ts = time.time()
-            logger.info(
-                f"[skip_gate] SKIP: sell in unknown regime "
-                f"(124# rule_skip_unknown_sell)"
-            )
-            self._set_early_skip_result(
-                result,
+            early_context = _SkipFillRecordContext(
                 cycle_id=cycle_id,
                 timestamp=event_ts,
                 side=side,
@@ -473,12 +456,20 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                 cancel_reason=CR.SKIP_GATE_RULE_UNKNOWN_SELL,
                 spread_at_order=spread_at_order,
                 spread_offset_ratio=effective_offset_ratio,
-                score=0.0,
-                reason="rule_skip_unknown_sell",
-                model_used="rule",
                 run_id=run_id,
                 git_sha=git_sha,
                 regime_value=regime_value,
+            )
+            logger.info(
+                f"[skip_gate] SKIP: sell in unknown regime "
+                f"(124# rule_skip_unknown_sell)"
+            )
+            self._set_early_skip_result(
+                result,
+                context=early_context,
+                score=0.0,
+                reason="rule_skip_unknown_sell",
+                model_used="rule",
                 last_imbalance=last_imbalance,
                 last_bid_depth=last_bid_depth,
                 last_ask_depth=last_ask_depth,
@@ -646,8 +637,7 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                         f"{'>' if _velocity_sell_triggered else '<'} {_vel_th}bps "
                         f"(165# AS-R1 {_reason})"
                     )
-                    self._set_early_skip_result(
-                        result,
+                    early_context = _SkipFillRecordContext(
                         cycle_id=cycle_id,
                         timestamp=market_ts,
                         side=side,
@@ -656,12 +646,16 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                         cancel_reason=_cancel,
                         spread_at_order=spread_at_order,
                         spread_offset_ratio=effective_offset_ratio,
-                        score=_pv60,
-                        reason=_reason,
-                        model_used="rule",
                         run_id=run_id,
                         git_sha=git_sha,
                         regime_value=regime_value,
+                    )
+                    self._set_early_skip_result(
+                        result,
+                        context=early_context,
+                        score=_pv60,
+                        reason=_reason,
+                        model_used="rule",
                         last_imbalance=last_imbalance,
                         last_bid_depth=last_bid_depth,
                         last_ask_depth=last_ask_depth,
@@ -742,8 +736,7 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                     f"(score={result.score:.3f}, reason={result.reason}, "
                     f"model={result.model_used}, features={decision.features_used})"
                 )
-                self._set_early_skip_result(
-                    result,
+                early_context = _SkipFillRecordContext(
                     cycle_id=cycle_id,
                     timestamp=market_ts,
                     side=side,
@@ -752,12 +745,16 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                     cancel_reason="skip_gate",
                     spread_at_order=spread_at_order,
                     spread_offset_ratio=effective_offset_ratio,
-                    score=result.score,
-                    reason=result.reason,
-                    model_used=result.model_used,
                     run_id=run_id,
                     git_sha=git_sha,
                     regime_value=regime_value,
+                )
+                self._set_early_skip_result(
+                    result,
+                    context=early_context,
+                    score=result.score,
+                    reason=result.reason,
+                    model_used=result.model_used,
                     last_imbalance=last_imbalance,
                     last_bid_depth=last_bid_depth,
                     last_ask_depth=last_ask_depth,

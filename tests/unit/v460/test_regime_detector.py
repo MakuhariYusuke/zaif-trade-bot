@@ -21,13 +21,6 @@ import pytest
 from scripts.v460.lib.adaptation_engine import AdaptationEngine
 from scripts.v460.lib.lock_manager import LockManager
 from scripts.v460.lib.ob_utils import depth_volume, extract_price, extract_size
-from scripts.v460.lib.regime_detector import (
-    FillTestRegime,
-    FillTestRegimeDetector,
-    RegimeConfig,
-    RegimeResult,
-    WelfordOnlineVar,
-)
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from scripts.v460.lib.time_filter import TimeFilter
 from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
@@ -41,6 +34,13 @@ from tests.unit.v460._fill_test_source import (
 from ztb.metrics.fill_quality import FillRecord, filter_clean_records
 from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+from ztb.trading.signal.regime.regime_detector import (
+    FillTestRegime,
+    FillTestRegimeDetector,
+    RegimeConfig,
+    RegimeResult,
+    WelfordOnlineVar,
+)
 
 @lru_cache(maxsize=None)
 def _maker_price_source() -> str:

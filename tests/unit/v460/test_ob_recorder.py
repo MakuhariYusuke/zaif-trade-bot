@@ -15,12 +15,12 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from scripts.v460.lib.ob_recorder import OBRecorder
 from scripts.v460.ml.feature_enricher import _find_nearest_ob, load_raw_orderbook
 from ztb.trading.live.exchanges.base.broker_interfaces import OrderBookSnapshot
+from ztb.trading.risk.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 
 
 # ===== OBRecorder テスト =====

@@ -12,9 +12,9 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig as FillConfig
-from scripts.v460.lib.fast_fill_defense import FastFillDefense
 from scripts.v460.lib.maker_price import MakerPriceCalculator
-from scripts.v460.lib.regime_detector import (
+from ztb.trading.risk.fast_fill_defense import FastFillDefense
+from ztb.trading.signal.regime.regime_detector import (
     FillTestRegime,
     FillTestRegimeDetector,
     RegimeResult,

@@ -5946,3 +5946,9 @@ python scripts/unified_trainer.py \
 - `tests/unit/v460/test_143_regime_utilization.py` の `regime_detector` import を canonical path に変更
 - `tests/unit/v460/test_fill_quality.py` の `FastFillDefense` import を canonical path に変更
 - `tests/unit/v460/test_retrain_hot_reload.py` の `lot_sizer` import を canonical path に変更
+## 524# skip_gate context split / canonical test import follow-up
+- `scripts/v460/lib/skip_gate_evaluator.py` に `_SkipFillRecordContext` を追加し、early skip 系の core context を local value object として分離
+- `_make_skip_fill_record(...)` / `_set_early_skip_result(...)` は context object + canonical extra payload を受ける形に整理し、Phase 3 の最終境界を見通しやすくした
+- `tests/unit/v460/test_168_low_vol_offset_boost.py` の `FastFillDefense` / `regime_detector` import を canonical path に変更
+- `tests/unit/v460/test_ob_recorder.py` の `FastFillDefense` import を canonical path に変更
+- `tests/unit/v460/test_regime_detector.py` の `regime_detector` import を canonical path に変更

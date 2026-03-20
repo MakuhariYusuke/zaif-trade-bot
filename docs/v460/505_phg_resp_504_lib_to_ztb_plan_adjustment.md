@@ -329,3 +329,27 @@ script 側は wrapper を残して source/契約テスト互換を保つ方針�
 - detector / FFD / config 文脈
 
 は無理に `ztb` へ上げずに済む。
+
+### 15. `skip_gate_evaluator` は local value object で締める
+
+`skip_gate_evaluator` の終盤は shared helper を増やすより、
+
+- v460 固有 core context
+- canonical extra payload
+
+を明示的に分けたほうが安全だった。
+
+そのため、
+
+- local `_SkipFillRecordContext`
+- canonical `SkipFillRecordExtraFields`
+
+の 2 層とし、
+`FillRecord` 最終組立自体は script ownership に残す方針へ寄せている。
+
+これで残る責務は
+
+- final builder call
+- event/logger/run_id/git_sha の実行文脈
+
+にかなり限定された。
