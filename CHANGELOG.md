@@ -19,6 +19,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `test_262_protocol_cancel_recheck.py`
 - `test_512_stale_order_policy_migration.py`
 
+## 513# maker_price inventory math 抽出 / build_features test setup 圧縮 (2026-03-20)
+
+### Changed
+- **ztb/trading/pricing/inventory_math.py**: inventory counter 更新と imbalance decay の純粋計算を canonical helper 化
+- **maker_price.py**: inventory 更新/decay の重複ロジックを shared helper 再利用へ整理
+- **test_build_features_pipeline.py**: OHLCV 生成を cached helper 化し、real-mode aggregate 入力を `24 -> 20` 分へ縮小
+- **502 / 505 docs**: `maker_price` は state object 化より pure math 抽出から入る方針を詳細設計として追記
+
+### Tests
+- `test_226_loss_boost_decay_inv_skew_state.py`
+- `test_228_inv_decay_hasattr_removal.py`
+- `test_513_inventory_math_migration.py`
+- `test_build_features_pipeline.py`
+
 ## 510# SAC debug helper / UTC timestamp 共通化 (2026-03-20)
 
 ### Changed

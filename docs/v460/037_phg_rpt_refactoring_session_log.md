@@ -7450,3 +7450,16 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - 504/506 系レビューを踏まえた split-first と import 収束の補足を追記
 - `tests/unit/v460/test_512_stale_order_policy_migration.py`
   - canonical policy と旧 export の整合を focused 回帰化
+## 513# maker_price inventory math 抽出 / build_features setup 圧縮
+- `ztb/trading/pricing/inventory_math.py`
+  - inventory counter 更新と imbalance decay の純粋計算を canonical helper 化
+- `scripts/v460/lib/maker_price.py`
+  - inventory 更新/decay を shared helper 再利用へ整理
+- `tests/unit/v460/test_513_inventory_math_migration.py`
+  - canonical helper の挙動を focused 回帰化
+- `tests/unit/v460/test_build_features_pipeline.py`
+  - OHLCV 生成を cached helper 化
+  - real-mode aggregate 入力を `24 -> 20` 分へ縮小
+- `docs/v460/502_phg_plan_lib_to_ztb_and_object_split.md`
+- `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md`
+  - `maker_price` の split-first を pure math 抽出起点で進める詳細設計を追記

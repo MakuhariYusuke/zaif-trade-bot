@@ -318,6 +318,7 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
 - pricing / execution / skip-gate の import 面を `ztb` 側 contract へ寄せ始めた
 - class 本体分割前に、protocol / result type の置き場を固定できた
 - `order_monitor` 周辺は `ztb/trading/execution/stale_order_policy.py` に status 正規化と cancel-recheck result 型を抽出し、split-first の実装パターンを確認できた
+- `maker_price` 周辺は `ztb/trading/pricing/inventory_math.py` に inventory counter / decay の純粋計算を抽出し、state 分割前の薄い canonical 化を開始した
 
 ### Phase 4: import 収束
 
@@ -377,6 +378,8 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
 
 - source inspection と理論テストが広いため、本体分割より先に
   stage 境界と state object を固定するほうが安全
+- まず `inventory_math` のような純粋計算を `ztb` に抜き、
+  `MakerPriceCalculator` 側は wrapper を保つことで test 破壊半径を小さくできる
 
 ## テスト方針
 

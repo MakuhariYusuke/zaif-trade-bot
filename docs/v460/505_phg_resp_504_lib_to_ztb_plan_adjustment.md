@@ -159,3 +159,17 @@ shared contract 抽出後に再点検すると、
 これは `ztb -> scripts` 逆依存なので、
 `ztb.trading.live.exchanges.base.broker_interfaces.OrderBookSnapshot`
 へ寄せて先に閉じるのが妥当だった。
+
+### 7. `maker_price` は state object 化より pure math 抽出から入る
+
+`maker_price.py` は `_inv_buy_count` / `_inv_net_imbalance` / `_inv_last_update_time`
+の内部状態を直接見るテストが多い。
+
+そのため Phase 3 の最初の一手は state object 化ではなく、
+
+- inventory counter 更新
+- inventory imbalance の exp-decay
+
+の pure 計算だけを `ztb.trading.pricing.inventory_math` へ抜く方が安全だった。
+
+これで canonical 化を進めつつ、公開 API と内部属性契約は維持できる。

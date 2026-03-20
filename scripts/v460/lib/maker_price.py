@@ -31,6 +31,10 @@ from scripts.v460.lib.maker_regime_boost import RegimeBoostMixin
 from scripts.v460.lib.maker_risk_guards import RiskGuardsMixin
 from scripts.v460.lib.ob_utils import OrderBookSnapshot
 from ztb.trading.pricing.contracts import ImbalanceResult, MakerPriceResult, OrderbookProvider
+from ztb.trading.pricing.inventory_math import (
+    decayed_inventory_imbalance,
+    update_inventory_counters,
+)
 from ztb.trading.signal.regime.regime_detector import RegimeDetectorLike
 from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
 
@@ -286,18 +290,11 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         Args:
             side: 'buy' or 'sell'  約定した side.
         """
-        # maxlen 到達時の eviction 追跡
-        dq = self._inv_fill_history
-        if len(dq) == dq.maxlen:
-            evicted = dq[0]  # 左端が溢れる
-            if evicted == "buy":
-                self._inv_buy_count -= 1
-        dq.append(side)
-        if side == "buy":
-            self._inv_buy_count += 1
-        n = len(dq)
-        # imbalance: +1 = all buys (long偏重), -1 = all sells (short偏重)
-        self._inv_net_imbalance = (2 * self._inv_buy_count - n) / n
+        self._inv_buy_count, self._inv_net_imbalance = update_inventory_counters(
+            self._inv_fill_history,
+            self._inv_buy_count,
+            side,
+        )
         # 228# C2: fill 時刻を記録 → compute() で time-decay に使用
         self._inv_last_update_time = time.time()
 
@@ -311,14 +308,12 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         在庫リスクは最終約定からの経過時間とともに情報価値が減衰する。
         古い fill 履歴に基づくポジション偏重の信頼性低下を反映。
         """
-        raw = self._inv_net_imbalance
-        tau = self._config.inv_decay_tau_sec
-        if not isinstance(tau, (int, float)) or tau <= 0 or self._inv_last_update_time <= 0:
-            return raw
-        elapsed = now - self._inv_last_update_time
-        if elapsed <= 0:
-            return raw
-        return raw * math.exp(-elapsed / tau)
+        return decayed_inventory_imbalance(
+            self._inv_net_imbalance,
+            last_update_time=self._inv_last_update_time,
+            tau_sec=self._config.inv_decay_tau_sec,
+            now=now,
+        )
 
     @property
     def inv_net_imbalance(self) -> float:

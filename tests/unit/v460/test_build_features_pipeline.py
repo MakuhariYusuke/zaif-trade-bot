@@ -8,6 +8,7 @@ MarketDataCollector.aggregate_to_1min → add_microstructure_features → V460_F
 from __future__ import annotations
 
 import sys
+from functools import lru_cache
 from pathlib import Path
 from unittest.mock import patch
 
@@ -30,7 +31,8 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 # =====================================================================
 
 
-def _make_ohlcv(n: int = 200) -> pd.DataFrame:
+@lru_cache(maxsize=8)
+def _cached_ohlcv(n: int = 200) -> pd.DataFrame:
     """テスト用 OHLCV DataFrame."""
     rng = np.random.RandomState(42)
     close = 15_000_000.0 + np.cumsum(rng.randn(n) * 1000)
@@ -45,6 +47,10 @@ def _make_ohlcv(n: int = 200) -> pd.DataFrame:
         "close": close,
         "volume": volume,
     })
+
+
+def _make_ohlcv(n: int = 200) -> pd.DataFrame:
+    return _cached_ohlcv(n).copy(deep=True)
 
 
 _PROXY_DEFAULT_ROWS = 36
@@ -208,8 +214,8 @@ def _aggregate_raw_records(
         return MarketDataCollector.aggregate_to_1min(ob_path, tr_path, output_path=None)
 
 
-_REAL_MODE_AGG_MINUTES = 24
-_REAL_MODE_AGG_SLICE_ROWS = 24
+_REAL_MODE_AGG_MINUTES = 20
+_REAL_MODE_AGG_SLICE_ROWS = 20
 
 
 @pytest.fixture(scope="module")
