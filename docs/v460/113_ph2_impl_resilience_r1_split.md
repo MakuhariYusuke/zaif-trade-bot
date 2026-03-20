@@ -282,9 +282,9 @@ class _PnlMeasurement:
 |---|------|------|--------|
 | R1 | `run_single_cycle` 分割 | ✅ **完了** | **113#** |
 | R2 | `BPS_FACTOR` 定数化 | ✅ 完了 | 106# |
-| R3 | SkipGate テスト不足 | ❌ 後日 | — |
+| R3 | SkipGate テスト不足 | ✅ 後続で大幅補強 | session037 |
 | R4 | ドキュメント命名違反 28件 | ❌ 後日 | — |
-| R5 | lib → ztb 移動 | ❌ 後日 (v461) | — |
+| R5 | lib → ztb 移動 | ✅ 主要部分前倒し | session037 |
 | R6 | utils 70+ ファイル分割 | ❌ 後日 | — |
 | R7 | config/configs 重複整理 | ❌ 後日 | — |
 | R8 | `# type: ignore` 解消 | ✅ 部分実施 (1/3) | 106# |
@@ -305,3 +305,26 @@ class _PnlMeasurement:
 | 通知 | GatesToAlerts / DiscordNotifier | ❌ 未着手 |
 | 監視 | watch_1m | ❌ 未着手 (HealthMonitor で部分カバー) |
 | データ | DataValidation / MemoryCache | ❌ 未着手 |
+
+## 2026-03-21 補遺
+
+113# 時点では `R3` / `R5` を deferred としていたが、その後の session037 で次が前倒しされた。
+
+- `R3`:
+  - `SkipGate` の runtime helper
+  - result metadata
+  - FillRecord extra payload
+  - final FillRecord context/builder
+  まで migration test / focused test を補強
+- `R5`:
+  - `cancel_reasons`
+  - `param_adapter`
+  - `lot_sizer`
+  - `fast_fill_defense`
+  - `sac_common`
+  - `regime_detector`
+  - `bayesian_regime_filter`
+  を canonical 化
+
+このため、113# の deferred 表現は「当時の状況」としては妥当だが、
+現時点の進捗としては更新が必要な段階に入っている。

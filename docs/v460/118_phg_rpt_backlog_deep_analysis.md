@@ -524,12 +524,12 @@ ph3 進入前の修正が必須。
 |---|------|---------|--------|------|
 | R3 | SkipGate warm_start 単体テスト | — | LOW | テストカバレッジ |
 | R4 | ドキュメント命名違反 28 件 | — | LOW | phX/type 欠落 |
-| R5 | lib → ztb 移動 (4 モジュール) | — | v461 | fast_fill, param_adapter 等 |
+| R5 | lib → ztb 移動 (4 モジュール) | — | ✅ session037 で主要前倒し | `cancel_reasons` / `param_adapter` / `lot_sizer` / `fast_fill_defense` / `sac_common` / `regime_detector` / `bayesian_regime_filter` まで canonical 化済み |
 | R6 | utils 70+ ファイル分割 | — | v461 | God package |
 | R7 | config/ vs configs/ 整理 | — | LOW | 重複ディレクトリ |
 | R8 | `# type: ignore` 残 2 箇所 | — | N/A | 正当判定→維持 |
 | Tier-3 | RiskRuleEngine, Reconciliation | ~2000 行 | ph5 | 未着手 |
-| DUP3 | UnifiedTrainer 2835 行 | — | v461+ | God Object |
+| DUP3 | UnifiedTrainer 2835 行 | — | v461+ 維持 | God Object。`lib -> ztb` と違い、現時点では前倒し対象にしない |
 
 **考察**: これらは ph2 Gate 判定に影響しないため、急ぐ必要はない。
 ただし、**R3 (SkipGate テスト) は SkipGate 改修作業の前提**として
@@ -821,7 +821,7 @@ fill_test 再起動 (A1-A4)
 |----|------|------|--------|-----------|
 | E1 | 106# | run_fill_test.py God Object | ✅ 完了 (121#) | — |
 | E2 | 106# | ドキュメント命名違反 28 件 | LOW | 棚上げ |
-| E3 | 106# | lib → ztb 移動 | v461 | 棚上げ |
+| E3 | 106# | lib → ztb 移動 | ✅ session037 で主要前倒し | 502#/505# と実装進捗へ追随要 |
 | E4 | 106# | utils 70+ ファイル分割 | v461 | 棚上げ |
 | E5 | 106# | config/ vs configs/ 整理 | LOW | 棚上げ |
 | E6 | 013# | SimBroker リネーム | LOW | 棚上げ |
@@ -1041,7 +1041,7 @@ Step 5: 評価・デプロイ
 | G1-1 | 🚨 Critical | F4 PnL Gate Type II Error: mean が負でも「有意でない」だけで PASS | `F4d_pnl_mean_floor` チェック追加。soft WATCH (-0.10bps) + hard FAIL (-0.50bps) 二段階。gate_result に WATCH 状態追加 | `fill_quality.py` |
 | G1-2 | 🚨 Critical | MC テスト Flaky リスク (seed 未固定) | `np.random.seed()` を全 MC テストに追加 | `test_gate_judgment.py` |
 | G1-3 | ⚠️ Important | warm_start アサーション不足 (quantile 数値未検証) | `pytest.approx(0.555)` / `pytest.approx(0.600)` で厳密検証 | `test_skip_gate_d8.py` |
-| G1-4 | ⚠️ Important | skip_gate.py が scripts/ にある (アーキテクチャ違反) | TODO 追記 + E11 として追跡。fill_test 非稼働時 (ph3-pre) に移動予定。import 20+ 箇所変更のため慎重対応 | `skip_gate.py` |
+| G1-4 | ⚠️ Important | skip_gate.py が scripts/ にある (アーキテクチャ違反) | その後 canonical `ztb.ml.skip_gate` への収束を前倒し。shim 契約を除く production/test import は大幅に移行済み | `skip_gate.py` |
 | G1-5 | ⚠️ Important | vg_and_trend.py のログパースが脆い (regex + plain text) | TODO 追記 + E12 として追跡。JSONL 構造化ログへの移行を推奨 | `vg_and_trend.py` |
 | G1-6 | 💡 Nice | run_gate_check.py と gate_judgment.py の G1.1 重複 | run_g1_1 に deprecated 注釈を追加。gate_judgment.py を推奨 | `run_gate_check.py` |
 
@@ -1049,9 +1049,29 @@ Step 5: 評価・デプロイ
 
 | ID | 項目 | 分類 | ステータス |
 |----|------|------|----------|
-| E11 | skip_gate.py → ztb/models/ 移動 | 技術負債 | ph3-pre |
+| E11 | skip_gate.py → canonical path 収束 | 技術負債 | session037 で大幅前進。残りは shim を残す箇所中心 |
 | E12 | VG イベントの JSONL 構造化ログ出力 | 技術負債 | ph3-pre |
 | E13 | MC CVaR Binding 化検討 (informational → 必須条件) | リスク管理 | ph5 |
+
+## 2026-03-21 補遺
+
+118# 時点の `v461` / `ph3-pre` 扱いのうち、少なくとも次はその後の実装で前倒しされた。
+
+- `R5 / E3`:
+  - `lib -> ztb` 移行は主要部分が完了
+- `G1-4 / E11`:
+  - `skip_gate.py` は canonical `ztb.ml.skip_gate` への import 収束が大きく前進
+  - 完全に shim を消す段階ではないが、「未着手の構想」ではなくなっている
+
+一方で、次は依然として future 扱いが妥当:
+
+- `R6` utils 70+ ファイル分割
+- `DUP3` UnifiedTrainer God Object
+- `5.2` event-driven cycle
+
+このため 118# は、全部を一括で「古い」と見るのではなく、
+`lib -> ztb` / `skip_gate` は更新対象、`UnifiedTrainer` / event-driven は将来維持、
+と分けて読むのが適切である。
 
 ### G3. レビュー質問への回答
 

@@ -109,6 +109,25 @@ trending レジームの interval=60s に対し、sell worst case (75s timeout +
 が 90s の場合、次サイクル開始が遅延する。ただし `run_single_cycle` は await される
 ため overlap ではなく throughput 低下のみ。ドキュメント化で完了とする。
 
+## 2026-03-21 補遺
+
+420# 以後、可観測性については追加の前進があった。
+
+- event log 共通メタ:
+  - `timestamp_epoch`
+  - `utc_day`
+  - `utc_hour`
+- `cycle_revenue_context` event 追加
+- fill test exit/event への `memory_diagnostics` 出力追加
+- `cross_venue_hint` の event log 可観測性追加
+
+このため、420# の「先送り事項」は実質的には次の 2 件にかなり絞られている。
+
+1. `sell hour boost vs ceiling` の実データ分析
+2. `trending cycle overrun` の扱い整理
+
+観測基盤そのものは、当時よりだいぶ前に進んでいる。
+
 ---
 
 ## §4 テスト

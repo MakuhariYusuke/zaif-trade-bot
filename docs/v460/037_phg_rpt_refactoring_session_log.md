@@ -7906,3 +7906,24 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md`
   - `次の着手順` を履歴節として `当時の次の着手順` に変更
   - 2026-03-21 時点の `現在の残課題` を新設し、当時の計画と現在の状態を切り分けた
+## 537# deferred-doc carry-forward audit
+- `docs/v460/113_ph2_impl_resilience_r1_split.md`
+  - `R3 SkipGate テスト不足`
+  - `R5 lib -> ztb 移動`
+  の deferred 記述を現状進捗に追随し、補遺を追加
+- `docs/v460/118_phg_rpt_backlog_deep_analysis.md`
+  - `R5/E3 lib -> ztb`
+  - `G1-4/E11 skip_gate`
+  の stale な deferred 表現を session037 実装進捗へ更新
+- `docs/v460/168_phg_rpt_comprehensive_improvement_hodl_vs_trading.md`
+  - `skip_gate.py モジュール配置` が「未着手の v461 課題」ではなく、実装前進済みであることを補記
+- `docs/v460/420_ph2_impl_observability_deferred_items.md`
+  - event log メタ / `cycle_revenue_context` / `memory_diagnostics` / `cross_venue_hint` など、その後の observability 前進を追記
+  - 実質的な残 defer を `sell hour boost vs ceiling` と `trending cycle overrun` に整理
+- `docs/v460/514_phg_plan_deferred_docs_refresh_and_carryforward_audit.md`
+  - deferred docs の棚卸し
+  - 更新優先順位
+  - 「当時の判断」と「現在の状態」を両立させる更新ルール
+    を計画書として新設
+- `docs/v460/index.md`
+  - 514# エントリを追加

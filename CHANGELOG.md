@@ -6027,3 +6027,10 @@ python scripts/unified_trainer.py \
 ## 536# finalize 502 505 wording consistency
 - `docs/v460/502_phg_plan_lib_to_ztb_and_object_split.md` の `未着手の本命` を `残る本命` に修正し、実装進捗との整合を取った
 - `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md` の `次の着手順` を `当時の次の着手順` に改め、現時点の `現在の残課題` を別節で明記した
+## 537# deferred-doc carry-forward audit
+- `docs/v460/113_ph2_impl_resilience_r1_split.md` の `R3/R5` deferred 表現を現状進捗に追随し、2026-03-21 補遺を追加
+- `docs/v460/118_phg_rpt_backlog_deep_analysis.md` の `R5/E3` と `skip_gate` 関連 deferred 記述を session037 実装進捗へ追随
+- `docs/v460/168_phg_rpt_comprehensive_improvement_hodl_vs_trading.md` の `skip_gate.py モジュール配置` を `v461` 固定から現状前進済み表現へ更新
+- `docs/v460/420_ph2_impl_observability_deferred_items.md` に 420# 以後の observability 前進状況を補足し、実質的な残 defer が 2 件であることを明記
+- `docs/v460/514_phg_plan_deferred_docs_refresh_and_carryforward_audit.md` を追加し、deferred docs の更新優先順位と維持ルールを整理
+- `docs/v460/index.md` に 514# を追加

@@ -540,6 +540,7 @@
 | 511 | docs | [511_docs_phase_type_prefix_completion.md](511_docs_phase_type_prefix_completion.md) | 504-510 フェーズ・Type 接頭辞補完リネーム + index.md 更新 |
 | 512 | impl | [512_ph2_impl_cross_venue_favorable_tighten_dry_summary.md](512_ph2_impl_cross_venue_favorable_tighten_dry_summary.md) | cross-venue favorable-side tighten + DRY microprice + 周期サマリ統合 |
 | 513 | audit | [513_ph2_audit_dormant_mechanisms.md](513_ph2_audit_dormant_mechanisms.md) | 実装済み機構の活用度監査 + SAD/MCB YAML化: SAD/PPG/MCB がデッドコード |
+| 514 | plan | [514_phg_plan_deferred_docs_refresh_and_carryforward_audit.md](514_phg_plan_deferred_docs_refresh_and_carryforward_audit.md) | deferred docs 棚卸し: v461/後日表現の現状追随方針と更新優先順位 |
 
 ---
 
