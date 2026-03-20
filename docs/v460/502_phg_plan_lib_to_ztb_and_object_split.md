@@ -447,6 +447,9 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
    local な v460 実行文脈の core fields と canonical extra payload の境界を固定した
    - 次に残るのは `FillRecord` 最終組立そのもの
    - ここは script ownership を維持したまま締める方針でよい
+ - 直近では local `_build_skip_fill_record_context(...)` も導入し、
+   early skip 系 3 経路の context 構築重複を除去した
+   - Phase 3 の残りはほぼ最終 builder ownership のみ
 
 ## テスト方針
 

@@ -353,3 +353,11 @@ script 側は wrapper を残して source/契約テスト互換を保つ方針�
 - event/logger/run_id/git_sha の実行文脈
 
 にかなり限定された。
+
+さらに local `_build_skip_fill_record_context(...)` を置くことで、
+
+- unknown regime rule skip
+- velocity rule skip
+- final decision skip
+
+の 3 経路で重複していた context 構築も解消した。

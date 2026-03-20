@@ -7681,3 +7681,12 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - focused:
   - `tests/unit/v460/test_skip_gate_v3.py tests/unit/v460/test_514_skip_gate_runtime_migration.py tests/unit/v460/test_516_skip_gate_result_fields_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_ob_recorder.py tests/unit/v460/test_regime_detector.py`: `147 passed in 4.83s`
   - `tests/unit/v460/test_enricher_skip_gate.py -k 'RawLoadCache or save_load_roundtrip or as_mode_save_load'`: `7 passed, 65 deselected in 2.25s`
+## 525# skip_gate context builder cleanup
+- `scripts/v460/lib/skip_gate_evaluator.py`
+  - `_build_skip_fill_record_context(...)` を追加し、unknown-regime skip / velocity rule skip / final decision skip での context 構築重複を除去
+  - final decision skip の `cancel_reason` を literal ではなく `CR.SKIP_GATE` に統一
+- セルフレビュー
+  - shared helper を増やさず、local builder で Phase 3 の最後のノイズを掃除できた
+  - cancel reason の SSOT も維持できている
+- focused:
+  - `tests/unit/v460/test_skip_gate_v3.py tests/unit/v460/test_514_skip_gate_runtime_migration.py tests/unit/v460/test_516_skip_gate_result_fields_migration.py`: `22 passed in 2.30s`

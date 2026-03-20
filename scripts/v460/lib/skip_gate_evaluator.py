@@ -258,6 +258,36 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         )
 
     @staticmethod
+    def _build_skip_fill_record_context(
+        *,
+        cycle_id: str,
+        timestamp: float,
+        side: str,
+        order_price: float,
+        order_quantity: float,
+        cancel_reason: str,
+        spread_at_order: float | None,
+        spread_offset_ratio: float,
+        run_id: str,
+        git_sha: str | None,
+        regime_value: str | None,
+    ) -> _SkipFillRecordContext:
+        """Build the v460-specific core context for early skip FillRecord output."""
+        return _SkipFillRecordContext(
+            cycle_id=cycle_id,
+            timestamp=timestamp,
+            side=side,
+            order_price=order_price,
+            order_quantity=order_quantity,
+            cancel_reason=cancel_reason,
+            spread_at_order=spread_at_order,
+            spread_offset_ratio=spread_offset_ratio,
+            run_id=run_id,
+            git_sha=git_sha,
+            regime_value=regime_value,
+        )
+
+    @staticmethod
     def _assign_result_fields(
         result: SkipGateResult,
         *,
@@ -447,7 +477,7 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             and (regime_value is None or regime_value == "unknown")
         ):
             event_ts = time.time()
-            early_context = _SkipFillRecordContext(
+            early_context = self._build_skip_fill_record_context(
                 cycle_id=cycle_id,
                 timestamp=event_ts,
                 side=side,
@@ -637,7 +667,7 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                         f"{'>' if _velocity_sell_triggered else '<'} {_vel_th}bps "
                         f"(165# AS-R1 {_reason})"
                     )
-                    early_context = _SkipFillRecordContext(
+                    early_context = self._build_skip_fill_record_context(
                         cycle_id=cycle_id,
                         timestamp=market_ts,
                         side=side,
@@ -736,13 +766,13 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                     f"(score={result.score:.3f}, reason={result.reason}, "
                     f"model={result.model_used}, features={decision.features_used})"
                 )
-                early_context = _SkipFillRecordContext(
+                early_context = self._build_skip_fill_record_context(
                     cycle_id=cycle_id,
                     timestamp=market_ts,
                     side=side,
                     order_price=order_price,
                     order_quantity=current_lot,
-                    cancel_reason="skip_gate",
+                    cancel_reason=CR.SKIP_GATE,
                     spread_at_order=spread_at_order,
                     spread_offset_ratio=effective_offset_ratio,
                     run_id=run_id,

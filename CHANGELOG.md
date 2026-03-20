@@ -5952,3 +5952,6 @@ python scripts/unified_trainer.py \
 - `tests/unit/v460/test_168_low_vol_offset_boost.py` の `FastFillDefense` / `regime_detector` import を canonical path に変更
 - `tests/unit/v460/test_ob_recorder.py` の `FastFillDefense` import を canonical path に変更
 - `tests/unit/v460/test_regime_detector.py` の `regime_detector` import を canonical path に変更
+## 525# skip_gate context builder cleanup
+- `scripts/v460/lib/skip_gate_evaluator.py` に `_build_skip_fill_record_context(...)` を追加し、early skip 文脈の構築重複を解消
+- final decision skip の `cancel_reason` literal を `CR.SKIP_GATE` に統一し、cancel reason SSOT を維持
