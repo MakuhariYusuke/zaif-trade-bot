@@ -31,6 +31,7 @@ from scripts.v460.lib.maker_risk_guards import RiskGuardsMixin
 from scripts.v460.lib.ob_utils import OrderBookSnapshot
 from ztb.trading.pricing.contracts import ImbalanceResult, MakerPriceResult, OrderbookProvider
 from ztb.trading.pricing.boost_math import decayed_loss_boost_multiplier
+from ztb.trading.pricing.offset_amount import compute_offset_jpy
 from ztb.trading.pricing.inventory_math import (
     decayed_inventory_imbalance,
     update_inventory_counters,
@@ -768,7 +769,11 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
                 max_ratio=self._effective_max_ratio(side),
             )
             if _applied_mult != 1.0:
-                offset = max(cfg.min_offset_jpy, spread * effective_offset_ratio)
+                offset = compute_offset_jpy(
+                    spread=spread,
+                    effective_offset_ratio=effective_offset_ratio,
+                    min_offset_jpy=cfg.min_offset_jpy,
+                )
         return effective_offset_ratio, offset
 
     async def compute(
@@ -1037,7 +1042,11 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         if _stage_tracking:
             _stages["loss_boost"] = effective_offset_ratio
 
-        offset = max(cfg.min_offset_jpy, spread * effective_offset_ratio)
+        offset = compute_offset_jpy(
+            spread=spread,
+            effective_offset_ratio=effective_offset_ratio,
+            min_offset_jpy=cfg.min_offset_jpy,
+        )
 
         # 260# P2-2: FastFillDefense boost をパイプラインステージとして抽出
         effective_offset_ratio, offset = self._apply_ffd_boost(
@@ -1059,7 +1068,11 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
                 f"> ceiling {_ceil:.4f} — clamped"
             )
             effective_offset_ratio = _ceil
-            offset = max(cfg.min_offset_jpy, spread * effective_offset_ratio)
+            offset = compute_offset_jpy(
+                spread=spread,
+                effective_offset_ratio=effective_offset_ratio,
+                min_offset_jpy=cfg.min_offset_jpy,
+            )
             if _stage_tracking:
                 _stages["ceiling"] = effective_offset_ratio
 

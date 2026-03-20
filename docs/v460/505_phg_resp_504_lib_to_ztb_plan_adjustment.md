@@ -383,6 +383,14 @@ shim 契約テストだけを legacy path 側へ残す方向を継続してい�
 
 まで pure helper を `ztb.trading.pricing` 側へ寄せられている。
 
+ここに加えて、offset 金額の純計算
+
+- `max(min_offset_jpy, spread * effective_offset_ratio)`
+
+も `ztb.trading.pricing.offset_amount` へ寄せられることが確認できた。
+これは小さい helper だが、`FFD boost`、通常 offset、ceiling clamp 後の再計算で
+同じ式を使っていたため、Phase 3 の終盤では十分 DRY 効果がある。
+
 加えて `skip_gate_evaluator` の velocity hard skip では、
 cancel reason literal をやめて canonical
 `CR.SKIP_GATE_RULE_VELOCITY_SELL/BUY` へ統一した。

@@ -5,6 +5,7 @@ import math
 import pytest
 
 from ztb.trading.pricing.boost_math import decayed_loss_boost_multiplier
+from ztb.trading.pricing.offset_amount import compute_offset_jpy
 from ztb.trading.pricing.offset_math import (
     discounted_sell_offset_floor,
     effective_max_ratio,
@@ -136,3 +137,10 @@ class TestPricingOffsetMathMigration:
         assert result.mode == "invalid"
         assert result.updated_ratio == pytest.approx(0.05)
         assert result.spread_bps is None
+
+    def test_compute_offset_jpy_respects_minimum(self) -> None:
+        assert compute_offset_jpy(
+            spread=100.0,
+            effective_offset_ratio=0.001,
+            min_offset_jpy=5.0,
+        ) == pytest.approx(5.0)

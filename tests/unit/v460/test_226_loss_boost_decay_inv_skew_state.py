@@ -16,7 +16,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
+from ztb.trading.risk.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator as MakerPrice
 from scripts.v460.lib.micro_circuit_breaker import MicroCircuitBreaker

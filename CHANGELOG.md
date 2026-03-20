@@ -5976,3 +5976,14 @@ python scripts/unified_trainer.py \
 - `tests/unit/v460/test_skip_gate_v3.py` に velocity hard skip の canonical cancel reason 回帰を追加
 - `tests/unit/v460/test_enricher_skip_gate.py` の real-data sample guard を `50 / 64 / 88` へ圧縮
 - `tests/unit/v460/test_088_features.py` / `test_264_kelly_criterion.py` / `test_266_market_theory_protocol.py` を canonical import に変更
+## 530# offset amount helper extraction / broader phase4 test sweep
+- `ztb/trading/pricing/offset_amount.py` を追加し、`compute_offset_jpy(...)` を canonical helper 化
+- `scripts/v460/lib/maker_price.py` の offset 再計算 (`FFD boost` / base offset / ceiling clamp) を shared helper に統一
+- `tests/unit/v460/test_517_pricing_offset_math_migration.py` に offset amount helper の focused 回帰を追加
+- `tests/unit/v460/test_405_offset_ceiling_pipeline.py`
+- `tests/unit/v460/test_227_ranging_obi_velocity_ema_import_fix.py`
+- `tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py`
+- `tests/unit/v460/test_259_as_vol_ratio_adaptation_hasattr.py`
+- `tests/unit/v460/test_228_inv_decay_hasattr_removal.py`
+- `tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py`
+  を canonical import に変更

@@ -7762,3 +7762,31 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_skip_gate_v3.py`: `45 passed in 3.17s`
   - `tests/unit/v460/test_088_features.py tests/unit/v460/test_264_kelly_criterion.py tests/unit/v460/test_266_market_theory_protocol.py tests/unit/v460/test_sac_retrain_scheduler.py -k 'compute_side_adaptation or Kelly or Kyle or DynamicTau or EstimateSigma or training_timeout_raises'`: `44 passed, 87 deselected in 5.92s`
   - `tests/unit/v460/test_enricher_skip_gate.py -k 'Test058Integration or RawLoadCache or save_load_roundtrip or as_mode_save_load or test_train_skip_gate_real'`: `9 passed, 153 deselected in 4.06s`
+## 530# offset amount helper extraction / broader phase4 test sweep
+- `ztb/trading/pricing/offset_amount.py`
+  - `compute_offset_jpy(...)` を追加
+- `scripts/v460/lib/maker_price.py`
+  - `offset = max(min_offset_jpy, spread * ratio)` の重複を helper に統一
+  - `FFD boost`
+  - base offset 算出
+  - ceiling clamp 後の再計算
+    の 3 箇所で同じ純計算を shared helper に寄せた
+- `tests/unit/v460/test_517_pricing_offset_math_migration.py`
+  - offset amount helper の focused 回帰を追加
+- `tests/unit/v460/test_405_offset_ceiling_pipeline.py`
+  - `FastFillDefense` / `FillTestRegime` import を canonical 化
+- `tests/unit/v460/test_227_ranging_obi_velocity_ema_import_fix.py`
+  - `FastFillDefense` / `FillTestRegime` import を canonical 化
+- `tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py`
+  - `FastFillDefense` / `FillTestRegime*` import を canonical 化
+- `tests/unit/v460/test_259_as_vol_ratio_adaptation_hasattr.py`
+  - `FastFillDefense` / `FillTestRegime*` import を canonical 化
+- `tests/unit/v460/test_228_inv_decay_hasattr_removal.py`
+  - `FastFillDefense` / `FillTestRegime` import を canonical 化
+- `tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py`
+  - `FastFillDefense` import を canonical 化
+- セルフレビュー
+  - `compute_offset_jpy(...)` は地味だが、`maker_price` の stage 間で繰り返される純計算を 1 箇所に寄せられた
+  - test-side canonical import は shim 契約以外でかなり減ってきており、Phase 4 の残りはさらに限定的
+- focused:
+  - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_405_offset_ceiling_pipeline.py tests/unit/v460/test_227_ranging_obi_velocity_ema_import_fix.py tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py tests/unit/v460/test_259_as_vol_ratio_adaptation_hasattr.py tests/unit/v460/test_228_inv_decay_hasattr_removal.py tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py`: `150 passed in 4.14s`

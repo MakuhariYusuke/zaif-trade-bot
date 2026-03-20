@@ -452,6 +452,9 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
    - Phase 3 の残りはほぼ最終 builder ownership のみ
  - `maker_price` では spread guard に続き、spread-adaptive にも invalid mid/spread guard を追加した
    - まず防御を固めてから stage orchestration を抜く順序が安全
+ - さらに offset 金額の純計算も `ztb.trading.pricing.offset_amount` へ抽出済み
+   - `max(min_offset_jpy, spread * ratio)` のような小さな pure 計算でも、
+     stage 間で重複するなら先に canonical 化しておく価値がある
  - Phase 4 の functional test 側 canonical import 収束も継続しており、
    sizing / regime の通常 unit test は `ztb` 参照へかなり寄ってきた
  - `maker_price` では loss boost decay multiplier も `ztb.trading.pricing.boost_math` へ抽出済み
