@@ -25,9 +25,9 @@ from scripts.v460.lib.adaptation_engine import (
     _LossCapBalanceLike,
 )
 from scripts.v460.lib.fill_config import FillTestConfig
-from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.order_monitor import OrderMonitor, _CancelFillCheck
 from tests.unit.v460._fill_test_source import ORDER_MONITOR, read_class_method_source
+from ztb.trading.risk.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 
 _TRY_CANCEL_WITH_FILL_RECHECK_SOURCE = inspect.getsource(
     OrderMonitor._try_cancel_with_fill_recheck

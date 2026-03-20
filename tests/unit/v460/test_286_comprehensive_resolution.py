@@ -21,7 +21,6 @@ from unittest.mock import patch
 import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig
-from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.guard_reason_classifier import classify_guard, GuardCategory
 from scripts.v460.lib.lock_manager import LockConflictError, LockManager, _HAS_PORTALOCKER
 from scripts.v460.lib.maker_price import MakerPriceCalculator
@@ -34,6 +33,7 @@ from tests.unit.v460._fill_test_source import (
 )
 from ztb.metrics.fill_quality import FillRecord, detect_split_brain
 from ztb.risk.sell_dynamic_kill import DynamicKillConfig, DynamicKillManager
+from ztb.trading.risk.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 
 _FILL_TEST_CLI_SOURCE = read_source_text(FILL_TEST_CLI)
 _FILL_TEST_CLI_TREE = parse_source_tree(FILL_TEST_CLI)

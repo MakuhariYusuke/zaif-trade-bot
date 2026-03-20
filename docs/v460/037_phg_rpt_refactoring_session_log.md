@@ -7790,3 +7790,27 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - test-side canonical import は shim 契約以外でかなり減ってきており、Phase 4 の残りはさらに限定的
 - focused:
   - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_405_offset_ceiling_pipeline.py tests/unit/v460/test_227_ranging_obi_velocity_ema_import_fix.py tests/unit/v460/test_258_as_reservation_vpin_continuous_protocol.py tests/unit/v460/test_259_as_vol_ratio_adaptation_hasattr.py tests/unit/v460/test_228_inv_decay_hasattr_removal.py tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py`: `150 passed in 4.14s`
+## 531# skip-gate FillRecord ownership tighten / follow-up canonical tests
+- `ztb/ml/skip_gate_fill_record.py`
+  - `SkipFillRecordContext`
+  - `build_skip_fill_record_from_context(...)`
+    を追加し、skip gate の final FillRecord ownership を canonical helper 側まで押し上げた
+- `scripts/v460/lib/skip_gate_evaluator.py`
+  - local `_make_skip_fill_record(...)` は wrapper を維持しつつ canonical helper に委譲
+  - source/inspection 系 test を壊さずに Phase 3 の境界をさらに締めた
+- `tests/unit/v460/test_516_skip_gate_result_fields_migration.py`
+  - context + extra payload から `FillRecord` が正しく組み上がる focused 回帰を追加
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `test_training_timeout_raises` の block wait を `0.06s` に短縮
+- `tests/unit/v460/test_202_log_improvements.py`
+- `tests/unit/v460/test_173_code_review_fixes.py`
+- `tests/unit/v460/test_239_feasible_quote.py`
+- `tests/unit/v460/test_262_protocol_cancel_recheck.py`
+- `tests/unit/v460/test_286_comprehensive_resolution.py`
+  - canonical import へ追随
+- セルフレビュー
+  - `skip_gate_evaluator` は local に残すものが `run context / FillRecord 最終呼び出し文脈` へかなり限定された
+  - Phase 4 も shim 契約を残す必要のない test についてはかなり収束が進んだ
+- focused:
+  - `tests/unit/v460/test_516_skip_gate_result_fields_migration.py tests/unit/v460/test_skip_gate_v3.py tests/unit/v460/test_202_log_improvements.py tests/unit/v460/test_173_code_review_fixes.py tests/unit/v460/test_239_feasible_quote.py tests/unit/v460/test_262_protocol_cancel_recheck.py tests/unit/v460/test_286_comprehensive_resolution.py`: `147 passed in 8.37s`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py -k 'training_timeout_raises or retrain_once_cleans_up_on_error or post_cycle_memory_check_runs'`: `3 passed, 38 deselected in 5.07s`

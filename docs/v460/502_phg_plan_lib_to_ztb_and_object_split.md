@@ -450,6 +450,11 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
  - 直近では local `_build_skip_fill_record_context(...)` も導入し、
    early skip 系 3 経路の context 構築重複を除去した
    - Phase 3 の残りはほぼ最終 builder ownership のみ
+ - さらに `ztb.ml.skip_gate_fill_record` を追加し、
+   `SkipFillRecordContext` / `build_skip_fill_record_from_context(...)` を
+   canonical helper として外出しした
+   - local wrapper は残しているが、`FillRecord` 組立の ownership はほぼ canonical 側へ寄った
+   - script 側に残るのは run context / logger / v460 固有制御の文脈が中心
  - `maker_price` では spread guard に続き、spread-adaptive にも invalid mid/spread guard を追加した
    - まず防御を固めてから stage orchestration を抜く順序が安全
  - さらに offset 金額の純計算も `ztb.trading.pricing.offset_amount` へ抽出済み

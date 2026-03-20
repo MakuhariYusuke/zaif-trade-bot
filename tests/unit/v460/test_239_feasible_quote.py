@@ -18,7 +18,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from scripts.v460.lib.fast_fill_defense import FastFillDefense
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
 from scripts.v460.lib.maker_price import (
@@ -32,6 +31,7 @@ from tests.unit.v460._fill_test_source import (
     read_class_method_source,
     read_source_text,
 )
+from ztb.trading.risk.fast_fill_defense import FastFillDefense
 
 _MAKE_PRICE_ERROR_SKIP_SIG = inspect.signature(FillCycleExecutorMixin._make_price_error_skip)
 

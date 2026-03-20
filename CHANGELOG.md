@@ -5987,3 +5987,14 @@ python scripts/unified_trainer.py \
 - `tests/unit/v460/test_228_inv_decay_hasattr_removal.py`
 - `tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py`
   を canonical import に変更
+## 531# skip-gate FillRecord ownership tighten / follow-up canonical tests
+- `ztb/ml/skip_gate_fill_record.py` を追加し、`SkipFillRecordContext` と `build_skip_fill_record_from_context(...)` を canonical helper 化
+- `scripts/v460/lib/skip_gate_evaluator.py` の `_make_skip_fill_record(...)` は local wrapper を維持しつつ canonical helper に委譲
+- `tests/unit/v460/test_516_skip_gate_result_fields_migration.py` に skip FillRecord context builder の focused 回帰を追加
+- `tests/unit/v460/test_sac_retrain_scheduler.py::test_training_timeout_raises` の block wait をさらに短縮
+- `tests/unit/v460/test_202_log_improvements.py`
+- `tests/unit/v460/test_173_code_review_fixes.py`
+- `tests/unit/v460/test_239_feasible_quote.py`
+- `tests/unit/v460/test_262_protocol_cancel_recheck.py`
+- `tests/unit/v460/test_286_comprehensive_resolution.py`
+  を canonical import に変更

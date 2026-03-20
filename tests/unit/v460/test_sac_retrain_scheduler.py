@@ -1009,7 +1009,7 @@ class TestCrashResilience495:
         block = threading.Event()
 
         def slow_learn(**kwargs: object) -> None:
-            block.wait(timeout=0.1)
+            block.wait(timeout=0.06)
 
         mock_model.learn.side_effect = slow_learn
 
@@ -1021,7 +1021,7 @@ class TestCrashResilience495:
             # タイムアウトを極短に設定
             patch(
                 "scripts.v460.ml.sac_retrain_scheduler._TRAINING_TIMEOUT_SEC",
-                0.05,
+                0.03,
             ),
         ):
             result = retrain_once(cfg)

@@ -15,13 +15,13 @@ from scripts.v460.analysis.hindsight_filter import (
     _DIRECT_CATEGORY_BY_REASON,
     _REGIME_GUARD_REASONS,
 )
-from scripts.v460.lib import cancel_reasons as CR
-from scripts.v460.lib.cancel_reasons import CancelReason
 from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
 from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from ztb.risk.sell_dynamic_kill import DynamicKillConfig
+import ztb.trading.common.cancel_reasons as CR
+from ztb.trading.common.cancel_reasons import CancelReason
 
 _COMPUTE_IMBALANCE_SIG = inspect.signature(MakerPriceCalculator.compute_imbalance)
 _GET_MID_PRICE_SIG = inspect.signature(MakerPriceCalculator.get_mid_price)

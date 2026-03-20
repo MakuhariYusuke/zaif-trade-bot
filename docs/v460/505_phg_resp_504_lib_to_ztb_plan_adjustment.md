@@ -403,3 +403,18 @@ SSOT を守るうえで重要である。
 - `FillRecord` 最終 builder ownership
 
 へさらに限定された。
+
+その後、`ztb.ml.skip_gate_fill_record` に
+
+- `SkipFillRecordContext`
+- `build_skip_fill_record_from_context(...)`
+
+を追加し、`skip_gate_evaluator` の local wrapper は維持しながらも
+最終 `FillRecord` ownership を canonical helper 側へ寄せた。
+
+これで Phase 3 の残論点は、厳密には
+
+- `maker_price` の stateful stage orchestration
+- `skip_gate_evaluator` の run context / logger / v460 固有制御
+
+へさらに絞り込まれている。

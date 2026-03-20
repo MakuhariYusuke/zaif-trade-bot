@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import pytest
 
-from scripts.v460.lib.fast_fill_defense import FastFillDefense
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from tests.unit.v460._yaml_test_helpers import parse_yaml_mapping
+from ztb.trading.risk.fast_fill_defense import FastFillDefense
 
 
 # ============================================================

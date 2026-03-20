@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
@@ -32,6 +31,10 @@ from scripts.v460.lib.hour_rules import resolve_hour_float, utc_hour_from_timest
 from scripts.v460.lib.skip_gate_ev_weighted import SkipGateEvWeightedMixin
 from scripts.v460.lib.skip_gate_model_loader import SkipGateModelLoaderMixin
 from ztb.ml.skip_gate_runtime import get_trade_field, normalize_recent_trades
+from ztb.ml.skip_gate_fill_record import (
+    SkipFillRecordContext as _SkipFillRecordContext,
+    build_skip_fill_record_from_context,
+)
 from ztb.ml.skip_gate_result_fields import (
     SkipFillRecordExtraFields,
     build_skip_decision_result_fields,
@@ -46,7 +49,6 @@ from ztb.ml.skip_gate_contracts import (
     SkipGateLike as _SkipGateLike,
 )
 # ファイルの SHA256 ハッシュを算出 (126# hot-reload 用)
-from ztb.metrics.fill_quality import build_skip_fill_record
 from ztb.trading.live.exchanges.base.broker_interfaces import OrderBookSnapshot
 from ztb.utils.run_manifest import compute_file_hash
 
@@ -54,23 +56,6 @@ if TYPE_CHECKING:
     from ztb.metrics.fill_quality import FillRecord
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class _SkipFillRecordContext:
-    """v460-specific core fields for skip FillRecord assembly."""
-
-    cycle_id: str
-    timestamp: float
-    side: str
-    order_price: float
-    order_quantity: float
-    cancel_reason: str
-    spread_at_order: float | None
-    spread_offset_ratio: float
-    run_id: str
-    git_sha: str | None
-    regime_value: str | None
 
 
 class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
@@ -230,31 +215,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         extra_fields: SkipFillRecordExtraFields,
     ) -> "FillRecord":
         """skip 系の early return 用 FillRecord を共通生成."""
-        return build_skip_fill_record(
-            cycle_id=context.cycle_id,
-            timestamp=context.timestamp,
-            side=context.side,
-            order_price=context.order_price,
-            order_quantity=context.order_quantity,
-            cancel_reason=context.cancel_reason,
-            run_id=context.run_id,
-            git_sha=context.git_sha,
-            spread_at_order=context.spread_at_order,
-            spread_offset_ratio=context.spread_offset_ratio,
-            regime=context.regime_value,
-            skip_gate_skipped=extra_fields.skip_gate_skipped,
-            skip_gate_score=extra_fields.skip_gate_score,
-            skip_gate_reason=extra_fields.skip_gate_reason,
-            skip_gate_model_used=extra_fields.skip_gate_model_used,
-            skip_gate_as_prob=extra_fields.skip_gate_as_prob,
-            skip_gate_threshold_used=extra_fields.skip_gate_threshold_used,
-            skip_gate_hour_offset=extra_fields.skip_gate_hour_offset,
-            orderbook_imbalance=extra_fields.orderbook_imbalance,
-            bid_depth_total=extra_fields.bid_depth_total,
-            ask_depth_total=extra_fields.ask_depth_total,
-            price_velocity_bps=extra_fields.price_velocity_bps,
-            ev_score_pretrade=extra_fields.ev_score_pretrade,
-            decision_path=extra_fields.decision_path,
+        return build_skip_fill_record_from_context(
+            context=context,
+            extra_fields=extra_fields,
         )
 
     @staticmethod

@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ztb.metrics.fill_quality import FillRecord
+from ztb.ml.skip_gate_fill_record import (
+    SkipFillRecordContext,
+    build_skip_fill_record_from_context,
+)
 from ztb.ml.skip_gate_result_fields import (
     SkipDecisionResultFields,
     SkipFillRecordExtraFields,
@@ -126,3 +131,40 @@ class TestSkipGateResultFieldsMigration:
             ev_score_pretrade=None,
             decision_path=None,
         )
+
+    def test_build_skip_fill_record_from_context(self) -> None:
+        context = SkipFillRecordContext(
+            cycle_id="c1",
+            timestamp=123.0,
+            side="buy",
+            order_price=10.0,
+            order_quantity=0.01,
+            cancel_reason="skip_gate",
+            spread_at_order=5.0,
+            spread_offset_ratio=0.03,
+            run_id="run-x",
+            git_sha="abc123",
+            regime_value="ranging",
+        )
+        extra = build_skip_fill_record_extra_fields(
+            score=-0.5,
+            reason="rule_skip_unknown_sell",
+            model_used="rule",
+            orderbook_imbalance=0.1,
+            bid_depth_total=5.0,
+            ask_depth_total=6.0,
+            as_prob=0.2,
+            threshold_used=0.0,
+            hour_offset=0.1,
+            price_velocity_bps=2.5,
+            ev_score_pretrade=-0.3,
+            decision_path="rule",
+        )
+
+        record = build_skip_fill_record_from_context(context=context, extra_fields=extra)
+
+        assert isinstance(record, FillRecord)
+        assert record.cycle_id == "c1"
+        assert record.cancel_reason == "skip_gate"
+        assert record.skip_gate_model_used == "rule"
+        assert record.price_velocity_bps == 2.5
