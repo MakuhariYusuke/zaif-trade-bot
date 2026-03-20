@@ -5905,3 +5905,8 @@ python scripts/unified_trainer.py \
 - `scripts/v460/lib/maker_price.py` は wrapper を維持したまま shared pricing helper に委譲し、Phase 3 の split-first を前進
 - `tests/unit/v460/test_517_pricing_offset_math_migration.py` を追加し、canonical pricing helper の契約を focused 回帰化
 - `tests/unit/v460/test_retrain_hot_reload.py` の insufficient-samples / E2E / balance-forced / fallback 系を `TemporaryDirectory()` から `tmp_path` に寄せて保守性を改善
+## 518# sell floor math extraction / run_fill_test phase4 follow-up
+- `ztb/trading/pricing/offset_math.py` に `discounted_sell_offset_floor(...)` を追加し、動的 sell floor の純ロジックも canonical helper 化
+- `scripts/v460/lib/maker_price.py` の `_effective_sell_offset_floor()` は wrapper を維持しつつ shared helper に委譲
+- `scripts/v460/run_fill_test.py` の `FastFillDefense` / `FastFillDefenseConfig` 参照を canonical `ztb.trading.risk.fast_fill_defense` に統一
+- `tests/unit/v460/test_517_pricing_offset_math_migration.py` に sell floor helper の focused 回帰を追加

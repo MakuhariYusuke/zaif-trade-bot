@@ -36,6 +36,7 @@ from ztb.trading.pricing.inventory_math import (
     update_inventory_counters,
 )
 from ztb.trading.pricing.offset_math import (
+    discounted_sell_offset_floor as _discounted_sell_offset_floor,
     effective_max_ratio as _resolve_effective_max_ratio,
     scale_offset_ratio as _scale_offset_ratio_impl,
 )
@@ -124,6 +125,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         "_inv_buy_count",            # 226# P5: O(1) incremental buy counter
         "_inv_last_update_time",     # 228# C2: last fill timestamp for time-decay
         "_last_inv_skew_factor",     # 168# last applied inv_skew factor
+        "_last_vg_reason",           # 510# VG boost reason (velocity/vpin/both)
         "_last_ob_snapshot",
         "_last_spread",              # 197# cached spread for Gate pre-check
         "_last_spread_time",         # 210# M5: staleness tracking
@@ -170,6 +172,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         self._last_vg_velocity_bps: float | None = None
         self._last_vg_vpin: float | None = None
         self._last_vg_boost_factor: float | None = None
+        self._last_vg_reason: str | None = None  # 510# VG boost reason
         self._cross_venue_lead_lag_hint: CrossVenueLeadLagHint | None = None
         self._cross_venue_lead_lag_vetoed: bool = False
         self._cross_venue_lead_lag_veto_reason: str | None = None
@@ -402,6 +405,16 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         """158# P2-6: 直近 VG 適用 boost 倍率 (1.0=未発動)."""
         return self._last_vg_boost_factor
 
+    @property
+    def last_vg_reason(self) -> str | None:
+        """510# VG boost 理由 (velocity/vpin/both の粒度)."""
+        return self._last_vg_reason
+
+    @property
+    def last_inv_skew_factor(self) -> float:
+        """510# 直近の inventory skew factor."""
+        return self._last_inv_skew_factor
+
     def _effective_sell_offset_floor(self) -> float:
         """173# 動的 sell_offset_floor — 在庫 buy 偏重時にフロアを割引.
 
@@ -415,16 +428,19 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         bypass_th = cfg.sell_guard_inv_bypass_threshold
         # 228# C2: time-decay を適用した imbalance で判定
         _imb = self._decayed_imbalance(time.time())
-        if bypass_th > 0 and _imb >= bypass_th:
-            discounted = base_floor * cfg.sell_offset_floor_inv_discount
-            if discounted < base_floor:
-                logger.debug(
-                    f"[sell_guard] Dynamic floor discount: "
-                    f"inv_imb={_imb:.3f} >= {bypass_th} "
-                    f"→ floor {base_floor:.4f} → {discounted:.4f}"
-                )
-            return discounted
-        return base_floor
+        discounted = _discounted_sell_offset_floor(
+            base_floor=base_floor,
+            bypass_threshold=bypass_th,
+            inventory_imbalance=_imb,
+            discount_ratio=cfg.sell_offset_floor_inv_discount,
+        )
+        if discounted < base_floor:
+            logger.debug(
+                f"[sell_guard] Dynamic floor discount: "
+                f"inv_imb={_imb:.3f} >= {bypass_th} "
+                f"→ floor {base_floor:.4f} → {discounted:.4f}"
+            )
+        return discounted
 
     # ------------------------------------------------------------------
     # 板不均衡 (054# S1)

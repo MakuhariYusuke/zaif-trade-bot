@@ -389,6 +389,8 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
   `MakerPriceCalculator` 側は wrapper を保つことで test 破壊半径を小さくできる
 - 同じ理由で `offset_math` も先に canonical 化し、
   `maker_price.py` 側は method wrapper を残して旧 inspection 契約を守るのが安全
+- `dynamic sell floor` も `config + imbalance` だけで決まる純ロジックなので、
+  state object 化より前に `offset_math` へ抜いてよい
 
 #### `skip_gate_evaluator.py`
 

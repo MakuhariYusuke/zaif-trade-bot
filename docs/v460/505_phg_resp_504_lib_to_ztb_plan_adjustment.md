@@ -237,3 +237,13 @@ Phase 4 で無理に上げず、Phase 3 で先に result assembly の詳細設�
 - final result assembly
 
 は config 文脈や stage 順序に依存するため、まだ `maker_price.py` 側に残すほうが安全。
+
+ただし `effective_sell_offset_floor` の中でも
+
+- base floor
+- bypass threshold
+- inventory imbalance
+- discount ratio
+
+だけで決まる割引計算そのものは純ロジックなので、
+これは次の一手として `ztb.trading.pricing.offset_math` へ抜くのが妥当だった。

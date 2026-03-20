@@ -44,4 +44,23 @@ def scale_offset_ratio(
     return updated, applied
 
 
-__all__ = ["effective_max_ratio", "scale_offset_ratio"]
+def discounted_sell_offset_floor(
+    *,
+    base_floor: float,
+    bypass_threshold: float,
+    inventory_imbalance: float,
+    discount_ratio: float,
+) -> float:
+    """Resolve the dynamic sell offset floor under inventory skew.
+
+    When inventory is buy-heavy enough, the sell floor is discounted so that
+    inventory-reduction logic is not blocked by a static lower bound.
+    """
+    if base_floor <= 0:
+        return 0.0
+    if bypass_threshold > 0 and inventory_imbalance >= bypass_threshold:
+        return base_floor * discount_ratio
+    return base_floor
+
+
+__all__ = ["discounted_sell_offset_floor", "effective_max_ratio", "scale_offset_ratio"]

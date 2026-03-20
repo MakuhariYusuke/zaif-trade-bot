@@ -28,10 +28,10 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 from ztb.data.trades_recorder import TradesRecorder
 from ztb.risk.circuit_breakers import KillSwitch
 from ztb.trading.live.exchanges.base.broker_interfaces import IBroker
+from ztb.trading.risk.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.adaptation_engine import AdaptationEngine
 from scripts.v460.lib.balance_checker import BalanceChecker
 from scripts.v460.lib.batch_persistence import BatchPersistence
-from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.fill_config import (  # 216# §7 re-export for tests
     SkipGateResult as _SkipGateResult,
@@ -579,7 +579,6 @@ class FillTestRunner(
 
     def _rebuild_fast_fill_defense(self) -> None:
         """fast_fill_defense 設定変更時に再構築."""
-        from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
         # 226# hot-reload: 旧 boost 状態を保存
         _old_state = (
             self._fast_fill_defense.export_state()

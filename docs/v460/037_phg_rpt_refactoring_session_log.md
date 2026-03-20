@@ -7542,3 +7542,17 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - focused:
   - `tests/unit/v460/test_retrain_hot_reload.py -k 'insufficient_samples or insufficient_new_samples or retrain_deploy_and_hot_reload or balance_forced_records_excluded or no_balance_column_no_error or prev_load_error_recorded or fallback_uses_7day_window'`: `8 passed`
   - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_513_inventory_math_migration.py tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py tests/unit/v460/test_228_inv_decay_hasattr_removal.py`: `53 passed`
+## 518# dynamic sell floor 抽出 / run_fill_test fast-fill canonical import
+- `ztb/trading/pricing/offset_math.py`
+  - `discounted_sell_offset_floor(...)` を追加し、動的 sell floor の純ロジックを canonical helper 化
+- `scripts/v460/lib/maker_price.py`
+  - `_effective_sell_offset_floor()` は wrapper を維持しつつ shared helper に委譲
+- `scripts/v460/run_fill_test.py`
+  - `FastFillDefense` / `FastFillDefenseConfig` の import を canonical `ztb.trading.risk.fast_fill_defense` に統一
+- `tests/unit/v460/test_517_pricing_offset_math_migration.py`
+  - sell floor helper の focused 回帰を追加
+- セルフレビュー
+  - `effective_sell_offset_floor` は config と imbalance だけを pure helper に落とせるので、Phase 3 を締める粒度として妥当
+  - `run_fill_test` の FFD import は canonical 化しても orchestrator 責務を侵さず、Phase 4 の広い import 収束として安全
+- focused:
+  - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_173_code_review_fixes.py tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py tests/unit/v460/test_228_inv_decay_hasattr_removal.py tests/unit/v460/test_145_structural_fixes.py -k 'sell_offset_floor or offset_math or FillTestRunner or inv_decay or loss_boost'`: `54 passed`

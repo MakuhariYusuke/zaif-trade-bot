@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from ztb.trading.pricing.offset_math import effective_max_ratio, scale_offset_ratio
+from ztb.trading.pricing.offset_math import (
+    discounted_sell_offset_floor,
+    effective_max_ratio,
+    scale_offset_ratio,
+)
 
 
 class TestPricingOffsetMathMigration:
@@ -35,3 +39,19 @@ class TestPricingOffsetMathMigration:
         updated, applied = scale_offset_ratio(0.10, 0.0)
         assert updated == 0.10
         assert applied == 1.0
+
+    def test_discounted_sell_offset_floor_returns_discounted_value(self) -> None:
+        assert discounted_sell_offset_floor(
+            base_floor=0.20,
+            bypass_threshold=0.30,
+            inventory_imbalance=0.45,
+            discount_ratio=0.5,
+        ) == pytest.approx(0.10)
+
+    def test_discounted_sell_offset_floor_keeps_base_below_threshold(self) -> None:
+        assert discounted_sell_offset_floor(
+            base_floor=0.20,
+            bypass_threshold=0.30,
+            inventory_imbalance=0.10,
+            discount_ratio=0.5,
+        ) == pytest.approx(0.20)
