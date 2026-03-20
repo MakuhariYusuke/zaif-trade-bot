@@ -379,8 +379,15 @@ shim 契約テストだけを legacy path 側へ残す方向を継続してい�
 
 - spread guard finalization
 - loss boost decay multiplier
+- spread adaptive pure math
 
 まで pure helper を `ztb.trading.pricing` 側へ寄せられている。
+
+加えて `skip_gate_evaluator` の velocity hard skip では、
+cancel reason literal をやめて canonical
+`CR.SKIP_GATE_RULE_VELOCITY_SELL/BUY` へ統一した。
+これは小さい変更だが、cancel reason をキーにした集計や後続分析の
+SSOT を守るうえで重要である。
 
 このため、残る Phase 3 論点は
 

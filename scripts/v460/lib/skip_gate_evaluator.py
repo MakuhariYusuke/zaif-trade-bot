@@ -661,7 +661,11 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                 else:
                     # 旧モード: hard skip
                     _reason = f"rule_velocity_{_vel_label}_skip"
-                    _cancel = f"skip_gate_rule_velocity_{_vel_label}"
+                    _cancel = (
+                        CR.SKIP_GATE_RULE_VELOCITY_SELL
+                        if _velocity_sell_triggered
+                        else CR.SKIP_GATE_RULE_VELOCITY_BUY
+                    )
                     logger.info(
                         f"[skip_gate] SKIP: {_vel_label} velocity {_pv60:.2f}bps "
                         f"{'>' if _velocity_sell_triggered else '<'} {_vel_th}bps "

@@ -7734,3 +7734,31 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - focused:
   - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py tests/unit/v460/test_260_compute_extract_regime_split.py`: `73 passed in 2.56s`
   - `tests/unit/v460/test_sac_retrain_scheduler.py -k 'training_timeout_raises or single_iteration_then_shutdown or trigger_exception_does_not_kill_loop or record_result_exception_does_not_kill_loop or retrain_once_cleans_up_on_error'`: `5 passed, 36 deselected in 3.28s`
+## 529# spread adaptive helper extraction / canonical import sweep follow-up
+- `ztb/trading/pricing/spread_adaptive.py`
+  - `apply_spread_adaptive_ratio(...)` を追加
+  - invalid / narrow / wide / none の pure 判定を canonical helper 化
+- `scripts/v460/lib/maker_price.py`
+  - `_apply_spread_adaptive(...)` は logging と sell floor 再適用を残し、spread-adaptive の純計算を helper に委譲
+- `scripts/v460/lib/skip_gate_evaluator.py`
+  - velocity hard skip の cancel reason を `CR.SKIP_GATE_RULE_VELOCITY_SELL/BUY` に統一
+- `tests/unit/v460/test_skip_gate_v3.py`
+  - velocity hard skip の canonical cancel reason 回帰を追加
+- `tests/unit/v460/test_517_pricing_offset_math_migration.py`
+  - spread-adaptive helper の narrow/invalid focused 回帰を追加
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - real-data sample guard を `50 / 64 / 88` に圧縮
+- `tests/unit/v460/test_088_features.py`
+  - `param_adapter` import を canonical 化
+- `tests/unit/v460/test_264_kelly_criterion.py`
+  - `lot_sizer` import を canonical 化
+- `tests/unit/v460/test_266_market_theory_protocol.py`
+  - `FastFillDefense` / `FillTestRegime` import を canonical 化
+- セルフレビュー
+  - `maker_price` は stage orchestration を崩さず pure math をさらに抜けた
+  - `skip_gate` は小さいが重要な cancel reason SSOT の揺れを閉じられた
+  - `test_enricher_skip_gate` は実測境界で guard を縮められている
+- focused:
+  - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_skip_gate_v3.py`: `45 passed in 3.17s`
+  - `tests/unit/v460/test_088_features.py tests/unit/v460/test_264_kelly_criterion.py tests/unit/v460/test_266_market_theory_protocol.py tests/unit/v460/test_sac_retrain_scheduler.py -k 'compute_side_adaptation or Kelly or Kyle or DynamicTau or EstimateSigma or training_timeout_raises'`: `44 passed, 87 deselected in 5.92s`
+  - `tests/unit/v460/test_enricher_skip_gate.py -k 'Test058Integration or RawLoadCache or save_load_roundtrip or as_mode_save_load or test_train_skip_gate_real'`: `9 passed, 153 deselected in 4.06s`

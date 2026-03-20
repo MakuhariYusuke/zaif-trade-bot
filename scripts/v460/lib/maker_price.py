@@ -43,6 +43,7 @@ from ztb.trading.pricing.offset_math import (
 from ztb.trading.pricing.price_finalization import (
     finalize_price_with_spread_guard as _finalize_price_with_spread_guard_impl,
 )
+from ztb.trading.pricing.spread_adaptive import apply_spread_adaptive_ratio
 from ztb.trading.risk.fast_fill_defense import FastFillDefense
 from ztb.trading.signal.regime.regime_detector import RegimeDetectorLike
 from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
@@ -649,35 +650,35 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         cfg = self._config
 
         if cfg.spread_adaptive_enabled:
-            if mid_price > 0 and math.isfinite(mid_price) and math.isfinite(spread):
-                spread_bps = spread / mid_price * _BPS_FACTOR
-                if spread_bps < cfg.narrow_spread_bps:
-                    sa_boost = cfg.narrow_spread_boost
-                    if side == "buy" and cfg.narrow_spread_boost_buy is not None:
-                        sa_boost = cfg.narrow_spread_boost_buy
-                    elif side == "sell" and cfg.narrow_spread_boost_sell is not None:
-                        sa_boost = cfg.narrow_spread_boost_sell
-                    effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
-                        effective_offset_ratio,
-                        sa_boost,
-                        max_ratio=self._effective_max_ratio(side),
-                    )
-                    logger.debug(
-                        f"[spread_adaptive] Narrow spread {spread_bps:.1f}bps "
-                        f"({side} boost={_applied_mult:.2f}) "
-                        f"→ offset boosted to {effective_offset_ratio:.4f}"
-                    )
-                elif spread_bps > cfg.wide_spread_bps:
-                    effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
-                        effective_offset_ratio,
-                        cfg.wide_spread_ratio,
-                        min_ratio=cfg.min_offset_ratio,
-                    )
-                    logger.debug(
-                        f"[spread_adaptive] Wide spread {spread_bps:.1f}bps "
-                        f"(mult={_applied_mult:.2f}) → offset reduced to {effective_offset_ratio:.4f}"
-                    )
-            else:
+            adaptive = apply_spread_adaptive_ratio(
+                side=side,
+                spread=spread,
+                mid_price=mid_price,
+                effective_offset_ratio=effective_offset_ratio,
+                narrow_spread_bps=cfg.narrow_spread_bps,
+                narrow_spread_boost=cfg.narrow_spread_boost,
+                narrow_spread_boost_buy=cfg.narrow_spread_boost_buy,
+                narrow_spread_boost_sell=cfg.narrow_spread_boost_sell,
+                wide_spread_bps=cfg.wide_spread_bps,
+                wide_spread_ratio=cfg.wide_spread_ratio,
+                min_ratio=cfg.min_offset_ratio,
+                max_ratio=self._effective_max_ratio(side),
+            )
+            if adaptive.mode == "narrow":
+                effective_offset_ratio = adaptive.updated_ratio
+                logger.debug(
+                    f"[spread_adaptive] Narrow spread {adaptive.spread_bps:.1f}bps "
+                    f"({side} boost={adaptive.applied_multiplier:.2f}) "
+                    f"→ offset boosted to {effective_offset_ratio:.4f}"
+                )
+            elif adaptive.mode == "wide":
+                effective_offset_ratio = adaptive.updated_ratio
+                logger.debug(
+                    f"[spread_adaptive] Wide spread {adaptive.spread_bps:.1f}bps "
+                    f"(mult={adaptive.applied_multiplier:.2f}) "
+                    f"→ offset reduced to {effective_offset_ratio:.4f}"
+                )
+            elif adaptive.mode == "invalid":
                 logger.debug(
                     "[spread_adaptive] skipped due to invalid mid/spread: mid=%r spread=%r",
                     mid_price,

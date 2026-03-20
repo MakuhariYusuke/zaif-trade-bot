@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from scripts.v460.lib.lot_sizer import (
+from ztb.trading.sizing.lot_sizer import (
     KellyEstimate,
     LotSizingConfig,
     clamp_lot,

@@ -480,7 +480,7 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
 
 - `test_enricher_skip_gate.py` の real-data sample は 2026-03-20 時点で
   `20 trainable samples` を満たす最小 tail が `50 rows`
-- current guard は `52 / 72 / 96` とし、境界ぴったりを避けている
+- current guard は `50 / 64 / 88` まで圧縮済みで、fallback 幅だけを残している
 
 ## 当面の着手順
 

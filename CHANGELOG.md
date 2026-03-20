@@ -5968,3 +5968,11 @@ python scripts/unified_trainer.py \
 - `ztb/trading/pricing/boost_math.py` を追加し、`decayed_loss_boost_multiplier(...)` を canonical helper 化
 - `scripts/v460/lib/maker_price.py` の `_apply_loss_boost(...)` は stateful 本体を維持したまま、純粋な減衰倍率計算だけ shared helper に委譲
 - `tests/unit/v460/test_517_pricing_offset_math_migration.py` に decay helper の focused 回帰を追加
+## 529# spread adaptive helper extraction / canonical import sweep follow-up
+- `ztb/trading/pricing/spread_adaptive.py` を追加し、`apply_spread_adaptive_ratio(...)` を canonical helper 化
+- `scripts/v460/lib/maker_price.py` の `_apply_spread_adaptive(...)` は wrapper を維持したまま spread-adaptive の純計算を shared helper に委譲
+- `scripts/v460/lib/skip_gate_evaluator.py` の velocity hard skip cancel reason を `CR.SKIP_GATE_RULE_VELOCITY_SELL/BUY` に統一
+- `tests/unit/v460/test_517_pricing_offset_math_migration.py` に spread-adaptive helper の focused 回帰を追加
+- `tests/unit/v460/test_skip_gate_v3.py` に velocity hard skip の canonical cancel reason 回帰を追加
+- `tests/unit/v460/test_enricher_skip_gate.py` の real-data sample guard を `50 / 64 / 88` へ圧縮
+- `tests/unit/v460/test_088_features.py` / `test_264_kelly_criterion.py` / `test_266_market_theory_protocol.py` を canonical import に変更

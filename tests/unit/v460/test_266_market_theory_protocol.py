@@ -17,14 +17,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
+from ztb.trading.risk.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import (
     MakerPriceCalculator as MakerPrice,
     OrderBookSnapshot as MakerPriceOrderBookSnapshot,
 )
 from scripts.v460.lib.ob_utils import OrderBookSnapshot, best_bid_ask
-from scripts.v460.lib.regime_detector import FillTestRegime
+from ztb.trading.signal.regime.regime_detector import FillTestRegime
 from scripts.v460.lib.skip_gate_evaluator import SkipGateAdapter
 from tests.unit.v460._fill_test_source import (
     FILL_CYCLE_EXECUTOR,

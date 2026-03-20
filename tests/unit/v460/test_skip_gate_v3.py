@@ -23,6 +23,7 @@ from ztb.ml.skip_gate import (
     _BASE_FEATURE_COLS,
     build_features_from_market_state,
 )
+from ztb.trading.common import cancel_reasons as CR
 
 
 # ---------------------------------------------------------------------------
@@ -404,6 +405,57 @@ class TestSkipSellUnknownRegime:
             )
         )
         assert result.skipped is False
+
+    def test_velocity_sell_hard_skip_uses_canonical_cancel_reason(
+        self,
+        config: "FillTestConfig",
+    ) -> None:
+        """velocity hard skip は cancel reason SSOT を使う."""
+        config.sell_velocity_skip_enabled = True
+        config.sell_velocity_skip_threshold_bps = 6.0
+        config.velocity_skip_as_offset_enabled = False
+
+        evaluator = _make_bypassed_evaluator(config)
+        evaluator._skip_gate = SimpleNamespace(
+            config=SkipGateConfig(use_ob_features=False),
+            evaluate=lambda *args, **kwargs: SimpleNamespace(
+                should_skip=False,
+                predicted_pnl_bps=0.0,
+                reason="pass",
+                model_used="primary",
+                as_probability=None,
+                threshold_used=None,
+                features_used=16,
+            ),
+        )
+
+        with patch(
+            "scripts.v460.lib.skip_gate_evaluator.build_features_from_market_state",
+            return_value={"price_velocity_bps": 10.0},
+        ):
+            result = asyncio.run(
+                evaluator.evaluate(
+                    side="sell",
+                    cycle_id="test_003v",
+                    order_price=15000000.0,
+                    spread_at_order=2000.0,
+                    effective_offset_ratio=0.05,
+                    adapter=_AdapterStub(),
+                    symbol="btc_jpy",
+                    current_lot=0.001,
+                    run_id="test_run",
+                    git_sha=None,
+                    regime_value="ranging",
+                    last_imbalance=None,
+                    last_bid_depth=None,
+                    last_ask_depth=None,
+                    imbalance_enabled=False,
+                )
+            )
+
+        assert result.skipped is True
+        assert result.early_return_record is not None
+        assert result.early_return_record.cancel_reason == CR.SKIP_GATE_RULE_VELOCITY_SELL
 
     def test_rule_none_regime_triggers(self, config: "FillTestConfig") -> None:
         """sell + regime_value=None → unknown 扱いでルール発火."""

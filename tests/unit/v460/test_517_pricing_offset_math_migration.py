@@ -11,6 +11,7 @@ from ztb.trading.pricing.offset_math import (
     scale_offset_ratio,
 )
 from ztb.trading.pricing.price_finalization import finalize_price_with_spread_guard
+from ztb.trading.pricing.spread_adaptive import apply_spread_adaptive_ratio
 
 
 class TestPricingOffsetMathMigration:
@@ -97,3 +98,41 @@ class TestPricingOffsetMathMigration:
             elapsed_sec=100.0,
             tau_sec=0.0,
         ) == pytest.approx(1.5)
+
+    def test_spread_adaptive_ratio_narrow_uses_side_specific_boost(self) -> None:
+        result = apply_spread_adaptive_ratio(
+            side="buy",
+            spread=10.0,
+            mid_price=10_000.0,
+            effective_offset_ratio=0.05,
+            narrow_spread_bps=20.0,
+            narrow_spread_boost=1.5,
+            narrow_spread_boost_buy=2.0,
+            narrow_spread_boost_sell=None,
+            wide_spread_bps=50.0,
+            wide_spread_ratio=0.7,
+            min_ratio=0.01,
+            max_ratio=0.30,
+        )
+        assert result.mode == "narrow"
+        assert result.updated_ratio == pytest.approx(0.10)
+        assert result.applied_multiplier == pytest.approx(2.0)
+
+    def test_spread_adaptive_ratio_invalid_mid_is_noop(self) -> None:
+        result = apply_spread_adaptive_ratio(
+            side="sell",
+            spread=10.0,
+            mid_price=0.0,
+            effective_offset_ratio=0.05,
+            narrow_spread_bps=20.0,
+            narrow_spread_boost=1.5,
+            narrow_spread_boost_buy=None,
+            narrow_spread_boost_sell=None,
+            wide_spread_bps=50.0,
+            wide_spread_ratio=0.7,
+            min_ratio=0.01,
+            max_ratio=0.30,
+        )
+        assert result.mode == "invalid"
+        assert result.updated_ratio == pytest.approx(0.05)
+        assert result.spread_bps is None
