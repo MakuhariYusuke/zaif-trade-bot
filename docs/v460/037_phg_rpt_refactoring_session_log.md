@@ -7524,3 +7524,21 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - filtered broad:
   - `5107 passed, 2 skipped, 13 warnings in 44.81s`
   - top hotspot は引き続き `test_enricher_skip_gate` real-data setup と `test_sac_retrain_scheduler` crash/timeout 系
+## 517# pricing offset math 抽出 / retrain hot-reload tempdir 掃除
+- `ztb/trading/pricing/offset_math.py`
+  - `effective_max_ratio(...)`
+  - `scale_offset_ratio(...)`
+  を canonical helper 化
+- `scripts/v460/lib/maker_price.py`
+  - `_effective_max_ratio(...)` / `_scale_offset_ratio(...)` は wrapper を維持しつつ shared helper に委譲
+- `tests/unit/v460/test_517_pricing_offset_math_migration.py`
+  - canonical pricing helper の focused 回帰を追加
+- `tests/unit/v460/test_retrain_hot_reload.py`
+  - insufficient samples / insufficient new samples / E2E / balance forced / previous load error / trades fallback を `tmp_path` 化
+- セルフレビュー
+  - `maker_price` は state object 化へ進まず、まず pure offset math を抜いたのが安全だった
+  - `effective_sell_offset_floor` は config 文脈依存がまだ強いため、今回は file-local のまま維持
+  - `test_enricher_skip_gate` の real-data setup は依然として broad の主因で、次は helper ではなく本体側コストを見に行く段階
+- focused:
+  - `tests/unit/v460/test_retrain_hot_reload.py -k 'insufficient_samples or insufficient_new_samples or retrain_deploy_and_hot_reload or balance_forced_records_excluded or no_balance_column_no_error or prev_load_error_recorded or fallback_uses_7day_window'`: `8 passed`
+  - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_513_inventory_math_migration.py tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py tests/unit/v460/test_228_inv_decay_hasattr_removal.py`: `53 passed`

@@ -35,6 +35,10 @@ from ztb.trading.pricing.inventory_math import (
     decayed_inventory_imbalance,
     update_inventory_counters,
 )
+from ztb.trading.pricing.offset_math import (
+    effective_max_ratio as _resolve_effective_max_ratio,
+    scale_offset_ratio as _scale_offset_ratio_impl,
+)
 from ztb.trading.signal.regime.regime_detector import RegimeDetectorLike
 from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
 
@@ -563,12 +567,12 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         cf. 403# §3, 404# Action 1, 474# P0
         """
         cfg = self._config
-        base = cfg.max_offset_ratio
-        if side == "sell" and cfg.offset_ceiling_ratio_sell is not None:
-            return max(base, cfg.offset_ceiling_ratio_sell)
-        if side == "buy" and cfg.offset_ceiling_ratio_buy is not None:
-            return max(base, cfg.offset_ceiling_ratio_buy)
-        return base
+        return _resolve_effective_max_ratio(
+            side=side,
+            base_ratio=cfg.max_offset_ratio,
+            sell_ceiling_ratio=cfg.offset_ceiling_ratio_sell,
+            buy_ceiling_ratio=cfg.offset_ceiling_ratio_buy,
+        )
 
     @staticmethod
     def _scale_offset_ratio(
@@ -582,18 +586,13 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
 
         誤設定で 0 以下の倍率が来ても ratio を壊さず no-op にする。
         """
-        if effective_offset_ratio <= 0 or multiplier <= 0:
-            return effective_offset_ratio, 1.0
-
-        updated = effective_offset_ratio * multiplier
-        if min_ratio is not None:
-            updated = max(updated, min_ratio)
-        if max_ratio is not None:
-            updated = min(updated, max_ratio)
-        # 330# B1: ゼロ除算ガード — effective_offset_ratio が極小値で
-        # multiplier 適用後の updated が 0 になるケースを安全側に倒す
-        applied = updated / effective_offset_ratio if effective_offset_ratio != 0 else 1.0
-        return updated, applied
+        # 330# B1: helper 側でもゼロ除算ガード込みで倍率を返す。
+        return _scale_offset_ratio_impl(
+            effective_offset_ratio,
+            multiplier,
+            min_ratio=min_ratio,
+            max_ratio=max_ratio,
+        )
 
     @staticmethod
     def _finalize_price_with_spread_guard(

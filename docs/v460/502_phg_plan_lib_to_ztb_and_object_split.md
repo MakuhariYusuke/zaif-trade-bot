@@ -374,6 +374,7 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
 - inventory skew state / update
 - offset pipeline stage の pure helper
 - cross-venue / volatility / microstructure の stage contract
+- `effective_max_ratio(...)` / `scale_offset_ratio(...)` のような offset ratio math
 
 後で残す:
 
@@ -386,6 +387,8 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
   stage 境界と state object を固定するほうが安全
 - まず `inventory_math` のような純粋計算を `ztb` に抜き、
   `MakerPriceCalculator` 側は wrapper を保つことで test 破壊半径を小さくできる
+- 同じ理由で `offset_math` も先に canonical 化し、
+  `maker_price.py` 側は method wrapper を残して旧 inspection 契約を守るのが安全
 
 #### `skip_gate_evaluator.py`
 

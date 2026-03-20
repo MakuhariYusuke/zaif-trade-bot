@@ -726,76 +726,74 @@ class TestRetrainModel:
         assert result["status"] == "skipped"
         assert "no fill_records" in result["reason"]
 
-    def test_skip_when_insufficient_samples(self) -> None:
+    def test_skip_when_insufficient_samples(self, tmp_path: Path) -> None:
         """サンプル不足時はスキップ."""
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            records_dir = Path(tmpdir)
-            records_df = _make_retrain_records_df(
-                5,
-                seed=7,
-                cycle_prefix="test",
-                run_id="test_run",
-            )
+        records_dir = tmp_path
+        records_df = _make_retrain_records_df(
+            5,
+            seed=7,
+            cycle_prefix="test",
+            run_id="test_run",
+        )
 
-            cfg = dict(_DEFAULT_CONFIG)
-            cfg["results_dir"] = str(records_dir)
-            cfg["model_path"] = str(Path(tmpdir) / "nonexistent.pkl")
-            cfg["mode"] = "pnl"
-            cfg["use_ob_features"] = True
-            cfg["min_total_samples"] = 100  # 5 < 100
-            cfg["latest_run_only"] = False
-            cfg["exclude_missing_run_id"] = False
-            with patch(
-                "scripts.v460.ml.retrain_scheduler.load_fill_records",
-                side_effect=lambda *args, **kwargs: records_df.copy(deep=True),
-            ):
-                result = retrain_model(cfg)
-            assert result["status"] == "skipped"
+        cfg = dict(_DEFAULT_CONFIG)
+        cfg["results_dir"] = str(records_dir)
+        cfg["model_path"] = str(tmp_path / "nonexistent.pkl")
+        cfg["mode"] = "pnl"
+        cfg["use_ob_features"] = True
+        cfg["min_total_samples"] = 100  # 5 < 100
+        cfg["latest_run_only"] = False
+        cfg["exclude_missing_run_id"] = False
+        with patch(
+            "scripts.v460.ml.retrain_scheduler.load_fill_records",
+            side_effect=lambda *args, **kwargs: records_df.copy(deep=True),
+        ):
+            result = retrain_model(cfg)
+        assert result["status"] == "skipped"
 
-    def test_skip_when_insufficient_new_samples(self) -> None:
+    def test_skip_when_insufficient_new_samples(self, tmp_path: Path) -> None:
         """新規サンプル不足時はスキップ."""
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            records_dir = Path(tmpdir) / "results"
-            records_dir.mkdir()
-            model_dir = Path(tmpdir) / "models"
-            model_dir.mkdir()
-            records_df = _make_retrain_records_df(
-                10,
-                seed=11,
-                cycle_prefix="test",
-                run_id="test_run",
-            )
+        records_dir = tmp_path / "results"
+        records_dir.mkdir()
+        model_dir = tmp_path / "models"
+        model_dir.mkdir()
+        records_df = _make_retrain_records_df(
+            10,
+            seed=11,
+            cycle_prefix="test",
+            run_id="test_run",
+        )
 
-            # 既存モデルを配置 (n_samples=10 → 新規 0 件)
-            model_path = model_dir / "gate.pkl"
-            gate = _make_picklable_gate(n_samples=10)
-            _save_gate_to(gate, model_path)
+        # 既存モデルを配置 (n_samples=10 → 新規 0 件)
+        model_path = model_dir / "gate.pkl"
+        gate = _make_picklable_gate(n_samples=10)
+        _save_gate_to(gate, model_path)
 
-            cfg = dict(_DEFAULT_CONFIG)
-            cfg["results_dir"] = str(records_dir)
-            cfg["model_path"] = str(model_path)
-            cfg["mode"] = "pnl"
-            cfg["use_ob_features"] = True
-            cfg["min_new_samples"] = 5
-            cfg["min_total_samples"] = 10
-            cfg["bootstrap_min_total_samples"] = 10
-            cfg["bootstrap_min_new_samples"] = 5
-            cfg["latest_run_only"] = False
-            cfg["exclude_missing_run_id"] = False
-            cfg["lgbm_n_estimators"] = 30
-            cfg["enriched_cache_enabled"] = False
-            with patch(
-                "scripts.v460.ml.retrain_scheduler.load_fill_records",
-                side_effect=lambda *args, **kwargs: records_df.copy(deep=True),
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
-                side_effect=_identity_enrich,
-            ):
-                result = retrain_model(cfg)
-            assert result["status"] == "skipped"
-            assert "insufficient new samples" in result.get("reason", "")
+        cfg = dict(_DEFAULT_CONFIG)
+        cfg["results_dir"] = str(records_dir)
+        cfg["model_path"] = str(model_path)
+        cfg["mode"] = "pnl"
+        cfg["use_ob_features"] = True
+        cfg["min_new_samples"] = 5
+        cfg["min_total_samples"] = 10
+        cfg["bootstrap_min_total_samples"] = 10
+        cfg["bootstrap_min_new_samples"] = 5
+        cfg["latest_run_only"] = False
+        cfg["exclude_missing_run_id"] = False
+        cfg["lgbm_n_estimators"] = 30
+        cfg["enriched_cache_enabled"] = False
+        with patch(
+            "scripts.v460.ml.retrain_scheduler.load_fill_records",
+            side_effect=lambda *args, **kwargs: records_df.copy(deep=True),
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
+            side_effect=_identity_enrich,
+        ):
+            result = retrain_model(cfg)
+        assert result["status"] == "skipped"
+        assert "insufficient new samples" in result.get("reason", "")
 
 
 # =====================================================================
@@ -830,100 +828,94 @@ class TestE2ERetrainHotReload:
         ):
             yield
 
-    def test_retrain_deploy_and_hot_reload(self) -> None:
+    def test_retrain_deploy_and_hot_reload(self, tmp_path: Path) -> None:
         """E2E: 十分なデータで retrain → deploy → SkipGateEvaluator が hot-reload."""
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            records_dir = Path(tmpdir) / "results"
-            records_dir.mkdir()
-            model_dir = Path(tmpdir) / "models"
-            model_dir.mkdir()
-            model_path = model_dir / "gate.pkl"
+        records_dir = tmp_path / "results"
+        records_dir.mkdir()
+        model_dir = tmp_path / "models"
+        model_dir.mkdir()
+        model_path = model_dir / "gate.pkl"
 
-            records_df = _make_retrain_records_df(
-                10,
-                seed=42,
-                cycle_prefix="e2e",
-                run_id="e2e_run",
-                regimes=("trending", "ranging", "high_vol"),
-            )
+        records_df = _make_retrain_records_df(
+            10,
+            seed=42,
+            cycle_prefix="e2e",
+            run_id="e2e_run",
+            regimes=("trending", "ranging", "high_vol"),
+        )
 
-            # retrain_model 実行
-            cfg = dict(_DEFAULT_CONFIG)
-            cfg["results_dir"] = str(records_dir)
-            cfg["model_path"] = str(model_path)
-            cfg["mode"] = "pnl"
-            cfg["use_ob_features"] = False  # テスト高速化
-            cfg["min_new_samples"] = 1
-            cfg["min_total_samples"] = 10
-            cfg["quality_gate_enabled"] = False  # E2E テストでは品質ゲート無効
-            cfg["latest_run_only"] = False
-            cfg["exclude_missing_run_id"] = False
-            cfg["lgbm_n_estimators"] = 1
-            cfg["lgbm_max_depth"] = 2
-            cfg["lgbm_num_leaves"] = 4
-            cfg["lgbm_min_child_samples"] = 2
-            cfg["lgbm_subsample"] = 1.0
-            cfg["lgbm_colsample_bytree"] = 1.0
-            cfg["early_stopping_rounds"] = 0
-            cfg["bootstrap_threshold"] = 10
-            cfg["enriched_cache_enabled"] = False
-            cfg["feature_pruning_enabled"] = False
-            cfg["redundancy_pruning_enabled"] = False
-            cfg["warm_start_enabled"] = False
-            cfg["min_deploy_trees"] = 0  # 465#: E2E stub は 1-tree — D1 guard bypass
-            cfg["min_pred_std"] = 0.0    # 465#: E2E stub 用 — D2 guard bypass
+        cfg = dict(_DEFAULT_CONFIG)
+        cfg["results_dir"] = str(records_dir)
+        cfg["model_path"] = str(model_path)
+        cfg["mode"] = "pnl"
+        cfg["use_ob_features"] = False  # テスト高速化
+        cfg["min_new_samples"] = 1
+        cfg["min_total_samples"] = 10
+        cfg["quality_gate_enabled"] = False
+        cfg["latest_run_only"] = False
+        cfg["exclude_missing_run_id"] = False
+        cfg["lgbm_n_estimators"] = 1
+        cfg["lgbm_max_depth"] = 2
+        cfg["lgbm_num_leaves"] = 4
+        cfg["lgbm_min_child_samples"] = 2
+        cfg["lgbm_subsample"] = 1.0
+        cfg["lgbm_colsample_bytree"] = 1.0
+        cfg["early_stopping_rounds"] = 0
+        cfg["bootstrap_threshold"] = 10
+        cfg["enriched_cache_enabled"] = False
+        cfg["feature_pruning_enabled"] = False
+        cfg["redundancy_pruning_enabled"] = False
+        cfg["warm_start_enabled"] = False
+        cfg["min_deploy_trees"] = 0
+        cfg["min_pred_std"] = 0.0
 
-            gate_v1 = _make_picklable_gate(n_samples=10, version="verified")
-            with patch(
-                "scripts.v460.ml.retrain_scheduler.load_fill_records",
-                side_effect=lambda *args, **kwargs: records_df.copy(deep=True),
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
-                side_effect=_identity_enrich,
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler.SkipGate.load",
-                return_value=gate_v1,
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler.SkipGate.save",
-                autospec=True,
-                side_effect=_write_stub_gate_artifact,
-            ):
-                result = retrain_model(cfg)
-            assert result["status"] in ("deployed", "deployed_verified"), f"Expected deployed*, got {result}"
-            assert model_path.exists()
+        gate_v1 = _make_picklable_gate(n_samples=10, version="verified")
+        with patch(
+            "scripts.v460.ml.retrain_scheduler.load_fill_records",
+            side_effect=lambda *args, **kwargs: records_df.copy(deep=True),
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
+            side_effect=_identity_enrich,
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler.SkipGate.load",
+            return_value=gate_v1,
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler.SkipGate.save",
+            autospec=True,
+            side_effect=_write_stub_gate_artifact,
+        ):
+            result = retrain_model(cfg)
+        assert result["status"] in ("deployed", "deployed_verified"), f"Expected deployed*, got {result}"
+        assert model_path.exists()
 
-            # SkipGateEvaluator で hot-reload テスト
-            eval_cfg = _make_skip_gate_eval_config(
-                model_path=str(model_path),
-                results_dir=str(records_dir),
-            )
+        eval_cfg = _make_skip_gate_eval_config(
+            model_path=str(model_path),
+            results_dir=str(records_dir),
+        )
 
-            gate_v2 = _make_picklable_gate(n_samples=45, version="e2e_v2")
-            gate_v2.metadata["retrained"] = True
-            with patch(
-                "scripts.v460.ml.skip_gate.SkipGate.load",
-                side_effect=[gate_v1, gate_v2],
-            ), patch(
-                "scripts.v460.lib.skip_gate_evaluator.SkipGateEvaluator._read_model_hash",
-                side_effect=["a" * 64, "b" * 64],
-            ):
-                evaluator = SkipGateEvaluator(eval_cfg, Path(tmpdir))
-                assert evaluator._skip_gate is not None
-                initial_hash = evaluator._model_file_hash
+        gate_v2 = _make_picklable_gate(n_samples=45, version="e2e_v2")
+        gate_v2.metadata["retrained"] = True
+        with patch(
+            "scripts.v460.ml.skip_gate.SkipGate.load",
+            side_effect=[gate_v1, gate_v2],
+        ), patch(
+            "scripts.v460.lib.skip_gate_evaluator.SkipGateEvaluator._read_model_hash",
+            side_effect=["a" * 64, "b" * 64],
+        ):
+            evaluator = SkipGateEvaluator(eval_cfg, tmp_path)
+            assert evaluator._skip_gate is not None
+            initial_hash = evaluator._model_file_hash
 
-                # hot-reload トリガー (interval リセット)
-                evaluator._last_reload_check = 0
-                with patch.object(evaluator, "_check_and_reload_side_models", return_value=None):
-                    evaluator._check_and_reload_model()
+            evaluator._last_reload_check = 0
+            with patch.object(evaluator, "_check_and_reload_side_models", return_value=None):
+                evaluator._check_and_reload_model()
 
-                # モデルが更新されていること
-                assert evaluator._model_file_hash != initial_hash
-                assert evaluator._skip_gate is not None
-                # retrain されたモデルのメタデータ確認
-                meta = evaluator._skip_gate.metadata  # type: ignore[union-attr]
-                assert meta.get("retrained") is True
-                assert meta.get("n_samples", 0) > 0
+            assert evaluator._model_file_hash != initial_hash
+            assert evaluator._skip_gate is not None
+            meta = evaluator._skip_gate.metadata  # type: ignore[union-attr]
+            assert meta.get("retrained") is True
+            assert meta.get("n_samples", 0) > 0
 
 
 # =====================================================================
@@ -950,92 +942,88 @@ class TestBalanceForcedSwitchFilter:
         ):
             yield
 
-    def test_balance_forced_records_excluded(self) -> None:
+    def test_balance_forced_records_excluded(self, tmp_path: Path) -> None:
         """balance_forced_switch=True のレコードが学習データから除外される."""
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            records_dir = Path(tmpdir) / "results"
-            records_dir.mkdir()
-            records_df = _make_retrain_records_df(
-                11,
-                seed=123,
-                cycle_prefix="bf",
-                run_id="bf_run",
-                balance_forced_first=1,
-            )
+        records_dir = tmp_path / "results"
+        records_dir.mkdir()
+        records_df = _make_retrain_records_df(
+            11,
+            seed=123,
+            cycle_prefix="bf",
+            run_id="bf_run",
+            balance_forced_first=1,
+        )
 
-            cfg = dict(_DEFAULT_CONFIG)
-            cfg["results_dir"] = str(records_dir)
-            cfg["model_path"] = str(Path(tmpdir) / "model.pkl")
-            cfg["mode"] = "pnl"
-            cfg["target"] = "pnl30"
-            cfg["use_ob_features"] = False
-            cfg["min_total_samples"] = 10
-            cfg["min_new_samples"] = 1
-            cfg["bootstrap_min_total_samples"] = 10
-            cfg["bootstrap_min_new_samples"] = 1
-            cfg["quality_gate_enabled"] = False
-            cfg["latest_run_only"] = False
-            cfg["exclude_missing_run_id"] = False
-            cfg["lgbm_n_estimators"] = 1
-            cfg["enriched_cache_enabled"] = False
-            cfg["feature_pruning_enabled"] = False
-            cfg["redundancy_pruning_enabled"] = False
-            cfg["warm_start_enabled"] = False
-            cfg["min_deploy_trees"] = 0  # 465#: stub bypass
-            cfg["min_pred_std"] = 0.0    # 465#: stub bypass
+        cfg = dict(_DEFAULT_CONFIG)
+        cfg["results_dir"] = str(records_dir)
+        cfg["model_path"] = str(tmp_path / "model.pkl")
+        cfg["mode"] = "pnl"
+        cfg["target"] = "pnl30"
+        cfg["use_ob_features"] = False
+        cfg["min_total_samples"] = 10
+        cfg["min_new_samples"] = 1
+        cfg["bootstrap_min_total_samples"] = 10
+        cfg["bootstrap_min_new_samples"] = 1
+        cfg["quality_gate_enabled"] = False
+        cfg["latest_run_only"] = False
+        cfg["exclude_missing_run_id"] = False
+        cfg["lgbm_n_estimators"] = 1
+        cfg["enriched_cache_enabled"] = False
+        cfg["feature_pruning_enabled"] = False
+        cfg["redundancy_pruning_enabled"] = False
+        cfg["warm_start_enabled"] = False
+        cfg["min_deploy_trees"] = 0  # 465#: stub bypass
+        cfg["min_pred_std"] = 0.0    # 465#: stub bypass
 
-            with patch(
-                "scripts.v460.ml.retrain_scheduler.load_fill_records",
-                side_effect=lambda *args, **kwargs: records_df.copy(deep=True),
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
-                side_effect=_identity_enrich,
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler.SkipGate.load",
-                return_value=_make_picklable_gate(n_samples=10, version="verified"),
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler.SkipGate.save",
-                autospec=True,
-                side_effect=_write_stub_gate_artifact,
-            ):
-                result = retrain_model(cfg)
-            # 11 - 1 forced = 10 records usable; filled_records should be <= 10
-            assert result["status"] in ("deployed", "deployed_verified", "skipped")
-            if result["status"] in ("deployed", "deployed_verified"):
-                assert result.get("filled_records", 0) <= 10
+        with patch(
+            "scripts.v460.ml.retrain_scheduler.load_fill_records",
+            side_effect=lambda *args, **kwargs: records_df.copy(deep=True),
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
+            side_effect=_identity_enrich,
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler.SkipGate.load",
+            return_value=_make_picklable_gate(n_samples=10, version="verified"),
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler.SkipGate.save",
+            autospec=True,
+            side_effect=_write_stub_gate_artifact,
+        ):
+            result = retrain_model(cfg)
+        assert result["status"] in ("deployed", "deployed_verified", "skipped")
+        if result["status"] in ("deployed", "deployed_verified"):
+            assert result.get("filled_records", 0) <= 10
 
-    def test_no_balance_column_no_error(self) -> None:
+    def test_no_balance_column_no_error(self, tmp_path: Path) -> None:
         """balance_forced_switch カラムがなくてもエラーにならない."""
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            records_dir = Path(tmpdir) / "results"
-            records_dir.mkdir()
-            records_df = _make_retrain_records_df(
-                5,
-                seed=5,
-                cycle_prefix="no_bf",
-                run_id="no_bf_run",
-            ).drop(columns=["balance_forced_switch"], errors="ignore")
+        records_dir = tmp_path / "results"
+        records_dir.mkdir()
+        records_df = _make_retrain_records_df(
+            5,
+            seed=5,
+            cycle_prefix="no_bf",
+            run_id="no_bf_run",
+        ).drop(columns=["balance_forced_switch"], errors="ignore")
 
-            cfg = dict(_DEFAULT_CONFIG)
-            cfg["results_dir"] = str(records_dir)
-            cfg["model_path"] = str(Path(tmpdir) / "model.pkl")
-            cfg["mode"] = "pnl"
-            cfg["use_ob_features"] = False
-            cfg["latest_run_only"] = False
-            cfg["exclude_missing_run_id"] = False
-            cfg["enriched_cache_enabled"] = False
-            # Should not raise
-            with patch(
-                "scripts.v460.ml.retrain_scheduler.load_fill_records",
-                side_effect=lambda *args, **kwargs: records_df.copy(deep=True),
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
-                side_effect=_identity_enrich,
-            ):
-                result = retrain_model(cfg)
-            assert result["status"] in ("skipped", "deployed")
+        cfg = dict(_DEFAULT_CONFIG)
+        cfg["results_dir"] = str(records_dir)
+        cfg["model_path"] = str(tmp_path / "model.pkl")
+        cfg["mode"] = "pnl"
+        cfg["use_ob_features"] = False
+        cfg["latest_run_only"] = False
+        cfg["exclude_missing_run_id"] = False
+        cfg["enriched_cache_enabled"] = False
+        with patch(
+            "scripts.v460.ml.retrain_scheduler.load_fill_records",
+            side_effect=lambda *args, **kwargs: records_df.copy(deep=True),
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
+            side_effect=_identity_enrich,
+        ):
+            result = retrain_model(cfg)
+        assert result["status"] in ("skipped", "deployed")
 
 
 # =====================================================================
@@ -1045,7 +1033,7 @@ class TestBalanceForcedSwitchFilter:
 class TestTradesIOFallback:
     """130# F7: trades fallback が全量ではなく直近 7 日でフォールバックする."""
 
-    def test_fallback_uses_7day_window(self) -> None:
+    def test_fallback_uses_7day_window(self, tmp_path: Path) -> None:
         """date_filter で空→全量ではなく 7 日 window が先に試行される."""
 
         # enrich_fill_records 内の load_raw_trades 呼び出しを追跡
@@ -1062,20 +1050,19 @@ class TestTradesIOFallback:
             "filled": [True],
         })
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            with patch(
-                "scripts.v460.ml.feature_enricher._load_raw_trades_entry",
-                side_effect=lambda raw_dir=None, date_filter=None: SimpleNamespace(
-                    df=_tracking_load(raw_dir=raw_dir, date_filter=date_filter),
-                    sorted_ts=None,
-                    context=None,
-                ),
-            ), patch(
-                "scripts.v460.ml.feature_enricher._load_raw_orderbook_entry",
-                return_value=SimpleNamespace(df=pd.DataFrame(), sorted_ts=None, context=None),
-            ):
-                # raw_dir を空ディレクトリに固定し、実ファイル走査コストを回避
-                enrich_fill_records(fill_df, raw_dir=Path(tmpdir))
+        with patch(
+            "scripts.v460.ml.feature_enricher._load_raw_trades_entry",
+            side_effect=lambda raw_dir=None, date_filter=None: SimpleNamespace(
+                df=_tracking_load(raw_dir=raw_dir, date_filter=date_filter),
+                sorted_ts=None,
+                context=None,
+            ),
+        ), patch(
+            "scripts.v460.ml.feature_enricher._load_raw_orderbook_entry",
+            return_value=SimpleNamespace(df=pd.DataFrame(), sorted_ts=None, context=None),
+        ):
+            # raw_dir を空ディレクトリに固定し、実ファイル走査コストを回避
+            enrich_fill_records(fill_df, raw_dir=tmp_path)
 
         # 139# §9-#5: 全量フォールバック廃止により 2 コールに変更
         # 呼び出し順: (1) date_filter あり → (2) 7日 window
@@ -1237,29 +1224,27 @@ class TestAtomicHashMove:
 class TestPrevModelLoadError:
     """131# A.1 #3: except:pass 廃止テスト."""
 
-    def test_prev_load_error_recorded(self) -> None:
+    def test_prev_load_error_recorded(self, tmp_path: Path) -> None:
         """前モデル読み込み失敗がログ出力され result に記録される."""
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # 不正な pkl を仕込む
-            model_path = Path(tmpdir) / "broken.pkl"
-            model_path.write_bytes(b"broken data")
+        model_path = tmp_path / "broken.pkl"
+        model_path.write_bytes(b"broken data")
 
-            cfg = {
-                "model_path": str(model_path),
-                "results_dir": str(Path(tmpdir) / "results"),
-                "target": "pnl120",
-                "mode": "pnl",
-                "use_ob_features": False,
-                "latest_run_only": False,
-                "exclude_missing_run_id": False,
-            }
-            (Path(tmpdir) / "results").mkdir()
-            result = retrain_model(cfg)
-            # fill_records がないので skipped になるが、
-            # エラーは result に記録されるべき (もし Load まで到達すれば)
-            # ここでは fill_records 不在で先に skipped になるのでパス
-            assert result["status"] == "skipped"
+        cfg = {
+            "model_path": str(model_path),
+            "results_dir": str(tmp_path / "results"),
+            "target": "pnl120",
+            "mode": "pnl",
+            "use_ob_features": False,
+            "latest_run_only": False,
+            "exclude_missing_run_id": False,
+        }
+        (tmp_path / "results").mkdir()
+        result = retrain_model(cfg)
+        # fill_records がないので skipped になるが、
+        # エラーは result に記録されるべき (もし Load まで到達すれば)
+        # ここでは fill_records 不在で先に skipped になるのでパス
+        assert result["status"] == "skipped"
 
 
 class TestE3PruningMinTrees:

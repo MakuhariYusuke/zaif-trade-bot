@@ -5900,3 +5900,8 @@ python scripts/unified_trainer.py \
 - `skip_gate_evaluator.py` の `_apply_decision_to_result(...)` は wrapper を維持しつつ shared helper に委譲
 - `test_retrain_hot_reload.py` の model degeneration guard (`D1/D2`) を `tmp_path` 化し、退化ガード系の保守性を改善
 - `test_516_skip_gate_result_fields_migration.py` を追加し、canonical helper の契約を focused 回帰化
+## 517# pricing offset math extraction / retrain tmp_path sweep
+- `ztb/trading/pricing/offset_math.py` を追加し、`effective_max_ratio(...)` と `scale_offset_ratio(...)` の純ロジックを canonical helper 化
+- `scripts/v460/lib/maker_price.py` は wrapper を維持したまま shared pricing helper に委譲し、Phase 3 の split-first を前進
+- `tests/unit/v460/test_517_pricing_offset_math_migration.py` を追加し、canonical pricing helper の契約を focused 回帰化
+- `tests/unit/v460/test_retrain_hot_reload.py` の insufficient-samples / E2E / balance-forced / fallback 系を `TemporaryDirectory()` から `tmp_path` に寄せて保守性を改善

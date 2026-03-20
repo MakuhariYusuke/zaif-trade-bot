@@ -217,3 +217,23 @@ Phase 4 で無理に上げず、Phase 3 で先に result assembly の詳細設�
 今回 1 は `ztb.ml.skip_gate_result_fields` に抽出済み。
 2 は `build_skip_fill_record(...)` と v460 固有の event/log 文脈に結びつくため、
 まだ script 側に残すのが安全だった。
+
+### 11. `maker_price` は inventory math の次に offset math を抜く
+
+`maker_price.py` の次の安全な抽出対象は、
+
+- `effective_max_ratio(...)`
+- `scale_offset_ratio(...)`
+
+のような純粋な ratio helper だった。
+
+これらは `FillRecord` / detector / FFD state に依存せず、
+`inventory_math` と同じく `ztb` 側へ昇格しても責務がぶれない。
+
+一方で
+
+- `effective_sell_offset_floor`
+- spread adaptive の stage orchestration
+- final result assembly
+
+は config 文脈や stage 順序に依存するため、まだ `maker_price.py` 側に残すほうが安全。
