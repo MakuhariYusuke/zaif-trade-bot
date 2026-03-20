@@ -648,32 +648,39 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         cfg = self._config
 
         if cfg.spread_adaptive_enabled:
-            spread_bps = spread / mid_price * _BPS_FACTOR
-            if spread_bps < cfg.narrow_spread_bps:
-                sa_boost = cfg.narrow_spread_boost
-                if side == "buy" and cfg.narrow_spread_boost_buy is not None:
-                    sa_boost = cfg.narrow_spread_boost_buy
-                elif side == "sell" and cfg.narrow_spread_boost_sell is not None:
-                    sa_boost = cfg.narrow_spread_boost_sell
-                effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
-                    effective_offset_ratio,
-                    sa_boost,
-                    max_ratio=self._effective_max_ratio(side),
-                )
+            if mid_price > 0 and math.isfinite(mid_price) and math.isfinite(spread):
+                spread_bps = spread / mid_price * _BPS_FACTOR
+                if spread_bps < cfg.narrow_spread_bps:
+                    sa_boost = cfg.narrow_spread_boost
+                    if side == "buy" and cfg.narrow_spread_boost_buy is not None:
+                        sa_boost = cfg.narrow_spread_boost_buy
+                    elif side == "sell" and cfg.narrow_spread_boost_sell is not None:
+                        sa_boost = cfg.narrow_spread_boost_sell
+                    effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                        effective_offset_ratio,
+                        sa_boost,
+                        max_ratio=self._effective_max_ratio(side),
+                    )
+                    logger.debug(
+                        f"[spread_adaptive] Narrow spread {spread_bps:.1f}bps "
+                        f"({side} boost={_applied_mult:.2f}) "
+                        f"→ offset boosted to {effective_offset_ratio:.4f}"
+                    )
+                elif spread_bps > cfg.wide_spread_bps:
+                    effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                        effective_offset_ratio,
+                        cfg.wide_spread_ratio,
+                        min_ratio=cfg.min_offset_ratio,
+                    )
+                    logger.debug(
+                        f"[spread_adaptive] Wide spread {spread_bps:.1f}bps "
+                        f"(mult={_applied_mult:.2f}) → offset reduced to {effective_offset_ratio:.4f}"
+                    )
+            else:
                 logger.debug(
-                    f"[spread_adaptive] Narrow spread {spread_bps:.1f}bps "
-                    f"({side} boost={_applied_mult:.2f}) "
-                    f"→ offset boosted to {effective_offset_ratio:.4f}"
-                )
-            elif spread_bps > cfg.wide_spread_bps:
-                effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
-                    effective_offset_ratio,
-                    cfg.wide_spread_ratio,
-                    min_ratio=cfg.min_offset_ratio,
-                )
-                logger.debug(
-                    f"[spread_adaptive] Wide spread {spread_bps:.1f}bps "
-                    f"(mult={_applied_mult:.2f}) → offset reduced to {effective_offset_ratio:.4f}"
+                    "[spread_adaptive] skipped due to invalid mid/spread: mid=%r spread=%r",
+                    mid_price,
+                    spread,
                 )
 
         # 091# sell offset floor 事後再適用 (173# 動的フロア対応)

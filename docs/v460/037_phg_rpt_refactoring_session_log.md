@@ -7690,3 +7690,20 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - cancel reason の SSOT も維持できている
 - focused:
   - `tests/unit/v460/test_skip_gate_v3.py tests/unit/v460/test_514_skip_gate_runtime_migration.py tests/unit/v460/test_516_skip_gate_result_fields_migration.py`: `22 passed in 2.30s`
+## 526# spread adaptive invalid-mid guard / timeout wait trim
+- `scripts/v460/lib/maker_price.py`
+  - `_apply_spread_adaptive(...)` に `mid_price<=0` / 非 finite 値ガードを追加
+  - invalid mid/spread では spread-adaptive をスキップし、sell 側の floor 再適用だけは維持
+- `tests/unit/v460/test_168_low_vol_offset_boost.py`
+  - `mid_price=0` で no-op
+  - `mid_price=NaN` でも sell floor 再適用
+  の境界値回帰を追加
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `test_training_timeout_raises` の block wait を `0.1s` に短縮
+- セルフレビュー
+  - `maker_price` の防御を強めつつ、正常系ロジックは変えていないので低リスク
+  - こうした invalid-data guard は replay/backfill/破損 raw の時に効く
+- focused:
+  - `tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_517_pricing_offset_math_migration.py`: `25 passed in 1.55s`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py -k 'training_timeout_raises or single_iteration_then_shutdown or trigger_exception_does_not_kill_loop or record_result_exception_does_not_kill_loop or retrain_once_cleans_up_on_error or post_cycle_memory_check_runs'`: `6 passed, 35 deselected in 4.21s`
+  - `tests/unit/v460/test_enricher_skip_gate.py -k 'RawLoadCache or save_load_roundtrip or as_mode_save_load'`: `7 passed, 65 deselected in 2.06s`

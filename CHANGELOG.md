@@ -5955,3 +5955,8 @@ python scripts/unified_trainer.py \
 ## 525# skip_gate context builder cleanup
 - `scripts/v460/lib/skip_gate_evaluator.py` に `_build_skip_fill_record_context(...)` を追加し、early skip 文脈の構築重複を解消
 - final decision skip の `cancel_reason` literal を `CR.SKIP_GATE` に統一し、cancel reason SSOT を維持
+## 526# spread adaptive invalid-mid guard / timeout wait trim
+- `scripts/v460/lib/maker_price.py` の `_apply_spread_adaptive(...)` に `mid_price<=0` / 非 finite 値のガードを追加し、異常データ時は spread-adaptive を安全にスキップするよう修正
+- sell 側では invalid mid/spread の場合でも sell floor 再適用は維持するようにした
+- `tests/unit/v460/test_168_low_vol_offset_boost.py` に invalid/zero mid の境界値回帰を追加
+- `tests/unit/v460/test_sac_retrain_scheduler.py::test_training_timeout_raises` の block wait を `0.1s` へ短縮

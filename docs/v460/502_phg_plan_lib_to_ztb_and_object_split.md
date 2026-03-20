@@ -450,6 +450,8 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
  - 直近では local `_build_skip_fill_record_context(...)` も導入し、
    early skip 系 3 経路の context 構築重複を除去した
    - Phase 3 の残りはほぼ最終 builder ownership のみ
+ - `maker_price` では spread guard に続き、spread-adaptive にも invalid mid/spread guard を追加した
+   - まず防御を固めてから stage orchestration を抜く順序が安全
 
 ## テスト方針
 

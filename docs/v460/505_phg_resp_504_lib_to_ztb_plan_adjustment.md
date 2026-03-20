@@ -361,3 +361,7 @@ script 側は wrapper を残して source/契約テスト互換を保つ方針�
 - final decision skip
 
 の 3 経路で重複していた context 構築も解消した。
+
+`maker_price` についても、pure helper 抽出だけでなく
+invalid mid/spread guard を先に入れておくことで、
+stage orchestration 分割前の安全性を高める方針を取っている。

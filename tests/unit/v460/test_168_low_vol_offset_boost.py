@@ -285,3 +285,59 @@ class TestSpreadGuardHelper:
         )
         assert result.price == 1010.0
         assert result.effective_offset_ratio == 0.0
+
+
+class TestSpreadAdaptiveGuard:
+    """spread adaptive の境界値ガード."""
+
+    def test_zero_mid_price_skips_spread_adaptive_safely(self) -> None:
+        cfg = FillConfig(
+            spread_adaptive_enabled=True,
+            narrow_spread_bps=2.5,
+            narrow_spread_boost=1.5,
+            wide_spread_bps=20.0,
+            wide_spread_ratio=0.7,
+            sell_offset_floor=0.0,
+        )
+        det = _make_regime_detector()
+        ffd = FastFillDefense(cfg, base_offset_ratio=cfg.spread_offset_ratio)
+        calc = MakerPriceCalculator(
+            cfg,
+            ffd,
+            regime_detector=det,
+            base_offset_ratio=cfg.spread_offset_ratio,
+        )
+
+        updated = calc._apply_spread_adaptive(
+            "buy",
+            spread=100.0,
+            mid_price=0.0,
+            effective_offset_ratio=0.05,
+        )
+        assert updated == pytest.approx(0.05)
+
+    def test_invalid_mid_price_still_reapplies_sell_floor(self) -> None:
+        cfg = FillConfig(
+            spread_adaptive_enabled=True,
+            narrow_spread_bps=2.5,
+            narrow_spread_boost=1.5,
+            wide_spread_bps=20.0,
+            wide_spread_ratio=0.7,
+            sell_offset_floor=0.10,
+        )
+        det = _make_regime_detector()
+        ffd = FastFillDefense(cfg, base_offset_ratio=cfg.spread_offset_ratio)
+        calc = MakerPriceCalculator(
+            cfg,
+            ffd,
+            regime_detector=det,
+            base_offset_ratio=cfg.spread_offset_ratio,
+        )
+
+        updated = calc._apply_spread_adaptive(
+            "sell",
+            spread=100.0,
+            mid_price=float("nan"),
+            effective_offset_ratio=0.03,
+        )
+        assert updated == pytest.approx(0.10)

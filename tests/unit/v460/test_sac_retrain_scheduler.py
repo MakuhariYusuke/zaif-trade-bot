@@ -1009,7 +1009,7 @@ class TestCrashResilience495:
         block = threading.Event()
 
         def slow_learn(**kwargs: object) -> None:
-            block.wait(timeout=0.2)
+            block.wait(timeout=0.1)
 
         mock_model.learn.side_effect = slow_learn
 
