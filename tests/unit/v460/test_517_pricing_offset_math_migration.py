@@ -7,6 +7,7 @@ from ztb.trading.pricing.offset_math import (
     effective_max_ratio,
     scale_offset_ratio,
 )
+from ztb.trading.pricing.price_finalization import finalize_price_with_spread_guard
 
 
 class TestPricingOffsetMathMigration:
@@ -55,3 +56,27 @@ class TestPricingOffsetMathMigration:
             inventory_imbalance=0.10,
             discount_ratio=0.5,
         ) == pytest.approx(0.20)
+
+    def test_finalize_price_with_spread_guard_buy_cross_falls_back(self) -> None:
+        result = finalize_price_with_spread_guard(
+            side="buy",
+            best_bid=1000.0,
+            best_ask=1010.0,
+            spread=10.0,
+            offset=20.0,
+            effective_offset_ratio=0.2,
+        )
+        assert result.price == 1000.0
+        assert result.effective_offset_ratio == 0.0
+
+    def test_finalize_price_with_spread_guard_sell_non_cross_keeps_offset(self) -> None:
+        result = finalize_price_with_spread_guard(
+            side="sell",
+            best_bid=1000.0,
+            best_ask=1010.0,
+            spread=10.0,
+            offset=3.0,
+            effective_offset_ratio=0.2,
+        )
+        assert result.price == pytest.approx(1007.0)
+        assert result.effective_offset_ratio == pytest.approx(0.2)

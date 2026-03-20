@@ -7637,3 +7637,29 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - test 側の canonical import 収束で、今後の rename / shim 削除時の修正面積が減る
 - focused:
   - `tests/unit/v460/test_516_skip_gate_result_fields_migration.py tests/unit/v460/test_skip_gate_v3.py tests/unit/v460/test_skip_gate_d8.py tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_141_side_specific_models.py tests/unit/v460/test_094_stale_order.py tests/unit/v460/test_088_features.py tests/unit/v460/test_100_fast_fill_defense.py`: `360 passed, 1 warning in 11.39s`
+## 523# spread guard helper extraction / phase4 canonical import sweep
+- `ztb/trading/pricing/price_finalization.py`
+  - `finalize_price_with_spread_guard(...)` を追加し、pure な最終価格組立を canonical helper 化
+- `scripts/v460/lib/maker_price.py`
+  - `_finalize_price_with_spread_guard(...)` は wrapper を維持したまま shared helper に委譲
+- `tests/unit/v460/test_517_pricing_offset_math_migration.py`
+  - buy cross fallback
+  - sell non-cross keep
+  の focused 回帰を追加
+- `tests/unit/v460/test_157_regime_features.py`
+  - `cancel_reasons` / `FillTestRegime` を canonical import に変更
+- `tests/unit/v460/test_155_hindsight_review.py`
+  - `cancel_reasons` import を canonical path に変更
+- `tests/unit/v460/test_143_regime_utilization.py`
+  - `regime_detector` import を canonical path に変更
+- `tests/unit/v460/test_fill_quality.py`
+  - `FastFillDefense` import を canonical path に変更
+- `tests/unit/v460/test_retrain_hot_reload.py`
+  - `lot_sizer` import を canonical path に変更
+- セルフレビュー
+  - `maker_price` は state/stage 本体に踏み込まず pure finalization だけ抜いたので安全だった
+  - Phase 4 も shim 契約を壊さず、functional test 側の canonical import をさらに広げられた
+  - 残る大物は `skip_gate_evaluator` の最終 `FillRecord` 境界と `maker_price` の stage orchestration
+- focused:
+  - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py`: `23 passed in 1.01s`
+  - `tests/unit/v460/test_157_regime_features.py tests/unit/v460/test_155_hindsight_review.py tests/unit/v460/test_143_regime_utilization.py tests/unit/v460/test_fill_quality.py tests/unit/v460/test_retrain_hot_reload.py`: `422 passed, 5 warnings in 9.38s`

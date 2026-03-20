@@ -29,11 +29,6 @@ import yaml
 from scripts.v460.lib.fill_config import FillMonitorResult, FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from scripts.v460.lib.order_monitor import OrderMonitor
-from scripts.v460.lib.regime_detector import (
-    FillTestRegime,
-    FillTestRegimeDetector,
-    RegimeConfig,
-)
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from scripts.v460.run_fill_test import FillTestRunner
 from tests.unit.v460._fill_test_source import (
@@ -47,6 +42,11 @@ from tests.unit.v460._fill_test_source import (
 )
 from ztb.metrics.fill_quality import FillRecord, _quarantine_reason
 from ztb.ml import online_monitor
+from ztb.trading.signal.regime.regime_detector import (
+    FillTestRegime,
+    FillTestRegimeDetector,
+    RegimeConfig,
+)
 
 _REGIME_HIGH_VOL_SOURCE = read_class_method_source(
     MAKER_REGIME_BOOST,

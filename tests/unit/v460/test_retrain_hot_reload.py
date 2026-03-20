@@ -50,11 +50,11 @@ from scripts.v460.analysis.oracle_baseline import (
     _group_oracle_aggregates,
     compute_oracle_metrics,
 )
-from scripts.v460.lib.lot_sizer import LotSizingConfig, compute_lot_size
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from tests.unit.v460._skip_gate_test_helpers import PickleStub, save_and_load_skip_gate
 from ztb.metrics.fill_quality import FillRecord
 from ztb.ml.artifact_paths import atomic_pickle_tmp_path, hash_sidecar_path
+from ztb.trading.sizing.lot_sizer import LotSizingConfig, compute_lot_size
 from ztb.utils.run_manifest import compute_file_hash
 
 try:

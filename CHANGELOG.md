@@ -5937,3 +5937,12 @@ python scripts/unified_trainer.py \
 - `tests/unit/v460/test_088_features.py`
 - `tests/unit/v460/test_100_fast_fill_defense.py`
 - `tests/unit/v460/test_516_skip_gate_result_fields_migration.py` に optional field 境界値 (`None`) 回帰を追加
+## 523# spread guard helper extraction / phase4 canonical test import sweep
+- `ztb/trading/pricing/price_finalization.py` を追加し、`finalize_price_with_spread_guard(...)` を canonical helper 化
+- `scripts/v460/lib/maker_price.py` の `_finalize_price_with_spread_guard(...)` は wrapper を維持したまま shared helper に委譲
+- `tests/unit/v460/test_517_pricing_offset_math_migration.py` に spread guard helper の focused 回帰を追加
+- `tests/unit/v460/test_157_regime_features.py` の `cancel_reasons` / `FillTestRegime` import を canonical path に変更
+- `tests/unit/v460/test_155_hindsight_review.py` の `cancel_reasons` import を canonical path に変更
+- `tests/unit/v460/test_143_regime_utilization.py` の `regime_detector` import を canonical path に変更
+- `tests/unit/v460/test_fill_quality.py` の `FastFillDefense` import を canonical path に変更
+- `tests/unit/v460/test_retrain_hot_reload.py` の `lot_sizer` import を canonical path に変更

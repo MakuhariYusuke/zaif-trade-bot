@@ -32,7 +32,6 @@ from scripts.v460.analysis.vg_and_trend import (
 from scripts.v460.lib.adaptation_engine import AdaptationEngine
 from scripts.v460.lib.balance_checker import BalanceChecker, MIN_ORDER_BTC
 from scripts.v460.lib.batch_persistence import BatchPersistence
-from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.lock_manager import LockManager
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from scripts.v460.lib.order_monitor import OrderMonitor
@@ -51,6 +50,7 @@ from tests.unit.v460._fill_test_source import (
 from ztb.data.market_data_collector import MarketDataCollector
 from ztb.trading.live.exchanges.base.broker_interfaces import TradeRecord
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+from ztb.trading.risk.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from ztb.metrics.fill_quality import (
     FillMetrics,
     FillRecord,

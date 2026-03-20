@@ -440,6 +440,9 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
     `ztb.metrics.fill_quality` 側の builder ownership は維持するのが妥当
   - この方針で `skip_gate` 由来の extra payload は `ztb.ml.skip_gate_result_fields` 側へ先行抽出し、
     script 側は core context (`cycle_id`, `timestamp`, `run_id`, `git_sha`, `cancel_reason`) のみを握る形へ進める
+ - `maker_price` 側でも pure finalization を `ztb.trading.pricing.price_finalization` へ抽出済み
+   - spread cross fallback は canonical helper
+   - stateful stage orchestration と logging 文脈だけを script 側へ残す形に進んでいる
 
 ## テスト方針
 

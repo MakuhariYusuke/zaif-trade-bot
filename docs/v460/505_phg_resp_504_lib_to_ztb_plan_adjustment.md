@@ -302,3 +302,30 @@ shim 互換は残しているが、移行末期では test 側も canonical impo
 - 通常の unit/integration test は `ztb` canonical import を優先
 
 これにより、Phase 4 の残りは「shim を残す必要がある production 文脈」へ集中できる。
+
+### 14. `maker_price` は pure finalization まで canonical 化してよい
+
+`maker_price.py` は stateful な stage orchestration がまだ重いが、
+
+- `best_bid`
+- `best_ask`
+- `spread`
+- `offset`
+- `effective_offset_ratio`
+- `side`
+
+だけで決まる spread guard 付き finalization は pure helper として安全に抜ける。
+
+このため、
+
+- `ztb.trading.pricing.price_finalization.finalize_price_with_spread_guard(...)`
+
+を canonical helper とし、
+script 側は wrapper を残して source/契約テスト互換を保つ方針が妥当だった。
+
+この切り方なら、Phase 3 を進めつつ
+
+- logging を含む stage orchestration
+- detector / FFD / config 文脈
+
+は無理に `ztb` へ上げずに済む。

@@ -39,6 +39,9 @@ from ztb.trading.pricing.offset_math import (
     effective_max_ratio as _resolve_effective_max_ratio,
     scale_offset_ratio as _scale_offset_ratio_impl,
 )
+from ztb.trading.pricing.price_finalization import (
+    finalize_price_with_spread_guard as _finalize_price_with_spread_guard_impl,
+)
 from ztb.trading.risk.fast_fill_defense import FastFillDefense
 from ztb.trading.signal.regime.regime_detector import RegimeDetectorLike
 from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
@@ -621,24 +624,14 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         effective_offset_ratio: float,
     ) -> MakerPriceResult:
         """最終価格を組み立て、cross 時は spread guard で安全側へ戻す."""
-        if side == "buy":
-            price = best_bid + offset
-            if price >= best_ask:
-                logger.info(
-                    f"Spread guard: buy price {price:.0f} >= ask {best_ask:.0f}, "
-                    f"fallback to best_bid {best_bid:.0f} (spread={spread:.0f})"
-                )
-                return MakerPriceResult(best_bid, spread, 0.0)
-            return MakerPriceResult(price, spread, effective_offset_ratio)
-
-        price = best_ask - offset
-        if price <= best_bid:
-            logger.info(
-                f"Spread guard: sell price {price:.0f} <= bid {best_bid:.0f}, "
-                f"fallback to best_ask {best_ask:.0f} (spread={spread:.0f})"
-            )
-            return MakerPriceResult(best_ask, spread, 0.0)
-        return MakerPriceResult(price, spread, effective_offset_ratio)
+        return _finalize_price_with_spread_guard_impl(
+            side=side,
+            best_bid=best_bid,
+            best_ask=best_ask,
+            spread=spread,
+            offset=offset,
+            effective_offset_ratio=effective_offset_ratio,
+        )
 
     # ------------------------------------------------------------------
     # 266# 共有ヘルパー: _finalize_price_with_spread_guard (compute() 内で使用)

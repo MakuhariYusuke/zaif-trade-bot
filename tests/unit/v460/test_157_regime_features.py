@@ -17,10 +17,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import ztb.analysis.regime as regime_module
-from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator
-from scripts.v460.lib.regime_detector import FillTestRegime
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 import scripts.v460.ml.retrain_scheduler as rs
 from scripts.v460.ml.retrain_scheduler import _DEFAULT_CONFIG, load_retrain_config
@@ -32,6 +30,8 @@ from tests.unit.v460._fill_test_source import (
     read_source_text,
 )
 from ztb.analysis.regime import MarketRegime, MarketRegimeDetector
+from ztb.trading.common import cancel_reasons as CR
+from ztb.trading.signal.regime.regime_detector import FillTestRegime
 from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
 from ztb.risk.sell_dynamic_kill import (
     BuyDynamicKillManager,
