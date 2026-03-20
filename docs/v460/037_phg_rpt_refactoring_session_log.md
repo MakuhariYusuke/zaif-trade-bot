@@ -7937,6 +7937,6 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `P3-1 SkipGate 単体テスト拡充` を future 大項目ではなく継続保守レベルへ補正
 - `docs/v460/index.md`
   - low priority / v461+ リストの `R3/R5` に session037 進捗注記を追加
-- `docs/v460/515_phg_plan_remaining_deferred_actions_screening.md`
+- `docs/v460/520_phg_plan_remaining_deferred_actions_screening.md`
   - remaining deferred 項目のスクリーニング計画を新設
   - 今やるもの / future 維持のものを分離

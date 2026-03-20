@@ -541,7 +541,7 @@
 | 512 | impl | [512_ph2_impl_cross_venue_favorable_tighten_dry_summary.md](512_ph2_impl_cross_venue_favorable_tighten_dry_summary.md) | cross-venue favorable-side tighten + DRY microprice + 周期サマリ統合 |
 | 513 | audit | [513_ph2_audit_dormant_mechanisms.md](513_ph2_audit_dormant_mechanisms.md) | 実装済み機構の活用度監査 + SAD/MCB YAML化: SAD/PPG/MCB がデッドコード |
 | 514 | plan | [514_phg_plan_deferred_docs_refresh_and_carryforward_audit.md](514_phg_plan_deferred_docs_refresh_and_carryforward_audit.md) | deferred docs 棚卸し: v461/後日表現の現状追随方針と更新優先順位 |
-| 515 | plan | [515_phg_plan_remaining_deferred_actions_screening.md](515_phg_plan_remaining_deferred_actions_screening.md) | remaining deferred 項目の実行可否スクリーニング: 今やるもの / future 維持の分離 |
+| 520 | plan | [520_phg_plan_remaining_deferred_actions_screening.md](520_phg_plan_remaining_deferred_actions_screening.md) | remaining deferred 項目の実行可否スクリーニング: 今やるもの / future 維持の分離 |
 
 ---
 

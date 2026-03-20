@@ -6038,4 +6038,4 @@ python scripts/unified_trainer.py \
 - `docs/v460/121_ph2_plan_model_replacement.md` の `D1` / `D9` を現状進捗に追随し、主要 canonical 化前進と VG JSONL 構造化ログ完了を反映
 - `docs/v460/158_phg_rpt_backlog_audit_and_phase_d_priorities.md` の `P2-5 skip_gate.py` と `P3-1 SkipGate テスト` を stale な future 表現から更新
 - `docs/v460/index.md` の low priority / v461+ リストに session037 進捗の注記を追加
-- `docs/v460/515_phg_plan_remaining_deferred_actions_screening.md` を追加し、今やるものと future 維持のものを切り分けた
+- `docs/v460/520_phg_plan_remaining_deferred_actions_screening.md` を追加し、今やるものと future 維持のものを切り分けた
