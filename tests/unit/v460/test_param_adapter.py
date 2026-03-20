@@ -6,15 +6,9 @@ scripts/v460/lib/param_adapter.py の compute_adaptation / clamp_offset を検�
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 import pytest
 
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-sys.path.insert(0, str(_PROJECT_ROOT))
-
-from scripts.v460.lib.param_adapter import (
+from ztb.trading.sizing.param_adapter import (
     AdaptationConfig,
     AdaptationResult,
     clamp_offset,

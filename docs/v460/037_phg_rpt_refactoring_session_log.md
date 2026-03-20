@@ -7707,3 +7707,16 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_517_pricing_offset_math_migration.py`: `25 passed in 1.55s`
   - `tests/unit/v460/test_sac_retrain_scheduler.py -k 'training_timeout_raises or single_iteration_then_shutdown or trigger_exception_does_not_kill_loop or record_result_exception_does_not_kill_loop or retrain_once_cleans_up_on_error or post_cycle_memory_check_runs'`: `6 passed, 35 deselected in 4.21s`
   - `tests/unit/v460/test_enricher_skip_gate.py -k 'RawLoadCache or save_load_roundtrip or as_mode_save_load'`: `7 passed, 65 deselected in 2.06s`
+## 527# phase4 canonical import sweep for sizing/regime tests
+- `tests/unit/v460/test_lot_sizer.py`
+  - canonical `ztb.trading.sizing.lot_sizer` import に変更
+- `tests/unit/v460/test_param_adapter.py`
+  - canonical `ztb.trading.sizing.param_adapter` import に変更
+  - 旧 `sys.path` 注入を削除
+- `tests/unit/v460/test_bayesian_regime_filter.py`
+  - canonical `ztb.trading.signal.regime.bayesian_regime_filter` import に変更
+- セルフレビュー
+  - functional test を先に canonical import へ寄せる方針は維持できている
+  - これで Phase 4 の残りは shim 契約や一部 heavy integration にかなり寄った
+- focused:
+  - `tests/unit/v460/test_lot_sizer.py tests/unit/v460/test_param_adapter.py tests/unit/v460/test_bayesian_regime_filter.py`: `94 passed in 1.53s`

@@ -452,6 +452,8 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
    - Phase 3 の残りはほぼ最終 builder ownership のみ
  - `maker_price` では spread guard に続き、spread-adaptive にも invalid mid/spread guard を追加した
    - まず防御を固めてから stage orchestration を抜く順序が安全
+ - Phase 4 の functional test 側 canonical import 収束も継続しており、
+   sizing / regime の通常 unit test は `ztb` 参照へかなり寄ってきた
 
 ## テスト方針
 

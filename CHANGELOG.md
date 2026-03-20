@@ -5960,3 +5960,7 @@ python scripts/unified_trainer.py \
 - sell 側では invalid mid/spread の場合でも sell floor 再適用は維持するようにした
 - `tests/unit/v460/test_168_low_vol_offset_boost.py` に invalid/zero mid の境界値回帰を追加
 - `tests/unit/v460/test_sac_retrain_scheduler.py::test_training_timeout_raises` の block wait を `0.1s` へ短縮
+## 527# phase4 canonical import sweep for sizing/regime tests
+- `tests/unit/v460/test_lot_sizer.py` を canonical `ztb.trading.sizing.lot_sizer` import に変更
+- `tests/unit/v460/test_param_adapter.py` を canonical `ztb.trading.sizing.param_adapter` import に変更し、不要な `sys.path` 注入を削除
+- `tests/unit/v460/test_bayesian_regime_filter.py` を canonical `ztb.trading.signal.regime.bayesian_regime_filter` import に変更

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from scripts.v460.lib.lot_sizer import (
+from ztb.trading.sizing.lot_sizer import (
     LotSizingConfig,
     LotSizingResult,
     clamp_lot,

@@ -365,3 +365,12 @@ script 側は wrapper を残して source/契約テスト互換を保つ方針�
 `maker_price` についても、pure helper 抽出だけでなく
 invalid mid/spread guard を先に入れておくことで、
 stage orchestration 分割前の安全性を高める方針を取っている。
+
+同様に Phase 4 では、production だけでなく
+
+- lot_sizer
+- param_adapter
+- bayesian_regime_filter
+
+の functional test も canonical import へ寄せ、
+shim 契約テストだけを legacy path 側へ残す方向を継続している。

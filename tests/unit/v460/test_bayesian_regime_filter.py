@@ -10,7 +10,7 @@ import math
 import numpy as np
 import pytest
 
-from scripts.v460.lib.bayesian_regime_filter import (
+from ztb.trading.signal.regime.bayesian_regime_filter import (
     BayesianRegimeConfig,
     BayesianRegimeFilter,
     BayesianRegimeResult,
