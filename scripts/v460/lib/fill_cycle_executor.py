@@ -27,6 +27,7 @@ from scripts.v460.lib.cross_venue_lead_lag import (
     VenueMidSnapshot,
     build_cross_venue_event_details,
     compute_cross_venue_lead_lag_hint,
+    compute_microprice,
     update_cross_venue_ema,
 )
 from scripts.v460.lib.fill_config import (
@@ -137,18 +138,14 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             return
 
         # 442# local microprice (available from cached OB)
+        # 512# DRY: compute_microprice ヘルパーで重複排除
         local_microprice: float | None = None
         local_bid_depth = 0.0
         local_ask_depth = 0.0
         if hasattr(local_ob, "bids") and hasattr(local_ob, "asks"):
             local_bid_depth = depth_volume(local_ob.bids, depth=5)
             local_ask_depth = depth_volume(local_ob.asks, depth=5)
-            if local_ob.bids and local_ob.asks:
-                Pb, Qb = local_ob.bids[0][0], local_ob.bids[0][1]
-                Pa, Qa = local_ob.asks[0][0], local_ob.asks[0][1]
-                denom = Qa + Qb
-                if denom > 0:
-                    local_microprice = (Pb * Qa + Pa * Qb) / denom
+            local_microprice = compute_microprice(local_ob.bids, local_ob.asks)
 
         local_snapshot = VenueMidSnapshot(
             exchange=str(getattr(local_ob, "exchange", "") or "local"),
@@ -175,22 +172,17 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                 return
 
             # 442# reference microprice + depth
+            # 512# DRY: compute_microprice ヘルパーで重複排除
             ref_microprice: float | None = None
             ref_bid_depth = 0.0
             ref_ask_depth = 0.0
             if hasattr(reference_ob, "bids") and hasattr(reference_ob, "asks"):
                 ref_bid_depth = depth_volume(reference_ob.bids, depth=ob_depth)
                 ref_ask_depth = depth_volume(reference_ob.asks, depth=ob_depth)
-                if (
-                    self.config.cross_venue_microprice_enabled
-                    and reference_ob.bids
-                    and reference_ob.asks
-                ):
-                    Pb, Qb = reference_ob.bids[0][0], reference_ob.bids[0][1]
-                    Pa, Qa = reference_ob.asks[0][0], reference_ob.asks[0][1]
-                    denom = Qa + Qb
-                    if denom > 0:
-                        ref_microprice = (Pb * Qa + Pa * Qb) / denom
+                if self.config.cross_venue_microprice_enabled:
+                    ref_microprice = compute_microprice(
+                        reference_ob.bids, reference_ob.asks,
+                    )
 
             ref_mid = (ref_bid + ref_ask) / 2.0
             current_reference = VenueMidSnapshot(

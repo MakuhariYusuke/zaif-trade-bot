@@ -205,9 +205,10 @@ class FillRecordBuilderMixin:
         side: str,
     ) -> dict[str, object]:
         """Cross-venue lead-lag の観測値を FillRecord 向けに整形する."""
-        enabled = bool(getattr(self.config, "cross_venue_lead_lag_enabled", False))
-        hint = getattr(self._maker_price, "cross_venue_lead_lag_hint", None)
-        vetoed = bool(getattr(self._maker_price, "cross_venue_lead_lag_vetoed", False))
+        # 512# getattr → 直接参照 (型安全化)
+        enabled = self.config.cross_venue_lead_lag_enabled
+        hint = self._maker_price.cross_venue_lead_lag_hint
+        vetoed = self._maker_price.cross_venue_lead_lag_vetoed
         fields = build_cross_venue_fill_fields(
             enabled=enabled,
             hint=hint,
@@ -215,15 +216,10 @@ class FillRecordBuilderMixin:
             vetoed=vetoed,
         )
         # 448# F2: no-op 可視化フィールド追加
-        fields["cross_venue_lead_lag_pre_offset"] = getattr(
-            self._maker_price, "_cross_venue_lead_lag_pre_offset", None
-        )
-        fields["cross_venue_lead_lag_post_offset"] = getattr(
-            self._maker_price, "_cross_venue_lead_lag_post_offset", None
-        )
-        fields["cross_venue_lead_lag_cap_hit"] = getattr(
-            self._maker_price, "_cross_venue_lead_lag_cap_hit", False
-        )
+        # 512# getattr → 直接参照
+        fields["cross_venue_lead_lag_pre_offset"] = self._maker_price._cross_venue_lead_lag_pre_offset
+        fields["cross_venue_lead_lag_post_offset"] = self._maker_price._cross_venue_lead_lag_post_offset
+        fields["cross_venue_lead_lag_cap_hit"] = self._maker_price._cross_venue_lead_lag_cap_hit
         return fields
 
     def _build_fill_strategy_fields(

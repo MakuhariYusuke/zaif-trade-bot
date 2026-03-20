@@ -26,6 +26,25 @@ class VenueMidSnapshot:
     ask_depth: float = 0.0              # 板 ask 側合計出来高
 
 
+def compute_microprice(
+    bids: list[tuple[float, float]],
+    asks: list[tuple[float, float]],
+) -> float | None:
+    """512# DRY: Weighted midprice (Gatheral 2018).
+
+    microprice = (P_bid × Q_ask + P_ask × Q_bid) / (Q_ask + Q_bid)
+    BBO (Level 1) のみ使用。
+    """
+    if not bids or not asks:
+        return None
+    Pb, Qb = bids[0][0], bids[0][1]
+    Pa, Qa = asks[0][0], asks[0][1]
+    denom = Qa + Qb
+    if denom <= 0:
+        return None
+    return (Pb * Qa + Pa * Qb) / denom
+
+
 @dataclass
 class CrossVenueEMAState:
     """445# EMA state for smoothed cross-venue spread tracking.

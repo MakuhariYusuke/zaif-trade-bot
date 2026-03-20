@@ -95,6 +95,12 @@ class RunSessionState:
     vg_fire_count: int = 0
     vg_reason_counts: dict[str, int] = field(default_factory=dict)     # reason→count
     inv_skew_active_count: int = 0  # inv_skew_factor != 0 のサイクル数
+    # 512# cross-venue summary counters
+    cv_hint_count: int = 0          # hint 発火 (direction != None)
+    cv_retreat_count: int = 0       # adverse retreat 適用
+    cv_tighten_count: int = 0       # favorable tighten 適用
+    cv_veto_count: int = 0          # veto 拒否
+    cv_cap_hit_count: int = 0       # cap_hit (offset ceiling 到達)
     batch: list[FillRecord] = field(default_factory=list)
     batch_size: int = 10
 

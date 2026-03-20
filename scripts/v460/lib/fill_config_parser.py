@@ -213,6 +213,9 @@ def _parse_cross_venue_section(yaml_cfg: dict) -> dict:
         # 506# basis correction
         "basis_correction_enabled": "cross_venue_basis_correction_enabled",
         "basis_ema_alpha": "cross_venue_basis_ema_alpha",
+        # 512# favorable-side tightening
+        "favorable_tighten_enabled": "cross_venue_favorable_tighten_enabled",
+        "favorable_tighten_mult": "cross_venue_favorable_tighten_mult",
     }
     for yaml_key, config_key in cv_map.items():
         if yaml_key in cv:

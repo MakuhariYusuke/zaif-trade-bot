@@ -16,6 +16,7 @@ from scripts.v460.lib.cross_venue_lead_lag import (
     build_cross_venue_event_details,
     build_cross_venue_fill_fields,
     compute_cross_venue_lead_lag_hint,
+    compute_microprice,
     update_cross_venue_ema,
 )
 from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
@@ -38,6 +39,10 @@ class _OB:
 class _CrossVenueState:
     cross_venue_lead_lag_hint: CrossVenueLeadLagHint | None
     cross_venue_lead_lag_vetoed: bool = False
+    # 512# fill_record_builder が直接参照する private 属性
+    _cross_venue_lead_lag_pre_offset: float | None = None
+    _cross_venue_lead_lag_post_offset: float | None = None
+    _cross_venue_lead_lag_cap_hit: bool = False
 
 
 class _RegistryStub:
@@ -103,6 +108,7 @@ def _make_hint(
     velocity_bps: float = 3.0,
     age_sec: float = 0.5,
     direction: str = "up",
+    confidence: float = 1.0,
 ) -> CrossVenueLeadLagHint:
     return CrossVenueLeadLagHint(
         direction=direction,
@@ -111,6 +117,7 @@ def _make_hint(
         reference_velocity_bps=velocity_bps,
         age_sec=age_sec,
         reference_exchange="bitflyer",
+        confidence=confidence,
     )
 
 
@@ -766,3 +773,110 @@ class TestFillRecordSchemaIncludesNewFields:
                 f"builder field '{key}' is NOT in FillRecord schema — "
                 f"it will be silently dropped by _sanitize_fill_record_fields"
             )
+
+
+# ---- 512# compute_microprice DRY helper ----
+
+
+class TestComputeMicroprice:
+    """512# compute_microprice ヘルパーの単体テスト."""
+
+    def test_basic_computation(self) -> None:
+        """Gatheral 2018 weighted midprice: (Pb·Qa + Pa·Qb) / (Qa + Qb)."""
+        bids = [(100.0, 2.0)]
+        asks = [(102.0, 1.0)]
+        # expected: (100*1 + 102*2) / (1+2) = 304/3 ≈ 101.333
+        result = compute_microprice(bids, asks)
+        assert result == pytest.approx(304.0 / 3.0)
+
+    def test_equal_quantities_gives_midprice(self) -> None:
+        bids = [(100.0, 1.0)]
+        asks = [(102.0, 1.0)]
+        # equal qty → simple mid = 101.0
+        result = compute_microprice(bids, asks)
+        assert result == pytest.approx(101.0)
+
+    def test_empty_bids_returns_none(self) -> None:
+        assert compute_microprice([], [(102.0, 1.0)]) is None
+
+    def test_empty_asks_returns_none(self) -> None:
+        assert compute_microprice([(100.0, 1.0)], []) is None
+
+    def test_zero_quantities_returns_none(self) -> None:
+        assert compute_microprice([(100.0, 0.0)], [(102.0, 0.0)]) is None
+
+
+# ---- 512# Favorable-side tightening ----
+
+
+class TestFavorableSideTightening:
+    """512# favorable-side offset tightening の Guard 統合テスト."""
+
+    def test_favorable_tighten_enabled_reduces_offset(self) -> None:
+        """enabled=True → buy 側 (favorable) の offset が縮小される."""
+        config = FillTestConfig(
+            min_spread_jpy=1.0,
+            cross_venue_lead_lag_enabled=True,
+            cross_venue_lead_lag_offset_boost=1.5,
+            cross_venue_favorable_tighten_enabled=True,
+            cross_venue_favorable_tighten_mult=0.90,
+        )
+        baseline = _make_calc(config)
+        guarded = _make_calc(config)
+        adapter = _OrderbookAdapter([
+            _OB(100.0, [(10_000_000.0, 1.0)], [(10_002_000.0, 1.0)], "coincheck"),
+        ])
+        base_result = asyncio.run(baseline.compute("buy", adapter, "btc_jpy"))
+        guarded.set_cross_venue_lead_lag_hint(
+            _make_hint(adverse_side="sell", direction="up", confidence=1.0)
+        )
+        guarded_result = asyncio.run(guarded.compute("buy", adapter, "btc_jpy"))
+        assert guarded_result.effective_offset_ratio < base_result.effective_offset_ratio
+
+    def test_favorable_tighten_disabled_unchanged(self) -> None:
+        """enabled=False (default) → buy 側は変化なし (既存動作維持)."""
+        config = FillTestConfig(
+            min_spread_jpy=1.0,
+            cross_venue_lead_lag_enabled=True,
+            cross_venue_lead_lag_offset_boost=1.5,
+            cross_venue_favorable_tighten_enabled=False,
+        )
+        baseline = _make_calc(config)
+        guarded = _make_calc(config)
+        adapter = _OrderbookAdapter([
+            _OB(100.0, [(10_000_000.0, 1.0)], [(10_002_000.0, 1.0)], "coincheck"),
+        ])
+        base_result = asyncio.run(baseline.compute("buy", adapter, "btc_jpy"))
+        guarded.set_cross_venue_lead_lag_hint(
+            _make_hint(adverse_side="sell", direction="up")
+        )
+        guarded_result = asyncio.run(guarded.compute("buy", adapter, "btc_jpy"))
+        assert guarded_result.effective_offset_ratio == pytest.approx(
+            base_result.effective_offset_ratio
+        )
+
+    def test_favorable_tighten_confidence_proportional(self) -> None:
+        """confidence=0.5, mult=0.90 → tighten_factor=0.95 (控えめな縮小)."""
+        config = FillTestConfig(
+            min_spread_jpy=1.0,
+            cross_venue_lead_lag_enabled=True,
+            cross_venue_favorable_tighten_enabled=True,
+            cross_venue_favorable_tighten_mult=0.90,
+        )
+        calc_half = _make_calc(config)
+        calc_full = _make_calc(config)
+        adapter = _OrderbookAdapter([
+            _OB(100.0, [(10_000_000.0, 1.0)], [(10_002_000.0, 1.0)], "coincheck"),
+        ])
+        # Half confidence → smaller tighten
+        calc_half.set_cross_venue_lead_lag_hint(
+            _make_hint(adverse_side="sell", direction="up", confidence=0.5)
+        )
+        result_half = asyncio.run(calc_half.compute("buy", adapter, "btc_jpy"))
+        # Full confidence → larger tighten
+        calc_full.set_cross_venue_lead_lag_hint(
+            _make_hint(adverse_side="sell", direction="up", confidence=1.0)
+        )
+        result_full = asyncio.run(calc_full.compute("buy", adapter, "btc_jpy"))
+        # Full confidence should tighten more (smaller offset)
+        assert result_full.effective_offset_ratio < result_half.effective_offset_ratio

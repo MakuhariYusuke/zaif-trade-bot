@@ -415,6 +415,11 @@ class FillTestConfig:
     # 506# P1: basis correction (de-meaning) — CC/BF 構造的 basis を差し引いて direction 判定
     cross_venue_basis_correction_enabled: bool = False
     cross_venue_basis_ema_alpha: float = 0.02  # basis EMA は spread EMA より遅い (日次スケール)
+    # 512# favorable-side tightening: adverse 側 retreat に加え、
+    # favorable 側 (direction と同じ side) の offset を confidence 比例で縮小し fill rate 向上。
+    # Glosten (1994): 方向情報を持つ MM は favorable side で積極的な quote を出せる。
+    cross_venue_favorable_tighten_enabled: bool = False
+    cross_venue_favorable_tighten_mult: float = 0.90  # offset × 0.90 = 10% 縮小 (conf=1.0 時)
     # 062# S5: SkipGate ML フィルター (AS 分類器ベースの注文スキップ)
     skip_gate_enabled: bool = False
     # 118# A3: side 別有効/無効 (sell 逆選別対策)

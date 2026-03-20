@@ -174,6 +174,21 @@ class OrchestratorPostCycleMixin:
             st.vg_reason_counts[_vr] = st.vg_reason_counts.get(_vr, 0) + 1
         if record.inv_skew_factor is not None and record.inv_skew_factor != 0.0:
             st.inv_skew_active_count += 1
+        # 512# cross-venue summary counters
+        if record.cross_venue_lead_lag_direction is not None:
+            st.cv_hint_count += 1
+        if record.cross_venue_lead_lag_applied is True:
+            st.cv_retreat_count += 1
+        elif (
+            record.cross_venue_lead_lag_pre_offset is not None
+            and record.cross_venue_lead_lag_post_offset is not None
+            and record.cross_venue_lead_lag_post_offset < record.cross_venue_lead_lag_pre_offset
+        ):
+            st.cv_tighten_count += 1
+        if record.cross_venue_lead_lag_vetoed is True:
+            st.cv_veto_count += 1
+        if record.cross_venue_lead_lag_cap_hit is True:
+            st.cv_cap_hit_count += 1
 
         # soft/hard loss_cap
         if self.config.loss_cap_auto and not self._soft_loss_cap_triggered:
@@ -358,6 +373,15 @@ class OrchestratorPostCycleMixin:
                     f"[510# inv_skew] active={st.inv_skew_active_count}/{st.total_count} "
                     f"({_isk_pct:.1f}%)"
                 )
+            # 512# cross-venue summary
+            if st.cv_hint_count > 0:
+                _cv_pct = st.cv_hint_count / st.total_count * 100.0 if st.total_count > 0 else 0.0
+                _cv_parts = (
+                    f"hint={st.cv_hint_count}({_cv_pct:.1f}%), "
+                    f"retreat={st.cv_retreat_count}, tighten={st.cv_tighten_count}, "
+                    f"veto={st.cv_veto_count}, cap_hit={st.cv_cap_hit_count}"
+                )
+                logger.info(f"[512# cross_venue] {_cv_parts}")
             # 348# balance_forced 撤廃: forced buy/sell KPI 分離ログを削除
 
         # 113# resilience: HealthMonitor + GC

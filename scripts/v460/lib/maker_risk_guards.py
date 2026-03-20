@@ -251,9 +251,36 @@ class RiskGuardsMixin:
         if (
             not cfg.cross_venue_lead_lag_enabled
             or hint is None
-            or hint.adverse_side != side
             or hint.age_sec > cfg.cross_venue_lead_lag_max_age_sec
         ):
+            return effective_offset_ratio
+
+        # 512# favorable-side tightening: adverse 側でなくても favorable 側で offset 縮小
+        if hint.adverse_side != side:
+            if not cfg.cross_venue_favorable_tighten_enabled:
+                return effective_offset_ratio
+            # favorable side: offset を confidence 比例で縮小 (fill rate 向上)
+            # tighten_factor = 1 - (1 - mult) × confidence
+            # conf=1.0, mult=0.90 → factor=0.90 (10% 縮小)
+            # conf=0.5, mult=0.90 → factor=0.95 (5% 縮小)
+            pre_offset = effective_offset_ratio
+            tighten_factor = 1.0 - (1.0 - cfg.cross_venue_favorable_tighten_mult) * hint.confidence
+            effective_offset_ratio *= tighten_factor
+            self._cross_venue_lead_lag_pre_offset = pre_offset
+            self._cross_venue_lead_lag_post_offset = effective_offset_ratio
+            self._cross_venue_lead_lag_cap_hit = False
+            logger.info(
+                "[cross_venue] %s favorable tighten from %s: offset %.4f->%.4f "
+                "(factor=%.3f, conf=%.2f, spread=%+.2fbps, direction=%s)",
+                side,
+                hint.reference_exchange,
+                pre_offset,
+                effective_offset_ratio,
+                tighten_factor,
+                hint.confidence,
+                hint.spread_bps,
+                hint.direction,
+            )
             return effective_offset_ratio
 
         if (
