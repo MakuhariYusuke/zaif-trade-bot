@@ -1,5 +1,8 @@
 # 520# PHG: remaining deferred actions screening plan
 
+> 運用メモ: 520# は remaining deferred 項目のスクリーニング履歴として保持する。  
+> 2026-03-21 以後の継続更新先は [521_phg_master_deferred_and_architecture_carryforward.md](521_phg_master_deferred_and_architecture_carryforward.md) を正とする。
+
 ## 目的
 
 514# で deferred docs 全体の棚卸しを行った。

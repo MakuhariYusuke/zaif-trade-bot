@@ -1,5 +1,7 @@
 # 502# PHG: `scripts/v460/lib` → `ztb` 移行 / オブジェクト分割 実行計画
 
+> current carry-forward: 以後の継続更新は [521_phg_master_deferred_and_architecture_carryforward.md](521_phg_master_deferred_and_architecture_carryforward.md) を主とし、本書は `lib -> ztb` 実行計画の履歴と詳細設計の基礎として保持する。
+
 ## 背景
 
 `106#` と `108#` で残課題として認識されていた以下は、現在も有効:

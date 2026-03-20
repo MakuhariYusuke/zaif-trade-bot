@@ -1,5 +1,8 @@
 # 514# PHG: deferred docs refresh / carry-forward audit plan
 
+> 運用メモ: 514# は deferred docs 監査の履歴として保持する。  
+> 2026-03-21 以後の継続更新先は [521_phg_master_deferred_and_architecture_carryforward.md](521_phg_master_deferred_and_architecture_carryforward.md) を正とする。
+
 ## 目的
 
 `docs/v460` には、当時は妥当だったが現在は実装進捗とズレた

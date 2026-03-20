@@ -7940,3 +7940,21 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - `docs/v460/520_phg_plan_remaining_deferred_actions_screening.md`
   - remaining deferred 項目のスクリーニング計画を新設
   - 今やるもの / future 維持のものを分離
+## 539# centralize deferred docs and architecture carry-forward
+- `docs/v460/521_phg_master_deferred_and_architecture_carryforward.md`
+  - deferred docs の carry-forward
+  - `lib -> ztb` / Phase 3/4
+  - 実コードの基本設計
+  を一本化して、以後更新し続ける central living document として新設
+- `docs/v460/514_phg_plan_deferred_docs_refresh_and_carryforward_audit.md`
+- `docs/v460/520_phg_plan_remaining_deferred_actions_screening.md`
+  - 監査・スクリーニングの履歴として位置付けを固定
+  - 今後の継続更新先が 521# であることを追記
+- `docs/v460/502_phg_plan_lib_to_ztb_and_object_split.md`
+- `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md`
+  - current carry-forward の参照先を 521# に統一
+- `docs/v460/index.md`
+  - 521# を追加
+- セルフレビュー
+  - 514/520 を消さずに履歴へ残しつつ、以後の保守先だけを 1 本へ寄せる構成にした
+  - 「ドキュメント番号を主にする」という運用ルールを本文へ明示できた

@@ -1,5 +1,7 @@
 # 505# PHG: 504# レビュー反映と Phase 0 着手
 
+> current carry-forward: 以後の継続更新は [521_phg_master_deferred_and_architecture_carryforward.md](521_phg_master_deferred_and_architecture_carryforward.md) を主とし、本書は 504# レビュー反映の履歴として保持する。
+
 ## 目的
 
 504# のレビューを受けて、502# の `scripts/v460/lib` → `ztb` 移行計画を実コードベースに合わせて補正し、

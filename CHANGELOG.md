@@ -6039,3 +6039,8 @@ python scripts/unified_trainer.py \
 - `docs/v460/158_phg_rpt_backlog_audit_and_phase_d_priorities.md` の `P2-5 skip_gate.py` と `P3-1 SkipGate テスト` を stale な future 表現から更新
 - `docs/v460/index.md` の low priority / v461+ リストに session037 進捗の注記を追加
 - `docs/v460/520_phg_plan_remaining_deferred_actions_screening.md` を追加し、今やるものと future 維持のものを切り分けた
+## 539# centralize deferred docs and architecture carry-forward
+- `docs/v460/521_phg_master_deferred_and_architecture_carryforward.md` を追加し、deferred docs の carry-forward とコード基本設計を以後更新し続ける central living document として定義
+- `docs/v460/514_phg_plan_deferred_docs_refresh_and_carryforward_audit.md` と `docs/v460/520_phg_plan_remaining_deferred_actions_screening.md` に、今後の継続更新先が 521# であることを追記
+- `docs/v460/502_phg_plan_lib_to_ztb_and_object_split.md` と `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md` に current carry-forward 参照を追記
+- `docs/v460/index.md` に 521# を追加
