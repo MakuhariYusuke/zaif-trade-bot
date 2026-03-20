@@ -68,7 +68,24 @@ fill_test に影響せず先行着手可能なタスクを特定・実施した�
 
 ## §5 106# R1-R10 残課題ステータス
 
-変更なし（R1/R4/R5/R6/R7 は大規模リファクタ or v461 移行時に実施予定）。
+108# 当時は「変更なし」としていたが、その後の session037 で状況は大きく進んだ。
+
+- R1:
+  - `run_fill_test.py` 分割後の抽出先について、`scripts/v460/lib` に残った domain logic の canonical 化を継続
+- R3:
+  - `SkipGate` の runtime / result metadata / FillRecord payload 境界まで unit/migration test を補強
+- R5:
+  - `lib -> ztb` 移行は `v461` 以降送りではなく、主要部分を session037 で前倒し実施
+  - canonical 化済み:
+    - `cancel_reasons`
+    - `param_adapter`
+    - `lot_sizer`
+    - `fast_fill_defense`
+    - `sac_common`
+    - `regime_detector`
+    - `bayesian_regime_filter`
+- R6/R7:
+  - repo 全体の構造整理自体は依然として別テーマだが、少なくとも `lib -> ztb` の責務分離は前進済み
 
 ---
 
@@ -76,3 +93,18 @@ fill_test に影響せず先行着手可能なタスクを特定・実施した�
 > - 作成日: 2026-02-18
 > - フェーズ: ph3 先行 (107# fill_test 観察中)
 > - 前提文書: 018#, 021#, 106#
+
+## 2026-03-21 補遺
+
+108# で「ph3 以降の前倒し」として着手したテーマは、その後さらに進み、
+`Phase 3/4` の実装と `lib -> ztb` 再配置が現実の作業トラックになった。
+
+特に次の点は、108# 時点の見立てより前に進んでいる。
+
+- `scripts/v460/lib` の domain logic を `ztb` へ寄せる方針が、計画ではなく実装段階へ移行
+- `skip_gate_evaluator` と `maker_price` は God Object のまま放置せず、
+  pure math / result assembly / runtime contract を段階的に抽出
+- test-side でも canonical import 収束を進め、shim 依存を大きく削減
+
+そのため、108# の「v461 以降で本格対応」という表現は、現状では
+「当時の保守的な見積もり」として読むのが適切である。

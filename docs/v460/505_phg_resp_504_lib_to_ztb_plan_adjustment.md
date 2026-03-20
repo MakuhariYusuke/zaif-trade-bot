@@ -5,6 +5,31 @@
 504# のレビューを受けて、502# の `scripts/v460/lib` → `ztb` 移行計画を実コードベースに合わせて補正し、
 そのまま Phase 0 の最初の実装に着手する。
 
+## 2026-03-21 時点の要約
+
+505# は「502# の補正メモ」から始まったが、現時点では補正内容の大半が実装段階まで進んでいる。
+
+- `cancel_reasons` / `param_adapter` / `lot_sizer` / `fast_fill_defense` /
+  `sac_common` / `regime_detector` / `bayesian_regime_filter`
+  は canonical 化済み
+- `skip_gate_evaluator` は
+  - runtime helper
+  - result metadata
+  - extra payload
+  - final FillRecord context/builder
+  まで split-first を前進
+- `maker_price` も
+  - inventory math
+  - offset math
+  - loss boost decay
+  - spread adaptive
+  - spread guard finalization
+  - final ceiling clamp
+  まで helper/stage を抽出済み
+
+そのため、この文書は「504# への応答」だけでなく、
+実際の軌道修正が有効だったことを確認する記録として読むのが妥当である。
+
 ## 504# の指摘で妥当だったもの
 
 ### 1. `cancel_reasons.py` の優先度が低すぎた

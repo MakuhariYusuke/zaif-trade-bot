@@ -7878,3 +7878,24 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/v460/test_236_state_persistence_cqs.py tests/unit/v460/test_249_directional_alpha.py tests/unit/v460/test_439_cross_venue_lead_lag.py tests/unit/v460/test_229_cleanup_counter_rename.py`: `125 passed in 3.17s`
   - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_405_offset_ceiling_pipeline.py tests/unit/v460/test_421_final_clamp_deadlock.py`: `103 passed in 1.98s`
   - `tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_sac_retrain_scheduler.py -k 'Test058Integration or RawLoadCache or save_load_roundtrip or as_mode_save_load or test_train_skip_gate_real or training_timeout_raises or retrain_once_cleans_up_on_error or post_cycle_memory_check_runs or single_iteration_then_shutdown or trigger_exception_does_not_kill_loop or record_result_exception_does_not_kill_loop'`: `15 passed, 98 deselected in 4.72s`
+## 535# deferred-doc refresh and final verification attempt
+- `docs/v460/106_ph2_fix_refactoring_r1_r10.md`
+  - `v461` 以降送りと書いていた `R3/R5` 周辺を現状進捗に追随
+  - session037 で前倒しされた canonical 化 / test 補強を補遺として追記
+- `docs/v460/108_ph3_fix_ahead_of_schedule.md`
+  - 「106# 残課題は変更なし」の記述を更新
+  - `Phase 3/4` 実装化と `lib -> ztb` 前進状況を補足
+- `docs/v460/502_phg_plan_lib_to_ztb_and_object_split.md`
+  - 2026-03-21 時点の見立てへ更新
+  - `Phase 0-2` 完了 / `Phase 3` 終盤 / `Phase 4` 進行中を明記
+- `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md`
+  - 504# 反映内容が実装段階まで進んだことを要約として追記
+- 最終 broad 確認
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460 ...`
+    - WSL から Windows venv 実行時に `UtilBindVsockAnyPort` で失敗
+  - `python3 -m pytest tests/unit/v460 ...`
+    - この環境では `pytest` 未インストールで失敗
+  - そのため今回は full broad の再実行自体は環境制約で未完了
+  - 直近の focused/regression 群は維持:
+    - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_405_offset_ceiling_pipeline.py tests/unit/v460/test_421_final_clamp_deadlock.py`: `103 passed in 1.98s`
+    - `tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_sac_retrain_scheduler.py -k 'Test058Integration or RawLoadCache or save_load_roundtrip or as_mode_save_load or test_train_skip_gate_real or training_timeout_raises or retrain_once_cleans_up_on_error or post_cycle_memory_check_runs or single_iteration_then_shutdown or trigger_exception_does_not_kill_loop or record_result_exception_does_not_kill_loop'`: `15 passed, 98 deselected in 4.72s`

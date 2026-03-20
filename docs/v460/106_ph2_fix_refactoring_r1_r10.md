@@ -19,14 +19,14 @@
 |---|------|------|------|
 | **R1** | `run_fill_test.py` God Object 解体 | **✅ 119#–121# で段階実施** | 3411→2701 (119#) →1912 (120#) →~1000 (121#)。詳細は §4 参照 |
 | **R2** | `BPS_FACTOR = 10_000` 定数化 | **✅ 106#で実施済** | `run_fill_test.py` 14箇所 + `lot_sizer.py` 1箇所 |
-| **R3** | SkipGate `evaluate()`/`warm_start` 単体テスト不足 | **後日** | 既存テスト: 38件 (test_enricher_skip_gate.py + test_088_features.py)。warm_start較正のunit testは有用だが再起動に影響なし |
+| **R3** | SkipGate `evaluate()`/`warm_start` 単体テスト不足 | **✅ 後続で大幅補強** | 当時は「後日」判断だったが、session037 で canonical 化と並行して `test_enricher_skip_gate.py` / `test_skip_gate_v3.py` / migration test を拡充し、result metadata / FillRecord payload / runtime helper 境界まで回帰を追加 |
 
 ### 中優先度 (保守性)
 
 | # | 項目 | 判定 | 理由 |
 |---|------|------|------|
 | **R4** | ドキュメント命名違反 28件 | **後日** | 060-098番台に `phX`/`type` 欠落多数。大量リネームは運用に影響なし |
-| **R5** | lib → ztb 移動検討 | **✅ 120#で一部実施** | `KillSwitch` → `ztb.risk.circuit_breakers`、`OrderState` enum → `ztb` に統合。残: `fast_fill_defense`, `param_adapter`, `lot_sizer`, `regime_detector` は v461 移行時 |
+| **R5** | lib → ztb 移動検討 | **✅ session037 で大幅前倒し** | `KillSwitch` / `OrderState` に加え、`cancel_reasons` / `param_adapter` / `lot_sizer` / `fast_fill_defense` / `sac_common` / `regime_detector` / `bayesian_regime_filter` まで canonical 化を実施。残りは `maker_price` / `skip_gate_evaluator` / `order_monitor` の split-first 終盤 |
 | **R6** | utils 70+ファイルの分割 | **後日** | God package。safety.py, rate_limiter.py が埋もれている。大規模リファクタ |
 | **R7** | `config/` vs `configs/`, `reporting/` vs `reports/` の重複ディレクトリ整理 | **後日** | 影響範囲が広い |
 
@@ -119,7 +119,7 @@ cumulative_pnl_jpy += pnl_bps / self._BPS_FACTOR * price * qty
 |------|---|---|
 | ~~1~~ | ~~R1~~ | **121# で ~1000行まで到達** (目標達成) |
 | 2 | R3 | 次回 SkipGate 再訓練時 |
-| ~~3~~ | ~~R5~~ | **120# で KillSwitch/OrderState 統合済み**。残は v461 移行時 |
+| ~~3~~ | ~~R5~~ | **session037 で主要移行を前倒し**。残りは `maker_price` / `skip_gate_evaluator` / `order_monitor` の終盤整理 |
 | 4 | R4 | ドキュメント整理一括作業時 |
 | 5 | R6/R7 | リポジトリ構造整理フェーズ |
 
@@ -129,3 +129,32 @@ cumulative_pnl_jpy += pnl_bps / self._BPS_FACTOR * price * qty
 - 857 passed, 0 failed (113# R1 分割後, 2026-02-19)
 - 878 passed, 0 failed (120# God Object 分割後, 2026-02-21)
 - 878 passed, 0 failed (121# 最終抽出後, 1912→1568行)
+
+## 2026-03-21 補遺
+
+106# 時点では `v461` 以降送りとしていた `lib -> ztb` 移行と SkipGate 周辺のテスト補強は、
+session037 でかなり前倒しされた。
+
+- canonical 化済み:
+  - `cancel_reasons`
+  - `param_adapter`
+  - `lot_sizer`
+  - `fast_fill_defense`
+  - `sac_common`
+  - `regime_detector`
+  - `bayesian_regime_filter`
+- `skip_gate_evaluator` は
+  - result metadata
+  - FillRecord extra payload
+  - final FillRecord context/builder
+  まで canonical 側へ整理済み
+- `maker_price` も
+  - inventory math
+  - offset math
+  - loss boost decay
+  - spread adaptive
+  - spread guard finalization
+  - final ceiling clamp
+  の pure/stage helper を `ztb.trading.pricing` 側へ抽出済み
+
+このため、106# の deferred 表記は「当時の判断」としては妥当だったが、現状認識としては更新が必要な状態になっている。

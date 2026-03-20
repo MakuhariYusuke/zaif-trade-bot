@@ -6019,3 +6019,8 @@ python scripts/unified_trainer.py \
 - `tests/unit/v460/test_439_cross_venue_lead_lag.py`
   を canonical import に変更
 - `maker_price.compute()` の行数は `304` 行で、`test_260_compute_extract_regime_split.py` の上限 `<=310` を維持
+## 535# deferred-doc refresh and final verification attempt
+- `docs/v460/106_ph2_fix_refactoring_r1_r10.md` の deferred 記述を現状進捗に追随し、session037 で前倒しされた canonical 化 / test 補強状況を追記
+- `docs/v460/108_ph3_fix_ahead_of_schedule.md` に、106# 残課題のその後の前進状況と `Phase 3/4` 実装化を補足
+- `docs/v460/502_phg_plan_lib_to_ztb_and_object_split.md` を 2026-03-21 時点の進捗へ更新し、`Phase 0-2` 完了 / `Phase 3` 終盤 / `Phase 4` 進行中の見立てを明記
+- `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md` に 504# 反映内容の実装前進サマリを追記

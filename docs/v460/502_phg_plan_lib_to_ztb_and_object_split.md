@@ -6,7 +6,9 @@
 
 - `scripts/v460/lib` に置かれた domain logic の一部は、本来 `ztb` にあるべき
 - `run_fill_test.py` の分割は進んだが、抽出先の一部が `v460 lib` に留まっている
-- `v461` 以降で本格移行する前提だと、今のうちに責務境界だけでも固めておかないと再び God Object 化しやすい
+- 当初は `v461` 以降で本格移行する前提だったが、session037 でかなり前倒ししている。
+  ただし residual な stateful orchestration を雑に触ると戻りが大きいため、
+  最終盤でも split-first を維持する
 
 504# レビューを踏まえ、この計画書は以下を反映して改訂する:
 
@@ -37,7 +39,7 @@ façade なしの即時移行は危険。
 「orchestration と domain logic を分ける」ことにある。
 
 ## 現在の整理方針
-## 実装進捗 (2026-03-20 時点)
+## 実装進捗 (2026-03-21 時点)
 
 既に canonical 化済み:
 
@@ -69,6 +71,16 @@ Phase 3 self-review:
 - `order_monitor.py`
   - stale policy / cancel-fill recheck result 型までは先行抽出済み
   - 残るのは async orchestration 本体
+
+現時点の見立て:
+
+- `Phase 0-2` は実質完了
+- `Phase 3` は終盤
+- `Phase 4` は production/test の canonical import 収束がかなり進んでいる
+- 残る本命は
+  - `maker_price` の stateful orchestration の最終整理
+  - `skip_gate_evaluator` に残る v460 run context / logger ownership
+  - 重い real-data / timeout test の最終仕上げ
 
 
 ### `scripts/v460/lib` に残すべきもの
