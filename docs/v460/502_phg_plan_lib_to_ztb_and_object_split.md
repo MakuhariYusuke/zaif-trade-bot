@@ -381,6 +381,27 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
 - まず `inventory_math` のような純粋計算を `ztb` に抜き、
   `MakerPriceCalculator` 側は wrapper を保つことで test 破壊半径を小さくできる
 
+#### `skip_gate_evaluator.py`
+
+先に抜く:
+
+- recent trades 正規化
+- adapter/runtime contract
+- early-return record 組立の shared helper
+
+後で残す:
+
+- hot-reload orchestration
+- ev_weighted 統合
+- FillRecord / config / logger 文脈
+
+理由:
+
+- `build_features_from_market_state()` 自体は既に canonical 化済みで、
+  次の自然な切り出しは runtime 入力正規化
+- `_normalize_recent_trades()` のような file-local helper は
+  `ztb.ml` に上げても責務がぶれにくく、Phase 4 の import 収束にも効く
+
 ## テスト方針
 
 ### 移行時に必須のテスト

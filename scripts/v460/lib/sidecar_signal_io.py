@@ -28,6 +28,7 @@ from scripts.v460.lib.sidecar_types import (
     DEFAULT_SIGNAL_TTL_SEC,
     SidecarSignal,
 )
+from ztb.utils.time_utils import current_iso_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -278,7 +279,7 @@ def _is_stale(timestamp_str: str, ttl_sec: float) -> bool:
 
 def make_timestamp() -> str:
     """現在時刻の ISO 8601 タイムスタンプを生成 (UTC)."""
-    return datetime.now(timezone.utc).isoformat()
+    return current_iso_timestamp(utc=True)
 
 
 def create_neutral_signal(timestamp: str | None = None) -> SidecarSignal:

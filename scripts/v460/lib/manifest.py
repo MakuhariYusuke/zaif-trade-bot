@@ -17,13 +17,13 @@ import subprocess
 import sys
 from functools import lru_cache
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import cast
 
 from ztb.types.common import ConfigSection, JSONDict
 from ztb.utils.dataclass_utils import shallow_asdict
 from ztb.utils.git_utils import get_git_sha as _get_shared_git_sha
+from ztb.utils.time_utils import current_compact_timestamp, current_iso_timestamp
 from ztb.utils.run_manifest import compute_file_hash as _compute_shared_file_hash
 
 
@@ -190,7 +190,7 @@ class ManifestWriter:
         seed: int,
     ) -> ManifestEntry:
         """Create and write a new manifest entry at run start."""
-        now = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        now = current_compact_timestamp(utc=True)
         gate_short = gate.lower().replace("-", "")
         run_id = f"v460_{gate_short}_seed{seed}_{now}"
 
@@ -207,7 +207,7 @@ class ManifestWriter:
             python_version=sys.version.split()[0],
             deps_hash=_get_deps_hash(),
             cuda_version=_get_cuda_version(),
-            started_at=datetime.now(timezone.utc).isoformat(),
+            started_at=current_iso_timestamp(utc=True),
         )
         self._append(entry)
         return entry
@@ -228,7 +228,7 @@ class ManifestWriter:
         This is an event-log pattern, not a bug. To get the latest state,
         group by run_id and take the last entry for each.
         """
-        entry.finished_at = datetime.now(timezone.utc).isoformat()
+        entry.finished_at = current_iso_timestamp(utc=True)
         entry.status = status
         entry.metrics = metrics
         entry.gate_result = gate_result

@@ -173,3 +173,17 @@ shared contract 抽出後に再点検すると、
 の pure 計算だけを `ztb.trading.pricing.inventory_math` へ抜く方が安全だった。
 
 これで canonical 化を進めつつ、公開 API と内部属性契約は維持できる。
+
+### 8. `skip_gate_evaluator` は runtime helper 抽出から進める
+
+`skip_gate_evaluator.py` は hot-reload / ev_weighted / FillRecord 早期返却まで抱えており、
+`evaluate()` 本体を先に割ると戻りが大きい。
+
+そのため次の順が安全:
+
+- `build_features_from_market_state()` は canonical のまま維持
+- recent trades 正規化を `ztb.ml.skip_gate_runtime` へ抽出
+- `OrderBookSnapshot` など shared contract は `ztb` 側参照へ寄せる
+
+この順なら、`skip_gate_evaluator` の public 契約と source-based test を守りつつ、
+Phase 4 の import 収束を前に進められる。

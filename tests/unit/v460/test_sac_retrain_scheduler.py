@@ -1032,7 +1032,7 @@ class TestCrashResilience495:
             # タイムアウトを極短に設定
             patch(
                 "scripts.v460.ml.sac_retrain_scheduler._TRAINING_TIMEOUT_SEC",
-                0.5,
+                0.2,
             ),
         ):
             result = retrain_once(cfg)

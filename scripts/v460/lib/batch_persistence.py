@@ -10,12 +10,12 @@ from __future__ import annotations
 import logging
 import time
 import traceback
-from datetime import datetime, timezone
 from pathlib import Path
 
 
 from ztb.io.common import ensure_parent_dir
 from ztb.metrics.fill_quality import FillRecord, format_utc_day, save_fill_records
+from ztb.utils.time_utils import current_compact_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +138,7 @@ class BatchPersistence:
 
     def emergency_dump(self, batch: list[FillRecord], reason: str) -> None:
         """024# R1: 緊急ダンプ — 通常保存が不可能な場合のフォールバック."""
-        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        ts = current_compact_timestamp(utc=True)
         dump_dir = self._results_dir / "emergency"
         ensure_parent_dir(dump_dir / "_placeholder")  # ztb/io/common 活用
         dump_path = dump_dir / f"emergency_{reason}_{ts}.jsonl"

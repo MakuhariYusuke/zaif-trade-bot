@@ -28,10 +28,10 @@ import numpy as np
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import FillTestConfig, SkipGateResult
 from scripts.v460.lib.hour_rules import resolve_hour_float, utc_hour_from_timestamp
-from scripts.v460.lib.ob_utils import OrderBookSnapshot
 from scripts.v460.lib.skip_gate_ev_weighted import SkipGateEvWeightedMixin
 from scripts.v460.lib.skip_gate_model_loader import SkipGateModelLoaderMixin
 from scripts.v460.ml.skip_gate import SkipDecision, build_features_from_market_state
+from ztb.ml.skip_gate_runtime import get_trade_field, normalize_recent_trades
 from ztb.ml.skip_gate_contracts import (
     SkipGateAdapter,
     SkipGateClassLike as _SkipGateClassLike,
@@ -41,6 +41,7 @@ from ztb.ml.skip_gate_contracts import (
 )
 # ファイルの SHA256 ハッシュを算出 (126# hot-reload 用)
 from ztb.metrics.fill_quality import build_skip_fill_record
+from ztb.trading.live.exchanges.base.broker_interfaces import OrderBookSnapshot
 from ztb.utils.run_manifest import compute_file_hash
 
 if TYPE_CHECKING:
@@ -179,16 +180,12 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         default: object = None,
     ) -> object:
         """dict / object 両対応で trade field を取得する."""
-        if isinstance(trade, dict):
-            if key in trade:
-                return trade[key]
-            if fallback_key is not None and fallback_key in trade:
-                return trade[fallback_key]
-            return default
-        value = getattr(trade, key, default)
-        if value is default and fallback_key is not None:
-            value = getattr(trade, fallback_key, default)
-        return value
+        return get_trade_field(
+            trade,
+            key=key,
+            fallback_key=fallback_key,
+            default=default,
+        )
 
     @classmethod
     def _normalize_recent_trades(
@@ -198,42 +195,11 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         fallback_timestamp: float,
     ) -> list[dict[str, object]] | None:
         """adapter の recent_trades を skip_gate 用の共通形式へ正規化."""
-        if not trades:
-            return None
-        try:
-            iterator = iter(cast(object, trades))
-        except TypeError:
-            return None
-
-        normalized: list[dict[str, object]] = []
-        for trade in iterator:
-            if trade is None:
-                continue
-            normalized.append({
-                "ts": cls._get_trade_field(
-                    trade,
-                    key="timestamp",
-                    fallback_key="ts",
-                    default=fallback_timestamp,
-                ),
-                "price": cls._get_trade_field(
-                    trade,
-                    key="price",
-                    default=0.0,
-                ),
-                "amount": cls._get_trade_field(
-                    trade,
-                    key="amount",
-                    fallback_key="quantity",
-                    default=0.0,
-                ),
-                "side": cls._get_trade_field(
-                    trade,
-                    key="side",
-                    default="buy",
-                ),
-            })
-        return normalized or None
+        del cls
+        return normalize_recent_trades(
+            trades,
+            fallback_timestamp=fallback_timestamp,
+        )
 
     @staticmethod
     def _make_skip_fill_record(

@@ -5883,3 +5883,9 @@ python scripts/unified_trainer.py \
 - `ztb/trading/signal/regime/__init__.py` を regime detector export に追随
 - `tests/unit/v460/test_509_regime_detector_migration.py` を追加し、shim と canonical 実装の整合、および理論 docstring 契約を回帰化
 - current `fill_test.yaml` に合わせて `test_336_yaml_code_drift_prevention.py` の allowlist と `test_fill_quality.py` の sell offset 期待値を更新
+## 514# skip_gate runtime helper 抽出 / timestamp helper 横展開
+- `ztb/ml/skip_gate_runtime.py` を追加し、recent trades 正規化と trade field 抽出を canonical helper 化
+- `scripts/v460/lib/skip_gate_evaluator.py` は compatibility wrapper を維持したまま shared helper と canonical `OrderBookSnapshot` に追随
+- `scripts/v460/lib/manifest.py` / `scripts/v460/lib/batch_persistence.py` / `scripts/v460/lib/sidecar_signal_io.py` の UTC timestamp 生成を `ztb.utils.time_utils` に統一
+- `tests/unit/v460/test_514_skip_gate_runtime_migration.py` を追加し、shim と canonical helper の整合を回帰化
+- `tests/unit/v460/test_skip_gate_v3.py` の roundtrip tempdir を `tmp_path` に変更し、`test_sac_retrain_scheduler.py` の timeout テストを短縮

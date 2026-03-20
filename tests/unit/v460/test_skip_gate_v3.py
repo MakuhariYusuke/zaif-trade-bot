@@ -10,7 +10,6 @@ Tests:
 from __future__ import annotations
 
 import asyncio
-import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -164,7 +163,7 @@ class TestReallyBad30Classifier:
 class TestRB30SaveLoad:
     """124# really_bad30 モデルの保存・読み込み."""
 
-    def test_save_load_roundtrip(self) -> None:
+    def test_save_load_roundtrip(self, tmp_path: Path) -> None:
         """save → load で同一の設定・特徴量が復元される."""
         from sklearn.linear_model import LogisticRegression
         from sklearn.pipeline import Pipeline
@@ -196,10 +195,9 @@ class TestRB30SaveLoad:
             pipeline=pipeline,
         )
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = Path(tmpdir) / "test_rb30.pkl"
-            gate.save(path)
-            loaded = SkipGate.load(path)
+        path = tmp_path / "test_rb30.pkl"
+        gate.save(path)
+        loaded = SkipGate.load(path)
 
         assert loaded.config.mode == "as"
         assert loaded.config.buy_enabled is True

@@ -7463,3 +7463,19 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - `docs/v460/502_phg_plan_lib_to_ztb_and_object_split.md`
 - `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md`
   - `maker_price` の split-first を pure math 抽出起点で進める詳細設計を追記
+## 514# skip_gate runtime helper 抽出 / timestamp helper 横展開
+- `ztb/ml/skip_gate_runtime.py`
+  - recent trades 正規化と trade field 抽出を canonical helper 化
+- `scripts/v460/lib/skip_gate_evaluator.py`
+  - `_get_trade_field` / `_normalize_recent_trades` は wrapper を維持したまま shared helper 再利用へ整理
+  - `OrderBookSnapshot` は canonical import に追随
+- `scripts/v460/lib/manifest.py`
+- `scripts/v460/lib/batch_persistence.py`
+- `scripts/v460/lib/sidecar_signal_io.py`
+  - UTC timestamp 生成を `ztb.utils.time_utils` に統一
+- `tests/unit/v460/test_514_skip_gate_runtime_migration.py`
+  - shim / canonical helper の整合を focused 回帰化
+- `tests/unit/v460/test_skip_gate_v3.py`
+  - roundtrip tempdir を `tmp_path` に変更
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - training timeout テストを短縮
