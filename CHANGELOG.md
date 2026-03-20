@@ -5807,3 +5807,8 @@ python scripts/unified_trainer.py \
 - `scripts/v460/lib/param_adapter.py` は compatibility shim に整理
 - `scripts/v460/lib/adaptation_engine.py` の import を canonical path に変更
 - `tests/unit/v460/test_506_param_adapter_migration.py` を追加し、canonical module と shim の整合を回帰化
+## 507# lot_sizer / fast_fill_defense canonical 化
+- `ztb/trading/sizing/lot_sizer.py` を canonical module として追加し、`scripts/v460/lib/lot_sizer.py` は compatibility shim に整理
+- `ztb/trading/risk/fast_fill_defense.py` を canonical module として追加し、`scripts/v460/lib/fast_fill_defense.py` は compatibility shim に整理
+- `scripts/v460/lib/adaptation_engine.py` の lot_sizer import を canonical path に変更
+- `tests/unit/v460/test_507_lot_sizer_and_ffd_migration.py` を追加し、lot_sizer / FastFillDefense の shim と canonical の整合を回帰化

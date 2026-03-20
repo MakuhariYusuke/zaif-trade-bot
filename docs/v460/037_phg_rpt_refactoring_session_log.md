@@ -7298,3 +7298,16 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `AdaptationConfig` / `compute_adaptation` / `compute_side_adaptation` の import を canonical path に変更
 - `tests/unit/v460/test_506_param_adapter_migration.py`
   - shim と canonical 実装の結果整合性を focused 回帰化
+## 507# lot_sizer / fast_fill_defense canonical 化
+- `ztb/trading/sizing/lot_sizer.py`
+  - `lot_sizer` の本体を canonical module として移設
+- `scripts/v460/lib/lot_sizer.py`
+  - compatibility shim に整理
+- `ztb/trading/risk/fast_fill_defense.py`
+  - `fast_fill_defense` の canonical module を追加
+- `scripts/v460/lib/fast_fill_defense.py`
+  - compatibility shim に整理
+- `scripts/v460/lib/adaptation_engine.py`
+  - `LotSizingConfig` / `compute_lot_size` などの import を canonical path に変更
+- `tests/unit/v460/test_507_lot_sizer_and_ffd_migration.py`
+  - lot_sizer / FFD の shim と canonical 実装の整合を focused 回帰化

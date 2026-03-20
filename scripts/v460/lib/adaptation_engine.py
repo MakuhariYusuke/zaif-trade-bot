@@ -487,7 +487,7 @@ class AdaptationEngine:
         """
         cfg = self._config
         try:
-            from scripts.v460.lib.lot_sizer import (
+            from ztb.trading.sizing.lot_sizer import (
                 KellyEstimate,
                 LotSizingConfig,
                 compute_cumulative_pnl_jpy,
