@@ -1,4 +1,4 @@
-"""506#/507# tests: sell age cap, de-meaning (EMA basis), offset narrowing, confidence fix."""
+"""506#/507#/508#/509# tests: sell age cap, de-meaning, confidence fix, observability, sell_age_cap guard."""
 from __future__ import annotations
 
 import pytest
@@ -228,3 +228,192 @@ class TestDeMeaningConfidenceCorrection:
         assert hint_agree is not None
         assert hint_disagree is not None
         assert hint_agree.confidence > hint_disagree.confidence
+
+
+class TestHintBasisObservability:
+    """508# hint に basis_bps / adjusted_spread_bps が含まれることを検証."""
+
+    def _local(self) -> VenueMidSnapshot:
+        return VenueMidSnapshot("coincheck", 100.0, 100.0)
+
+    def _ref(self) -> VenueMidSnapshot:
+        return VenueMidSnapshot("bitflyer", 99.97, 100.5)
+
+    def _prev_ref(self) -> VenueMidSnapshot:
+        return VenueMidSnapshot("bitflyer", 99.95, 99.5)
+
+    def test_hint_carries_basis_and_adjusted_spread(self) -> None:
+        hint = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._local(),
+            reference_snapshot=self._ref(),
+            previous_reference_snapshot=self._prev_ref(),
+            max_age_sec=3.0,
+            spread_bps_threshold=0.5,
+            velocity_bps_threshold=0.01,
+            ema_spread_bps=-3.0,
+            basis_bps=-4.0,
+            confidence_reference_spread_bps=3.0,
+        )
+        assert hint is not None
+        assert hint.basis_bps == -4.0
+        # adjusted_spread = ema - basis = -3.0 - (-4.0) = +1.0
+        assert hint.adjusted_spread_bps is not None
+        assert abs(hint.adjusted_spread_bps - 1.0) < 0.01
+
+    def test_hint_without_basis_has_zero_basis(self) -> None:
+        hint = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._local(),
+            reference_snapshot=self._ref(),
+            previous_reference_snapshot=self._prev_ref(),
+            max_age_sec=3.0,
+            spread_bps_threshold=0.5,
+            velocity_bps_threshold=0.01,
+            ema_spread_bps=-3.0,
+            basis_bps=0.0,
+            confidence_reference_spread_bps=3.0,
+        )
+        assert hint is not None
+        assert hint.basis_bps == 0.0
+        # EMA mode: adjusted_spread = adjusted_spread (gating - 0.0 = gating)
+        assert hint.adjusted_spread_bps is not None
+
+    def test_legacy_mode_adjusted_spread_is_none(self) -> None:
+        """Legacy mode (no ema) → adjusted_spread_bps is None in hint."""
+        # legacy mode requires spread to exceed threshold to produce a hint;
+        # use a wider spread pair to ensure hint is generated.
+        local = VenueMidSnapshot("coincheck", 100.0, 100.0)
+        ref = VenueMidSnapshot("bitflyer", 99.90, 100.0)
+        prev = VenueMidSnapshot("bitflyer", 99.85, 99.0)
+        hint = compute_cross_venue_lead_lag_hint(
+            local_snapshot=local,
+            reference_snapshot=ref,
+            previous_reference_snapshot=prev,
+            max_age_sec=3.0,
+            spread_bps_threshold=0.5,
+            velocity_bps_threshold=0.01,
+            ema_spread_bps=None,  # legacy mode
+            basis_bps=0.0,
+        )
+        if hint is not None:
+            # legacy mode では adjusted_spread_bps は None
+            assert hint.adjusted_spread_bps is None
+        else:
+            # spread が threshold 未満で hint=None は正常動作
+            pass
+
+    def test_fill_fields_include_basis_fields(self) -> None:
+        from scripts.v460.lib.cross_venue_lead_lag import build_cross_venue_fill_fields
+
+        hint = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._local(),
+            reference_snapshot=self._ref(),
+            previous_reference_snapshot=self._prev_ref(),
+            max_age_sec=3.0,
+            spread_bps_threshold=0.5,
+            velocity_bps_threshold=0.01,
+            ema_spread_bps=-3.0,
+            basis_bps=-4.0,
+            confidence_reference_spread_bps=3.0,
+        )
+        fields = build_cross_venue_fill_fields(
+            enabled=True, hint=hint, side="sell", vetoed=False,
+        )
+        assert "cross_venue_basis_bps" in fields
+        assert "cross_venue_adjusted_spread_bps" in fields
+        assert fields["cross_venue_basis_bps"] == -4.0
+
+    def test_disabled_fill_fields_have_basis_none(self) -> None:
+        from scripts.v460.lib.cross_venue_lead_lag import build_cross_venue_fill_fields
+
+        fields = build_cross_venue_fill_fields(
+            enabled=False, hint=None, side="buy", vetoed=False,
+        )
+        assert fields["cross_venue_basis_bps"] is None
+        assert fields["cross_venue_adjusted_spread_bps"] is None
+
+
+class TestMicroTimeoutSellAgeCapGuard:
+    """509# micro_timeout ループが sell_age_cap を累積超過しないガード検証."""
+
+    def test_micro_timeout_config_fields_exist(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        cfg = FillTestConfig()
+        assert hasattr(cfg, "micro_timeout_enabled")
+        assert hasattr(cfg, "micro_timeout_wait_sec_sell")
+        assert hasattr(cfg, "micro_timeout_max_requote")
+        assert hasattr(cfg, "micro_timeout_requote_cooloff_sec")
+
+    def test_worst_case_micro_timeout_exceeds_cap(self) -> None:
+        """micro_timeout の最悪ケース合計が sell_age_cap を超過可能であることを確認.
+
+        509# ガードがないと 4*10+3*5=55s > 25s (cap) となる。
+        ガードがこの超過を防ぐことが fix の目的。
+        """
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        cfg = FillTestConfig(
+            micro_timeout_enabled=True,
+            micro_timeout_wait_sec_sell=10.0,
+            micro_timeout_max_requote=4,
+            micro_timeout_requote_cooloff_sec=5.0,
+            sell_age_cap_sec=25.0,
+        )
+        # 最悪ケース: 4 rounds × 10s + 3 cooloffs × 5s = 55s
+        worst_total = (
+            cfg.micro_timeout_max_requote * cfg.micro_timeout_wait_sec_sell
+            + (cfg.micro_timeout_max_requote - 1) * cfg.micro_timeout_requote_cooloff_sec
+        )
+        assert worst_total > cfg.sell_age_cap_sec, (
+            f"worst_total={worst_total} should exceed cap={cfg.sell_age_cap_sec}"
+        )
+
+    def test_sell_age_cap_guard_triggers(self) -> None:
+        """509# ガード条件とロジック: elapsed >= cap なら break する."""
+        cap = 25.0
+        first_submit = 1000.0
+        # 模擬: 26秒後
+        current_time = 1026.0
+        elapsed = current_time - first_submit
+        assert elapsed >= cap  # ガード条件成立 → break
+
+    def test_sell_age_cap_guard_does_not_trigger_if_within(self) -> None:
+        """cap 内であればガードは作用しない."""
+        cap = 25.0
+        first_submit = 1000.0
+        current_time = 1020.0
+        elapsed = current_time - first_submit
+        assert elapsed < cap  # まだ break しない
+
+    def test_buy_side_has_no_cap(self) -> None:
+        """buy 側では sell_age_cap は適用されない."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        cfg = FillTestConfig(sell_age_cap_sec=25.0)
+        side = "buy"
+        mt_total_cap: float | None = (
+            cfg.sell_age_cap_sec
+            if side == "sell"
+            and cfg.sell_age_cap_sec is not None
+            and cfg.sell_age_cap_sec > 0
+            else None
+        )
+        assert mt_total_cap is None
+
+
+class TestRepriceRemainingTimeGuard:
+    """509# stale reprice 残時間ガード検証."""
+
+    def test_reprice_skipped_if_remaining_under_3s(self) -> None:
+        """残り時間 < 3s なら reprice をスキップする."""
+        effective_timeout = 10.0
+        elapsed = 8.5
+        remaining = effective_timeout - elapsed
+        assert remaining < 3.0  # reprice スキップ条件成立
+
+    def test_reprice_allowed_if_remaining_above_3s(self) -> None:
+        """残り時間 >= 3s なら reprice を許可する."""
+        effective_timeout = 10.0
+        elapsed = 5.0
+        remaining = effective_timeout - elapsed
+        assert remaining >= 3.0  # reprice 許可

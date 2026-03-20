@@ -1096,10 +1096,28 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             _mt_cooloff = self.config.micro_timeout_requote_cooloff_sec
             _original_timeout = self.config.order_timeout_sec
             _original_timeout_sell = self.config.order_timeout_sec_sell
+            # 509# sell_age_cap を micro_timeout ループ全体にも適用
+            _mt_total_cap: float | None = (
+                self.config.sell_age_cap_sec
+                if side == "sell"
+                and self.config.sell_age_cap_sec is not None
+                and self.config.sell_age_cap_sec > 0
+                else None
+            )
 
             for _mt_attempt in range(_mt_max):
                 if self._kill_switch.is_killed():
                     break
+                # 509# micro_timeout 合計時間が sell_age_cap を超過していたら打ち切り
+                if _mt_total_cap is not None:
+                    _mt_elapsed = time.time() - _first_t_submit
+                    if _mt_elapsed >= _mt_total_cap:
+                        logger.info(
+                            "[509#] micro_timeout sell_age_cap exceeded: "
+                            "elapsed=%.1fs >= cap=%.0fs, stopping at attempt %d/%d",
+                            _mt_elapsed, _mt_total_cap, _mt_attempt + 1, _mt_max,
+                        )
+                        break
 
                 # micro_timeout: OrderMonitor に短い timeout を使わせる
                 # (dataclass のフィールドを一時的に差し替え)

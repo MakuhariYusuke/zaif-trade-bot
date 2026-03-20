@@ -413,6 +413,15 @@ class OrderMonitor:
                             cancel_reason_poll = CR.STALE_ADVERSE_DRIFT
                         break
                     if drift_bps >= _stale_drift and is_favorable_drift:
+                        # 509# 残時間チェック: reprice cycle (cancel+place) に 3s 以上必要
+                        _remaining = _effective_timeout - elapsed
+                        if _remaining < 3.0:
+                            logger.info(
+                                "[509#] Reprice skipped: %.1fs remaining < 3s min "
+                                "(elapsed=%.1fs, timeout=%.0fs)",
+                                _remaining, elapsed, _effective_timeout,
+                            )
+                            continue
                         # 292# BS-1: cancel 前に deadband 判定 — queue position 保護
                         # compute_maker_price を先に呼び、価格差が小さければ
                         # cancel せずに既存注文を維持 (queue priority 保全)
