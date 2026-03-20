@@ -7620,3 +7620,20 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - 残る論点は `skip_gate_evaluator` の `early_return_record` 最終組立と `maker_price` の stage orchestration にさらに絞れた
 - focused:
   - `tests/unit/v460/test_516_skip_gate_result_fields_migration.py tests/unit/v460/test_skip_gate_v3.py tests/unit/v460/test_141_side_specific_models.py tests/unit/v460/test_195_velocity_b1_soft.py tests/unit/v460/test_196_velocity_proportional_trending_soft.py tests/unit/v460/test_145_structural_fixes.py`: `194 passed, 1 warning in 6.22s`
+## 522# phase4 test-side canonical import 収束 / boundary 補強
+- `tests/unit/v460/test_skip_gate_v3.py`
+- `tests/unit/v460/test_skip_gate_d8.py`
+- `tests/unit/v460/test_enricher_skip_gate.py`
+- `tests/unit/v460/test_retrain_hot_reload.py`
+- `tests/unit/v460/test_141_side_specific_models.py`
+- `tests/unit/v460/test_094_stale_order.py`
+- `tests/unit/v460/test_088_features.py`
+- `tests/unit/v460/test_100_fast_fill_defense.py`
+  - migration/shim 契約を直接検証する test 以外は canonical `ztb` import へ収束
+- `tests/unit/v460/test_516_skip_gate_result_fields_migration.py`
+  - `build_skip_fill_record_extra_fields(...)` の optional field が `None` に落ちる境界値回帰を追加
+- セルフレビュー
+  - Phase 4 の残りは production 文脈の shim だけにかなり絞れた
+  - test 側の canonical import 収束で、今後の rename / shim 削除時の修正面積が減る
+- focused:
+  - `tests/unit/v460/test_516_skip_gate_result_fields_migration.py tests/unit/v460/test_skip_gate_v3.py tests/unit/v460/test_skip_gate_d8.py tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_141_side_specific_models.py tests/unit/v460/test_094_stale_order.py tests/unit/v460/test_088_features.py tests/unit/v460/test_100_fast_fill_defense.py`: `360 passed, 1 warning in 11.39s`

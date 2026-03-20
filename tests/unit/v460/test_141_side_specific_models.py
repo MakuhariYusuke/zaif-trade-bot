@@ -35,7 +35,7 @@ from scripts.v460.ml.retrain_scheduler import (
     load_retrain_config,
     retrain_model,
 )
-from scripts.v460.ml.skip_gate import SkipDecision, SkipGate, SkipGateConfig
+from ztb.ml.skip_gate import SkipDecision, SkipGate, SkipGateConfig
 from ztb.ml.online_monitor import OnlineMonitor, OnlineMonitorConfig
 
 try:

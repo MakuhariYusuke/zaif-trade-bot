@@ -5926,3 +5926,14 @@ python scripts/unified_trainer.py \
 - `ztb/ml/skip_gate_result_fields.py` に `SkipFillRecordExtraFields` と `build_skip_fill_record_extra_fields(...)` を追加し、`build_skip_fill_record(...)` 向け extra payload を canonical helper 化
 - `scripts/v460/lib/skip_gate_evaluator.py` は v460 文脈の core fields を保持したまま、skip 固有 payload だけ shared helper に委譲
 - `tests/unit/v460/test_516_skip_gate_result_fields_migration.py` に extra payload helper の focused 回帰を追加
+## 522# phase4 test-side canonical import convergence
+- shim 契約テスト以外の skip-gate / fast-fill テスト import を canonical path に寄せた
+- `tests/unit/v460/test_skip_gate_v3.py`
+- `tests/unit/v460/test_skip_gate_d8.py`
+- `tests/unit/v460/test_enricher_skip_gate.py`
+- `tests/unit/v460/test_retrain_hot_reload.py`
+- `tests/unit/v460/test_141_side_specific_models.py`
+- `tests/unit/v460/test_094_stale_order.py`
+- `tests/unit/v460/test_088_features.py`
+- `tests/unit/v460/test_100_fast_fill_defense.py`
+- `tests/unit/v460/test_516_skip_gate_result_fields_migration.py` に optional field 境界値 (`None`) 回帰を追加

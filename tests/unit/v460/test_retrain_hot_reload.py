@@ -25,7 +25,7 @@ try:
 except ImportError:
     _HAS_LIGHTGBM = False
 
-from scripts.v460.ml.skip_gate import (
+from ztb.ml.skip_gate import (
     SkipGate,
     SkipGateConfig,
     get_gate_feature_cols,

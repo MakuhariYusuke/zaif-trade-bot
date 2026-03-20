@@ -18,7 +18,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 from tests.unit.v460._fill_test_source import read_fill_test_runner_source  # 163# mixin 分割対応
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig, SkipDecision
+from ztb.ml.skip_gate import SkipGate, SkipGateConfig, SkipDecision
 from scripts.v460.lib.param_adapter import (
     AdaptationConfig,
     SideAdaptationResult,

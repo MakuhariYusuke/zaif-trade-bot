@@ -290,3 +290,15 @@ Phase 4 で無理に上げず、Phase 3 で先に result assembly の詳細設�
 としている。
 
 この方針なら、速度を落とさずに「今の実データ」での成立境界を docs に残せる。
+
+### 13. Phase 4 は production だけでなく test-side import 収束も有効
+
+shim 互換は残しているが、移行末期では test 側も canonical import に寄せておくほうが
+後続の修正面積を減らせる。
+
+今回の判断:
+
+- migration/shim 契約を検証する test は旧 path のまま維持
+- 通常の unit/integration test は `ztb` canonical import を優先
+
+これにより、Phase 4 の残りは「shim を残す必要がある production 文脈」へ集中できる。

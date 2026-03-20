@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from scripts.v460.lib.fast_fill_defense import (
+from ztb.trading.risk.fast_fill_defense import (
     FastFillDefense,
     FastFillDefenseConfig,
 )

@@ -31,7 +31,7 @@ from scripts.v460.ml.feature_enricher import (
     _compute_trade_features,
     _find_nearest_ob,
 )
-from scripts.v460.ml.skip_gate import (
+from ztb.ml.skip_gate import (
     GATE_FEATURE_COLS,
     SkipDecision,
     SkipGate,

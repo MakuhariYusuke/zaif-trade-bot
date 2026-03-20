@@ -25,7 +25,7 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 
 from scripts.v460.lib.fill_config import FillMonitorResult, SkipGateResult
 from scripts.v460.lib.maker_price import MakerPriceCalculator
-from scripts.v460.ml.skip_gate import SkipGate
+from ztb.ml.skip_gate import SkipGate
 from scripts.v460.run_fill_test import FillTestConfig
 from tests.unit.v460._fill_test_source import ORDER_MONITOR, read_class_method_source
 from tests.unit.v460._yaml_test_helpers import parse_yaml_mapping

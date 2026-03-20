@@ -100,3 +100,29 @@ class TestSkipGateResultFieldsMigration:
             ev_score_pretrade=-0.2,
             decision_path="ev_normal_skip",
         )
+
+    def test_build_skip_fill_record_extra_fields_defaults_optional_to_none(self) -> None:
+        fields = build_skip_fill_record_extra_fields(
+            score=0.0,
+            reason="pass",
+            model_used="pnl:unified",
+            orderbook_imbalance=None,
+            bid_depth_total=None,
+            ask_depth_total=None,
+        )
+
+        assert fields == SkipFillRecordExtraFields(
+            skip_gate_skipped=True,
+            skip_gate_score=0.0,
+            skip_gate_reason="pass",
+            skip_gate_model_used="pnl:unified",
+            skip_gate_as_prob=None,
+            skip_gate_threshold_used=None,
+            skip_gate_hour_offset=None,
+            orderbook_imbalance=None,
+            bid_depth_total=None,
+            ask_depth_total=None,
+            price_velocity_bps=None,
+            ev_score_pretrade=None,
+            decision_path=None,
+        )

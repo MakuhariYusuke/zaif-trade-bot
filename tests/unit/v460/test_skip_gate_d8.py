@@ -16,7 +16,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from scripts.v460.ml.skip_gate import (
+from ztb.ml.skip_gate import (
     SkipGate,
     SkipGateConfig,
     SkipDecision,

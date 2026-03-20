@@ -56,6 +56,20 @@ façade なしの即時移行は危険。
 - `order_monitor.py`
 - `ab_judgment.py`
 
+Phase 3 self-review:
+
+- `skip_gate_evaluator.py`
+  - `SkipDecision -> result metadata`
+  - `skip FillRecord extra payload`
+  までは canonical helper へ寄せられた
+  - 残るのは `FillRecord` 最終組立と v460 logger / cancel_reason / run_id 文脈
+- `maker_price.py`
+  - inventory math / offset math / sell floor discount までは pure helper 化済み
+  - 残るのは stage orchestration と stateful coordination
+- `order_monitor.py`
+  - stale policy / cancel-fill recheck result 型までは先行抽出済み
+  - 残るのは async orchestration 本体
+
 
 ### `scripts/v460/lib` に残すべきもの
 
