@@ -414,6 +414,8 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
   `ztb.ml` に上げても責務がぶれにくく、Phase 4 の import 収束にも効く
 - 追加で `SkipDecision -> result metadata` も `ztb.ml.skip_gate_result_fields` へ抽出済み
   - `early_return_record` 生成はまだ v460 実行文脈依存が強いため対象外
+- 直近の整理で `rule skip / decision skip -> result + FillRecord` の local helper までは集約済み
+  - 次の detailed design は `build_skip_fill_record(...)` との境界をどう canonical 化するか
 
 ## テスト方針
 

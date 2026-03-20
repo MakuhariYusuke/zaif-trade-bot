@@ -5910,3 +5910,7 @@ python scripts/unified_trainer.py \
 - `scripts/v460/lib/maker_price.py` の `_effective_sell_offset_floor()` は wrapper を維持しつつ shared helper に委譲
 - `scripts/v460/run_fill_test.py` の `FastFillDefense` / `FastFillDefenseConfig` 参照を canonical `ztb.trading.risk.fast_fill_defense` に統一
 - `tests/unit/v460/test_517_pricing_offset_math_migration.py` に sell floor helper の focused 回帰を追加
+## 519# skip_gate early result consolidation / enricher test cleanup
+- `scripts/v460/lib/skip_gate_evaluator.py` に `_set_early_skip_result(...)` を追加し、rule skip / velocity skip / final decision skip の early-return 組立を集約
+- `SkipDecision -> result metadata` は `ztb.ml.skip_gate_result_fields`、`result + FillRecord` 組立は local helper、という 2 層構成を明確化
+- `tests/unit/v460/test_enricher_skip_gate.py` の未使用 `tempfile` import を除去

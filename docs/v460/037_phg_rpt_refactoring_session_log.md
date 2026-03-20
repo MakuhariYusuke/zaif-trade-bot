@@ -7556,3 +7556,25 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `run_fill_test` の FFD import は canonical 化しても orchestrator 責務を侵さず、Phase 4 の広い import 収束として安全
 - focused:
   - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_173_code_review_fixes.py tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py tests/unit/v460/test_228_inv_decay_hasattr_removal.py tests/unit/v460/test_145_structural_fixes.py -k 'sell_offset_floor or offset_math or FillTestRunner or inv_decay or loss_boost'`: `54 passed`
+## 519# skip_gate early result 集約 / enricher cleanup
+- `scripts/v460/lib/skip_gate_evaluator.py`
+  - `_set_early_skip_result(...)` を追加
+  - `rule_skip_unknown_sell`
+  - `rule_velocity_*_skip`
+  - final `decision.should_skip`
+  の early-return 組立を集約
+- 構造整理
+  - `SkipDecision -> result metadata` は `ztb.ml.skip_gate_result_fields`
+  - `result metadata -> FillRecord early return` は `skip_gate_evaluator` local helper
+  という 2 層が明確になった
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - 未使用 `tempfile` import を除去
+- セルフレビュー
+  - `skip_gate_evaluator` の remaining local responsibility がかなり見えやすくなった
+  - ここから先は `build_skip_fill_record(...)` との境界をどう切るかが Phase 3 の最後の本丸
+- focused:
+  - `test_skip_gate_v3.py test_141_side_specific_models.py test_195_velocity_b1_soft.py test_196_velocity_proportional_trending_soft.py test_516_skip_gate_result_fields_migration.py test_514_skip_gate_runtime_migration.py test_145_structural_fixes.py`: `195 passed`
+  - `test_enricher_skip_gate.py -k 'Test058Integration or RawLoadCache or save_load_roundtrip or as_mode_save_load'`: `9 passed`
+- filtered broad:
+  - concurrent worktree changes in `tests/unit/v460/test_506_sell_improvements.py` and `ztb/metrics/fill_quality.py` caused unrelated failures during broad rerun
+  - current batch itself is covered by the focused suites above

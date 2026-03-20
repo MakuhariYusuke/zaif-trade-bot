@@ -218,6 +218,22 @@ Phase 4 で無理に上げず、Phase 3 で先に result assembly の詳細設�
 2 は `build_skip_fill_record(...)` と v460 固有の event/log 文脈に結びつくため、
 まだ script 側に残すのが安全だった。
 
+その後の整理として、2 の内部でも
+
+- rule-based skip
+- velocity hard skip
+- final decision skip
+
+に共通する `result + early_return_record` 組立は
+`skip_gate_evaluator` の local helper へ集約した。
+
+これにより、次の検討対象は
+
+- `build_skip_fill_record(...)` を `ztb` に残したまま payload 境界だけ抜くか
+- `FillRecord` 生成自体を別の canonical helper に分けるか
+
+の 2 択まで狭まっている。
+
 ### 11. `maker_price` は inventory math の次に offset math を抜く
 
 `maker_price.py` の次の安全な抽出対象は、

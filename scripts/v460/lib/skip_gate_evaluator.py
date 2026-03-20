@@ -312,6 +312,76 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             price_velocity_bps=fields.price_velocity_bps,
         )
 
+    def _set_early_skip_result(
+        self,
+        result: SkipGateResult,
+        *,
+        cycle_id: str,
+        timestamp: float,
+        side: str,
+        order_price: float,
+        order_quantity: float,
+        cancel_reason: str,
+        spread_at_order: float | None,
+        spread_offset_ratio: float,
+        score: float,
+        reason: str,
+        model_used: str,
+        run_id: str,
+        git_sha: str | None,
+        regime_value: str | None,
+        last_imbalance: float | None,
+        last_bid_depth: float | None,
+        last_ask_depth: float | None,
+        as_prob: float | None = None,
+        threshold_used: float | None = None,
+        hour_offset: float | None = None,
+        price_velocity_bps: float | None = None,
+        ev_score_pretrade: float | None = None,
+        decision_path: str | None = None,
+    ) -> None:
+        """Populate SkipGateResult and early-return FillRecord together.
+
+        This keeps the v460-specific FillRecord assembly local while reducing
+        duplication around rule-based and final skip returns.
+        """
+        self._assign_result_fields(
+            result,
+            skipped=True,
+            score=score,
+            reason=reason,
+            model_used=model_used,
+            as_prob=as_prob,
+            threshold_used=threshold_used,
+            hour_offset=hour_offset or 0.0,
+            price_velocity_bps=price_velocity_bps,
+        )
+        result.early_return_record = self._make_skip_fill_record(
+            cycle_id=cycle_id,
+            timestamp=timestamp,
+            side=side,
+            order_price=order_price,
+            order_quantity=order_quantity,
+            cancel_reason=cancel_reason,
+            spread_at_order=spread_at_order,
+            spread_offset_ratio=spread_offset_ratio,
+            skip_gate_score=score,
+            skip_gate_reason=reason,
+            skip_gate_model_used=model_used,
+            skip_gate_as_prob=as_prob,
+            skip_gate_threshold_used=threshold_used,
+            skip_gate_hour_offset=hour_offset,
+            orderbook_imbalance=last_imbalance,
+            bid_depth_total=last_bid_depth,
+            ask_depth_total=last_ask_depth,
+            run_id=run_id,
+            git_sha=git_sha,
+            regime=regime_value,
+            price_velocity_bps=price_velocity_bps,
+            ev_score_pretrade=ev_score_pretrade,
+            decision_path=decision_path,
+        )
+
     # --- 461# Mixin 移管済 ---
     # _apply_config_overrides, _apply_warm_start, _inject_calibrator → skip_gate_model_loader.py
     # _load_side_models, _load_alt_models → skip_gate_model_loader.py
@@ -397,14 +467,8 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                 f"[skip_gate] SKIP: sell in unknown regime "
                 f"(124# rule_skip_unknown_sell)"
             )
-            self._assign_result_fields(
+            self._set_early_skip_result(
                 result,
-                skipped=True,
-                score=0.0,
-                reason="rule_skip_unknown_sell",
-                model_used="rule",
-            )
-            result.early_return_record = self._make_skip_fill_record(
                 cycle_id=cycle_id,
                 timestamp=event_ts,
                 side=side,
@@ -413,15 +477,15 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                 cancel_reason=CR.SKIP_GATE_RULE_UNKNOWN_SELL,
                 spread_at_order=spread_at_order,
                 spread_offset_ratio=effective_offset_ratio,
-                skip_gate_score=0.0,
-                skip_gate_reason="rule_skip_unknown_sell",
-                skip_gate_model_used="rule",
-                orderbook_imbalance=last_imbalance,
-                bid_depth_total=last_bid_depth,
-                ask_depth_total=last_ask_depth,
+                score=0.0,
+                reason="rule_skip_unknown_sell",
+                model_used="rule",
                 run_id=run_id,
                 git_sha=git_sha,
-                regime=regime_value,  # 160#
+                regime_value=regime_value,
+                last_imbalance=last_imbalance,
+                last_bid_depth=last_bid_depth,
+                last_ask_depth=last_ask_depth,
             )
             return result
 
@@ -586,15 +650,8 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                         f"{'>' if _velocity_sell_triggered else '<'} {_vel_th}bps "
                         f"(165# AS-R1 {_reason})"
                     )
-                    self._assign_result_fields(
+                    self._set_early_skip_result(
                         result,
-                        skipped=True,
-                        score=_pv60,
-                        reason=_reason,
-                        model_used="rule",
-                        price_velocity_bps=_pv60,
-                    )
-                    result.early_return_record = self._make_skip_fill_record(
                         cycle_id=cycle_id,
                         timestamp=market_ts,
                         side=side,
@@ -603,15 +660,15 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                         cancel_reason=_cancel,
                         spread_at_order=spread_at_order,
                         spread_offset_ratio=effective_offset_ratio,
-                        skip_gate_score=_pv60,
-                        skip_gate_reason=_reason,
-                        skip_gate_model_used="rule",
-                        orderbook_imbalance=last_imbalance,
-                        bid_depth_total=last_bid_depth,
-                        ask_depth_total=last_ask_depth,
+                        score=_pv60,
+                        reason=_reason,
+                        model_used="rule",
                         run_id=run_id,
                         git_sha=git_sha,
-                        regime=regime_value,
+                        regime_value=regime_value,
+                        last_imbalance=last_imbalance,
+                        last_bid_depth=last_bid_depth,
+                        last_ask_depth=last_ask_depth,
                         price_velocity_bps=_pv60,
                     )
                     return result
@@ -689,7 +746,8 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                     f"(score={result.score:.3f}, reason={result.reason}, "
                     f"model={result.model_used}, features={decision.features_used})"
                 )
-                result.early_return_record = self._make_skip_fill_record(
+                self._set_early_skip_result(
+                    result,
                     cycle_id=cycle_id,
                     timestamp=market_ts,
                     side=side,
@@ -698,20 +756,19 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                     cancel_reason="skip_gate",
                     spread_at_order=spread_at_order,
                     spread_offset_ratio=effective_offset_ratio,
-                    skip_gate_score=result.score,
-                    skip_gate_reason=result.reason,
-                    skip_gate_model_used=result.model_used,
-                    skip_gate_as_prob=result.as_prob,
-                    skip_gate_threshold_used=result.threshold_used,
-                    skip_gate_hour_offset=_total_offset if _total_offset != 0.0 else None,
-                    # 122# R5: OB 記録を imbalance_enabled と独立させ常時記録
-                    orderbook_imbalance=last_imbalance,
-                    bid_depth_total=last_bid_depth,
-                    ask_depth_total=last_ask_depth,
+                    score=result.score,
+                    reason=result.reason,
+                    model_used=result.model_used,
                     run_id=run_id,
                     git_sha=git_sha,
-                    regime=regime_value,  # 160#
-                    # 292# BS-3: skip レコードにも ev 可観測性フィールドを記録
+                    regime_value=regime_value,
+                    last_imbalance=last_imbalance,
+                    last_bid_depth=last_bid_depth,
+                    last_ask_depth=last_ask_depth,
+                    as_prob=result.as_prob,
+                    threshold_used=result.threshold_used,
+                    hour_offset=_total_offset if _total_offset != 0.0 else None,
+                    price_velocity_bps=result.price_velocity_bps,
                     ev_score_pretrade=result.ev_score,
                     decision_path=(
                         "ev_emergency_skip"
