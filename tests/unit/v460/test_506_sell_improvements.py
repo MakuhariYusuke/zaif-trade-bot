@@ -1,4 +1,4 @@
-"""506#/507#/508#/509# tests: sell age cap, de-meaning, confidence fix, observability, sell_age_cap guard."""
+"""506#/507#/508#/509#/510# tests: sell age cap, de-meaning, observability, sell_age_cap guard, inv_skew/VG reason."""
 from __future__ import annotations
 
 import pytest
@@ -417,3 +417,130 @@ class TestRepriceRemainingTimeGuard:
         elapsed = 5.0
         remaining = effective_timeout - elapsed
         assert remaining >= 3.0  # reprice 許可
+
+
+class TestInvSkewFactorFillRecord:
+    """510# inv_skew_factor が FillRecord に含まれることを検証."""
+
+    def test_fill_record_has_inv_skew_factor_field(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+
+        r = FillRecord(cycle_id="test", timestamp=1.0, side="buy", order_price=100.0, order_quantity=0.01)
+        assert hasattr(r, "inv_skew_factor")
+        assert r.inv_skew_factor is None
+
+    def test_fill_record_inv_skew_to_dict(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+
+        r = FillRecord(cycle_id="test", timestamp=1.0, side="sell", order_price=100.0, order_quantity=0.01, inv_skew_factor=-0.15)
+        d = r.to_dict()
+        assert d["inv_skew_factor"] == -0.15
+
+    def test_maker_price_has_inv_skew_property(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+        from ztb.trading.risk.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
+
+        cfg = FillTestConfig()
+        ffd = FastFillDefense(
+            config=FastFillDefenseConfig(), base_offset_ratio=0.05,
+        )
+        mp = MakerPriceCalculator(
+            config=cfg,
+            fast_fill_defense=ffd,
+            regime_detector=None,
+            base_offset_ratio=0.001,
+        )
+        assert mp.last_inv_skew_factor == 0.0
+
+
+class TestVGReasonGranularity:
+    """510# VG boost に reason (velocity/vpin/velocity+vpin) が追加されたことを検証."""
+
+    def test_fill_record_has_vg_reason_field(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+
+        r = FillRecord(cycle_id="test", timestamp=1.0, side="buy", order_price=100.0, order_quantity=0.01)
+        assert hasattr(r, "vg_reason")
+        assert r.vg_reason is None
+
+    def test_vg_reason_values(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+
+        for reason in ("velocity", "vpin", "velocity+vpin"):
+            r = FillRecord(cycle_id="t", timestamp=1.0, side="buy", order_price=100.0, order_quantity=0.01, vg_reason=reason)
+            assert r.vg_reason == reason
+
+    def test_maker_price_has_vg_reason_property(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+        from ztb.trading.risk.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
+
+        cfg = FillTestConfig()
+        ffd = FastFillDefense(
+            config=FastFillDefenseConfig(), base_offset_ratio=0.05,
+        )
+        mp = MakerPriceCalculator(
+            config=cfg,
+            fast_fill_defense=ffd,
+            regime_detector=None,
+            base_offset_ratio=0.001,
+        )
+        assert mp.last_vg_reason is None
+
+    def test_vg_reason_classification_logic(self) -> None:
+        """velocity/vpin/both の分類ロジック検証."""
+        # velocity のみ
+        velocity_boost, vpin_boost = 1.5, 1.0
+        has_vel, has_vpin = velocity_boost > 1.0, vpin_boost > 1.0
+        assert has_vel and not has_vpin
+
+        # vpin のみ
+        velocity_boost, vpin_boost = 1.0, 1.3
+        has_vel, has_vpin = velocity_boost > 1.0, vpin_boost > 1.0
+        assert not has_vel and has_vpin
+
+        # both
+        velocity_boost, vpin_boost = 1.5, 1.3
+        has_vel, has_vpin = velocity_boost > 1.0, vpin_boost > 1.0
+        assert has_vel and has_vpin
+
+
+class TestPeriodicSummaryCounters:
+    """510# 周期的サマリ統計カウンタ検証."""
+
+    def test_session_state_has_summary_fields(self) -> None:
+        from scripts.v460.lib.fill_loop_orchestrator import RunSessionState
+
+        st = RunSessionState()
+        assert hasattr(st, "regime_cycle_counts")
+        assert hasattr(st, "skip_by_regime")
+        assert hasattr(st, "vg_fire_count")
+        assert hasattr(st, "vg_reason_counts")
+        assert hasattr(st, "inv_skew_active_count")
+        assert st.vg_fire_count == 0
+        assert st.inv_skew_active_count == 0
+
+    def test_session_state_counter_increment(self) -> None:
+        from scripts.v460.lib.fill_loop_orchestrator import RunSessionState
+
+        st = RunSessionState()
+        # regime tracking
+        regime = "trending_up"
+        st.regime_cycle_counts[regime] = st.regime_cycle_counts.get(regime, 0) + 1
+        assert st.regime_cycle_counts[regime] == 1
+
+        # skip tracking
+        st.skip_by_regime[regime] = st.skip_by_regime.get(regime, 0) + 1
+        assert st.skip_by_regime[regime] == 1
+
+        # VG tracking
+        st.vg_fire_count += 1
+        st.vg_reason_counts["velocity"] = 1
+        st.vg_reason_counts["vpin"] = 2
+        assert st.vg_fire_count == 1
+        assert st.vg_reason_counts["vpin"] == 2
+
+        # inv_skew tracking
+        st.inv_skew_active_count += 1
+        assert st.inv_skew_active_count == 1

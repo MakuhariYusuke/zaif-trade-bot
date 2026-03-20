@@ -115,6 +115,10 @@ class FillRecord:
     vg_velocity_bps: float | None = None          # VG 評価時の mid_price_trend (bps)
     vg_vpin: float | None = None                  # VG 評価時の VPIN 値
     vg_boost_factor: float | None = None          # 実際に適用された boost 倍率 (1.0=未発動)
+    # 510# VG boost 理由の粒度向上
+    vg_reason: str | None = None                   # "velocity" / "vpin" / "velocity+vpin" / None
+    # 510# 在庫偏重状態の追跡
+    inv_skew_factor: float | None = None           # inventory skew factor (負=sell offset 緩和)
     # 165# AS-R1: SkipGate 特徴量ログ (閾値キャリブレーション用)
     price_velocity_bps: float | None = None        # 直近60sの価格速度 (bps)
     # 129# D.2: 残高制約による side 強制切替フラグ (評価/学習での交絡分離用)

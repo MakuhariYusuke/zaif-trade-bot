@@ -89,6 +89,12 @@ class RunSessionState:
     sidecar_missing_count: int = 0
     # 487# P2: cancel_reason distribution (progress log 用)
     cancel_reason_counts: dict[str, int] = field(default_factory=dict)
+    # 510# periodic summary: regime skip/VG fire/fill quality tracking
+    regime_cycle_counts: dict[str, int] = field(default_factory=dict)  # regime→cycle数
+    skip_by_regime: dict[str, int] = field(default_factory=dict)       # regime→skip数
+    vg_fire_count: int = 0
+    vg_reason_counts: dict[str, int] = field(default_factory=dict)     # reason→count
+    inv_skew_active_count: int = 0  # inv_skew_factor != 0 のサイクル数
     batch: list[FillRecord] = field(default_factory=list)
     batch_size: int = 10
 

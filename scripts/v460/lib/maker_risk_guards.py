@@ -48,6 +48,7 @@ class RiskGuardsMixin:
     _last_vg_velocity_bps: float | None
     _last_vg_vpin: float | None
     _last_vg_boost_factor: float | None
+    _last_vg_reason: str | None
     _cross_venue_lead_lag_hint: CrossVenueLeadLagHint | None
     _cross_venue_lead_lag_vetoed: bool
     _cross_venue_lead_lag_veto_reason: str | None
@@ -206,11 +207,24 @@ class RiskGuardsMixin:
             self._last_vg_velocity_bps = _vg_velocity
             self._last_vg_vpin = _vg_vpin
             self._last_vg_boost_factor = _vg_boost if vg_triggered else None
+            # 510# VG boost 理由の粒度向上
+            if vg_triggered:
+                _has_vel = velocity_boost > 1.0
+                _has_vpin = vpin_boost > 1.0
+                if _has_vel and _has_vpin:
+                    self._last_vg_reason = "velocity+vpin"
+                elif _has_vel:
+                    self._last_vg_reason = "velocity"
+                else:
+                    self._last_vg_reason = "vpin"
+            else:
+                self._last_vg_reason = None
         else:
             self._last_vg_triggered = False
             self._last_vg_velocity_bps = None
             self._last_vg_vpin = None
             self._last_vg_boost_factor = None
+            self._last_vg_reason = None
 
         return effective_offset_ratio
 

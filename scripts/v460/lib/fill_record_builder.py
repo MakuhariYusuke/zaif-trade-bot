@@ -171,6 +171,8 @@ class FillRecordBuilderMixin:
             "vg_velocity_bps": self._maker_price.last_vg_velocity_bps,
             "vg_vpin": self._maker_price.last_vg_vpin,
             "vg_boost_factor": self._maker_price.last_vg_boost_factor,
+            "vg_reason": self._maker_price.last_vg_reason,
+            "inv_skew_factor": self._maker_price.last_inv_skew_factor,
             "price_velocity_bps": sg_velocity_bps,
             "confidence_lot_factor": (
                 confidence_factor if self.config.enable_confidence_lot else None

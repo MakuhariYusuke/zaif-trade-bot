@@ -163,6 +163,17 @@ class OrchestratorPostCycleMixin:
                 st.clamp_fire_count += 1
         st.batch.append(record)
         self._recent_records.append(record)
+        # 510# periodic summary counters
+        _regime_key = record.gated_regime or "unknown"
+        st.regime_cycle_counts[_regime_key] = st.regime_cycle_counts.get(_regime_key, 0) + 1
+        if record.skip_gate_skipped is True:
+            st.skip_by_regime[_regime_key] = st.skip_by_regime.get(_regime_key, 0) + 1
+        if record.vg_triggered is True:
+            st.vg_fire_count += 1
+            _vr = record.vg_reason or "unknown"
+            st.vg_reason_counts[_vr] = st.vg_reason_counts.get(_vr, 0) + 1
+        if record.inv_skew_factor is not None and record.inv_skew_factor != 0.0:
+            st.inv_skew_active_count += 1
 
         # soft/hard loss_cap
         if self.config.loss_cap_auto and not self._soft_loss_cap_triggered:
@@ -324,6 +335,29 @@ class OrchestratorPostCycleMixin:
                     f"{k}={v}" for k, v in _sorted_cr
                 )
                 logger.info(f"[487# cancel] top reasons: {_cr_summary}")
+            # 510# periodic summary: regime skip rate, VG fire, inv_skew
+            if st.regime_cycle_counts:
+                _regime_parts: list[str] = []
+                for _rk, _rc in sorted(st.regime_cycle_counts.items(), key=lambda x: x[1], reverse=True):
+                    _rs = st.skip_by_regime.get(_rk, 0)
+                    _rskip_pct = _rs / _rc * 100.0 if _rc > 0 else 0.0
+                    _regime_parts.append(f"{_rk}={_rc}(skip {_rskip_pct:.0f}%)")
+                logger.info(f"[510# regime] {', '.join(_regime_parts)}")
+            if st.vg_fire_count > 0:
+                _vg_pct = st.vg_fire_count / st.total_count * 100.0 if st.total_count > 0 else 0.0
+                _vr_parts = ", ".join(
+                    f"{k}={v}" for k, v in sorted(st.vg_reason_counts.items(), key=lambda x: x[1], reverse=True)
+                )
+                logger.info(
+                    f"[510# VG] fires={st.vg_fire_count} ({_vg_pct:.1f}%), "
+                    f"reasons: {_vr_parts}"
+                )
+            if st.inv_skew_active_count > 0:
+                _isk_pct = st.inv_skew_active_count / st.total_count * 100.0 if st.total_count > 0 else 0.0
+                logger.info(
+                    f"[510# inv_skew] active={st.inv_skew_active_count}/{st.total_count} "
+                    f"({_isk_pct:.1f}%)"
+                )
             # 348# balance_forced 撤廃: forced buy/sell KPI 分離ログを削除
 
         # 113# resilience: HealthMonitor + GC
