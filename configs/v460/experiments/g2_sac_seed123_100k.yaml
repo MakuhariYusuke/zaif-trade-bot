@@ -1,0 +1,127 @@
+# 400# G2: SAC reward-clean — v459知見フル適用 + scale_adjustment無効化
+#
+# 変更根拠:
+#   - v459 E設定: hold_penalty=0, clip[-1,1] → +3500%改善
+#   - v459 E設定: ent_coef=0.01(固定), gradient_steps=2 → +295%改善
+#   - 400# 分析: scale_adjustment(100x) + clip[-80,80] が利益方向の勾配信号を破壊
+#   - 400# 分析: balance_shaping(0.5), entropy_shaping(0.01) がデフォルト有効で放置
+#
+# reward-tuned からの差分:
+#   [報酬構造]
+#   - scale_adjustment_enabled: true → false (100x増幅を無効化)
+#   - reward_scaling: 1.0 → 100.0 (v459 B設定に合わせて明示的スケール)
+#   - reward_clip_min/max: [-80,80] → [-1,1] (v459 C設定)
+#   - hold_penalty_weight: 0.001 → 0.0 (v459 C設定: 完全撤廃)
+#   - consistency_penalty: 0.01 → 0.0 (ペナルティ最小化方針)
+#   - balance_penalty: 0.1 → 0.0 (PnL主体)
+#   - balance_shaping_enabled: true → false
+#   - action_entropy_shaping_enabled: true → false
+#   - confidence_penalty_threshold: 0.2 → 1.0 (実質無効化)
+#   [SAC ハイパーパラメータ]
+#   - ent_coef: "auto" → 0.01 (v459 E設定: 探索暴走防止)
+#   - gradient_steps: 1 → 2 (v459 E設定)
+#   - batch_size: 256 → 128 (v459 E設定)
+#   - learning_rate: 3e-4 → 5e-4 (v459 E設定)
+#
+# 参考: docs/v459/62_day6_reward_tuning_analysis.md
+#       docs/v460/387_ph3_rpt_reward_analysis.md
+#       docs/v460/400_reward_clean_analysis.md
+#
+# 使用方法:
+#   python scripts/v460/run_experiment.py \
+#     --config configs/v460/experiments/g2_sac_reward_clean.yaml
+
+_base: configs/v460/base.yaml
+_gate: G2-train
+_task: sac_train
+
+# ---- データ ----
+data:
+  ohlcv_path: "data/btc_jpy_1m_full_registry_features.parquet"
+  v460_features_path: null
+  train_end_index: 973544
+
+# ---- 特徴量 ----
+features:
+  selected:
+    - price_velocity
+    - micro_trend
+    - price_acceleration
+    - volume_surge
+    - momentum_divergence
+    - tick_volume_ratio
+    - order_flow_imbalance
+    - micro_volatility
+    - spread_pressure
+    - momentum_burst
+    - liquidity_surge
+    - realized_volatility
+    - parkinson_sigma
+    - vpin_proxy
+    - kyle_lambda_proxy
+    - amihud_illiq
+    - ema_velocity_bps
+
+# ---- 環境 ----
+environment:
+  transaction_cost: 0.0            # 0% (Coincheck Maker)
+  reward_scaling: 100.0            # v459 B設定: 明示的100x (scale_adjustmentの代替)
+  max_position_size: 0.01
+  initial_portfolio_value: 10000000.0
+  use_continuous_actions: true
+  action_space_type: "continuous_1d"
+  exchange: coincheck
+  timeframe: "1m"
+  continuous_to_discrete_threshold: 0.10
+  continuous_to_discrete_threshold_neg: -0.10
+  # ---- behavior_optimization ----
+  # 400#: v459知見 → ペナルティ全て無効化してPnL信号のみにする
+  behavior_optimization:
+    balance_penalty: 0.0             # 無効化 (reward-tuned: 0.1)
+    balance_penalty_tolerance: 0.05
+    consistency_penalty: 0.0         # 無効化 (reward-tuned: 0.01)
+    balance_shaping_enabled: false   # 400#: デフォルト有効の隠れペナルティ無効化
+    action_entropy_shaping_enabled: false  # 400#: 同上
+  # ---- reward_settings ----
+  reward_settings:
+    hold_penalty_weight: 0.0         # v459 C設定: 完全撤廃 (+3500%改善)
+    confidence_penalty_threshold: 1.0  # 実質無効化 (確信度1.0以上にのみ発火→ありえない)
+    position_penalty_weight: 0.0     # PnL以外の信号をゼロに
+    pnl_reward_multiplier: 1.0
+    # 400#: scale_adjustmentを無効化 (100x増幅 + clip[-80,80] → 勾配破壊の原因)
+    scale_adjustment_enabled: false
+    # 400#: v459 C設定 → clip[-1,1] で安定学習 (+3500%改善の核心)
+    reward_clip_min: -1.0
+    reward_clip_max: 1.0
+
+# ---- SAC ハイパーパラメータ ----
+# v459 E設定: 全vXXXシリーズ最高のFinal Reward (+1604%改善)
+sac_hyperparameters:
+  gamma: 0.95                      # 中期割引 (v459 E設定)
+  ent_coef: 0.01                   # 固定 (v459 E設定: 探索暴走防止, "auto"は不安定)
+  learning_rate: 5.0e-4            # v459 E設定
+  batch_size: 128                  # v459 E設定
+  buffer_size: 50000
+  learning_starts: 1000
+  tau: 0.005
+  train_freq: 1
+  gradient_steps: 2                # v459 E設定: 2回/step
+
+# ---- 訓練 ----
+training:
+  total_timesteps: 100000          # 487# seed123 long-run (100K steps)
+  checkpoint_interval: 10000
+  val_ratio: 0.10                  # 487# P1: 0.02→0.10 (G3 gate min_val_ratio準拠)
+
+# ---- 評価 ----
+evaluation:
+  n_episodes: 1
+
+# ---- Multi-seed ----
+seeds: [123]                         # 487# seed123 single-seed
+
+# ---- 出力 ----
+output:
+  results_dir: "results/v460"
+  model_dir: "models/v460/reward_clean"
+
