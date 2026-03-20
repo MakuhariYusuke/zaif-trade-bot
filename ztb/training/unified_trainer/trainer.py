@@ -69,7 +69,6 @@ if torch is not None:
 
 from ztb.adaptation.continual_learning import (
     ContinualLearner,
-    ContinualLearningConfig,
     TaskData,
 )
 from ztb.adaptation.meta_learning import MarketMetaLearner
@@ -88,6 +87,10 @@ from ztb.training.unified_trainer import reporting
 
 # Import quantization and compression utilities
 from ztb.training.unified_trainer.algorithms import create_algorithm_trainer
+from ztb.training.unified_trainer.advanced_feature_setup import (
+    build_continual_learning_config,
+    extract_algorithm_model,
+)
 
 # Import extracted components
 from ztb.training.unified_trainer.components.config_manager import TrainingConfigManager
@@ -1525,10 +1528,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             if self.config.get("enable_meta_learning", False):
                 self.logger.info("Setting up meta learning...")
                 # Get model dimensions from algorithm trainer
-                alg_trainer_local = self.algorithm_trainer
-                if alg_trainer_local is not None and hasattr(
-                    alg_trainer_local, "model"
-                ):
+                model_obj = extract_algorithm_model(self.algorithm_trainer)
+                if model_obj is not None:
                     try:
                         state_dim = self._get_model_input_dim()
                         action_dim = self._get_model_output_dim()
@@ -1546,13 +1547,10 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             # Enhanced Federated Learning Setup
             if runtime_flags.market_federated_learning_enabled:
                 self.logger.info("Setting up market-based federated learning...")
-                alg_trainer_local = self.algorithm_trainer
-                if alg_trainer_local is not None and hasattr(
-                    alg_trainer_local, "model"
-                ):
+                model_obj = extract_algorithm_model(self.algorithm_trainer)
+                if model_obj is not None:
                     try:
                         market_configs = self._create_market_federated_configs()
-                        model_obj = getattr(alg_trainer_local, "model")
                         self.federated_learner = MarketFederatedLearner(
                             model_obj, market_configs
                         )
@@ -1567,23 +1565,10 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             # Continual Learning Setup
             if runtime_flags.continual_learning_enabled:
                 self.logger.info("Setting up continual learning...")
-                alg_trainer_local = self.algorithm_trainer
-                if alg_trainer_local is not None and hasattr(
-                    alg_trainer_local, "model"
-                ):
+                model_obj = extract_algorithm_model(self.algorithm_trainer)
+                if model_obj is not None:
                     try:
-                        continual_config = ContinualLearningConfig(
-                            method=self.config.get("continual_method", "ewc"),
-                            ewc_lambda=self.config.get("continual_ewc_lambda", 0.1),
-                            rehearsal_buffer_size=self.config.get(
-                                "continual_buffer_size", 1000
-                            ),
-                            max_tasks_in_memory=self.config.get(
-                                "continual_max_tasks", 5
-                            ),
-                            enable_memory_tracking=True,
-                        )
-                        model_obj = getattr(alg_trainer_local, "model")
+                        continual_config = build_continual_learning_config(self.config)
                         self.continual_learner = ContinualLearner(
                             model_obj, continual_config
                         )

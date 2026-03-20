@@ -6066,3 +6066,9 @@ python scripts/unified_trainer.py \
 - `ztb/trading/environment/components/calculators/reward_component_tracking.py` を追加し、RewardCalculator の stage bookkeeping payload を helper 化
 - `ztb/trading/environment/components/calculators/reward_calculator.py` の default / stability / backtest / risk / opportunity stages を helper ベースの bookkeeping に整理
 - `tests/unit/v460/test_reward_component_tracking_migration.py` を追加し、reward bookkeeping helper と risk-management component payload の focused 回帰を追加
+## 544# advanced feature setup and reward diagnostics shaping
+- `ztb/training/unified_trainer/advanced_feature_setup.py` を追加し、algorithm trainer model 解決と continual config 構築を helper 化
+- `ztb/training/unified_trainer/trainer.py` の meta/federated/continual setup は shared helper を再利用する形に整理
+- `ztb/trading/environment/components/calculators/reward_component_tracking.py` に `extend_reward_components(...)` を追加し、RewardCalculator の post-reward diagnostics shaping を helper ベースへ寄せた
+- `scripts/v460/ml/sac_retrain_scheduler.py` の未使用 `get_memory_usage` import を削除
+- `tests/unit/training/test_unified_trainer_advanced_feature_setup.py` を追加し、advanced feature setup helper の focused 回帰を追加

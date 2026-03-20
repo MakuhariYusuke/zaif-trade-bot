@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 from ztb.io.yaml_io import read_yaml
 from ztb.utils.time_utils import current_compact_timestamp, current_iso_timestamp
-from ztb.utils.memory_utils import clear_cuda_cache, get_memory_usage
+from ztb.utils.memory_utils import clear_cuda_cache
 
 # ── graceful shutdown ──────────────────────────────────────
 _shutdown_event = threading.Event()

@@ -6,6 +6,7 @@ from tests.unit.v460._reward_calculator_test_helpers import make_reward_calculat
 from ztb.trading.constants import ACTION_BUY
 from ztb.trading.environment.components.calculators.reward_component_tracking import (
     build_reward_components,
+    extend_reward_components,
 )
 
 
@@ -22,6 +23,16 @@ def test_build_reward_components_filters_none_and_preserves_stage() -> None:
         "base_reward": 1.0,
         "note": "kept",
     }
+
+
+def test_extend_reward_components_updates_existing_stage_payload() -> None:
+    payload = build_reward_components("default", pnl_reward=1.0)
+    extend_reward_components(payload, action_bonus=0.5, skipped=None)
+
+    assert payload["stage"] == "default"
+    assert payload["pnl_reward"] == 1.0
+    assert payload["action_bonus"] == 0.5
+    assert "skipped" not in payload
 
 
 def test_risk_management_preserves_pre_and_post_trading_rewards() -> None:

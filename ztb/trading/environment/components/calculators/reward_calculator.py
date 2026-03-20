@@ -42,7 +42,7 @@ from ..rewards.profit_optimized import ProfitOptimizedReward
 from ..rewards.smart_incentive import SmartIncentiveReward
 from ..rewards.trading_focused import TradingFocusedReward
 from ..rewards.ultra_profit import UltraProfitReward
-from .reward_component_tracking import build_reward_components
+from .reward_component_tracking import build_reward_components, extend_reward_components
 from ..signal_integrator import SignalIntegrator
 
 # Sentinel for cache miss detection (None is a valid cached value)
@@ -1164,14 +1164,19 @@ class RewardCalculator:
             confidence_penalty_context
         )
 
-        self._last_reward_components["confidence_penalty"] = confidence_penalty
+        extend_reward_components(
+            self._last_reward_components,
+            confidence_penalty=confidence_penalty,
+        )
         base_reward += confidence_penalty
 
         # Apply action bonus directly to reward
         base_reward += action_bonus
 
-        # Record action bonus in components
-        self._last_reward_components["action_bonus"] = action_bonus
+        extend_reward_components(
+            self._last_reward_components,
+            action_bonus=action_bonus,
+        )
 
         # Apply the balance penalty calculated earlier
         base_reward += balance_penalty
@@ -1185,7 +1190,10 @@ class RewardCalculator:
             self.logger.warning("skewness_penalty calculation failed, using 0.0", exc_info=True)
             skew_penalty = 0.0
         base_reward += skew_penalty
-        self._last_reward_components["skew_penalty"] = skew_penalty
+        extend_reward_components(
+            self._last_reward_components,
+            skew_penalty=skew_penalty,
+        )
 
         # Balance shaping reward: positive when this action moves distribution towards targets
         try:
@@ -1196,7 +1204,10 @@ class RewardCalculator:
             self.logger.warning("balance_shaping calculation failed, using 0.0", exc_info=True)
             balance_shaping = 0.0
         base_reward += balance_shaping
-        self._last_reward_components["balance_shaping"] = balance_shaping
+        extend_reward_components(
+            self._last_reward_components,
+            balance_shaping=balance_shaping,
+        )
 
         # Action entropy shaping: encouraging diversity in actions
         try:
@@ -1207,7 +1218,10 @@ class RewardCalculator:
             self.logger.warning("entropy_shaping calculation failed, using 0.0", exc_info=True)
             entropy_shaping = 0.0
         base_reward += entropy_shaping
-        self._last_reward_components["entropy_shaping"] = entropy_shaping
+        extend_reward_components(
+            self._last_reward_components,
+            entropy_shaping=entropy_shaping,
+        )
 
         # Apply common post-processing to the base reward
         final_reward = self._post_process_reward(
@@ -1220,7 +1234,10 @@ class RewardCalculator:
             effective_max_position,
         )
 
-        self._last_reward_components["final_reward"] = final_reward
+        extend_reward_components(
+            self._last_reward_components,
+            final_reward=final_reward,
+        )
         return final_reward
 
     def _post_process_reward(
@@ -1241,19 +1258,28 @@ class RewardCalculator:
         """
         # Apply asymmetric scaling
         reward = self.asymmetric_reward_scaler.scale_reward(reward, position, pnl)
-        self._last_reward_components["after_asymmetric_scaling"] = reward
+        extend_reward_components(
+            self._last_reward_components,
+            after_asymmetric_scaling=reward,
+        )
 
         # Apply clipping
         reward_clip_min = self.get_setting_float("reward_clip_min", -80.0)
         reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
         reward = np.clip(reward, reward_clip_min, reward_clip_max)
-        self._last_reward_components["after_clipping"] = reward
+        extend_reward_components(
+            self._last_reward_components,
+            after_clipping=reward,
+        )
 
         # Apply signal integration
         reward = self.signal_integrator.integrate_signal(
             reward, observation, action, step
         )
-        self._last_reward_components["after_signal_integration"] = reward
+        extend_reward_components(
+            self._last_reward_components,
+            after_signal_integration=reward,
+        )
         # Add current MTF weights to telemetry if manager present
         try:
             mtf_w = (

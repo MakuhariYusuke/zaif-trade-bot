@@ -271,6 +271,10 @@ shim を外しにいく条件:
   の enablement 判定は pure helper として追える状態になった
 - `runtime_flags` は現時点では `UnifiedTrainer` 専用色が強く、
   `v460` SAC script 群へ無理に横展開するより、trainer 側の SSOT として維持するのが妥当
+- `advanced_feature_setup` は `UnifiedTrainer` 内の
+  - model availability 判定
+  - continual config 構築
+  のような repeated setup 前提に対して有効だった
 - 一方で SAC 側には `ztb.training.sac.memory_monitor` のような shared helper を置き、
   post-cycle の RSS / cache entry 監視を script 側から再利用する方が自然だった
 - `RewardCalculator` はまだ実分割には入っていないが、
@@ -280,6 +284,8 @@ shim を外しにいく条件:
   に固定した
 - その first step として、reward component payload の stage bookkeeping を
   `reward_component_tracking` helper へ寄せる方針を採る
+- diagnostics payload shaping も同 helper を extend する形が自然で、
+  `default/simple/safety` の各経路で診断項目の追加方法を揃えやすい
 
 ## テスト設計
 

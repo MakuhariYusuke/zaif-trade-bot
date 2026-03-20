@@ -8042,3 +8042,23 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `runtime_flags` は他へ無理に広げず、`UnifiedTrainer` の SSOT として閉じたのが妥当
   - SAC は helper を `memory_monitor` として別立てにしたことで、用途に合う shared 化になった
   - `RewardCalculator` は大分割前の first step として bookkeeping helper 化がちょうど良い粒度だった
+## 544# advanced feature setup and reward diagnostics shaping
+- `ztb/training/unified_trainer/advanced_feature_setup.py`
+  - `extract_algorithm_model(...)`
+  - `build_continual_learning_config(...)`
+  を追加
+- `ztb/training/unified_trainer/trainer.py`
+  - meta/federated/continual setup の model 解決と continual config 構築を shared helper に委譲
+- `ztb/trading/environment/components/calculators/reward_component_tracking.py`
+  - `extend_reward_components(...)` を追加
+- `ztb/trading/environment/components/calculators/reward_calculator.py`
+  - confidence_penalty / action_bonus / skew_penalty / balance_shaping / entropy_shaping
+  - post_process の after_asymmetric_scaling / after_clipping / after_signal_integration
+  を helper ベースの diagnostics shaping に整理
+- `scripts/v460/ml/sac_retrain_scheduler.py`
+  - shared memory helper 移行後に未使用となった `get_memory_usage` import を削除
+- `tests/unit/training/test_unified_trainer_advanced_feature_setup.py`
+  - advanced feature setup helper の focused 回帰を追加
+- セルフレビュー
+  - `advanced_feature_setup` は `UnifiedTrainer` の repeated setup 前提に対して素直に効いた
+  - `RewardCalculator` は diagnostics shaping を helper に寄せることで、今後の stage 分割でも payload 契約を保ちやすくなった

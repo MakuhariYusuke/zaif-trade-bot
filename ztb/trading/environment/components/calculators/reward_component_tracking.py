@@ -21,4 +21,13 @@ def build_reward_components(
     return payload
 
 
-__all__ = ["build_reward_components"]
+def extend_reward_components(
+    payload: dict[str, str | float],
+    **components: str | float | int | None,
+) -> None:
+    """Update an existing reward-component payload in place."""
+    payload.update(build_reward_components(str(payload.get("stage", "unknown")), **components))
+    payload["stage"] = str(payload.get("stage", "unknown"))
+
+
+__all__ = ["build_reward_components", "extend_reward_components"]
