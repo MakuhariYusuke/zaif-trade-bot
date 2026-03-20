@@ -325,6 +325,22 @@ def _make_retrain_cfg(tmp_path: Path, **overrides: object) -> SACRetrainConfig:
     return cfg
 
 
+def _make_shutdown_wait(*, set_after: int = 2):
+    """指定回数の wait 呼び出し後に shutdown_event を立てる."""
+    call_count = 0
+
+    def limited_wait(timeout: float | None = None) -> bool:
+        nonlocal call_count
+        del timeout
+        call_count += 1
+        if call_count >= set_after:
+            _shutdown_event.set()
+            return True
+        return False
+
+    return limited_wait
+
+
 @contextmanager
 def _mock_sb3_import(mock_model: MagicMock) -> Iterator[MagicMock]:
     """retrain_once() の SB3 SAC クラスを fake に置き換える.
@@ -687,21 +703,9 @@ class TestRunScheduler:
         mock_retrain.return_value = RetrainResult(status="deployed")
 
         # 1回実行したら shutdown
-        call_count = 0
-
-        original_wait = _shutdown_event.wait
-
-        def limited_wait(timeout: float | None = None) -> bool:
-            nonlocal call_count
-            call_count += 1
-            if call_count >= 2:
-                _shutdown_event.set()
-                return True
-            return False
-
         _shutdown_event.clear()
 
-        with patch.object(_shutdown_event, "wait", side_effect=limited_wait):
+        with patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait()):
             with patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]):
                 run_scheduler(cfg)
 
@@ -828,20 +832,11 @@ class TestCrashResilience495:
             history_path=tmp_path / "history.jsonl",
         )
 
-        call_count = 0
         _shutdown_event.clear()
-
-        def limited_wait(timeout: float | None = None) -> bool:
-            nonlocal call_count
-            call_count += 1
-            if call_count >= 2:
-                _shutdown_event.set()
-                return True
-            return False
 
         # should_retrain が 1回目で例外→ 2回目の wait で shutdown
         with (
-            patch.object(_shutdown_event, "wait", side_effect=limited_wait),
+            patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait()),
             patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
             patch.object(
                 SACRetrainTrigger,
@@ -876,19 +871,10 @@ class TestCrashResilience495:
         )
 
         mock_retrain.return_value = RetrainResult(status="deployed")
-        call_count = 0
         _shutdown_event.clear()
 
-        def limited_wait(timeout: float | None = None) -> bool:
-            nonlocal call_count
-            call_count += 1
-            if call_count >= 2:
-                _shutdown_event.set()
-                return True
-            return False
-
         with (
-            patch.object(_shutdown_event, "wait", side_effect=limited_wait),
+            patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait()),
             patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
             patch.object(
                 SACRetrainTrigger,
@@ -1023,7 +1009,7 @@ class TestCrashResilience495:
         block = threading.Event()
 
         def slow_learn(**kwargs: object) -> None:
-            block.wait(timeout=1.0)
+            block.wait(timeout=0.2)
 
         mock_model.learn.side_effect = slow_learn
 

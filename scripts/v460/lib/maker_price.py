@@ -24,7 +24,6 @@ import time
 from typing import TYPE_CHECKING, Final
 
 from scripts.v460.lib import cancel_reasons as CR
-from scripts.v460.lib.fast_fill_defense import FastFillDefense
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_microstructure import MicrostructureMixin
 from scripts.v460.lib.maker_regime_boost import RegimeBoostMixin
@@ -40,6 +39,7 @@ from ztb.trading.pricing.offset_math import (
     effective_max_ratio as _resolve_effective_max_ratio,
     scale_offset_ratio as _scale_offset_ratio_impl,
 )
+from ztb.trading.risk.fast_fill_defense import FastFillDefense
 from ztb.trading.signal.regime.regime_detector import RegimeDetectorLike
 from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
 

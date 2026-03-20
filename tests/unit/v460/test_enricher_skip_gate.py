@@ -52,9 +52,9 @@ from tests.unit.v460._real_data_test_helpers import (
 from tests.unit.v460._skip_gate_test_helpers import save_and_load_skip_gate
 from ztb.ml.artifact_paths import hash_sidecar_path
 
-_REAL_DATA_SAMPLE_ROWS = 72
-_REAL_DATA_FALLBACK_SAMPLE_ROWS = 94
-_REAL_DATA_EXPANDED_SAMPLE_ROWS = 120
+_REAL_DATA_SAMPLE_ROWS = 52
+_REAL_DATA_FALLBACK_SAMPLE_ROWS = 72
+_REAL_DATA_EXPANDED_SAMPLE_ROWS = 96
 _REAL_DATA_MIN_TRAIN_SAMPLES = 20
 
 

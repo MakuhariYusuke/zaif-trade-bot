@@ -6,11 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
 from ztb.metrics.fill_quality import FillRecord
+from ztb.trading.risk.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 
 
 # ─── 共通ヘルパー (非-fixture) ─────────────────────────────────────────

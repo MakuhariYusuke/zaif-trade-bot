@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scripts.v460.ml.skip_gate import SkipGate
+from ztb.ml.skip_gate import SkipGate
 
 
 class PickleStub:

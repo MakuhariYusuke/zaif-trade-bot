@@ -341,6 +341,10 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
 - これで `ztb -> scripts` の逆依存が 1 本減り、Phase 4 で import 収束しやすくなった
 - `run_065_save_two_tier.py` / `deploy_sg_v3.py` / `deploy_sg_v4.py` / `skip_gate_model_loader.py` /
   `skip_gate_ev_weighted.py` は `ztb.ml.skip_gate` 基準へ収束済み
+- `maker_price.py` の `FastFillDefense` 参照も canonical
+  `ztb.trading.risk.fast_fill_defense` に収束済み
+- `tests/unit/v460/_skip_gate_test_helpers.py` と `tests/unit/v460/conftest.py` も
+  shim import を減らし、`ztb` canonical path を優先する形へ追随済み
 - self-review:
   - `skip_gate` の model/runtime/decision contract は Phase 4 に入ったと言ってよい
   - ただし `skip_gate_evaluator` の result 組立・logger 文脈・FillRecord 連携はまだ script 固有で、
@@ -416,6 +420,10 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
   - `early_return_record` 生成はまだ v460 実行文脈依存が強いため対象外
 - 直近の整理で `rule skip / decision skip -> result + FillRecord` の local helper までは集約済み
   - 次の detailed design は `build_skip_fill_record(...)` との境界をどう canonical 化するか
+  - 現時点の安全な候補は「`FillRecord` 自体を移す」のではなく、
+    `build_skip_fill_record(...)` に渡す payload fields だけを pure helper 化する案
+  - `cancel_reason` / logger / run_id / git_sha は fill-test 実行文脈が強いため、
+    `ztb.metrics.fill_quality` 側の builder ownership は維持するのが妥当
 
 ## テスト方針
 
@@ -435,6 +443,12 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
 - `test_gate_check.py`
 - `test_fill_quality.py`
 - `test_145_structural_fixes.py`
+
+補足:
+
+- `test_enricher_skip_gate.py` の real-data sample は 2026-03-20 時点で
+  `20 trainable samples` を満たす最小 tail が `50 rows`
+- current guard は `52 / 72 / 96` とし、境界ぴったりを避けている
 
 ## 当面の着手順
 

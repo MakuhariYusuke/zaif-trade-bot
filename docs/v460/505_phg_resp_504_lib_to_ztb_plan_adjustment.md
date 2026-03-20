@@ -234,6 +234,12 @@ Phase 4 で無理に上げず、Phase 3 で先に result assembly の詳細設�
 
 の 2 択まで狭まっている。
 
+現時点の判断としては前者が安全寄りである。
+
+- `ztb.metrics.fill_quality.build_skip_fill_record(...)` は canonical builder として残す
+- `skip_gate_evaluator` 側は payload を作る local helper / small value object までに留める
+- これなら `FillRecord` ownership を動かさずに Phase 3 を締められる
+
 ### 11. `maker_price` は inventory math の次に offset math を抜く
 
 `maker_price.py` の次の安全な抽出対象は、
@@ -263,3 +269,22 @@ Phase 4 で無理に上げず、Phase 3 で先に result assembly の詳細設�
 
 だけで決まる割引計算そのものは純ロジックなので、
 これは次の一手として `ztb.trading.pricing.offset_math` へ抜くのが妥当だった。
+
+### 12. real-data integration test は境界を測ってから削る
+
+`test_enricher_skip_gate.py` の real-data setup は broad の主因のひとつだが、
+ここは単純に sample を削ると不安定になりやすい。
+
+2026-03-20 時点の tail 実測では、
+
+- `20 trainable samples` を満たす最小 tail は `50 rows`
+
+だったため、現在の guard は
+
+- initial `52`
+- fallback `72`
+- expanded `96`
+
+としている。
+
+この方針なら、速度を落とさずに「今の実データ」での成立境界を docs に残せる。

@@ -7581,3 +7581,27 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - follow-up:
   - `tests/unit/v460/test_sac_retrain_scheduler.py::test_training_timeout_raises` は `threading.Event().wait()` と短い timeout を使う形にして、sleep ベースの待ちを削減
   - focused: `3 passed`
+## 520# canonical helper 再利用 / real-data floor 実測反映
+- `scripts/v460/lib/maker_price.py`
+  - `FastFillDefense` import を canonical `ztb.trading.risk.fast_fill_defense` に統一
+- `tests/unit/v460/_skip_gate_test_helpers.py`
+  - `SkipGate` import を canonical `ztb.ml.skip_gate` に変更
+- `tests/unit/v460/conftest.py`
+  - `FastFillDefense` / `FastFillDefenseConfig` を canonical import に変更
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - real-data sample guard を `52 / 72 / 96` に圧縮
+  - 2026-03-20 時点の tail 実測で `20 trainable samples` に `50 rows` 必要だったため、安全側に `52 rows` を採用
+- `tests/unit/v460/test_retrain_hot_reload.py`
+  - 未使用 `tempfile` import を除去
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `_make_shutdown_wait(...)` を追加して scheduler loop 系の wait boilerplate を集約
+  - `test_training_timeout_raises` の block wait を `1.0s -> 0.2s` に短縮
+- セルフレビュー
+  - Phase 4 は shim を残しつつ canonical import を増やす形で安定して進められている
+  - `test_enricher_skip_gate` は闇雲に sample を減らすのではなく、実測境界を docs に残して調整したのが良かった
+  - Phase 3 の残りは `skip_gate_evaluator` の `FillRecord` payload 境界と `maker_price` の stage orchestration へ絞れている
+- focused:
+  - `tests/unit/v460/test_enricher_skip_gate.py -k 'Test058Integration or RawLoadCache or save_load_roundtrip or as_mode_save_load'`: `9 passed, 63 deselected in 4.92s`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py -k 'training_timeout_raises or single_iteration_then_shutdown or trigger_exception_does_not_kill_loop or record_result_exception_does_not_kill_loop or retrain_once_cleans_up_on_error or post_cycle_memory_check_runs'`: `6 passed, 35 deselected in 5.37s`
+  - `tests/unit/v460/test_retrain_hot_reload.py -k 'insufficient_samples or retrain_deploy_and_hot_reload or fallback_uses_7day_window'`: `4 passed, 82 deselected in 5.04s`
+  - `tests/unit/v460/test_100_fast_fill_defense.py tests/unit/v460/test_skip_gate_d8.py tests/unit/v460/test_517_pricing_offset_math_migration.py`: `62 passed in 1.93s`

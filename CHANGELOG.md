@@ -5915,3 +5915,10 @@ python scripts/unified_trainer.py \
 - `SkipDecision -> result metadata` は `ztb.ml.skip_gate_result_fields`、`result + FillRecord` 組立は local helper、という 2 層構成を明確化
 - `tests/unit/v460/test_enricher_skip_gate.py` の未使用 `tempfile` import を除去
 - `tests/unit/v460/test_sac_retrain_scheduler.py` の timeout テストで `threading.Event().wait()` と短い timeout を使うようにし、重い sleep を削減
+## 520# canonical helper 再利用 / real-data floor 実測反映
+- `scripts/v460/lib/maker_price.py` の `FastFillDefense` 参照を canonical `ztb.trading.risk.fast_fill_defense` に統一
+- `tests/unit/v460/_skip_gate_test_helpers.py` の `SkipGate` と `tests/unit/v460/conftest.py` の `FastFillDefense` を canonical `ztb` import に変更し、shim 依存を減らした
+- `tests/unit/v460/test_enricher_skip_gate.py` の real-data sample guard を実測ベースで `52 / 72 / 96` に圧縮し、現在の実データで `20 trainable samples` を満たす最小 tail に合わせた
+- `tests/unit/v460/test_retrain_hot_reload.py` の未使用 `tempfile` import を除去
+- `tests/unit/v460/test_sac_retrain_scheduler.py` に `_make_shutdown_wait(...)` を追加し、scheduler loop 系の wait boilerplate を集約
+- `tests/unit/v460/test_sac_retrain_scheduler.py::test_training_timeout_raises` の block wait を `0.2s` に短縮し、タイムアウト検証の残留待ちを削減
