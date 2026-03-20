@@ -211,7 +211,7 @@ class TestCancelReasons:
         """fill_quality.py が cancel_reasons.AUDIT_CANCEL_REASONS を使っていることを確認."""
         source = read_source_text(Path(fill_quality.__file__))
         assert "AUDIT_CANCEL_REASONS" in source
-        assert "cancel_reasons" in source
+        assert "ztb.trading.common.cancel_reasons" in source
 
 
 # ======================================================================

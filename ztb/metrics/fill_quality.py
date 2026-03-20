@@ -1593,8 +1593,8 @@ def _quarantine_reason(r: FillRecord) -> str | None:
     if not (r.run_id and r.run_id.strip()):
         return "blank_run_id"
     # 144# #3: cancel_reason バイパスは「監査系 reason + side=none」に限定
-    # 145# §9-#6: 定数化 → cancel_reasons モジュールに集約
-    from scripts.v460.lib.cancel_reasons import AUDIT_CANCEL_REASONS
+    # 145# §9-#6 / 505#: canonical constants live in ztb.trading.common.cancel_reasons
+    from ztb.trading.common.cancel_reasons import AUDIT_CANCEL_REASONS
     _cancel = getattr(r, "cancel_reason", None)
     _is_audit = _cancel in AUDIT_CANCEL_REASONS and r.side in ("none", "buy", "sell")
     if r.side not in ("buy", "sell"):

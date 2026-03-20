@@ -313,7 +313,7 @@ class AdaptationEngine:
         cfg = self._config
 
         try:
-            from scripts.v460.lib.param_adapter import (
+            from ztb.trading.sizing.param_adapter import (
                 AdaptationConfig,
                 compute_adaptation,
                 compute_side_adaptation,

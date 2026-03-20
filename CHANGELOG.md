@@ -5791,3 +5791,19 @@ python scripts/unified_trainer.py \
 - `ztb.utils.observability` / `ztb.training.unified_trainer.reporting` を `current_iso_timestamp()` に追随
 - `orchestrator_lifecycle` / `batch_persistence` / `ab_offset_comparison` の UTC 日付生成を shared helper に統一
 - util 追加後の duplicate scan を実施し、残存は主に legacy scripts / 非 v460 領域であることを確認
+## 502# lib→ztb 移行 / オブジェクト分割計画
+- `106#` / `108#` の残課題を現行 tree に照らして再整理
+- `scripts/v460/lib` の各モジュールを「lib 残留 / 低リスク移行 / 分割先行」に分類
+- `v461` までに必要な出口条件と、直近の着手順 (`param_adapter` → `sac_common` → `maker_price` 分割設計) を文書化
+## 505# lib→ztb 計画修正 / cancel_reasons canonical 化
+- 504# レビューを反映して `docs/v460/502_phg_plan_lib_to_ztb_and_object_split.md` を改訂し、Phase 0 に `cancel_reasons.py` の canonical 化を追加
+- `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md` を追加し、レビュー指摘の妥当点と軌道修正内容を記録
+- `ztb/trading/common/cancel_reasons.py` を canonical module とし、`scripts/v460/lib/cancel_reasons.py` は compatibility shim に整理
+- `ztb/metrics/fill_quality.py` の `AUDIT_CANCEL_REASONS` import を canonical path に変更し、`ztb -> scripts` 逆依存を解消
+- `scripts/v460/lib/fill_record_helpers.py` の `CancelReason` 型参照も canonical path に追随
+- `tests/unit/v460/test_505_cancel_reasons_migration.py` を追加し、canonical module / shim / fill_quality import 契約を回帰化
+## 506# param_adapter canonical 化
+- `ztb/trading/sizing/param_adapter.py` を canonical module として追加
+- `scripts/v460/lib/param_adapter.py` は compatibility shim に整理
+- `scripts/v460/lib/adaptation_engine.py` の import を canonical path に変更
+- `tests/unit/v460/test_506_param_adapter_migration.py` を追加し、canonical module と shim の整合を回帰化

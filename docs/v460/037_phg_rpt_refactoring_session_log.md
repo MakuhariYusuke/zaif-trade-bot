@@ -7263,3 +7263,38 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - `ztb.utils.observability` と `ztb.training.unified_trainer.reporting` の timestamp 生成を `current_iso_timestamp()` へ統一
 - `orchestrator_lifecycle` / `batch_persistence` / `ab_offset_comparison` の UTC 日付文字列生成を shared helper に寄せた
 - helper 重複の再棚卸しを行い、残る重複は主に legacy / 非 v460 領域と確認
+## 502# lib→ztb 移行 / オブジェクト分割計画
+- `106#` / `108#` の残課題を現行 tree へ接続し直し、`lib` 配下を移行分類した
+- `scripts/v460/lib` を「orchestration 層は残す / reusable domain logic は `ztb` へ / God Object は split 先行」で整理
+- 低リスク移行候補として `fast_fill_defense` / `param_adapter` / `lot_sizer` / `regime_detector` / `sac_common` を明記
+- `maker_price` / `skip_gate_evaluator` / `order_monitor` / `adaptation_engine` / `fill_config` は分割先行対象として固定
+## 505# 504レビュー反映 / cancel_reasons canonical 化
+- `docs/v460/502_phg_plan_lib_to_ztb_and_object_split.md`
+  - 504# レビューの指摘を反映して計画を修正
+  - `cancel_reasons.py` を Phase 0 に追加
+  - `fast_fill_defense.py` / `regime_detector.py` を façade 必須の中リスク移行へ再分類
+  - `fill_config.py` は 329# で分割済みとして split-first から除外
+  - `ab_judgment.py` など大型未分類ファイルの位置づけを追記
+- `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md`
+  - 504# の妥当点と、今回の軌道修正・着手順を整理
+- `ztb/trading/common/cancel_reasons.py`
+  - `cancel_reason` 定数群の canonical module を追加
+- `scripts/v460/lib/cancel_reasons.py`
+  - compatibility shim に整理
+- `ztb/metrics/fill_quality.py`
+  - `AUDIT_CANCEL_REASONS` の import を canonical path に変更し、`ztb -> scripts` 逆依存を解消
+- `scripts/v460/lib/fill_record_helpers.py`
+  - TYPE_CHECKING の `CancelReason` import を canonical path に追随
+- `tests/unit/v460/test_145_structural_fixes.py`
+  - `fill_quality` が canonical path を参照していることを検証するよう更新
+- `tests/unit/v460/test_505_cancel_reasons_migration.py`
+  - canonical module / shim / Literal / import path の focused 回帰を追加
+## 506# param_adapter canonical 化
+- `ztb/trading/sizing/param_adapter.py`
+  - `param_adapter` の本体を canonical module として移設
+- `scripts/v460/lib/param_adapter.py`
+  - compatibility shim に整理
+- `scripts/v460/lib/adaptation_engine.py`
+  - `AdaptationConfig` / `compute_adaptation` / `compute_side_adaptation` の import を canonical path に変更
+- `tests/unit/v460/test_506_param_adapter_migration.py`
+  - shim と canonical 実装の結果整合性を focused 回帰化
