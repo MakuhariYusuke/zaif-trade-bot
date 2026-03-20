@@ -2344,12 +2344,13 @@ class TestModelDegenerationGuard:
         ):
             yield
 
-    def _base_cfg(self, tmpdir: str) -> dict[str, object]:
+    def _base_cfg(self, tmpdir: Path | str) -> dict[str, object]:
         """共通テスト設定."""
+        root = Path(tmpdir)
         return {
             **_DEFAULT_CONFIG,
-            "results_dir": str(Path(tmpdir) / "results"),
-            "model_path": str(Path(tmpdir) / "model.pkl"),
+            "results_dir": str(root / "results"),
+            "model_path": str(root / "model.pkl"),
             "mode": "pnl",
             "target": "pnl30",
             "use_ob_features": False,
@@ -2368,120 +2369,116 @@ class TestModelDegenerationGuard:
             "early_stopping_rounds": 0,
         }
 
-    def test_d1_rejects_single_tree_model(self) -> None:
+    def test_d1_rejects_single_tree_model(self, tmp_path: Path) -> None:
         """D1: 1-tree モデルは min_deploy_trees=3 で棄却される."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            records_df = _make_retrain_records_df(
-                15, seed=100, cycle_prefix="d1", run_id="d1_run",
-            )
-            cfg = self._base_cfg(tmpdir)
-            cfg["min_deploy_trees"] = 3  # default
+        records_df = _make_retrain_records_df(
+            15, seed=100, cycle_prefix="d1", run_id="d1_run",
+        )
+        cfg = self._base_cfg(tmp_path)
+        cfg["min_deploy_trees"] = 3  # default
 
-            with patch(
-                "scripts.v460.ml.retrain_scheduler.load_fill_records",
-                side_effect=lambda *a, **kw: records_df.copy(deep=True),
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
-                side_effect=_identity_enrich,
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler._build_lgbm_regressor",
-                return_value=_SingleTreeRegressor(),
-            ):
-                result = retrain_model(cfg)
+        with patch(
+            "scripts.v460.ml.retrain_scheduler.load_fill_records",
+            side_effect=lambda *a, **kw: records_df.copy(deep=True),
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
+            side_effect=_identity_enrich,
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler._build_lgbm_regressor",
+            return_value=_SingleTreeRegressor(),
+        ):
+            result = retrain_model(cfg)
 
-            assert result["status"] == "rejected"
-            assert "degenerate_model" in result["reason"]
-            assert result["actual_n_trees"] == 1
+        assert result["status"] == "rejected"
+        assert "degenerate_model" in result["reason"]
+        assert result["actual_n_trees"] == 1
 
-    def test_d1_accepts_sufficient_trees(self) -> None:
+    def test_d1_accepts_sufficient_trees(self, tmp_path: Path) -> None:
         """D1: 十分な木数のモデルは通過する."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            records_df = _make_retrain_records_df(
-                15, seed=101, cycle_prefix="d1ok", run_id="d1ok_run",
-            )
-            cfg = self._base_cfg(tmpdir)
-            cfg["min_deploy_trees"] = 3
+        records_df = _make_retrain_records_df(
+            15, seed=101, cycle_prefix="d1ok", run_id="d1ok_run",
+        )
+        cfg = self._base_cfg(tmp_path)
+        cfg["min_deploy_trees"] = 3
 
-            gate_stub = _make_picklable_gate(n_samples=15, version="d1_verified")
-            with patch(
-                "scripts.v460.ml.retrain_scheduler.load_fill_records",
-                side_effect=lambda *a, **kw: records_df.copy(deep=True),
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
-                side_effect=_identity_enrich,
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler._build_lgbm_regressor",
-                side_effect=_build_fast_regressor,
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler.SkipGate.load",
-                return_value=gate_stub,
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler.SkipGate.save",
-                autospec=True,
-                side_effect=_write_stub_gate_artifact,
-            ):
-                result = retrain_model(cfg)
+        gate_stub = _make_picklable_gate(n_samples=15, version="d1_verified")
+        with patch(
+            "scripts.v460.ml.retrain_scheduler.load_fill_records",
+            side_effect=lambda *a, **kw: records_df.copy(deep=True),
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
+            side_effect=_identity_enrich,
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler._build_lgbm_regressor",
+            side_effect=_build_fast_regressor,
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler.SkipGate.load",
+            return_value=gate_stub,
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler.SkipGate.save",
+            autospec=True,
+            side_effect=_write_stub_gate_artifact,
+        ):
+            result = retrain_model(cfg)
 
-            assert result["status"] in ("deployed", "deployed_verified"), (
-                f"Expected deployed*, got {result}"
-            )
-            assert result["actual_n_trees"] >= 3
+        assert result["status"] in ("deployed", "deployed_verified"), (
+            f"Expected deployed*, got {result}"
+        )
+        assert result["actual_n_trees"] >= 3
 
-    def test_d2_rejects_constant_output(self) -> None:
+    def test_d2_rejects_constant_output(self, tmp_path: Path) -> None:
         """D2: 定数出力モデルは pred_std < min_pred_std で棄却される."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            records_df = _make_retrain_records_df(
-                15, seed=102, cycle_prefix="d2", run_id="d2_run",
-            )
-            cfg = self._base_cfg(tmpdir)
-            cfg["min_deploy_trees"] = 0   # D1 bypass
-            cfg["min_pred_std"] = 0.01    # D2 active
+        records_df = _make_retrain_records_df(
+            15, seed=102, cycle_prefix="d2", run_id="d2_run",
+        )
+        cfg = self._base_cfg(tmp_path)
+        cfg["min_deploy_trees"] = 0   # D1 bypass
+        cfg["min_pred_std"] = 0.01    # D2 active
 
-            with patch(
-                "scripts.v460.ml.retrain_scheduler.load_fill_records",
-                side_effect=lambda *a, **kw: records_df.copy(deep=True),
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
-                side_effect=_identity_enrich,
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler._build_lgbm_regressor",
-                return_value=_ConstantRegressor(n_estimators=4),
-            ):
-                result = retrain_model(cfg)
+        with patch(
+            "scripts.v460.ml.retrain_scheduler.load_fill_records",
+            side_effect=lambda *a, **kw: records_df.copy(deep=True),
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
+            side_effect=_identity_enrich,
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler._build_lgbm_regressor",
+            return_value=_ConstantRegressor(n_estimators=4),
+        ):
+            result = retrain_model(cfg)
 
-            assert result["status"] == "rejected"
-            assert "constant_output" in result["reason"]
-            assert result["pred_std"] < 0.01
+        assert result["status"] == "rejected"
+        assert "constant_output" in result["reason"]
+        assert result["pred_std"] < 0.01
 
-    def test_d2_accepts_varied_output(self) -> None:
+    def test_d2_accepts_varied_output(self, tmp_path: Path) -> None:
         """D2: 十分な分散のあるモデルは通過する."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            records_df = _make_retrain_records_df(
-                15, seed=103, cycle_prefix="d2ok", run_id="d2ok_run",
-            )
-            cfg = self._base_cfg(tmpdir)
-            cfg["min_deploy_trees"] = 0
-            cfg["min_pred_std"] = 0.001
+        records_df = _make_retrain_records_df(
+            15, seed=103, cycle_prefix="d2ok", run_id="d2ok_run",
+        )
+        cfg = self._base_cfg(tmp_path)
+        cfg["min_deploy_trees"] = 0
+        cfg["min_pred_std"] = 0.001
 
-            gate_stub = _make_picklable_gate(n_samples=15, version="d2_verified")
-            with patch(
-                "scripts.v460.ml.retrain_scheduler.load_fill_records",
-                side_effect=lambda *a, **kw: records_df.copy(deep=True),
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
-                side_effect=_identity_enrich,
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler._build_lgbm_regressor",
-                side_effect=_build_fast_regressor,
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler.SkipGate.load",
-                return_value=gate_stub,
-            ), patch(
-                "scripts.v460.ml.retrain_scheduler.SkipGate.save",
-                autospec=True,
-                side_effect=_write_stub_gate_artifact,
-            ):
-                result = retrain_model(cfg)
+        gate_stub = _make_picklable_gate(n_samples=15, version="d2_verified")
+        with patch(
+            "scripts.v460.ml.retrain_scheduler.load_fill_records",
+            side_effect=lambda *a, **kw: records_df.copy(deep=True),
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
+            side_effect=_identity_enrich,
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler._build_lgbm_regressor",
+            side_effect=_build_fast_regressor,
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler.SkipGate.load",
+            return_value=gate_stub,
+        ), patch(
+            "scripts.v460.ml.retrain_scheduler.SkipGate.save",
+            autospec=True,
+            side_effect=_write_stub_gate_artifact,
+        ):
+            result = retrain_model(cfg)
 
-            assert result["status"] in ("deployed", "deployed_verified")
-            assert result["pred_std"] >= 0.001
+        assert result["status"] in ("deployed", "deployed_verified")
+        assert result["pred_std"] >= 0.001

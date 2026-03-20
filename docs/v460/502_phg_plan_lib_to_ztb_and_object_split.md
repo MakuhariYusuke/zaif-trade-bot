@@ -407,6 +407,8 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
   次の自然な切り出しは runtime 入力正規化
 - `_normalize_recent_trades()` のような file-local helper は
   `ztb.ml` に上げても責務がぶれにくく、Phase 4 の import 収束にも効く
+- 追加で `SkipDecision -> result metadata` も `ztb.ml.skip_gate_result_fields` へ抽出済み
+  - `early_return_record` 生成はまだ v460 実行文脈依存が強いため対象外
 
 ## テスト方針
 

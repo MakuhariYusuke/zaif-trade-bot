@@ -7505,3 +7505,22 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - filtered broad:
   - `5104 passed, 2 skipped, 13 warnings in 38.33s`
   - slowest は `test_sac_retrain_scheduler` crash/timeout 系、`test_enricher_skip_gate` real-data setup、`test_health_monitor_resilience`
+## 516# skip_gate result fields 抽出 / retrain hot-reload 退化ガード軽量化
+- `ztb/ml/skip_gate_result_fields.py`
+  - `SkipDecision -> result metadata` の純ロジックを canonical helper 化
+  - `resolve_skip_gate_model_tag(...)`
+  - `build_skip_decision_result_fields(...)`
+- `scripts/v460/lib/skip_gate_evaluator.py`
+  - `_apply_decision_to_result(...)` は wrapper を維持したまま shared helper に委譲
+- `tests/unit/v460/test_516_skip_gate_result_fields_migration.py`
+  - canonical helper の focused 回帰を追加
+- `tests/unit/v460/test_retrain_hot_reload.py`
+  - model degeneration guard (`D1/D2`) の `TemporaryDirectory()` を `tmp_path` に変更
+- セルフレビュー
+  - `SkipDecision -> result fields` は `FillRecord` / logger 依存がなく、`ztb` へ上げる境界として妥当
+  - 一方 `early_return_record` 生成は `build_skip_fill_record(...)` と v460 実行文脈に強く結合しているため、まだ script 側に残す判断を維持
+- focused:
+  - `test_516_skip_gate_result_fields_migration.py` + `test_retrain_hot_reload.py` degeneration guard + skip-gate bundles: `25 passed`
+- filtered broad:
+  - `5107 passed, 2 skipped, 13 warnings in 44.81s`
+  - top hotspot は引き続き `test_enricher_skip_gate` real-data setup と `test_sac_retrain_scheduler` crash/timeout 系

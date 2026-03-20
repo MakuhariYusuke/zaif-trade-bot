@@ -5895,3 +5895,8 @@ python scripts/unified_trainer.py \
 - `skip_gate_model_loader.py` の hot-reload / warm-start import を canonical path に統一
 - `skip_gate_ev_weighted.py` の `SkipDecision` 組立を canonical path に統一
 - `test_retrain_hot_reload.py` の hash/reload I/O テストを `TemporaryDirectory()` から `tmp_path` に寄せて保守性を改善
+## 516# skip_gate result fields extraction
+- `ztb/ml/skip_gate_result_fields.py` を追加し、`SkipDecision -> result metadata` の純ロジックを canonical helper 化
+- `skip_gate_evaluator.py` の `_apply_decision_to_result(...)` は wrapper を維持しつつ shared helper に委譲
+- `test_retrain_hot_reload.py` の model degeneration guard (`D1/D2`) を `tmp_path` 化し、退化ガード系の保守性を改善
+- `test_516_skip_gate_result_fields_migration.py` を追加し、canonical helper の契約を focused 回帰化

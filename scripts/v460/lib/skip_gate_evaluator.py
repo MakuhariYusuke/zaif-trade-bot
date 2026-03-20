@@ -31,6 +31,7 @@ from scripts.v460.lib.hour_rules import resolve_hour_float, utc_hour_from_timest
 from scripts.v460.lib.skip_gate_ev_weighted import SkipGateEvWeightedMixin
 from scripts.v460.lib.skip_gate_model_loader import SkipGateModelLoaderMixin
 from ztb.ml.skip_gate_runtime import get_trade_field, normalize_recent_trades
+from ztb.ml.skip_gate_result_fields import build_skip_decision_result_fields
 from ztb.ml.skip_gate import SkipDecision, SkipGate, build_features_from_market_state
 from ztb.ml.skip_gate_contracts import (
     SkipGateAdapter,
@@ -288,24 +289,27 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         hour_offset: float,
     ) -> None:
         """最終 decision を SkipGateResult へ反映する."""
-        if decision.model_used == "ev_weighted":
-            model_tag = f"ev_weighted_{side}"
-        else:
-            is_side_model = (
-                (side == "buy" and self._gate_buy is not None)
-                or (side == "sell" and self._gate_sell is not None)
-            )
-            model_tag = f"side_{side}" if is_side_model else "unified"
-        self._assign_result_fields(
-            result,
-            skipped=decision.should_skip,
-            score=decision.predicted_pnl_bps,
-            reason=decision.reason,
-            model_used=f"{decision.model_used}:{model_tag}",
-            as_prob=decision.as_probability,
-            threshold_used=decision.threshold_used,
+        is_side_model = (
+            (side == "buy" and self._gate_buy is not None)
+            or (side == "sell" and self._gate_sell is not None)
+        )
+        fields = build_skip_decision_result_fields(
+            decision,
+            side=side,
+            has_side_specific_model=is_side_model,
             hour_offset=hour_offset,
             price_velocity_bps=price_velocity_bps,
+        )
+        self._assign_result_fields(
+            result,
+            skipped=fields.skipped,
+            score=fields.score,
+            reason=fields.reason,
+            model_used=fields.model_used,
+            as_prob=fields.as_prob,
+            threshold_used=fields.threshold_used,
+            hour_offset=fields.hour_offset,
+            price_velocity_bps=fields.price_velocity_bps,
         )
 
     # --- 461# Mixin 移管済 ---

@@ -206,3 +206,14 @@ Phase 4 の import 収束を前に進められる。
 
 ここは `FillRecord` / log / config offset の責務が混ざるため、
 Phase 4 で無理に上げず、Phase 3 で先に result assembly の詳細設計を詰めるのが妥当。
+
+### 10. result assembly は 2 段で分けるのが安全
+
+実装を進めると、`skip_gate_evaluator` の result assembly は次の 2 層に割れることが確認できた。
+
+1. `SkipDecision -> result metadata`
+2. `result metadata -> FillRecord early return`
+
+今回 1 は `ztb.ml.skip_gate_result_fields` に抽出済み。
+2 は `build_skip_fill_record(...)` と v460 固有の event/log 文脈に結びつくため、
+まだ script 側に残すのが安全だった。
