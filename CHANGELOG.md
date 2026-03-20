@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 510# SAC debug helper / UTC timestamp 共通化 (2026-03-20)
+
+### Changed
+- **ztb/training/sac/debug.py**: `build_training_debug_details(...)` を canonical 化
+- **sac_retrain_scheduler.py**: canonical debug helper を再利用しつつ、既存 private helper 契約は thin wrapper で維持
+- **sac_retrain_scheduler.py**: `RetrainResult` に `debug_details` を保持し、history/debug 比較の足場を追加
+- **ztb/utils/time_utils.py**: `current_compact_timestamp(...)` を追加
+- **retrain_scheduler.py**: scheduler/history の timestamp を UTC helper に統一
+- **test_ml_pipeline.py**: real-data integration を class-scope fixture に寄せ、setup を削減
+
+### Tests
+- `test_sac_retrain_scheduler.py`
+- `test_time_utils.py`
+- `test_retrain_hot_reload.py -k 'retrain_model or skipped_trigger'`
+- `test_ml_pipeline.py`
+
 ## 476# Dust sweep 修正 + 0.001 単位切り捨て廃止 + 残高連動ロット (2026-03-18)
 
 ### Background

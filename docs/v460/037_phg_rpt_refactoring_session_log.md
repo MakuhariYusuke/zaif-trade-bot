@@ -59,6 +59,49 @@
 
 ## 2026-03-06 / Session 037-001
 
+## 2026-03-20 / Session 037-510
+
+### 実施
+- `ztb/training/sac/debug.py` を追加し、`build_training_debug_details(...)` を canonical 化
+- `scripts/v460/ml/sac_retrain_scheduler.py` は canonical helper を利用しつつ、既存 private helper の互換 wrapper を維持
+- `ztb/utils/time_utils.py` に `current_compact_timestamp(...)` を追加
+- `scripts/v460/ml/retrain_scheduler.py` の scheduler/history timestamp を UTC helper に統一
+- `test_sac_retrain_scheduler.py` の mock env を lightweight stub 化
+- `502` 計画書へ `regime_detector` 完了と Phase 2 進捗を追記
+
+### 結果
+- `sac_retrain_scheduler` の debug 共通化が `ztb.training.sac` へ収束
+- learning 系 timestamp の UTC 方針を一段そろえた
+- focused 回帰:
+  - `test_sac_retrain_scheduler.py`
+  - `test_time_utils.py`
+  - `test_retrain_hot_reload.py -k 'retrain_model or skipped_trigger'`
+
+### 次アクション
+1. `test_enricher_skip_gate.py` の real-data setup を production/helper 両面で圧縮
+2. `sac_retrain_scheduler` の debug summary を history/event 比較へ広げる
+3. Phase 3 の split-first 対象 (`maker_price.py`, `skip_gate_evaluator.py`, `order_monitor.py`) の切り出し単位を先に固める
+
+## 2026-03-20 / Session 037-511
+
+### 実施
+- `RetrainResult` に `debug_details` を追加し、`sac_retrain_scheduler` の history/debug 比較基盤を整備
+- `test_ml_pipeline.py` の real-data integration を class-scope fixture 化
+- `502` / `505` に Phase 2 継続進捗を追記
+
+### 結果
+- `retrain_once()` の学習条件を result/history 側へ薄く保持できるようになった
+- `ml_pipeline` の real-data setup は class 単位で再利用される形に整理
+- focused:
+  - `test_sac_retrain_scheduler.py`
+  - `test_ml_pipeline.py`
+  - `test_time_utils.py`
+
+### 次アクション
+1. `test_enricher_skip_gate.py` の real-data setup を shared helper 側からさらに圧縮
+2. `sac_retrain_scheduler` の history JSONL に必要最小限の debug summary を記録する
+3. `maker_price.py` / `skip_gate_evaluator.py` の split-first 設計に入る
+
 ### 実施
 - テスト軽量化
   - `test_ml_pipeline.py`

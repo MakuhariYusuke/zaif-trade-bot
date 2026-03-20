@@ -215,12 +215,14 @@ class TestRetrainResult:
             total_timesteps=15000,
             warm_start=True,
             gross_roi=0.0312345,
+            debug_details={"train_rows": 12},
         )
         d = r.to_dict()
         assert d["status"] == "deployed"
         assert d["training_time_sec"] == 42.6  # rounded
         assert d["gross_roi"] == pytest.approx(0.031234, abs=1e-5)  # 6dp rounded
         assert d["warm_start"] is True
+        assert d["debug_details"] == {"train_rows": 12}
 
 
 # ════════════════════════════════════════════════════════════════
@@ -230,17 +232,16 @@ class TestRetrainResult:
 
 def _make_mock_env():
     """Mock training env."""
-    env = MagicMock()
-    env.observation_space = MagicMock()
-    env.observation_space.shape = (12,)
-    env.action_space = MagicMock()
-    env.action_space.shape = (1,)
-    env.reset.return_value = (np.zeros(12), {})
-    env.step.return_value = (np.zeros(12), 0.1, True, False, {})
-    env.portfolio_value = 10_100_000.0
-    env.initial_portfolio_value = 10_000_000.0
-    env.trades_count = 5
-    return env
+    return SimpleNamespace(
+        observation_space=SimpleNamespace(shape=(12,)),
+        action_space=SimpleNamespace(shape=(1,)),
+        reset=lambda: (np.zeros(12), {}),
+        step=lambda _action=None: (np.zeros(12), 0.1, True, False, {}),
+        close=lambda: None,
+        portfolio_value=10_100_000.0,
+        initial_portfolio_value=10_000_000.0,
+        trades_count=5,
+    )
 
 
 def _make_sidecar_env() -> SimpleNamespace:
@@ -348,7 +349,7 @@ def _run_retrain_once_with_patches(
     cfg: SACRetrainConfig,
     *,
     mock_model: MagicMock,
-    mock_env: MagicMock,
+    mock_env: object,
     eval_result: dict[str, float | int],
 ) -> Iterator[tuple[MagicMock, MagicMock]]:
     """retrain_once() の主要 patch を束ねる."""
@@ -574,7 +575,7 @@ class TestAppendHistory:
 
     def test_append(self, tmp_path: Path) -> None:
         path = tmp_path / "history.jsonl"
-        r1 = RetrainResult(status="deployed", gross_roi=0.01)
+        r1 = RetrainResult(status="deployed", gross_roi=0.01, debug_details={"train_rows": 12})
         r2 = RetrainResult(status="oos_failed", gross_roi=-0.02)
 
         _append_history(path, r1)
@@ -583,6 +584,7 @@ class TestAppendHistory:
         lines = path.read_text(encoding="utf-8").strip().split("\n")
         assert len(lines) == 2
         assert json.loads(lines[0])["status"] == "deployed"
+        assert json.loads(lines[0])["debug_details"] == {"train_rows": 12}
         assert json.loads(lines[1])["status"] == "oos_failed"
 
 

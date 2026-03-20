@@ -33,15 +33,13 @@ import time
 import torch
 # ----------------------------------------
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol, cast
 
 logger = logging.getLogger(__name__)
 
 from ztb.io.yaml_io import read_yaml
-from ztb.utils.env_metrics import extract_env_metrics
-from ztb.ml.metadata_utils import current_iso_timestamp
+from ztb.utils.time_utils import current_compact_timestamp, current_iso_timestamp
 from ztb.utils.memory_utils import clear_cuda_cache, get_memory_usage
 
 # ── graceful shutdown ──────────────────────────────────────
@@ -216,9 +214,10 @@ class SACRetrainConfig:
 # Training Protocol — sac_common から統一定義を import
 # ════════════════════════════════════════════════════════════════
 
-from ztb.training.sac.runtime import (  # noqa: E402
+from ztb.training.sac import (  # noqa: E402
     SACModelProtocol,
     TrainingEnvProtocol,
+    build_training_debug_details as _canonical_build_training_debug_details,
     adjust_buffer_size,
     cleanup_envs,
     cleanup_training_resources,
@@ -248,10 +247,11 @@ class RetrainResult:
     gross_roi: float = 0.0
     trade_count: int = 0
     error_message: str = ""
+    debug_details: dict[str, object] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""
-        return {
+        payload = {
             "status": self.status,
             "timestamp": self.timestamp,
             "model_version": self.model_version,
@@ -262,6 +262,9 @@ class RetrainResult:
             "trade_count": self.trade_count,
             "error_message": self.error_message,
         }
+        if self.debug_details:
+            payload["debug_details"] = self.debug_details
+        return payload
 
 
 class _LatestObservationEnvProtocol(Protocol):
@@ -271,14 +274,6 @@ class _LatestObservationEnvProtocol(Protocol):
         ...
 
 
-def _shape_tuple(space: object) -> tuple[int, ...] | None:
-    """Gym-like space から shape を安全に取得する."""
-    shape = getattr(space, "shape", None)
-    if isinstance(shape, tuple):
-        return tuple(int(v) for v in shape)
-    return None
-
-
 def _build_training_debug_details(
     train_df: object,
     val_df: object,
@@ -286,43 +281,13 @@ def _build_training_debug_details(
     *,
     env: TrainingEnvProtocol | None = None,
 ) -> dict[str, object]:
-    """学習デバッグ用の軽量サマリーを返す."""
-    train_frame = cast("pd.DataFrame", train_df)
-    val_frame = cast("pd.DataFrame", val_df)
-
-    details: dict[str, object] = {
-        "train_rows": int(len(train_frame)),
-        "val_rows": int(len(val_frame)),
-        "columns": int(len(train_frame.columns)),
-        "feature_columns_configured": int(len(cfg.feature_columns)),
-        "train_memory_mb": round(float(train_frame.memory_usage(deep=True).sum()) / (1024 * 1024), 3),
-        "val_memory_mb": round(float(val_frame.memory_usage(deep=True).sum()) / (1024 * 1024), 3),
-        "process_rss_mb": round(float(get_memory_usage().get("rss", 0.0)), 1),
-    }
-
-    if "timestamp" in train_frame.columns and len(train_frame) > 0:
-        ts_min = train_frame["timestamp"].min()
-        ts_max = train_frame["timestamp"].max()
-        details["train_timestamp_min"] = ts_min.timestamp() if hasattr(ts_min, "timestamp") else float(ts_min)
-        details["train_timestamp_max"] = ts_max.timestamp() if hasattr(ts_max, "timestamp") else float(ts_max)
-    if "timestamp" in val_frame.columns and len(val_frame) > 0:
-        vs_min = val_frame["timestamp"].min()
-        vs_max = val_frame["timestamp"].max()
-        details["val_timestamp_min"] = vs_min.timestamp() if hasattr(vs_min, "timestamp") else float(vs_min)
-        details["val_timestamp_max"] = vs_max.timestamp() if hasattr(vs_max, "timestamp") else float(vs_max)
-
-    if env is not None:
-        obs_shape = _shape_tuple(getattr(env, "observation_space", None))
-        action_shape = _shape_tuple(getattr(env, "action_space", None))
-        if obs_shape is not None:
-            details["observation_shape"] = list(obs_shape)
-        if action_shape is not None:
-            details["action_shape"] = list(action_shape)
-        env_metrics = extract_env_metrics(env, include_optional=False)
-        if env_metrics:
-            details["env_metrics"] = env_metrics
-
-    return details
+    """Backward-compatible wrapper around canonical SAC debug helper."""
+    return _canonical_build_training_debug_details(
+        train_df,
+        val_df,
+        feature_columns_configured=len(cfg.feature_columns),
+        env=env,
+    )
 
 
 def _as_latest_observation_env(env: object) -> _LatestObservationEnvProtocol | None:
@@ -346,7 +311,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
       5. Atomic deploy + sidecar signal 更新
     """
     timestamp = current_iso_timestamp(utc=True)
-    model_version = f"sac_sidecar_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}"
+    model_version = f"sac_sidecar_{current_compact_timestamp(utc=True, fmt='%Y%m%d_%H%M')}"
 
     # 495# finally で参照するローカル変数を事前宣言 — NameError 防止
     train_df: object = None
@@ -354,6 +319,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
     env: TrainingEnvProtocol | None = None
     val_env: TrainingEnvProtocol | None = None
     model: SACModelProtocol | None = None
+    debug_details: dict[str, object] = {}
 
     # ── 1. データ読み込み ──
     try:
@@ -393,10 +359,11 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
         from stable_baselines3 import SAC as SB3_SAC  # noqa: F811
 
         env = _create_env(train_df, cfg)
+        debug_details = _build_training_debug_details(train_df, val_df, cfg, env=env)
         logger.info(
             "SAC retrain debug: %s",
             json.dumps(
-                _build_training_debug_details(train_df, val_df, cfg, env=env),
+                debug_details,
                 sort_keys=True,
             ),
         )
@@ -483,6 +450,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
                 warm_start=is_warm_start,
                 gross_roi=float(eval_result["gross_roi"]),
                 trade_count=int(eval_result.get("trade_count", 0)),
+                debug_details=debug_details,
             )
 
         # 372# Deploy Gate 強化: OOS 中の最低取引回数チェック
@@ -503,6 +471,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
                 warm_start=is_warm_start,
                 gross_roi=float(eval_result["gross_roi"]),
                 trade_count=_oos_trade_count,
+                debug_details=debug_details,
             )
 
         # ── 5. Atomic deploy ──
@@ -528,6 +497,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
             warm_start=is_warm_start,
             gross_roi=float(eval_result["gross_roi"]),
             trade_count=int(eval_result.get("trade_count", 0)),
+            debug_details=debug_details,
         )
 
     except ImportError as e:
@@ -536,6 +506,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
         return RetrainResult(
             status="error", timestamp=timestamp,
             error_message=f"import: {e}",
+            debug_details=debug_details,
         )
     except Exception as e:
         logger.error(f"Retrain failed: {e}", exc_info=True)
@@ -544,6 +515,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
         return RetrainResult(
             status="error", timestamp=timestamp,
             error_message=str(e),
+            debug_details=debug_details,
         )
     finally:
         # 487# メモリリーク防止: model/env/DataFrame を包括的に解放 + gc.collect

@@ -46,11 +46,11 @@ façade なしの即時移行は危険。
 - `lot_sizer.py` → `ztb/trading/sizing/lot_sizer.py`
 - `fast_fill_defense.py` → `ztb/trading/risk/fast_fill_defense.py` (shim 維持)
 - `sac_common.py` → `ztb/training/sac/runtime.py` (shim 維持)
+- `regime_detector.py` → `ztb/trading/signal/regime/regime_detector.py` (shim 維持)
 - `bayesian_regime_filter.py` → `ztb/trading/signal/regime/bayesian_regime_filter.py` (shim 維持)
 
 未着手の本命:
 
-- `regime_detector.py`
 - `maker_price.py`
 - `skip_gate_evaluator.py`
 - `order_monitor.py`
@@ -285,6 +285,13 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
 1. env cleanup / cuda cleanup / resource teardown を `ztb.training.sac` 系へ集約
 2. script 側は orchestration だけ残す
 3. debug summary / event detail 生成の共通部を `ztb` helper 化
+
+進捗:
+
+- `cleanup_training_resources(...)` は `ztb` 側へ昇格済み
+- `build_training_debug_details(...)` は `ztb.training.sac.debug` へ昇格済み
+- `retrain_scheduler` / `sac_retrain_scheduler` の timestamp は UTC helper へ寄せ始めている
+- `retrain_once()` 結果は debug summary を保持できるようになり、history/debug 比較の足場ができた
 
 ### Phase 3: God Object 分割
 

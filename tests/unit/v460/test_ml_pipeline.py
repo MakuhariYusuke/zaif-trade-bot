@@ -405,18 +405,24 @@ class Test057FillClassifier:
 class Test057Integration:
     """実データが存在する場合の統合テスト."""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def real_data_available(self) -> bool:
         """実データの有無."""
         return cached_latest_fill_records_file() is not None
 
-    def test_load_real_data(self, real_data_available: bool, tmp_path: Path) -> None:
+    @pytest.fixture(scope="class")
+    def real_fill_df(self, real_data_available: bool, tmp_path_factory: pytest.TempPathFactory) -> pd.DataFrame:
+        if not real_data_available:
+            pytest.skip("No real fill records")
+        sample_dir = tmp_path_factory.mktemp("ml_pipeline_real")
+        return _load_minimum_real_as_fill_df(sample_dir)
+
+    def test_load_real_data(self, real_data_available: bool, real_fill_df: pd.DataFrame) -> None:
         """実データのロードと AS 特徴量構築."""
         if not real_data_available:
             pytest.skip("No real fill records")
-        df = _load_minimum_real_as_fill_df(tmp_path)
-        assert len(df) >= 20
-        X, y = build_as_features(df)
+        assert len(real_fill_df) >= 20
+        X, y = build_as_features(real_fill_df)
         assert len(X) >= 10
 
 

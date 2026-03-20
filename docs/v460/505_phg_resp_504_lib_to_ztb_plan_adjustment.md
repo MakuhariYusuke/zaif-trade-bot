@@ -113,6 +113,12 @@
 `ztb/training/sac/runtime.py` を canonical module とし、
 `scripts/v460/lib/sac_common.py` は compatibility shim に整理した。
 
+追加進捗:
+
+- `ztb/training/sac/debug.py` を追加し、training debug summary を `ztb` 側へ寄せた
+- `scripts/v460/ml/sac_retrain_scheduler.py` は thin wrapper を残して既存 private 契約を維持
+- `retrain_scheduler.py` の UTC timestamp は shared helper に追随
+
 ### 3. `bayesian_regime_filter.py` は `regime_detector.py` より先に移行可能
 
 被参照範囲が狭く、shim 互換で十分守れるため、`regime_detector.py` 本体より先に
