@@ -53,6 +53,18 @@ def test_extend_reward_components_keeps_existing_stage_when_enriching_payload() 
     }
 
 
+def test_build_reward_components_converts_boolean_flags_for_simple_reward_payload() -> None:
+    payload = build_reward_components(
+        "simple_reward",
+        hold_penalty_applied=True,
+        trade_bonus_applied=False,
+    )
+
+    assert payload["stage"] == "simple_reward"
+    assert payload["hold_penalty_applied"] == 1.0
+    assert payload["trade_bonus_applied"] == 0.0
+
+
 def test_risk_management_preserves_pre_and_post_trading_rewards() -> None:
     reward = make_reward_calculator()
     reward.unrealized_loss_penalty_calculator.calculate = MagicMock(return_value=-0.2)

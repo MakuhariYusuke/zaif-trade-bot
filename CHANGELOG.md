@@ -6077,3 +6077,9 @@ python scripts/unified_trainer.py \
 - `ztb/trading/environment/components/calculators/reward_calculator.py` の PnL diagnostics / action-balance diagnostics / forced_balance / action_discovery / balanced_transition bookkeeping を `reward_component_tracking` helper ベースへ整理
 - `tests/unit/training/test_unified_trainer_advanced_feature_setup.py` に `model=None` 境界回帰を追加
 - `tests/unit/v460/test_reward_component_tracking_migration.py` に bookkeeping payload 拡張の focused 回帰を追加
+## 546# trainer dim resolution and reward payload convergence
+- `ztb/training/unified_trainer/advanced_feature_setup.py` に `resolve_model_input_dim(...)` / `resolve_model_output_dim(...)` を追加
+- `ztb/training/unified_trainer/trainer.py` の fallback task data / input-output dim 解決を helper ベースへ統一
+- `ztb/trading/environment/components/calculators/reward_calculator.py` の `simple_reward` / `trading_focused` / `profit_optimized` payload を canonical helper に寄せた
+- `tests/unit/training/test_unified_trainer_advanced_feature_setup.py` に model dim helper 回帰を追加
+- `tests/unit/v460/test_reward_component_tracking_migration.py` に simple-reward bool payload の回帰を追加

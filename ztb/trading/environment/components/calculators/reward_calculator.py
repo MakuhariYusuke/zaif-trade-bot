@@ -1478,25 +1478,25 @@ class RewardCalculator:
                 return 0.0
 
             # Store reward components for analysis
-            self._last_reward_components = {
-                "stage": "simple_reward",
-                "pnl": float(pnl),
-                "adjusted_pnl": float(adjusted_pnl),
-                "base_reward": float(adjusted_pnl * reward_scaling),
-                "hold_penalty_applied": action == ACTION_HOLD,
-                "trade_bonus_applied": action in [ACTION_BUY, ACTION_SELL],
-                "position_change": float(position_change),
-                "final_reward": float(reward),
-            }
+            self._last_reward_components = build_reward_components(
+                "simple_reward",
+                pnl=float(pnl),
+                adjusted_pnl=float(adjusted_pnl),
+                base_reward=float(adjusted_pnl * reward_scaling),
+                hold_penalty_applied=action == ACTION_HOLD,
+                trade_bonus_applied=action in [ACTION_BUY, ACTION_SELL],
+                position_change=float(position_change),
+                final_reward=float(reward),
+            )
 
             return reward
 
         except Exception as e:
             self.logger.error(f"RewardCalculator failed, using simple reward: {e}")
-            self._last_reward_components = {
-                "stage": "simple_reward_error",
-                "error": str(e),
-            }
+            self._last_reward_components = build_reward_components(
+                "simple_reward_error",
+                error=str(e),
+            )
             return 0.0
 
     def _build_reward_context(self, **kwargs) -> RewardContext:
@@ -1715,7 +1715,7 @@ class RewardCalculator:
     ) -> float:
         """Stage: Trading-focused reward that heavily penalizes HOLD and encourages trading."""
         # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ
-        self._last_reward_components = {"stage": "trading_focused"}
+        self._last_reward_components = build_reward_components("trading_focused")
 
         # Delegate to TradingFocusedReward component
         context = RewardContext(
@@ -1760,7 +1760,7 @@ class RewardCalculator:
     ) -> float:
         """Stage: Profit-optimized reward that maximizes profitable trading while minimizing losses."""
         # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ
-        self._last_reward_components = {"stage": "profit_optimized"}
+        self._last_reward_components = build_reward_components("profit_optimized")
 
         # Delegate to ProfitOptimizedReward component
         context = RewardContext(

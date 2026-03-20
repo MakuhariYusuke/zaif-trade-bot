@@ -300,6 +300,20 @@ shim を外しにいく条件:
   の bookkeeping も `reward_component_tracking` へ寄せる余地があり、順次整理を進める
 - `reward_component_tracking` は `RewardCalculator` の stage payload SSOT として扱い、
   他の reward 系ファイルへ無理に広げない方針が妥当
+- `UnifiedTrainer` では model availability だけでなく
+  - continual learning 実行前の model 解決
+  - fallback task data 用の input/output dim 解決
+  - input/output dim fallback
+  まで `advanced_feature_setup` 側へ寄せる余地があり、実装上も有効だった
+- ただしこれは `UnifiedTrainer` の repeated setup / fallback に閉じる helper であり、
+  SAC scheduler など別系統へ同名 helper を広げるより用途別 helper を維持するほうが安全
+- `RewardCalculator` では
+  - `simple_reward`
+  - `trading_focused`
+  - `profit_optimized`
+  も stage payload の shape を canonical helper に寄せられる
+- bool flag を `0.0/1.0` に揃える現在の payload 仕様は、
+  後続の比較/集計では扱いやすいが、将来 JSON contract を変える場合は影響確認が必要
 
 ## テスト設計
 

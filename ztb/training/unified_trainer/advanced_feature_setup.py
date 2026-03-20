@@ -26,4 +26,49 @@ def build_continual_learning_config(
     )
 
 
-__all__ = ["extract_algorithm_model", "build_continual_learning_config"]
+def resolve_model_input_dim(
+    algorithm_trainer: object | None,
+    default: int = 10,
+) -> int:
+    """Resolve model input dimension from an algorithm trainer when possible."""
+    model = extract_algorithm_model(algorithm_trainer)
+    if model is None:
+        return default
+    try:
+        params_iter = iter(model.parameters())
+        first_layer = next(params_iter)
+        if first_layer is None:
+            return default
+        return int(
+            first_layer.shape[1]
+            if len(first_layer.shape) > 1
+            else first_layer.shape[0]
+        )
+    except Exception:
+        return default
+
+
+def resolve_model_output_dim(
+    algorithm_trainer: object | None,
+    default: int = 1,
+) -> int:
+    """Resolve model output dimension from an algorithm trainer when possible."""
+    model = extract_algorithm_model(algorithm_trainer)
+    if model is None:
+        return default
+    try:
+        params = list(model.parameters())
+        if not params:
+            return default
+        last_layer = params[-1]
+        return int(last_layer.shape[0])
+    except Exception:
+        return default
+
+
+__all__ = [
+    "build_continual_learning_config",
+    "extract_algorithm_model",
+    "resolve_model_input_dim",
+    "resolve_model_output_dim",
+]

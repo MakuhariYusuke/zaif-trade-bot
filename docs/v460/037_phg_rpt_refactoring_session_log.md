@@ -8087,3 +8087,28 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - セルフレビュー
   - `advanced_feature_setup` は trainer 内の remaining model-access path まで揃えるのが正解だった
   - `reward_component_tracking` は `RewardCalculator` 専用 SSOT として扱うほうが設計が安定する
+## 546# trainer dim resolution and reward payload convergence
+- `ztb/training/unified_trainer/advanced_feature_setup.py`
+  - `resolve_model_input_dim(...)`
+  - `resolve_model_output_dim(...)`
+  を追加
+- `ztb/training/unified_trainer/trainer.py`
+  - fallback task data の `state_dim/action_dim`
+  - `_get_model_input_dim()`
+  - `_get_model_output_dim()`
+  を helper ベースへ統一
+- `ztb/trading/environment/components/calculators/reward_calculator.py`
+  - `simple_reward`
+  - `trading_focused`
+  - `profit_optimized`
+  の stage payload を canonical helper に寄せた
+- `tests/unit/training/test_unified_trainer_advanced_feature_setup.py`
+  - model dim helper の focused 回帰を追加
+- `tests/unit/v460/test_reward_component_tracking_migration.py`
+  - simple-reward bool payload の focused 回帰を追加
+- focused:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/training/test_unified_trainer_advanced_feature_setup.py tests/unit/v460/test_reward_component_tracking_migration.py tests/unit/reward/test_reward_components_fix.py tests/unit/trading/components/test_reward_calculator.py tests/unit/v460/test_sac_retrain_scheduler.py -k 'advanced_feature_setup or resolve_model_dims or build_reward_components or extend_reward_components or risk_management or simple_reward or post_cycle_memory_check or training_timeout_raises or retrain_once_cleans_up_on_error' -q --tb=short --no-cov`
+  - `14 passed, 53 deselected in 4.01s`
+- セルフレビュー
+  - `advanced_feature_setup` の helper は `UnifiedTrainer` 内の repeated fallback/dim 解決に素直に効いた
+  - `RewardCalculator` の stage payload はかなり一貫してきたが、`mtf_weights` のような非 scalar telemetry はまだ別扱いが妥当

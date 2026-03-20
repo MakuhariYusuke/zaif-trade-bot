@@ -90,6 +90,8 @@ from ztb.training.unified_trainer.algorithms import create_algorithm_trainer
 from ztb.training.unified_trainer.advanced_feature_setup import (
     build_continual_learning_config,
     extract_algorithm_model,
+    resolve_model_input_dim,
+    resolve_model_output_dim,
 )
 
 # Import extracted components
@@ -1839,8 +1841,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 state_dim = int(getattr(model, "input_dim", 10))
                 action_dim = int(getattr(model, "output_dim", 4))
             else:
-                state_dim = 10
-                action_dim = 4
+                state_dim = resolve_model_input_dim(self.algorithm_trainer, default=10)
+                action_dim = resolve_model_output_dim(self.algorithm_trainer, default=4)
 
             return TaskData(
                 task_id=task_id,
@@ -1858,37 +1860,17 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
     def _get_model_input_dim(self) -> int:
         """Get model input dimension."""
-        model = extract_algorithm_model(self.algorithm_trainer)
-        if model is None:
-            return 10  # Default
-        try:
-            params_iter = iter(model.parameters())
-            first_layer = next(params_iter)
-            if first_layer is None:
-                return 10
-            return int(
-                first_layer.shape[1]
-                if len(first_layer.shape) > 1
-                else first_layer.shape[0]
-            )
-        except Exception as e:
-            self.logger.debug("_get_model_input_dim fallback to 10: %s", e)
-            return 10
+        resolved = resolve_model_input_dim(self.algorithm_trainer, default=10)
+        if resolved == 10:
+            self.logger.debug("_get_model_input_dim using default 10")
+        return resolved
 
     def _get_model_output_dim(self) -> int:
         """Get model output dimension."""
-        model = extract_algorithm_model(self.algorithm_trainer)
-        if model is None:
-            return 1  # Default
-        try:
-            params = list(model.parameters())
-            if not params:
-                return 1
-            last_layer = params[-1]
-            return int(last_layer.shape[0])
-        except Exception as e:
-            self.logger.debug("_get_model_output_dim fallback to 1: %s", e)
-            return 1
+        resolved = resolve_model_output_dim(self.algorithm_trainer, default=1)
+        if resolved == 1:
+            self.logger.debug("_get_model_output_dim using default 1")
+        return resolved
 
     def _create_market_federated_configs(self) -> dict[str, FederatedConfig]:
         """Create federated configs for different markets."""

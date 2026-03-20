@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import torch
+
 from ztb.training.unified_trainer.advanced_feature_setup import (
     build_continual_learning_config,
     extract_algorithm_model,
+    resolve_model_input_dim,
+    resolve_model_output_dim,
 )
 
 
@@ -35,3 +39,12 @@ def test_build_continual_learning_config_uses_defaults_and_overrides() -> None:
     assert continual.rehearsal_buffer_size == 2048
     assert continual.max_tasks_in_memory == 7
     assert continual.enable_memory_tracking is True
+
+
+def test_resolve_model_dims_use_model_parameters_and_defaults() -> None:
+    trainer = SimpleNamespace(model=torch.nn.Linear(6, 3))
+
+    assert resolve_model_input_dim(trainer) == 6
+    assert resolve_model_output_dim(trainer) == 3
+    assert resolve_model_input_dim(SimpleNamespace(model=None), default=11) == 11
+    assert resolve_model_output_dim(SimpleNamespace(), default=7) == 7
