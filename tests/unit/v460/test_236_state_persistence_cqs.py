@@ -12,7 +12,6 @@ import pytest
 
 from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
 from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.resilience import FillTestState
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from tests.unit.v460._fill_test_source import (
@@ -26,6 +25,7 @@ from tests.unit.v460._fill_test_source import (
     read_class_method_source,
     read_source_text,
 )
+from ztb.trading.risk.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 
 if TYPE_CHECKING:
     pass

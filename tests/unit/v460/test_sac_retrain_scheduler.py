@@ -991,16 +991,14 @@ class TestCrashResilience495:
 
     def test_training_timeout_raises(self, tmp_path: Path) -> None:
         """model.learn() がタイムアウトした場合、TimeoutError で retrain_once がエラー返却."""
-        data_file = tmp_path / "data.parquet"
-        data_file.write_bytes(b"dummy")
-
-        cfg = SACRetrainConfig(
-            ohlcv_path=str(data_file),
+        cfg = _make_retrain_cfg(
+            tmp_path,
             model_path=tmp_path / "model.zip",
             buffer_path=tmp_path / "buffer.pkl",
             signal_path=tmp_path / "signal.json",
             history_path=tmp_path / "history.jsonl",
         )
+        Path(cfg.ohlcv_path).write_bytes(b"dummy")
 
         mock_env = _make_mock_env()
         mock_model = _make_mock_model()
@@ -1045,16 +1043,14 @@ class TestCrashResilience495:
 
     def test_retrain_once_cleans_up_on_error(self, tmp_path: Path) -> None:
         """retrain_once が例外時も cleanup_training_resources を呼ぶ."""
-        data_file = tmp_path / "data.parquet"
-        data_file.write_bytes(b"dummy")
-
-        cfg = SACRetrainConfig(
-            ohlcv_path=str(data_file),
+        cfg = _make_retrain_cfg(
+            tmp_path,
             model_path=tmp_path / "model.zip",
             buffer_path=tmp_path / "buffer.pkl",
             signal_path=tmp_path / "signal.json",
             history_path=tmp_path / "history.jsonl",
         )
+        Path(cfg.ohlcv_path).write_bytes(b"dummy")
 
         mock_env = _make_mock_env()
         mock_model = _make_mock_model()

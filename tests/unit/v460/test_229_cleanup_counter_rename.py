@@ -20,7 +20,6 @@ import pytest
 
 from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
-from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator as MakerPrice
 from tests.unit.v460._fill_test_source import ORCHESTRATOR_MID_CYCLE, read_source_text
@@ -28,6 +27,7 @@ from tests.unit.v460.conftest import (
     make_gate_config as _make_gate_config,
     make_maker_price_config as _make_fill_config,
 )
+from ztb.trading.risk.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 
 _FAST_FILL_DEFENSE_SOURCE = Path(
     inspect.getsourcefile(FastFillDefense) or "",

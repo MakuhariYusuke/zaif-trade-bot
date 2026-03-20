@@ -7858,3 +7858,23 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_405_offset_ceiling_pipeline.py tests/unit/v460/test_421_final_clamp_deadlock.py`: `103 passed in 2.60s`
   - `tests/unit/v460/test_enricher_skip_gate.py -k 'Test058Integration or RawLoadCache or save_load_roundtrip or as_mode_save_load or test_train_skip_gate_real'`: `9 passed, 63 deselected in 3.47s`
   - `tests/unit/v460/test_sac_retrain_scheduler.py -k 'training_timeout_raises or retrain_once_cleans_up_on_error or post_cycle_memory_check_runs or single_iteration_then_shutdown or trigger_exception_does_not_kill_loop or record_result_exception_does_not_kill_loop'`: `6 passed, 35 deselected in 2.66s`
+## 534# final sweep for canonical imports and scheduler test reuse
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - timeout/error 系で `_make_retrain_cfg(...)` を再利用
+  - config 構築重複を削減
+- `tests/unit/v460/test_236_state_persistence_cqs.py`
+- `tests/unit/v460/test_229_cleanup_counter_rename.py`
+- `tests/unit/v460/test_249_directional_alpha.py`
+- `tests/unit/v460/test_439_cross_venue_lead_lag.py`
+  - canonical import に追随
+- `maker_price.compute()` 行数確認
+  - current line count: `304`
+  - `test_260_compute_extract_regime_split.py` の上限 `<=310` を維持
+- セルフレビュー
+  - `maker_price` は orchestration を壊さずに stage helper 化と pure helper 抽出を両立できている
+  - `sac` timeout は無理な短縮より安定性優先に戻した判断が正しかった
+  - canonical import sweep は shim 契約を残す必要のない test へかなり広く適用できた
+- focused:
+  - `tests/unit/v460/test_236_state_persistence_cqs.py tests/unit/v460/test_249_directional_alpha.py tests/unit/v460/test_439_cross_venue_lead_lag.py tests/unit/v460/test_229_cleanup_counter_rename.py`: `125 passed in 3.17s`
+  - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_405_offset_ceiling_pipeline.py tests/unit/v460/test_421_final_clamp_deadlock.py`: `103 passed in 1.98s`
+  - `tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_sac_retrain_scheduler.py -k 'Test058Integration or RawLoadCache or save_load_roundtrip or as_mode_save_load or test_train_skip_gate_real or training_timeout_raises or retrain_once_cleans_up_on_error or post_cycle_memory_check_runs or single_iteration_then_shutdown or trigger_exception_does_not_kill_loop or record_result_exception_does_not_kill_loop'`: `15 passed, 98 deselected in 4.72s`

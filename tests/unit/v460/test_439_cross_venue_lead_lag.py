@@ -7,7 +7,6 @@ from unittest.mock import patch
 
 import pytest
 
-from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.cross_venue_lead_lag import (
     CrossVenueEMAState,
     CrossVenueLeadLagHint,
@@ -19,12 +18,13 @@ from scripts.v460.lib.cross_venue_lead_lag import (
     compute_microprice,
     update_cross_venue_ema,
 )
-from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
 from scripts.v460.lib.fill_record_builder import FillRecordBuilderMixin
 from scripts.v460.lib.maker_price import InfeasibleQuoteError, MakerPriceCalculator
 from ztb.metrics.fill_quality import FillRecord
+import ztb.trading.common.cancel_reasons as CR
+from ztb.trading.risk.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 
 
 @dataclass

@@ -6011,3 +6011,11 @@ python scripts/unified_trainer.py \
 - `scripts/v460/lib/offset_pipeline.py` でも `clamp_offset_ratio_to_ceiling(...)` を再利用し、final clamp 判定の pure 部分を共通化
 - `tests/unit/v460/test_enricher_skip_gate.py` の real-data sample guard を実測に基づき `50 / 56 / 72` へ再圧縮
 - `tests/unit/v460/test_421_final_clamp_deadlock.py` を含む final clamp/ceiling focused 群で回帰確認
+## 534# final sweep for canonical imports and scheduler test reuse
+- `tests/unit/v460/test_sac_retrain_scheduler.py` の timeout/error 系で `_make_retrain_cfg(...)` を再利用し、重複した config 構築を削減
+- `tests/unit/v460/test_236_state_persistence_cqs.py`
+- `tests/unit/v460/test_229_cleanup_counter_rename.py`
+- `tests/unit/v460/test_249_directional_alpha.py`
+- `tests/unit/v460/test_439_cross_venue_lead_lag.py`
+  を canonical import に変更
+- `maker_price.compute()` の行数は `304` 行で、`test_260_compute_extract_regime_split.py` の上限 `<=310` を維持

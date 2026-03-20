@@ -23,7 +23,7 @@ from scripts.v460.lib.daily_drawdown_guard import (
 )
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator
-from scripts.v460.lib.regime_detector import FillTestRegime
+from ztb.trading.signal.regime.regime_detector import FillTestRegime
 
 
 # =============================================================
