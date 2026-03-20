@@ -47,6 +47,7 @@ warnings.filterwarnings("ignore")
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from scripts.v460.ml.cache_cleanup import clear_ml_data_caches_with_log
+from ztb.ml.metadata_utils import current_iso_timestamp
 from scripts.v460.ml.data_loader import build_as_features, load_fill_records
 from scripts.v460.ml.feature_enricher import (
     build_enriched_as_features,
@@ -679,7 +680,7 @@ def _run_070_model_search_main() -> None:
     # Save all results
     # ═══════════════════════════════════════════════════
     all_results = {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": current_iso_timestamp(),
         "data_stats": {
             "total_records": len(df),
             "filled": int(filled.sum() if hasattr(filled, "sum") else len(filled)),

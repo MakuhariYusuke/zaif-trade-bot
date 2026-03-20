@@ -9,7 +9,6 @@ run_gate_check.py の run_g0 / run_g1_judgment / run_g1_1 / run_g2_judgment
 from __future__ import annotations
 
 import json
-import tempfile
 import time
 from pathlib import Path
 from types import SimpleNamespace
@@ -130,6 +129,12 @@ def _make_fill_records(
             "git_sha": "abc123def456",
         })
     return records
+
+
+def _write_gate_results(tmp_dir: Path, filename: str, data: dict) -> str:
+    path = tmp_dir / filename
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return str(path)
 
 
 # =====================================================================
@@ -573,72 +578,61 @@ def _default_thresholds_g4() -> dict:
 class TestG2Train:
     """run_g2_judgment のテスト."""
 
-    def _write_results(self, data: dict, tmp_dir: Path) -> str:
-        path = tmp_dir / "g2_results.json"
-        path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-        return str(path)
-
-    def test_g2_pass(self) -> None:
+    def test_g2_pass(self, tmp_path: Path) -> None:
         """全 seed 良好 → PASS."""
 
         data = _make_g2_results(n_seeds=5, gross_roi_mean=0.05, ic_std=0.005, roi_var_pct=2.0)
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
+        path = _write_gate_results(tmp_path, "g2_results.json", data)
+        result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
 
         assert result["gate"] == "G2-train"
         assert result["gate_result"] == "PASS"
         assert all(c["pass"] for c in result["checks"].values())
 
-    def test_g2_no_data(self) -> None:
+    def test_g2_no_data(self, tmp_path: Path) -> None:
         """seed_results 空 → NO_DATA."""
 
         data = {"seed_results": [], "convergence": {}}
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
+        path = _write_gate_results(tmp_path, "g2_results.json", data)
+        result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
 
         assert result["gate_result"] == "NO_DATA"
 
-    def test_g2_low_positive_ratio(self) -> None:
+    def test_g2_low_positive_ratio(self, tmp_path: Path) -> None:
         """positive seed 比率不足 → FAIL."""
 
         data = _make_g2_results(n_seeds=5, gross_roi_mean=-0.03)
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
+        path = _write_gate_results(tmp_path, "g2_results.json", data)
+        result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
 
         assert result["checks"]["positive_seed_ratio"]["pass"] is False
 
-    def test_g2_high_ic_std(self) -> None:
+    def test_g2_high_ic_std(self, tmp_path: Path) -> None:
         """IC seed 間標準偏差が大きい → FAIL."""
 
         data = _make_g2_results(n_seeds=5, ic_std=0.10)
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
+        path = _write_gate_results(tmp_path, "g2_results.json", data)
+        result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
 
         assert result["checks"]["ic_seed_std"]["pass"] is False
 
-    def test_g2_poor_convergence(self) -> None:
+    def test_g2_poor_convergence(self, tmp_path: Path) -> None:
         """ROI variance 高い → FAIL."""
 
         data = _make_g2_results(n_seeds=5, roi_var_pct=15.0)
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
+        path = _write_gate_results(tmp_path, "g2_results.json", data)
+        result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
 
         assert result["checks"]["convergence"]["pass"] is False
 
-    def test_g2_worst_seed_bad(self) -> None:
+    def test_g2_worst_seed_bad(self, tmp_path: Path) -> None:
         """worst seed の ROI が閾値以下 → FAIL."""
 
         # 手動で1つの seed を -5% にする
         data = _make_g2_results(n_seeds=5, gross_roi_mean=0.05)
         data["seed_results"][0]["gross_roi"] = -0.05
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
+        path = _write_gate_results(tmp_path, "g2_results.json", data)
+        result = run_g2_judgment(path, thresholds=_default_thresholds_g2())
 
         assert result["checks"]["worst_seed_roi"]["pass"] is False
 
@@ -646,81 +640,69 @@ class TestG2Train:
 class TestG3Pnl:
     """run_g3_judgment のテスト."""
 
-    def _write_results(self, data: dict, tmp_dir: Path) -> str:
-        path = tmp_dir / "g3_results.json"
-        path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-        return str(path)
-
-    def test_g3_pass(self) -> None:
+    def test_g3_pass(self, tmp_path: Path) -> None:
         """全指標良好 → PASS."""
 
         data = _make_g3_results(pf_mean=1.4, sharpe_mean=1.5, max_dd=0.08)
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
+        path = _write_gate_results(tmp_path, "g3_results.json", data)
+        result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
 
         assert result["gate"] == "G3-pnl"
         assert result["gate_result"] == "PASS"
         assert all(c["pass"] for c in result["checks"].values())
 
-    def test_g3_no_data(self) -> None:
+    def test_g3_no_data(self, tmp_path: Path) -> None:
         """seed_metrics 空 → NO_DATA."""
 
         data = {"seed_metrics": []}
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
+        path = _write_gate_results(tmp_path, "g3_results.json", data)
+        result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
 
         assert result["gate_result"] == "NO_DATA"
 
-    def test_g3_low_pf_median(self) -> None:
+    def test_g3_low_pf_median(self, tmp_path: Path) -> None:
         """PF 中央値低い → FAIL."""
 
         data = _make_g3_results(pf_mean=0.8)
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
+        path = _write_gate_results(tmp_path, "g3_results.json", data)
+        result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
 
         assert result["checks"]["pf_median"]["pass"] is False
 
-    def test_g3_low_pf_worst(self) -> None:
+    def test_g3_low_pf_worst(self, tmp_path: Path) -> None:
         """PF worst が閾値以下 → FAIL."""
 
         data = _make_g3_results(pf_mean=1.2)
         data["seed_metrics"][0]["pf"] = 0.5  # worst = 0.5 < 0.95
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
+        path = _write_gate_results(tmp_path, "g3_results.json", data)
+        result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
 
         assert result["checks"]["pf_worst"]["pass"] is False
 
-    def test_g3_fee_exceeds_gross(self) -> None:
+    def test_g3_fee_exceeds_gross(self, tmp_path: Path) -> None:
         """gross < fee → FAIL."""
 
         data = _make_g3_results(gross=0.001, fee=0.005)
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
+        path = _write_gate_results(tmp_path, "g3_results.json", data)
+        result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
 
         assert result["checks"]["gross_gt_fee"]["pass"] is False
 
-    def test_g3_high_drawdown(self) -> None:
+    def test_g3_high_drawdown(self, tmp_path: Path) -> None:
         """Max DD > 15% → FAIL."""
 
         data = _make_g3_results(max_dd=0.25)
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
+        path = _write_gate_results(tmp_path, "g3_results.json", data)
+        result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
 
         assert result["checks"]["max_drawdown"]["pass"] is False
 
-    def test_g3_low_sharpe(self) -> None:
+    def test_g3_low_sharpe(self, tmp_path: Path) -> None:
         """Sharpe annual 低い → FAIL."""
 
         data = _make_g3_results(sharpe_mean=0.3)
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
+        path = _write_gate_results(tmp_path, "g3_results.json", data)
+        result = run_g3_judgment(path, thresholds=_default_thresholds_g3())
 
         assert result["checks"]["sharpe_annual"]["pass"] is False
 
@@ -728,74 +710,63 @@ class TestG3Pnl:
 class TestG4Live:
     """run_g4_judgment のテスト."""
 
-    def _write_results(self, data: dict, tmp_dir: Path) -> str:
-        path = tmp_dir / "g4_results.json"
-        path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-        return str(path)
-
-    def test_g4_pass(self) -> None:
+    def test_g4_pass(self, tmp_path: Path) -> None:
         """全指標良好 → PASS."""
 
         data = _make_g4_results()
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
+        path = _write_gate_results(tmp_path, "g4_results.json", data)
+        result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
 
         assert result["gate"] == "G4-live"
         assert result["gate_result"] == "PASS"
         assert all(c["pass"] for c in result["checks"].values())
 
-    def test_g4_low_uptime(self) -> None:
+    def test_g4_low_uptime(self, tmp_path: Path) -> None:
         """稼働日数不足 → FAIL."""
 
         data = _make_g4_results(uptime_days=3.0)
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
+        path = _write_gate_results(tmp_path, "g4_results.json", data)
+        result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
 
         assert result["checks"]["uptime_days"]["pass"] is False
 
-    def test_g4_high_downtime(self) -> None:
+    def test_g4_high_downtime(self, tmp_path: Path) -> None:
         """ダウンタイム比率超過 → FAIL."""
 
         data = _make_g4_results(downtime_ratio=0.05)
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
+        path = _write_gate_results(tmp_path, "g4_results.json", data)
+        result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
 
         assert result["checks"]["downtime_ratio"]["pass"] is False
 
-    def test_g4_no_circuit_breaker(self) -> None:
+    def test_g4_no_circuit_breaker(self, tmp_path: Path) -> None:
         """Circuit Breaker 未テスト → FAIL."""
 
         data = _make_g4_results(circuit_breaker_tested=False)
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
+        path = _write_gate_results(tmp_path, "g4_results.json", data)
+        result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
 
         assert result["checks"]["circuit_breaker"]["pass"] is False
 
-    def test_g4_g3_not_maintained(self) -> None:
+    def test_g4_g3_not_maintained(self, tmp_path: Path) -> None:
         """G3 指標未維持 → FAIL."""
 
         data = _make_g4_results(g3_maintained=False)
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
+        path = _write_gate_results(tmp_path, "g4_results.json", data)
+        result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
 
         assert result["checks"]["g3_maintained"]["pass"] is False
 
-    def test_g4_slow_emergency_stop(self) -> None:
+    def test_g4_slow_emergency_stop(self, tmp_path: Path) -> None:
         """緊急停止応答遅延 → FAIL."""
 
         data = _make_g4_results(emergency_stop_sec=5.0)
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
+        path = _write_gate_results(tmp_path, "g4_results.json", data)
+        result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
 
         assert result["checks"]["emergency_stop"]["pass"] is False
 
-    def test_g4_multiple_failures(self) -> None:
+    def test_g4_multiple_failures(self, tmp_path: Path) -> None:
         """複数指標 FAIL → FAIL + 全チェック記録."""
 
         data = _make_g4_results(
@@ -803,9 +774,8 @@ class TestG4Live:
             downtime_ratio=0.05,
             circuit_breaker_tested=False,
         )
-        with tempfile.TemporaryDirectory() as tmp:
-            path = self._write_results(data, Path(tmp))
-            result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
+        path = _write_gate_results(tmp_path, "g4_results.json", data)
+        result = run_g4_judgment(path, thresholds=_default_thresholds_g4())
 
         assert result["gate_result"] == "FAIL"
         failed = [k for k, v in result["checks"].items() if not v["pass"]]
@@ -865,23 +835,22 @@ class TestCLI:
         mock_run_g1_1.assert_called_once()
 
     @patch("scripts.v460.run_gate_check.run_g0")
-    def test_cli_output_file(self, mock_run_g0) -> None:
+    def test_cli_output_file(self, mock_run_g0, tmp_path: Path) -> None:
         """--output で結果を JSON 出力."""
 
         mock_run_g0.return_value = {"gate": "G0-data", "gate_result": "PASS", "checks": {}}
 
-        with tempfile.TemporaryDirectory() as tmp:
-            out_path = Path(tmp) / "result.json"
-            with patch(
-                "sys.argv",
-                ["prog", "--gate", "G0", "--data-path", "test.parquet", "--output", str(out_path)],
-            ):
-                with patch("scripts.v460.run_gate_check.sys.exit"):
-                    main()
+        out_path = tmp_path / "result.json"
+        with patch(
+            "sys.argv",
+            ["prog", "--gate", "G0", "--data-path", "test.parquet", "--output", str(out_path)],
+        ):
+            with patch("scripts.v460.run_gate_check.sys.exit"):
+                main()
 
-            assert out_path.exists()
-            loaded = json.loads(out_path.read_text(encoding="utf-8"))
-            assert loaded["gate_result"] == "PASS"
+        assert out_path.exists()
+        loaded = json.loads(out_path.read_text(encoding="utf-8"))
+        assert loaded["gate_result"] == "PASS"
 
     @patch("scripts.v460.run_gate_check.run_g2_judgment")
     def test_cli_g2(self, mock_run_g2) -> None:
