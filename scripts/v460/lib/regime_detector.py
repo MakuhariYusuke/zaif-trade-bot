@@ -41,7 +41,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 import numpy as np
 
 if TYPE_CHECKING:
-    from scripts.v460.lib.bayesian_regime_filter import (
+    from ztb.trading.signal.regime.bayesian_regime_filter import (
         BayesianRegimeFilter,
         BayesianRegimeResult,
     )

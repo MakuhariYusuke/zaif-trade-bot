@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from stable_baselines3 import SAC
 
 from scripts.v460.lib.tasks.sac_train import _create_training_env, section
-from scripts.v460.lib.sac_common import extract_roi_from_env
+from ztb.training.sac.runtime import extract_roi_from_env
 
 
 def diagnose(model_path: str, config_path: str, n_steps: int = 2000) -> None:

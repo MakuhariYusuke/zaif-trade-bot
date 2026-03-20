@@ -260,7 +260,7 @@ class FillTestRunner(
 
         # 366# M2: Bayesian Regime Filter 初期化 (regime_detector に注入)
         if config.bayesian_regime_enabled and self._regime_detector is not None:
-            from scripts.v460.lib.bayesian_regime_filter import (
+            from ztb.trading.signal.regime.bayesian_regime_filter import (
                 BayesianRegimeConfig,
                 BayesianRegimeFilter,
             )

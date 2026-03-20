@@ -7311,3 +7311,38 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `LotSizingConfig` / `compute_lot_size` などの import を canonical path に変更
 - `tests/unit/v460/test_507_lot_sizer_and_ffd_migration.py`
   - lot_sizer / FFD の shim と canonical 実装の整合を focused 回帰化
+## 508# sac_common / bayesian_regime_filter canonical 化
+- `ztb/training/sac/runtime.py`
+  - `scripts/v460/lib/sac_common.py` の本体を canonical module として昇格
+- `ztb/training/sac/__init__.py`
+  - shared SAC runtime helper の export を追加
+- `scripts/v460/lib/sac_common.py`
+  - compatibility shim に整理
+  - `_compute_g3_metrics` を含む既存 import 契約を保つため明示 re-export 化
+- `scripts/v460/ml/sac_retrain_scheduler.py`
+  - SAC runtime import を canonical path に変更
+  - `timestamp` / `SidecarSignal.timestamp` を `current_iso_timestamp(utc=True)` に統一
+- `scripts/v460/lib/tasks/sac_train.py`
+  - SAC runtime import と `create_env_from_config` の local import を canonical path に変更
+- `scripts/v460/diagnose_sac_actions.py`
+  - `extract_roi_from_env` import を canonical path に変更
+- `ztb/trading/signal/regime/bayesian_regime_filter.py`
+  - canonical Bayesian regime filter module を追加
+- `ztb/trading/signal/regime/__init__.py`
+  - Bayesian filter / classifier をまとめる package export を追加
+- `scripts/v460/lib/bayesian_regime_filter.py`
+  - compatibility shim に整理
+  - `EmissionParams` と underscore 付き定数も再 export して旧 test 契約を維持
+- `scripts/v460/run_fill_test.py`
+  - Bayesian filter import を canonical path に変更
+- `scripts/v460/build_features.py`
+  - Bayesian filter import を canonical path に変更
+- `scripts/v460/lib/regime_detector.py`
+  - TYPE_CHECKING の Bayesian filter import を canonical path に変更
+- `docs/v460/502_phg_plan_lib_to_ztb_and_object_split.md`
+  - 実装進捗を追記
+  - `regime_detector.py` / `bayesian_regime_filter.py` の移行先を `ztb/trading/signal/regime/` に補正
+- `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md`
+  - 実装で判明した追加補正を追記
+- `tests/unit/v460/test_508_sac_runtime_and_bayesian_migration.py`
+  - SAC runtime / Bayesian filter の shim と canonical の整合を focused 回帰化

@@ -94,3 +94,26 @@
 3. `sac_common.py` → `ztb/training/sac/runtime.py`
 4. `fast_fill_defense.py` façade 移行
 5. `regime_detector.py` / `bayesian_regime_filter.py` façade 移行
+
+## 実装しながら見えた追加補正
+
+### 1. `regime_detector` / `bayesian_regime_filter` の移行先
+
+実装を進める中で、tree には既に `ztb/trading/signal/regime/` が存在していた。
+そのため 502# の当初案だった `ztb/trading/regime/` 新設よりも、
+既存 namespace に寄せるほうが責務の置き場として自然。
+
+このため移行先は次へ補正する。
+
+- `regime_detector.py` → `ztb/trading/signal/regime/regime_detector.py`
+- `bayesian_regime_filter.py` → `ztb/trading/signal/regime/bayesian_regime_filter.py`
+
+### 2. `sac_common.py` は Phase 2 着手済み
+
+`ztb/training/sac/runtime.py` を canonical module とし、
+`scripts/v460/lib/sac_common.py` は compatibility shim に整理した。
+
+### 3. `bayesian_regime_filter.py` は `regime_detector.py` より先に移行可能
+
+被参照範囲が狭く、shim 互換で十分守れるため、`regime_detector.py` 本体より先に
+canonical 化して足場を作る方針が妥当だった。

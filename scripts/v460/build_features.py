@@ -223,7 +223,7 @@ def _add_m2_m5_proxy(
 
     # ---- M2: Bayesian Regime posterior (Hamilton filter proxy) ----
     # シーケンシャル処理が必要 (path-dependent)
-    from scripts.v460.lib.bayesian_regime_filter import BayesianRegimeFilter
+    from ztb.trading.signal.regime.bayesian_regime_filter import BayesianRegimeFilter
 
     brf = BayesianRegimeFilter()
     log_ret = np.log(close / close.shift(1)).fillna(0.0).values

@@ -24,7 +24,7 @@ import torch
 import pandas as pd
 
 from scripts.v460.lib.config_access import as_int, section
-from scripts.v460.lib.sac_common import (
+from ztb.training.sac.runtime import (
     SACModelProtocol,
     TrainingEnvProtocol,
     adjust_buffer_size,
@@ -385,7 +385,7 @@ def _create_training_env(
     487# 重複削減: create_env_from_config に委譲。
     356# B3: feature_columns を EnvironmentConfig.feature_names に注入.
     """
-    from scripts.v460.lib.sac_common import create_env_from_config
+    from ztb.training.sac.runtime import create_env_from_config
 
     feature_columns = _resolve_feature_columns(cfg)
     env_config = _build_environment_config(cfg, feature_columns=feature_columns)

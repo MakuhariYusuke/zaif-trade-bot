@@ -37,6 +37,25 @@ façade なしの即時移行は危険。
 「orchestration と domain logic を分ける」ことにある。
 
 ## 現在の整理方針
+## 実装進捗 (2026-03-20 時点)
+
+既に canonical 化済み:
+
+- `cancel_reasons.py` → `ztb/trading/common/cancel_reasons.py`
+- `param_adapter.py` → `ztb/trading/sizing/param_adapter.py`
+- `lot_sizer.py` → `ztb/trading/sizing/lot_sizer.py`
+- `fast_fill_defense.py` → `ztb/trading/risk/fast_fill_defense.py` (shim 維持)
+- `sac_common.py` → `ztb/training/sac/runtime.py` (shim 維持)
+- `bayesian_regime_filter.py` → `ztb/trading/signal/regime/bayesian_regime_filter.py` (shim 維持)
+
+未着手の本命:
+
+- `regime_detector.py`
+- `maker_price.py`
+- `skip_gate_evaluator.py`
+- `order_monitor.py`
+- `ab_judgment.py`
+
 
 ### `scripts/v460/lib` に残すべきもの
 
@@ -149,6 +168,7 @@ Phase 3 の split-first 対象から外す。
 既存の `execution/` は simulation/backtest 文脈が強いため、以下へ修正する:
 
 - `fast_fill_defense.py` → `ztb/trading/risk/fast_fill_defense.py`
+- `regime_detector.py` / `bayesian_regime_filter.py` → 新規 top-level `ztb/trading/regime/` ではなく、既存の `ztb/trading/signal/regime/` namespace を優先する
 
 ### 3. façade 戦略を必須化
 
@@ -188,8 +208,8 @@ from ztb.trading.regime.regime_detector import (  # noqa: F401
 | `lib/lot_sizer.py` | `ztb/trading/sizing/lot_sizer.py` |
 | `lib/sac_common.py` | `ztb/training/sac/runtime.py` |
 | `lib/fast_fill_defense.py` | `ztb/trading/risk/fast_fill_defense.py` |
-| `lib/regime_detector.py` | `ztb/trading/regime/regime_detector.py` |
-| `lib/bayesian_regime_filter.py` | `ztb/trading/regime/bayesian_regime_filter.py` |
+| `lib/regime_detector.py` | `ztb/trading/signal/regime/regime_detector.py` |
+| `lib/bayesian_regime_filter.py` | `ztb/trading/signal/regime/bayesian_regime_filter.py` |
 | `lib/daily_drawdown_guard.py` | `ztb/trading/risk/daily_drawdown_guard.py` |
 | `lib/phantom_position_guard.py` | `ztb/trading/risk/phantom_position_guard.py` |
 | `lib/cross_venue_lead_lag.py` | `ztb/trading/risk/cross_venue_lead_lag.py` or `ztb/trading/market_microstructure/` |

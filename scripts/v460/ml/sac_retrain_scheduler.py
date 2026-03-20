@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 
 from ztb.io.yaml_io import read_yaml
 from ztb.utils.env_metrics import extract_env_metrics
+from ztb.ml.metadata_utils import current_iso_timestamp
 from ztb.utils.memory_utils import clear_cuda_cache, get_memory_usage
 
 # ── graceful shutdown ──────────────────────────────────────
@@ -215,7 +216,7 @@ class SACRetrainConfig:
 # Training Protocol — sac_common から統一定義を import
 # ════════════════════════════════════════════════════════════════
 
-from scripts.v460.lib.sac_common import (  # noqa: E402
+from ztb.training.sac.runtime import (  # noqa: E402
     SACModelProtocol,
     TrainingEnvProtocol,
     adjust_buffer_size,
@@ -344,7 +345,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
       4. OOS validation gate
       5. Atomic deploy + sidecar signal 更新
     """
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = current_iso_timestamp(utc=True)
     model_version = f"sac_sidecar_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}"
 
     # 495# finally で参照するローカル変数を事前宣言 — NameError 防止
@@ -949,7 +950,7 @@ def _update_sidecar_signal(
         _confidence = min(1.0, (_oos_roi - _gate_threshold) / (_full_roi - _gate_threshold))
 
     signal_obj = SidecarSignal(
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=current_iso_timestamp(utc=True),
         directional_bias=bias,
         model_version=model_version,
         confidence=_confidence,

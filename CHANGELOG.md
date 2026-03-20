@@ -5812,3 +5812,11 @@ python scripts/unified_trainer.py \
 - `ztb/trading/risk/fast_fill_defense.py` を canonical module として追加し、`scripts/v460/lib/fast_fill_defense.py` は compatibility shim に整理
 - `scripts/v460/lib/adaptation_engine.py` の lot_sizer import を canonical path に変更
 - `tests/unit/v460/test_507_lot_sizer_and_ffd_migration.py` を追加し、lot_sizer / FastFillDefense の shim と canonical の整合を回帰化
+## 508# sac_common / bayesian_regime_filter canonical 化
+- `ztb/training/sac/runtime.py` を追加し、`scripts/v460/lib/sac_common.py` は compatibility shim に整理
+- `sac_retrain_scheduler.py` / `sac_train.py` / `diagnose_sac_actions.py` の SAC runtime import を canonical path に追随
+- `ztb/trading/signal/regime/bayesian_regime_filter.py` を追加し、`scripts/v460/lib/bayesian_regime_filter.py` は compatibility shim に整理
+- `run_fill_test.py` / `build_features.py` / `regime_detector.py` の Bayesian filter 参照を canonical path に追随
+- `sac_retrain_scheduler.py` の UTC timestamp 生成を shared helper `current_iso_timestamp(utc=True)` に寄せた
+- `docs/v460/502_phg_plan_lib_to_ztb_and_object_split.md` と `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md` を更新し、`regime_detector` / `bayesian_regime_filter` の移行先を既存 `ztb/trading/signal/regime/` namespace ベースへ補正
+- `tests/unit/v460/test_508_sac_runtime_and_bayesian_migration.py` を追加し、canonical module と shim の整合を focused 回帰化
