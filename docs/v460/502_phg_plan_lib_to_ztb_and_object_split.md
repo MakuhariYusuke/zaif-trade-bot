@@ -311,11 +311,23 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
 4. `ab_judgment.py`
 5. `adaptation_engine.py`
 
+進捗:
+
+- `maker_price` / `order_monitor` / `skip_gate_evaluator` の shared contract を先行抽出
+- pricing / execution / skip-gate の import 面を `ztb` 側 contract へ寄せ始めた
+- class 本体分割前に、protocol / result type の置き場を固定できた
+
 ### Phase 4: import 収束
 
 1. `scripts.v460.lib` からの direct import を grep で棚卸し
 2. `ztb` の canonical import へ順次置換
 3. 最後に unused façade を archive 候補へ送る
+
+足場:
+
+- `ztb/trading/pricing/contracts.py`
+- `ztb/trading/execution/contracts.py`
+- `ztb/ml/skip_gate_contracts.py`
 
 ## テスト方針
 

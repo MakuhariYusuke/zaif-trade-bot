@@ -21,7 +21,7 @@ import collections
 import logging
 import math
 import time
-from typing import TYPE_CHECKING, Final, NamedTuple, Protocol
+from typing import TYPE_CHECKING, Final
 
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fast_fill_defense import FastFillDefense
@@ -30,6 +30,7 @@ from scripts.v460.lib.maker_microstructure import MicrostructureMixin
 from scripts.v460.lib.maker_regime_boost import RegimeBoostMixin
 from scripts.v460.lib.maker_risk_guards import RiskGuardsMixin
 from scripts.v460.lib.ob_utils import OrderBookSnapshot
+from ztb.trading.pricing.contracts import ImbalanceResult, MakerPriceResult, OrderbookProvider
 from ztb.trading.signal.regime.regime_detector import RegimeDetectorLike
 from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
 
@@ -52,31 +53,6 @@ class InfeasibleQuoteError(ValueError):
     def __init__(self, reason: str, msg: str) -> None:
         super().__init__(msg)
         self.reason = reason
-
-
-# 266# OrderBookSnapshot は ob_utils.py に移管済み (from scripts.v460.lib.ob_utils import OrderBookSnapshot)
-
-
-class OrderbookProvider(Protocol):
-    """板情報を提供するアダプタのプロトコル (型安全)."""
-
-    async def get_orderbook(self, symbol: str, depth: int = 1) -> OrderBookSnapshot: ...
-
-
-class MakerPriceResult(NamedTuple):
-    """compute() の戻り値 — 従来の tuple[float, float, float] を型安全化."""
-
-    price: float
-    spread: float
-    effective_offset_ratio: float
-
-
-class ImbalanceResult(NamedTuple):
-    """板不均衡計算結果."""
-
-    imbalance: float
-    bid_total: float
-    ask_total: float
 
 
 from scripts.v460.lib.constants import BPS_FACTOR as _BPS_FACTOR

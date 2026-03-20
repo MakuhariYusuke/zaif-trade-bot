@@ -21,6 +21,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `test_retrain_hot_reload.py -k 'retrain_model or skipped_trigger'`
 - `test_ml_pipeline.py`
 
+## 511# pricing / execution / skip-gate contract 抽出 (2026-03-20)
+
+### Changed
+- **ztb/trading/pricing/contracts.py**: `OrderbookProvider`, `MakerPriceResult`, `ImbalanceResult` を canonical 化
+- **ztb/trading/execution/contracts.py**: `OrderLike`, `OrderStatusLike`, `ExchangeAdapter` を canonical 化
+- **ztb/ml/skip_gate_contracts.py**: skip-gate adapter / decision / gate protocol を canonical 化
+- **maker_price.py / order_monitor.py / skip_gate_evaluator.py**: 旧 module は shared contract 再利用へ追随
+
+### Tests
+- `test_511_shared_contracts_migration.py`
+- protocol / type-safety focused bundles
+
 ## 476# Dust sweep 修正 + 0.001 単位切り捨て廃止 + 残高連動ロット (2026-03-18)
 
 ### Background

@@ -102,6 +102,25 @@
 2. `sac_retrain_scheduler` の history JSONL に必要最小限の debug summary を記録する
 3. `maker_price.py` / `skip_gate_evaluator.py` の split-first 設計に入る
 
+## 2026-03-20 / Session 037-512
+
+### 実施
+- `maker_price` / `order_monitor` / `skip_gate_evaluator` の shared contract を `ztb` 側へ先行抽出
+- `pricing`, `execution`, `skip-gate` の contract module を追加
+- script 側の型面を canonical contract 再利用へ追随
+
+### 結果
+- God Object 本体分割の前に protocol / result type の置き場を固定できた
+- Phase 4 の import 収束に入るための足場ができた
+- focused:
+  - `test_511_shared_contracts_migration.py`
+  - protocol / type-safety bundles
+
+### 次アクション
+1. `test_enricher_skip_gate.py` の real-data setup 圧縮
+2. `maker_price.py` の core / inventory / protocol 周辺を切り出す
+3. `skip_gate_evaluator.py` の feature/runtime 境界を split-first で整理する
+
 ### 実施
 - テスト軽量化
   - `test_ml_pipeline.py`

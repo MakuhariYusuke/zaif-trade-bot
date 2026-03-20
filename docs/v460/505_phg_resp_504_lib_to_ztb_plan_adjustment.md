@@ -123,3 +123,17 @@
 
 被参照範囲が狭く、shim 互換で十分守れるため、`regime_detector.py` 本体より先に
 canonical 化して足場を作る方針が妥当だった。
+
+### 4. Phase 3 は「shared contract 抽出」から入るのが安全
+
+504# の懸念どおり、`maker_price.py` / `skip_gate_evaluator.py` / `order_monitor.py` は
+本体を直接割り始めると import 影響が広い。
+
+そのため先に
+
+- pricing contracts
+- execution contracts
+- skip-gate contracts
+
+を `ztb` 側へ抜き、旧 module はその contract を再利用する形に寄せるのが安全だった。
+これは Phase 4 の import 収束にも直結する。

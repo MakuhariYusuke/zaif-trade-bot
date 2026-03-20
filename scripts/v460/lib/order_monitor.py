@@ -15,50 +15,18 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Awaitable, Callable
-from typing import Final, Protocol, cast, runtime_checkable
+from typing import Final, Protocol, cast
 
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import FillMonitorResult, FillTestConfig
+from ztb.ml.skip_gate_contracts import SkipDecisionLike as _SkipDecisionLike
+from ztb.ml.skip_gate_contracts import SkipGateLike as _SkipGateLike
+from ztb.trading.execution.contracts import ExchangeAdapter, OrderLike, OrderStatusLike
 from ztb.trading.signal.regime.regime_detector import RegimeDetectorLike
 
 logger = logging.getLogger(__name__)
 
 from scripts.v460.lib.constants import BPS_FACTOR as _BPS_FACTOR
-
-
-@runtime_checkable
-class OrderLike(Protocol):
-    """注文オブジェクトの型安全プロトコル (Any 排除)."""
-
-    @property
-    def order_id(self) -> str: ...
-
-
-@runtime_checkable
-class OrderStatusLike(Protocol):
-    """注文ステータスオブジェクトのプロトコル."""
-
-    @property
-    def status(self) -> str: ...
-
-    @property
-    def price(self) -> float | None: ...
-
-
-class ExchangeAdapter(Protocol):
-    """OrderMonitor が必要とする adapter メソッド群."""
-
-    async def get_order_status(self, order_id: str) -> OrderStatusLike | None: ...
-    async def cancel_order(self, order_id: str) -> None: ...
-    async def place_order(
-        self,
-        symbol: str,
-        side: str,
-        quantity: float,
-        price: float,
-        order_type: str = "limit",
-    ) -> OrderLike: ...
-    async def get_orderbook(self, symbol: str, depth: int = 1) -> object: ...
 
 
 # exchange status 文字列の正規化
@@ -88,25 +56,6 @@ class _KillSwitchLike(Protocol):
     """175# shutdown_check の型安全 Protocol."""
 
     def is_killed(self) -> bool: ...
-
-
-class _SkipGateLike(Protocol):
-    """175# SkipGate reprice guard の型安全 Protocol."""
-
-    def evaluate(self, *, side: str, **kwargs: object) -> object: ...
-
-
-class _SkipDecisionLike(Protocol):
-    """reprice guard で使う最小 SkipDecision 契約."""
-
-    @property
-    def should_skip(self) -> bool: ...
-
-    @property
-    def as_probability(self) -> float | None: ...
-
-    @property
-    def threshold_used(self) -> float | None: ...
 
 
 class _CancelFillCheck:

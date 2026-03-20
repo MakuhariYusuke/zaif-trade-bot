@@ -1101,7 +1101,7 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
     use_ob = safe_to_bool(cfg.get("use_ob_features", True), True)
 
     result: ConfigMap = {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": current_iso_timestamp(utc=True),
         "status": "pending",
     }
 
@@ -2056,7 +2056,7 @@ def run_scheduler(cfg: ConfigMap, config_path: Path | None = None) -> None:
             )
             # 履歴にトリガースキップも記録
             skip_result = {
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": current_iso_timestamp(utc=True),
                 "status": "skipped_trigger",
                 "reason": trigger_reason,
                 "consecutive_skips": trigger.consecutive_skips,

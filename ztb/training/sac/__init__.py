@@ -17,6 +17,10 @@ from ztb.training.sac.runtime import (
     extract_roi_from_env,
     train_val_split,
 )
+from ztb.training.sac.debug import (
+    TrainingDebugEnvProtocol,
+    build_training_debug_details,
+)
 
 __all__ = [
     "SACModelProtocol",
@@ -29,5 +33,7 @@ __all__ = [
     "create_sac_model",
     "evaluate_model_oos",
     "extract_roi_from_env",
+    "TrainingDebugEnvProtocol",
+    "build_training_debug_details",
     "train_val_split",
 ]

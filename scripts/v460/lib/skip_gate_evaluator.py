@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol, cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
@@ -32,6 +32,13 @@ from scripts.v460.lib.ob_utils import OrderBookSnapshot
 from scripts.v460.lib.skip_gate_ev_weighted import SkipGateEvWeightedMixin
 from scripts.v460.lib.skip_gate_model_loader import SkipGateModelLoaderMixin
 from scripts.v460.ml.skip_gate import SkipDecision, build_features_from_market_state
+from ztb.ml.skip_gate_contracts import (
+    SkipGateAdapter,
+    SkipGateClassLike as _SkipGateClassLike,
+    SkipGateConfigLike as _SkipGateConfigLike,
+    SkipDecisionLike as _SkipDecisionLike,
+    SkipGateLike as _SkipGateLike,
+)
 # ファイルの SHA256 ハッシュを算出 (126# hot-reload 用)
 from ztb.metrics.fill_quality import build_skip_fill_record
 from ztb.utils.run_manifest import compute_file_hash
@@ -40,81 +47,6 @@ if TYPE_CHECKING:
     from ztb.metrics.fill_quality import FillRecord
 
 logger = logging.getLogger(__name__)
-
-
-# ------------------------------------------------------------------
-# 265# adapter: object → Protocol 型安全化
-# ------------------------------------------------------------------
-class SkipGateAdapter(Protocol):
-    """SkipGateEvaluator.evaluate() が必要とする adapter メソッド群.
-
-    ExchangeAdapter (order_monitor.py) とは責務が異なる:
-      - ExchangeAdapter: 注文管理 (place/cancel/status/OB)
-      - SkipGateAdapter: ML 特徴量取得 (trades/OB)
-    BaseBroker がどちらも実装するため、実運用上は同一オブジェクト。
-    """
-
-    async def get_recent_trades(
-        self, symbol: str, limit: int = 100,
-    ) -> object: ...
-
-    async def get_orderbook(
-        self, symbol: str, depth: int = 1,
-    ) -> OrderBookSnapshot | None: ...
-
-
-class _SkipGateConfigLike(Protocol):
-    mode: str
-    as_threshold: float
-    threshold_bps: float
-    max_skip_rate: float
-    buy_enabled: bool
-    sell_enabled: bool
-    as_threshold_buy: float | None
-    as_threshold_sell: float | None
-    use_ob_features: bool
-    adaptive_threshold: bool
-    target_skip_rate_buy: float
-    target_skip_rate_sell: float
-    adaptive_window: int
-    adaptive_min_samples: int
-    adaptive_step: float
-    adaptive_floor: float
-    adaptive_ceiling: float
-    regime_thresholds: dict[str, float]
-
-
-class _SkipDecisionLike(Protocol):
-    should_skip: bool
-    predicted_pnl_bps: float
-    threshold_bps: float
-    reason: str
-    model_used: str
-    as_probability: float | None
-    threshold_used: float | None
-    features_used: int
-
-
-class _SkipGateLike(Protocol):
-    config: _SkipGateConfigLike
-    metadata: dict[str, object]
-    feature_cols: list[str]
-
-    def evaluate(
-        self,
-        features: dict[str, object],
-        *,
-        side: str | None = None,
-        regime: str | None = None,
-        threshold_offset: float = ...,
-    ) -> _SkipDecisionLike:
-        ...
-
-
-class _SkipGateClassLike(Protocol):
-    @staticmethod
-    def load(path: Path) -> _SkipGateLike:
-        ...
 
 
 class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
