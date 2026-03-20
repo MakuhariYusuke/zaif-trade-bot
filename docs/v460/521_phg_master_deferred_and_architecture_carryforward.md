@@ -152,6 +152,7 @@ shim を外しにいく条件:
 - spread adaptive 抽出済み
 - spread guard finalization 抽出済み
 - final ceiling clamp は stage 化済み
+- offset stage recording も helper 化済み
 
 残る責務:
 
@@ -228,7 +229,8 @@ shim を外しにいく条件:
 
 現状:
 
-- docs 上でも future 寄り
+- `ztb/training/unified_trainer/trainer.py`: 2607 行
+- `ztb/trading/environment/components/calculators/reward_calculator.py`: 2197 行
 - ただし無期限 defer は危険
 
 方針:
@@ -236,6 +238,24 @@ shim を外しにいく条件:
 - 実装の大分割は将来
 - ただし責務境界だけは先に設計書へ落とす
 - `env / trainer / reporting / reward` の 4 軸で切る
+
+具体的な split 軸:
+
+1. `UnifiedTrainer`
+   - algorithm lifecycle
+   - adaptation/ensemble/distributed option wiring
+   - memory/performance monitoring
+   - reporting/UI/session persistence
+2. `RewardCalculator`
+   - component initialization / config cache
+   - state bookkeeping
+   - reward rule composition
+   - diagnostics / structured logging
+
+先にやるべきこと:
+
+- 実装分割そのものではなく、import 境界と ownership を固定する
+- public compatibility を崩さない façade の必要有無を先に判断する
 
 ## テスト設計
 

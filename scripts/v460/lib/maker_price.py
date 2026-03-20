@@ -46,6 +46,11 @@ from ztb.trading.pricing.price_finalization import (
     finalize_price_with_spread_guard as _finalize_price_with_spread_guard_impl,
 )
 from ztb.trading.pricing.spread_adaptive import apply_spread_adaptive_ratio
+from ztb.trading.pricing.stage_tracking import (
+    make_offset_stage_store as _make_offset_stage_store,
+    record_offset_stage as _record_offset_stage,
+    serialize_offset_stages as _serialize_offset_stages,
+)
 from ztb.trading.risk.fast_fill_defense import FastFillDefense
 from ztb.trading.signal.regime.regime_detector import RegimeDetectorLike
 from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
@@ -934,10 +939,8 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
             effective_offset_ratio = self._base_offset_ratio_sell
 
         # 306# E1: offset stage recording — 各ステージの寄与を追跡
-        _stage_tracking = cfg.offset_stage_recording_enabled
-        _stages: dict[str, float] = {}
-        if _stage_tracking:
-            _stages["base"] = effective_offset_ratio
+        _stages = _make_offset_stage_store(cfg.offset_stage_recording_enabled)
+        _record_offset_stage(_stages, "base", effective_offset_ratio)
 
         # 162# Inventory Skewing: 在庫偏重に応じた非対称 offset 補正
         # 228# C2: time-decay 適用 — 古い fill 履歴の影響を減衰
@@ -989,52 +992,45 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         effective_offset_ratio = self._apply_as_reservation_shift(
             side, spread, mid_price, effective_offset_ratio,
         )
-        if _stage_tracking:
-            _stages["as_shift"] = effective_offset_ratio
+        _record_offset_stage(_stages, "as_shift", effective_offset_ratio)
 
         # 163# ステージ抽出: _apply_regime_boosts()
         effective_offset_ratio = self._apply_regime_boosts(
             side, effective_offset_ratio,
         )
-        if _stage_tracking:
-            _stages["regime"] = effective_offset_ratio
+        _record_offset_stage(_stages, "regime", effective_offset_ratio)
 
         # 163# ステージ抽出: _apply_spread_adaptive()
         effective_offset_ratio = self._apply_spread_adaptive(
             side, spread, mid_price, effective_offset_ratio,
         )
-        if _stage_tracking:
-            _stages["spread_adapt"] = effective_offset_ratio
+        _record_offset_stage(_stages, "spread_adapt", effective_offset_ratio)
 
         # 266# ステージ: _apply_kyle_lambda()
         # Kyle (1985) 価格インパクト係数 → offset 安全マージン
         effective_offset_ratio = self._apply_kyle_lambda(
             side, spread, mid_price, effective_offset_ratio,
         )
-        if _stage_tracking:
-            _stages["kyle"] = effective_offset_ratio
+        _record_offset_stage(_stages, "kyle", effective_offset_ratio)
 
         # 266# ステージ: _apply_amihud_illiq()
         # Amihud (2002) 非流動性比率 → 低流動性時の offset 拡大
         effective_offset_ratio = self._apply_amihud_illiq(
             side, spread, mid_price, effective_offset_ratio,
         )
-        if _stage_tracking:
-            _stages["amihud"] = effective_offset_ratio
+        _record_offset_stage(_stages, "amihud", effective_offset_ratio)
 
         # 163# ステージ抽出: _apply_volatility_guard()
         effective_offset_ratio = self._apply_volatility_guard(
             side, mid_trend_bps, effective_offset_ratio,
         )
-        if _stage_tracking:
-            _stages["vol_guard"] = effective_offset_ratio
+        _record_offset_stage(_stages, "vol_guard", effective_offset_ratio)
 
         # 439# cross-venue lead-lag guard: adverse-side retreat / veto
         effective_offset_ratio = self._apply_cross_venue_lead_lag_guard(
             side, effective_offset_ratio,
         )
-        if _stage_tracking:
-            _stages["cross_venue"] = effective_offset_ratio
+        _record_offset_stage(_stages, "cross_venue", effective_offset_ratio)
         if self._cross_venue_lead_lag_vetoed:
             raise InfeasibleQuoteError(
                 reason=CR.CROSS_VENUE_LEAD_LAG_VETO,
@@ -1048,31 +1044,27 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         effective_offset_ratio = self._apply_imbalance_risk(
             side, imb, effective_offset_ratio,
         )
-        if _stage_tracking:
-            _stages["imb_risk"] = effective_offset_ratio
+        _record_offset_stage(_stages, "imb_risk", effective_offset_ratio)
 
         # 286# ステージ: _apply_buy_as_guard()
         # 283# P1-6 / 284# P1: Buy-side AS 防御 — microprice 急落時の offset 拡大
         effective_offset_ratio = self._apply_buy_as_guard(
             side, mid_trend_bps, effective_offset_ratio,
         )
-        if _stage_tracking:
-            _stages["buy_as_guard"] = effective_offset_ratio
+        _record_offset_stage(_stages, "buy_as_guard", effective_offset_ratio)
 
         # 310# A: Sell AS Time-of-Day Offset Boost (307# F3, 306# H5)
         # Ho-Stoll (1981): 時間帯別の情報非対称性変動を offset に反映
         effective_offset_ratio = self._apply_sell_hour_boost(
             side, effective_offset_ratio,
         )
-        if _stage_tracking:
-            _stages["sell_hour"] = effective_offset_ratio
+        _record_offset_stage(_stages, "sell_hour", effective_offset_ratio)
 
         # 260# P2-2: loss_boost / FFD boost をパイプラインステージとして抽出
         effective_offset_ratio = self._apply_loss_boost(
             side, now, effective_offset_ratio,
         )
-        if _stage_tracking:
-            _stages["loss_boost"] = effective_offset_ratio
+        _record_offset_stage(_stages, "loss_boost", effective_offset_ratio)
 
         offset = compute_offset_jpy(
             spread=spread,
@@ -1084,23 +1076,18 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         effective_offset_ratio, offset = self._apply_ffd_boost(
             side, spread, effective_offset_ratio, offset,
         )
-        if _stage_tracking:
-            _stages["ffd"] = effective_offset_ratio
-            _stages["final"] = effective_offset_ratio
+        _record_offset_stage(_stages, "ffd", effective_offset_ratio)
+        _record_offset_stage(_stages, "final", effective_offset_ratio)
 
         # 306# / 421# / 467#: final ceiling clamp を stage 化
         effective_offset_ratio, offset, _ceiling_clamped = self._apply_final_offset_ceiling(
             side, spread, effective_offset_ratio, offset,
         )
-        if _stage_tracking and _ceiling_clamped:
-            _stages["ceiling"] = effective_offset_ratio
+        if _ceiling_clamped:
+            _record_offset_stage(_stages, "ceiling", effective_offset_ratio)
 
         # 306# E1: cache last offset stages for FillRecord
-        if _stage_tracking:
-            import json as _json
-            self._last_offset_stages = _json.dumps(_stages)
-        else:
-            self._last_offset_stages = None
+        self._last_offset_stages = _serialize_offset_stages(_stages)
 
         return self._finalize_price_with_spread_guard(
             side=side,

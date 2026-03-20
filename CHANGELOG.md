@@ -6050,3 +6050,8 @@ python scripts/unified_trainer.py \
 - `ztb/adaptation/ab_test/judgment_rules.py` を追加し、fill_rate / avg_pnl30 / downside_p10 の純粋な判定規則を canonical helper 化
 - `scripts/v460/lib/ab_judgment.py` は dataclass / statistical comparison / report ownership を維持したまま、criterion 判定を shared helper に委譲
 - `tests/unit/v460/test_518_monitor_and_ab_judgment_policy_migration.py` を追加し、policy/rule helper の focused 回帰を追加
+## 541# pricing stage tracking cleanup and architecture deepening
+- `ztb/trading/pricing/stage_tracking.py` を追加し、offset stage recording の store/record/serialize を helper 化
+- `scripts/v460/lib/maker_price.py` の repeated stage-tracking 分岐を helper 再利用に整理
+- `tests/unit/v460/test_519_pricing_stage_tracking_migration.py` を追加し、stage tracking helper の focused 回帰を追加
+- `docs/v460/521_phg_master_deferred_and_architecture_carryforward.md` に `maker_price` の前進と `UnifiedTrainer` / `RewardCalculator` の split 軸・行数を追記

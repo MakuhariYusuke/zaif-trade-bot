@@ -7985,3 +7985,20 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - focused:
   - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_518_monitor_and_ab_judgment_policy_migration.py tests/unit/v460/test_160_ab_judgment.py tests/unit/v460/test_262_protocol_cancel_recheck.py tests/unit/v460/test_512_stale_order_policy_migration.py -q --tb=short --no-cov`
   - `128 passed in 5.15s`
+## 541# pricing stage tracking cleanup and architecture deepening
+- `ztb/trading/pricing/stage_tracking.py`
+  - `make_offset_stage_store(...)`
+  - `record_offset_stage(...)`
+  - `serialize_offset_stages(...)`
+  を追加
+- `scripts/v460/lib/maker_price.py`
+  - offset stage recording の repeated `if enabled` 分岐を helper 再利用へ整理
+  - stage orchestration 本体は維持しつつ、recording 周辺の重複を削減
+- `tests/unit/v460/test_519_pricing_stage_tracking_migration.py`
+  - stage tracking helper の focused 回帰を追加
+- `docs/v460/521_phg_master_deferred_and_architecture_carryforward.md`
+  - `maker_price` に stage tracking helper 化を追記
+  - `UnifiedTrainer` / `RewardCalculator` の実ファイル行数と split 軸を追記
+- セルフレビュー
+  - `maker_price` の orchestration を動かさず、周辺の repeated bookkeeping だけ整理できた
+  - `UnifiedTrainer` / `RewardCalculator` は「future のまま放置」ではなく、次に切る軸まで文章化できた
