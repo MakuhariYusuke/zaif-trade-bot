@@ -5914,3 +5914,4 @@ python scripts/unified_trainer.py \
 - `scripts/v460/lib/skip_gate_evaluator.py` に `_set_early_skip_result(...)` を追加し、rule skip / velocity skip / final decision skip の early-return 組立を集約
 - `SkipDecision -> result metadata` は `ztb.ml.skip_gate_result_fields`、`result + FillRecord` 組立は local helper、という 2 層構成を明確化
 - `tests/unit/v460/test_enricher_skip_gate.py` の未使用 `tempfile` import を除去
+- `tests/unit/v460/test_sac_retrain_scheduler.py` の timeout テストで `threading.Event().wait()` と短い timeout を使うようにし、重い sleep を削減

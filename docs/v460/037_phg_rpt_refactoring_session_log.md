@@ -7578,3 +7578,6 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - filtered broad:
   - concurrent worktree changes in `tests/unit/v460/test_506_sell_improvements.py` and `ztb/metrics/fill_quality.py` caused unrelated failures during broad rerun
   - current batch itself is covered by the focused suites above
+- follow-up:
+  - `tests/unit/v460/test_sac_retrain_scheduler.py::test_training_timeout_raises` は `threading.Event().wait()` と短い timeout を使う形にして、sleep ベースの待ちを削減
+  - focused: `3 passed`

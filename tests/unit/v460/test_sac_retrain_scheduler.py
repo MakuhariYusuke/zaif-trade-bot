@@ -18,6 +18,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 import json
 import os
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1019,8 +1020,10 @@ class TestCrashResilience495:
         mock_model = _make_mock_model()
 
         # model.learn を長時間ブロックに置き換え
+        block = threading.Event()
+
         def slow_learn(**kwargs: object) -> None:
-            time.sleep(10)
+            block.wait(timeout=1.0)
 
         mock_model.learn.side_effect = slow_learn
 
@@ -1032,7 +1035,7 @@ class TestCrashResilience495:
             # タイムアウトを極短に設定
             patch(
                 "scripts.v460.ml.sac_retrain_scheduler._TRAINING_TIMEOUT_SEC",
-                0.2,
+                0.05,
             ),
         ):
             result = retrain_once(cfg)
