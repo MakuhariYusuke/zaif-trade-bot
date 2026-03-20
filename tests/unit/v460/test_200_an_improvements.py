@@ -19,21 +19,21 @@ from typing import get_args
 
 import pytest
 
-from scripts.v460.lib import cancel_reasons as CR
-from scripts.v460.lib.cancel_reasons import CancelReason
 from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
 from scripts.v460.lib.fill_config import FillTestConfig, compute_ev_offset_multiplier
 from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
 from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-from scripts.v460.lib.regime_detector import (
-    FillTestRegime,
-    FillTestRegimeDetector,
-    RegimeConfig,
-)
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from scripts.v460.lib.velocity_math import (
     compute_instant_velocity_bps,
     compute_velocity_offset_multiplier,
+)
+import ztb.trading.common.cancel_reasons as CR
+from ztb.trading.common.cancel_reasons import CancelReason
+from ztb.trading.signal.regime.regime_detector import (
+    FillTestRegime,
+    FillTestRegimeDetector,
+    RegimeConfig,
 )
 
 

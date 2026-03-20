@@ -5998,3 +5998,11 @@ python scripts/unified_trainer.py \
 - `tests/unit/v460/test_262_protocol_cancel_recheck.py`
 - `tests/unit/v460/test_286_comprehensive_resolution.py`
   を canonical import に変更
+## 532# offset ceiling helper extraction / real-data guard trim
+- `ztb/trading/pricing/offset_ceiling.py` を追加し、`clamp_offset_ratio_to_ceiling(...)` を canonical helper 化
+- `scripts/v460/lib/maker_price.py` の final ceiling clamp は local logging を維持しつつ shared helper に委譲
+- `tests/unit/v460/test_517_pricing_offset_math_migration.py` に ceiling clamp helper の focused 回帰を追加
+- `tests/unit/v460/test_enricher_skip_gate.py` の real-data sample guard を `50 / 60 / 80` に圧縮
+- `tests/unit/v460/test_158_regime_deadlock_fix.py`
+- `tests/unit/v460/test_200_an_improvements.py`
+  を canonical import に変更

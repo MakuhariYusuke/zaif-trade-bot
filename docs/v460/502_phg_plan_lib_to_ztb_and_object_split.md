@@ -457,6 +457,8 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
    - script 側に残るのは run context / logger / v460 固有制御の文脈が中心
  - `maker_price` では spread guard に続き、spread-adaptive にも invalid mid/spread guard を追加した
    - まず防御を固めてから stage orchestration を抜く順序が安全
+ - final offset ceiling clamp も `ztb.trading.pricing.offset_ceiling` へ抽出済み
+   - local に残すのは logging / offset 再計算 / stage tracking の文脈
  - さらに offset 金額の純計算も `ztb.trading.pricing.offset_amount` へ抽出済み
    - `max(min_offset_jpy, spread * ratio)` のような小さな pure 計算でも、
      stage 間で重複するなら先に canonical 化しておく価値がある

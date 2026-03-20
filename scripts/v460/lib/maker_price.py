@@ -32,6 +32,7 @@ from scripts.v460.lib.ob_utils import OrderBookSnapshot
 from ztb.trading.pricing.contracts import ImbalanceResult, MakerPriceResult, OrderbookProvider
 from ztb.trading.pricing.boost_math import decayed_loss_boost_multiplier
 from ztb.trading.pricing.offset_amount import compute_offset_jpy
+from ztb.trading.pricing.offset_ceiling import clamp_offset_ratio_to_ceiling
 from ztb.trading.pricing.inventory_math import (
     decayed_inventory_imbalance,
     update_inventory_counters,
@@ -1062,12 +1063,16 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         # 467#: hour_ceiling_mult 反映
         from scripts.v460.lib.hour_rules import current_utc_hour
         _ceil = cfg.resolve_offset_ceiling(side, utc_hour=current_utc_hour())
-        if _ceil > 0 and effective_offset_ratio > _ceil:
+        _ceiling = clamp_offset_ratio_to_ceiling(
+            effective_offset_ratio=effective_offset_ratio,
+            ceiling_ratio=_ceil,
+        )
+        if _ceiling.clamped:
             logger.info(
                 f"[306# ceiling] offset {effective_offset_ratio:.4f} "
                 f"> ceiling {_ceil:.4f} — clamped"
             )
-            effective_offset_ratio = _ceil
+            effective_offset_ratio = _ceiling.updated_ratio
             offset = compute_offset_jpy(
                 spread=spread,
                 effective_offset_ratio=effective_offset_ratio,

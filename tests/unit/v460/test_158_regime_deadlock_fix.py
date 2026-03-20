@@ -17,13 +17,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import FillTestConfig
-from scripts.v460.lib.regime_detector import (
-    FillTestRegime,
-    FillTestRegimeDetector,
-    RegimeConfig,
-)
 from scripts.v460.run_fill_test import FillTestRunner
 from tests.unit.v460._fill_test_source import (
     CYCLE_GATE_AGGREGATOR,
@@ -35,6 +29,12 @@ from tests.unit.v460._fill_test_source import (
 )
 from tests.unit.v460._yaml_test_helpers import parse_yaml_mapping
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+import ztb.trading.common.cancel_reasons as CR
+from ztb.trading.signal.regime.regime_detector import (
+    FillTestRegime,
+    FillTestRegimeDetector,
+    RegimeConfig,
+)
 from ztb.utils.errors import NetworkError
 
 _RUN_CONTINUOUS_SOURCE = read_fill_test_runner_source()

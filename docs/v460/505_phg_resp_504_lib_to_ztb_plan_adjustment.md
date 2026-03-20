@@ -418,3 +418,15 @@ SSOT を守るうえで重要である。
 - `skip_gate_evaluator` の run context / logger / v460 固有制御
 
 へさらに絞り込まれている。
+
+また `maker_price` 側では
+
+- spread guard finalization
+- spread adaptive pure math
+- loss boost decay multiplier
+- offset amount
+- final offset ceiling clamp
+
+まで pure helper を `ztb.trading.pricing` へ寄せられている。
+そのため、残りは pure math ではなく stage ownership と logging/config 文脈が中心であり、
+Phase 3 の終盤として自然な状態に入っている。

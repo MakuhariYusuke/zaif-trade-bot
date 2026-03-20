@@ -7814,3 +7814,26 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - focused:
   - `tests/unit/v460/test_516_skip_gate_result_fields_migration.py tests/unit/v460/test_skip_gate_v3.py tests/unit/v460/test_202_log_improvements.py tests/unit/v460/test_173_code_review_fixes.py tests/unit/v460/test_239_feasible_quote.py tests/unit/v460/test_262_protocol_cancel_recheck.py tests/unit/v460/test_286_comprehensive_resolution.py`: `147 passed in 8.37s`
   - `tests/unit/v460/test_sac_retrain_scheduler.py -k 'training_timeout_raises or retrain_once_cleans_up_on_error or post_cycle_memory_check_runs'`: `3 passed, 38 deselected in 5.07s`
+## 532# offset ceiling helper extraction / real-data guard trim
+- `ztb/trading/pricing/offset_ceiling.py`
+  - `clamp_offset_ratio_to_ceiling(...)` を追加
+  - final ceiling clamp の pure 判定を canonical helper 化
+- `scripts/v460/lib/maker_price.py`
+  - final ceiling clamp は local logging と offset 再計算を残しつつ helper に委譲
+- `tests/unit/v460/test_517_pricing_offset_math_migration.py`
+  - ceiling clamp helper の focused 回帰を追加
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - 実データ tail 再計測のうえ sample guard を `50 / 60 / 80` に圧縮
+  - 2026-03-21 時点の実測:
+    - `48 / 60 / 80` → `60 rows / 23 trainable`
+    - `50 / 60 / 80` → `50 rows / 20 trainable`
+- `tests/unit/v460/test_158_regime_deadlock_fix.py`
+- `tests/unit/v460/test_200_an_improvements.py`
+  - canonical import に追随
+- セルフレビュー
+  - `maker_price` は stateful orchestration を崩さず、ceiling clamp まで pure helper 化できた
+  - `enricher` の real-data guard は実測で安全側を確認してから詰められた
+- focused:
+  - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_405_offset_ceiling_pipeline.py`: `46 passed in 2.26s`
+  - `tests/unit/v460/test_enricher_skip_gate.py -k 'Test058Integration or RawLoadCache or save_load_roundtrip or as_mode_save_load or test_train_skip_gate_real'`: `9 passed, 63 deselected in 4.37s`
+  - `tests/unit/v460/test_158_regime_deadlock_fix.py tests/unit/v460/test_200_an_improvements.py`: `61 passed in 4.05s`

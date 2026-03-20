@@ -6,6 +6,7 @@ import pytest
 
 from ztb.trading.pricing.boost_math import decayed_loss_boost_multiplier
 from ztb.trading.pricing.offset_amount import compute_offset_jpy
+from ztb.trading.pricing.offset_ceiling import clamp_offset_ratio_to_ceiling
 from ztb.trading.pricing.offset_math import (
     discounted_sell_offset_floor,
     effective_max_ratio,
@@ -144,3 +145,19 @@ class TestPricingOffsetMathMigration:
             effective_offset_ratio=0.001,
             min_offset_jpy=5.0,
         ) == pytest.approx(5.0)
+
+    def test_clamp_offset_ratio_to_ceiling_clamps_when_above_ceiling(self) -> None:
+        result = clamp_offset_ratio_to_ceiling(
+            effective_offset_ratio=0.45,
+            ceiling_ratio=0.30,
+        )
+        assert result.clamped is True
+        assert result.updated_ratio == pytest.approx(0.30)
+
+    def test_clamp_offset_ratio_to_ceiling_keeps_ratio_when_below_ceiling(self) -> None:
+        result = clamp_offset_ratio_to_ceiling(
+            effective_offset_ratio=0.25,
+            ceiling_ratio=0.30,
+        )
+        assert result.clamped is False
+        assert result.updated_ratio == pytest.approx(0.25)
