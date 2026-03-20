@@ -541,6 +541,7 @@
 | 512 | impl | [512_ph2_impl_cross_venue_favorable_tighten_dry_summary.md](512_ph2_impl_cross_venue_favorable_tighten_dry_summary.md) | cross-venue favorable-side tighten + DRY microprice + 周期サマリ統合 |
 | 513 | audit | [513_ph2_audit_dormant_mechanisms.md](513_ph2_audit_dormant_mechanisms.md) | 実装済み機構の活用度監査 + SAD/MCB YAML化: SAD/PPG/MCB がデッドコード |
 | 514 | plan | [514_phg_plan_deferred_docs_refresh_and_carryforward_audit.md](514_phg_plan_deferred_docs_refresh_and_carryforward_audit.md) | deferred docs 棚卸し: v461/後日表現の現状追随方針と更新優先順位 |
+| 515 | plan | [515_phg_plan_remaining_deferred_actions_screening.md](515_phg_plan_remaining_deferred_actions_screening.md) | remaining deferred 項目の実行可否スクリーニング: 今やるもの / future 維持の分離 |
 
 ---
 
@@ -624,7 +625,9 @@ NNN_phX_TYPE_description.md
 ### 低優先 (v461+)
 
 16. **106# R3**: SkipGate 単体テスト拡充
+   - session037 で大幅補強済み。残りは future 大項目というより継続保守
 17. **106# R5**: lib → ztb 移動 (残 4 モジュール)
+   - 主要 canonical 化は session037 で前倒し済み。残りは `maker_price` / `skip_gate_evaluator` / `order_monitor` / `ab_judgment`
 18. **106# R6**: utils 70+ ファイル分割
 19. **106# R7**: config/ vs configs/ 重複ディレクトリ整理
 20. **109# DUP3**: UnifiedTrainer God Object (2835行)

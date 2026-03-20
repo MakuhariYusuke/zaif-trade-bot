@@ -7927,3 +7927,16 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     を計画書として新設
 - `docs/v460/index.md`
   - 514# エントリを追加
+## 538# deferred docs second-wave screening
+- `docs/v460/121_ph2_plan_model_replacement.md`
+  - `D1 lib -> ztb` を「主要部分前倒し済み」へ修正
+  - `D9 VG イベント JSONL` を 372# 完了済みとして更新
+  - 補遺で「残る future」と切り分けを追加
+- `docs/v460/158_phg_rpt_backlog_audit_and_phase_d_priorities.md`
+  - `P2-5 skip_gate.py モジュール配置` を stale な未着手表現から更新
+  - `P3-1 SkipGate 単体テスト拡充` を future 大項目ではなく継続保守レベルへ補正
+- `docs/v460/index.md`
+  - low priority / v461+ リストの `R3/R5` に session037 進捗注記を追加
+- `docs/v460/515_phg_plan_remaining_deferred_actions_screening.md`
+  - remaining deferred 項目のスクリーニング計画を新設
+  - 今やるもの / future 維持のものを分離

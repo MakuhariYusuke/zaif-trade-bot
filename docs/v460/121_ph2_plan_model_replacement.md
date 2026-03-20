@@ -734,7 +734,7 @@ min_spread_jpy: 1500     # 0.0 → 1500。spread < 1500 JPY → skip (postonly_r
 
 | # | 項目 | 出典 | 備考 |
 |---|------|------|------|
-| D1 | `scripts/v460/lib/` → `ztb/` 移動 | 118# E3, App G: E11 | skip_gate.py は import 20+ 箇所変更要 |
+| D1 | `scripts/v460/lib/` → `ztb/` 移動 | 118# E3, App G: E11 | session037 で主要部分は前倒し済み。残りは `maker_price` / `skip_gate_evaluator` / `order_monitor` / `ab_judgment` の終盤整理 |
 | D2 | `utils/` 70+ ファイル分割 (God Package) | 118# E4 | v461+ |
 | D3 | `config/` vs `configs/` 整理 | 118# E5 | LOW |
 | D4 | ドキュメント命名違反 28 件修正 | 118# E2 | LOW |
@@ -742,13 +742,29 @@ min_spread_jpy: 1500     # 0.0 → 1500。spread < 1500 JPY → skip (postonly_r
 | D6 | `ztb/adaptation/` Dead code 整理 | 118# E8 | テスト参照残存→完全 Dead ではない |
 | D7 | RiskRuleEngine / Reconciliation 実装 | 118# §7 Tier-3 | ~2000 行, ph5 |
 | D8 | 多取引所 fail-over 自動切替 | 118# §8.7 | ph5 本番で必要 |
-| D9 | VG イベントの JSONL 構造化ログ出力 | App G: E12 | ph3-pre |
+| D9 | VG イベントの JSONL 構造化ログ出力 | App G: E12 | ✅ 372# で JSONL 構造化ログ化済み |
 | D10 | MC CVaR Binding 化 (informational→必須条件) | App G: E13 | ph5 |
 | D11 | 自動再起動 (systemd/nssm/TaskScheduler) | 118# §8.3 | ph5 |
 | D12 | WebSocket API 活用 (REST polling→WS) | 013# D-4 | **1-2 日工数。レイテンシ改善に直結 → ph3-pre で検討** |
 | D13 | Event-driven cycle (120s 固定→板変動トリガー) | 118# §5.2 | v461+。WebSocket 前提 |
 | D14 | bitFlyer product_code 正規化統一 | 013# C-5 | Coincheck 主につき低優先 |
 | D15 | SimBroker リネーム / StreamBuffer 組込み | 118# E6, E7 | LOW / 将来 |
+
+## 2026-03-21 補遺
+
+121# の deferred 項目のうち、少なくとも次はその後の実装で前進した。
+
+- `D1 lib -> ztb`
+  - 主要 canonical 化は session037 で前倒し済み
+- `D9 VG イベント JSONL`
+  - 372# で構造化ログ化済み
+
+一方で、次は引き続き将来課題として維持が妥当。
+
+- `D2 utils 70+`
+- `D5 UnifiedTrainer`
+- `D12 WebSocket API 活用`
+- `D13 event-driven cycle`
 
 ---
 

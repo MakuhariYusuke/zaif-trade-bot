@@ -280,8 +280,8 @@ adaptive_offset: min=0.01, max=0.30
 | 項目 | 値 |
 |---|---|
 | 出典 | 106# R5, 118# §7 |
-| 問題 | `scripts/v460/lib/` 以下の 4 モジュールが `ztb/` パッケージ外にある。テストの import パスが不安定。 |
-| アクション | `skip_gate_evaluator.py`, `maker_price.py` 等を `ztb/trading/live/` に段階的移動。 |
+| 問題 | 当時は `scripts/v460/lib/` 以下の複数モジュールが `ztb/` パッケージ外にあり、import パスが不安定だった。 |
+| アクション | 当時案は `skip_gate_evaluator.py`, `maker_price.py` 等を段階的移動することだったが、その後は `ztb.ml.skip_gate` / `ztb.trading.*` への canonical 化 + shim 維持で前進している。 |
 | 工数見積 | 0.5 日 |
 
 ### P2-6: VG (Volatility Guard) JSONL ログ蓄積 — ✅ 実装完了 (158# P2-6)
@@ -302,12 +302,27 @@ adaptive_offset: min=0.01, max=0.30
 
 | # | 項目 | 出典 | 概要 |
 |---|---|---|---|
-| P3-1 | SkipGate 単体テスト拡充 | 106# R3 | evaluator の分岐網羅テスト。現状でも retrain テスト 69 件でカバー |
+| P3-1 | SkipGate 単体テスト拡充 | 106# R3 | session037 で runtime/result payload/fill-record 境界まで大幅補強済み。残りは future ではなく保守的な追加補完レベル |
 | P3-2 | utils 70+ ファイル分割 | 106# R6 | `utils/` が肥大。機能別サブパッケージに整理 |
 | P3-3 | config/ vs configs/ 重複整理 | 106# R7 | 命名の一貫性確保 |
 | P3-4 | UnifiedTrainer god object 分割 | 109# DUP3 | 2,835 行。ph4 (オンライン学習) 前に対処推奨 |
 | P3-5 | sell pnl120→pnl30 モデル統一評価 | 156# §4.2 P3 | 時間軸公平化の検証。P0-1 (sell 再訓練) の延長で実施可能 |
 | P3-6 | asyncio.to_thread 残 5 メソッド | 013# C-4 | ph5 本番パフォーマンス最適化 |
+
+## 2026-03-21 補遺
+
+158# 時点の deferred 項目のうち、現状へ追随が必要なのは次の 2 点。
+
+- `P2-5 skip_gate.py モジュール配置`
+  - 主要 import 収束は session037 でかなり前進
+- `P3-1 SkipGate 単体テスト拡充`
+  - もはや未着手ではなく、future というより継続保守の層
+
+一方で、次は引き続き future 維持が妥当。
+
+- `P3-2 utils 70+`
+- `P3-4 UnifiedTrainer`
+- `P3-6 asyncio.to_thread`
 
 ---
 
