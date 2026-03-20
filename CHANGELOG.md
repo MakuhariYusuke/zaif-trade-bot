@@ -6024,3 +6024,6 @@ python scripts/unified_trainer.py \
 - `docs/v460/108_ph3_fix_ahead_of_schedule.md` に、106# 残課題のその後の前進状況と `Phase 3/4` 実装化を補足
 - `docs/v460/502_phg_plan_lib_to_ztb_and_object_split.md` を 2026-03-21 時点の進捗へ更新し、`Phase 0-2` 完了 / `Phase 3` 終盤 / `Phase 4` 進行中の見立てを明記
 - `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md` に 504# 反映内容の実装前進サマリを追記
+## 536# finalize 502 505 wording consistency
+- `docs/v460/502_phg_plan_lib_to_ztb_and_object_split.md` の `未着手の本命` を `残る本命` に修正し、実装進捗との整合を取った
+- `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md` の `次の着手順` を `当時の次の着手順` に改め、現時点の `現在の残課題` を別節で明記した

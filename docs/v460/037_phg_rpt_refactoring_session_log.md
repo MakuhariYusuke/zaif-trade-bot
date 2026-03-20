@@ -7899,3 +7899,10 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - 直近の focused/regression 群は維持:
     - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_405_offset_ceiling_pipeline.py tests/unit/v460/test_421_final_clamp_deadlock.py`: `103 passed in 1.98s`
     - `tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_sac_retrain_scheduler.py -k 'Test058Integration or RawLoadCache or save_load_roundtrip or as_mode_save_load or test_train_skip_gate_real or training_timeout_raises or retrain_once_cleans_up_on_error or post_cycle_memory_check_runs or single_iteration_then_shutdown or trigger_exception_does_not_kill_loop or record_result_exception_does_not_kill_loop'`: `15 passed, 98 deselected in 4.72s`
+## 536# finalize 502 505 wording consistency
+- `docs/v460/502_phg_plan_lib_to_ztb_and_object_split.md`
+  - `未着手の本命` と残っていた表現を `残る本命` に修正
+  - 実装済みの `maker_price` / `skip_gate_evaluator` split-first と矛盾しない文言に揃えた
+- `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md`
+  - `次の着手順` を履歴節として `当時の次の着手順` に変更
+  - 2026-03-21 時点の `現在の残課題` を新設し、当時の計画と現在の状態を切り分けた

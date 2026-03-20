@@ -112,13 +112,21 @@
 
 - `tests/unit/v460/` filtered broad
 
-## 次の着手順
+## 当時の次の着手順
 
 1. `param_adapter.py` → `ztb/trading/sizing/param_adapter.py`
 2. `lot_sizer.py` → `ztb/trading/sizing/lot_sizer.py`
 3. `sac_common.py` → `ztb/training/sac/runtime.py`
 4. `fast_fill_defense.py` façade 移行
 5. `regime_detector.py` / `bayesian_regime_filter.py` façade 移行
+
+## 現在の残課題
+
+当時の着手順 1-5 は完了済み。2026-03-21 時点での残課題は次のとおり。
+
+1. `maker_price.py` の stateful orchestration の最終整理
+2. `skip_gate_evaluator.py` に残る v460 run context / logger ownership の明確化
+3. `order_monitor.py` / `ab_judgment.py` の split-first をどこまで前倒しするかの判断
 
 ## 実装しながら見えた追加補正
 

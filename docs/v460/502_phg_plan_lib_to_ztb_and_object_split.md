@@ -51,7 +51,7 @@ façade なしの即時移行は危険。
 - `regime_detector.py` → `ztb/trading/signal/regime/regime_detector.py` (shim 維持)
 - `bayesian_regime_filter.py` → `ztb/trading/signal/regime/bayesian_regime_filter.py` (shim 維持)
 
-未着手の本命:
+残る本命:
 
 - `maker_price.py`
 - `skip_gate_evaluator.py`
