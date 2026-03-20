@@ -137,3 +137,25 @@ canonical 化して足場を作る方針が妥当だった。
 
 を `ztb` 側へ抜き、旧 module はその contract を再利用する形に寄せるのが安全だった。
 これは Phase 4 の import 収束にも直結する。
+
+### 5. `order_monitor` は status / result type から抜くのが安全
+
+`order_monitor.py` は `monitor()` 本体に async orchestration が密集しているため、
+本体分割を急ぐよりも先に
+
+- order status 正規化
+- cancel → fill recheck の結果型
+
+を `ztb/trading/execution/stale_order_policy.py` へ抜く方が安全だった。
+
+この順なら source 契約テストを大きく壊さず、Phase 3 の split-first を前へ進められる。
+
+### 6. Phase 4 の逆依存は小さいうちに潰す
+
+shared contract 抽出後に再点検すると、
+`ztb/trading/pricing/contracts.py` と `ztb/ml/skip_gate_contracts.py` が
+まだ `scripts.v460.lib.ob_utils.OrderBookSnapshot` を見ていた。
+
+これは `ztb -> scripts` 逆依存なので、
+`ztb.trading.live.exchanges.base.broker_interfaces.OrderBookSnapshot`
+へ寄せて先に閉じるのが妥当だった。

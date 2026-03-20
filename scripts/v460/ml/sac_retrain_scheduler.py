@@ -440,7 +440,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
                 f"<= {cfg.min_gross_roi:.6f} — enforcing neutral bias fallback"
             )
             # 379# P3-C: Neutral Bias Fallback
-            _push_neutral_fallback()
+            _push_neutral_fallback(cfg.signal_path)
             return RetrainResult(
                 status="oos_failed",
                 timestamp=timestamp,
@@ -461,7 +461,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
                 f"< {cfg.min_trade_count} — enforcing neutral bias fallback"
             )
             # 379# P3-C: Neutral Bias Fallback
-            _push_neutral_fallback()
+            _push_neutral_fallback(cfg.signal_path)
             return RetrainResult(
                 status="oos_failed",
                 timestamp=timestamp,
@@ -502,7 +502,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
 
     except ImportError as e:
         logger.error(f"SB3 import failed: {e}")
-        _push_neutral_fallback()
+        _push_neutral_fallback(cfg.signal_path)
         return RetrainResult(
             status="error", timestamp=timestamp,
             error_message=f"import: {e}",
@@ -511,7 +511,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
     except Exception as e:
         logger.error(f"Retrain failed: {e}", exc_info=True)
         # 491# P0: 訓練例外時も neutral fallback を push し signal stale を防止
-        _push_neutral_fallback()
+        _push_neutral_fallback(cfg.signal_path)
         return RetrainResult(
             status="error", timestamp=timestamp,
             error_message=str(e),
@@ -863,15 +863,26 @@ def _get_latest_obs(env: TrainingEnvProtocol) -> object:
     return obs
 
 
-def _push_neutral_fallback() -> None:
+def _push_neutral_fallback(
+    signal_path: Path | str = "cache/sidecar_signal.json",
+) -> bool:
     """379# P3-C: OOS Gate 失敗時の自動フォールバック (Neutral Bias)."""
     from scripts.v460.lib.sidecar_signal_io import (
         create_neutral_signal,
         write_sidecar_signal,
     )
     neutral_signal = create_neutral_signal()
-    write_sidecar_signal(neutral_signal)
-    logger.info("Neutral bias fallback successfully pushed to sidecar.")
+    try:
+        write_sidecar_signal(neutral_signal, signal_path)
+    except OSError as exc:
+        logger.warning(
+            "Neutral bias fallback write failed for %s: %s",
+            signal_path,
+            exc,
+        )
+        return False
+    logger.info("Neutral bias fallback successfully pushed to sidecar: %s", signal_path)
+    return True
 
 
 def _update_sidecar_signal(

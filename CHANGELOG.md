@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 512# stale_order_policy 抽出 / neutral fallback 安定化 (2026-03-20)
+
+### Changed
+- **ztb/trading/execution/stale_order_policy.py**: order status 正規化と `CancelFillCheck` を canonical 化
+- **order_monitor.py**: stale-order policy の shared helper を再利用する構成へ整理
+- **sac_retrain_scheduler.py**: neutral fallback を `cfg.signal_path` 宛てに修正し、error path の固定 `cache/sidecar_signal.json` 書き込みズレを解消
+- **sac_retrain_scheduler.py**: neutral fallback 書き込み失敗を warning 化し、本来の training error を二次障害で覆わないよう安定化
+- **ztb/trading/pricing/contracts.py / ztb/ml/skip_gate_contracts.py**: `OrderBookSnapshot` 参照を `ztb` 側へ寄せ、`ztb -> scripts` 逆依存を削減
+
+### Tests
+- `test_sac_retrain_scheduler.py`
+- `test_262_protocol_cancel_recheck.py`
+- `test_512_stale_order_policy_migration.py`
+
 ## 510# SAC debug helper / UTC timestamp 共通化 (2026-03-20)
 
 ### Changed

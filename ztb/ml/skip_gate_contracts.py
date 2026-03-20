@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
-from scripts.v460.lib.ob_utils import OrderBookSnapshot
+from ztb.trading.live.exchanges.base.broker_interfaces import OrderBookSnapshot
 
 
 class SkipGateAdapter(Protocol):

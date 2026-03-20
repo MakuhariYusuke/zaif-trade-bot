@@ -7433,3 +7433,20 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - current YAML の intentional override (`sell_age_cap_sec`, `cross_venue_basis_correction_enabled`) に追随
 - `tests/unit/v460/test_fill_quality.py`
   - current YAML の `side_offset.sell=0.14` に追随
+## 512# stale_order_policy 抽出 / neutral fallback 安定化
+- `ztb/trading/execution/stale_order_policy.py`
+  - order status 正規化と `CancelFillCheck` を canonical 化
+- `scripts/v460/lib/order_monitor.py`
+  - stale-order policy の shared helper を再利用する構成へ整理
+- `scripts/v460/ml/sac_retrain_scheduler.py`
+  - neutral fallback を `cfg.signal_path` 宛てに修正
+  - 書き込み失敗時は warning に落とし、本来の training error を二次障害で覆わないよう安定化
+- `ztb/trading/pricing/contracts.py`
+- `ztb/ml/skip_gate_contracts.py`
+  - `OrderBookSnapshot` の参照を `ztb` 側へ寄せて `ztb -> scripts` 逆依存を削減
+- `docs/v460/502_phg_plan_lib_to_ztb_and_object_split.md`
+  - Phase 2/3/4 の進捗と `maker_price` / `order_monitor` の詳細設計メモを更新
+- `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md`
+  - 504/506 系レビューを踏まえた split-first と import 収束の補足を追記
+- `tests/unit/v460/test_512_stale_order_policy_migration.py`
+  - canonical policy と旧 export の整合を focused 回帰化

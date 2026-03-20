@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import NamedTuple, Protocol
 
-from scripts.v460.lib.ob_utils import OrderBookSnapshot
+from ztb.trading.live.exchanges.base.broker_interfaces import OrderBookSnapshot
 
 
 class OrderbookProvider(Protocol):

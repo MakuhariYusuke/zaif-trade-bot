@@ -721,12 +721,21 @@ class TestPushNeutralFallback:
         with patch(
             "scripts.v460.lib.sidecar_signal_io.write_sidecar_signal"
         ) as mock_write:
-            _push_neutral_fallback()
+            assert _push_neutral_fallback(signal_path) is True
             mock_write.assert_called_once()
             sig = mock_write.call_args[0][0]
             assert sig.directional_bias == 0.0
             assert sig.confidence == 0.0
             assert sig.model_version == "neutral"
+            assert mock_write.call_args[0][1] == signal_path
+
+    def test_write_failure_is_suppressed(self, tmp_path: Path) -> None:
+        signal_path = tmp_path / "signal.json"
+        with patch(
+            "scripts.v460.lib.sidecar_signal_io.write_sidecar_signal",
+            side_effect=PermissionError("locked"),
+        ):
+            assert _push_neutral_fallback(signal_path) is False
 
 
 class TestReadSidecarCache:

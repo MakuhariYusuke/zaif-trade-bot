@@ -292,6 +292,7 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
 - `build_training_debug_details(...)` は `ztb.training.sac.debug` へ昇格済み
 - `retrain_scheduler` / `sac_retrain_scheduler` の timestamp は UTC helper へ寄せ始めている
 - `retrain_once()` 結果は debug summary を保持できるようになり、history/debug 比較の足場ができた
+- `neutral fallback` は `cfg.signal_path` を明示的に使う形へ修正し、error path で固定 `cache/sidecar_signal.json` に書いてしまうズレを解消した
 
 ### Phase 3: God Object 分割
 
@@ -316,6 +317,7 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
 - `maker_price` / `order_monitor` / `skip_gate_evaluator` の shared contract を先行抽出
 - pricing / execution / skip-gate の import 面を `ztb` 側 contract へ寄せ始めた
 - class 本体分割前に、protocol / result type の置き場を固定できた
+- `order_monitor` 周辺は `ztb/trading/execution/stale_order_policy.py` に status 正規化と cancel-recheck result 型を抽出し、split-first の実装パターンを確認できた
 
 ### Phase 4: import 収束
 
@@ -327,7 +329,54 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
 
 - `ztb/trading/pricing/contracts.py`
 - `ztb/trading/execution/contracts.py`
+- `ztb/trading/execution/stale_order_policy.py`
 - `ztb/ml/skip_gate_contracts.py`
+
+追加進捗:
+
+- `ztb/trading/pricing/contracts.py` と `ztb/ml/skip_gate_contracts.py` の `OrderBookSnapshot` は
+  `scripts.v460.lib.ob_utils` ではなく `ztb.trading.live.exchanges.base.broker_interfaces`
+  を参照するように修正した
+- これで `ztb -> scripts` の逆依存が 1 本減り、Phase 4 で import 収束しやすくなった
+
+### 詳細設計メモ
+
+#### `order_monitor.py`
+
+先に抜く:
+
+- status 正規化
+- cancel → fill recheck の結果型
+- stale 判定の純粋 policy
+
+後で残す:
+
+- `monitor()` の async orchestration
+- adapter 呼び出し
+- logging / metrics emission
+
+理由:
+
+- source 契約テストが多く、いきなり `monitor()` 本体を割るよりも
+  pure helper / result type から抜くほうが戻りが少ない
+
+#### `maker_price.py`
+
+先に抜く:
+
+- inventory skew state / update
+- offset pipeline stage の pure helper
+- cross-venue / volatility / microstructure の stage contract
+
+後で残す:
+
+- `compute()` orchestration
+- config / detector / FFD の注入点
+
+理由:
+
+- source inspection と理論テストが広いため、本体分割より先に
+  stage 境界と state object を固定するほうが安全
 
 ## テスト方針
 

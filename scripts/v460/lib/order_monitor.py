@@ -22,6 +22,16 @@ from scripts.v460.lib.fill_config import FillMonitorResult, FillTestConfig
 from ztb.ml.skip_gate_contracts import SkipDecisionLike as _SkipDecisionLike
 from ztb.ml.skip_gate_contracts import SkipGateLike as _SkipGateLike
 from ztb.trading.execution.contracts import ExchangeAdapter, OrderLike, OrderStatusLike
+from ztb.trading.execution.stale_order_policy import (
+    CancelFillCheck as _CancelFillCheck,
+    ORDER_STATE_CANCELLED as _STATE_CANCELLED,
+    ORDER_STATE_CONFIRMED as _STATE_CONFIRMED,
+    ORDER_STATE_FILLED as _STATE_FILLED,
+    ORDER_STATE_PARTIAL as _STATE_PARTIAL,
+    ORDER_STATE_PENDING as _STATE_PENDING,
+    ORDER_STATE_REJECTED as _STATE_REJECTED,
+    parse_order_state as _parse_order_state,
+)
 from ztb.trading.signal.regime.regime_detector import RegimeDetectorLike
 
 logger = logging.getLogger(__name__)
@@ -29,52 +39,10 @@ logger = logging.getLogger(__name__)
 from scripts.v460.lib.constants import BPS_FACTOR as _BPS_FACTOR
 
 
-# exchange status 文字列の正規化
-_STATE_FILLED: Final[str] = "filled"
-_STATE_CANCELLED: Final[str] = "cancelled"
-_STATE_REJECTED: Final[str] = "rejected"
-_STATE_PENDING: Final[str] = "pending"
-_STATE_CONFIRMED: Final[str] = "confirmed"
-_STATE_PARTIAL: Final[str] = "partial"
-
-_STATUS_TO_STATE: dict[str, str] = {
-    "filled": _STATE_FILLED,
-    "cancelled": _STATE_CANCELLED,
-    "rejected": _STATE_REJECTED,
-    "pending": _STATE_PENDING,
-    "confirmed": _STATE_CONFIRMED,
-    "partial": _STATE_PARTIAL,
-}
-
-
-def _parse_order_state(status_str: str) -> str:
-    """exchange status 文字列を内部比較用の正規化文字列へ変換."""
-    return _STATUS_TO_STATE.get(status_str, _STATE_PENDING)
-
-
 class _KillSwitchLike(Protocol):
     """175# shutdown_check の型安全 Protocol."""
 
     def is_killed(self) -> bool: ...
-
-
-class _CancelFillCheck:
-    """262# cancel-recheck 結果."""
-
-    __slots__ = ("was_filled", "fill_price", "t_fill", "cancel_succeeded")
-
-    def __init__(
-        self,
-        was_filled: bool = False,
-        fill_price: float | None = None,
-        t_fill: float | None = None,
-        cancel_succeeded: bool = True,
-    ) -> None:
-        self.was_filled = was_filled
-        self.fill_price = fill_price
-        self.t_fill = t_fill
-        self.cancel_succeeded = cancel_succeeded
-
 
 class OrderMonitor:
     """約定ポーリング監視 — FillTestRunner から分割.
