@@ -33,7 +33,7 @@ from scripts.v460.ml.feature_enricher import (
     build_enriched_as_features,
     enrich_fill_records,
 )
-from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
+from ztb.ml.skip_gate import SkipGate, SkipGateConfig
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)

@@ -43,7 +43,7 @@ from scripts.v460.ml.feature_enricher import (
     enrich_fill_records,
 )
 from scripts.v460.ml.skip_eval_utils import compute_skip_slice_metrics
-from scripts.v460.ml.skip_gate import (
+from ztb.ml.skip_gate import (
     SkipGate,
     SkipGateConfig,
     _OB_FEATURE_COLS,

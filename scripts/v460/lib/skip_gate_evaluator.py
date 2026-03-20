@@ -30,8 +30,8 @@ from scripts.v460.lib.fill_config import FillTestConfig, SkipGateResult
 from scripts.v460.lib.hour_rules import resolve_hour_float, utc_hour_from_timestamp
 from scripts.v460.lib.skip_gate_ev_weighted import SkipGateEvWeightedMixin
 from scripts.v460.lib.skip_gate_model_loader import SkipGateModelLoaderMixin
-from scripts.v460.ml.skip_gate import SkipDecision, build_features_from_market_state
 from ztb.ml.skip_gate_runtime import get_trade_field, normalize_recent_trades
+from ztb.ml.skip_gate import SkipDecision, SkipGate, build_features_from_market_state
 from ztb.ml.skip_gate_contracts import (
     SkipGateAdapter,
     SkipGateClassLike as _SkipGateClassLike,
@@ -110,7 +110,6 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             return
 
         try:
-            from scripts.v460.ml.skip_gate import SkipGate
             skip_gate_cls = cast(_SkipGateClassLike, SkipGate)
 
             gate_path = self._resolve_model_path(config.skip_gate_model_path)

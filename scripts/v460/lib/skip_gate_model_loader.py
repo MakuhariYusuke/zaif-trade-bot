@@ -130,7 +130,7 @@ class SkipGateModelLoaderMixin:
         if not config.skip_gate_adaptive_threshold:
             return
         try:
-            from scripts.v460.ml.skip_gate import warm_start_skip_gate_thresholds
+            from ztb.ml.skip_gate import warm_start_skip_gate_thresholds
             warm_start_skip_gate_thresholds(
                 skip_gate,
                 config.results_dir,
@@ -260,7 +260,7 @@ class SkipGateModelLoaderMixin:
             f"(hash {self._model_file_hash[:8]}→{new_hash[:8]}). Reloading..."  # type: ignore[attr-defined]
         )
         try:
-            from scripts.v460.ml.skip_gate import SkipGate
+            from ztb.ml.skip_gate import SkipGate
             skip_gate_cls = cast("_SkipGateClassLike", SkipGate)
             new_gate = self._load_gate_from_path(
                 skip_gate_cls,
@@ -289,7 +289,7 @@ class SkipGateModelLoaderMixin:
     def _check_and_reload_side_models(self) -> None:
         """141# side 別モデルの変更検出 + リロード."""
         try:
-            from scripts.v460.ml.skip_gate import SkipGate
+            from ztb.ml.skip_gate import SkipGate
         except Exception as e:
             logger.debug(f"[skip_gate] side hot-reload skipped (import failed): {e}")
             return

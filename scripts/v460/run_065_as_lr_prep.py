@@ -31,9 +31,9 @@ from scripts.v460.ml.feature_enricher import (
     build_preorder_as_features,
     enrich_fill_records,
 )
-from scripts.v460.ml.skip_gate import train_and_save_as_skip_gate
 from scripts.v460.ml.walk_forward_as import expanding_window_splits, run_walk_forward
 from ztb.io.json_io import write_json
+from ztb.ml.skip_gate import train_and_save_as_skip_gate
 
 logging.basicConfig(
     level=logging.INFO,

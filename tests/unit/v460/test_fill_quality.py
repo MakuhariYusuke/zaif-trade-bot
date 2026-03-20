@@ -1325,126 +1325,116 @@ class TestComputeFillMetricsAttempted:
 class TestFillRecordIO:
     """FillRecord の JSONL I/O テスト."""
 
-    def test_save_load_roundtrip(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = Path(tmpdir) / "test.jsonl"
-            _save_linear_records(
-                path,
-                prefix="io",
-                count=5,
-                base_ts=1700000000.0,
-                alternating_side=True,
-                order_price=15000000.0,
-                filled=True,
-            )
-            loaded = load_fill_records(path)
-            assert len(loaded) == 5
-            assert loaded[0].cycle_id == "io_0"
-            assert loaded[4].side == "buy"
+    def test_save_load_roundtrip(self, tmp_path: Path) -> None:
+        path = tmp_path / "test.jsonl"
+        _save_linear_records(
+            path,
+            prefix="io",
+            count=5,
+            base_ts=1700000000.0,
+            alternating_side=True,
+            order_price=15000000.0,
+            filled=True,
+        )
+        loaded = load_fill_records(path)
+        assert len(loaded) == 5
+        assert loaded[0].cycle_id == "io_0"
+        assert loaded[4].side == "buy"
 
-    def test_iter_load_roundtrip(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = Path(tmpdir) / "iter.jsonl"
-            _save_linear_records(
-                path,
-                prefix="iter",
-                count=3,
-                base_ts=1700000000.0,
-                ts_step=60.0,
-                order_price=12000000.0,
-            )
-            loaded = list(iter_fill_records(path))
-            assert len(loaded) == 3
-            assert loaded[0].cycle_id == "iter_0"
-            assert loaded[2].cycle_id == "iter_2"
+    def test_iter_load_roundtrip(self, tmp_path: Path) -> None:
+        path = tmp_path / "iter.jsonl"
+        _save_linear_records(
+            path,
+            prefix="iter",
+            count=3,
+            base_ts=1700000000.0,
+            ts_step=60.0,
+            order_price=12000000.0,
+        )
+        loaded = list(iter_fill_records(path))
+        assert len(loaded) == 3
+        assert loaded[0].cycle_id == "iter_0"
+        assert loaded[2].cycle_id == "iter_2"
 
     def test_load_nonexistent(self) -> None:
 
         records = load_fill_records("/nonexistent/path.jsonl")
         assert records == []
 
-    def test_glob_load(self) -> None:
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            for day in ["20260101", "20260102"]:
-                _save_linear_records(
-                    Path(tmpdir) / f"fill_records_{day}.jsonl",
-                    prefix=day,
-                    count=3,
-                    base_ts=1700000000.0,
-                    ts_step=1.0,
-                )
-
-            all_records = load_fill_records_glob(tmpdir)
-            assert len(all_records) == 6
-
-    def test_glob_load_deduplicates_emergency_records(self) -> None:
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir)
-            emergency = root / "emergency"
-            emergency.mkdir()
+    def test_glob_load(self, tmp_path: Path) -> None:
+        for day in ["20260101", "20260102"]:
             _save_linear_records(
-                root / "fill_records_20260101.jsonl",
-                prefix="dup",
-                count=1,
-                start_index=1,
+                tmp_path / f"fill_records_{day}.jsonl",
+                prefix=day,
+                count=3,
                 base_ts=1700000000.0,
-            )
-            _save_linear_records(
-                emergency / "emergency_20260101.jsonl",
-                prefix="dup",
-                count=1,
-                start_index=1,
-                base_ts=1700000000.0,
+                ts_step=1.0,
             )
 
-            all_records = load_fill_records_glob(root)
-            assert len(all_records) == 1
-            assert all_records[0].cycle_id == "dup_1"
+        all_records = load_fill_records_glob(tmp_path)
+        assert len(all_records) == 6
 
-    def test_iter_glob_load_roundtrip(self) -> None:
+    def test_glob_load_deduplicates_emergency_records(self, tmp_path: Path) -> None:
+        root = tmp_path
+        emergency = root / "emergency"
+        emergency.mkdir()
+        _save_linear_records(
+            root / "fill_records_20260101.jsonl",
+            prefix="dup",
+            count=1,
+            start_index=1,
+            base_ts=1700000000.0,
+        )
+        _save_linear_records(
+            emergency / "emergency_20260101.jsonl",
+            prefix="dup",
+            count=1,
+            start_index=1,
+            base_ts=1700000000.0,
+        )
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir)
-            _save_linear_records(
-                root / "fill_records_20260101.jsonl",
-                prefix="g",
-                count=2,
-                base_ts=1700000000.0,
-                ts_step=60.0,
-                alternating_side=True,
-                price_step=1.0,
-            )
+        all_records = load_fill_records_glob(root)
+        assert len(all_records) == 1
+        assert all_records[0].cycle_id == "dup_1"
 
-            loaded = list(iter_fill_records_glob(root))
-            assert [r.cycle_id for r in loaded] == ["g_0", "g_1"]
+    def test_iter_glob_load_roundtrip(self, tmp_path: Path) -> None:
+        root = tmp_path
+        _save_linear_records(
+            root / "fill_records_20260101.jsonl",
+            prefix="g",
+            count=2,
+            base_ts=1700000000.0,
+            ts_step=60.0,
+            alternating_side=True,
+            price_step=1.0,
+        )
 
-    def test_iter_glob_load_can_exclude_emergency(self) -> None:
+        loaded = list(iter_fill_records_glob(root))
+        assert [r.cycle_id for r in loaded] == ["g_0", "g_1"]
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir)
-            emergency = root / "emergency"
-            emergency.mkdir()
-            _save_linear_records(
-                root / "fill_records_20260101.jsonl",
-                prefix="main",
-                count=1,
-                start_index=1,
-                base_ts=1700000000.0,
-            )
-            _save_linear_records(
-                emergency / "emergency_20260101.jsonl",
-                prefix="emg",
-                count=1,
-                start_index=1,
-                base_ts=1700000060.0,
-                side="sell",
-                order_price=101.0,
-            )
+    def test_iter_glob_load_can_exclude_emergency(self, tmp_path: Path) -> None:
+        root = tmp_path
+        emergency = root / "emergency"
+        emergency.mkdir()
+        _save_linear_records(
+            root / "fill_records_20260101.jsonl",
+            prefix="main",
+            count=1,
+            start_index=1,
+            base_ts=1700000000.0,
+        )
+        _save_linear_records(
+            emergency / "emergency_20260101.jsonl",
+            prefix="emg",
+            count=1,
+            start_index=1,
+            base_ts=1700000060.0,
+            side="sell",
+            order_price=101.0,
+        )
 
-            loaded = list(iter_fill_records_glob(root, include_emergency=False))
-            assert [r.cycle_id for r in loaded] == ["main_1"]
+        loaded = list(iter_fill_records_glob(root, include_emergency=False))
+        assert [r.cycle_id for r in loaded] == ["main_1"]
 
     def test_fill_records_to_dataframe_accepts_iterator(self) -> None:
 
@@ -1463,33 +1453,31 @@ class TestFillRecordIO:
         assert list(df["cycle_id"]) == ["df_0", "df_1"]
         assert list(df["order_price"]) == [100.0, 101.0]
 
-    def test_iter_fill_record_objects_glob_roundtrip(self) -> None:
+    def test_iter_fill_record_objects_glob_roundtrip(self, tmp_path: Path) -> None:
+        root = tmp_path
+        emergency = root / "emergency"
+        emergency.mkdir()
+        _save_linear_records(
+            root / "fill_records_20260101.jsonl",
+            prefix="obj",
+            count=1,
+            start_index=1,
+            base_ts=1700000000.0,
+        )
+        _save_linear_records(
+            emergency / "emergency_20260101.jsonl",
+            prefix="obj",
+            count=2,
+            start_index=1,
+            base_ts=1700000001.0,
+            ts_step=1.0,
+            side="sell",
+            order_price=101.0,
+            price_step=1.0,
+        )
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir)
-            emergency = root / "emergency"
-            emergency.mkdir()
-            _save_linear_records(
-                root / "fill_records_20260101.jsonl",
-                prefix="obj",
-                count=1,
-                start_index=1,
-                base_ts=1700000000.0,
-            )
-            _save_linear_records(
-                emergency / "emergency_20260101.jsonl",
-                prefix="obj",
-                count=2,
-                start_index=1,
-                base_ts=1700000001.0,
-                ts_step=1.0,
-                side="sell",
-                order_price=101.0,
-                price_step=1.0,
-            )
-
-            loaded = list(iter_fill_record_objects_glob(root))
-            assert [record["cycle_id"] for record in loaded] == ["obj_1", "obj_2"]
+        loaded = list(iter_fill_record_objects_glob(root))
+        assert [record["cycle_id"] for record in loaded] == ["obj_1", "obj_2"]
 
     def test_apply_fill_record_filters_handles_invalid_timestamp(self) -> None:
 
@@ -1509,131 +1497,123 @@ class TestFillRecordIO:
         assert applied["run_id"] == "r1"
         assert applied["git_sha"] == "abc"
 
-    def test_list_fill_record_files_supports_date_range(self) -> None:
+    def test_list_fill_record_files_supports_date_range(self, tmp_path: Path) -> None:
+        root = tmp_path
+        _save_dated_linear_record(
+            root,
+            day="20260101",
+            prefix="d",
+            start_index=1,
+            base_ts=1700000000.0,
+        )
+        _save_dated_linear_record(
+            root,
+            day="20260102",
+            prefix="d",
+            start_index=2,
+            base_ts=1700000060.0,
+            order_price=101.0,
+        )
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir)
-            _save_dated_linear_record(
-                root,
-                day="20260101",
-                prefix="d",
-                start_index=1,
-                base_ts=1700000000.0,
-            )
-            _save_dated_linear_record(
-                root,
-                day="20260102",
-                prefix="d",
-                start_index=2,
-                base_ts=1700000060.0,
-                order_price=101.0,
-            )
+        files = list_fill_record_files(
+            root,
+            include_emergency=False,
+            start_date="2026-01-02",
+            end_date="20260102",
+        )
+        assert [path.name for path in files] == ["fill_records_20260102.jsonl"]
 
-            files = list_fill_record_files(
-                root,
-                include_emergency=False,
-                start_date="2026-01-02",
-                end_date="20260102",
-            )
-            assert [path.name for path in files] == ["fill_records_20260102.jsonl"]
+    def test_list_fill_record_files_date_range_uses_direct_resolution(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        root = tmp_path
+        _save_dated_linear_record(
+            root,
+            day="20260102",
+            prefix="d",
+            start_index=1,
+            base_ts=1700000000.0,
+            include_emergency=True,
+            order_price=100.0,
+        )
+        emergency = root / "emergency"
 
-    def test_list_fill_record_files_date_range_uses_direct_resolution(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        original_iterdir = Path.iterdir
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir)
-            _save_dated_linear_record(
-                root,
-                day="20260102",
-                prefix="d",
-                start_index=1,
-                base_ts=1700000000.0,
-                include_emergency=True,
-                order_price=100.0,
-            )
-            emergency = root / "emergency"
+        def _guarded_iterdir(path: Path):
+            if path in (root, emergency):
+                raise AssertionError("bounded date range should not scan directory")
+            return original_iterdir(path)
 
-            original_iterdir = Path.iterdir
+        monkeypatch.setattr(Path, "iterdir", _guarded_iterdir)
 
-            def _guarded_iterdir(path: Path):
-                if path in (root, emergency):
-                    raise AssertionError("bounded date range should not scan directory")
-                return original_iterdir(path)
+        files = list_fill_record_files(
+            root,
+            include_emergency=True,
+            start_date="2026-01-02",
+            end_date="2026-01-02",
+        )
+        assert [path.name for path in files] == [
+            "fill_records_20260102.jsonl",
+            "emergency_20260102.jsonl",
+        ]
 
-            monkeypatch.setattr(Path, "iterdir", _guarded_iterdir)
+    def test_list_fill_record_files_cache_invalidates_when_directory_changes(self, tmp_path: Path) -> None:
+        root = tmp_path
+        _save_dated_linear_record(
+            root,
+            day="20260101",
+            prefix="d",
+            start_index=1,
+            base_ts=1700000000.0,
+        )
+        before = list_fill_record_files(root, include_emergency=False)
+        assert [path.name for path in before] == ["fill_records_20260101.jsonl"]
 
-            files = list_fill_record_files(
-                root,
-                include_emergency=True,
-                start_date="2026-01-02",
-                end_date="2026-01-02",
-            )
-            assert [path.name for path in files] == [
-                "fill_records_20260102.jsonl",
-                "emergency_20260102.jsonl",
-            ]
+        _save_dated_linear_record(
+            root,
+            day="20260102",
+            prefix="d",
+            start_index=2,
+            base_ts=1700000060.0,
+            order_price=101.0,
+        )
+        os.utime(root, None)
 
-    def test_list_fill_record_files_cache_invalidates_when_directory_changes(self) -> None:
+        after = list_fill_record_files(root, include_emergency=False)
+        assert [path.name for path in after] == [
+            "fill_records_20260101.jsonl",
+            "fill_records_20260102.jsonl",
+        ]
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir)
-            _save_dated_linear_record(
-                root,
-                day="20260101",
-                prefix="d",
-                start_index=1,
-                base_ts=1700000000.0,
-            )
-            before = list_fill_record_files(root, include_emergency=False)
-            assert [path.name for path in before] == ["fill_records_20260101.jsonl"]
+    def test_load_fill_record_objects_glob_supports_date_range(self, tmp_path: Path) -> None:
+        root = tmp_path
+        _save_dated_linear_record(
+            root,
+            day="20260101",
+            prefix="r",
+            start_index=1,
+            base_ts=1700000000.0,
+            separator="",
+        )
+        _save_dated_linear_record(
+            root,
+            day="20260103",
+            prefix="r",
+            start_index=2,
+            base_ts=1700000060.0,
+            side="sell",
+            order_price=101.0,
+            separator="",
+        )
 
-            _save_dated_linear_record(
-                root,
-                day="20260102",
-                prefix="d",
-                start_index=2,
-                base_ts=1700000060.0,
-                order_price=101.0,
-            )
-            os.utime(root, None)
+        loaded = load_fill_record_objects_glob(
+            root,
+            include_emergency=False,
+            start_date="20260102",
+            end_date="2026-01-03",
+        )
+        assert [record["cycle_id"] for record in loaded] == ["r2"]
 
-            after = list_fill_record_files(root, include_emergency=False)
-            assert [path.name for path in after] == [
-                "fill_records_20260101.jsonl",
-                "fill_records_20260102.jsonl",
-            ]
-
-    def test_load_fill_record_objects_glob_supports_date_range(self) -> None:
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir)
-            _save_dated_linear_record(
-                root,
-                day="20260101",
-                prefix="r",
-                start_index=1,
-                base_ts=1700000000.0,
-                separator="",
-            )
-            _save_dated_linear_record(
-                root,
-                day="20260103",
-                prefix="r",
-                start_index=2,
-                base_ts=1700000060.0,
-                side="sell",
-                order_price=101.0,
-                separator="",
-            )
-
-            loaded = load_fill_record_objects_glob(
-                root,
-                include_emergency=False,
-                start_date="20260102",
-                end_date="2026-01-03",
-            )
-            assert [record["cycle_id"] for record in loaded] == ["r2"]
-
-    def test_load_corrupt_lines_skipped(self) -> None:
+    def test_load_corrupt_lines_skipped(self, tmp_path: Path) -> None:
         """032# #19: 破損行はスキップして残りを正常読込."""
         valid_records = _make_linear_records(
             prefix="valid",
@@ -1646,22 +1626,21 @@ class TestFillRecordIO:
         valid_records[0].filled = True
         valid_records[1].cancelled = True
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = Path(tmpdir) / "test_corrupt.jsonl"
-            with open(path, "w", encoding="utf-8") as f:
-                # 正常行
-                f.write(json.dumps(valid_records[0].to_dict(), ensure_ascii=False) + "\n")
-                # 破損行 (不完全 JSON)
-                f.write('{"cycle_id": "broken_1", "timestamp": 170000\n')
-                # 空行
-                f.write("\n")
-                # もう1つの正常行
-                f.write(json.dumps(valid_records[1].to_dict(), ensure_ascii=False) + "\n")
+        path = tmp_path / "test_corrupt.jsonl"
+        with open(path, "w", encoding="utf-8") as f:
+            # 正常行
+            f.write(json.dumps(valid_records[0].to_dict(), ensure_ascii=False) + "\n")
+            # 破損行 (不完全 JSON)
+            f.write('{"cycle_id": "broken_1", "timestamp": 170000\n')
+            # 空行
+            f.write("\n")
+            # もう1つの正常行
+            f.write(json.dumps(valid_records[1].to_dict(), ensure_ascii=False) + "\n")
 
-            loaded = load_fill_records(path)
-            assert len(loaded) == 2
-            assert loaded[0].cycle_id == "valid_0"
-            assert loaded[1].cycle_id == "valid_1"
+        loaded = load_fill_records(path)
+        assert len(loaded) == 2
+        assert loaded[0].cycle_id == "valid_0"
+        assert loaded[1].cycle_id == "valid_1"
 
 
 # =====================================================================
@@ -1671,30 +1650,27 @@ class TestFillRecordIO:
 class TestGateCheckG11:
     """run_gate_check.py の G1.1 対応テスト."""
 
-    def test_g1_1_no_data(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            result = run_g1_1(tmpdir)
-            assert result["gate_result"] == "NO_DATA"
+    def test_g1_1_no_data(self, tmp_path: Path) -> None:
+        result = run_g1_1(tmp_path)
+        assert result["gate_result"] == "NO_DATA"
 
-    def test_g1_1_with_data(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # 高 fill rate のデータを作成
-            _save_daily_fill_count_records(
-                Path(tmpdir) / "fill_records_20260101.jsonl",
-                prefix="g11",
-                filled_counts=[19, 19, 19],
-                per_day=20,
-                base_ts=1700000000.0,
-                order_price=15000000.0,
-                queue_wait_sec=15.0,
-                post_fill_30s_pnl=0.5,
-                adverse_selected=False,
-                alternate_side=True,
-            )
-            result = run_g1_1(tmpdir)
-            # 135# P0-12: delegation 後は g1_1_quick_judgment 由来の "G1.1-quick"
-            assert result["gate"] == "G1.1-quick"
-            assert result["gate_result"] in ("PASS", "WATCH", "FAIL")
+    def test_g1_1_with_data(self, tmp_path: Path) -> None:
+        _save_daily_fill_count_records(
+            tmp_path / "fill_records_20260101.jsonl",
+            prefix="g11",
+            filled_counts=[19, 19, 19],
+            per_day=20,
+            base_ts=1700000000.0,
+            order_price=15000000.0,
+            queue_wait_sec=15.0,
+            post_fill_30s_pnl=0.5,
+            adverse_selected=False,
+            alternate_side=True,
+        )
+        result = run_g1_1(tmp_path)
+        # 135# P0-12: delegation 後は g1_1_quick_judgment 由来の "G1.1-quick"
+        assert result["gate"] == "G1.1-quick"
+        assert result["gate_result"] in ("PASS", "WATCH", "FAIL")
 
 
 # =====================================================================

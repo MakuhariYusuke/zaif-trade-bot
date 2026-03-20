@@ -7479,3 +7479,29 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - roundtrip tempdir を `tmp_path` に変更
 - `tests/unit/v460/test_sac_retrain_scheduler.py`
   - training timeout テストを短縮
+## 515# skip_gate canonical import 収束 / retrain_hot_reload tempdir 掃除
+- `scripts/v460/run_065_save_two_tier.py`
+- `scripts/v460/ml/deploy_sg_v3.py`
+- `scripts/v460/ml/deploy_sg_v4.py`
+- `scripts/v460/ml/train_sg_v2.py`
+- `scripts/v460/ml/train_alt_horizon.py`
+- `scripts/v460/ml/retrain_scheduler.py`
+- `scripts/v460/run_065_as_lr_prep.py`
+- `scripts/v460/lib/skip_gate_evaluator.py`
+- `scripts/v460/lib/order_monitor.py`
+  - `SkipGate` / `SkipGateConfig` / feature-column 定数 / runtime feature builder の参照を `ztb.ml.skip_gate` に統一
+- `scripts/v460/lib/skip_gate_model_loader.py`
+  - hot-reload / warm-start の `SkipGate` / `warm_start_skip_gate_thresholds` import を canonical path に収束
+- `scripts/v460/lib/skip_gate_ev_weighted.py`
+  - `SkipDecision` の構築を canonical path に統一
+- `tests/unit/v460/test_retrain_hot_reload.py`
+  - hash / reload / `compute_file_hash` の I/O ブロックを `TemporaryDirectory()` から `tmp_path` に寄せた
+- セルフレビュー
+  - `skip_gate` の model/runtime/decision contract は Phase 4 の import 収束に十分入った
+  - ただし `skip_gate_evaluator` の early-return/result 組立は `FillRecord` / config offset / logging と強く結合しており、まだ script 側に残す判断を維持
+- focused:
+  - `tests/unit/v460/test_fill_quality.py -k 'TestFillRecordIO or TestGateCheckG11'`: `17 passed`
+  - `tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_188_split_evc_macro.py tests/unit/v460/test_190_ev_weighted_safety.py tests/unit/v460/test_193_ev_offset.py tests/unit/v460/test_skip_gate_d8.py`: `202 passed`
+- filtered broad:
+  - `5104 passed, 2 skipped, 13 warnings in 38.33s`
+  - slowest は `test_sac_retrain_scheduler` crash/timeout 系、`test_enricher_skip_gate` real-data setup、`test_health_monitor_resilience`

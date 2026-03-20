@@ -155,7 +155,7 @@ class SkipGateEvWeightedMixin:
             else "ev_weighted_pass"
         )
 
-        from scripts.v460.ml.skip_gate import SkipDecision
+        from ztb.ml.skip_gate import SkipDecision
         return SkipDecision(
             should_skip=should_skip,
             predicted_pnl_bps=ev_score,
@@ -184,7 +184,7 @@ class SkipGateEvWeightedMixin:
             )
             self._ev_consecutive_skip_count = 0  # type: ignore[attr-defined]
 
-            from scripts.v460.ml.skip_gate import SkipDecision
+            from ztb.ml.skip_gate import SkipDecision
             return SkipDecision(
                 should_skip=True,
                 predicted_pnl_bps=ev_score,
@@ -219,7 +219,7 @@ class SkipGateEvWeightedMixin:
             config.skip_gate_ev_offset_max_mult,
         )
 
-        from scripts.v460.ml.skip_gate import SkipDecision
+        from ztb.ml.skip_gate import SkipDecision
         return SkipDecision(
             should_skip=False,
             predicted_pnl_bps=ev_score,

@@ -187,3 +187,22 @@ shared contract 抽出後に再点検すると、
 
 この順なら、`skip_gate_evaluator` の public 契約と source-based test を守りつつ、
 Phase 4 の import 収束を前に進められる。
+
+### 9. Phase 4 は `skip_gate` 周辺から本格化した
+
+今回までで、
+
+- deploy scripts
+- model loader
+- ev_weighted decision builder
+
+の `SkipGate` / `SkipDecision` 参照は canonical `ztb.ml.skip_gate` に寄った。
+
+一方で、以下はまだ script 文脈依存が強い:
+
+- `SkipGateEvaluator._make_skip_fill_record(...)`
+- `_assign_result_fields(...)`
+- `_apply_decision_to_result(...)`
+
+ここは `FillRecord` / log / config offset の責務が混ざるため、
+Phase 4 で無理に上げず、Phase 3 で先に result assembly の詳細設計を詰めるのが妥当。

@@ -130,7 +130,7 @@ class OrderMonitor:
         if skip_gate is None:
             return False
         try:
-            from scripts.v460.ml.skip_gate import build_features_from_market_state
+            from ztb.ml.skip_gate import build_features_from_market_state
 
             rp_features = build_features_from_market_state(
                 side=side,

@@ -5889,3 +5889,9 @@ python scripts/unified_trainer.py \
 - `scripts/v460/lib/manifest.py` / `scripts/v460/lib/batch_persistence.py` / `scripts/v460/lib/sidecar_signal_io.py` の UTC timestamp 生成を `ztb.utils.time_utils` に統一
 - `tests/unit/v460/test_514_skip_gate_runtime_migration.py` を追加し、shim と canonical helper の整合を回帰化
 - `tests/unit/v460/test_skip_gate_v3.py` の roundtrip tempdir を `tmp_path` に変更し、`test_sac_retrain_scheduler.py` の timeout テストを短縮
+## 515# skip_gate canonical import convergence
+- `run_065_save_two_tier.py` / `deploy_sg_v3.py` / `deploy_sg_v4.py` / `train_sg_v2.py` / `train_alt_horizon.py` / `retrain_scheduler.py` / `run_065_as_lr_prep.py` の `SkipGate` 参照を `ztb.ml.skip_gate` に統一
+- `skip_gate_evaluator.py` / `order_monitor.py` の runtime feature builder / decision import も canonical path に追随
+- `skip_gate_model_loader.py` の hot-reload / warm-start import を canonical path に統一
+- `skip_gate_ev_weighted.py` の `SkipDecision` 組立を canonical path に統一
+- `test_retrain_hot_reload.py` の hash/reload I/O テストを `TemporaryDirectory()` から `tmp_path` に寄せて保守性を改善

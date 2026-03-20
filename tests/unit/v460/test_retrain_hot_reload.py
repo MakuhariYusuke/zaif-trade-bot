@@ -407,124 +407,110 @@ class TestHotReload:
         ):
             return model_path, SkipGateEvaluator(cfg, Path(tmpdir))
 
-    def test_initial_hash_stored(self) -> None:
+    def test_initial_hash_stored(self, tmp_path: Path) -> None:
         """初期ロード時にモデルファイルのハッシュが保存される."""
+        gate = _make_picklable_gate(version="v1")
+        _, evaluator = self._create_evaluator(tmp_path, gate=gate)
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            gate = _make_picklable_gate(version="v1")
-            _, evaluator = self._create_evaluator(tmpdir, gate=gate)
+        assert evaluator._model_file_hash != ""
+        assert len(evaluator._model_file_hash) == 64  # SHA256 hex
 
-            assert evaluator._model_file_hash != ""
-            assert len(evaluator._model_file_hash) == 64  # SHA256 hex
-
-    def test_initial_hash_uses_sidecar_when_fresh(self) -> None:
+    def test_initial_hash_uses_sidecar_when_fresh(self, tmp_path: Path) -> None:
         """モデル sidecar hash が新鮮なら full file hash scan にフォールバックしない."""
+        gate = _make_picklable_gate(version="v1")
+        with patch(
+            "scripts.v460.lib.skip_gate_evaluator.compute_file_hash",
+            side_effect=AssertionError("full hash scan should not run"),
+        ):
+            _, evaluator = self._create_evaluator(tmp_path, gate=gate)
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            gate = _make_picklable_gate(version="v1")
-            with patch(
-                "scripts.v460.lib.skip_gate_evaluator.compute_file_hash",
-                side_effect=AssertionError("full hash scan should not run"),
-            ):
-                _, evaluator = self._create_evaluator(tmpdir, gate=gate)
+        assert evaluator._model_file_hash != ""
 
-            assert evaluator._model_file_hash != ""
-
-    def test_no_reload_when_unchanged(self) -> None:
+    def test_no_reload_when_unchanged(self, tmp_path: Path) -> None:
         """ファイル未変更時はリロードしない."""
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            gate = _make_picklable_gate(version="v1")
-            with patch(
-                "scripts.v460.ml.skip_gate.SkipGate.load",
-                return_value=gate,
-            ), patch(
-                "scripts.v460.lib.skip_gate_evaluator.SkipGateEvaluator._read_model_hash",
-                return_value="a" * 64,
-            ):
-                _, evaluator = self._create_evaluator(tmpdir, gate=gate, write_placeholder=True)
-                original_gate = evaluator._skip_gate
-                original_hash = evaluator._model_file_hash
-
-                # 即座にチェックを強制 (interval を 0 に)
-                evaluator._last_reload_check = 0
-                with patch.object(evaluator, "_check_and_reload_side_models", return_value=None):
-                    evaluator._check_and_reload_model()
-
-            assert evaluator._skip_gate is original_gate
-            assert evaluator._model_file_hash == original_hash
-
-    def test_reload_on_file_change(self) -> None:
-        """ファイル変更時にリロードされる."""
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            gate_v1 = _make_picklable_gate(version="v1", n_samples=100)
-            _, evaluator = self._create_evaluator(tmpdir, gate=gate_v1)
-            original_hash = evaluator._model_file_hash
-
-            gate_v2 = _make_picklable_gate(version="v2", n_samples=200)
-
-            # 強制チェック
-            evaluator._last_reload_check = 0
-            with patch(
-                "scripts.v460.lib.skip_gate_evaluator.SkipGateEvaluator._read_model_hash",
-                return_value="b" * 64,
-            ), patch.object(
-                evaluator,
-                "_load_gate_from_path",
-                return_value=gate_v2,
-            ):
-                evaluator._check_and_reload_model()
-
-            assert evaluator._model_file_hash != original_hash
-            assert evaluator._skip_gate is not None
-            assert evaluator._skip_gate.metadata["version"] == "v2"  # type: ignore[union-attr]
-            assert evaluator._skip_gate.metadata["n_samples"] == 200  # type: ignore[union-attr]
-
-    def test_reload_failure_keeps_old_model(self) -> None:
-        """リロード失敗時は旧モデルを維持."""
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            gate = _make_picklable_gate(version="v1")
-            model_path, evaluator = self._create_evaluator(tmpdir, gate=gate)
+        gate = _make_picklable_gate(version="v1")
+        with patch(
+            "scripts.v460.ml.skip_gate.SkipGate.load",
+            return_value=gate,
+        ), patch(
+            "scripts.v460.lib.skip_gate_evaluator.SkipGateEvaluator._read_model_hash",
+            return_value="a" * 64,
+        ):
+            _, evaluator = self._create_evaluator(tmp_path, gate=gate, write_placeholder=True)
             original_gate = evaluator._skip_gate
             original_hash = evaluator._model_file_hash
 
-            # 不正なデータで上書き
-            model_path.write_bytes(b"corrupted data")
-
+            # 即座にチェックを強制 (interval を 0 に)
             evaluator._last_reload_check = 0
+            with patch.object(evaluator, "_check_and_reload_side_models", return_value=None):
+                evaluator._check_and_reload_model()
+
+        assert evaluator._skip_gate is original_gate
+        assert evaluator._model_file_hash == original_hash
+
+    def test_reload_on_file_change(self, tmp_path: Path) -> None:
+        """ファイル変更時にリロードされる."""
+        gate_v1 = _make_picklable_gate(version="v1", n_samples=100)
+        _, evaluator = self._create_evaluator(tmp_path, gate=gate_v1)
+        original_hash = evaluator._model_file_hash
+
+        gate_v2 = _make_picklable_gate(version="v2", n_samples=200)
+
+        # 強制チェック
+        evaluator._last_reload_check = 0
+        with patch(
+            "scripts.v460.lib.skip_gate_evaluator.SkipGateEvaluator._read_model_hash",
+            return_value="b" * 64,
+        ), patch.object(
+            evaluator,
+            "_load_gate_from_path",
+            return_value=gate_v2,
+        ):
             evaluator._check_and_reload_model()
 
-            # 旧モデルが維持される
-            assert evaluator._skip_gate is original_gate
-            # ハッシュも旧のまま (更新失敗)
-            assert evaluator._model_file_hash == original_hash
+        assert evaluator._model_file_hash != original_hash
+        assert evaluator._skip_gate is not None
+        assert evaluator._skip_gate.metadata["version"] == "v2"  # type: ignore[union-attr]
+        assert evaluator._skip_gate.metadata["n_samples"] == 200  # type: ignore[union-attr]
 
-    def test_check_interval_respected(self) -> None:
+    def test_reload_failure_keeps_old_model(self, tmp_path: Path) -> None:
+        """リロード失敗時は旧モデルを維持."""
+        gate = _make_picklable_gate(version="v1")
+        model_path, evaluator = self._create_evaluator(tmp_path, gate=gate)
+        original_gate = evaluator._skip_gate
+        original_hash = evaluator._model_file_hash
+
+        # 不正なデータで上書き
+        model_path.write_bytes(b"corrupted data")
+
+        evaluator._last_reload_check = 0
+        evaluator._check_and_reload_model()
+
+        # 旧モデルが維持される
+        assert evaluator._skip_gate is original_gate
+        # ハッシュも旧のまま (更新失敗)
+        assert evaluator._model_file_hash == original_hash
+
+    def test_check_interval_respected(self, tmp_path: Path) -> None:
         """チェック間隔内ではファイル変更を検出しない."""
+        gate = _make_picklable_gate(version="v1")
+        model_path, evaluator = self._create_evaluator(tmp_path, gate=gate)
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            gate = _make_picklable_gate(version="v1")
-            model_path, evaluator = self._create_evaluator(tmpdir, gate=gate)
+        # 内容変更だけ入れる。interval 内なので reload 経路には入らない。
+        model_path.write_bytes(b"changed but should not be reloaded yet")
 
-            # 内容変更だけ入れる。interval 内なので reload 経路には入らない。
-            model_path.write_bytes(b"changed but should not be reloaded yet")
+        # last_reload_check を更新しない → interval 内
+        evaluator._check_and_reload_model()
 
-            # last_reload_check を更新しない → interval 内
-            evaluator._check_and_reload_model()
+        # まだ v1 のまま
+        assert evaluator._skip_gate.metadata["version"] == "v1"  # type: ignore[union-attr]
 
-            # まだ v1 のまま
-            assert evaluator._skip_gate.metadata["version"] == "v1"  # type: ignore[union-attr]
-
-    def test_compute_file_hash(self) -> None:
+    def test_compute_file_hash(self, tmp_path: Path) -> None:
         """compute_file_hash で SHA256 が正しく計算される."""
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            p = Path(tmpdir) / "test.bin"
-            p.write_bytes(b"hello world")
-            expected = hashlib.sha256(b"hello world").hexdigest()
-            assert compute_file_hash(p) == expected
+        p = tmp_path / "test.bin"
+        p.write_bytes(b"hello world")
+        expected = hashlib.sha256(b"hello world").hexdigest()
+        assert compute_file_hash(p) == expected
 
     def test_compute_file_hash_missing_file(self) -> None:
         """存在しないファイルのハッシュ計算は例外."""

@@ -33,9 +33,9 @@ from scripts.v460.ml.feature_enricher import (
     build_preorder_as_features,
     enrich_fill_records,
 )
-from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
 from scripts.v460.ml.walk_forward_as import expanding_window_splits, run_walk_forward
 from ztb.io.json_io import write_json
+from ztb.ml.skip_gate import SkipGate, SkipGateConfig
 from ztb.ml.metadata_utils import current_iso_timestamp
 
 logging.basicConfig(

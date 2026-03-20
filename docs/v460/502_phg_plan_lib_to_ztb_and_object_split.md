@@ -339,6 +339,12 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
   `scripts.v460.lib.ob_utils` ではなく `ztb.trading.live.exchanges.base.broker_interfaces`
   を参照するように修正した
 - これで `ztb -> scripts` の逆依存が 1 本減り、Phase 4 で import 収束しやすくなった
+- `run_065_save_two_tier.py` / `deploy_sg_v3.py` / `deploy_sg_v4.py` / `skip_gate_model_loader.py` /
+  `skip_gate_ev_weighted.py` は `ztb.ml.skip_gate` 基準へ収束済み
+- self-review:
+  - `skip_gate` の model/runtime/decision contract は Phase 4 に入ったと言ってよい
+  - ただし `skip_gate_evaluator` の result 組立・logger 文脈・FillRecord 連携はまだ script 固有で、
+    Phase 4 完了ではなく Phase 3 split-first 継続対象として扱う
 
 ### 詳細設計メモ
 
