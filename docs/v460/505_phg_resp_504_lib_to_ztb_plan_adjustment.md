@@ -430,3 +430,8 @@ SSOT を守るうえで重要である。
 まで pure helper を `ztb.trading.pricing` へ寄せられている。
 そのため、残りは pure math ではなく stage ownership と logging/config 文脈が中心であり、
 Phase 3 の終盤として自然な状態に入っている。
+
+直近では `maker_price` の final ceiling についても、
+local `_apply_final_offset_ceiling(...)` を置いて stage ownership を明示した。
+このため現時点の `maker_price` 残課題は、
+大きな数式抽出よりも orchestration の可読性と state 文脈の扱いが中心になっている。

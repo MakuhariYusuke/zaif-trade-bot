@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.pre_order_adjustments import PreOrderAdjustmentsMixin
+from ztb.trading.pricing.offset_ceiling import clamp_offset_ratio_to_ceiling
 
 if TYPE_CHECKING:
     from ztb.metrics.fill_quality import FillRecord
@@ -281,7 +282,11 @@ class OffsetPipelineMixin(PreOrderAdjustmentsMixin):
             # 467#: hour_ceiling_mult 反映
             from scripts.v460.lib.hour_rules import current_utc_hour
             _fc_ceil = self.config.resolve_offset_ceiling(side, utc_hour=current_utc_hour())
-            if _fc_ceil > 0 and effective_offset_ratio > _fc_ceil:
+            _ceiling = clamp_offset_ratio_to_ceiling(
+                effective_offset_ratio=effective_offset_ratio,
+                ceiling_ratio=_fc_ceil,
+            )
+            if _ceiling.clamped:
                 _execution_pre_clamp_offset = effective_offset_ratio
                 # 417# hard skip — boost が極端な場合は clamp だけでなく skip
                 _hs_mult = self.config.execution_final_clamp_hard_skip_mult
@@ -326,7 +331,7 @@ class OffsetPipelineMixin(PreOrderAdjustmentsMixin):
                     f"{effective_offset_ratio:.4f}→{_fc_ceil:.4f} "
                     f"(clamped, price={order_price:.0f})"
                 )
-                effective_offset_ratio = _fc_ceil
+                effective_offset_ratio = _ceiling.updated_ratio
 
         return OffsetPipelineResult(
             order_price=order_price,

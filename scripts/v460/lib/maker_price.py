@@ -777,6 +777,37 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
                 )
         return effective_offset_ratio, offset
 
+    def _apply_final_offset_ceiling(
+        self,
+        side: str,
+        spread: float,
+        effective_offset_ratio: float,
+        offset: float,
+    ) -> tuple[float, float, bool]:
+        """421# / 467#: final offset ceiling clamp を 1 ステージに集約."""
+        cfg = self._config
+        from scripts.v460.lib.hour_rules import current_utc_hour
+
+        ceiling_ratio = cfg.resolve_offset_ceiling(side, utc_hour=current_utc_hour())
+        ceiling = clamp_offset_ratio_to_ceiling(
+            effective_offset_ratio=effective_offset_ratio,
+            ceiling_ratio=ceiling_ratio,
+        )
+        if not ceiling.clamped:
+            return effective_offset_ratio, offset, False
+
+        logger.info(
+            f"[306# ceiling] offset {effective_offset_ratio:.4f} "
+            f"> ceiling {ceiling_ratio:.4f} — clamped"
+        )
+        effective_offset_ratio = ceiling.updated_ratio
+        offset = compute_offset_jpy(
+            spread=spread,
+            effective_offset_ratio=effective_offset_ratio,
+            min_offset_jpy=cfg.min_offset_jpy,
+        )
+        return effective_offset_ratio, offset, True
+
     async def compute(
         self,
         side: str,
@@ -1057,29 +1088,12 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
             _stages["ffd"] = effective_offset_ratio
             _stages["final"] = effective_offset_ratio
 
-        # 306# E1: offset ceiling — 300# T1-3 指摘の上限制御
-        # 320# C-1: サイド別 ceiling — sell floor(0.30) > ceiling(0.15) 矛盾解消
-        # 421# DRY: resolve_offset_ceiling ヘルパーに統一
-        # 467#: hour_ceiling_mult 反映
-        from scripts.v460.lib.hour_rules import current_utc_hour
-        _ceil = cfg.resolve_offset_ceiling(side, utc_hour=current_utc_hour())
-        _ceiling = clamp_offset_ratio_to_ceiling(
-            effective_offset_ratio=effective_offset_ratio,
-            ceiling_ratio=_ceil,
+        # 306# / 421# / 467#: final ceiling clamp を stage 化
+        effective_offset_ratio, offset, _ceiling_clamped = self._apply_final_offset_ceiling(
+            side, spread, effective_offset_ratio, offset,
         )
-        if _ceiling.clamped:
-            logger.info(
-                f"[306# ceiling] offset {effective_offset_ratio:.4f} "
-                f"> ceiling {_ceil:.4f} — clamped"
-            )
-            effective_offset_ratio = _ceiling.updated_ratio
-            offset = compute_offset_jpy(
-                spread=spread,
-                effective_offset_ratio=effective_offset_ratio,
-                min_offset_jpy=cfg.min_offset_jpy,
-            )
-            if _stage_tracking:
-                _stages["ceiling"] = effective_offset_ratio
+        if _stage_tracking and _ceiling_clamped:
+            _stages["ceiling"] = effective_offset_ratio
 
         # 306# E1: cache last offset stages for FillRecord
         if _stage_tracking:

@@ -459,6 +459,8 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
    - まず防御を固めてから stage orchestration を抜く順序が安全
  - final offset ceiling clamp も `ztb.trading.pricing.offset_ceiling` へ抽出済み
    - local に残すのは logging / offset 再計算 / stage tracking の文脈
+ - さらに `maker_price` 側では `_apply_final_offset_ceiling(...)` を local stage helper として明示化した
+   - pure 判定は canonical helper、stage ownership は script 側という分担が明確になっている
  - さらに offset 金額の純計算も `ztb.trading.pricing.offset_amount` へ抽出済み
    - `max(min_offset_jpy, spread * ratio)` のような小さな pure 計算でも、
      stage 間で重複するなら先に canonical 化しておく価値がある

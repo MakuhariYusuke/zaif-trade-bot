@@ -6006,3 +6006,8 @@ python scripts/unified_trainer.py \
 - `tests/unit/v460/test_158_regime_deadlock_fix.py`
 - `tests/unit/v460/test_200_an_improvements.py`
   を canonical import に変更
+## 533# final ceiling stage extraction / offset pipeline reuse
+- `scripts/v460/lib/maker_price.py` に `_apply_final_offset_ceiling(...)` を追加し、final ceiling clamp を 1 ステージとして集約
+- `scripts/v460/lib/offset_pipeline.py` でも `clamp_offset_ratio_to_ceiling(...)` を再利用し、final clamp 判定の pure 部分を共通化
+- `tests/unit/v460/test_enricher_skip_gate.py` の real-data sample guard を実測に基づき `50 / 56 / 72` へ再圧縮
+- `tests/unit/v460/test_421_final_clamp_deadlock.py` を含む final clamp/ceiling focused 群で回帰確認

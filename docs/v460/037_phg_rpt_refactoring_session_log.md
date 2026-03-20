@@ -7837,3 +7837,24 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_405_offset_ceiling_pipeline.py`: `46 passed in 2.26s`
   - `tests/unit/v460/test_enricher_skip_gate.py -k 'Test058Integration or RawLoadCache or save_load_roundtrip or as_mode_save_load or test_train_skip_gate_real'`: `9 passed, 63 deselected in 4.37s`
   - `tests/unit/v460/test_158_regime_deadlock_fix.py tests/unit/v460/test_200_an_improvements.py`: `61 passed in 4.05s`
+## 533# final ceiling stage extraction / offset pipeline reuse
+- `scripts/v460/lib/maker_price.py`
+  - `_apply_final_offset_ceiling(...)` を追加
+  - final ceiling clamp を 1 ステージとして local helper に集約
+- `scripts/v460/lib/offset_pipeline.py`
+  - `clamp_offset_ratio_to_ceiling(...)` を再利用
+  - hard skip 判定は local のまま維持しつつ、normal clamp の pure 判定を共通化
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - 実データ tail を再計測し、sample guard を `50 / 56 / 72` に再圧縮
+  - 2026-03-21 実測:
+    - `50 / 56 / 72` → `50 rows / 20 trainable`
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - timeout を `0.02 / 0.04` まで削ると不安定だったため、`0.03 / 0.06` に戻して安定側を維持
+- セルフレビュー
+  - `maker_price` は pure helper 抽出に加えて、final ceiling 自体も stage 単位で見通しが良くなった
+  - `offset_pipeline` 側にも同じ ceiling helper を適用でき、helper の横展開余地も確認できた
+  - `sac` timeout は「速いが不安定」より「少し遅いが安定」を選んだのが正しい
+- focused:
+  - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_405_offset_ceiling_pipeline.py tests/unit/v460/test_421_final_clamp_deadlock.py`: `103 passed in 2.60s`
+  - `tests/unit/v460/test_enricher_skip_gate.py -k 'Test058Integration or RawLoadCache or save_load_roundtrip or as_mode_save_load or test_train_skip_gate_real'`: `9 passed, 63 deselected in 3.47s`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py -k 'training_timeout_raises or retrain_once_cleans_up_on_error or post_cycle_memory_check_runs or single_iteration_then_shutdown or trigger_exception_does_not_kill_loop or record_result_exception_does_not_kill_loop'`: `6 passed, 35 deselected in 2.66s`
