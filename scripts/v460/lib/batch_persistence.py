@@ -128,9 +128,7 @@ class BatchPersistence:
             day_key = int(record.timestamp // 86_400)
             day_str = day_cache.get(day_key)
             if day_str is None:
-                day_str = format_utc_day(record.timestamp) or datetime.fromtimestamp(
-                    record.timestamp, tz=timezone.utc
-                ).strftime("%Y%m%d")
+                day_str = format_utc_day(record.timestamp)
                 day_cache[day_key] = day_str
             by_date.setdefault(day_str, []).append(record)
 

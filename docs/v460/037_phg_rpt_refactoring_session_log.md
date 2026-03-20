@@ -7259,3 +7259,7 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - `feature_enricher` の trades fallback が `now()` 基準だった問題を修正し、fill timestamp 基準の fallback 回帰を追加
 - `test_enricher_skip_gate.py` の real-data train を `tmp_path` 化し、negative SkipGate builder helper を導入
 - `test_sac_retrain_scheduler.py` に config builder helper を追加して cold/warm/OOS boilerplate を削減
+## 501# Timestamp / UTC Day Helper Sweep
+- `ztb.utils.observability` と `ztb.training.unified_trainer.reporting` の timestamp 生成を `current_iso_timestamp()` へ統一
+- `orchestrator_lifecycle` / `batch_persistence` / `ab_offset_comparison` の UTC 日付文字列生成を shared helper に寄せた
+- helper 重複の再棚卸しを行い、残る重複は主に legacy / 非 v460 領域と確認

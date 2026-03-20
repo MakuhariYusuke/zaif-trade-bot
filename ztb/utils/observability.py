@@ -7,12 +7,12 @@ import logging
 import threading
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from ztb.types.common import JSONSerializable, MetricsDict
 from ztb.utils.path_utils import ensure_dir
+from ztb.utils.time_utils import current_iso_timestamp
 
 def generate_correlation_id() -> str:
     """Return a random correlation identifier."""
@@ -27,7 +27,7 @@ class JsonLogFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, Any] = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": current_iso_timestamp(utc=True),
             "level": record.levelname,
             "name": record.name,
             "message": record.getMessage(),
@@ -80,7 +80,7 @@ class ObservabilityClient:
         artifact_path = self.artifacts_dir / f"{name}.json"
         wrapped = {
             "correlation_id": self.correlation_id,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": current_iso_timestamp(utc=True),
             "payload": data,
         }
         with artifact_path.open("w", encoding="utf-8") as fh:

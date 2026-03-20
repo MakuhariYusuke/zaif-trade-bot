@@ -4,7 +4,6 @@ Training reporting and logging utilities.
 """
 
 import logging
-from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -16,6 +15,7 @@ from ztb.reporting.services.training_reports import (
 )
 from ztb.types.common import ConfigDict, ObjectMap, ObjectRecords
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.time_utils import current_iso_timestamp
 
 # Magic number constants for reporting
 STABILITY_WINDOWS = [10, 50, 100, 500]
@@ -37,7 +37,7 @@ class TrainingReporter:
         """Generate a comprehensive training report."""
         report = {
             "metadata": {
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": current_iso_timestamp(),
                 "algorithm": config.get("algorithm", "unknown"),
                 "model_name": config.get("model_name", "unknown"),
                 "ab_tag": config.get("ab_tag") if isinstance(config, dict) else None,
@@ -221,7 +221,7 @@ class TrainingEventLogger:
     ) -> None:
         """Log a training event."""
         event = {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": current_iso_timestamp(),
             "type": event_type,
             "message": message,
             "data": data or {},
@@ -295,7 +295,7 @@ class TrainingEventLogger:
         """Generate comprehensive ensemble analysis report."""
         report = {
             "ensemble_analysis": {
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": current_iso_timestamp(),
                 "summary": self._analyze_ensemble_performance(
                     ensemble_stats, decision_log
                 ),

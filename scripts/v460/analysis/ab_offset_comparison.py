@@ -353,7 +353,8 @@ def _run_comparison(
             ts = safe_to_finite(r.get("timestamp"))
             if ts is None:
                 continue
-            day = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y%m%d")
+            from ztb.data.raw_paths import utc_day_str_from_timestamp
+            day = utc_day_str_from_timestamp(ts)
             if day < split_str:
                 before_recs.append(r)
             else:

@@ -60,7 +60,8 @@ class OrchestratorLifecycleMixin:
         348# balance_forced 撤廃: forced downweight 論理を削除。
         349#: 既に pnl_history が存在する側は warmup をスキップ (二重 track 防止)。
         """
-        utc_today = datetime.now(timezone.utc).strftime("%Y%m%d")
+        from ztb.data.raw_paths import utc_day_str_from_timestamp
+        utc_today = utc_day_str_from_timestamp(datetime.now(timezone.utc).timestamp())
         sell_count = 0
         buy_count = 0
         skipped_old = 0
@@ -70,9 +71,7 @@ class OrchestratorLifecycleMixin:
         for r in records:
             if not r.filled or r.post_fill_30s_pnl is None:
                 continue
-            r_date = datetime.fromtimestamp(
-                r.timestamp, tz=timezone.utc,
-            ).strftime("%Y%m%d")
+            r_date = utc_day_str_from_timestamp(r.timestamp)
             if r_date != utc_today:
                 skipped_old += 1
                 continue
@@ -359,7 +358,7 @@ class OrchestratorLifecycleMixin:
         # 全期間合算だと長期運用で loss_cap を必ず超過し crash loop に陥る。
         # btc_delta / adverse は全期間分 (観測用 — loss_cap 判定とは独立)。
         from ztb.data.raw_paths import utc_day_str_from_timestamp
-        _utc_today = datetime.now(timezone.utc).strftime("%Y%m%d")
+        _utc_today = utc_day_str_from_timestamp(datetime.now(timezone.utc).timestamp())
         for r in clean_records:
             pnl_jpy = compute_record_pnl_jpy(r)
             if pnl_jpy is not None:

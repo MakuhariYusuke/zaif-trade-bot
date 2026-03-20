@@ -5787,3 +5787,7 @@ python scripts/unified_trainer.py \
 - `feature_enricher` の trades fallback を「現在時刻」ではなく `fill_df.timestamp` 基準へ修正
 - `test_enricher_skip_gate.py` の real-data train を `tmp_path` 化し、negative SkipGate helper と fallback 回帰を追加
 - `test_sac_retrain_scheduler.py` に retrain config builder helper を追加
+## 501# Timestamp / UTC Day Helper Sweep
+- `ztb.utils.observability` / `ztb.training.unified_trainer.reporting` を `current_iso_timestamp()` に追随
+- `orchestrator_lifecycle` / `batch_persistence` / `ab_offset_comparison` の UTC 日付生成を shared helper に統一
+- util 追加後の duplicate scan を実施し、残存は主に legacy scripts / 非 v460 領域であることを確認
