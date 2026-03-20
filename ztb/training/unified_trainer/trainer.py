@@ -222,8 +222,14 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             self._initialize_ensemble_system(self.config)
 
         # Mixed Precision Training components
+        init_runtime_flags = resolve_trainer_runtime_flags(
+            self.config,
+            enable_distributed=enable_distributed,
+            world_size=world_size,
+            ensemble_enabled=self.ensemble_enabled,
+        )
         self.grad_scaler: GradScaler | None = None
-        if AMP_AVAILABLE and self.config.get("enable_mixed_precision", False):
+        if AMP_AVAILABLE and init_runtime_flags.mixed_precision_enabled:
             try:
                 self.grad_scaler = GradScaler()
             except Exception as e:
@@ -1054,7 +1060,13 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             with self._safe_memory_tracking():
                 # Execute training (federated or regular)
                 self.logger.info(f"Starting {algorithm.upper()} training...")
-                if self.config.get("enable_federated", False):
+                runtime_flags = resolve_trainer_runtime_flags(
+                    self.config,
+                    enable_distributed=self.enable_distributed,
+                    world_size=self.world_size,
+                    ensemble_enabled=self.ensemble_enabled,
+                )
+                if runtime_flags.federated_learning_enabled:
                     success = self._execute_federated_training()
                 elif self.algorithm_trainer is not None:
                     # Get total_timesteps from config

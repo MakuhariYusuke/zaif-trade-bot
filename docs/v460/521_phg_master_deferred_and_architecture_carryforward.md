@@ -269,11 +269,17 @@ shim を外しにいく条件:
   `ztb.training.unified_trainer.runtime_flags` へ先行抽出した
 - これにより `distributed/federated/ensemble/mixed_precision/continual`
   の enablement 判定は pure helper として追える状態になった
+- `runtime_flags` は現時点では `UnifiedTrainer` 専用色が強く、
+  `v460` SAC script 群へ無理に横展開するより、trainer 側の SSOT として維持するのが妥当
+- 一方で SAC 側には `ztb.training.sac.memory_monitor` のような shared helper を置き、
+  post-cycle の RSS / cache entry 監視を script 側から再利用する方が自然だった
 - `RewardCalculator` はまだ実分割には入っていないが、
   先に抜く対象を
   - stage bookkeeping
   - diagnostics payload shaping
   に固定した
+- その first step として、reward component payload の stage bookkeeping を
+  `reward_component_tracking` helper へ寄せる方針を採る
 
 ## テスト設計
 

@@ -217,6 +217,7 @@ class SACRetrainConfig:
 from ztb.training.sac import (  # noqa: E402
     SACModelProtocol,
     TrainingEnvProtocol,
+    build_post_cycle_memory_details as _build_post_cycle_memory_details,
     build_training_debug_details as _canonical_build_training_debug_details,
     adjust_buffer_size,
     cleanup_envs,
@@ -631,11 +632,11 @@ def _post_cycle_memory_check() -> None:
     clear_cuda_cache()
     gc.collect()
 
-    mem = get_memory_usage()
-    current_rss = float(mem.get("rss", 0.0))
+    memory_details = _build_post_cycle_memory_details(_last_cycle_rss_mb)
+    current_rss = float(memory_details.get("rss_mb", 0.0))
 
     if _last_cycle_rss_mb > 0:
-        delta = current_rss - _last_cycle_rss_mb
+        delta = float(memory_details.get("rss_delta_mb", 0.0))
         if delta > 100:  # 100MB 以上の増加
             logger.warning(
                 f"[495#] RSS increased by {delta:.1f}MB "
@@ -648,7 +649,11 @@ def _post_cycle_memory_check() -> None:
         )
 
     _last_cycle_rss_mb = current_rss
-    logger.info(f"[495#] Post-cycle RSS: {current_rss:.1f}MB")
+    logger.info(
+        "[495#] Post-cycle RSS: %.1fMB | cache_total_entries=%s",
+        current_rss,
+        int(memory_details.get("cache_total_entries", 0.0)),
+    )
 
 
 # ════════════════════════════════════════════════════════════════

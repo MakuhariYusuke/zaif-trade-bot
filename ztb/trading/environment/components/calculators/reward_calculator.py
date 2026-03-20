@@ -42,6 +42,7 @@ from ..rewards.profit_optimized import ProfitOptimizedReward
 from ..rewards.smart_incentive import SmartIncentiveReward
 from ..rewards.trading_focused import TradingFocusedReward
 from ..rewards.ultra_profit import UltraProfitReward
+from .reward_component_tracking import build_reward_components
 from ..signal_integrator import SignalIntegrator
 
 # Sentinel for cache miss detection (None is a valid cached value)
@@ -1888,31 +1889,23 @@ class RewardCalculator:
                 EnvironmentConfig.reward_scaling via inspect.signature
                 filtering. 385# で dead code だった問題を 387# で修正。
         """
-        self._last_reward_components = {"stage": "default"}
-
-        # PnL reward (387# FIX: hardcoded 1.0 → config-driven reward_scaling)
         pnl_reward = self._calculate_pnl_reward(pnl, reward_scaling)
-        self._last_reward_components["pnl_reward"] = pnl_reward
-
-        # Position penalty
         position_penalty = self._calculate_position_penalty(
             position, effective_max_position
         )
-        self._last_reward_components["position_penalty"] = position_penalty
-
-        # Hold penalty
         hold_penalty = self._calculate_hold_penalty(action)
-        self._last_reward_components["hold_penalty"] = hold_penalty
-
-        # Consistency penalty
         consistency_penalty = (
             self.behavioral_penalty_calculator.calculate_consistency_penalty()
         )
-        self._last_reward_components["consistency_penalty"] = consistency_penalty
-
-        # Combine rewards
         reward = pnl_reward + position_penalty + hold_penalty + consistency_penalty
-        self._last_reward_components["total_reward"] = reward
+        self._last_reward_components = build_reward_components(
+            "default",
+            pnl_reward=pnl_reward,
+            position_penalty=position_penalty,
+            hold_penalty=hold_penalty,
+            consistency_penalty=consistency_penalty,
+            total_reward=reward,
+        )
         return reward
 
     def _calculate_pnl_reward(self, pnl: float, reward_scaling: float) -> float:
@@ -1967,35 +1960,17 @@ class RewardCalculator:
         step: int,
     ) -> float:
         """Stage: Stability optimized reward."""
-        self._last_reward_components = {"stage": "stability_optimized"}
-
-        # PnL reward
         pnl_reward = self._calculate_pnl_reward(pnl, reward_scaling)
-        self._last_reward_components["pnl_reward"] = pnl_reward
-
-        # Position penalty
         position_penalty = self._calculate_position_penalty(
             position, effective_max_position
         )
-        self._last_reward_components["position_penalty"] = position_penalty
-
-        # Hold penalty
         hold_penalty = self._calculate_hold_penalty(action)
-        self._last_reward_components["hold_penalty"] = hold_penalty
-
-        # Consistency penalty
         consistency_penalty = (
             self.behavioral_penalty_calculator.calculate_consistency_penalty()
         )
-        self._last_reward_components["consistency_penalty"] = consistency_penalty
-
-        # Dynamic shaping
         dynamic_shaping_reward = self.dynamic_reward_shaper.shape_reward(
             pnl_reward, current_price, step, pnl
         )
-        self._last_reward_components["dynamic_shaping_reward"] = dynamic_shaping_reward
-
-        # Combine rewards
         reward = (
             pnl_reward
             + position_penalty
@@ -2003,7 +1978,15 @@ class RewardCalculator:
             + consistency_penalty
             + dynamic_shaping_reward
         )
-        self._last_reward_components["total_reward"] = reward
+        self._last_reward_components = build_reward_components(
+            "stability_optimized",
+            pnl_reward=pnl_reward,
+            position_penalty=position_penalty,
+            hold_penalty=hold_penalty,
+            consistency_penalty=consistency_penalty,
+            dynamic_shaping_reward=dynamic_shaping_reward,
+            total_reward=reward,
+        )
         return reward
 
     def _calculate_backtest_optimization_reward(
@@ -2022,43 +2005,20 @@ class RewardCalculator:
         portfolio_value_delta: float,
     ) -> float:
         """Stage: Backtest optimization reward."""
-        self._last_reward_components = {"stage": "backtest_optimization"}
-
-        # PnL reward
         pnl_reward = self._calculate_pnl_reward(pnl, reward_scaling)
-        self._last_reward_components["pnl_reward"] = pnl_reward
-
-        # Position penalty
         position_penalty = self._calculate_position_penalty(
             position, effective_max_position
         )
-        self._last_reward_components["position_penalty"] = position_penalty
-
-        # Hold penalty
         hold_penalty = self._calculate_hold_penalty(action)
-        self._last_reward_components["hold_penalty"] = hold_penalty
-
-        # Consistency penalty
         consistency_penalty = (
             self.behavioral_penalty_calculator.calculate_consistency_penalty()
         )
-        self._last_reward_components["consistency_penalty"] = consistency_penalty
-
-        # Dynamic shaping
         dynamic_shaping_reward = self.dynamic_reward_shaper.shape_reward(
             pnl_reward, current_price, step, pnl
         )
-        self._last_reward_components["dynamic_shaping_reward"] = dynamic_shaping_reward
-
-        # Portfolio correlation bonus
         portfolio_correlation_bonus = self._calculate_portfolio_correlation_bonus(
             pnl, portfolio_value_delta
         )
-        self._last_reward_components[
-            "portfolio_correlation_bonus"
-        ] = portfolio_correlation_bonus
-
-        # Combine rewards
         reward = (
             pnl_reward
             + position_penalty
@@ -2067,7 +2027,16 @@ class RewardCalculator:
             + dynamic_shaping_reward
             + portfolio_correlation_bonus
         )
-        self._last_reward_components["total_reward"] = reward
+        self._last_reward_components = build_reward_components(
+            "backtest_optimization",
+            pnl_reward=pnl_reward,
+            position_penalty=position_penalty,
+            hold_penalty=hold_penalty,
+            consistency_penalty=consistency_penalty,
+            dynamic_shaping_reward=dynamic_shaping_reward,
+            portfolio_correlation_bonus=portfolio_correlation_bonus,
+            total_reward=reward,
+        )
         return reward
 
     def _calculate_base_reward(
@@ -2103,9 +2072,6 @@ class RewardCalculator:
     ) -> float:
         """Stage: Risk management reward with unrealized loss penalty."""
         # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ
-        self._last_reward_components = {"stage": "risk_management"}
-
-        # 1. Calculate base reward from PnL and other factors
         base_reward = self._calculate_base_reward(
             action,
             atr_normalised,
@@ -2117,26 +2083,26 @@ class RewardCalculator:
             pnl,
             observation,
         )
-        self._last_reward_components["base_reward"] = base_reward
+        base_reward_before_trading = base_reward
 
-        # 2. Apply common trading bonuses for BUY/SELL actions
         if action in [ACTION_BUY, ACTION_SELL]:
             base_reward = self._calculate_base_trading_reward(
                 base_reward, position, effective_max_position
             )
-        self._last_reward_components["base_trading_reward"] = base_reward
 
-        # 3. Calculate and apply unrealized loss penalty
         unrealized_loss_penalty = self.unrealized_loss_penalty_calculator.calculate(
             pnl, position
         )
-        if unrealized_loss_penalty < 0:
-            self._last_reward_components[
-                "unrealized_loss_penalty"
-            ] = unrealized_loss_penalty
-
         total_reward = base_reward + unrealized_loss_penalty
-        self._last_reward_components["total_reward"] = total_reward
+        self._last_reward_components = build_reward_components(
+            "risk_management",
+            base_reward=base_reward_before_trading,
+            base_trading_reward=base_reward,
+            unrealized_loss_penalty=(
+                unrealized_loss_penalty if unrealized_loss_penalty < 0 else None
+            ),
+            total_reward=total_reward,
+        )
 
         self.logger.debug(
             f"Risk management reward: base={base_reward:.4f}, "
@@ -2160,9 +2126,6 @@ class RewardCalculator:
     ) -> float:
         """Stage: Opportunity cost reward to penalize inaction when flat."""
         # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ
-        self._last_reward_components = {"stage": "opportunity_cost"}
-
-        # 1. Calculate base reward
         base_reward = self._calculate_base_reward(
             action,
             atr_normalised,
@@ -2174,19 +2137,19 @@ class RewardCalculator:
             pnl,
             observation,
         )
-        self._last_reward_components["base_reward"] = base_reward
 
-        # 2. Calculate and apply opportunity cost penalty
         opportunity_cost_penalty = self.opportunity_cost_penalty_calculator.calculate(
             action, position
         )
-        if opportunity_cost_penalty < 0:
-            self._last_reward_components[
-                "opportunity_cost_penalty"
-            ] = opportunity_cost_penalty
-
         total_reward = base_reward + opportunity_cost_penalty
-        self._last_reward_components["total_reward"] = total_reward
+        self._last_reward_components = build_reward_components(
+            "opportunity_cost",
+            base_reward=base_reward,
+            opportunity_cost_penalty=(
+                opportunity_cost_penalty if opportunity_cost_penalty < 0 else None
+            ),
+            total_reward=total_reward,
+        )
 
         self.logger.debug(
             f"Opportunity cost reward: base={base_reward:.4f}, "

@@ -21,6 +21,7 @@ from ztb.training.sac.debug import (
     TrainingDebugEnvProtocol,
     build_training_debug_details,
 )
+from ztb.training.sac.memory_monitor import build_post_cycle_memory_details
 
 __all__ = [
     "SACModelProtocol",
@@ -35,5 +36,6 @@ __all__ = [
     "extract_roi_from_env",
     "TrainingDebugEnvProtocol",
     "build_training_debug_details",
+    "build_post_cycle_memory_details",
     "train_val_split",
 ]

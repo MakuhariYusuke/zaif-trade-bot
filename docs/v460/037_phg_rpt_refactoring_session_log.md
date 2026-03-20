@@ -8019,3 +8019,26 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - セルフレビュー
   - `UnifiedTrainer` の大分割に踏み込まず、advanced feature gating の ownership だけ先に固定できた
   - `RewardCalculator` は今回は code split せず、設計上の first extraction priority を先に固めた
+## 543# reward bookkeeping and SAC post-cycle memory details
+- `ztb/training/sac/memory_monitor.py`
+  - `build_post_cycle_memory_details(...)`
+  を追加
+- `scripts/v460/ml/sac_retrain_scheduler.py`
+  - post-cycle memory check で shared helper を再利用
+  - `cache_total_entries` を含む leak 診断ログへ追随
+- `ztb/trading/environment/components/calculators/reward_component_tracking.py`
+  - `build_reward_components(...)`
+  を追加
+- `ztb/trading/environment/components/calculators/reward_calculator.py`
+  - default / stability_optimized / backtest_optimization / risk_management / opportunity_cost
+    の stage bookkeeping を helper ベースへ整理
+- `tests/unit/v460/test_reward_component_tracking_migration.py`
+  - reward bookkeeping helper
+  - risk management の before/after component payload
+  の focused 回帰を追加
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - post-cycle memory details が cache entry count を含む形へ追随
+- セルフレビュー
+  - `runtime_flags` は他へ無理に広げず、`UnifiedTrainer` の SSOT として閉じたのが妥当
+  - SAC は helper を `memory_monitor` として別立てにしたことで、用途に合う shared 化になった
+  - `RewardCalculator` は大分割前の first step として bookkeeping helper 化がちょうど良い粒度だった

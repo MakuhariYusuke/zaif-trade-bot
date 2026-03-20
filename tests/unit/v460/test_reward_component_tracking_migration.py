@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+from unittest.mock import MagicMock, patch
+
+from tests.unit.v460._reward_calculator_test_helpers import make_reward_calculator
+from ztb.trading.constants import ACTION_BUY
+from ztb.trading.environment.components.calculators.reward_component_tracking import (
+    build_reward_components,
+)
+
+
+def test_build_reward_components_filters_none_and_preserves_stage() -> None:
+    payload = build_reward_components(
+        "risk_management",
+        base_reward=1.0,
+        unrealized_loss_penalty=None,
+        note="kept",
+    )
+
+    assert payload == {
+        "stage": "risk_management",
+        "base_reward": 1.0,
+        "note": "kept",
+    }
+
+
+def test_risk_management_preserves_pre_and_post_trading_rewards() -> None:
+    reward = make_reward_calculator()
+    reward.unrealized_loss_penalty_calculator.calculate = MagicMock(return_value=-0.2)
+
+    with (
+        patch.object(reward, "_calculate_base_reward", return_value=1.0),
+        patch.object(reward, "_calculate_base_trading_reward", return_value=1.5),
+    ):
+        total = reward._calculate_risk_management_reward(
+            action=ACTION_BUY,
+            pnl=0.0,
+            position=0.2,
+            atr_normalised=0.1,
+            portfolio_return=0.0,
+            effective_max_position=1.0,
+            current_price=100.0,
+            atr=1.0,
+            observation=None,
+        )
+
+    assert total == 1.3
+    assert reward._last_reward_components["stage"] == "risk_management"
+    assert reward._last_reward_components["base_reward"] == 1.0
+    assert reward._last_reward_components["base_trading_reward"] == 1.5
+    assert reward._last_reward_components["unrealized_loss_penalty"] == -0.2
+    assert reward._last_reward_components["total_reward"] == 1.3

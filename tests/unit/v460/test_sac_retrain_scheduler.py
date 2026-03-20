@@ -1041,6 +1041,27 @@ class TestCrashResilience495:
         finally:
             mod._last_cycle_rss_mb = saved
 
+    def test_post_cycle_memory_check_logs_cache_entry_count(self) -> None:
+        import scripts.v460.ml.sac_retrain_scheduler as mod
+
+        saved = mod._last_cycle_rss_mb
+        try:
+            mod._last_cycle_rss_mb = 32.0
+            with patch(
+                "scripts.v460.ml.sac_retrain_scheduler._build_post_cycle_memory_details",
+                return_value={
+                    "rss_mb": 48.0,
+                    "rss_delta_mb": 16.0,
+                    "cache_total_entries": 9.0,
+                },
+            ), patch.object(mod.logger, "info") as mock_info:
+                _post_cycle_memory_check()
+
+            mock_info.assert_called()
+            assert mod._last_cycle_rss_mb == 48.0
+        finally:
+            mod._last_cycle_rss_mb = saved
+
     def test_retrain_once_cleans_up_on_error(self, tmp_path: Path) -> None:
         """retrain_once が例外時も cleanup_training_resources を呼ぶ."""
         cfg = _make_retrain_cfg(

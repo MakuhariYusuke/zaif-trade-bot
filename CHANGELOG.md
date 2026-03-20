@@ -6060,3 +6060,9 @@ python scripts/unified_trainer.py \
 - `ztb/training/unified_trainer/trainer.py` は `run()` と `_setup_advanced_features()` の flag 解決を shared helper に委譲し、advanced feature gating の ownership を一段明確化
 - `tests/unit/training/test_unified_trainer_runtime_flags.py` を追加し、runtime flag helper と `UnifiedTrainer` 初期化の focused 回帰を追加
 - `docs/v460/521_phg_master_deferred_and_architecture_carryforward.md` に `UnifiedTrainer` / `RewardCalculator` の first extraction priority を追記
+## 543# reward bookkeeping and SAC post-cycle memory details
+- `ztb/training/sac/memory_monitor.py` を追加し、SAC retrain cycle 向けの `rss/cache_total_entries` サマリーを shared helper 化
+- `scripts/v460/ml/sac_retrain_scheduler.py` は post-cycle memory check で shared helper を再利用し、cache entry count を含む leak 診断ログに追随
+- `ztb/trading/environment/components/calculators/reward_component_tracking.py` を追加し、RewardCalculator の stage bookkeeping payload を helper 化
+- `ztb/trading/environment/components/calculators/reward_calculator.py` の default / stability / backtest / risk / opportunity stages を helper ベースの bookkeeping に整理
+- `tests/unit/v460/test_reward_component_tracking_migration.py` を追加し、reward bookkeeping helper と risk-management component payload の focused 回帰を追加
