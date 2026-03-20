@@ -22,6 +22,10 @@ from scripts.v460.lib.fill_config import FillMonitorResult, FillTestConfig
 from ztb.ml.skip_gate_contracts import SkipDecisionLike as _SkipDecisionLike
 from ztb.ml.skip_gate_contracts import SkipGateLike as _SkipGateLike
 from ztb.trading.execution.contracts import ExchangeAdapter, OrderLike, OrderStatusLike
+from ztb.trading.execution.order_monitor_policy import (
+    compute_effective_timeout_policy as _compute_effective_timeout_policy,
+    compute_stale_reprice_policy as _compute_stale_reprice_policy,
+)
 from ztb.trading.execution.stale_order_policy import (
     CancelFillCheck as _CancelFillCheck,
     ORDER_STATE_CANCELLED as _STATE_CANCELLED,
@@ -209,44 +213,31 @@ class OrderMonitor:
 
         # ------ 144# R-1c/R-1d: レジーム別 reprice/timeout 調整 ------
         _regime_name = self._resolve_regime_name(regime_detector)
-        # R-1d: effective timeout (base × regime multiplier)
-        # 155# S-3: sell 側は専用 timeout を使用 (速い撤退が有利)
-        _base_timeout = (
-            cfg.order_timeout_sec_sell
-            if side == "sell" and cfg.order_timeout_sec_sell is not None
-            else cfg.order_timeout_sec
+        timeout_policy = _compute_effective_timeout_policy(
+            side=side,
+            order_timeout_sec=cfg.order_timeout_sec,
+            order_timeout_sec_sell=cfg.order_timeout_sec_sell,
+            regime_name=_regime_name,
+            regime_timeout_multipliers=cfg.regime_timeout_multipliers,
+            regime_reprice_adjustments=cfg.regime_reprice_adjustments,
+            sell_age_cap_sec=cfg.sell_age_cap_sec,
         )
-        _timeout_mult = 1.0
-        if _regime_name is not None:
-            _timeout_mult = cfg.regime_timeout_multipliers.get(_regime_name, 1.0)
-        _effective_timeout = _base_timeout * _timeout_mult
-        # 506# P0: sell age cap — sell 注文の最大滞留時間を制限
-        # ranging 30–50s バケットに -158.73 JPY 集中 → 25s キャップで回避
-        if (
-            side == "sell"
-            and cfg.sell_age_cap_sec is not None
-            and cfg.sell_age_cap_sec > 0
-        ):
-            _pre_cap = _effective_timeout
-            _effective_timeout = min(_effective_timeout, cfg.sell_age_cap_sec)
-            if _effective_timeout < _pre_cap:
-                logger.info(
-                    "[506#] sell_age_cap enforced: %.0fs → %.0fs (cap=%ds)",
-                    _pre_cap,
-                    _effective_timeout,
-                    cfg.sell_age_cap_sec,
-                )
+        _base_timeout = timeout_policy.base_timeout
+        _timeout_mult = timeout_policy.timeout_multiplier
+        _effective_timeout = timeout_policy.effective_timeout
+        _regime_reprice_offset = timeout_policy.regime_reprice_offset
+        if timeout_policy.sell_age_cap_applied and cfg.sell_age_cap_sec is not None:
+            logger.info(
+                "[506#] sell_age_cap enforced: %.0fs → %.0fs (cap=%ds)",
+                _base_timeout * _timeout_mult,
+                _effective_timeout,
+                cfg.sell_age_cap_sec,
+            )
         if _timeout_mult != 1.0:
             logger.info(
                 f"[regime_timeout] {_regime_name} → timeout "
                 f"{_base_timeout:.0f}s × {_timeout_mult:.2f} = {_effective_timeout:.0f}s"
             )
-        # R-1c: reprice offset (applied after side-specific resolution)
-        _regime_reprice_offset = (
-            cfg.regime_reprice_adjustments.get(_regime_name, 0)
-            if _regime_name is not None
-            else 0
-        )
 
         # 094# 発注時 mid price を stale 判定の基準にする
         mid_at_order: float | None = None
@@ -356,21 +347,24 @@ class OrderMonitor:
 
             # --- 094# stale order 検出 & cancel-replace ---
             # 200# 10-B: 冗長 ternary 解消 — side 別値を先に解決
-            _side_check_sec = cfg.stale_check_after_sec_buy if side == "buy" else cfg.stale_check_after_sec_sell
-            _stale_check_sec = _side_check_sec if _side_check_sec is not None else cfg.stale_check_after_sec
-
-            _side_drift = cfg.stale_drift_bps_buy if side == "buy" else cfg.stale_drift_bps_sell
-            _stale_drift = _side_drift if _side_drift is not None else cfg.stale_drift_bps
-
-            _side_max_rp = cfg.stale_max_reprice_buy if side == "buy" else cfg.stale_max_reprice_sell
-            _stale_max_rp_base = _side_max_rp if _side_max_rp is not None else cfg.stale_max_reprice
-            # 179# Chase: trending 時は低い drift 閾値 & 高い reprice 上限を適用
-            if chase_drift_bps_override is not None:
-                _stale_drift = chase_drift_bps_override
-            if chase_max_reprice_override is not None:
-                _stale_max_rp_base = chase_max_reprice_override
-            # 144# R-1c: レジーム別 reprice オフセット (最低0でクランプ)
-            _stale_max_rp = max(0, _stale_max_rp_base + _regime_reprice_offset)
+            stale_reprice_policy = _compute_stale_reprice_policy(
+                side=side,
+                stale_check_after_sec=cfg.stale_check_after_sec,
+                stale_check_after_sec_buy=cfg.stale_check_after_sec_buy,
+                stale_check_after_sec_sell=cfg.stale_check_after_sec_sell,
+                stale_drift_bps=cfg.stale_drift_bps,
+                stale_drift_bps_buy=cfg.stale_drift_bps_buy,
+                stale_drift_bps_sell=cfg.stale_drift_bps_sell,
+                stale_max_reprice=cfg.stale_max_reprice,
+                stale_max_reprice_buy=cfg.stale_max_reprice_buy,
+                stale_max_reprice_sell=cfg.stale_max_reprice_sell,
+                chase_drift_bps_override=chase_drift_bps_override,
+                chase_max_reprice_override=chase_max_reprice_override,
+                regime_reprice_offset=_regime_reprice_offset,
+            )
+            _stale_check_sec = stale_reprice_policy.stale_check_sec
+            _stale_drift = stale_reprice_policy.stale_drift_bps
+            _stale_max_rp = stale_reprice_policy.stale_max_reprice
             if (
                 cfg.stale_order_enabled
                 and not filled

@@ -6044,3 +6044,9 @@ python scripts/unified_trainer.py \
 - `docs/v460/514_phg_plan_deferred_docs_refresh_and_carryforward_audit.md` と `docs/v460/520_phg_plan_remaining_deferred_actions_screening.md` に、今後の継続更新先が 521# であることを追記
 - `docs/v460/502_phg_plan_lib_to_ztb_and_object_split.md` と `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md` に current carry-forward 参照を追記
 - `docs/v460/index.md` に 521# を追加
+## 540# order-monitor policy and ab-judgment rule extraction
+- `ztb/trading/execution/order_monitor_policy.py` を追加し、effective timeout / stale reprice の pure policy を canonical helper 化
+- `scripts/v460/lib/order_monitor.py` は async orchestration を維持したまま、timeout / stale-reprice 解決を shared helper に委譲
+- `ztb/adaptation/ab_test/judgment_rules.py` を追加し、fill_rate / avg_pnl30 / downside_p10 の純粋な判定規則を canonical helper 化
+- `scripts/v460/lib/ab_judgment.py` は dataclass / statistical comparison / report ownership を維持したまま、criterion 判定を shared helper に委譲
+- `tests/unit/v460/test_518_monitor_and_ab_judgment_policy_migration.py` を追加し、policy/rule helper の focused 回帰を追加

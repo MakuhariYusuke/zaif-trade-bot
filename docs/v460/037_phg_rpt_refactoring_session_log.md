@@ -7958,3 +7958,30 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - セルフレビュー
   - 514/520 を消さずに履歴へ残しつつ、以後の保守先だけを 1 本へ寄せる構成にした
   - 「ドキュメント番号を主にする」という運用ルールを本文へ明示できた
+## 540# order-monitor policy and ab-judgment rule extraction
+- `ztb/trading/execution/order_monitor_policy.py`
+  - `compute_effective_timeout_policy(...)`
+  - `compute_stale_reprice_policy(...)`
+  を追加
+- `scripts/v460/lib/order_monitor.py`
+  - effective timeout / stale reprice の pure policy を shared helper に委譲
+  - async polling / cancel-recheck / logging ownership は script 側に維持
+- `ztb/adaptation/ab_test/judgment_rules.py`
+  - `assess_fill_rate(...)`
+  - `assess_avg_pnl30(...)`
+  - `assess_downside_p10(...)`
+  - `combine_assessment_verdicts(...)`
+  を追加
+- `scripts/v460/lib/ab_judgment.py`
+  - criterion 判定ロジックを shared helper に委譲
+  - dataclass / sample sufficiency / statistical comparison ownership は維持
+- `tests/unit/v460/test_518_monitor_and_ab_judgment_policy_migration.py`
+  - order_monitor policy helper
+  - ab_judgment rule helper
+  の focused 回帰を追加
+- セルフレビュー
+  - `order_monitor` は orchestration を壊さず pure policy を抜けた
+  - `ab_judgment` は最初の一手として judgment rule だけ抜く構成が安全だった
+- focused:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_518_monitor_and_ab_judgment_policy_migration.py tests/unit/v460/test_160_ab_judgment.py tests/unit/v460/test_262_protocol_cancel_recheck.py tests/unit/v460/test_512_stale_order_policy_migration.py -q --tb=short --no-cov`
+  - `128 passed in 5.15s`

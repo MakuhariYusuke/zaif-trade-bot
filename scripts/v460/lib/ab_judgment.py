@@ -25,6 +25,13 @@ logger = logging.getLogger(__name__)
 import numpy as np
 
 from scripts.v460.lib.metrics_utils import MetricsAccumulator, compute_base_metrics
+from ztb.adaptation.ab_test.judgment_rules import (
+    CriterionAssessment as _CriterionAssessment,
+    assess_avg_pnl30 as _assess_avg_pnl30,
+    assess_downside_p10 as _assess_downside_p10,
+    assess_fill_rate as _assess_fill_rate,
+    combine_assessment_verdicts as _combine_assessment_verdicts,
+)
 from ztb.io.json_io import JSONObject
 from ztb.metrics.fill_quality import format_utc_day
 from ztb.utils.dataclass_utils import filter_known_dataclass_fields
@@ -48,6 +55,16 @@ class DailyBreakdownRow(TypedDict, total=False):
     n_filled: int
     avg_pnl30_bps: float
     p10_bps: float
+
+
+def _to_criterion_result(assessment: _CriterionAssessment) -> CriterionResult:
+    return CriterionResult(
+        name=assessment.name,
+        verdict=Verdict(assessment.verdict),
+        value=assessment.value,
+        threshold=assessment.threshold,
+        detail=assessment.detail,
+    )
 
 
 # ======================================================================
@@ -758,85 +775,31 @@ def evaluate_ab_variant(
         ))
         return result
 
-    # --- 1. fill_rate 判定 ---
-    fr_verdict = Verdict.PASS
-    fr_detail_parts: list[str] = []
-    vfr = vm["fill_rate"]
-    cfr = cm["fill_rate"]
-
-    if vfr < criteria.fill_rate_min:
-        fr_verdict = Verdict.FAIL
-        fr_detail_parts.append(f"below absolute min {criteria.fill_rate_min:.1%}")
-
-    if cfr > 0 and vfr < cfr * (1 - criteria.fill_rate_degradation_tolerance):
-        fr_verdict = Verdict.FAIL
-        degradation = (cfr - vfr) / cfr
-        fr_detail_parts.append(f"degraded {degradation:.1%} vs control")
-
-    if not fr_detail_parts:
-        fr_detail_parts.append("OK")
-
-    result.criteria.append(CriterionResult(
-        name="fill_rate",
-        verdict=fr_verdict,
-        value=vfr,
-        threshold=criteria.fill_rate_min,
-        detail=f"variant={vfr:.1%} control={cfr:.1%} — {'; '.join(fr_detail_parts)}",
-    ))
-
-    # --- 2. avg_pnl30 判定 ---
-    pnl_verdict = Verdict.PASS
-    pnl_detail_parts: list[str] = []
-    vpnl = vm["avg_pnl30_bps"]
-    cpnl = cm["avg_pnl30_bps"]
-
-    if vpnl < criteria.avg_pnl30_min_bps:
-        pnl_verdict = Verdict.FAIL
-        pnl_detail_parts.append(f"below absolute min {criteria.avg_pnl30_min_bps:+.2f}")
-
-    if criteria.avg_pnl30_must_improve and vpnl < cpnl:
-        pnl_verdict = Verdict.FAIL
-        pnl_detail_parts.append(f"no improvement vs control ({cpnl:+.4f})")
-
-    if not pnl_detail_parts:
-        pnl_detail_parts.append("OK")
-
-    result.criteria.append(CriterionResult(
-        name="avg_pnl30",
-        verdict=pnl_verdict,
-        value=vpnl,
-        threshold=criteria.avg_pnl30_min_bps,
-        detail=f"variant={vpnl:+.4f} control={cpnl:+.4f} bps — {'; '.join(pnl_detail_parts)}",
-    ))
-
-    # --- 3. downside_tail (p10) 判定 ---
-    ds_verdict = Verdict.PASS
-    ds_detail_parts: list[str] = []
-    vp10 = vm["downside_p10_bps"]
-    cp10 = cm["downside_p10_bps"]
-
-    if vp10 < criteria.downside_p10_min_bps:
-        ds_verdict = Verdict.FAIL
-        ds_detail_parts.append(f"below absolute min {criteria.downside_p10_min_bps:+.2f}")
-
-    degradation_bps = cp10 - vp10  # 正値 = variant が悪化
-    if degradation_bps > criteria.downside_p10_degradation_max_bps:
-        ds_verdict = Verdict.FAIL
-        ds_detail_parts.append(
-            f"degraded {degradation_bps:+.2f}bps vs control "
-            f"(max {criteria.downside_p10_degradation_max_bps:+.2f})"
-        )
-
-    if not ds_detail_parts:
-        ds_detail_parts.append("OK")
-
-    result.criteria.append(CriterionResult(
-        name="downside_p10",
-        verdict=ds_verdict,
-        value=vp10,
-        threshold=criteria.downside_p10_min_bps,
-        detail=f"variant={vp10:+.4f} control={cp10:+.4f} bps — {'; '.join(ds_detail_parts)}",
-    ))
+    fill_rate_assessment = _assess_fill_rate(
+        variant_fill_rate=vm["fill_rate"],
+        control_fill_rate=cm["fill_rate"],
+        fill_rate_min=criteria.fill_rate_min,
+        fill_rate_degradation_tolerance=criteria.fill_rate_degradation_tolerance,
+    )
+    avg_pnl30_assessment = _assess_avg_pnl30(
+        variant_avg_pnl30_bps=vm["avg_pnl30_bps"],
+        control_avg_pnl30_bps=cm["avg_pnl30_bps"],
+        avg_pnl30_min_bps=criteria.avg_pnl30_min_bps,
+        avg_pnl30_must_improve=criteria.avg_pnl30_must_improve,
+    )
+    downside_assessment = _assess_downside_p10(
+        variant_downside_p10_bps=vm["downside_p10_bps"],
+        control_downside_p10_bps=cm["downside_p10_bps"],
+        downside_p10_min_bps=criteria.downside_p10_min_bps,
+        downside_p10_degradation_max_bps=criteria.downside_p10_degradation_max_bps,
+    )
+    result.criteria.extend(
+        [
+            _to_criterion_result(fill_rate_assessment),
+            _to_criterion_result(avg_pnl30_assessment),
+            _to_criterion_result(downside_assessment),
+        ]
+    )
 
     # --- 統計検定 (ztb.adaptation.ab_test.analyzer 活用) ---
     if len(v_pnl) >= 10 and len(c_pnl) >= 10:
@@ -897,13 +860,15 @@ def evaluate_ab_variant(
             logger.debug("Matched temporal comparison failed: %s", e)
 
     # --- 総合判定 ---
-    verdicts = [c.verdict for c in result.criteria]
-    if any(v == Verdict.FAIL for v in verdicts):
-        result.overall = Verdict.FAIL
-    elif any(v == Verdict.INSUFFICIENT for v in verdicts):
-        result.overall = Verdict.INSUFFICIENT
-    else:
-        result.overall = Verdict.PASS
+    result.overall = Verdict(
+        _combine_assessment_verdicts(
+            [
+                fill_rate_assessment,
+                avg_pnl30_assessment,
+                downside_assessment,
+            ]
+        )
+    )
 
     return result
 

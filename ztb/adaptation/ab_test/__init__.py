@@ -27,6 +27,14 @@ Usage:
 from .analyzer import ABTestAnalyzer
 from .config import ABTestConfig
 from .executor import ABTestExecutor
+from .judgment_rules import (
+    CriterionAssessment,
+    JudgmentVerdict,
+    assess_avg_pnl30,
+    assess_downside_p10,
+    assess_fill_rate,
+    combine_assessment_verdicts,
+)
 from .selector import ModelSelector, TrafficManager
 from .types import (
     ABTestConfiguration,
@@ -58,6 +66,12 @@ __all__ = [
     "ABTestExecutor",
     "ModelSelector",
     "TrafficManager",
+    "JudgmentVerdict",
+    "CriterionAssessment",
+    "assess_fill_rate",
+    "assess_avg_pnl30",
+    "assess_downside_p10",
+    "combine_assessment_verdicts",
 ]
 
 __version__ = "1.0.0"

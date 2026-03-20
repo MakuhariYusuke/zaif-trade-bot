@@ -192,8 +192,8 @@ shim を外しにいく条件:
 
 - stale order policy
 - cancel/fill recheck result
-
-は先行抽出済み。
+- timeout / stale-reprice policy
+  までは先行抽出済み
 
 残る責務:
 
@@ -217,6 +217,12 @@ shim を外しにいく条件:
 - 先に basic contract と phase split を設計書で固定
 - 最初の切り出しは pure judgment helper から
 - 一気に `ztb` へ送らず、split-first を徹底する
+
+進捗:
+
+- fill_rate / avg_pnl30 / downside_p10 の純粋な判定規則は
+  `ztb.adaptation.ab_test.judgment_rules` へ前進済み
+- script 側は dataclass / statistical comparison / report ownership を維持
 
 ### 5. `UnifiedTrainer` / `RewardCalculator`
 
