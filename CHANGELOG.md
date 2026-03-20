@@ -6072,3 +6072,8 @@ python scripts/unified_trainer.py \
 - `ztb/trading/environment/components/calculators/reward_component_tracking.py` に `extend_reward_components(...)` を追加し、RewardCalculator の post-reward diagnostics shaping を helper ベースへ寄せた
 - `scripts/v460/ml/sac_retrain_scheduler.py` の未使用 `get_memory_usage` import を削除
 - `tests/unit/training/test_unified_trainer_advanced_feature_setup.py` を追加し、advanced feature setup helper の focused 回帰を追加
+## 545# trainer model access and reward bookkeeping convergence
+- `ztb/training/unified_trainer/trainer.py` の continual learning / fallback task data / input-output dim 解決を `extract_algorithm_model(...)` ベースへ統一
+- `ztb/trading/environment/components/calculators/reward_calculator.py` の PnL diagnostics / action-balance diagnostics / forced_balance / action_discovery / balanced_transition bookkeeping を `reward_component_tracking` helper ベースへ整理
+- `tests/unit/training/test_unified_trainer_advanced_feature_setup.py` に `model=None` 境界回帰を追加
+- `tests/unit/v460/test_reward_component_tracking_migration.py` に bookkeeping payload 拡張の focused 回帰を追加

@@ -8062,3 +8062,28 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - セルフレビュー
   - `advanced_feature_setup` は `UnifiedTrainer` の repeated setup 前提に対して素直に効いた
   - `RewardCalculator` は diagnostics shaping を helper に寄せることで、今後の stage 分割でも payload 契約を保ちやすくなった
+## 545# trainer model access and reward bookkeeping convergence
+- `ztb/training/unified_trainer/trainer.py`
+  - `_run_continual_learning()`
+  - `_prepare_task_data()`
+  - `_get_model_input_dim()`
+  - `_get_model_output_dim()`
+  の model 解決を `extract_algorithm_model(...)` に統一
+- `ztb/trading/environment/components/calculators/reward_calculator.py`
+  - PnL diagnostics
+  - action/balance diagnostics
+  - `forced_balance`
+  - `action_discovery`
+  - `balanced_transition`
+  - `_calculate_base_trading_reward()`
+  の bookkeeping を `build_reward_components(...)` / `extend_reward_components(...)` ベースへ整理
+- `tests/unit/training/test_unified_trainer_advanced_feature_setup.py`
+  - `model=None` で `extract_algorithm_model(...)` が `None` を返す境界回帰を追加
+- `tests/unit/v460/test_reward_component_tracking_migration.py`
+  - stage payload の拡張時に `stage` が保持される focused 回帰を追加
+- focused:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/training/test_unified_trainer_advanced_feature_setup.py tests/unit/v460/test_reward_component_tracking_migration.py tests/unit/reward/test_reward_components_fix.py tests/unit/trading/components/test_reward_calculator.py tests/unit/v460/test_sac_retrain_scheduler.py -k 'advanced_feature_setup or build_reward_components or extend_reward_components or risk_management or post_cycle_memory_check or training_timeout_raises or retrain_once_cleans_up_on_error' -q --tb=short --no-cov`
+  - `11 passed, 54 deselected in 3.38s`
+- セルフレビュー
+  - `advanced_feature_setup` は trainer 内の remaining model-access path まで揃えるのが正解だった
+  - `reward_component_tracking` は `RewardCalculator` 専用 SSOT として扱うほうが設計が安定する

@@ -1768,13 +1768,12 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 )
                 return
 
-            if not hasattr(alg, "model") or getattr(alg, "model") is None:
+            model = extract_algorithm_model(alg)
+            if model is None:
                 self.logger.warning(
                     "Algorithm trainer model not available for continual learning"
                 )
                 return
-
-            model = getattr(alg, "model")
             optimizer = torch.optim.Adam(model.parameters(), lr=DEFAULT_LEARNING_RATE)
 
             learning_stats = cl.learn_task(task_data, sac_loss, optimizer, num_epochs=5)
@@ -1835,13 +1834,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             task_id = f"task_{self.task_counter}"
             self.task_counter += 1
 
-            alg = self.algorithm_trainer
-            if (
-                alg is not None
-                and hasattr(alg, "model")
-                and getattr(alg, "model") is not None
-            ):
-                model = getattr(alg, "model")
+            model = extract_algorithm_model(self.algorithm_trainer)
+            if model is not None:
                 state_dim = int(getattr(model, "input_dim", 10))
                 action_dim = int(getattr(model, "output_dim", 4))
             else:
@@ -1864,11 +1858,9 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
     def _get_model_input_dim(self) -> int:
         """Get model input dimension."""
-        alg = self.algorithm_trainer
-        if alg is None or not hasattr(alg, "model") or getattr(alg, "model") is None:
+        model = extract_algorithm_model(self.algorithm_trainer)
+        if model is None:
             return 10  # Default
-
-        model = getattr(alg, "model")
         try:
             params_iter = iter(model.parameters())
             first_layer = next(params_iter)
@@ -1885,11 +1877,9 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
     def _get_model_output_dim(self) -> int:
         """Get model output dimension."""
-        alg = self.algorithm_trainer
-        if alg is None or not hasattr(alg, "model") or getattr(alg, "model") is None:
+        model = extract_algorithm_model(self.algorithm_trainer)
+        if model is None:
             return 1  # Default
-
-        model = getattr(alg, "model")
         try:
             params = list(model.parameters())
             if not params:

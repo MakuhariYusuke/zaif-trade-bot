@@ -286,6 +286,20 @@ shim を外しにいく条件:
   `reward_component_tracking` helper へ寄せる方針を採る
 - diagnostics payload shaping も同 helper を extend する形が自然で、
   `default/simple/safety` の各経路で診断項目の追加方法を揃えやすい
+- さらに `UnifiedTrainer` では
+  - continual learning 実行時の model 解決
+  - fallback task data 用の model attr 参照
+  - input/output dim 解決
+  も `extract_algorithm_model(...)` ベースへ寄せられることを確認した
+- これは `runtime_flags` のような広域 helper 化ではなく、
+  `advanced_feature_setup` の適用範囲を trainer 内で最後まで揃える方が安全だった
+- `RewardCalculator` では
+  - PnL diagnostics
+  - action/balance diagnostics
+  - forced_balance / action_discovery / balanced_transition
+  の bookkeeping も `reward_component_tracking` へ寄せる余地があり、順次整理を進める
+- `reward_component_tracking` は `RewardCalculator` の stage payload SSOT として扱い、
+  他の reward 系ファイルへ無理に広げない方針が妥当
 
 ## テスト設計
 

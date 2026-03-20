@@ -35,6 +35,24 @@ def test_extend_reward_components_updates_existing_stage_payload() -> None:
     assert "skipped" not in payload
 
 
+def test_extend_reward_components_keeps_existing_stage_when_enriching_payload() -> None:
+    payload = build_reward_components("forced_balance", base_reward=0.0)
+
+    extend_reward_components(
+        payload,
+        scaled_reward=0.25,
+        action_bonus=0.1,
+        ignored=None,
+    )
+
+    assert payload == {
+        "stage": "forced_balance",
+        "base_reward": 0.0,
+        "scaled_reward": 0.25,
+        "action_bonus": 0.1,
+    }
+
+
 def test_risk_management_preserves_pre_and_post_trading_rewards() -> None:
     reward = make_reward_calculator()
     reward.unrealized_loss_penalty_calculator.calculate = MagicMock(return_value=-0.2)

@@ -9,7 +9,8 @@ def extract_algorithm_model(algorithm_trainer: object | None) -> object | None:
     """Return the trainer model when available, otherwise None."""
     if algorithm_trainer is None or not hasattr(algorithm_trainer, "model"):
         return None
-    return getattr(algorithm_trainer, "model")
+    model = getattr(algorithm_trainer, "model")
+    return model if model is not None else None
 
 
 def build_continual_learning_config(

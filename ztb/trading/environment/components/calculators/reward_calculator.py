@@ -948,11 +948,14 @@ class RewardCalculator:
         else:
             pnl = step_pnl
 
-        self._last_reward_components["pnl_mode"] = pnl_mode
-        self._last_reward_components["pnl_step"] = step_pnl
-        self._last_reward_components["pnl_trade"] = trade_pnl_value
-        self._last_reward_components["pnl_effective"] = float(pnl)
-        self._last_reward_components["pnl_close_event"] = float(bool(close_event))
+        extend_reward_components(
+            self._last_reward_components,
+            pnl_mode=pnl_mode,
+            pnl_step=step_pnl,
+            pnl_trade=trade_pnl_value,
+            pnl_effective=float(pnl),
+            pnl_close_event=float(bool(close_event)),
+        )
 
         # Update win/loss counts
         if pnl > 0:
@@ -1061,8 +1064,11 @@ class RewardCalculator:
                     action, action_bonus
                 )
             )
-            self._last_reward_components["balance_penalty"] = balance_penalty
-        self._last_reward_components["action_bonus"] = action_bonus
+        extend_reward_components(
+            self._last_reward_components,
+            balance_penalty=balance_penalty if action in [ACTION_BUY, ACTION_SELL] else None,
+            action_bonus=action_bonus,
+        )
 
         # Create a mapping from curriculum stage to the corresponding reward calculation method
         stage_to_method_map = {
@@ -1543,8 +1549,10 @@ class RewardCalculator:
         # If global balance penalty is disabled, the forced_balance stage should be neutral.
         # 408# F4: default aligned to RewardSettings.balance_penalty (0.1)
         if getattr(self, "balance_penalty", 0.1) == 0.0:
-            self._last_reward_components["stage"] = "forced_balance"
-            self._last_reward_components["base_reward"] = 0.0
+            self._last_reward_components = build_reward_components(
+                "forced_balance",
+                base_reward=0.0,
+            )
             return 0.0
 
         reward = self.forced_balance_reward.calculate(context)
@@ -1558,7 +1566,7 @@ class RewardCalculator:
         # Apply scaling specific to this stage
         forced_balance_scaling = self.get_setting_float("forced_balance.scaling", 1.0)
         reward *= forced_balance_scaling
-        self._last_reward_components["scaled_reward"] = reward
+        extend_reward_components(self._last_reward_components, scaled_reward=reward)
 
         return reward
 
@@ -1579,7 +1587,7 @@ class RewardCalculator:
         to overcome conservative HOLD bias.
         """
         # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ
-        self._last_reward_components = {"stage": "action_discovery"}
+        self._last_reward_components = build_reward_components("action_discovery")
 
         # Use continuous magnitude if available to reward stronger signals
         magnitude = 1.0
@@ -1597,8 +1605,11 @@ class RewardCalculator:
         # Do not subtract transaction cost in discovery stage (encourage actions)
         discovery_scale = self.get_setting_float("action_discovery.scale", 1.0)
         final_reward = base_reward * discovery_scale * reward_scaling
-        self._last_reward_components["base_reward"] = base_reward
-        self._last_reward_components["final_reward"] = final_reward
+        extend_reward_components(
+            self._last_reward_components,
+            base_reward=base_reward,
+            final_reward=final_reward,
+        )
         return final_reward
 
     def _calculate_smart_incentive_reward(self, **kwargs) -> float:
@@ -1612,10 +1623,10 @@ class RewardCalculator:
         context = self._build_reward_context(**kwargs)
         reward = self.smart_incentive_reward.calculate(context)
 
-        self._last_reward_components = {
-            "stage": "smart_incentive",
-            "base_reward": reward,
-        }
+        self._last_reward_components = build_reward_components(
+            "smart_incentive",
+            base_reward=reward,
+        )
         return reward
 
     def _calculate_balanced_transition_reward(
@@ -1634,7 +1645,7 @@ class RewardCalculator:
         # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ
         total_actions = sum(self._action_counts)
 
-        self._last_reward_components = {"stage": "balanced_transition"}
+        self._last_reward_components = build_reward_components("balanced_transition")
 
         tolerance = self.get_setting_float("balance_penalty_tolerance", 0.05)
         penalty = (
@@ -1674,8 +1685,11 @@ class RewardCalculator:
             atr,
             pnl,
         )
-        self._last_reward_components["base_reward"] = base_reward
-        self._last_reward_components["balance_penalty"] = balance_penalty
+        extend_reward_components(
+            self._last_reward_components,
+            base_reward=base_reward,
+            balance_penalty=balance_penalty,
+        )
 
         final_reward = base_reward - balance_penalty
         self.logger.info(
@@ -1786,7 +1800,7 @@ class RewardCalculator:
             self.get_setting_float("trading_bonus", 0.01) * trading_bonus_multiplier
         )
         base_reward += trading_bonus
-        self._last_reward_components["trading_bonus"] = trading_bonus
+        extend_reward_components(self._last_reward_components, trading_bonus=trading_bonus)
 
         # Position size bonus
         position_size_bonus_rate = self.get_setting_float(
@@ -1796,7 +1810,10 @@ class RewardCalculator:
         if 0.1 <= position_utilization <= 0.8:
             position_size_bonus = position_size_bonus_rate * position_utilization
             base_reward += position_size_bonus
-            self._last_reward_components["position_size_bonus"] = position_size_bonus
+            extend_reward_components(
+                self._last_reward_components,
+                position_size_bonus=position_size_bonus,
+            )
 
         # Activity incentive bonus
         activity_bonus_rate = self.get_setting_float("activity_bonus_rate", 0.02)
@@ -1804,7 +1821,10 @@ class RewardCalculator:
         if recent_trades >= 2:
             activity_bonus = activity_bonus_rate * (recent_trades / 5.0)
             base_reward += activity_bonus
-            self._last_reward_components["activity_bonus"] = activity_bonus
+            extend_reward_components(
+                self._last_reward_components,
+                activity_bonus=activity_bonus,
+            )
 
         return base_reward
 

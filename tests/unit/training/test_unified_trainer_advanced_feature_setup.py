@@ -17,6 +17,7 @@ def test_extract_algorithm_model_returns_model_when_present() -> None:
 def test_extract_algorithm_model_returns_none_when_missing() -> None:
     assert extract_algorithm_model(None) is None
     assert extract_algorithm_model(SimpleNamespace()) is None
+    assert extract_algorithm_model(SimpleNamespace(model=None)) is None
 
 
 def test_build_continual_learning_config_uses_defaults_and_overrides() -> None:
