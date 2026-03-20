@@ -29,7 +29,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from scripts.v460.lib.regime_detector import (
+from ztb.trading.signal.regime.regime_detector import (
     FillTestRegime,
     FillTestRegimeDetector,
     RegimeConfig,

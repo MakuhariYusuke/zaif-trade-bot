@@ -32,7 +32,7 @@ from scripts.v460.lib.lot_manager import (
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
     from scripts.v460.lib.maker_price import MakerPriceCalculator
-    from scripts.v460.lib.regime_detector import RegimeDetector
+    from ztb.trading.signal.regime.regime_detector import FillTestRegimeDetector
     from scripts.v460.lib.side_selector import SideSelector
     from ztb.metrics.fill_quality import FillRecord
     from ztb.trading.common.cancel_reasons import CancelReason

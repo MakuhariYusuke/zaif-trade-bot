@@ -7346,3 +7346,28 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - 実装で判明した追加補正を追記
 - `tests/unit/v460/test_508_sac_runtime_and_bayesian_migration.py`
   - SAC runtime / Bayesian filter の shim と canonical の整合を focused 回帰化
+## 509# regime_detector canonical 化
+- `ztb/trading/signal/regime/regime_detector.py`
+  - `scripts/v460/lib/regime_detector.py` の本体を canonical module として昇格
+- `scripts/v460/lib/regime_detector.py`
+  - 旧 import 契約維持のため compatibility shim に整理
+  - `Hamilton` / `AMH` を含む module docstring は保持し、theory-based test を保護
+- `tests/unit/v460/_fill_test_source.py`
+  - `REGIME_DETECTOR` source path を canonical 実装側へ更新
+- `scripts/v460/run_fill_test.py`
+- `scripts/v460/analysis/compare_regime_ab.py`
+- `scripts/v460/lib/order_monitor.py`
+- `scripts/v460/lib/maker_price.py`
+- `scripts/v460/lib/maker_regime_boost.py`
+- `scripts/v460/lib/maker_microstructure.py`
+- `scripts/v460/lib/adaptation_engine.py`
+- `scripts/v460/lib/fill_record_helpers.py`
+  - regime detector の canonical import へ追随
+- `ztb/trading/signal/regime/__init__.py`
+  - package export を current class set に合わせて整理
+- `tests/unit/v460/test_509_regime_detector_migration.py`
+  - shim/canonical の class・enum・protocol 整合と theory docstring 契約を focused 回帰化
+- `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
+  - current YAML の intentional override (`sell_age_cap_sec`, `cross_venue_basis_correction_enabled`) に追随
+- `tests/unit/v460/test_fill_quality.py`
+  - current YAML の `side_offset.sell=0.14` に追随

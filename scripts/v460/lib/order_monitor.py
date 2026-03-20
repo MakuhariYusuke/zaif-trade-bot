@@ -19,7 +19,7 @@ from typing import Final, Protocol, cast, runtime_checkable
 
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import FillMonitorResult, FillTestConfig
-from scripts.v460.lib.regime_detector import RegimeDetectorLike
+from ztb.trading.signal.regime.regime_detector import RegimeDetectorLike
 
 logger = logging.getLogger(__name__)
 
@@ -303,6 +303,14 @@ class OrderMonitor:
         if _regime_name is not None:
             _timeout_mult = cfg.regime_timeout_multipliers.get(_regime_name, 1.0)
         _effective_timeout = _base_timeout * _timeout_mult
+        # 506# P0: sell age cap — sell 注文の最大滞留時間を制限
+        # ranging 30–50s バケットに -158.73 JPY 集中 → 25s キャップで回避
+        if (
+            side == "sell"
+            and cfg.sell_age_cap_sec is not None
+            and cfg.sell_age_cap_sec > 0
+        ):
+            _effective_timeout = min(_effective_timeout, cfg.sell_age_cap_sec)
         if _timeout_mult != 1.0:
             logger.debug(
                 f"[regime_timeout] {_regime_name} → timeout "

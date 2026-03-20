@@ -20,11 +20,11 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from scripts.v460.lib.regime_detector import FillTestRegime
+from ztb.trading.signal.regime.regime_detector import FillTestRegime
 
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
-    from scripts.v460.lib.regime_detector import RegimeDetectorLike
+    from ztb.trading.signal.regime.regime_detector import RegimeDetectorLike
 
 logger = logging.getLogger(__name__)
 

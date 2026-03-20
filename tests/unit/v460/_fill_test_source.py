@@ -119,7 +119,7 @@ FAST_FILL_DEFENSE = (
     _PROJECT_ROOT / "ztb" / "trading" / "risk" / "fast_fill_defense.py"
 )
 REGIME_DETECTOR = (
-    _PROJECT_ROOT / "scripts" / "v460" / "lib" / "regime_detector.py"
+    _PROJECT_ROOT / "ztb" / "trading" / "signal" / "regime" / "regime_detector.py"
 )
 OB_UTILS = (
     _PROJECT_ROOT / "scripts" / "v460" / "lib" / "ob_utils.py"

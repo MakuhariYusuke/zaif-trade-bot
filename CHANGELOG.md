@@ -5820,3 +5820,10 @@ python scripts/unified_trainer.py \
 - `sac_retrain_scheduler.py` の UTC timestamp 生成を shared helper `current_iso_timestamp(utc=True)` に寄せた
 - `docs/v460/502_phg_plan_lib_to_ztb_and_object_split.md` と `docs/v460/505_phg_resp_504_lib_to_ztb_plan_adjustment.md` を更新し、`regime_detector` / `bayesian_regime_filter` の移行先を既存 `ztb/trading/signal/regime/` namespace ベースへ補正
 - `tests/unit/v460/test_508_sac_runtime_and_bayesian_migration.py` を追加し、canonical module と shim の整合を focused 回帰化
+## 509# regime_detector canonical 化
+- `ztb/trading/signal/regime/regime_detector.py` を canonical module として追加し、`scripts/v460/lib/regime_detector.py` は理論 docstring を保持した compatibility shim に整理
+- `tests/unit/v460/_fill_test_source.py` の `REGIME_DETECTOR` は canonical 実装側を見るように更新
+- `run_fill_test.py` / `compare_regime_ab.py` / `order_monitor.py` / `maker_price.py` / `maker_regime_boost.py` / `maker_microstructure.py` / `adaptation_engine.py` / `fill_record_helpers.py` の regime detector 参照を canonical path に追随
+- `ztb/trading/signal/regime/__init__.py` を regime detector export に追随
+- `tests/unit/v460/test_509_regime_detector_migration.py` を追加し、shim と canonical 実装の整合、および理論 docstring 契約を回帰化
+- current `fill_test.yaml` に合わせて `test_336_yaml_code_drift_prevention.py` の allowlist と `test_fill_quality.py` の sell offset 期待値を更新

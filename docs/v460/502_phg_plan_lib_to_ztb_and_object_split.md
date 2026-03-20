@@ -178,8 +178,8 @@ Phase 3 の split-first 対象から外す。
 
 ```python
 # scripts/v460/lib/regime_detector.py
-"""Compatibility shim — canonical は ztb.trading.regime.regime_detector."""
-from ztb.trading.regime.regime_detector import (  # noqa: F401
+"""Compatibility shim — canonical は ztb.trading.signal.regime.regime_detector."""
+from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
     FillTestRegime,
     RegimeDetector,
     RegimeResult,
@@ -336,7 +336,7 @@ from ztb.trading.regime.regime_detector import (  # noqa: F401
 3. `lot_sizer.py` を `ztb/trading/sizing/` へ上げる
 4. `sac_common.py` を `ztb/training/sac/runtime.py` へ寄せる
 5. `fast_fill_defense.py` を façade 前提で `ztb/trading/risk/` へ移す
-6. `regime_detector.py` / `bayesian_regime_filter.py` を `ztb/trading/regime/` へ寄せる
+6. `regime_detector.py` / `bayesian_regime_filter.py` を `ztb/trading/signal/regime/` へ寄せる
 
 ## リスク
 

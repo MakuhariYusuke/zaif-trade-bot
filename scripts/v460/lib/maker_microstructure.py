@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
     from scripts.v460.lib.fill_probability_model import FillProbabilityModel
-    from scripts.v460.lib.regime_detector import RegimeDetectorLike
+    from ztb.trading.signal.regime.regime_detector import RegimeDetectorLike
 
 logger = logging.getLogger(__name__)
 

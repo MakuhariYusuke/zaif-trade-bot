@@ -37,7 +37,7 @@ import time
 from pathlib import Path
 from typing import Final, NamedTuple, Protocol, Sequence
 
-from scripts.v460.lib.regime_detector import RegimeDetectorLike
+from ztb.trading.signal.regime.regime_detector import RegimeDetectorLike
 
 
 # ------------------------------------------------------------------

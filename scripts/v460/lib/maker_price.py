@@ -30,7 +30,7 @@ from scripts.v460.lib.maker_microstructure import MicrostructureMixin
 from scripts.v460.lib.maker_regime_boost import RegimeBoostMixin
 from scripts.v460.lib.maker_risk_guards import RiskGuardsMixin
 from scripts.v460.lib.ob_utils import OrderBookSnapshot
-from scripts.v460.lib.regime_detector import RegimeDetectorLike
+from ztb.trading.signal.regime.regime_detector import RegimeDetectorLike
 from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
 
 logger = logging.getLogger(__name__)

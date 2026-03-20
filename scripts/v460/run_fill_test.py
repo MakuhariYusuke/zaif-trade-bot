@@ -238,7 +238,7 @@ class FillTestRunner(
         # 037# レジーム検知 (035# §4)
         self._regime_detector: Optional["FillTestRegimeDetector"] = None
         if config.enable_regime:
-            from scripts.v460.lib.regime_detector import (
+            from ztb.trading.signal.regime.regime_detector import (
                 FillTestRegimeDetector,
                 RegimeConfig,
             )
