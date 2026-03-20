@@ -454,6 +454,8 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
    - まず防御を固めてから stage orchestration を抜く順序が安全
  - Phase 4 の functional test 側 canonical import 収束も継続しており、
    sizing / regime の通常 unit test は `ztb` 参照へかなり寄ってきた
+ - `maker_price` では loss boost decay multiplier も `ztb.trading.pricing.boost_math` へ抽出済み
+   - 残りは stateful stage orchestration と config/logging 文脈が中心
 
 ## テスト方針
 

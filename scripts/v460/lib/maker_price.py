@@ -30,6 +30,7 @@ from scripts.v460.lib.maker_regime_boost import RegimeBoostMixin
 from scripts.v460.lib.maker_risk_guards import RiskGuardsMixin
 from scripts.v460.lib.ob_utils import OrderBookSnapshot
 from ztb.trading.pricing.contracts import ImbalanceResult, MakerPriceResult, OrderbookProvider
+from ztb.trading.pricing.boost_math import decayed_loss_boost_multiplier
 from ztb.trading.pricing.inventory_math import (
     decayed_inventory_imbalance,
     update_inventory_counters,
@@ -712,11 +713,12 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         cfg = self._config
         _elapsed = now - self._loss_boost_set_time
         _tau = cfg.loss_boost_decay_tau_sec
-        if _tau > 0 and _elapsed > 0:
-            _decay = math.exp(-_elapsed / _tau)
-        else:
-            _decay = 1.0
-        _decayed_mult = 1.0 + (self._loss_boost_mult - 1.0) * _decay
+        # exp(-elapsed / tau) の純ロジックは canonical helper へ委譲。
+        _decayed_mult = decayed_loss_boost_multiplier(
+            base_multiplier=self._loss_boost_mult,
+            elapsed_sec=_elapsed,
+            tau_sec=_tau,
+        )
 
         # 減衰が十分 (mult < 1.01) ならリセット
         if _decayed_mult < 1.01:

@@ -5964,3 +5964,7 @@ python scripts/unified_trainer.py \
 - `tests/unit/v460/test_lot_sizer.py` を canonical `ztb.trading.sizing.lot_sizer` import に変更
 - `tests/unit/v460/test_param_adapter.py` を canonical `ztb.trading.sizing.param_adapter` import に変更し、不要な `sys.path` 注入を削除
 - `tests/unit/v460/test_bayesian_regime_filter.py` を canonical `ztb.trading.signal.regime.bayesian_regime_filter` import に変更
+## 528# loss boost decay helper extraction
+- `ztb/trading/pricing/boost_math.py` を追加し、`decayed_loss_boost_multiplier(...)` を canonical helper 化
+- `scripts/v460/lib/maker_price.py` の `_apply_loss_boost(...)` は stateful 本体を維持したまま、純粋な減衰倍率計算だけ shared helper に委譲
+- `tests/unit/v460/test_517_pricing_offset_math_migration.py` に decay helper の focused 回帰を追加

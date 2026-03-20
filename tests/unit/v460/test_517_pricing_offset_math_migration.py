@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import math
+
 import pytest
 
+from ztb.trading.pricing.boost_math import decayed_loss_boost_multiplier
 from ztb.trading.pricing.offset_math import (
     discounted_sell_offset_floor,
     effective_max_ratio,
@@ -80,3 +83,17 @@ class TestPricingOffsetMathMigration:
         )
         assert result.price == pytest.approx(1007.0)
         assert result.effective_offset_ratio == pytest.approx(0.2)
+
+    def test_decayed_loss_boost_multiplier_decays_toward_one(self) -> None:
+        assert decayed_loss_boost_multiplier(
+            base_multiplier=1.5,
+            elapsed_sec=100.0,
+            tau_sec=100.0,
+        ) == pytest.approx(1.0 + 0.5 * math.exp(-1.0))
+
+    def test_decayed_loss_boost_multiplier_returns_raw_when_tau_invalid(self) -> None:
+        assert decayed_loss_boost_multiplier(
+            base_multiplier=1.5,
+            elapsed_sec=100.0,
+            tau_sec=0.0,
+        ) == pytest.approx(1.5)

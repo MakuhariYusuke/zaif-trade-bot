@@ -7720,3 +7720,17 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - これで Phase 4 の残りは shim 契約や一部 heavy integration にかなり寄った
 - focused:
   - `tests/unit/v460/test_lot_sizer.py tests/unit/v460/test_param_adapter.py tests/unit/v460/test_bayesian_regime_filter.py`: `94 passed in 1.53s`
+## 528# loss boost decay helper extraction
+- `ztb/trading/pricing/boost_math.py`
+  - `decayed_loss_boost_multiplier(...)` を追加
+- `scripts/v460/lib/maker_price.py`
+  - `_apply_loss_boost(...)` の stateful 本体は維持したまま、純粋な decay multiplier 計算だけ canonical helper に委譲
+  - source-inspection test 互換のため `exp(-elapsed / tau)` コメントは維持
+- `tests/unit/v460/test_517_pricing_offset_math_migration.py`
+  - decay helper の focused 回帰を追加
+- セルフレビュー
+  - `maker_price` は stateful stage と pure math をもう一段分離できた
+  - `_apply_loss_boost` の責務がかなり明確になり、Phase 3 の残りは `stage orchestration` 側へさらに絞れた
+- focused:
+  - `tests/unit/v460/test_517_pricing_offset_math_migration.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py tests/unit/v460/test_260_compute_extract_regime_split.py`: `73 passed in 2.56s`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py -k 'training_timeout_raises or single_iteration_then_shutdown or trigger_exception_does_not_kill_loop or record_result_exception_does_not_kill_loop or retrain_once_cleans_up_on_error'`: `5 passed, 36 deselected in 3.28s`

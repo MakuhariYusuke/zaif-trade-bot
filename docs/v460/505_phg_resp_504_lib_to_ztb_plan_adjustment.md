@@ -374,3 +374,17 @@ stage orchestration 分割前の安全性を高める方針を取っている。
 
 の functional test も canonical import へ寄せ、
 shim 契約テストだけを legacy path 側へ残す方向を継続している。
+
+また `maker_price` は、
+
+- spread guard finalization
+- loss boost decay multiplier
+
+まで pure helper を `ztb.trading.pricing` 側へ寄せられている。
+
+このため、残る Phase 3 論点は
+
+- spread adaptive / FFD / loss boost の stage orchestration
+- `FillRecord` 最終 builder ownership
+
+へさらに限定された。
