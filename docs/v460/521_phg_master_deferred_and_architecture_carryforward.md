@@ -246,16 +246,34 @@ shim を外しにいく条件:
    - adaptation/ensemble/distributed option wiring
    - memory/performance monitoring
    - reporting/UI/session persistence
+   - first extraction priority:
+     - runtime feature flags
+     - advanced-feature enablement gating
 2. `RewardCalculator`
    - component initialization / config cache
    - state bookkeeping
    - reward rule composition
    - diagnostics / structured logging
+   - first extraction priority:
+     - stage bookkeeping
+     - diagnostic payload shaping
 
 先にやるべきこと:
 
 - 実装分割そのものではなく、import 境界と ownership を固定する
 - public compatibility を崩さない façade の必要有無を先に判断する
+
+2026-03-21 update:
+
+- `UnifiedTrainer` では runtime feature flag 解決を
+  `ztb.training.unified_trainer.runtime_flags` へ先行抽出した
+- これにより `distributed/federated/ensemble/mixed_precision/continual`
+  の enablement 判定は pure helper として追える状態になった
+- `RewardCalculator` はまだ実分割には入っていないが、
+  先に抜く対象を
+  - stage bookkeeping
+  - diagnostics payload shaping
+  に固定した
 
 ## テスト設計
 

@@ -96,6 +96,10 @@ from ztb.training.unified_trainer.ensemble_system import (
     EnsembleConfig,
     EnsemblePredictor,
 )
+from ztb.training.unified_trainer.runtime_flags import (
+    resolve_ensemble_enabled,
+    resolve_trainer_runtime_flags,
+)
 from ztb.training.unified_trainer.ui import TrainingUI
 from ztb.utils.cache_utils import TTLCache
 from ztb.utils.logging_utils import get_logger
@@ -212,13 +216,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         # Ensemble System components (enhanced for SAC v428 Phase 3)
         self.ensemble_system: EnsemblePredictor | None = None
         self.ensemble_config: EnsembleConfig | None = None
-        self.ensemble_enabled = (
-            self.config.get("v427_advanced_features", {})
-            .get("ensemble_system", {})
-            .get("enabled", False)
-            if isinstance(self.config, dict)
-            else False
-        )
+        self.ensemble_enabled = resolve_ensemble_enabled(self.config)
 
         if self.ensemble_enabled:
             self._initialize_ensemble_system(self.config)
@@ -964,8 +962,15 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                     f"Overriding total_timesteps from command line: {self.total_timesteps:,}"
                 )
 
+            runtime_flags = resolve_trainer_runtime_flags(
+                self.config,
+                enable_distributed=self.enable_distributed,
+                world_size=self.world_size,
+                ensemble_enabled=self.ensemble_enabled,
+            )
+
             # Check for distributed training
-            if self.enable_distributed and self.world_size > 1:
+            if runtime_flags.distributed_training_enabled:
                 self.logger.info(
                     f"Distributed training enabled with {self.world_size} processes"
                 )
@@ -974,21 +979,21 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                     return False
 
             # Check for federated learning
-            if self.config.get("enable_federated", False):
+            if runtime_flags.federated_learning_enabled:
                 self.logger.info("Federated learning enabled")
                 if not self._setup_federated_learning():
                     self.ui.print_error("Failed to setup federated learning")
                     return False
 
             # Check for ensemble system (SAC v428 Phase 3)
-            if self.ensemble_enabled:
+            if runtime_flags.ensemble_enabled:
                 self.logger.info("Ensemble system enabled for SAC v428 Phase 3")
                 if not self._setup_ensemble_training():
                     self.ui.print_error("Failed to setup ensemble training")
                     return False
 
             # Check for mixed precision training
-            if self.config.get("enable_mixed_precision", False):
+            if runtime_flags.mixed_precision_enabled:
                 self.logger.info("Mixed precision training enabled")
                 if not self._setup_mixed_precision():
                     self.ui.print_error("Failed to setup mixed precision training")
@@ -1476,6 +1481,12 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
     def _setup_advanced_features(self) -> None:
         """Setup advanced ML features."""
         try:
+            runtime_flags = resolve_trainer_runtime_flags(
+                self.config,
+                enable_distributed=self.enable_distributed,
+                world_size=self.world_size,
+                ensemble_enabled=self.ensemble_enabled,
+            )
             # Anomaly Detection Setup
             if self.config.get("enable_anomaly_detection", False):
                 self.logger.info("Setting up anomaly detection...")
@@ -1521,9 +1532,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 self.ui.print_info("Meta learning enabled")
 
             # Enhanced Federated Learning Setup
-            if self.config.get("enable_federated", False) and self.config.get(
-                "federated_markets", False
-            ):
+            if runtime_flags.market_federated_learning_enabled:
                 self.logger.info("Setting up market-based federated learning...")
                 alg_trainer_local = self.algorithm_trainer
                 if alg_trainer_local is not None and hasattr(
@@ -1544,7 +1553,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 self.ui.print_info("Market-based federated learning enabled")
 
             # Continual Learning Setup
-            if self.config.get("enable_continual_learning", False):
+            if runtime_flags.continual_learning_enabled:
                 self.logger.info("Setting up continual learning...")
                 alg_trainer_local = self.algorithm_trainer
                 if alg_trainer_local is not None and hasattr(

@@ -8002,3 +8002,20 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - セルフレビュー
   - `maker_price` の orchestration を動かさず、周辺の repeated bookkeeping だけ整理できた
   - `UnifiedTrainer` / `RewardCalculator` は「future のまま放置」ではなく、次に切る軸まで文章化できた
+## 542# unified-trainer runtime flag extraction
+- `ztb/training/unified_trainer/runtime_flags.py`
+  - `resolve_ensemble_enabled(...)`
+  - `resolve_trainer_runtime_flags(...)`
+  を追加
+- `ztb/training/unified_trainer/trainer.py`
+  - `__init__` の `ensemble_enabled`
+  - `run()` の distributed/federated/ensemble/mixed precision 判定
+  - `_setup_advanced_features()` の market-federated/continual 判定
+  を shared helper に委譲
+- `tests/unit/training/test_unified_trainer_runtime_flags.py`
+  - runtime flag helper と trainer 初期化の focused 回帰を追加
+- `docs/v460/521_phg_master_deferred_and_architecture_carryforward.md`
+  - `UnifiedTrainer` の first extraction priority と、`RewardCalculator` の先行 split 候補を追記
+- セルフレビュー
+  - `UnifiedTrainer` の大分割に踏み込まず、advanced feature gating の ownership だけ先に固定できた
+  - `RewardCalculator` は今回は code split せず、設計上の first extraction priority を先に固めた

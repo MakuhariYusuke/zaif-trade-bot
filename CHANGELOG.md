@@ -6055,3 +6055,8 @@ python scripts/unified_trainer.py \
 - `scripts/v460/lib/maker_price.py` の repeated stage-tracking 分岐を helper 再利用に整理
 - `tests/unit/v460/test_519_pricing_stage_tracking_migration.py` を追加し、stage tracking helper の focused 回帰を追加
 - `docs/v460/521_phg_master_deferred_and_architecture_carryforward.md` に `maker_price` の前進と `UnifiedTrainer` / `RewardCalculator` の split 軸・行数を追記
+## 542# unified-trainer runtime flag extraction
+- `ztb/training/unified_trainer/runtime_flags.py` を追加し、`ensemble` / `distributed` / `federated` / `continual` / `mixed_precision` の enablement 判定を pure helper 化
+- `ztb/training/unified_trainer/trainer.py` は `run()` と `_setup_advanced_features()` の flag 解決を shared helper に委譲し、advanced feature gating の ownership を一段明確化
+- `tests/unit/training/test_unified_trainer_runtime_flags.py` を追加し、runtime flag helper と `UnifiedTrainer` 初期化の focused 回帰を追加
+- `docs/v460/521_phg_master_deferred_and_architecture_carryforward.md` に `UnifiedTrainer` / `RewardCalculator` の first extraction priority を追記
