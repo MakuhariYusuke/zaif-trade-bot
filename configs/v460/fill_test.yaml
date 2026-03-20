@@ -356,6 +356,30 @@ cross_venue_lead_lag:
   favorable_tighten_enabled: false   # 安全デフォルト: 有効化は実運用で確認後
   favorable_tighten_mult: 0.90       # offset × 0.90 = 10% 縮小 (confidence=1.0 時)
 
+# ---- 211# Spread Anomaly Detector (513# YAML化) ----
+# スプレッドの異常拡大を検出し offset/interval/lot を自動調整する。
+# 現状は未インスタンス化のためこのセクションは設定参照のみ。
+# 有効化にはオーケストレータでのインスタンス化が必要。
+spread_anomaly_detector:
+  enabled: false                   # 513# デフォルト無効 (インスタンス化未実装)
+  wide_ratio: 2.0                  # spread > baseline × 2.0 → WIDE
+  dry_ratio: 4.0                   # spread > baseline × 4.0 → DRY
+  frozen_ratio: 8.0                # spread > baseline × 8.0 → FROZEN
+  baseline_window_sec: 3600.0      # baseline 計測ウィンドウ (1h)
+
+# ---- 211# Micro Circuit Breaker (513# YAML化) ----
+# ボラティリティ急騰を検出し offset/interval を自動調整する。
+# 現状は未インスタンス化のためこのセクションは設定参照のみ。
+# dynamic_cycle_interval (306#) が一部の役割を代替中。
+micro_circuit_breaker:
+  enabled: false                   # 513# デフォルト無効 (インスタンス化未実装)
+  caution_sigma: 1.0               # σ > 1.0 → CAUTION
+  warning_sigma: 1.5               # σ > 1.5 → WARNING (offset/interval 変更)
+  halt_sigma: 2.0                  # σ > 2.0 → HALT (全注文停止)
+  halt_cooldown_sec: 300.0         # HALT 後のクールダウン (5min)
+  warning_offset_mult: 1.5         # WARNING 時の offset 乗数
+  warning_interval_mult: 2.0       # WARNING 時の interval 乗数
+
 # ---- 062# S5: SkipGate ML フィルター (AS 分類器ベース) ----
 # 071# OB 特徴量除去: 価格・取引データのみで判断 (v459 方式回帰)
 # 072# use_ob_features トグル追加: ph2 通過後に true へ切替で OB 特徴量復元

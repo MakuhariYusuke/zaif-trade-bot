@@ -1,8 +1,8 @@
-# 513# 実装済み機構の活用度監査
+# 513# 実装済み機構の活用度監査 + SAD/MCB YAML化
 
 ## 概要
 実装済みだが運用上の活躍が不明確な機構を調査し、活用度を分類。
-Dead code の特定と、活用改善の方向性を提示する。
+Dead code の特定と、SAD/MCB の YAML 設定セクション追加、PPG 活用検討を提示する。
 
 ## 調査結果サマリ
 
@@ -14,9 +14,9 @@ Dead code の特定と、活用改善の方向性を提示する。
 | 4 | A-S Reservation Price | enabled=true, σ推定つき | ⚠️ アクティブ（効果量不明） |
 | 5 | Adaptation Engine | enabled=false (122#) | ❌ 無効化済み |
 | 6 | Fast Fill Defense | enabled=true, 2.0-2.5x boost | ✅ アクティブ |
-| 7 | Spread Anomaly Detector | 未インスタンス化 | ❌ デッドコード |
-| 8 | Phantom Position Guard | 未インスタンス化 | ❌ デッドコード |
-| 9 | Micro Circuit Breaker | 未インスタンス化 | ❌ デッドコード |
+| 7 | Spread Anomaly Detector | YAML化済み, enabled=false | ⚠️ 待機状態 |
+| 8 | Phantom Position Guard | 未インスタンス化 | ⚠️ 活用検討中 |
+| 9 | Micro Circuit Breaker | YAML化済み, enabled=false | ⚠️ 待機状態 |
 | 10 | Dynamic Kill Manager | enabled=true, 広範統合 | ✅ 非常にアクティブ |
 
 ## 各機構の詳細
@@ -62,25 +62,27 @@ Dead code の特定と、活用改善の方向性を提示する。
 - `boost_release_streak: 3` で正常 fill 3 連続後にリリース
 - **判定**: シンプルだが高信頼度の adverse selection 防御。
 
-### 7. Spread Anomaly Detector — ❌ デッドコード
+### 7. Spread Anomaly Detector — ⚠️ 待機状態（YAML化済み）
 - `spread_anomaly_detector.py`: SADLevel (NORMAL/WIDE/DRY/FROZEN) 全実装済み
-- **YAML 設定セクションなし**、**未インスタンス化**
-- `_sad: SpreadAnomalyDetector | None = None` で宣言のみ
+- **513# で YAML 設定セクション追加** (`enabled: false`)
+- `_sad: SpreadAnomalyDetector | None = None` で宣言のみ（インスタンス化未実装）
 - `_feed_mcb_sad()` で `if self._sad is not None` ガード → 常に no-op
 - テスト: `test_211_spread_anomaly_detector.py` に 8 テスト存在
 - **推定コスト**: ~200 LOC のデッドコード
 
-### 8. Phantom Position Guard — ❌ デッドコード
+### 8. Phantom Position Guard — ⚠️ 活用検討中
 - `phantom_position_guard.py`: 250+ LOC、TTL ベース残留ポジション検出
-- **YAML 設定セクションなし**、**未インスタンス化**
+- **反省会での活用が有望**: status_unknown 注文の事後分析に有用
+- config dataclass なし（クラス定数のみ）、**未インスタンス化**
 - `_phantom_guard: PhantomPositionGuard | None = None` 宣言のみ
 - TYPE_CHECKING import のみ
 - テスト: `test_237_phantom_position_guard.py`, `test_252_*.py` に存在
 - **推定コスト**: ~300 LOC のデッドコード
 
-### 9. Micro Circuit Breaker — ❌ デッドコード
+### 9. Micro Circuit Breaker — ⚠️ 待機状態（YAML化済み）
 - `micro_circuit_breaker.py`: MCBLevel (NORMAL/CAUTION/WARNING/HALT) 全実装
-- **YAML 設定セクションなし**、**未インスタンス化**
+- **513# で YAML 設定セクション追加** (`enabled: false`)
+- `_mcb: MicroCircuitBreaker | None = None` 宣言のみ（インスタンス化未実装）
 - `_mcb: MicroCircuitBreaker | None = None` 宣言のみ
 - `_feed_mcb_sad()` に `if self._mcb is not None` ガード → 常に no-op
 - テスト: `test_211_micro_circuit_breaker.py` に存在
@@ -92,9 +94,9 @@ Dead code の特定と、活用改善の方向性を提示する。
 ### 削除候補（~750 LOC）
 | ファイル | LOC | 理由 |
 |----------|-----|------|
-| `spread_anomaly_detector.py` | ~200 | 未統合、YAML なし |
-| `phantom_position_guard.py` | ~300 | 未統合、YAML なし |
-| `micro_circuit_breaker.py` | ~250 | 未統合、代替あり |
+| `spread_anomaly_detector.py` | ~200 | YAML化済み、インスタンス化待ち |
+| `phantom_position_guard.py` | ~300 | 反省会活用を検討中 |
+| `micro_circuit_breaker.py` | ~250 | YAML化済み、インスタンス化待ち |
 
 ### 削除しない理由（考慮事項）
 - 3 機構ともテストが存在し、設計は完了している
@@ -102,9 +104,12 @@ Dead code の特定と、活用改善の方向性を提示する。
 - デッドコードだがメンテコストは低い（他コードとの結合がほぼゼロ）
 
 ### 推奨
-- **即時対応不要**: メンテコストが低いため、削除は急がない
+- **SAD/MCB**: YAML 化完了。有効化にはオーケストレータでのインスタンス化実装が必要
+- **PPG**: 反省会（事後分析）での status_unknown 注文追跡に活用検討
 - **A-S 寄与量の可視化**: 効果量が不明なため、ステージ別 logging で検証
 - **adaptation.enabled**: 122# の因果分離理由を YAML コメントに記載（既にある）
 
 ## 変更ファイル
-記録のみ。コード変更なし。
+| ファイル | 変更内容 |
+|---|---|
+| `configs/v460/fill_test.yaml` | `spread_anomaly_detector:` + `micro_circuit_breaker:` セクション追加 |

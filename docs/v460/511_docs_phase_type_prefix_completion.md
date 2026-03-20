@@ -1,15 +1,17 @@
-# 511# docs: 504-510 命名規約適合リネーム + index.md 更新
+# 511# docs: 504-510 フェーズ・Type 接頭辞補完リネーム + index.md 更新
 
 ## 概要
-ドキュメント 504#-510# のファイル名を v460 命名規約 (`NNN_phX_type_description.md`) に適合させるリネームと、index.md の更新。
+ドキュメント 509#-510# のファイル名にフェーズ表記 (`ph2`) と Type 表記 (`fix`/`impl`) が
+欠落していたため、v460 命名規約 (`NNN_phX_type_description.md`) に適合させるリネームを実施。
+併せて 497#-510# の全エントリを index.md に追加。
 
 ## 変更内容
 
-### ファイルリネーム
-| 旧名 | 新名 |
-|---|---|
-| (旧名不明) | `509_ph2_fix_sell_age_cap_micro_timeout_guard.md` |
-| (旧名不明) | `510_ph2_impl_inv_skew_periodic_summary_vg_reason.md` |
+### ファイルリネーム（フェーズ+Type 接頭辞補完）
+| 旧名 | 新名 | 補完内容 |
+|---|---|---|
+| `509_sell_age_cap_micro_timeout_guard.md` | `509_ph2_fix_sell_age_cap_micro_timeout_guard.md` | `_ph2_fix_` 追加 |
+| `510_inv_skew_periodic_summary_vg_reason.md` | `510_ph2_impl_inv_skew_periodic_summary_vg_reason.md` | `_ph2_impl_` 追加 |
 
 ### index.md 更新
 - 497#-510# の 12 エントリを index.md に追加
@@ -31,6 +33,6 @@
 ## 変更ファイル
 | ファイル | 変更内容 |
 |---|---|
-| `docs/v460/509_*.md` | リネーム |
-| `docs/v460/510_*.md` | リネーム |
+| `docs/v460/509_sell_age_cap_micro_timeout_guard.md` | → `509_ph2_fix_*` にリネーム |
+| `docs/v460/510_inv_skew_periodic_summary_vg_reason.md` | → `510_ph2_impl_*` にリネーム |
 | `docs/v460/index.md` | 12 エントリ追加 + 更新日付変更 |

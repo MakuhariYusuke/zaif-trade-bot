@@ -537,9 +537,9 @@
 | 508 | impl | [508_ph2_impl_logging_observability_improvements.md](508_ph2_impl_logging_observability_improvements.md) | ログ・可観測性改善: de-meaning basis_bps/adjusted_spread + sell_age_cap/regime_timeout ログレベル修正 |
 | 509 | fix | [509_ph2_fix_sell_age_cap_micro_timeout_guard.md](509_ph2_fix_sell_age_cap_micro_timeout_guard.md) | sell_age_cap × micro_timeout ガード: cumulative cap + stale reprice 残時間チェック |
 | 510 | impl | [510_ph2_impl_inv_skew_periodic_summary_vg_reason.md](510_ph2_impl_inv_skew_periodic_summary_vg_reason.md) | inv_skew_factor fill_record 追加 + 周期的サマリ統計 + VG boost 理由粒度向上 |
-| 511 | docs | [511_docs_naming_convention_rename.md](511_docs_naming_convention_rename.md) | 504-510 命名規約適合リネーム + index.md 更新 |
+| 511 | docs | [511_docs_phase_type_prefix_completion.md](511_docs_phase_type_prefix_completion.md) | 504-510 フェーズ・Type 接頭辞補完リネーム + index.md 更新 |
 | 512 | impl | [512_ph2_impl_cross_venue_favorable_tighten_dry_summary.md](512_ph2_impl_cross_venue_favorable_tighten_dry_summary.md) | cross-venue favorable-side tighten + DRY microprice + 周期サマリ統合 |
-| 513 | audit | [513_audit_dormant_mechanisms.md](513_audit_dormant_mechanisms.md) | 実装済み機構の活用度監査: SAD/PPG/MCB がデッドコード、AS 効果量不明 |
+| 513 | audit | [513_ph2_audit_dormant_mechanisms.md](513_ph2_audit_dormant_mechanisms.md) | 実装済み機構の活用度監査 + SAD/MCB YAML化: SAD/PPG/MCB がデッドコード |
 
 ---
 
