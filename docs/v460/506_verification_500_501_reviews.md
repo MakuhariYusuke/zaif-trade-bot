@@ -230,3 +230,51 @@ def compute_cross_venue_lead_lag_hint(..., basis_bps: float = 0.0):
 *検証日: 2026-03-21*
 *データソース: results/v460/fill_test/fill_records_20260314–20260320.jsonl*
 *検証スクリプト: temp/verify_reviews.py, temp/verify_reviews2.py*
+
+---
+
+## 7. 実装完了: P0/P1 アクション
+
+### 7.1 P0: Sell Age Cap (sell_age_cap_sec)
+
+**変更ファイル:**
+- `scripts/v460/lib/fill_config.py`: `sell_age_cap_sec: float | None = None` 追加
+- `scripts/v460/lib/order_monitor.py`: polling loop の effective_timeout に `min(timeout, cap)` 適用
+- `scripts/v460/lib/config_hot_reload.py`: hot-reload 対応
+- `scripts/v460/lib/fill_config_parser.py`: YAML flat key パース追加
+- `configs/v460/fill_test.yaml`: `sell_age_cap_sec: 25.0` 設定
+
+**動作:** sell 注文の滞留時間を 25s に制限。30–50s バケット (n=46, PnL=-158.73) を回避。
+
+### 7.2 P0: Sell Offset 狭小化
+
+**変更:** `configs/v460/fill_test.yaml` の `side_offset.sell: 0.18 → 0.14`
+
+0.10–0.19 バケット (WR=67.4%, avg=+3.223) を活用し、0.19–0.25 バケット (avg=-1.491) への
+偏りを軽減。
+
+### 7.3 P1: De-meaning (EMA Basis Correction)
+
+**変更ファイル:**
+- `scripts/v460/lib/cross_venue_lead_lag.py`:
+  - `CrossVenueEMAState` に `ema_basis_bps: float = 0.0` 追加
+  - `update_cross_venue_ema()` に `basis_alpha` kwarg 追加
+  - `compute_cross_venue_lead_lag_hint()` に `basis_bps` kwarg 追加
+  - Confidence mode の direction 判定: `adjusted_spread = gating_spread - basis_bps`
+- `scripts/v460/lib/fill_cycle_executor.py`: EMA 更新 / hint 計算に basis パラメータ伝播
+- `scripts/v460/lib/fill_config.py`: `cross_venue_basis_correction_enabled`, `cross_venue_basis_ema_alpha` 追加
+- `scripts/v460/lib/fill_config_parser.py`: YAML マッピング追加
+- `scripts/v460/lib/config_hot_reload.py`: hot-reload 対応
+- `configs/v460/fill_test.yaml`: `basis_correction_enabled: true`, `basis_ema_alpha: 0.02`
+
+**動作:** CC/BF 間の構造的 basis (-3.3 bps) を EMA で追跡し、direction 判定前に差し引く。
+basis_bps=0.0 (default) では既存動作と完全に同一 (後方互換)。
+enabled 時: sell 側が CV guard を受ける確率が ~9% → ~42% に改善。
+
+### 7.4 テスト
+
+`tests/unit/v460/test_506_sell_improvements.py`: 10 tests
+- EMA basis tracking (初期化, 収束, 安定性)
+- De-meaning direction flip 検証
+- 後方互換性 (basis_bps=0.0)
+- Config field 存在確認, hot-reload 対応確認

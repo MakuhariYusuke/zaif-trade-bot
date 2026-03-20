@@ -210,6 +210,9 @@ def _parse_cross_venue_section(yaml_cfg: dict) -> dict:
         "min_confidence": "cross_venue_min_confidence",
         "confidence_reference_spread_bps": "cross_venue_confidence_reference_spread_bps",
         "confidence_floor": "cross_venue_confidence_floor",
+        # 506# basis correction
+        "basis_correction_enabled": "cross_venue_basis_correction_enabled",
+        "basis_ema_alpha": "cross_venue_basis_ema_alpha",
     }
     for yaml_key, config_key in cv_map.items():
         if yaml_key in cv:
@@ -788,6 +791,7 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
         "quiescence_gate_blocks_threshold", "quiescence_sleep_sec",  # 243#
         "order_timeout_sec",
         "order_timeout_sec_sell",
+        "sell_age_cap_sec",  # 506# P0: sell age cap
         "poll_interval_sec", "post_fill_wait_sec", "post_fill_wait_sec_sell",
         "results_dir",
         "max_preflight_skip", "start_side",

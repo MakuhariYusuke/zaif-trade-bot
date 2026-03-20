@@ -93,6 +93,9 @@ class FillTestConfig:
     quiescence_sleep_sec: float = 1800.0  # quiescence 時 sleep 上限 (30分, 0=無効)
     order_timeout_sec: float = 90.0  # 注文タイムアウト (096# 300→90)
     order_timeout_sec_sell: float | None = None  # 155# S-3: sell 専用 timeout (None=共通値)
+    # 506# P0: sell age cap — ranging での stale sell 早期キャンセル
+    # 30–50s バケットに -158.73 JPY 集中 → 25s でキャップ
+    sell_age_cap_sec: float | None = None  # None=無効, 設定時は sell timeout を min(timeout, cap) に
     poll_interval_sec: float = 5.0  # ポーリング間隔
     post_fill_wait_sec: float = 30.0  # 約定後 PnL 計測待ち
     post_fill_wait_sec_sell: float | None = None  # 168# §4.1 #1: sell 専用 PnL 計測待ち (None=共通値)
@@ -409,6 +412,9 @@ class FillTestConfig:
     # 449# confidence floor: spread 小でも完全無視しない最低信頼度
     # Kyle (1985) λ に基づく information floor — 小さな乖離にも情報価値を認める
     cross_venue_confidence_floor: float = 0.33
+    # 506# P1: basis correction (de-meaning) — CC/BF 構造的 basis を差し引いて direction 判定
+    cross_venue_basis_correction_enabled: bool = False
+    cross_venue_basis_ema_alpha: float = 0.02  # basis EMA は spread EMA より遅い (日次スケール)
     # 062# S5: SkipGate ML フィルター (AS 分類器ベースの注文スキップ)
     skip_gate_enabled: bool = False
     # 118# A3: side 別有効/無効 (sell 逆選別対策)

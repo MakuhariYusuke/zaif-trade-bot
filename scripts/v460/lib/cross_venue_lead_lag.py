@@ -32,12 +32,14 @@ class CrossVenueEMAState:
 
     120s cycle interval でのpoint velocity ノイズを平滑化し、
     sign_disagree による hint 脱落を防ぐ。
+    506# ema_basis_bps: CC/BF 構造的 basis の rolling EMA 推定。
     """
 
     ema_ref_mid: float
     ema_spread_bps: float
     last_timestamp: float
     n_updates: int = 0
+    ema_basis_bps: float = 0.0  # 506# rolling basis EMA (初期値 0.0 = 保守的)
 
 
 def update_cross_venue_ema(
@@ -46,20 +48,33 @@ def update_cross_venue_ema(
     spread_bps: float,
     timestamp: float,
     alpha: float,
+    *,
+    basis_alpha: float = 0.0,
 ) -> CrossVenueEMAState:
-    """445# Update or initialize EMA state with new observation."""
+    """445# Update or initialize EMA state with new observation.
+
+    506# basis_alpha > 0 の場合、spread_bps の rolling EMA を
+    ema_basis_bps として追跡 (日次スケールの構造的 basis 推定).
+    """
     if state is None or state.n_updates == 0:
         return CrossVenueEMAState(
             ema_ref_mid=ref_mid,
             ema_spread_bps=spread_bps,
             last_timestamp=timestamp,
             n_updates=1,
+            ema_basis_bps=spread_bps if basis_alpha > 0 else 0.0,
         )
+    _new_basis = (
+        basis_alpha * spread_bps + (1.0 - basis_alpha) * state.ema_basis_bps
+        if basis_alpha > 0
+        else state.ema_basis_bps
+    )
     return CrossVenueEMAState(
         ema_ref_mid=alpha * ref_mid + (1.0 - alpha) * state.ema_ref_mid,
         ema_spread_bps=alpha * spread_bps + (1.0 - alpha) * state.ema_spread_bps,
         last_timestamp=timestamp,
         n_updates=state.n_updates + 1,
+        ema_basis_bps=_new_basis,
     )
 
 
@@ -196,6 +211,8 @@ def compute_cross_venue_lead_lag_hint(
     precomputed_point_spread_bps: float | None = None,
     # 449# confidence floor を外部設定可能に (市場理論根拠: Kyle 1985 λ の最小信頼区間)
     confidence_floor: float = 0.33,
+    # 506# basis correction (de-meaning)
+    basis_bps: float = 0.0,
 ) -> CrossVenueLeadLagHint | None:
     """Compute a safe lead-lag hint from local/reference venue mids.
 
@@ -250,8 +267,12 @@ def compute_cross_venue_lead_lag_hint(
         if abs(gating_spread) < spread_bps_threshold:
             return None
 
-        # Direction from EMA spread (more stable than point spread)
-        direction = "up" if gating_spread > 0.0 else "down"
+        # 506# De-meaning: 構造的 basis を差し引いて direction 判定
+        # CC mid が BF mid より常に ~3.3bps 高いため、生 spread だと
+        # direction="down" → adverse_side="buy" に偏る。
+        # basis_bps を差し引くことで sell 側にも guard が機能する。
+        adjusted_spread = gating_spread - basis_bps
+        direction = "up" if adjusted_spread > 0.0 else "down"
 
         # Base confidence from spread magnitude
         # confidence_floor: Kyle (1985) λ の最小信頼区間に相当。

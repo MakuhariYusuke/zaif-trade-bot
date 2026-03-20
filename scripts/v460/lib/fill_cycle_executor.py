@@ -217,6 +217,12 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                 spread_bps=point_spread_bps,
                 timestamp=current_reference.timestamp,
                 alpha=self.config.cross_venue_ema_alpha,
+                # 506# basis EMA: enabled 時のみ basis_alpha > 0
+                basis_alpha=(
+                    self.config.cross_venue_basis_ema_alpha
+                    if self.config.cross_venue_basis_correction_enabled
+                    else 0.0
+                ),
             )
             self._cross_venue_ema_state = ema_state
 
@@ -235,6 +241,12 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                 # 449# DRY: 既計算の point_spread_bps を渡して重複排除
                 precomputed_point_spread_bps=point_spread_bps,
                 confidence_floor=self.config.cross_venue_confidence_floor,
+                # 506# basis correction (de-meaning)
+                basis_bps=(
+                    ema_state.ema_basis_bps
+                    if self.config.cross_venue_basis_correction_enabled
+                    else 0.0
+                ),
             )
             self._maker_price.set_cross_venue_lead_lag_hint(hint)
             self._cross_venue_prev_reference_snapshot = current_reference

@@ -545,6 +545,11 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "cross_venue_min_confidence",
     "cross_venue_confidence_reference_spread_bps",
     "cross_venue_confidence_floor",
+    # 506# basis correction
+    "cross_venue_basis_correction_enabled",
+    "cross_venue_basis_ema_alpha",
+    # 506# sell age cap
+    "sell_age_cap_sec",
     # --- macro regime 閾値 (MacroRegimeDetector 毎 update 読み) ---
     "macro_regime_bucket_sec",
     "macro_regime_slope_threshold",

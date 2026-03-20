@@ -28,6 +28,7 @@ fallback_duration_sec: 3600.0
 unknown_regime_max_consecutive: 5
 order_timeout_sec: 90.0       # 096#: 300→90 (stale order + reprice で早期対応)
 order_timeout_sec_sell: 75.0  # 155# S-3: sell は速い撤退が有利 (90→75, -16.7%)
+sell_age_cap_sec: 25.0        # 506# P0: sell 最大滴留時間 (30-50sバケットに-158.73JPY集中)
 poll_interval_sec: 5.0        # ポーリング間隔 (秒)
 post_fill_wait_sec: 30.0      # 約定後 PnL 計測待ち (秒)
 post_fill_wait_sec_sell: 90.0  # 168# §4.1 #1: sell 保持期間延長 (30→90s, PnL120>0 が根拠)
@@ -231,7 +232,7 @@ e3:
 # buy は共通値 (0.05) を継承、sell のみ保守化
 side_offset:
   # buy: 0.05                  # buy 側は共通値で十分 (PnL -0.10bps)
-  sell: 0.18                   # 121# A2: 0.14→0.18 / 156# D-3: A/Bで 0.15→0.14 段階縮小予定
+  sell: 0.14                   # 506# P0: 0.18→0.14 (0.10-0.19バケット WR=67.4%, avg=+3.223)
 
 # ---- 049# 即約定防御 ----
 fast_fill_defense:
@@ -344,6 +345,12 @@ cross_venue_lead_lag:
   ema_alpha: 0.3                   # EMA 減衰係数 (小 = 平滑化強)
   min_confidence: 0.2              # 閾値未満 → hint=None
   confidence_reference_spread_bps: 3.0  # base_confidence=1.0 となる spread
+  # 506# P1: Basis correction (de-meaning)
+  # CC mid が BF mid より構造的に ~3.3bps 高いため、
+  # 生 spread だと direction が常に "down" → adverse_side="buy" に偏る。
+  # basis EMA を差し引くことで sell 側にも guard が機能する。
+  basis_correction_enabled: true
+  basis_ema_alpha: 0.02         # basis EMA α (spread EMA より遅い、日次スケール)
 
 # ---- 062# S5: SkipGate ML フィルター (AS 分類器ベース) ----
 # 071# OB 特徴量除去: 価格・取引データのみで判断 (v459 方式回帰)
