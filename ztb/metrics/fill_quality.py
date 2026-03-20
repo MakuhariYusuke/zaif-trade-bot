@@ -191,6 +191,9 @@ class FillRecord:
     cross_venue_depth_imbalance: float | None = None
     # ---- 445# Cross-Venue confidence scoring ----
     cross_venue_confidence: float | None = None
+    # ---- 508# Cross-Venue basis correction 可観測性 ----
+    cross_venue_basis_bps: float | None = None
+    cross_venue_adjusted_spread_bps: float | None = None
     # ---- 448# Cross-Venue EMA/点spread分離 + No-Op可視化 ----
     cross_venue_lead_lag_point_spread_bps: float | None = None
     cross_venue_lead_lag_pre_offset: float | None = None

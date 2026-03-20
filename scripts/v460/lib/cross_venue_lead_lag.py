@@ -95,6 +95,9 @@ class CrossVenueLeadLagHint:
     confidence: float = 1.0                       # 0.0〜1.0, gate/boost の強度制御
     # 448# F3修正: direction/veto/boost に使う spread と診断用の生値を分離
     point_spread_bps: float | None = None         # 瞬間 point spread (EMAモード時のみ記録)
+    # 508# basis correction 可観測性
+    basis_bps: float = 0.0                        # 使用した basis 補正量
+    adjusted_spread_bps: float | None = None      # de-meaning 後の spread (=ema - basis)
 
 
 def build_cross_venue_event_details(
@@ -112,6 +115,8 @@ def build_cross_venue_event_details(
         "microprice_spread_bps": hint.microprice_spread_bps,
         "depth_imbalance": hint.depth_imbalance,
         "confidence": hint.confidence,
+        "basis_bps": hint.basis_bps,
+        "adjusted_spread_bps": hint.adjusted_spread_bps,
     }
 
 
@@ -137,6 +142,8 @@ def build_cross_venue_fill_fields(
             "cross_venue_microprice_spread_bps": None,
             "cross_venue_depth_imbalance": None,
             "cross_venue_confidence": None,
+            "cross_venue_basis_bps": None,
+            "cross_venue_adjusted_spread_bps": None,
         }
 
     applied = bool(hint is not None and hint.adverse_side == side)
@@ -166,6 +173,12 @@ def build_cross_venue_fill_fields(
         ),
         "cross_venue_confidence": (
             hint.confidence if hint is not None else None
+        ),
+        "cross_venue_basis_bps": (
+            hint.basis_bps if hint is not None else None
+        ),
+        "cross_venue_adjusted_spread_bps": (
+            hint.adjusted_spread_bps if hint is not None else None
         ),
     }
 
@@ -370,4 +383,6 @@ def compute_cross_venue_lead_lag_hint(
         depth_imbalance=depth_imbalance,
         confidence=confidence,
         point_spread_bps=spread_bps if use_confidence else None,
+        basis_bps=basis_bps,
+        adjusted_spread_bps=adjusted_spread if use_confidence else None,
     )

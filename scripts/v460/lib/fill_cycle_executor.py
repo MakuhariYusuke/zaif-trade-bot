@@ -254,7 +254,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                 logger.info(
                     "[cross_venue] hint direction=%s adverse_side=%s spread=%+.2fbps "
                     "velocity=%+.2fbps/s age=%.2fs conf=%.2f microprice_spread=%s "
-                    "depth_imb=%s ema_spread=%+.2fbps",
+                    "depth_imb=%s ema_spread=%+.2fbps basis=%+.2fbps adj=%s",
                     hint.direction,
                     hint.adverse_side,
                     hint.spread_bps,
@@ -264,6 +264,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                     f"{hint.microprice_spread_bps:+.2f}bps" if hint.microprice_spread_bps is not None else "N/A",
                     f"{hint.depth_imbalance:+.3f}" if hint.depth_imbalance is not None else "N/A",
                     ema_state.ema_spread_bps,
+                    hint.basis_bps,
+                    f"{hint.adjusted_spread_bps:+.2f}bps" if hint.adjusted_spread_bps is not None else "N/A",
                 )
                 # 449# 安定性: クラスレベルデフォルト宣言により直接参照
                 log_event(

@@ -227,9 +227,17 @@ class OrderMonitor:
             and cfg.sell_age_cap_sec is not None
             and cfg.sell_age_cap_sec > 0
         ):
+            _pre_cap = _effective_timeout
             _effective_timeout = min(_effective_timeout, cfg.sell_age_cap_sec)
+            if _effective_timeout < _pre_cap:
+                logger.info(
+                    "[506#] sell_age_cap enforced: %.0fs → %.0fs (cap=%ds)",
+                    _pre_cap,
+                    _effective_timeout,
+                    cfg.sell_age_cap_sec,
+                )
         if _timeout_mult != 1.0:
-            logger.debug(
+            logger.info(
                 f"[regime_timeout] {_regime_name} → timeout "
                 f"{_base_timeout:.0f}s × {_timeout_mult:.2f} = {_effective_timeout:.0f}s"
             )
