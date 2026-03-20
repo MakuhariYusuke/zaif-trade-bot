@@ -7605,3 +7605,18 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/v460/test_sac_retrain_scheduler.py -k 'training_timeout_raises or single_iteration_then_shutdown or trigger_exception_does_not_kill_loop or record_result_exception_does_not_kill_loop or retrain_once_cleans_up_on_error or post_cycle_memory_check_runs'`: `6 passed, 35 deselected in 5.37s`
   - `tests/unit/v460/test_retrain_hot_reload.py -k 'insufficient_samples or retrain_deploy_and_hot_reload or fallback_uses_7day_window'`: `4 passed, 82 deselected in 5.04s`
   - `tests/unit/v460/test_100_fast_fill_defense.py tests/unit/v460/test_skip_gate_d8.py tests/unit/v460/test_517_pricing_offset_math_migration.py`: `62 passed in 1.93s`
+## 521# skip_gate payload boundary refinement
+- `ztb/ml/skip_gate_result_fields.py`
+  - `SkipFillRecordExtraFields`
+  - `build_skip_fill_record_extra_fields(...)`
+  を追加し、`build_skip_fill_record(...)` 向け extra payload を canonical helper 化
+- `scripts/v460/lib/skip_gate_evaluator.py`
+  - `SkipDecision -> result metadata` に加え、skip 固有 payload も shared helper に委譲
+  - script 側は `cycle_id`, `timestamp`, `cancel_reason`, `run_id`, `git_sha` など v460 文脈の core fields のみを保持
+- `tests/unit/v460/test_516_skip_gate_result_fields_migration.py`
+  - extra payload helper の focused 回帰を追加
+- セルフレビュー
+  - `FillRecord` builder 自体を移さず、payload 境界だけを canonical 化したので Phase 3 の切り方として安全だった
+  - 残る論点は `skip_gate_evaluator` の `early_return_record` 最終組立と `maker_price` の stage orchestration にさらに絞れた
+- focused:
+  - `tests/unit/v460/test_516_skip_gate_result_fields_migration.py tests/unit/v460/test_skip_gate_v3.py tests/unit/v460/test_141_side_specific_models.py tests/unit/v460/test_195_velocity_b1_soft.py tests/unit/v460/test_196_velocity_proportional_trending_soft.py tests/unit/v460/test_145_structural_fixes.py`: `194 passed, 1 warning in 6.22s`

@@ -4,7 +4,9 @@ from dataclasses import dataclass
 
 from ztb.ml.skip_gate_result_fields import (
     SkipDecisionResultFields,
+    SkipFillRecordExtraFields,
     build_skip_decision_result_fields,
+    build_skip_fill_record_extra_fields,
     resolve_skip_gate_model_tag,
 )
 
@@ -65,4 +67,36 @@ class TestSkipGateResultFieldsMigration:
             threshold_used=-0.1,
             hour_offset=0.2,
             price_velocity_bps=1.5,
+        )
+
+    def test_build_skip_fill_record_extra_fields(self) -> None:
+        fields = build_skip_fill_record_extra_fields(
+            score=-1.5,
+            reason="rule_skip_unknown_sell",
+            model_used="rule",
+            orderbook_imbalance=0.2,
+            bid_depth_total=10.0,
+            ask_depth_total=8.0,
+            as_prob=0.9,
+            threshold_used=0.1,
+            hour_offset=0.3,
+            price_velocity_bps=4.5,
+            ev_score_pretrade=-0.2,
+            decision_path="ev_normal_skip",
+        )
+
+        assert fields == SkipFillRecordExtraFields(
+            skip_gate_skipped=True,
+            skip_gate_score=-1.5,
+            skip_gate_reason="rule_skip_unknown_sell",
+            skip_gate_model_used="rule",
+            skip_gate_as_prob=0.9,
+            skip_gate_threshold_used=0.1,
+            skip_gate_hour_offset=0.3,
+            orderbook_imbalance=0.2,
+            bid_depth_total=10.0,
+            ask_depth_total=8.0,
+            price_velocity_bps=4.5,
+            ev_score_pretrade=-0.2,
+            decision_path="ev_normal_skip",
         )

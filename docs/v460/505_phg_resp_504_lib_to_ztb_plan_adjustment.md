@@ -239,6 +239,8 @@ Phase 4 で無理に上げず、Phase 3 で先に result assembly の詳細設�
 - `ztb.metrics.fill_quality.build_skip_fill_record(...)` は canonical builder として残す
 - `skip_gate_evaluator` 側は payload を作る local helper / small value object までに留める
 - これなら `FillRecord` ownership を動かさずに Phase 3 を締められる
+- 実装はさらに一歩進めて、`skip_gate` 由来の extra payload 自体は
+  `ztb.ml.skip_gate_result_fields` で canonical 化し、script 側は v460 文脈の core fields だけを保持する
 
 ### 11. `maker_price` は inventory math の次に offset math を抜く
 

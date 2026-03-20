@@ -31,7 +31,11 @@ from scripts.v460.lib.hour_rules import resolve_hour_float, utc_hour_from_timest
 from scripts.v460.lib.skip_gate_ev_weighted import SkipGateEvWeightedMixin
 from scripts.v460.lib.skip_gate_model_loader import SkipGateModelLoaderMixin
 from ztb.ml.skip_gate_runtime import get_trade_field, normalize_recent_trades
-from ztb.ml.skip_gate_result_fields import build_skip_decision_result_fields
+from ztb.ml.skip_gate_result_fields import (
+    SkipFillRecordExtraFields,
+    build_skip_decision_result_fields,
+    build_skip_fill_record_extra_fields,
+)
 from ztb.ml.skip_gate import SkipDecision, SkipGate, build_features_from_market_state
 from ztb.ml.skip_gate_contracts import (
     SkipGateAdapter,
@@ -212,21 +216,10 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         cancel_reason: str,
         spread_at_order: float | None,
         spread_offset_ratio: float,
-        skip_gate_score: float,
-        skip_gate_reason: str,
-        skip_gate_model_used: str,
-        orderbook_imbalance: float | None,
-        bid_depth_total: float | None,
-        ask_depth_total: float | None,
         run_id: str,
         git_sha: str | None,
         regime: str | None,
-        skip_gate_as_prob: float | None = None,
-        skip_gate_threshold_used: float | None = None,
-        skip_gate_hour_offset: float | None = None,
-        price_velocity_bps: float | None = None,
-        ev_score_pretrade: float | None = None,
-        decision_path: str | None = None,
+        extra_fields: SkipFillRecordExtraFields,
     ) -> "FillRecord":
         """skip 系の early return 用 FillRecord を共通生成."""
         return build_skip_fill_record(
@@ -236,24 +229,24 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             order_price=order_price,
             order_quantity=order_quantity,
             cancel_reason=cancel_reason,
-            skip_gate_skipped=True,
-            skip_gate_score=skip_gate_score,
-            skip_gate_reason=skip_gate_reason,
-            skip_gate_model_used=skip_gate_model_used,
-            skip_gate_as_prob=skip_gate_as_prob,
-            skip_gate_threshold_used=skip_gate_threshold_used,
-            skip_gate_hour_offset=skip_gate_hour_offset,
-            orderbook_imbalance=orderbook_imbalance,
-            bid_depth_total=bid_depth_total,
-            ask_depth_total=ask_depth_total,
             run_id=run_id,
             git_sha=git_sha,
             spread_at_order=spread_at_order,
             spread_offset_ratio=spread_offset_ratio,
             regime=regime,
-            price_velocity_bps=price_velocity_bps,
-            ev_score_pretrade=ev_score_pretrade,
-            decision_path=decision_path,
+            skip_gate_skipped=extra_fields.skip_gate_skipped,
+            skip_gate_score=extra_fields.skip_gate_score,
+            skip_gate_reason=extra_fields.skip_gate_reason,
+            skip_gate_model_used=extra_fields.skip_gate_model_used,
+            skip_gate_as_prob=extra_fields.skip_gate_as_prob,
+            skip_gate_threshold_used=extra_fields.skip_gate_threshold_used,
+            skip_gate_hour_offset=extra_fields.skip_gate_hour_offset,
+            orderbook_imbalance=extra_fields.orderbook_imbalance,
+            bid_depth_total=extra_fields.bid_depth_total,
+            ask_depth_total=extra_fields.ask_depth_total,
+            price_velocity_bps=extra_fields.price_velocity_bps,
+            ev_score_pretrade=extra_fields.ev_score_pretrade,
+            decision_path=extra_fields.decision_path,
         )
 
     @staticmethod
@@ -345,6 +338,20 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         This keeps the v460-specific FillRecord assembly local while reducing
         duplication around rule-based and final skip returns.
         """
+        extra_fields = build_skip_fill_record_extra_fields(
+            score=score,
+            reason=reason,
+            model_used=model_used,
+            orderbook_imbalance=last_imbalance,
+            bid_depth_total=last_bid_depth,
+            ask_depth_total=last_ask_depth,
+            as_prob=as_prob,
+            threshold_used=threshold_used,
+            hour_offset=hour_offset,
+            price_velocity_bps=price_velocity_bps,
+            ev_score_pretrade=ev_score_pretrade,
+            decision_path=decision_path,
+        )
         self._assign_result_fields(
             result,
             skipped=True,
@@ -365,21 +372,10 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             cancel_reason=cancel_reason,
             spread_at_order=spread_at_order,
             spread_offset_ratio=spread_offset_ratio,
-            skip_gate_score=score,
-            skip_gate_reason=reason,
-            skip_gate_model_used=model_used,
-            skip_gate_as_prob=as_prob,
-            skip_gate_threshold_used=threshold_used,
-            skip_gate_hour_offset=hour_offset,
-            orderbook_imbalance=last_imbalance,
-            bid_depth_total=last_bid_depth,
-            ask_depth_total=last_ask_depth,
             run_id=run_id,
             git_sha=git_sha,
             regime=regime_value,
-            price_velocity_bps=price_velocity_bps,
-            ev_score_pretrade=ev_score_pretrade,
-            decision_path=decision_path,
+            extra_fields=extra_fields,
         )
 
     # --- 461# Mixin 移管済 ---

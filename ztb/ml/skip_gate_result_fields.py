@@ -21,6 +21,25 @@ class SkipDecisionResultFields:
     price_velocity_bps: float | None
 
 
+@dataclass(frozen=True)
+class SkipFillRecordExtraFields:
+    """Normalized extra payload for build_skip_fill_record()."""
+
+    skip_gate_skipped: bool
+    skip_gate_score: float
+    skip_gate_reason: str
+    skip_gate_model_used: str
+    skip_gate_as_prob: float | None
+    skip_gate_threshold_used: float | None
+    skip_gate_hour_offset: float | None
+    orderbook_imbalance: float | None
+    bid_depth_total: float | None
+    ask_depth_total: float | None
+    price_velocity_bps: float | None
+    ev_score_pretrade: float | None
+    decision_path: str | None
+
+
 def resolve_skip_gate_model_tag(
     *,
     decision_model_used: str,
@@ -59,8 +78,43 @@ def build_skip_decision_result_fields(
     )
 
 
+def build_skip_fill_record_extra_fields(
+    *,
+    score: float,
+    reason: str,
+    model_used: str,
+    orderbook_imbalance: float | None,
+    bid_depth_total: float | None,
+    ask_depth_total: float | None,
+    as_prob: float | None = None,
+    threshold_used: float | None = None,
+    hour_offset: float | None = None,
+    price_velocity_bps: float | None = None,
+    ev_score_pretrade: float | None = None,
+    decision_path: str | None = None,
+) -> SkipFillRecordExtraFields:
+    """Build canonical extra payload for skip FillRecord early returns."""
+    return SkipFillRecordExtraFields(
+        skip_gate_skipped=True,
+        skip_gate_score=score,
+        skip_gate_reason=reason,
+        skip_gate_model_used=model_used,
+        skip_gate_as_prob=as_prob,
+        skip_gate_threshold_used=threshold_used,
+        skip_gate_hour_offset=hour_offset,
+        orderbook_imbalance=orderbook_imbalance,
+        bid_depth_total=bid_depth_total,
+        ask_depth_total=ask_depth_total,
+        price_velocity_bps=price_velocity_bps,
+        ev_score_pretrade=ev_score_pretrade,
+        decision_path=decision_path,
+    )
+
+
 __all__ = [
     "SkipDecisionResultFields",
+    "SkipFillRecordExtraFields",
     "build_skip_decision_result_fields",
+    "build_skip_fill_record_extra_fields",
     "resolve_skip_gate_model_tag",
 ]

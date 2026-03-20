@@ -424,6 +424,8 @@ from ztb.trading.signal.regime.regime_detector import (  # noqa: F401
     `build_skip_fill_record(...)` に渡す payload fields だけを pure helper 化する案
   - `cancel_reason` / logger / run_id / git_sha は fill-test 実行文脈が強いため、
     `ztb.metrics.fill_quality` 側の builder ownership は維持するのが妥当
+  - この方針で `skip_gate` 由来の extra payload は `ztb.ml.skip_gate_result_fields` 側へ先行抽出し、
+    script 側は core context (`cycle_id`, `timestamp`, `run_id`, `git_sha`, `cancel_reason`) のみを握る形へ進める
 
 ## テスト方針
 
