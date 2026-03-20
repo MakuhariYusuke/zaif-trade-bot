@@ -740,7 +740,7 @@ loss_control:
   inventory_escape_duty_cycle: 5            # N サイクルに 1 回 (halt 貫通は控えめ: 20%)
   # 496# Recovery Skew (494# §2.2): route-to-kill deadlock → skip ではなく超ワイド指値で通す
   recovery_skew_enabled: true               # Recovery Skew の有効/無効
-  recovery_skew_offset_mult: 2.0            # ceiling × 2.0 倍を最低 offset として強制
+  recovery_skew_offset_mult: 1.5            # 507# 500# P1: 2.0→1.5 (実績 avg=-0.631 改善)
   # 166# HF4: 連続 sell skip 安全弁上限を 3010 に短縮 (7.3 B.4)
   max_consecutive_trending_sell_skip: 10   # 171#: 20→10 (Guard Paradox対策: 安全弁を早期発動して sell 機会確保)
   # 171# Guard Paradox 対策: 在庫偏重時に sell ガードをバイパスする閾値

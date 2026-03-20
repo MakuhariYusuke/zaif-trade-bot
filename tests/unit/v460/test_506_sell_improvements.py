@@ -1,4 +1,4 @@
-"""506# tests: sell age cap, de-meaning (EMA basis), offset narrowing."""
+"""506#/507# tests: sell age cap, de-meaning (EMA basis), offset narrowing, confidence fix."""
 from __future__ import annotations
 
 import pytest
@@ -135,3 +135,96 @@ class TestSellAgeCap:
         from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         assert "cross_venue_basis_correction_enabled" in _HOT_RELOADABLE_FIELDS
         assert "cross_venue_basis_ema_alpha" in _HOT_RELOADABLE_FIELDS
+
+
+class TestDeMeaningConfidenceCorrection:
+    """507# confidence/velocity を de-meaning 後の adjusted_spread ベースに統一."""
+
+    def _local(self) -> VenueMidSnapshot:
+        return VenueMidSnapshot("coincheck", 100.0, 100.0)
+
+    def _ref(self, mid: float = 99.97) -> VenueMidSnapshot:
+        return VenueMidSnapshot("bitflyer", mid, 100.5)
+
+    def _prev_ref(self, mid: float = 99.95) -> VenueMidSnapshot:
+        return VenueMidSnapshot("bitflyer", mid, 99.5)
+
+    def test_confidence_proportional_to_deviation_with_basis(self) -> None:
+        """With basis correction, confidence reflects adjusted_spread not raw spread."""
+        # Small deviation from basis: ema=-3.0, basis=-4.0 → adjusted=+1.0
+        hint_small = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._local(),
+            reference_snapshot=self._ref(),
+            previous_reference_snapshot=self._prev_ref(),
+            max_age_sec=3.0,
+            spread_bps_threshold=0.5,
+            velocity_bps_threshold=0.01,
+            ema_spread_bps=-3.0,
+            basis_bps=-4.0,
+            confidence_reference_spread_bps=3.0,
+        )
+        # Large deviation from basis: ema=-1.0, basis=-4.0 → adjusted=+3.0
+        hint_large = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._local(),
+            reference_snapshot=self._ref(),
+            previous_reference_snapshot=self._prev_ref(),
+            max_age_sec=3.0,
+            spread_bps_threshold=0.5,
+            velocity_bps_threshold=0.01,
+            ema_spread_bps=-1.0,
+            basis_bps=-4.0,
+            confidence_reference_spread_bps=3.0,
+        )
+        assert hint_small is not None
+        assert hint_large is not None
+        # 507# 修正: confidence は adjusted_spread に比例するため小偏差 < 大偏差
+        assert hint_small.confidence < hint_large.confidence
+
+    def test_confidence_without_basis_uses_raw_spread(self) -> None:
+        """Without basis (basis_bps=0.0), confidence uses raw gating_spread."""
+        hint = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._local(),
+            reference_snapshot=self._ref(),
+            previous_reference_snapshot=self._prev_ref(),
+            max_age_sec=3.0,
+            spread_bps_threshold=0.5,
+            velocity_bps_threshold=0.01,
+            ema_spread_bps=-3.0,
+            basis_bps=0.0,
+            confidence_reference_spread_bps=3.0,
+        )
+        assert hint is not None
+        # raw |gating_spread|/ref = 3.0/3.0 = 1.0 → base_conf = 1.0
+        # velocity agreement adds factor. Should be high.
+        assert hint.confidence >= 0.5
+
+    def test_velocity_agreement_with_adjusted_spread(self) -> None:
+        """507# velocity agreement uses adjusted_spread direction when basis active."""
+        # basis=-5.0, ema=-3.0 → adjusted=+2.0 (direction="up")
+        # positive velocity (+) should AGREE with adjusted_spread (+) → vel_factor=1.0
+        hint_agree = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._local(),
+            reference_snapshot=self._ref(mid=99.97),
+            previous_reference_snapshot=self._prev_ref(mid=99.90),  # BF going up
+            max_age_sec=3.0,
+            spread_bps_threshold=0.5,
+            velocity_bps_threshold=0.01,
+            ema_spread_bps=-3.0,
+            basis_bps=-5.0,
+            confidence_reference_spread_bps=3.0,
+        )
+        # negative velocity (-) should DISAGREE with adjusted_spread (+) → vel_factor=0.5
+        hint_disagree = compute_cross_venue_lead_lag_hint(
+            local_snapshot=self._local(),
+            reference_snapshot=self._ref(mid=99.97),
+            previous_reference_snapshot=self._prev_ref(mid=100.05),  # BF going down
+            max_age_sec=3.0,
+            spread_bps_threshold=0.5,
+            velocity_bps_threshold=0.01,
+            ema_spread_bps=-3.0,
+            basis_bps=-5.0,
+            confidence_reference_spread_bps=3.0,
+        )
+        assert hint_agree is not None
+        assert hint_disagree is not None
+        assert hint_agree.confidence > hint_disagree.confidence

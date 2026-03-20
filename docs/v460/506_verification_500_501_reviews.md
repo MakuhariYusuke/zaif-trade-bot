@@ -278,3 +278,58 @@ enabled 時: sell 側が CV guard を受ける確率が ~9% → ~42% に改善�
 - De-meaning direction flip 検証
 - 後方互換性 (basis_bps=0.0)
 - Config field 存在確認, hot-reload 対応確認
+
+---
+
+## 8. 507# 追加修正: confidence/velocity の de-meaning 統一 & recovery_skew 縮小
+
+### 8.1 Confidence 計算のバグ修正
+
+**問題:** 506# de-meaning 実装で direction 判定は `adjusted_spread` を使うが、
+confidence 計算は生の `abs(gating_spread)` (≈3.3bps) を使っていた。
+
+結果:
+- `base_conf = |gating_spread| / ref = 3.3/3.0 = 1.0` → 常に最大値にクランプ
+- sell 側の guard 強度が偏差の大きさに関わらず常に最大
+- micro-deviation (+0.5bps) でも max-deviation (+5.0bps) と同じ boost
+
+**修正:** `basis_bps != 0.0` の場合、`abs(adjusted_spread)` を使用
+- 小偏差 (+0.5bps) → confidence=0.17 (軽い boost)
+- 大偏差 (+3.0bps) → confidence=1.0 (フル boost)
+
+### 8.2 Velocity Agreement 判定のバグ修正
+
+**問題:** velocity と spread の同方向判定が `gating_spread * velocity > 0` を使っていた。
+
+`gating_spread ≈ -3.3bps` (常にマイナス) のため:
+- BF上昇中 (velocity > 0): 必ず disagreement → vel_factor=0.5
+- BF下降中 (velocity < 0): 必ず agreement → vel_factor=1.0
+
+De-meaning 後は adjusted_spread の符号が正しい方向を反映するため、
+`adjusted_spread * velocity > 0` で判定すべき。
+
+**修正:** `basis_bps != 0.0` の場合、`adjusted_spread` を velocity agreement の基準に使用
+
+### 8.3 変更ファイル
+
+- `scripts/v460/lib/cross_venue_lead_lag.py`: confidence/velocity に `_conf_spread`, `_vel_spread` 導入
+- `tests/unit/v460/test_506_sell_improvements.py`: 3件追加 (proportional confidence, velocity agreement)
+
+### 8.4 P1: recovery_skew_offset_mult 縮小 (500# P1)
+
+**変更:** `configs/v460/fill_test.yaml` の `recovery_skew_offset_mult: 2.0 → 1.5`
+
+**根拠:** 500# / 506# 独立検証で recovery_skew|sell の PnL=-11.99 (avg=-0.631)。
+offset_mult=2.0 は保守的すぎ、利益機会を逃している。1.5 に縮小してデータ収集。
+
+### 8.5 506# 残課題ステータス
+
+| P | アクション | ステータス |
+|---|-----------|-----------|
+| P0 | sell_age_cap_sec=25s | ✅ 506# 実装済 |
+| P0 | sell_offset 0.18→0.14 | ✅ 506# 実装済 |
+| P1 | De-meaning EMA basis | ✅ 506# 実装済 |
+| P1 | **Confidence/velocity de-meaning修正** | ✅ **507# 実装済** |
+| P1 | **recovery_skew_offset_mult 2.0→1.5** | ✅ **507# 実装済** |
+| P2 | Buy/Sell 非対称 timeout | ✅ 既存実装済 (sell 10s/buy 15s) |
+| P2 | ranging_low_vol_skip soft化 | ✅ 既存実装済 (as_offset:true) |

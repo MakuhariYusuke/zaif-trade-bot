@@ -274,18 +274,25 @@ def compute_cross_venue_lead_lag_hint(
         adjusted_spread = gating_spread - basis_bps
         direction = "up" if adjusted_spread > 0.0 else "down"
 
+        # 507# confidence / velocity を de-meaning 後の偏差ベースに統一
+        # basis_bps != 0 の場合、生 spread ではなく adjusted_spread を
+        # confidence と velocity agreement の基準に使う。
+        # → sell 側の confidence が偏差に比例し、velocity 方向判定も整合する。
+        _conf_spread = adjusted_spread if basis_bps != 0.0 else gating_spread
+        _vel_spread = adjusted_spread if basis_bps != 0.0 else gating_spread
+
         # Base confidence from spread magnitude
         # confidence_floor: Kyle (1985) λ の最小信頼区間に相当。
         # spread が小さくても完全に無視しない (information floor)。
         base_conf = min(
             1.0,
-            max(confidence_floor, abs(gating_spread) / confidence_reference_spread_bps),
+            max(confidence_floor, abs(_conf_spread) / confidence_reference_spread_bps),
         )
 
         # Velocity factor (0.5–1.0): agreement boosts, disagreement dampens
         if abs(reference_velocity_bps) < velocity_bps_threshold:
             vel_factor = 0.8   # negligible velocity → neutral
-        elif gating_spread * reference_velocity_bps > 0.0:
+        elif _vel_spread * reference_velocity_bps > 0.0:
             vel_factor = 1.0   # agrees → full confidence
         else:
             vel_factor = 0.5   # disagrees → halved (not killed)
