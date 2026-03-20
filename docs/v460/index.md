@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-20 (496# 493/494レビュー実装: micro-timeout TTL cut, recovery skew, blind spot分析)
+> 最終更新: 2026-03-20 (500# 497#-499#/503#レビュー: Buy改善後のSell崩壊を非対称実行で再整理)
 
 ---
 
@@ -525,6 +525,18 @@
 | 494 | rev | [494_phg_verify_493_action_plan_and_market_theory.md](494_phg_verify_493_action_plan_and_market_theory.md) | 493検証+アクションプラン: micro-timeout TTL cut, inventory recovery skew, runtime drift cold restart の3戦術 |
 | 495 | fix | [495_retrain_scheduler_crash_resilience.md](495_retrain_scheduler_crash_resilience.md) | Retrain Scheduler crash resilience: auto-restart, loop protection, training timeout, memory leak prevention |
 | 496 | impl | [496_review_implementation_and_blind_spots.md](496_review_implementation_and_blind_spots.md) | 493/494レビュー実装: micro-timeout TTL cut, recovery skew, blind spot分析 (ranging_low_vol 16.6%, spread_too_narrow 9.1%) |
+| 497 | rpt | [497_config_change_impact_deep_dive.md](497_config_change_impact_deep_dive.md) | 3/10-3/19 config変更の効果検証: micro-timeoutはプラス、ranging hard skipはマイナス、3/19 regression を slow fill / sdk / deadlock で再整理 |
+| 498 | fix | [498_hot_reload_lateral_expansion.md](498_hot_reload_lateral_expansion.md) | Hot-reload 対象を 348→409 へ拡張し、micro_timeout / recovery_skew / cross_venue 等 61 field を追加 |
+| 499 | fix | [499_hard_loss_cap_crash_loop_fix.md](499_hard_loss_cap_crash_loop_fix.md) | hard_loss_cap crash loop 修正: cumulative_pnl_jpy を UTC 当日スコープへ是正し、resume 即死を停止 |
+| 500 | rev | [500_phg_rev_497_499_503_sell_side_breakdown_and_asymmetric_actions.md](500_phg_rev_497_499_503_sell_side_breakdown_and_asymmetric_actions.md) | 497-499/503レビュー: sell 崩壊を fast/slow・offset・kill の非対称構造で再整理し、cross_venue sell常時化を補正 |
+| 503 | rpt | [503_sell_buy_pnl_factor_analysis.md](503_sell_buy_pnl_factor_analysis.md) | 3/14-3/20 Buy/Sell 損益要因分析: CV非対称性、ranging集中、fast/slow adverse selection の整理 |
+| 504 | rev | [504_phg_rev_502_lib_to_ztb_plan.md](504_phg_rev_502_lib_to_ztb_plan.md) | 502# `scripts/v460/lib` → `ztb` 移行計画レビュー |
+| 505 | resp | [505_phg_resp_504_lib_to_ztb_plan_adjustment.md](505_phg_resp_504_lib_to_ztb_plan_adjustment.md) | 504# レビュー応答: lib→ztb 移行計画調整 |
+| 506 | verify | [506_phg_verify_500_501_reviews.md](506_phg_verify_500_501_reviews.md) | 500#/501# レビュー検証: フィルレコード (773 fills) + コード解析による独立検証 |
+| 507 | fix | [507_ph2_fix_confidence_velocity_demeaning_and_recovery_skew.md](507_ph2_fix_confidence_velocity_demeaning_and_recovery_skew.md) | Confidence/Velocity De-meaning 統一 + Recovery Skew 縮小 |
+| 508 | impl | [508_ph2_impl_logging_observability_improvements.md](508_ph2_impl_logging_observability_improvements.md) | ログ・可観測性改善: de-meaning basis_bps/adjusted_spread + sell_age_cap/regime_timeout ログレベル修正 |
+| 509 | fix | [509_ph2_fix_sell_age_cap_micro_timeout_guard.md](509_ph2_fix_sell_age_cap_micro_timeout_guard.md) | sell_age_cap × micro_timeout ガード: cumulative cap + stale reprice 残時間チェック |
+| 510 | impl | [510_ph2_impl_inv_skew_periodic_summary_vg_reason.md](510_ph2_impl_inv_skew_periodic_summary_vg_reason.md) | inv_skew_factor fill_record 追加 + 周期的サマリ統計 + VG boost 理由粒度向上 |
 
 ---
 
