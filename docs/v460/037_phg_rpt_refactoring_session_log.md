@@ -316,6 +316,30 @@
 1. `Wave2` の stateful ownership を継続して詰める
 2. `Wave3` の memory/diagnostics を training/SAC でさらに揃える
 3. `Wave4` の tempdir 残件を training/v460 の両面で減らす
+
+---
+
+## 2026-03-21 / Session 037-555
+
+### 実施
+- `tests/training/test_ppo_trainer.py`
+  - `TestPPOTrainerAutoHalt.temp_dir` fixture を `tmp_path` ベースへ整理
+  - 残っていた `TemporaryDirectory()` 依存を解消
+- training 既存資産の再利用方針を `521#` に追記
+  - `reporting.py` は canonical 実装
+  - `components/reporter.py` は compatibility shim
+  - `components/config_manager.py` は runtime config 正規化として維持
+
+### 結果
+- `test_ppo_trainer.py` / `test_lagrange_integration.py` / `test_grad_probe_guard.py`
+  の tempdir 依存は解消
+- focused 回帰:
+  - `51 passed, 3 skipped, 2 deselected in 7.77s`
+
+### 次アクション
+1. `Wave2` の stateful ownership 詰め
+2. `Wave3` の memory/observability 追加整理
+3. `Wave5` を見据えた broad 前の小さい重複解消を継続
   - `test_pnl_monte_carlo.py` / `test_196_velocity_proportional_trending_soft.py` / `test_173_code_review_fixes.py`: `102 passed`
 - v460 全体:
   - `3940 passed, 20 warnings in 41.54s`（`--no-cov --durations=15`）

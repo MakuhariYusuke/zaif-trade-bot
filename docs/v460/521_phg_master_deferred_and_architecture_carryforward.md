@@ -560,3 +560,17 @@ docs の先送り管理は、本書へかなり一元化できる状態に入っ
   - `unified_trainer` 専用 helper と training 共通 helper を混同しない
   こと
 - こうしておくと、今後 `UnifiedTrainer` を分割するときも import 探索が単純になる
+
+### training 既存資産の再利用で今後も使うもの
+
+- `components/reporter.py`
+  - legacy signature を吸収する shim として再利用価値がある
+  - ただし canonical import 先にはしない
+- `reporting.py`
+  - current reporting/persistence の canonical 実装として使い続ける
+- `components/config_manager.py`
+  - `UnifiedTrainer` の runtime config 正規化として使い続ける
+  - `core/config_manager.py` とは責務が違うため、現時点では統合しない
+
+この 3 つは「似ているからまとめる」より、
+「責務差を明文化して使い分ける」方が安全である。

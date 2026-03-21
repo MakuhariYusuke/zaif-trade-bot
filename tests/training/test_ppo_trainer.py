@@ -70,10 +70,9 @@ class TestPPOTrainerAutoHalt:
     """Test PPOTrainerAutoHalt functionality."""
 
     @pytest.fixture
-    def temp_dir(self):
+    def temp_dir(self, tmp_path):
         """Create temporary directory for testing."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield tmpdir
+        return str(tmp_path)
 
     @pytest.fixture
     def sample_config(self):

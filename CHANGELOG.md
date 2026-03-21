@@ -6116,6 +6116,10 @@ python scripts/unified_trainer.py \
 - `ztb/training/unified_trainer/advanced_feature_setup.py` から `record_training_stat(...)` の再 export を外し、canonical path を `ztb/training/utils/training_stats_payloads.py` に一本化
 - `tests/unit/training/test_unified_trainer_advanced_feature_setup.py` は `record_training_stat(...)` を canonical helper path から直接参照するよう整理
 - `tests/unit/v460/test_gate_judgment.py` の `_load_all_records` 系 tempdir 使用を `tmp_path` ベースへ整理
+## 555# training tempdir sweep follow-up
+- `tests/training/test_ppo_trainer.py` の `TestPPOTrainerAutoHalt.temp_dir` fixture を `tmp_path` ベースへ整理し、残っていた `TemporaryDirectory()` 依存を解消
+- training 系の `test_ppo_trainer.py` / `test_lagrange_integration.py` / `test_grad_probe_guard.py` について、tempdir 使用が残っていないことを focused 回帰で確認
+- `docs/v460/521_phg_master_deferred_and_architecture_carryforward.md` に、training 既存資産 (`reporting.py`, `components/reporter.py`, `components/config_manager.py`) の再利用方針を追記
 ## 551# reward and reporting ownership tightening
 - `ztb/trading/environment/components/calculators/reward_component_tracking.py` に `merge_reward_components(...)` を追加し、stage payload の後段 detail merge を helper 化
 - `ztb/trading/environment/components/calculators/reward_calculator.py` の `forced_balance` detail merge を raw `dict.update(...)` から helper ベースへ変更
