@@ -6092,3 +6092,9 @@ python scripts/unified_trainer.py \
 - `ztb/trading/environment/components/calculators/reward_calculator.py` の `mtf_weights` を scalar payload と分離した telemetry helper 経由に変更
 - stage method 実行前の重複 `action_bonus/balance_penalty` payload 更新を削除し、stage 後の canonical shaping に一本化
 - `tests/unit/v460/test_reward_component_tracking_migration.py` に non-scalar telemetry 回帰を追加
+## 549# trainer integration helper sweep and test tmp-path cleanup
+- `ztb/training/unified_trainer/advanced_feature_setup.py` に `collect_meta_learning_history(...)` / `resolve_federated_stats(...)` / `record_training_stat(...)` を追加
+- `ztb/training/unified_trainer/trainer.py` の meta/federated/continual integration 後半で helper を再利用し、training_stats ownership を整理
+- `tests/training/unified_trainer/test_algorithms.py` の temp fixture を `tmp_path` ベースへ変更
+- `tests/unit/training/test_unified_optimizer.py` の result persistence テストを `tmp_path` ベースへ変更
+- `tests/unit/training/test_unified_trainer_advanced_feature_setup.py` に integration helper 回帰を追加

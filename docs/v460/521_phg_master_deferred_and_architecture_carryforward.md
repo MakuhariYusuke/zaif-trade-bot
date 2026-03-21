@@ -309,6 +309,11 @@ shim を外しにいく条件:
   parameter shape fallback を helper 側に持つことで subtle bug を減らせる
 - ただしこれは `UnifiedTrainer` の repeated setup / fallback に閉じる helper であり、
   SAC scheduler など別系統へ同名 helper を広げるより用途別 helper を維持するほうが安全
+- integration 後半では
+  - meta learner の task-buffer 判定
+  - federated stats の取得
+  - training_stats への書き戻し
+  も helper 化しやすい層で、ownership を trainer 本体から少しずつ切り離せる
 - `RewardCalculator` では
   - `simple_reward`
   - `trading_focused`
@@ -327,6 +332,7 @@ shim を外しにいく条件:
 2. `TemporaryDirectory()` は `tmp_path` へ寄せる
 3. real-data test は guard を実測ベースで詰める
 4. timeout test は短すぎて不安定にしない
+5. training 系の `TemporaryDirectory()` は、簡単な persistence/setup から `tmp_path` へ寄せる
 
 ### 重いテストの扱い
 

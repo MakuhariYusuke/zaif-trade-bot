@@ -7,7 +7,6 @@ including the newly added SelfSupervisedTrainer.
 """
 
 import os
-import tempfile
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -505,10 +504,9 @@ class TestSelfSupervisedTrainerIntegration:
     """Integration tests for SelfSupervisedTrainer"""
 
     @pytest.fixture
-    def temp_dir(self):
+    def temp_dir(self, tmp_path):
         """Create temporary directory for testing"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield tmpdir
+        return str(tmp_path)
 
     @pytest.mark.skipif(
         not _HAS_TRANSFORMER_ENCODER,

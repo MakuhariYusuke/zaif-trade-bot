@@ -224,55 +224,52 @@ class TestABTestingFramework:
 class TestOptimizationResultPersistence:
     """Test OptimizationResultPersistence class."""
 
-    def test_initialization(self):
+    def test_initialization(self, tmp_path):
         """Test OptimizationResultPersistence initialization."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            persistence = OptimizationResultPersistence(base_dir=temp_dir)
+        persistence = OptimizationResultPersistence(base_dir=tmp_path)
 
-            assert persistence.base_dir == Path(temp_dir)
-            assert hasattr(persistence, 'logger')
+        assert persistence.base_dir == Path(tmp_path)
+        assert hasattr(persistence, 'logger')
 
-    def test_save_and_load_result(self):
+    def test_save_and_load_result(self, tmp_path):
         """Test saving and loading optimization results."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            persistence = OptimizationResultPersistence(base_dir=temp_dir)
+        persistence = OptimizationResultPersistence(base_dir=tmp_path)
 
-            result = {
-                "best_params": {"x": 1.0},
-                "best_score": -0.5,
-                "optimization_history": [{"trial": 1}],
-                "execution_time": 1.0,
-                "convergence_info": {},
-                "recommendations": []
-            }
+        result = {
+            "best_params": {"x": 1.0},
+            "best_score": -0.5,
+            "optimization_history": [{"trial": 1}],
+            "execution_time": 1.0,
+            "convergence_info": {},
+            "recommendations": []
+        }
 
-            version_id = persistence.save_optimization_result(result, "test_experiment", {"test": "data"}, ["tag1"])
+        version_id = persistence.save_optimization_result(result, "test_experiment", {"test": "data"}, ["tag1"])
 
-            assert version_id is not None
-            assert version_id.startswith("v")
+        assert version_id is not None
+        assert version_id.startswith("v")
 
-            loaded = persistence.load_optimization_result(version_id)
-            assert loaded is not None
-            assert loaded['result']['best_score'] == -0.5
+        loaded = persistence.load_optimization_result(version_id)
+        assert loaded is not None
+        assert loaded['result']['best_score'] == -0.5
 
-    def test_search_results(self):
+    def test_search_results(self, tmp_path):
         """Test searching optimization results."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            persistence = OptimizationResultPersistence(base_dir=temp_dir)
+        persistence = OptimizationResultPersistence(base_dir=tmp_path)
 
-            result = {
-                "best_params": {"x": 1.0},
-                "best_score": -0.5,
-                "optimization_history": [{"trial": 1}],
-                "execution_time": 1.0,
-                "convergence_info": {},
-                "recommendations": []
-            }
+        result = {
+            "best_params": {"x": 1.0},
+            "best_score": -0.5,
+            "optimization_history": [{"trial": 1}],
+            "execution_time": 1.0,
+            "convergence_info": {},
+            "recommendations": []
+        }
 
-            persistence.save_optimization_result(result, "test_experiment", {"test": "data"}, ["tag1"])
+        persistence.save_optimization_result(result, "test_experiment", {"test": "data"}, ["tag1"])
 
-            results = persistence.search_results(tags=["tag1"])
-            assert len(results) > 0
+        results = persistence.search_results(tags=["tag1"])
+        assert len(results) > 0
 
 
 class TestParallelOptimizer:
@@ -457,7 +454,7 @@ class TestUnifiedOptimizer:
         assert result['total_tasks'] == 1
         assert result['completed_tasks'] == 1
 
-    def test_save_and_load_result(self):
+    def test_save_and_load_result(self, tmp_path):
         """Test result persistence."""
         config = OptimizationConfig()
 
@@ -470,15 +467,14 @@ class TestUnifiedOptimizer:
             "recommendations": []
         }
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            optimizer = UnifiedOptimizer(config)
-            optimizer.persistence.base_dir = Path(temp_dir)
+        optimizer = UnifiedOptimizer(config)
+        optimizer.persistence.base_dir = Path(tmp_path)
 
-            version_id = optimizer.save_result_to_version_control(
-                result_dict, "test_experiment", {"test": "metadata"}, ["test"]
-            )
+        version_id = optimizer.save_result_to_version_control(
+            result_dict, "test_experiment", {"test": "metadata"}, ["test"]
+        )
 
-            assert version_id is not None
+        assert version_id is not None
 
-            loaded = optimizer.load_result_from_version_control(version_id)
-            assert loaded is not None
+        loaded = optimizer.load_result_from_version_control(version_id)
+        assert loaded is not None

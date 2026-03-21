@@ -8136,3 +8136,26 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `7 passed, 15 deselected in 4.00s`
 - セルフレビュー
   - scalar payload と telemetry を分けたことで、`RewardCalculator` の diagnostics ownership はかなり見やすくなった
+## 549# trainer integration helper sweep and test tmp-path cleanup
+- `ztb/training/unified_trainer/advanced_feature_setup.py`
+  - `collect_meta_learning_history(...)`
+  - `resolve_federated_stats(...)`
+  - `record_training_stat(...)`
+  を追加
+- `ztb/training/unified_trainer/trainer.py`
+  - meta learning の task-buffer 判定
+  - federated stats 取得
+  - anomaly/federated/continual の `training_stats` 書き戻し
+  を helper ベースへ整理
+- `tests/training/unified_trainer/test_algorithms.py`
+  - integration 用 temp fixture を `tmp_path` ベースへ変更
+- `tests/unit/training/test_unified_optimizer.py`
+  - persistence 系テストを `tmp_path` ベースへ整理
+- `tests/unit/training/test_unified_trainer_advanced_feature_setup.py`
+  - integration helper の focused 回帰を追加
+- focused:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/training/test_unified_trainer_advanced_feature_setup.py tests/training/unified_trainer/test_algorithms.py tests/unit/training/test_unified_optimizer.py tests/training/test_unified_trainer.py tests/unit/training/test_unified_trainer.py tests/unit/training/test_unified_trainer_config.py -k 'advanced_feature_setup or meta or federated or continual or runtime_flags or OptimizationResultPersistence or save_and_load_result or full_training_pipeline' -q --tb=short --no-cov`
+  - `11 passed, 82 deselected in 10.35s`
+- セルフレビュー
+  - `UnifiedTrainer` は setup だけでなく integration 後半も helper 境界が見え始めた
+  - training 系 test の `tmp_path` 化は、小さいが継続的に効く整理だった

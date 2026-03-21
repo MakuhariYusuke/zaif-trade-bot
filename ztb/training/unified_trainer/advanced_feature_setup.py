@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Mapping
+from typing import Mapping, MutableMapping
 
 from ztb.adaptation.continual_learning import ContinualLearningConfig
 
@@ -66,9 +66,47 @@ def resolve_model_output_dim(
         return default
 
 
+def collect_meta_learning_history(
+    meta_learner: object | None,
+    *,
+    num_epochs: int = 50,
+) -> object | None:
+    """Train the meta learner only when task buffers are populated."""
+    if meta_learner is None:
+        return None
+    nested = getattr(meta_learner, "meta_learner", None)
+    if nested is not None and len(getattr(nested, "task_buffer", [])) > 0:
+        return meta_learner.train_on_markets(num_epochs=num_epochs)
+    if len(getattr(meta_learner, "task_buffer", [])) > 0:
+        return meta_learner.train_on_markets(num_epochs=num_epochs)
+    return None
+
+
+def resolve_federated_stats(federated_learner: object | None) -> dict[str, object]:
+    """Return federated stats when the learner exposes them, otherwise an empty payload."""
+    if federated_learner is None or not hasattr(federated_learner, "get_federated_stats"):
+        return {}
+    stats = getattr(federated_learner, "get_federated_stats")()
+    if isinstance(stats, dict):
+        return stats
+    return {}
+
+
+def record_training_stat(
+    training_stats: MutableMapping[str, object],
+    key: str,
+    value: object,
+) -> None:
+    """Persist advanced-feature outputs through a single trainer-owned path."""
+    training_stats[key] = value
+
+
 __all__ = [
     "build_continual_learning_config",
+    "collect_meta_learning_history",
     "extract_algorithm_model",
+    "record_training_stat",
     "resolve_model_input_dim",
     "resolve_model_output_dim",
+    "resolve_federated_stats",
 ]
