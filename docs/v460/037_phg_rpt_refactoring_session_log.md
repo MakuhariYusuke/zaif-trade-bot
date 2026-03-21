@@ -8159,3 +8159,27 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - セルフレビュー
   - `UnifiedTrainer` は setup だけでなく integration 後半も helper 境界が見え始めた
   - training 系 test の `tmp_path` 化は、小さいが継続的に効く整理だった
+## 550# training stats payload 共通化と SAC 集計軽量化
+- `ztb/training/training_stats_payloads.py`
+  - `record_training_stat(...)`
+  - `build_optimization_training_stats(...)`
+  - `average_reward_component_history(...)`
+  を追加
+- `ztb/training/unified_trainer/advanced_feature_setup.py`
+  - `record_training_stat(...)` は training 共通 helper を再 export する形へ整理
+- `ztb/training/unified_trainer/trainer.py`
+  - `optimization` payload を shared helper に統一
+- `ztb/training/unified_trainer/algorithms/sac_trainer.py`
+  - `feature_generation_time_s` の stats 更新を shared helper 化
+  - `reward_components_history` の平均化を running-sum helper へ変更
+- `tests/unit/training/test_training_stats_payloads.py`
+  - training stats payload helper の focused 回帰を追加
+- `tests/training/algorithms/sac/test_sac_compression.py`
+  - `TemporaryDirectory()` を `tmp_path` に変更
+- focused:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/training/test_training_stats_payloads.py tests/unit/training/test_unified_trainer_advanced_feature_setup.py tests/training/test_unified_trainer.py tests/unit/training/test_unified_trainer.py tests/unit/training/test_unified_trainer_config.py tests/training/algorithms/sac/test_sac_compression.py -k 'training_stats_payloads or advanced_feature_setup or compression_save_path or distillation_only or runtime_flags or continual or federated or meta' -q --tb=short --no-cov`
+  - `11 passed, 43 deselected in 16.27s`
+- セルフレビュー
+  - `record_training_stat` は `UnifiedTrainer` 専用 helper のままより、training 共通へ上げたほうが筋が良かった
+  - `SACTrainer` の reward component 集計は list accumulation より running-sum のほうが transient memory を減らせる
+  - training 系 test の `tmp_path` 化は、今後 broad を詰めるときの固定費削減にも効く

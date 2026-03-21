@@ -48,6 +48,10 @@ from ztb.training.unified_trainer.base.base_trainer import (
 from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback
 from ztb.training.utils.distributed_training import get_distributed_info
 from ztb.training.utils.training_stats import TrainingStats
+from ztb.training.training_stats_payloads import (
+    average_reward_component_history,
+    record_training_stat,
+)
 from ztb.types.common import ConfigDict
 from ztb.utils.checkpoint import TrainingStateManager
 from ztb.utils.logging_utils import StructuredLogger
@@ -1259,7 +1263,11 @@ class SACTrainer(BaseAlgorithmTrainer):
             try:
                 feat_time = getattr(env, "_feature_generation_time", None)
                 if feat_time is not None:
-                    self.training_stats["feature_generation_time_s"] = feat_time
+                    record_training_stat(
+                        self.training_stats,
+                        "feature_generation_time_s",
+                        float(feat_time),
+                    )
             except Exception:
                 pass
 
@@ -1274,18 +1282,14 @@ class SACTrainer(BaseAlgorithmTrainer):
                     hasattr(cb, "reward_components_history")
                     and cb.reward_components_history
                 ):
-                    # Average reward components across all episodes
-                    components = {}
-                    for comp_dict in cb.reward_components_history:
-                        for key, val in comp_dict.items():
-                            if key not in components:
-                                components[key] = []
-                            components[key].append(float(val))
-                    # Average each component
-                    avg_components = {
-                        k: sum(v) / len(v) for k, v in components.items() if v
-                    }
-                    self.training_stats["reward_components"] = avg_components
+                    avg_components = average_reward_component_history(
+                        cb.reward_components_history
+                    )
+                    record_training_stat(
+                        self.training_stats,
+                        "reward_components",
+                        avg_components,
+                    )
                     self.logger.info(f"Collected reward_components: {avg_components}")
             except Exception as e:
                 self.logger.debug(f"Could not collect reward_components: {e}")

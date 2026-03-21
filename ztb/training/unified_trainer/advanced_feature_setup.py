@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Mapping, MutableMapping
+from typing import Mapping
 
 from ztb.adaptation.continual_learning import ContinualLearningConfig
+from ztb.training.training_stats_payloads import record_training_stat
 
 
 def extract_algorithm_model(algorithm_trainer: object | None) -> object | None:
@@ -90,15 +91,6 @@ def resolve_federated_stats(federated_learner: object | None) -> dict[str, objec
     if isinstance(stats, dict):
         return stats
     return {}
-
-
-def record_training_stat(
-    training_stats: MutableMapping[str, object],
-    key: str,
-    value: object,
-) -> None:
-    """Persist advanced-feature outputs through a single trainer-owned path."""
-    training_stats[key] = value
 
 
 __all__ = [

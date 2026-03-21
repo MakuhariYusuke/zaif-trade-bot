@@ -406,3 +406,72 @@ docs の先送り管理は、本書へかなり一元化できる状態に入っ
 
 今後は、新しい monitoring note を増やすより、
 本書を current carry-forward の母表として更新し続けるのが最も安全である。
+
+## 2026-03-21 時点の Wave 判定
+
+### Wave 1: 設計収束
+
+- かなり進んだ
+- `UnifiedTrainer`
+  - `runtime_flags`
+  - `advanced_feature_setup`
+  - integration helper
+  まで ownership が見えた
+- `RewardCalculator`
+  - scalar payload
+  - non-scalar telemetry
+  - stage bookkeeping
+  の境界がかなり揃った
+- 残りは「大分割」ではなく、helper 境界の追加固定が中心
+
+### Wave 2: v460 本体の stateful orchestrator 整理
+
+- 主要な pure policy / pure math 抽出はかなり進んだ
+- `maker_price`
+  - pure math / finalization / ceiling / stage tracking はかなり外出し済み
+  - 残りは stateful orchestration 本体
+- `order_monitor`
+  - timeout / stale-reprice policy は抽出済み
+- `ab_judgment`
+  - judgment rule は抽出済み
+  - 残りは statistical comparison / reporting ownership
+
+### Wave 3: 性能・リーク・観測
+
+- 引き続き継続
+- 特に training/SAC 周りでは
+  - cycle 後メモリ診断
+  - cache stats
+  - transient memory 削減
+  を優先する
+- 直近では reward component 集計を running-sum 化し、一時 list 保持を避ける
+
+### Wave 4: テスト最適化
+
+- 継続中
+- `tmp_path` 化
+- timeout/sleep の安定化
+- real-data guard の実測最小化
+  は引き続き有効
+- training 系は persistence/setup 固定費から削る
+
+## 直近の追加前進
+
+### training stats payload 共通化
+
+- `ztb/training/training_stats_payloads.py` を追加
+- `record_training_stat(...)` を `UnifiedTrainer` 専用 helper から training 共通 helper へ昇格
+- `build_optimization_training_stats(...)` により `UnifiedTrainer` の optimization payload を shared 化
+- `average_reward_component_history(...)` により `SACTrainer` の reward component 集計を
+  list 蓄積ではなく running-sum で処理するようにした
+
+### Wave 3 観点の効果
+
+- reward component averaging 時の一時メモリ保持を減らした
+- SAC 側でも training stats の shaping を共通化でき、後続の observability 追加で payload がぶれにくくなった
+
+### Wave 4 観点の効果
+
+- `tests/training/algorithms/sac/test_sac_compression.py`
+  の `TemporaryDirectory()` を `tmp_path` に置き換え
+- training 系テストの I/O 固定費と boilerplate を少し削減した

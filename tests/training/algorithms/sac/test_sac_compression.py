@@ -6,7 +6,6 @@ Tests the integration of model compression techniques with the SAC algorithm,
 including configuration validation, model creation, and compression application.
 """
 
-import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -230,7 +229,7 @@ class TestSACCompressionIntegration:
         assert sac.compression_manager is None
 
     @patch("ztb.training.algorithms.sac.sac_algorithm.SAC")
-    def test_create_model_compression_save_path(self, mock_sac_class):
+    def test_create_model_compression_save_path(self, mock_sac_class, tmp_path):
         """Test saving compressed model when path is specified."""
         # Mock SAC model
         mock_sac_instance = Mock()
@@ -241,30 +240,29 @@ class TestSACCompressionIntegration:
         sac = SACAlgorithm()
         env = MockEnv()
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            save_path = Path(temp_dir) / "compressed_model.zip"
+        save_path = tmp_path / "compressed_model.zip"
 
-            config = {
-                **DEFAULT_SAC_CONFIG,
-                "compression_enabled": True,
-                "compression_techniques": ["quantization"],
-                "quantization_type": "dynamic",
-                "compressed_model_path": str(save_path),
-            }
+        config = {
+            **DEFAULT_SAC_CONFIG,
+            "compression_enabled": True,
+            "compression_techniques": ["quantization"],
+            "quantization_type": "dynamic",
+            "compressed_model_path": str(save_path),
+        }
 
-            with patch(
-                "ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline"
-            ) as mock_create_pipeline:
-                mock_manager = Mock()
-                mock_manager.compress_model.return_value = Mock()
-                mock_create_pipeline.return_value = mock_manager
+        with patch(
+            "ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline"
+        ) as mock_create_pipeline:
+            mock_manager = Mock()
+            mock_manager.compress_model.return_value = Mock()
+            mock_create_pipeline.return_value = mock_manager
 
-                model = sac.create_model(env, config)
+            model = sac.create_model(env, config)
 
-                # Check that save_compressed_model was called
-                mock_manager.save_compressed_model.assert_called_once_with(
-                    mock_sac_instance, str(save_path)
-                )
+            # Check that save_compressed_model was called
+            mock_manager.save_compressed_model.assert_called_once_with(
+                mock_sac_instance, str(save_path)
+            )
 
     @patch("ztb.training.algorithms.sac.sac_algorithm.SAC")
     def test_apply_model_compression_quantization_only(self, mock_sac_class):
@@ -343,7 +341,7 @@ class TestSACCompressionIntegration:
     @patch("ztb.training.algorithms.sac.sac_algorithm.SAC.load")
     @patch("ztb.training.algorithms.sac.sac_algorithm.SAC")
     def test_apply_model_compression_distillation_only(
-        self, mock_sac_class, mock_sac_load
+        self, mock_sac_class, mock_sac_load, tmp_path
     ):
         """Test applying distillation compression."""
         # Mock teacher model
@@ -360,38 +358,37 @@ class TestSACCompressionIntegration:
         sac = SACAlgorithm()
         env = MockEnv()
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            teacher_path = Path(temp_dir) / "teacher_model.zip"
+        teacher_path = tmp_path / "teacher_model.zip"
 
-            config = {
-                **DEFAULT_SAC_CONFIG,
-                "compression_enabled": True,
-                "compression_techniques": ["distillation"],
-                "teacher_model_path": str(teacher_path),
-                "distillation_temperature": 2.5,
-                "distillation_alpha": 0.7,
-            }
+        config = {
+            **DEFAULT_SAC_CONFIG,
+            "compression_enabled": True,
+            "compression_techniques": ["distillation"],
+            "teacher_model_path": str(teacher_path),
+            "distillation_temperature": 2.5,
+            "distillation_alpha": 0.7,
+        }
 
-            with patch(
-                "ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline"
-            ) as mock_create_pipeline:
-                mock_manager = Mock()
-                compressed_policy = Mock()
-                mock_manager.compress_model.return_value = compressed_policy
-                mock_manager.get_compression_report.return_value = {"test": "report"}
-                mock_create_pipeline.return_value = mock_manager
+        with patch(
+            "ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline"
+        ) as mock_create_pipeline:
+            mock_manager = Mock()
+            compressed_policy = Mock()
+            mock_manager.compress_model.return_value = compressed_policy
+            mock_manager.get_compression_report.return_value = {"test": "report"}
+            mock_create_pipeline.return_value = mock_manager
 
-                model = sac.create_model(env, config)
+            model = sac.create_model(env, config)
 
-                # Check that teacher model was loaded
-                mock_sac_load.assert_called_once_with(str(teacher_path), device="cpu")
+            # Check that teacher model was loaded
+            mock_sac_load.assert_called_once_with(str(teacher_path), device="cpu")
 
-                # Check that distillation config was passed correctly
-                call_args = mock_create_pipeline.call_args[0][0]
-                assert "distillation" in call_args
-                assert call_args["distillation"]["type"] == "distillation"
-                assert call_args["distillation"]["temperature"] == 2.5
-                assert call_args["distillation"]["alpha"] == 0.7
+            # Check that distillation config was passed correctly
+            call_args = mock_create_pipeline.call_args[0][0]
+            assert "distillation" in call_args
+            assert call_args["distillation"]["type"] == "distillation"
+            assert call_args["distillation"]["temperature"] == 2.5
+            assert call_args["distillation"]["alpha"] == 0.7
 
     @patch("ztb.training.algorithms.sac.sac_algorithm.SAC")
     def test_apply_model_compression_multiple_techniques(self, mock_sac_class):

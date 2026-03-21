@@ -6098,3 +6098,9 @@ python scripts/unified_trainer.py \
 - `tests/training/unified_trainer/test_algorithms.py` の temp fixture を `tmp_path` ベースへ変更
 - `tests/unit/training/test_unified_optimizer.py` の result persistence テストを `tmp_path` ベースへ変更
 - `tests/unit/training/test_unified_trainer_advanced_feature_setup.py` に integration helper 回帰を追加
+## 550# training stats payload sharing and SAC aggregation cleanup
+- `ztb/training/training_stats_payloads.py` を追加し、training stats の共通 payload shaping (`record_training_stat`, `build_optimization_training_stats`, `average_reward_component_history`) を shared helper 化
+- `ztb/training/unified_trainer/trainer.py` の optimization stats payload を shared helper に統一
+- `ztb/training/unified_trainer/algorithms/sac_trainer.py` の reward component 平均化を running-sum helper ベースへ変更し、一時 list 保持を削減
+- `tests/unit/training/test_training_stats_payloads.py` を追加し、training stats payload helper の focused 回帰を追加
+- `tests/training/algorithms/sac/test_sac_compression.py` の tempdir 使用を `tmp_path` ベースへ整理
