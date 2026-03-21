@@ -141,7 +141,8 @@ class OrchestratorBalanceMixin:
             self._balance_checker.balance_shrink_active = True
             logger.warning(
                 f"[balance_shrink] 連続 preflight 失敗 {self._preflight_skip_count} 回. "
-                f"ロット縮小: {old_lot:.4f} → {self._current_lot:.4f} BTC"
+                f"ロット縮小: {old_lot:.8f} → {self._current_lot:.8f} BTC "
+                f"(min_lot={min_lot:.8f})"
             )
             self._preflight_skip_count = 0
             await self._effective_sleep()

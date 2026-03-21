@@ -578,6 +578,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         cancel_reason: str | None = None,
         sidecar_offset_bps: float = 0.0,
         sidecar_signal_status: str | None = None,
+        order_id: str | None = None,
     ) -> None:
         # 487# P0: sidecar summary を cycle log に追記
         _sidecar_tag = ""
@@ -587,17 +588,19 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                 _sidecar_tag += f"({sidecar_offset_bps:+.3f}bps)"
         # 487# P2: cancel_reason を追記 (unfilled 時に原因可視化)
         _cancel_tag = f", reason={cancel_reason}" if cancel_reason and not filled else ""
+        # 526# order_id 追記
+        _id_tag = f", id={order_id}" if order_id else ""
         if post_fill_pnl is not None:
             logger.info(
                 f"Cycle {self._cycle_count} result: "
                 f"filled={filled}, wait={queue_wait:.1f}s, pnl={post_fill_pnl:.2f}bps"
-                f"{_sidecar_tag}"
+                f"{_id_tag}{_sidecar_tag}"
             )
             return
         logger.info(
             f"Cycle {self._cycle_count} result: "
             f"filled={filled}, wait={queue_wait:.1f}s"
-            f"{_cancel_tag}{_sidecar_tag}"
+            f"{_id_tag}{_cancel_tag}{_sidecar_tag}"
         )
 
     def _log_cycle_revenue_context(self, record: "FillRecord") -> None:
@@ -1010,7 +1013,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                     # rate-limit 検出時はさらに延長
                     if "rate" in err_lower or "limit" in err_lower or "too many" in err_lower:
                         _backoff = max(_backoff, self.config.rate_limit_min_backoff_sec)
-                        logger.warning(f"Rate-limit detected, extended backoff: {_backoff:.1f}s")
+                        logger.warning(f"Rate-limit detected, extended backoff: {_backoff:.1f}s (attempt {attempt + 1})")
                     else:
                         logger.info(f"Retry backoff: {_backoff:.1f}s")
                     await asyncio.sleep(_backoff)
@@ -1027,7 +1030,9 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         if order is None:
             # 200# B/I: postonly crossing は意図的 skip — circuit_breaker に通知しない
             if cancel_reason != CR.POSTONLY_CROSSING_SKIP:
-                logger.error(f"All order attempts failed: {last_error}")
+                logger.error(
+                    f"All order attempts failed (side={side}, qty={_order_lot:.8f}): {last_error}"
+                )
                 # 113# resilience: API 失敗を CircuitBreaker に記録
                 await self._circuit_breaker.async_on_failure()
                 self._postonly_crossing_streak = 0  # 201# 非 crossing で streak リセット
@@ -1379,6 +1384,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             cancel_reason=cancel_reason_poll,
             sidecar_offset_bps=sidecar_offset_bps,
             sidecar_signal_status=sidecar_signal_status,
+            order_id=self._pending_order_id,
         )
         self._log_cycle_revenue_context(record)
 

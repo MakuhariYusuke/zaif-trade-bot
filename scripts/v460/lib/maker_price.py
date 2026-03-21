@@ -782,37 +782,6 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
                 )
         return effective_offset_ratio, offset
 
-    def _apply_final_offset_ceiling(
-        self,
-        side: str,
-        spread: float,
-        effective_offset_ratio: float,
-        offset: float,
-    ) -> tuple[float, float, bool]:
-        """421# / 467#: final offset ceiling clamp を 1 ステージに集約."""
-        cfg = self._config
-        from scripts.v460.lib.hour_rules import current_utc_hour
-
-        ceiling_ratio = cfg.resolve_offset_ceiling(side, utc_hour=current_utc_hour())
-        ceiling = clamp_offset_ratio_to_ceiling(
-            effective_offset_ratio=effective_offset_ratio,
-            ceiling_ratio=ceiling_ratio,
-        )
-        if not ceiling.clamped:
-            return effective_offset_ratio, offset, False
-
-        logger.info(
-            f"[306# ceiling] offset {effective_offset_ratio:.4f} "
-            f"> ceiling {ceiling_ratio:.4f} — clamped"
-        )
-        effective_offset_ratio = ceiling.updated_ratio
-        offset = compute_offset_jpy(
-            spread=spread,
-            effective_offset_ratio=effective_offset_ratio,
-            min_offset_jpy=cfg.min_offset_jpy,
-        )
-        return effective_offset_ratio, offset, True
-
     async def compute(
         self,
         side: str,

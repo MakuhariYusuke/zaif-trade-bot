@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-21 (519# sell ceiling 0.25 + favorable_tighten 有効化 + sell_dynamic_kill window 30)
+> 最終更新: 2026-03-21 (526# ログ可観測性改善 + dead code削除: order_id/残高コンテキスト追加、_apply_final_offset_ceiling除去)
 
 ---
 
@@ -551,6 +551,8 @@
 | 522 | impl | [522_ph2_impl_balance_forcing_abolish_and_truncation_audit.md](522_ph2_impl_balance_forcing_abolish_and_truncation_audit.md) | balance_switch/recovery_skew/inventory_escape 完全撤廃 + 切り捨て/丸め無効化パラメータ監査 |
 | 523 | impl | [523_ph2_impl_double_ceiling_fix_and_dead_code_cleanup.md](523_ph2_impl_double_ceiling_fix_and_dead_code_cleanup.md) | 二重 ceiling 撤廃 (maker_price中間ceiling→offset_pipeline一本化) + 522# dead code cleanup |
 | 524 | rpt | [524_phg_rpt_preflight_skip_exceeded_analysis.md](524_phg_rpt_preflight_skip_exceeded_analysis.md) | preflight_skip_exceeded 停止分析: sell注文スタック→両側膠着→open order cancel提案 |
+| 525 | rev | [525_phg_rev_520_524_maintainability_and_dedup_review.md](525_phg_rev_520_524_maintainability_and_dedup_review.md) | 520-524レビュー: legacy残置・stale-order cleanup共有化・double ceiling後のdead code整理を提案 |
+| 526 | impl | [526_phg_impl_log_observability_and_dead_code.md](526_phg_impl_log_observability_and_dead_code.md) | ログ可観測性改善 (order_id・残高コンテキスト追加) + 525#指摘dead code削除 |
 
 ---
 

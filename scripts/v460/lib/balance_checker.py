@@ -175,7 +175,7 @@ class BalanceChecker:
             self._log_insufficient(
                 "sell",
                 f"[balance] Insufficient BTC for sell: "
-                f"{btc_free:.6f} < {self._min_order_btc:.4f} "
+                f"free={btc_free:.8f} < min={self._min_order_btc:.4f} "
                 f"(regime_mult={regime_mult:.2f}). "
                 f"Skipping sell → will retry buy next.",
             )
@@ -246,7 +246,7 @@ class BalanceChecker:
             self._log_insufficient(
                 "buy",
                 f"[balance] Insufficient JPY for buy: "
-                f"{jpy_free:.0f} < min {self._min_order_btc * regime_mult * price * self._config.balance_margin_ratio:.0f} "
+                f"free={jpy_free:.0f} < min={self._min_order_btc * regime_mult * price * self._config.balance_margin_ratio:.0f} "
                 f"(regime_mult={regime_mult:.2f}). "
                 f"Skipping buy → will retry sell next.",
             )

@@ -84,7 +84,7 @@ class OrderMonitor:
             cancel_lower = cancel_msg.lower()
             if "failed to cancel" not in cancel_lower and "not found" not in cancel_lower:
                 # 予期しないキャンセルエラー → 呼び出し側で処理
-                logger.warning(f"Cancel order unexpected error: {cancel_err}")
+                logger.warning(f"Cancel order {order_id} unexpected error: {cancel_err}")
                 return _CancelFillCheck(cancel_succeeded=False)
 
             # "Failed to cancel" / "not found" → 約定済みの可能性 → recheck
@@ -107,7 +107,7 @@ class OrderMonitor:
             except Exception as exc:
                 logger.debug("Recheck after cancel-fail raised: %s", exc)
 
-            logger.warning(f"Cancel failed (order may be gone): {cancel_err}")
+            logger.warning(f"Cancel failed (order {order_id} may be gone): {cancel_err}")
             return _CancelFillCheck(cancel_succeeded=False)
 
     @staticmethod
@@ -335,11 +335,12 @@ class OrderMonitor:
                     break
             except Exception as e:
                 _consecutive_poll_errors += 1
-                logger.warning(f"Poll error ({_consecutive_poll_errors}): {e}")
+                logger.warning(f"Poll error ({_consecutive_poll_errors}) order={order.order_id} side={side}: {e}")
                 # 373# F9: 連続 poll エラーが閾値超過 → ループ脱出して cancel
                 if _consecutive_poll_errors >= 5:
                     logger.error(
                         f"[373# F9] {_consecutive_poll_errors} consecutive poll errors "
+                        f"for order {order.order_id} (side={side}) "
                         f"— giving up monitoring, will cancel order"
                     )
                     cancel_reason_poll = CR.POLL_ERROR_LIMIT
@@ -553,7 +554,7 @@ class OrderMonitor:
                 cancel_reason_poll = None
                 _cancel_failed_likely_filled = True  # 166# C.7
             elif chk.cancel_succeeded:
-                logger.info(f"Cancelled unfilled order after {elapsed:.1f}s")
+                logger.info(f"Cancelled unfilled order {order.order_id} after {elapsed:.1f}s (side={side})")
 
         pending_order_setter(None)
 
