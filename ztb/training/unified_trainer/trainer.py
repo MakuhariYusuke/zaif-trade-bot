@@ -91,7 +91,6 @@ from ztb.training.unified_trainer.advanced_feature_setup import (
     build_continual_learning_config,
     collect_meta_learning_history,
     extract_algorithm_model,
-    record_training_stat,
     resolve_federated_stats,
     resolve_model_input_dim,
     resolve_model_output_dim,
@@ -108,7 +107,10 @@ from ztb.training.unified_trainer.runtime_flags import (
     resolve_ensemble_enabled,
     resolve_trainer_runtime_flags,
 )
-from ztb.training.training_stats_payloads import build_optimization_training_stats
+from ztb.training.training_stats_payloads import (
+    build_optimization_training_stats,
+    record_training_stat,
+)
 from ztb.training.unified_trainer.ui import TrainingUI
 from ztb.utils.cache_utils import TTLCache
 from ztb.utils.logging_utils import get_logger
@@ -1120,13 +1122,17 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 except Exception as e:
                     self.logger.warning(f"Failed to collect training stats: {e}")
                 # Add optimization metrics to training stats
-                self.training_stats["optimization"] = build_optimization_training_stats(
-                    memory_stats=memory_stats,
-                    performance_profile=perf_report,
-                    parallel_processing_enabled=self.parallel_config is not None,
-                    cache_size=len(self.feature_cache.cache)
-                    if hasattr(self.feature_cache, "cache")
-                    else 0,
+                record_training_stat(
+                    self.training_stats,
+                    "optimization",
+                    build_optimization_training_stats(
+                        memory_stats=memory_stats,
+                        performance_profile=perf_report,
+                        parallel_processing_enabled=self.parallel_config is not None,
+                        cache_size=len(self.feature_cache.cache)
+                        if hasattr(self.feature_cache, "cache")
+                        else 0,
+                    ),
                 )  # Display completion
             self.ui_manager.display_training_complete(
                 self.training_stats if success else {}, training_time
@@ -1134,11 +1140,12 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
             # Generate and save training report
             if success:
-                self.training_report = self.reporter.generate_report(
-                    self.config, self.training_stats, success
+                self.training_report, report_path = reporting.persist_training_report(
+                    self.reporter,
+                    self.config,
+                    self.training_stats,
+                    success,
                 )
-                report_path = self.reporter.save_report(self.training_report)
-                self.reporter.print_summary(self.training_report)
 
                 if report_path:
                     self.ui.print_success(f"Training report saved to: {report_path}")
@@ -1161,7 +1168,22 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                         )
                         save_fn = getattr(self.reporter, "save_ensemble_report", None)
                         ensemble_report = None
-                        if callable(gen_fn):
+                        ensemble_report_path = ""
+                        if callable(gen_fn) and callable(save_fn):
+                            try:
+                                (
+                                    ensemble_report,
+                                    ensemble_report_path,
+                                ) = reporting.persist_ensemble_report(
+                                    self.reporter,
+                                    ensemble_stats,
+                                    decision_log,
+                                )
+                            except Exception as e:
+                                self.logger.error(
+                                    f"Failed to persist ensemble report: {e}"
+                                )
+                        elif callable(gen_fn):
                             try:
                                 ensemble_report = gen_fn(ensemble_stats, decision_log)
                             except Exception as e:
@@ -1169,19 +1191,10 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                                     f"Failed to generate ensemble report: {e}"
                                 )
 
-                        if ensemble_report is not None and callable(save_fn):
-                            try:
-                                ensemble_report_path = save_fn(ensemble_report)
-                                if ensemble_report_path and hasattr(
-                                    self.ui, "print_success"
-                                ):
-                                    self.ui.print_success(
-                                        f"Ensemble analysis report saved to: {ensemble_report_path}"
-                                    )
-                            except Exception as e:
-                                self.logger.error(
-                                    f"Failed to save ensemble report: {e}"
-                                )
+                        if ensemble_report_path and hasattr(self.ui, "print_success"):
+                            self.ui.print_success(
+                                f"Ensemble analysis report saved to: {ensemble_report_path}"
+                            )
 
                         # Display ensemble final status
                         self.ui.print_ensemble_status(ensemble_stats)

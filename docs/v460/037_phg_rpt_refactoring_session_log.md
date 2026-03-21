@@ -8183,3 +8183,30 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `record_training_stat` は `UnifiedTrainer` 専用 helper のままより、training 共通へ上げたほうが筋が良かった
   - `SACTrainer` の reward component 集計は list accumulation より running-sum のほうが transient memory を減らせる
   - training 系 test の `tmp_path` 化は、今後 broad を詰めるときの固定費削減にも効く
+## 551# reward/reporting ownership tightening
+- `ztb/trading/environment/components/calculators/reward_component_tracking.py`
+  - `merge_reward_components(...)`
+  を追加
+- `ztb/trading/environment/components/calculators/reward_calculator.py`
+  - `forced_balance` の detail merge を raw `dict.update(...)` から helper 化
+- `ztb/training/unified_trainer/reporting.py`
+  - `persist_training_report(...)`
+  - `persist_ensemble_report(...)`
+  を追加
+- `ztb/training/unified_trainer/trainer.py`
+  - optimization payload を `record_training_stat(...)` 経由へ統一
+  - training report / ensemble report の生成保存を reporting helper に委譲
+- `tests/unit/training/test_training_reporting_flow.py`
+  - reporting helper の focused 回帰を追加
+- `tests/unit/training/test_reward_components_persistence.py`
+  - reward component averaging を shared helper へ追随
+  - JSON persistence test を `tmp_path` 化
+- `tests/unit/v460/test_reward_component_tracking_migration.py`
+  - `merge_reward_components(...)` の focused 回帰を追加
+- focused:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_reward_component_tracking_migration.py tests/unit/reward/test_reward_components_fix.py tests/unit/trading/components/test_reward_calculator.py tests/unit/training/test_reward_components_persistence.py tests/unit/training/test_training_reporting_flow.py tests/unit/training/test_unified_trainer_advanced_feature_setup.py tests/training/test_unified_trainer.py tests/unit/training/test_unified_trainer.py tests/unit/training/test_unified_trainer_config.py -k 'reward_component_tracking or reward_components_persistence or training_reporting_flow or advanced_feature_setup or runtime_flags or continual or federated or meta' -q --tb=short --no-cov`
+  - `19 passed, 48 deselected in 10.88s`
+- セルフレビュー
+  - `RewardCalculator` は helper を増やすより、stage 契約を崩しうる merge 点を潰すのが正解だった
+  - `UnifiedTrainer` は report 生成/保存を reporting 側へ寄せることで、trainer 本体の ownership が一段見やすくなった
+  - `tmp_path` 化は小さいが、training/report persistence 系の固定費削減として継続的に効く

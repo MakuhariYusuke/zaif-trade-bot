@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 
 def build_reward_components(
     stage: str,
@@ -40,8 +42,28 @@ def set_reward_telemetry(
     payload["stage"] = str(payload.get("stage", "unknown"))
 
 
+def merge_reward_components(
+    payload: dict[str, object],
+    components: Mapping[str, object],
+) -> None:
+    """Merge component details while preserving the stage contract."""
+    for key, value in components.items():
+        if key == "stage" or value is None:
+            continue
+        if isinstance(value, bool):
+            payload[key] = float(value)
+        elif isinstance(value, int | float):
+            payload[key] = float(value)
+        elif isinstance(value, str):
+            payload[key] = value
+        else:
+            payload[key] = value
+    payload["stage"] = str(payload.get("stage", "unknown"))
+
+
 __all__ = [
     "build_reward_components",
     "extend_reward_components",
+    "merge_reward_components",
     "set_reward_telemetry",
 ]

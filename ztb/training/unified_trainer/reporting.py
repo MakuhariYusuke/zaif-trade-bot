@@ -937,3 +937,33 @@ class TrainingEventLogger:
         except Exception as e:
             self.logger.error(f"Failed to save ensemble report: {e}")
             return ""
+
+
+def persist_training_report(
+    reporter: TrainingReporter,
+    config: ConfigDict,
+    stats: ObjectMap,
+    success: bool,
+    *,
+    output_dir: str = "reports",
+) -> tuple[ObjectMap, str]:
+    """Generate, save, and summarize a training report through a single path."""
+    report = reporter.generate_report(config, stats, success)
+    report_path = reporter.save_report(report, output_dir=output_dir)
+    reporter.print_summary(report)
+    return report, report_path
+
+
+def persist_ensemble_report(
+    reporter: TrainingReporter,
+    ensemble_stats: ObjectMap,
+    decision_log: ObjectRecords,
+    *,
+    output_dir: str = "reports",
+) -> tuple[ObjectMap | None, str]:
+    """Generate and save an ensemble report through a single path."""
+    report = reporter.generate_ensemble_report(ensemble_stats, decision_log)
+    if not report:
+        return report, ""
+    report_path = reporter.save_ensemble_report(report, output_dir=output_dir)
+    return report, report_path

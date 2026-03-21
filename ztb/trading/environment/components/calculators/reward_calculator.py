@@ -45,6 +45,7 @@ from ..rewards.ultra_profit import UltraProfitReward
 from .reward_component_tracking import (
     build_reward_components,
     extend_reward_components,
+    merge_reward_components,
     set_reward_telemetry,
 )
 from ..signal_integrator import SignalIntegrator
@@ -1557,8 +1558,9 @@ class RewardCalculator:
 
         # Update _last_reward_components from component details
         if hasattr(self.forced_balance_reward, "last_reward_details"):
-            self._last_reward_components.update(
-                self.forced_balance_reward.last_reward_details
+            merge_reward_components(
+                self._last_reward_components,
+                self.forced_balance_reward.last_reward_details,
             )
 
         # Apply scaling specific to this stage

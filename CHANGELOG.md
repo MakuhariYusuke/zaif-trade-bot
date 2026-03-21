@@ -6104,3 +6104,10 @@ python scripts/unified_trainer.py \
 - `ztb/training/unified_trainer/algorithms/sac_trainer.py` の reward component 平均化を running-sum helper ベースへ変更し、一時 list 保持を削減
 - `tests/unit/training/test_training_stats_payloads.py` を追加し、training stats payload helper の focused 回帰を追加
 - `tests/training/algorithms/sac/test_sac_compression.py` の tempdir 使用を `tmp_path` ベースへ整理
+## 551# reward and reporting ownership tightening
+- `ztb/trading/environment/components/calculators/reward_component_tracking.py` に `merge_reward_components(...)` を追加し、stage payload の後段 detail merge を helper 化
+- `ztb/trading/environment/components/calculators/reward_calculator.py` の `forced_balance` detail merge を raw `dict.update(...)` から helper ベースへ変更
+- `ztb/training/unified_trainer/reporting.py` に `persist_training_report(...)` / `persist_ensemble_report(...)` を追加し、report 生成保存を reporting 側へ収束
+- `ztb/training/unified_trainer/trainer.py` の optimization payload は `record_training_stat(...)` 経由に統一し、training/ensemble report の生成保存を reporting helper に委譲
+- `tests/unit/training/test_training_reporting_flow.py` を追加し、reporting helper の focused 回帰を追加
+- `tests/unit/training/test_reward_components_persistence.py` の averaging を shared helper に追随し、JSON persistence test を `tmp_path` ベースへ整理

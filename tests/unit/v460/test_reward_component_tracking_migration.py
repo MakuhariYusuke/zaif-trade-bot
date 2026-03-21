@@ -7,6 +7,7 @@ from ztb.trading.constants import ACTION_BUY
 from ztb.trading.environment.components.calculators.reward_component_tracking import (
     build_reward_components,
     extend_reward_components,
+    merge_reward_components,
     set_reward_telemetry,
 )
 
@@ -73,6 +74,32 @@ def test_set_reward_telemetry_preserves_stage_and_accepts_nonscalar_payload() ->
 
     assert payload["stage"] == "default"
     assert payload["mtf_weights"] == {"1m": 0.7, "5m": 0.3}
+
+
+def test_merge_reward_components_preserves_stage_and_converts_scalars() -> None:
+    payload: dict[str, object] = build_reward_components(
+        "forced_balance",
+        base_reward=0.0,
+    )
+
+    merge_reward_components(
+        payload,
+        {
+            "base_reward": 0.25,
+            "corrective_bonus": 0.1,
+            "enabled": True,
+            "note": "kept",
+            "stage": "should_not_override",
+        },
+    )
+
+    assert payload == {
+        "stage": "forced_balance",
+        "base_reward": 0.25,
+        "corrective_bonus": 0.1,
+        "enabled": 1.0,
+        "note": "kept",
+    }
 
 
 def test_risk_management_preserves_pre_and_post_trading_rewards() -> None:

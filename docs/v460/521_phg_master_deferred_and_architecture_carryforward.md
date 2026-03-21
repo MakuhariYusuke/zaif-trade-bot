@@ -475,3 +475,33 @@ docs の先送り管理は、本書へかなり一元化できる状態に入っ
 - `tests/training/algorithms/sac/test_sac_compression.py`
   の `TemporaryDirectory()` を `tmp_path` に置き換え
 - training 系テストの I/O 固定費と boilerplate を少し削減した
+
+## 2026-03-21 追加整理
+
+### RewardCalculator
+
+- `merge_reward_components(...)` を導入し、
+  stage payload への後段 detail merge でも `stage` 契約を保つようにした
+- 特に `forced_balance` の detail merge は raw `dict.update(...)` から脱して、
+  scalar/telemetry 境界を崩しにくい形になった
+
+### UnifiedTrainer
+
+- reporting/session persistence 側も ownership を一段整理した
+- `persist_training_report(...)`
+- `persist_ensemble_report(...)`
+  を reporting 側へ置き、
+  trainer では UI 表示と error boundary に集中する形へ寄せた
+
+### Wave 3 への効き
+
+- reward component history の平均化は running-sum になり、
+  training 後半の transient memory を減らせる
+- training report / ensemble report の生成保存経路が一箇所に寄り、
+  observability 追加時の payload drift を起こしにくくなった
+
+### Wave 4 への効き
+
+- `tests/unit/training/test_reward_components_persistence.py`
+  でも `tmp_path` 化と shared averaging helper への追随を入れた
+- reward/reporting helper の focused 回帰も増やし、保守時の破壊半径を下げた

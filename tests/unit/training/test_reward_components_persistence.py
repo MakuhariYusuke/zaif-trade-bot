@@ -1,6 +1,5 @@
 """Test reward_components persistence through the training pipeline."""
 import json
-import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -11,6 +10,7 @@ import pytest
 from ztb.trading.constants import ACTION_HOLD
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
+from ztb.training.training_stats_payloads import average_reward_component_history
 from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback
 
 
@@ -112,54 +112,41 @@ class TestRewardComponentsPersistence:
             {"balance_penalty": -0.03, "skew_penalty": -0.015, "final_reward": 0.6},
             {"balance_penalty": -0.025, "skew_penalty": -0.012, "final_reward": 0.55},
         ]
-        
-        # Aggregate components (as done in sac_trainer.py)
-        components = {}
-        for comp_dict in history:
-            for key, val in comp_dict.items():
-                if key not in components:
-                    components[key] = []
-                components[key].append(float(val))
-        
-        # Average
-        avg_components = {k: sum(v) / len(v) for k, v in components.items() if v}
-        
+
+        avg_components = average_reward_component_history(history)
+
         # Verify averages
         assert abs(avg_components["balance_penalty"] - (-0.025)) < 1e-6
         assert abs(avg_components["skew_penalty"] - (-0.0123333)) < 1e-5
         assert abs(avg_components["final_reward"] - 0.55) < 1e-6
 
-    def test_training_report_includes_reward_components(self):
+    def test_training_report_includes_reward_components(self, tmp_path: Path):
         """Test that training report JSON includes reward_components section."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            report_path = Path(tmpdir) / "test_report.json"
-            
-            # Create mock report with reward_components
-            report = {
-                "configuration": {"version": "test"},
-                "training_stats": {
-                    "total_timesteps": 1000,
-                    "final_reward": 0.5
-                },
-                "reward_components": {
-                    "balance_penalty": -0.025,
-                    "skew_penalty": -0.012,
-                    "balance_shaping": 0.03,
-                    "final_reward": 0.55
-                }
-            }
-            
-            # Write report
-            with open(report_path, "w", encoding="utf-8") as f:
-                json.dump(report, f, indent=2, ensure_ascii=False)
-            
-            # Read and verify
-            with open(report_path, "r", encoding="utf-8") as f:
-                loaded = json.load(f)
-            
-            assert "reward_components" in loaded
-            assert loaded["reward_components"]["balance_penalty"] == -0.025
-            assert loaded["reward_components"]["balance_shaping"] == 0.03
+        report_path = tmp_path / "test_report.json"
+
+        # Create mock report with reward_components
+        report = {
+            "configuration": {"version": "test"},
+            "training_stats": {"total_timesteps": 1000, "final_reward": 0.5},
+            "reward_components": {
+                "balance_penalty": -0.025,
+                "skew_penalty": -0.012,
+                "balance_shaping": 0.03,
+                "final_reward": 0.55,
+            },
+        }
+
+        # Write report
+        with open(report_path, "w", encoding="utf-8") as f:
+            json.dump(report, f, indent=2, ensure_ascii=False)
+
+        # Read and verify
+        with open(report_path, "r", encoding="utf-8") as f:
+            loaded = json.load(f)
+
+        assert "reward_components" in loaded
+        assert loaded["reward_components"]["balance_penalty"] == -0.025
+        assert loaded["reward_components"]["balance_shaping"] == 0.03
 
 
 if __name__ == "__main__":
