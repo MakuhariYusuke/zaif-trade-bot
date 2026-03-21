@@ -550,6 +550,7 @@
 | 521 | plan | [521_phg_master_deferred_and_architecture_carryforward.md](521_phg_master_deferred_and_architecture_carryforward.md) | deferred docs とコード基本設計の一元化された living document |
 | 522 | impl | [522_ph2_impl_balance_forcing_abolish_and_truncation_audit.md](522_ph2_impl_balance_forcing_abolish_and_truncation_audit.md) | balance_switch/recovery_skew/inventory_escape 完全撤廃 + 切り捨て/丸め無効化パラメータ監査 |
 | 523 | impl | [523_ph2_impl_double_ceiling_fix_and_dead_code_cleanup.md](523_ph2_impl_double_ceiling_fix_and_dead_code_cleanup.md) | 二重 ceiling 撤廃 (maker_price中間ceiling→offset_pipeline一本化) + 522# dead code cleanup |
+| 524 | rpt | [524_phg_rpt_preflight_skip_exceeded_analysis.md](524_phg_rpt_preflight_skip_exceeded_analysis.md) | preflight_skip_exceeded 停止分析: sell注文スタック→両側膠着→open order cancel提案 |
 
 ---
 
