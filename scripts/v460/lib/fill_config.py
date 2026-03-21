@@ -639,23 +639,17 @@ class FillTestConfig:
     one_sided_escalation_freeze_offset: int = 4     # limit+N で freeze (当該side N cycles凍結)
     one_sided_escalation_freeze_cycles: int = 3     # freeze 時のサイクル数
     # 234# 縮退清算モード — kill gate blocked 時の安全実行
-    # 348# balance_forced 撤廃: inventory_escape 経由でのみ縮退清算を発動
-    # min lot + wide offset で安全に縮退清算する (Gemini 233# / Codex 232# 共同提言)
+    # 522# balance-forcing 完全撤廃: degraded_liquidation は gate 経由のみで発動
     degraded_liquidation_enabled: bool = True       # 縮退清算モードの有効/無効
     degraded_liquidation_lot_mult: float = 0.2      # 通常 lot の 20% (min lot 相当)
     degraded_liquidation_offset_mult: float = 3.0   # offset を通常の 3 倍 (wide offset)
     degraded_liquidation_duty_cycle: int = 3        # N サイクルに 1 回のみ実行 (dutyCycle=3 → 33%)
-    # 269# P0: Inventory Escape Mode — per-side halt 時のデッドロック解消
-    # Codex 269# §4.1 / Gemini 270# Action A: 在庫過多で JPY 不足、反対 side は halt
-    # → 完全停止ではなく、halt を一時的に貫通して縮退清算 (degraded liquidation パラメータを流用)
-    inventory_escape_enabled: bool = True           # Inventory Escape の有効/無効
-    inventory_escape_duty_cycle: int = 5            # N サイクルに 1 回のみ実行 (halt 貫通は控えめ)
-    # 496# Route-to-Kill Inventory Recovery Skew (494# §2.2)
-    # buy 残高不足 + sell kill-gated (or vice versa) のデッドロック時、
-    # 完全スキップではなく kill-gate を bypass し超ワイド offset で通す。
-    # Ho & Stoll (1981): 在庫偏重時のスプレッド拡大は合理的リスク管理。
-    recovery_skew_enabled: bool = True              # Recovery Skew の有効/無効
-    recovery_skew_offset_mult: float = 2.0          # ceiling × N 倍を最低 offset として強制
+    # 269# / 522# Inventory Escape Mode — 完全撤廃 (balance-forcing の一形態)
+    inventory_escape_enabled: bool = False          # 522# 撤廃
+    inventory_escape_duty_cycle: int = 5            # 522# 残置 (後方互換)
+    # 496# / 522# Recovery Skew — 完全撤廃 (balance-forcing の一形態)
+    recovery_skew_enabled: bool = False             # 522# 撤廃
+    recovery_skew_offset_mult: float = 2.0          # 522# 残置 (後方互換)
     # unknown が N 回連続したら regime 判定不能として gate を強制バイパス。
     # 10 × cycle_interval(120s) = 20 分 — regime 再評価の猶予期間。
     unknown_regime_max_consecutive: int = 5   # 336# drift fix: YAML=5 (321# M-3)

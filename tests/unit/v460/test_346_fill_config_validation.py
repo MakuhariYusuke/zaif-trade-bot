@@ -309,12 +309,12 @@ class TestStructuralConsistency:
 
 
 class TestPerSideDDDeadlock:
-    def test_halt_zero_no_ie(self, cfg: FillTestConfig) -> None:
+    def test_halt_zero_no_ie_no_longer_raises(self, cfg: FillTestConfig) -> None:
+        """522# IE 撤廃: halt_cycles=0 + IE無効 でもエラーなし。"""
         cfg.per_side_dd_enabled = True
         cfg.per_side_dd_halt_cycles = 0
         cfg.inventory_escape_enabled = False
-        with pytest.raises(ValueError, match="永久デッドロック"):
-            validate_fill_config(cfg)
+        validate_fill_config(cfg)  # 例外なし
 
     def test_halt_zero_with_ie_passes(self, cfg: FillTestConfig) -> None:
         cfg.per_side_dd_enabled = True

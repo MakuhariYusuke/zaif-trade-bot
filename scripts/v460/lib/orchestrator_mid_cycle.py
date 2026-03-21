@@ -170,7 +170,6 @@ class OrchestratorMidCycleMixin:
             sell_toxicity=_sell_tox,
             halt_recovery_active=_halt_recovery_active,
             sidecar_signal=_sidecar_signal,
-            recovery_skew=ctx.recovery_skew,
         )
 
         # 487# P0: sidecar attribution を gate_result に転記
@@ -367,12 +366,7 @@ class OrchestratorMidCycleMixin:
                     f"{self._degraded_liquidation_duty_counter} duty cycles"
                 )
             self._degraded_liquidation_duty_counter = 0
-            if self._inventory_escape_duty_counter > 0:
-                logger.info(
-                    f"[269#] Inventory escape cleared after "
-                    f"{self._inventory_escape_duty_counter} duty cycles"
-                )
-            self._inventory_escape_duty_counter = 0
+
         return False
 
     # ------------------------------------------------------------------
@@ -420,7 +414,7 @@ class OrchestratorMidCycleMixin:
                 one_sided_balance=ctx.one_sided_balance,
                 trending_offset_mult=gate_result.trending_offset_mult,
                 degraded_liquidation=(
-                    gate_result.degraded_liquidation or ctx.inventory_escape
+                    gate_result.degraded_liquidation
                 ),
                 toxicity_offset_mult=gate_result.toxicity_offset_mult,
                 sidecar_offset_bps=gate_result.sidecar_offset_bps,
@@ -433,9 +427,6 @@ class OrchestratorMidCycleMixin:
             # 420# P1: Side 切替可観測性 — CycleContext の情報を FillRecord に転記
             record.requested_side = ctx.requested_side
             record.resolved_side_reason = ctx.resolved_side_reason
-            # 465# balance_forced_switch 一貫性: resolved_side_reason から導出
-            if ctx.resolved_side_reason == "balance_switch":
-                record.balance_forced_switch = True
             # 154# C-2: 実サイクル実行 → skip カウンタリセット
             self._trending_sell_skip_count = 0
 

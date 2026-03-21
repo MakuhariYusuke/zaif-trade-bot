@@ -68,18 +68,26 @@ class TestAltSideBatchFlush:
 
 
 class TestPreflightOppositeSide:
-    """091# #3: preflight 失敗時に反対 side を即時チェック."""
+    """091# #3: preflight 失敗時に反対 side を即時チェック.
+
+    522# balance-forcing 完全撤廃: 反対 side への強制切替は廃止。
+    残高不足時はスキップし、次サイクルで自然に反対 side が選択される。
+    テストは新アーキテクチャに合わせて更新。
+    """
 
     def test_preflight_has_opposite_side_check(self) -> None:
-        """preflight 失敗分岐に反対 side チェックがある."""
+        """522# 残高不足時に side freeze して skip するロジックがある."""
         src = Path(
-            _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_balance.py"  # 332# Phase 4: balance Mixin に移管
+            _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_balance.py"
         )
         content = src.read_text(encoding="utf-8")
 
-        # 091# の即座切替ロジックが存在する
-        assert "switching to" in content and "immediately (091#)" in content, (
-            "091# の即座 opposite side 切替ロジックが見つからない"
+        # 522# の freeze + skip ロジックが存在する
+        assert "no forced switching" in content, (
+            "522# balance-forcing 撤廃ロジックが見つからない"
+        )
+        assert "freeze_side" in content, (
+            "balance 不足時の side freeze がない"
         )
 
     def test_preflight_skip_has_batch_flush(self) -> None:
@@ -94,18 +102,18 @@ class TestPreflightOppositeSide:
         assert "insufficient" in content
 
     def test_preflight_opposite_side_logic_order(self) -> None:
-        """opposite side 即時切替が SAFE_STOP より前 (preflight 分岐内) に位置する."""
+        """522# balance 不足チェックが SAFE_STOP より前に位置する."""
         src = Path(
-            _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_balance.py"  # 332# Phase 4: balance Mixin に移管
+            _PROJECT_ROOT / "scripts" / "v460" / "lib" / "orchestrator_balance.py"
         )
         content = src.read_text(encoding="utf-8")
 
-        pos_opposite = content.find("immediately (091#)")
+        pos_balance_skip = content.find("no forced switching")
         pos_safe_stop = content.find("SAFE_STOP: 連続 preflight")
-        assert pos_opposite > 0, "091# 即座切替ロジックが見つからない"
+        assert pos_balance_skip > 0, "522# balance skip ロジックが見つからない"
         assert pos_safe_stop > 0, "SAFE_STOP ロジックが見つからない"
-        assert pos_opposite < pos_safe_stop, (
-            "opposite side 即時切替が SAFE_STOP より後にある"
+        assert pos_balance_skip < pos_safe_stop, (
+            "balance 不足スキップが SAFE_STOP より後にある"
         )
 
 

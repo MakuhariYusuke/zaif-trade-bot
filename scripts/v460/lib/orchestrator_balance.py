@@ -5,16 +5,16 @@ run_continuous (~800 行) のうち ~230 行の balance preflight ロジック�
 OrchestratorBalanceMixin に分離。
 
 責務:
-  - 残高 pre-flight check (current side + opposite side 試行)
-  - Inventory Escape Mode (269#)
+  - 残高 pre-flight check (current side のみ — 反対 side 強制なし)
   - Preflight failure handling (balance_shrink, pause, safe_stop)
   - 372# dust buy-to-clear: micro-dust 検出時の buy 準備
 
-市場理論的位置づけ:
-  **Inventory Risk Management** (Stoll 1978, Ho & Stoll 1981):
-    残高確認は在庫管理の第一段階。資金不足による片側偏重は
-    マーケットメイカーの基本原則に反する。348# balance_forced 概念を
-    全廃し、残高不足時の side 切替は通常のサイドセレクションとして扱う。
+522# balance_forced 完全撤廃:
+  348# で balance_forced 概念を全廃したが、balance_switch / recovery_skew /
+  inventory_escape が実質的に同じ機能を果たしていた。522# でこれらを
+  全て撤廃。残高不足時はサイクルをスキップし、side_selector の freeze を
+  通じて次サイクルで自然に反対 side が選択されるようにする。
+  No Trade = Normal (250# 原則)。
 """
 
 from __future__ import annotations
@@ -47,13 +47,14 @@ class OrchestratorBalanceMixin:
     async def _resolve_balance_and_preflight(
         self, st: RunSessionState, ctx: CycleContext,
     ) -> bool:
-        """041# 残高 pre-flight check + opposite side 試行 + preflight 失敗処理.
+        """522# 残高 pre-flight check (balance-forcing 完全撤廃).
 
         332# extract from run_continuous L435-L636.
         True = サイクルスキップ (caller: continue)
         False = preflight 成功、実行パスに進む
 
-        ctx.next_side, ctx.inventory_escape が更新される。
+        522# 変更: balance_switch / recovery_skew / inventory_escape を全廃。
+        残高不足時は side を freeze して次サイクルで自然に反対 side が選ばれるようにする。
         """
         next_side = ctx.next_side
         _regime_mult = ctx.regime_mult
@@ -66,141 +67,36 @@ class OrchestratorBalanceMixin:
             self._side_selector.unfreeze_side()
             return False
 
-        # ── 残高不足: 反対 side を試す ──
+        # ── 522# 残高不足: 反対 side の状態を確認 (安全弁) ──
         opposite = self._opposite_side(next_side)
-        tried_opposite = False
 
-        if not await self._check_balance_for_side(opposite, regime_mult=_regime_mult):
-            # 反対 side は残高 OK → 即座に切替
-            # ── 421# P0: Route-to-Kill Deadlock 防止 ──
-            # 反対 side が kill-gated (sell_dynamic_kill / buy_dynamic_kill) の場合、
-            # 切替しても gate で即ブロックされ高速ループのデッドスピラルになる。
-            # 496# Recovery Skew: skip ではなく超ワイド offset で通す (494# §2.2)
-            if self._is_side_killed(opposite):
-                if self.config.recovery_skew_enabled:
-                    logger.warning(
-                        f"[496#] Recovery Skew: {next_side} insufficient, "
-                        f"{opposite} kill-gated — bypassing kill with "
-                        f"wide offset (×{self.config.recovery_skew_offset_mult:.1f})"
-                    )
-                    self._inc_guard_fire("recovery_skew_active")
-                    ctx.recovery_skew = True
-                    # fall through to normal opposite switch logic below
-                else:
-                    logger.warning(
-                        f"[421#] Route-to-Kill deadlock: {next_side} insufficient, "
-                        f"{opposite} has balance but is kill-gated — "
-                        f"treating as both-side blocked"
-                    )
-                    self._inc_guard_fire("route_to_kill_deadlock")
-                    await self._execute_skip(
-                        st, side=next_side,
-                        cancel_reason=CR.ROUTE_TO_KILL_DEADLOCK,
-                        order_quantity=self._current_lot,
-                        flush_context="route_to_kill_deadlock",
-                        state_save=True,
-                        state_save_context="route_to_kill_deadlock",
-                        update_last_side=True,
-                        requested_side=ctx.requested_side,
-                        resolved_side_reason="route_to_kill_deadlock",
-                    )
-                    return True
-
-            logger.info(
-                f"[balance] {next_side} insufficient, "
-                f"switching to {opposite} immediately (091#)"
-            )
-            self._side_selector.freeze_side(
-                next_side, cycles=self.config.balance_freeze_cycles,
-            )
-            ctx.next_side = opposite
-            next_side = opposite
-            self._last_side = opposite
-            # 496#: recovery_skew 時は attribution を保持
-            ctx.resolved_side_reason = (
-                "recovery_skew" if ctx.recovery_skew else "balance_switch"
-            )
-            self._preflight_skip_count = 0
-            tried_opposite = True
-
-            # 372# dust buy-to-clear: micro-dust → buy 最小ロット
-            if self._balance_checker.dust_buy_pending:
-                self._balance_checker.prepare_dust_buy()
-
-            # 348# per-side halt 再チェック (balance_forced 撤廃)
-            if self._daily_drawdown_guard.is_side_halted(next_side):
-                skip = await self._handle_inventory_escape_or_halt(
-                    st, ctx, next_side,
-                )
-                if skip:
-                    return True
-                # skip=False → inventory_escape 成功、実行パスへ fallthrough
-
-        if not tried_opposite:
+        if await self._check_balance_for_side(opposite, regime_mult=_regime_mult):
             # 両 side とも残高不足 → preflight failure handling
             return await self._handle_preflight_failure(st, ctx)
 
-        # preflight 成功 (opposite side に切替済み)
-        self._preflight_skip_count = 0
-        self._balance_checker.restore_lot_on_success()
-        self._side_selector.unfreeze_side()
-        return False
-
-    # ------------------------------------------------------------------
-    # 269# Inventory Escape Mode handling
-    # ------------------------------------------------------------------
-    async def _handle_inventory_escape_or_halt(
-        self,
-        st: RunSessionState,
-        ctx: CycleContext,
-        next_side: str,
-    ) -> bool:
-        """269# per-side halt → Inventory Escape or halt block.
-
-        348# balance_forced 撤廃: side 切替後の halt チェックとして機能。
-        True = サイクルスキップ (caller: continue)
-        False = inventory_escape 成功、実行パスへ進む
-        """
-        _ie_enabled = self.config.inventory_escape_enabled
-        _ie_duty = max(self.config.inventory_escape_duty_cycle, 1)
-        _inventory_escape = False
-
-        if _ie_enabled:
-            self._inventory_escape_duty_counter += 1
-            if _ie_duty > 1 and (self._inventory_escape_duty_counter % _ie_duty) != 1:
-                logger.info(
-                    f"[269#] Inventory escape duty skip: "
-                    f"cycle {self._inventory_escape_duty_counter}/{_ie_duty}"
-                )
-                self._inc_guard_fire("inventory_escape_duty_skip")
-            else:
-                logger.warning(
-                    f"[269#] INVENTORY ESCAPE: bypassing per-side halt "
-                    f"for {next_side} (deadlock breakout, "
-                    f"cycle {self._inventory_escape_duty_counter}/{_ie_duty})"
-                )
-                self._inc_guard_fire("inventory_escape_active")
-                _inventory_escape = True
-                self._tick_toxic_veto("inventory_escape")
-
-        if _inventory_escape:
-            ctx.inventory_escape = True
-            return False  # 実行パスへ進む
-
-        # halt 貫通不可 → スキップ
-        logger.warning(
-            f"[348#] {next_side} is per-side halted — "
-            f"refusing to bypass halt (safety > liveness)"
+        # ── 522# 片側のみ残高不足 → side を freeze してスキップ ──
+        # balance_switch/recovery_skew/inventory_escape は全廃。
+        # freeze により次サイクルで自然に opposite が選択される。
+        logger.info(
+            f"[522#] {next_side} insufficient, {opposite} available — "
+            f"freezing {next_side} and skipping (no forced switching)"
         )
-        self._inc_guard_fire("per_side_halt_block")
-        self._tick_toxic_veto("halt_block")
+        self._side_selector.freeze_side(
+            next_side, cycles=self.config.balance_freeze_cycles,
+        )
+        self._inc_guard_fire("balance_insufficient_skip")
+
+        # 372# dust buy-to-clear: micro-dust 検出時は buy ロット準備
+        if self._balance_checker.dust_buy_pending:
+            self._balance_checker.prepare_dust_buy()
+
         await self._execute_skip(
             st, side=next_side,
-            cancel_reason=CR.PER_SIDE_DD_HALT,
+            cancel_reason=CR.PREFLIGHT_INSUFFICIENT,
             order_quantity=self._current_lot,
-            flush_context="halt_recheck",
+            flush_context="balance_insufficient",
             state_save=True,
-            state_save_context="halt_block",
+            state_save_context="balance_insufficient",
             update_last_side=True,
         )
         return True

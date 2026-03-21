@@ -49,20 +49,18 @@ class CycleContext:
     while ループの 1 回分のみ有効。毎イテレーション冒頭で再生成する。
 
     332# Phase 4: 抽出メソッド間の受渡しに使用される。
-    348# balance_forced 概念を全廃。残高不足時の side 切替は通常のサイドセレクションとして扱う。
+    348# balance_forced 概念を全廃。
+    522# balance_switch / recovery_skew / inventory_escape を完全撤廃。
+    残高不足時はスキップし、次サイクルで自然に反対 side が選択される。
     """
 
     next_side: str = ""
     #: 420# P1: SideSelector が最初に返した side (balance/veto 切替前)
     requested_side: str = ""
-    #: 420# P1: side 切替理由 ("balance_switch" / "route_to_kill_deadlock" / None)
+    #: 420# P1: side 切替理由 (522# 撤廃: balance_switch/recovery_skew は不使用)
     resolved_side_reason: str | None = None
     #: 片方のみ残高あり → degraded one-sided 実行
     one_sided_balance: bool = False
-    #: 269# Inventory Escape: per-side halt 貫通モード
-    inventory_escape: bool = False
-    #: 496# Recovery Skew: route-to-kill deadlock 時の kill gate bypass + wide offset
-    recovery_skew: bool = False
     #: レジームベースの lot 倍率 (preflight-lot alignment 用)
     regime_mult: float = 1.0
 

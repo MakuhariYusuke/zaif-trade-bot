@@ -758,17 +758,17 @@ loss_control:
   trending_sell_as_offset_enabled: true
   trending_sell_offset_boost_factor: 1.5    # 320# 4.0→1.5 (C-1解消: sell ceiling 0.50 でパイプライン復活 → pipeline(0.50)×1.5=0.75。旧: ceiling(0.15)×4.0=0.60)
   # 253# 削除済み: balance_forced_apply_trending_offset (234# dead config → 235# TODO 解消)
-  # 234# P0-A: 縮退清算モード (348# balance_forced 撤廃: inventory_escape 経由のみ)
+  # 234# P0-A: 縮退清算モード (522# balance-forcing 完全撤廃)
   degraded_liquidation_enabled: true        # 縮退清算モードの有効/無効
   degraded_liquidation_lot_mult: 0.2        # 通常 lot の 20% (min lot 相当)
   degraded_liquidation_offset_mult: 3.0     # offset を通常の 3 倍 (wide offset)
   degraded_liquidation_duty_cycle: 3        # N サイクルに 1 回のみ実行 (33%)
-  # 269# P0: Inventory Escape Mode — per-side halt デッドロック解消 (348# balance_forced 撤廃)
-  inventory_escape_enabled: true            # Inventory Escape の有効/無効
-  inventory_escape_duty_cycle: 5            # N サイクルに 1 回 (halt 貫通は控えめ: 20%)
-  # 496# Recovery Skew (494# §2.2): route-to-kill deadlock → skip ではなく超ワイド指値で通す
-  recovery_skew_enabled: true               # Recovery Skew の有効/無効
-  recovery_skew_offset_mult: 1.5            # 507# 500# P1: 2.0→1.5 (実績 avg=-0.631 改善)
+  # 269# / 522# Inventory Escape Mode — 完全撤廃 (balance-forcing の一形態)
+  inventory_escape_enabled: false           # 522# 撤廃
+  inventory_escape_duty_cycle: 5            # 522# 残置 (後方互換)
+  # 496# / 522# Recovery Skew — 完全撤廃 (balance-forcing の一形態)
+  recovery_skew_enabled: false              # 522# 撤廃
+  recovery_skew_offset_mult: 1.5            # 522# 残置 (後方互換)
   # 166# HF4: 連続 sell skip 安全弁上限を 3010 に短縮 (7.3 B.4)
   max_consecutive_trending_sell_skip: 10   # 171#: 20→10 (Guard Paradox対策: 安全弁を早期発動して sell 機会確保)
   # 171# Guard Paradox 対策: 在庫偏重時に sell ガードをバイパスする閾値

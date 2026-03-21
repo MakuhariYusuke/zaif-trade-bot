@@ -548,6 +548,7 @@
 | 519 | impl | [519_ph2_impl_sell_ceiling_favorable_tighten_sdk_window.md](519_ph2_impl_sell_ceiling_favorable_tighten_sdk_window.md) | sell ceiling 0.25 + favorable_tighten 有効化 + sell_dynamic_kill window 30 |
 | 520 | plan | [520_phg_plan_remaining_deferred_actions_screening.md](520_phg_plan_remaining_deferred_actions_screening.md) | remaining deferred 項目の実行可否スクリーニング: 今やるもの / future 維持の分離 |
 | 521 | plan | [521_phg_master_deferred_and_architecture_carryforward.md](521_phg_master_deferred_and_architecture_carryforward.md) | deferred docs とコード基本設計の一元化された living document |
+| 522 | impl | [522_ph2_impl_balance_forcing_abolish_and_truncation_audit.md](522_ph2_impl_balance_forcing_abolish_and_truncation_audit.md) | balance_switch/recovery_skew/inventory_escape 完全撤廃 + 切り捨て/丸め無効化パラメータ監査 |
 
 ---
 

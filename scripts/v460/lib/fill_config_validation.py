@@ -304,19 +304,8 @@ def validate_fill_config(config: FillTestConfig) -> None:
             f"got {config.unknown_regime_max_consecutive}"
         )
     # 285# 283# P0-2: per-side halt + IE 相互制約
-    # 348# balance_forced 撤廃: デッドロックリスクは低減したが IE 必須バリデーションは安全策として保持
-    if (
-        config.per_side_dd_enabled
-        and config.per_side_dd_halt_cycles == 0
-        and not config.inventory_escape_enabled
-    ):
-        raise ValueError(
-            "per_side_dd_halt_cycles=0 (永続封鎖) と "
-            "inventory_escape_enabled=False の組合せは禁止。"
-            "per-side halt の永久デッドロックが発生する "
-            "(282# 実証済)。halt_cycles >= 1 にするか "
-            "inventory_escape_enabled=True にしてください"
-        )
+    # 522# inventory_escape 完全撤廃 — IE 必須バリデーション削除
+    # per_side_dd_halt_cycles=0 の永久封鎖は side freeze + natural skip で解消される
     # 330# B4: kyle_lambda / amihud_illiq は compute_imbalance で depth が
     # 更新されるため、imbalance_enabled=False だと depth が永久 0 のまま
     # サイレント無効になる。設定ミスを早期検出。

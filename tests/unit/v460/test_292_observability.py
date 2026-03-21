@@ -211,10 +211,9 @@ class TestHotReloadComprehensiveCoverage:
         assert expected.issubset(self.fields)
 
     def test_degraded_and_escape_fields(self) -> None:
-        """縮退清算 / Inventory Escape."""
+        """縮退清算 (522# IE 撤廃: hot-reload から除外済み)。"""
         expected = {
             "degraded_liquidation_enabled", "degraded_liquidation_lot_mult",
-            "inventory_escape_enabled", "inventory_escape_duty_cycle",
         }
         assert expected.issubset(self.fields)
 

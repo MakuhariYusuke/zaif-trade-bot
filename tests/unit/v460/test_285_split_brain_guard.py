@@ -2,6 +2,7 @@
 
 283# P0-1: FillRecord に pid フィールドを追加し、Split-Brain 検知を可能に。
 283# P0-2: per_side_dd_halt_cycles=0 + inventory_escape_enabled=False の組合せ禁止。
+522# inventory_escape 完全撤廃: IE 必須バリデーション削除。
 """
 
 from __future__ import annotations
@@ -12,18 +13,19 @@ import pytest
 
 
 class TestConfigMutualConstraint:
-    """283# P0-2: per_side_dd + IE 相互制約バリデーション."""
+    """283# P0-2 / 522#: IE 撤廃によりバリデーション削除済み."""
 
-    def test_halt_cycles_zero_ie_disabled_raises(self):
-        """halt_cycles=0 (永続封鎖) + IE無効 → ValueError."""
+    def test_halt_cycles_zero_ie_disabled_no_longer_raises(self):
+        """522# 撤廃: halt_cycles=0 + IE無効 でも ValueError は発生しない."""
         from scripts.v460.lib.fill_config import FillTestConfig
 
-        with pytest.raises(ValueError, match="per_side_dd_halt_cycles=0"):
-            FillTestConfig(
-                per_side_dd_enabled=True,
-                per_side_dd_halt_cycles=0,
-                inventory_escape_enabled=False,
-            )
+        cfg = FillTestConfig(
+            per_side_dd_enabled=True,
+            per_side_dd_halt_cycles=0,
+            inventory_escape_enabled=False,
+        )
+        assert cfg.per_side_dd_halt_cycles == 0
+        assert cfg.inventory_escape_enabled is False
 
     def test_halt_cycles_zero_ie_enabled_ok(self):
         """halt_cycles=0 + IE有効 → 許可 (IE がデッドロック脱出口)."""

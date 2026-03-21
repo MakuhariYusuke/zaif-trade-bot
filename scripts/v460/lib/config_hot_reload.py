@@ -302,9 +302,7 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "degraded_liquidation_lot_mult",
     "degraded_liquidation_offset_mult",
     "degraded_liquidation_duty_cycle",
-    # --- inventory escape ---
-    "inventory_escape_enabled",
-    "inventory_escape_duty_cycle",
+    # --- inventory escape (522# 撤廃済みだが後方互換で残置) ---
     # --- DD cooldown / recovery ---
     "dd_cooldown_release_sec",
     "dd_cooldown_release_lot_scale",
@@ -524,9 +522,7 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "micro_timeout_max_requote",
     "micro_timeout_requote_cooloff_sec",
     "micro_timeout_cancel_on_cv_flip",
-    # --- recovery_skew (orchestrator_balance 毎サイクル読み) ---
-    "recovery_skew_enabled",
-    "recovery_skew_offset_mult",
+    # --- recovery_skew (522# 撤廃済みだが後方互換で残置) ---
     # --- cross-venue 閾値 (maker_risk_guards 毎サイクル読み) ---
     # ※ cross_venue_lead_lag_enabled / cross_venue_reference_exchange は
     #   WebSocket 初期化に関わるため除外
