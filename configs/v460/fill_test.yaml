@@ -353,7 +353,7 @@ cross_venue_lead_lag:
   basis_ema_alpha: 0.02         # basis EMA α (spread EMA より遅い、日次スケール)
   # 512# Favorable-side tightening
   # adverse 側 retreat だけでなく favorable 側も confidence 比例で offset 縮小
-  favorable_tighten_enabled: false   # 安全デフォルト: 有効化は実運用で確認後
+  favorable_tighten_enabled: true    # 519# false→true (512#実装済み。buy PnL30=+39.0で健全、favorable側でfill rate向上を狙う)
   favorable_tighten_mult: 0.90       # offset × 0.90 = 10% 縮小 (confidence=1.0 時)
 
 # ---- 211# Spread Anomaly Detector (513# YAML化) ----
@@ -673,7 +673,7 @@ offset_stage_recording:
 # - buy ceiling=0.15 据置 → buy side には十分な制御
 offset_ceiling_ratio: 0.15        # 共通デフォルト (サイド別が未設定時に使用)
 offset_ceiling_ratio_buy: 0.25    # 491# 0.20→0.25 (ログ分析: 478/717=67%が0.20でclamp, pre-clamp avg=0.2982。macro_boost等が二重clampで無効化。PnL avg=-2.73bps→保護強化)
-offset_ceiling_ratio_sell: 0.20   # 474# sell: 0.50→0.20 (473#検証: ratio=0.50→mid+0, 936JPY逆行に耐えられず。0.20→mid+718JPY buffer)
+offset_ceiling_ratio_sell: 0.25   # 519# 0.20→0.25 (518#検証: native sell AS avg=-7.31@ceil=0.20 vs forced sell AS avg=-4.42@ceil=0.25。pipeline出力0.274のリスク評価を5%分追加反映。buy ceilingと統一)
 # ---- 421# P0: Execution Final Clamp (416#/417# review) ----
 # maker_price ceiling 後の executor multiplier chain (EV/velocity/toxicity 等) が
 # ceiling を迂回する構造欠陥の修正。全 multiplier 適用後に ceiling を再適用。
@@ -776,7 +776,7 @@ loss_control:
   # P0-10: sell 動的 kill (rolling PnL ベースの自動停止)
   sell_dynamic_kill:
     enabled: true
-    window: 50                     # rolling ウィンドウ (sell fill 数)
+    window: 30                     # 519# 50→30 (518#検証: sell fill数66で到達はするが直近損失への反応遅延。window縮小で早期kill)
     threshold_bps: -0.5            # 364# TUNE-3: -0.3→-0.5 (effective -1.0 at max relaxation). 361# F7制約: ewma_alpha据置
     resume_window: 10              # 156# D-5: 20→10 (40分→約20分へ半減)
     # 269# probe/force-release YAML 露出 (250# 思想: No Trade=正常)

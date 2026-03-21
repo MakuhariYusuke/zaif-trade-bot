@@ -45,6 +45,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "bayesian_regime_enabled",
     "buy_as_guard_enabled",
     "buy_dynamic_kill_enabled",
+    "cross_venue_favorable_tighten_enabled",  # 519# false→true
     "cross_venue_lead_lag_enabled",
     "cross_venue_basis_correction_enabled",
     "cross_venue_lead_lag_veto_enabled",
@@ -139,6 +140,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "regime_trending_offset_boost_buy",
     "regime_trending_offset_boost_sell",
     "sell_dynamic_kill_regime_thresholds",
+    "sell_dynamic_kill_window",  # 519# 50→30
     "sell_dynamic_kill_ewma_time_decay_tau_sec",
     "sell_age_cap_sec",
     "sell_hour_offset_boost",

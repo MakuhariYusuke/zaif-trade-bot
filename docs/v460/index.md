@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-20 (500# 497#-499#/503#レビュー: Buy改善後のSell崩壊を非対称実行で再整理)
+> 最終更新: 2026-03-21 (519# sell ceiling 0.25 + favorable_tighten 有効化 + sell_dynamic_kill window 30)
 
 ---
 
@@ -541,6 +541,11 @@
 | 512 | impl | [512_ph2_impl_cross_venue_favorable_tighten_dry_summary.md](512_ph2_impl_cross_venue_favorable_tighten_dry_summary.md) | cross-venue favorable-side tighten + DRY microprice + 周期サマリ統合 |
 | 513 | audit | [513_ph2_audit_dormant_mechanisms.md](513_ph2_audit_dormant_mechanisms.md) | 実装済み機構の活用度監査 + SAD/MCB YAML化: SAD/PPG/MCB がデッドコード |
 | 514 | plan | [514_phg_plan_deferred_docs_refresh_and_carryforward_audit.md](514_phg_plan_deferred_docs_refresh_and_carryforward_audit.md) | deferred docs 棚卸し: v461/後日表現の現状追随方針と更新優先順位 |
+| 515 | rpt | [515_fill_test_restart_deep_dive.md](515_fill_test_restart_deep_dive.md) | Fill Test 再起動深掘り: 506#/507# 後の構造的劣化を EV/XV/sell_offset/kill の観点から分析 |
+| 516 | rev | [516_phg_rev_501_513_515_multifaceted_validation.md](516_phg_rev_501_513_515_multifaceted_validation.md) | 501-513/515レビュー: runtime不整合・buy過剰抑制・sell toxic fill・cross_venue飽和を是々非々で再整理 |
+| 517 | rev | [517_phg_second_opinion_515_516_validation.md](517_phg_second_opinion_515_516_validation.md) | PHG second opinion: 515#事実誤認指摘 + sell AS 23fillsが喪失の単一原因 |
+| 518 | rpt | [518_reconciliation_515_516_517_direction_correction.md](518_reconciliation_515_516_517_direction_correction.md) | 方向修正: 515/516/517三文書検証→sell ceiling cap(0.20)が真因特定、P0再編成 |
+| 519 | impl | [519_ph2_impl_sell_ceiling_favorable_tighten_sdk_window.md](519_ph2_impl_sell_ceiling_favorable_tighten_sdk_window.md) | sell ceiling 0.25 + favorable_tighten 有効化 + sell_dynamic_kill window 30 |
 | 520 | plan | [520_phg_plan_remaining_deferred_actions_screening.md](520_phg_plan_remaining_deferred_actions_screening.md) | remaining deferred 項目の実行可否スクリーニング: 今やるもの / future 維持の分離 |
 | 521 | plan | [521_phg_master_deferred_and_architecture_carryforward.md](521_phg_master_deferred_and_architecture_carryforward.md) | deferred docs とコード基本設計の一元化された living document |
 
