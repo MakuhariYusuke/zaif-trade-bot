@@ -128,7 +128,6 @@ class OrchestratorLifecycleMixin:
                 self._sad.export_state() if self._sad is not None else None
             ),
             degraded_liquidation_duty_counter=self._degraded_liquidation_duty_counter,
-            inventory_escape_duty_counter=self._inventory_escape_duty_counter,
             one_sided_cooldown_remaining=self._one_sided_cooldown_remaining,
             one_sided_freeze_remaining=self._one_sided_freeze_remaining,
             one_sided_frozen_side=self._one_sided_frozen_side,
@@ -237,10 +236,6 @@ class OrchestratorLifecycleMixin:
         if _duty > 0:
             self._degraded_liquidation_duty_counter = _duty
             logger.info(f"[236#] Degraded duty counter restored: {_duty}")
-        _ie_duty = saved_state.inventory_escape_duty_counter
-        if _ie_duty > 0:
-            self._inventory_escape_duty_counter = _ie_duty
-            logger.info(f"[269#] Inventory escape duty counter restored: {_ie_duty}")
         _cd = saved_state.one_sided_cooldown_remaining
         if _cd > 0:
             self._one_sided_cooldown_remaining = _cd

@@ -1079,12 +1079,11 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         _record_offset_stage(_stages, "ffd", effective_offset_ratio)
         _record_offset_stage(_stages, "final", effective_offset_ratio)
 
-        # 306# / 421# / 467#: final ceiling clamp を stage 化
-        effective_offset_ratio, offset, _ceiling_clamped = self._apply_final_offset_ceiling(
-            side, spread, effective_offset_ratio, offset,
-        )
-        if _ceiling_clamped:
-            _record_offset_stage(_stages, "ceiling", effective_offset_ratio)
+        # 523# 二重 ceiling 撤廃: maker_price 中間 ceiling を削除。
+        # offset_pipeline の execution_final_clamp (421#) に一本化。
+        # 理由: 中間 ceiling が FFD boost / vol_guard 等のリスク評価を
+        # 打ち消し、offset_pipeline 側で再度 ceiling 適用 → 二重キャップで
+        # 防御メカニズムが実質無力化されていた (518# §5, 522# P0)。
 
         # 306# E1: cache last offset stages for FillRecord
         self._last_offset_stages = _serialize_offset_stages(_stages)

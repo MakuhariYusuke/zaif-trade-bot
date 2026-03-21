@@ -327,8 +327,6 @@ class FillTestState:
     sad_state: dict[str, object] | None = None
     # 236# 234# エスカレーション・縮退カウンタ永続化
     degraded_liquidation_duty_counter: int = 0
-    # 269# Inventory Escape Mode duty cycle カウンタ
-    inventory_escape_duty_counter: int = 0
     one_sided_cooldown_remaining: int = 0
     one_sided_freeze_remaining: int = 0
     # 254# 250# P1-4 永続化漏れ修正: freeze/cooldown の対象 side

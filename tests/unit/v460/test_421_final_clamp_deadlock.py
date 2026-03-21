@@ -522,9 +522,10 @@ class TestSideObservability:
 
     def test_fill_record_has_requested_side(self) -> None:
         from ztb.metrics.fill_quality import FillRecord
-        fr = FillRecord(**_FR_REQ, requested_side="buy", resolved_side_reason="balance_switch")
+        # 522# balance_switch 撤廃後も FillRecord フィールド互換を保持
+        fr = FillRecord(**_FR_REQ, requested_side="buy", resolved_side_reason=None)
         assert fr.requested_side == "buy"
-        assert fr.resolved_side_reason == "balance_switch"
+        assert fr.resolved_side_reason is None
 
     def test_fill_record_side_fields_default_none(self) -> None:
         from ztb.metrics.fill_quality import FillRecord
@@ -536,9 +537,9 @@ class TestSideObservability:
         from scripts.v460.lib.orchestrator_pre_cycle import CycleContext
         ctx = CycleContext(next_side="sell")
         ctx.requested_side = "buy"
-        ctx.resolved_side_reason = "balance_switch"
+        # 522# balance_switch 撤廃 → resolved_side_reason は常に None
         assert ctx.requested_side == "buy"
-        assert ctx.resolved_side_reason == "balance_switch"
+        assert ctx.resolved_side_reason is None
 
     def test_cycle_context_defaults(self) -> None:
         from scripts.v460.lib.orchestrator_pre_cycle import CycleContext

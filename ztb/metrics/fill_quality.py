@@ -222,7 +222,7 @@ class FillRecord:
     # ---- 420# P1: Side 切替可観測性 (416# §4.2) ----
     # SideSelector が最初に返した side (balance/veto 切替前)
     requested_side: str | None = None
-    # 切替理由: "balance_switch" / "route_to_kill_deadlock" / None (切替なし)
+    # 切替理由: 522# で balance_switch/recovery_skew 撤廃 → 現在は常に None
     resolved_side_reason: str | None = None
     # ---- 452# Micro-timeout (TIF Emulation) ----
     requote_attempts: int | None = None  # サブサイクル re-quote 回数 (0=初回で約定, None=micro_timeout 無効)

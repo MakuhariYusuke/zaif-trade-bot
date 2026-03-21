@@ -150,8 +150,6 @@ class FillLoopOrchestratorMixin(
     _trending_sell_skip_count: int = 0
     # 234# 縮退清算モード duty cycle カウンタ
     _degraded_liquidation_duty_counter: int = 0
-    # 269# Inventory Escape Mode duty cycle カウンタ
-    _inventory_escape_duty_counter: int = 0
     # 234# one-sided エスカレーション: cooldown 残サイクル
     _one_sided_cooldown_remaining: int = 0
     _one_sided_freeze_remaining: int = 0
