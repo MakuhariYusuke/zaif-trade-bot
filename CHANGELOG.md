@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 512# stale_order_policy 抽出 / neutral fallback 安定化 (2026-03-20)
 
+## 2026-03-21 metrics canonicalization
+
+### Changed
+- **ztb/metrics/record_metrics.py**: shared fill-record aggregation helper を canonical 化
+- **scripts/v460/lib/metrics_utils.py**: compatibility shim 化
+- **ab_judgment.py / side_regime_dashboard.py / stopgap_health.py**: canonical metrics helper import に追随
+
+### Tests
+- `test_159_side_regime_dashboard.py`
+- `test_160_ab_judgment.py`
+- `test_stopgap_health.py`
+
 ### Changed
 - **ztb/trading/execution/stale_order_policy.py**: order status 正規化と `CancelFillCheck` を canonical 化
 - **order_monitor.py**: stale-order policy の shared helper を再利用する構成へ整理

@@ -125,6 +125,28 @@ shim / façade が残るもの、あるいは `scripts/v460` 側に orchestrator
 3. pure helper か shared policy として再利用可能
 4. type contract を stable に置ける
 
+### B-2. `metrics` との責務境界
+
+`metrics` と `adaptation` / `scripts` が近接する領域は、次の線引きを維持する。
+
+- `ztb.metrics.fill_quality`
+  - FillRecord schema
+  - fill-quality / gate judgment
+  - fill record load/filter/date helpers
+- `ztb.metrics.record_metrics`
+  - fill record 群からの共通集計
+  - `fill_rate / avg_pnl30 / downside / AS / reprice / VG` の shared aggregation
+- `ztb.adaptation.ab_test.*`
+  - A/B 比較ルール
+  - assessment / statistical comparison / verdict combination
+- `scripts/v460/*`
+  - run context
+  - report formatting
+  - orchestration
+
+この方針により、旧 `scripts/v460/lib/metrics_utils.py` は compatibility shim に留め、
+canonical 実装は `ztb.metrics.record_metrics` に寄せる。
+
 ### C. shim を残す条件
 
 shim を残す条件:

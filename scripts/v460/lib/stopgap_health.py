@@ -4,7 +4,7 @@
 受入基準: 「3指標 + per-regime を日次で出力」
 
 既存資産活用:
-- scripts.v460.lib.metrics_utils.MetricsAccumulator (3指標 + AS/reprice/VG 拡張)
+- ztb.metrics.record_metrics.MetricsAccumulator (3指標 + AS/reprice/VG 拡張)
 - scripts.v460.lib.ab_judgment.evaluate_per_regime (regime 別 A/B 判定)
 - 163# Stopgap 退出基準表 (§7 Table) の自動評価
 """
@@ -20,7 +20,6 @@ from enum import Enum
 from pathlib import Path
 from typing import NotRequired, TypedDict, cast
 
-from scripts.v460.lib.metrics_utils import MetricsAccumulator
 from ztb.io.json_io import JSONObject
 from ztb.metrics.fill_quality import (
     PnlAccumulator,
@@ -28,6 +27,7 @@ from ztb.metrics.fill_quality import (
     format_utc_day,
     load_fill_record_objects_glob,
 )
+from ztb.metrics.record_metrics import MetricsAccumulator
 from ztb.utils.dataclass_utils import shallow_asdict
 from ztb.utils.safety import safe_to_finite
 

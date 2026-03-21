@@ -24,7 +24,6 @@ logger = logging.getLogger(__name__)
 
 import numpy as np
 
-from scripts.v460.lib.metrics_utils import MetricsAccumulator, compute_base_metrics
 from ztb.adaptation.ab_test.judgment_rules import (
     CriterionAssessment as _CriterionAssessment,
     assess_avg_pnl30 as _assess_avg_pnl30,
@@ -35,6 +34,7 @@ from ztb.adaptation.ab_test.judgment_rules import (
 )
 from ztb.io.json_io import JSONObject
 from ztb.metrics.fill_quality import format_utc_day
+from ztb.metrics.record_metrics import MetricsAccumulator, compute_base_metrics
 from ztb.utils.dataclass_utils import filter_known_dataclass_fields
 from ztb.utils.safety import safe_to_finite
 

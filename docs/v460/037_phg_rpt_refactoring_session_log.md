@@ -8336,3 +8336,19 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `RewardCalculator` は helper を増やすより、stage 契約を崩しうる merge 点を潰すのが正解だった
   - `UnifiedTrainer` は report 生成/保存を reporting 側へ寄せることで、trainer 本体の ownership が一段見やすくなった
   - `tmp_path` 化は小さいが、training/report persistence 系の固定費削減として継続的に効く
+## 553# metrics helper の canonical 化
+- `ztb/metrics/record_metrics.py`
+  - 旧 `scripts/v460/lib/metrics_utils.py` の shared fill-record aggregation を canonical 化
+- `scripts/v460/lib/metrics_utils.py`
+  - compatibility shim 化
+- `scripts/v460/lib/ab_judgment.py`
+- `scripts/v460/analysis/side_regime_dashboard.py`
+- `scripts/v460/lib/stopgap_health.py`
+  - metrics helper の import を canonical path に追随
+- `521#`
+  - `metrics` / `adaptation` / `scripts` の責務境界を追記
+- focused:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_159_side_regime_dashboard.py tests/unit/v460/test_160_ab_judgment.py tests/unit/v460/test_stopgap_health.py -k 'ComputeSideMetrics or ComputeMetrics or insufficient or ComputeDailyMetrics or GetDay or DailyMetrics' -q --tb=short --no-cov`
+- セルフレビュー
+  - 共通集計は `metrics` 側、比較判定は `adaptation` 側、run/report は `scripts` 側に線を引けた
+  - `metrics_utils` を即削除せず shim にしたので、import 影響は抑えられている

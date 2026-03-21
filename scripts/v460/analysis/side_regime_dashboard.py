@@ -32,14 +32,14 @@ _PROJECT_ROOT = _SCRIPT_DIR.parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from ztb.metrics.fill_quality import format_utc_day, iter_fill_record_objects_glob
-
-# 160# P0-B/C: judgment 統合
-from scripts.v460.lib.metrics_utils import (
+from ztb.metrics.record_metrics import (
     ExtendedMetrics,
     MetricRecord,
     MetricsAccumulator,
     compute_extended_metrics,
 )
+
+# 160# P0-B/C: judgment 統合
 from ztb.io.yaml_io import read_yaml
 from ztb.utils.safety import safe_to_finite
 from scripts.v460.lib.ab_judgment import (
