@@ -5,7 +5,6 @@ Tests the complete code path from LagrangeConstraint through CustomPPO
 to SELLBiasMitigationPPOTrainer.
 """
 
-import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -366,10 +365,9 @@ class TestTrainerLagrangeIntegration:
         self.model_save_path = str(Path(params.checkpoint_dir) / "model.zip")
 
     @pytest.fixture
-    def temp_dir(self):
+    def temp_dir(self, tmp_path):
         """Create temporary directory for test artifacts."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield tmpdir
+        return str(tmp_path)
 
     @pytest.fixture
     def mock_data_file(self, temp_dir):
@@ -497,10 +495,9 @@ class TestEndToEndLagrange:
     """End-to-end tests with actual training (short runs)."""
 
     @pytest.fixture
-    def temp_dir(self):
+    def temp_dir(self, tmp_path):
         """Create temporary directory."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield tmpdir
+        return str(tmp_path)
 
     @pytest.fixture
     def minimal_data(self, temp_dir):

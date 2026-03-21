@@ -258,6 +258,41 @@
 
 ### 結果
 - 変更対象テスト:
+
+---
+
+## 2026-03-21 / Session 037-553
+
+### 実施
+- training 配置整理の基準を `521#` に追記
+  - `ztb/training/utils/training_stats_payloads.py` は training 共通 helper として `training/utils` に残す
+  - `runtime_flags` / `advanced_feature_setup` / `reporting` は `UnifiedTrainer` 専用 helper として `unified_trainer/` 配下に残す
+  - `components/reporter.py` は canonical 実装ではなく compatibility shim として扱う判断を固定
+- `ztb/training/unified_trainer/components/reporter.py`
+  - `logger=None` でも初期化できるようにして legacy 呼び出しの許容範囲を広げた
+- Wave4 test 最適化
+  - `tests/training/test_ppo_trainer.py`
+  - `tests/training/test_lagrange_integration.py`
+  - `tests/training/test_grad_probe_guard.py`
+  - tempdir fixture を `tmp_path` ベースへ整理
+
+### 結果
+- 対象 focused 回帰:
+  - `test_ppo_trainer.py`
+  - `test_lagrange_integration.py`
+  - `test_grad_probe_guard.py`
+  - `test_unified_trainer.py`
+  - `test_training_reporting_flow.py`
+- 配置判断としては、
+  - generic helper は `training/utils`
+  - trainer 専用 helper は `unified_trainer/`
+  - compatibility 層は `components/`
+  という線で固定してよい状態になった
+
+### 次アクション
+1. `Wave2` として `maker_price` / `ab_judgment` の stateful ownership を引き続き詰める
+2. `Wave3` として training/SAC の memory diagnostics をもう一段揃える
+3. `Wave4` として training 系 `TemporaryDirectory()` 残件をさらに減らす
   - `test_pnl_monte_carlo.py` / `test_196_velocity_proportional_trending_soft.py` / `test_173_code_review_fixes.py`: `102 passed`
 - v460 全体:
   - `3940 passed, 20 warnings in 41.54s`（`--no-cov --durations=15`）

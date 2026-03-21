@@ -6108,6 +6108,10 @@ python scripts/unified_trainer.py \
 - training stats payload helper は `ztb/training/` 直下から `ztb/training/utils/` 配下へ移動し、既存 `training_stats.py` と同じ discoverability ラインに整理
 - `UnifiedTrainer` / `SACTrainer` / training tests の import を新配置へ追随
 - `tests/training/test_model_compression.py` と `tests/unit/training/test_ppo_trainer.py` の tempdir 使用を `tmp_path` ベースへ整理
+## 553# training reporter compatibility and tmp-path sweep
+- `ztb/training/unified_trainer/components/reporter.py` の compatibility shim は `logger=None` でも初期化できるようにし、legacy 呼び出し側の許容範囲を広げた
+- `tests/training/test_ppo_trainer.py` / `tests/training/test_lagrange_integration.py` / `tests/training/test_grad_probe_guard.py` の tempdir fixture を `tmp_path` ベースへ整理
+- `docs/v460/521_phg_master_deferred_and_architecture_carryforward.md` に、`training/utils` と `unified_trainer` 配下の helper 配置基準、および `components/reporter.py` を shim として残す判断を追記
 ## 551# reward and reporting ownership tightening
 - `ztb/trading/environment/components/calculators/reward_component_tracking.py` に `merge_reward_components(...)` を追加し、stage payload の後段 detail merge を helper 化
 - `ztb/trading/environment/components/calculators/reward_calculator.py` の `forced_balance` detail merge を raw `dict.update(...)` から helper ベースへ変更

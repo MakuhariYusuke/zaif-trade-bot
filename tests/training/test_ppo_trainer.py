@@ -13,7 +13,6 @@ Tests cover:
 # mypy: disable-error-code="no-untyped-def,arg-type,attr-defined,var-annotated,union-attr,import-untyped,no-any-return,misc"
 # ci: trigger python-validation (noop)
 
-import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
@@ -39,10 +38,9 @@ else:
 
 
 @pytest.fixture
-def temp_dir():
+def temp_dir(tmp_path):
     """Create temporary directory for tests that do not define a class-local fixture."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        yield tmpdir
+    return str(tmp_path)
 
 
 @pytest.fixture
@@ -618,10 +616,9 @@ class TestPPOTrainerBasic:
     """Test PPOTrainer functionality."""
 
     @pytest.fixture
-    def temp_dir(self):
+    def temp_dir(self, tmp_path):
         """Create temporary directory for testing."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield tmpdir
+        return str(tmp_path)
 
     @pytest.fixture
     def trainer_params(self, temp_dir, sample_config):
@@ -819,10 +816,9 @@ class TestPPOAlgorithmTrainer:
     """Test PPOAlgorithmTrainer functionality."""
 
     @pytest.fixture
-    def temp_dir(self):
+    def temp_dir(self, tmp_path):
         """Create temporary directory for testing."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield tmpdir
+        return str(tmp_path)
 
     @pytest.fixture
     def sample_config(self):

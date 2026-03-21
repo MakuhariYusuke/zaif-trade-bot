@@ -12,7 +12,7 @@ from ztb.types.common import ConfigDict
 class TrainingReporter(_TrainingReporter):
     """Compatibility wrapper to preserve legacy method signatures."""
 
-    def __init__(self, logger: Any) -> None:
+    def __init__(self, logger: Any | None = None) -> None:
         super().__init__(logger)
         self._last_config: ConfigDict = {}
         self._last_stats: dict[str, Any] = {}

@@ -3,7 +3,6 @@ Tests for GradProbeGuard functionality.
 """
 
 import json
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -90,10 +89,9 @@ class TestGradProbeGuard:
         return model
 
     @pytest.fixture
-    def temp_checkpoint_dir(self):
+    def temp_checkpoint_dir(self, tmp_path):
         """Create temporary checkpoint directory."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield Path(tmpdir)
+        return Path(tmp_path)
 
     def test_guard_initialization(self, temp_checkpoint_dir):
         """Test GradProbeGuard initialization."""

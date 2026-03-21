@@ -506,3 +506,47 @@ docs の先送り管理は、本書へかなり一元化できる状態に入っ
 - `tests/unit/training/test_reward_components_persistence.py`
   でも `tmp_path` 化と shared averaging helper への追随を入れた
 - reward/reporting helper の focused 回帰も増やし、保守時の破壊半径を下げた
+
+## 2026-03-21 training 配置整理メモ
+
+### 置き場所を固定したもの
+
+- `ztb/training/utils/training_stats_payloads.py`
+  - `TrainingStats` class と同じ `training/utils` 配下に置く
+  - 理由:
+    - trainer 専用ではなく `UnifiedTrainer` / `SACTrainer` / training tests で共有する
+    - payload shaping helper であり、`unified_trainer` 専用 package に閉じると再利用境界が狭くなる
+
+### 動かさないほうが良いもの
+
+- `ztb/training/unified_trainer/runtime_flags.py`
+- `ztb/training/unified_trainer/advanced_feature_setup.py`
+- `ztb/training/unified_trainer/reporting.py`
+
+理由:
+
+- いずれも `UnifiedTrainer` の orchestration ownership に強く結びついている
+- `training/utils` に出すと generic helper に見えてしまい、SAC や legacy trainer へ無理に流用しやすくなる
+- `components/` は manager / compatibility shim の置き場として既に使っており、
+  pure helper 群を混在させると逆に見通しが悪くなる
+
+### shim / canonical の判断
+
+- `components/reporter.py`
+  - canonical 実装ではなく compatibility shim として残す
+  - `TrainingReporter` の legacy method signature を吸収する役割がある
+- canonical 実装は `ztb/training/unified_trainer/reporting.py`
+  - 新規 import はこちらを優先する
+
+### 現時点の整理方針
+
+1. `training/utils`
+   - package 横断で使う pure helper
+2. `training/unified_trainer/*`
+   - `UnifiedTrainer` 専用の runtime/setup/reporting helper
+3. `training/unified_trainer/components/*`
+   - manager / UI / compatibility shim
+
+この切り分けなら、今後 `UnifiedTrainer` をさらに分割するときも
+「generic helper を外へ」「orchestration helper は trainer 内へ」
+という基準を維持しやすい。
