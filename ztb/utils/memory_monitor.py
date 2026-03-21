@@ -8,14 +8,23 @@ import logging
 import threading
 import time
 from collections import deque
-from typing import Any, Optional, cast
+from typing import Any, TypedDict, cast
 
 import psutil
 
 from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.config import ZTBConfig
+from ztb.utils.memory_utils import get_memory_usage as get_memory_snapshot
 
 logger = logging.getLogger(__name__)
+
+
+class PostCycleMemoryStatus(TypedDict):
+    rss_mb: float
+    rss_delta_mb: float
+    cache_total_entries: float
+    leak_warning: bool
+    rss_warning: bool
 
 class BackgroundMemoryMonitor:
     """Advanced memory monitoring with history and alerting."""
@@ -33,6 +42,7 @@ class BackgroundMemoryMonitor:
         self.monitoring_active = False
         self.monitor_thread: threading.Thread | None = None
         self._lock = threading.Lock()
+        self._stop_event = threading.Event()
 
     def start_monitoring(self, interval_seconds: float = 5.0) -> None:
         """
@@ -45,6 +55,7 @@ class BackgroundMemoryMonitor:
             return
 
         self.monitoring_active = True
+        self._stop_event.clear()
         self.monitor_thread = threading.Thread(
             target=self._monitor_loop, args=(interval_seconds,), daemon=True
         )
@@ -54,8 +65,10 @@ class BackgroundMemoryMonitor:
     def stop_monitoring(self) -> None:
         """Stop background memory monitoring."""
         self.monitoring_active = False
+        self._stop_event.set()
         if self.monitor_thread:
             self.monitor_thread.join(timeout=1.0)
+            self.monitor_thread = None
 
         # Memory leak prevention: force garbage collection
         import gc
@@ -67,14 +80,16 @@ class BackgroundMemoryMonitor:
 
     def _monitor_loop(self, interval: float) -> None:
         """Background monitoring loop."""
-        while self.monitoring_active:
+        while not self._stop_event.is_set():
             try:
                 self.record_memory_usage()
                 self._check_alerts()
-                time.sleep(interval)
+                if self._stop_event.wait(timeout=interval):
+                    break
             except Exception as e:
                 logger.error(f"Memory monitoring error: {e}")
-                time.sleep(interval)
+                if self._stop_event.wait(timeout=interval):
+                    break
 
     def record_memory_usage(self) -> float:
         """
@@ -192,6 +207,36 @@ def get_memory_usage() -> float:
     """
     process = psutil.Process()
     return cast(float, process.memory_info().rss / BYTES_PER_MB)
+
+
+def build_post_cycle_memory_details(previous_rss_mb: float) -> dict[str, float]:
+    """Build a compact post-cycle memory payload from the shared memory snapshot."""
+    usage = get_memory_snapshot()
+    current_rss_mb = float(usage.get("rss", 0.0))
+    return {
+        "rss_mb": current_rss_mb,
+        "rss_delta_mb": current_rss_mb - previous_rss_mb if previous_rss_mb > 0 else 0.0,
+        "cache_total_entries": float(usage.get("cache_total_entries", 0.0)),
+    }
+
+
+def build_post_cycle_memory_status(
+    previous_rss_mb: float,
+    *,
+    rss_warning_mb: float,
+    leak_delta_warning_mb: float = 100.0,
+) -> PostCycleMemoryStatus:
+    """Build post-cycle details plus reusable warning flags."""
+    details = build_post_cycle_memory_details(previous_rss_mb)
+    current_rss_mb = float(details.get("rss_mb", 0.0))
+    rss_delta_mb = float(details.get("rss_delta_mb", 0.0))
+    return {
+        "rss_mb": current_rss_mb,
+        "rss_delta_mb": rss_delta_mb,
+        "cache_total_entries": float(details.get("cache_total_entries", 0.0)),
+        "leak_warning": previous_rss_mb > 0 and rss_delta_mb > leak_delta_warning_mb,
+        "rss_warning": current_rss_mb > rss_warning_mb,
+    }
 
 def log_memory_usage(label: str = "") -> None:
     """

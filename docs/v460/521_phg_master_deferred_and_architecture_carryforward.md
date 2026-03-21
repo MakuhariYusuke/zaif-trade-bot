@@ -612,7 +612,8 @@ docs の先送り管理は、本書へかなり一元化できる状態に入っ
   - insufficient 判定は canonical assessment helper と local result helper の二層に整理
   - pure rule は `ztb.adaptation.ab_test`、`ABJudgmentResult` ownership は script 側、の境界を維持
 - `SAC`
-  - post-cycle memory diagnostics は `build_post_cycle_memory_status(...)` で warning 判定まで shared 化
-  - scheduler 側は logging と lifecycle ownership に寄せる
+  - post-cycle memory diagnostics は `ztb.utils.memory_monitor` に一本化する
+  - `ztb.training.sac` 側は re-export に留め、scheduler 側は logging と lifecycle ownership に寄せる
+  - background monitor の停止は `Event.wait()` ベースにして、停止待ちの固定 sleep を持たない
 - `Wave4`
   - training 系 test の `sleep` は、契約確認に不要なものから CPU work ベースへ置換して固定費を削る

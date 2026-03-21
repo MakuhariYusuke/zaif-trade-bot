@@ -43,6 +43,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Tests
 - `test_system_optimizer.py -k 'optimize_training_step_context_manager or performance_tracking_during_training'`
 
+## 2026-03-22 memory monitor consolidation
+
+### Changed
+- **ztb/utils/memory_monitor.py**: SAC post-cycle memory detail/status helper を統合
+- **ztb/utils/memory_monitor.py**: background monitor の停止待ちを `Event.wait()` ベースへ変更
+- **ztb/training/sac/memory_monitor.py**: 削除
+- **ztb/training/sac/__init__.py**: utils 側 helper を re-export する構成へ整理
+- **tests/unit/utils/test_memory_monitor.py**: SAC post-cycle status helper の回帰を統合
+- **tests/unit/training/test_sac_memory_monitor.py**: 削除
+
+### Tests
+- `test_memory_monitor.py`
+- `test_sac_retrain_scheduler.py`
+- `test_health_monitor.py`
+
 ### Changed
 - **ztb/trading/execution/stale_order_policy.py**: order status 正規化と `CancelFillCheck` を canonical 化
 - **order_monitor.py**: stale-order policy の shared helper を再利用する構成へ整理

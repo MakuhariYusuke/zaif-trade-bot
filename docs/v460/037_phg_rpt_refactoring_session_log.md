@@ -8375,3 +8375,19 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `.venv/Scripts/python.exe -m pytest tests/training/test_system_optimizer.py -k 'optimize_training_step_context_manager or performance_tracking_during_training' -q --tb=short --no-cov`
 - セルフレビュー
   - 契約確認に不要な sleep を減らす方が broad 前の固定費削減として効率が良い
+## 556# memory_monitor 一本化
+- `ztb/utils/memory_monitor.py`
+  - post-cycle memory details/status helper を移設
+  - background monitor の待機を `Event.wait()` ベースへ変更
+- `ztb/training/sac/memory_monitor.py`
+  - 削除
+- `ztb/training/sac/__init__.py`
+  - utils 側 helper を re-export する形へ更新
+- `tests/unit/utils/test_memory_monitor.py`
+  - SAC post-cycle status helper の回帰を統合
+- `tests/unit/training/test_sac_memory_monitor.py`
+  - 削除
+- セルフレビュー
+  - generic memory monitoring は `utils` に寄せる方が自然
+  - `training/sac` に別の `memory_monitor.py` を持つより、re-export の方が混乱が少ない
+  - 停止待ちを固定 `sleep` に依存させない方が broad 前の安定化に効く

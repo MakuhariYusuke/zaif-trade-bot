@@ -9,6 +9,7 @@ from ztb.trading.environment.constants import BYTES_PER_GB, BYTES_PER_MB
 from ztb.utils.config import ZTBConfig
 from ztb.utils.memory_monitor import (
     BackgroundMemoryMonitor,
+    build_post_cycle_memory_status,
     check_memory_usage,
     get_memory_monitor,
     get_memory_usage,
@@ -193,6 +194,42 @@ class TestBackgroundMemoryMonitor(unittest.TestCase):
 
         self.assertIs(monitor1, monitor2)
         self.assertIsInstance(monitor1, BackgroundMemoryMonitor)
+
+
+class TestPostCycleMemoryStatus(unittest.TestCase):
+    @patch("ztb.utils.memory_monitor.get_memory_snapshot")
+    def test_marks_leak_and_threshold(self, mock_get_memory_snapshot):
+        mock_get_memory_snapshot.return_value = {
+            "rss": 320.0,
+            "cache_total_entries": 7.0,
+        }
+
+        status = build_post_cycle_memory_status(
+            150.0,
+            rss_warning_mb=256.0,
+        )
+
+        self.assertEqual(status["rss_mb"], 320.0)
+        self.assertEqual(status["rss_delta_mb"], 170.0)
+        self.assertEqual(status["cache_total_entries"], 7.0)
+        self.assertTrue(status["leak_warning"])
+        self.assertTrue(status["rss_warning"])
+
+    @patch("ztb.utils.memory_monitor.get_memory_snapshot")
+    def test_skips_leak_on_first_cycle(self, mock_get_memory_snapshot):
+        mock_get_memory_snapshot.return_value = {
+            "rss": 80.0,
+            "cache_total_entries": 0.0,
+        }
+
+        status = build_post_cycle_memory_status(
+            0.0,
+            rss_warning_mb=256.0,
+        )
+
+        self.assertEqual(status["rss_delta_mb"], 0.0)
+        self.assertFalse(status["leak_warning"])
+        self.assertFalse(status["rss_warning"])
 
 
 class TestBackgroundMemoryMonitorThresholdAdjustment(unittest.TestCase):

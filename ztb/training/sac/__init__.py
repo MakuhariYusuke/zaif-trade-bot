@@ -21,7 +21,7 @@ from ztb.training.sac.debug import (
     TrainingDebugEnvProtocol,
     build_training_debug_details,
 )
-from ztb.training.sac.memory_monitor import (
+from ztb.utils.memory_monitor import (
     build_post_cycle_memory_details,
     build_post_cycle_memory_status,
 )
