@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
 from typing import Optional
 from unittest.mock import patch
@@ -87,87 +86,78 @@ class TestHealthMonitor:
 class TestStatePersistence:
     """FillTestStatePersistence のテスト."""
 
-    def test_save_and_load(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            sp = FillTestStatePersistence(Path(tmp))
-            state = FillTestState(
-                run_id="test_run",
-                cycle_count=42,
-                total_count=100,
-                filled_count=65,
-                cumulative_pnl_jpy=-123.4,
-                current_lot=0.002,
-            )
-            sp.save(state)
-            loaded = sp.load()
-            assert loaded is not None
-            assert loaded.run_id == "test_run"
-            assert loaded.cycle_count == 42
-            assert loaded.filled_count == 65
-            assert loaded.cumulative_pnl_jpy == pytest.approx(-123.4)
+    def test_save_and_load(self, tmp_path: Path) -> None:
+        sp = FillTestStatePersistence(tmp_path)
+        state = FillTestState(
+            run_id="test_run",
+            cycle_count=42,
+            total_count=100,
+            filled_count=65,
+            cumulative_pnl_jpy=-123.4,
+            current_lot=0.002,
+        )
+        sp.save(state)
+        loaded = sp.load()
+        assert loaded is not None
+        assert loaded.run_id == "test_run"
+        assert loaded.cycle_count == 42
+        assert loaded.filled_count == 65
+        assert loaded.cumulative_pnl_jpy == pytest.approx(-123.4)
 
-    def test_load_nonexistent_returns_none(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            sp = FillTestStatePersistence(Path(tmp))
-            assert sp.load() is None
+    def test_load_nonexistent_returns_none(self, tmp_path: Path) -> None:
+        sp = FillTestStatePersistence(tmp_path)
+        assert sp.load() is None
 
-    def test_save_creates_json(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            sp = FillTestStatePersistence(Path(tmp))
-            sp.save(FillTestState(run_id="abc"))
-            state_file = Path(tmp) / "fill_test_state.json"
-            assert state_file.exists()
-            data = json.loads(state_file.read_text(encoding="utf-8"))
-            assert data["run_id"] == "abc"
-            assert data["saved_at"] > 0
+    def test_save_creates_json(self, tmp_path: Path) -> None:
+        sp = FillTestStatePersistence(tmp_path)
+        sp.save(FillTestState(run_id="abc"))
+        state_file = tmp_path / "fill_test_state.json"
+        assert state_file.exists()
+        data = json.loads(state_file.read_text(encoding="utf-8"))
+        assert data["run_id"] == "abc"
+        assert data["saved_at"] > 0
 
-    def test_atomic_write(self) -> None:
+    def test_atomic_write(self, tmp_path: Path) -> None:
         """tmp ファイル経由の atomic write."""
-        with tempfile.TemporaryDirectory() as tmp:
-            sp = FillTestStatePersistence(Path(tmp))
-            sp.save(FillTestState(run_id="x"))
-            # tmp ファイルが残っていないことを確認
-            assert not (Path(tmp) / "fill_test_state.tmp").exists()
+        sp = FillTestStatePersistence(tmp_path)
+        sp.save(FillTestState(run_id="x"))
+        assert not (tmp_path / "fill_test_state.tmp").exists()
 
-    def test_regime_state_save_and_load(self) -> None:
+    def test_regime_state_save_and_load(self, tmp_path: Path) -> None:
         """121# A4: regime state がシリアライズ/デシリアライズされる."""
-        with tempfile.TemporaryDirectory() as tmp:
-            sp = FillTestStatePersistence(Path(tmp))
-            state = FillTestState(
-                run_id="regime_test",
-                cycle_count=100,
-                regime_confirmed="ranging",
-                regime_stability=5,
-                regime_prices=[[1000.0, 14500000.0], [1120.0, 14510000.0]],
-                regime_raw_history=["ranging", "ranging", "ranging"],
-            )
-            sp.save(state)
-            loaded = sp.load()
-            assert loaded is not None
-            assert loaded.regime_confirmed == "ranging"
-            assert loaded.regime_stability == 5
-            assert loaded.regime_prices == [[1000.0, 14500000.0], [1120.0, 14510000.0]]
-            assert loaded.regime_raw_history == ["ranging", "ranging", "ranging"]
+        sp = FillTestStatePersistence(tmp_path)
+        state = FillTestState(
+            run_id="regime_test",
+            cycle_count=100,
+            regime_confirmed="ranging",
+            regime_stability=5,
+            regime_prices=[[1000.0, 14500000.0], [1120.0, 14510000.0]],
+            regime_raw_history=["ranging", "ranging", "ranging"],
+        )
+        sp.save(state)
+        loaded = sp.load()
+        assert loaded is not None
+        assert loaded.regime_confirmed == "ranging"
+        assert loaded.regime_stability == 5
+        assert loaded.regime_prices == [[1000.0, 14500000.0], [1120.0, 14510000.0]]
+        assert loaded.regime_raw_history == ["ranging", "ranging", "ranging"]
 
-    def test_regime_state_backward_compatible(self) -> None:
+    def test_regime_state_backward_compatible(self, tmp_path: Path) -> None:
         """121# A4: regime フィールドなしの旧 JSON からも load できる."""
-        with tempfile.TemporaryDirectory() as tmp:
-            sp = FillTestStatePersistence(Path(tmp))
-            # 旧形式 (regime フィールドなし)
-            old_json = json.dumps({"run_id": "old", "cycle_count": 50, "saved_at": 1.0})
-            (Path(tmp) / "fill_test_state.json").write_text(old_json, encoding="utf-8")
-            loaded = sp.load()
-            assert loaded is not None
-            assert loaded.run_id == "old"
-            assert loaded.regime_confirmed == "unknown"  # デフォルト
-            assert loaded.regime_prices is None
+        sp = FillTestStatePersistence(tmp_path)
+        old_json = json.dumps({"run_id": "old", "cycle_count": 50, "saved_at": 1.0})
+        (tmp_path / "fill_test_state.json").write_text(old_json, encoding="utf-8")
+        loaded = sp.load()
+        assert loaded is not None
+        assert loaded.run_id == "old"
+        assert loaded.regime_confirmed == "unknown"
+        assert loaded.regime_prices is None
 
-    def test_load_non_object_json_returns_none(self) -> None:
+    def test_load_non_object_json_returns_none(self, tmp_path: Path) -> None:
         """状態JSONがobject以外の場合は安全に None を返す."""
-        with tempfile.TemporaryDirectory() as tmp:
-            sp = FillTestStatePersistence(Path(tmp))
-            (Path(tmp) / "fill_test_state.json").write_text("[1,2,3]", encoding="utf-8")
-            assert sp.load() is None
+        sp = FillTestStatePersistence(tmp_path)
+        (tmp_path / "fill_test_state.json").write_text("[1,2,3]", encoding="utf-8")
+        assert sp.load() is None
 
 
 class TestRegimeDetectorPersistence:

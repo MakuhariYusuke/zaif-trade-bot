@@ -6120,6 +6120,11 @@ python scripts/unified_trainer.py \
 - `tests/training/test_ppo_trainer.py` の `TestPPOTrainerAutoHalt.temp_dir` fixture を `tmp_path` ベースへ整理し、残っていた `TemporaryDirectory()` 依存を解消
 - training 系の `test_ppo_trainer.py` / `test_lagrange_integration.py` / `test_grad_probe_guard.py` について、tempdir 使用が残っていないことを focused 回帰で確認
 - `docs/v460/521_phg_master_deferred_and_architecture_carryforward.md` に、training 既存資産 (`reporting.py`, `components/reporter.py`, `components/config_manager.py`) の再利用方針を追記
+## 556# ab-judgment insufficient helper and resilience tmp-path cleanup
+- `ztb/adaptation/ab_test/judgment_rules.py` に `build_insufficient_assessment(...)` を追加し、A/B 判定の sample/calendar/PnL-data 不足 payload を pure helper 化
+- `scripts/v460/lib/ab_judgment.py` は repeated な insufficient criterion 組立を shared helper ベースへ整理
+- `tests/unit/v460/test_160_ab_judgment.py` に insufficient helper の focused 回帰を追加
+- `tests/unit/v460/test_113_resilience.py` の state persistence テスト群を `tmp_path` ベースへ整理
 ## 551# reward and reporting ownership tightening
 - `ztb/trading/environment/components/calculators/reward_component_tracking.py` に `merge_reward_components(...)` を追加し、stage payload の後段 detail merge を helper 化
 - `ztb/trading/environment/components/calculators/reward_calculator.py` の `forced_balance` detail merge を raw `dict.update(...)` から helper ベースへ変更

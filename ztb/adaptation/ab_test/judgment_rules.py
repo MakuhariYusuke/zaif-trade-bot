@@ -122,3 +122,20 @@ def combine_assessment_verdicts(
     if any(verdict == "insufficient" for verdict in verdicts):
         return "insufficient"
     return "pass"
+
+
+def build_insufficient_assessment(
+    *,
+    name: str,
+    value: float | None,
+    threshold: float | None,
+    detail: str,
+) -> CriterionAssessment:
+    """Build a canonical insufficient assessment payload."""
+    return CriterionAssessment(
+        name=name,
+        verdict="insufficient",
+        value=value,
+        threshold=threshold,
+        detail=detail,
+    )

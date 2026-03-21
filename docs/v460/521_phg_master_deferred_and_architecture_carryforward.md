@@ -223,6 +223,8 @@ shim を外しにいく条件:
 
 - fill_rate / avg_pnl30 / downside_p10 の純粋な判定規則は
   `ztb.adaptation.ab_test.judgment_rules` へ前進済み
+- insufficient early-return も small helper 化できる形まで揃い、
+  sample/calendar/PnL-data 不足の判定 payload は pure helper 側へ寄せやすくなった
 - script 側は dataclass / statistical comparison / report ownership を維持
 
 ### 5. `UnifiedTrainer` / `RewardCalculator`
@@ -454,6 +456,8 @@ docs の先送り管理は、本書へかなり一元化できる状態に入っ
 - real-data guard の実測最小化
   は引き続き有効
 - training 系は persistence/setup 固定費から削る
+- `test_113_resilience.py` のような state persistence test も
+  `tmp_path` へ寄せやすい構造に順次揃える
 
 ## 直近の追加前進
 

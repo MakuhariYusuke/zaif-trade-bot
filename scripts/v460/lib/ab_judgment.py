@@ -30,6 +30,7 @@ from ztb.adaptation.ab_test.judgment_rules import (
     assess_avg_pnl30 as _assess_avg_pnl30,
     assess_downside_p10 as _assess_downside_p10,
     assess_fill_rate as _assess_fill_rate,
+    build_insufficient_assessment as _build_insufficient_assessment,
     combine_assessment_verdicts as _combine_assessment_verdicts,
 )
 from ztb.io.json_io import JSONObject
@@ -732,47 +733,65 @@ def evaluate_ab_variant(
     # --- サンプル充足チェック ---
     if vm["n_filled"] < criteria.min_filled_records:
         result.overall = Verdict.INSUFFICIENT
-        result.criteria.append(CriterionResult(
-            name="sample_size",
-            verdict=Verdict.INSUFFICIENT,
-            value=float(vm["n_filled"]),
-            threshold=float(criteria.min_filled_records),
-            detail=f"variant filled={vm['n_filled']} < min={criteria.min_filled_records}",
-        ))
+        result.criteria.append(
+            _to_criterion_result(
+                _build_insufficient_assessment(
+                    name="sample_size",
+                    value=float(vm["n_filled"]),
+                    threshold=float(criteria.min_filled_records),
+                    detail=(
+                        f"variant filled={vm['n_filled']} < min={criteria.min_filled_records}"
+                    ),
+                )
+            )
+        )
         return result
 
     if cm["n_filled"] < criteria.min_control_filled_records:
         result.overall = Verdict.INSUFFICIENT
-        result.criteria.append(CriterionResult(
-            name="control_sample_size",
-            verdict=Verdict.INSUFFICIENT,
-            value=float(cm["n_filled"]),
-            threshold=float(criteria.min_control_filled_records),
-            detail=f"control filled={cm['n_filled']} < min={criteria.min_control_filled_records}",
-        ))
+        result.criteria.append(
+            _to_criterion_result(
+                _build_insufficient_assessment(
+                    name="control_sample_size",
+                    value=float(cm["n_filled"]),
+                    threshold=float(criteria.min_control_filled_records),
+                    detail=(
+                        f"control filled={cm['n_filled']} < min={criteria.min_control_filled_records}"
+                    ),
+                )
+            )
+        )
         return result
 
     if vm["calendar_days"] < criteria.min_calendar_days:
         result.overall = Verdict.INSUFFICIENT
-        result.criteria.append(CriterionResult(
-            name="calendar_days",
-            verdict=Verdict.INSUFFICIENT,
-            value=float(vm["calendar_days"]),
-            threshold=float(criteria.min_calendar_days),
-            detail=f"variant days={vm['calendar_days']} < min={criteria.min_calendar_days}",
-        ))
+        result.criteria.append(
+            _to_criterion_result(
+                _build_insufficient_assessment(
+                    name="calendar_days",
+                    value=float(vm["calendar_days"]),
+                    threshold=float(criteria.min_calendar_days),
+                    detail=(
+                        f"variant days={vm['calendar_days']} < min={criteria.min_calendar_days}"
+                    ),
+                )
+            )
+        )
         return result
 
     # --- 0. PnL データ有効性チェック (160# bugfix) ---
     if math.isnan(vm["avg_pnl30_bps"]):
         result.overall = Verdict.INSUFFICIENT
-        result.criteria.append(CriterionResult(
-            name="pnl_data",
-            verdict=Verdict.INSUFFICIENT,
-            value=float(vm["n_filled"]),
-            threshold=1.0,
-            detail=f"variant filled={vm['n_filled']} but no valid PnL data",
-        ))
+        result.criteria.append(
+            _to_criterion_result(
+                _build_insufficient_assessment(
+                    name="pnl_data",
+                    value=float(vm["n_filled"]),
+                    threshold=1.0,
+                    detail=f"variant filled={vm['n_filled']} but no valid PnL data",
+                )
+            )
+        )
         return result
 
     fill_rate_assessment = _assess_fill_rate(

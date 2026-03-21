@@ -340,6 +340,33 @@
 1. `Wave2` の stateful ownership 詰め
 2. `Wave3` の memory/observability 追加整理
 3. `Wave5` を見据えた broad 前の小さい重複解消を継続
+
+---
+
+## 2026-03-21 / Session 037-556
+
+### 実施
+- `ztb/adaptation/ab_test/judgment_rules.py`
+  - `build_insufficient_assessment(...)` を追加
+- `scripts/v460/lib/ab_judgment.py`
+  - sample size / control sample size / calendar days / PnL data の insufficient 判定 payload を shared helper ベースへ整理
+- `tests/unit/v460/test_160_ab_judgment.py`
+  - insufficient helper の focused 回帰を追加
+- `tests/unit/v460/test_113_resilience.py`
+  - state persistence テスト群を `tmp_path` ベースへ整理
+
+### 結果
+- Wave2:
+  - `ab_judgment` の rule / orchestration 境界が少し前進
+- Wave4:
+  - `resilience` の tempdir 残件を削減
+- focused 回帰:
+  - `21 passed, 101 deselected in 6.98s`
+
+### 次アクション
+1. `maker_price` / `ab_judgment` の stateful ownership をさらに詰める
+2. training/SAC の memory diagnostics をもう一段揃える
+3. broad 前の tempdir / payload drift 残件を減らす
   - `test_pnl_monte_carlo.py` / `test_196_velocity_proportional_trending_soft.py` / `test_173_code_review_fixes.py`: `102 passed`
 - v460 全体:
   - `3940 passed, 20 warnings in 41.54s`（`--no-cov --durations=15`）

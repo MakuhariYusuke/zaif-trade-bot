@@ -42,6 +42,7 @@ from scripts.v460.lib.ab_judgment import (
     _pairwise_counts,
 )
 from tests.unit.v460._real_data_test_helpers import write_jsonl_sample
+from ztb.adaptation.ab_test.judgment_rules import build_insufficient_assessment
 from ztb.io.json_io import JSONObject
 from ztb.utils.dataclass_utils import filter_known_dataclass_fields
 from ztb.utils.safety import safe_to_finite
@@ -175,6 +176,23 @@ class TestSafeFinite:
 
     def test_string_invalid(self) -> None:
         assert safe_to_finite("hello") is None
+
+
+class TestJudgmentRuleHelpers:
+    """ztb.adaptation.ab_test helper のテスト."""
+
+    def test_build_insufficient_assessment(self) -> None:
+        assessment = build_insufficient_assessment(
+            name="sample_size",
+            value=3.0,
+            threshold=5.0,
+            detail="variant filled=3 < min=5",
+        )
+
+        assert assessment.name == "sample_size"
+        assert assessment.verdict == "insufficient"
+        assert assessment.value == pytest.approx(3.0)
+        assert assessment.threshold == pytest.approx(5.0)
 
 
 class TestComputeMetrics:
