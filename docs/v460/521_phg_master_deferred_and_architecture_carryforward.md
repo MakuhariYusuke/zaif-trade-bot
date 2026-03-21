@@ -305,6 +305,8 @@ shim を外しにいく条件:
   - fallback task data 用の input/output dim 解決
   - input/output dim fallback
   まで `advanced_feature_setup` 側へ寄せる余地があり、実装上も有効だった
+- 特に `model` 自体はあるが `input_dim/output_dim` 属性を持たないケースでは、
+  parameter shape fallback を helper 側に持つことで subtle bug を減らせる
 - ただしこれは `UnifiedTrainer` の repeated setup / fallback に閉じる helper であり、
   SAC scheduler など別系統へ同名 helper を広げるより用途別 helper を維持するほうが安全
 - `RewardCalculator` では

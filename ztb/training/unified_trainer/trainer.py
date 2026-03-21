@@ -1504,6 +1504,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 world_size=self.world_size,
                 ensemble_enabled=self.ensemble_enabled,
             )
+            algorithm_model = extract_algorithm_model(self.algorithm_trainer)
             # Anomaly Detection Setup
             if self.config.get("enable_anomaly_detection", False):
                 self.logger.info("Setting up anomaly detection...")
@@ -1529,9 +1530,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             # Meta Learning Setup
             if self.config.get("enable_meta_learning", False):
                 self.logger.info("Setting up meta learning...")
-                # Get model dimensions from algorithm trainer
-                model_obj = extract_algorithm_model(self.algorithm_trainer)
-                if model_obj is not None:
+                if algorithm_model is not None:
                     try:
                         state_dim = self._get_model_input_dim()
                         action_dim = self._get_model_output_dim()
@@ -1549,12 +1548,11 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             # Enhanced Federated Learning Setup
             if runtime_flags.market_federated_learning_enabled:
                 self.logger.info("Setting up market-based federated learning...")
-                model_obj = extract_algorithm_model(self.algorithm_trainer)
-                if model_obj is not None:
+                if algorithm_model is not None:
                     try:
                         market_configs = self._create_market_federated_configs()
                         self.federated_learner = MarketFederatedLearner(
-                            model_obj, market_configs
+                            algorithm_model, market_configs
                         )
                     except Exception as e:
                         self.logger.warning("Failed to setup federated learner: %s", e)
@@ -1567,12 +1565,11 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             # Continual Learning Setup
             if runtime_flags.continual_learning_enabled:
                 self.logger.info("Setting up continual learning...")
-                model_obj = extract_algorithm_model(self.algorithm_trainer)
-                if model_obj is not None:
+                if algorithm_model is not None:
                     try:
                         continual_config = build_continual_learning_config(self.config)
                         self.continual_learner = ContinualLearner(
-                            model_obj, continual_config
+                            algorithm_model, continual_config
                         )
                     except Exception as e:
                         self.logger.warning("Failed to setup continual learner: %s", e)
@@ -1837,12 +1834,28 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             self.task_counter += 1
 
             model = extract_algorithm_model(self.algorithm_trainer)
-            if model is not None:
-                state_dim = int(getattr(model, "input_dim", 10))
-                action_dim = int(getattr(model, "output_dim", 4))
-            else:
-                state_dim = resolve_model_input_dim(self.algorithm_trainer, default=10)
-                action_dim = resolve_model_output_dim(self.algorithm_trainer, default=4)
+            state_dim = (
+                int(
+                    getattr(
+                        model,
+                        "input_dim",
+                        resolve_model_input_dim(self.algorithm_trainer, default=10),
+                    )
+                )
+                if model is not None
+                else resolve_model_input_dim(self.algorithm_trainer, default=10)
+            )
+            action_dim = (
+                int(
+                    getattr(
+                        model,
+                        "output_dim",
+                        resolve_model_output_dim(self.algorithm_trainer, default=4),
+                    )
+                )
+                if model is not None
+                else resolve_model_output_dim(self.algorithm_trainer, default=4)
+            )
 
             return TaskData(
                 task_id=task_id,

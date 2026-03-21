@@ -8112,3 +8112,13 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - セルフレビュー
   - `advanced_feature_setup` の helper は `UnifiedTrainer` 内の repeated fallback/dim 解決に素直に効いた
   - `RewardCalculator` の stage payload はかなり一貫してきたが、`mtf_weights` のような非 scalar telemetry はまだ別扱いが妥当
+## 547# trainer setup convergence for attr-less models
+- `ztb/training/unified_trainer/trainer.py`
+  - advanced feature setup で `algorithm_model` を1回解決して再利用する形に整理
+  - fallback task data の `state_dim/action_dim` は、model が存在しても `input_dim/output_dim` 属性が無い場合に helper fallback を使うよう修正
+- focused:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/training/test_unified_trainer_advanced_feature_setup.py tests/training/test_unified_trainer.py tests/unit/training/test_unified_trainer.py tests/unit/training/test_unified_trainer_config.py -k 'advanced_feature_setup or continual or federated or meta or runtime_flags' -q --tb=short --no-cov`
+  - `4 passed, 32 deselected in 7.79s`
+- セルフレビュー
+  - これは大きい分割ではないが、attr-less model に対する fallback の安定性を上げる意味で価値がある
+  - advanced feature setup の ownership も少し明確になった

@@ -6083,3 +6083,7 @@ python scripts/unified_trainer.py \
 - `ztb/trading/environment/components/calculators/reward_calculator.py` の `simple_reward` / `trading_focused` / `profit_optimized` payload を canonical helper に寄せた
 - `tests/unit/training/test_unified_trainer_advanced_feature_setup.py` に model dim helper 回帰を追加
 - `tests/unit/v460/test_reward_component_tracking_migration.py` に simple-reward bool payload の回帰を追加
+## 547# trainer setup convergence for attr-less models
+- `ztb/training/unified_trainer/trainer.py` の advanced feature setup で algorithm model を1回解決して再利用するよう整理
+- continual fallback task data では、`input_dim/output_dim` 属性が無い model でも parameter shape helper へ安全にフォールバックするよう修正
+- `tests/unit/training/test_unified_trainer_advanced_feature_setup.py` ほか trainer focused 回帰で attr-less model 系の helper 適用を確認
