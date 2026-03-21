@@ -30,4 +30,18 @@ def extend_reward_components(
     payload["stage"] = str(payload.get("stage", "unknown"))
 
 
-__all__ = ["build_reward_components", "extend_reward_components"]
+def set_reward_telemetry(
+    payload: dict[str, object],
+    key: str,
+    value: object,
+) -> None:
+    """Attach arbitrary telemetry while preserving the stage contract."""
+    payload[key] = value
+    payload["stage"] = str(payload.get("stage", "unknown"))
+
+
+__all__ = [
+    "build_reward_components",
+    "extend_reward_components",
+    "set_reward_telemetry",
+]

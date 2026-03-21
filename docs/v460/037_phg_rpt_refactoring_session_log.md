@@ -8122,3 +8122,17 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - セルフレビュー
   - これは大きい分割ではないが、attr-less model に対する fallback の安定性を上げる意味で価値がある
   - advanced feature setup の ownership も少し明確になった
+## 548# reward telemetry separation
+- `ztb/trading/environment/components/calculators/reward_component_tracking.py`
+  - `set_reward_telemetry(...)`
+  を追加
+- `ztb/trading/environment/components/calculators/reward_calculator.py`
+  - `mtf_weights` を non-scalar telemetry helper 経由へ整理
+  - stage method 実行前の重複 `action_bonus/balance_penalty` payload 更新を削除
+- `tests/unit/v460/test_reward_component_tracking_migration.py`
+  - non-scalar telemetry が `stage` を壊さない focused 回帰を追加
+- focused:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_reward_component_tracking_migration.py tests/unit/reward/test_reward_components_fix.py tests/unit/trading/components/test_reward_calculator.py -k 'reward_component_tracking or simple_reward or risk_management' -q --tb=short --no-cov`
+  - `7 passed, 15 deselected in 4.00s`
+- セルフレビュー
+  - scalar payload と telemetry を分けたことで、`RewardCalculator` の diagnostics ownership はかなり見やすくなった

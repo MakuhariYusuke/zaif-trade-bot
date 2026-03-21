@@ -316,6 +316,8 @@ shim を外しにいく条件:
   も stage payload の shape を canonical helper に寄せられる
 - bool flag を `0.0/1.0` に揃える現在の payload 仕様は、
   後続の比較/集計では扱いやすいが、将来 JSON contract を変える場合は影響確認が必要
+- さらに non-scalar telemetry は scalar payload と分けて扱うのがよく、
+  `mtf_weights` のような辞書 payload は telemetry helper で stage 契約だけ維持する形が自然
 
 ## テスト設計
 

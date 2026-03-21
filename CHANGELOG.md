@@ -6087,3 +6087,8 @@ python scripts/unified_trainer.py \
 - `ztb/training/unified_trainer/trainer.py` の advanced feature setup で algorithm model を1回解決して再利用するよう整理
 - continual fallback task data では、`input_dim/output_dim` 属性が無い model でも parameter shape helper へ安全にフォールバックするよう修正
 - `tests/unit/training/test_unified_trainer_advanced_feature_setup.py` ほか trainer focused 回帰で attr-less model 系の helper 適用を確認
+## 548# reward telemetry separation
+- `ztb/trading/environment/components/calculators/reward_component_tracking.py` に `set_reward_telemetry(...)` を追加
+- `ztb/trading/environment/components/calculators/reward_calculator.py` の `mtf_weights` を scalar payload と分離した telemetry helper 経由に変更
+- stage method 実行前の重複 `action_bonus/balance_penalty` payload 更新を削除し、stage 後の canonical shaping に一本化
+- `tests/unit/v460/test_reward_component_tracking_migration.py` に non-scalar telemetry 回帰を追加

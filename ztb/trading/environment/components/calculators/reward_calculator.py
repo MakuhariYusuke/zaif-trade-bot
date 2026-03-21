@@ -42,7 +42,11 @@ from ..rewards.profit_optimized import ProfitOptimizedReward
 from ..rewards.smart_incentive import SmartIncentiveReward
 from ..rewards.trading_focused import TradingFocusedReward
 from ..rewards.ultra_profit import UltraProfitReward
-from .reward_component_tracking import build_reward_components, extend_reward_components
+from .reward_component_tracking import (
+    build_reward_components,
+    extend_reward_components,
+    set_reward_telemetry,
+)
 from ..signal_integrator import SignalIntegrator
 
 # Sentinel for cache miss detection (None is a valid cached value)
@@ -1064,12 +1068,6 @@ class RewardCalculator:
                     action, action_bonus
                 )
             )
-        extend_reward_components(
-            self._last_reward_components,
-            balance_penalty=balance_penalty if action in [ACTION_BUY, ACTION_SELL] else None,
-            action_bonus=action_bonus,
-        )
-
         # Create a mapping from curriculum stage to the corresponding reward calculation method
         stage_to_method_map = {
             "action_discovery": self._calculate_action_discovery_reward,
@@ -1293,9 +1291,9 @@ class RewardCalculator:
                 if hasattr(self, "mtf_weight_manager")
                 else None
             )
-            self._last_reward_components["mtf_weights"] = mtf_w
+            set_reward_telemetry(self._last_reward_components, "mtf_weights", mtf_w)
         except Exception:
-            self._last_reward_components["mtf_weights"] = None
+            set_reward_telemetry(self._last_reward_components, "mtf_weights", None)
 
         return reward
 
