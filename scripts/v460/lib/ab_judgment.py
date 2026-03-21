@@ -68,6 +68,29 @@ def _to_criterion_result(assessment: _CriterionAssessment) -> CriterionResult:
     )
 
 
+def _set_insufficient_result(
+    result: ABJudgmentResult,
+    *,
+    name: str,
+    value: float | None,
+    threshold: float | None,
+    detail: str,
+) -> ABJudgmentResult:
+    """Attach one canonical insufficient criterion and return the result."""
+    result.overall = Verdict.INSUFFICIENT
+    result.criteria.append(
+        _to_criterion_result(
+            _build_insufficient_assessment(
+                name=name,
+                value=value,
+                threshold=threshold,
+                detail=detail,
+            )
+        )
+    )
+    return result
+
+
 # ======================================================================
 # P0-B: A/B 判定基準
 # ======================================================================
@@ -732,67 +755,41 @@ def evaluate_ab_variant(
 
     # --- サンプル充足チェック ---
     if vm["n_filled"] < criteria.min_filled_records:
-        result.overall = Verdict.INSUFFICIENT
-        result.criteria.append(
-            _to_criterion_result(
-                _build_insufficient_assessment(
-                    name="sample_size",
-                    value=float(vm["n_filled"]),
-                    threshold=float(criteria.min_filled_records),
-                    detail=(
-                        f"variant filled={vm['n_filled']} < min={criteria.min_filled_records}"
-                    ),
-                )
-            )
+        return _set_insufficient_result(
+            result,
+            name="sample_size",
+            value=float(vm["n_filled"]),
+            threshold=float(criteria.min_filled_records),
+            detail=f"variant filled={vm['n_filled']} < min={criteria.min_filled_records}",
         )
-        return result
 
     if cm["n_filled"] < criteria.min_control_filled_records:
-        result.overall = Verdict.INSUFFICIENT
-        result.criteria.append(
-            _to_criterion_result(
-                _build_insufficient_assessment(
-                    name="control_sample_size",
-                    value=float(cm["n_filled"]),
-                    threshold=float(criteria.min_control_filled_records),
-                    detail=(
-                        f"control filled={cm['n_filled']} < min={criteria.min_control_filled_records}"
-                    ),
-                )
-            )
+        return _set_insufficient_result(
+            result,
+            name="control_sample_size",
+            value=float(cm["n_filled"]),
+            threshold=float(criteria.min_control_filled_records),
+            detail=f"control filled={cm['n_filled']} < min={criteria.min_control_filled_records}",
         )
-        return result
 
     if vm["calendar_days"] < criteria.min_calendar_days:
-        result.overall = Verdict.INSUFFICIENT
-        result.criteria.append(
-            _to_criterion_result(
-                _build_insufficient_assessment(
-                    name="calendar_days",
-                    value=float(vm["calendar_days"]),
-                    threshold=float(criteria.min_calendar_days),
-                    detail=(
-                        f"variant days={vm['calendar_days']} < min={criteria.min_calendar_days}"
-                    ),
-                )
-            )
+        return _set_insufficient_result(
+            result,
+            name="calendar_days",
+            value=float(vm["calendar_days"]),
+            threshold=float(criteria.min_calendar_days),
+            detail=f"variant days={vm['calendar_days']} < min={criteria.min_calendar_days}",
         )
-        return result
 
     # --- 0. PnL データ有効性チェック (160# bugfix) ---
     if math.isnan(vm["avg_pnl30_bps"]):
-        result.overall = Verdict.INSUFFICIENT
-        result.criteria.append(
-            _to_criterion_result(
-                _build_insufficient_assessment(
-                    name="pnl_data",
-                    value=float(vm["n_filled"]),
-                    threshold=1.0,
-                    detail=f"variant filled={vm['n_filled']} but no valid PnL data",
-                )
-            )
+        return _set_insufficient_result(
+            result,
+            name="pnl_data",
+            value=float(vm["n_filled"]),
+            threshold=1.0,
+            detail=f"variant filled={vm['n_filled']} but no valid PnL data",
         )
-        return result
 
     fill_rate_assessment = _assess_fill_rate(
         variant_fill_rate=vm["fill_rate"],

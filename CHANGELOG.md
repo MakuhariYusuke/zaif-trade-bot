@@ -19,6 +19,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `test_160_ab_judgment.py`
 - `test_stopgap_health.py`
 
+## 2026-03-21 Wave2/Wave3 ownership tightening
+
+### Changed
+- **maker_price.py**: offset ratio stage の apply + record を local helper に集約し、stateful orchestration の重複を縮約
+- **ab_judgment.py**: insufficient early return の result 組み立てを local helper に集約
+- **ztb/training/sac/memory_monitor.py**: `build_post_cycle_memory_status(...)` を追加し、warning 判定まで shared 化
+- **sac_retrain_scheduler.py**: post-cycle memory warning 判定を shared helper 経由へ整理
+
+### Tests
+- `test_160_ab_judgment.py`
+- `test_sac_retrain_scheduler.py`
+- `test_168_low_vol_offset_boost.py`
+- `test_405_offset_ceiling_pipeline.py`
+- `test_519_pricing_stage_tracking_migration.py`
+- `test_sac_memory_monitor.py`
+
 ### Changed
 - **ztb/trading/execution/stale_order_policy.py**: order status 正規化と `CancelFillCheck` を canonical 化
 - **order_monitor.py**: stale-order policy の shared helper を再利用する構成へ整理

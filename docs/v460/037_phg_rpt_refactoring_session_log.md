@@ -8352,3 +8352,19 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - セルフレビュー
   - 共通集計は `metrics` 側、比較判定は `adaptation` 側、run/report は `scripts` 側に線を引けた
   - `metrics_utils` を即削除せず shim にしたので、import 影響は抑えられている
+## 554# Wave2/Wave3 ownership tightening
+- `scripts/v460/lib/maker_price.py`
+  - offset ratio stage の apply + record を local helper に集約
+- `scripts/v460/lib/ab_judgment.py`
+  - insufficient early return を local result helper に集約
+- `ztb/training/sac/memory_monitor.py`
+  - `build_post_cycle_memory_status(...)` を追加
+- `scripts/v460/ml/sac_retrain_scheduler.py`
+  - post-cycle memory warning 判定を shared helper 経由へ整理
+- `tests/unit/training/test_sac_memory_monitor.py`
+  - memory warning flag の focused 回帰を追加
+- focused:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_160_ab_judgment.py tests/unit/v460/test_sac_retrain_scheduler.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_405_offset_ceiling_pipeline.py tests/unit/v460/test_519_pricing_stage_tracking_migration.py tests/unit/training/test_sac_memory_monitor.py -k 'insufficient or ComputeMetrics or post_cycle_memory_check or memory_status or low_vol_offset or stage_tracking' -q --tb=short --no-cov`
+- セルフレビュー
+  - `maker_price` は pure helper 化の次として、stateful orchestration の重複縮約に入れた
+  - `SAC` は details だけでなく warning 判定まで helper 側へ寄せたので、Wave3 に直結する整理になった

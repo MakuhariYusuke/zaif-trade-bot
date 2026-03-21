@@ -21,7 +21,10 @@ from ztb.training.sac.debug import (
     TrainingDebugEnvProtocol,
     build_training_debug_details,
 )
-from ztb.training.sac.memory_monitor import build_post_cycle_memory_details
+from ztb.training.sac.memory_monitor import (
+    build_post_cycle_memory_details,
+    build_post_cycle_memory_status,
+)
 
 __all__ = [
     "SACModelProtocol",
@@ -37,5 +40,6 @@ __all__ = [
     "TrainingDebugEnvProtocol",
     "build_training_debug_details",
     "build_post_cycle_memory_details",
+    "build_post_cycle_memory_status",
     "train_val_split",
 ]

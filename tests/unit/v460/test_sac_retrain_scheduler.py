@@ -1048,11 +1048,13 @@ class TestCrashResilience495:
         try:
             mod._last_cycle_rss_mb = 32.0
             with patch(
-                "scripts.v460.ml.sac_retrain_scheduler._build_post_cycle_memory_details",
+                "scripts.v460.ml.sac_retrain_scheduler._build_post_cycle_memory_status",
                 return_value={
                     "rss_mb": 48.0,
                     "rss_delta_mb": 16.0,
                     "cache_total_entries": 9.0,
+                    "leak_warning": False,
+                    "rss_warning": False,
                 },
             ), patch.object(mod.logger, "info") as mock_info:
                 _post_cycle_memory_check()

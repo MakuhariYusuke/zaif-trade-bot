@@ -175,6 +175,7 @@ shim を外しにいく条件:
 - spread guard finalization 抽出済み
 - final ceiling clamp は stage 化済み
 - offset stage recording も helper 化済み
+- stage apply + stage record の重複も local helper 化済み
 
 残る責務:
 
@@ -240,6 +241,7 @@ shim を外しにいく条件:
 - 先に basic contract と phase split を設計書で固定
 - 最初の切り出しは pure judgment helper から
 - 一気に `ztb` へ送らず、split-first を徹底する
+- insufficient early return は canonical assessment + local result helper で薄く保つ
 
 進捗:
 
@@ -594,9 +596,21 @@ docs の先送り管理は、本書へかなり一元化できる状態に入っ
   - ただし canonical import 先にはしない
 - `reporting.py`
   - current reporting/persistence の canonical 実装として使い続ける
-- `components/config_manager.py`
+ - `components/config_manager.py`
   - `UnifiedTrainer` の runtime config 正規化として使い続ける
   - `core/config_manager.py` とは責務が違うため、現時点では統合しない
 
 この 3 つは「似ているからまとめる」より、
 「責務差を明文化して使い分ける」方が安全である。
+
+## 2026-03-21 Wave2/Wave3 補記
+
+- `maker_price`
+  - stage orchestration 自体は script 側に残しつつ、stage apply + stage tracking の重複を local helper へ集約
+  - これにより stateful ownership を崩さず compute 本体の見通しを上げる
+- `ab_judgment`
+  - insufficient 判定は canonical assessment helper と local result helper の二層に整理
+  - pure rule は `ztb.adaptation.ab_test`、`ABJudgmentResult` ownership は script 側、の境界を維持
+- `SAC`
+  - post-cycle memory diagnostics は `build_post_cycle_memory_status(...)` で warning 判定まで shared 化
+  - scheduler 側は logging と lifecycle ownership に寄せる

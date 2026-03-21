@@ -217,7 +217,7 @@ class SACRetrainConfig:
 from ztb.training.sac import (  # noqa: E402
     SACModelProtocol,
     TrainingEnvProtocol,
-    build_post_cycle_memory_details as _build_post_cycle_memory_details,
+    build_post_cycle_memory_status as _build_post_cycle_memory_status,
     build_training_debug_details as _canonical_build_training_debug_details,
     adjust_buffer_size,
     cleanup_envs,
@@ -632,18 +632,20 @@ def _post_cycle_memory_check() -> None:
     clear_cuda_cache()
     gc.collect()
 
-    memory_details = _build_post_cycle_memory_details(_last_cycle_rss_mb)
+    memory_details = _build_post_cycle_memory_status(
+        _last_cycle_rss_mb,
+        rss_warning_mb=_RSS_WARNING_MB,
+    )
     current_rss = float(memory_details.get("rss_mb", 0.0))
 
-    if _last_cycle_rss_mb > 0:
+    if bool(memory_details.get("leak_warning")):
         delta = float(memory_details.get("rss_delta_mb", 0.0))
-        if delta > 100:  # 100MB 以上の増加
-            logger.warning(
-                f"[495#] RSS increased by {delta:.1f}MB "
-                f"({_last_cycle_rss_mb:.1f} → {current_rss:.1f}MB) — possible leak"
-            )
+        logger.warning(
+            f"[495#] RSS increased by {delta:.1f}MB "
+            f"({_last_cycle_rss_mb:.1f} → {current_rss:.1f}MB) — possible leak"
+        )
 
-    if current_rss > _RSS_WARNING_MB:
+    if bool(memory_details.get("rss_warning")):
         logger.warning(
             f"[495#] RSS {current_rss:.1f}MB exceeds threshold {_RSS_WARNING_MB}MB"
         )
