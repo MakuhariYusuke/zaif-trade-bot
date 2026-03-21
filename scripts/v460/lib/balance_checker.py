@@ -238,7 +238,7 @@ class BalanceChecker:
                 if not self._balance_shrink_active:
                     self._pre_shrink_lot = old_lot
                 logger.info(
-                    f"[balance] JPY {jpy_free:.0f} < {jpy_needed:.0f} "
+                    f"[balance] JPY {jpy_free:.2f} < {jpy_needed:.2f} "
                     f"(base {old_lot:.4f}×{regime_mult:.2f}). "
                     f"ロット自動縮小: {old_lot:.4f} → {affordable_lot:.4f} BTC"
                 )
@@ -246,7 +246,7 @@ class BalanceChecker:
             self._log_insufficient(
                 "buy",
                 f"[balance] Insufficient JPY for buy: "
-                f"free={jpy_free:.0f} < min={self._min_order_btc * regime_mult * price * self._config.balance_margin_ratio:.0f} "
+                f"free={jpy_free:.2f} < min={self._min_order_btc * regime_mult * price * self._config.balance_margin_ratio:.2f} "
                 f"(regime_mult={regime_mult:.2f}). "
                 f"Skipping buy → will retry sell next.",
             )
@@ -277,7 +277,7 @@ class BalanceChecker:
                 old_lot = self._current_lot
                 self._current_lot = target_lot
                 logger.info(
-                    f"[476# balance_lot] buy: JPY {jpy_free:.0f} → "
+                    f"[476# balance_lot] buy: JPY {jpy_free:.2f} → "
                     f"lot {old_lot:.6f} → {target_lot:.6f} BTC "
                     f"(max_lot={_max_lot})"
                 )

@@ -209,16 +209,16 @@ class OrchestratorPostCycleMixin:
                 self._soft_loss_cap_triggered = True
                 self._balance_checker.pre_shrink_lot = self._current_lot
                 logger.warning(
-                    f"[loss_cap] SOFT CAP: cumPnL={st.cumulative_pnl_jpy:.0f} JPY "
-                    f"<= -{soft_cap_jpy:.0f} JPY "
+                    f"[loss_cap] SOFT CAP: cumPnL={st.cumulative_pnl_jpy:.2f} JPY "
+                    f"<= -{soft_cap_jpy:.2f} JPY "
                     f"({self.config.soft_loss_cap_ratio:.0%}). "
                     f"ロット半減: {old_lot:.4f} → {self._current_lot:.4f} BTC"
                 )
 
         if st.cumulative_pnl_jpy <= -self.config.loss_cap_jpy:
             logger.error(
-                f"LOSS CAP REACHED (HARD): cumulative PnL = {st.cumulative_pnl_jpy:.0f} JPY "
-                f"(cap = -{self.config.loss_cap_jpy:.0f} JPY). Stopping fill test."
+                f"LOSS CAP REACHED (HARD): cumulative PnL = {st.cumulative_pnl_jpy:.2f} JPY "
+                f"(cap = -{self.config.loss_cap_jpy:.2f} JPY). Stopping fill test."
             )
             self._kill_switch.kill("hard_loss_cap")
 

@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-21 (526# ログ可観測性改善 + dead code削除: order_id/残高コンテキスト追加、_apply_final_offset_ceiling除去)
+> 最終更新: 2026-03-21 (527# JPY精度改善 + silent except可観測化: 残高ログ:.0f→:.2f、adapter int()→round())
 
 ---
 
@@ -553,6 +553,7 @@
 | 524 | rpt | [524_phg_rpt_preflight_skip_exceeded_analysis.md](524_phg_rpt_preflight_skip_exceeded_analysis.md) | preflight_skip_exceeded 停止分析: sell注文スタック→両側膠着→open order cancel提案 |
 | 525 | rev | [525_phg_rev_520_524_maintainability_and_dedup_review.md](525_phg_rev_520_524_maintainability_and_dedup_review.md) | 520-524レビュー: legacy残置・stale-order cleanup共有化・double ceiling後のdead code整理を提案 |
 | 526 | impl | [526_phg_impl_log_observability_and_dead_code.md](526_phg_impl_log_observability_and_dead_code.md) | ログ可観測性改善 (order_id・残高コンテキスト追加) + 525#指摘dead code削除 |
+| 527 | impl | [527_phg_impl_jpy_precision_and_silent_except.md](527_phg_impl_jpy_precision_and_silent_except.md) | JPY精度改善 (繊単位:.0f→:.2f、adapter int()→round()) + silent except可観測化 |
 
 ---
 

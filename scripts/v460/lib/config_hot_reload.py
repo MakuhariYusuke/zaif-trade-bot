@@ -799,8 +799,8 @@ class ConfigHotReloader:
         try:
             from scripts.v460.lib.manifest import compute_config_hash
             runner._config_hash = compute_config_hash(self._yaml_cfg)
-        except Exception:
-            pass  # hash 失敗は非致命的
+        except Exception as e:
+            logger.debug("[config_hot_reload] config_hash update failed (non-fatal): %s", e)
 
         if _rp_changed:
             try:

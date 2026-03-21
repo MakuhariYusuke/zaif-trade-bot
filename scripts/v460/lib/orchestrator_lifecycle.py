@@ -383,7 +383,7 @@ class OrchestratorLifecycleMixin:
                 self._soft_loss_cap_triggered = True
                 logger.info(
                     f"[resume] soft_loss_cap already triggered: "
-                    f"cumPnL={st.cumulative_pnl_jpy:.0f} JPY <= -{soft_cap_jpy:.0f} JPY"
+                    f"cumPnL={st.cumulative_pnl_jpy:.2f} JPY <= -{soft_cap_jpy:.2f} JPY"
                 )
 
         # 101# P1-5: regime detector warm-up

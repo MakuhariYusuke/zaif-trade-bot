@@ -314,7 +314,7 @@ class CoincheckAdapter(BaseExchangeAdapter):
                     logger.warning(
                         f"No cached price for {symbol}, using fallback for market_buy_amount"
                     )
-                order_data["market_buy_amount"] = str(int(jpy_amount))
+                order_data["market_buy_amount"] = str(round(jpy_amount, 8))
             else:
                 order_data["order_type"] = "market_sell"
                 order_data["amount"] = str(quantity)

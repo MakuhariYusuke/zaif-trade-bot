@@ -621,14 +621,14 @@ class AdaptationEngine:
             old_cap = cfg.loss_cap_jpy
             cfg.loss_cap_jpy = new_cap
             logger.info(
-                f"[loss_cap] 動的キャップ算出: 残高={total_jpy:.0f} JPY "
-                f"× {cfg.loss_cap_ratio:.0%} = {new_cap:.0f} JPY "
-                f"(旧: {old_cap:.0f} JPY)"
+                f"[loss_cap] 動的キャップ算出: 残高={total_jpy:.2f} JPY "
+                f"× {cfg.loss_cap_ratio:.0%} = {new_cap:.2f} JPY "
+                f"(旧: {old_cap:.2f} JPY)"
             )
             return new_cap
         except Exception as e:
             logger.warning(
                 f"[loss_cap] 残高取得失敗 — フォールバック値を維持: "
-                f"{cfg.loss_cap_jpy:.0f} JPY. error={e}"
+                f"{cfg.loss_cap_jpy:.2f} JPY. error={e}"
             )
             return None

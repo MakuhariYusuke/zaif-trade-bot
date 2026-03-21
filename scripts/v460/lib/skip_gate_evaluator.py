@@ -575,8 +575,8 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                 try:
                     vpin_value = self._compute_vol_sync_vpin(recent_trades_data)
                     gate_features["vpin_60s"] = vpin_value
-                except Exception:
-                    pass  # フォールバック: time-based VPIN を維持
+                except Exception as e:
+                    logger.debug("[skip_gate] vol_sync VPIN failed, using fallback: %s", e)
             if maker_price_vpin_setter is not None and callable(maker_price_vpin_setter):
                 maker_price_vpin_setter(vpin_value)
 

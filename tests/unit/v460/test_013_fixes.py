@@ -260,8 +260,8 @@ class TestC7OrderTypeMapping:
         assert captured_data["order_type"] == "market_buy"
         assert "market_buy_amount" in captured_data
         assert "amount" not in captured_data  # market_buy does NOT use amount
-        jpy = int(captured_data["market_buy_amount"])
-        assert jpy == 50000  # 0.01 * 5,000,000
+        jpy = float(captured_data["market_buy_amount"])
+        assert jpy == pytest.approx(50000)  # 0.01 * 5,000,000
 
     def test_market_sell_sends_correct_order_type(self):
         """Market sell: order_type='market_sell', amount in BTC."""
