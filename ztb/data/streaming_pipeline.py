@@ -12,8 +12,6 @@ from typing import (
     Any,
     Callable,
     Iterator,
-    List,
-    Optional,
     Sequence,
     TypedDict,
     Unpack,
