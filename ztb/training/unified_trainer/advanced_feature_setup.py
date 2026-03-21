@@ -3,9 +3,6 @@ from __future__ import annotations
 from typing import Mapping
 
 from ztb.adaptation.continual_learning import ContinualLearningConfig
-from ztb.training.utils.training_stats_payloads import record_training_stat
-
-
 def extract_algorithm_model(algorithm_trainer: object | None) -> object | None:
     """Return the trainer model when available, otherwise None."""
     if algorithm_trainer is None or not hasattr(algorithm_trainer, "model"):
@@ -97,7 +94,6 @@ __all__ = [
     "build_continual_learning_config",
     "collect_meta_learning_history",
     "extract_algorithm_model",
-    "record_training_stat",
     "resolve_model_input_dim",
     "resolve_model_output_dim",
     "resolve_federated_stats",

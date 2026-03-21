@@ -293,6 +293,29 @@
 1. `Wave2` として `maker_price` / `ab_judgment` の stateful ownership を引き続き詰める
 2. `Wave3` として training/SAC の memory diagnostics をもう一段揃える
 3. `Wave4` として training 系 `TemporaryDirectory()` 残件をさらに減らす
+
+---
+
+## 2026-03-21 / Session 037-554
+
+### 実施
+- helper の canonical path 整理
+  - `ztb/training/unified_trainer/advanced_feature_setup.py` から
+    `record_training_stat(...)` の再 export を除去
+  - `tests/unit/training/test_unified_trainer_advanced_feature_setup.py` は
+    `ztb/training/utils/training_stats_payloads.py` を直接参照する形へ更新
+- Wave4 test 最適化
+  - `tests/unit/v460/test_gate_judgment.py`
+  - `_load_all_records` 系の tempdir 使用を `tmp_path` ベースへ整理
+
+### 結果
+- `record_training_stat(...)` の出どころは training 共通 helper に一本化された
+- `UnifiedTrainer` 専用 helper と training 共通 helper の境界が少し明確になった
+
+### 次アクション
+1. `Wave2` の stateful ownership を継続して詰める
+2. `Wave3` の memory/diagnostics を training/SAC でさらに揃える
+3. `Wave4` の tempdir 残件を training/v460 の両面で減らす
   - `test_pnl_monte_carlo.py` / `test_196_velocity_proportional_trending_soft.py` / `test_173_code_review_fixes.py`: `102 passed`
 - v460 全体:
   - `3940 passed, 20 warnings in 41.54s`（`--no-cov --durations=15`）

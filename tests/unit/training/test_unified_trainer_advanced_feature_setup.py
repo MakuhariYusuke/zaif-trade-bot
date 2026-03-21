@@ -8,11 +8,11 @@ from ztb.training.unified_trainer.advanced_feature_setup import (
     build_continual_learning_config,
     collect_meta_learning_history,
     extract_algorithm_model,
-    record_training_stat,
     resolve_federated_stats,
     resolve_model_input_dim,
     resolve_model_output_dim,
 )
+from ztb.training.utils.training_stats_payloads import record_training_stat
 
 
 def test_extract_algorithm_model_returns_model_when_present() -> None:

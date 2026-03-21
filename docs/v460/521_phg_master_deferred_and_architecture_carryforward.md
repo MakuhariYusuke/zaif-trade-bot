@@ -550,3 +550,13 @@ docs の先送り管理は、本書へかなり一元化できる状態に入っ
 この切り分けなら、今後 `UnifiedTrainer` をさらに分割するときも
 「generic helper を外へ」「orchestration helper は trainer 内へ」
 という基準を維持しやすい。
+
+### helper の出どころを曖昧にしない
+
+- `record_training_stat(...)` のように既に `training/utils` へ昇格した helper は、
+  `advanced_feature_setup` など trainer 専用 module から再 export しない
+- 目的は、
+  - helper の canonical path を一つに保つ
+  - `unified_trainer` 専用 helper と training 共通 helper を混同しない
+  こと
+- こうしておくと、今後 `UnifiedTrainer` を分割するときも import 探索が単純になる
