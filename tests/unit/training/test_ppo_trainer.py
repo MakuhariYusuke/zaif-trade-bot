@@ -2,7 +2,6 @@
 Unit tests for ztb.training.ppo_trainer module.
 """
 
-import tempfile
 from pathlib import Path
 
 try:
@@ -140,30 +139,29 @@ class TestPPOTrainer:
         assert "reward_stats" in status
         assert status["reward_stats"]["count"] == 1
 
-    def test_checkpoint_save_load(self):
+    def test_checkpoint_save_load(self, tmp_path: Path):
         """Test checkpoint save and load functionality."""
         trainer = PPOTrainer()
         trainer.start_training()
         trainer.update_progress(100, 1.5)
         trainer.consecutive_failures = 2
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            checkpoint_path = Path(temp_dir) / "test_checkpoint.json"
+        checkpoint_path = tmp_path / "test_checkpoint.json"
 
-            # Save checkpoint
-            trainer.save_checkpoint(str(checkpoint_path))
-            assert checkpoint_path.exists()
+        # Save checkpoint
+        trainer.save_checkpoint(str(checkpoint_path))
+        assert checkpoint_path.exists()
 
-            # Create new trainer and load checkpoint
-            new_trainer = PPOTrainer()
-            new_trainer.load_checkpoint(str(checkpoint_path))
+        # Create new trainer and load checkpoint
+        new_trainer = PPOTrainer()
+        new_trainer.load_checkpoint(str(checkpoint_path))
 
-            assert new_trainer.current_step == 100
-            assert len(new_trainer.rewards_history) == 1
-            assert (
-                list(new_trainer.rewards_history)[0] == 1.5
-            )  # Convert deque to list for comparison
-            assert new_trainer.consecutive_failures == 2
+        assert new_trainer.current_step == 100
+        assert len(new_trainer.rewards_history) == 1
+        assert (
+            list(new_trainer.rewards_history)[0] == 1.5
+        )  # Convert deque to list for comparison
+        assert new_trainer.consecutive_failures == 2
 
     def test_load_nonexistent_checkpoint(self):
         """Test loading nonexistent checkpoint."""

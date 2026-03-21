@@ -459,8 +459,9 @@ docs の先送り管理は、本書へかなり一元化できる状態に入っ
 
 ### training stats payload 共通化
 
-- `ztb/training/training_stats_payloads.py` を追加
+- `ztb/training/utils/training_stats_payloads.py` を追加
 - `record_training_stat(...)` を `UnifiedTrainer` 専用 helper から training 共通 helper へ昇格
+- 配置は `ztb/training/` 直下ではなく、既存 `training/utils` 構造に寄せる
 - `build_optimization_training_stats(...)` により `UnifiedTrainer` の optimization payload を shared 化
 - `average_reward_component_history(...)` により `SACTrainer` の reward component 集計を
   list 蓄積ではなく running-sum で処理するようにした

@@ -8160,7 +8160,7 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `UnifiedTrainer` は setup だけでなく integration 後半も helper 境界が見え始めた
   - training 系 test の `tmp_path` 化は、小さいが継続的に効く整理だった
 ## 550# training stats payload 共通化と SAC 集計軽量化
-- `ztb/training/training_stats_payloads.py`
+- `ztb/training/utils/training_stats_payloads.py`
   - `record_training_stat(...)`
   - `build_optimization_training_stats(...)`
   - `average_reward_component_history(...)`
@@ -8183,6 +8183,23 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `record_training_stat` は `UnifiedTrainer` 専用 helper のままより、training 共通へ上げたほうが筋が良かった
   - `SACTrainer` の reward component 集計は list accumulation より running-sum のほうが transient memory を減らせる
   - training 系 test の `tmp_path` 化は、今後 broad を詰めるときの固定費削減にも効く
+## 552# training stats payload の配置整理
+- `ztb/training/training_stats_payloads.py`
+  - 新設位置は浅すぎたため廃止
+- `ztb/training/utils/training_stats_payloads.py`
+  - 既存 `training/utils/training_stats.py` に隣接させる形へ移動
+- `ztb/training/unified_trainer/advanced_feature_setup.py`
+- `ztb/training/unified_trainer/trainer.py`
+- `ztb/training/unified_trainer/algorithms/sac_trainer.py`
+- `tests/unit/training/test_training_stats_payloads.py`
+- `tests/unit/training/test_reward_components_persistence.py`
+  - import path を追随
+- `tests/training/test_model_compression.py`
+- `tests/unit/training/test_ppo_trainer.py`
+  - `tmp_path` 化で Wave4 の固定費を追加削減
+- セルフレビュー
+  - stats payload helper は `ztb/training/` 直下より `training/utils/` 配下の方が discoverability と既存構造の両面で自然
+  - `TrainingStats` class そのものとは責務が違うため、同一ファイルへ無理に混ぜず隣接配置で止めたのが妥当
 ## 551# reward/reporting ownership tightening
 - `ztb/trading/environment/components/calculators/reward_component_tracking.py`
   - `merge_reward_components(...)`

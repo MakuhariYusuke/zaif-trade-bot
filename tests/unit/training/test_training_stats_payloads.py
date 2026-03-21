@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ztb.training.training_stats_payloads import (
+from ztb.training.utils.training_stats_payloads import (
     average_reward_component_history,
     build_optimization_training_stats,
     record_training_stat,

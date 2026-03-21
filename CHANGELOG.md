@@ -6099,11 +6099,15 @@ python scripts/unified_trainer.py \
 - `tests/unit/training/test_unified_optimizer.py` の result persistence テストを `tmp_path` ベースへ変更
 - `tests/unit/training/test_unified_trainer_advanced_feature_setup.py` に integration helper 回帰を追加
 ## 550# training stats payload sharing and SAC aggregation cleanup
-- `ztb/training/training_stats_payloads.py` を追加し、training stats の共通 payload shaping (`record_training_stat`, `build_optimization_training_stats`, `average_reward_component_history`) を shared helper 化
+- `ztb/training/utils/training_stats_payloads.py` を追加し、training stats の共通 payload shaping (`record_training_stat`, `build_optimization_training_stats`, `average_reward_component_history`) を shared helper 化
 - `ztb/training/unified_trainer/trainer.py` の optimization stats payload を shared helper に統一
 - `ztb/training/unified_trainer/algorithms/sac_trainer.py` の reward component 平均化を running-sum helper ベースへ変更し、一時 list 保持を削減
 - `tests/unit/training/test_training_stats_payloads.py` を追加し、training stats payload helper の focused 回帰を追加
 - `tests/training/algorithms/sac/test_sac_compression.py` の tempdir 使用を `tmp_path` ベースへ整理
+## 552# training stats payload placement cleanup
+- training stats payload helper は `ztb/training/` 直下から `ztb/training/utils/` 配下へ移動し、既存 `training_stats.py` と同じ discoverability ラインに整理
+- `UnifiedTrainer` / `SACTrainer` / training tests の import を新配置へ追随
+- `tests/training/test_model_compression.py` と `tests/unit/training/test_ppo_trainer.py` の tempdir 使用を `tmp_path` ベースへ整理
 ## 551# reward and reporting ownership tightening
 - `ztb/trading/environment/components/calculators/reward_component_tracking.py` に `merge_reward_components(...)` を追加し、stage payload の後段 detail merge を helper 化
 - `ztb/trading/environment/components/calculators/reward_calculator.py` の `forced_balance` detail merge を raw `dict.update(...)` から helper ベースへ変更

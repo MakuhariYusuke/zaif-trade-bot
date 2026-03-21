@@ -9,7 +9,6 @@ This module contains comprehensive tests for all compression techniques:
 - Integration with SAC models
 """
 
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -336,21 +335,20 @@ class TestModelCompressionManager:
         assert "quantization" in report["techniques"]
 
     @patch("torch.save")
-    def test_save_compressed_model(self, mock_save):
+    def test_save_compressed_model(self, mock_save, tmp_path):
         """Test saving compressed model."""
         manager = ModelCompressionManager()
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            model = SimpleTestModel()
-            save_path = Path(temp_dir) / "compressed_model.pth"
+        model = SimpleTestModel()
+        save_path = tmp_path / "compressed_model.pth"
 
-            manager.save_compressed_model(model, save_path)
+        manager.save_compressed_model(model, save_path)
 
-            # Check that torch.save was called
-            mock_save.assert_called_once()
+        # Check that torch.save was called
+        mock_save.assert_called_once()
 
     @patch("torch.load")
-    def test_load_compressed_model(self, mock_load):
+    def test_load_compressed_model(self, mock_load, tmp_path):
         """Test loading compressed model."""
         manager = ModelCompressionManager()
 
@@ -362,19 +360,18 @@ class TestModelCompressionManager:
         mock_load.return_value = mock_checkpoint
 
         with patch.object(SimpleTestModel, "load_state_dict") as mock_load_state:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                load_path = Path(temp_dir) / "compressed_model.pth"
+            load_path = tmp_path / "compressed_model.pth"
 
-                loaded_model = manager.load_compressed_model(load_path, SimpleTestModel)
+            loaded_model = manager.load_compressed_model(load_path, SimpleTestModel)
 
-                # Check that model was created and state dict was loaded
-                assert isinstance(loaded_model, SimpleTestModel)
-                mock_load_state.assert_called_once_with(
-                    mock_checkpoint["model_state_dict"]
-                )
+            # Check that model was created and state dict was loaded
+            assert isinstance(loaded_model, SimpleTestModel)
+            mock_load_state.assert_called_once_with(
+                mock_checkpoint["model_state_dict"]
+            )
 
-                # Check that compression stats were loaded
-                assert manager.compression_stats == mock_checkpoint["compression_stats"]
+            # Check that compression stats were loaded
+            assert manager.compression_stats == mock_checkpoint["compression_stats"]
 
 
 class TestCompressionPipeline:

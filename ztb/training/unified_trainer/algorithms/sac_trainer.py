@@ -48,7 +48,7 @@ from ztb.training.unified_trainer.base.base_trainer import (
 from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback
 from ztb.training.utils.distributed_training import get_distributed_info
 from ztb.training.utils.training_stats import TrainingStats
-from ztb.training.training_stats_payloads import (
+from ztb.training.utils.training_stats_payloads import (
     average_reward_component_history,
     record_training_stat,
 )

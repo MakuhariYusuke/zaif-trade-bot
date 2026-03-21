@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Mapping
 
 from ztb.adaptation.continual_learning import ContinualLearningConfig
-from ztb.training.training_stats_payloads import record_training_stat
+from ztb.training.utils.training_stats_payloads import record_training_stat
 
 
 def extract_algorithm_model(algorithm_trainer: object | None) -> object | None:

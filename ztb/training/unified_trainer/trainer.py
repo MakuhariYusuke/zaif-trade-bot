@@ -107,7 +107,7 @@ from ztb.training.unified_trainer.runtime_flags import (
     resolve_ensemble_enabled,
     resolve_trainer_runtime_flags,
 )
-from ztb.training.training_stats_payloads import (
+from ztb.training.utils.training_stats_payloads import (
     build_optimization_training_stats,
     record_training_stat,
 )

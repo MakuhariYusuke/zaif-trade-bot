@@ -10,7 +10,7 @@ import pytest
 from ztb.trading.constants import ACTION_HOLD
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
-from ztb.training.training_stats_payloads import average_reward_component_history
+from ztb.training.utils.training_stats_payloads import average_reward_component_history
 from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback
 
 
