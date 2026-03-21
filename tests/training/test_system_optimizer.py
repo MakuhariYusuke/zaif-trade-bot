@@ -8,7 +8,6 @@ This module tests the SystemOptimizer and related components for:
 - Integration with UnifiedTrainer
 """
 
-import time
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -165,8 +164,7 @@ class TestSystemOptimizer(unittest.TestCase):
         initial_counter = self.optimizer.step_counter
 
         with self.optimizer.optimize_training_step("test_step"):
-            # Simulate some work
-            time.sleep(0.01)
+            _ = sum(range(32))
 
         # Counter should be incremented
         assert self.optimizer.step_counter == initial_counter + 1
@@ -276,7 +274,7 @@ class TestSystemOptimizerIntegration(unittest.TestCase):
         # Simulate multiple training steps
         for i in range(5):
             with self.optimizer.optimize_training_step(f"step_{i}"):
-                time.sleep(0.01)  # Simulate work
+                _ = sum(range(32))
 
         # Check that performance data was collected (may be more than expected due to implementation details)
         assert len(self.optimizer.performance_history) >= 5

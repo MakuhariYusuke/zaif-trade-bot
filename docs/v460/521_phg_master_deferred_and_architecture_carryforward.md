@@ -614,3 +614,5 @@ docs の先送り管理は、本書へかなり一元化できる状態に入っ
 - `SAC`
   - post-cycle memory diagnostics は `build_post_cycle_memory_status(...)` で warning 判定まで shared 化
   - scheduler 側は logging と lifecycle ownership に寄せる
+- `Wave4`
+  - training 系 test の `sleep` は、契約確認に不要なものから CPU work ベースへ置換して固定費を削る

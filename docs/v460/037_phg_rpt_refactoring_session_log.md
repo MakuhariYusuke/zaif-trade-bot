@@ -8368,3 +8368,10 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - セルフレビュー
   - `maker_price` は pure helper 化の次として、stateful orchestration の重複縮約に入れた
   - `SAC` は details だけでなく warning 判定まで helper 側へ寄せたので、Wave3 に直結する整理になった
+## 555# Wave4 test fixed-cost trim
+- `tests/training/test_system_optimizer.py`
+  - `time.sleep(0.01)` ベースの work simulation を小さい CPU work へ置換
+- focused:
+  - `.venv/Scripts/python.exe -m pytest tests/training/test_system_optimizer.py -k 'optimize_training_step_context_manager or performance_tracking_during_training' -q --tb=short --no-cov`
+- セルフレビュー
+  - 契約確認に不要な sleep を減らす方が broad 前の固定費削減として効率が良い

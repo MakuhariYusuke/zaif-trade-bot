@@ -35,6 +35,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `test_519_pricing_stage_tracking_migration.py`
 - `test_sac_memory_monitor.py`
 
+## 2026-03-22 Wave4 test fixed-cost trim
+
+### Changed
+- **tests/training/test_system_optimizer.py**: `sleep` ベースの work simulation を小さい CPU work へ置換し、固定待ち時間を削減
+
+### Tests
+- `test_system_optimizer.py -k 'optimize_training_step_context_manager or performance_tracking_during_training'`
+
 ### Changed
 - **ztb/trading/execution/stale_order_policy.py**: order status 正規化と `CancelFillCheck` を canonical 化
 - **order_monitor.py**: stale-order policy の shared helper を再利用する構成へ整理
