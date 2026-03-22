@@ -2,12 +2,16 @@
 
 yfinance から BTC-JPY 1分足を取得し、FeatureRegistry で特徴量を計算して
 full_registry_features.parquet に追記する。
+raw trades データからの OHLCV 構築にも対応。
 
 retrain_scheduler から呼べるライブラリ関数 + CLI の二面対応。
 
 Usage:
-  # CLI (手動実行)
+  # CLI — yfinance 更新
   python scripts/v460/ml/update_training_data.py
+
+  # CLI — raw trades → parquet gap fill
+  python scripts/v460/ml/update_training_data.py --raw-fill
 
   # ライブラリ (retrain_scheduler から呼出)
   from scripts.v460.ml.update_training_data import ensure_data_fresh
@@ -315,6 +319,146 @@ def ensure_data_fresh(
 
 
 # ════════════════════════════════════════════════════════════
+# Raw trades → OHLCV gap fill (554#)
+# ════════════════════════════════════════════════════════════
+
+_RAW_TRADES_DIR = _PROJECT_ROOT / "data" / "v460" / "raw" / "trades"
+
+
+def _raw_trades_to_ohlcv_1min(trades_path: Path) -> pd.DataFrame:
+    """raw trades JSONL.gz → 1分足 OHLCV に変換."""
+    import gzip
+    import json
+
+    with gzip.open(trades_path, "rt") as f:
+        records = [json.loads(line) for line in f]
+
+    if not records:
+        return pd.DataFrame(columns=_OHLCV_COLS)
+
+    df = pd.DataFrame(records)
+    df["datetime"] = pd.to_datetime(df["ts"], unit="s", utc=True)
+    df = df.set_index("datetime").sort_index()
+    df["price"] = df["price"].astype(float)
+    df["amount"] = df["amount"].astype(float)
+
+    ohlcv = df["price"].resample("1min").agg(
+        open="first", high="max", low="min", close="last",
+    )
+    vol = df["amount"].resample("1min").sum()
+    ohlcv["volume"] = vol
+    ohlcv = ohlcv.dropna(subset=["close"])
+
+    ohlcv = ohlcv.reset_index()
+    ohlcv = ohlcv.rename(columns={"datetime": "timestamp"})
+    return ohlcv[_OHLCV_COLS]
+
+
+def fill_gap_from_raw(
+    parquet_path: Path | None = None,
+    raw_trades_dir: Path | None = None,
+) -> int:
+    """raw trades データから parquet のギャップを埋める.
+
+    parquet 内の時系列ギャップ (30分以上の空白) を検出し、
+    対応する raw trades ファイルがあれば OHLCV に変換して挿入する。
+
+    Returns:
+        追加行数。
+    """
+    path = parquet_path or _PARQUET_PATH
+    trades_dir = raw_trades_dir or _RAW_TRADES_DIR
+
+    if not trades_dir.exists():
+        logger.warning(f"[554#] Raw trades dir not found: {trades_dir}")
+        return 0
+
+    trade_files = sorted(trades_dir.glob("*.jsonl.gz"))
+    if not trade_files:
+        logger.info("[554#] No raw trades files found")
+        return 0
+
+    # raw trades ファイルの日付一覧
+    available_dates: dict[str, Path] = {}
+    for tf in trade_files:
+        date_str = tf.stem.replace(".jsonl", "")
+        available_dates[date_str] = tf
+
+    # ギャップ期間の特定: parquet にカバーされていない日付を検出
+    dates_to_fill: list[str] = []
+    if path.exists():
+        existing = pd.read_parquet(path, columns=["timestamp"])
+        existing["timestamp"] = pd.to_datetime(existing["timestamp"])
+        existing_dates = set(existing["timestamp"].dt.strftime("%Y%m%d").unique())
+        # raw にはあるが parquet にはない日付 + parquet でカバー薄い日付
+        # (parquet に 1 行以下しかない日は gap とみなす)
+        date_counts = existing["timestamp"].dt.strftime("%Y%m%d").value_counts()
+        for date_str, tf_path in sorted(available_dates.items()):
+            count_in_parquet = date_counts.get(date_str, 0)
+            if count_in_parquet < 60:  # 1時間未満のカバレッジは gap
+                dates_to_fill.append(date_str)
+        del existing
+    else:
+        dates_to_fill = sorted(available_dates.keys())
+
+    if not dates_to_fill:
+        logger.info("[554#] No gaps to fill from raw data")
+        return 0
+
+    files_to_process = [available_dates[d] for d in dates_to_fill]
+    logger.info(
+        f"[554#] Filling {len(files_to_process)} gap days: "
+        f"{dates_to_fill[0]} ~ {dates_to_fill[-1]}"
+    )
+
+    # 全ファイルの OHLCV を結合
+    all_ohlcv: list[pd.DataFrame] = []
+    for tf in files_to_process:
+        try:
+            ohlcv = _raw_trades_to_ohlcv_1min(tf)
+            if not ohlcv.empty:
+                all_ohlcv.append(ohlcv)
+                logger.info(f"[554#] {tf.name}: {len(ohlcv)} 1-min bars")
+        except Exception as e:
+            logger.warning(f"[554#] Failed to process {tf.name}: {e}")
+
+    if not all_ohlcv:
+        return 0
+
+    combined_ohlcv = pd.concat(all_ohlcv, ignore_index=True)
+    combined_ohlcv = (
+        combined_ohlcv
+        .sort_values("timestamp")
+        .drop_duplicates(subset=["timestamp"], keep="last")
+        .reset_index(drop=True)
+    )
+    logger.info(
+        f"[554#] Combined raw OHLCV: {len(combined_ohlcv)} bars, "
+        f"{combined_ohlcv['timestamp'].iloc[0]} ~ "
+        f"{combined_ohlcv['timestamp'].iloc[-1]}"
+    )
+
+    # FeatureRegistry で特徴量計算
+    all_features = _get_all_parquet_features(path)
+
+    if path.exists():
+        existing = pd.read_parquet(path, columns=_OHLCV_COLS)
+        if hasattr(existing["timestamp"].dtype, "tz") and existing["timestamp"].dt.tz is not None:
+            existing["timestamp"] = existing["timestamp"].dt.tz_localize(None)
+        # tz-naive 化
+        if hasattr(combined_ohlcv["timestamp"].dtype, "tz") and combined_ohlcv["timestamp"].dt.tz is not None:
+            combined_ohlcv["timestamp"] = combined_ohlcv["timestamp"].dt.tz_localize(None)
+        warmup = existing.tail(_WARMUP_ROWS).copy()
+        warmup_with_new = pd.concat([warmup, combined_ohlcv], ignore_index=True)
+        full = _compute_features(warmup_with_new, all_features)
+        new_features = full.iloc[len(warmup):].reset_index(drop=True)
+    else:
+        new_features = _compute_features(combined_ohlcv, all_features)
+
+    return _merge_into_parquet(path, new_features)
+
+
+# ════════════════════════════════════════════════════════════
 # CLI
 # ════════════════════════════════════════════════════════════
 
@@ -341,6 +485,10 @@ def main() -> None:
         "--period", type=str, default="7d",
         help="yfinance download period (default: 7d)",
     )
+    parser.add_argument(
+        "--raw-fill", action="store_true",
+        help="Fill gaps from raw trades data instead of yfinance",
+    )
     args = parser.parse_args()
 
     path = Path(args.parquet)
@@ -349,7 +497,10 @@ def main() -> None:
     print(f"Current last timestamp: {last_ts}")
     print(f"Stale: {stale:.1f} hours")
 
-    n_added = update_training_parquet(path, period=args.period)
+    if args.raw_fill:
+        n_added = fill_gap_from_raw(path)
+    else:
+        n_added = update_training_parquet(path, period=args.period)
     print(f"\nDone: {n_added} rows added")
 
 

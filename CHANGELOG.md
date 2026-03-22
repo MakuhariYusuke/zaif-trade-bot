@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 554# Raw data gap fill + CalibrationMap offline batch (2026-03-23)
+
+### Added
+- **update_training_data.py `--raw-fill`**: raw trades JSONL.gz → 1分足 OHLCV 変換 + parquet gap fill
+  - ギャップ検出: parquet 内で 1時間未満しかカバーされていない日を自動特定
+  - 22,004 bars 追加 (Feb 13 ~ Mar 15)、parquet 1,225,448 → 1,247,452 行
+- **calibration_batch.py**: CalibrationMap offline batch builder (546# §B 推奨アプローチ)
+  - fill_records JSONL (15,531 records, 38日分) → CalibrationMap 構築 → JSON エクスポート
+  - `load_calibration_state()`: fill_test 起動時の cold start 回避
+  - regime 別 p_win_lcb / n_eff 統計出力
+- **models/v460/entry_gate_calibration.json**: 初期 CalibrationMap (4,718 filled records, global n_eff=200)
+
+### Tests
+- `test_554_calibration_batch.py`: 11 tests (raw OHLCV, gap fill, calibration build/load/roundtrip)
+
 ## 553# OHLCV auto-update pipeline for SAC retrain (2026-03-23)
 
 ### Added
