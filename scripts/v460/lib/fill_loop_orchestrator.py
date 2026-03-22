@@ -101,6 +101,10 @@ class RunSessionState:
     cv_tighten_count: int = 0       # favorable tighten 適用
     cv_veto_count: int = 0          # veto 拒否
     cv_cap_hit_count: int = 0       # cap_hit (offset ceiling 到達)
+    # 551# 546#D: toxicity distribution counter
+    toxicity_level_counts: dict[str, int] = field(default_factory=dict)  # "sell_KILL"→count
+    # 551# sidecar nonzero rate tracking
+    sidecar_nonzero_count: int = 0  # directional_bias != 0.0
     batch: list[FillRecord] = field(default_factory=list)
     batch_size: int = 10
 

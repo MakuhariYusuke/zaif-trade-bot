@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 552# SAC retrain investigation + 546#D toxicity counter (2026-03-23)
+
+### Added
+- **551# 546#D Toxicity Distribution Counter**: `RunSessionState` に `toxicity_level_counts` / `sidecar_nonzero_count` フィールド追加。ORANGE+KILL 率を progress log に出力
+- **sidecar nonzero rate tracking**: sidecar の directional_bias≠0 率を可視化
+
+### Changed
+- **orchestrator_mid_cycle.py**: `_evaluate_and_handle_cycle_gate` で buy/sell toxicity level を side×level キーで記録、sidecar nonzero をカウント
+- **orchestrator_post_cycle.py**: progress log に `[551# toxicity]` / `[551# sidecar_nonzero]` セクション追加
+
+### Docs
+- **552# SAC retrain investigation**: OOS gate 持続失敗の根本原因特定 — OHLCV parquet が 2026-03-11 以降 12 日間未更新。全 retrain 試行が同一データスライスで -5.5e-05 ROI を繰り返す。修正方針: データ更新パイプライン確立 + stale data guard
+
+### Tests
+- `test_551_toxicity_distribution_counter.py`: 20 tests (fields, key format, wiring, danger rate calculation)
+
 ## 512# stale_order_policy 抽出 / neutral fallback 安定化 (2026-03-20)
 
 ## 2026-03-21 metrics canonicalization

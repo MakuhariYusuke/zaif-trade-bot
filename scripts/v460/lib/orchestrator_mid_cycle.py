@@ -127,6 +127,14 @@ class OrchestratorMidCycleMixin:
         _buy_tox = self._assess_buy_toxicity()
         _sell_tox = self._assess_sell_toxicity()
 
+        # 551# 546#D: toxicity distribution counter
+        if _buy_tox is not None:
+            _key = f"buy_{_buy_tox.level.name}"
+            st.toxicity_level_counts[_key] = st.toxicity_level_counts.get(_key, 0) + 1
+        if _sell_tox is not None:
+            _key = f"sell_{_sell_tox.level.name}"
+            st.toxicity_level_counts[_key] = st.toxicity_level_counts.get(_key, 0) + 1
+
         # 273# I6: halt 解除後の soft gate grace period
         _halt_recovery_active = self._daily_drawdown_guard.is_in_recovery(
             next_side,
@@ -147,6 +155,9 @@ class OrchestratorMidCycleMixin:
             st.sidecar_stale_count += 1
         else:
             st.sidecar_missing_count += 1
+        # 551# sidecar nonzero tracking
+        if _sidecar_signal is not None and _sidecar_signal.directional_bias != 0.0:
+            st.sidecar_nonzero_count += 1
 
         _gate_result = self._cycle_gate.evaluate(
             side=next_side,

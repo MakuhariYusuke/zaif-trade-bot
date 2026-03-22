@@ -382,6 +382,34 @@ class OrchestratorPostCycleMixin:
                     f"veto={st.cv_veto_count}, cap_hit={st.cv_cap_hit_count}"
                 )
                 logger.info(f"[512# cross_venue] {_cv_parts}")
+            # 551# 546#D: toxicity distribution summary
+            if st.toxicity_level_counts:
+                _tox_parts: list[str] = []
+                for _tk, _tv in sorted(
+                    st.toxicity_level_counts.items(),
+                    key=lambda x: x[1],
+                    reverse=True,
+                ):
+                    _tox_parts.append(f"{_tk}={_tv}")
+                # ORANGE+KILL 率算出
+                _tox_total = sum(st.toxicity_level_counts.values())
+                _tox_danger = sum(
+                    v for k, v in st.toxicity_level_counts.items()
+                    if "ORANGE" in k or "KILL" in k
+                )
+                _danger_pct = _tox_danger / _tox_total * 100.0 if _tox_total > 0 else 0.0
+                logger.info(
+                    f"[551# toxicity] {', '.join(_tox_parts)} "
+                    f"(ORANGE+KILL={_danger_pct:.1f}%)"
+                )
+            # 551# sidecar nonzero rate
+            if _sc_total > 0:
+                _nz_pct = st.sidecar_nonzero_count / _sc_total * 100.0
+                logger.info(
+                    f"[551# sidecar_nonzero] "
+                    f"{st.sidecar_nonzero_count}/{_sc_total} "
+                    f"({_nz_pct:.1f}%)"
+                )
             # 348# balance_forced 撤廃: forced buy/sell KPI 分離ログを削除
 
         # 113# resilience: HealthMonitor + GC
