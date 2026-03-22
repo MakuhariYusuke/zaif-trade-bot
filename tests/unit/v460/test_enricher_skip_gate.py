@@ -1062,6 +1062,14 @@ class Test058Integration:
         if not real_data_available:
             pytest.skip("No real data")
 
+        # 559# fix: PnL サンプル数が学習最小要件 (20) 未満ならスキップ
+        _filled_pnl = real_enriched_df[
+            real_enriched_df["filled"].astype(bool)
+            & real_enriched_df["post_fill_30s_pnl"].notna()
+        ]
+        if len(_filled_pnl) < 20:
+            pytest.skip(f"Insufficient PnL samples for training: {len(_filled_pnl)}")
+
         path = tmp_path / "test_gate.pkl"
         gate = train_and_save_skip_gate(
             output_path=path,

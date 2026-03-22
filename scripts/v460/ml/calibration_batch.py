@@ -193,6 +193,31 @@ def load_calibration_state(
     return cal_map
 
 
+def save_calibration_state(
+    cal_map: Any,
+    path: Path | str | None = None,
+) -> None:
+    """CalibrationMap の現在状態を JSON に保存 (559# online 学習永続化).
+
+    Args:
+        cal_map: CalibrationMap インスタンス。
+        path: 保存先パス。None の場合はデフォルトパス。
+    """
+    p = Path(path) if path else _OUTPUT_PATH
+    state = cal_map.get_state()
+    export = {
+        "meta": {
+            "saved_at": datetime.now(timezone.utc).isoformat(),
+            "source": "online_update",
+        },
+        **state,
+    }
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with open(p, "w") as f:
+        json.dump(export, f, indent=2, default=str)
+    logger.debug("[559#] CalibrationMap saved to %s", p)
+
+
 # ════════════════════════════════════════════════════════════
 # CLI
 # ════════════════════════════════════════════════════════════

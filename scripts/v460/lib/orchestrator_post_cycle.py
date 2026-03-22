@@ -461,6 +461,17 @@ class OrchestratorPostCycleMixin:
                 filled_count=st.filled_count,
                 cumulative_pnl_jpy=st.cumulative_pnl_jpy,
             ))
+            # 559# CalibrationMap online 学習の永続化
+            if (
+                self._calibration_map is not None
+                and self.config.entry_gate_online_update
+                and self.config.entry_gate_calibration_map_path
+            ):
+                from scripts.v460.ml.calibration_batch import save_calibration_state
+                save_calibration_state(
+                    self._calibration_map,
+                    self.config.entry_gate_calibration_map_path,
+                )
             self._last_state_save_time = _now_mono_save
             if _time_save and not _progress_save:
                 logger.info(

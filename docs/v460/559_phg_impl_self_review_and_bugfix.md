@@ -86,21 +86,35 @@ EntryGate 統計行 (eval/block/avgEV) を追加。
 
 | 優先度 | 課題 | 状態 |
 |--------|------|------|
-| HIGH | CalibrationMap state persistence (get_state → file) | 555# doc に「将来」記載。online 学習がセッション跨ぎで消失 |
+| ~~HIGH~~ | ~~CalibrationMap state persistence (get_state → file)~~ | **559# 追加コミットで解決**: state save フロー (300s 間隔) に統合 |
 | MEDIUM | Regime source 整合性 (offline: record.regime vs online: record.gated_regime) | L2 fallback で概ね吸収。regime / gated_regime の差異は小さい |
 | LOW | CalibrationStats TypedDict 化 | 現状 dict access。型安全性向上余地あり |
 | LOW | Hot reload 非対応 | entry_gate_* パラメータ変更時に CalibrationMap 再初期化不要 (ewma_tau 等は変更頻度極低) |
 
 ---
 
-## 5. 前セッションの作業記録
+## 5. 追加修正 (559# 第2コミット)
 
-### 5.1 ドキュメント作成
+### 5.1 CalibrationMap state persistence
+- `calibration_batch.py` に `save_calibration_state()` 関数追加
+- `orchestrator_post_cycle.py` の `_log_progress_and_adapt()` 内の state save 直後に
+  CalibrationMap 保存を追加 (300s 間隔、既存の `_STATE_SAVE_INTERVAL_SEC` と同期)
+- 保存先: `config.entry_gate_calibration_map_path` (ロード元と同一)
+
+### 5.2 フレーキーテスト修正
+- `test_enricher_skip_gate::test_train_skip_gate_real`: PnL サンプル数 < 20 の場合
+  `pytest.skip()` で適切にスキップ (以前は `ValueError` で失敗)
+
+---
+
+## 6. 前セッションの作業記録
+
+### 6.1 ドキュメント作成
 - `docs/v460/553_phg_impl_ohlcv_auto_update_pipeline.md` (95 行)
 - `docs/v460/554_phg_impl_raw_gap_fill_and_calibration_batch.md` (161 行)
 - `docs/v460/index.md` 更新 (553–555 のファイルリンク追加)
 
-### 5.2 テスト修正 (555# 起因で陳腐化した 6 件)
+### 6.2 テスト修正 (555# 起因で陳腐化した 6 件)
 1. `test_166_remaining_tasks.py` — 2500 char window 超過; 分割チェックに変更
 2. `test_276_blocking_policy_dry.py` — 同上
 3. `test_336_yaml_code_drift_prevention.py` — KNOWN_YAML_OVERRIDES に 6 項目追加 + field cap 470→500
@@ -108,6 +122,6 @@ EntryGate 統計行 (eval/block/avgEV) を追加。
 5. `test_305_p0_improvements.py` — OB cache "305# S2" → `_resolve_market_snapshot` 追従
 6. `test_ml_cache_cleanup.py` — 削除済みモジュール 6 件を _ENTRYPOINTS から除去
 
-### 5.3 既知の既存問題 (未修正)
+### 6.3 既知の既存問題 (559# 第2コミットで修正済み)
 - `test_enricher_skip_gate`: PnL データ不足でフレーキー
 - `test_408_f_series_blindspot`: `inspect.getsource` 行番号ズレ

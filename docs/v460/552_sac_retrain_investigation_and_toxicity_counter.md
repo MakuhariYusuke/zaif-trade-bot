@@ -90,7 +90,25 @@ OOS gate 自体は正常動作。**データが古いことが問題**。
    - マーケットメイカー文脈では micro-positive ROI でも有用
    - しかし現在の -5.5e-05 はゲートが正しく機能している証拠
 
-## 6. 546# D 実装 (本コミットで完了)
+## 6. 関連ログ・ファイルの所在
+
+| ファイル / ディレクトリ | 内容 |
+|------------------------|------|
+| `logs/sac_retrain_history.jsonl` | SAC retrain 全履歴 (status, gross_roi, trade_count, debug_details)。§2 の表はこのファイルから抽出 |
+| `logs/g2_sac_train_run.log` | G2 SAC 初回訓練 stdout (2026-03-12) |
+| `logs/g2_sac_train_stderr.log` | G2 SAC 初回訓練 stderr (37.6KB, DLL エラー等を含む) |
+| `logs/g2_sac_train_stderr_run1.log` / `_run2.log` | 追加ラン stderr |
+| `logs/g2_sac_train_background.log` / `_err.log` | バックグラウンド起動ログ |
+| `models/v460/sac_sidecar.zip` | デプロイ中の SAC sidecar モデル |
+| `models/v460/sac_sidecar.buffer.pkl` | SAC replay buffer (stale data 蓄積の可能性) |
+| `cache/sidecar_signal.json` | SAC inference → fill_test の信号ファイル (neutral fallback 含む) |
+| `configs/v460/experiments/g2_sac_train.yaml` | SAC 訓練・retrain のマスター設定 |
+| `scripts/v460/ml/sac_retrain_scheduler.py` | retrain 実行スクリプト (`retrain_once()`) |
+| `logs/tensorboard/SAC_*` | SB3 TensorBoard ログ |
+
+---
+
+## 7. 546# D 実装 (本コミットで完了)
 
 本調査と並行して、546# D の Toxicity Distribution Counter を実装:
 
