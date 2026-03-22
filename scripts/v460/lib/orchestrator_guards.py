@@ -42,7 +42,15 @@ class OrchestratorGuardsMixin:
 
         343# kill リリース追跡: kill→非kill 遷移時にサイクル番号を記録し、
         skip_gate が kill 直後の過剰抑制を回避できるようにする。
+
+        535# Pre-emptive CV kill: CV adverse velocity が持続する場合に
+        rolling PnL の悪化を待たず事前に kill する (532# §4 対応)。
         """
+        # 535# Pre-emptive CV kill: sell 側のみ (532# §4: sell_dynamic_kill の事後反応問題)
+        if side == "sell" and self.config.sell_preemptive_cv_kill_enabled:
+            preemptive_killed = self._check_preemptive_cv_kill()
+            if preemptive_killed:
+                return self._apply_kill_release_tracking(side, killed=True)
         mgr = self._sell_kill_mgr if side == "sell" else self._buy_kill_mgr
         regime: str | None = None
         if self._regime_detector is not None:
@@ -100,7 +108,10 @@ class OrchestratorGuardsMixin:
                 f"threshold_used={telemetry.threshold_used}, "
                 f"cooldown_remaining={telemetry.cooldown_remaining}"
             )
-        # 343# kill リリース追跡 — kill(True)→非kill(False) 遷移を検出
+        return self._apply_kill_release_tracking(side, killed)
+
+    def _apply_kill_release_tracking(self, side: str, killed: bool) -> bool:
+        """343# kill リリース追跡 — kill(True)→非kill(False) 遷移を検出."""
         if side == "buy":
             was_active = self._kill_was_active_buy
             if was_active and not killed:
@@ -120,6 +131,53 @@ class OrchestratorGuardsMixin:
                 )
             self._kill_was_active_sell = killed
         return killed
+
+    def _check_preemptive_cv_kill(self) -> bool:
+        """535# Pre-emptive CV kill: CV adverse velocity 持続時に sell を事前ブロック.
+
+        532# §4 対応: sell_dynamic_kill は損失発生後に反応する構造的欠陥がある。
+        CV (cross-venue) の adverse velocity が連続して高い場合、rolling PnL が
+        悪化する前に sell を pre-emptive にブロックする。
+
+        Returns:
+            True if sell should be pre-emptively killed.
+        """
+        # cooldown 中は kill 継続
+        if self._preemptive_cv_sell_cooldown > 0:
+            self._preemptive_cv_sell_cooldown -= 1
+            return True
+
+        cfg = self.config
+        cv_hint = self._maker_price.cross_venue_lead_lag_hint
+        if cv_hint is None:
+            self._preemptive_cv_sell_adverse_count = 0
+            return False
+
+        # adverse_side == "sell" かつ velocity と confidence が閾値以上
+        if (
+            cv_hint.adverse_side == "sell"
+            and abs(cv_hint.reference_velocity_bps) >= cfg.sell_preemptive_cv_velocity_threshold
+            and cv_hint.confidence >= cfg.sell_preemptive_cv_confidence_floor
+        ):
+            self._preemptive_cv_sell_adverse_count += 1
+            if self._preemptive_cv_sell_adverse_count >= cfg.sell_preemptive_cv_consecutive_threshold:
+                self._preemptive_cv_sell_cooldown = cfg.sell_preemptive_cv_cooldown_cycles
+                self._inc_guard_fire("preemptive_cv_sell_kill")
+                logger.warning(
+                    "[535#] sell pre-emptive CV kill activated: "
+                    "velocity=%+.2fbps/s, confidence=%.2f, "
+                    "consecutive=%d, cooldown=%d cycles",
+                    cv_hint.reference_velocity_bps,
+                    cv_hint.confidence,
+                    self._preemptive_cv_sell_adverse_count,
+                    cfg.sell_preemptive_cv_cooldown_cycles,
+                )
+                self._preemptive_cv_sell_adverse_count = 0
+                return True
+        else:
+            self._preemptive_cv_sell_adverse_count = 0
+
+        return False
 
     def _track_side_pnl(self, record: "FillRecord") -> None:
         """275# DRY: side パラメータ化 — PnL 追跡を単一メソッドに統合.

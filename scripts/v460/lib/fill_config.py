@@ -423,6 +423,13 @@ class FillTestConfig:
     # Glosten (1994): 方向情報を持つ MM は favorable side で積極的な quote を出せる。
     cross_venue_favorable_tighten_enabled: bool = False
     cross_venue_favorable_tighten_mult: float = 0.90  # offset × 0.90 = 10% 縮小 (conf=1.0 時)
+    # 535# Pre-emptive CV kill: CV adverse velocity が持続する場合に sell を事前ブロック
+    # 532# §4: sell_dynamic_kill は事後反応(損失後にkill)→ CV signal で事前に kill する
+    sell_preemptive_cv_kill_enabled: bool = False
+    sell_preemptive_cv_velocity_threshold: float = 2.0   # adverse velocity >= この値で警戒 (bps/s)
+    sell_preemptive_cv_confidence_floor: float = 0.5      # conf >= この値で signal 有効
+    sell_preemptive_cv_consecutive_threshold: int = 3     # N 回連続 adverse → pre-emptive kill 発動
+    sell_preemptive_cv_cooldown_cycles: int = 5           # kill 発動後の継続サイクル数
     # 062# S5: SkipGate ML フィルター (AS 分類器ベースの注文スキップ)
     skip_gate_enabled: bool = False
     # 118# A3: side 別有効/無効 (sell 逆選別対策)

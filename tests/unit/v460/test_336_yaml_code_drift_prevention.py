@@ -75,6 +75,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "regime_adaptive_enabled",
     "sell_dynamic_kill_enabled",
     "sell_dynamic_kill_inv_relaxation_enabled",
+    "sell_preemptive_cv_kill_enabled",  # 535# code=False, YAML=True
     "sell_velocity_skip_enabled",
     "sigma_parkinson_enabled",
     "skip_buy_unknown_regime",

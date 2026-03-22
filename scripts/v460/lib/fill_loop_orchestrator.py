@@ -158,6 +158,9 @@ class FillLoopOrchestratorMixin(
     _kill_was_active_sell: bool = False
     _kill_released_at_cycle_buy: int | None = None
     _kill_released_at_cycle_sell: int | None = None
+    # 535# Pre-emptive CV kill state tracking
+    _preemptive_cv_sell_adverse_count: int = 0
+    _preemptive_cv_sell_cooldown: int = 0
     # 348# balance_forced 撤廃: forced_buy_delay 関連属性を削除
     # 303# B: DD soft lot side 分離 — side 別 lot 倍率 (1.0 = 通常)
     _dd_soft_lot_scale_buy: float = 1.0

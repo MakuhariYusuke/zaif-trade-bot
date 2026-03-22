@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-22 (534# vetoデッドロック防止: max_consecutive+BTC=0緩和 + log_cycle_no join key + ログ改善)
+> 最終更新: 2026-03-23 (535# pre-emptive CV kill + min_spread_jpy 700→500: 532# §8 P1-5/P1-6 完了)
 
 ---
 
@@ -561,6 +561,7 @@
 | 532 | verify | [532_phg_rev_530_531_blind_spot_verification.md](532_phg_rev_530_531_blind_spot_verification.md) | 530#/531#盲点検証: 時間帯クラスタリング・隠れデッドロック・veto機会損失・fill数乖離 |
 | 533 | rev | [533_phg_evaluation_532_blind_spots.md](533_phg_evaluation_532_blind_spots.md) | 532#盲点の市場微視構造検証: 時間帯ハードコード懸念・理論的反論 |
 | 534 | impl | [534_phg_impl_veto_deadlock_prevention_and_log_improvements.md](534_phg_impl_veto_deadlock_prevention_and_log_improvements.md) | vetoデッドロック防止(max_consecutive+BTC=0緩和) + log_cycle_no join key + ログ可観測性改善 |
+| 535 | impl | [535_phg_impl_preemptive_cv_kill_and_min_spread.md](535_phg_impl_preemptive_cv_kill_and_min_spread.md) | pre-emptive CV kill (532# P1-5) + min_spread_jpy 700→500 (P1-6) |
 
 ---
 

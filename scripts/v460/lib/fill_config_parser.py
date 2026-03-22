@@ -219,6 +219,12 @@ def _parse_cross_venue_section(yaml_cfg: dict) -> dict:
         # 533# veto deadlock 防止
         "veto_max_consecutive": "cross_venue_lead_lag_veto_max_consecutive",
         "veto_inventory_zero_threshold_mult": "cross_venue_lead_lag_veto_inventory_zero_threshold_mult",
+        # 535# Pre-emptive CV kill
+        "preemptive_sell_kill_enabled": "sell_preemptive_cv_kill_enabled",
+        "preemptive_sell_kill_velocity_threshold": "sell_preemptive_cv_velocity_threshold",
+        "preemptive_sell_kill_confidence_floor": "sell_preemptive_cv_confidence_floor",
+        "preemptive_sell_kill_consecutive_threshold": "sell_preemptive_cv_consecutive_threshold",
+        "preemptive_sell_kill_cooldown_cycles": "sell_preemptive_cv_cooldown_cycles",
     }
     for yaml_key, config_key in cv_map.items():
         if yaml_key in cv:

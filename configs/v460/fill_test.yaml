@@ -39,7 +39,7 @@ max_preflight_skip: 10        # preflight 連続失敗の上限
 # ---- スプレッド比例オフセット (CM-1) ----
 spread_offset_ratio: 0.05     # 031# 0.2→0.05: AS 低減のため保守化
 min_offset_jpy: 1.0           # 最小オフセット (JPY)
-min_spread_jpy: 700            # 481# 1000→700: Phase1段階緩和 (spread<1000が55件/17.1%,700以下は約30件回収見込)
+min_spread_jpy: 500            # 535# 700→500: 532# P1-6 buy NFQ 94%集中改善 (実勢243-522JPY, 700では大半を阻害)
 
 # ---- リトライ (CM-2) ----
 max_order_retries: 2              # 041# 1→2: api_error 削減のため
@@ -358,6 +358,14 @@ cross_venue_lead_lag:
   # adverse 側 retreat だけでなく favorable 側も confidence 比例で offset 縮小
   favorable_tighten_enabled: true    # 519# false→true (512#実装済み。buy PnL30=+39.0で健全、favorable側でfill rate向上を狙う)
   favorable_tighten_mult: 0.90       # offset × 0.90 = 10% 縮小 (confidence=1.0 時)
+  # 535# Pre-emptive CV kill: CV adverse velocity 持続時に sell を事前ブロック (532# §4)
+  # sell_dynamic_kill は損失後にrolling meanが下がってからkill→予防にならない
+  # CV velocity が高く連続する場合、PnL悪化前にsellを停止する
+  preemptive_sell_kill_enabled: true
+  preemptive_sell_kill_velocity_threshold: 2.0   # adverse velocity >= 2.0 bps/s で警戒
+  preemptive_sell_kill_confidence_floor: 0.5      # confidence >= 0.5 で signal 有効
+  preemptive_sell_kill_consecutive_threshold: 3   # 3回連続 adverse → pre-emptive kill 発動
+  preemptive_sell_kill_cooldown_cycles: 5         # kill 発動後 5サイクル継続
 
 # ---- 211# Spread Anomaly Detector (513# YAML化) ----
 # スプレッドの異常拡大を検出し offset/interval/lot を自動調整する。

@@ -547,6 +547,12 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     # 512# favorable-side tightening
     "cross_venue_favorable_tighten_enabled",
     "cross_venue_favorable_tighten_mult",
+    # 535# Pre-emptive CV kill
+    "sell_preemptive_cv_kill_enabled",
+    "sell_preemptive_cv_velocity_threshold",
+    "sell_preemptive_cv_confidence_floor",
+    "sell_preemptive_cv_consecutive_threshold",
+    "sell_preemptive_cv_cooldown_cycles",
     # 506# sell age cap
     "sell_age_cap_sec",
     # --- macro regime 閾値 (MacroRegimeDetector 毎 update 読み) ---
