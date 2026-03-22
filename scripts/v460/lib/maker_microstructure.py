@@ -54,6 +54,7 @@ class MicrostructureMixin:
     _mid_hl_reset_time: float
     _last_sigma: float
     _last_amihud_illiq: float
+    _last_as_delta_star_ratio: float  # 543# A-S δ* 参照スプレッド
 
     def _decayed_imbalance(self, now: float) -> float: ...
     @staticmethod
@@ -236,6 +237,8 @@ class MicrostructureMixin:
                 # δ* (JPY) → offset_ratio (無次元)
                 if spread > 0:
                     delta_star_ratio = delta_star_jpy / spread
+                    # 543# A-S 参照スプレッド: 計測値をキャッシュ
+                    self._last_as_delta_star_ratio = delta_star_ratio
                     if effective_offset_ratio < delta_star_ratio:
                         logger.debug(
                             f"[as_delta_star] 266# {side} δ*={delta_star_ratio:.4f} "

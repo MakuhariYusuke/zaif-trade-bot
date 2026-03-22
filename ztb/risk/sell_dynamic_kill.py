@@ -452,48 +452,19 @@ class DynamicKillManager:
         warn = cfg.toxicity_warn_level
         caution = cfg.toxicity_caution_level
 
-        if score >= 1.0:
-            # KILL ゾーン
-            return ToxicityAssessment(
-                level=ToxicityLevel.KILL, score=score,
-                offset_mult=cfg.toxicity_kill_offset_mult,
-                participation_rate=0.0,
-                threshold_used=threshold, rolling_mean=rolling_mean,
-            )
-        elif score >= caution:
-            # ORANGE ゾーン: 確率的参加 + offset 拡大
-            # 線形補間: caution → 1.0
-            t = (score - caution) / (1.0 - caution) if caution < 1.0 else 0.0
-            offset_m = cfg.toxicity_caution_offset_mult + t * (
-                cfg.toxicity_kill_offset_mult - cfg.toxicity_caution_offset_mult
-            )
-            participation = 1.0 - t * (1.0 - cfg.toxicity_caution_min_participation)
-            return ToxicityAssessment(
-                level=ToxicityLevel.ORANGE, score=score,
-                offset_mult=offset_m,
-                participation_rate=participation,
-                threshold_used=threshold, rolling_mean=rolling_mean,
-            )
-        elif score >= warn:
-            # YELLOW ゾーン: offset 拡大のみ
-            # 線形補間: warn → caution
-            t = (score - warn) / (caution - warn) if caution > warn else 0.0
-            offset_m = cfg.toxicity_warn_offset_mult + t * (
-                cfg.toxicity_caution_offset_mult - cfg.toxicity_warn_offset_mult
-            )
-            return ToxicityAssessment(
-                level=ToxicityLevel.YELLOW, score=score,
-                offset_mult=offset_m,
-                participation_rate=1.0,
-                threshold_used=threshold, rolling_mean=rolling_mean,
-            )
-        else:
-            # GREEN ゾーン: 通常
-            return ToxicityAssessment(
-                level=ToxicityLevel.GREEN, score=score,
-                offset_mult=1.0, participation_rate=1.0,
-                threshold_used=threshold, rolling_mean=rolling_mean,
-            )
+        # 543# Toxicity Budget 独立化: 純粋関数に委譲
+        from ztb.risk.toxicity_budget import assess_toxicity_score
+        return assess_toxicity_score(
+            score=score,
+            warn_level=warn,
+            caution_level=caution,
+            warn_offset_mult=cfg.toxicity_warn_offset_mult,
+            caution_offset_mult=cfg.toxicity_caution_offset_mult,
+            kill_offset_mult=cfg.toxicity_kill_offset_mult,
+            caution_min_participation=cfg.toxicity_caution_min_participation,
+            threshold_used=threshold,
+            rolling_mean=rolling_mean,
+        )
 
     def check_kill(self, regime: str | None = None, *, threshold_offset_bps: float = 0.0) -> tuple[bool, DynamicKillTelemetry]:
         """kill すべきか判定.

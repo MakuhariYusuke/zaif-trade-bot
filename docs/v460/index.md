@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-23 (542# ceiling 0.25→0.30 + 残存 identity 段分析 + test_405 修正)
+> 最終更新: 2026-03-23 (543# Phase 3: OFI-Lite / Toxicity Budget 独立化 / A-S δ* 計測)
 
 ---
 
@@ -567,6 +567,9 @@
 | 538 | rev | [538_phg_second_opinion_536_537_architecture_review.md](538_phg_second_opinion_536_537_architecture_review.md) | 536-537セカンドオピニオン: 現況差分、ceiling先行の危険、composite_risk再位置付け、簡素化指標を補強 |
 | 539 | rpt | [539_phg_huan_simplification_scorecard.md](539_phg_huan_simplification_scorecard.md) | 風水渙断捨離スコアカード: 4指標定義(gate数・pipeline段数・clamp率・block理由)+アクション |
 | 540 | verify | [540_phg_verify_536_539_pipeline_reality_check.md](540_phg_verify_536_539_pipeline_reality_check.md) | 536-539独立検証: pipeline二重構造(pre-order 14段+executor 9段)発見、spread_adapt主犯特定、Phase 1 YAML施策 |
+| 541 | impl | [541_phg_pipeline_optimization_lazy_import_stage_skip.md](541_phg_pipeline_optimization_lazy_import_stage_skip.md) | lazy import引き上げ(8箇所) + pre-order disabled stage 5段スキップ最適化 + spread_adapt解明 |
+| 542 | impl | [542_phg_ceiling_030_identity_audit_memleak.md](542_phg_ceiling_030_identity_audit_memleak.md) | ceiling 0.25→0.30 + 残存identity段6段分析 + メモリリーク監査 + test_405修正 |
+| 543 | impl | [543_phg_phase3_ofi_toxicity_as_delta.md](543_phg_phase3_ofi_toxicity_as_delta.md) | Phase 3: OFI-Lite (CKS 2014) + Toxicity Budget独立化 (GM 1985) + A-S δ*計測 |
 
 ---
 

@@ -46,6 +46,7 @@ from ztb.trading.pricing.offset_math import (
 from ztb.trading.pricing.price_finalization import (
     finalize_price_with_spread_guard as _finalize_price_with_spread_guard_impl,
 )
+from ztb.trading.pricing.ofi_lite import compute_ofi_lite
 from ztb.trading.pricing.spread_adaptive import apply_spread_adaptive_ratio
 from ztb.trading.pricing.stage_tracking import (
     make_offset_stage_store as _make_offset_stage_store,
@@ -147,11 +148,14 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         "_loss_boost_set_time",      # 226# T1: boost 設定時刻 (指数減衰用)
         "_smoothed_velocity_bps",    # 227# C3: EMA-smoothed velocity (bid-ask bounce noise filter)
         "_last_amihud_illiq",        # 266# Amihud ILLIQ キャッシュ
+        "_last_as_delta_star_ratio", # 543# A-S δ* 参照スプレッド
         "_mid_high",                 # 305# Parkinson σ: rolling window 内 max mid
         "_mid_low",                  # 305# Parkinson σ: rolling window 内 min mid
         "_mid_hl_reset_time",        # 305# Parkinson σ: high/low リセット時刻
         "_last_sigma",               # 306# L1: 最新 σ キャッシュ (dynamic cycle interval)
         "_last_offset_stages",       # 306# E1: offset stage recording (JSON)
+        "_prev_ob_snapshot",         # 543# OFI-Lite: 前回サイクルの OB snapshot
+        "_last_ofi_lite",            # 543# OFI-Lite: 最新のOFI値 [-1,+1]
     )
 
     def __init__(
@@ -196,6 +200,9 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         # 129# OB recorder: 生スナップショットキャッシュ
         # 261# P2-5: object → OrderBookSnapshot (型安全化)
         self._last_ob_snapshot: OrderBookSnapshot | None = None
+        # 543# OFI-Lite: 前回サイクルの OB snapshot
+        self._prev_ob_snapshot: OrderBookSnapshot | None = None
+        self._last_ofi_lite: float = 0.0
         # 162# Inventory Skewing: fill 履歴追跡
         _w = config.inventory_skewing_window if config.inventory_skewing_window > 0 else 100
         self._inv_fill_history: collections.deque[str] = collections.deque(maxlen=_w)
@@ -215,6 +222,8 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         self._smoothed_velocity_bps: float | None = None
         # 266# Amihud ILLIQ キャッシュ
         self._last_amihud_illiq: float = 0.0
+        # 543# A-S δ* 参照スプレッド (計測用)
+        self._last_as_delta_star_ratio: float = 0.0
         # 305# Parkinson σ: rolling high/low tracking for HF volume estimator
         self._mid_high: float = 0.0
         self._mid_low: float = float("inf")
@@ -396,6 +405,11 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         """120# P2-1: 直近の compute() で VG が発動したか."""
         return self._last_vg_triggered
 
+    @property
+    def last_ofi_lite(self) -> float:
+        """543# OFI-Lite: 直近の cycle-to-cycle OFI [-1, +1]."""
+        return self._last_ofi_lite
+
     def update_fast_fill_defense(self, ffd: "FastFillDefense") -> None:
         """210# F: hot-reload 後の FastFillDefense 参照更新 (カプセル化維持)."""
         self._fast_fill_defense = ffd
@@ -479,8 +493,18 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
             imbalance ∈ [-1, +1].
         """
         ob = await adapter.get_orderbook(symbol, depth=depth)
+        # 543# OFI-Lite: 前回 snapshot を退避してから更新
+        self._prev_ob_snapshot = self._last_ob_snapshot
         # 129# OB recorder: 生スナップショットをキャッシュ
         self._last_ob_snapshot = ob
+        # 543# OFI-Lite: 前回 snapshot がある場合は OFI を計算
+        if self._prev_ob_snapshot is not None and self._prev_ob_snapshot.bids and self._prev_ob_snapshot.asks:
+            self._last_ofi_lite = compute_ofi_lite(
+                self._prev_ob_snapshot.bids, self._prev_ob_snapshot.asks,
+                ob.bids, ob.asks, depth=depth,
+            )
+        else:
+            self._last_ofi_lite = 0.0
         bid_volume = sum(qty for _, qty in ob.bids[:depth]) if ob.bids else 0.0
         ask_volume = sum(qty for _, qty in ob.asks[:depth]) if ob.asks else 0.0
         total = bid_volume + ask_volume
@@ -932,6 +956,13 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         # 306# E1: offset stage recording — 各ステージの寄与を追跡
         _stages = _make_offset_stage_store(cfg.offset_stage_recording_enabled)
         _record_offset_stage(_stages, "base", effective_offset_ratio)
+
+        # 543# OFI-Lite: 計測値をステージ記録に含める
+        if _stages is not None and self._last_ofi_lite != 0.0:
+            _stages["ofi_lite"] = round(self._last_ofi_lite, 4)
+        # 543# A-S δ*: 参照スプレッド計測値
+        if _stages is not None and self._last_as_delta_star_ratio > 0.0:
+            _stages["as_delta_star"] = round(self._last_as_delta_star_ratio, 4)
 
         # 162# Inventory Skewing: 在庫偏重に応じた非対称 offset 補正
         # 228# C2: time-decay 適用 — 古い fill 履歴の影響を減衰
