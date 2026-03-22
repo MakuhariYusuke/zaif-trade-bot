@@ -236,6 +236,26 @@
 1. `550#` で `maker_price` の state 分類と stage シーケンスを文書化する
 2. `ab_judgment` / `maker_price` の stateful ownership をさらに薄くする
 3. Wave3/4 の telemetry / setup 固定費の残件を詰める
+
+## 2026-03-23 / Session 037-562
+
+### 実施
+- `550#` を追加し、`maker_price` の 45 state を
+  - Pricing Core State
+  - Microstructure Cache
+  - Telemetry / Diagnostic
+  に分類
+- `compute()` を前処理 `P1-P7` と core pipeline `S0-S18` に分けて実行順序と依存関係を記録
+- `521#` から `550#` を参照する形に整理
+
+### 結果
+- `maker_price` の今後の split-first 判断を、実装ではなく設計メモから辿れる状態になった
+- 547# の「44 state」前提は stale であり、2026-03-23 時点の正は 45 state と明記できた
+
+### 次アクション
+1. `maker_price` の stateful ownership を `550#` に沿ってさらに薄くする
+2. `ab_judgment` の orchestration / reporting ownership を同じ粒度で整理する
+3. Wave3/4 の telemetry / setup 固定費改善を broad 前提で進める
 - 本体コード改善
   - `scripts/v460/lib/fill_cycle_executor.py`
     - `run_single_cycle()` の派生値導出を `_derive_decision_path()` へ抽出

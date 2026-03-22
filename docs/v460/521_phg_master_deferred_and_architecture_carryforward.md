@@ -190,6 +190,7 @@ shim を外しにいく条件:
 - state object 化を急がず、stage orchestration を明示化する
 - pure helper は引き続き `ztb.trading.pricing.*` へ寄せる
 - `compute()` の public/inspection 契約は壊さない
+- state 分類と `compute()` stage 境界の詳細は `550#` を正本とする
 
 ### 2. `skip_gate_evaluator.py`
 

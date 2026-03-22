@@ -93,6 +93,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **maker_price.py**: `offset_stages` store の schema-version 追随と slot-backed state の明示化を実施
 - **test_519_pricing_stage_tracking_migration.py**: schema-version 付き serialization 契約へ更新
 
+## 2026-03-23 maker price state boundary memo
+
+### Changed
+- **docs/v460/550_phg_plan_maker_price_state_and_stage_boundary.md**: `maker_price` の state 分類、`compute()` stage 実行順、依存関係、split-first 境界を整理
+- **docs/v460/521_phg_master_deferred_and_architecture_carryforward.md**: `maker_price` の詳細設計参照先を `550#` に固定
+
 ### Changed
 - **ztb/trading/execution/stale_order_policy.py**: order status 正規化と `CancelFillCheck` を canonical 化
 - **order_monitor.py**: stale-order policy の shared helper を再利用する構成へ整理
