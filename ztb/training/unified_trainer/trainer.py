@@ -109,7 +109,8 @@ from ztb.training.unified_trainer.runtime_flags import (
     resolve_trainer_runtime_flags,
 )
 from ztb.training.utils.training_stats_payloads import (
-    record_optimization_training_stats,
+    build_optimization_training_stats,
+    record_training_stat,
 )
 from ztb.training.unified_trainer.ui import TrainingUI
 from ztb.utils.cache_utils import TTLCache
@@ -1122,15 +1123,16 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 except Exception as e:
                     self.logger.warning(f"Failed to collect training stats: {e}")
                 # Add optimization metrics to training stats
-                record_optimization_training_stats(
+                record_training_stat(
                     self.training_stats,
-                    memory_stats=memory_stats,
-                    performance_profile=perf_report,
-                    parallel_processing_enabled=self.parallel_config is not None,
-                    cache_size=(
-                        len(self.feature_cache.cache)
+                    "optimization",
+                    build_optimization_training_stats(
+                        memory_stats=memory_stats,
+                        performance_profile=perf_report,
+                        parallel_processing_enabled=self.parallel_config is not None,
+                        cache_size=len(self.feature_cache.cache)
                         if hasattr(self.feature_cache, "cache")
-                        else 0
+                        else 0,
                     ),
                 )  # Display completion
             self.ui_manager.display_training_complete(

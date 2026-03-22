@@ -6348,8 +6348,3 @@ python scripts/unified_trainer.py \
 - `scripts/v460/lib/maker_price.py` に `_apply_optional_offset_ratio_stage(...)` を追加し、optional stage の no-op/stage-record 契約を集約
 - `ztb/trading/environment/components/calculators/reward_calculator.py` で `_last_reward_components` の reset/extend/merge/telemetry ownership を local helper に整理
 - `ztb/training/unified_trainer/advanced_feature_setup.py` に `record_advanced_feature_stats(...)` を追加し、advanced feature stats 記録を helper 経由に統一
-## 2026-03-23 wave3/wave4 follow-up
-- `ztb/training/utils/training_stats_payloads.py` に `record_optimization_training_stats(...)` を追加
-- `ztb/training/unified_trainer/trainer.py` の optimization stats 記録を helper 経由へ整理
-- `tests/unit/trading/components/test_performance_optimizer.py` の fixed `sleep` を小さい CPU work に置換
-- `.gitignore` に `cache/*.db-shm` / `cache/*.db-wal` を追加

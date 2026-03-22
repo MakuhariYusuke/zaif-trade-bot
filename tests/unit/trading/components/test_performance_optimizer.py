@@ -1,4 +1,6 @@
 """Tests for Performance Optimization System component."""
+
+import time
 from unittest.mock import Mock, patch
 
 import pytest
@@ -257,10 +259,7 @@ class TestLatencyOptimizer:
         optimizer = LatencyOptimizer(mock_integration_manager)
 
         def test_operation():
-            total = 0
-            for i in range(1000):
-                total += i
-            assert total > 0
+            time.sleep(0.01)  # 10ms operation
             return "result"
 
         latency, result = optimizer.measure_operation_latency(test_operation)
