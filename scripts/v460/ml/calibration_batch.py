@@ -45,9 +45,12 @@ _DEFAULT_CONFIG: dict[str, Any] = {
 def _side_to_action(side: str) -> float:
     """fill_test の side → CalibrationMap の action に変換.
 
-    buy → +1.0 (Strong_Buy bin), sell → -1.0 (Strong_Sell bin).
+    559# fix: runtime (orchestrator_mid_cycle / post_cycle) が ±0.3 を使用し
+    Buy/Sell bin にマッピングするため、offline も同じ値を使用して
+    L1 キー整合性を保つ。
+    buy → +0.3 (Buy bin), sell → -0.3 (Sell bin).
     """
-    return 1.0 if side == "buy" else -1.0
+    return 0.3 if side == "buy" else -0.3
 
 
 def build_calibration_map(

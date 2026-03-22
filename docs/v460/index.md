@@ -675,3 +675,4 @@ NNN_phX_TYPE_description.md
 | 556 | rpt | [556_phg_rpt_git_optimization_and_architectural_proposals.md](556_phg_rpt_git_optimization_and_architectural_proposals.md) | Git リポジトリの健全化と構造的負債の深掘り・改善提案 |
 | 557 | plan | [557_phg_plan_reward_logic_unification_and_decomposition.md](557_phg_plan_reward_logic_unification_and_decomposition.md) | 報酬計算ロジックの一元化と RewardCalculator の機能分解 |
 | 558 | impl | [558_phg_impl_reward_logic_unification_report.md](558_phg_impl_reward_logic_unification_report.md) | 報酬計算ロジックの一元化と RewardKernel の実装報告 |
+| 559 | impl | [559_phg_impl_self_review_and_bugfix.md](559_phg_impl_self_review_and_bugfix.md) | 553#–555# セルフレビュー: PnL単位/Action bin 不整合修正 + Entry Gate ログ出力 |

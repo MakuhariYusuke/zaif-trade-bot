@@ -94,16 +94,19 @@ class OrchestratorPostCycleMixin:
             pnl_jpy = compute_record_pnl_jpy(record)
             if pnl_jpy is not None:
                 st.cumulative_pnl_jpy += pnl_jpy
-                # 555# CalibrationMap online 更新
-                if (
-                    self._calibration_map is not None
-                    and self.config.entry_gate_online_update
-                ):
-                    _cal_regime = record.gated_regime or "unknown"
-                    _cal_action = 0.3 if next_side == "buy" else -0.3
-                    self._calibration_map.update(
-                        _cal_regime, _cal_action, pnl_jpy, st.total_count,
-                    )
+            # 555# CalibrationMap online 更新
+            # 559# fix: offline batch は post_fill_30s_pnl (bps) を使用するため、
+            # online も同じ bps 単位を使う (pnl_jpy は JPY 単位で分布不整合)
+            if (
+                self._calibration_map is not None
+                and self.config.entry_gate_online_update
+                and record.post_fill_30s_pnl is not None
+            ):
+                _cal_regime = record.gated_regime or "unknown"
+                _cal_action = 0.3 if next_side == "buy" else -0.3
+                self._calibration_map.update(
+                    _cal_regime, _cal_action, record.post_fill_30s_pnl, st.total_count,
+                )
             # 249# BTC delta
             if record.order_quantity is not None:
                 _fill_qty = float(record.order_quantity)
@@ -291,6 +294,17 @@ class OrchestratorPostCycleMixin:
                 f"none_regime={self._none_regime_cycle_count}/{self._total_regime_cycle_count}, "
                 f"unsaved_batch={len(st.batch)}"
             )
+            # 559# Entry Gate 統計
+            if st.entry_gate_eval_count > 0:
+                _eg_avg_ev = st.entry_gate_ev_sum / st.entry_gate_eval_count
+                _eg_block_rate = (
+                    st.entry_gate_block_count / st.entry_gate_eval_count * 100.0
+                )
+                logger.info(
+                    f"[559# EntryGate] eval={st.entry_gate_eval_count}, "
+                    f"block={st.entry_gate_block_count} ({_eg_block_rate:.1f}%), "
+                    f"avgEV={_eg_avg_ev:.3f}"
+                )
             # 249# Total Equity MTM
             _mtm_mid = self._maker_price.last_mid_price if self._maker_price else None
             if _mtm_mid and _mtm_mid > 0:

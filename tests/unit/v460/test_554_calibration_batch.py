@@ -96,11 +96,11 @@ class TestSideToAction:
 
     def test_buy(self) -> None:
         from scripts.v460.ml.calibration_batch import _side_to_action
-        assert _side_to_action("buy") == 1.0
+        assert _side_to_action("buy") == 0.3  # 559# fix: Buy bin に統一
 
     def test_sell(self) -> None:
         from scripts.v460.ml.calibration_batch import _side_to_action
-        assert _side_to_action("sell") == -1.0
+        assert _side_to_action("sell") == -0.3  # 559# fix: Sell bin に統一
 
 
 class TestBuildCalibrationMap:
@@ -256,7 +256,7 @@ class TestLoadCalibrationState:
         cal_map = load_calibration_state(output)
         assert cal_map is not None
 
-        stats = cal_map.get_stats("trending", 1.0)
+        stats = cal_map.get_stats("trending", 0.3)  # 559# fix: Buy bin に統一
         assert "l1" in stats
         assert "fallback" in stats
         assert stats["l1"]["n_eff"] > 0
