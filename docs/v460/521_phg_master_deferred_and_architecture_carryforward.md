@@ -177,6 +177,7 @@ shim を外しにいく条件:
 - offset stage recording も helper 化済み
 - stage apply + stage record の重複も local helper 化済み
 - source-contract test も direct call ではなく stage 契約を見る方向へ寄せる
+- `offset_stages` には schema version を持たせ、mixed-SHA の解析を安全化済み
 
 残る責務:
 

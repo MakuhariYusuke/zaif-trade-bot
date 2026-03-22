@@ -218,6 +218,24 @@
   - `test_113_resilience.py`: resilience 系 / source helper import を先頭集約
   - `test_155_hindsight_review.py`: hindsight_filter / FillConfig / cancel_reasons / source helper import を先頭集約
   - `test_enricher_skip_gate.py`: sklearn / skip_gate / data_loader / datetime の反復 import を先頭集約
+
+## 2026-03-23 / Session 037-561
+
+### 実施
+- `ztb/trading/pricing/stage_tracking.py` に `OFFSET_STAGES_SCHEMA_VERSION = "549"` を追加
+- `make_offset_stage_store()` を schema-version 付き store 初期化へ変更
+- `maker_price.py` の offset stage store 型を追随し、slot-backed state に
+  `_consecutive_veto_count` / `_veto_btc_balance` / `_fill_prob_model` を明示追加
+- `test_519_pricing_stage_tracking_migration.py` を schema-version 契約へ更新
+
+### 結果
+- `offset_stages` JSON は mixed-SHA 集計時に schema を識別できるようになった
+- `MakerPriceCalculator` の runtime state と `__slots__` のズレを解消した
+
+### 次アクション
+1. `550#` で `maker_price` の state 分類と stage シーケンスを文書化する
+2. `ab_judgment` / `maker_price` の stateful ownership をさらに薄くする
+3. Wave3/4 の telemetry / setup 固定費の残件を詰める
 - 本体コード改善
   - `scripts/v460/lib/fill_cycle_executor.py`
     - `run_single_cycle()` の派生値導出を `_derive_decision_path()` へ抽出

@@ -86,6 +86,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **ztb/risk/toxicity_budget.py**: canonical toxicity type import に追随
 - **scripts/v460/lib/cycle_gate_aggregator.py / orchestrator_guards.py**: shared toxicity type import に追随
 
+## 2026-03-23 maker price offset stage schema version
+
+### Changed
+- **ztb/trading/pricing/stage_tracking.py**: `OFFSET_STAGES_SCHEMA_VERSION = "549"` を追加し、stage store 初期化時に `schema_version` を保持
+- **maker_price.py**: `offset_stages` store の schema-version 追随と slot-backed state の明示化を実施
+- **test_519_pricing_stage_tracking_migration.py**: schema-version 付き serialization 契約へ更新
+
 ### Changed
 - **ztb/trading/execution/stale_order_policy.py**: order status 正規化と `CancelFillCheck` を canonical 化
 - **order_monitor.py**: stale-order policy の shared helper を再利用する構成へ整理

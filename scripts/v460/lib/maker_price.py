@@ -49,6 +49,7 @@ from ztb.trading.pricing.price_finalization import (
 from ztb.trading.pricing.ofi_lite import compute_ofi_lite
 from ztb.trading.pricing.spread_adaptive import apply_spread_adaptive_ratio
 from ztb.trading.pricing.stage_tracking import (
+    OffsetStageStore,
     make_offset_stage_store as _make_offset_stage_store,
     record_offset_stage as _record_offset_stage,
     serialize_offset_stages as _serialize_offset_stages,
@@ -157,6 +158,9 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         "_prev_ob_snapshot",         # 543# OFI-Lite: 前回サイクルの OB snapshot
         "_last_ofi_lite",            # 543# OFI-Lite: 最新のOFI値 [-1,+1]
         "_ofi_history",              # 544# OFI rolling deque (trend detection)
+        "_consecutive_veto_count",   # 533# veto deadlock 防止
+        "_veto_btc_balance",         # 533# veto 判定用 BTC 残高
+        "_fill_prob_model",          # 366# GLFT fill probability model
     )
 
     def __init__(
@@ -198,6 +202,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         # 533# veto deadlock 防止
         self._consecutive_veto_count: int = 0
         self._veto_btc_balance: float | None = None
+        self._fill_prob_model: FillProbabilityModel | None = None
         # 129# OB recorder: 生スナップショットキャッシュ
         # 261# P2-5: object → OrderBookSnapshot (型安全化)
         self._last_ob_snapshot: OrderBookSnapshot | None = None
@@ -776,7 +781,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
 
     def _apply_offset_ratio_stage(
         self,
-        stages: dict[str, float] | None,
+        stages: OffsetStageStore | None,
         stage_name: str,
         stage_fn: Callable[P, float],
         *args: P.args,
