@@ -8582,3 +8582,17 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - セルフレビュー
   - telemetry field の出どころを helper に寄せると、Wave5 前の payload drift を抑えやすい
   - `tmp_path` 化は小さいが、broad 前の固定費削減として積み上げやすい
+## 2026-03-23 Wave3 callback/report payload alignment
+- `ztb/training/utils/training_stats_payloads.py`
+  - `get_reward_components_payload(...)` を追加し、callback/reporting が `reward_components` を shared path から取得できるよう整理
+- `ztb/training/unified_trainer/base/callbacks.py`
+  - reward component history への取り込みを shared helper 経由へ変更
+- `ztb/training/unified_trainer/reporting.py`
+  - report top-level の `reward_components` 反映を shared helper 経由へ変更
+- `tests/unit/training/test_reward_components_persistence.py`
+- `tests/unit/training/test_training_stats_payloads.py`
+  - malformed payload 無視と shallow copy 契約の focused 回帰を追加
+- `tests/unit/utils/test_path_utils.py`
+  - tempdir 使用を `tmp_path` ベースへ整理
+- セルフレビュー
+  - callback/reporting 両方が shared helper を通ると、`reward_components` payload drift をかなり抑えやすい

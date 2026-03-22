@@ -13,6 +13,7 @@ from ztb.reporting.services.training_reports import (
     save_ensemble_report,
     save_training_report,
 )
+from ztb.training.utils.training_stats_payloads import get_reward_components_payload
 from ztb.types.common import ConfigDict, ObjectMap, ObjectRecords
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.time_utils import current_iso_timestamp
@@ -54,8 +55,9 @@ class TrainingReporter:
             report["training_events"] = self.events.copy()
 
         # Include reward_components if present in stats for AB analysis
-        if "reward_components" in stats:
-            report["reward_components"] = stats["reward_components"]
+        reward_components = get_reward_components_payload(stats)
+        if reward_components is not None:
+            report["reward_components"] = reward_components
 
         return report
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from ztb.training.utils.training_stats_payloads import (
     average_reward_component_history,
     build_optimization_training_stats,
+    get_reward_components_payload,
     record_average_reward_components,
     record_training_stat,
 )
@@ -61,3 +62,16 @@ def test_record_average_reward_components_records_payload() -> None:
 
     assert averaged == {"pnl": 2.0, "entropy": 1.0}
     assert training_stats["reward_components"] == averaged
+
+
+def test_get_reward_components_payload_returns_shallow_copy() -> None:
+    source = {"reward_components": {"pnl": 1.0, "stage": "train"}}
+
+    payload = get_reward_components_payload(source)
+
+    assert payload == {"pnl": 1.0, "stage": "train"}
+    assert payload is not source["reward_components"]
+
+
+def test_get_reward_components_payload_ignores_invalid_payload() -> None:
+    assert get_reward_components_payload({"reward_components": 1.0}) is None

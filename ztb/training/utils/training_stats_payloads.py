@@ -63,9 +63,20 @@ def record_average_reward_components(
     return averaged
 
 
+def get_reward_components_payload(
+    container: Mapping[str, object],
+) -> dict[str, object] | None:
+    """Return a shallow copy of reward_components when present and well-typed."""
+    payload = container.get("reward_components")
+    if not isinstance(payload, Mapping):
+        return None
+    return dict(payload)
+
+
 __all__ = [
     "average_reward_component_history",
     "build_optimization_training_stats",
+    "get_reward_components_payload",
     "record_average_reward_components",
     "record_training_stat",
 ]

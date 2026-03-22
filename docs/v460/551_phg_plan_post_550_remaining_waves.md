@@ -77,6 +77,7 @@ Done の基準:
 1. training stats / reward telemetry / memory diagnostics の payload shape を揃える
 2. `record_average_reward_components(...)` による training stats 収束と、heavy_env の `_sync_terminal_reward_outputs(...)` / `_append_reward_diagnostics_to_info(...)` を基準に `info` と `reward_components` の責務分離を横展開する
 3. leak warning / rss warning / cache entry count の観測を一貫化
+4. callback / reporting で扱う `reward_components` 取得経路も shared helper に寄せる
 
 Done の基準:
 - telemetry field の符号/意味が module ごとにぶれない
@@ -98,6 +99,7 @@ Done の基準:
 直近で前進したもの:
 - `tests/training/callbacks/performance/test_performance.py` の skipped benchmark fixed wait を `Event.wait()` 化
 - `tests/test_analyze_fill_logs.py` の tempdir fixture を `tmp_path` 化
+- `tests/unit/utils/test_path_utils.py` の tempdir 使用を `tmp_path` 化
 
 Done の基準:
 - broad 上位が「本物の計算 / 実データ / I/O」に再集中する

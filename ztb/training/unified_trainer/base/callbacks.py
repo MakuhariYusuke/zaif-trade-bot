@@ -24,6 +24,7 @@ from ztb.trading.environment.constants import continuous_to_discrete_action
 from ztb.training.constants import ENV_EVAL_FREQUENCY, DEFAULT_CHECK_FREQ
 from ztb.training.unified_trainer.base.lr_scheduler import DynamicLRScheduler
 from ztb.training.system_optimizer import SystemOptimizer
+from ztb.training.utils.training_stats_payloads import get_reward_components_payload
 
 class TrainingProgressCallback(BaseCallback):
     """Enhanced callback for monitoring training progress and action distribution."""
@@ -163,10 +164,9 @@ class TrainingProgressCallback(BaseCallback):
                             info.get("market_regime", "unknown")
 
                             # Collect reward_components if available for AB analysis
-                            if "reward_components" in info:
-                                self.reward_components_history.append(
-                                    info["reward_components"].copy()
-                                )
+                            reward_components = get_reward_components_payload(info)
+                            if reward_components is not None:
+                                self.reward_components_history.append(reward_components)
 
                             # Compact INFO log with key metrics (every 100 steps to reduce I/O)
                             # 112# Perf: 10→100。毎10ステップのファイルI/Oは50Kで5000回→500回に削減

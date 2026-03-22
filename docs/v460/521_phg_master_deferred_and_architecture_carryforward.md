@@ -163,6 +163,7 @@ canonical 実装は `ztb.metrics.record_metrics` に寄せる。
   - `build_optimization_training_stats(...)`
   - `average_reward_component_history(...)`
   - `record_average_reward_components(...)`
+  - `get_reward_components_payload(...)`
 - `ztb.training.unified_trainer.*`
   - `UnifiedTrainer` 専用の setup / reporting / runtime integration
 - `ztb.training.sac` または `ztb.utils`
@@ -170,6 +171,9 @@ canonical 実装は `ztb.metrics.record_metrics` に寄せる。
 
 この境界により、training stats の canonical path は `training/utils` に一本化しつつ、
 trainer 専用 helper が generic helper に見える状態を避ける。
+
+callback / reporting が `reward_components` を扱うときも、可能な限り
+`training_stats_payloads` 側の shared helper を経由して payload shape を揃える。
 
 ### C. shim を残す条件
 

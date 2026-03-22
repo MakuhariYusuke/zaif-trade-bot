@@ -104,6 +104,33 @@ class TestRewardComponentsPersistence:
         assert callback.reward_components_history[0]["balance_penalty"] == -0.02
         assert callback.reward_components_history[0]["balance_shaping"] == 0.03
 
+    def test_callback_ignores_invalid_reward_components_payload(self):
+        """Malformed reward_components payload should not be recorded."""
+        callback = TrainingProgressCallback(
+            check_freq=10,
+            verbose=0,
+        )
+
+        mock_model = Mock()
+        mock_model.num_timesteps = 1
+        mock_model.logger = Mock()
+        mock_model.logger.name_to_value = {}
+        mock_model.policy = Mock()
+        mock_model.policy.optimizer = Mock()
+        mock_model.policy.optimizer.param_groups = [{"lr": 0.001}]
+
+        callback.model = mock_model
+        callback.locals = {
+            "actions": [ACTION_HOLD],
+            "rewards": [0.5],
+            "infos": [{"reward_components": 0.5}],
+        }
+        callback._log_progress = Mock()
+        callback.n_calls = 1
+
+        assert callback._on_step() is True
+        assert len(callback.reward_components_history) == 0
+
     def test_reward_components_averaging(self):
         """Test that reward_components are correctly averaged for reporting."""
         # Simulate collected history

@@ -6331,3 +6331,8 @@ python scripts/unified_trainer.py \
 - `ztb/trading/environment/heavy_env/core.py` に `_append_reward_diagnostics_to_info(...)` を追加し、trend/curriculum diagnostics を guarded helper 経由へ統一
 - `tests/unit/training/test_training_stats_payloads.py` と `tests/unit/v460/test_codex_408_409_fixes.py` に helper 契約回帰を追加
 - `tests/test_analyze_fill_logs.py` の tempdir fixture を `tmp_path` ベースへ整理
+## 2026-03-23 wave3 reward payload alignment and path-utils tmp-path cleanup
+- `ztb/training/utils/training_stats_payloads.py` に `get_reward_components_payload(...)` を追加し、callback/reporting の `reward_components` 取得経路を一本化
+- `ztb/training/unified_trainer/base/callbacks.py` と `ztb/training/unified_trainer/reporting.py` は shared helper を経由する形へ整理
+- `tests/unit/training/test_reward_components_persistence.py` と `tests/unit/training/test_training_stats_payloads.py` に malformed payload / shallow copy 契約の回帰を追加
+- `tests/unit/utils/test_path_utils.py` の tempdir 使用を `tmp_path` ベースへ整理
