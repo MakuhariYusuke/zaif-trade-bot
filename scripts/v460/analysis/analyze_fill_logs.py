@@ -430,6 +430,121 @@ def section_sell_guard(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
+def section_clamp_saturation(records: list[dict[str, Any]]) -> list[str]:
+    """531# Offset Clamp Saturation — pipeline 出力の ceiling 飽和率."""
+    filled = [r for r in records if r.get("filled")]
+    lines = ["## Clamp Saturation (531#)"]
+    if not filled:
+        lines.append("  (no fills)")
+        lines.append("")
+        return lines
+
+    for side in ["buy", "sell"]:
+        sf = [r for r in filled if r.get("requested_side") == side]
+        with_data = [
+            r for r in sf
+            if r.get("execution_pre_clamp_offset") is not None
+            and r.get("effective_offset_used") is not None
+        ]
+        clamped = [
+            r for r in with_data
+            if r["execution_pre_clamp_offset"] > r["effective_offset_used"] + 0.001
+        ]
+        n_wd = len(with_data)
+        n_c = len(clamped)
+        if n_wd:
+            pre_vals = _np([r["execution_pre_clamp_offset"] for r in with_data])
+            eff_vals = _np([r["effective_offset_used"] for r in with_data])
+            clamp_pnl = _pnls(clamped)
+            unclamp_pnl = _pnls([r for r in with_data if r not in clamped])
+            lines.append(
+                f"  {side}: clamped {n_c}/{n_wd} ({n_c/n_wd*100:.0f}%), "
+                f"pre_clamp avg={float(np.mean(pre_vals)):.4f}, "
+                f"effective avg={float(np.mean(eff_vals)):.4f}"
+            )
+            if len(clamp_pnl):
+                lines.append(f"    clamped PnL avg={float(np.mean(clamp_pnl)):.2f}bps")
+            if len(unclamp_pnl):
+                lines.append(f"    unclamped PnL avg={float(np.mean(unclamp_pnl)):.2f}bps")
+        else:
+            lines.append(f"  {side}: (no offset data)")
+    lines.append("")
+    return lines
+
+
+def section_cross_venue_engagement(records: list[dict[str, Any]]) -> list[str]:
+    """531# Cross-Venue Engagement — CV適用率・方向別PnL."""
+    filled = [r for r in records if r.get("filled")]
+    lines = ["## Cross-Venue Engagement (531#)"]
+    if not filled:
+        lines.append("  (no fills)")
+        lines.append("")
+        return lines
+
+    cv_applied = [r for r in filled if r.get("cross_venue_lead_lag_applied")]
+    cv_vetoed = [r for r in records if r.get("cross_venue_lead_lag_vetoed")]
+    lines.append(
+        f"  CV applied: {len(cv_applied)}/{len(filled)} fills "
+        f"({len(cv_applied)/len(filled)*100:.1f}%), vetoed: {len(cv_vetoed)} cycles"
+    )
+
+    for side in ["buy", "sell"]:
+        sf_cv = [r for r in cv_applied if r.get("requested_side") == side]
+        if not sf_cv:
+            continue
+        # Classify: tighten (post < pre) vs widen (post > pre) vs neutral
+        tighten = [
+            r for r in sf_cv
+            if r.get("cross_venue_lead_lag_pre_offset") is not None
+            and r.get("cross_venue_lead_lag_post_offset") is not None
+            and r["cross_venue_lead_lag_post_offset"] < r["cross_venue_lead_lag_pre_offset"] - 0.001
+        ]
+        widen = [
+            r for r in sf_cv
+            if r.get("cross_venue_lead_lag_pre_offset") is not None
+            and r.get("cross_venue_lead_lag_post_offset") is not None
+            and r["cross_venue_lead_lag_post_offset"] > r["cross_venue_lead_lag_pre_offset"] + 0.001
+        ]
+        cap_hit = sum(1 for r in sf_cv if r.get("cross_venue_lead_lag_cap_hit"))
+        t_pnl = _pnls(tighten)
+        w_pnl = _pnls(widen)
+        lines.append(f"  {side}: {len(sf_cv)} fills (tighten={len(tighten)}, widen={len(widen)}, cap_hit={cap_hit})")
+        if len(t_pnl):
+            lines.append(f"    tighten PnL avg={float(np.mean(t_pnl)):+.2f}bps")
+        if len(w_pnl):
+            lines.append(f"    widen PnL avg={float(np.mean(w_pnl)):+.2f}bps")
+    lines.append("")
+    return lines
+
+
+def section_tail_risk(records: list[dict[str, Any]]) -> list[str]:
+    """531# Tail Risk Concentration — 損失のテール集中度."""
+    filled = [r for r in records if r.get("filled")]
+    lines = ["## Tail Risk Concentration (531#)"]
+    if len(filled) < 5:
+        lines.append("  (insufficient fills)")
+        lines.append("")
+        return lines
+
+    pnls = [(r.get("requested_side", "?"), float(r.get("post_fill_30s_pnl", 0))) for r in filled]
+    pnls_sorted = sorted(pnls, key=lambda x: x[1])
+    total_pnl = sum(p for _, p in pnls)
+    total_loss = sum(p for _, p in pnls if p < 0)
+
+    # Worst 5 fills
+    worst5 = pnls_sorted[:5]
+    worst5_sum = sum(p for _, p in worst5)
+    lines.append(f"  Total PnL: {total_pnl:+.2f}bps, Total Loss: {total_loss:.2f}bps")
+    lines.append(f"  Worst 5 fills: {worst5_sum:.2f}bps", )
+    if total_loss < 0:
+        lines.append(f"    = {abs(worst5_sum / total_loss) * 100:.0f}% of total loss")
+    lines.append("  Worst fills:")
+    for side, p in worst5:
+        lines.append(f"    {side}: {p:+.2f}bps")
+    lines.append("")
+    return lines
+
+
 def section_confidence_lot(records: list[dict[str, Any]]) -> list[str]:
     """Confidence Lot."""
     filled = [r for r in records if r.get("filled")]
@@ -653,6 +768,9 @@ def main() -> None:
     all_lines.extend(section_spread(records))
     all_lines.extend(section_balance_forced(records))
     all_lines.extend(section_sell_guard(records))
+    all_lines.extend(section_clamp_saturation(records))
+    all_lines.extend(section_cross_venue_engagement(records))
+    all_lines.extend(section_tail_risk(records))
     all_lines.extend(section_confidence_lot(records))
     all_lines.extend(section_early_exit(records))
     all_lines.extend(section_volatility_guard(records))

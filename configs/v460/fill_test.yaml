@@ -1166,3 +1166,19 @@ composite_risk_weight_unknown_regime: 0.6
 composite_risk_weight_ranging_low_vol: 0.5
 composite_risk_weight_trending_sell: 0.7
 composite_risk_weight_velocity: 0.4
+
+# ---- 555# Entry Gate: CalibrationMap EV ベースエントリー判定 (546# §B) ----
+# CalibrationMap の統計量 (p_win, avg_win, avg_loss) と CostModel から
+# 期待値 (EV) を算出し、EV ≤ 0 の場面で新規エントリーを抑制。
+# enabled=false の場合は EV をログ記録のみ (実際の blocking はしない)。
+entry_gate:
+  enabled: false                    # 555# 初期は観測モード (log_only)
+  calibration_map_path: "models/v460/entry_gate_calibration.json"
+  probability_mode: "lcb"           # lcb / mean / ucb
+  ewma_tau: 100.0                   # EWMA 時定数
+  n_min: 30.0                       # 信頼必要サンプル数
+  fee_rate: 0.0                     # maker fee (Coincheck maker=0)
+  c_spread: 0.3                     # spread cost weight
+  c_vol: 0.2                        # volatility cost weight
+  c_imp: 0.5                        # market impact weight
+  online_update: true               # 約定後に CalibrationMap を online 更新
