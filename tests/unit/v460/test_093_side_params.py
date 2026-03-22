@@ -205,10 +205,10 @@ class TestSpreadAdaptiveSideLogic:
         assert "narrow_spread_boost_buy" in source
         assert "narrow_spread_boost_sell" in source
 
-    def test_sa_boost_variable_name(self) -> None:
-        """093# で sa_boost 変数を使ってサイド別分岐している."""
+    def test_spread_adaptive_method_exists(self) -> None:
+        """093# spread_adaptive ロジックが maker_price.py に存在する."""
         source = _MAKER_PRICE_SOURCE
-        assert "sa_boost" in source
+        assert "_apply_spread_adaptive" in source
 
 
 # =====================================================================

@@ -1012,27 +1012,35 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
 
         # 266# ステージ: _apply_kyle_lambda()
         # Kyle (1985) 価格インパクト係数 → offset 安全マージン
-        effective_offset_ratio = self._apply_offset_ratio_stage(
-            _stages,
-            "kyle",
-            self._apply_kyle_lambda,
-            side,
-            spread,
-            mid_price,
-            effective_offset_ratio,
-        )
+        # 541#: disabled 時はステージ記録のみ（関数呼び出しスキップ）
+        if cfg.kyle_lambda_enabled:
+            effective_offset_ratio = self._apply_offset_ratio_stage(
+                _stages,
+                "kyle",
+                self._apply_kyle_lambda,
+                side,
+                spread,
+                mid_price,
+                effective_offset_ratio,
+            )
+        else:
+            _record_offset_stage(_stages, "kyle", effective_offset_ratio)
 
         # 266# ステージ: _apply_amihud_illiq()
         # Amihud (2002) 非流動性比率 → 低流動性時の offset 拡大
-        effective_offset_ratio = self._apply_offset_ratio_stage(
-            _stages,
-            "amihud",
-            self._apply_amihud_illiq,
-            side,
-            spread,
-            mid_price,
-            effective_offset_ratio,
-        )
+        # 541#: disabled 時はステージ記録のみ
+        if cfg.amihud_illiq_enabled:
+            effective_offset_ratio = self._apply_offset_ratio_stage(
+                _stages,
+                "amihud",
+                self._apply_amihud_illiq,
+                side,
+                spread,
+                mid_price,
+                effective_offset_ratio,
+            )
+        else:
+            _record_offset_stage(_stages, "amihud", effective_offset_ratio)
 
         # 163# ステージ抽出: _apply_volatility_guard()
         effective_offset_ratio = self._apply_offset_ratio_stage(
@@ -1062,25 +1070,33 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
             )
 
         # 163# ステージ抽出: _apply_imbalance_risk()
-        effective_offset_ratio = self._apply_offset_ratio_stage(
-            _stages,
-            "imb_risk",
-            self._apply_imbalance_risk,
-            side,
-            imb,
-            effective_offset_ratio,
-        )
+        # 541#: disabled 時はステージ記録のみ
+        if cfg.imbalance_enabled:
+            effective_offset_ratio = self._apply_offset_ratio_stage(
+                _stages,
+                "imb_risk",
+                self._apply_imbalance_risk,
+                side,
+                imb,
+                effective_offset_ratio,
+            )
+        else:
+            _record_offset_stage(_stages, "imb_risk", effective_offset_ratio)
 
         # 286# ステージ: _apply_buy_as_guard()
         # 283# P1-6 / 284# P1: Buy-side AS 防御 — microprice 急落時の offset 拡大
-        effective_offset_ratio = self._apply_offset_ratio_stage(
-            _stages,
-            "buy_as_guard",
-            self._apply_buy_as_guard,
-            side,
-            mid_trend_bps,
-            effective_offset_ratio,
-        )
+        # 541#: disabled 時はステージ記録のみ
+        if cfg.buy_as_guard_enabled:
+            effective_offset_ratio = self._apply_offset_ratio_stage(
+                _stages,
+                "buy_as_guard",
+                self._apply_buy_as_guard,
+                side,
+                mid_trend_bps,
+                effective_offset_ratio,
+            )
+        else:
+            _record_offset_stage(_stages, "buy_as_guard", effective_offset_ratio)
 
         # 310# A: Sell AS Time-of-Day Offset Boost (307# F3, 306# H5)
         # Ho-Stoll (1981): 時間帯別の情報非対称性変動を offset に反映
@@ -1109,9 +1125,11 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         )
 
         # 260# P2-2: FastFillDefense boost をパイプラインステージとして抽出
-        effective_offset_ratio, offset = self._apply_ffd_boost(
-            side, spread, effective_offset_ratio, offset,
-        )
+        # 541#: disabled 時はステージ記録のみ
+        if cfg.fast_fill_defense_enabled:
+            effective_offset_ratio, offset = self._apply_ffd_boost(
+                side, spread, effective_offset_ratio, offset,
+            )
         _record_offset_stage(_stages, "ffd", effective_offset_ratio)
         _record_offset_stage(_stages, "final", effective_offset_ratio)
 

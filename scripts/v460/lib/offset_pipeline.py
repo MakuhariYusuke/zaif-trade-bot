@@ -18,6 +18,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from scripts.v460.lib import cancel_reasons as CR
+from scripts.v460.lib.fill_config import compute_ev_offset_multiplier
+from scripts.v460.lib.hour_rules import current_utc_hour
+from scripts.v460.lib.macro_regime import MacroTrend
 from scripts.v460.lib.pre_order_adjustments import PreOrderAdjustmentsMixin
 from ztb.trading.pricing.offset_ceiling import clamp_offset_ratio_to_ceiling
 
@@ -88,7 +91,6 @@ class OffsetPipelineMixin(PreOrderAdjustmentsMixin):
             and spread_at_order > 0
             and order_price > 0
         ):
-            from scripts.v460.lib.fill_config import compute_ev_offset_multiplier
             _ev_s = sg_ev_score
             _ev_mult = compute_ev_offset_multiplier(
                 ev_score=_ev_s,
@@ -200,7 +202,6 @@ class OffsetPipelineMixin(PreOrderAdjustmentsMixin):
         _macro_boost_applied = False
         _lt = self._last_macro_trend
         if _lt is not None:
-            from scripts.v460.lib.macro_regime import MacroTrend
             _m_mult = 1.0
             if side == "sell":
                 if _lt == MacroTrend.STRONG_UP.value:
@@ -280,7 +281,6 @@ class OffsetPipelineMixin(PreOrderAdjustmentsMixin):
             )
         if self.config.execution_final_clamp_enabled:
             # 467#: hour_ceiling_mult 反映
-            from scripts.v460.lib.hour_rules import current_utc_hour
             _fc_ceil = self.config.resolve_offset_ceiling(side, utc_hour=current_utc_hour())
             _ceiling = clamp_offset_ratio_to_ceiling(
                 effective_offset_ratio=effective_offset_ratio,

@@ -242,6 +242,7 @@ class TestFFDBoostConsistency:
             imbalance_enabled=False,
             volatility_guard_enabled=False,
             inventory_skewing_enabled=False,
+            fast_fill_defense_enabled=True,
         )
         det = _make_regime_detector(regime=FillTestRegime.RANGING, vol_ratio=1.0)
         ffd = FastFillDefense(cfg, base_offset_ratio=cfg.spread_offset_ratio)

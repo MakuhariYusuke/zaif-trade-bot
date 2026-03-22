@@ -17,9 +17,14 @@ maker_price.py MakerPriceCalculator からの God Object 分割 (321# §4):
 from __future__ import annotations
 
 import logging
+import time as _time
+from datetime import datetime as _datetime
+from datetime import timezone as _timezone
+from pathlib import Path as _Path
 from typing import TYPE_CHECKING
 
 from scripts.v460.lib.hour_rules import current_utc_hour, resolve_optional_hour_float
+from ztb.io.jsonl import append_jsonl as _append_jsonl
 
 if TYPE_CHECKING:
     from scripts.v460.lib.cross_venue_lead_lag import CrossVenueLeadLagHint
@@ -549,18 +554,12 @@ def _emit_vg_event(
     構造化データとして保存し、分析ツール (vg_and_trend.py) から
     直接利用可能にする。
     """
-    import time
-    from datetime import datetime, timezone
-    from pathlib import Path
-
     try:
-        from ztb.io.jsonl import append_jsonl
-
-        now = datetime.now(timezone.utc)
+        now = _datetime.now(_timezone.utc)
         event = {
             "event": "vg_activation",
             "timestamp_iso": now.isoformat(),
-            "timestamp_epoch": time.time(),
+            "timestamp_epoch": _time.time(),
             "side": side,
             "pre_offset": round(pre_offset, 6),
             "post_offset": round(post_offset, 6),
@@ -569,7 +568,7 @@ def _emit_vg_event(
             "vpin": round(vpin, 4) if vpin is not None else None,
             "boost_factor": round(boost_factor, 4),
         }
-        append_jsonl(Path(_VG_EVENT_LOG_PATH), [event])
+        _append_jsonl(_Path(_VG_EVENT_LOG_PATH), [event])
     except Exception:
         # イベントログ失敗で取引を止めてはならない
         logger.debug("[vg_event] JSONL write failed", exc_info=True)

@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-23 (540# 536-539独立検証: pipeline二重構造発見・spread_adapt主犯特定・Phase 1 YAML施策)
+> 最終更新: 2026-03-23 (541# lazy import引き上げ + pre-order disabled stage スキップ最適化)
 
 ---
 
