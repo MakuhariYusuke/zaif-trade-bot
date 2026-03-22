@@ -48,6 +48,7 @@
   - detail merge
   - telemetry attach
 - これにより `reward_component_tracking.py` は SSOT、`RewardCalculator` は local ownership の入口、という役割が明確になった
+- `UnifiedTrainer` 側の optimization / advanced feature stats も helper 経由へ寄せる流れができ、報酬 payload の周辺契約も揃えやすくなった
 
 ---
 

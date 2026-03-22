@@ -104,6 +104,8 @@ Done の基準:
 - `tests/training/callbacks/performance/test_performance.py` の skipped benchmark fixed wait を `Event.wait()` 化
 - `tests/test_analyze_fill_logs.py` の tempdir fixture を `tmp_path` 化
 - `tests/unit/utils/test_path_utils.py` の tempdir 使用を `tmp_path` 化
+- `tests/unit/trading/components/test_performance_optimizer.py` の fixed `sleep` を小さい CPU work に置換
+- `cache/*.db-shm` / `cache/*.db-wal` を ignore して broad 前の worktree ノイズを削減
 
 Done の基準:
 - broad 上位が「本物の計算 / 実データ / I/O」に再集中する
