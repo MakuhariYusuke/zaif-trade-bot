@@ -714,6 +714,49 @@ def build_json_summary(records: list[dict[str, Any]], args: argparse.Namespace) 
     return summary
 
 
+def section_microstructure_correlation(records: list[dict[str, Any]]) -> list[str]:
+    """561# Sell AS とマイクロ構造指標の相関深掘り."""
+    filled_sell = [r for r in records if r.get("side") == "sell" and r.get("filled")]
+    if not filled_sell:
+        return ["## Microstructure Correlation (Sell)", "  (no filled sell orders)", ""]
+
+    lines = ["## Microstructure Correlation (Sell Side AS Deep Dive)"]
+
+    # 1. Spread vs AS
+    spreads = [r.get("spread_bps") for r in filled_sell if r.get("spread_bps") is not None]
+    if spreads:
+        as_flags = [1 if r.get("adverse_selected") else 0 for r in filled_sell if r.get("spread_bps") is not None]
+        avg_spread = float(np.mean(spreads))
+        # スプレッド帯別のAS率
+        low_spread_as = [a for s, a in zip(spreads, as_flags) if s < avg_spread]
+        high_spread_as = [a for s, a in zip(spreads, as_flags) if s >= avg_spread]
+        if low_spread_as and high_spread_as:
+            lines.append(f"  AS Rate by Spread: Low (<{avg_spread:.2f}bps): {np.mean(low_spread_as)*100:.1f}% (n={len(low_spread_as)}), High: {np.mean(high_spread_as)*100:.1f}% (n={len(high_spread_as)})")
+
+    # 2. Orderbook Imbalance vs AS
+    imbalances = [r.get("orderbook_imbalance") for r in filled_sell if r.get("orderbook_imbalance") is not None]
+    if imbalances:
+        as_flags = [1 if r.get("adverse_selected") else 0 for r in filled_sell if r.get("orderbook_imbalance") is not None]
+        # Imbalance > 0.3 (買い圧が強い) 時の Sell AS 率
+        toxic_imbalance = [a for i, a in zip(imbalances, as_flags) if i > 0.3]
+        normal_imbalance = [a for i, a in zip(imbalances, as_flags) if i <= 0.3]
+        if toxic_imbalance:
+            lines.append(f"  AS Rate by Imbalance: Toxic (>0.3): {np.mean(toxic_imbalance)*100:.1f}% (n={len(toxic_imbalance)}), Normal: {np.mean(normal_imbalance)*100:.1f}% (n={len(normal_imbalance)})")
+
+    # 3. VPIN (Liquidity Risk) vs AS
+    vpins = [r.get("vg_vpin") for r in filled_sell if r.get("vg_vpin") is not None]
+    if vpins:
+        as_flags = [1 if r.get("adverse_selected") else 0 for r in filled_sell if r.get("vg_vpin") is not None]
+        avg_vpin = float(np.mean(vpins))
+        high_vpin_as = [a for v, a in zip(vpins, as_flags) if v > avg_vpin]
+        low_vpin_as = [a for v, a in zip(vpins, as_flags) if v <= avg_vpin]
+        if high_vpin_as and low_vpin_as:
+            lines.append(f"  AS Rate by VPIN: High (>{avg_vpin:.2f}): {np.mean(high_vpin_as)*100:.1f}% (n={len(high_vpin_as)}), Low: {np.mean(low_vpin_as)*100:.1f}% (n={len(low_vpin_as)})")
+
+    lines.append("")
+    return lines
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -778,6 +821,7 @@ def main() -> None:
     all_lines.extend(section_ab_test(records))
     all_lines.extend(section_ob_age(records))
     all_lines.extend(section_model_used(records))
+    all_lines.extend(section_microstructure_correlation(records))
 
     output_text = "\n".join(all_lines)
 
