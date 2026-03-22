@@ -42,6 +42,7 @@ from tests.unit.v460._fill_test_source import (
 )
 from ztb.metrics.fill_quality import FillRecord, _quarantine_reason
 from ztb.ml import online_monitor
+from ztb.trading.execution.order_monitor_policy import compute_stale_reprice_policy
 from ztb.trading.signal.regime.regime_detector import (
     FillTestRegime,
     FillTestRegimeDetector,
@@ -697,9 +698,10 @@ class TestRegimeRepriceInOrderMonitor:
         assert "_regime_reprice_offset" in source
 
     def test_reprice_offset_applied_to_stale_max(self) -> None:
-        """_stale_max_rp = base + _regime_reprice_offset."""
+        """monitor() は stale reprice policy helper に regime offset を渡す."""
         source = _ORDER_MONITOR_MONITOR_SOURCE
-        assert "_stale_max_rp_base + _regime_reprice_offset" in source
+        assert "_compute_stale_reprice_policy(" in source
+        assert "regime_reprice_offset=_regime_reprice_offset" in source
 
 class TestRegimeTimeoutInOrderMonitor:
     """144# R-1d: OrderMonitor の regime timeout multiplier がソースに含まれる."""
@@ -721,41 +723,41 @@ class TestRegimeRepriceMonitorBehavioral:
 
     def test_reprice_offset_increases_limit(self) -> None:
         """regime_reprice_adjustments で reprice 上限が増える."""
-
-        cfg = FillTestConfig(
-            stale_order_enabled=True,
-            stale_max_reprice=2,
-            order_timeout_sec=5.0,
-            poll_interval_sec=0.5,
+        policy = compute_stale_reprice_policy(
+            side="buy",
             stale_check_after_sec=0.1,
+            stale_check_after_sec_buy=None,
+            stale_check_after_sec_sell=None,
             stale_drift_bps=0.01,
-            stale_cooldown_sec=0.1,
-            regime_reprice_adjustments={"trending": 3},
+            stale_drift_bps_buy=None,
+            stale_drift_bps_sell=None,
+            stale_max_reprice=2,
+            stale_max_reprice_buy=None,
+            stale_max_reprice_sell=None,
+            chase_drift_bps_override=None,
+            chase_max_reprice_override=None,
+            regime_reprice_offset=3,
         )
-        monitor = OrderMonitor(cfg)
-
-        # regime_detector mock
-        regime_det = MagicMock()
-        regime_det.current_regime = MagicMock()
-        regime_det.current_regime.value = "trending"
-
-        # trending: base=2, offset=+3 → max_reprice=5
-        src = _ORDER_MONITOR_MONITOR_SOURCE
-        # 確認: offset 加算の max(0, ...) ロジック
-        assert "max(0, _stale_max_rp_base + _regime_reprice_offset)" in src
+        assert policy.stale_max_reprice == 5
 
     def test_negative_offset_clamps_to_zero(self) -> None:
         """regime_reprice_adjustments 負の値で max 0 にクランプ."""
-
-        cfg = FillTestConfig(
+        policy = compute_stale_reprice_policy(
+            side="buy",
+            stale_check_after_sec=0.1,
+            stale_check_after_sec_buy=None,
+            stale_check_after_sec_sell=None,
+            stale_drift_bps=0.01,
+            stale_drift_bps_buy=None,
+            stale_drift_bps_sell=None,
             stale_max_reprice=1,
-            regime_reprice_adjustments={"high_vol": -5},
+            stale_max_reprice_buy=None,
+            stale_max_reprice_sell=None,
+            chase_drift_bps_override=None,
+            chase_max_reprice_override=None,
+            regime_reprice_offset=-5,
         )
-        monitor = OrderMonitor(cfg)
-        # _stale_max_rp = max(0, 1 + (-5)) = max(0, -4) = 0
-        # This is verified by source check; runtime would require full async mock
-        src = _ORDER_MONITOR_MONITOR_SOURCE
-        assert "max(0," in src
+        assert policy.stale_max_reprice == 0
 
 class TestRegimeTimeoutMonitorBehavioral:
     """144# R-1d: OrderMonitor の regime timeout を mock で動作確認."""

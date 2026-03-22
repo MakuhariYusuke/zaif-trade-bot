@@ -229,6 +229,7 @@ shim を外しにいく条件:
 
 - pure policy は `ztb.trading.execution` 側へ寄せる
 - async orchestration は `scripts/v460` に残す
+- source-contract test も inline 算術ではなく policy helper 契約を見る方向へ寄せる
 
 ### 4. `ab_judgment.py`
 

@@ -8405,3 +8405,10 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `test_compute_calls_apply_loss_boost` を direct call 検査から stage 契約検査へ更新
 - セルフレビュー
   - `compute()` が local helper/stage を経由する構造へ進んだ後は、文字列一致も現契約に追随させた方が保守しやすい
+## 559# order_monitor stale reprice test refresh
+- `tests/unit/v460/test_143_regime_utilization.py`
+  - stale reprice 上限の検査を inline 式チェックから `compute_stale_reprice_policy(...)` 契約ベースへ更新
+- focused:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_143_regime_utilization.py -q --tb=short --no-cov`
+- セルフレビュー
+  - `order_monitor` 本体は orchestration、`ztb.trading.execution` 側は pure policy、という分担にテストも追随させた

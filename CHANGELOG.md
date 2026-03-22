@@ -73,6 +73,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **tests/unit/v460/test_260_compute_extract_regime_split.py**: `compute()` の loss_boost 検査を direct call ではなく stage 契約ベースへ更新
 
+## 2026-03-22 order monitor stale reprice test refresh
+
+### Changed
+- **tests/unit/v460/test_143_regime_utilization.py**: stale reprice 上限の検査を inline 式ではなく `compute_stale_reprice_policy(...)` 契約ベースへ更新
+
 ### Changed
 - **ztb/trading/execution/stale_order_policy.py**: order status 正規化と `CancelFillCheck` を canonical 化
 - **order_monitor.py**: stale-order policy の shared helper を再利用する構成へ整理
