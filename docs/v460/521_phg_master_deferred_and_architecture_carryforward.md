@@ -374,6 +374,9 @@ shim を外しにいく条件:
   後続の比較/集計では扱いやすいが、将来 JSON contract を変える場合は影響確認が必要
 - さらに non-scalar telemetry は scalar payload と分けて扱うのがよく、
   `mtf_weights` のような辞書 payload は telemetry helper で stage 契約だけ維持する形が自然
+- `heavy_env` では terminal reward telemetry の sync helper を追加し、
+  `reward_components` は reward delta、`info` は診断向け penalty 量、という責務を
+  merge/update 順に依存せず固定する方向が妥当だった
 
 ## テスト設計
 

@@ -8551,3 +8551,16 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - セルフレビュー
   - `maker_price` は preflight/stage/veto の読み筋が揃ってきた
   - `ab_judgment` は result container / statistical payload / summary line build の ownership が見やすくなった
+## 569# Wave3/Wave4 telemetry and fixed-wait trim
+- `ztb/trading/environment/heavy_env/core.py`
+  - terminal reward payload の info 同期を `_sync_terminal_reward_outputs(...)` に集約
+- `tests/unit/v460/test_codex_408_409_fixes.py`
+  - terminal reward sync helper の符号契約回帰を追加
+- `tests/training/callbacks/performance/test_performance.py`
+  - skipped な scalability benchmark の fixed wait を `Event.wait()` ベースへ変更
+- focused:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/trading/environment/test_bankruptcy_drawdown.py tests/unit/v460/test_codex_408_409_fixes.py -k 'drawdown_penalty or bankruptcy_penalty or sync_terminal_reward_outputs' -q --tb=short --no-cov`
+  - `.venv/Scripts/python.exe -m pytest tests/training/callbacks/performance/test_performance.py -k 'worker_scaling or memory_scaling' -q --tb=short --no-cov`
+- セルフレビュー
+  - `heavy_env` は merge 順依存を減らし、payload の意味を helper で固定できた
+  - skipped test でも fixed wait を減らしておくと、将来 unskip する時の broad 固定費削減に効く

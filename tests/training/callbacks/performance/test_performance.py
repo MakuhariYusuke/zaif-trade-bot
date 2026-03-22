@@ -26,6 +26,8 @@ from .distributed.coordinator import DistributedConfig, DistributedCoordinator
 from .distributed.integration import DistributedTrainingManager
 from .distributed.worker import WorkerPool
 
+_WAIT_EVENT = threading.Event()
+
 
 class TestMemoryOptimizationPerformance(unittest.TestCase):
     """Performance tests for memory optimization components."""
@@ -549,7 +551,7 @@ class TestScalabilityBenchmarks(unittest.TestCase):
 
             pool = WorkerPool(num_workers, config)
             pool.start_pool()
-            time.sleep(0.2)  # Allow workers to start
+            _WAIT_EVENT.wait(0.2)  # Allow workers to start
 
             try:
                 # Benchmark task submission
@@ -570,7 +572,7 @@ class TestScalabilityBenchmarks(unittest.TestCase):
                     len(results_received) < num_tasks
                     and (time.time() - wait_start) < timeout
                 ):
-                    time.sleep(0.05)
+                    _WAIT_EVENT.wait(0.05)
 
                 total_time = time.time() - start_time
                 throughput = num_tasks / total_time if total_time > 0 else 0

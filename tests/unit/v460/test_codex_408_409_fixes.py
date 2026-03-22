@@ -24,7 +24,10 @@ from ztb.trading.environment.components.calculators.reward_calculator import (
 from ztb.trading.environment.components.rewards.forced_balance import (
     ForcedBalanceReward,
 )
-from ztb.trading.environment.heavy_env.core import _apply_terminal_reward_adjustments
+from ztb.trading.environment.heavy_env.core import (
+    _apply_terminal_reward_adjustments,
+    _sync_terminal_reward_outputs,
+)
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.trading.environment.utils.config import RewardSettings
 from ztb.trading.environment.utils.gc_guard import maybe_collect_garbage
@@ -180,6 +183,24 @@ class TestT2RewardComponents:
 
         assert reward == 3.5
         assert components == {"final_reward": 3.5}
+
+    def test_sync_terminal_reward_outputs_preserves_info_penalty_sign(self) -> None:
+        info: dict[str, object] = {}
+        reward_components: dict[str, float] = {"base_reward": 1.0}
+        terminal_reward_components = {
+            "drawdown_penalty": -0.02,
+            "final_reward": 0.98,
+        }
+
+        _sync_terminal_reward_outputs(
+            info=info,
+            reward_components=reward_components,
+            terminal_reward_components=terminal_reward_components,
+        )
+
+        assert reward_components["drawdown_penalty"] == pytest.approx(-0.02)
+        assert info["drawdown_penalty"] == pytest.approx(0.02)
+        assert info["reward_components"] == reward_components
 
 
 class TestT3ReplayMarketProgress:

@@ -154,6 +154,19 @@ def _apply_terminal_info_overrides(
             float(terminal_reward_components["drawdown_penalty"])
         )
 
+
+def _sync_terminal_reward_outputs(
+    *,
+    info: dict[str, object],
+    reward_components: dict[str, float],
+    terminal_reward_components: dict[str, float],
+) -> None:
+    """Synchronize terminal reward telemetry into info while preserving sign semantics."""
+    reward_components.update(terminal_reward_components)
+    info.update(reward_components)
+    _apply_terminal_info_overrides(info, terminal_reward_components)
+    info["reward_components"] = reward_components.copy()
+
 def deep_merge_dict(base: ObjectMap, update: ObjectMap) -> ObjectMap:
     """Deep merge two dictionaries."""
     result: ObjectMap = base.copy()
@@ -1509,10 +1522,11 @@ class HeavyTradingEnv(
             self.logger.warning(
                 f"Episode terminated due to bankruptcy: PV={portfolio_value:.2f} < {bankruptcy_threshold}"
             )
-        reward_components.update(terminal_reward_components)
-        info.update(reward_components)
-        _apply_terminal_info_overrides(info, terminal_reward_components)
-        info["reward_components"] = reward_components.copy()
+        _sync_terminal_reward_outputs(
+            info=info,
+            reward_components=reward_components,
+            terminal_reward_components=terminal_reward_components,
+        )
 
         next_obs = self._get_observation()
 

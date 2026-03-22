@@ -75,7 +75,7 @@ Done の基準:
 
 次の打ち手:
 1. training stats / reward telemetry / memory diagnostics の payload shape を揃える
-2. `info` と `reward_components` の責務分離を heavy_env 系で横展開
+2. `info` と `reward_components` の責務分離は heavy_env terminal telemetry helper 化まで前進済みとして横展開を続ける
 3. leak warning / rss warning / cache entry count の観測を一貫化
 
 Done の基準:
@@ -91,7 +91,7 @@ Done の基準:
 
 次の打ち手:
 1. `TemporaryDirectory()` 残件の `tmp_path` 化
-2. `time.sleep()` ベース wait の `Event.wait()` / predicate wait 化
+2. `time.sleep()` ベース wait の `Event.wait()` / predicate wait 化を継続
 3. real-data setup の fixture 再利用 / sample cap 見直し
 4. stale source-contract test の stage/helper 契約化
 

@@ -6321,3 +6321,7 @@ python scripts/unified_trainer.py \
 - `ztb/training/unified_trainer/trainer.py` の optimization payload は `record_training_stat(...)` 経由に統一し、training/ensemble report の生成保存を reporting helper に委譲
 - `tests/unit/training/test_training_reporting_flow.py` を追加し、reporting helper の focused 回帰を追加
 - `tests/unit/training/test_reward_components_persistence.py` の averaging を shared helper に追随し、JSON persistence test を `tmp_path` ベースへ整理
+## 2026-03-23 wave3 telemetry and wave4 fixed-wait trim
+- `ztb/trading/environment/heavy_env/core.py` に `_sync_terminal_reward_outputs(...)` を追加し、terminal reward payload の info 同期を helper 化
+- `tests/unit/v460/test_codex_408_409_fixes.py` に terminal reward sync helper の符号契約回帰を追加
+- `tests/training/callbacks/performance/test_performance.py` の skipped benchmark 固定 wait を `Event.wait()` ベースへ変更
