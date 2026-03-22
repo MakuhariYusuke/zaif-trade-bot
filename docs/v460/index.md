@@ -681,3 +681,5 @@ NNN_phX_TYPE_description.md
 | 560 | rpt | [560_phg_rpt_fill_test_post_restart_analysis.md](560_phg_rpt_fill_test_post_restart_analysis.md) | Fill Test 再起動後パフォーマンス分析 (3/12–3/22) |
 | 562 | review | [562_phg_review_560_561_analysis_and_proposals.md](562_phg_review_560_561_analysis_and_proposals.md) | 560#・561# レビュー: 実データ検証と統合改善提案 |
 | 563 | review | [563_phg_rev_560_562_second_opinion_and_split_tasks.md](563_phg_rev_560_562_second_opinion_and_split_tasks.md) | 560#・561#・562# セカンドオピニオンと著者別タスク分離 |
+| 564 | review | [564_phg_integration_blind_spots_and_financial_engineering.md](564_phg_integration_blind_spots_and_financial_engineering.md) | 560-563の統合解剖と四者の盲点指摘・金融工学的改善案 |
+| 565 | review | [565_phg_review_cross_verification_and_residual_blind_spots.md](565_phg_review_cross_verification_and_residual_blind_spots.md) | 560-564 横断検証と残存盲点の拾い上げ |
