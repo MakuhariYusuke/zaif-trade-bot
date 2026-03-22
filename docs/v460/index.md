@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-23 (541# lazy import引き上げ + pre-order disabled stage スキップ最適化)
+> 最終更新: 2026-03-23 (542# ceiling 0.25→0.30 + 残存 identity 段分析 + test_405 修正)
 
 ---
 

@@ -227,12 +227,18 @@ class TestBuySideBehaviorPreserved:
 
     @pytest.mark.asyncio
     async def test_buy_capped_by_buy_ceiling(self) -> None:
-        """buy は最終 ceiling 0.20 でクランプされる."""
+        """buy は intermediate cap (max_offset_ratio=0.30) でクランプされる.
+
+        523# で maker_price 中間 ceiling を撤廃し offset_pipeline の
+        execution_final_clamp に一本化したため、compute() 出力は
+        intermediate cap (max_offset_ratio) まで到達可能。
+        最終 ceiling (0.20) は offset_pipeline 側で適用される。
+        """
         calc, adapter = self._make_calc(high_vol_boost=1.8)
         result = await calc.compute("buy", adapter, "btc_jpy")
         # base=0.20 → high_vol 1.8x → 0.36 → intermediate cap 0.30
-        # → buy ceiling 0.20 → 0.20
-        assert result.effective_offset_ratio <= 0.20
+        # 523#: 最終 ceiling は offset_pipeline の execution_final_clamp で適用
+        assert result.effective_offset_ratio <= 0.30
 
 
 # ================================================================
