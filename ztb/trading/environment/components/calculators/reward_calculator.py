@@ -49,6 +49,7 @@ from .reward_component_tracking import (
     set_reward_telemetry,
 )
 from ..signal_integrator import SignalIntegrator
+from .reward_kernel import RewardKernel, RewardParams
 
 # Sentinel for cache miss detection (None is a valid cached value)
 _SENTINEL = object()
@@ -1315,187 +1316,80 @@ class RewardCalculator:
         position_size: float | None = None,
     ) -> float:
         """
-        Calculate simple reward based on PnL with v431 enhancements and v440.1 dynamic shaping.
-
-        Enhanced with v431 successful elements:
-        - HOLD penalty multiplier for encouraging trading activity
-        - Trade frequency bonus for promoting active trading
-        - Reward scaling and clipping for stable learning
-        - Dynamic reward shaping based on market conditions (v440.1)
-
-        Args:
-            pnl: Profit/Loss from action
-            portfolio_value: Current portfolio value
-            position: Current position
-            old_position: Position before action
-            action: Action taken
-            reward_history: History of rewards
-            portfolio_value_history: History of portfolio values
-            current_price: Current market price (for regime detection)
-            step: Current step number (for regime adaptation)
-            transaction_cost: Transaction cost for the action
-
-        Returns:
-            Enhanced simple reward value
+        Calculate simple reward based on PnL with RewardKernel unification.
         """
         try:
-            reward_history = reward_history or []
-            portfolio_value_history = portfolio_value_history or []
-
+            # 1. Parameter extraction & validation
             if pnl is None and previous_price is not None and position_size is not None:
                 position = float(position_size)
-                if transaction_cost is None:
-                    if isinstance(self.config, dict):
-                        transaction_cost = float(
-                            self.config.get("transaction_cost")
-                            or self.config.get("commission")
-                            or self.config.get("reward_settings", {}).get(
-                                "transaction_cost", 0.0
-                            )
-                        )
-                    else:
-                        transaction_cost = float(
-                            getattr(
-                                self.config,
-                                "transaction_cost",
-                                getattr(self.config, "commission", 0.0),
-                            )
-                        )
                 current_price = float(current_price)
                 previous_price = float(previous_price)
                 gross_pnl = (current_price - previous_price) * position
-                fee_penalty = abs(position) * previous_price * float(transaction_cost)
+                fee_rate = self.get_setting_float("transaction_cost", 0.0)
+                fee_penalty = abs(position) * previous_price * fee_rate
                 pnl = gross_pnl - fee_penalty
-                portfolio_value = float(
-                    portfolio_value
-                    if portfolio_value is not None
-                    else getattr(self, "initial_portfolio_value", 0.0)
-                )
                 action = (
                     ACTION_BUY
                     if position > 0
                     else ACTION_SELL if position < 0 else ACTION_HOLD
                 )
-            elif transaction_cost is None:
-                transaction_cost = 0.0
 
-            if portfolio_value is None:
-                portfolio_value = float(getattr(self, "initial_portfolio_value", 0.0))
-            if position is None:
-                position = 0.0
+            pnl = float(pnl or 0.0)
+            portfolio_value = float(portfolio_value if portfolio_value is not None else self.initial_portfolio_value)
+            position = float(position or 0.0)
 
-            self.logger.debug(
-                f"calculate_reward_simple called: pnl={pnl}, action={action}"
-            )
-            # Basic NaN/inf checks
             if np.isnan(pnl) or np.isinf(pnl):
-                self.logger.error(
-                    "RewardCalculator failed, using simple reward: math range error"
-                )
                 return 0.0
 
-            if np.isnan(portfolio_value) or np.isinf(portfolio_value):
-                self.logger.error(
-                    "RewardCalculator failed, using simple reward: invalid portfolio_value"
-                )
-                return 0.0
-
-            if np.isnan(position) or np.isinf(position):
-                self.logger.error(
-                    "RewardCalculator failed, using simple reward: invalid position"
-                )
-                return 0.0
-
-            # Get v431 enhancement parameters
-            hold_penalty_multiplier = self.get_setting_float(
-                "hold_penalty_multiplier", 1.0
+            # 2. Build RewardParams from settings
+            params = RewardParams(
+                reward_scaling=self.get_setting_float("reward_scaling", self.get_setting_float("reward_scale", 1.0)),
+                hold_penalty_multiplier=self.get_setting_float("hold_penalty_multiplier", 1.0),
+                trade_frequency_bonus=self.get_setting_float("trade_frequency_bonus", 0.0),
+                bankruptcy_penalty=self.get_setting_float("bankruptcy_penalty", -100.0),
+                position_change_penalty=self.get_setting_float("position_change_penalty", 0.0),
+                position_change_threshold=self.get_setting_float("position_change_threshold", 0.1),
+                reward_clip_value=self.get_setting_float("reward_clip_value", 10.0),
             )
-            trade_frequency_bonus = self.get_setting_float("trade_frequency_bonus", 0.0)
-            # reward_scale (YAML) -> reward_scaling (internal) フォールバック対応
-            reward_scaling = self.get_setting_float(
-                "reward_scaling", self.get_setting_float("reward_scale", 1.0)
+
+            # 3. Delegate to RewardKernel for basic calculation
+            reward = RewardKernel.calculate_basic_reward(
+                pnl=pnl,
+                action=action,
+                params=params,
+                old_position=old_position,
+                current_position=position,
+                portfolio_value=portfolio_value,
             )
-            reward_clip_value = self.get_setting_float("reward_clip_value", 10.0)
 
-            # Adjust PnL for transaction costs if trade occurred
-            # Note: transaction_cost is already deducted in position_manager, so we don't deduct again
-            adjusted_pnl = pnl
-
-            # Base PnL-based reward (scaled)
-            if adjusted_pnl > 0:
-                reward = adjusted_pnl * reward_scaling
-            elif adjusted_pnl < 0:
-                reward = adjusted_pnl * reward_scaling
-            else:
-                reward = 0.0
-
-            # HOLD penalty (v431 enhancement) - encourage trading activity
-            if action == ACTION_HOLD:  # 0 = HOLD
-                reward *= hold_penalty_multiplier
-
-            # Trade frequency bonus (v431 enhancement) - promote active trading
-            if action in [ACTION_BUY, ACTION_SELL]:  # 1 = BUY, 2 = SELL
-                reward += trade_frequency_bonus
-
-            # 408# B3: removed `continuous_action_value = None` that shadowed the
-            # function parameter (S4 fix already corrected the default in 407#).
-            position_change = abs(position - old_position)
-            position_change_penalty = self.get_setting_float(
-                "position_change_penalty", 0.0
-            )
-            position_change_threshold = self.get_setting_float(
-                "position_change_threshold", 0.1
-            )
-            if position_change_penalty > 0 and position_change > position_change_threshold:
-                reward -= position_change_penalty
-
-            # Apply dynamic reward shaping (v440.1 enhancement)
+            # 4. Apply Advanced Features (Shaping, Signals, Asymmetric Scaling)
+            # These are maintained in RewardCalculator as they depend on other components
             reward = self.dynamic_reward_shaper.shape_reward(
                 reward, current_price, step, pnl
             )
 
-            # Apply signal-based reward integration
             if self.signal_integrator.enabled:
-                # Create observation from current state (simplified for now)
                 observation = np.array([current_price, position, pnl])
-                signal_reward = self.signal_integrator.integrate_signal(
+                reward = self.signal_integrator.integrate_signal(
                     reward=reward, observation=observation, action=action, step=step
                 )
-                reward = signal_reward  # integrate_signal returns the modified reward
 
-            # Apply asymmetric reward scaling based on position
             reward = self.asymmetric_reward_scaler.scale_reward(reward, position, pnl)
 
-            # Apply reward clipping
-            # reward = np.clip(reward, -reward_clip_value, reward_clip_value)
-
-            # Ensure reward is finite
             if not np.isfinite(reward):
-                self.logger.error(
-                    "RewardCalculator failed, using simple reward: non-finite reward"
-                )
                 return 0.0
 
-            # Store reward components for analysis
+            # Store components for analysis
             self._last_reward_components = build_reward_components(
                 "simple_reward",
                 pnl=float(pnl),
-                adjusted_pnl=float(adjusted_pnl),
-                base_reward=float(adjusted_pnl * reward_scaling),
-                hold_penalty_applied=action == ACTION_HOLD,
-                trade_bonus_applied=action in [ACTION_BUY, ACTION_SELL],
-                position_change=float(position_change),
                 final_reward=float(reward),
             )
 
             return reward
 
         except Exception as e:
-            self.logger.error(f"RewardCalculator failed, using simple reward: {e}")
-            self._last_reward_components = build_reward_components(
-                "simple_reward_error",
-                error=str(e),
-            )
+            self.logger.error(f"Error in calculate_reward_simple: {e}")
             return 0.0
 
     def _build_reward_context(self, **kwargs) -> RewardContext:

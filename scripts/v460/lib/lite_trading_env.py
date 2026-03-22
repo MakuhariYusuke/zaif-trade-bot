@@ -236,13 +236,35 @@ class LiteTradingEnv(gym.Env):
         self.total_pnl += step_pnl
         self.portfolio_value += step_pnl
 
-        # 報酬
-        reward = float(step_pnl * self.config.reward_scaling)
+        # 報酬 (RewardKernel による一元化)
+        reward_params = RewardParams(
+            reward_scaling=self.config.reward_scaling,
+            hold_penalty_multiplier=self.config.hold_penalty_multiplier,
+            trade_frequency_bonus=self.config.trade_frequency_bonus,
+            bankruptcy_penalty=self.config.bankruptcy_penalty,
+        )
 
-        # 破産チェック
+        # LiteEnv では連続値を離散アクション(HOLD/BUY/SELL)にマッピングしてボーナスを適用
+        # 0.001 程度の微小な動きは HOLD とみなす
+        if abs(action_val) < 1e-4:
+            action_type = ACTION_HOLD
+        elif action_val > 0:
+            action_type = ACTION_BUY
+        else:
+            action_type = ACTION_SELL
+
+        reward = RewardKernel.calculate_basic_reward(
+            pnl=step_pnl,
+            action=action_type,
+            params=reward_params,
+            old_position=old_position,
+            current_position=self.position,
+            portfolio_value=self.portfolio_value,
+        )
+
+        # 破産チェック (報酬計算は Kernel 側で処理済み)
         if self.portfolio_value <= 0:
             done = True
-            reward -= 100.0  # 破産ペナルティ
 
         obs = self._get_observation()
         info = self._get_info()
