@@ -99,6 +99,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **docs/v460/550_phg_plan_maker_price_state_and_stage_boundary.md**: `maker_price` の state 分類、`compute()` stage 実行順、依存関係、split-first 境界を整理
 - **docs/v460/521_phg_master_deferred_and_architecture_carryforward.md**: `maker_price` の詳細設計参照先を `550#` に固定
 
+## 2026-03-23 maker price / ab judgment local ownership tightening
+
+### Changed
+- **maker_price.py**: offset stage seed と final serialize を local helper 化し、`compute()` の orchestration を整理
+- **ab_judgment.py**: primary criteria result 反映を helper に集約し、result ownership を明確化
+- **tests/training/callbacks/distributed/test_distributed.py**: polling wait を `Event.wait()` ベースへ変更
+
 ### Changed
 - **ztb/trading/execution/stale_order_policy.py**: order status 正規化と `CancelFillCheck` を canonical 化
 - **order_monitor.py**: stale-order policy の shared helper を再利用する構成へ整理

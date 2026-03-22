@@ -792,6 +792,42 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         _record_offset_stage(stages, stage_name, updated_ratio)
         return updated_ratio
 
+    def _seed_offset_stage_store(
+        self,
+        *,
+        enabled: bool,
+        base_ratio: float,
+        spread: float,
+        mid_price: float,
+    ) -> OffsetStageStore | None:
+        """Initialize offset stage telemetry with stable base/cache fields."""
+        stages = _make_offset_stage_store(enabled)
+        _record_offset_stage(stages, "base", base_ratio)
+        if stages is None:
+            return None
+        if self._last_ofi_lite != 0.0:
+            stages["ofi_lite"] = round(self._last_ofi_lite, 4)
+            if self._ofi_history:
+                stages["ofi_mean"] = round(sum(self._ofi_history) / len(self._ofi_history), 4)
+        if self._last_as_delta_star_ratio > 0.0:
+            stages["as_delta_star"] = round(self._last_as_delta_star_ratio, 4)
+            if mid_price > 0 and spread > 0:
+                delta_star_bps = self._last_as_delta_star_ratio * spread / mid_price * 10_000
+                spread_bps = spread / mid_price * 10_000
+                stages["delta_star_bps"] = round(delta_star_bps, 2)
+                stages["spread_bps"] = round(spread_bps, 2)
+        return stages
+
+    def _persist_offset_stage_store(
+        self,
+        stages: OffsetStageStore | None,
+        final_ratio: float,
+    ) -> None:
+        """Finalize stage telemetry and persist the serialized payload."""
+        _record_offset_stage(stages, "ffd", final_ratio)
+        _record_offset_stage(stages, "final", final_ratio)
+        self._last_offset_stages = _serialize_offset_stages(stages)
+
     def _apply_loss_boost(
         self,
         side: str,
@@ -995,27 +1031,13 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         elif side == "sell" and self._base_offset_ratio_sell is not None:
             effective_offset_ratio = self._base_offset_ratio_sell
 
-        # 306# E1: offset stage recording — 各ステージの寄与を追跡
-        _stages = _make_offset_stage_store(cfg.offset_stage_recording_enabled)
-        _record_offset_stage(_stages, "base", effective_offset_ratio)
-
-        # 543# OFI-Lite: 計測値をステージ記録に含める
-        if _stages is not None and self._last_ofi_lite != 0.0:
-            _stages["ofi_lite"] = round(self._last_ofi_lite, 4)
-            # 544# OFI rolling mean (トレンド方向の滑らか推定)
-            if self._ofi_history:
-                _stages["ofi_mean"] = round(
-                    sum(self._ofi_history) / len(self._ofi_history), 4
-                )
-        # 543# A-S δ*: 参照スプレッド計測値
-        if _stages is not None and self._last_as_delta_star_ratio > 0.0:
-            _stages["as_delta_star"] = round(self._last_as_delta_star_ratio, 4)
-            # 544# δ* vs spread (bps 比較テレメトリ)
-            if mid_price > 0 and spread > 0:
-                _ds_bps = self._last_as_delta_star_ratio * spread / mid_price * 10_000
-                _sp_bps = spread / mid_price * 10_000
-                _stages["delta_star_bps"] = round(_ds_bps, 2)
-                _stages["spread_bps"] = round(_sp_bps, 2)
+        # 306# E1 / 550#: offset stage recording — 各ステージの寄与を追跡
+        _stages = self._seed_offset_stage_store(
+            enabled=cfg.offset_stage_recording_enabled,
+            base_ratio=effective_offset_ratio,
+            spread=spread,
+            mid_price=mid_price,
+        )
 
         # 162# Inventory Skewing: 在庫偏重に応じた非対称 offset 補正
         # 228# C2: time-decay 適用 — 古い fill 履歴の影響を減衰
@@ -1214,8 +1236,6 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
             effective_offset_ratio, offset = self._apply_ffd_boost(
                 side, spread, effective_offset_ratio, offset,
             )
-        _record_offset_stage(_stages, "ffd", effective_offset_ratio)
-        _record_offset_stage(_stages, "final", effective_offset_ratio)
 
         # 523# 二重 ceiling 撤廃: maker_price 中間 ceiling を削除。
         # offset_pipeline の execution_final_clamp (421#) に一本化。
@@ -1223,8 +1243,8 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         # 打ち消し、offset_pipeline 側で再度 ceiling 適用 → 二重キャップで
         # 防御メカニズムが実質無力化されていた (518# §5, 522# P0)。
 
-        # 306# E1: cache last offset stages for FillRecord
-        self._last_offset_stages = _serialize_offset_stages(_stages)
+        # 306# E1 / 550#: cache last offset stages for FillRecord
+        self._persist_offset_stage_store(_stages, effective_offset_ratio)
 
         return self._finalize_price_with_spread_guard(
             side=side,

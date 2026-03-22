@@ -256,6 +256,27 @@
 1. `maker_price` の stateful ownership を `550#` に沿ってさらに薄くする
 2. `ab_judgment` の orchestration / reporting ownership を同じ粒度で整理する
 3. Wave3/4 の telemetry / setup 固定費改善を broad 前提で進める
+
+## 2026-03-23 / Session 037-563
+
+### 実施
+- `maker_price.py` に
+  - `_seed_offset_stage_store(...)`
+  - `_persist_offset_stage_store(...)`
+  を追加し、stage seed / final serialize を local helper 化
+- `ab_judgment.py` に `_append_primary_criteria(...)` を追加し、3 指標の result 反映を一本化
+- `tests/training/callbacks/distributed/test_distributed.py` の polling wait を
+  `sleep` から `Event.wait()` ベースへ変更
+
+### 結果
+- `maker_price.compute()` は stage seed / final telemetry の責務が読みやすくなった
+- `ab_judgment` は rule/shared helper と result ownership の境界がさらに明確になった
+- training callback test の固定 wait も少し軽くなった
+
+### 次アクション
+1. trainer/SAC/heavy_env の telemetry payload をさらに揃える
+2. broad 前の `sleep` / tempdir 固定費を継続削減する
+3. `maker_price` / `ab_judgment` の残る stateful ownership を broad 直前にもう一段だけ見直す
 - 本体コード改善
   - `scripts/v460/lib/fill_cycle_executor.py`
     - `run_single_cycle()` の派生値導出を `_derive_decision_path()` へ抽出

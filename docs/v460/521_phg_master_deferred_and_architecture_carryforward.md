@@ -176,6 +176,7 @@ shim を外しにいく条件:
 - final ceiling clamp は stage 化済み
 - offset stage recording も helper 化済み
 - stage apply + stage record の重複も local helper 化済み
+- stage store seed / final serialize も local helper 化済み
 - source-contract test も direct call ではなく stage 契約を見る方向へ寄せる
 - `offset_stages` には schema version を持たせ、mixed-SHA の解析を安全化済み
 
@@ -253,6 +254,7 @@ shim を外しにいく条件:
   `ztb.adaptation.ab_test.judgment_rules` へ前進済み
 - insufficient early-return も small helper 化できる形まで揃い、
   sample/calendar/PnL-data 不足の判定 payload は pure helper 側へ寄せやすくなった
+- primary criteria result append も local helper 化済み
 - script 側は dataclass / statistical comparison / report ownership を維持
 
 ### 4.5. `toxicity_types`

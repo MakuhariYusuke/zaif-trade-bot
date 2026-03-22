@@ -16,13 +16,15 @@ from .coordinator import DistributedConfig, DistributedCoordinator, Message, Wor
 from .integration import DistributedCallbackAdapter, DistributedTrainingManager
 from .worker import DistributedWorker, WorkerPool
 
+_WAIT_EVENT = Event()
+
 
 def _wait_until(predicate, timeout: float = 0.2, interval: float = 0.005) -> bool:
     deadline = time.perf_counter() + timeout
     while time.perf_counter() < deadline:
         if predicate():
             return True
-        time.sleep(interval)
+        _WAIT_EVENT.wait(interval)
     return predicate()
 
 

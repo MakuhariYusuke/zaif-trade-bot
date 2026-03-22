@@ -91,6 +91,14 @@ def _set_insufficient_result(
     return result
 
 
+def _append_primary_criteria(
+    result: ABJudgmentResult,
+    *assessments: _CriterionAssessment,
+) -> None:
+    """Attach the three primary A/B criteria in canonical result form."""
+    result.criteria.extend(_to_criterion_result(assessment) for assessment in assessments)
+
+
 # ======================================================================
 # P0-B: A/B 判定基準
 # ======================================================================
@@ -809,12 +817,11 @@ def evaluate_ab_variant(
         downside_p10_min_bps=criteria.downside_p10_min_bps,
         downside_p10_degradation_max_bps=criteria.downside_p10_degradation_max_bps,
     )
-    result.criteria.extend(
-        [
-            _to_criterion_result(fill_rate_assessment),
-            _to_criterion_result(avg_pnl30_assessment),
-            _to_criterion_result(downside_assessment),
-        ]
+    _append_primary_criteria(
+        result,
+        fill_rate_assessment,
+        avg_pnl30_assessment,
+        downside_assessment,
     )
 
     # --- 統計検定 (ztb.adaptation.ab_test.analyzer 活用) ---
