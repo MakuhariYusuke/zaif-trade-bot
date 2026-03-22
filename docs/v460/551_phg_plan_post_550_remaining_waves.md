@@ -78,6 +78,7 @@ Done の基準:
 2. `record_average_reward_components(...)` による training stats 収束と、heavy_env の `_sync_terminal_reward_outputs(...)` / `_append_reward_diagnostics_to_info(...)` を基準に `info` と `reward_components` の責務分離を横展開する
 3. leak warning / rss warning / cache entry count の観測を一貫化
 4. callback / reporting で扱う `reward_components` 取得経路も shared helper に寄せる
+5. `RewardCalculator` の `get_last_reward_components()` は snapshot 契約へ寄せ、mutable payload alias を避ける
 
 Done の基準:
 - telemetry field の符号/意味が module ごとにぶれない

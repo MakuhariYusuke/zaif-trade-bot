@@ -9,6 +9,7 @@ from ztb.trading.environment.components.calculators.reward_component_tracking im
     extend_reward_components,
     merge_reward_components,
     set_reward_telemetry,
+    snapshot_reward_components,
 )
 
 
@@ -100,6 +101,16 @@ def test_merge_reward_components_preserves_stage_and_converts_scalars() -> None:
         "enabled": 1.0,
         "note": "kept",
     }
+
+
+def test_snapshot_reward_components_returns_copy() -> None:
+    payload: dict[str, object] = build_reward_components("default", pnl_reward=1.0)
+
+    snap = snapshot_reward_components(payload)
+    snap["pnl_reward"] = 5.0
+
+    assert payload["pnl_reward"] == 1.0
+    assert snap["pnl_reward"] == 5.0
 
 
 def test_risk_management_preserves_pre_and_post_trading_rewards() -> None:

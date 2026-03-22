@@ -61,9 +61,17 @@ def merge_reward_components(
     payload["stage"] = str(payload.get("stage", "unknown"))
 
 
+def snapshot_reward_components(
+    payload: Mapping[str, object],
+) -> dict[str, object]:
+    """Return a shallow snapshot of reward components for external consumers."""
+    return dict(payload)
+
+
 __all__ = [
     "build_reward_components",
     "extend_reward_components",
     "merge_reward_components",
     "set_reward_telemetry",
+    "snapshot_reward_components",
 ]

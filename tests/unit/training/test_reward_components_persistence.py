@@ -67,6 +67,20 @@ class TestRewardComponentsPersistence:
         assert info["reward_components"]["skew_penalty"] == -0.01
         assert info["reward_components"]["balance_shaping"] == 0.03
 
+    def test_get_last_reward_components_returns_snapshot(self):
+        """RewardCalculator should not expose mutable internal payload directly."""
+        env = _make_minimal_env()
+        env.reset()
+        env.reward_calculator._last_reward_components = {  # type: ignore[attr-defined]
+            "stage": "default",
+            "final_reward": 0.5,
+        }
+
+        payload = env.reward_calculator.get_last_reward_components()
+        payload["final_reward"] = 9.0
+
+        assert env.reward_calculator._last_reward_components["final_reward"] == 0.5  # type: ignore[index]
+
     def test_callback_collects_reward_components(self):
         """Test that TrainingProgressCallback collects reward_components."""
         callback = TrainingProgressCallback(

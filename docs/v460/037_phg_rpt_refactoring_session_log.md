@@ -8596,3 +8596,14 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - tempdir 使用を `tmp_path` ベースへ整理
 - セルフレビュー
   - callback/reporting 両方が shared helper を通ると、`reward_components` payload drift をかなり抑えやすい
+## 2026-03-23 RewardCalculator snapshot contract
+- `ztb/trading/environment/components/calculators/reward_component_tracking.py`
+  - `snapshot_reward_components(...)` を追加し、reward payload の shallow snapshot 契約を用意
+- `ztb/trading/environment/components/calculators/reward_calculator.py`
+- `ztb/trading/environment/components/calculators/v457_reward_calculator.py`
+  - `get_last_reward_components()` は internal dict をそのまま返さず snapshot を返す形へ整理
+- `tests/unit/v460/test_reward_component_tracking_migration.py`
+- `tests/unit/training/test_reward_components_persistence.py`
+  - snapshot 契約の回帰を追加
+- セルフレビュー
+  - 外部 consumer が payload を書き換えて internal state を汚す経路を先に閉じておくと、Wave3/5 の調査がかなり楽になる

@@ -47,6 +47,7 @@ from .reward_component_tracking import (
     extend_reward_components,
     merge_reward_components,
     set_reward_telemetry,
+    snapshot_reward_components,
 )
 from ..signal_integrator import SignalIntegrator
 from .reward_kernel import RewardKernel, RewardParams
@@ -755,7 +756,7 @@ class RewardCalculator:
 
     def get_last_reward_components(self) -> dict[str, str | float]:
         """Returns the components of the last calculated reward for debugging."""
-        return self._last_reward_components
+        return snapshot_reward_components(self._last_reward_components)
 
     def _get_nested_setting(
         self, key: str

@@ -6336,3 +6336,7 @@ python scripts/unified_trainer.py \
 - `ztb/training/unified_trainer/base/callbacks.py` と `ztb/training/unified_trainer/reporting.py` は shared helper を経由する形へ整理
 - `tests/unit/training/test_reward_components_persistence.py` と `tests/unit/training/test_training_stats_payloads.py` に malformed payload / shallow copy 契約の回帰を追加
 - `tests/unit/utils/test_path_utils.py` の tempdir 使用を `tmp_path` ベースへ整理
+## 2026-03-23 RewardCalculator snapshot contract
+- `ztb/trading/environment/components/calculators/reward_component_tracking.py` に `snapshot_reward_components(...)` を追加
+- `RewardCalculator` と `V457RewardCalculator` の `get_last_reward_components()` は shallow snapshot を返す形へ整理
+- `tests/unit/v460/test_reward_component_tracking_migration.py` と `tests/unit/training/test_reward_components_persistence.py` に snapshot 契約の回帰を追加

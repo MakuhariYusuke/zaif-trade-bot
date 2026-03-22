@@ -175,6 +175,9 @@ trainer 専用 helper が generic helper に見える状態を避ける。
 callback / reporting が `reward_components` を扱うときも、可能な限り
 `training_stats_payloads` 側の shared helper を経由して payload shape を揃える。
 
+`RewardCalculator.get_last_reward_components()` のような外部公開 payload は、
+可能な限り snapshot を返して internal mutable state の alias を避ける。
+
 ### C. shim を残す条件
 
 shim を残す条件:

@@ -1,6 +1,8 @@
 from typing import Any
 import numpy as np
 
+from .reward_component_tracking import snapshot_reward_components
+
 class V457RewardCalculator:
     """
     v457 'Reset' Reward Calculator.
@@ -34,7 +36,7 @@ class V457RewardCalculator:
 
     def get_last_reward_components(self) -> dict:
         """Return the components of the last calculated reward."""
-        return self.last_reward_components
+        return snapshot_reward_components(self.last_reward_components)
 
     def calculate_reward(
         self,
