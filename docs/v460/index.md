@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-23 (535# pre-emptive CV kill + min_spread_jpy 700→500: 532# §8 P1-5/P1-6 完了)
+> 最終更新: 2026-03-23 (540# 536-539独立検証: pipeline二重構造発見・spread_adapt主犯特定・Phase 1 YAML施策)
 
 ---
 
@@ -562,6 +562,11 @@
 | 533 | rev | [533_phg_evaluation_532_blind_spots.md](533_phg_evaluation_532_blind_spots.md) | 532#盲点の市場微視構造検証: 時間帯ハードコード懸念・理論的反論 |
 | 534 | impl | [534_phg_impl_veto_deadlock_prevention_and_log_improvements.md](534_phg_impl_veto_deadlock_prevention_and_log_improvements.md) | vetoデッドロック防止(max_consecutive+BTC=0緩和) + log_cycle_no join key + ログ可観測性改善 |
 | 535 | impl | [535_phg_impl_preemptive_cv_kill_and_min_spread.md](535_phg_impl_preemptive_cv_kill_and_min_spread.md) | pre-emptive CV kill (532# P1-5) + min_spread_jpy 700→500 (P1-6) |
+| 536 | rpt | [536_phg_architecture_simplification_and_reduction.md](536_phg_architecture_simplification_and_reduction.md) | 風水渙を起点にしたアーキテクチャ断捨離シナリオA/B/Cと「何を捨て何を束ねるか」の全体図 |
+| 537 | rev | [537_phg_review_536_architecture_simplification.md](537_phg_review_536_architecture_simplification.md) | 536# 検証と拡張: clamp飽和・OFI-Lite・A-S参照・段階ロードマップ化 |
+| 538 | rev | [538_phg_second_opinion_536_537_architecture_review.md](538_phg_second_opinion_536_537_architecture_review.md) | 536-537セカンドオピニオン: 現況差分、ceiling先行の危険、composite_risk再位置付け、簡素化指標を補強 |
+| 539 | rpt | [539_phg_huan_simplification_scorecard.md](539_phg_huan_simplification_scorecard.md) | 風水渙断捨離スコアカード: 4指標定義(gate数・pipeline段数・clamp率・block理由)+アクション |
+| 540 | verify | [540_phg_verify_536_539_pipeline_reality_check.md](540_phg_verify_536_539_pipeline_reality_check.md) | 536-539独立検証: pipeline二重構造(pre-order 14段+executor 9段)発見、spread_adapt主犯特定、Phase 1 YAML施策 |
 
 ---
 

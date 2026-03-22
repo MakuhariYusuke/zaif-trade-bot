@@ -795,7 +795,7 @@ loss_control:
     max_stale_kill_cycles: 0         # 0=probe無効 (No Trade=正常)
     max_force_release_probes: 0      # 0=force-release無効
     # 273# kill 時間上限 (268# I5: Pattern B kill↔halt 相互ロック防止)
-    max_kill_duration_sec: 1800      # 30分で自動解除 (268#: 92分持続事例への対策)
+    max_kill_duration_sec: 600       # 540#: 30分→10分に短縮 (535# pre-emptive CV kill で事前防衛済み。buy 900s との均衡)
     # 344# 342#D: EWMA モード (RiskMetrics 1996)
     ewma_alpha: 0.05               # 0.0=無効(従来count-based), 0.05=effective window≈20
     ewma_time_decay_tau_sec: 600     # 353# kill中のEWMA時間減衰 (τ=600s, 半減期≈7分)
@@ -1158,7 +1158,7 @@ regime_policy:
 # スコアが threshold 超でサイクルをブロック (composite_risk_exceeded)。
 # 二重クランプ問題 (306# + 421# 同一ceiling値) の緩和策として段階的導入。
 composite_risk_enabled: true
-composite_risk_threshold: 1.5       # 合計リスクスコアの閾値 (高めに設定=保守的導入)
+composite_risk_threshold: 1.0       # 540#: 1.5→1.0 (2 gate 同時で block。1.5 は 3 gate 必要で事実上不活性)
 composite_risk_weight_unknown_regime: 0.6
 composite_risk_weight_ranging_low_vol: 0.5
 composite_risk_weight_trending_sell: 0.7
