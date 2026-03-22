@@ -10,6 +10,7 @@ Refactored to follow SOLID principles with component-based architecture.
 import inspect
 import logging
 import warnings
+from collections.abc import Mapping
 from typing import Sequence
 
 import numpy as np
@@ -126,7 +127,7 @@ class RewardCalculator:
         self.last_signal_strength: float = 0.0
         self.last_signal_reward: float = 0.0
         self._previous_portfolio_value = initial_portfolio_value
-        self._last_reward_components: dict[str, str | float] = {}
+        self._last_reward_components: dict[str, object] = {}
         self._recent_actions: list[int] = []  # Reset this list as well
         # P1: Config setting cache — avoid repeated _get_nested_setting() per step
         self._settings_cache: dict[str, object] = {}
@@ -754,9 +755,39 @@ class RewardCalculator:
                 return value
         return default
 
-    def get_last_reward_components(self) -> dict[str, str | float]:
+    def get_last_reward_components(self) -> dict[str, object]:
         """Returns the components of the last calculated reward for debugging."""
         return snapshot_reward_components(self._last_reward_components)
+
+    def _clear_reward_component_state(self) -> None:
+        """Reset reward-component state before a new reward calculation."""
+        self._last_reward_components = {}
+
+    def _reset_reward_component_stage(
+        self,
+        stage: str,
+        **components: str | float | int | None,
+    ) -> None:
+        """Replace the current reward-component payload with a canonical stage payload."""
+        self._last_reward_components = build_reward_components(stage, **components)
+
+    def _extend_reward_component_state(
+        self,
+        **components: str | float | int | None,
+    ) -> None:
+        """Append scalar reward components while preserving the current stage contract."""
+        extend_reward_components(self._last_reward_components, **components)
+
+    def _merge_reward_component_state(
+        self,
+        components: Mapping[str, object],
+    ) -> None:
+        """Merge component detail payloads while preserving the current stage contract."""
+        merge_reward_components(self._last_reward_components, components)
+
+    def _set_reward_component_telemetry(self, key: str, value: object) -> None:
+        """Attach non-scalar telemetry to the current reward-component payload."""
+        set_reward_telemetry(self._last_reward_components, key, value)
 
     def _get_nested_setting(
         self, key: str
@@ -921,7 +952,7 @@ class RewardCalculator:
         # Dynamic log level evaluation
         self._evaluate_dynamic_logging(step)
 
-        self._last_reward_components = {}  # Reset at the beginning of each calculation
+        self._clear_reward_component_state()  # Reset at the beginning of each calculation
 
         # Record the action for behavioral analysis BEFORE calculating penalties
         self._record_action(action)
@@ -955,8 +986,7 @@ class RewardCalculator:
         else:
             pnl = step_pnl
 
-        extend_reward_components(
-            self._last_reward_components,
+        self._extend_reward_component_state(
             pnl_mode=pnl_mode,
             pnl_step=step_pnl,
             pnl_trade=trade_pnl_value,
@@ -1171,19 +1201,13 @@ class RewardCalculator:
             confidence_penalty_context
         )
 
-        extend_reward_components(
-            self._last_reward_components,
-            confidence_penalty=confidence_penalty,
-        )
+        self._extend_reward_component_state(confidence_penalty=confidence_penalty)
         base_reward += confidence_penalty
 
         # Apply action bonus directly to reward
         base_reward += action_bonus
 
-        extend_reward_components(
-            self._last_reward_components,
-            action_bonus=action_bonus,
-        )
+        self._extend_reward_component_state(action_bonus=action_bonus)
 
         # Apply the balance penalty calculated earlier
         base_reward += balance_penalty
@@ -1197,10 +1221,7 @@ class RewardCalculator:
             self.logger.warning("skewness_penalty calculation failed, using 0.0", exc_info=True)
             skew_penalty = 0.0
         base_reward += skew_penalty
-        extend_reward_components(
-            self._last_reward_components,
-            skew_penalty=skew_penalty,
-        )
+        self._extend_reward_component_state(skew_penalty=skew_penalty)
 
         # Balance shaping reward: positive when this action moves distribution towards targets
         try:
@@ -1211,10 +1232,7 @@ class RewardCalculator:
             self.logger.warning("balance_shaping calculation failed, using 0.0", exc_info=True)
             balance_shaping = 0.0
         base_reward += balance_shaping
-        extend_reward_components(
-            self._last_reward_components,
-            balance_shaping=balance_shaping,
-        )
+        self._extend_reward_component_state(balance_shaping=balance_shaping)
 
         # Action entropy shaping: encouraging diversity in actions
         try:
@@ -1225,10 +1243,7 @@ class RewardCalculator:
             self.logger.warning("entropy_shaping calculation failed, using 0.0", exc_info=True)
             entropy_shaping = 0.0
         base_reward += entropy_shaping
-        extend_reward_components(
-            self._last_reward_components,
-            entropy_shaping=entropy_shaping,
-        )
+        self._extend_reward_component_state(entropy_shaping=entropy_shaping)
 
         # Apply common post-processing to the base reward
         final_reward = self._post_process_reward(
@@ -1241,10 +1256,7 @@ class RewardCalculator:
             effective_max_position,
         )
 
-        extend_reward_components(
-            self._last_reward_components,
-            final_reward=final_reward,
-        )
+        self._extend_reward_component_state(final_reward=final_reward)
         return final_reward
 
     def _post_process_reward(
@@ -1265,28 +1277,19 @@ class RewardCalculator:
         """
         # Apply asymmetric scaling
         reward = self.asymmetric_reward_scaler.scale_reward(reward, position, pnl)
-        extend_reward_components(
-            self._last_reward_components,
-            after_asymmetric_scaling=reward,
-        )
+        self._extend_reward_component_state(after_asymmetric_scaling=reward)
 
         # Apply clipping
         reward_clip_min = self.get_setting_float("reward_clip_min", -80.0)
         reward_clip_max = self.get_setting_float("reward_clip_max", 80.0)
         reward = np.clip(reward, reward_clip_min, reward_clip_max)
-        extend_reward_components(
-            self._last_reward_components,
-            after_clipping=reward,
-        )
+        self._extend_reward_component_state(after_clipping=reward)
 
         # Apply signal integration
         reward = self.signal_integrator.integrate_signal(
             reward, observation, action, step
         )
-        extend_reward_components(
-            self._last_reward_components,
-            after_signal_integration=reward,
-        )
+        self._extend_reward_component_state(after_signal_integration=reward)
         # Add current MTF weights to telemetry if manager present
         try:
             mtf_w = (
@@ -1294,9 +1297,9 @@ class RewardCalculator:
                 if hasattr(self, "mtf_weight_manager")
                 else None
             )
-            set_reward_telemetry(self._last_reward_components, "mtf_weights", mtf_w)
+            self._set_reward_component_telemetry("mtf_weights", mtf_w)
         except Exception:
-            set_reward_telemetry(self._last_reward_components, "mtf_weights", None)
+            self._set_reward_component_telemetry("mtf_weights", None)
 
         return reward
 
@@ -1381,7 +1384,7 @@ class RewardCalculator:
                 return 0.0
 
             # Store components for analysis
-            self._last_reward_components = build_reward_components(
+            self._reset_reward_component_stage(
                 "simple_reward",
                 pnl=float(pnl),
                 final_reward=float(reward),
@@ -1443,7 +1446,7 @@ class RewardCalculator:
         # If global balance penalty is disabled, the forced_balance stage should be neutral.
         # 408# F4: default aligned to RewardSettings.balance_penalty (0.1)
         if getattr(self, "balance_penalty", 0.1) == 0.0:
-            self._last_reward_components = build_reward_components(
+            self._reset_reward_component_stage(
                 "forced_balance",
                 base_reward=0.0,
             )
@@ -1453,15 +1456,14 @@ class RewardCalculator:
 
         # Update _last_reward_components from component details
         if hasattr(self.forced_balance_reward, "last_reward_details"):
-            merge_reward_components(
-                self._last_reward_components,
+            self._merge_reward_component_state(
                 self.forced_balance_reward.last_reward_details,
             )
 
         # Apply scaling specific to this stage
         forced_balance_scaling = self.get_setting_float("forced_balance.scaling", 1.0)
         reward *= forced_balance_scaling
-        extend_reward_components(self._last_reward_components, scaled_reward=reward)
+        self._extend_reward_component_state(scaled_reward=reward)
 
         return reward
 
@@ -1482,7 +1484,7 @@ class RewardCalculator:
         to overcome conservative HOLD bias.
         """
         # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ
-        self._last_reward_components = build_reward_components("action_discovery")
+        self._reset_reward_component_stage("action_discovery")
 
         # Use continuous magnitude if available to reward stronger signals
         magnitude = 1.0
@@ -1500,8 +1502,7 @@ class RewardCalculator:
         # Do not subtract transaction cost in discovery stage (encourage actions)
         discovery_scale = self.get_setting_float("action_discovery.scale", 1.0)
         final_reward = base_reward * discovery_scale * reward_scaling
-        extend_reward_components(
-            self._last_reward_components,
+        self._extend_reward_component_state(
             base_reward=base_reward,
             final_reward=final_reward,
         )
@@ -1518,7 +1519,7 @@ class RewardCalculator:
         context = self._build_reward_context(**kwargs)
         reward = self.smart_incentive_reward.calculate(context)
 
-        self._last_reward_components = build_reward_components(
+        self._reset_reward_component_stage(
             "smart_incentive",
             base_reward=reward,
         )
@@ -1540,7 +1541,7 @@ class RewardCalculator:
         # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ
         total_actions = sum(self._action_counts)
 
-        self._last_reward_components = build_reward_components("balanced_transition")
+        self._reset_reward_component_stage("balanced_transition")
 
         tolerance = self.get_setting_float("balance_penalty_tolerance", 0.05)
         penalty = (
@@ -1580,8 +1581,7 @@ class RewardCalculator:
             atr,
             pnl,
         )
-        extend_reward_components(
-            self._last_reward_components,
+        self._extend_reward_component_state(
             base_reward=base_reward,
             balance_penalty=balance_penalty,
         )
@@ -1610,7 +1610,7 @@ class RewardCalculator:
     ) -> float:
         """Stage: Trading-focused reward that heavily penalizes HOLD and encourages trading."""
         # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ
-        self._last_reward_components = build_reward_components("trading_focused")
+        self._reset_reward_component_stage("trading_focused")
 
         # Delegate to TradingFocusedReward component
         context = RewardContext(
@@ -1655,7 +1655,7 @@ class RewardCalculator:
     ) -> float:
         """Stage: Profit-optimized reward that maximizes profitable trading while minimizing losses."""
         # 408# B1: _record_action は calculate_reward() で1回のみ呼ぶ
-        self._last_reward_components = build_reward_components("profit_optimized")
+        self._reset_reward_component_stage("profit_optimized")
 
         # Delegate to ProfitOptimizedReward component
         context = RewardContext(
@@ -1695,7 +1695,7 @@ class RewardCalculator:
             self.get_setting_float("trading_bonus", 0.01) * trading_bonus_multiplier
         )
         base_reward += trading_bonus
-        extend_reward_components(self._last_reward_components, trading_bonus=trading_bonus)
+        self._extend_reward_component_state(trading_bonus=trading_bonus)
 
         # Position size bonus
         position_size_bonus_rate = self.get_setting_float(
@@ -1705,8 +1705,7 @@ class RewardCalculator:
         if 0.1 <= position_utilization <= 0.8:
             position_size_bonus = position_size_bonus_rate * position_utilization
             base_reward += position_size_bonus
-            extend_reward_components(
-                self._last_reward_components,
+            self._extend_reward_component_state(
                 position_size_bonus=position_size_bonus,
             )
 
@@ -1716,8 +1715,7 @@ class RewardCalculator:
         if recent_trades >= 2:
             activity_bonus = activity_bonus_rate * (recent_trades / 5.0)
             base_reward += activity_bonus
-            extend_reward_components(
-                self._last_reward_components,
+            self._extend_reward_component_state(
                 activity_bonus=activity_bonus,
             )
 
@@ -1839,7 +1837,7 @@ class RewardCalculator:
             self.behavioral_penalty_calculator.calculate_consistency_penalty()
         )
         reward = pnl_reward + position_penalty + hold_penalty + consistency_penalty
-        self._last_reward_components = build_reward_components(
+        self._reset_reward_component_stage(
             "default",
             pnl_reward=pnl_reward,
             position_penalty=position_penalty,
@@ -1919,7 +1917,7 @@ class RewardCalculator:
             + consistency_penalty
             + dynamic_shaping_reward
         )
-        self._last_reward_components = build_reward_components(
+        self._reset_reward_component_stage(
             "stability_optimized",
             pnl_reward=pnl_reward,
             position_penalty=position_penalty,
@@ -1968,7 +1966,7 @@ class RewardCalculator:
             + dynamic_shaping_reward
             + portfolio_correlation_bonus
         )
-        self._last_reward_components = build_reward_components(
+        self._reset_reward_component_stage(
             "backtest_optimization",
             pnl_reward=pnl_reward,
             position_penalty=position_penalty,
@@ -2035,7 +2033,7 @@ class RewardCalculator:
             pnl, position
         )
         total_reward = base_reward + unrealized_loss_penalty
-        self._last_reward_components = build_reward_components(
+        self._reset_reward_component_stage(
             "risk_management",
             base_reward=base_reward_before_trading,
             base_trading_reward=base_reward,
@@ -2083,7 +2081,7 @@ class RewardCalculator:
             action, position
         )
         total_reward = base_reward + opportunity_cost_penalty
-        self._last_reward_components = build_reward_components(
+        self._reset_reward_component_stage(
             "opportunity_cost",
             base_reward=base_reward,
             opportunity_cost_penalty=(

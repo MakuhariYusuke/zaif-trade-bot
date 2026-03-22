@@ -792,6 +792,28 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         _record_offset_stage(stages, stage_name, updated_ratio)
         return updated_ratio
 
+    def _apply_optional_offset_ratio_stage(
+        self,
+        stages: OffsetStageStore | None,
+        stage_name: str,
+        *,
+        enabled: bool,
+        current_ratio: float,
+        stage_fn: Callable[..., float],
+        args: tuple[object, ...],
+    ) -> float:
+        """Apply an optional offset stage or record a no-op stage consistently."""
+        if not enabled:
+            _record_offset_stage(stages, stage_name, current_ratio)
+            return current_ratio
+        return self._apply_offset_ratio_stage(
+            stages,
+            stage_name,
+            stage_fn,
+            *args,
+            current_ratio,
+        )
+
     def _seed_offset_stage_store(
         self,
         *,
@@ -1165,34 +1187,26 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         # 266# ステージ: _apply_kyle_lambda()
         # Kyle (1985) 価格インパクト係数 → offset 安全マージン
         # 541#: disabled 時はステージ記録のみ（関数呼び出しスキップ）
-        if cfg.kyle_lambda_enabled:
-            effective_offset_ratio = self._apply_offset_ratio_stage(
-                _stages,
-                "kyle",
-                self._apply_kyle_lambda,
-                side,
-                spread,
-                mid_price,
-                effective_offset_ratio,
-            )
-        else:
-            _record_offset_stage(_stages, "kyle", effective_offset_ratio)
+        effective_offset_ratio = self._apply_optional_offset_ratio_stage(
+            _stages,
+            "kyle",
+            enabled=cfg.kyle_lambda_enabled,
+            current_ratio=effective_offset_ratio,
+            stage_fn=self._apply_kyle_lambda,
+            args=(side, spread, mid_price),
+        )
 
         # 266# ステージ: _apply_amihud_illiq()
         # Amihud (2002) 非流動性比率 → 低流動性時の offset 拡大
         # 541#: disabled 時はステージ記録のみ
-        if cfg.amihud_illiq_enabled:
-            effective_offset_ratio = self._apply_offset_ratio_stage(
-                _stages,
-                "amihud",
-                self._apply_amihud_illiq,
-                side,
-                spread,
-                mid_price,
-                effective_offset_ratio,
-            )
-        else:
-            _record_offset_stage(_stages, "amihud", effective_offset_ratio)
+        effective_offset_ratio = self._apply_optional_offset_ratio_stage(
+            _stages,
+            "amihud",
+            enabled=cfg.amihud_illiq_enabled,
+            current_ratio=effective_offset_ratio,
+            stage_fn=self._apply_amihud_illiq,
+            args=(side, spread, mid_price),
+        )
 
         # 163# ステージ抽出: _apply_volatility_guard()
         effective_offset_ratio = self._apply_offset_ratio_stage(
@@ -1216,32 +1230,26 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
 
         # 163# ステージ抽出: _apply_imbalance_risk()
         # 541#: disabled 時はステージ記録のみ
-        if cfg.imbalance_enabled:
-            effective_offset_ratio = self._apply_offset_ratio_stage(
-                _stages,
-                "imb_risk",
-                self._apply_imbalance_risk,
-                side,
-                imb,
-                effective_offset_ratio,
-            )
-        else:
-            _record_offset_stage(_stages, "imb_risk", effective_offset_ratio)
+        effective_offset_ratio = self._apply_optional_offset_ratio_stage(
+            _stages,
+            "imb_risk",
+            enabled=cfg.imbalance_enabled,
+            current_ratio=effective_offset_ratio,
+            stage_fn=self._apply_imbalance_risk,
+            args=(side, imb),
+        )
 
         # 286# ステージ: _apply_buy_as_guard()
         # 283# P1-6 / 284# P1: Buy-side AS 防御 — microprice 急落時の offset 拡大
         # 541#: disabled 時はステージ記録のみ
-        if cfg.buy_as_guard_enabled:
-            effective_offset_ratio = self._apply_offset_ratio_stage(
-                _stages,
-                "buy_as_guard",
-                self._apply_buy_as_guard,
-                side,
-                mid_trend_bps,
-                effective_offset_ratio,
-            )
-        else:
-            _record_offset_stage(_stages, "buy_as_guard", effective_offset_ratio)
+        effective_offset_ratio = self._apply_optional_offset_ratio_stage(
+            _stages,
+            "buy_as_guard",
+            enabled=cfg.buy_as_guard_enabled,
+            current_ratio=effective_offset_ratio,
+            stage_fn=self._apply_buy_as_guard,
+            args=(side, mid_trend_bps),
+        )
 
         # 310# A: Sell AS Time-of-Day Offset Boost (307# F3, 306# H5)
         # Ho-Stoll (1981): 時間帯別の情報非対称性変動を offset に反映

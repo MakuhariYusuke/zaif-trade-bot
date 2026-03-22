@@ -48,6 +48,7 @@
 Done の基準:
 - `compute()` が「preflight」「stage pipeline」「finalize」に 3 分割で読める
 - source-inspection test が direct 実装断片より helper/stage 契約を見る
+- optional stage (`kyle` / `amihud` / `imb_risk` / `buy_as_guard`) も helper 契約で読める
 
 #### B. `ab_judgment.py`
 
@@ -79,6 +80,8 @@ Done の基準:
 3. leak warning / rss warning / cache entry count の観測を一貫化
 4. callback / reporting で扱う `reward_components` 取得経路も shared helper に寄せる
 5. `RewardCalculator` の `get_last_reward_components()` は snapshot 契約へ寄せ、mutable payload alias を避ける
+6. `RewardCalculator` の stage payload 更新点は local helper へ寄せ、`_last_reward_components` の ownership を一本化する
+7. `UnifiedTrainer` の advanced feature stats は helper 経由で記録し、feature ごとの payload drift を減らす
 
 Done の基準:
 - telemetry field の符号/意味が module ごとにぶれない
@@ -131,3 +134,4 @@ Done の基準:
 - いま無理に state object 化へ進むのは早い
 - Wave 2 はかなり終盤で、次は ownership の最終整理と Wave 3/4 の仕上げを並行で進めるのが安全
 - `550#` は設計の基準、`551#` は実行順の基準、`521#` は全体の母艦、という役割分担で運用する
+- 報酬系の詳細設計と実行順は `557#` を正本とし、`551#` では Wave 全体との接続だけを持つ

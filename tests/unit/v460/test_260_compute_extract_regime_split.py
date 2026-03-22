@@ -47,6 +47,11 @@ class TestComputeExtractMethod:
         src = self._maker_price_source("compute")
         assert "self._raise_cross_venue_veto_if_needed()" in src
 
+    def test_compute_calls_optional_stage_helper(self) -> None:
+        """compute() が optional stage helper 経由で disabled/no-op を扱う."""
+        src = self._maker_price_source("compute")
+        assert "self._apply_optional_offset_ratio_stage(" in src
+
     def test_compute_calls_apply_ffd_boost(self) -> None:
         """compute() が _apply_ffd_boost() を呼び出す."""
         src = self._maker_price_source("compute")

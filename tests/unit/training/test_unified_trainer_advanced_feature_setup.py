@@ -8,6 +8,7 @@ from ztb.training.unified_trainer.advanced_feature_setup import (
     build_continual_learning_config,
     collect_meta_learning_history,
     extract_algorithm_model,
+    record_advanced_feature_stats,
     resolve_federated_stats,
     resolve_model_input_dim,
     resolve_model_output_dim,
@@ -79,3 +80,20 @@ def test_resolve_federated_stats_and_record_training_stat() -> None:
     record_training_stat(training_stats, "federated_learning", {"rounds": 2})
 
     assert training_stats == {"federated_learning": {"rounds": 2}}
+
+
+def test_record_advanced_feature_stats_skips_none_payload() -> None:
+    training_stats: dict[str, object] = {}
+
+    assert record_advanced_feature_stats(training_stats, "meta_learning", None) is False
+    assert training_stats == {}
+
+    assert (
+        record_advanced_feature_stats(
+            training_stats,
+            "meta_learning",
+            {"epochs": 3},
+        )
+        is True
+    )
+    assert training_stats == {"meta_learning": {"epochs": 3}}

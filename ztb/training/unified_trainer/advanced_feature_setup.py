@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from typing import Mapping
 
 from ztb.adaptation.continual_learning import ContinualLearningConfig
+from ztb.training.utils.training_stats_payloads import record_training_stat
 def extract_algorithm_model(algorithm_trainer: object | None) -> object | None:
     """Return the trainer model when available, otherwise None."""
     if algorithm_trainer is None or not hasattr(algorithm_trainer, "model"):
@@ -90,10 +92,23 @@ def resolve_federated_stats(federated_learner: object | None) -> dict[str, objec
     return {}
 
 
+def record_advanced_feature_stats(
+    training_stats: MutableMapping[str, object],
+    feature_name: str,
+    payload: object | None,
+) -> bool:
+    """Persist advanced-feature stats only when there is a payload to record."""
+    if payload is None:
+        return False
+    record_training_stat(training_stats, feature_name, payload)
+    return True
+
+
 __all__ = [
     "build_continual_learning_config",
     "collect_meta_learning_history",
     "extract_algorithm_model",
+    "record_advanced_feature_stats",
     "resolve_model_input_dim",
     "resolve_model_output_dim",
     "resolve_federated_stats",

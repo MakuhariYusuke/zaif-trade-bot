@@ -91,6 +91,7 @@ from ztb.training.unified_trainer.advanced_feature_setup import (
     build_continual_learning_config,
     collect_meta_learning_history,
     extract_algorithm_model,
+    record_advanced_feature_stats,
     resolve_federated_stats,
     resolve_model_input_dim,
     resolve_model_output_dim,
@@ -1679,7 +1680,11 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 self.logger.info(
                     f"Anomaly detection completed. Anomalies found: {is_anomaly}"
                 )
-                record_training_stat(self.training_stats, "anomaly_detection", results)
+                record_advanced_feature_stats(
+                    self.training_stats,
+                    "anomaly_detection",
+                    results,
+                )
 
         except Exception as e:
             self.logger.error(f"Anomaly detection failed: {e}")
@@ -1698,7 +1703,11 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             history = collect_meta_learning_history(meta, num_epochs=50)
             if history is not None:
                 self.logger.info("Meta learning adaptation completed")
-                record_training_stat(self.training_stats, "meta_learning", history)
+                record_advanced_feature_stats(
+                    self.training_stats,
+                    "meta_learning",
+                    history,
+                )
             else:
                 self.logger.info(
                     "No meta learning tasks collected - skipping adaptation"
@@ -1727,7 +1736,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
             fed.train_all_markets(dummy_loss)
             self.logger.info("Federated learning aggregation completed")
-            record_training_stat(
+            record_advanced_feature_stats(
                 self.training_stats,
                 "federated_learning",
                 resolve_federated_stats(fed),
@@ -1785,7 +1794,11 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             learning_stats = cl.learn_task(task_data, sac_loss, optimizer, num_epochs=5)
 
             self.logger.info("Continual learning integration completed")
-            record_training_stat(self.training_stats, "continual_learning", learning_stats)
+            record_advanced_feature_stats(
+                self.training_stats,
+                "continual_learning",
+                learning_stats,
+            )
 
         except Exception as e:
             self.logger.error(f"Continual learning integration failed: {e}")

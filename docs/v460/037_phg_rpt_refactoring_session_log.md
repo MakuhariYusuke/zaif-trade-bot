@@ -8607,3 +8607,21 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - snapshot 契約の回帰を追加
 - セルフレビュー
   - 外部 consumer が payload を書き換えて internal state を汚す経路を先に閉じておくと、Wave3/5 の調査がかなり楽になる
+## 2026-03-23 557# reward plan refresh
+- `docs/v460/557_phg_plan_reward_logic_unification_and_decomposition.md`
+  - `RewardKernel` / `RewardCalculator` の境界を、stateful/stateless の線で整理
+  - `reward_component_tracking` と snapshot 契約を、実装済み前進として反映
+  - 今後の実行順を
+    - payload/telemetry 契約収束
+    - core/orchestration 境界固定
+    - 必要箇所だけ `RewardKernel` へ寄せる
+    に整理
+## 2026-03-23 wave2/wave3 ownership tightening
+- `scripts/v460/lib/maker_price.py`
+  - optional stage (`kyle` / `amihud` / `imb_risk` / `buy_as_guard`) を `_apply_optional_offset_ratio_stage(...)` に集約
+- `ztb/trading/environment/components/calculators/reward_calculator.py`
+  - `_last_reward_components` の更新点を local helper に寄せて ownership を一本化
+- `ztb/training/unified_trainer/advanced_feature_setup.py`
+  - `record_advanced_feature_stats(...)` を追加し、advanced feature stats 記録を helper 経由へ整理
+- focused:
+  - `84 passed in 4.34s`

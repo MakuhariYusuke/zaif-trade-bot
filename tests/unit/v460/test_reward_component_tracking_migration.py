@@ -113,6 +113,18 @@ def test_snapshot_reward_components_returns_copy() -> None:
     assert snap["pnl_reward"] == 5.0
 
 
+def test_reward_calculator_last_components_snapshot_preserves_telemetry() -> None:
+    reward = make_reward_calculator()
+    reward._last_reward_components = build_reward_components("default", pnl_reward=1.0)
+    set_reward_telemetry(reward._last_reward_components, "mtf_weights", {"1m": 0.7})
+
+    snap = reward.get_last_reward_components()
+    snap["mtf_weights"] = {"1m": 0.2}
+
+    assert reward._last_reward_components["stage"] == "default"
+    assert reward._last_reward_components["mtf_weights"] == {"1m": 0.7}
+
+
 def test_risk_management_preserves_pre_and_post_trading_rewards() -> None:
     reward = make_reward_calculator()
     reward.unrealized_loss_penalty_calculator.calculate = MagicMock(return_value=-0.2)
