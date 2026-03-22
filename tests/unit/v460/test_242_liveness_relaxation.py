@@ -14,8 +14,8 @@ import pytest
 from ztb.risk.sell_dynamic_kill import (
     DynamicKillConfig,
     DynamicKillManager,
-    ToxicityLevel,
 )
+from ztb.risk.toxicity_types import ToxicityLevel
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

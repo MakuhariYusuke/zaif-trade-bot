@@ -19,11 +19,12 @@ Usage:
 
 from __future__ import annotations
 
-import enum
 import logging
 import math
 import time
 from dataclasses import dataclass, field
+
+from ztb.risk.toxicity_types import ToxicityAssessment, ToxicityLevel
 
 logger = logging.getLogger(__name__)
 
@@ -48,46 +49,6 @@ def _get_float(
         return float(v)
     return default
 
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 240# Toxicity Budget (232# §2.2 Glosten-Milgrom)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-
-class ToxicityLevel(enum.Enum):
-    """逆選択リスクの段階 (Glosten-Milgrom adverse-selection tiers).
-
-    GREEN  = 正常: そのまま参加
-    YELLOW = 警戒: スプレッドを広げて参加
-    ORANGE = 要注意: 確率的に 1/N 参加 + スプレッド拡大
-    KILL   = 危険: 完全停止 (従来の binary kill)
-    """
-
-    GREEN = "green"
-    YELLOW = "yellow"
-    ORANGE = "orange"
-    KILL = "kill"
-
-
-@dataclass(frozen=True, slots=True)
-class ToxicityAssessment:
-    """Toxicity budget 評価結果 (副作用なし).
-
-    Attributes:
-        level: 4段階の逆選択リスクレベル
-        score: 正規化 toxicity スコア [0, ∞) — 0=安全, 1.0=kill 閾値
-        offset_mult: 推奨 offset 乗数 (1.0=通常)
-        participation_rate: 推奨参加率 (1.0=全参加, 0.0=全停止)
-        threshold_used: 使用された kill 閾値 (bps)
-        rolling_mean: 直近 rolling PnL 平均 (bps), None=データ不足
-    """
-
-    level: ToxicityLevel
-    score: float
-    offset_mult: float
-    participation_rate: float
-    threshold_used: float
-    rolling_mean: float | None
 
 @dataclass
 class DynamicKillConfig:

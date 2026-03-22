@@ -13,6 +13,8 @@ _LAZY_MODULE_ATTRS: dict[str, tuple[str, str]] = {
     "PnLMonteCarloSimulator": ("ztb.risk.pnl_monte_carlo", "PnLMonteCarloSimulator"),
     "MonteCarloConfig": ("ztb.risk.pnl_monte_carlo", "MonteCarloConfig"),
     "MonteCarloResult": ("ztb.risk.pnl_monte_carlo", "MonteCarloResult"),
+    "ToxicityAssessment": ("ztb.risk.toxicity_types", "ToxicityAssessment"),
+    "ToxicityLevel": ("ztb.risk.toxicity_types", "ToxicityLevel"),
 }
 
 __all__ = [
@@ -24,6 +26,8 @@ __all__ = [
     "PnLMonteCarloSimulator",
     "MonteCarloConfig",
     "MonteCarloResult",
+    "ToxicityAssessment",
+    "ToxicityLevel",
 ]
 
 def __getattr__(name: str) -> object:

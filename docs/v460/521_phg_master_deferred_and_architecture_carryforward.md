@@ -253,6 +253,18 @@ shim を外しにいく条件:
   sample/calendar/PnL-data 不足の判定 payload は pure helper 側へ寄せやすくなった
 - script 側は dataclass / statistical comparison / report ownership を維持
 
+### 4.5. `toxicity_types`
+
+進捗:
+
+- `ToxicityAssessment` / `ToxicityLevel` は shared type として独立可能
+
+設計方針:
+
+- type 定義は `ztb.risk.toxicity_types` に寄せる
+- `sell_dynamic_kill` は kill ロジックの ownership を維持しつつ re-export 互換を残す
+- `toxicity_budget` / `cycle_gate_aggregator` / orchestrator 系は shared type を直接参照する
+
 ### 5. `UnifiedTrainer` / `RewardCalculator`
 
 現状:

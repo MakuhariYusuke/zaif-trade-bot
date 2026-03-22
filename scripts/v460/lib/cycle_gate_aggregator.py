@@ -51,10 +51,10 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
     from scripts.v460.lib.sidecar_types import SidecarSignal
-    from ztb.risk.sell_dynamic_kill import ToxicityAssessment
+    from ztb.risk.toxicity_types import ToxicityAssessment
 
 # 241# S-3: ToxicityLevel 値をモジュールレベルでキャッシュ (hot path import 回避)
-from ztb.risk.sell_dynamic_kill import ToxicityLevel
+from ztb.risk.toxicity_types import ToxicityLevel
 
 _ToxicityLevel_GREEN = ToxicityLevel.GREEN
 _ToxicityLevel_KILL = ToxicityLevel.KILL

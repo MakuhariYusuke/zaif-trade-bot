@@ -8412,3 +8412,15 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_143_regime_utilization.py -q --tb=short --no-cov`
 - セルフレビュー
   - `order_monitor` 本体は orchestration、`ztb.trading.execution` 側は pure policy、という分担にテストも追随させた
+## 560# toxicity type split
+- `ztb/risk/toxicity_types.py`
+  - `ToxicityAssessment` / `ToxicityLevel` を shared type module として抽出
+- `ztb/risk/sell_dynamic_kill.py`
+  - shared type を re-export する互換構成へ整理
+- `ztb/risk/toxicity_budget.py`
+- `scripts/v460/lib/cycle_gate_aggregator.py`
+- `scripts/v460/lib/orchestrator_guards.py`
+  - shared type import に追随
+- `tests/unit/v460/test_240_toxicity_budget.py`
+- `tests/unit/v460/test_242_liveness_relaxation.py`
+  - canonical type import に追随

@@ -13,7 +13,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ztb.metrics.fill_quality import FillRecord
-    from ztb.risk.sell_dynamic_kill import DynamicKillManager, ToxicityAssessment
+    from ztb.risk.sell_dynamic_kill import DynamicKillManager
+    from ztb.risk.toxicity_types import ToxicityAssessment
 
 logger = logging.getLogger(__name__)
 

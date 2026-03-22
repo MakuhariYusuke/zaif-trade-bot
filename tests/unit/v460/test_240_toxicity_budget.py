@@ -21,9 +21,8 @@ from ztb.risk.sell_dynamic_kill import (
     BuyDynamicKillManager,
     DynamicKillConfig,
     DynamicKillManager,
-    ToxicityAssessment,
-    ToxicityLevel,
 )
+from ztb.risk.toxicity_types import ToxicityAssessment, ToxicityLevel
 
 _FILL_LOOP_ORCHESTRATOR_SOURCE = Path(
     "scripts/v460/lib/fill_loop_orchestrator.py",

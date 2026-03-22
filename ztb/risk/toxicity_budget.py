@@ -17,7 +17,7 @@ Usage:
 
 from __future__ import annotations
 
-from ztb.risk.sell_dynamic_kill import ToxicityAssessment, ToxicityLevel
+from ztb.risk.toxicity_types import ToxicityAssessment, ToxicityLevel
 
 
 def assess_toxicity_score(
