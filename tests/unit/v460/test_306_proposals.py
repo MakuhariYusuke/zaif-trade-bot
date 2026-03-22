@@ -573,9 +573,9 @@ class TestFillRecordNewFields:
     def test_offset_stages_field(self) -> None:
         r = FillRecord(
             cycle_id="c1", timestamp=1.0, side="buy", order_price=100.0,
-            order_quantity=0.001, offset_stages='{"base": 0.05}',
+            order_quantity=0.001, offset_stages='{"schema_version": "549", "base": 0.05}',
         )
-        assert r.offset_stages == '{"base": 0.05}'
+        assert r.offset_stages == '{"schema_version": "549", "base": 0.05}'
 
     def test_microprice_bias_bps_field(self) -> None:
         r = FillRecord(

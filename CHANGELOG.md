@@ -6182,49 +6182,49 @@ python scripts/unified_trainer.py \
 - `ztb/trading/environment/components/calculators/reward_calculator.py` の `simple_reward` / `trading_focused` / `profit_optimized` payload を canonical helper に寄せた
 - `tests/unit/training/test_unified_trainer_advanced_feature_setup.py` に model dim helper 回帰を追加
 - `tests/unit/v460/test_reward_component_tracking_migration.py` に simple-reward bool payload の回帰を追加
-## 547# trainer setup convergence for attr-less models
+## 2026-03-23 trainer setup convergence for attr-less models
 - `ztb/training/unified_trainer/trainer.py` の advanced feature setup で algorithm model を1回解決して再利用するよう整理
 - continual fallback task data では、`input_dim/output_dim` 属性が無い model でも parameter shape helper へ安全にフォールバックするよう修正
 - `tests/unit/training/test_unified_trainer_advanced_feature_setup.py` ほか trainer focused 回帰で attr-less model 系の helper 適用を確認
-## 548# reward telemetry separation
+## 2026-03-23 reward telemetry separation
 - `ztb/trading/environment/components/calculators/reward_component_tracking.py` に `set_reward_telemetry(...)` を追加
 - `ztb/trading/environment/components/calculators/reward_calculator.py` の `mtf_weights` を scalar payload と分離した telemetry helper 経由に変更
 - stage method 実行前の重複 `action_bonus/balance_penalty` payload 更新を削除し、stage 後の canonical shaping に一本化
 - `tests/unit/v460/test_reward_component_tracking_migration.py` に non-scalar telemetry 回帰を追加
-## 549# trainer integration helper sweep and test tmp-path cleanup
+## 2026-03-23 trainer integration helper sweep and test tmp-path cleanup
 - `ztb/training/unified_trainer/advanced_feature_setup.py` に `collect_meta_learning_history(...)` / `resolve_federated_stats(...)` / `record_training_stat(...)` を追加
 - `ztb/training/unified_trainer/trainer.py` の meta/federated/continual integration 後半で helper を再利用し、training_stats ownership を整理
 - `tests/training/unified_trainer/test_algorithms.py` の temp fixture を `tmp_path` ベースへ変更
 - `tests/unit/training/test_unified_optimizer.py` の result persistence テストを `tmp_path` ベースへ変更
 - `tests/unit/training/test_unified_trainer_advanced_feature_setup.py` に integration helper 回帰を追加
-## 550# training stats payload sharing and SAC aggregation cleanup
+## 2026-03-23 training stats payload sharing and SAC aggregation cleanup
 - `ztb/training/utils/training_stats_payloads.py` を追加し、training stats の共通 payload shaping (`record_training_stat`, `build_optimization_training_stats`, `average_reward_component_history`) を shared helper 化
 - `ztb/training/unified_trainer/trainer.py` の optimization stats payload を shared helper に統一
 - `ztb/training/unified_trainer/algorithms/sac_trainer.py` の reward component 平均化を running-sum helper ベースへ変更し、一時 list 保持を削減
 - `tests/unit/training/test_training_stats_payloads.py` を追加し、training stats payload helper の focused 回帰を追加
 - `tests/training/algorithms/sac/test_sac_compression.py` の tempdir 使用を `tmp_path` ベースへ整理
-## 552# training stats payload placement cleanup
+## 2026-03-23 training stats payload placement cleanup
 - training stats payload helper は `ztb/training/` 直下から `ztb/training/utils/` 配下へ移動し、既存 `training_stats.py` と同じ discoverability ラインに整理
 - `UnifiedTrainer` / `SACTrainer` / training tests の import を新配置へ追随
 - `tests/training/test_model_compression.py` と `tests/unit/training/test_ppo_trainer.py` の tempdir 使用を `tmp_path` ベースへ整理
-## 553# training reporter compatibility and tmp-path sweep
+## 2026-03-23 training reporter compatibility and tmp-path sweep
 - `ztb/training/unified_trainer/components/reporter.py` の compatibility shim は `logger=None` でも初期化できるようにし、legacy 呼び出し側の許容範囲を広げた
 - `tests/training/test_ppo_trainer.py` / `tests/training/test_lagrange_integration.py` / `tests/training/test_grad_probe_guard.py` の tempdir fixture を `tmp_path` ベースへ整理
 - `docs/v460/521_phg_master_deferred_and_architecture_carryforward.md` に、`training/utils` と `unified_trainer` 配下の helper 配置基準、および `components/reporter.py` を shim として残す判断を追記
-## 554# helper source cleanup and gate-judgment tmp-path sweep
+## 2026-03-23 helper source cleanup and gate-judgment tmp-path sweep
 - `ztb/training/unified_trainer/advanced_feature_setup.py` から `record_training_stat(...)` の再 export を外し、canonical path を `ztb/training/utils/training_stats_payloads.py` に一本化
 - `tests/unit/training/test_unified_trainer_advanced_feature_setup.py` は `record_training_stat(...)` を canonical helper path から直接参照するよう整理
 - `tests/unit/v460/test_gate_judgment.py` の `_load_all_records` 系 tempdir 使用を `tmp_path` ベースへ整理
-## 555# training tempdir sweep follow-up
+## 2026-03-23 training tempdir sweep follow-up
 - `tests/training/test_ppo_trainer.py` の `TestPPOTrainerAutoHalt.temp_dir` fixture を `tmp_path` ベースへ整理し、残っていた `TemporaryDirectory()` 依存を解消
 - training 系の `test_ppo_trainer.py` / `test_lagrange_integration.py` / `test_grad_probe_guard.py` について、tempdir 使用が残っていないことを focused 回帰で確認
 - `docs/v460/521_phg_master_deferred_and_architecture_carryforward.md` に、training 既存資産 (`reporting.py`, `components/reporter.py`, `components/config_manager.py`) の再利用方針を追記
-## 556# ab-judgment insufficient helper and resilience tmp-path cleanup
+## 2026-03-23 ab-judgment insufficient helper and resilience tmp-path cleanup
 - `ztb/adaptation/ab_test/judgment_rules.py` に `build_insufficient_assessment(...)` を追加し、A/B 判定の sample/calendar/PnL-data 不足 payload を pure helper 化
 - `scripts/v460/lib/ab_judgment.py` は repeated な insufficient criterion 組立を shared helper ベースへ整理
 - `tests/unit/v460/test_160_ab_judgment.py` に insufficient helper の focused 回帰を追加
 - `tests/unit/v460/test_113_resilience.py` の state persistence テスト群を `tmp_path` ベースへ整理
-## 551# reward and reporting ownership tightening
+## 2026-03-23 reward and reporting ownership tightening
 - `ztb/trading/environment/components/calculators/reward_component_tracking.py` に `merge_reward_components(...)` を追加し、stage payload の後段 detail merge を helper 化
 - `ztb/trading/environment/components/calculators/reward_calculator.py` の `forced_balance` detail merge を raw `dict.update(...)` から helper ベースへ変更
 - `ztb/training/unified_trainer/reporting.py` に `persist_training_report(...)` / `persist_ensemble_report(...)` を追加し、report 生成保存を reporting 側へ収束

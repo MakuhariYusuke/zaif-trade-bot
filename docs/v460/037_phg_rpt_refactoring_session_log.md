@@ -277,6 +277,28 @@
 1. trainer/SAC/heavy_env の telemetry payload をさらに揃える
 2. broad 前の `sleep` / tempdir 固定費を継続削減する
 3. `maker_price` / `ab_judgment` の残る stateful ownership を broad 直前にもう一段だけ見直す
+
+## 2026-03-23 / Session 037-564
+
+### 実施
+- `test_306_proposals.py` の `offset_stages` フィールド例を schema-version 付き JSON へ更新
+- `CHANGELOG.md` の古い internal-number 風見出し (`547#`-`556#`) を日付見出しへ整理し、
+  docs 番号との混線を減らした
+- prompt 550 周辺の related focused として
+  - toxicity
+  - maker_price source/contract
+  - cross-venue lead-lag
+  を再確認
+
+### 結果
+- `offset_stages` の新契約は FillRecord 例まで一貫した
+- docs 番号を主にする運用と CHANGELOG 見出しのズレを一段解消できた
+- focused:
+  - `test_306_proposals.py`
+  - `test_240_toxicity_budget.py`
+  - `test_242_liveness_relaxation.py`
+  - `test_373_critical_fixes.py`
+  - `test_439_cross_venue_lead_lag.py`
 - 本体コード改善
   - `scripts/v460/lib/fill_cycle_executor.py`
     - `run_single_cycle()` の派生値導出を `_derive_decision_path()` へ抽出
