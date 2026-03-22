@@ -8530,3 +8530,10 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - セルフレビュー
   - `maker_price` は public 契約を保ったまま preflight の見通しを改善できた
   - `ab_judgment` は pure rule / local orchestration / statistical payload の境界がさらに明確になった
+## 567# 551 plan refresh
+- `docs/v460/551_phg_plan_post_550_remaining_waves.md`
+  - `Wave2` の stale な打ち手を現状進捗へ更新
+  - `maker_price` は preflight/cache resolve helper 化済み、`ab_judgment` は statistical payload shaping 済みとして整理
+  - 優先順を `ownership 最終整理 -> Wave3/4 -> broad` に更新
+- セルフレビュー
+  - `551#` を living plan として使うなら、完了済み項目を「次の打ち手」に残さない方が次の判断が速い

@@ -38,12 +38,12 @@
 残る本丸:
 - stateful orchestration 自体
 - veto / telemetry / cache の最終 ownership
-- `compute()` 前半の prefetch/cache resolve の読みやすさ
+- `compute()` 前半の preflight/cache resolve の最終整理
 
 次の打ち手:
-1. stage seed / final serialize に続き、preflight/cache resolve を local helper 化
-2. veto telemetry の update 点を local helper 化
-3. `compute()` source-contract test を stage 契約ベースへさらに寄せる
+1. stage seed / final serialize / preflight-cache-resolve helper 化までは完了として扱う
+2. veto telemetry と cache ownership の update 点を local helper にさらに寄せる
+3. `compute()` source-contract test を stage/preflight 契約ベースへさらに寄せる
 
 Done の基準:
 - `compute()` が「preflight」「stage pipeline」「finalize」に 3 分割で読める
@@ -53,12 +53,12 @@ Done の基準:
 
 残る本丸:
 - `ABJudgmentResult` orchestration
-- statistical comparison
+- statistical comparison の残る ownership
 - report summary / dashboard wording
 
 次の打ち手:
-1. result 初期化 + insufficient early return + primary criteria append を local helper 群で固定
-2. statistical comparison payload の shaping を local helper 化
+1. result 初期化 + insufficient early return + primary criteria append の local helper 化までは完了として扱う
+2. statistical comparison payload shaping も完了として、残る比較 ownership を見直す
 3. reporting 文面は最後まで script ownership に残す
 
 Done の基準:
@@ -113,8 +113,8 @@ Done の基準:
 
 ## 優先順
 
-1. `maker_price` preflight/cache resolve helper 化
-2. `ab_judgment` statistical comparison payload 整理
+1. `maker_price` veto/telemetry/cache ownership の最終整理
+2. `ab_judgment` result/report ownership の最終整理
 3. trainer/SAC/heavy_env telemetry payload 整列
 4. broad 前の wait/setup 固定費削減
 5. broad 最終確認
@@ -122,5 +122,5 @@ Done の基準:
 ## 今の判断
 
 - いま無理に state object 化へ進むのは早い
-- まずは Wave 2 を終わらせて、Wave 3/4 を broad 前の仕上げとして回すのが一番安全
+- Wave 2 はかなり終盤で、次は ownership の最終整理と Wave 3/4 の仕上げを並行で進めるのが安全
 - `550#` は設計の基準、`551#` は実行順の基準、`521#` は全体の母艦、という役割分担で運用する

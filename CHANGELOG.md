@@ -176,6 +176,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **test_260_compute_extract_regime_split.py**: `compute()` の preflight helper source-contract を追加
 - **test_160_ab_judgment.py**: statistical comparison payload helper の focused 回帰を追加
 
+## 2026-03-23 551 plan refresh
+
+### Changed
+- **docs/v460/551_phg_plan_post_550_remaining_waves.md**: `Wave2` の stale な打ち手を現状進捗へ更新し、優先順を ownership 最終整理ベースへ補正
+
 ## 2026-03-23 maker price / ab judgment local ownership tightening
 
 ### Changed
