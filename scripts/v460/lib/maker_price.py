@@ -156,6 +156,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         "_last_offset_stages",       # 306# E1: offset stage recording (JSON)
         "_prev_ob_snapshot",         # 543# OFI-Lite: 前回サイクルの OB snapshot
         "_last_ofi_lite",            # 543# OFI-Lite: 最新のOFI値 [-1,+1]
+        "_ofi_history",              # 544# OFI rolling deque (trend detection)
     )
 
     def __init__(
@@ -203,6 +204,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         # 543# OFI-Lite: 前回サイクルの OB snapshot
         self._prev_ob_snapshot: OrderBookSnapshot | None = None
         self._last_ofi_lite: float = 0.0
+        self._ofi_history: collections.deque[float] = collections.deque(maxlen=50)  # 544# 50 cycles ≈ 100 min
         # 162# Inventory Skewing: fill 履歴追跡
         _w = config.inventory_skewing_window if config.inventory_skewing_window > 0 else 100
         self._inv_fill_history: collections.deque[str] = collections.deque(maxlen=_w)
@@ -503,6 +505,8 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
                 self._prev_ob_snapshot.bids, self._prev_ob_snapshot.asks,
                 ob.bids, ob.asks, depth=depth,
             )
+            # 544# rolling deque にトレンド検知用の OFI 履歴を蓄積
+            self._ofi_history.append(self._last_ofi_lite)
         else:
             self._last_ofi_lite = 0.0
         bid_volume = sum(qty for _, qty in ob.bids[:depth]) if ob.bids else 0.0
@@ -690,12 +694,24 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         cfg = self._config
 
         if cfg.spread_adaptive_enabled:
+            # 544# δ* live connection: 理論最適スプレッド > 固定閾値 なら動的に引上げ
+            _eff_narrow_bps = cfg.narrow_spread_bps
+            _ds = self._last_as_delta_star_ratio
+            if _ds > 0 and mid_price > 0 and spread > 0:
+                _delta_star_bps = _ds * spread / mid_price * 10_000
+                if _delta_star_bps > _eff_narrow_bps:
+                    _eff_narrow_bps = min(_delta_star_bps, cfg.narrow_spread_bps * 3.0)
+                    logger.debug(
+                        f"[544# δ*→spread_adapt] {side}: narrow_bps "
+                        f"{cfg.narrow_spread_bps:.1f}→{_eff_narrow_bps:.1f} "
+                        f"(δ*={_delta_star_bps:.2f}bps)"
+                    )
             adaptive = apply_spread_adaptive_ratio(
                 side=side,
                 spread=spread,
                 mid_price=mid_price,
                 effective_offset_ratio=effective_offset_ratio,
-                narrow_spread_bps=cfg.narrow_spread_bps,
+                narrow_spread_bps=_eff_narrow_bps,
                 narrow_spread_boost=cfg.narrow_spread_boost,
                 narrow_spread_boost_buy=cfg.narrow_spread_boost_buy,
                 narrow_spread_boost_sell=cfg.narrow_spread_boost_sell,
@@ -960,9 +976,20 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         # 543# OFI-Lite: 計測値をステージ記録に含める
         if _stages is not None and self._last_ofi_lite != 0.0:
             _stages["ofi_lite"] = round(self._last_ofi_lite, 4)
+            # 544# OFI rolling mean (トレンド方向の滑らか推定)
+            if self._ofi_history:
+                _stages["ofi_mean"] = round(
+                    sum(self._ofi_history) / len(self._ofi_history), 4
+                )
         # 543# A-S δ*: 参照スプレッド計測値
         if _stages is not None and self._last_as_delta_star_ratio > 0.0:
             _stages["as_delta_star"] = round(self._last_as_delta_star_ratio, 4)
+            # 544# δ* vs spread (bps 比較テレメトリ)
+            if mid_price > 0 and spread > 0:
+                _ds_bps = self._last_as_delta_star_ratio * spread / mid_price * 10_000
+                _sp_bps = spread / mid_price * 10_000
+                _stages["delta_star_bps"] = round(_ds_bps, 2)
+                _stages["spread_bps"] = round(_sp_bps, 2)
 
         # 162# Inventory Skewing: 在庫偏重に応じた非対称 offset 補正
         # 228# C2: time-decay 適用 — 古い fill 履歴の影響を減衰

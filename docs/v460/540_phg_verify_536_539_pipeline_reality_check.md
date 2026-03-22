@@ -211,6 +211,7 @@ threshold=1.0 にすれば、2 gate の合計で block 可能になり、「単�
 - **[541#](541_phg_pipeline_optimization_lazy_import_stage_skip.md)**: lazy import 引き上げ (8 箇所) + pre-order disabled stage 5 段のスキップ最適化 + spread_adapt 挙動解明
 - **[542#](542_phg_ceiling_030_identity_audit_memleak.md)**: ceiling 0.25→0.30 + 残存 identity 段 6 段のスキップ不可確認 + メモリリーク監査 + test_405 陳腐化修正
 - **[543#](543_phg_phase3_ofi_toxicity_as_delta.md)**: Phase 3 実装 — OFI-Lite (CKS 2014) + Toxicity Budget 独立化 (GM 1985) + A-S δ* 計測
+- **[544#](544_phg_phase4_delta_star_ofi_window_sidecar_ladder.md)**: Phase 4 初期 — δ*→spread_adapt 動的バインド + OFI rolling window + sidecar ladder 0.20
 
 ### spread_adapt 挙動メモ
 

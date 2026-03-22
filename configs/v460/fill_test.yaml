@@ -623,7 +623,7 @@ vpin_vol_sync:
 # hot-reload 対応: YAML 変更 → 次サイクルで自動反映。ladder step-up はここを編集するだけ。
 sidecar:
   enabled: true                    # sidecar offset 注入の有効/無効
-  max_boost_bps: 0.15              # 最大ブースト (bps)。375# hard ceiling=0.20
+  max_boost_bps: 0.20              # 544# 377# ladder Step2: 0.15→0.20 (Phase 4 SAC影響力拡大)
   dead_zone: 0.10                  # |bias| ≤ この値で offset=0 (ノイズ除去)
   shaping: linear                  # "linear" | "quadratic" | "sigmoid"
   use_v2: true                     # true=v2(比例), false=v1(離散) — A/B切替用
