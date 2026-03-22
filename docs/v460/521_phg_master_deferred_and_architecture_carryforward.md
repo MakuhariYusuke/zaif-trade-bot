@@ -50,6 +50,11 @@ shim / façade が残るもの、あるいは `scripts/v460` 側に orchestrator
 
 まで併記する。
 
+### 5. Wave 実行計画は 551# を正本とする
+
+`521#` は全体像と設計判断の母艦とし、直近の着手順や Wave 進捗の更新は `551#` に寄せる。
+細かい優先順の変更は、まず `551#` を更新してから `521#` に反映する。
+
 ## 現在の全体像
 
 ### 既に大きく前進したもの
@@ -64,6 +69,7 @@ shim / façade が残るもの、あるいは `scripts/v460` 側に orchestrator
 - `skip_gate` の contract / runtime / result metadata / fill-record context
 - `maker_price` の pure math 群
 - observability / memory diagnostics / cycle revenue logging
+- heavy_env terminal telemetry の `reward_components` / `info` 責務分離
 
 ### まだ収束途中の本命
 
@@ -148,6 +154,22 @@ shim / façade が残るもの、あるいは `scripts/v460` 側に orchestrator
 
 この方針により、旧 `scripts/v460/lib/metrics_utils.py` は compatibility shim に留め、
 canonical 実装は `ztb.metrics.record_metrics` に寄せる。
+
+### B-3. training telemetry helper の責務境界
+
+- `ztb.training.utils.training_stats_payloads`
+  - training 共通の stats payload shaping
+  - `record_training_stat(...)`
+  - `build_optimization_training_stats(...)`
+  - `average_reward_component_history(...)`
+  - `record_average_reward_components(...)`
+- `ztb.training.unified_trainer.*`
+  - `UnifiedTrainer` 専用の setup / reporting / runtime integration
+- `ztb.training.sac` または `ztb.utils`
+  - SAC 専用または runtime 共通の memory diagnostics
+
+この境界により、training stats の canonical path は `training/utils` に一本化しつつ、
+trainer 専用 helper が generic helper に見える状態を避ける。
 
 ### C. shim を残す条件
 
@@ -258,6 +280,18 @@ shim を外しにいく条件:
   `ztb.adaptation.ab_test.judgment_rules` へ前進済み
 - insufficient early-return も small helper 化できる形まで揃い、
   sample/calendar/PnL-data 不足の判定 payload は pure helper 側へ寄せやすくなった
+- result 初期化 / insufficient early-return / summary line build / statistical payload shaping は local helper 化済み
+
+残る責務:
+
+- stateful result orchestration
+- report wording と dashboard 文脈
+
+設計方針:
+
+- `ABJudgmentResult` は script ownership のまま維持する
+- pure rule は `judgment_rules.py` に閉じ、report 文面は script 側に残す
+- metrics 系 shared aggregation は `ztb.metrics.record_metrics` を正面から再利用する
 - primary criteria result append も local helper 化済み
 - nonparametric / bootstrap / matched temporal の statistical payload 反映も local helper 化済み
 - summary/reporting line の build も local helper 化済み

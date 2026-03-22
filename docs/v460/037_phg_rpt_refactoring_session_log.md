@@ -8564,3 +8564,21 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - セルフレビュー
   - `heavy_env` は merge 順依存を減らし、payload の意味を helper で固定できた
   - skipped test でも fixed wait を減らしておくと、将来 unskip する時の broad 固定費削減に効く
+## 2026-03-23 Wave3 telemetry deepening
+- `ztb/training/utils/training_stats_payloads.py`
+  - `record_average_reward_components(...)` を追加し、reward component 平均化と canonical stats 記録を一箇所に集約
+- `ztb/training/unified_trainer/algorithms/sac_trainer.py`
+  - reward component 集計は `record_average_reward_components(...)` を再利用する形へ整理
+- `ztb/trading/environment/heavy_env/core.py`
+  - trend / curriculum の optional diagnostics 反映を `_append_reward_diagnostics_to_info(...)` に集約
+- `tests/unit/training/test_training_stats_payloads.py`
+- `tests/unit/v460/test_codex_408_409_fixes.py`
+  - telemetry helper の focused 回帰を追加
+- `tests/test_analyze_fill_logs.py`
+  - tempdir fixture を `tmp_path` ベースへ整理
+- focused:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/training/test_training_stats_payloads.py tests/unit/v460/test_codex_408_409_fixes.py -k 'record_average_reward_components or drawdown_penalty or bankruptcy_penalty or sync_terminal_reward_outputs or append_reward_diagnostics_to_info' -q --tb=short --no-cov`
+  - `.venv/Scripts/python.exe -m pytest tests/test_analyze_fill_logs.py -q --tb=short --no-cov`
+- セルフレビュー
+  - telemetry field の出どころを helper に寄せると、Wave5 前の payload drift を抑えやすい
+  - `tmp_path` 化は小さいが、broad 前の固定費削減として積み上げやすい

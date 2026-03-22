@@ -75,7 +75,7 @@ Done の基準:
 
 次の打ち手:
 1. training stats / reward telemetry / memory diagnostics の payload shape を揃える
-2. `info` と `reward_components` の責務分離は heavy_env terminal telemetry helper 化まで前進済みとして横展開を続ける
+2. `record_average_reward_components(...)` による training stats 収束と、heavy_env の `_sync_terminal_reward_outputs(...)` / `_append_reward_diagnostics_to_info(...)` を基準に `info` と `reward_components` の責務分離を横展開する
 3. leak warning / rss warning / cache entry count の観測を一貫化
 
 Done の基準:
@@ -94,6 +94,10 @@ Done の基準:
 2. `time.sleep()` ベース wait の `Event.wait()` / predicate wait 化を継続
 3. real-data setup の fixture 再利用 / sample cap 見直し
 4. stale source-contract test の stage/helper 契約化
+
+直近で前進したもの:
+- `tests/training/callbacks/performance/test_performance.py` の skipped benchmark fixed wait を `Event.wait()` 化
+- `tests/test_analyze_fill_logs.py` の tempdir fixture を `tmp_path` 化
 
 Done の基準:
 - broad 上位が「本物の計算 / 実データ / I/O」に再集中する

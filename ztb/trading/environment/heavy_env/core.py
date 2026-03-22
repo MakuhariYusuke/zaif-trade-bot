@@ -167,6 +167,30 @@ def _sync_terminal_reward_outputs(
     _apply_terminal_info_overrides(info, terminal_reward_components)
     info["reward_components"] = reward_components.copy()
 
+
+def _append_reward_diagnostics_to_info(
+    info: dict[str, object],
+    *,
+    reward_calculator: object,
+    logger_obj: logging.Logger,
+) -> None:
+    """Append optional reward diagnostics to info through one guarded path."""
+    try:
+        trend_detector = getattr(reward_calculator, "trend_detector", None)
+        if trend_detector is not None:
+            info["trend_signal"] = float(trend_detector.get_trend_signal())
+            info["trend_detector_stats"] = trend_detector.get_statistics()
+    except Exception:
+        logger_obj.exception("Failed to append trend_signal to info")
+
+    try:
+        curriculum_manager = getattr(reward_calculator, "curriculum_manager", None)
+        if curriculum_manager is not None:
+            info["curriculum_stage"] = curriculum_manager.get_current_stage()
+            info["curriculum_stage_info"] = curriculum_manager.get_stage_info()
+    except Exception:
+        logger_obj.exception("Failed to append curriculum stage to info")
+
 def deep_merge_dict(base: ObjectMap, update: ObjectMap) -> ObjectMap:
     """Deep merge two dictionaries."""
     result: ObjectMap = base.copy()
@@ -1452,35 +1476,11 @@ class HeavyTradingEnv(
         info = self._get_info(current_regime=current_regime)
         info["effective_action"] = effective_action  # v453: Expose effective action
         reward_components = self.reward_calculator.get_last_reward_components()
-        # Add trend signal to info for diagnostics and downstream use
-        try:
-            if (
-                hasattr(self.reward_calculator, "trend_detector")
-                and self.reward_calculator.trend_detector is not None
-            ):
-                info["trend_signal"] = float(
-                    self.reward_calculator.trend_detector.get_trend_signal()
-                )
-                # Provide short detector stats for AB testing and monitoring
-                info[
-                    "trend_detector_stats"
-                ] = self.reward_calculator.trend_detector.get_statistics()
-        except Exception:
-            self.logger.exception("Failed to append trend_signal to info")
-        # Add curriculum stage if present for integration tests and diagnostics
-        try:
-            if (
-                hasattr(self.reward_calculator, "curriculum_manager")
-                and self.reward_calculator.curriculum_manager is not None
-            ):
-                info[
-                    "curriculum_stage"
-                ] = self.reward_calculator.curriculum_manager.get_current_stage()
-                info[
-                    "curriculum_stage_info"
-                ] = self.reward_calculator.curriculum_manager.get_stage_info()
-        except Exception:
-            self.logger.exception("Failed to append curriculum stage to info")
+        _append_reward_diagnostics_to_info(
+            info,
+            reward_calculator=self.reward_calculator,
+            logger_obj=self.logger,
+        )
         info.update(debug_info)
 
         # Enhanced debug logging for SAC continuous action and reward analysis

@@ -53,8 +53,19 @@ def average_reward_component_history(
     }
 
 
+def record_average_reward_components(
+    training_stats: MutableMapping[str, object],
+    history: Sequence[Mapping[str, object]],
+) -> dict[str, float]:
+    """Average reward component history and persist it through the canonical stats path."""
+    averaged = average_reward_component_history(history)
+    record_training_stat(training_stats, "reward_components", averaged)
+    return averaged
+
+
 __all__ = [
     "average_reward_component_history",
     "build_optimization_training_stats",
+    "record_average_reward_components",
     "record_training_stat",
 ]

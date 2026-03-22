@@ -49,7 +49,7 @@ from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback
 from ztb.training.utils.distributed_training import get_distributed_info
 from ztb.training.utils.training_stats import TrainingStats
 from ztb.training.utils.training_stats_payloads import (
-    average_reward_component_history,
+    record_average_reward_components,
     record_training_stat,
 )
 from ztb.types.common import ConfigDict
@@ -1282,13 +1282,9 @@ class SACTrainer(BaseAlgorithmTrainer):
                     hasattr(cb, "reward_components_history")
                     and cb.reward_components_history
                 ):
-                    avg_components = average_reward_component_history(
-                        cb.reward_components_history
-                    )
-                    record_training_stat(
+                    avg_components = record_average_reward_components(
                         self.training_stats,
-                        "reward_components",
-                        avg_components,
+                        cb.reward_components_history,
                     )
                     self.logger.info(f"Collected reward_components: {avg_components}")
             except Exception as e:

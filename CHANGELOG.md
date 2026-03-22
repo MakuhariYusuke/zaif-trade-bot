@@ -6325,3 +6325,9 @@ python scripts/unified_trainer.py \
 - `ztb/trading/environment/heavy_env/core.py` に `_sync_terminal_reward_outputs(...)` を追加し、terminal reward payload の info 同期を helper 化
 - `tests/unit/v460/test_codex_408_409_fixes.py` に terminal reward sync helper の符号契約回帰を追加
 - `tests/training/callbacks/performance/test_performance.py` の skipped benchmark 固定 wait を `Event.wait()` ベースへ変更
+## 2026-03-23 wave3 telemetry deepening and analyze-fill tmp-path cleanup
+- `ztb/training/utils/training_stats_payloads.py` に `record_average_reward_components(...)` を追加し、reward component 平均化と canonical stats 記録を一箇所に集約
+- `ztb/training/unified_trainer/algorithms/sac_trainer.py` の reward component 集計は shared helper を再利用する形に整理
+- `ztb/trading/environment/heavy_env/core.py` に `_append_reward_diagnostics_to_info(...)` を追加し、trend/curriculum diagnostics を guarded helper 経由へ統一
+- `tests/unit/training/test_training_stats_payloads.py` と `tests/unit/v460/test_codex_408_409_fixes.py` に helper 契約回帰を追加
+- `tests/test_analyze_fill_logs.py` の tempdir fixture を `tmp_path` ベースへ整理

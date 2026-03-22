@@ -26,6 +26,7 @@ from ztb.trading.environment.components.rewards.forced_balance import (
 )
 from ztb.trading.environment.heavy_env.core import (
     _apply_terminal_reward_adjustments,
+    _append_reward_diagnostics_to_info,
     _sync_terminal_reward_outputs,
 )
 from ztb.trading.environment.utils.config import EnvironmentConfig
@@ -201,6 +202,30 @@ class TestT2RewardComponents:
         assert reward_components["drawdown_penalty"] == pytest.approx(-0.02)
         assert info["drawdown_penalty"] == pytest.approx(0.02)
         assert info["reward_components"] == reward_components
+
+    def test_append_reward_diagnostics_to_info_adds_optional_fields(self) -> None:
+        trend_detector = Mock()
+        trend_detector.get_trend_signal.return_value = 0.25
+        trend_detector.get_statistics.return_value = {"window": 20}
+        curriculum_manager = Mock()
+        curriculum_manager.get_current_stage.return_value = "warmup"
+        curriculum_manager.get_stage_info.return_value = {"episode": 3}
+        reward_calculator = SimpleNamespace(
+            trend_detector=trend_detector,
+            curriculum_manager=curriculum_manager,
+        )
+        info: dict[str, object] = {}
+
+        _append_reward_diagnostics_to_info(
+            info,
+            reward_calculator=reward_calculator,
+            logger_obj=logging.getLogger(__name__),
+        )
+
+        assert info["trend_signal"] == pytest.approx(0.25)
+        assert info["trend_detector_stats"] == {"window": 20}
+        assert info["curriculum_stage"] == "warmup"
+        assert info["curriculum_stage_info"] == {"episode": 3}
 
 
 class TestT3ReplayMarketProgress:

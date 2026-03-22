@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
-import tempfile
 from datetime import datetime, timezone
 
 import pytest
@@ -71,13 +70,12 @@ def sample_records() -> list[dict]:
 
 
 @pytest.fixture
-def tmp_data_dir(sample_records: list[dict]) -> pathlib.Path:
+def tmp_data_dir(tmp_path: pathlib.Path, sample_records: list[dict]) -> pathlib.Path:
     """Write sample records as JSONL to a temp dir."""
-    with tempfile.TemporaryDirectory() as td:
-        p = pathlib.Path(td) / "fill_records_20260220.jsonl"
-        lines = [json.dumps(r, ensure_ascii=False) for r in sample_records]
-        p.write_text("\n".join(lines), encoding="utf-8")
-        yield pathlib.Path(td)
+    p = tmp_path / "fill_records_20260220.jsonl"
+    lines = [json.dumps(r, ensure_ascii=False) for r in sample_records]
+    p.write_text("\n".join(lines), encoding="utf-8")
+    return tmp_path
 
 
 # ---------------------------------------------------------------------------
