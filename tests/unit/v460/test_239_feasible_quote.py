@@ -176,8 +176,11 @@ class TestSellGuardSingleLocation:
     """
 
     def test_sell_guard_raise_count_in_compute_source(self) -> None:
-        """compute() ソース内で sell_guard の raise は 1 箇所のみ."""
-        source = read_class_method_source(MAKER_PRICE, "MakerPriceCalculator", "compute")
+        """_enforce_spread_guards() ソース内で sell_guard の raise は 1 箇所のみ.
+
+        239# で前方移動後、_enforce_spread_guards に集約された。
+        """
+        source = read_class_method_source(MAKER_PRICE, "MakerPriceCalculator", "_enforce_spread_guards")
         # InfeasibleQuoteError で sell_guard_reject を raise する箇所 (複数行にまたがる)
         matches = re.findall(r'raise\s+InfeasibleQuoteError', source)
         sell_guard_count = sum(1 for m in re.finditer(r'sell_guard_reject', source))
@@ -303,14 +306,14 @@ class TestFeasibleQuoteTheory:
         assert result.spread == 5000.0
 
     def test_early_bailout_before_offset_keyword(self) -> None:
-        """sell_max_spread check が offset 計算より前にあること (ソース順序)."""
+        """_enforce_spread_guards() が compute() 内で offset 計算より前に呼ばれること."""
         source = read_class_method_source(MAKER_PRICE, "MakerPriceCalculator", "compute")
-        # sell_guard の InfeasibleQuoteError raise 位置
-        sell_guard_pos = source.find("sell_guard_reject")
+        # _enforce_spread_guards 呼出位置
+        guard_pos = source.find("_enforce_spread_guards")
         # offset 決定ロジック開始位置
         offset_logic_pos = source.find("offset 決定ロジック")
-        assert sell_guard_pos > 0, "sell_guard_reject not found"
+        assert guard_pos > 0, "_enforce_spread_guards not found in compute"
         assert offset_logic_pos > 0, "offset logic not found"
-        assert sell_guard_pos < offset_logic_pos, (
-            "sell_guard check should appear BEFORE offset calculations"
+        assert guard_pos < offset_logic_pos, (
+            "_enforce_spread_guards should appear BEFORE offset calculations"
         )

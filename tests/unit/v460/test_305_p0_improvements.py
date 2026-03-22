@@ -190,9 +190,8 @@ class TestOBCacheReuse:
     """compute() 内の OB 二重取得排除テスト."""
 
     def test_compute_uses_cached_ob_when_available(self) -> None:
-        """_last_ob_snapshot がある場合、追加 API 呼出しをしない."""
-        # 305# S2 コメントが存在すること
-        assert "305# S2" in _MAKER_PRICE_COMPUTE_SOURCE or "OB キャッシュ再利用" in _MAKER_PRICE_COMPUTE_SOURCE
+        """compute() が _resolve_market_snapshot 経由で OB キャッシュを利用."""
+        assert "_resolve_market_snapshot" in _MAKER_PRICE_COMPUTE_SOURCE or "_resolve_cached_imbalance" in _MAKER_PRICE_COMPUTE_SOURCE
 
 
 # ======================================================================

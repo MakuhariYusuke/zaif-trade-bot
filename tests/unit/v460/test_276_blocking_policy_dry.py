@@ -388,13 +388,14 @@ class TestGateBlockLastSideUpdate:
         """gate_result.blocked パスに update_last_side=True がある."""
         idx = self.src.find("_gate_result.blocked")
         assert idx >= 0
-        nearby = self.src[idx:idx + 2500]
-        has_direct = "self._last_side = next_side" in nearby
-        has_via_helper = (
-            "_handle_gate_block(st, ctx, _gate_result)" in nearby
-            and "update_last_side=True" in nearby
-        )
-        assert has_direct or has_via_helper, (
+        nearby = self.src[idx:idx + 500]
+        # blocked 直後に _handle_gate_block が呼ばれていること
+        has_handler_call = "_handle_gate_block(st, ctx, _gate_result)" in nearby
+        # _handle_gate_block メソッド内で update_last_side=True が使われていること
+        handler_idx = self.src.find("def _handle_gate_block(")
+        handler_body = self.src[handler_idx:handler_idx + 1500]
+        has_update_last_side = "update_last_side=True" in handler_body
+        assert has_handler_call and has_update_last_side, (
             "gate_result.blocked path missing _last_side update"
         )
 

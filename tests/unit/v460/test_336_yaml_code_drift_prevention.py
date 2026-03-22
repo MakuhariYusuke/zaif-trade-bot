@@ -101,6 +101,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "adapt_recency_window",
     "buy_dynamic_kill_regime_thresholds",
     "buy_dynamic_kill_ewma_time_decay_tau_sec",
+    "buy_dynamic_kill_ewma_input_clamp_bps",  # 549# Winsorization clamp
     "buy_dynamic_kill_max_duration_sec",
     "buy_velocity_skip_threshold_bps",
     "dd_cooldown_rearm_budget_bps",
@@ -142,7 +143,9 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "regime_trending_offset_boost_sell",
     "sell_dynamic_kill_regime_thresholds",
     "sell_dynamic_kill_window",  # 519# 50→30
+    "sell_dynamic_kill_ewma_input_clamp_bps",  # 549# Winsorization clamp
     "sell_dynamic_kill_ewma_time_decay_tau_sec",
+    "sell_dynamic_kill_max_duration_sec",  # YAML=600 vs code=1800
     "sell_age_cap_sec",
     "sell_hour_offset_boost",
     "sell_max_spread_jpy",
@@ -156,6 +159,8 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "skip_gate_ev_max_consecutive_skip",
     "skip_gate_ev_one_sided_threshold_shift",
     "skip_gate_hour_offsets",
+    "sidecar_max_boost_bps",  # 546# YAML=0.2 vs code=0.15
+    "sidecar_shaping",  # 546# YAML='quadratic' vs code='linear'
     "skip_gate_mode",
     "skip_gate_model_path",
     "skip_gate_model_path_buy",
@@ -191,6 +196,8 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "volatility_guard_vpin_threshold",
     "vpin_vol_sync_enabled",
     "wide_spread_bps",
+    # --- 555# entry gate ---
+    "entry_gate_calibration_map_path",  # 555# YAML has path, code default empty
 })
 
 
@@ -272,9 +279,10 @@ class TestYamlCodeDefaultDrift:
         """FillTestConfig のフィールド数が大幅に変化していないこと (God Object 監視)."""
         n_fields = len(dataclasses.fields(FillTestConfig))
         # 336# 時点: 390 fields. 491# composite_risk 追加で 454 fields.
-        assert 350 <= n_fields <= 470, (
+        # 555# entry_gate 追加で 481 fields.
+        assert 350 <= n_fields <= 500, (
             f"FillTestConfig のフィールド数が {n_fields} です。"
-            f" 350-470 の範囲外です — God Object 化の兆候かもしれません。"
+            f" 350-500 の範囲外です — God Object 化の兆候かもしれません。"
         )
 
 

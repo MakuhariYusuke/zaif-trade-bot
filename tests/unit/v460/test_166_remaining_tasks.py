@@ -168,17 +168,17 @@ class TestDeadlockSideAlternation:
         276# DRY: _execute_skip(update_last_side=True) 経由に移行。
         """
         code = read_source_text(ORCHESTRATOR_MID_CYCLE)
-        # 194# 統合ゲート: gate_result.blocked → _execute_skip(update_last_side=True)
+        # 194# 統合ゲート: gate_result.blocked → _handle_gate_block → _execute_skip(update_last_side=True)
         assert '_gate_result.blocked' in code
         idx = code.index('_gate_result.blocked')
-        nearby = code[idx:idx + 2500]
-        # 276#: _execute_skip 内で update_last_side=True が _last_side 更新を担う
-        has_direct = 'self._last_side = next_side' in nearby
-        has_via_helper = (
-            '_handle_gate_block(st, ctx, _gate_result)' in nearby
-            and 'update_last_side=True' in nearby
-        )
-        assert has_direct or has_via_helper, (
+        nearby = code[idx:idx + 500]
+        # blocked 直後に _handle_gate_block が呼ばれていること
+        has_handler_call = '_handle_gate_block(st, ctx, _gate_result)' in nearby
+        # _handle_gate_block メソッド内で update_last_side=True が使われていること
+        handler_idx = code.index('def _handle_gate_block(')
+        handler_body = code[handler_idx:handler_idx + 1500]
+        has_update_last_side = 'update_last_side=True' in handler_body
+        assert has_handler_call and has_update_last_side, (
             "unified gate blocked path missing _last_side update "
             "(either direct or via _execute_skip(update_last_side=True))"
         )

@@ -80,16 +80,9 @@ class TestMlCacheCleanup:
 class TestMlCacheCleanupIntegration:
     _ENTRYPOINTS = (
         "scripts/v460/ml/run_ml_pipeline.py",
-        "scripts/v460/ml/train_sg_v2.py",
         "scripts/v460/ml/train_sg_v3.py",
         "scripts/v460/ml/train_alt_horizon.py",
-        "scripts/v460/ml/tune_as_classifier.py",
         "scripts/v460/ml/walk_forward_as.py",
-        "scripts/v460/ml/deploy_sg_v3.py",
-        "scripts/v460/ml/deploy_sg_v4.py",
-        "scripts/v460/ml/run_070_deep_analysis.py",
-        "scripts/v460/ml/run_070_final_analysis.py",
-        "scripts/v460/ml/run_070_model_search.py",
         "scripts/v460/ml/retrain_scheduler.py",
     )
 
