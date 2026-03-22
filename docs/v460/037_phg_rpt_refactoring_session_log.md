@@ -8515,3 +8515,18 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `550#` を詳細設計、`551#` を実行順計画として参照関係を明記
 - セルフレビュー
   - `521#` を母艦、`550#` を設計、`551#` を実行順、と役割が分かれたので次の着手で迷いにくい
+## 566# Wave2 preflight/stat payload cleanup
+- `scripts/v460/lib/maker_price.py`
+  - cached imbalance / market snapshot / market-state refresh / spread guard を local helper 化
+  - `compute()` 前半の preflight/cache resolve を分離
+- `scripts/v460/lib/ab_judgment.py`
+  - nonparametric / bootstrap / matched temporal の payload 反映を local helper 群に整理
+- `tests/unit/v460/test_260_compute_extract_regime_split.py`
+  - `compute()` が preflight helper を経由する source-contract を追加
+- `tests/unit/v460/test_160_ab_judgment.py`
+  - statistical comparison payload helper の focused 回帰を追加
+- focused:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_260_compute_extract_regime_split.py tests/unit/v460/test_160_ab_judgment.py tests/unit/v460/test_159_side_regime_dashboard.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_405_offset_ceiling_pipeline.py tests/unit/v460/test_519_pricing_stage_tracking_migration.py -q --tb=short --no-cov`
+- セルフレビュー
+  - `maker_price` は public 契約を保ったまま preflight の見通しを改善できた
+  - `ab_judgment` は pure rule / local orchestration / statistical payload の境界がさらに明確になった

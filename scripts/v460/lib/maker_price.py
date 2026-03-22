@@ -828,6 +828,87 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         _record_offset_stage(stages, "final", final_ratio)
         self._last_offset_stages = _serialize_offset_stages(stages)
 
+    def _resolve_cached_imbalance(self, cfg: FillTestConfig) -> float:
+        """Resolve the imbalance input for this cycle from cached state."""
+        if cfg.imbalance_enabled:
+            return self._last_imbalance
+        return 0.0
+
+    async def _resolve_market_snapshot(
+        self,
+        adapter: OrderbookProvider,
+        symbol: str,
+    ) -> tuple[OrderBookSnapshot, float, float, float, float]:
+        """Resolve best bid/ask/spread/mid from cached or fresh orderbook state."""
+        if self._last_ob_snapshot is not None and self._last_ob_snapshot.bids and self._last_ob_snapshot.asks:
+            ob = self._last_ob_snapshot
+        else:
+            ob = await adapter.get_orderbook(symbol, depth=1)
+        if not ob.bids or not ob.asks:
+            raise ValueError("Empty orderbook")
+        best_bid = ob.bids[0][0]
+        best_ask = ob.asks[0][0]
+        spread = best_ask - best_bid
+        mid_price = (best_bid + best_ask) / 2.0
+        return ob, best_bid, best_ask, spread, mid_price
+
+    def _refresh_market_state(
+        self,
+        *,
+        mid_price: float,
+        spread: float,
+        now: float,
+        cfg: FillTestConfig,
+    ) -> float | None:
+        """Update cached mid/spread state and return the current trend velocity."""
+        mid_trend_bps: float | None = None
+        if self._prev_mid_price is not None and self._prev_mid_time is not None:
+            mid_trend_bps = compute_instant_velocity_bps(
+                current_mid=mid_price,
+                prev_mid=self._prev_mid_price,
+                dt=now - self._prev_mid_time,
+                max_dt=cfg.mid_trend_validity_sec,
+            )
+            if mid_trend_bps is not None and cfg.velocity_ema_alpha < 1.0:
+                alpha = cfg.velocity_ema_alpha
+                if self._smoothed_velocity_bps is not None:
+                    mid_trend_bps = alpha * mid_trend_bps + (1.0 - alpha) * self._smoothed_velocity_bps
+                self._smoothed_velocity_bps = mid_trend_bps
+        self._prev_mid_price = mid_price
+        self._prev_mid_time = now
+        self._last_mid_trend_bps = mid_trend_bps
+        self._last_spread = spread
+        self._last_spread_time = now
+        return mid_trend_bps
+
+    def _enforce_spread_guards(
+        self,
+        *,
+        side: str,
+        spread: float,
+        cfg: FillTestConfig,
+    ) -> None:
+        """Run the early spread-based infeasibility checks."""
+        if spread < cfg.min_spread_jpy:
+            raise InfeasibleQuoteError(
+                reason="spread_too_narrow",
+                msg=f"Spread too narrow: {spread:.0f} JPY < min {cfg.min_spread_jpy:.0f}",
+            )
+
+        if (
+            side == "sell"
+            and cfg.sell_max_spread_jpy > 0
+            and spread > cfg.sell_max_spread_jpy
+        ):
+            logger.info(
+                f"[sell_guard] Spread {spread:.0f} JPY > max {cfg.sell_max_spread_jpy:.0f} "
+                f"— skipping sell order (088# → 239# early bailout)"
+            )
+            raise InfeasibleQuoteError(
+                reason="sell_guard_reject",
+                msg=f"sell_guard: spread {spread:.0f} > max {cfg.sell_max_spread_jpy:.0f}",
+            )
+
     def _apply_loss_boost(
         self,
         side: str,
@@ -924,75 +1005,23 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         """
         cfg = self._config
 
-        # 054# S1: imbalance 計算
-        # 122# §7.3: pre-fetch で常時計算済みのため、キャッシュ値を使用
-        if cfg.imbalance_enabled:
-            # imbalance_enabled 時は offset 補正に使う (キャッシュ値は pre-fetch 済み)
-            imb = self._last_imbalance
-        else:
-            imb = 0.0
-
-        # 305# S2: OB キャッシュ再利用 — calculate_imbalance() の depth=5 OB を活用。
-        # 二重 API 呼出し (100-200ms/cycle) を排除。
-        # キャッシュ未取得時 (imbalance_enabled=False 等) のみ fresh fetch。
-        if self._last_ob_snapshot is not None and self._last_ob_snapshot.bids and self._last_ob_snapshot.asks:
-            ob = self._last_ob_snapshot
-        else:
-            ob = await adapter.get_orderbook(symbol, depth=1)
-        if not ob.bids or not ob.asks:
-            raise ValueError("Empty orderbook")
-        best_bid = ob.bids[0][0]
-        best_ask = ob.asks[0][0]
-        spread = best_ask - best_bid
-        mid_price = (best_bid + best_ask) / 2.0
-
-        # 054# → 208# SSOT: mid price velocity を velocity_math で算出
         now = time.time()
-        mid_trend_bps: float | None = None
-        if self._prev_mid_price is not None and self._prev_mid_time is not None:
-            mid_trend_bps = compute_instant_velocity_bps(
-                current_mid=mid_price,
-                prev_mid=self._prev_mid_price,
-                dt=now - self._prev_mid_time,
-                max_dt=cfg.mid_trend_validity_sec,
-            )
-            # 227# C3: EMA smoothing — bid-ask bounce noise filter
-            # 薄い板の1-tick変動でmidが振れるノイズを抑制。
-            # α = velocity_ema_alpha (default 0.3): 低いほど滑らか。
-            if mid_trend_bps is not None and cfg.velocity_ema_alpha < 1.0:
-                _alpha = cfg.velocity_ema_alpha
-                if self._smoothed_velocity_bps is not None:
-                    mid_trend_bps = _alpha * mid_trend_bps + (1.0 - _alpha) * self._smoothed_velocity_bps
-                self._smoothed_velocity_bps = mid_trend_bps
-        self._prev_mid_price = mid_price
-        self._prev_mid_time = now
-        self._last_mid_trend_bps = mid_trend_bps
-        self._last_spread = spread  # 197# Gate pre-check 用キャッシュ
-        self._last_spread_time = now  # 210# M5: staleness tracking
-
-        # 031# スプレッドフィルター
-        # 239# 232# §1.5: InfeasibleQuoteError で型安全分類
-        if spread < cfg.min_spread_jpy:
-            raise InfeasibleQuoteError(
-                reason="spread_too_narrow",
-                msg=f"Spread too narrow: {spread:.0f} JPY < min {cfg.min_spread_jpy:.0f}",
-            )
-
-        # 088# sell 専用: max_spread 超過で sell スキップ
-        # 239# 232# §1.5: offset 計算前に前方移動 — 構造的に不可能なサイクルの早期離脱
-        if (
-            side == "sell"
-            and cfg.sell_max_spread_jpy > 0
-            and spread > cfg.sell_max_spread_jpy
-        ):
-            logger.info(
-                f"[sell_guard] Spread {spread:.0f} JPY > max {cfg.sell_max_spread_jpy:.0f} "
-                f"— skipping sell order (088# → 239# early bailout)"
-            )
-            raise InfeasibleQuoteError(
-                reason="sell_guard_reject",
-                msg=f"sell_guard: spread {spread:.0f} > max {cfg.sell_max_spread_jpy:.0f}",
-            )
+        imb = self._resolve_cached_imbalance(cfg)
+        _, best_bid, best_ask, spread, mid_price = await self._resolve_market_snapshot(
+            adapter,
+            symbol,
+        )
+        mid_trend_bps = self._refresh_market_state(
+            mid_price=mid_price,
+            spread=spread,
+            now=now,
+            cfg=cfg,
+        )
+        self._enforce_spread_guards(
+            side=side,
+            spread=spread,
+            cfg=cfg,
+        )
 
         # === 303# C / 318# F5-1: none/unknown レジーム Passive MM バイパス ===
         # regime 未確定時に 13段パイプラインをスキップし固定 offset で配置。

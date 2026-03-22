@@ -36,6 +36,7 @@ from scripts.v460.lib.ab_judgment import (
     _compute_metrics,
     _extract_pnl30_array,
     _cliffs_delta,
+    _apply_statistical_comparison_payload,
     _holm_bonferroni,
     _mann_whitney_u,
     _norm_cdf,
@@ -193,6 +194,31 @@ class TestJudgmentRuleHelpers:
         assert assessment.verdict == "insufficient"
         assert assessment.value == pytest.approx(3.0)
         assert assessment.threshold == pytest.approx(5.0)
+
+    def test_apply_statistical_comparison_payload_populates_result(self) -> None:
+        result = ABJudgmentResult(
+            overall=Verdict.PASS,
+            variant_label="variant",
+            control_label="control",
+            n_variant=12,
+            n_control=12,
+        )
+        control = np.array([-0.4, -0.2, 0.0, 0.1, -0.1, 0.2, 0.3, -0.3, 0.4, 0.5, -0.5, 0.1])
+        variant = np.array([0.2, 0.3, 0.5, 0.4, 0.2, 0.6, 0.7, 0.1, 0.4, 0.6, 0.3, 0.5])
+        control_records = [_make_record(filled=True, pnl30=float(v), timestamp=1_700_000_000 + i * 60) for i, v in enumerate(control)]
+        variant_records = [_make_record(filled=True, pnl30=float(v), timestamp=1_700_000_000 + i * 60) for i, v in enumerate(variant)]
+
+        _apply_statistical_comparison_payload(
+            result,
+            control_pnl=control,
+            variant_pnl=variant,
+            control_records=control_records,
+            variant_records=variant_records,
+        )
+
+        assert result.pnl30_p_value is None or math.isfinite(result.pnl30_p_value)
+        assert result.pnl30_effect_size is None or math.isfinite(result.pnl30_effect_size)
+        assert result.matched_n_pairs is not None
 
 
 class TestComputeMetrics:

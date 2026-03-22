@@ -99,6 +99,110 @@ def _append_primary_criteria(
     result.criteria.extend(_to_criterion_result(assessment) for assessment in assessments)
 
 
+def _apply_nonparametric_comparison(
+    result: ABJudgmentResult,
+    *,
+    control_pnl: np.ndarray,
+    variant_pnl: np.ndarray,
+    p_value: float | None,
+) -> None:
+    """Attach nonparametric comparison payloads to the result."""
+    try:
+        _, mw_p = _mann_whitney_u(control_pnl, variant_pnl)
+        cd_val, cd_interp = _cliffs_delta(control_pnl, variant_pnl)
+        if math.isfinite(mw_p):
+            result.mann_whitney_p_value = mw_p
+        if math.isfinite(cd_val):
+            result.cliffs_delta_value = cd_val
+            result.cliffs_delta_interpretation = cd_interp
+
+        collected_p: list[float] = []
+        if p_value is not None and math.isfinite(p_value):
+            collected_p.append(p_value)
+        if result.mann_whitney_p_value is not None:
+            collected_p.append(result.mann_whitney_p_value)
+        if len(collected_p) >= 2:
+            result.holm_significant = _holm_bonferroni(collected_p)
+    except Exception as e:
+        logger.debug("Nonparametric test failed: %s", e)
+
+
+def _apply_bootstrap_comparison(
+    result: ABJudgmentResult,
+    *,
+    control_pnl: np.ndarray,
+    variant_pnl: np.ndarray,
+) -> None:
+    """Attach block-bootstrap comparison payloads to the result."""
+    try:
+        diff, ci_lo, ci_hi, bp = _block_bootstrap_mean_diff(variant_pnl, control_pnl)
+        if math.isfinite(diff):
+            result.bootstrap_mean_diff = diff
+        if math.isfinite(ci_lo):
+            result.bootstrap_ci_lower = ci_lo
+        if math.isfinite(ci_hi):
+            result.bootstrap_ci_upper = ci_hi
+        if math.isfinite(bp):
+            result.bootstrap_p_value = bp
+    except Exception as e:
+        logger.debug("Block bootstrap failed: %s", e)
+
+
+def _apply_matched_temporal_comparison(
+    result: ABJudgmentResult,
+    *,
+    variant_records: list[FillRecord],
+    control_records: list[FillRecord],
+) -> None:
+    """Attach matched temporal comparison payloads to the result."""
+    try:
+        mp_n, mp_diff, mp_ci_lo, mp_ci_hi, mp_p = _matched_temporal_comparison(
+            variant_records,
+            control_records,
+        )
+        result.matched_n_pairs = mp_n
+        if mp_diff is not None and math.isfinite(mp_diff):
+            result.matched_mean_diff = mp_diff
+        if mp_ci_lo is not None and math.isfinite(mp_ci_lo):
+            result.matched_ci_lower = mp_ci_lo
+        if mp_ci_hi is not None and math.isfinite(mp_ci_hi):
+            result.matched_ci_upper = mp_ci_hi
+        if mp_p is not None and math.isfinite(mp_p):
+            result.matched_p_value = mp_p
+    except Exception as e:
+        logger.debug("Matched temporal comparison failed: %s", e)
+
+
+def _apply_statistical_comparison_payload(
+    result: ABJudgmentResult,
+    *,
+    control_pnl: np.ndarray,
+    variant_pnl: np.ndarray,
+    control_records: list[FillRecord],
+    variant_records: list[FillRecord],
+) -> None:
+    """Attach all statistical comparison payloads in one place."""
+    p_value, effect_size = _compute_statistical_comparison(control_pnl, variant_pnl)
+    result.pnl30_p_value = p_value
+    result.pnl30_effect_size = effect_size
+    _apply_nonparametric_comparison(
+        result,
+        control_pnl=control_pnl,
+        variant_pnl=variant_pnl,
+        p_value=p_value,
+    )
+    _apply_bootstrap_comparison(
+        result,
+        control_pnl=control_pnl,
+        variant_pnl=variant_pnl,
+    )
+    _apply_matched_temporal_comparison(
+        result,
+        variant_records=variant_records,
+        control_records=control_records,
+    )
+
+
 # ======================================================================
 # P0-B: A/B 判定基準
 # ======================================================================
@@ -826,61 +930,13 @@ def evaluate_ab_variant(
 
     # --- 統計検定 (ztb.adaptation.ab_test.analyzer 活用) ---
     if len(v_pnl) >= 10 and len(c_pnl) >= 10:
-        p_value, effect_size = _compute_statistical_comparison(c_pnl, v_pnl)
-        result.pnl30_p_value = p_value
-        result.pnl30_effect_size = effect_size
-
-        # 297# F-4: ノンパラメトリック検定 + Holm-Bonferroni 補正
-        try:
-            _, mw_p = _mann_whitney_u(c_pnl, v_pnl)
-            cd_val, cd_interp = _cliffs_delta(c_pnl, v_pnl)
-            if math.isfinite(mw_p):
-                result.mann_whitney_p_value = mw_p
-            if math.isfinite(cd_val):
-                result.cliffs_delta_value = cd_val
-                result.cliffs_delta_interpretation = cd_interp
-
-            # Holm-Bonferroni: 2 検定 (Welch t + Mann-Whitney) を補正
-            collected_p: list[float] = []
-            if p_value is not None and math.isfinite(p_value):
-                collected_p.append(p_value)
-            if result.mann_whitney_p_value is not None:
-                collected_p.append(result.mann_whitney_p_value)
-            if len(collected_p) >= 2:
-                result.holm_significant = _holm_bonferroni(collected_p)
-        except Exception as e:
-            logger.debug("Nonparametric test failed: %s", e)
-
-        # 306# 301#-F2: Block Bootstrap for mean difference CI
-        try:
-            diff, ci_lo, ci_hi, bp = _block_bootstrap_mean_diff(v_pnl, c_pnl)
-            if math.isfinite(diff):
-                result.bootstrap_mean_diff = diff
-            if math.isfinite(ci_lo):
-                result.bootstrap_ci_lower = ci_lo
-            if math.isfinite(ci_hi):
-                result.bootstrap_ci_upper = ci_hi
-            if math.isfinite(bp):
-                result.bootstrap_p_value = bp
-        except Exception as e:
-            logger.debug("Block bootstrap failed: %s", e)
-
-        # 306# 301#-F2: Matched temporal comparison
-        try:
-            mp_n, mp_diff, mp_ci_lo, mp_ci_hi, mp_p = _matched_temporal_comparison(
-                variant_records, control_records,
-            )
-            result.matched_n_pairs = mp_n
-            if mp_diff is not None and math.isfinite(mp_diff):
-                result.matched_mean_diff = mp_diff
-            if mp_ci_lo is not None and math.isfinite(mp_ci_lo):
-                result.matched_ci_lower = mp_ci_lo
-            if mp_ci_hi is not None and math.isfinite(mp_ci_hi):
-                result.matched_ci_upper = mp_ci_hi
-            if mp_p is not None and math.isfinite(mp_p):
-                result.matched_p_value = mp_p
-        except Exception as e:
-            logger.debug("Matched temporal comparison failed: %s", e)
+        _apply_statistical_comparison_payload(
+            result,
+            control_pnl=c_pnl,
+            variant_pnl=v_pnl,
+            control_records=control_records,
+            variant_records=variant_records,
+        )
 
     # --- 総合判定 ---
     result.overall = Verdict(

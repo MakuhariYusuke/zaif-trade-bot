@@ -168,6 +168,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **docs/v460/521_phg_master_deferred_and_architecture_carryforward.md**: `550#` を詳細設計、`551#` を実行順計画として参照関係を明記
 - **docs/v460/index.md**: `551#` を索引へ追加
 
+## 2026-03-23 wave2 preflight and statistical payload cleanup
+
+### Changed
+- **maker_price.py**: cached imbalance / market snapshot / market-state refresh / spread guard を local helper 化し、`compute()` 前半の preflight/cache resolve を整理
+- **ab_judgment.py**: nonparametric / bootstrap / matched temporal の統計 payload 反映を local helper 群へ整理
+- **test_260_compute_extract_regime_split.py**: `compute()` の preflight helper source-contract を追加
+- **test_160_ab_judgment.py**: statistical comparison payload helper の focused 回帰を追加
+
 ## 2026-03-23 maker price / ab judgment local ownership tightening
 
 ### Changed

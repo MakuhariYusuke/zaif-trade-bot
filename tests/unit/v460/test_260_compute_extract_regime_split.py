@@ -34,6 +34,14 @@ class TestComputeExtractMethod:
         assert '"loss_boost"' in src
         assert "self._apply_loss_boost" in src
 
+    def test_compute_calls_preflight_helpers(self) -> None:
+        """compute() が preflight/cache resolve helper を経由する."""
+        src = self._maker_price_source("compute")
+        assert "self._resolve_cached_imbalance(" in src
+        assert "await self._resolve_market_snapshot(" in src
+        assert "self._refresh_market_state(" in src
+        assert "self._enforce_spread_guards(" in src
+
     def test_compute_calls_apply_ffd_boost(self) -> None:
         """compute() が _apply_ffd_boost() を呼び出す."""
         src = self._maker_price_source("compute")
