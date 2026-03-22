@@ -42,6 +42,11 @@ class TestComputeExtractMethod:
         assert "self._refresh_market_state(" in src
         assert "self._enforce_spread_guards(" in src
 
+    def test_compute_calls_cross_venue_veto_helper(self) -> None:
+        """compute() が veto raise helper を経由する."""
+        src = self._maker_price_source("compute")
+        assert "self._raise_cross_venue_veto_if_needed()" in src
+
     def test_compute_calls_apply_ffd_boost(self) -> None:
         """compute() が _apply_ffd_boost() を呼び出す."""
         src = self._maker_price_source("compute")

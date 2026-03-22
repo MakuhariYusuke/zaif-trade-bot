@@ -302,54 +302,88 @@ class ABJudgmentResult:
 
     def summary(self) -> str:
         """人間可読サマリ."""
-        lines = [
-            f"[Side Comparison] {self.overall.value.upper()}",
-            f"  variant={self.variant_label} (n={self.n_variant})"
-            f" vs control={self.control_label} (n={self.n_control})",
-            "  ※ 観察比較であり、ランダム割当の A/B テストではない (301# F2)",
-        ]
-        for c in self.criteria:
-            flag = "✅" if c.verdict == Verdict.PASS else ("⚠️" if c.verdict == Verdict.INSUFFICIENT else "❌")
-            lines.append(f"  {flag} {c.name}: {c.detail}")
-        if self.pnl30_p_value is not None:
-            holm_t = ""
-            if self.holm_significant is not None and len(self.holm_significant) >= 1:
-                holm_t = " (Holm ✓)" if self.holm_significant[0] else " (Holm ✗)"
-            eff_str = f"{self.pnl30_effect_size:.3f}" if self.pnl30_effect_size is not None else "N/A"
-            lines.append(
-                f"  [stat] Welch t: p={self.pnl30_p_value:.4f}{holm_t}, "
-                f"Cohen's d={eff_str}"
-            )
-        if self.mann_whitney_p_value is not None:
-            holm_mw = ""
-            if self.holm_significant is not None and len(self.holm_significant) >= 2:
-                holm_mw = " (Holm ✓)" if self.holm_significant[1] else " (Holm ✗)"
-            cd_str = f"{self.cliffs_delta_value:.3f}" if self.cliffs_delta_value is not None else "N/A"
-            lines.append(
-                f"  [stat] Mann-Whitney: p={self.mann_whitney_p_value:.4f}{holm_mw}, "
-                f"Cliff's δ={cd_str} "
-                f"({self.cliffs_delta_interpretation})"
-            )
-        # 306# block bootstrap CI
-        if self.bootstrap_mean_diff is not None:
-            ci_lo = f"{self.bootstrap_ci_lower:+.4f}" if self.bootstrap_ci_lower is not None else "N/A"
-            ci_hi = f"{self.bootstrap_ci_upper:+.4f}" if self.bootstrap_ci_upper is not None else "N/A"
-            bp = f"p={self.bootstrap_p_value:.4f}" if self.bootstrap_p_value is not None else "p=N/A"
-            lines.append(
-                f"  [stat] Block Bootstrap: diff={self.bootstrap_mean_diff:+.4f} bps, "
-                f"95%CI=[{ci_lo}, {ci_hi}], {bp}"
-            )
-        # 306# matched temporal comparison
-        if self.matched_n_pairs > 0:
-            md = f"{self.matched_mean_diff:+.4f}" if self.matched_mean_diff is not None else "N/A"
-            mci_lo = f"{self.matched_ci_lower:+.4f}" if self.matched_ci_lower is not None else "N/A"
-            mci_hi = f"{self.matched_ci_upper:+.4f}" if self.matched_ci_upper is not None else "N/A"
-            mp = f"p={self.matched_p_value:.4f}" if self.matched_p_value is not None else "p=N/A"
-            lines.append(
-                f"  [stat] Matched Pairs (n={self.matched_n_pairs}): "
-                f"diff={md} bps, 95%CI=[{mci_lo}, {mci_hi}], {mp}"
-            )
+        lines = _build_ab_result_header_lines(self)
+        lines.extend(_build_criterion_summary_lines(self.criteria))
+        lines.extend(_build_statistical_summary_lines(self))
         return "\n".join(lines)
+
+
+def _build_ab_judgment_result(
+    *,
+    variant_label: str,
+    control_label: str,
+    n_variant: int,
+    n_control: int,
+) -> ABJudgmentResult:
+    """Create the canonical local result container for A/B evaluation."""
+    return ABJudgmentResult(
+        overall=Verdict.PASS,
+        variant_label=variant_label,
+        control_label=control_label,
+        n_variant=n_variant,
+        n_control=n_control,
+    )
+
+
+def _build_ab_result_header_lines(result: ABJudgmentResult) -> list[str]:
+    """Build the standard A/B result header lines."""
+    return [
+        f"[Side Comparison] {result.overall.value.upper()}",
+        f"  variant={result.variant_label} (n={result.n_variant})"
+        f" vs control={result.control_label} (n={result.n_control})",
+        "  ※ 観察比較であり、ランダム割当の A/B テストではない (301# F2)",
+    ]
+
+
+def _build_criterion_summary_lines(criteria: list[CriterionResult]) -> list[str]:
+    """Format the primary criterion lines for the human-readable summary."""
+    lines: list[str] = []
+    for criterion in criteria:
+        flag = "✅" if criterion.verdict == Verdict.PASS else ("⚠️" if criterion.verdict == Verdict.INSUFFICIENT else "❌")
+        lines.append(f"  {flag} {criterion.name}: {criterion.detail}")
+    return lines
+
+
+def _build_statistical_summary_lines(result: ABJudgmentResult) -> list[str]:
+    """Format the statistical comparison block for the human-readable summary."""
+    lines: list[str] = []
+    if result.pnl30_p_value is not None:
+        holm_t = ""
+        if result.holm_significant is not None and len(result.holm_significant) >= 1:
+            holm_t = " (Holm ✓)" if result.holm_significant[0] else " (Holm ✗)"
+        eff_str = f"{result.pnl30_effect_size:.3f}" if result.pnl30_effect_size is not None else "N/A"
+        lines.append(
+            f"  [stat] Welch t: p={result.pnl30_p_value:.4f}{holm_t}, "
+            f"Cohen's d={eff_str}"
+        )
+    if result.mann_whitney_p_value is not None:
+        holm_mw = ""
+        if result.holm_significant is not None and len(result.holm_significant) >= 2:
+            holm_mw = " (Holm ✓)" if result.holm_significant[1] else " (Holm ✗)"
+        cd_str = f"{result.cliffs_delta_value:.3f}" if result.cliffs_delta_value is not None else "N/A"
+        lines.append(
+            f"  [stat] Mann-Whitney: p={result.mann_whitney_p_value:.4f}{holm_mw}, "
+            f"Cliff's δ={cd_str} "
+            f"({result.cliffs_delta_interpretation})"
+        )
+    if result.bootstrap_mean_diff is not None:
+        ci_lo = f"{result.bootstrap_ci_lower:+.4f}" if result.bootstrap_ci_lower is not None else "N/A"
+        ci_hi = f"{result.bootstrap_ci_upper:+.4f}" if result.bootstrap_ci_upper is not None else "N/A"
+        bp = f"p={result.bootstrap_p_value:.4f}" if result.bootstrap_p_value is not None else "p=N/A"
+        lines.append(
+            f"  [stat] Block Bootstrap: diff={result.bootstrap_mean_diff:+.4f} bps, "
+            f"95%CI=[{ci_lo}, {ci_hi}], {bp}"
+        )
+    if result.matched_n_pairs > 0:
+        md = f"{result.matched_mean_diff:+.4f}" if result.matched_mean_diff is not None else "N/A"
+        mci_lo = f"{result.matched_ci_lower:+.4f}" if result.matched_ci_lower is not None else "N/A"
+        mci_hi = f"{result.matched_ci_upper:+.4f}" if result.matched_ci_upper is not None else "N/A"
+        mp = f"p={result.matched_p_value:.4f}" if result.matched_p_value is not None else "p=N/A"
+        lines.append(
+            f"  [stat] Matched Pairs (n={result.matched_n_pairs}): "
+            f"diff={md} bps, 95%CI=[{mci_lo}, {mci_hi}], {mp}"
+        )
+    return lines
 
 
 
@@ -857,8 +891,7 @@ def evaluate_ab_variant(
     vm, v_pnl = _compute_metrics_with_pnl(variant_records)
     cm, c_pnl = _compute_metrics_with_pnl(control_records)
 
-    result = ABJudgmentResult(
-        overall=Verdict.PASS,
+    result = _build_ab_judgment_result(
         variant_label=variant_label,
         control_label=control_label,
         n_variant=int(vm["n_filled"]),

@@ -37,6 +37,8 @@ from scripts.v460.lib.ab_judgment import (
     _extract_pnl30_array,
     _cliffs_delta,
     _apply_statistical_comparison_payload,
+    _build_ab_judgment_result,
+    _build_statistical_summary_lines,
     _holm_bonferroni,
     _mann_whitney_u,
     _norm_cdf,
@@ -219,6 +221,42 @@ class TestJudgmentRuleHelpers:
         assert result.pnl30_p_value is None or math.isfinite(result.pnl30_p_value)
         assert result.pnl30_effect_size is None or math.isfinite(result.pnl30_effect_size)
         assert result.matched_n_pairs is not None
+
+    def test_build_ab_judgment_result_sets_header_fields(self) -> None:
+        result = _build_ab_judgment_result(
+            variant_label="v",
+            control_label="c",
+            n_variant=10,
+            n_control=12,
+        )
+        assert result.overall == Verdict.PASS
+        assert result.variant_label == "v"
+        assert result.control_label == "c"
+        assert result.n_variant == 10
+        assert result.n_control == 12
+
+    def test_build_statistical_summary_lines_handles_missing_optional_values(self) -> None:
+        result = ABJudgmentResult(
+            overall=Verdict.PASS,
+            variant_label="variant",
+            control_label="control",
+            n_variant=10,
+            n_control=10,
+            pnl30_p_value=0.2,
+            pnl30_effect_size=None,
+            mann_whitney_p_value=0.3,
+            cliffs_delta_value=None,
+            cliffs_delta_interpretation="small",
+            matched_n_pairs=1,
+            matched_mean_diff=None,
+            matched_ci_lower=None,
+            matched_ci_upper=None,
+            matched_p_value=None,
+        )
+        lines = _build_statistical_summary_lines(result)
+        assert any("Welch t" in line for line in lines)
+        assert any("Mann-Whitney" in line for line in lines)
+        assert any("Matched Pairs" in line for line in lines)
 
 
 class TestComputeMetrics:

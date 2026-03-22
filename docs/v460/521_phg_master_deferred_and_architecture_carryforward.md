@@ -180,6 +180,7 @@ shim を外しにいく条件:
 - stage apply + stage record の重複も local helper 化済み
 - stage store seed / final serialize も local helper 化済み
 - preflight/cache resolve も local helper 化済み
+- base offset resolve / cross-venue veto raise も local helper 化済み
 - source-contract test も direct call ではなく stage 契約を見る方向へ寄せる
 - `offset_stages` には schema version を持たせ、mixed-SHA の解析を安全化済み
 
@@ -259,6 +260,7 @@ shim を外しにいく条件:
   sample/calendar/PnL-data 不足の判定 payload は pure helper 側へ寄せやすくなった
 - primary criteria result append も local helper 化済み
 - nonparametric / bootstrap / matched temporal の statistical payload 反映も local helper 化済み
+- summary/reporting line の build も local helper 化済み
 - script 側は dataclass / statistical comparison / report ownership を維持
 
 ### 4.5. `toxicity_types`

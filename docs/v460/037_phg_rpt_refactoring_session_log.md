@@ -8537,3 +8537,17 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - 優先順を `ownership 最終整理 -> Wave3/4 -> broad` に更新
 - セルフレビュー
   - `551#` を living plan として使うなら、完了済み項目を「次の打ち手」に残さない方が次の判断が速い
+## 568# Wave2 ownership follow-up
+- `scripts/v460/lib/maker_price.py`
+  - base offset resolve と cross-venue veto raise を local helper 化
+- `scripts/v460/lib/ab_judgment.py`
+  - result 初期化と summary/reporting line build を local helper 化
+- `tests/unit/v460/test_260_compute_extract_regime_split.py`
+  - veto raise helper の source-contract を追加
+- `tests/unit/v460/test_160_ab_judgment.py`
+  - result builder / statistical summary line helper の focused 回帰を追加
+- focused:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_260_compute_extract_regime_split.py tests/unit/v460/test_160_ab_judgment.py tests/unit/v460/test_159_side_regime_dashboard.py -q --tb=short --no-cov`
+- セルフレビュー
+  - `maker_price` は preflight/stage/veto の読み筋が揃ってきた
+  - `ab_judgment` は result container / statistical payload / summary line build の ownership が見やすくなった

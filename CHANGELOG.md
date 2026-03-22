@@ -181,6 +181,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **docs/v460/551_phg_plan_post_550_remaining_waves.md**: `Wave2` の stale な打ち手を現状進捗へ更新し、優先順を ownership 最終整理ベースへ補正
 
+## 2026-03-23 wave2 ownership follow-up
+
+### Changed
+- **maker_price.py**: base offset resolve / cross-venue veto raise を local helper 化し、stateful ownership をさらに整理
+- **ab_judgment.py**: result 初期化と summary/reporting line build を local helper 化し、result/report ownership を整理
+- **test_260_compute_extract_regime_split.py**: veto raise helper の source-contract を追加
+- **test_160_ab_judgment.py**: result builder / statistical summary line helper の focused 回帰を追加
+
 ## 2026-03-23 maker price / ab judgment local ownership tightening
 
 ### Changed

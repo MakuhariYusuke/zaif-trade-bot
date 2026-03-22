@@ -828,6 +828,27 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         _record_offset_stage(stages, "final", final_ratio)
         self._last_offset_stages = _serialize_offset_stages(stages)
 
+    def _resolve_base_offset_ratio(self, side: str) -> float:
+        """Resolve the side-specific base offset ratio for this cycle."""
+        effective_offset_ratio = self._base_offset_ratio
+        if side == "buy" and self._base_offset_ratio_buy is not None:
+            effective_offset_ratio = self._base_offset_ratio_buy
+        elif side == "sell" and self._base_offset_ratio_sell is not None:
+            effective_offset_ratio = self._base_offset_ratio_sell
+        return effective_offset_ratio
+
+    def _raise_cross_venue_veto_if_needed(self) -> None:
+        """Raise the canonical veto error when cross-venue telemetry says stop."""
+        if not self._cross_venue_lead_lag_vetoed:
+            return
+        raise InfeasibleQuoteError(
+            reason=CR.CROSS_VENUE_LEAD_LAG_VETO,
+            msg=(
+                self._cross_venue_lead_lag_veto_reason
+                or "cross-venue lead-lag veto"
+            ),
+        )
+
     def _resolve_cached_imbalance(self, cfg: FillTestConfig) -> float:
         """Resolve the imbalance input for this cycle from cached state."""
         if cfg.imbalance_enabled:
@@ -1054,11 +1075,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
 
         # === offset 決定ロジック ===
         # 096# 状態分離: _base_offset_ratio* を参照
-        effective_offset_ratio = self._base_offset_ratio
-        if side == "buy" and self._base_offset_ratio_buy is not None:
-            effective_offset_ratio = self._base_offset_ratio_buy
-        elif side == "sell" and self._base_offset_ratio_sell is not None:
-            effective_offset_ratio = self._base_offset_ratio_sell
+        effective_offset_ratio = self._resolve_base_offset_ratio(side)
 
         # 306# E1 / 550#: offset stage recording — 各ステージの寄与を追跡
         _stages = self._seed_offset_stage_store(
@@ -1195,14 +1212,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
             side,
             effective_offset_ratio,
         )
-        if self._cross_venue_lead_lag_vetoed:
-            raise InfeasibleQuoteError(
-                reason=CR.CROSS_VENUE_LEAD_LAG_VETO,
-                msg=(
-                    self._cross_venue_lead_lag_veto_reason
-                    or "cross-venue lead-lag veto"
-                ),
-            )
+        self._raise_cross_venue_veto_if_needed()
 
         # 163# ステージ抽出: _apply_imbalance_risk()
         # 541#: disabled 時はステージ記録のみ
