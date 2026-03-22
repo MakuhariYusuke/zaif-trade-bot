@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-23 (544# Phase 4: δ*→spread_adapt動的バインド / OFI rolling / sidecar ladder)
+> 最終更新: 2026-03-23 (545# Phase 4b: OFI→boost変調 / Toxicity→sidecar confidence / δ*→sidecar動的天井)
 
 ---
 
@@ -571,6 +571,7 @@
 | 542 | impl | [542_phg_ceiling_030_identity_audit_memleak.md](542_phg_ceiling_030_identity_audit_memleak.md) | ceiling 0.25→0.30 + 残存identity段6段分析 + メモリリーク監査 + test_405修正 |
 | 543 | impl | [543_phg_phase3_ofi_toxicity_as_delta.md](543_phg_phase3_ofi_toxicity_as_delta.md) | Phase 3: OFI-Lite (CKS 2014) + Toxicity Budget独立化 (GM 1985) + A-S δ*計測 |
 | 544 | impl | [544_phg_phase4_delta_star_ofi_window_sidecar_ladder.md](544_phg_phase4_delta_star_ofi_window_sidecar_ladder.md) | Phase 4: δ*→spread_adapt動的バインド + OFI rolling window + sidecar ladder 0.20 |
+| 545 | impl | [545_phg_phase4b_ofi_boost_toxicity_sidecar_dynamic.md](545_phg_phase4b_ofi_boost_toxicity_sidecar_dynamic.md) | Phase 4b: OFI→boost変調 + Toxicity→sidecar confidence減衰 + δ*→sidecar動的天井 |
 
 ---
 

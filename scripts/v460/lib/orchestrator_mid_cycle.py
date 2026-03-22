@@ -170,6 +170,8 @@ class OrchestratorMidCycleMixin:
             sell_toxicity=_sell_tox,
             halt_recovery_active=_halt_recovery_active,
             sidecar_signal=_sidecar_signal,
+            # 545# δ* → sidecar dynamic ceiling
+            delta_star_ratio=self._maker_price._last_as_delta_star_ratio,
         )
 
         # 487# P0: sidecar attribution を gate_result に転記

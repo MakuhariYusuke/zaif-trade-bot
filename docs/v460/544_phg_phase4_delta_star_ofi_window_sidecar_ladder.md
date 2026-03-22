@@ -118,10 +118,12 @@ rolling mean を `offset_stages["ofi_mean"]` に記録。
 
 ## §7 次ステップ (Phase 4 継続)
 
-| 優先度 | 施策 | 根拠 |
-|--------|------|------|
-| P1 | sidecar hard ceiling 引上げ (0.20→0.30) | SAC ±5.0bps への段階的拡大 |
-| P1 | CalibrationMap → sidecar confidence 統合 | 538# §6「第三の道」learned calibration |
-| P2 | OFI mean → spread_adapt boost 変調 | 買い圧力時に buy aggressive, 売り圧力時に sell defensive |
-| P2 | δ* → executor stage 参照 (execution-level floor) | 現在 pre-order のみ。executor にも δ* 情報を伝搬 |
-| P3 | drift detection for OFI/Toxicity | 分布シフト監視 (ztb/utils/drift_detection.py 活用) |
+| 優先度 | 施策 | 根拠 | 状態 |
+|--------|------|------|------|
+| P1 | sidecar hard ceiling 引上げ (0.20→0.30) | SAC ±5.0bps への段階的拡大 | |
+| P1 | CalibrationMap → sidecar confidence 統合 | 538# §6「第三の道」learned calibration | |
+| P2 | OFI mean → spread_adapt boost 変調 | 買い圧力時に buy aggressive, 売り圧力時に sell defensive | ✅ 545# |
+| P2 | δ* → executor stage 参照 (execution-level floor) | 現在 pre-order のみ。executor にも δ* 情報を伝搬 | |
+| P2 | δ* → sidecar ceiling 動的化 | δ*>1.0で sidecar max_boost 拡大 | ✅ 545# |
+| P2 | Toxicity → sidecar confidence 減衰 | GM 逆選択レベルで SAC 信頼度を調整 | ✅ 545# |
+| P3 | drift detection for OFI/Toxicity | 分布シフト監視 (ztb/utils/drift_detection.py 活用) | |

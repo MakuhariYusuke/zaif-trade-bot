@@ -683,6 +683,25 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
     # 266# 共有ヘルパー: _finalize_price_with_spread_guard (compute() 内で使用)
     # ------------------------------------------------------------------
 
+    def _ofi_modulated_boost(self, base_boost: float, side: str) -> float:
+        """545# OFI mean → spread_adapt boost 動的調整.
+
+        OFI > 0 は買い圧力 (sell 側に不利), OFI < 0 は売り圧力 (buy 側に不利).
+        不利方向の場合 boost を引上げ（より保守的に離散させる）.
+        """
+        if not self._ofi_history:
+            return base_boost
+        ofi_mean = sum(self._ofi_history) / len(self._ofi_history)
+        # buy 側: ofi_mean < 0 (売り圧力) が adverse → boost UP
+        # sell 側: ofi_mean > 0 (買い圧力) が adverse → boost UP
+        adverse = -ofi_mean if side == "buy" else ofi_mean
+        if adverse <= 0:
+            return base_boost
+        # 感度係数: OFI ±1.0 正規化想定, 最大50%増
+        k = 0.5
+        scalar = 1.0 + min(adverse, 1.0) * k
+        return base_boost * scalar
+
     def _apply_spread_adaptive(
         self,
         side: str,
@@ -712,9 +731,9 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
                 mid_price=mid_price,
                 effective_offset_ratio=effective_offset_ratio,
                 narrow_spread_bps=_eff_narrow_bps,
-                narrow_spread_boost=cfg.narrow_spread_boost,
-                narrow_spread_boost_buy=cfg.narrow_spread_boost_buy,
-                narrow_spread_boost_sell=cfg.narrow_spread_boost_sell,
+                narrow_spread_boost=self._ofi_modulated_boost(cfg.narrow_spread_boost, side),
+                narrow_spread_boost_buy=self._ofi_modulated_boost(cfg.narrow_spread_boost_buy, side) if cfg.narrow_spread_boost_buy is not None else None,
+                narrow_spread_boost_sell=self._ofi_modulated_boost(cfg.narrow_spread_boost_sell, side) if cfg.narrow_spread_boost_sell is not None else None,
                 wide_spread_bps=cfg.wide_spread_bps,
                 wide_spread_ratio=cfg.wide_spread_ratio,
                 min_ratio=cfg.min_offset_ratio,

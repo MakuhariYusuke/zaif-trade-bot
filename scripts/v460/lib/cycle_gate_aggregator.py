@@ -59,6 +59,14 @@ from ztb.risk.sell_dynamic_kill import ToxicityLevel
 _ToxicityLevel_GREEN = ToxicityLevel.GREEN
 _ToxicityLevel_KILL = ToxicityLevel.KILL
 
+# 545# Toxicity → sidecar confidence attenuation map
+_TOXICITY_CONFIDENCE_MAP: dict[ToxicityLevel, float] = {
+    ToxicityLevel.GREEN: 1.0,
+    ToxicityLevel.YELLOW: 0.7,
+    ToxicityLevel.ORANGE: 0.3,
+    ToxicityLevel.KILL: 0.0,
+}
+
 logger = logging.getLogger(__name__)
 
 # ゲート blocking_reason → cancel_reason 定数のマッピング
@@ -203,6 +211,8 @@ class CycleGateAggregator:
         halt_recovery_active: bool = False,
         # 365# P5: SAC Sidecar signal
         sidecar_signal: SidecarSignal | None = None,
+        # 545# δ* → sidecar dynamic ceiling
+        delta_star_ratio: float = 0.0,
     ) -> CycleGateResult:
         """全 per-cycle ゲートを順次評価.
 
@@ -421,7 +431,12 @@ class CycleGateAggregator:
 
         # --- 365# P5: Sidecar offset injection ---
         if sidecar_signal is not None:
-            self._apply_sidecar_offset(result, sidecar_signal, side)
+            # 545# side-matching toxicity を sidecar confidence に反映
+            _tox = buy_toxicity if side == "buy" else sell_toxicity
+            self._apply_sidecar_offset(
+                result, sidecar_signal, side,
+                toxicity=_tox, delta_star_ratio=delta_star_ratio,
+            )
 
         return result
 
@@ -434,6 +449,9 @@ class CycleGateAggregator:
         result: CycleGateResult,
         signal: SidecarSignal,
         side: str,
+        *,
+        toxicity: ToxicityAssessment | None = None,
+        delta_star_ratio: float = 0.0,
     ) -> None:
         """365# P5 / 374# P3.1: SAC sidecar の directional_bias を offset に注入.
 
@@ -441,23 +459,54 @@ class CycleGateAggregator:
         compute_sidecar_offset_bps_v2 を使用し、SAC 連続値を比例的に変換。
         sidecar_use_v2=False の場合は従来の v1 (離散分類) を維持。
 
+        545# Toxicity → confidence attenuation:
+        toxicity レベルが高い場合、sidecar confidence を減衰させる。
+        545# δ* → dynamic ceiling:
+        δ* > 1.0 (理論最適 > 実勢) のとき max_boost_bps を拡大。
+
         Config hot-reload 対応: sidecar_max_boost_bps, sidecar_dead_zone,
         sidecar_shaping はランタイム中に YAML 変更で即時反映可能。
         """
         if not self._config.sidecar_enabled:
             return
 
+        # 545# Toxicity → sidecar confidence attenuation
+        _effective_confidence = signal.confidence
+        if toxicity is not None:
+            _tox_attenuation = _TOXICITY_CONFIDENCE_MAP.get(
+                toxicity.level, 1.0,
+            )
+            _effective_confidence *= _tox_attenuation
+            if _tox_attenuation < 1.0:
+                logger.debug(
+                    f"[545#] Sidecar confidence attenuated by toxicity: "
+                    f"{signal.confidence:.3f} × {_tox_attenuation:.2f} "
+                    f"= {_effective_confidence:.3f} (tox={toxicity.level})"
+                )
+
         if self._config.sidecar_use_v2:
             from scripts.v460.lib.sidecar_types import (
                 compute_sidecar_offset_bps_v2,
             )
 
+            # 545# δ* → sidecar dynamic ceiling
+            # δ* > 1.0 は理論最適スプレッドが実勢より広い → SAC をより強く活用
+            _max_boost = self._config.sidecar_max_boost_bps
+            if delta_star_ratio > 1.0:
+                _ceiling_scalar = min(delta_star_ratio, 2.0)
+                _max_boost *= _ceiling_scalar
+                logger.debug(
+                    f"[545#] Sidecar dynamic ceiling: "
+                    f"{self._config.sidecar_max_boost_bps:.2f} × {_ceiling_scalar:.2f} "
+                    f"= {_max_boost:.2f}bps (δ*={delta_star_ratio:.3f})"
+                )
+
             offset = compute_sidecar_offset_bps_v2(
                 bias=signal.directional_bias,
                 side=side,
-                max_boost_bps=self._config.sidecar_max_boost_bps,
+                max_boost_bps=_max_boost,
                 dead_zone=self._config.sidecar_dead_zone,
-                confidence=signal.confidence,
+                confidence=_effective_confidence,
                 shaping=self._config.sidecar_shaping,
             )
         else:
@@ -468,7 +517,7 @@ class CycleGateAggregator:
             offset = compute_sidecar_offset_bps(
                 bias=signal.directional_bias,
                 side=side,
-                confidence=signal.confidence,
+                confidence=_effective_confidence,
             )
 
         result.sidecar_offset_bps = offset
