@@ -387,6 +387,7 @@ class FillTestConfig:
     narrow_spread_boost_sell: float | None = None   # 093# sell 側 boost (None=共通値)
     wide_spread_bps: float = 25.0          # 広スプレッド閾値 (bps)
     wide_spread_ratio: float = 0.5         # 広い時の offset 割引
+    ofi_boost_sensitivity: float = 0.5     # 546# OFI adverse boost 感度 (0=無効)
     # 439# 433# §3 / 434# §4.2: cross-venue lead-lag guard
     # BitFlyer 等の高流動 venue を directional override ではなく、
     # adverse-side retreat / veto の補助票として使う。

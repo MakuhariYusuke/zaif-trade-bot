@@ -322,6 +322,7 @@ spread_adaptive:
   narrow_spread_boost_sell: 2.5 # 183# 2.0→2.5 (spread<2kでAS32%: sell側のoffset拡大で逆選択回避強化)
   wide_spread_bps: 4.5         # 120# 25.0→4.5: P95相当。max(5.03)に近い帯で wide 判定
   wide_spread_ratio: 0.5       # 広スプレッド時の offset 割引
+  ofi_boost_sensitivity: 0.5   # 546# OFI adverse方向 boost 感度 (0=無効, 0.5=最大50%増)
 
 # ---- 439# Cross-Venue Lead-Lag Guard (433# §3 / 434# §4.2) ----
 # "タイムマシン・アービトラージ" の safe first step。
@@ -625,7 +626,7 @@ sidecar:
   enabled: true                    # sidecar offset 注入の有効/無効
   max_boost_bps: 0.20              # 544# 377# ladder Step2: 0.15→0.20 (Phase 4 SAC影響力拡大)
   dead_zone: 0.10                  # |bias| ≤ この値で offset=0 (ノイズ除去)
-  shaping: linear                  # "linear" | "quadratic" | "sigmoid"
+  shaping: quadratic               # 546# "linear" | "quadratic" | "sigmoid" — quadratic: 弱signal抑制、強signal集中
   use_v2: true                     # true=v2(比例), false=v1(離散) — A/B切替用
 
 # ---- 303# none レジーム Passive MM フォールバック ----

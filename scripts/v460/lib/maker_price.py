@@ -697,8 +697,10 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         adverse = -ofi_mean if side == "buy" else ofi_mean
         if adverse <= 0:
             return base_boost
-        # 感度係数: OFI ±1.0 正規化想定, 最大50%増
-        k = 0.5
+        # 546# config 化: OFI ±1.0 正規化想定
+        k = self._config.ofi_boost_sensitivity
+        if k <= 0:
+            return base_boost
         scalar = 1.0 + min(adverse, 1.0) * k
         return base_boost * scalar
 
