@@ -667,3 +667,4 @@ NNN_phX_TYPE_description.md
 20. **109# DUP3**: UnifiedTrainer God Object (2835行)
 21. **408# RewardCalculator 分割**: God Object 2252行 → RewardSettingsAccessor / StageRouter / PostProcessor 段階分割
 | 550 | plan | [550_phg_plan_maker_price_state_and_stage_boundary.md](550_phg_plan_maker_price_state_and_stage_boundary.md) | MakerPrice state 分類 + compute stage 境界設計 |
+| 551 | plan | [551_phg_plan_post_550_remaining_waves.md](551_phg_plan_post_550_remaining_waves.md) | Post-550 残課題の Wave2-5 実行計画 |

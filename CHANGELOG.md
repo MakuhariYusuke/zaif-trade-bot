@@ -99,6 +99,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **docs/v460/550_phg_plan_maker_price_state_and_stage_boundary.md**: `maker_price` の state 分類、`compute()` stage 実行順、依存関係、split-first 境界を整理
 - **docs/v460/521_phg_master_deferred_and_architecture_carryforward.md**: `maker_price` の詳細設計参照先を `550#` に固定
 
+## 2026-03-23 post-550 remaining waves plan
+
+### Changed
+- **docs/v460/551_phg_plan_post_550_remaining_waves.md**: `550#` 後の残課題を Wave 2-5 の実行順として整理
+- **docs/v460/521_phg_master_deferred_and_architecture_carryforward.md**: `550#` を詳細設計、`551#` を実行順計画として参照関係を明記
+- **docs/v460/index.md**: `551#` を索引へ追加
+
 ## 2026-03-23 maker price / ab judgment local ownership tightening
 
 ### Changed

@@ -8505,3 +8505,13 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - `tests/unit/v460/test_240_toxicity_budget.py`
 - `tests/unit/v460/test_242_liveness_relaxation.py`
   - canonical type import に追随
+## 565# post-550 remaining waves plan
+- `docs/v460/551_phg_plan_post_550_remaining_waves.md`
+  - `550#` 後の残課題を Wave 2-5 実行計画として整理
+  - `maker_price` / `ab_judgment` / telemetry payload / broad 前固定費 / broad 最終確認の順に優先度を固定
+- `docs/v460/index.md`
+  - `551#` を索引へ追加
+- `docs/v460/521_phg_master_deferred_and_architecture_carryforward.md`
+  - `550#` を詳細設計、`551#` を実行順計画として参照関係を明記
+- セルフレビュー
+  - `521#` を母艦、`550#` を設計、`551#` を実行順、と役割が分かれたので次の着手で迷いにくい
