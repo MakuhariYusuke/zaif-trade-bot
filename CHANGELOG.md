@@ -58,6 +58,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `test_sac_retrain_scheduler.py`
 - `test_health_monitor.py`
 
+## 2026-03-22 heavy env drawdown telemetry fix
+
+### Changed
+- **ztb/trading/environment/heavy_env/core.py**: `drawdown_penalty` が `reward_components` 由来の負値で `info` を上書きしないよう修正
+- **ztb/trading/environment/heavy_env/core.py**: terminal telemetry の `info` / `reward_components` 責務を helper で固定
+
+### Tests
+- `test_bankruptcy_drawdown.py`
+- `test_codex_408_409_fixes.py -k 'drawdown_penalty or bankruptcy_penalty'`
+
+## 2026-03-22 maker price source-contract refresh
+
+### Changed
+- **tests/unit/v460/test_260_compute_extract_regime_split.py**: `compute()` の loss_boost 検査を direct call ではなく stage 契約ベースへ更新
+
 ### Changed
 - **ztb/trading/execution/stale_order_policy.py**: order status 正規化と `CancelFillCheck` を canonical 化
 - **order_monitor.py**: stale-order policy の shared helper を再利用する構成へ整理

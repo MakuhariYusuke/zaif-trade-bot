@@ -28,9 +28,11 @@ class TestComputeExtractMethod:
         return read_class_method_source(MAKER_PRICE, "MakerPriceCalculator", method_name)
 
     def test_compute_calls_apply_loss_boost(self) -> None:
-        """compute() が _apply_loss_boost() を呼び出す."""
+        """compute() が loss_boost stage 経由で _apply_loss_boost を使う."""
         src = self._maker_price_source("compute")
-        assert "_apply_loss_boost(" in src
+        assert "_apply_offset_ratio_stage(" in src
+        assert '"loss_boost"' in src
+        assert "self._apply_loss_boost" in src
 
     def test_compute_calls_apply_ffd_boost(self) -> None:
         """compute() が _apply_ffd_boost() を呼び出す."""

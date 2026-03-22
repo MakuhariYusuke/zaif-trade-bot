@@ -8391,3 +8391,17 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - generic memory monitoring は `utils` に寄せる方が自然
   - `training/sac` に別の `memory_monitor.py` を持つより、re-export の方が混乱が少ない
   - 停止待ちを固定 `sleep` に依存させない方が broad 前の安定化に効く
+## 557# heavy_env drawdown telemetry fix
+- `ztb/trading/environment/heavy_env/core.py`
+  - terminal reward component を `info.update(...)` した後、`drawdown_penalty` が負値で上書きされる問題を修正
+  - `reward_components` は reward delta、`info` は監視用 penalty 量、の契約を helper で固定
+- focused:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/trading/environment/test_bankruptcy_drawdown.py tests/unit/v460/test_codex_408_409_fixes.py -k 'drawdown_penalty or bankruptcy_penalty' -q --tb=short --no-cov`
+- セルフレビュー
+  - subtle だが実害のある符号ずれで、後段集計や監視を静かに壊すタイプだった
+  - merge 順だけでなく helper で責務を固定したので、同系統の再発を減らせる
+## 558# maker_price source-contract test refresh
+- `tests/unit/v460/test_260_compute_extract_regime_split.py`
+  - `test_compute_calls_apply_loss_boost` を direct call 検査から stage 契約検査へ更新
+- セルフレビュー
+  - `compute()` が local helper/stage を経由する構造へ進んだ後は、文字列一致も現契約に追随させた方が保守しやすい

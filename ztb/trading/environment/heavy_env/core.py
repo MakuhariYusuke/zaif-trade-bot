@@ -143,6 +143,17 @@ def _apply_terminal_reward_adjustments(
     reward_components["final_reward"] = reward
     return reward, reward_components
 
+
+def _apply_terminal_info_overrides(
+    info: dict[str, object],
+    terminal_reward_components: dict[str, float],
+) -> None:
+    """Preserve info-facing terminal telemetry that should not mirror reward deltas."""
+    if "drawdown_penalty" in terminal_reward_components:
+        info["drawdown_penalty"] = abs(
+            float(terminal_reward_components["drawdown_penalty"])
+        )
+
 def deep_merge_dict(base: ObjectMap, update: ObjectMap) -> ObjectMap:
     """Deep merge two dictionaries."""
     result: ObjectMap = base.copy()
@@ -1500,6 +1511,7 @@ class HeavyTradingEnv(
             )
         reward_components.update(terminal_reward_components)
         info.update(reward_components)
+        _apply_terminal_info_overrides(info, terminal_reward_components)
         info["reward_components"] = reward_components.copy()
 
         next_obs = self._get_observation()

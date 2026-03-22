@@ -176,6 +176,7 @@ shim を外しにいく条件:
 - final ceiling clamp は stage 化済み
 - offset stage recording も helper 化済み
 - stage apply + stage record の重複も local helper 化済み
+- source-contract test も direct call ではなく stage 契約を見る方向へ寄せる
 
 残る責務:
 
@@ -301,8 +302,9 @@ shim を外しにいく条件:
   - model availability 判定
   - continual config 構築
   のような repeated setup 前提に対して有効だった
-- 一方で SAC 側には `ztb.training.sac.memory_monitor` のような shared helper を置き、
-  post-cycle の RSS / cache entry 監視を script 側から再利用する方が自然だった
+- 一方で SAC 側の post-cycle RSS / cache entry 監視は、
+  `ztb.utils.memory_monitor` に shared helper を一本化し、
+  `ztb.training.sac` 側は re-export に留める方が自然だった
 - `RewardCalculator` はまだ実分割には入っていないが、
   先に抜く対象を
   - stage bookkeeping
@@ -611,6 +613,9 @@ docs の先送り管理は、本書へかなり一元化できる状態に入っ
 - `ab_judgment`
   - insufficient 判定は canonical assessment helper と local result helper の二層に整理
   - pure rule は `ztb.adaptation.ab_test`、`ABJudgmentResult` ownership は script 側、の境界を維持
+- `heavy_env`
+  - terminal penalty は helper 化済み
+  - `reward_components` は reward delta の符号、`info` は監視しやすい penalty 量、で責務を分ける
 - `SAC`
   - post-cycle memory diagnostics は `ztb.utils.memory_monitor` に一本化する
   - `ztb.training.sac` 側は re-export に留め、scheduler 側は logging と lifecycle ownership に寄せる
