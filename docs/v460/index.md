@@ -669,5 +669,7 @@ NNN_phX_TYPE_description.md
 | 550 | plan | [550_phg_plan_maker_price_state_and_stage_boundary.md](550_phg_plan_maker_price_state_and_stage_boundary.md) | MakerPrice state 分類 + compute stage 境界設計 |
 | 551 | plan | [551_phg_plan_post_550_remaining_waves.md](551_phg_plan_post_550_remaining_waves.md) | Post-550 残課題の Wave2-5 実行計画 |
 | 552 | report | [552_sac_retrain_investigation_and_toxicity_counter.md](552_sac_retrain_investigation_and_toxicity_counter.md) | SAC retrain OOS gate 持続失敗調査 + 546#D toxicity counter 実装 |
-| 553 | impl | update_training_data.py | OHLCV 自動更新パイプライン: yfinance→FeatureRegistry→parquet + stale data guard |
-| 554 | impl | calibration_batch.py | Raw gap fill + CalibrationMap offline batch (546# §B 推奨) |
+| 553 | impl | [553_phg_impl_ohlcv_auto_update_pipeline.md](553_phg_impl_ohlcv_auto_update_pipeline.md) | OHLCV 自動更新パイプライン: yfinance→FeatureRegistry→parquet + stale data guard |
+| 554 | impl | [554_phg_impl_raw_gap_fill_and_calibration_batch.md](554_phg_impl_raw_gap_fill_and_calibration_batch.md) | Raw gap fill + CalibrationMap offline batch (546# §B 推奨) |
+| 555 | impl | [555_phg_impl_calibrationmap_runtime_integration.md](555_phg_impl_calibrationmap_runtime_integration.md) | CalibrationMap ランタイム統合: entry gate EV check + online update |
+| 556 | rpt | [556_phg_rpt_git_optimization_and_architectural_proposals.md](556_phg_rpt_git_optimization_and_architectural_proposals.md) | Git リポジトリの健全化と構造的負債の深掘り・改善提案 |
