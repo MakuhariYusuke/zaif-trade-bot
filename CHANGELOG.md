@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 553# OHLCV auto-update pipeline for SAC retrain (2026-03-23)
+
+### Added
+- **update_training_data.py**: yfinance → FeatureRegistry → parquet 自動更新モジュール (`scripts/v460/ml/update_training_data.py`)
+  - `ensure_data_fresh(parquet_path, max_stale_hours)`: retrain_scheduler 呼出用ライブラリ関数
+  - `update_training_parquet(parquet_path, period)`: CLI + ライブラリ両対応の更新関数
+  - 既存 parquet 末尾 500 行をウォームアップに使用し、RSI 等のインジケータ初期化を保証
+  - 重複排除 + timestamp ソート + tz-naive 統一
+- **stale data guard**: `sac_retrain_scheduler.py` の `retrain_once()` にデータ鮮度チェック (48h 閾値) + 自動更新を追加
+
+### Fixed
+- **SAC retrain 停止の根本原因を解消**: OHLCV parquet が 2026-02-10 で停止していた問題。yfinance から 8,370 行 (7日分) を取得し 2026-03-22 19:46 まで更新完了。SAC 使用全 17 特徴量は NaN 0%
+
+### Tests
+- `test_552_update_training_data.py`: 15 tests (timestamp, merge, freshness check, download mock)
+
 ## 552# SAC retrain investigation + 546#D toxicity counter (2026-03-23)
 
 ### Added

@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-23 (552# SAC retrain調査、546#D toxicity counter実装)
+> 最終更新: 2026-03-23 (553# OHLCV auto-update pipeline)
 
 ---
 
@@ -669,3 +669,4 @@ NNN_phX_TYPE_description.md
 | 550 | plan | [550_phg_plan_maker_price_state_and_stage_boundary.md](550_phg_plan_maker_price_state_and_stage_boundary.md) | MakerPrice state 分類 + compute stage 境界設計 |
 | 551 | plan | [551_phg_plan_post_550_remaining_waves.md](551_phg_plan_post_550_remaining_waves.md) | Post-550 残課題の Wave2-5 実行計画 |
 | 552 | report | [552_sac_retrain_investigation_and_toxicity_counter.md](552_sac_retrain_investigation_and_toxicity_counter.md) | SAC retrain OOS gate 持続失敗調査 + 546#D toxicity counter 実装 |
+| 553 | impl | update_training_data.py | OHLCV 自動更新パイプライン: yfinance→FeatureRegistry→parquet + stale data guard |

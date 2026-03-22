@@ -322,6 +322,14 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
     model: SACModelProtocol | None = None
     debug_details: dict[str, object] = {}
 
+    # ── 0. データ鮮度チェック + 自動更新 (552#) ──
+    try:
+        from scripts.v460.ml.update_training_data import ensure_data_fresh
+
+        ensure_data_fresh(cfg.ohlcv_path, max_stale_hours=48.0)
+    except Exception as e:
+        logger.warning(f"[552#] Data freshness check failed (non-fatal): {e}")
+
     # ── 1. データ読み込み ──
     try:
         import pandas as pd
