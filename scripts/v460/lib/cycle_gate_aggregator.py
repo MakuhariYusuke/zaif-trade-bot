@@ -84,6 +84,7 @@ _GATE_TO_CANCEL_REASON: dict[str, str] = {
     "sell_guard_reject": "sell_guard_reject",             # 197# Gate 9
     "toxicity_participation_skip": "toxicity_participation_skip",  # 240# Toxicity Budget
     "composite_risk_exceeded": "composite_risk_exceeded",  # 491# Composite Risk Score
+    "entry_gate_ev_negative": "entry_gate_ev_negative",  # 555# CalibrationMap EV gate
 }
 
 

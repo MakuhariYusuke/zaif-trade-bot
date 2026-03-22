@@ -1135,4 +1135,24 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
             if yaml_key in mt:
                 kwargs[config_key] = mt[yaml_key]
 
+    # ---- 555# Entry Gate: CalibrationMap EV ベースエントリー判定 ----
+    eg = yaml_cfg.get("entry_gate", {})
+    if isinstance(eg, dict) and eg:
+        if eg.get("enabled") is not None:
+            kwargs["entry_gate_enabled"] = bool(eg["enabled"])
+        eg_map = {
+            "calibration_map_path": "entry_gate_calibration_map_path",
+            "probability_mode": "entry_gate_probability_mode",
+            "ewma_tau": "entry_gate_ewma_tau",
+            "n_min": "entry_gate_n_min",
+            "fee_rate": "entry_gate_fee_rate",
+            "c_spread": "entry_gate_c_spread",
+            "c_vol": "entry_gate_c_vol",
+            "c_imp": "entry_gate_c_imp",
+            "online_update": "entry_gate_online_update",
+        }
+        for yaml_key, config_key in eg_map.items():
+            if yaml_key in eg:
+                kwargs[config_key] = eg[yaml_key]
+
     return _FillTestConfig(**kwargs)

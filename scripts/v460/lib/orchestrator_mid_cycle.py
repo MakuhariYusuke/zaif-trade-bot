@@ -195,6 +195,56 @@ class OrchestratorMidCycleMixin:
             await self._handle_gate_block(st, ctx, _gate_result)
             return None
 
+        # 555# Entry Gate: CalibrationMap EV チェック (log_only or blocking)
+        if self._calibration_map is not None:
+            _cal_regime = (
+                self._regime_detector.current_regime.value
+                if self._regime_detector is not None else "unknown"
+            )
+            _cal_action = 0.3 if next_side == "buy" else -0.3
+            _cal_bundle = self._calibration_map.get_stats(_cal_regime, _cal_action)
+            _cal_fb = _cal_bundle["fallback"]
+            _prob_mode = self.config.entry_gate_probability_mode
+            if _prob_mode == "ucb":
+                _p_win = _cal_fb.get("p_win_ucb", _cal_fb.get("p_win_mean", 0.5))
+            elif _prob_mode == "mean":
+                _p_win = _cal_fb.get("p_win_mean", 0.5)
+            else:
+                _p_win = _cal_fb.get("p_win_lcb", 0.0)
+            _cal_ev = _p_win * _cal_fb["avg_win"] - (1.0 - _p_win) * _cal_fb["avg_loss"]
+            st.entry_gate_eval_count += 1
+            st.entry_gate_ev_sum += _cal_ev
+            if _cal_ev <= 0:
+                st.entry_gate_block_count += 1
+                if self.config.entry_gate_enabled:
+                    logger.info(
+                        "[555#] Entry gate BLOCK: %s %s EV=%.2f "
+                        "(p_win=%.3f, avg_win=%.2f, avg_loss=%.2f, n_eff=%.1f)",
+                        next_side, _cal_regime, _cal_ev,
+                        _p_win, _cal_fb["avg_win"], _cal_fb["avg_loss"],
+                        _cal_fb.get("n_eff", 0.0),
+                    )
+                    from scripts.v460.lib.cycle_gate_aggregator import (
+                        CycleGateResult,
+                    )
+                    _eg_gate_result = CycleGateResult(
+                        blocked=True,
+                        blocking_reason="entry_gate_ev_negative",
+                        checks=_gate_result.checks,
+                    )
+                    await self._handle_gate_block(st, ctx, _eg_gate_result)
+                    return None
+                else:
+                    logger.debug(
+                        "[555#] Entry gate observe: %s %s EV=%.2f (disabled)",
+                        next_side, _cal_regime, _cal_ev,
+                    )
+            else:
+                logger.debug(
+                    "[555#] Entry gate PASS: %s %s EV=%.2f",
+                    next_side, _cal_regime, _cal_ev,
+                )
+
         # ゲート通過 → カウンタリセット
         self._consecutive_gate_blocks = 0
         if _gate_result.dual_kill_bypassed:

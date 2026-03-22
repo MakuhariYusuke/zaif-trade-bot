@@ -866,17 +866,17 @@ class FillTestConfig:
     composite_risk_weight_ranging_low_vol: float = 0.5  # Gate 2,2b: ranging low vol
     composite_risk_weight_trending_sell: float = 0.7    # Gate 3: trending sell
     composite_risk_weight_velocity: float = 0.4         # Gate 6: velocity skip
-    # ---- 555# Entry Gate: CalibrationMap EV ベースエントリー判定 (546# §B) ----
-    entry_gate_enabled: bool = False                    # True で EV gate blocking 有効
-    entry_gate_calibration_map_path: str = ""           # CalibrationMap JSON パス
-    entry_gate_probability_mode: str = "lcb"            # lcb / mean / ucb
-    entry_gate_ewma_tau: float = 100.0                  # EWMA 時定数
-    entry_gate_n_min: float = 30.0                      # 階層 fallback 信頼閾値
-    entry_gate_fee_rate: float = 0.0                    # maker fee (Coincheck=0)
-    entry_gate_c_spread: float = 0.3                    # spread cost weight
-    entry_gate_c_vol: float = 0.2                       # volatility cost weight
-    entry_gate_c_imp: float = 0.5                       # market impact weight
-    entry_gate_online_update: bool = True               # 約定後 CalibrationMap 更新
+    # 555# Entry Gate: CalibrationMap EV ベースエントリー判定 (546# §B)
+    entry_gate_enabled: bool = False               # True=EV≤0 でブロック, False=ログのみ
+    entry_gate_calibration_map_path: str = ""       # CalibrationMap JSON パス
+    entry_gate_probability_mode: str = "lcb"        # lcb / mean / ucb
+    entry_gate_ewma_tau: float = 100.0              # EWMA 時定数
+    entry_gate_n_min: float = 30.0                  # 信頼必要サンプル数
+    entry_gate_fee_rate: float = 0.0                # maker fee (Coincheck maker=0)
+    entry_gate_c_spread: float = 0.3                # spread cost weight
+    entry_gate_c_vol: float = 0.2                   # volatility cost weight
+    entry_gate_c_imp: float = 0.5                   # market impact weight
+    entry_gate_online_update: bool = True            # 約定後に CalibrationMap を online 更新
     micro_timeout_wait_sec_sell: float | None = None  # sell 側の配置時間 (None=共通値)
     micro_timeout_max_requote: int = 4             # 1サイクル内の最大 re-quote 回数
     micro_timeout_requote_cooloff_sec: float = 5.0 # キャンセル→再発注間の冷却期間 (秒)

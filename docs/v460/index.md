@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-23 (554# Raw gap fill + CalibrationMap offline batch)
+> 最終更新: 2026-03-23 (555# CalibrationMap runtime integration)
 
 ---
 

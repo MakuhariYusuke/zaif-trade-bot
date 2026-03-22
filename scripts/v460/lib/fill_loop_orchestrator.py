@@ -105,6 +105,10 @@ class RunSessionState:
     toxicity_level_counts: dict[str, int] = field(default_factory=dict)  # "sell_KILL"→count
     # 551# sidecar nonzero rate tracking
     sidecar_nonzero_count: int = 0  # directional_bias != 0.0
+    # 555# Entry Gate: CalibrationMap EV 追跡
+    entry_gate_eval_count: int = 0     # EV 評価回数
+    entry_gate_block_count: int = 0    # EV ≤ 0 の回数
+    entry_gate_ev_sum: float = 0.0     # EV 加算 (平均計算用)
     batch: list[FillRecord] = field(default_factory=list)
     batch_size: int = 10
 

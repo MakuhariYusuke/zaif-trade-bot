@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 555# CalibrationMap runtime integration (2026-03-23)
+
+### Added
+- **Entry Gate**: CalibrationMap EV ベースエントリー判定を fill_test ランタイムに統合 (546# §B)
+  - `configs/v460/fill_test.yaml`: `entry_gate:` セクション追加 (enabled, calibration_map_path, probability_mode 等)
+  - `FillTestConfig`: `entry_gate_*` フィールド 11 個追加
+  - `fill_config_parser.py`: `entry_gate` YAML セクションパーサー追加
+  - `run_fill_test.py`: 起動時 CalibrationMap JSON ロード + `load_calibration_state()` 経由の状態復元
+  - `orchestrator_mid_cycle.py`: Gate 通過後に CalibrationMap EV チェック (enabled=false でログのみ / true でブロック)
+  - `orchestrator_post_cycle.py`: 約定後に CalibrationMap online 更新 (regime + side → PnL フィードバック)
+  - `RunSessionState`: `entry_gate_eval_count`, `entry_gate_block_count`, `entry_gate_ev_sum` 追跡フィールド
+  - `_GATE_TO_CANCEL_REASON`: `entry_gate_ev_negative` マッピング追加
+- **ドキュメント**: `docs/v460/555_phg_impl_calibrationmap_runtime_integration.md`
+- **テスト**: `test_555_entry_gate_integration.py` (12 tests)
+
 ## 554# Raw data gap fill + CalibrationMap offline batch (2026-03-23)
 
 ### Added

@@ -405,6 +405,35 @@ class FillTestRunner(
         from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
         self._cycle_gate = CycleGateAggregator(config)
 
+        # 555# Entry Gate: CalibrationMap ロード
+        from ztb.trading.signal.calibration_map import CalibrationMap
+        self._calibration_map: CalibrationMap | None = None
+        if config.entry_gate_calibration_map_path:
+            cal_cfg = {
+                "ewma_tau": config.entry_gate_ewma_tau,
+                "n_min": config.entry_gate_n_min,
+                "probability_mode": config.entry_gate_probability_mode,
+            }
+            self._calibration_map = CalibrationMap(cal_cfg)
+            from scripts.v460.ml.calibration_batch import load_calibration_state
+            _loaded = load_calibration_state(
+                config.entry_gate_calibration_map_path, cal_cfg,
+            )
+            if _loaded is not None:
+                self._calibration_map.load_state(_loaded.get_state())
+                logger.info(
+                    "[555#] CalibrationMap loaded from %s (n_eff=%.1f, enabled=%s)",
+                    config.entry_gate_calibration_map_path,
+                    self._calibration_map._compute_metrics("global").get("n_eff", 0.0),
+                    config.entry_gate_enabled,
+                )
+            else:
+                logger.warning(
+                    "[555#] CalibrationMap path set but load failed: %s",
+                    config.entry_gate_calibration_map_path,
+                )
+                self._calibration_map = None
+
         # 211# P1-B: Micro Circuit Breaker (短期価格急変の自動検知・防御)
         from scripts.v460.lib.micro_circuit_breaker import MicroCircuitBreaker, MCBConfig
         self._mcb = MicroCircuitBreaker(MCBConfig(

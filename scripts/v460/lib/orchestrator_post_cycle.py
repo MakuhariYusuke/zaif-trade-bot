@@ -94,6 +94,16 @@ class OrchestratorPostCycleMixin:
             pnl_jpy = compute_record_pnl_jpy(record)
             if pnl_jpy is not None:
                 st.cumulative_pnl_jpy += pnl_jpy
+                # 555# CalibrationMap online 更新
+                if (
+                    self._calibration_map is not None
+                    and self.config.entry_gate_online_update
+                ):
+                    _cal_regime = record.gated_regime or "unknown"
+                    _cal_action = 0.3 if next_side == "buy" else -0.3
+                    self._calibration_map.update(
+                        _cal_regime, _cal_action, pnl_jpy, st.total_count,
+                    )
             # 249# BTC delta
             if record.order_quantity is not None:
                 _fill_qty = float(record.order_quantity)
