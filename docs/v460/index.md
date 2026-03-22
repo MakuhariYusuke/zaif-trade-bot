@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-23 (546# sidecar quadratic + OFI k config化 + レビュー依頼文書)
+> 最終更新: 2026-03-23 (549# EWMA入力クランプ修正、サイドカー死因特定(neutral fallback)、ASパターン構造記録)
 
 ---
 
@@ -573,6 +573,9 @@
 | 544 | impl | [544_phg_phase4_delta_star_ofi_window_sidecar_ladder.md](544_phg_phase4_delta_star_ofi_window_sidecar_ladder.md) | Phase 4: δ*→spread_adapt動的バインド + OFI rolling window + sidecar ladder 0.20 |
 | 545 | impl | [545_phg_phase4b_ofi_boost_toxicity_sidecar_dynamic.md](545_phg_phase4b_ofi_boost_toxicity_sidecar_dynamic.md) | Phase 4b: OFI→boost変調 + Toxicity→sidecar confidence減衰 + δ*→sidecar動的天井 |
 | 546 | review | [546_phg_review_request_next_steps.md](546_phg_review_request_next_steps.md) | レビュー依頼: sidecar拡大 / CalibrationMap / δ*→executor / drift detection |
+| 547 | rev | [547_phg_rev_540_546_spec_dilemmas_and_multifaceted_recommendations.md](547_phg_rev_540_546_spec_dilemmas_and_multifaceted_recommendations.md) | 540-546レビュー: preflight_insufficient優先、same-SHA live検証先行、546のA-Eへ判定を付与 |
+| 548 | analysis | [548_phg_phase4_dilemma_and_true_nature_of_time_restrictions.md](548_phg_phase4_dilemma_and_true_nature_of_time_restrictions.md) | Phase 4葛藤と本質論: 時間制約の多角的再解釈とレビュー盲点 |
+| 549 | fix+analysis | [549_log_analysis_ewma_clamp_sidecar_as_pattern.md](549_log_analysis_ewma_clamp_sidecar_as_pattern.md) | ログ分析深堀り: EWMA汚染修正(Winsorization) + サイドカー死因(neutral fallback) + ASパターン |
 
 ---
 

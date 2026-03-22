@@ -800,6 +800,7 @@ loss_control:
     # 344# 342#D: EWMA モード (RiskMetrics 1996)
     ewma_alpha: 0.05               # 0.0=無効(従来count-based), 0.05=effective window≈20
     ewma_time_decay_tau_sec: 600     # 353# kill中のEWMA時間減衰 (τ=600s, 半減期≈7分)
+    ewma_input_clamp_bps: 5.0       # 549# Winsorization: 単一極端ASが-13bpsでEWMAを汚染しkillスパイラル誘発を防止
     # 451# P1-3: toxicity budget 有効化 (240# Glosten-Milgrom 段階的応答)
     toxicity_budget_enabled: true
     toxicity_warn_level: 0.3       # GREEN→YELLOW: score=0.3 (rolling_mean = 0.3 × threshold)
@@ -825,6 +826,7 @@ loss_control:
     # 344# 342#D: EWMA モード (RiskMetrics 1996)
     ewma_alpha: 0.05               # 0.0=無効, 0.05=effective window≈20
     ewma_time_decay_tau_sec: 600     # 353# kill中のEWMA時間減衰 (τ=600s)
+    ewma_input_clamp_bps: 5.0       # 549# Winsorization: sellと同様
     # 451# P1-3: toxicity budget 有効化 (240# Glosten-Milgrom 段階的応答)
     toxicity_budget_enabled: true
     toxicity_warn_level: 0.3       # GREEN→YELLOW

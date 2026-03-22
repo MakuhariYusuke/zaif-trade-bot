@@ -60,6 +60,11 @@ def _parse_dynamic_kill_block(
         kwargs[f"{prefix}_ewma_time_decay_tau_sec"] = float(
             section["ewma_time_decay_tau_sec"]
         )
+    # 549# EWMA 入力クランプ (Winsorization)
+    if "ewma_input_clamp_bps" in section:
+        kwargs[f"{prefix}_ewma_input_clamp_bps"] = float(
+            section["ewma_input_clamp_bps"]
+        )
 
 
 def _parse_inv_relaxation_block(

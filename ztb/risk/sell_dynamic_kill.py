@@ -165,6 +165,14 @@ class DynamicKillConfig:
     #: kill が情報劣化を反映せず永続する問題 (351# 盲点2) を
     #: TIME LIMIT のような hard cutoff でなく連続的減衰で解決する。
     ewma_time_decay_tau_sec: float = 0.0
+    # ---- 549# EWMA 入力クランプ (テール外れ値耐性) ----
+    #: track() に入力する PnL (bps) を [-clamp, +clamp] に制限する。
+    #: 0.0 = 無効 (クランプなし)。
+    #: 市場理論的根拠: EWMA α=0.05 では単一の極端な AS イベント
+    #: (例: -13.5 bps) が rolling mean を数十分間支配し、
+    #: systematic risk でなく idiosyncratic shock で kill スパイラルを誘発する。
+    #: Winsorization (Wilcox 2010) により、kill は systematic 傾向にのみ反応する。
+    ewma_input_clamp_bps: float = 0.0
 
     def __post_init__(self) -> None:
         """173# バリデーション + 241# S-4 toxicity config 制約チェック."""
@@ -297,10 +305,15 @@ class DynamicKillManager:
         # (349# P1 の history 平均シードは 350# F1 / 351# Q1 で look-ahead bias と指摘 → 撤回)
         alpha = self._config.ewma_alpha
         if alpha > 0:
+            # 549# Winsorization: 極端なテール値を制限し systematic risk のみ追跡
+            clamped = pnl_bps
+            clamp = self._config.ewma_input_clamp_bps
+            if clamp > 0:
+                clamped = max(-clamp, min(clamp, pnl_bps))
             if self._ewma_value is None:
-                self._ewma_value = pnl_bps
+                self._ewma_value = clamped
             else:
-                self._ewma_value = alpha * pnl_bps + (1.0 - alpha) * self._ewma_value
+                self._ewma_value = alpha * clamped + (1.0 - alpha) * self._ewma_value
         self._last_track_time = time.time()  # 353# 最終 track 時刻更新
         self._stale_counter = 0  # 218# 新データ投入 → stale リセット
         self._consecutive_probes = 0  # 219# 新データ → probe 連続カウンタリセット
@@ -327,9 +340,15 @@ class DynamicKillManager:
             self._ewma_value = None
             return
         # 352#: track() と同一の更新式で厳密に再構築
-        ewma = self._pnl_history[0]  # 初回 seed = 最初の観測値
+        # 549#: track() と同じクランプを適用 (整合性確保)
+        clamp = self._config.ewma_input_clamp_bps
+        def _clamp(v: float) -> float:
+            if clamp > 0:
+                return max(-clamp, min(clamp, v))
+            return v
+        ewma = _clamp(self._pnl_history[0])  # 初回 seed = 最初の観測値
         for v in self._pnl_history[1:]:
-            ewma = alpha * v + (1.0 - alpha) * ewma
+            ewma = alpha * _clamp(v) + (1.0 - alpha) * ewma
         self._ewma_value = ewma
         logger.info(
             f"[352# P0] {self._side} EWMA rebuilt from {len(self._pnl_history)} records: "
