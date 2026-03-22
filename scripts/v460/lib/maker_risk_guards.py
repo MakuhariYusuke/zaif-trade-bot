@@ -56,6 +56,9 @@ class RiskGuardsMixin:
     _cross_venue_lead_lag_pre_offset: float | None
     _cross_venue_lead_lag_post_offset: float | None
     _cross_venue_lead_lag_cap_hit: bool
+    # 533# veto deadlock 防止
+    _consecutive_veto_count: int
+    _veto_btc_balance: float | None
 
     @staticmethod
     def _scale_offset_ratio(  # type: ignore[empty-body]  # Protocol stub
@@ -287,17 +290,64 @@ class RiskGuardsMixin:
             cfg.cross_venue_lead_lag_veto_enabled
             and abs(hint.spread_bps) >= cfg.cross_venue_lead_lag_veto_threshold_bps
         ):
-            self._cross_venue_lead_lag_vetoed = True
-            self._cross_venue_lead_lag_veto_reason = (
-                f"cross_venue_veto: {side} suppressed by "
-                f"{hint.reference_exchange} {hint.direction} lead "
-                f"(spread={hint.spread_bps:+.2f}bps"
-                f"{f', pt_spread={hint.point_spread_bps:+.2f}bps' if hint.point_spread_bps is not None else ''}"
-                f", velocity={hint.reference_velocity_bps:+.2f}bps/s"
-                f", age={hint.age_sec:.2f}s)"
-            )
-            logger.info("[%s] %s", "cross_venue", self._cross_venue_lead_lag_veto_reason)
-            return effective_offset_ratio
+            # 533# veto deadlock 防止 #1: 在庫ゼロ時は閾値を緩和
+            # BTC=0 で sell vetoed → 買い機会を逃すだけなので閾値を上げる
+            _effective_threshold = cfg.cross_venue_lead_lag_veto_threshold_bps
+            _btc = getattr(self, "_veto_btc_balance", None)
+            if (
+                _btc is not None
+                and _btc < 1e-8
+                and side == "buy"
+            ):
+                _effective_threshold *= cfg.cross_venue_lead_lag_veto_inventory_zero_threshold_mult
+                if abs(hint.spread_bps) < _effective_threshold:
+                    logger.info(
+                        "[cross_venue] veto relaxed: BTC=0 → threshold %.1f→%.1fbps "
+                        "(spread=%+.2fbps, consecutive=%d)",
+                        cfg.cross_venue_lead_lag_veto_threshold_bps,
+                        _effective_threshold,
+                        hint.spread_bps,
+                        self._consecutive_veto_count,
+                    )
+                    self._consecutive_veto_count = 0
+                    # fall through to adverse retreat
+                else:
+                    pass  # still above relaxed threshold → veto
+
+            # 533# veto deadlock 防止 #2: 連続 veto 上限超過で強制解除
+            _max_consecutive = cfg.cross_venue_lead_lag_veto_max_consecutive
+            if (
+                abs(hint.spread_bps) >= _effective_threshold
+                and self._consecutive_veto_count < _max_consecutive
+            ):
+                self._consecutive_veto_count += 1
+                self._cross_venue_lead_lag_vetoed = True
+                self._cross_venue_lead_lag_veto_reason = (
+                    f"cross_venue_veto: {side} suppressed by "
+                    f"{hint.reference_exchange} {hint.direction} lead "
+                    f"(spread={hint.spread_bps:+.2f}bps"
+                    f"{f', pt_spread={hint.point_spread_bps:+.2f}bps' if hint.point_spread_bps is not None else ''}"
+                    f", velocity={hint.reference_velocity_bps:+.2f}bps/s"
+                    f", age={hint.age_sec:.2f}s"
+                    f", consecutive={self._consecutive_veto_count}/{_max_consecutive})"
+                )
+                logger.info("[%s] %s", "cross_venue", self._cross_venue_lead_lag_veto_reason)
+                return effective_offset_ratio
+            elif abs(hint.spread_bps) >= _effective_threshold:
+                # max_consecutive 超過 → veto 強制解除
+                logger.warning(
+                    "[cross_venue] veto force-released: consecutive %d >= max %d "
+                    "(spread=%+.2fbps, side=%s). Falling through to adverse retreat.",
+                    self._consecutive_veto_count,
+                    _max_consecutive,
+                    hint.spread_bps,
+                    side,
+                )
+                self._consecutive_veto_count = 0
+                # fall through to adverse retreat
+
+        # veto 非発動時は連続カウンタをリセット
+        self._consecutive_veto_count = 0
 
         # 439# base offset boost (adverse-side retreat)
         # 445# confidence-proportional: boost = 1 + (max_boost - 1) * confidence

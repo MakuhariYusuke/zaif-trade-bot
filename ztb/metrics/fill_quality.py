@@ -190,6 +190,8 @@ class FillRecord:
     cross_venue_lead_lag_age_sec: float | None = None
     cross_venue_lead_lag_applied: bool | None = None
     cross_venue_lead_lag_vetoed: bool | None = None
+    # 533# veto deadlock 防止: 連続 veto 回数の記録
+    cross_venue_lead_lag_veto_consecutive: int | None = None
     # ---- 442# Cross-Venue microprice + depth imbalance ----
     cross_venue_microprice_spread_bps: float | None = None
     cross_venue_depth_imbalance: float | None = None
@@ -227,6 +229,9 @@ class FillRecord:
     # ---- 452# Micro-timeout (TIF Emulation) ----
     requote_attempts: int | None = None  # サブサイクル re-quote 回数 (0=初回で約定, None=micro_timeout 無効)
     micro_timeout_partial_filled_qty: float | None = None  # re-quote ループ中の部分約定合計
+    # ---- 533# log_cycle_no: ログ⇔JSONL join key ----
+    # "=== Cycle NNN" ログの NNN と一致させ、ログファイルと fill_records の突合を容易にする
+    log_cycle_no: int | None = None
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

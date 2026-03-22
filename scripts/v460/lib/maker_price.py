@@ -190,6 +190,9 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         self._cross_venue_lead_lag_hint: CrossVenueLeadLagHint | None = None
         self._cross_venue_lead_lag_vetoed: bool = False
         self._cross_venue_lead_lag_veto_reason: str | None = None
+        # 533# veto deadlock 防止
+        self._consecutive_veto_count: int = 0
+        self._veto_btc_balance: float | None = None
         # 129# OB recorder: 生スナップショットキャッシュ
         # 261# P2-5: object → OrderBookSnapshot (型安全化)
         self._last_ob_snapshot: OrderBookSnapshot | None = None
@@ -241,6 +244,10 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         self._cross_venue_lead_lag_hint = hint
         self._cross_venue_lead_lag_vetoed = False
         self._cross_venue_lead_lag_veto_reason = None
+
+    def set_veto_btc_balance(self, btc_balance: float | None) -> None:
+        """533# veto 判定用の BTC 残高を注入する."""
+        self._veto_btc_balance = btc_balance
 
     @property
     def cross_venue_lead_lag_hint(self) -> CrossVenueLeadLagHint | None:

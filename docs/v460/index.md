@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-21 (527# JPY精度改善 + silent except可観測化: 残高ログ:.0f→:.2f、adapter int()→round())
+> 最終更新: 2026-03-22 (534# vetoデッドロック防止: max_consecutive+BTC=0緩和 + log_cycle_no join key + ログ改善)
 
 ---
 
@@ -554,6 +554,13 @@
 | 525 | rev | [525_phg_rev_520_524_maintainability_and_dedup_review.md](525_phg_rev_520_524_maintainability_and_dedup_review.md) | 520-524レビュー: legacy残置・stale-order cleanup共有化・double ceiling後のdead code整理を提案 |
 | 526 | impl | [526_phg_impl_log_observability_and_dead_code.md](526_phg_impl_log_observability_and_dead_code.md) | ログ可観測性改善 (order_id・残高コンテキスト追加) + 525#指摘dead code削除 |
 | 527 | impl | [527_phg_impl_jpy_precision_and_silent_except.md](527_phg_impl_jpy_precision_and_silent_except.md) | JPY精度改善 (繊単位:.0f→:.2f、adapter int()→round()) + silent except可観測化 |
+| 528 | impl | [528_phg_impl_codex_import_cleanup_and_review_docs.md](528_phg_impl_codex_import_cleanup_and_review_docs.md) | Codex追加import掃除 + review docs整備 |
+| 529 | rpt | [529_phg_rpt_fill_test_trade_analysis_20260322.md](529_phg_rpt_fill_test_trade_analysis_20260322.md) | 2026-03-22 fill_test取引別分析: 最悪/最良トレード・CV veto deadlock・final_clamp飽和の整理 |
+| 530 | rev | [530_phg_rev_526_529_trade_level_multifaceted_validation.md](530_phg_rev_526_529_trade_level_multifaceted_validation.md) | 526-529レビュー: 数値母集団補正・sell本丸再確認・favorable tighten支持・在庫ゼロdeadlock是正 |
+| 531 | rev | [531_phg_second_opinion_526_530_validation.md](531_phg_second_opinion_526_530_validation.md) | セカンドオピニオン: 526-530検証、JSONL独立分析、clamp 100%飽和・CV cap_hit 73%確認 |
+| 532 | verify | [532_phg_rev_530_531_blind_spot_verification.md](532_phg_rev_530_531_blind_spot_verification.md) | 530#/531#盲点検証: 時間帯クラスタリング・隠れデッドロック・veto機会損失・fill数乖離 |
+| 533 | rev | [533_phg_evaluation_532_blind_spots.md](533_phg_evaluation_532_blind_spots.md) | 532#盲点の市場微視構造検証: 時間帯ハードコード懸念・理論的反論 |
+| 534 | impl | [534_phg_impl_veto_deadlock_prevention_and_log_improvements.md](534_phg_impl_veto_deadlock_prevention_and_log_improvements.md) | vetoデッドロック防止(max_consecutive+BTC=0緩和) + log_cycle_no join key + ログ可観測性改善 |
 
 ---
 

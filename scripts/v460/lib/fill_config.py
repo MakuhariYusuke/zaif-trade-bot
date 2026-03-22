@@ -398,6 +398,9 @@ class FillTestConfig:
     cross_venue_lead_lag_offset_boost: float = 1.25
     cross_venue_lead_lag_veto_enabled: bool = False
     cross_venue_lead_lag_veto_threshold_bps: float = 6.0
+    # 533# veto deadlock 防止: 連続 veto 上限 + 在庫ゼロ時の閾値緩和
+    cross_venue_lead_lag_veto_max_consecutive: int = 20  # 連続 veto 上限 (超過→veto 自動解除)
+    cross_venue_lead_lag_veto_inventory_zero_threshold_mult: float = 1.5  # BTC=0 時に閾値を×1.5 緩和
     # 442# 板深度拡張: L5 microprice + depth imbalance
     cross_venue_reference_ob_depth: int = 5
     cross_venue_microprice_enabled: bool = False

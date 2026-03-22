@@ -336,6 +336,9 @@ cross_venue_lead_lag:
   offset_boost: 1.25
   veto_enabled: true               # 442# Hard veto 有効化 (6bps超の大乖離で注文抑止)
   veto_threshold_bps: 8.0          # 481# 6.0→8.0: 49件中41件(84%)が6-8帯,本当にtoxicな8bps超のみvetoする
+  # 533# veto deadlock 防止
+  veto_max_consecutive: 20         # 連続veto上限(532#分析: 05:17-08:25に37連続vetで3h8mデッドロック。20で約40分に制限)
+  veto_inventory_zero_threshold_mult: 1.5  # BTC=0時に閾値×1.5緩和(sell veto不要時のデッドロック回避)
   # 442# 板深度拡張: L5 microprice で質的情報を取得
   reference_ob_depth: 5            # BitFlyer 板取得深度 (1→5, microprice 算出用)
   microprice_enabled: true         # weighted mid = (Pb·Qa + Pa·Qb)/(Qa+Qb) を使用

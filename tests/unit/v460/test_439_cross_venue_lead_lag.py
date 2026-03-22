@@ -43,6 +43,8 @@ class _CrossVenueState:
     _cross_venue_lead_lag_pre_offset: float | None = None
     _cross_venue_lead_lag_post_offset: float | None = None
     _cross_venue_lead_lag_cap_hit: bool = False
+    # 533# veto deadlock 防止
+    _consecutive_veto_count: int = 0
 
 
 class _RegistryStub:
@@ -880,3 +882,139 @@ class TestFavorableSideTightening:
         result_full = asyncio.run(calc_full.compute("buy", adapter, "btc_jpy"))
         # Full confidence should tighten more (smaller offset)
         assert result_full.effective_offset_ratio < result_half.effective_offset_ratio
+
+
+# ---- 533# Veto Deadlock Prevention Tests ----
+
+
+class TestVetoDeadlockPrevention:
+    """533# 連続 veto 上限 + BTC=0 閾値緩和のテスト."""
+
+    def test_veto_max_consecutive_releases_after_limit(self) -> None:
+        """連続 veto が max_consecutive に達すると veto が解除される."""
+        config = FillTestConfig(
+            min_spread_jpy=1.0,
+            cross_venue_lead_lag_enabled=True,
+            cross_venue_lead_lag_veto_enabled=True,
+            cross_venue_lead_lag_veto_threshold_bps=6.0,
+            cross_venue_lead_lag_veto_max_consecutive=3,
+        )
+        calc = _make_calc(config)
+        adapter = _OrderbookAdapter([
+            _OB(100.0, [(10_000_000.0, 1.0)], [(10_002_000.0, 1.0)], "coincheck"),
+        ])
+        hint = _make_hint(spread_bps=8.0, velocity_bps=2.0)
+
+        # 最初の 3 回は veto 発動
+        for i in range(3):
+            calc.set_cross_venue_lead_lag_hint(hint)
+            with pytest.raises(InfeasibleQuoteError) as exc_info:
+                asyncio.run(calc.compute("sell", adapter, "btc_jpy"))
+            assert exc_info.value.reason == CR.CROSS_VENUE_LEAD_LAG_VETO
+
+        # 4 回目は max_consecutive 超過で veto 解除 → adverse retreat
+        calc.set_cross_venue_lead_lag_hint(hint)
+        result = asyncio.run(calc.compute("sell", adapter, "btc_jpy"))
+        assert not calc._cross_venue_lead_lag_vetoed
+
+    def test_veto_counter_resets_when_no_veto(self) -> None:
+        """veto 非発動時はカウンタがリセットされる."""
+        config = FillTestConfig(
+            min_spread_jpy=1.0,
+            cross_venue_lead_lag_enabled=True,
+            cross_venue_lead_lag_veto_enabled=True,
+            cross_venue_lead_lag_veto_threshold_bps=6.0,
+            cross_venue_lead_lag_veto_max_consecutive=5,
+        )
+        calc = _make_calc(config)
+        adapter = _OrderbookAdapter([
+            _OB(100.0, [(10_000_000.0, 1.0)], [(10_002_000.0, 1.0)], "coincheck"),
+        ])
+
+        # 2 回 veto
+        for _ in range(2):
+            calc.set_cross_venue_lead_lag_hint(
+                _make_hint(spread_bps=8.0, velocity_bps=2.0)
+            )
+            with pytest.raises(InfeasibleQuoteError):
+                asyncio.run(calc.compute("sell", adapter, "btc_jpy"))
+        assert calc._consecutive_veto_count == 2
+
+        # veto 非発動 (spread < threshold) → カウンタリセット
+        calc.set_cross_venue_lead_lag_hint(
+            _make_hint(spread_bps=3.0, velocity_bps=1.0)
+        )
+        asyncio.run(calc.compute("sell", adapter, "btc_jpy"))
+        assert calc._consecutive_veto_count == 0
+
+    def test_inventory_zero_relaxes_buy_veto_threshold(self) -> None:
+        """BTC=0 時に buy 側の veto 閾値が緩和される."""
+        config = FillTestConfig(
+            min_spread_jpy=1.0,
+            cross_venue_lead_lag_enabled=True,
+            cross_venue_lead_lag_veto_enabled=True,
+            cross_venue_lead_lag_veto_threshold_bps=8.0,
+            cross_venue_lead_lag_veto_inventory_zero_threshold_mult=1.5,
+        )
+        calc = _make_calc(config)
+        calc.set_veto_btc_balance(0.0)
+        adapter = _OrderbookAdapter([
+            _OB(100.0, [(10_000_000.0, 1.0)], [(10_002_000.0, 1.0)], "coincheck"),
+        ])
+        # spread=10bps: 通常閾値 8.0 超 → veto だが、
+        # BTC=0 + buy 側 → 閾値 8.0*1.5=12.0 に緩和 → veto 解除
+        calc.set_cross_venue_lead_lag_hint(
+            _make_hint(adverse_side="buy", direction="down", spread_bps=-10.0, velocity_bps=-2.0)
+        )
+        result = asyncio.run(calc.compute("buy", adapter, "btc_jpy"))
+        assert not calc._cross_venue_lead_lag_vetoed
+
+    def test_inventory_zero_does_not_relax_sell_veto(self) -> None:
+        """BTC=0 でも sell 側の veto は緩和されない."""
+        config = FillTestConfig(
+            min_spread_jpy=1.0,
+            cross_venue_lead_lag_enabled=True,
+            cross_venue_lead_lag_veto_enabled=True,
+            cross_venue_lead_lag_veto_threshold_bps=6.0,
+            cross_venue_lead_lag_veto_inventory_zero_threshold_mult=1.5,
+        )
+        calc = _make_calc(config)
+        calc.set_veto_btc_balance(0.0)
+        adapter = _OrderbookAdapter([
+            _OB(100.0, [(10_000_000.0, 1.0)], [(10_002_000.0, 1.0)], "coincheck"),
+        ])
+        calc.set_cross_venue_lead_lag_hint(
+            _make_hint(spread_bps=8.0, velocity_bps=2.0)
+        )
+        with pytest.raises(InfeasibleQuoteError):
+            asyncio.run(calc.compute("sell", adapter, "btc_jpy"))
+
+    def test_fill_record_includes_veto_consecutive(self) -> None:
+        """FillRecord に veto_consecutive が記録される."""
+        record = FillRecord(
+            cycle_id="cv-veto-1",
+            timestamp=100.0,
+            side="sell",
+            order_price=1_000_000.0,
+            order_quantity=0.01,
+            cross_venue_lead_lag_veto_consecutive=5,
+        )
+        d = record.to_dict()
+        assert d["cross_venue_lead_lag_veto_consecutive"] == 5
+        restored = FillRecord.from_dict(d)
+        assert restored.cross_venue_lead_lag_veto_consecutive == 5
+
+    def test_fill_record_includes_log_cycle_no(self) -> None:
+        """FillRecord に log_cycle_no が記録される."""
+        record = FillRecord(
+            cycle_id="log-1",
+            timestamp=100.0,
+            side="buy",
+            order_price=1_000_000.0,
+            order_quantity=0.01,
+            log_cycle_no=42,
+        )
+        d = record.to_dict()
+        assert d["log_cycle_no"] == 42
+        restored = FillRecord.from_dict(d)
+        assert restored.log_cycle_no == 42

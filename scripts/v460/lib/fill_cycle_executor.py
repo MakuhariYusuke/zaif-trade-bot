@@ -590,17 +590,20 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         _cancel_tag = f", reason={cancel_reason}" if cancel_reason and not filled else ""
         # 526# order_id 追記
         _id_tag = f", id={order_id}" if order_id else ""
+        # 533# BTC 残高コンテキスト (在庫状態の可視化)
+        _btc = self._balance_checker.last_btc_free
+        _bal_tag = f", btc={_btc:.6f}" if _btc is not None else ""
         if post_fill_pnl is not None:
             logger.info(
                 f"Cycle {self._cycle_count} result: "
                 f"filled={filled}, wait={queue_wait:.1f}s, pnl={post_fill_pnl:.2f}bps"
-                f"{_id_tag}{_sidecar_tag}"
+                f"{_id_tag}{_bal_tag}{_sidecar_tag}"
             )
             return
         logger.info(
             f"Cycle {self._cycle_count} result: "
             f"filled={filled}, wait={queue_wait:.1f}s"
-            f"{_id_tag}{_cancel_tag}{_sidecar_tag}"
+            f"{_id_tag}{_cancel_tag}{_bal_tag}{_sidecar_tag}"
         )
 
     def _log_cycle_revenue_context(self, record: "FillRecord") -> None:
@@ -699,6 +702,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             _regime_obs_count = self._regime_detector.observation_count
 
         await self._update_cross_venue_lead_lag_hint()
+        # 533# veto deadlock 防止: BTC 残高を注入
+        self._maker_price.set_veto_btc_balance(self._balance_checker.last_btc_free)
 
         # 1. maker limit 価格算出
         spread_at_order: float | None = None
@@ -1375,6 +1380,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             mid_at_order=_mid_at_order,
             execution_pre_clamp_offset=_execution_pre_clamp_offset,
             executor_offset_stages=_executor_offset_stages_json,  # 420# P1
+            log_cycle_no=self._cycle_count,  # 533# ログ⇔JSONL join key
         )
 
         self._log_cycle_result(

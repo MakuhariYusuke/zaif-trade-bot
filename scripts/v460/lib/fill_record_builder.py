@@ -220,6 +220,8 @@ class FillRecordBuilderMixin:
         fields["cross_venue_lead_lag_pre_offset"] = self._maker_price._cross_venue_lead_lag_pre_offset
         fields["cross_venue_lead_lag_post_offset"] = self._maker_price._cross_venue_lead_lag_post_offset
         fields["cross_venue_lead_lag_cap_hit"] = self._maker_price._cross_venue_lead_lag_cap_hit
+        # 533# veto deadlock 防止: 連続 veto 回数
+        fields["cross_venue_lead_lag_veto_consecutive"] = self._maker_price._consecutive_veto_count
         return fields
 
     def _build_fill_strategy_fields(
@@ -346,6 +348,7 @@ class FillRecordBuilderMixin:
         start_git_sha: str | None = None,
         requested_side: str | None = None,
         resolved_side_reason: str | None = None,
+        log_cycle_no: int | None = None,
     ) -> FillRecord:
         """188# FillRecord を組み立てる.
 
@@ -384,6 +387,8 @@ class FillRecordBuilderMixin:
             "start_git_sha": start_git_sha,
             "requested_side": requested_side,
             "resolved_side_reason": resolved_side_reason,
+            # 533# log_cycle_no: ログ⇔JSONL join key
+            "log_cycle_no": log_cycle_no,
         }
         payload.update(
             self._build_fill_measurement_fields(

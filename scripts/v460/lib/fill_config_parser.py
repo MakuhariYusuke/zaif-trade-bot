@@ -216,6 +216,9 @@ def _parse_cross_venue_section(yaml_cfg: dict) -> dict:
         # 512# favorable-side tightening
         "favorable_tighten_enabled": "cross_venue_favorable_tighten_enabled",
         "favorable_tighten_mult": "cross_venue_favorable_tighten_mult",
+        # 533# veto deadlock 防止
+        "veto_max_consecutive": "cross_venue_lead_lag_veto_max_consecutive",
+        "veto_inventory_zero_threshold_mult": "cross_venue_lead_lag_veto_inventory_zero_threshold_mult",
     }
     for yaml_key, config_key in cv_map.items():
         if yaml_key in cv:
