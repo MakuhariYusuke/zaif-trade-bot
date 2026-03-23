@@ -8739,6 +8739,9 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `calculate_reward_simple()` が明示 `transaction_cost` 引数を優先するよう修正
 - `tests/unit/environment/test_calculate_reward_simple_fix.py`
   - pure simple reward 契約を確認する fixture で shaper/scaler/signal を明示的に無効化
+- 追加回帰:
+  - explicit `transaction_cost` が configured cost を上書きすること
+  - `simple_reward` payload snapshot が internal state を破壊しないこと
 - focused:
   - `tests/unit/environment/test_calculate_reward_simple_fix.py`
   - `tests/unit/v460/test_558_reward_unification.py`

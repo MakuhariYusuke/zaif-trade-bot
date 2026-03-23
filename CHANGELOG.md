@@ -6401,3 +6401,4 @@ python scripts/unified_trainer.py \
 ## 2026-03-23 reward simple transaction-cost contract alignment
 - `RewardCalculator.calculate_reward_simple()` が明示 `transaction_cost` 引数を優先するよう修正
 - `tests/unit/environment/test_calculate_reward_simple_fix.py` は pure simple reward 契約を明示するため shaper/scaler/signal を fixture で無効化
+- explicit `transaction_cost` 優先と `simple_reward` payload snapshot の追加回帰を追加

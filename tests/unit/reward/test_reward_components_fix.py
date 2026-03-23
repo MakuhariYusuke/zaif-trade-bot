@@ -227,5 +227,63 @@ def test_reward_components_with_exception(
     assert "error" in components
 
 
+@patch('ztb.trading.environment.components.calculators.reward_calculator.BehavioralPenaltyCalculator')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.AsymmetricRewardScaler')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.DynamicRewardShaper')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.SignalIntegrator')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.OpportunityCostPenaltyCalculator')
+@patch('ztb.trading.environment.components.calculators.reward_calculator.UnrealizedLossPenaltyCalculator')
+def test_reward_components_simple_reward_snapshot_is_detached(
+    mock_unrealized_loss,
+    mock_opportunity_cost,
+    mock_signal_integrator,
+    mock_dynamic_shaper,
+    mock_asymmetric_scaler,
+    mock_behavioral_penalty,
+):
+    """Returned simple_reward payload should be a detached snapshot."""
+    mock_behavioral_penalty.return_value.record_action = Mock()
+    mock_behavioral_penalty.return_value._get_recent_counts = Mock(return_value=[0, 0, 0])
+    mock_asymmetric_scaler.return_value.scale_reward = lambda r, p, pnl: r
+    mock_dynamic_shaper.return_value.shape_reward = lambda r, p, s, pnl: r
+    mock_signal_integrator.return_value.enabled = False
+
+    reward_settings = {
+        "use_simple_reward": True,
+        "reward_scaling": 1.0,
+        "trade_frequency_bonus": 0.01,
+    }
+    mock_config = Mock()
+    mock_config.curriculum_stage = "simple"
+    mock_config.max_position_size = 1.0
+    mock_config.reward_settings = reward_settings
+    mock_config.venue_settings = {}
+
+    calculator = RewardCalculator(
+        config=mock_config,
+        reward_settings=reward_settings,
+        initial_portfolio_value=100000.0,
+    )
+    calculator.calculate_reward_simple(
+        pnl=100.0,
+        portfolio_value=101000.0,
+        position=0.5,
+        old_position=0.3,
+        action=ACTION_BUY,
+        reward_history=[],
+        portfolio_value_history=[100000.0],
+        current_price=5000000.0,
+        step=1,
+        transaction_cost=0.0,
+    )
+
+    snapshot = calculator.get_last_reward_components()
+    snapshot["final_reward"] = -999.0
+    snapshot["trade_bonus_applied"] = 0.0
+
+    assert calculator._last_reward_components["final_reward"] != -999.0
+    assert calculator._last_reward_components["trade_bonus_applied"] == 1.0
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -109,6 +109,26 @@ class TestCalculateRewardSimpleParameterFix:
         # Should work without error
         assert isinstance(reward, (int, float))
 
+    def test_explicit_transaction_cost_overrides_config(
+        self, reward_calculator
+    ):
+        """Explicit transaction_cost should take precedence over configured cost."""
+        reward_calculator.reward_settings = {"transaction_cost": 0.05}
+
+        reward_config_cost = reward_calculator.calculate_reward_simple(
+            current_price=101.0,
+            previous_price=100.0,
+            position_size=1.0,
+        )
+        reward_explicit_zero_cost = reward_calculator.calculate_reward_simple(
+            current_price=101.0,
+            previous_price=100.0,
+            position_size=1.0,
+            transaction_cost=0.0,
+        )
+
+        assert reward_explicit_zero_cost > reward_config_cost
+
     def test_calculate_reward_simple_price_change_calculation(self, reward_calculator):
         """Test that price change calculation is correct."""
         # Test positive price change
