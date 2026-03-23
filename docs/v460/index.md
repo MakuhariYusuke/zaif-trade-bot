@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-23 (577# eDRC・計測基盤・加法化レビュー)
+> 最終更新: 2026-03-24 (585# 578#-584# 計画整合レビューと盲点補完)
 
 ---
 
@@ -682,9 +682,6 @@ NNN_phX_TYPE_description.md
 | 570 | spec | [570_phg_spec_robust_inputs_and_additive_parameters.md](570_phg_spec_robust_inputs_and_additive_parameters.md) | 執行エンジンのロバスト入力設計と加法パイプライン本番係数マッピング |
 | 571 | impl | [571_phg_impl_robust_stats_and_quality_metrics_draft.md](571_phg_impl_robust_stats_and_quality_metrics_draft.md) | ロバスト統計ユーティリティの実装と執行品質比較分析ドラフト |
 | 574 | report | [574_phg_rpt_edrc_parameter_estimation_and_90s_window_fix.md](574_phg_rpt_edrc_parameter_estimation_and_90s_window_fix.md) | eDRC 戦略的パラメータ推定と「死の90秒窓」への外科的設計 |
-| 580 | impl | [580_phg_impl_schema_fix_and_true_additive_design.md](580_phg_impl_schema_fix_and_true_additive_design.md) | スキーマ不整合の解消と「真の加法化」の実装開始 |
-| 581 | impl | [581_phg_impl_true_additive_pipeline_and_rms_integration.md](581_phg_impl_true_additive_pipeline_and_rms_integration.md) | True Additive Pipeline の実装完了と RMS 結合による爆発鎮鎮報告 |
-| 583 | impl | [583_codex_refactoring_and_test_fixes.md](583_codex_refactoring_and_test_fixes.md) | prompt_codex_583 対応: broad failure 修正・offset/fill-cycle 分割・additive pipeline test 補強 |
 | 559 | impl | [559_phg_impl_self_review_and_bugfix.md](559_phg_impl_self_review_and_bugfix.md) | 553#–555# セルフレビュー: PnL単位/Action bin 不整合修正 + Entry Gate ログ出力 |
 | 560 | rpt | [560_phg_rpt_fill_test_post_restart_analysis.md](560_phg_rpt_fill_test_post_restart_analysis.md) | Fill Test 再起動後パフォーマンス分析 (3/12–3/22) |
 | 562 | review | [562_phg_review_560_561_analysis_and_proposals.md](562_phg_review_560_561_analysis_and_proposals.md) | 560#・561# レビュー: 実データ検証と統合改善提案 |
@@ -698,3 +695,14 @@ NNN_phX_TYPE_description.md
 | 575 | impl | [575_cplt_impl_574_edrc_params_robust_inputs_hardcap.md](575_cplt_impl_574_edrc_params_robust_inputs_hardcap.md) | 574# eDRC パラメータ・RobustStats統合・Hard Cap 実装 |
 | 576 | review | [576_cplt_deep_analysis_575_edrc_and_system_health.md](576_cplt_deep_analysis_575_edrc_and_system_health.md) | 575# eDRC 有効化後の稼働状況とシステム全体改善点洗出し |
 | 577 | review | [577_phg_rev_564_576_multifaceted_validation_and_bug_audit.md](577_phg_rev_564_576_multifaceted_validation_and_bug_audit.md) | 564#–576# の多角的検証と実装ミス監査 |
+| 578 | report | [578_cplt_phase5_audit_report_and_corrections.md](578_cplt_phase5_audit_report_and_corrections.md) | Phase 5 監査レポートおよび自己レビュー (Docs 564-577) |
+| 579 | report | [579_cplt_phase5_remaining_blind_spots_and_refactoring.md](579_cplt_phase5_remaining_blind_spots_and_refactoring.md) | フェーズ5.5 残存課題・アーキテクチャの抜本的改善と深堀りレポート |
+| 580 | impl | [580_phg_impl_schema_fix_and_true_additive_design.md](580_phg_impl_schema_fix_and_true_additive_design.md) | スキーマ不整合の解消と「真の加法化」への設計刷新 |
+| 581 | impl | [581_phg_impl_true_additive_pipeline_and_rms_integration.md](581_phg_impl_true_additive_pipeline_and_rms_integration.md) | True Additive Pipeline の実装完了と RMS 結合による爆発鎮静報告 |
+| 582 | impl | [582_toxicity_liquidity_buffer_split.md](582_toxicity_liquidity_buffer_split.md) | Toxicity & Liquidity Buffer Split 完了報告 |
+| 583 | impl | [583_codex_refactoring_and_test_fixes.md](583_codex_refactoring_and_test_fixes.md) | prompt_codex_583 対応: broad failure 修正・offset/fill-cycle 分割・additive pipeline test 補強 |
+| 584 | plan | [584_ph6_plan_execution_driver_decoupling.md](584_ph6_plan_execution_driver_decoupling.md) | Phase 6 計画: Execution Driver Decoupling & Validation |
+| 585 | review | [585_phg_rev_578_584_plan_alignment_and_blindspots.md](585_phg_rev_578_584_plan_alignment_and_blindspots.md) | 578#-584# 計画整合レビューと盲点補完 |
+| 587 | impl | [587_codex_telemetry_parity_and_dead_config_cleanup.md](587_codex_telemetry_parity_and_dead_config_cleanup.md) | telemetry 断線修復・dead config 削除・eDRC robust inputs 接続・hot-reload 範囲整理 |
+| 586 | review | [586_phg_second_opinion_and_alpha_proposals.md](586_phg_second_opinion_and_alpha_proposals.md) | セカンドオピニオンおよび高収益化アーキテクチャ提案 |
+| 588 | eval | [588_eval_585_586_review_deep_dive.md](588_eval_585_586_review_deep_dive.md) | 585#/586# レビュー評価 — コード検証に基づく深堀り |
