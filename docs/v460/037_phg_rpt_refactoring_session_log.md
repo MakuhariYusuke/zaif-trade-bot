@@ -8829,3 +8829,15 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `test_169_config_hot_reload.py`
   - `test_292_observability.py`
   - `test_145_structural_fixes.py`
+## 2026-03-24 targeted mypy entrypoint
+- `scripts/quality/run_targeted_mypy.py`
+  - repo-wide baseline error を suppress しつつ changed files を見る targeted mypy runner を追加
+  - `fast`=`follow-imports=skip`, `deep`=`follow-imports=silent`
+- `589#`
+  - 実用上の型確認入口として位置づけ
+- immediate fix:
+  - `scripts/v460/lib/config_hot_reload.py` の `_HotReloadableRunner` protocol に `_config_hash` を追加
+  - targeted mypy が最初に拾った実エラーをその場で解消
+- 背景:
+  - repo-wide mypy は既存負債が大きく、日常の差分確認に使いにくい
+  - strict config は維持しつつ、入口だけ practical にする方針

@@ -49,6 +49,7 @@ class _HotReloadableRunner(Protocol):
     _maker_price: MakerPriceCalculator
     _fast_fill_defense: object  # 210# D: FFD sync に必要
     _git_sha: str
+    _config_hash: str
 
     def _rebuild_sell_kill_mgr(self) -> None: ...
     def _rebuild_buy_kill_mgr(self) -> None: ...

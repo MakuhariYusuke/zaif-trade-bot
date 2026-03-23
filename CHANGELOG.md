@@ -6427,3 +6427,8 @@ python scripts/unified_trainer.py \
 - `scripts/v460/lib/offset_pipeline.py` / `multiplicative_pipeline.py` の final clamp が `maker_price.get_robust_inputs()` を使うよう修正
 - `scripts/v460/lib/config_hot_reload.py` に additive / eDRC / entry gate toggle の hot-reload 対象を追加
 - mismatch warning / robust-input clamp / build_fill_record telemetry / source-contract の回帰テストを追加
+## 2026-03-24 targeted mypy usability improvement
+- `scripts/quality/run_targeted_mypy.py` を追加
+- repo-wide baseline error を suppress しつつ、changed files / target modules のみ確認できる targeted mypy 入口を追加
+- `fast` (`follow-imports=skip`) / `deep` (`follow-imports=silent`) の 2 モードを用意
+- `scripts/v460/lib/config_hot_reload.py` の `_HotReloadableRunner` protocol に `_config_hash` を追加し、targeted mypy で拾えた実エラーを解消

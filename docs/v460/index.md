@@ -1,7 +1,7 @@
 # v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-24 (588# 585#/586# レビュー評価)
+> 最終更新: 2026-03-24 (591# 590# fill test 再起動前レビュー)
 
 ---
 
@@ -704,5 +704,9 @@ NNN_phX_TYPE_description.md
 | 584 | plan | [584_ph6_plan_execution_driver_decoupling.md](584_ph6_plan_execution_driver_decoupling.md) | Phase 5.5 Remediation 計画: Execution Driver Decoupling & Validation |
 | 585 | review | [585_phg_rev_578_584_plan_alignment_and_blindspots.md](585_phg_rev_578_584_plan_alignment_and_blindspots.md) | 578#-584# 計画整合レビューと盲点補完 |
 | 587 | impl | [587_codex_telemetry_parity_and_dead_config_cleanup.md](587_codex_telemetry_parity_and_dead_config_cleanup.md) | telemetry 断線修復・dead config 削除・eDRC robust inputs 接続・hot-reload 範囲整理 |
+| 589 | impl | [589_phg_impl_targeted_mypy_entrypoint.md](589_phg_impl_targeted_mypy_entrypoint.md) | repo-wide baseline に埋もれず changed files を確認する targeted mypy 入口 |
 | 586 | review | [586_phg_second_opinion_and_alpha_proposals.md](586_phg_second_opinion_and_alpha_proposals.md) | セカンドオピニオンおよび高収益化アーキテクチャ提案 |
 | 588 | eval | [588_eval_585_586_review_deep_dive.md](588_eval_585_586_review_deep_dive.md) | 585#/586# レビュー評価 — コード検証に基づく深堀り |
+| 589 | impl | [589_review_residual_fixes.md](589_review_residual_fixes.md) | 585#/586#/588# レビュープロセス残課題の修正: eDRC指数クリップ・entry gate YAML・sidecar signal 分析追加 |
+| 590 | report | [590_fill_test_log_analysis_5day.md](590_fill_test_log_analysis_5day.md) | Fill Test 5日窓ログ分析と改善機会整理 |
+| 591 | review | [591_phg_rev_590_fill_test_trade_level_root_cause_review.md](591_phg_rev_590_fill_test_trade_level_root_cause_review.md) | 590# 再検証: trade-level 根本原因、mixed-SHA 補正、restart 前優先順位整理 |
