@@ -23,7 +23,7 @@ import sys
 from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, cast
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
@@ -69,6 +69,25 @@ class HourComparisonRow(TypedDict):
     p_value: float | None
 
 
+class HourComparisonResult(TypedDict):
+    """hour matched comparison の戻り値."""
+
+    variant_a: str
+    variant_b: str
+    key_field: str
+    side_filter: str | None
+    n_hours_compared: int
+    n_a_total: int
+    n_b_total: int
+    n_unmatched: int
+    overall_pnl_a: float
+    overall_pnl_b: float
+    overall_pnl_diff: float
+    overall_t_stat: float | None
+    overall_p_value: float | None
+    by_hour: list[HourComparisonRow]
+
+
 def _get_pnl(r: dict[str, object]) -> float | None:
     for key in ("ev_weighted_pnl", "post_fill_30s_pnl", "pnl_bps"):
         v = r.get(key)
@@ -84,7 +103,7 @@ def _utc_hour_from_record(r: dict[str, object]) -> int | None:
     if ts is None:
         return None
     try:
-        return datetime.fromtimestamp(float(ts), tz=timezone.utc).hour
+        return datetime.fromtimestamp(float(cast(int | float, ts)), tz=timezone.utc).hour
     except (ValueError, TypeError, OSError):
         return None
 
@@ -152,7 +171,7 @@ def run_hour_matched_comparison(
     key_field: str = "git_sha",
     results_dir: Path | None = None,
     side_filter: str | None = None,
-) -> dict[str, object]:
+) -> HourComparisonResult:
     """時間帯固定 A/B 比較を実行.
 
     Args:
@@ -240,7 +259,7 @@ def run_hour_matched_comparison(
     }
 
 
-def _print_report(result: dict[str, object]) -> None:
+def _print_report(result: HourComparisonResult) -> None:
     """人間可読レポートを標準出力に表示."""
     print("=" * 80)
     print("  467# Hour-Matched Comparison")
@@ -253,7 +272,7 @@ def _print_report(result: dict[str, object]) -> None:
     )
     print()
 
-    rows: list[HourComparisonRow] = result["by_hour"]  # type: ignore[assignment]
+    rows = result["by_hour"]
     if not rows:
         print("  No common hours with data for both variants.")
         return
@@ -281,13 +300,13 @@ def _print_report(result: dict[str, object]) -> None:
 
     print("  " + "─" * 90)
     print(
-        f"  Overall: PnL A={result['overall_pnl_a']:+.2f} B={result['overall_pnl_b']:+.2f}"  # type: ignore[str-format]
-        f"  Δ={result['overall_pnl_diff']:+.2f} bps"  # type: ignore[str-format]
+        f"  Overall: PnL A={result['overall_pnl_a']:+.2f} B={result['overall_pnl_b']:+.2f}"
+        f"  Δ={result['overall_pnl_diff']:+.2f} bps"
     )
     if result["overall_t_stat"] is not None:
         print(
-            f"  Welch t={result['overall_t_stat']:.3f}  "  # type: ignore[str-format]
-            f"p≈{result['overall_p_value']:.4f}"  # type: ignore[str-format]
+            f"  Welch t={result['overall_t_stat']:.3f}  "
+            f"p≈{result['overall_p_value']:.4f}"
         )
     print()
 
@@ -323,7 +342,7 @@ def main() -> None:
         export = dict(result)
         export["by_hour"] = [
             {k: v for k, v in row.items() if k != "pnl_values"}
-            for row in result["by_hour"]  # type: ignore[union-attr]
+            for row in result["by_hour"]
         ]
         out_path.write_text(
             json.dumps(export, indent=2, ensure_ascii=False, default=str),

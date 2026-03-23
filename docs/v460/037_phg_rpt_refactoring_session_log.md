@@ -8879,3 +8879,13 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - `551#`
   - Wave3-5 の各 Wave で targeted mypy をどこで回すかを明記
   - 並行差分がある module は後ろに回す、という優先規則を追加
+## 2026-03-24 analysis typing follow-up
+- `scripts/v460/analysis/ab_offset_comparison.py`
+  - `apply_fill_record_filters(...)` の戻り値を `list[dict[str, object]]` として受ける cast を追加
+- `scripts/v460/analysis/hour_matched_comparison.py`
+  - `HourComparisonResult` を追加
+  - `_utc_hour_from_record()` の `start_ts` を数値 cast
+  - `_print_report()` / JSON export の `type: ignore` を削減
+- targeted mypy:
+  - `.venv/Scripts/python.exe scripts/quality/run_targeted_mypy.py scripts/v460/analysis/ab_offset_comparison.py scripts/v460/analysis/hour_matched_comparison.py`
+  - `Success: no issues found in 2 source files`

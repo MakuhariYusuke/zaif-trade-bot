@@ -30,7 +30,7 @@ import sys
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, cast
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +103,7 @@ def _load_records(
         filtered, _ = apply_fill_record_filters(
             raw, git_sha=git_sha, run_id=run_id,
         )
-        return filtered
+        return cast(list[dict[str, object]], filtered)
     return raw
 
 

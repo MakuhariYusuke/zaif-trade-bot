@@ -6443,3 +6443,7 @@ python scripts/unified_trainer.py \
 ## 2026-03-24 targeted mypy planning deep-dive
 - `589#` に targeted mypy の適用順、low-risk fix の判断基準、analysis 系の型ルール、止めどころを追記
 - `551#` に Wave3-5 へ targeted mypy を織り込む運用方針と、実装判断を減らすための優先規則を追記
+## 2026-03-24 analysis typing follow-up
+- `scripts/v460/analysis/ab_offset_comparison.py` の filtered return を `dict[str, object]` 契約へ明示 cast し、shared filter API と整合
+- `scripts/v460/analysis/hour_matched_comparison.py` に `HourComparisonResult` を追加し、`start_ts` / `by_hour` / overall summary の型を `TypedDict` ベースへ整理
+- targeted mypy で `ab_offset_comparison.py` / `hour_matched_comparison.py` の 2 ファイル clean を確認
