@@ -862,18 +862,28 @@ def section_pre_clamp_distribution(records: list[dict[str, Any]]) -> list[str]:
 
 
 def section_execution_quality_comparison(records: list[dict[str, Any]]) -> list[str]:
-    """571# Task A: 加法 vs 乗法パイプラインの執行品質比較分析.
+    """582# 加法 vs 乗法パイプラインの執行品質比較分析.
 
-    experimental_additive_pipeline トグルの有無で fill を分類し、
-    Kissell & Glantz 指標 (Spread Capture, AS Cost, ICR) を比較する。
+    executor_offset_stages JSON に tox_buffer が含まれていれば additive、
+    なければ multiplicative として分類し Kissell & Glantz 指標を比較する。
     """
+    import json as _json
+
     filled = [r for r in records if r.get("filled")]
     if not filled:
         return ["## Execution Quality Comparison", "  (no fills)", ""]
 
     groups: dict[str, list[dict[str, Any]]] = {"multiplicative": [], "additive": []}
     for r in filled:
-        mode = "additive" if r.get("execution_additive_enabled") else "multiplicative"
+        _stages_raw = r.get("executor_offset_stages")
+        _is_additive = False
+        if _stages_raw and isinstance(_stages_raw, str):
+            try:
+                _stages = _json.loads(_stages_raw)
+                _is_additive = "tox_buffer" in _stages
+            except (ValueError, TypeError):
+                pass
+        mode = "additive" if _is_additive else "multiplicative"
         groups[mode].append(r)
 
     lines = ["## Execution Quality Comparison (571# Additive vs Multiplicative)"]
@@ -949,6 +959,71 @@ def section_spread_decomposition(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
+def section_buffer_decomposition(records: list[dict[str, Any]]) -> list[str]:
+    """582# Toxicity / Liquidity バッファ分解分析.
+
+    executor_offset_stages JSON から tox_buffer / liq_buffer を抽出し、
+    side × regime 別にバッファ寄与度を分析する。
+    """
+    import json as _json
+
+    filled = [r for r in records if r.get("filled")]
+    if not filled:
+        return ["## Buffer Decomposition (582#)", "  (no fills)", ""]
+
+    # Parse stages JSON
+    parsed: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    for r in filled:
+        _raw = r.get("executor_offset_stages")
+        if not _raw or not isinstance(_raw, str):
+            continue
+        try:
+            stages = _json.loads(_raw)
+        except (ValueError, TypeError):
+            continue
+        if "tox_buffer" in stages:
+            parsed.append((r, stages))
+
+    if not parsed:
+        return [
+            "## Buffer Decomposition (582#)",
+            "  (no additive pipeline data — tox_buffer not found in stages)",
+            "",
+        ]
+
+    lines = ["## Buffer Decomposition (582# Toxicity vs Liquidity)"]
+    lines.append(f"  Additive fills: {len(parsed)} / {len(filled)} total fills")
+    lines.append("")
+
+    tox_vals = [s["tox_buffer"] for _, s in parsed]
+    liq_vals = [s["liq_buffer"] for _, s in parsed]
+    lines.append("  --- OVERALL ---")
+    lines.append(f"    Tox Buffer: mean={np.mean(tox_vals):.4f}, p50={np.median(tox_vals):.4f}, p90={np.percentile(tox_vals, 90):.4f}")
+    lines.append(f"    Liq Buffer: mean={np.mean(liq_vals):.4f}, p50={np.median(liq_vals):.4f}, p90={np.percentile(liq_vals, 90):.4f}")
+    lines.append(f"    Tox Dominant: {sum(1 for t, l in zip(tox_vals, liq_vals) if t > l)}/{len(parsed)} ({100*sum(1 for t, l in zip(tox_vals, liq_vals) if t > l)/len(parsed):.1f}%)")
+    lines.append("")
+
+    # Per side
+    for side in ["buy", "sell"]:
+        side_data = [(r, s) for r, s in parsed if r.get("side") == side]
+        if not side_data:
+            continue
+        t = [s["tox_buffer"] for _, s in side_data]
+        l = [s["liq_buffer"] for _, s in side_data]
+        lines.append(f"  --- {side.upper()} (n={len(side_data)}) ---")
+        lines.append(f"    Tox: mean={np.mean(t):.4f}, Liq: mean={np.mean(l):.4f}")
+
+        # Per-stage contribution breakdown
+        stage_names = ["velocity", "trending", "toxicity", "vg_supp", "alert", "ev", "macro"]
+        for sn in stage_names:
+            vals = [s.get(sn) for _, s in side_data if s.get(sn) is not None]
+            if vals:
+                lines.append(f"      {sn:12s}: active={len(vals)}/{len(side_data)} ({100*len(vals)/len(side_data):.0f}%), mean_mult={np.mean(vals):.3f}")
+
+    lines.append("")
+    return lines
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -977,6 +1052,7 @@ def main() -> None:
 
     # JSON mode
     if args.json:
+        import json
         result = build_json_summary(records, args)
         output = json.dumps(result, indent=2, ensure_ascii=False)
         if args.output:
@@ -1018,6 +1094,7 @@ def main() -> None:
     all_lines.extend(section_pre_clamp_distribution(records))
     all_lines.extend(section_spread_decomposition(records))
     all_lines.extend(section_execution_quality_comparison(records))
+    all_lines.extend(section_buffer_decomposition(records))
 
     output_text = "\n".join(all_lines)
 
