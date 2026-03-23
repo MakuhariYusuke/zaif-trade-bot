@@ -1077,6 +1077,8 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
     # ---- 421# P0: Execution Final Clamp ----
     if "execution_final_clamp_enabled" in yaml_cfg:
         kwargs["execution_final_clamp_enabled"] = bool(yaml_cfg["execution_final_clamp_enabled"])
+    if "execution_additive_enabled" in yaml_cfg:
+        kwargs["execution_additive_enabled"] = bool(yaml_cfg["execution_additive_enabled"])
     if "execution_final_clamp_hard_skip_mult" in yaml_cfg:
         kwargs["execution_final_clamp_hard_skip_mult"] = float(
             yaml_cfg["execution_final_clamp_hard_skip_mult"]

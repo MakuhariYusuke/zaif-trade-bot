@@ -496,6 +496,7 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "offset_ceiling_ratio_sell",
     # 421# P0: Execution Final Clamp
     "execution_final_clamp_enabled",
+    "execution_additive_enabled",
     "execution_final_clamp_hard_skip_mult",
     # 467# deep-night ceiling 緩和
     "hour_ceiling_mult",

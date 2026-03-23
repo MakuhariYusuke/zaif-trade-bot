@@ -118,6 +118,23 @@ class TestFillRecordPreClampField:
         reconstructed = FillRecord.from_dict(rec.to_dict())
         assert reconstructed.execution_pre_clamp_offset == pytest.approx(0.75)
 
+    def test_execution_telemetry_fields_roundtrip(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+        rec = FillRecord(
+            cycle_id="test",
+            timestamp=0.0,
+            side="sell",
+            order_price=10000,
+            order_quantity=0.001,
+            execution_sigma=12.5,
+            execution_adverse_ofi=0.7,
+            execution_additive_enabled=True,
+        )
+        rebuilt = FillRecord.from_dict(rec.to_dict())
+        assert rebuilt.execution_sigma == pytest.approx(12.5)
+        assert rebuilt.execution_adverse_ofi == pytest.approx(0.7)
+        assert rebuilt.execution_additive_enabled is True
+
 
 # ============================================================
 # Final Clamp ロジックの単体テスト (純粋関数ベース)
@@ -425,6 +442,7 @@ class TestConfigHotReload418:
     def test_final_clamp_fields_in_hot_reloadable(self) -> None:
         from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         assert "execution_final_clamp_enabled" in _HOT_RELOADABLE_FIELDS
+        assert "execution_additive_enabled" in _HOT_RELOADABLE_FIELDS
         assert "execution_final_clamp_hard_skip_mult" in _HOT_RELOADABLE_FIELDS
 
 

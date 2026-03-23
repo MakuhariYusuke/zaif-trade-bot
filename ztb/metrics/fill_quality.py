@@ -71,6 +71,9 @@ class FillRecord:
     mid_120s_after: float | None = None  # 約定 120 秒後の mid price
     post_fill_60s_pnl: float | None = None   # 60 秒後 PnL (bps)
     post_fill_120s_pnl: float | None = None  # 120 秒後 PnL (bps)
+    # 577# P1: Kissell & Glantz の執行品質指標未保存バグ修正
+    spread_capture_bps: float | None = None  # MM の付加価値
+    adverse_selection_cost_bps: float | None = None  # 逆行損失
     # 037# レジーム情報 (035# §7 Week 1)
     regime: str | None = None  # FillTestRegime.value (trending/ranging/high_vol/unknown)
     regime_confidence: float | None = None  # 0.0–1.0
@@ -232,10 +235,10 @@ class FillRecord:
     # ---- 533# log_cycle_no: ログ⇔JSONL join key ----
     # "=== Cycle NNN" ログの NNN と一致させ、ログファイルと fill_records の突合を容易にする
     log_cycle_no: int | None = None
-    # ---- 573# eDRC テレメトリ: σ / adverse_ofi 記録 (パラメータチューニング用) ----
-    execution_sigma: float | None = None           # Parkinson σ (resolve_offset_ceiling 入力)
-    execution_adverse_ofi: float | None = None     # adverse OFI (resolve_offset_ceiling 入力)
-    execution_additive_enabled: bool | None = None  # 加法パイプライン有効だったか
+    # ---- 573# eDRC / additive pipeline telemetry ----
+    execution_sigma: float | None = None
+    execution_adverse_ofi: float | None = None
+    execution_additive_enabled: bool | None = None
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

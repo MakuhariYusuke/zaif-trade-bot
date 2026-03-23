@@ -8775,3 +8775,22 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `test_fill_quality.py`
 - focused:
   - prompt 583 周辺 suite `236 passed`
+## 2026-03-24 additive config + fill-record telemetry follow-up
+- `ztb/metrics/fill_quality.py`
+  - `execution_sigma`
+  - `execution_adverse_ofi`
+  - `execution_additive_enabled`
+  を維持しつつ、Kissell & Glantz 指標フィールドも併存する形に整理
+- `scripts/v460/lib/fill_config_parser.py`
+  - nested additive config から `edrc_hard_cap` を parse し続けるよう維持
+- `tests/unit/v460/test_421_final_clamp_deadlock.py`
+  - execution telemetry roundtrip 回帰
+  - `execution_additive_enabled` hot-reload 回帰
+- `tests/unit/v460/test_467_remaining_issues.py`
+  - `hour_ceiling_mult` 適用後 hard cap の回帰
+- focused:
+  - `tests/unit/v460/test_421_final_clamp_deadlock.py`
+  - `tests/unit/v460/test_467_remaining_issues.py`
+  - `tests/unit/v460/test_169_config_hot_reload.py`
+  - `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
+  - `109 passed in 2.91s`

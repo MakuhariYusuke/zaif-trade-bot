@@ -179,6 +179,18 @@ class TestHourCeilingMult:
         # exp(0) = 1.0 → 0.40 × 1.5 = 0.60
         assert cfg.resolve_offset_ceiling("buy", utc_hour=13) == pytest.approx(0.60)
 
+    def test_resolve_offset_ceiling_edrc_hour_mult_then_hard_cap(self) -> None:
+        """578# P1: hour_ceiling_mult 適用後に hard cap で抑える."""
+        cfg = FillTestConfig(
+            experimental_additive_pipeline=True,
+            edrc_c_base=0.80,
+            edrc_alpha=0.0,
+            edrc_beta=0.0,
+            hour_ceiling_mult={13: 2.0},
+            edrc_hard_cap=1.0,
+        )
+        assert cfg.resolve_offset_ceiling("buy", utc_hour=13) == pytest.approx(1.0)
+
     # ---- 574# eDRC Hard Cap + パラメータ推定検証 ----
 
     def test_edrc_hard_cap_clamps_output(self) -> None:

@@ -6409,3 +6409,8 @@ python scripts/unified_trainer.py \
 - `scripts/v460/analysis/analyze_fill_logs.py` の additive classification を `execution_additive_enabled` 優先 + legacy stages fallback に更新
 - `tests/unit/v460/test_582_additive_pipeline.py` に additive final clamp / dispatcher / liquidity buffer / buy-side trending ignore の回帰を追加
 - source-contract test を phase helper / multiplicative method source 前提へ追随
+## 2026-03-24 additive config and fill-record telemetry alignment
+- `ztb/metrics/fill_quality.py` に `execution_sigma` / `execution_adverse_ofi` / `execution_additive_enabled` を維持したまま `spread_capture_bps` / `adverse_selection_cost_bps` も併存させた
+- `scripts/v460/lib/fill_config_parser.py` で nested additive config から `edrc_hard_cap` を引き続き parse するよう維持
+- `tests/unit/v460/test_421_final_clamp_deadlock.py` に execution telemetry roundtrip と `execution_additive_enabled` hot-reload 回帰を追加
+- `tests/unit/v460/test_467_remaining_issues.py` に `hour_ceiling_mult` 適用後 hard cap の回帰を追加
