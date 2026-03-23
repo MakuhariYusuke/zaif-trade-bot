@@ -6366,3 +6366,10 @@ python scripts/unified_trainer.py \
 - `scripts/v460/lib/ab_judgment.py` に per-regime helper 群を追加し、criteria/evaluation ownership を整理
 - `ztb/training/utils/training_stats_payloads.py` に `extract_reward_component_metrics(...)` を追加し、callback 側の reward payload 抽出を canonical 化
 - `tests/unit/training/test_training_stats_payloads.py` と `tests/unit/training/test_reward_components_persistence.py` に関連回帰を追加
+## 2026-03-23 wave3 reporting alignment and wave4 tmp-path sweep
+- `ztb/training/unified_trainer/reporting.py` の reward payload 取得を `extract_reward_component_metrics(...)` に統一
+- `tests/unit/training/test_training_reporting_flow.py` に flat stats fallback の回帰を追加
+- `tests/unit/utils/test_utils.py`
+- `tests/unit/utils/test_file_utils.py`
+- `tests/unit/evaluation/test_evaluate.py`
+  の `TemporaryDirectory()` を `tmp_path` ベースへ整理

@@ -3,6 +3,7 @@ from __future__ import annotations
 from unittest.mock import Mock
 
 from ztb.training.unified_trainer.reporting import (
+    TrainingReporter,
     persist_ensemble_report,
     persist_training_report,
 )
@@ -43,3 +44,22 @@ def test_persist_ensemble_report_handles_empty_report() -> None:
     assert report == {}
     assert report_path == ""
     reporter.save_ensemble_report.assert_not_called()
+
+
+def test_training_report_extracts_flat_reward_metrics() -> None:
+    reporter = TrainingReporter()
+
+    report = reporter.generate_report(
+        {"algorithm": "sac"},
+        {
+            "balance_penalty": -0.2,
+            "entropy_shaping": 0.1,
+            "other_metric": 1.0,
+        },
+        True,
+    )
+
+    assert report["reward_components"] == {
+        "balance_penalty": -0.2,
+        "entropy_shaping": 0.1,
+    }

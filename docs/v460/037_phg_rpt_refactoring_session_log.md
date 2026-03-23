@@ -8674,3 +8674,14 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - reward payload 抽出を shared helper 経由へ統一
 - focused:
   - `165 passed in 17.18s`
+## 2026-03-23 wave3 reporting alignment + wave4 tmp-path sweep
+- `ztb/training/unified_trainer/reporting.py`
+  - reward payload 取得を `extract_reward_component_metrics(...)` に統一
+- `tests/unit/training/test_training_reporting_flow.py`
+  - flat stats から reward metrics を拾う回帰を追加
+- `tests/unit/utils/test_utils.py`
+- `tests/unit/utils/test_file_utils.py`
+- `tests/unit/evaluation/test_evaluate.py`
+  - `TemporaryDirectory()` を `tmp_path` ベースへ整理
+- focused:
+  - `39 passed, 1 skipped in 6.48s`

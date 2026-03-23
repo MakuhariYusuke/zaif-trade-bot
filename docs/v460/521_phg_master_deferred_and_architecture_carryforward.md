@@ -180,7 +180,7 @@ callback / reporting が `reward_components` を扱うときも、可能な限�
 
 直近では `extract_reward_component_metrics(...)` を追加し、
 canonical な `reward_components` payload と legacy flat info の両方を
-同じ経路で扱えるようにしている。
+同じ経路で扱えるようにしている。reporting もこの経路へ追随済み。
 
 `RewardCalculator.get_last_reward_components()` のような外部公開 payload は、
 可能な限り snapshot を返して internal mutable state の alias を避ける。

@@ -224,3 +224,9 @@ Done の基準:
 - Wave 3
   - `training_stats_payloads.py` に reward payload 抽出 helper を追加し、
     callback 側の `reward_components` 取得経路を canonical 化した
+  - reporting 側も同じ helper を使う形に寄せ、flat stats からの reward metrics も同一経路で扱えるようにした
+- Wave 4
+  - `tests/unit/utils/test_utils.py`
+  - `tests/unit/utils/test_file_utils.py`
+  - `tests/unit/evaluation/test_evaluate.py`
+  を `tmp_path` ベースへ整理した

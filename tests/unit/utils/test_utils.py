@@ -5,7 +5,6 @@ This module tests various utility functions used throughout the codebase.
 """
 
 import logging
-import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -117,25 +116,24 @@ class TestLoggingUtils:
         assert root_logger.level == logging.DEBUG
         assert len(root_logger.handlers) == 1  # Console handler
 
-    def test_setup_logging_with_file(self):
+    def test_setup_logging_with_file(self, tmp_path: Path):
         """Test logging setup with file output."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            log_file = Path(temp_dir) / "test.log"
+        log_file = tmp_path / "test.log"
 
-            # Reset logging configuration
-            root_logger = logging.getLogger()
-            root_logger.handlers.clear()
+        # Reset logging configuration
+        root_logger = logging.getLogger()
+        root_logger.handlers.clear()
 
-            setup_logging(log_file=str(log_file))
+        setup_logging(log_file=str(log_file))
 
-            assert len(root_logger.handlers) == 2  # Console + file handler
+        assert len(root_logger.handlers) == 2  # Console + file handler
 
-            # Close file handler to allow cleanup
-            for handler in root_logger.handlers:
-                if hasattr(handler, "close"):
-                    handler.close()
+        # Close file handler to allow cleanup
+        for handler in root_logger.handlers:
+            if hasattr(handler, "close"):
+                handler.close()
 
-            assert log_file.exists()
+        assert log_file.exists()
 
     def test_get_logger(self):
         """Test get_logger function."""
