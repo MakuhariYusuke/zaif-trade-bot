@@ -692,8 +692,9 @@ offset_ceiling_ratio_sell: 0.40   # 565# P1: 0.30→0.40 (sell側テールリス
 # true にすると eDRC (Exponential Dynamic Risk Ceiling) ベースの
 # 動的 ceiling に切り替わる (570# 仕様準拠)。
 # 574# 推奨パラメータ: α=0.020 (σ30bps→1.8x), β=0.40 (OFI0.8→1.38x)
+# 575# 有効化: RobustStats統合 + hard_cap=1.0 で安全性確保済み
 experimental_additive_pipeline:
-  enabled: false
+  enabled: true
   edrc_alpha: 0.020        # 574# eDRC α: σ(bps)感度 (σ=30→ceiling 1.8x)
   edrc_beta: 0.40          # 574# eDRC β: OFI感度 (OFI=0.8→ceiling 1.38x)
   edrc_c_base: 0.40        # eDRC Base Ceiling (baseline offset ratio max)

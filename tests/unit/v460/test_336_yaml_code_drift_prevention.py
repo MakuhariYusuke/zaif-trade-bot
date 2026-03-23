@@ -60,6 +60,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "dynamic_cycle_interval_enabled",
     "enable_macro_regime",
     "enable_time_filter",
+    "experimental_additive_pipeline",  # 575# eDRC有効化
     "fast_fill_defense_enabled",
     "inv_skew_regime_gate_enabled",
     "inventory_skewing_enabled",
