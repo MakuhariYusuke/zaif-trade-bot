@@ -8853,3 +8853,17 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - targeted mypy:
   - `.venv/Scripts/python.exe scripts/quality/run_targeted_mypy.py scripts/v460/lib/fill_config.py scripts/v460/lib/fill_record_builder.py scripts/v460/lib/fill_cycle_executor.py scripts/v460/lib/offset_pipeline.py scripts/v460/lib/multiplicative_pipeline.py`
   - `Success: no issues found in 5 source files`
+## 2026-03-24 analysis typing cleanup
+- `scripts/v460/analysis/analyze_fill_logs.py`
+  - shared fill-quality API の返り値に合わせて `Record = dict[str, object]` を導入
+  - `FloatArray` alias を追加し `_np()` / `_pnls()` の numpy 戻り値型を明示
+  - `section_microstructure_correlation()` の `spread_bps` / `orderbook_imbalance` / `vg_vpin` を `float` 正規化
+- targeted mypy:
+  - `.venv/Scripts/python.exe scripts/quality/run_targeted_mypy.py scripts/v460/analysis`
+  - `[targeted-mypy] no diagnostics in requested targets; suppressed 70 unrelated baseline diagnostics.`
+  - `.venv/Scripts/python.exe scripts/quality/run_targeted_mypy.py scripts/v460/analysis/analyze_fill_logs.py scripts/v460/lib/fill_config_parser.py scripts/v460/lib/config_hot_reload.py`
+  - `Success: no issues found in 3 source files`
+- focused pytest:
+  - `tests/test_analyze_fill_logs.py`
+  - `tests/unit/v460/test_169_config_hot_reload.py`
+  - `38 passed, 1 skipped`

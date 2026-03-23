@@ -6436,3 +6436,7 @@ python scripts/unified_trainer.py \
 - `scripts/v460/lib/fill_config.py` の lazy parser resolver に返り値型を追加し、`from_yaml()` の `Any` 流出を解消
 - `scripts/v460/lib/fill_record_builder.py` に mixin 依存属性の型宣言を追加し、SkipGate optional payload / decision-path シグネチャを実呼び出しに合わせて整理
 - `scripts/v460/lib/fill_cycle_executor.py` に cross-venue EMA / narrow-spread counter / order placement の型を追加し、targeted mypy で `fill_config` / `fill_record_builder` / `fill_cycle_executor` / `offset_pipeline` / `multiplicative_pipeline` の 5 ファイル clean を確認
+## 2026-03-24 analysis typing cleanup
+- `scripts/v460/analysis/analyze_fill_logs.py` を shared API (`dict[str, object]`) に揃え、record / numpy payload の type alias を追加
+- `load_records()` / `apply_filters()` / `_np()` / `_pnls()` の返り値型を明示し、microstructure correlation の数値比較を `float` 正規化へ整理
+- targeted mypy で `scripts/v460/analysis` は no diagnostics、`analyze_fill_logs.py` / `fill_config_parser.py` / `config_hot_reload.py` も clean を確認

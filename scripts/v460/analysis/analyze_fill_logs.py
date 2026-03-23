@@ -19,14 +19,18 @@ import collections
 import pathlib
 import sys
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, TypeAlias, cast
 
 import numpy as np
+from numpy.typing import NDArray
 
 from ztb.metrics.fill_quality import (
     apply_fill_record_filters,
     load_fill_record_objects_glob,
 )
+
+Record: TypeAlias = dict[str, object]
+FloatArray: TypeAlias = NDArray[np.float64]
 
 # ---------------------------------------------------------------------------
 # CLI
@@ -81,7 +85,7 @@ def load_records(
     data_dir: str,
     date_from: str | None,
     date_to: str | None,
-) -> list[dict[str, Any]]:
+) -> list[Record]:
     """JSONL ファイルを読み込み、日付範囲でファイルをプリフィルタ."""
     base = pathlib.Path(data_dir)
     if not base.exists():
@@ -96,11 +100,11 @@ def load_records(
     if not records:
         print(f"ERROR: no fill_records found in {base}", file=sys.stderr)
         sys.exit(1)
-    return records  # type: ignore[return-value]
+    return cast(list[Record], records)
 
 
 def apply_filters(
-    records: list[dict[str, Any]],
+    records: list[Record],
     *,
     run_id: str | None = None,
     git_sha: str | None = None,
@@ -108,7 +112,7 @@ def apply_filters(
     date_to: str | None = None,
     side: str | None = None,
     regime: str | None = None,
-) -> list[dict[str, Any]]:
+) -> list[Record]:
     """レコードレベルのフィルタリングを適用."""
     filtered, _ = apply_fill_record_filters(
         records,
@@ -122,19 +126,26 @@ def apply_filters(
         filtered = [r for r in filtered if r.get("side") == side]
     if regime:
         filtered = [r for r in filtered if r.get("regime") == regime]
-    return filtered  # type: ignore[return-value]
+    return cast(list[Record], filtered)
 
 
 # ---------------------------------------------------------------------------
 # Analysis Sections
 # ---------------------------------------------------------------------------
 
-def _np(values: list[float]) -> np.ndarray:
-    return np.array(values, dtype=np.float64) if values else np.array([], dtype=np.float64)
+def _np(values: list[float]) -> FloatArray:
+    return cast(
+        FloatArray,
+        np.array(values, dtype=np.float64)
+        if values
+        else np.array([], dtype=np.float64),
+    )
 
 
-def _pnls(records: list[dict[str, Any]], key: str = "post_fill_30s_pnl") -> np.ndarray:
-    return _np([float(r[key]) for r in records if r.get(key) is not None])
+def _pnls(records: list[Record], key: str = "post_fill_30s_pnl") -> FloatArray:
+    return _np(
+        [float(cast(int | float, r[key])) for r in records if r.get(key) is not None]
+    )
 
 
 def section_header(records: list[dict[str, Any]], args: argparse.Namespace) -> list[str]:
@@ -804,7 +815,7 @@ def section_microstructure_correlation(records: list[dict[str, Any]]) -> list[st
     lines = ["## Microstructure Correlation (Sell Side AS Deep Dive)"]
 
     # 1. Spread vs AS
-    spreads = [r.get("spread_bps") for r in filled_sell if r.get("spread_bps") is not None]
+    spreads = [float(r["spread_bps"]) for r in filled_sell if r.get("spread_bps") is not None]
     if spreads:
         as_flags = [1 if r.get("adverse_selected") else 0 for r in filled_sell if r.get("spread_bps") is not None]
         avg_spread = float(np.mean(spreads))
@@ -815,7 +826,11 @@ def section_microstructure_correlation(records: list[dict[str, Any]]) -> list[st
             lines.append(f"  AS Rate by Spread: Low (<{avg_spread:.2f}bps): {np.mean(low_spread_as)*100:.1f}% (n={len(low_spread_as)}), High: {np.mean(high_spread_as)*100:.1f}% (n={len(high_spread_as)})")
 
     # 2. Orderbook Imbalance vs AS
-    imbalances = [r.get("orderbook_imbalance") for r in filled_sell if r.get("orderbook_imbalance") is not None]
+    imbalances = [
+        float(r["orderbook_imbalance"])
+        for r in filled_sell
+        if r.get("orderbook_imbalance") is not None
+    ]
     if imbalances:
         as_flags = [1 if r.get("adverse_selected") else 0 for r in filled_sell if r.get("orderbook_imbalance") is not None]
         # Imbalance > 0.3 (買い圧が強い) 時の Sell AS 率
@@ -825,7 +840,7 @@ def section_microstructure_correlation(records: list[dict[str, Any]]) -> list[st
             lines.append(f"  AS Rate by Imbalance: Toxic (>0.3): {np.mean(toxic_imbalance)*100:.1f}% (n={len(toxic_imbalance)}), Normal: {np.mean(normal_imbalance)*100:.1f}% (n={len(normal_imbalance)})")
 
     # 3. VPIN (Liquidity Risk) vs AS
-    vpins = [r.get("vg_vpin") for r in filled_sell if r.get("vg_vpin") is not None]
+    vpins = [float(r["vg_vpin"]) for r in filled_sell if r.get("vg_vpin") is not None]
     if vpins:
         as_flags = [1 if r.get("adverse_selected") else 0 for r in filled_sell if r.get("vg_vpin") is not None]
         avg_vpin = float(np.mean(vpins))
