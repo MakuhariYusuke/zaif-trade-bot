@@ -232,6 +232,10 @@ class FillRecord:
     # ---- 533# log_cycle_no: ログ⇔JSONL join key ----
     # "=== Cycle NNN" ログの NNN と一致させ、ログファイルと fill_records の突合を容易にする
     log_cycle_no: int | None = None
+    # ---- 573# eDRC テレメトリ: σ / adverse_ofi 記録 (パラメータチューニング用) ----
+    execution_sigma: float | None = None           # Parkinson σ (resolve_offset_ceiling 入力)
+    execution_adverse_ofi: float | None = None     # adverse OFI (resolve_offset_ceiling 入力)
+    execution_additive_enabled: bool | None = None  # 加法パイプライン有効だったか
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

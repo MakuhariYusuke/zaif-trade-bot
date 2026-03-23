@@ -42,6 +42,10 @@ class OffsetPipelineResult:
     macro_boost_applied: bool
     execution_pre_clamp_offset: float | None
     executor_offset_stages_json: str | None
+    # 573# eDRC テレメトリ
+    execution_sigma: float | None = None
+    execution_adverse_ofi: float | None = None
+    execution_additive_enabled: bool | None = None
     early_return_record: FillRecord | None = None
 
 
@@ -279,14 +283,19 @@ class OffsetPipelineMixin(PreOrderAdjustmentsMixin):
             _executor_offset_stages_json = _json.dumps(
                 _exec_stages, separators=(",", ":"),
             )
+        # 573# eDRC テレメトリ: σ / adverse_ofi をキャプチャ
+        _execution_sigma = self._maker_price.last_sigma
+        _execution_adverse_ofi = self._maker_price.get_adverse_ofi(side)
+        _execution_additive_enabled = self.config.experimental_additive_pipeline
+
         if self.config.execution_final_clamp_enabled:
             # 467#: hour_ceiling_mult 反映
             # 568#: eDRC 用に sigma と adverse_ofi を渡す
             _fc_ceil = self.config.resolve_offset_ceiling(
                 side,
                 utc_hour=current_utc_hour(),
-                sigma=self._maker_price.last_sigma,
-                adverse_ofi=self._maker_price.get_adverse_ofi(side),
+                sigma=_execution_sigma,
+                adverse_ofi=_execution_adverse_ofi,
             )
             _ceiling = clamp_offset_ratio_to_ceiling(
                 effective_offset_ratio=effective_offset_ratio,
@@ -312,6 +321,9 @@ class OffsetPipelineMixin(PreOrderAdjustmentsMixin):
                         macro_boost_applied=_macro_boost_applied,
                         execution_pre_clamp_offset=_execution_pre_clamp_offset,
                         executor_offset_stages_json=_executor_offset_stages_json,
+                        execution_sigma=_execution_sigma,
+                        execution_adverse_ofi=_execution_adverse_ofi,
+                        execution_additive_enabled=_execution_additive_enabled,
                         early_return_record=self._make_cycle_skip_record(
                             side=side,
                             cancel_reason=CR.FINAL_CLAMP_HARD_SKIP,
@@ -348,6 +360,9 @@ class OffsetPipelineMixin(PreOrderAdjustmentsMixin):
             macro_boost_applied=_macro_boost_applied,
             execution_pre_clamp_offset=_execution_pre_clamp_offset,
             executor_offset_stages_json=_executor_offset_stages_json,
+            execution_sigma=_execution_sigma,
+            execution_adverse_ofi=_execution_adverse_ofi,
+            execution_additive_enabled=_execution_additive_enabled,
         )
 
     @staticmethod

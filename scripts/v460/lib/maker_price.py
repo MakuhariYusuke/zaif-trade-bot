@@ -850,6 +850,9 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
                 spread_bps = spread / mid_price * 10_000
                 stages["delta_star_bps"] = round(delta_star_bps, 2)
                 stages["spread_bps"] = round(spread_bps, 2)
+        # 573# eDRC テレメトリ: σ を stages に記録
+        if self._last_sigma > 0.0:
+            stages["sigma"] = round(self._last_sigma, 8)
         return stages
 
     def _persist_offset_stage_store(
