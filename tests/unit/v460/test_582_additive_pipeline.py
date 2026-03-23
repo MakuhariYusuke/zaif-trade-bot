@@ -5,6 +5,12 @@
   B. _apply_offset_pipeline_additive: RMS 結合ロジック
   C. Toxicity/Liquidity 分類の正確性
   D. 全 multiplier ≤ 1.0 のとき base_ratio 保持
+  E. VG sell supplement (additive path)
+  F. Macro buy/weak_down (additive path)
+  G. Alert > 1.0 (additive path)
+  H. Final clamp hard skip (additive path)
+  I. Final clamp with spread (normal clamp)
+  J. _scale_lot
 """
 
 from __future__ import annotations
@@ -298,3 +304,209 @@ class TestMethodExistence:
     def test_dispatcher_source_references_flag(self) -> None:
         src = inspect.getsource(OffsetPipelineMixin._apply_offset_pipeline)
         assert "experimental_additive_pipeline" in src
+
+
+# ── F. VG sell supplement (additive path) ──
+
+
+class TestVgSellSupplementAdditive:
+    """202# VG supplement — additive path での Toxicity バッファ加算."""
+
+    def test_vg_supplement_fire(self) -> None:
+        """sell + !vg_triggered + |vel|>threshold + vel 未適用 → tox_buffer に加算."""
+        mixin = _make_mixin(
+            ev_as_offset_enabled=False,
+            vg_velocity_threshold_bps=10.0,
+            vg_offset_boost_factor=1.5,
+        )
+        mixin._maker_price.last_vg_triggered = False
+        # velocity_offset_mult=None → vel 未適用, velocity_bps=15 > threshold
+        result = mixin._apply_offset_pipeline_additive(
+            **{**_COMMON_KWARGS, "side": "sell", "sg_velocity_bps": 15.0},
+        )
+        stages = json.loads(result.executor_offset_stages_json)
+        assert stages["vg_supp"] == 1.5
+        assert stages["tox_buffer"] > 0.0
+        assert result.effective_offset_ratio > 0.05
+
+    def test_vg_supplement_skip_when_boost_factor_1(self) -> None:
+        """boost_factor=1.0 → delta=0 → tox_buffer には加算されない."""
+        mixin = _make_mixin(
+            ev_as_offset_enabled=False,
+            vg_velocity_threshold_bps=10.0,
+            vg_offset_boost_factor=1.0,
+        )
+        mixin._maker_price.last_vg_triggered = False
+        result = mixin._apply_offset_pipeline_additive(
+            **{**_COMMON_KWARGS, "side": "sell", "sg_velocity_bps": 15.0},
+        )
+        stages = json.loads(result.executor_offset_stages_json)
+        # _vg_supp_mult=1.0 だが条件分岐 if _vg_supp_mult > 1.0 で弾かれる
+        # → tox_buffer=0
+        assert stages["tox_buffer"] == 0.0
+
+
+# ── G. Macro buy/weak_down (additive path) ──
+
+
+class TestMacroBuyWeakDownAdditive:
+    """458# macro buy/weak_down — additive path."""
+
+    def test_buy_weak_down(self) -> None:
+        mixin = _make_mixin(
+            ev_as_offset_enabled=False,
+            last_macro_trend="macro_weak_down",
+            macro_buy_boost_weak_down=1.3,
+        )
+        result = mixin._apply_offset_pipeline_additive(
+            **{**_COMMON_KWARGS, "side": "buy"},
+        )
+        assert result.macro_boost_applied is True
+        stages = json.loads(result.executor_offset_stages_json)
+        assert stages["macro"] == 1.3
+        assert stages["liq_buffer"] > 0.0
+
+    def test_buy_strong_down(self) -> None:
+        mixin = _make_mixin(
+            ev_as_offset_enabled=False,
+            last_macro_trend="macro_strong_down",
+            macro_buy_boost_strong_down=1.4,
+        )
+        result = mixin._apply_offset_pipeline_additive(
+            **{**_COMMON_KWARGS, "side": "buy"},
+        )
+        assert result.macro_boost_applied is True
+
+
+# ── H. Alert > 1.0 (additive path) ──
+
+
+class TestAlertAdditiveOffset:
+    """215# alert multiplier — additive path の Toxicity バッファ."""
+
+    def test_alert_offset_tox_buffer(self) -> None:
+        mixin = _make_mixin(ev_as_offset_enabled=False, alert_offset_mult=1.5)
+        result = mixin._apply_offset_pipeline_additive(**_COMMON_KWARGS)
+        stages = json.loads(result.executor_offset_stages_json)
+        assert stages["alert"] == 1.5
+        assert stages["tox_buffer"] > 0.0
+
+    def test_alert_offset_le_1_no_effect(self) -> None:
+        mixin = _make_mixin(ev_as_offset_enabled=False, alert_offset_mult=0.8)
+        result = mixin._apply_offset_pipeline_additive(**_COMMON_KWARGS)
+        stages = json.loads(result.executor_offset_stages_json)
+        assert stages["alert"] is None
+        assert stages["tox_buffer"] == 0.0
+
+
+# ── I. Final clamp hard skip + normal clamp (additive path) ──
+
+
+class TestFinalClampAdditive:
+    """582# additive path の final clamp 経路."""
+
+    def test_hard_skip_returns_early_record(self) -> None:
+        """offset >> ceiling × hard_skip_mult → early return."""
+        mixin = _make_mixin(
+            ev_as_offset_enabled=False,
+            execution_final_clamp_enabled=True,
+        )
+        mixin.config.resolve_offset_ceiling = MagicMock(return_value=0.01)
+        mixin.config.execution_final_clamp_hard_skip_mult = 2.0
+        mixin._make_cycle_skip_record = MagicMock(return_value=MagicMock())
+        # velocity=2.0 → offset ≈ 0.10 >> 0.01*2.0=0.02
+        result = mixin._apply_offset_pipeline_additive(
+            **{**_COMMON_KWARGS, "sg_velocity_offset_mult": 2.0},
+        )
+        assert result.early_return_record is not None
+        mixin._make_cycle_skip_record.assert_called_once()
+
+    def test_normal_clamp_with_spread(self) -> None:
+        """offset > ceiling but < ceiling × hard_skip → clamp + price recalc."""
+        mixin = _make_mixin(
+            ev_as_offset_enabled=False,
+            execution_final_clamp_enabled=True,
+        )
+        mixin.config.resolve_offset_ceiling = MagicMock(return_value=0.06)
+        mixin.config.execution_final_clamp_hard_skip_mult = 5.0
+        # velocity=2.0 → offset ≈ 0.10, ceiling=0.06
+        result = mixin._apply_offset_pipeline_additive(
+            **{**_COMMON_KWARGS, "sg_velocity_offset_mult": 2.0},
+        )
+        assert result.execution_pre_clamp_offset is not None
+        assert result.effective_offset_ratio == pytest.approx(0.06, abs=1e-6)
+        assert result.early_return_record is None
+
+
+# ── J. _scale_lot ──
+
+
+class TestScaleLot:
+    """_scale_lot の挙動テスト."""
+
+    def test_basic_scaling(self) -> None:
+        result = OffsetPipelineMixin._scale_lot(
+            lot=0.01, scale=0.5, min_lot=0.001, tag="test"
+        )
+        assert result == pytest.approx(0.005)
+
+    def test_min_lot_guard(self) -> None:
+        result = OffsetPipelineMixin._scale_lot(
+            lot=0.001, scale=0.1, min_lot=0.005, tag="test"
+        )
+        # 0.001 * 0.1 = 0.0001 < 0.005 → min_lot を返す
+        assert result == pytest.approx(0.005)
+
+    def test_warn_flag(self) -> None:
+        """warn=True でも正しい値を返す."""
+        result = OffsetPipelineMixin._scale_lot(
+            lot=0.01, scale=2.0, min_lot=0.001, tag="test", warn=True
+        )
+        assert result == pytest.approx(0.02)
+
+
+# ── K. 追加カバレッジ — trending sell / macro weak_up / sidecar buy ──
+
+
+class TestTrendingSellAdditive:
+    """196# trending offset — additive path sell 側."""
+
+    def test_trending_sell_adds_to_tox_buffer(self) -> None:
+        mixin = _make_mixin(ev_as_offset_enabled=False)
+        result = mixin._apply_offset_pipeline_additive(
+            **{**_COMMON_KWARGS, "side": "sell", "trending_offset_mult": 1.5},
+        )
+        stages = json.loads(result.executor_offset_stages_json)
+        assert stages["trending"] == 1.5
+        assert stages["tox_buffer"] > 0.0
+        assert result.effective_offset_ratio > 0.05
+
+
+class TestMacroWeakUpSellAdditive:
+    """458# macro sell/weak_up — additive path."""
+
+    def test_sell_weak_up(self) -> None:
+        mixin = _make_mixin(
+            ev_as_offset_enabled=False,
+            last_macro_trend="macro_weak_up",
+            macro_sell_boost_weak_up=1.3,
+        )
+        result = mixin._apply_offset_pipeline_additive(
+            **{**_COMMON_KWARGS, "side": "sell"},
+        )
+        assert result.macro_boost_applied is True
+        stages = json.loads(result.executor_offset_stages_json)
+        assert stages["macro"] == 1.3
+        assert stages["liq_buffer"] > 0.0
+
+
+class TestSidecarBuyAdditive:
+    """Sidecar bps — additive buy."""
+
+    def test_sidecar_buy(self) -> None:
+        mixin = _make_mixin(ev_as_offset_enabled=False)
+        result = mixin._apply_offset_pipeline_additive(
+            **{**_COMMON_KWARGS, "side": "buy", "sidecar_offset_bps": 10.0},
+        )
+        # buy: price + delta
+        assert result.order_price != 13_000_000
