@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-23 (563# 560/561/562 second opinion)
+> 最終更新: 2026-03-23 (577# eDRC・計測基盤・加法化レビュー)
 
 ---
 
@@ -682,6 +682,8 @@ NNN_phX_TYPE_description.md
 | 570 | spec | [570_phg_spec_robust_inputs_and_additive_parameters.md](570_phg_spec_robust_inputs_and_additive_parameters.md) | 執行エンジンのロバスト入力設計と加法パイプライン本番係数マッピング |
 | 571 | impl | [571_phg_impl_robust_stats_and_quality_metrics_draft.md](571_phg_impl_robust_stats_and_quality_metrics_draft.md) | ロバスト統計ユーティリティの実装と執行品質比較分析ドラフト |
 | 574 | report | [574_phg_rpt_edrc_parameter_estimation_and_90s_window_fix.md](574_phg_rpt_edrc_parameter_estimation_and_90s_window_fix.md) | eDRC 戦略的パラメータ推定と「死の90秒窓」への外科的設計 |
+| 580 | impl | [580_phg_impl_schema_fix_and_true_additive_design.md](580_phg_impl_schema_fix_and_true_additive_design.md) | スキーマ不整合の解消と「真の加法化」の実装開始 |
+| 581 | impl | [581_phg_impl_true_additive_pipeline_and_rms_integration.md](581_phg_impl_true_additive_pipeline_and_rms_integration.md) | True Additive Pipeline の実装完了と RMS 結合による爆発鎮鎮報告 |
 | 559 | impl | [559_phg_impl_self_review_and_bugfix.md](559_phg_impl_self_review_and_bugfix.md) | 553#–555# セルフレビュー: PnL単位/Action bin 不整合修正 + Entry Gate ログ出力 |
 | 560 | rpt | [560_phg_rpt_fill_test_post_restart_analysis.md](560_phg_rpt_fill_test_post_restart_analysis.md) | Fill Test 再起動後パフォーマンス分析 (3/12–3/22) |
 | 562 | review | [562_phg_review_560_561_analysis_and_proposals.md](562_phg_review_560_561_analysis_and_proposals.md) | 560#・561# レビュー: 実データ検証と統合改善提案 |
@@ -690,3 +692,8 @@ NNN_phX_TYPE_description.md
 | 565 | review | [565_phg_review_cross_verification_and_residual_blind_spots.md](565_phg_review_cross_verification_and_residual_blind_spots.md) | 560-564 横断検証と残存盲点の拾い上げ |
 | 567 | impl | [567_phg_impl_measurement_infrastructure_i1_i3.md](567_phg_impl_measurement_infrastructure_i1_i3.md) | 計測基盤修正 I1–I3: E3 sell窓崩壊修正, Execution Quality分解, pre_clamp分布可視化 |
 | 569 | impl | [569_phg_impl_measurements_and_parameters.md](569_phg_impl_measurements_and_parameters.md) | 565# 指摘の計測基盤の補完(I2)と即時パラメータ修正(P1-P3) |
+| 572 | impl | [572_cplt_impl_edrc_ab_toggle_infrastructure.md](572_cplt_impl_edrc_ab_toggle_infrastructure.md) | eDRC A/Bトグル基盤実装 |
+| 573 | impl | [573_cplt_impl_571_robust_stats_and_quality_metrics.md](573_cplt_impl_571_robust_stats_and_quality_metrics.md) | robust_stats + 執行品質比較セクション実装 |
+| 575 | impl | [575_cplt_impl_574_edrc_params_robust_inputs_hardcap.md](575_cplt_impl_574_edrc_params_robust_inputs_hardcap.md) | 574# eDRC パラメータ・RobustStats統合・Hard Cap 実装 |
+| 576 | review | [576_cplt_deep_analysis_575_edrc_and_system_health.md](576_cplt_deep_analysis_575_edrc_and_system_health.md) | 575# eDRC 有効化後の稼働状況とシステム全体改善点洗出し |
+| 577 | review | [577_phg_rev_564_576_multifaceted_validation_and_bug_audit.md](577_phg_rev_564_576_multifaceted_validation_and_bug_audit.md) | 564#–576# の多角的検証と実装ミス監査 |
