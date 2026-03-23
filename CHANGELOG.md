@@ -6398,3 +6398,6 @@ python scripts/unified_trainer.py \
 ## 2026-03-23 wave4 v460 temp file cleanup
 - `tests/unit/v460/test_v460_core.py` の gate-check JSON fixture を `tmp_path` ベースへ整理
 - `tests/unit/v460/test_189_alt_horizon_macro_integration.py` の YAML fixture を `tmp_path` ベースへ整理
+## 2026-03-23 reward simple transaction-cost contract alignment
+- `RewardCalculator.calculate_reward_simple()` が明示 `transaction_cost` 引数を優先するよう修正
+- `tests/unit/environment/test_calculate_reward_simple_fix.py` は pure simple reward 契約を明示するため shaper/scaler/signal を fixture で無効化

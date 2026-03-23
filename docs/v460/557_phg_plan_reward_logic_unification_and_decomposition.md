@@ -222,5 +222,9 @@
   - stateless core は `RewardKernel`
   - stateful orchestration は `RewardCalculator`
   という線を崩さないことが重要
+- `calculate_reward_simple()` は
+  - 明示 `transaction_cost` 引数を優先
+  - 純粋 kernel 契約を検証したい test では shaper/scaler/signal を明示的に無効化
+  という線で維持する
 
 ---

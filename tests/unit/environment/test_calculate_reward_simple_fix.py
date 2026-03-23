@@ -19,11 +19,17 @@ class TestCalculateRewardSimpleParameterFix:
 
         config = EnvironmentConfig(initial_balance=10000.0, commission=0.001)
         reward_settings = mock_config.get("reward_settings", {})
-        return RewardCalculator(
+        calculator = RewardCalculator(
             config=config,
             reward_settings=reward_settings,
             initial_portfolio_value=10000.0,
         )
+        # This suite validates the basic RewardKernel-backed path, not the
+        # optional shaping/signal/scaling layers added later.
+        calculator.dynamic_reward_shaper.enabled = False
+        calculator.asymmetric_reward_scaler.enabled = False
+        calculator.signal_integrator.enabled = False
+        return calculator
 
     @pytest.fixture
     def mock_config(self):

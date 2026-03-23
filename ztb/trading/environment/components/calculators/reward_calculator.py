@@ -1329,7 +1329,11 @@ class RewardCalculator:
                 current_price = float(current_price)
                 previous_price = float(previous_price)
                 gross_pnl = (current_price - previous_price) * position
-                fee_rate = self.get_setting_float("transaction_cost", 0.0)
+                fee_rate = (
+                    float(transaction_cost)
+                    if transaction_cost is not None
+                    else self.get_setting_float("transaction_cost", 0.0)
+                )
                 fee_penalty = abs(position) * previous_price * fee_rate
                 pnl = gross_pnl - fee_penalty
                 action = (
@@ -1388,12 +1392,28 @@ class RewardCalculator:
                 "simple_reward",
                 pnl=float(pnl),
                 final_reward=float(reward),
+                trade_bonus_applied=(
+                    1.0
+                    if action != ACTION_HOLD
+                    and self.get_setting_float("trade_frequency_bonus", 0.0) != 0.0
+                    else 0.0
+                ),
+                hold_penalty_applied=(
+                    1.0
+                    if action == ACTION_HOLD
+                    and self.get_setting_float("hold_penalty_multiplier", 1.0) != 1.0
+                    else 0.0
+                ),
             )
 
             return reward
 
         except Exception as e:
             self.logger.error(f"Error in calculate_reward_simple: {e}")
+            self._reset_reward_component_stage(
+                "simple_reward_error",
+                error=str(e),
+            )
             return 0.0
 
     def _build_reward_context(self, **kwargs) -> RewardContext:

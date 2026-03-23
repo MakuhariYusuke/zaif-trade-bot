@@ -8734,3 +8734,12 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/v460/test_189_alt_horizon_macro_integration.py`
   - `tests/unit/v460/test_p7_p8_sac_env.py`
   - `138 passed in 5.09s`
+## 2026-03-23 reward simple transaction-cost contract alignment
+- `ztb/trading/environment/components/calculators/reward_calculator.py`
+  - `calculate_reward_simple()` が明示 `transaction_cost` 引数を優先するよう修正
+- `tests/unit/environment/test_calculate_reward_simple_fix.py`
+  - pure simple reward 契約を確認する fixture で shaper/scaler/signal を明示的に無効化
+- focused:
+  - `tests/unit/environment/test_calculate_reward_simple_fix.py`
+  - `tests/unit/v460/test_558_reward_unification.py`
+  - `tests/unit/reward/test_reward_components_fix.py`
