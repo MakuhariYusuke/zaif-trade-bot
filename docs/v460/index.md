@@ -1,7 +1,7 @@
-﻿# v460 ドキュメント索引
+# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-24 (585# 578#-584# 計画整合レビューと盲点補完)
+> 最終更新: 2026-03-24 (588# 585#/586# レビュー評価)
 
 ---
 
@@ -701,7 +701,7 @@ NNN_phX_TYPE_description.md
 | 581 | impl | [581_phg_impl_true_additive_pipeline_and_rms_integration.md](581_phg_impl_true_additive_pipeline_and_rms_integration.md) | True Additive Pipeline の実装完了と RMS 結合による爆発鎮静報告 |
 | 582 | impl | [582_toxicity_liquidity_buffer_split.md](582_toxicity_liquidity_buffer_split.md) | Toxicity & Liquidity Buffer Split 完了報告 |
 | 583 | impl | [583_codex_refactoring_and_test_fixes.md](583_codex_refactoring_and_test_fixes.md) | prompt_codex_583 対応: broad failure 修正・offset/fill-cycle 分割・additive pipeline test 補強 |
-| 584 | plan | [584_ph6_plan_execution_driver_decoupling.md](584_ph6_plan_execution_driver_decoupling.md) | Phase 6 計画: Execution Driver Decoupling & Validation |
+| 584 | plan | [584_ph6_plan_execution_driver_decoupling.md](584_ph6_plan_execution_driver_decoupling.md) | Phase 5.5 Remediation 計画: Execution Driver Decoupling & Validation |
 | 585 | review | [585_phg_rev_578_584_plan_alignment_and_blindspots.md](585_phg_rev_578_584_plan_alignment_and_blindspots.md) | 578#-584# 計画整合レビューと盲点補完 |
 | 587 | impl | [587_codex_telemetry_parity_and_dead_config_cleanup.md](587_codex_telemetry_parity_and_dead_config_cleanup.md) | telemetry 断線修復・dead config 削除・eDRC robust inputs 接続・hot-reload 範囲整理 |
 | 586 | review | [586_phg_second_opinion_and_alpha_proposals.md](586_phg_second_opinion_and_alpha_proposals.md) | セカンドオピニオンおよび高収益化アーキテクチャ提案 |

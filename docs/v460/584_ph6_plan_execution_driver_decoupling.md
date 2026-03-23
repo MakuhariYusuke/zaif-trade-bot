@@ -1,7 +1,7 @@
-# 584# Phase 6 計画: Execution Driver Decoupling & Validation
+# 584# Phase 5.5 Remediation 計画: Execution Driver Decoupling & Validation
 
 **Date**: 2026-03-24
-**Phase**: ph6 (Phase 5.5 完了後の次期フェーズ)
+**Phase**: ph5.5 (000# ph5 Paper trading 運用検証の是正フェーズ — 585# §2.1 により ph6 から再ラベル)
 **Status**: Draft
 **Prerequisites**: Phase 5.5 完了 (582# A/B dispatcher, 579# tanh inventory skew, 555# CalibrationMap)
 **Gate**: G3-pnl / G3.1-stress の前段として Execution 層の品質向上を図る
@@ -18,7 +18,12 @@ Phase 5 運用データ (n=3,869, 2026-03-12〜03-22) の実績:
 - **Sell 側 PnL**: +0.21 bps (利益だが p10=-8.26 bps のテールリスク)
 - **preflight_insufficient**: 34.7%
 
-**Phase 6 の役割**: Execution 層の構造的問題を解消し、G1.2-full 再通過への道筋を作る。
+> **⚠ 585# §3.4 / 588# §1.7 ベースライン注記**:
+> 上記数値は特定 git_sha / run_id でフィルタした結果。
+> 同期間フィルタなし全データでは n=6,034, Fill rate=26.5%, Buy=-0.44bps, Sell=-0.18bps (git_sha_unique=60)。
+> A/B 比較時は必ず same-run / same-SHA で再現条件を固定すること。
+
+**Phase 5.5 Remediation の役割**: Execution 層の構造的問題を解消し、G1.2-full 再通過への道筋を作る。
 
 ---
 
@@ -35,11 +40,11 @@ Phase 5 運用データ (n=3,869, 2026-03-12〜03-22) の実績:
 | 554# | Raw data gap fill (22K bars) | ✅ 完了 | — |
 | 553# | OHLCV auto-update pipeline | ✅ 稼働中 | — |
 
-**共通パターン**: 基盤は実装済みだが **全て disabled**。Phase 6 は検証・有効化フェーズ。
+**共通パターン**: 基盤は実装済みだが **全て disabled**。Phase 5.5 は検証・有効化フェーズ。
 
 ---
 
-## §2 Phase 6 タスク定義
+## §2 Phase 5.5 タスク定義
 
 ### §2.1 A/B Validation: Additive Pipeline (P1 — CRITICAL)
 
@@ -58,11 +63,18 @@ Phase 5 運用データ (n=3,869, 2026-03-12〜03-22) の実績:
 | V1 | spread_capture_bps (additive) | ≥ multiplicative の median | 収益性維持 |
 | V2 | adverse_selection_cost_bps | additive ≤ multiplicative | リスク削減確認 |
 | V3 | offset_ceiling clamp 発火率 | additive < multiplicative 10% 以上 | 乗算爆発抑止の実証 |
-| V4 | tox_buffer / liq_buffer 分離度 | 相関 < 0.5 | 独立バッファとして機能 |
+| V4 | tox_buffer / liq_buffer 分離度 | AS率・spread_capture・post_fill_30s_pnl の条件付き比較 (585# §3.2 推奨: 相関<0.5 は補助指標に降格) | 独立バッファとして機能 |
 
 **FAIL 時**: additive を disabled に戻す。RMS 以外の加法合成 (max, weighted sum) を検討。
 
 **依存**: 現行 fill_test の `experimental_additive_pipeline` フラグ切替のみ。コード変更不要。
+
+> **⚠ 585# §2.4 / 588# §1.4 hot-reload 注記**:
+> `experimental_additive_pipeline` は hot-reload 対象外。A/B 切替にはプロセス再起動 + 新 run_id が必要。
+> 587# Codex Task D で hot-reload 対応予定。
+
+> **⚠ 現在の YAML 値** (fill_test.yaml):
+> `experimental_additive_pipeline.enabled: false`, `edrc_alpha: 0.0`, `edrc_beta: 0.0`, `edrc_c_base: 0.40`, `additive_base_bps: 0.0` (dead config — 587# Task B で削除予定)
 
 ---
 
@@ -157,12 +169,17 @@ def _should_skip_preflight(self, side: str) -> bool:
 
 ---
 
-### §2.6 Retrain Scheduler 再起動 (P6 — HIGH)
+### §2.6 Sidecar Signal 安定化 (P6 — HIGH)
 
-**目的**: SAC Sidecar の neutral fallback 状態を解消し、方向バイアス信号を復活。
+**目的**: SAC Sidecar シグナルの fresh 供給率を改善し、stale/error を削減する。
 
-**現状**: `cache/sidecar_signal.json` が `model_version: "neutral"` のまま。
-retrain_scheduler は実装済みだが未起動。
+> **⚠ 585# §2.5 / 588# §1.5 による再定義**:
+> 実態は neutral fallback ではない（model_version は実モデル名）。
+> 問題は「fresh で安定供給されない」こと (fresh=25, stale=57, error=19)。
+> 000# §0.1 では SAC は Driver ではなく Sidecar であるため、Execution 是正の主軸には置かない。
+
+**現状**: `cache/sidecar_signal.json` は `model_version: "sac_sidecar_20260323_0823"` だが
+timestamp が古く stale 状態。confidence=0.107 と低く、regime_hint は空。
 
 **手順**:
 1. OHLCV データ鮮度確認 (553# auto-update が稼働中のはず)
@@ -177,7 +194,7 @@ retrain_scheduler は実装済みだが未起動。
 ## §3 実行順序とスケジュール
 
 ```
-Phase 6.0: Validation & Activation
+Phase 5.5: Validation & Activation
 ├─ P6 Retrain Scheduler 再起動       ← 即日 (前提条件の回復)
 ├─ P1 Additive A/B test (72h)        ← データ収集開始
 ├─ P2 Smart Preflight                 ← P1 と並行実装可能
@@ -185,10 +202,10 @@ Phase 6.0: Validation & Activation
 ├─ P4 eDRC 有効化 (72h)              ← P3 完了後
 └─ P5 Entry Gate 有効化               ← P4 と並行可能
 
-Phase 6.1: Assessment
+Phase 5.6: Assessment
 ├─ G1.2-full 再判定 (168h)
 ├─ G3-pnl 暫定評価
-└─ Phase 7 判断 (SAC retrain + Sidecar v2 本格運用)
+└─ Phase 6 判断 (SAC retrain + Sidecar v2 本格運用)
 ```
 
 **クリティカルパス**: P6 → P1 → P3 → G1.2-full 再判定
@@ -197,13 +214,13 @@ Phase 6.1: Assessment
 
 ## §4 Gate 影響
 
-| Gate | Phase 6 での変化 |
+| Gate | Phase 5.5 での変化 |
 |------|----------------|
 | G1.2-full | 再判定対象: P1-P5 完了後に F1-F8 を再計測 |
 | G2-train | 影響なし (SAC 学習パイプラインは変更しない) |
 | G3-pnl | P1/P3/P4 の結果次第で初回判定可能 |
 | G3.1-stress | P4 (eDRC) の有効化で stress 耐性改善を期待 |
-| G4-live | Phase 6 完了後に投入判断 |
+| G4-live | Phase 5.5 完了後に投入判断 |
 
 ---
 
@@ -236,3 +253,4 @@ Phase 6.1: Assessment
 | 日付 | 変更 | 理由 |
 |------|------|------|
 | 2026-03-24 | 初版作成 | Phase 5.5 完了 (582#)、Phase 6 開始準備 |
+| 2026-03-24 | 588# 評価に基づく修正 | A1: ph6→ph5.5再ラベル, A2: ベースライン条件明記, A3: P6 fresh/stale/error再定義, A4: YAML現在値明記, V4基準修正, hot-reload注記追加 |
