@@ -35,6 +35,7 @@
 - 551# は `550#` 後の Wave 2-5 実行順の整理
 - 557# は報酬系 (`RewardKernel` / `RewardCalculator`) の詳細設計と実行順の整理
 - 報酬系の local ownership 整理は、まず `RewardCalculator` の payload 更新点を helper に寄せてから大分割に入る
+- 551# は各 Wave の止めどころと着手判断ルール、557# は報酬系の実装単位まで持つ詳細計画として扱う
 
 ### 3. 「前進」と「完了」を混同しない
 

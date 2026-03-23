@@ -131,6 +131,83 @@ Done の基準:
 4. broad 前の wait/setup 固定費削減
 5. broad 最終確認
 
+## 実行順の深掘り
+
+### Step 1: Wave 2 を「終盤」から「完了判定可能」へ進める
+
+先にやる理由:
+- `maker_price` と `ab_judgment` は downstream test / telemetry の基準点になっている
+- ここが揺れたままだと Wave 3/4 の観測や broad の結果が読みづらい
+
+具体手順:
+1. `maker_price`
+   - veto / cache / telemetry の update 点を local helper に寄せる
+   - source-contract test を helper/stage 契約へ寄せる
+   - `compute()` の残る inline ownership を減らす
+2. `ab_judgment`
+   - result container
+   - statistical payload
+   - summary/report 文面
+   の 3 層をさらに固定する
+3. 「これ以上は state object 化になる」地点で止める
+
+止めどころ:
+- public shape や source-inspection contract を崩し始めるなら、そこで止める
+- state object 化や大分割は Wave 2 の守備範囲から外す
+
+### Step 2: Wave 3 を payload 契約の収束に限定して進める
+
+先にやる理由:
+- broad 前に最も壊れやすいのは、計算そのものより payload の意味ズレ
+- `RewardCalculator` / `heavy_env` / trainer / SAC の outward shape が揃うと調査負荷が大きく下がる
+
+具体手順:
+1. `RewardCalculator`
+   - `557#` を正本として payload/telemetry 契約を詰める
+   - `_last_reward_components` の更新点を helper に寄せ続ける
+2. `heavy_env`
+   - `reward_components` と `info` の責務を崩さない
+   - outward payload は snapshot を原則にする
+3. trainer / SAC
+   - `training_stats` / `reward_components` / `memory diagnostics` を canonical helper 経由へ寄せる
+
+止めどころ:
+- `RewardKernel` へ stateful logic を押し込み始めたら止める
+- telemetry の意味統一が終わる前に大分割へ進まない
+
+### Step 3: Wave 4 は broad 前の「ノイズ取り」に徹する
+
+先にやる理由:
+- broad の遅さのうち、価値が低いものを先に削ると最後の判断がしやすい
+
+具体手順:
+1. `TemporaryDirectory()` を `tmp_path` へ
+2. `time.sleep()` を `Event.wait()` / CPU work / predicate wait へ
+3. real-data fixture の再利用
+4. worktree ノイズになる cache 生成物の ignore/untrack
+
+止めどころ:
+- テストの意味を変えるほど synthetic 化しない
+- 実運用に近い real-data 契約まで削らない
+
+### Step 4: Wave 5 は「本物の残課題だけ」を拾う
+
+具体手順:
+1. filtered broad 実行
+2. top durations 抽出
+3. failure / duration の上位だけ個別に読む
+4. `521#` / `037#` / `551#` に区切りを書く
+
+止めどころ:
+- broad の数字だけを追って、設計を崩さない
+- その場しのぎの flaky 対策を増やさない
+
+## 着手判断ルール
+
+- `557#` に関わる報酬系は、原則として Wave 3 の一部として扱う
+- ただし `RewardCalculator` の local ownership 圧縮のように、payload 契約を壊さずに進められるものは先行してよい
+- 逆に `RewardKernel` への本格寄せは、`557#` の境界固定が済むまで急がない
+
 ## 今の判断
 
 - いま無理に state object 化へ進むのは早い

@@ -138,6 +138,62 @@
 4. その後に、必要なところだけ `RewardKernel` へ寄せる
 5. `RewardCalculator` 本体の repeated stage logic を helper 経由で圧縮し、大分割前の破壊半径を下げる
 
+## 3.2 直近の実装単位
+
+### A. `RewardCalculator` local ownership 圧縮
+
+先にやること:
+- `_last_reward_components` の
+  - reset
+  - stage seed
+  - scalar extend
+  - detail merge
+  - telemetry attach
+  を local helper 経由に寄せる
+
+狙い:
+- repeated payload shaping を 1 箇所に寄せる
+- stage 名や key 名の drift を防ぐ
+
+やらないこと:
+- ここで state object 化しない
+- ここで `RewardKernel` に stateful logic を寄せない
+
+### B. outward payload 契約の統一
+
+先にやること:
+- `get_last_reward_components()` は snapshot 契約を維持
+- `heavy_env` / callback / reporting / trainer が outward payload を shallow snapshot 前提で扱う
+
+狙い:
+- internal dict alias を避ける
+- downstream 分析で accidental mutation が起きないようにする
+
+### C. `RewardKernel` 境界の固定
+
+先にやること:
+- stateless core として妥当なものだけを候補化する
+- simple reward / kernel-friendly core に限定して比較する
+
+やらないこと:
+- curriculum
+- behavioral penalties
+- stage bookkeeping
+- diagnostics payload shaping
+を `RewardKernel` に混ぜない
+
+### D. テストの守り方
+
+必須:
+- 数値的一致
+- payload shape
+- snapshot 契約
+- error path の safe fallback
+
+後回しでよいもの:
+- 大規模 golden dump
+- full broad でしか意味がない微小な formatting 差分
+
 ---
 
 ## 4. 期待される効果

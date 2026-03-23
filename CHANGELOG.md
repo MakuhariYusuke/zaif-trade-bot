@@ -6357,3 +6357,7 @@ python scripts/unified_trainer.py \
 - `ztb/trading/environment/heavy_env/core.py` の terminal reward sync を snapshot 契約に揃えた
 - `tests/unit/v460/test_codex_408_409_fixes.py` に reward payload snapshot 回帰を追加
 - `.gitignore` に `cache/sidecar_signal.json` を追加し、Git 追跡から外した
+## 2026-03-23 planning deep dive for 551 and 557
+- `551#` に Wave ごとの理由・具体手順・止めどころ・着手判断ルールを追記
+- `557#` に報酬系の実装単位と「やらないこと」を追記
+- `521#` に `551#` / `557#` の役割分担を補強

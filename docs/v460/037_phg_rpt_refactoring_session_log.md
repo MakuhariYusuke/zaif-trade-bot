@@ -8645,3 +8645,18 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `cache/sidecar_signal.json` を追加
 - `git rm --cached cache/sidecar_signal.json`
   - ファイルを残したまま Git 追跡だけ解除
+## 2026-03-23 551# / 557# planning deep dive
+- `551#`
+  - Wave 2-5 の「次の打ち手」に加えて
+    - 先にやる理由
+    - 具体手順
+    - 止めどころ
+    - 着手判断ルール
+    を追記
+- `557#`
+  - 報酬系について
+    - local ownership 圧縮
+    - outward payload 契約
+    - `RewardKernel` 境界
+    - テストの守り方
+    を明文化
