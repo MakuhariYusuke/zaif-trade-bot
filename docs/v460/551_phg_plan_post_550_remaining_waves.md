@@ -50,6 +50,10 @@ Done の基準:
 - source-inspection test が direct 実装断片より helper/stage 契約を見る
 - optional stage (`kyle` / `amihud` / `imb_risk` / `buy_as_guard`) も helper 契約で読める
 
+現在の見立て:
+- `maker_price` / `ab_judgment` ともに終盤
+- 以後は大分割ではなく、Wave3/4 を進めながら residual を拾う運用でよい
+
 #### B. `ab_judgment.py`
 
 残る本丸:
@@ -230,3 +234,6 @@ Done の基準:
   - `tests/unit/utils/test_file_utils.py`
   - `tests/unit/evaluation/test_evaluate.py`
   を `tmp_path` ベースへ整理した
+  - `tests/unit/evaluation/test_walk_forward_checkpoint.py`
+  - `tests/unit/evaluation/test_walk_forward_integration_e2e.py`
+  も `tmp_path` ベースへ整理した

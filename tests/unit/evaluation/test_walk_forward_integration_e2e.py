@@ -20,7 +20,6 @@ Walk-Forward シナリオテスト。
 """
 
 import json
-import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 from unittest.mock import MagicMock, Mock, patch
@@ -163,10 +162,9 @@ class TestWalkForwardEvaluatorE2E:
     """WalkForwardModelEvaluator の E2E テスト"""
 
     @pytest.fixture
-    def temp_checkpoint_dir(self):
+    def temp_checkpoint_dir(self, tmp_path: Path):
         """一時チェックポイントディレクトリ"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield tmpdir
+        return str(tmp_path / "walk_forward_e2e")
 
     @pytest.fixture
     def mock_ohlcv_df(self) -> pd.DataFrame:

@@ -8685,3 +8685,14 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `TemporaryDirectory()` を `tmp_path` ベースへ整理
 - focused:
   - `39 passed, 1 skipped in 6.48s`
+## 2026-03-23 wave3 payload attach canonicalization + evaluation tmp-path sweep
+- `ztb/training/utils/training_stats_payloads.py`
+  - `attach_reward_component_metrics(...)` を追加
+- `ztb/training/unified_trainer/base/callbacks.py`
+- `ztb/training/unified_trainer/reporting.py`
+  - reward payload の attach も shared helper に寄せた
+- `tests/unit/evaluation/test_walk_forward_checkpoint.py`
+- `tests/unit/evaluation/test_walk_forward_integration_e2e.py`
+  - `TemporaryDirectory()` fixture を `tmp_path` ベースへ整理
+- focused:
+  - `46 passed in 5.26s`

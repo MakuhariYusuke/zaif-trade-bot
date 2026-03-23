@@ -113,8 +113,23 @@ def extract_reward_component_metrics(
     return fallback or None
 
 
+def attach_reward_component_metrics(
+    target: MutableMapping[str, object],
+    source: Mapping[str, object],
+    *,
+    key: str = "reward_components",
+) -> bool:
+    """Extract and attach reward-component metrics when present."""
+    payload = extract_reward_component_metrics(source)
+    if payload is None:
+        return False
+    target[key] = payload
+    return True
+
+
 __all__ = [
     "average_reward_component_history",
+    "attach_reward_component_metrics",
     "build_optimization_training_stats",
     "extract_reward_component_metrics",
     "get_reward_components_payload",

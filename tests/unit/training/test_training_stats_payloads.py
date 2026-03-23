@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ztb.training.utils.training_stats_payloads import (
     average_reward_component_history,
+    attach_reward_component_metrics,
     build_optimization_training_stats,
     extract_reward_component_metrics,
     get_reward_components_payload,
@@ -105,6 +106,30 @@ def test_extract_reward_component_metrics_falls_back_to_flat_info() -> None:
         "entropy_shaping": 0.1,
         "action_bonus": 0.05,
     }
+
+
+def test_attach_reward_component_metrics_writes_payload() -> None:
+    target: dict[str, object] = {}
+
+    attached = attach_reward_component_metrics(
+        target,
+        {"balance_penalty": -0.2, "portfolio_value": 1000.0},
+    )
+
+    assert attached is True
+    assert target["reward_components"] == {"balance_penalty": -0.2}
+
+
+def test_attach_reward_component_metrics_skips_missing_payload() -> None:
+    target: dict[str, object] = {}
+
+    attached = attach_reward_component_metrics(
+        target,
+        {"portfolio_value": 1000.0},
+    )
+
+    assert attached is False
+    assert target == {}
 
 
 def test_record_optimization_training_stats_builds_and_persists_payload() -> None:

@@ -24,7 +24,10 @@ from ztb.trading.environment.constants import continuous_to_discrete_action
 from ztb.training.constants import ENV_EVAL_FREQUENCY, DEFAULT_CHECK_FREQ
 from ztb.training.unified_trainer.base.lr_scheduler import DynamicLRScheduler
 from ztb.training.system_optimizer import SystemOptimizer
-from ztb.training.utils.training_stats_payloads import extract_reward_component_metrics
+from ztb.training.utils.training_stats_payloads import (
+    attach_reward_component_metrics,
+    extract_reward_component_metrics,
+)
 
 class TrainingProgressCallback(BaseCallback):
     """Enhanced callback for monitoring training progress and action distribution."""
@@ -483,9 +486,7 @@ class TrainingProgressCallback(BaseCallback):
                             if infos and len(infos) > 0 and isinstance(infos[0], dict):
                                 info = infos[0]
                                 # reward components are added to info by environment: e.g. skew_penalty, balance_penalty
-                                components = extract_reward_component_metrics(info)
-                                if components:
-                                    stats["reward_components"] = components
+                                attach_reward_component_metrics(stats, info)
                         except Exception:
                             # Don't fail training if we can't collect reward components
                             pass

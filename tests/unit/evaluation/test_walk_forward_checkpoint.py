@@ -6,7 +6,6 @@ CheckpointManager と WalkForwardModelEvaluator の
 """
 
 import json
-import tempfile
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, Mock, patch
@@ -23,10 +22,9 @@ class TestCheckpointManagerBasics:
     """CheckpointManager の基本機能"""
 
     @pytest.fixture
-    def temp_checkpoint_dir(self):
+    def temp_checkpoint_dir(self, tmp_path: Path):
         """一時的なチェックポイントディレクトリ"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield tmpdir
+        return str(tmp_path / "checkpoints_basic")
 
     @pytest.fixture
     def checkpoint_manager(self, temp_checkpoint_dir):
@@ -58,10 +56,9 @@ class TestCheckpointManagerSaveRestore:
     """CheckpointManager の save/restore 機能"""
 
     @pytest.fixture
-    def temp_checkpoint_dir(self):
+    def temp_checkpoint_dir(self, tmp_path: Path):
         """一時的なチェックポイントディレクトリ"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield tmpdir
+        return str(tmp_path / "checkpoints_save_restore")
 
     @pytest.fixture
     def checkpoint_manager(self, temp_checkpoint_dir):
@@ -194,10 +191,9 @@ class TestCheckpointManagerStatus:
     """CheckpointManager のステータス確認機能"""
 
     @pytest.fixture
-    def temp_checkpoint_dir(self):
+    def temp_checkpoint_dir(self, tmp_path: Path):
         """一時的なチェックポイントディレクトリ"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield tmpdir
+        return str(tmp_path / "checkpoints_status")
 
     @pytest.fixture
     def checkpoint_manager(self, temp_checkpoint_dir):
@@ -282,10 +278,9 @@ class TestWalkForwardModelEvaluatorCheckpoint:
     """WalkForwardModelEvaluator のチェックポイント統合"""
 
     @pytest.fixture
-    def temp_checkpoint_dir(self):
+    def temp_checkpoint_dir(self, tmp_path: Path):
         """一時的なチェックポイントディレクトリ"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield tmpdir
+        return str(tmp_path / "checkpoints_evaluator")
 
     def test_evaluator_with_checkpoint_dir(self, temp_checkpoint_dir):
         """チェックポイント有効な evaluator"""
@@ -419,10 +414,9 @@ class TestCheckpointIntegration:
     """統合テスト"""
 
     @pytest.fixture
-    def temp_checkpoint_dir(self):
+    def temp_checkpoint_dir(self, tmp_path: Path):
         """一時的なチェックポイントディレクトリ"""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield tmpdir
+        return str(tmp_path / "checkpoints_integration")
 
     def test_full_checkpoint_cycle(self, temp_checkpoint_dir):
         """チェックポイント全サイクル"""

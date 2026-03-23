@@ -99,6 +99,7 @@
 - これにより、`reward_components` を持つ env info と、
   旧来の `*_penalty` / `*_shaping` flat field の両方を安全に収束できる
 - reporting 側も同 helper に追随し、reward payload の outward contract が callback/reporting で揃った
+- attach 側も helper 化し、payload の「抽出」と「report/callback への搭載」を同じ canonical path で扱えるようにした
 
 ---
 

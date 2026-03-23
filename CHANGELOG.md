@@ -6373,3 +6373,9 @@ python scripts/unified_trainer.py \
 - `tests/unit/utils/test_file_utils.py`
 - `tests/unit/evaluation/test_evaluate.py`
   の `TemporaryDirectory()` を `tmp_path` ベースへ整理
+## 2026-03-23 wave3 reward payload attach canonicalization and evaluation tmp-path follow-up
+- `ztb/training/utils/training_stats_payloads.py` に `attach_reward_component_metrics(...)` を追加
+- `ztb/training/unified_trainer/base/callbacks.py` / `reporting.py` の reward payload attach を shared helper 経由へ統一
+- `tests/unit/evaluation/test_walk_forward_checkpoint.py`
+- `tests/unit/evaluation/test_walk_forward_integration_e2e.py`
+  の `TemporaryDirectory()` fixture を `tmp_path` ベースへ整理
