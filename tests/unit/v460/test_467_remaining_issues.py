@@ -179,6 +179,50 @@ class TestHourCeilingMult:
         # exp(0) = 1.0 → 0.40 × 1.5 = 0.60
         assert cfg.resolve_offset_ceiling("buy", utc_hour=13) == pytest.approx(0.60)
 
+    # ---- 574# eDRC Hard Cap + パラメータ推定検証 ----
+
+    def test_edrc_hard_cap_clamps_output(self) -> None:
+        """574# §5.1: exp 爆発時に hard_cap で出力を制限."""
+        cfg = FillTestConfig(
+            experimental_additive_pipeline=True,
+            edrc_c_base=0.40,
+            edrc_alpha=0.020,
+            edrc_beta=0.40,
+            edrc_hard_cap=1.0,
+        )
+        # σ=30 bps, OFI=1.0 → 0.40 * exp(0.020*30 + 0.40*1.0) = 0.40 * exp(1.0) ≈ 1.087
+        # hard_cap 1.0 でクランプ
+        result = cfg.resolve_offset_ceiling("buy", sigma=30.0, adverse_ofi=1.0)
+        assert result == pytest.approx(1.0)
+
+    def test_edrc_574_simulation_table_calm(self) -> None:
+        """574# シミュレーション表: σ=5 bps, OFI=0.2 → ≈0.47."""
+        from math import exp
+        cfg = FillTestConfig(
+            experimental_additive_pipeline=True,
+            edrc_c_base=0.40,
+            edrc_alpha=0.020,
+            edrc_beta=0.40,
+        )
+        result = cfg.resolve_offset_ceiling("buy", sigma=5.0, adverse_ofi=0.2)
+        expected = 0.40 * exp(0.020 * 5.0 + 0.40 * 0.2)
+        assert result == pytest.approx(expected, rel=0.01)
+        assert 0.45 < result < 0.50  # ≈0.47
+
+    def test_edrc_574_simulation_table_storm(self) -> None:
+        """574# シミュレーション表: σ=15, OFI=0.6 → ≈0.64."""
+        from math import exp
+        cfg = FillTestConfig(
+            experimental_additive_pipeline=True,
+            edrc_c_base=0.40,
+            edrc_alpha=0.020,
+            edrc_beta=0.40,
+        )
+        result = cfg.resolve_offset_ceiling("buy", sigma=15.0, adverse_ofi=0.6)
+        expected = 0.40 * exp(0.020 * 15.0 + 0.40 * 0.6)
+        assert result == pytest.approx(expected, rel=0.01)
+        assert 0.60 < result < 0.70  # ≈0.64
+
 
 # ══════════════════════════════════════════════════════════════════════
 # 3. status_unknown_fast 連続検知

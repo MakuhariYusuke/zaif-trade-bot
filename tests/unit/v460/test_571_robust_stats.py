@@ -210,3 +210,67 @@ class TestSectionExecutionQualityComparison:
         text = "\n".join(lines)
         # ICR = 2.0 / 1.0 = 2.000
         assert "2.000" in text
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 6. 574# get_robust_inputs 統合テスト
+# ══════════════════════════════════════════════════════════════════════
+
+
+class TestGetRobustInputs:
+    """574# Task B: maker_price.get_robust_inputs() の検証."""
+
+    def _make_maker_price(self):
+        """最小限のMakerPriceCalculator もどき."""
+        from collections import deque
+        from unittest.mock import MagicMock
+
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        mp = MagicMock()
+        mp._last_sigma = 0.0002  # 2 bps
+        mp._robust_sigma = 0.0
+        mp._ofi_history = deque(maxlen=50)
+        mp.get_adverse_ofi = MagicMock(return_value=0.1)
+
+        # bind the real method
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+        mp.get_robust_inputs = MakerPriceCalculator.get_robust_inputs.__get__(mp)
+        return mp
+
+    def test_sigma_uses_asymmetric_ema(self) -> None:
+        """ロバスト σ は asymmetric_ema で平滑化される."""
+        mp = self._make_maker_price()
+        sigma, ofi = mp.get_robust_inputs("buy")
+        # _robust_sigma was 0, _last_sigma is 0.0002
+        # asymmetric_ema(0.0002, 0.0, alpha_up=0.20) → 0.20 * 0.0002 = 0.00004
+        assert sigma == pytest.approx(0.00004)
+
+    def test_ofi_falls_back_when_insufficient(self) -> None:
+        """OFI 履歴不足時は get_adverse_ofi にフォールバック."""
+        mp = self._make_maker_price()
+        for i in range(5):
+            mp._ofi_history.append(0.1)
+        _, ofi = mp.get_robust_inputs("buy")
+        # < 10 samples → fallback to get_adverse_ofi
+        assert ofi == 0.1
+
+    def test_ofi_uses_median_filter_with_enough_data(self) -> None:
+        """10+ サイクルのデータがあれば中央値フィルタ."""
+        mp = self._make_maker_price()
+        # buy 用: adverse = -ofi_med → max(0, adverse)
+        # 10サイクル分 positive values → median positive → adverse for buy = -median → 0
+        for i in range(15):
+            mp._ofi_history.append(0.2)
+        _, ofi = mp.get_robust_inputs("buy")
+        # median(all 0.2) = 0.2, adverse for buy = -0.2 → max(0, -0.2) = 0.0
+        assert ofi == pytest.approx(0.0)
+
+    def test_ofi_sell_adverse(self) -> None:
+        """sell 時は正の OFI が adverse."""
+        mp = self._make_maker_price()
+        for i in range(12):
+            mp._ofi_history.append(0.3)
+        _, ofi = mp.get_robust_inputs("sell")
+        # median = 0.3, adverse for sell = 0.3
+        assert ofi == pytest.approx(0.3)

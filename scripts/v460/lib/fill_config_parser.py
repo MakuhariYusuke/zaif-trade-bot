@@ -190,7 +190,7 @@ def _parse_trading_features(yaml_cfg: dict) -> dict:
     elif isinstance(edrc, dict):
         if edrc.get("enabled") is not None:
             kwargs["experimental_additive_pipeline"] = edrc["enabled"]
-        for key in ["edrc_alpha", "edrc_beta", "edrc_c_base", "additive_base_bps"]:
+        for key in ["edrc_alpha", "edrc_beta", "edrc_c_base", "edrc_hard_cap", "additive_base_bps"]:
             if key in edrc:
                 kwargs[key] = float(edrc[key])
 

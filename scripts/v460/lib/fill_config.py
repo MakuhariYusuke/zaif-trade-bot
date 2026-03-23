@@ -356,9 +356,10 @@ class FillTestConfig:
 
     # ---- 568# M1/M2: Additive Pipeline & eDRC Transition ----
     experimental_additive_pipeline: bool = False
-    edrc_alpha: float = 0.0          # eDRC alpha (1-min Volatility 感度)
+    edrc_alpha: float = 0.0          # eDRC alpha (1-min Volatility 感度, σ bps 単位)
     edrc_beta: float = 0.0           # eDRC beta (OFI 感度)
     edrc_c_base: float = 0.40        # eDRC Base Ceiling (baseline offset ratio max)
+    edrc_hard_cap: float = 1.0       # 574# eDRC 出力上限 (exp 爆発防止)
     additive_base_bps: float = 0.0   # Additive offset base (M2, 将来用)
 
     def resolve_offset_ceiling(
@@ -377,9 +378,12 @@ class FillTestConfig:
         if self.experimental_additive_pipeline:
             from math import exp
 
+            # 574#: σ は bps 単位で渡される想定
             ceiling_dynamic = self.edrc_c_base * exp(
                 self.edrc_alpha * sigma + self.edrc_beta * adverse_ofi
             )
+            # 574# §5.1: exp 爆発防止 hard cap
+            ceiling_dynamic = min(ceiling_dynamic, self.edrc_hard_cap)
             if utc_hour is not None and self.hour_ceiling_mult:
                 mult = self.hour_ceiling_mult.get(utc_hour)
                 if mult is not None:

@@ -107,6 +107,8 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "dd_cooldown_rearm_budget_bps",
     "dd_cooldown_release_sec",
     "e3_sampling_ratio",
+    "edrc_alpha",  # 574# Gemini推定値 0.020
+    "edrc_beta",   # 574# Gemini推定値 0.40
     "execution_final_clamp_hard_skip_mult",  # 421# P0: Execution Final Clamp
     "fast_fill_offset_boost_sell",
     "fast_fill_threshold_sec_buy",

@@ -289,13 +289,19 @@ class OffsetPipelineMixin(PreOrderAdjustmentsMixin):
         _execution_additive_enabled = self.config.experimental_additive_pipeline
 
         if self.config.execution_final_clamp_enabled:
-            # 467#: hour_ceiling_mult 反映
-            # 568#: eDRC 用に sigma と adverse_ofi を渡す
+            # 574#: eDRC 有効時はロバスト入力を使用
+            if _execution_additive_enabled:
+                _robust_sigma, _robust_ofi = self._maker_price.get_robust_inputs(side)
+                _sigma_bps = _robust_sigma * 10_000
+                _adverse_ofi = _robust_ofi
+            else:
+                _sigma_bps = _execution_sigma * 10_000
+                _adverse_ofi = _execution_adverse_ofi
             _fc_ceil = self.config.resolve_offset_ceiling(
                 side,
                 utc_hour=current_utc_hour(),
-                sigma=_execution_sigma,
-                adverse_ofi=_execution_adverse_ofi,
+                sigma=_sigma_bps,
+                adverse_ofi=_adverse_ofi,
             )
             _ceiling = clamp_offset_ratio_to_ceiling(
                 effective_offset_ratio=effective_offset_ratio,

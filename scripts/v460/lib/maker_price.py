@@ -57,6 +57,7 @@ from ztb.trading.pricing.stage_tracking import (
 from ztb.trading.risk.fast_fill_defense import FastFillDefense
 from ztb.trading.signal.regime.regime_detector import RegimeDetectorLike
 from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
+from ztb.utils.robust_stats import RobustStats as _RS
 
 logger = logging.getLogger(__name__)
 P = ParamSpec("P")
@@ -237,6 +238,8 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         self._mid_hl_reset_time: float = 0.0
         # 306# L1: 最新 σ キャッシュ (dynamic cycle interval 用)
         self._last_sigma: float = 0.0
+        # 574# ロバスト σ EMA (asymmetric_ema のステート)
+        self._robust_sigma: float = 0.0
         # 306# E1: offset stage recording
         self._last_offset_stages: str | None = None
 
@@ -428,6 +431,33 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         ofi_mean = sum(self._ofi_history) / len(self._ofi_history)
         adverse = -ofi_mean if side == "buy" else ofi_mean
         return max(0.0, adverse)
+
+    def get_robust_inputs(self, side: str) -> tuple[float, float]:
+        """574# Task B: ロバスト σ / ロバスト adverse_ofi を返す.
+
+        σ: asymmetric_ema (リスク上昇=Up に 4 倍敏感)
+        OFI: 10 サイクル中央値フィルタ → adverse 変換
+        """
+        import numpy as np
+
+        # 1. Volatility: リスク上昇 (Up) に 4 倍敏感な Asymmetric EMA
+        self._robust_sigma = _RS.asymmetric_ema(
+            current_val=self._last_sigma,
+            prev_ema=self._robust_sigma,
+            alpha_up=0.20,
+            alpha_down=0.05,
+        )
+
+        # 2. Adverse OFI: 10 サイクル中央値フィルタ → adverse 変換
+        if len(self._ofi_history) >= 10:
+            recent = np.array(list(self._ofi_history)[-10:])
+            ofi_med = float(np.median(recent))
+            adverse = -ofi_med if side == "buy" else ofi_med
+            robust_ofi = max(0.0, adverse)
+        else:
+            robust_ofi = self.get_adverse_ofi(side)
+
+        return self._robust_sigma, robust_ofi
 
     def update_fast_fill_defense(self, ffd: "FastFillDefense") -> None:
         """210# F: hot-reload 後の FastFillDefense 参照更新 (カプセル化維持)."""
