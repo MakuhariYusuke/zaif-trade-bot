@@ -196,6 +196,22 @@ class TestSectionExecutionQualityComparison:
         text = "\n".join(lines)
         assert "ADDITIVE" in text
 
+    def test_explicit_flag_takes_priority_over_legacy_stages(self, _import_section) -> None:
+        """execution_additive_enabled=False が legacy stages より優先される."""
+        fn = _import_section
+        records = [
+            {
+                "filled": True,
+                "execution_additive_enabled": False,
+                "executor_offset_stages": '{"tox_buffer":0.1,"liq_buffer":0.2}',
+                "spread_capture_bps": 1.0,
+                "adverse_selection_cost_bps": -0.5,
+            },
+        ]
+        text = "\n".join(fn(records))
+        assert "MULTIPLICATIVE" in text
+        assert "ADDITIVE" not in text
+
     def test_icr_calculation(self, _import_section) -> None:
         """ICR = spread_capture / |AS cost|."""
         fn = _import_section

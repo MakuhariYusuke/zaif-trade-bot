@@ -6414,3 +6414,10 @@ python scripts/unified_trainer.py \
 - `scripts/v460/lib/fill_config_parser.py` で nested additive config から `edrc_hard_cap` を引き続き parse するよう維持
 - `tests/unit/v460/test_421_final_clamp_deadlock.py` に execution telemetry roundtrip と `execution_additive_enabled` hot-reload 回帰を追加
 - `tests/unit/v460/test_467_remaining_issues.py` に `hour_ceiling_mult` 適用後 hard cap の回帰を追加
+## 2026-03-24 additive and multiplicative follow-up coverage
+- 追加された [test_585_multiplicative_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_585_multiplicative_pipeline.py) を確認し、additive/multiplicative 両系の focused を再実行
+- `tests/unit/v460/test_571_robust_stats.py` に explicit `execution_additive_enabled` が legacy stages より優先される回帰を追加
+- `tests/unit/v460/test_467_remaining_issues.py` に
+  - nested additive config から `edrc_hard_cap` が parse されること
+  - `execution_additive_enabled` が YAML から parse されること
+  の回帰を追加

@@ -191,6 +191,25 @@ class TestHourCeilingMult:
         )
         assert cfg.resolve_offset_ceiling("buy", utc_hour=13) == pytest.approx(1.0)
 
+    def test_from_yaml_preserves_edrc_hard_cap(self) -> None:
+        """nested additive config から edrc_hard_cap が parse される."""
+        cfg = FillTestConfig.from_yaml({
+            "experimental_additive_pipeline": {
+                "enabled": True,
+                "edrc_alpha": 0.02,
+                "edrc_beta": 0.40,
+                "edrc_c_base": 0.40,
+                "edrc_hard_cap": 0.95,
+            },
+        })
+        assert cfg.experimental_additive_pipeline is True
+        assert cfg.edrc_hard_cap == pytest.approx(0.95)
+
+    def test_from_yaml_parses_execution_additive_enabled(self) -> None:
+        """top-level execution_additive_enabled が parse される."""
+        cfg = FillTestConfig.from_yaml({"execution_additive_enabled": True})
+        assert cfg.execution_additive_enabled is True
+
     # ---- 574# eDRC Hard Cap + パラメータ推定検証 ----
 
     def test_edrc_hard_cap_clamps_output(self) -> None:

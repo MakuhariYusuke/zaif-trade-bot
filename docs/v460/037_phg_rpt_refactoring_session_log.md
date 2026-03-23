@@ -8794,3 +8794,16 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/v460/test_169_config_hot_reload.py`
   - `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
   - `109 passed in 2.91s`
+## 2026-03-24 additive and multiplicative coverage follow-up
+- 追加された `tests/unit/v460/test_585_multiplicative_pipeline.py` を確認
+- `tests/unit/v460/test_571_robust_stats.py`
+  - explicit `execution_additive_enabled` が legacy stages より優先される回帰を追加
+- `tests/unit/v460/test_467_remaining_issues.py`
+  - nested additive config から `edrc_hard_cap` が parse される回帰を追加
+  - top-level `execution_additive_enabled` parse の回帰を追加
+- focused:
+  - `tests/unit/v460/test_571_robust_stats.py`
+  - `tests/unit/v460/test_467_remaining_issues.py`
+  - `tests/unit/v460/test_585_multiplicative_pipeline.py`
+  - `tests/unit/v460/test_582_additive_pipeline.py`
+  - `131 passed in 1.92s`
