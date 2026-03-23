@@ -17,8 +17,10 @@ from scripts.v460.lib.abstract_cycle_runner import AbstractCycleRunner
 from scripts.v460.lib.ob_utils import MarketDataAccessor
 from scripts.v460.run_fill_test import FillTestRunner
 from tests.unit.v460._fill_test_source import (
+    FILL_CYCLE_EXECUTOR,
     read_class_method_source,
     read_fill_test_method_source,
+    read_source_text,
 )
 from ztb.trading.live.exchanges.base.adapter import BaseExchangeAdapter
 from ztb.trading.live.exchanges.base.broker_interfaces import IBroker
@@ -273,8 +275,8 @@ class TestOBInlineElimination:
         )
 
     def test_best_bid_ask_import_in_source(self) -> None:
-        """run_single_cycle 内に best_bid_ask のインポートがある."""
-        assert "best_bid_ask" in _RUN_SINGLE_CYCLE_SOURCE
+        """fill_cycle_executor 側で best_bid_ask import が維持されている."""
+        assert "best_bid_ask" in read_source_text(FILL_CYCLE_EXECUTOR)
 
 
 # =====================================================================

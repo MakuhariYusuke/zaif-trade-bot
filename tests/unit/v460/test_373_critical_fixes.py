@@ -236,7 +236,7 @@ class TestMaxLotFinalClamp:
 
     def test_max_lot_clamp_in_source(self) -> None:
         source = read_class_method_source(
-            FILL_CYCLE_EXECUTOR, "FillCycleExecutorMixin", "run_single_cycle"
+            FILL_CYCLE_EXECUTOR, "FillCycleExecutorMixin", "_submit_order_phase"
         )
         assert "373# F8" in source, "F8 max_lot 最終クランプが未実装"
         assert "self.config.max_lot" in source

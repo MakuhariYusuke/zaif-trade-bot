@@ -864,8 +864,9 @@ def section_pre_clamp_distribution(records: list[dict[str, Any]]) -> list[str]:
 def section_execution_quality_comparison(records: list[dict[str, Any]]) -> list[str]:
     """582# 加法 vs 乗法パイプラインの執行品質比較分析.
 
-    executor_offset_stages JSON に tox_buffer が含まれていれば additive、
-    なければ multiplicative として分類し Kissell & Glantz 指標を比較する。
+    execution_additive_enabled を優先し、未記録の旧データでは
+    executor_offset_stages JSON に tox_buffer が含まれていれば additive とみなす。
+    それ以外は multiplicative として分類し Kissell & Glantz 指標を比較する。
     """
     import json as _json
 
@@ -873,16 +874,26 @@ def section_execution_quality_comparison(records: list[dict[str, Any]]) -> list[
     if not filled:
         return ["## Execution Quality Comparison", "  (no fills)", ""]
 
+    def _load_executor_offset_stages(record: dict[str, Any]) -> dict[str, Any] | None:
+        _raw = record.get("executor_offset_stages")
+        if not _raw or not isinstance(_raw, str):
+            return None
+        try:
+            _parsed = _json.loads(_raw)
+        except (ValueError, TypeError):
+            return None
+        return _parsed if isinstance(_parsed, dict) else None
+
+    def _is_additive_execution(record: dict[str, Any]) -> bool:
+        _explicit = record.get("execution_additive_enabled")
+        if _explicit is not None:
+            return bool(_explicit)
+        _stages = _load_executor_offset_stages(record)
+        return bool(_stages and "tox_buffer" in _stages)
+
     groups: dict[str, list[dict[str, Any]]] = {"multiplicative": [], "additive": []}
     for r in filled:
-        _stages_raw = r.get("executor_offset_stages")
-        _is_additive = False
-        if _stages_raw and isinstance(_stages_raw, str):
-            try:
-                _stages = _json.loads(_stages_raw)
-                _is_additive = "tox_buffer" in _stages
-            except (ValueError, TypeError):
-                pass
+        _is_additive = _is_additive_execution(r)
         mode = "additive" if _is_additive else "multiplicative"
         groups[mode].append(r)
 

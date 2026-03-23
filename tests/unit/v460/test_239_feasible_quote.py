@@ -256,14 +256,14 @@ class TestMakePriceErrorSkipHelper:
         assert "error" in params
 
     def test_fallback_dedup_no_duplicate_in_run_single_cycle(self) -> None:
-        """run_single_cycle の except ブロックが _make_price_error_skip を呼び出していること."""
+        """pre-order phase の except ブロックが _make_price_error_skip を呼び出していること."""
         source = read_class_method_source(
             FILL_CYCLE_EXECUTOR,
             "FillCycleExecutorMixin",
-            "run_single_cycle",
+            "_run_pre_order_phase",
         )
         assert "_make_price_error_skip" in source, (
-            "run_single_cycle should call _make_price_error_skip for error handling"
+            "_run_pre_order_phase should call _make_price_error_skip for error handling"
         )
 
 

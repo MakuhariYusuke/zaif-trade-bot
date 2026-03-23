@@ -133,6 +133,17 @@ class TestDispatcher:
             mixin._apply_offset_pipeline(**_COMMON_KWARGS)
             assert called == ["add"]
 
+    def test_dispatcher_does_not_call_multiplicative_when_additive_enabled(self) -> None:
+        mixin = _make_mixin(experimental_additive=True)
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(
+                OffsetPipelineMixin,
+                "_apply_offset_pipeline_multiplicative",
+                lambda self, **kw: (_ for _ in ()).throw(AssertionError("multiplicative path called")),
+            )
+            result = mixin._apply_offset_pipeline(**_COMMON_KWARGS)
+        assert result.executor_offset_stages_json is not None
+
 
 # ── B. RMS 計算ロジック ──
 
@@ -184,6 +195,33 @@ class TestRmsComputation:
         expected = 0.05 + math.sqrt(d_vel**2) + math.sqrt(d_macro**2)
         assert result.effective_offset_ratio == pytest.approx(expected, abs=1e-6)
 
+    def test_ev_score_is_classified_into_liquidity_buffer(self) -> None:
+        mixin = _make_mixin(
+            ev_as_offset_enabled=True,
+            ev_offset_sensitivity=1.0,
+            ev_offset_min_mult=1.0,
+            ev_offset_max_mult=2.0,
+        )
+        result = mixin._apply_offset_pipeline_additive(
+            **{**_COMMON_KWARGS, "sg_ev_score": 1.0},
+        )
+        stages = json.loads(result.executor_offset_stages_json)  # type: ignore[arg-type]
+        assert stages["ev"] is not None
+        assert stages["liq_buffer"] > 0.0
+
+    def test_trending_offset_is_ignored_on_buy_side(self) -> None:
+        mixin = _make_mixin(ev_as_offset_enabled=False)
+        result = mixin._apply_offset_pipeline_additive(
+            **{
+                **_COMMON_KWARGS,
+                "side": "buy",
+                "trending_offset_mult": 3.0,
+            },
+        )
+        stages = json.loads(result.executor_offset_stages_json)  # type: ignore[arg-type]
+        assert stages["trending"] is None
+        assert result.effective_offset_ratio == pytest.approx(0.05, abs=1e-6)
+
 
 # ── C. Stages JSON 出力 ──
 
@@ -210,6 +248,20 @@ class TestStagesJson:
         assert stages["velocity"] == 1.5
         assert stages["trending"] is None
         assert stages["toxicity"] is None
+
+    def test_final_clamp_applies_in_additive_pipeline(self) -> None:
+        mixin = _make_mixin(
+            ev_as_offset_enabled=False,
+            execution_final_clamp_enabled=True,
+        )
+        mixin.config.resolve_offset_ceiling = MagicMock(return_value=0.06)
+        mixin.config.execution_final_clamp_hard_skip_mult = 2.0
+        result = mixin._apply_offset_pipeline_additive(
+            **{**_COMMON_KWARGS, "sg_velocity_offset_mult": 2.0},
+        )
+        assert result.execution_pre_clamp_offset == pytest.approx(0.10, abs=1e-6)
+        assert result.effective_offset_ratio == pytest.approx(0.06, abs=1e-6)
+        assert result.early_return_record is None
 
 
 # ── D. Sidecar bps ──

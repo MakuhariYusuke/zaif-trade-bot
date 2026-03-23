@@ -8746,3 +8746,32 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/environment/test_calculate_reward_simple_fix.py`
   - `tests/unit/v460/test_558_reward_unification.py`
   - `tests/unit/reward/test_reward_components_fix.py`
+## 2026-03-24 prompt 583 refactor and broad-failure cleanup
+- `scripts/v460/lib/multiplicative_pipeline.py`
+  - `offset_pipeline.py` から `_apply_offset_pipeline_multiplicative()` を分離
+- `scripts/v460/lib/fill_cycle_executor.py`
+  - `run_single_cycle()` を
+    - `_run_pre_order_phase(...)`
+    - `_submit_order_phase(...)`
+    - `_monitor_fill_phase(...)`
+    - `_finalize_cycle(...)`
+    へ分割
+- `scripts/v460/lib/maker_price.py`
+  - `get_robust_inputs()` を復旧
+- `scripts/v460/analysis/analyze_fill_logs.py`
+  - additive classification を `execution_additive_enabled` 優先 + legacy stages fallback に更新
+- `tests/unit/v460/test_582_additive_pipeline.py`
+  - additive final clamp / dispatcher no-fallback / liquidity buffer / buy-side trending ignore を追加
+- prompt 583 の source-contract 追随:
+  - `test_113_resilience.py`
+  - `test_143_regime_utilization.py`
+  - `test_145_structural_fixes.py`
+  - `test_145_s14_structural_refactors.py`
+  - `test_158_regime_deadlock_fix.py`
+  - `test_195_velocity_b1_soft.py`
+  - `test_239_feasible_quote.py`
+  - `test_240_toxicity_budget.py`
+  - `test_373_critical_fixes.py`
+  - `test_fill_quality.py`
+- focused:
+  - prompt 583 周辺 suite `236 passed`

@@ -628,18 +628,18 @@ class TestPreflightLotAlignment:
     def test_regime_lot_no_persistent_mutation(self) -> None:
         """145# fix: run_single_cycle で _regime_adjusted_lot が呼ばれるが、
         _current_lot への永続化コードが除去されている."""
-        source = _RUN_SINGLE_CYCLE_SOURCE
-        # 151# P3-03: _regime_lot を1回算出 → SkipGate + _effective_order_lot で共有
-        # _regime_lot は SkipGate 前に算出 (lot_floor より先の場合あり)
-        assert "_regime_lot = self._regime_adjusted_lot()" in source, (
+        pre_order_source = read_fill_test_method_source("_run_pre_order_phase")
+        submit_source = read_fill_test_method_source("_submit_order_phase")
+        # 151# P3-03 / 583# Task C: regime_lot を pre-order phase で1回算出
+        assert "regime_lot = self._regime_adjusted_lot()" in pre_order_source, (
             "regime_lot should be computed once per cycle"
         )
-        # 151# P3-03: _effective_order_lot で confidence × regime を合成
-        assert "self._effective_order_lot(" in source, (
+        # 151# P3-03 / 583# Task C: submission phase で confidence × regime を合成
+        assert "self._effective_order_lot(" in submit_source, (
             "_effective_order_lot should be called for confidence_lot integration"
         )
         # 145# fix: 永続化コード「_order_lot > self._current_lot」は除去済み
-        assert "_order_lot > self._current_lot" not in source, (
+        assert "_order_lot > self._current_lot" not in pre_order_source + submit_source, (
             "§8-#2/#3 fix: _current_lot への永続化コードが残っている"
         )
 

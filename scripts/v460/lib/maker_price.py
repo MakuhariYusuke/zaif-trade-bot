@@ -24,6 +24,8 @@ import time
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Final, ParamSpec
 
+import numpy as np
+
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_microstructure import MicrostructureMixin
@@ -57,7 +59,7 @@ from ztb.trading.pricing.stage_tracking import (
 from ztb.trading.risk.fast_fill_defense import FastFillDefense
 from ztb.trading.signal.regime.regime_detector import RegimeDetectorLike
 from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
-from ztb.utils.robust_stats import RobustStats as _RS
+from ztb.utils.robust_stats import RobustStats
 
 logger = logging.getLogger(__name__)
 P = ParamSpec("P")
@@ -238,8 +240,6 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         self._mid_hl_reset_time: float = 0.0
         # 306# L1: 最新 σ キャッシュ (dynamic cycle interval 用)
         self._last_sigma: float = 0.0
-        # 574# ロバスト σ EMA (asymmetric_ema のステート)
-        self._robust_sigma: float = 0.0
         # 306# E1: offset stage recording
         self._last_offset_stages: str | None = None
 
@@ -433,31 +433,26 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         return max(0.0, adverse)
 
     def get_robust_inputs(self, side: str) -> tuple[float, float]:
-        """574# Task B: ロバスト σ / ロバスト adverse_ofi を返す.
+        """575# RobustStats ベースの sigma / adverse OFI を返す.
 
-        σ: asymmetric_ema (リスク上昇=Up に 4 倍敏感)
-        OFI: 10 サイクル中央値フィルタ → adverse 変換
+        sigma は asymmetric EMA で上方向のリスク増加に敏感に追随し、
+        OFI は十分な履歴がある場合だけ中央値フィルタでスパイク耐性を持たせる。
         """
-        import numpy as np
-
-        # 1. Volatility: リスク上昇 (Up) に 4 倍敏感な Asymmetric EMA
-        self._robust_sigma = _RS.asymmetric_ema(
-            current_val=self._last_sigma,
-            prev_ema=self._robust_sigma,
+        self._robust_sigma = RobustStats.asymmetric_ema(
+            self._last_sigma,
+            self._robust_sigma,
             alpha_up=0.20,
             alpha_down=0.05,
         )
 
-        # 2. Adverse OFI: 10 サイクル中央値フィルタ → adverse 変換
-        if len(self._ofi_history) >= 10:
-            recent = np.array(list(self._ofi_history)[-10:])
-            ofi_med = float(np.median(recent))
-            adverse = -ofi_med if side == "buy" else ofi_med
-            robust_ofi = max(0.0, adverse)
-        else:
-            robust_ofi = self.get_adverse_ofi(side)
+        if len(self._ofi_history) < 10:
+            return self._robust_sigma, self.get_adverse_ofi(side)
 
-        return self._robust_sigma, robust_ofi
+        ofi_med = RobustStats.median_filter_fast(
+            np.asarray(tuple(self._ofi_history), dtype=float)
+        )
+        adverse_ofi = -ofi_med if side == "buy" else ofi_med
+        return self._robust_sigma, max(0.0, adverse_ofi)
 
     def update_fast_fill_defense(self, ffd: "FastFillDefense") -> None:
         """210# F: hot-reload 後の FastFillDefense 参照更新 (カプセル化維持)."""
@@ -751,6 +746,64 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         scalar = 1.0 + min(adverse, 1.0) * k
         return base_boost * scalar
 
+    def _apply_inventory_skew(
+        self,
+        side: str,
+        now: float,
+        effective_offset_ratio: float,
+    ) -> float:
+        """579# Task 2.3: Inventory Skewing と Tanh 平滑化.
+
+        在庫偏重に応じた非対称 offset 補正。
+        急激な -1.0 クリップによる preflight_limits 崩壊を防ぐため、
+        ペナルティカーブに math.tanh() を適用し、滑らかな S字の増減を実現。
+        """
+        cfg = self._config
+        _decayed_imb = self._decayed_imbalance(now)
+
+        # 249# Regime-aware inventory skewing: trending 時は inv_skew を無効化
+        # — トレンド方向のポジション蓄積を在庫中立ロジックが阻害しないため
+        _inv_skew_regime_blocked = False
+        if cfg.inv_skew_regime_gate_enabled and self._regime_detector is not None:
+            _r = self._regime_detector.current_regime
+            if _r.is_trending:
+                _inv_skew_regime_blocked = True
+                logger.debug(
+                    f"[249# inv_skew_gate] regime={_r.value} — "
+                    f"inv_skew DISABLED (directional alpha preservation)"
+                )
+
+        if (
+            not cfg.inventory_skewing_enabled
+            or abs(_decayed_imb) <= cfg.inventory_skewing_neutral_band
+            or _inv_skew_regime_blocked
+        ):
+            self._last_inv_skew_factor = 0.0
+            return effective_offset_ratio
+
+        _imb = _decayed_imb
+        _sign = 1.0 if side == "buy" else -1.0
+        
+        # 579# Tanh smoothing applied to raw multiplier
+        _raw_factor = _imb * _sign * cfg.inventory_skewing_max_factor
+        
+        # Smooth factor inside [-1, 1] range to avoid abrupt full closure
+        _factor = math.tanh(_raw_factor)
+        
+        _prev = effective_offset_ratio
+        effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+            effective_offset_ratio,
+            1.0 + _factor,
+            min_ratio=cfg.min_offset_ratio,
+        )
+        self._last_inv_skew_factor = _factor
+        logger.info(
+            f"[inv_skew] {side} imbalance={_imb:+.3f} "
+            f"raw={_raw_factor:+.4f} smo={_factor:+.4f} mult={_applied_mult:.4f} "
+            f"offset {_prev:.4f}->{effective_offset_ratio:.4f}"
+        )
+        return effective_offset_ratio
+
     def _apply_spread_adaptive(
         self,
         side: str,
@@ -880,9 +933,6 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
                 spread_bps = spread / mid_price * 10_000
                 stages["delta_star_bps"] = round(delta_star_bps, 2)
                 stages["spread_bps"] = round(spread_bps, 2)
-        # 573# eDRC テレメトリ: σ を stages に記録
-        if self._last_sigma > 0.0:
-            stages["sigma"] = round(self._last_sigma, 8)
         return stages
 
     def _persist_offset_stage_store(
@@ -1170,43 +1220,15 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         )
 
         # 162# Inventory Skewing: 在庫偏重に応じた非対称 offset 補正
-        # 228# C2: time-decay 適用 — 古い fill 履歴の影響を減衰
-        # buy 偏重(imbalance>0) -> buy offset拡大(抑制), sell offset縮小(促進)
-        # sell 偏重(imbalance<0) -> sell offset拡大(抑制), buy offset縮小(促進)
-        _decayed_imb = self._decayed_imbalance(now)
-        # 249# Regime-aware inventory skewing: trending 時は inv_skew を無効化
-        # — トレンド方向のポジション蓄積を在庫中立ロジックが阻害しないため
-        _inv_skew_regime_blocked = False
-        if cfg.inv_skew_regime_gate_enabled and self._regime_detector is not None:
-            _r = self._regime_detector.current_regime
-            if _r.is_trending:
-                _inv_skew_regime_blocked = True
-                logger.debug(
-                    f"[249# inv_skew_gate] regime={_r.value} — "
-                    f"inv_skew DISABLED (directional alpha preservation)"
-                )
-        if (
-            cfg.inventory_skewing_enabled
-            and abs(_decayed_imb) > cfg.inventory_skewing_neutral_band
-            and not _inv_skew_regime_blocked  # 249# regime gate
-        ):
-            _imb = _decayed_imb
-            _sign = 1.0 if side == "buy" else -1.0
-            _factor = _imb * _sign * cfg.inventory_skewing_max_factor
-            _prev = effective_offset_ratio
-            effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
-                effective_offset_ratio,
-                1.0 + _factor,
-                min_ratio=cfg.min_offset_ratio,
-            )
-            self._last_inv_skew_factor = _factor
-            logger.info(
-                f"[inv_skew] {side} imbalance={_imb:+.3f} "
-                f"factor={_factor:+.4f} mult={_applied_mult:.4f} "
-                f"offset {_prev:.4f}->{effective_offset_ratio:.4f}"
-            )
-        else:
-            self._last_inv_skew_factor = 0.0
+        # 579# Task 2.3: Tanh smoothing 適用とステージ抽出による制御改善
+        effective_offset_ratio = self._apply_offset_ratio_stage(
+            _stages,
+            "inv_skew",
+            self._apply_inventory_skew,
+            side,
+            now,
+            effective_offset_ratio,
+        )
 
         # 088# sell 専用ハードガード: offset floor (173# 動的フロア対応)
         if side == "sell":

@@ -20,6 +20,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
 from scripts.v460.lib import cancel_reasons as CR
@@ -49,6 +50,60 @@ if TYPE_CHECKING:
     from ztb.metrics.fill_quality import FillRecord
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class _PreOrderPhaseResult:
+    cycle_id: str
+    side: str
+    order_price: float
+    spread_at_order: float | None
+    effective_offset_ratio: float
+    regime_lot: float
+    skip_gate_skipped: bool | None
+    skip_gate_score: float | None
+    skip_gate_reason: str | None
+    skip_gate_model_used: str | None
+    skip_gate_as_prob: float | None
+    skip_gate_threshold_used: float | None
+    skip_gate_hour_offset: float | None
+    sg_velocity_bps: float | None
+    ev_offset_applied: bool
+    ev_score_pretrade: float | None
+    ev_offset_mult_applied: float | None
+    macro_boost_applied: bool
+    execution_pre_clamp_offset: float | None
+    executor_offset_stages_json: str | None
+    regime_at_order: str | None
+    regime_obs_count: int | None
+    mid_at_order: float | None
+
+
+@dataclass
+class _SubmissionPhaseResult:
+    order: "OrderLike"
+    order_price: float
+    order_lot: float
+    confidence_factor: float
+    queue_depth_ahead: float | None
+    queue_fill_prob_est: float | None
+    t_submit: float
+
+
+@dataclass
+class _FillPhaseResult:
+    filled: bool
+    fill_price: float | None
+    queue_wait: float
+    cancel_reason_poll: str | None
+    reprice_count: int
+    reprice_drift_bps: float | None
+    effective_timeout: float | None
+    cancel_failed_likely_filled: bool
+    pending_reconciliation: bool
+    order_price: float
+    requote_attempts: int
+    micro_partial_qty: float
 
 
 class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
@@ -622,6 +677,757 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             details=build_cycle_revenue_event_details(record),
         )
 
+    async def _run_pre_order_phase(
+        self,
+        *,
+        cycle_id: str,
+        side_override: str | None,
+        one_sided_balance: bool,
+        trending_offset_mult: float | None,
+        degraded_liquidation: bool,
+        toxicity_offset_mult: float,
+        sidecar_offset_bps: float,
+    ) -> "FillRecord | _PreOrderPhaseResult":
+        """Task C: pre-order phase (OB/SkipGate/offset) をまとめる."""
+        try:
+            imb, bid_d, ask_d = await self._compute_orderbook_imbalance(
+                depth=self.config.imbalance_depth,
+            )
+            self._maker_price._last_imbalance = imb
+            self._maker_price._last_bid_depth = bid_d
+            self._maker_price._last_ask_depth = ask_d
+            ob = self._maker_price._last_ob_snapshot
+            if ob is not None:
+                self._ob_recorder.record(ob.bids, ob.asks, ob.timestamp)
+        except Exception as e:
+            logger.warning(f"[ob_prefetch] Pre-fetch imbalance failed, using last: {e}")
+
+        prefetched_trades: object | None = None
+        try:
+            recent = await self.adapter.get_recent_trades(
+                self.config.symbol,
+                limit=self.config.trades_recorder_fetch_limit,
+            )
+            self._trades_recorder.record_from_adapter(recent)
+            prefetched_trades = recent
+        except Exception as te:
+            logger.debug(f"Trades fetch for recording skipped: {te}")
+
+        side = side_override if side_override is not None else self._next_side()
+        self._side_selector.update_after_decision(side)
+        logger.info(f"=== Cycle {self._cycle_count} ({side}) ===")
+
+        regime_at_order = self._current_regime_value()
+        regime_obs_count: int | None = None
+        if self._regime_detector is not None:
+            regime_obs_count = self._regime_detector.observation_count
+
+        await self._update_cross_venue_lead_lag_hint()
+        self._maker_price.set_veto_btc_balance(self._balance_checker.last_btc_free)
+
+        spread_at_order: float | None = None
+        effective_offset_ratio: float = self.config.spread_offset_ratio
+        mid_at_order: float | None = None
+        try:
+            order_price, spread_at_order, effective_offset_ratio = await self._compute_maker_price(side)
+            mid_at_order = self._maker_price.get_fallback_price()[0]
+            self._consecutive_no_feasible[side] = 0
+        except InfeasibleQuoteError as e:
+            ob_cancel_reason = e.reason
+            if e.reason == "spread_too_narrow":
+                logger.info(f"[158# §20-D] {e}")
+            else:
+                logger.warning(f"Maker price rejected: {e}")
+            cnf = self._consecutive_no_feasible.get(side, 0) + 1
+            self._consecutive_no_feasible[side] = cnf
+            if cnf >= 3:
+                ob_cancel_reason = CR.NO_FEASIBLE_QUOTE
+                logger.warning(
+                    f"[234#] NO_FEASIBLE_QUOTE: {cnf} "
+                    f"consecutive infeasible quotes ({side}) -- "
+                    f"last_reason={e.reason}, "
+                    f"min_spread={self.config.min_spread_jpy}, "
+                    f"sell_max_spread={self.config.sell_max_spread_jpy}"
+                )
+            return self._make_price_error_skip(
+                side=side,
+                cancel_reason=ob_cancel_reason,
+                cycle_id=cycle_id,
+                error=e,
+            )
+        except Exception as e:
+            err_msg = str(e).lower()
+            if "timeout" in err_msg or "timed out" in err_msg:
+                ob_cancel_reason = CR.ORDERBOOK_TIMEOUT
+            elif "rate" in err_msg or "limit" in err_msg or "too many" in err_msg:
+                ob_cancel_reason = CR.ORDERBOOK_RATE_LIMIT
+            elif "empty" in err_msg or "no bid" in err_msg or "no ask" in err_msg:
+                ob_cancel_reason = CR.ORDERBOOK_EMPTY
+            else:
+                ob_cancel_reason = CR.ORDERBOOK_ERROR
+            logger.error(f"Failed to compute maker price: {e}")
+            return self._make_price_error_skip(
+                side=side,
+                cancel_reason=ob_cancel_reason,
+                cycle_id=cycle_id,
+                error=e,
+            )
+
+        if degraded_liquidation and effective_offset_ratio > 0:
+            deg_offset_mult = self.config.degraded_liquidation_offset_mult
+            pre_deg_offset = effective_offset_ratio
+            effective_offset_ratio = min(
+                effective_offset_ratio * deg_offset_mult,
+                self.config.max_offset_ratio,
+            )
+            order_price = self._recalc_price_with_new_offset(
+                side,
+                order_price,
+                spread_at_order,
+                pre_deg_offset,
+                effective_offset_ratio,
+            )
+            if spread_at_order is None or spread_at_order <= 0:
+                logger.warning(
+                    "[235#] degraded_liquidation: spread unavailable -- "
+                    "offset expanded but price NOT recalculated"
+                )
+            logger.warning(
+                f"[234#] degraded_liquidation: offset "
+                f"{pre_deg_offset:.4f}->{effective_offset_ratio:.4f} "
+                f"(x{deg_offset_mult:.1f}), price={order_price:.0f}"
+            )
+
+        if (
+            self.config.narrow_spread_pause_enabled
+            and spread_at_order is not None
+            and order_price > 0
+        ):
+            mid_est = order_price
+            spread_bps_val = (
+                spread_at_order / mid_est * self._BPS_FACTOR if mid_est > 0 else 0.0
+            )
+            if spread_bps_val < self.config.narrow_spread_pause_bps:
+                self._narrow_spread_consecutive += 1
+                if self._narrow_spread_consecutive <= self.config.narrow_spread_pause_max_consecutive:
+                    pause_sec = self.config.narrow_spread_pause_sec
+                    logger.info(
+                        f"[137# P1-08] Spread too narrow ({spread_bps_val:.1f}bps "
+                        f"< {self.config.narrow_spread_pause_bps}bps). "
+                        f"Pausing {pause_sec}s "
+                        f"({self._narrow_spread_consecutive}/"
+                        f"{self.config.narrow_spread_pause_max_consecutive})"
+                    )
+                    await asyncio.sleep(pause_sec)
+                    return self._make_cycle_skip_record(
+                        side=side,
+                        cancel_reason=CR.NARROW_SPREAD_PAUSE,
+                        cycle_id=cycle_id,
+                        order_price=order_price,
+                        spread_at_order=spread_at_order,
+                        spread_offset_ratio=effective_offset_ratio,
+                    )
+            else:
+                self._narrow_spread_consecutive = 0
+
+        regime_lot = self._regime_adjusted_lot()
+        if degraded_liquidation:
+            pre_deg_lot = regime_lot
+            regime_lot = max(
+                regime_lot * self.config.degraded_liquidation_lot_mult,
+                self.config.min_order_btc,
+            )
+            logger.warning(
+                f"[234#] degraded_liquidation lot: "
+                f"{pre_deg_lot:.6f}->{regime_lot:.6f} "
+                f"(x{self.config.degraded_liquidation_lot_mult:.1f})"
+            )
+
+        sg = await self._evaluate_skip_gate(
+            side,
+            cycle_id,
+            order_price,
+            spread_at_order,
+            effective_offset_ratio,
+            order_lot=regime_lot,
+            one_sided_balance=one_sided_balance,
+            prefetched_ob=self._maker_price._last_ob_snapshot,
+            prefetched_trades=prefetched_trades,
+        )
+        if sg.early_return_record is not None:
+            return sg.early_return_record
+
+        offset_result = self._apply_offset_pipeline(
+            side=side,
+            order_price=order_price,
+            spread_at_order=spread_at_order,
+            effective_offset_ratio=effective_offset_ratio,
+            sg_ev_score=sg.ev_score,
+            sg_velocity_offset_mult=sg.velocity_offset_mult,
+            sg_velocity_bps=sg.price_velocity_bps,
+            trending_offset_mult=trending_offset_mult,
+            toxicity_offset_mult=toxicity_offset_mult,
+            sidecar_offset_bps=sidecar_offset_bps,
+            cycle_id=cycle_id,
+        )
+        if offset_result.early_return_record is not None:
+            return offset_result.early_return_record
+
+        return _PreOrderPhaseResult(
+            cycle_id=cycle_id,
+            side=side,
+            order_price=offset_result.order_price,
+            spread_at_order=spread_at_order,
+            effective_offset_ratio=offset_result.effective_offset_ratio,
+            regime_lot=regime_lot,
+            skip_gate_skipped=sg.skipped,
+            skip_gate_score=sg.score,
+            skip_gate_reason=sg.reason,
+            skip_gate_model_used=sg.model_used,
+            skip_gate_as_prob=sg.as_prob,
+            skip_gate_threshold_used=sg.threshold_used,
+            skip_gate_hour_offset=sg.hour_offset if sg.hour_offset != 0.0 else None,
+            sg_velocity_bps=sg.price_velocity_bps,
+            ev_offset_applied=offset_result.ev_offset_applied,
+            ev_score_pretrade=offset_result.ev_score_pretrade,
+            ev_offset_mult_applied=offset_result.ev_offset_mult_applied,
+            macro_boost_applied=offset_result.macro_boost_applied,
+            execution_pre_clamp_offset=offset_result.execution_pre_clamp_offset,
+            executor_offset_stages_json=offset_result.executor_offset_stages_json,
+            regime_at_order=regime_at_order,
+            regime_obs_count=regime_obs_count,
+            mid_at_order=mid_at_order,
+        )
+
+    async def _submit_order_phase(
+        self,
+        *,
+        pre_order: _PreOrderPhaseResult,
+        one_sided_balance: bool,
+    ) -> "FillRecord | _SubmissionPhaseResult":
+        """Task C: submission phase (lot resolve / place order) をまとめる."""
+        self._balance_checker.apply_lot_floor()
+        order_lot, confidence_factor = self._effective_order_lot(
+            pre_order.regime_lot,
+            as_prob=pre_order.skip_gate_as_prob,
+            dust_sweep_active=self._balance_checker.dust_sweep_active,
+        )
+
+        dust_active = self._balance_checker.dust_sweep_active
+        min_lot = self.config.min_order_btc
+        if not dust_active:
+            alert_lm = self._alert_lot_mult
+            if alert_lm != 1.0:
+                order_lot = self._scale_lot(order_lot, alert_lm, min_lot, "215# alert_mode", warn=True)
+            recovery_lm = self._halt_recovery_lot_mult
+            if recovery_lm < 1.0:
+                order_lot = self._scale_lot(order_lot, recovery_lm, min_lot, "224# B1 Recovery")
+            dd_side_scale = (
+                self._dd_soft_lot_scale_buy
+                if pre_order.side == "buy"
+                else self._dd_soft_lot_scale_sell
+            )
+            if dd_side_scale < 1.0:
+                order_lot = self._scale_lot(order_lot, dd_side_scale, min_lot, f"303# B DD soft {pre_order.side}")
+            dd_guard = self._daily_drawdown_guard
+            if dd_guard is not None:
+                cd_lm = dd_guard.get_cooldown_lot_scale()
+                if cd_lm < 1.0:
+                    order_lot = self._scale_lot(order_lot, cd_lm, min_lot, "246# cooldown_release")
+
+        if self.config.max_lot > 0 and order_lot > self.config.max_lot:
+            logger.warning(
+                f"[373# F8] lot {order_lot:.6f} > max_lot {self.config.max_lot:.6f} -- clamped"
+            )
+            order_lot = self.config.max_lot
+
+        queue_depth_ahead: float | None = None
+        queue_fill_prob_est: float | None = None
+        if self.config.queue_position_tracking_enabled and pre_order.order_price > 0:
+            queue_depth_ahead = self._maker_price.estimate_queue_depth(
+                pre_order.side,
+                pre_order.order_price,
+            )
+            if queue_depth_ahead is not None and order_lot > 0:
+                import math as _math
+
+                queue_fill_prob_est = _math.exp(-queue_depth_ahead / max(order_lot, 1e-8))
+
+        t_submit = time.time()
+        order: object | None = None
+        last_error: str | None = None
+        cancel_reason: str = CR.UNKNOWN
+        order_price = pre_order.order_price
+        for attempt in range(1 + self.config.max_order_retries):
+            try:
+                try:
+                    pre_ob = await self.adapter.get_orderbook(self.config.symbol, depth=1)
+                    if pre_ob and pre_ob.bids and pre_ob.asks:
+                        pre_best_bid, pre_best_ask = best_bid_ask(pre_ob)
+                        if pre_order.side == "buy" and order_price >= pre_best_ask:
+                            logger.warning(
+                                f"[postonly_guard] 200# buy price {order_price:.0f} >= best_ask "
+                                f"{pre_best_ask:.0f} -> skip cycle (offset pipeline nullified)"
+                            )
+                            cancel_reason = CR.POSTONLY_CROSSING_SKIP
+                            break
+                        if pre_order.side == "sell" and order_price <= pre_best_bid:
+                            logger.warning(
+                                f"[postonly_guard] 200# sell price {order_price:.0f} <= best_bid "
+                                f"{pre_best_bid:.0f} -> skip cycle (offset pipeline nullified)"
+                            )
+                            cancel_reason = CR.POSTONLY_CROSSING_SKIP
+                            break
+                except Exception as pre_e:
+                    logger.debug(f"[postonly_guard] Pre-check failed (non-fatal): {pre_e}")
+
+                order = await self.adapter.place_order(
+                    symbol=self.config.symbol,
+                    side=pre_order.side,
+                    quantity=order_lot,
+                    price=order_price,
+                    order_type="limit",
+                )
+                self._pending_order_id = order.order_id
+                logger.info(
+                    f"Placed {pre_order.side} limit @ {order_price:.0f} JPY, "
+                    f"qty={order_lot}, id={order.order_id}"
+                    + (f" (retry {attempt})" if attempt > 0 else "")
+                )
+                break
+            except Exception as e:
+                last_error = str(e)
+                err_lower = last_error.lower()
+                if "post_only" in err_lower or "taker" in err_lower:
+                    cancel_reason = CR.POST_ONLY_REJECT
+                elif (
+                    "insufficient" in err_lower
+                    or "balance" in err_lower
+                    or any(p in last_error for p in self.config.insufficient_funds_patterns)
+                ):
+                    cancel_reason = CR.INSUFFICIENT_FUNDS
+                elif "minimum" in err_lower or "size" in err_lower:
+                    cancel_reason = CR.MINIMUM_SIZE
+                else:
+                    cancel_reason = CR.API_ERROR
+
+                logger.warning(
+                    f"Order attempt {attempt + 1} failed ({cancel_reason}): {e}"
+                )
+                if cancel_reason in {"insufficient_funds", "post_only_reject", "minimum_size"}:
+                    logger.info(
+                        f"[Bug10] Skipping retry -- {cancel_reason} is not retriable"
+                    )
+                    break
+
+                if attempt < self.config.max_order_retries:
+                    backoff = self.config.retry_delay_sec * (
+                        self.config.retry_backoff_base ** attempt
+                    )
+                    if "rate" in err_lower or "limit" in err_lower or "too many" in err_lower:
+                        backoff = max(backoff, self.config.rate_limit_min_backoff_sec)
+                        logger.warning(
+                            f"Rate-limit detected, extended backoff: {backoff:.1f}s (attempt {attempt + 1})"
+                        )
+                    else:
+                        logger.info(f"Retry backoff: {backoff:.1f}s")
+                    await asyncio.sleep(backoff)
+                    try:
+                        ob = await self.adapter.get_orderbook(self.config.symbol, depth=1)
+                        if ob.bids and ob.asks:
+                            order_price = ob.bids[0][0] if pre_order.side == "buy" else ob.asks[0][0]
+                            logger.info(f"Retry with conservative price: {order_price:.0f}")
+                    except Exception as e:
+                        logger.debug(
+                            "OB fetch failed during retry, using previous price: %s",
+                            e,
+                            exc_info=True,
+                        )
+
+        if order is None:
+            if cancel_reason != CR.POSTONLY_CROSSING_SKIP:
+                logger.error(
+                    f"All order attempts failed (side={pre_order.side}, qty={order_lot:.8f}): {last_error}"
+                )
+                await self._circuit_breaker.async_on_failure()
+                self._postonly_crossing_streak = 0
+            else:
+                self._postonly_crossing_streak += 1
+                if self._postonly_crossing_streak >= 3:
+                    logger.warning(
+                        f"[postonly_guard] 201# crossing streak={self._postonly_crossing_streak}"
+                        " -- offset pipeline may need recalibration"
+                    )
+                logger.info("[postonly_guard] 200# crossing -> cycle skipped (no CB penalty)")
+            return self._make_cycle_skip_record(
+                timestamp=t_submit,
+                side=pre_order.side,
+                cancel_reason=cancel_reason,
+                cycle_id=pre_order.cycle_id,
+                order_quantity=order_lot,
+                order_price=order_price,
+                spread_at_order=pre_order.spread_at_order,
+                spread_offset_ratio=pre_order.effective_offset_ratio,
+                error_message=last_error,
+            )
+
+        if not isinstance(getattr(order, "order_id", None), str):
+            raise TypeError(
+                f"adapter.place_order returned non-OrderLike: {type(order).__name__}"
+            )
+
+        return _SubmissionPhaseResult(
+            order=cast("OrderLike", order),
+            order_price=order_price,
+            order_lot=order_lot,
+            confidence_factor=confidence_factor,
+            queue_depth_ahead=queue_depth_ahead,
+            queue_fill_prob_est=queue_fill_prob_est,
+            t_submit=t_submit,
+        )
+
+    async def _monitor_fill_phase(
+        self,
+        *,
+        pre_order: _PreOrderPhaseResult,
+        submission: _SubmissionPhaseResult,
+    ) -> _FillPhaseResult:
+        """Task C: fill monitoring phase (polling/timeout) をまとめる."""
+        order = submission.order
+        order_price = submission.order_price
+        t_submit = submission.t_submit
+        micro_enabled = self.config.micro_timeout_enabled
+        requote_attempts = 0
+        micro_partial_qty = 0.0
+        remaining_lot = submission.order_lot
+        first_t_submit = t_submit
+
+        if micro_enabled:
+            mt_wait = (
+                self.config.micro_timeout_wait_sec_sell
+                if pre_order.side == "sell" and self.config.micro_timeout_wait_sec_sell is not None
+                else self.config.micro_timeout_wait_sec
+            )
+            lt = self._last_macro_trend
+            if pre_order.side == "sell" and lt is not None:
+                from scripts.v460.lib.macro_regime import MacroTrend
+
+                if (
+                    lt == MacroTrend.STRONG_UP.value
+                    and self.config.macro_sell_timeout_strong_up is not None
+                ):
+                    mt_wait = self.config.macro_sell_timeout_strong_up
+                    logger.info("[458# H] sell timeout shortened: macro=STRONG_UP -> %.1fs", mt_wait)
+                elif (
+                    lt == MacroTrend.WEAK_UP.value
+                    and self.config.macro_sell_timeout_weak_up is not None
+                ):
+                    mt_wait = self.config.macro_sell_timeout_weak_up
+                    logger.info("[458# H] sell timeout shortened: macro=WEAK_UP -> %.1fs", mt_wait)
+            mt_max = self.config.micro_timeout_max_requote
+            mt_cooloff = self.config.micro_timeout_requote_cooloff_sec
+            original_timeout = self.config.order_timeout_sec
+            original_timeout_sell = self.config.order_timeout_sec_sell
+            mt_total_cap: float | None = (
+                self.config.sell_age_cap_sec
+                if pre_order.side == "sell"
+                and self.config.sell_age_cap_sec is not None
+                and self.config.sell_age_cap_sec > 0
+                else None
+            )
+
+            for mt_attempt in range(mt_max):
+                if self._kill_switch.is_killed():
+                    break
+                if mt_total_cap is not None:
+                    mt_elapsed = time.time() - first_t_submit
+                    if mt_elapsed >= mt_total_cap:
+                        logger.info(
+                            "[509#] micro_timeout sell_age_cap exceeded: "
+                            "elapsed=%.1fs >= cap=%.0fs, stopping at attempt %d/%d",
+                            mt_elapsed,
+                            mt_total_cap,
+                            mt_attempt + 1,
+                            mt_max,
+                        )
+                        break
+
+                object.__setattr__(self.config, "order_timeout_sec", mt_wait)
+                object.__setattr__(self.config, "order_timeout_sec_sell", None)
+                try:
+                    monitor = await self._monitor_fill_polling(
+                        order,
+                        order_price,
+                        pre_order.side,
+                        t_submit,
+                        pre_order.spread_at_order,
+                        pre_order.effective_offset_ratio,
+                        order_lot=remaining_lot,
+                    )
+                finally:
+                    object.__setattr__(self.config, "order_timeout_sec", original_timeout)
+                    object.__setattr__(self.config, "order_timeout_sec_sell", original_timeout_sell)
+
+                if monitor.filled or monitor.cancel_failed_likely_filled:
+                    break
+
+                requote_attempts = mt_attempt + 1
+                if mt_attempt >= mt_max - 1:
+                    logger.info(
+                        "[452# micro_timeout] Max requote reached (%d), giving up",
+                        mt_max,
+                    )
+                    break
+
+                if mt_cooloff > 0:
+                    await asyncio.sleep(mt_cooloff)
+
+                try:
+                    rq_mid = await self._get_mid_price()
+                except Exception as e:
+                    logger.warning("[452# micro_timeout] Mid price fetch failed: %s", e)
+                    break
+
+                rq_spread = (
+                    pre_order.spread_at_order
+                    if pre_order.spread_at_order and pre_order.spread_at_order > 0
+                    else 0.0
+                )
+                if pre_order.side == "buy":
+                    order_price = round(
+                        rq_mid + rq_spread * (pre_order.effective_offset_ratio - 0.5)
+                    )
+                else:
+                    order_price = round(
+                        rq_mid + rq_spread * (0.5 - pre_order.effective_offset_ratio)
+                    )
+
+                logger.info(
+                    "[452# micro_timeout] Re-quote %d/%d: new_price=%s (mid=%s, offset=%.4f)",
+                    mt_attempt + 1,
+                    mt_max,
+                    order_price,
+                    rq_mid,
+                    pre_order.effective_offset_ratio,
+                )
+                t_submit = time.time()
+                try:
+                    order = await self.adapter.place_order(
+                        symbol=self.config.symbol,
+                        side=pre_order.side,
+                        quantity=remaining_lot,
+                        price=order_price,
+                        order_type="limit",
+                    )
+                except Exception as e:
+                    logger.warning("[452# micro_timeout] Re-quote order failed: %s", e)
+                    break
+
+                if order is None or not isinstance(getattr(order, "order_id", None), str):
+                    logger.warning("[452# micro_timeout] Re-quote returned invalid order")
+                    break
+                order = cast("OrderLike", order)
+        else:
+            monitor = await self._monitor_fill_polling(
+                order,
+                order_price,
+                pre_order.side,
+                t_submit,
+                pre_order.spread_at_order,
+                pre_order.effective_offset_ratio,
+                order_lot=submission.order_lot,
+            )
+
+        filled = monitor.filled
+        fill_price = monitor.fill_price
+        queue_wait = time.time() - first_t_submit if micro_enabled and filled else monitor.queue_wait
+        if micro_enabled and not filled and monitor.cancel_reason == "timeout":
+            cancel_reason_poll: str | None = "micro_timeout"
+        else:
+            cancel_reason_poll = monitor.cancel_reason
+        final_order_price = monitor.final_order_price
+        pending_reconciliation = self._maybe_register_phantom(
+            monitor,
+            pre_order.side,
+            submission.order_lot,
+            final_order_price,
+        )
+
+        return _FillPhaseResult(
+            filled=filled,
+            fill_price=fill_price,
+            queue_wait=queue_wait,
+            cancel_reason_poll=cancel_reason_poll,
+            reprice_count=monitor.reprice_count,
+            reprice_drift_bps=monitor.reprice_drift_bps,
+            effective_timeout=monitor.effective_timeout,
+            cancel_failed_likely_filled=monitor.cancel_failed_likely_filled,
+            pending_reconciliation=pending_reconciliation,
+            order_price=final_order_price,
+            requote_attempts=requote_attempts,
+            micro_partial_qty=micro_partial_qty,
+        )
+
+    async def _finalize_cycle(
+        self,
+        *,
+        pre_order: _PreOrderPhaseResult,
+        submission: _SubmissionPhaseResult,
+        fill_phase: _FillPhaseResult,
+        sidecar_offset_bps: float,
+        sidecar_bias: float | None,
+        sidecar_confidence: float | None,
+        sidecar_model_version: str | None,
+        sidecar_signal_status: str | None,
+    ) -> "FillRecord":
+        """Task C: post-fill phase (PnL/record/log) をまとめる."""
+        pnl = await self._measure_post_fill_pnl(
+            fill_phase.filled,
+            fill_phase.fill_price,
+            pre_order.side,
+        )
+        if fill_phase.filled:
+            self._maker_price.update_inventory(pre_order.side)
+
+        regime_str: str | None = None
+        regime_conf: float | None = None
+        regime_stab: int | None = None
+        regime_trend_pct: float | None = None
+        regime_vol_ratio: float | None = None
+        if self._regime_detector is not None:
+            regime_price = pnl.mid_at_fill
+            if regime_price is None:
+                regime_price, _ = self._maker_price.get_fallback_price()
+            if regime_price is not None:
+                regime_result = self._regime_detector.update(submission.t_submit, regime_price)
+                regime_str = regime_result.regime.value
+                regime_conf = regime_result.confidence
+                regime_stab = regime_result.stability
+                regime_trend_pct = regime_result.trend_pct
+                regime_vol_ratio = regime_result.volatility_ratio
+
+        macro_trend: str | None = None
+        macro_slope_5m: float | None = None
+        macro_slope_15m: float | None = None
+        macro_aligned: bool | None = None
+        if self._macro_regime_detector is not None:
+            macro_price = pnl.mid_at_fill
+            if macro_price is None:
+                macro_price, _ = self._maker_price.get_fallback_price()
+            if macro_price is not None:
+                from scripts.v460.lib.macro_regime import compose_regimes
+
+                macro_result = self._macro_regime_detector.update(submission.t_submit, macro_price)
+                macro_trend = macro_result.trend.value
+                macro_slope_5m = macro_result.slope_5m_bps_per_min
+                macro_slope_15m = macro_result.slope_15m_bps_per_min
+                if regime_str is not None:
+                    _, macro_aligned = compose_regimes(
+                        regime_str,
+                        regime_conf or 0.0,
+                        macro_result,
+                    )
+                    if not macro_aligned:
+                        action = self.config.macro_regime_conflict_action
+                        if action == "downgrade":
+                            original_regime = regime_str
+                            regime_str = "ranging"
+                            logger.info(
+                                "[macro_regime] micro/macro conflict -> ranging downgrade "
+                                "(micro=%s, macro=%s)",
+                                original_regime,
+                                macro_trend,
+                            )
+                        else:
+                            logger.debug(
+                                "[macro_regime] micro/macro conflict detected "
+                                "(micro=%s, macro=%s, aligned=False)",
+                                regime_str,
+                                macro_trend,
+                            )
+                self._last_macro_trend = macro_trend
+
+        decision_path = self._derive_decision_path(
+            ev_score_pretrade=pre_order.ev_score_pretrade,
+            skip_gate_reason=pre_order.skip_gate_reason,
+            ev_offset_applied=pre_order.ev_offset_applied,
+        )
+
+        record = self._build_fill_record(
+            cycle_id=pre_order.cycle_id,
+            t_submit=submission.t_submit,
+            side=pre_order.side,
+            order_price=fill_phase.order_price,
+            order_lot=submission.order_lot,
+            fill_price=fill_phase.fill_price,
+            filled=fill_phase.filled,
+            spread_at_order=pre_order.spread_at_order,
+            effective_offset_ratio=pre_order.effective_offset_ratio,
+            queue_wait=fill_phase.queue_wait,
+            cancel_reason_poll=fill_phase.cancel_reason_poll,
+            reprice_count=fill_phase.reprice_count,
+            reprice_drift_bps=fill_phase.reprice_drift_bps,
+            effective_timeout=fill_phase.effective_timeout,
+            cancel_failed_likely_filled=fill_phase.cancel_failed_likely_filled,
+            pnl=pnl,
+            sg_skipped=pre_order.skip_gate_skipped,
+            sg_score=pre_order.skip_gate_score,
+            sg_reason=pre_order.skip_gate_reason,
+            sg_model_used=pre_order.skip_gate_model_used,
+            sg_as_prob=pre_order.skip_gate_as_prob,
+            sg_threshold_used=pre_order.skip_gate_threshold_used,
+            sg_hour_offset=pre_order.skip_gate_hour_offset,
+            sg_velocity_bps=pre_order.sg_velocity_bps,
+            regime_str=regime_str,
+            regime_conf=regime_conf,
+            regime_stab=regime_stab,
+            regime_trend_pct=regime_trend_pct,
+            regime_vol_ratio=regime_vol_ratio,
+            confidence_factor=submission.confidence_factor,
+            regime_lot=pre_order.regime_lot,
+            macro_trend=macro_trend,
+            macro_slope_5m=macro_slope_5m,
+            macro_slope_15m=macro_slope_15m,
+            macro_aligned=macro_aligned,
+            macro_boost_applied=pre_order.macro_boost_applied or None,
+            ev_score_pretrade=pre_order.ev_score_pretrade,
+            ev_offset_mult_applied=pre_order.ev_offset_mult_applied,
+            decision_path=decision_path,
+            sidecar_offset_bps=sidecar_offset_bps if sidecar_offset_bps != 0.0 else None,
+            sidecar_bias=sidecar_bias,
+            sidecar_confidence=sidecar_confidence,
+            sidecar_model_version=sidecar_model_version or None,
+            sidecar_signal_status=sidecar_signal_status,
+            queue_depth_ahead=submission.queue_depth_ahead,
+            queue_fill_prob_est=submission.queue_fill_prob_est,
+            regime_at_order=pre_order.regime_at_order,
+            regime_observation_count=pre_order.regime_obs_count,
+            mid_at_order=pre_order.mid_at_order,
+            execution_pre_clamp_offset=pre_order.execution_pre_clamp_offset,
+            executor_offset_stages=pre_order.executor_offset_stages_json,
+            log_cycle_no=self._cycle_count,
+        )
+
+        self._log_cycle_result(
+            filled=fill_phase.filled,
+            queue_wait=fill_phase.queue_wait,
+            post_fill_pnl=pnl.post_fill_pnl,
+            cancel_reason=fill_phase.cancel_reason_poll,
+            sidecar_offset_bps=sidecar_offset_bps,
+            sidecar_signal_status=sidecar_signal_status,
+            order_id=self._pending_order_id,
+        )
+        self._log_cycle_revenue_context(record)
+        if fill_phase.pending_reconciliation:
+            record.pending_reconciliation = True
+        if self.config.micro_timeout_enabled:
+            record.requote_attempts = fill_phase.requote_attempts
+            if fill_phase.micro_partial_qty > 0:
+                record.micro_timeout_partial_filled_qty = fill_phase.micro_partial_qty
+
+        await self._circuit_breaker.async_on_success()
+        return record
+
     async def run_single_cycle(
         self,
         side_override: str | None = None,
@@ -654,757 +1460,36 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                     cancel_reason=CR.CIRCUIT_BREAKER_OPEN,
                     cycle_id=cycle_id,
                 )
-
-        # 055# Fix #2: Smart Side 判定用に最新板 imbalance を事前取得
-        # (_compute_maker_price 内での取得では side 決定後 → 1サイクル遅延)
-        # 122# §7.3 方法 2: OB データ記録のため常時計算 (smart_side 無効時もデータ蓄積)
-        try:
-            imb, bid_d, ask_d = await self._compute_orderbook_imbalance(
-                depth=self.config.imbalance_depth,
-            )
-            self._maker_price._last_imbalance = imb
-            self._maker_price._last_bid_depth = bid_d
-            self._maker_price._last_ask_depth = ask_d
-            # 129# OB recorder: サイクルごとに板スナップショットを記録
-            ob = self._maker_price._last_ob_snapshot
-            if ob is not None:
-                self._ob_recorder.record(ob.bids, ob.asks, ob.timestamp)
-        except Exception as e:
-            logger.warning(f"[ob_prefetch] Pre-fetch imbalance failed, using last: {e}")
-            # フォールバック: 前回値を維持
-
-        # 135# P0-04: trades recorder — OB とは独立した try で障害分離 (§9.1 #3)
-        # 355# L-2: SkipGate への prefetch 共有用に結果を保持
-        _prefetched_trades: object | None = None
-        try:
-            recent = await self.adapter.get_recent_trades(
-                self.config.symbol, limit=self.config.trades_recorder_fetch_limit,
-            )
-            self._trades_recorder.record_from_adapter(recent)
-            _prefetched_trades = recent
-        except Exception as te:
-            logger.debug(f"Trades fetch for recording skipped: {te}")
-
-        # 075# Fix: side_override があればそれを使い、_next_side() 二重呼出を防止
-        if side_override is not None:
-            side = side_override
-        else:
-            side = self._next_side()
-        # 054# S2: 連続同 side カウンタ更新 — 121# SideSelector に委譲
-        self._side_selector.update_after_decision(side)
-
-        logger.info(f"=== Cycle {self._cycle_count} ({side}) ===")
-
-        # 318# F5-3: 発注時のレジーム情報をキャプチャ (post-cycle 更新前の値)
-        _regime_at_order = self._current_regime_value()
-        _regime_obs_count: int | None = None
-        if self._regime_detector is not None:
-            _regime_obs_count = self._regime_detector.observation_count
-
-        await self._update_cross_venue_lead_lag_hint()
-        # 533# veto deadlock 防止: BTC 残高を注入
-        self._maker_price.set_veto_btc_balance(self._balance_checker.last_btc_free)
-
-        # 1. maker limit 価格算出
-        spread_at_order: float | None = None
-        effective_offset_ratio: float = self.config.spread_offset_ratio
-        _mid_at_order: float | None = None
-        try:
-            order_price, spread_at_order, effective_offset_ratio = await self._compute_maker_price(side)
-            # 319# S-3: compute() 内で算出された mid price をキャプチャ
-            # get_fallback_price() は compute() が最後にセットした _prev_mid_price を返す
-            _mid_at_order = self._maker_price.get_fallback_price()[0]
-            # 234# no_feasible_quote 連続カウンタリセット (成功時)
-            # 236# per-side 化
-            self._consecutive_no_feasible[side] = 0
-        except InfeasibleQuoteError as e:
-            # 239# 232# §1.5: 型安全な制約崩壊分類 — 文字列パース不要
-            ob_cancel_reason = e.reason
-            if e.reason == "spread_too_narrow":
-                logger.info(f"[158# §20-D] {e}")
-            else:
-                logger.warning(f"Maker price rejected: {e}")
-            # 234# no_feasible_quote 検出: spread 制約で連続失敗 (236# per-side)
-            _cnf = self._consecutive_no_feasible.get(side, 0) + 1
-            self._consecutive_no_feasible[side] = _cnf
-            if _cnf >= 3:
-                ob_cancel_reason = CR.NO_FEASIBLE_QUOTE
-                logger.warning(
-                    f"[234#] NO_FEASIBLE_QUOTE: {_cnf} "
-                    f"consecutive infeasible quotes ({side}) — "
-                    f"last_reason={e.reason}, "
-                    f"min_spread={self.config.min_spread_jpy}, "
-                    f"sell_max_spread={self.config.sell_max_spread_jpy}"
-                )
-            return self._make_price_error_skip(
-                side=side, cancel_reason=ob_cancel_reason,
-                cycle_id=cycle_id, error=e,
-            )
-        except Exception as e:
-            # 130# orderbook_error 細分化
-            err_msg = str(e).lower()
-            if "timeout" in err_msg or "timed out" in err_msg:
-                ob_cancel_reason = CR.ORDERBOOK_TIMEOUT
-            elif "rate" in err_msg or "limit" in err_msg or "too many" in err_msg:
-                ob_cancel_reason = CR.ORDERBOOK_RATE_LIMIT
-            elif "empty" in err_msg or "no bid" in err_msg or "no ask" in err_msg:
-                ob_cancel_reason = CR.ORDERBOOK_EMPTY
-            else:
-                ob_cancel_reason = CR.ORDERBOOK_ERROR
-            logger.error(f"Failed to compute maker price: {e}")
-            return self._make_price_error_skip(
-                side=side, cancel_reason=ob_cancel_reason,
-                cycle_id=cycle_id, error=e,
-            )
-
-        # 113# R1: SkipGate 判定を _evaluate_skip_gate() に委譲
-        # 348# balance_forced 撤廃: rescue offset 論理を削除
-
-        # 234# 縮退清算モード: Kill Gate blocked + balance_forced
-        # min lot + wide offset で安全に在庫清算
-        if degraded_liquidation and effective_offset_ratio > 0:
-            _deg_offset_mult = self.config.degraded_liquidation_offset_mult
-            _pre_deg_offset = effective_offset_ratio
-            effective_offset_ratio = min(
-                effective_offset_ratio * _deg_offset_mult,
-                self.config.max_offset_ratio,
-            )
-            order_price = self._recalc_price_with_new_offset(
-                side, order_price, spread_at_order,
-                _pre_deg_offset, effective_offset_ratio,
-            )
-            if spread_at_order is None or spread_at_order <= 0:
-                # 235# C-3 guard: spread 不明時は offset 拡大のみ (価格再計算不可)
-                logger.warning(
-                    f"[235#] degraded_liquidation: spread unavailable — "
-                    f"offset expanded but price NOT recalculated"
-                )
-            logger.warning(
-                f"[234#] degraded_liquidation: offset "
-                f"{_pre_deg_offset:.4f}→{effective_offset_ratio:.4f} "
-                f"(×{_deg_offset_mult:.1f}), price={order_price:.0f}"
-            )
-
-        # 137# P1-08: spread 狭小時の「休む」判定
-        if (
-            self.config.narrow_spread_pause_enabled
-            and spread_at_order is not None
-            and order_price > 0
-        ):
-            mid_est = order_price  # 近似: maker price ≈ mid
-            spread_bps_val = spread_at_order / mid_est * self._BPS_FACTOR if mid_est > 0 else 0.0
-            if spread_bps_val < self.config.narrow_spread_pause_bps:
-                self._narrow_spread_consecutive += 1
-                if self._narrow_spread_consecutive <= self.config.narrow_spread_pause_max_consecutive:
-                    pause_sec = self.config.narrow_spread_pause_sec
-                    logger.info(
-                        f"[137# P1-08] Spread too narrow ({spread_bps_val:.1f}bps "
-                        f"< {self.config.narrow_spread_pause_bps}bps). "
-                        f"Pausing {pause_sec}s "
-                        f"({self._narrow_spread_consecutive}/{self.config.narrow_spread_pause_max_consecutive})"
-                    )
-                    # 139# §9-#3: 実際に待機してから FillRecord を返す
-                    await asyncio.sleep(pause_sec)
-                    return self._make_cycle_skip_record(
-                        side=side,
-                        cancel_reason=CR.NARROW_SPREAD_PAUSE,
-                        cycle_id=cycle_id,
-                        order_price=order_price,
-                        spread_at_order=spread_at_order,
-                        spread_offset_ratio=effective_offset_ratio,
-                    )
-            else:
-                self._narrow_spread_consecutive = 0
-
-        # 151# §10 #4: regime_lot を1回だけ算出し、SkipGate/発注/記録へ共通引き回し
-        _regime_lot = self._regime_adjusted_lot()
-
-        # 234# 縮退清算モード: lot を大幅縮小
-        if degraded_liquidation:
-            _pre_deg_lot = _regime_lot
-            _regime_lot = max(
-                _regime_lot * self.config.degraded_liquidation_lot_mult,
-                self.config.min_order_btc,
-            )
-            logger.warning(
-                f"[234#] degraded_liquidation lot: "
-                f"{_pre_deg_lot:.6f}→{_regime_lot:.6f} "
-                f"(×{self.config.degraded_liquidation_lot_mult:.1f})"
-            )
-
-        sg = await self._evaluate_skip_gate(
-            side, cycle_id, order_price, spread_at_order, effective_offset_ratio,
-            order_lot=_regime_lot,
+        pre_order = await self._run_pre_order_phase(
+            cycle_id=cycle_id,
+            side_override=side_override,
             one_sided_balance=one_sided_balance,
-            # 355# L-1/L-2: サイクル先頭で取得済みの OB/Trades を再利用
-            prefetched_ob=self._maker_price._last_ob_snapshot,
-            prefetched_trades=_prefetched_trades,
-        )
-        skip_gate_skipped = sg.skipped
-        skip_gate_score = sg.score
-        skip_gate_reason = sg.reason
-        skip_gate_model_used = sg.model_used
-        skip_gate_as_prob = sg.as_prob
-        skip_gate_threshold_used = sg.threshold_used
-        skip_gate_hour_offset = sg.hour_offset if sg.hour_offset != 0.0 else None
-        _sg_velocity_bps = sg.price_velocity_bps  # 165# AS-R1
-        if sg.early_return_record is not None:
-            return sg.early_return_record
-
-        # 460# Offset pipeline: 9 段の乗数チェーン + final clamp
-        _offset_result = self._apply_offset_pipeline(
-            side=side,
-            order_price=order_price,
-            spread_at_order=spread_at_order,
-            effective_offset_ratio=effective_offset_ratio,
-            sg_ev_score=sg.ev_score,
-            sg_velocity_offset_mult=sg.velocity_offset_mult,
-            sg_velocity_bps=sg.price_velocity_bps,
             trending_offset_mult=trending_offset_mult,
+            degraded_liquidation=degraded_liquidation,
             toxicity_offset_mult=toxicity_offset_mult,
             sidecar_offset_bps=sidecar_offset_bps,
-            cycle_id=cycle_id,
         )
-        if _offset_result.early_return_record is not None:
-            return _offset_result.early_return_record
-        order_price = _offset_result.order_price
-        effective_offset_ratio = _offset_result.effective_offset_ratio
-        _ev_offset_applied = _offset_result.ev_offset_applied
-        _ev_score_pretrade = _offset_result.ev_score_pretrade
-        _ev_offset_mult_applied = _offset_result.ev_offset_mult_applied
-        _macro_boost_applied = _offset_result.macro_boost_applied
-        _execution_pre_clamp_offset = _offset_result.execution_pre_clamp_offset
-        _executor_offset_stages_json = _offset_result.executor_offset_stages_json
+        if not isinstance(pre_order, _PreOrderPhaseResult):
+            return pre_order
 
-        # 2. 発注 (CM-2: リトライ付き)
-        t_submit = time.time()
-        order: object | None = None
-        last_error: str | None = None
-        cancel_reason: str = CR.UNKNOWN  # 032# #6: ループ未実行時の NameError 防止
-
-        # 105#: lot floor guard — 121# BalanceChecker に委譲
-        self._balance_checker.apply_lot_floor()
-
-        # 143# R-1b + 151# P3-03: regime × confidence (per-cycle, _current_lot には永続化しない)
-        # 145# fix: §8-#2 乗法的複利と §8-#3 片側更新を修正
-        # §10 #5: dust_sweep 時は confidence_factor=1.0
-        _order_lot, _confidence_factor = self._effective_order_lot(
-            _regime_lot,
-            as_prob=skip_gate_as_prob,
-            dust_sweep_active=self._balance_checker.dust_sweep_active,
+        submission = await self._submit_order_phase(
+            pre_order=pre_order,
+            one_sided_balance=one_sided_balance,
         )
+        if not isinstance(submission, _SubmissionPhaseResult):
+            return submission
 
-        # 460# Lot adjustment chain — 4 乗数を順次適用
-        # 476#: dust_sweep_active 時は全額売却を保証するためスキップ
-        _dust_active = self._balance_checker.dust_sweep_active
-        # 476#: フロアは min_order_btc (取引所最小) — order_quantity ではスケールダウンが死ぬ
-        _min_lot = self.config.min_order_btc
-        if not _dust_active:
-            _alert_lm = self._alert_lot_mult
-            if _alert_lm != 1.0:
-                _order_lot = self._scale_lot(_order_lot, _alert_lm, _min_lot, "215# alert_mode", warn=True)
-            _recovery_lm = self._halt_recovery_lot_mult
-            if _recovery_lm < 1.0:
-                _order_lot = self._scale_lot(_order_lot, _recovery_lm, _min_lot, "224# B1 Recovery")
-            _dd_side_scale = (
-                self._dd_soft_lot_scale_buy if side == "buy"
-                else self._dd_soft_lot_scale_sell
-            )
-            if _dd_side_scale < 1.0:
-                _order_lot = self._scale_lot(_order_lot, _dd_side_scale, _min_lot, f"303# B DD soft {side}")
-            _dd_guard = self._daily_drawdown_guard
-            if _dd_guard is not None:
-                _cd_lm = _dd_guard.get_cooldown_lot_scale()
-                if _cd_lm < 1.0:
-                    _order_lot = self._scale_lot(_order_lot, _cd_lm, _min_lot, "246# cooldown_release")
-
-        # 373# F8: 全乗数チェーン適用後の最終 max_lot クランプ (防御的)
-        # 現行乗数は全て ≤ 1.0 だが、将来の拡張で > 1.0 が入った場合の安全弁
-        if self.config.max_lot > 0 and _order_lot > self.config.max_lot:
-            logger.warning(
-                f"[373# F8] lot {_order_lot:.6f} > max_lot {self.config.max_lot:.6f} — clamped"
-            )
-            _order_lot = self.config.max_lot
-
-        # 306# O1: Queue Position Estimation — OB cache から推定
-        _queue_depth_ahead: float | None = None
-        _queue_fill_prob_est: float | None = None
-        if self.config.queue_position_tracking_enabled and order_price > 0:
-            _queue_depth_ahead = self._maker_price.estimate_queue_depth(
-                side, order_price,
-            )
-            # 簡易 fill 確率: exp(-depth/lot) — depth=0 で 1.0, depth >> lot で ≈0
-            if _queue_depth_ahead is not None and _order_lot > 0:
-                import math as _math
-                _queue_fill_prob_est = _math.exp(
-                    -_queue_depth_ahead / max(_order_lot, 1e-8)
-                )
-
-        for attempt in range(1 + self.config.max_order_retries):
-            try:
-                # 130# E1: postonly 二重確認 — 発注直前に mid price を再取得し
-                # テイカー側になっていないか確認 (postonly_reject 低減)
-                try:
-                    _pre_ob = await self.adapter.get_orderbook(self.config.symbol, depth=1)
-                    if _pre_ob and _pre_ob.bids and _pre_ob.asks:
-                        _pre_best_bid, _pre_best_ask = best_bid_ask(_pre_ob)
-                        # 200# B/I: crossing → skip (snap は offset pipeline を無効化する)
-                        # Gemini 推奨: offset 全計算を無駄にする snap を止め、サイクルスキップで再計算を待つ
-                        if side == "buy" and order_price >= _pre_best_ask:
-                            logger.warning(
-                                f"[postonly_guard] 200# buy price {order_price:.0f} >= best_ask "
-                                f"{_pre_best_ask:.0f} → skip cycle (offset pipeline nullified)"
-                            )
-                            cancel_reason = CR.POSTONLY_CROSSING_SKIP
-                            break
-                        elif side == "sell" and order_price <= _pre_best_bid:
-                            logger.warning(
-                                f"[postonly_guard] 200# sell price {order_price:.0f} <= best_bid "
-                                f"{_pre_best_bid:.0f} → skip cycle (offset pipeline nullified)"
-                            )
-                            cancel_reason = CR.POSTONLY_CROSSING_SKIP
-                            break
-                except Exception as _pre_e:
-                    logger.debug(f"[postonly_guard] Pre-check failed (non-fatal): {_pre_e}")
-
-                order = await self.adapter.place_order(
-                    symbol=self.config.symbol,
-                    side=side,
-                    quantity=_order_lot,
-                    price=order_price,
-                    order_type="limit",
-                )
-                self._pending_order_id = order.order_id
-                logger.info(
-                    f"Placed {side} limit @ {order_price:.0f} JPY, "
-                    f"qty={_order_lot}, id={order.order_id}"
-                    + (f" (retry {attempt})" if attempt > 0 else "")
-                )
-                break
-            except Exception as e:
-                last_error = str(e)
-                # CM-2: エラー分類
-                err_lower = last_error.lower()
-                if "post_only" in err_lower or "taker" in err_lower:
-                    cancel_reason = CR.POST_ONLY_REJECT
-                elif (
-                    "insufficient" in err_lower
-                    or "balance" in err_lower
-                    # 042# Coincheck の日本語エラーメッセージ対応 — 121# YAML 外部化
-                    or any(p in last_error for p in self.config.insufficient_funds_patterns)
-                ):
-                    cancel_reason = CR.INSUFFICIENT_FUNDS
-                elif "minimum" in err_lower or "size" in err_lower:
-                    cancel_reason = CR.MINIMUM_SIZE
-                else:
-                    cancel_reason = CR.API_ERROR
-
-                logger.warning(
-                    f"Order attempt {attempt + 1} failed ({cancel_reason}): {e}"
-                )
-
-                # 046# Bug10: 残高不足はリトライ不要 (2s 待っても残高は回復しない)
-                # 084# post_only_reject もリトライ不要 (価格がスプレッド交差済み)
-                _non_retriable = {"insufficient_funds", "post_only_reject", "minimum_size"}
-                if cancel_reason in _non_retriable:
-                    logger.info(
-                        f"[Bug10] Skipping retry — {cancel_reason} is not retriable"
-                    )
-                    break
-
-                if attempt < self.config.max_order_retries:
-                    # 084# 指数バックオフ: 2s → 4s → 8s (rate-limit 緩和) — 121# YAML 外部化
-                    _backoff = self.config.retry_delay_sec * (self.config.retry_backoff_base ** attempt)
-                    # rate-limit 検出時はさらに延長
-                    if "rate" in err_lower or "limit" in err_lower or "too many" in err_lower:
-                        _backoff = max(_backoff, self.config.rate_limit_min_backoff_sec)
-                        logger.warning(f"Rate-limit detected, extended backoff: {_backoff:.1f}s (attempt {attempt + 1})")
-                    else:
-                        logger.info(f"Retry backoff: {_backoff:.1f}s")
-                    await asyncio.sleep(_backoff)
-                    try:
-                        ob = await self.adapter.get_orderbook(self.config.symbol, depth=1)
-                        if ob.bids and ob.asks:
-                            # 保守的価格: best_bid/best_ask そのまま (確実に maker)
-                            order_price = ob.bids[0][0] if side == "buy" else ob.asks[0][0]
-                            logger.info(f"Retry with conservative price: {order_price:.0f}")
-                    except Exception as e:
-                        # 255# bare except → debug log (リトライ時 OB fetch 失敗可観測化)
-                        logger.debug("OB fetch failed during retry, using previous price: %s", e, exc_info=True)
-
-        if order is None:
-            # 200# B/I: postonly crossing は意図的 skip — circuit_breaker に通知しない
-            if cancel_reason != CR.POSTONLY_CROSSING_SKIP:
-                logger.error(
-                    f"All order attempts failed (side={side}, qty={_order_lot:.8f}): {last_error}"
-                )
-                # 113# resilience: API 失敗を CircuitBreaker に記録
-                await self._circuit_breaker.async_on_failure()
-                self._postonly_crossing_streak = 0  # 201# 非 crossing で streak リセット
-            else:
-                # 201# review: crossing 連続発生を検出 → 高頻度時に warning
-                # 253# getattr → クラスレベルデフォルト (L51) で安全な直接参照
-                self._postonly_crossing_streak += 1
-                if self._postonly_crossing_streak >= 3:
-                    logger.warning(
-                        f"[postonly_guard] 201# crossing streak={self._postonly_crossing_streak}"
-                        " — offset pipeline may need recalibration"
-                    )
-                logger.info("[postonly_guard] 200# crossing → cycle skipped (no CB penalty)")
-            return self._make_cycle_skip_record(
-                timestamp=t_submit,
-                side=side,
-                cancel_reason=cancel_reason,
-                cycle_id=cycle_id,
-                order_quantity=_order_lot,
-                order_price=order_price,
-                spread_at_order=spread_at_order,
-                spread_offset_ratio=effective_offset_ratio,  # 096# 計算済み実効値
-                error_message=last_error,  # 031# エラー詳細を記録
-            )
-        if not isinstance(getattr(order, "order_id", None), str):
-            raise TypeError(
-                f"adapter.place_order returned non-OrderLike: {type(order).__name__}"
-            )
-        order = cast("OrderLike", order)
-
-        # ---- 452# Micro-timeout sub-cycle loop ----
-        # micro_timeout 有効時: order → monitor(短 timeout) → cancel → re-quote を繰り返す
-        # 無効時: 従来どおり単一 monitor 呼び出し
-        _micro_enabled = self.config.micro_timeout_enabled
-        _requote_attempts = 0
-        _micro_partial_qty = 0.0
-        _remaining_lot = _order_lot
-        # 453# review: 初回 t_submit を保持 (queue_wait は発注→最終約定の通算)
-        _first_t_submit = t_submit
-
-        if _micro_enabled:
-            _mt_wait = (
-                self.config.micro_timeout_wait_sec_sell
-                if side == "sell" and self.config.micro_timeout_wait_sec_sell is not None
-                else self.config.micro_timeout_wait_sec
-            )
-            # 458# H: macro_trend=UP 時に sell timeout を動的短縮
-            _lt = self._last_macro_trend
-            if side == "sell" and _lt is not None:
-                from scripts.v460.lib.macro_regime import MacroTrend
-                if _lt == MacroTrend.STRONG_UP.value and self.config.macro_sell_timeout_strong_up is not None:
-                    _mt_wait = self.config.macro_sell_timeout_strong_up
-                    logger.info("[458# H] sell timeout shortened: macro=STRONG_UP → %.1fs", _mt_wait)
-                elif _lt == MacroTrend.WEAK_UP.value and self.config.macro_sell_timeout_weak_up is not None:
-                    _mt_wait = self.config.macro_sell_timeout_weak_up
-                    logger.info("[458# H] sell timeout shortened: macro=WEAK_UP → %.1fs", _mt_wait)
-            _mt_max = self.config.micro_timeout_max_requote
-            _mt_cooloff = self.config.micro_timeout_requote_cooloff_sec
-            _original_timeout = self.config.order_timeout_sec
-            _original_timeout_sell = self.config.order_timeout_sec_sell
-            # 509# sell_age_cap を micro_timeout ループ全体にも適用
-            _mt_total_cap: float | None = (
-                self.config.sell_age_cap_sec
-                if side == "sell"
-                and self.config.sell_age_cap_sec is not None
-                and self.config.sell_age_cap_sec > 0
-                else None
-            )
-
-            for _mt_attempt in range(_mt_max):
-                if self._kill_switch.is_killed():
-                    break
-                # 509# micro_timeout 合計時間が sell_age_cap を超過していたら打ち切り
-                if _mt_total_cap is not None:
-                    _mt_elapsed = time.time() - _first_t_submit
-                    if _mt_elapsed >= _mt_total_cap:
-                        logger.info(
-                            "[509#] micro_timeout sell_age_cap exceeded: "
-                            "elapsed=%.1fs >= cap=%.0fs, stopping at attempt %d/%d",
-                            _mt_elapsed, _mt_total_cap, _mt_attempt + 1, _mt_max,
-                        )
-                        break
-
-                # micro_timeout: OrderMonitor に短い timeout を使わせる
-                # (dataclass のフィールドを一時的に差し替え)
-                object.__setattr__(self.config, "order_timeout_sec", _mt_wait)
-                object.__setattr__(self.config, "order_timeout_sec_sell", None)
-                try:
-                    monitor = await self._monitor_fill_polling(
-                        order, order_price, side, t_submit, spread_at_order,
-                        effective_offset_ratio, order_lot=_remaining_lot,
-                    )
-                finally:
-                    # 復元
-                    object.__setattr__(self.config, "order_timeout_sec", _original_timeout)
-                    object.__setattr__(self.config, "order_timeout_sec_sell", _original_timeout_sell)
-
-                if monitor.filled:
-                    logger.info(
-                        "[452# micro_timeout] Filled on attempt %d/%d (wait=%.1fs)",
-                        _mt_attempt + 1, _mt_max, _mt_wait,
-                    )
-                    break
-
-                # cancel_failed_likely_filled — 実質的に約定扱い
-                if monitor.cancel_failed_likely_filled:
-                    logger.info(
-                        "[452# micro_timeout] Cancel failed likely filled on attempt %d",
-                        _mt_attempt + 1,
-                    )
-                    break
-
-                _requote_attempts = _mt_attempt + 1
-
-                # 最終ラウンドなら再注文せずに終了
-                if _mt_attempt >= _mt_max - 1:
-                    logger.info(
-                        "[452# micro_timeout] Max requote reached (%d), giving up",
-                        _mt_max,
-                    )
-                    break
-
-                # Cooloff 待機
-                if _mt_cooloff > 0:
-                    await asyncio.sleep(_mt_cooloff)
-
-                # 最新 mid 取得 → re-quote 価格計算
-                try:
-                    _rq_mid = await self._get_mid_price()
-                except Exception as e:
-                    logger.warning("[452# micro_timeout] Mid price fetch failed: %s", e)
-                    break
-
-                # offset ratio は固定 (Policy Phase で計算済み) → 新しい mid で価格更新
-                # 474# 修正: mid*(1±ratio) → mid ± spread*(0.5 - ratio)
-                # 旧式は ratio(~0.20) を価格割合と誤解釈 (11.8M × 0.20 = 2.36M JPY のズレ)
-                # spread_at_order を再利用 (最新 spread の API コール不要)
-                _rq_spread = spread_at_order if spread_at_order and spread_at_order > 0 else 0.0
-                if side == "buy":
-                    order_price = round(_rq_mid + _rq_spread * (effective_offset_ratio - 0.5))
-                else:
-                    order_price = round(_rq_mid + _rq_spread * (0.5 - effective_offset_ratio))
-
-                logger.info(
-                    "[452# micro_timeout] Re-quote %d/%d: new_price=%s (mid=%s, offset=%.4f)",
-                    _mt_attempt + 1, _mt_max, order_price, _rq_mid, effective_offset_ratio,
-                )
-
-                # 再注文
-                t_submit = time.time()
-                try:
-                    order = await self.adapter.place_order(
-                        symbol=self.config.symbol,
-                        side=side,
-                        quantity=_remaining_lot,
-                        price=order_price,
-                        order_type="limit",
-                    )
-                except Exception as e:
-                    logger.warning("[452# micro_timeout] Re-quote order failed: %s", e)
-                    # 最後の monitor 結果をそのまま使う
-                    break
-
-                if order is None or not isinstance(getattr(order, "order_id", None), str):
-                    logger.warning("[452# micro_timeout] Re-quote returned invalid order")
-                    break
-
-                order = cast("OrderLike", order)
-
-        else:
-            # 従来パス: 単一 monitor 呼び出し
-            # 113# R1: ポーリング監視 + 未約定キャンセルを _monitor_fill_polling() に委譲
-            monitor = await self._monitor_fill_polling(
-                order, order_price, side, t_submit, spread_at_order,
-                effective_offset_ratio, order_lot=_order_lot,
-            )
-
-        filled = monitor.filled
-        fill_price = monitor.fill_price
-        # 453# review: micro_timeout 有効時は _first_t_submit 基準の通算 queue_wait
-        if _micro_enabled and filled:
-            queue_wait = time.time() - _first_t_submit
-        else:
-            queue_wait = monitor.queue_wait
-        # 453# review: micro_timeout の短 timeout による cancel は "micro_timeout" と記録
-        if _micro_enabled and not filled and monitor.cancel_reason == "timeout":
-            cancel_reason_poll: str | None = "micro_timeout"
-        else:
-            cancel_reason_poll = monitor.cancel_reason
-        reprice_count = monitor.reprice_count
-        reprice_drift_bps = monitor.reprice_drift_bps  # 158# P1-3
-        # 453# review: re-quote 時は最後の re-quote 価格を優先、
-        # monitor 内の stale reprice がある場合はその値を使う
-        if _micro_enabled and _requote_attempts > 0:
-            # monitor.final_order_price に stale reprice があればそちらが正
-            order_price = monitor.final_order_price
-        else:
-            order_price = monitor.final_order_price  # stale reprice で変更される場合
-        _effective_timeout = monitor.effective_timeout  # 145# §9-#2
-        cancel_failed_likely_filled = monitor.cancel_failed_likely_filled  # 166# C.7
-        # 237# phantom guard 登録 (status_unknown 時)
-        _pending_reconciliation = self._maybe_register_phantom(monitor, side, _order_lot, order_price)
-
-        # 113# R1: PnL 計測を _measure_post_fill_pnl() に委譲
-        pnl = await self._measure_post_fill_pnl(filled, fill_price, side)
-        mid_at_fill = pnl.mid_at_fill
-        mid_30s_after = pnl.mid_30s_after
-        mid_60s_after = pnl.mid_60s_after
-        mid_120s_after = pnl.mid_120s_after
-        post_fill_pnl = pnl.post_fill_pnl
-        post_fill_60s_pnl = pnl.post_fill_60s_pnl
-        post_fill_120s_pnl = pnl.post_fill_120s_pnl
-        adverse_selected = pnl.adverse_selected
-        adverse_selected_raw = pnl.adverse_selected_raw
-        actual_measurement_sec = pnl.actual_measurement_sec
-
-        # 162# Inventory Skewing: fill 成功時に在庫偏重を更新
-        if filled:
-            self._maker_price.update_inventory(side)
-
-        # 037# レジーム検知更新 (035# §7 Week 1)
-        regime_str: str | None = None
-        regime_conf: float | None = None
-        regime_stab: int | None = None
-        # 156# §18: データシンク解消 — trend_pct/volatility_ratio を FillRecord へ
-        regime_trend_pct: float | None = None
-        regime_vol_ratio: float | None = None
-        if self._regime_detector is not None:
-            # 100# P1-6 fix: unfilled 時は order_price (offset 込み) ではなく
-            # 直近の真の mid price を使用。order_price は offset を含むため
-            # regime 検知のノイズ源となる。
-            if mid_at_fill is not None:
-                regime_price = mid_at_fill
-            else:
-                _fb_price, _ = self._maker_price.get_fallback_price()
-                regime_price = _fb_price  # None if unavailable
-
-            if regime_price is not None:
-                regime_result = self._regime_detector.update(t_submit, regime_price)
-                regime_str = regime_result.regime.value
-                regime_conf = regime_result.confidence
-                regime_stab = regime_result.stability
-                regime_trend_pct = regime_result.trend_pct
-                regime_vol_ratio = regime_result.volatility_ratio
-
-        # 189# D: MacroRegime 更新 + compose_regimes
-        _macro_trend: str | None = None
-        _macro_slope_5m: float | None = None
-        _macro_slope_15m: float | None = None
-        _macro_aligned: bool | None = None
-        if self._macro_regime_detector is not None:
-            _macro_price = mid_at_fill if mid_at_fill is not None else None
-            if _macro_price is None:
-                _fb, _ = self._maker_price.get_fallback_price()
-                _macro_price = _fb
-            if _macro_price is not None:
-                from scripts.v460.lib.macro_regime import compose_regimes
-                macro_result = self._macro_regime_detector.update(t_submit, _macro_price)
-                _macro_trend = macro_result.trend.value
-                _macro_slope_5m = macro_result.slope_5m_bps_per_min
-                _macro_slope_15m = macro_result.slope_15m_bps_per_min
-                if regime_str is not None:
-                    _, _macro_aligned = compose_regimes(
-                        regime_str, regime_conf or 0.0, macro_result,
-                    )
-                    if not _macro_aligned:
-                        _action = self.config.macro_regime_conflict_action
-                        if _action == "downgrade":
-                            _original_regime = regime_str  # 321# M-5b: ログ用に上書き前の値を保存
-                            regime_str = "ranging"
-                            logger.info(
-                                "[macro_regime] micro/macro conflict → ranging downgrade "
-                                "(micro=%s, macro=%s)", _original_regime, _macro_trend,
-                            )
-                        else:
-                            logger.debug(
-                                "[macro_regime] micro/macro conflict detected "
-                                "(micro=%s, macro=%s, aligned=False)",
-                                regime_str, _macro_trend,
-                            )
-                # 458# F-lite: 次サイクル用に macro_trend を保持
-                self._last_macro_trend = _macro_trend
-
-        _decision_path = self._derive_decision_path(
-            ev_score_pretrade=_ev_score_pretrade,
-            skip_gate_reason=skip_gate_reason,
-            ev_offset_applied=_ev_offset_applied,
+        fill_phase = await self._monitor_fill_phase(
+            pre_order=pre_order,
+            submission=submission,
         )
-
-        record = self._build_fill_record(
-            cycle_id=cycle_id,
-            t_submit=t_submit,
-            side=side,
-            order_price=order_price,
-            order_lot=_order_lot,
-            fill_price=fill_price,
-            filled=filled,
-            spread_at_order=spread_at_order,
-            effective_offset_ratio=effective_offset_ratio,
-            queue_wait=queue_wait,
-            cancel_reason_poll=cancel_reason_poll,
-            reprice_count=reprice_count,
-            reprice_drift_bps=reprice_drift_bps,
-            effective_timeout=_effective_timeout,
-            cancel_failed_likely_filled=cancel_failed_likely_filled,
-            pnl=pnl,
-            sg_skipped=skip_gate_skipped,
-            sg_score=skip_gate_score,
-            sg_reason=skip_gate_reason,
-            sg_model_used=skip_gate_model_used,
-            sg_as_prob=skip_gate_as_prob,
-            sg_threshold_used=skip_gate_threshold_used,
-            sg_hour_offset=skip_gate_hour_offset,
-            sg_velocity_bps=_sg_velocity_bps,
-            regime_str=regime_str,
-            regime_conf=regime_conf,
-            regime_stab=regime_stab,
-            regime_trend_pct=regime_trend_pct,
-            regime_vol_ratio=regime_vol_ratio,
-            confidence_factor=_confidence_factor,
-            regime_lot=_regime_lot,
-            macro_trend=_macro_trend,
-            macro_slope_5m=_macro_slope_5m,
-            macro_slope_15m=_macro_slope_15m,
-            macro_aligned=_macro_aligned,
-            macro_boost_applied=_macro_boost_applied if _macro_boost_applied else None,
-            ev_score_pretrade=_ev_score_pretrade,
-            ev_offset_mult_applied=_ev_offset_mult_applied,
-            decision_path=_decision_path,
-            sidecar_offset_bps=sidecar_offset_bps if sidecar_offset_bps != 0.0 else None,
-            sidecar_bias=sidecar_bias,
-            # 487# P0: sidecar attribution 可観測性
-            sidecar_confidence=sidecar_confidence,
-            sidecar_model_version=sidecar_model_version or None,
-            sidecar_signal_status=sidecar_signal_status,
-            queue_depth_ahead=_queue_depth_ahead,
-            queue_fill_prob_est=_queue_fill_prob_est,
-            regime_at_order=_regime_at_order,
-            regime_observation_count=_regime_obs_count,
-            mid_at_order=_mid_at_order,
-            execution_pre_clamp_offset=_execution_pre_clamp_offset,
-            executor_offset_stages=_executor_offset_stages_json,  # 420# P1
-            log_cycle_no=self._cycle_count,  # 533# ログ⇔JSONL join key
-        )
-
-        self._log_cycle_result(
-            filled=filled,
-            queue_wait=queue_wait,
-            post_fill_pnl=post_fill_pnl,
-            cancel_reason=cancel_reason_poll,
+        return await self._finalize_cycle(
+            pre_order=pre_order,
+            submission=submission,
+            fill_phase=fill_phase,
             sidecar_offset_bps=sidecar_offset_bps,
+            sidecar_bias=sidecar_bias,
+            sidecar_confidence=sidecar_confidence,
+            sidecar_model_version=sidecar_model_version,
             sidecar_signal_status=sidecar_signal_status,
-            order_id=self._pending_order_id,
         )
-        self._log_cycle_revenue_context(record)
-
-        # 237# phantom guard: status_unknown 時の再照合待ちフラグ
-        if _pending_reconciliation:
-            record.pending_reconciliation = True
-
-        # 452# Micro-timeout: re-quote 回数を記録
-        if _micro_enabled:
-            record.requote_attempts = _requote_attempts
-            if _micro_partial_qty > 0:
-                record.micro_timeout_partial_filled_qty = _micro_partial_qty
-
-        # 113# resilience: API 成功を CircuitBreaker に記録
-        await self._circuit_breaker.async_on_success()
-
-        return record

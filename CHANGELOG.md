@@ -6402,3 +6402,10 @@ python scripts/unified_trainer.py \
 - `RewardCalculator.calculate_reward_simple()` が明示 `transaction_cost` 引数を優先するよう修正
 - `tests/unit/environment/test_calculate_reward_simple_fix.py` は pure simple reward 契約を明示するため shaper/scaler/signal を fixture で無効化
 - explicit `transaction_cost` 優先と `simple_reward` payload snapshot の追加回帰を追加
+## 2026-03-24 prompt 583 refactor and test fixes
+- `scripts/v460/lib/multiplicative_pipeline.py` を新設し、`offset_pipeline.py` から multiplicative pipeline を分離
+- `scripts/v460/lib/fill_cycle_executor.py` の `run_single_cycle()` を pre-order / submission / monitor / finalize phase helper に分割
+- `scripts/v460/lib/maker_price.py` に `get_robust_inputs()` を復旧
+- `scripts/v460/analysis/analyze_fill_logs.py` の additive classification を `execution_additive_enabled` 優先 + legacy stages fallback に更新
+- `tests/unit/v460/test_582_additive_pipeline.py` に additive final clamp / dispatcher / liquidity buffer / buy-side trending ignore の回帰を追加
+- source-contract test を phase helper / multiplicative method source 前提へ追随

@@ -30,9 +30,9 @@ _FILL_LOOP_ORCHESTRATOR_SOURCE = Path(
 _FILL_CYCLE_EXECUTOR_SOURCE = Path(
     "scripts/v460/lib/fill_cycle_executor.py",
 ).read_text(encoding="utf-8")
-_OFFSET_PIPELINE_SOURCE = Path(
-    "scripts/v460/lib/offset_pipeline.py",
-).read_text(encoding="utf-8")
+_OFFSET_PIPELINE_SOURCE = inspect.getsource(
+    FillCycleExecutorMixin._apply_offset_pipeline_multiplicative,
+)
 _ORCHESTRATOR_MID_CYCLE_SOURCE = read_source_text(ORCHESTRATOR_MID_CYCLE)
 _RUN_SINGLE_CYCLE_SIG = inspect.signature(FillCycleExecutorMixin.run_single_cycle)
 

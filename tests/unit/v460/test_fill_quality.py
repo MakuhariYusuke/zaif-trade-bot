@@ -2650,9 +2650,9 @@ class Test050EffectiveOffsetRecord:
         assert "MakerPriceResult" in source
 
     def test_run_single_cycle_unpacks_3_values(self) -> None:
-        """run_single_cycle が 3 値展開を行う."""
+        """pre-order phase が 3 値展開を行う."""
 
-        source = read_fill_test_method_source("run_single_cycle")
+        source = read_fill_test_method_source("_run_pre_order_phase")
         assert "effective_offset_ratio" in source
 
 

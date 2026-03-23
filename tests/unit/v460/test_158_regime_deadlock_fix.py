@@ -288,14 +288,14 @@ class TestSpreadTooNarrowClassification:
         assert CR.SPREAD_TOO_NARROW == "spread_too_narrow"
 
     def test_spread_too_narrow_classification_in_source(self) -> None:
-        """run_single_cycle に spread_too_narrow 分類コードが存在."""
-        source = _RUN_SINGLE_CYCLE_SOURCE
+        """pre-order phase に spread_too_narrow 分類コードが存在."""
+        source = read_fill_test_method_source("_run_pre_order_phase")
         assert "spread too narrow" in source.lower() or "spread_too_narrow" in source.lower()
         assert "§20-D" in source
 
     def test_spread_too_narrow_log_level_is_info(self) -> None:
         """spread_too_narrow は logger.info で出力 (ERROR ではない)."""
-        source = _RUN_SINGLE_CYCLE_SOURCE
+        source = read_fill_test_method_source("_run_pre_order_phase")
         # "spread too narrow" 周辺に logger.info がある
         idx = source.find("spread too narrow")
         if idx < 0:

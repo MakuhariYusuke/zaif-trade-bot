@@ -23,7 +23,9 @@ from tests.unit.v460._fill_test_source import (
 )
 
 _FILL_CYCLE_EXECUTOR_SOURCE = read_source_text(FILL_CYCLE_EXECUTOR)
-_OFFSET_PIPELINE_SOURCE = read_source_text(OFFSET_PIPELINE)
+_OFFSET_PIPELINE_SOURCE = inspect.getsource(
+    FillCycleExecutorMixin._apply_offset_pipeline_multiplicative,
+)
 _SKIP_GATE_EVALUATOR_SOURCE = read_source_text(SKIP_GATE_EVALUATOR_PATH)
 _CYCLE_GATE_AGGREGATOR_SOURCE = read_source_text(CYCLE_GATE_AGGREGATOR_PATH)
 

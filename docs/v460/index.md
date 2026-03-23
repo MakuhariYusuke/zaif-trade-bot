@@ -684,6 +684,7 @@ NNN_phX_TYPE_description.md
 | 574 | report | [574_phg_rpt_edrc_parameter_estimation_and_90s_window_fix.md](574_phg_rpt_edrc_parameter_estimation_and_90s_window_fix.md) | eDRC 戦略的パラメータ推定と「死の90秒窓」への外科的設計 |
 | 580 | impl | [580_phg_impl_schema_fix_and_true_additive_design.md](580_phg_impl_schema_fix_and_true_additive_design.md) | スキーマ不整合の解消と「真の加法化」の実装開始 |
 | 581 | impl | [581_phg_impl_true_additive_pipeline_and_rms_integration.md](581_phg_impl_true_additive_pipeline_and_rms_integration.md) | True Additive Pipeline の実装完了と RMS 結合による爆発鎮鎮報告 |
+| 583 | impl | [583_codex_refactoring_and_test_fixes.md](583_codex_refactoring_and_test_fixes.md) | prompt_codex_583 対応: broad failure 修正・offset/fill-cycle 分割・additive pipeline test 補強 |
 | 559 | impl | [559_phg_impl_self_review_and_bugfix.md](559_phg_impl_self_review_and_bugfix.md) | 553#–555# セルフレビュー: PnL単位/Action bin 不整合修正 + Entry Gate ログ出力 |
 | 560 | rpt | [560_phg_rpt_fill_test_post_restart_analysis.md](560_phg_rpt_fill_test_post_restart_analysis.md) | Fill Test 再起動後パフォーマンス分析 (3/12–3/22) |
 | 562 | review | [562_phg_review_560_561_analysis_and_proposals.md](562_phg_review_560_561_analysis_and_proposals.md) | 560#・561# レビュー: 実データ検証と統合改善提案 |

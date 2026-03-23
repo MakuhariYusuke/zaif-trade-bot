@@ -1,8 +1,8 @@
 """
-113# resilience モジュール + R1 run_single_cycle 分割のテスト.
+113# resilience モジュール + R1 run_single_cycle 位相分割のテスト.
 
 - resilience.py: CircuitBreaker factory / HealthMonitor / StatePersistence
-- R1: run_single_cycle → _evaluate_skip_gate, _monitor_fill_polling, _measure_post_fill_pnl
+- R1: run_single_cycle → pre_order / submit / monitor / finalize phase helpers
 """
 
 from __future__ import annotations
@@ -196,22 +196,22 @@ class TestRegimeDetectorPersistence:
 # =====================================================================
 
 class TestR1MethodExtraction:
-    """113# R1: run_single_cycle が 3 メソッドに分割されている."""
+    """113# R1: run_single_cycle が phase helper に分割されている."""
 
     def test_run_single_cycle_delegates_to_skip_gate(self) -> None:
-        """run_single_cycle が _evaluate_skip_gate を呼ぶ."""
+        """run_single_cycle は pre-order phase を経由する."""
         source = read_fill_test_method_source("run_single_cycle")
-        assert "_evaluate_skip_gate" in source
+        assert "_run_pre_order_phase" in source
 
     def test_run_single_cycle_delegates_to_monitor(self) -> None:
-        """run_single_cycle が _monitor_fill_polling を呼ぶ."""
+        """run_single_cycle は monitor phase を経由する."""
         source = read_fill_test_method_source("run_single_cycle")
-        assert "_monitor_fill_polling" in source
+        assert "_monitor_fill_phase" in source
 
     def test_run_single_cycle_delegates_to_pnl(self) -> None:
-        """run_single_cycle が _measure_post_fill_pnl を呼ぶ."""
+        """run_single_cycle は finalize phase を経由する."""
         source = read_fill_test_method_source("run_single_cycle")
-        assert "_measure_post_fill_pnl" in source
+        assert "_finalize_cycle" in source
 
     def test_run_single_cycle_under_400_lines(self) -> None:
         """run_single_cycle が 830 行以下 (R1 目標 + ... + 442# Cross-Venue OB拡張)."""
@@ -219,11 +219,14 @@ class TestR1MethodExtraction:
         line_count = len(source.splitlines())
         assert line_count <= 830, f"run_single_cycle is {line_count} lines (> 830)"
 
-    def test_extracted_methods_exist(self) -> None:
-        """抽出メソッドが FillTestRunner に存在."""
-        assert read_fill_test_method_source("_evaluate_skip_gate")
-        assert read_fill_test_method_source("_monitor_fill_polling")
-        assert read_fill_test_method_source("_measure_post_fill_pnl")
+    def test_phase_helpers_delegate_to_core_methods(self) -> None:
+        """phase helper が既存の core helper を呼ぶ."""
+        pre_source = read_fill_test_method_source("_run_pre_order_phase")
+        monitor_source = read_fill_test_method_source("_monitor_fill_phase")
+        finalize_source = read_fill_test_method_source("_finalize_cycle")
+        assert "_evaluate_skip_gate" in pre_source
+        assert "_monitor_fill_polling" in monitor_source
+        assert "_measure_post_fill_pnl" in finalize_source
 
     def test_result_dataclasses_exist(self) -> None:
         """R1 結果データクラスがインポート可能."""
@@ -232,9 +235,17 @@ class TestR1MethodExtraction:
             _FillMonitorResult,
             _PnlMeasurement,
         )
+        from scripts.v460.lib.fill_cycle_executor import (
+            _FillPhaseResult,
+            _PreOrderPhaseResult,
+            _SubmissionPhaseResult,
+        )
         assert _SkipGateResult is not None
         assert _FillMonitorResult is not None
         assert _PnlMeasurement is not None
+        assert _PreOrderPhaseResult is not None
+        assert _SubmissionPhaseResult is not None
+        assert _FillPhaseResult is not None
 
 
 class TestR1CircuitBreakerInRunSingleCycle:
@@ -247,11 +258,11 @@ class TestR1CircuitBreakerInRunSingleCycle:
         assert "CIRCUIT_BREAKER_OPEN" in source
 
     def test_circuit_breaker_success_recording(self) -> None:
-        source = read_fill_test_method_source("run_single_cycle")
+        source = read_fill_test_method_source("_finalize_cycle")
         assert "_on_success" in source
 
     def test_circuit_breaker_failure_recording(self) -> None:
-        source = read_fill_test_method_source("run_single_cycle")
+        source = read_fill_test_method_source("_submit_order_phase")
         assert "_on_failure" in source
 
 
