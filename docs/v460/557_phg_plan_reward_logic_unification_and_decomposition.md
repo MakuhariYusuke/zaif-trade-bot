@@ -226,5 +226,7 @@
   - 明示 `transaction_cost` 引数を優先
   - 純粋 kernel 契約を検証したい test では shaper/scaler/signal を明示的に無効化
   という線で維持する
+- 周辺 telemetry 側では `587#` で additive / multiplicative の outward label を
+  JSONL まで通す前進を入れており、報酬比較の土台整備として扱う
 
 ---

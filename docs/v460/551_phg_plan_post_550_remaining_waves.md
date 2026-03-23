@@ -262,3 +262,6 @@ Done の基準:
   - `tests/unit/evaluation/test_walk_forward_checkpoint.py`
   - `tests/unit/evaluation/test_walk_forward_integration_e2e.py`
   も `tmp_path` ベースへ整理した
+ - prompt `587#`
+   - additive / eDRC / entry gate の設定線と hot-reload 範囲を整理
+   - final clamp は robust inputs を通す形へ前進

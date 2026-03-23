@@ -445,6 +445,16 @@ class TestConfigHotReload418:
         assert "execution_additive_enabled" in _HOT_RELOADABLE_FIELDS
         assert "execution_final_clamp_hard_skip_mult" in _HOT_RELOADABLE_FIELDS
 
+    def test_additive_and_entry_gate_fields_in_hot_reloadable(self) -> None:
+        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
+        assert "experimental_additive_pipeline" in _HOT_RELOADABLE_FIELDS
+        assert "edrc_alpha" in _HOT_RELOADABLE_FIELDS
+        assert "edrc_beta" in _HOT_RELOADABLE_FIELDS
+        assert "edrc_c_base" in _HOT_RELOADABLE_FIELDS
+        assert "edrc_hard_cap" in _HOT_RELOADABLE_FIELDS
+        assert "entry_gate_enabled" in _HOT_RELOADABLE_FIELDS
+        assert "entry_gate_calibration_map_path" not in _HOT_RELOADABLE_FIELDS
+
 
 # ============================================================
 # 421# self-review: spread_at_order=None edge case

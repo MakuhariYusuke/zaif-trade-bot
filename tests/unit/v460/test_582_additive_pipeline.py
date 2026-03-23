@@ -18,7 +18,7 @@ from __future__ import annotations
 import inspect
 import json
 import math
-from unittest.mock import MagicMock, PropertyMock
+from unittest.mock import ANY, MagicMock, PropertyMock
 
 import pytest
 
@@ -69,6 +69,7 @@ def _make_mixin(
     maker.last_vg_triggered = last_vg_triggered
     maker.last_sigma = 0.01
     maker.get_adverse_ofi = MagicMock(return_value=0.0)
+    maker.get_robust_inputs = MagicMock(return_value=(0.01, 0.0))
     obj._maker_price = maker  # type: ignore[attr-defined]
 
     obj._last_macro_trend = last_macro_trend  # type: ignore[attr-defined]
@@ -268,6 +269,22 @@ class TestStagesJson:
         assert result.execution_pre_clamp_offset == pytest.approx(0.10, abs=1e-6)
         assert result.effective_offset_ratio == pytest.approx(0.06, abs=1e-6)
         assert result.early_return_record is None
+
+    def test_final_clamp_uses_robust_inputs(self) -> None:
+        mixin = _make_mixin(
+            ev_as_offset_enabled=False,
+            execution_final_clamp_enabled=True,
+        )
+        mixin._maker_price.get_robust_inputs = MagicMock(return_value=(12.3, 0.4))
+        mixin.config.resolve_offset_ceiling = MagicMock(return_value=1.0)
+        mixin._apply_offset_pipeline_additive(**_COMMON_KWARGS)
+        mixin._maker_price.get_robust_inputs.assert_called_once_with("sell")
+        mixin.config.resolve_offset_ceiling.assert_called_once_with(
+            "sell",
+            utc_hour=ANY,
+            sigma=12.3,
+            adverse_ofi=0.4,
+        )
 
 
 # ── D. Sidecar bps ──

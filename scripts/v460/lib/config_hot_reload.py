@@ -498,6 +498,12 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "execution_final_clamp_enabled",
     "execution_additive_enabled",
     "execution_final_clamp_hard_skip_mult",
+    # 587# additive pipeline / eDRC runtime tuning
+    "experimental_additive_pipeline",
+    "edrc_alpha",
+    "edrc_beta",
+    "edrc_c_base",
+    "edrc_hard_cap",
     # 467# deep-night ceiling 緩和
     "hour_ceiling_mult",
     # --- 491# Composite Risk Score ---
@@ -528,6 +534,8 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     # ※ cross_venue_lead_lag_enabled / cross_venue_reference_exchange は
     #   WebSocket 初期化に関わるため除外
     "cross_venue_lead_lag_max_age_sec",
+    # 587# Entry Gate runtime toggle (path は除外)
+    "entry_gate_enabled",
     "cross_venue_lead_lag_spread_bps_threshold",
     "cross_venue_lead_lag_velocity_bps_threshold",
     "cross_venue_lead_lag_offset_boost",

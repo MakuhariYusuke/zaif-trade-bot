@@ -520,3 +520,18 @@ class TestReloadableFieldsConsistency:
         assert missing == set(), (
             f"Recent soft-guard fields should be hot-reloadable: {missing}"
         )
+
+    def test_phase6_additive_and_entry_gate_fields_are_reloadable(self) -> None:
+        expected = {
+            "experimental_additive_pipeline",
+            "edrc_alpha",
+            "edrc_beta",
+            "edrc_c_base",
+            "edrc_hard_cap",
+            "entry_gate_enabled",
+        }
+        missing = expected - _HOT_RELOADABLE_FIELDS
+        assert missing == set(), (
+            f"Phase 6 additive/entry-gate fields should be hot-reloadable: {missing}"
+        )
+        assert "entry_gate_calibration_map_path" not in _HOT_RELOADABLE_FIELDS

@@ -699,7 +699,6 @@ experimental_additive_pipeline:
   edrc_beta: 0.40          # 574# eDRC β: OFI感度 (OFI=0.8→ceiling 1.38x)
   edrc_c_base: 0.40        # eDRC Base Ceiling (baseline offset ratio max)
   edrc_hard_cap: 1.0       # 574# §5.1: exp爆発防止 (C_dynamic上限)
-  additive_base_bps: 0.0   # Additive offset base (M2, 将来用)
 
 # ---- 421# P0: Execution Final Clamp (416#/417# review) ----
 # maker_price ceiling 後の executor multiplier chain (EV/velocity/toxicity 等) が

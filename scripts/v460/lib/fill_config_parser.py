@@ -9,10 +9,14 @@ MAX LINES: 1100
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
+
+
+logger = logging.getLogger(__name__)
 
 
 # ================================================================
@@ -190,7 +194,7 @@ def _parse_trading_features(yaml_cfg: dict) -> dict:
     elif isinstance(edrc, dict):
         if edrc.get("enabled") is not None:
             kwargs["experimental_additive_pipeline"] = edrc["enabled"]
-        for key in ["edrc_alpha", "edrc_beta", "edrc_c_base", "edrc_hard_cap", "additive_base_bps"]:
+        for key in ["edrc_alpha", "edrc_beta", "edrc_c_base", "edrc_hard_cap"]:
             if key in edrc:
                 kwargs[key] = float(edrc[key])
 
@@ -1168,4 +1172,15 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
             if yaml_key in eg:
                 kwargs[config_key] = eg[yaml_key]
 
-    return _FillTestConfig(**kwargs)
+    cfg = _FillTestConfig(**kwargs)
+    if (
+        "execution_additive_enabled" in yaml_cfg
+        and cfg.execution_additive_enabled != cfg.experimental_additive_pipeline
+    ):
+        logger.warning(
+            "execution_additive_enabled=%s != experimental_additive_pipeline=%s - "
+            "ロジック分岐は experimental_additive_pipeline が優先されます",
+            cfg.execution_additive_enabled,
+            cfg.experimental_additive_pipeline,
+        )
+    return cfg

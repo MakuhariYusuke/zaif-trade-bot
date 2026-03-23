@@ -6421,3 +6421,9 @@ python scripts/unified_trainer.py \
   - nested additive config から `edrc_hard_cap` が parse されること
   - `execution_additive_enabled` が YAML から parse されること
   の回帰を追加
+## 2026-03-24 prompt 587 telemetry parity and dead config cleanup
+- `scripts/v460/lib/fill_cycle_executor.py` から FillRecord へ `execution_additive_enabled` を渡すよう修正
+- `scripts/v460/lib/fill_config.py` / `fill_config_parser.py` / `configs/v460/fill_test.yaml` から dead config `additive_base_bps` を削除
+- `scripts/v460/lib/offset_pipeline.py` / `multiplicative_pipeline.py` の final clamp が `maker_price.get_robust_inputs()` を使うよう修正
+- `scripts/v460/lib/config_hot_reload.py` に additive / eDRC / entry gate toggle の hot-reload 対象を追加
+- mismatch warning / robust-input clamp / build_fill_record telemetry / source-contract の回帰テストを追加

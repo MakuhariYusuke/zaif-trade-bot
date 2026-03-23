@@ -347,7 +347,7 @@ class FillTestConfig:
     # maker_price ceiling 後の executor 側 multiplier chain が ceiling を迂回する問題の修正。
     # 全 multiplier 適用後に ceiling を再適用し、offset ratio の暴走を防止。
     execution_final_clamp_enabled: bool = True   # Final Clamp 有効化 (安全のためデフォルト有効)
-    execution_additive_enabled: bool = False     # 579# Additive Pipeline Framework
+    execution_additive_enabled: bool = False     # DEPRECATED: telemetry 記録用。ロジック分岐は experimental_additive_pipeline を使用
     execution_final_clamp_hard_skip_mult: float = 0.0  # >0: pre-clamp が ceiling×この倍率を超えたら hard skip (0=無効)
     # ---- 467# deep-night ceiling 緩和 (461# P0 残課題) ----
     # UTC hour 別の ceiling 乗数。深夜帯 (JST 22-03h = UTC 13-18h) で
@@ -361,7 +361,6 @@ class FillTestConfig:
     edrc_beta: float = 0.0           # eDRC beta (OFI 感度)
     edrc_c_base: float = 0.40        # eDRC Base Ceiling (baseline offset ratio max)
     edrc_hard_cap: float = 1.0       # eDRC Hard Cap
-    additive_base_bps: float = 0.0   # Additive offset base (M2, 将来用)
 
     def resolve_offset_ceiling(
         self, side: str, *, utc_hour: int | None = None,

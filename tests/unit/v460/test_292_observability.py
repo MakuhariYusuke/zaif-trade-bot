@@ -80,6 +80,14 @@ class TestFillRecordObservabilityFields:
         assert r.ev_offset_mult_applied == pytest.approx(1.05)
         assert r.decision_path == "ev_emergency_skip"
 
+    def test_build_fill_record_accepts_execution_additive_enabled(self) -> None:
+        r = build_fill_record(
+            cycle_id="br_2", timestamp=3.0, side="sell",
+            order_price=101.0, order_quantity=0.02,
+            execution_additive_enabled=True,
+        )
+        assert r.execution_additive_enabled is True
+
     def test_decision_path_values(self) -> None:
         """有効な decision_path 値が保持される."""
         for path in (

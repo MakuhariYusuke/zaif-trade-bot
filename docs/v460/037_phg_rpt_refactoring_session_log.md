@@ -8807,3 +8807,25 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/v460/test_585_multiplicative_pipeline.py`
   - `tests/unit/v460/test_582_additive_pipeline.py`
   - `131 passed in 1.92s`
+## 2026-03-24 prompt 587 telemetry parity and dead-config cleanup
+- `scripts/v460/lib/fill_cycle_executor.py`
+  - `_build_fill_record(...)` 呼び出しに `execution_additive_enabled=self.config.experimental_additive_pipeline` を追加
+- `scripts/v460/lib/fill_config.py`
+  - `additive_base_bps` を削除
+  - `execution_additive_enabled` を telemetry-only deprecated field として明記
+- `scripts/v460/lib/fill_config_parser.py`
+  - nested additive config から `additive_base_bps` parse を削除
+  - `execution_additive_enabled` と `experimental_additive_pipeline` の不一致 warning を追加
+- `scripts/v460/lib/offset_pipeline.py`
+- `scripts/v460/lib/multiplicative_pipeline.py`
+  - final clamp の `resolve_offset_ceiling()` に `get_robust_inputs(side)` を接続
+- `scripts/v460/lib/config_hot_reload.py`
+  - additive / eDRC / entry gate toggle を hot-reload 対象に追加
+- focused:
+  - `test_582_additive_pipeline.py`
+  - `test_585_multiplicative_pipeline.py`
+  - `test_421_final_clamp_deadlock.py`
+  - `test_467_remaining_issues.py`
+  - `test_169_config_hot_reload.py`
+  - `test_292_observability.py`
+  - `test_145_structural_fixes.py`

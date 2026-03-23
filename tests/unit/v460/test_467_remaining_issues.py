@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass
 from typing import NamedTuple
@@ -205,10 +206,35 @@ class TestHourCeilingMult:
         assert cfg.experimental_additive_pipeline is True
         assert cfg.edrc_hard_cap == pytest.approx(0.95)
 
+    def test_from_yaml_ignores_removed_additive_dead_config(self) -> None:
+        """587# 削除済み additive dead config は無視される."""
+        field_name = "additive_" + "base_bps"
+        cfg = FillTestConfig.from_yaml({
+            "experimental_additive_pipeline": {
+                "enabled": True,
+                field_name: 12.5,
+            },
+        })
+        assert cfg.experimental_additive_pipeline is True
+        assert not hasattr(cfg, field_name)
+
     def test_from_yaml_parses_execution_additive_enabled(self) -> None:
         """top-level execution_additive_enabled が parse される."""
         cfg = FillTestConfig.from_yaml({"execution_additive_enabled": True})
         assert cfg.execution_additive_enabled is True
+
+    def test_from_yaml_warns_on_additive_flag_mismatch(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """deprecated telemetry flag と runtime flag がズレたら warning."""
+        with caplog.at_level(logging.WARNING):
+            cfg = FillTestConfig.from_yaml({
+                "execution_additive_enabled": False,
+                "experimental_additive_pipeline": {"enabled": True},
+            })
+        assert cfg.execution_additive_enabled is False
+        assert cfg.experimental_additive_pipeline is True
+        assert "execution_additive_enabled=False != experimental_additive_pipeline=True" in caplog.text
 
     # ---- 574# eDRC Hard Cap + パラメータ推定検証 ----
 

@@ -607,6 +607,10 @@ class TestFillRecordBuilderIntegration:
         assert "_resolve_fill_cancel_reason(" in source
         assert "_compute_fill_spread_bps(" in source
 
+    def test_fill_cycle_executor_passes_execution_additive_enabled(self) -> None:
+        source = read_source_text(FILL_CYCLE_EXECUTOR)
+        assert "execution_additive_enabled=self.config.experimental_additive_pipeline" in source
+
     def test_resume_and_reload_use_iter_glob(self) -> None:
         # 265# extract: iter_fill_records_glob は _finalize_run に分離
         lifecycle_source = read_source_text(ORCHESTRATOR_LIFECYCLE)

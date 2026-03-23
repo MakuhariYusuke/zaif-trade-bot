@@ -1405,6 +1405,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             mid_at_order=pre_order.mid_at_order,
             execution_pre_clamp_offset=pre_order.execution_pre_clamp_offset,
             executor_offset_stages=pre_order.executor_offset_stages_json,
+            execution_additive_enabled=self.config.experimental_additive_pipeline,
             log_cycle_no=self._cycle_count,
         )
 

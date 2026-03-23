@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 import pytest
 
@@ -71,6 +71,7 @@ def _make_mixin(
     maker.last_vg_triggered = last_vg_triggered
     maker.last_sigma = 0.01
     maker.get_adverse_ofi = MagicMock(return_value=0.0)
+    maker.get_robust_inputs = MagicMock(return_value=(0.01, 0.0))
     obj._maker_price = maker  # type: ignore[attr-defined]
 
     obj._last_macro_trend = last_macro_trend  # type: ignore[attr-defined]
@@ -471,6 +472,19 @@ class TestFinalClamp:
         # Clamped but price not recalculated
         if r.execution_pre_clamp_offset is not None:
             assert r.execution_pre_clamp_offset > 0.03
+
+    def test_final_clamp_uses_robust_inputs(self) -> None:
+        m = _make_mixin(execution_final_clamp_enabled=True)
+        m._maker_price.get_robust_inputs = MagicMock(return_value=(11.2, 0.6))
+        m.config.resolve_offset_ceiling = MagicMock(return_value=1.0)
+        _run(m)
+        m._maker_price.get_robust_inputs.assert_called_once_with("sell")
+        m.config.resolve_offset_ceiling.assert_called_once_with(
+            "sell",
+            utc_hour=ANY,
+            sigma=11.2,
+            adverse_ofi=0.6,
+        )
 
 
 # ── K. 統合テスト: 複数段チェーン ──

@@ -265,11 +265,12 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
         # ── 6. Final Clamp (共通) ──
         _execution_pre_clamp_offset: float | None = None
         if self.config.execution_final_clamp_enabled:
+            _robust_sigma, _robust_ofi = self._maker_price.get_robust_inputs(side)
             _fc_ceil = self.config.resolve_offset_ceiling(
                 side,
                 utc_hour=current_utc_hour(),
-                sigma=self._maker_price.last_sigma,
-                adverse_ofi=self._maker_price.get_adverse_ofi(side),
+                sigma=_robust_sigma,
+                adverse_ofi=_robust_ofi,
             )
             _ceiling = clamp_offset_ratio_to_ceiling(
                 effective_offset_ratio=effective_offset_ratio,
