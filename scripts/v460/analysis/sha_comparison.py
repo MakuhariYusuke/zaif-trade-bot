@@ -28,6 +28,12 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
+from scripts.v460.analysis.analysis_common import (
+    AS_THRESHOLD_BPS,
+    DEFAULT_RESULTS_DIR,
+    SEVERE_AS_THRESHOLD_BPS,
+    get_pnl,
+)
 from scripts.v460.lib.ab_judgment import (
     ABJudgmentCriteria,
     evaluate_ab_variant,
@@ -36,7 +42,6 @@ from ztb.metrics.fill_quality import (
     load_fill_record_objects_glob,
     apply_fill_record_filters,
 )
-from ztb.utils.safety import safe_to_finite
 
 # ======================================================================
 # Configuration
@@ -48,8 +53,7 @@ OUTPUT_DIR = _PROJECT_ROOT / "analysis_results"
 # 333# デフォルト: dcc3064 + functionally equivalent 4e67014
 DEFAULT_SHAS = ["dcc3064", "4e67014"]
 
-AS_THRESHOLD_BPS = -3.0
-SEVERE_AS_THRESHOLD_BPS = -10.0
+# AS_THRESHOLD_BPS / SEVERE_AS_THRESHOLD_BPS → analysis_common からインポート
 
 
 # ======================================================================
@@ -143,15 +147,7 @@ class AnalysisResult:
 # ======================================================================
 
 
-def _get_pnl(r: dict) -> float | None:
-    """レコードから PnL(bps) を抽出."""
-    for key in ("ev_weighted_pnl", "post_fill_30s_pnl", "pnl_bps"):
-        v = r.get(key)
-        if v is not None:
-            val = safe_to_finite(v)
-            if val is not None:
-                return float(val)
-    return None
+# _get_pnl → analysis_common.get_pnl
 
 
 def _ts_to_jst(ts: float) -> str:
@@ -187,7 +183,7 @@ def _compute_side_metrics(
     """指定サイドの集計."""
     sf = [r for r in filled if r.get("side") == side]
     sa = [r for r in all_records if r.get("side") == side]
-    pnls = [p for p in (_get_pnl(r) for r in sf) if p is not None]
+    pnls = [p for p in (get_pnl(r) for r in sf) if p is not None]
     if not pnls:
         return None
     pos = [p for p in pnls if p > 0]
@@ -279,7 +275,7 @@ def run_analysis(sha_prefixes: list[str]) -> AnalysisResult:
           f"({100 * len(filled) / max(len(dcc), 1):.1f}%) | Skip: {len(skipped)}")
 
     # Overall PnL
-    all_pnls = [p for p in (_get_pnl(r) for r in filled) if p is not None]
+    all_pnls = [p for p in (get_pnl(r) for r in filled) if p is not None]
     if all_pnls:
         pos = [p for p in all_pnls if p > 0]
         print(f"\n  Overall PnL(bps):")
@@ -339,7 +335,7 @@ def run_analysis(sha_prefixes: list[str]) -> AnalysisResult:
         n_all = len(d["all"])
         n_filled = len(d["filled"])
         fill_rate = n_filled / n_all if n_all else 0
-        pnls_r = [p for p in (_get_pnl(r) for r in d["filled"]) if p is not None]
+        pnls_r = [p for p in (get_pnl(r) for r in d["filled"]) if p is not None]
 
         rm = RegimeMetrics(
             regime=regime,
@@ -381,7 +377,7 @@ def run_analysis(sha_prefixes: list[str]) -> AnalysisResult:
     for side in ["sell", "buy"]:
         sf = [r for r in filled if r.get("side") == side]
         sa = [r for r in dcc if r.get("side") == side]
-        sp = [p for p in (_get_pnl(r) for r in sf) if p is not None]
+        sp = [p for p in (get_pnl(r) for r in sf) if p is not None]
         if sp:
             fr = len(sf) / max(len(sa), 1)
             avg = sum(sp) / len(sp)
@@ -422,7 +418,7 @@ def run_analysis(sha_prefixes: list[str]) -> AnalysisResult:
 
     for side in ["sell", "buy"]:
         sf = [r for r in filled if r.get("side") == side]
-        sp = [p for p in (_get_pnl(r) for r in sf) if p is not None]
+        sp = [p for p in (get_pnl(r) for r in sf) if p is not None]
         if sp:
             as_count = sum(1 for p in sp if p < AS_THRESHOLD_BPS)
             big_as = sum(1 for p in sp if p < SEVERE_AS_THRESHOLD_BPS)
@@ -445,7 +441,7 @@ def run_analysis(sha_prefixes: list[str]) -> AnalysisResult:
         ts = r.get("timestamp")
         if isinstance(ts, (int, float)):
             utc_hour = datetime.fromtimestamp(ts, tz=timezone.utc).hour
-            p = _get_pnl(r)
+            p = get_pnl(r)
             if p is not None:
                 hourly[utc_hour]["pnls"].append(p)
                 hourly[utc_hour][f"{r.get('side', '?')}_pnls"].append(p)
@@ -486,7 +482,7 @@ def run_analysis(sha_prefixes: list[str]) -> AnalysisResult:
             daily_data[day]["total"] += 1
             if r.get("filled"):
                 daily_data[day]["filled"] += 1
-                p = _get_pnl(r)
+                p = get_pnl(r)
                 if p is not None:
                     daily_data[day]["pnls"].append(p)
             if r.get("balance_forced_switch"):

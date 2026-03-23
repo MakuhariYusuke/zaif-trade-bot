@@ -19,18 +19,19 @@ import collections
 import pathlib
 import sys
 from datetime import datetime, timezone
-from typing import Any, TypeAlias, cast
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
 
-from ztb.metrics.fill_quality import (
-    apply_fill_record_filters,
-    load_fill_record_objects_glob,
+from scripts.v460.analysis.analysis_common import (
+    DEFAULT_RESULTS_DIR,
+    Record,
+    FloatArray,
+    extract_pnl_array,
+    load_and_filter_records,
+    write_output,
 )
-
-Record: TypeAlias = dict[str, object]
-FloatArray: TypeAlias = NDArray[np.float64]
 
 # ---------------------------------------------------------------------------
 # CLI
@@ -44,8 +45,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--data-dir",
-        default="results/v460/fill_test",
-        help="fill_records_*.jsonl の格納ディレクトリ (default: results/v460/fill_test)",
+        default=DEFAULT_RESULTS_DIR,
+        help=f"fill_records_*.jsonl の格納ディレクトリ (default: {DEFAULT_RESULTS_DIR})",
     )
     p.add_argument("--run-id", help="run_id 完全一致フィルタ")
     p.add_argument(
@@ -78,55 +79,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 # ---------------------------------------------------------------------------
-# Data Loading — delegates to ztb.metrics.fill_quality shared API
+# Data Loading — delegates to analysis_common (ztb.metrics.fill_quality 経由)
 # ---------------------------------------------------------------------------
 
-def load_records(
-    data_dir: str,
-    date_from: str | None,
-    date_to: str | None,
-) -> list[Record]:
-    """JSONL ファイルを読み込み、日付範囲でファイルをプリフィルタ."""
-    base = pathlib.Path(data_dir)
-    if not base.exists():
-        print(f"ERROR: data directory not found: {base}", file=sys.stderr)
-        sys.exit(1)
-
-    records = load_fill_record_objects_glob(
-        base,
-        start_date=date_from,
-        end_date=date_to,
-    )
-    if not records:
-        print(f"ERROR: no fill_records found in {base}", file=sys.stderr)
-        sys.exit(1)
-    return cast(list[Record], records)
-
-
-def apply_filters(
-    records: list[Record],
-    *,
-    run_id: str | None = None,
-    git_sha: str | None = None,
-    date_from: str | None = None,
-    date_to: str | None = None,
-    side: str | None = None,
-    regime: str | None = None,
-) -> list[Record]:
-    """レコードレベルのフィルタリングを適用."""
-    filtered, _ = apply_fill_record_filters(
-        records,
-        run_id=run_id,
-        git_sha=git_sha,
-        date_from=date_from,
-        date_to=date_to,
-    )
-    # side / regime は共有 API にないためローカルで適用
-    if side:
-        filtered = [r for r in filtered if r.get("side") == side]
-    if regime:
-        filtered = [r for r in filtered if r.get("regime") == regime]
-    return cast(list[Record], filtered)
+# load_records / apply_filters → analysis_common.load_and_filter_records に統合
 
 
 # ---------------------------------------------------------------------------
@@ -143,9 +99,7 @@ def _np(values: list[float]) -> FloatArray:
 
 
 def _pnls(records: list[Record], key: str = "post_fill_30s_pnl") -> FloatArray:
-    return _np(
-        [float(cast(int | float, r[key])) for r in records if r.get(key) is not None]
-    )
+    return extract_pnl_array(records, key=key)
 
 
 def section_header(records: list[dict[str, Any]], args: argparse.Namespace) -> list[str]:
@@ -1100,34 +1054,22 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
-    # Load
-    records = load_records(args.data_dir, args.date_from, args.date_to)
-
-    # Filter
-    records = apply_filters(
-        records,
-        run_id=args.run_id,
-        git_sha=args.git_sha,
+    # Load + Filter (analysis_common に委譲)
+    records = load_and_filter_records(
+        args.data_dir,
         date_from=args.date_from,
         date_to=args.date_to,
+        git_sha=args.git_sha,
+        run_id=args.run_id,
         side=args.side,
         regime=args.regime,
     )
 
-    if not records:
-        print("ERROR: no records after filtering", file=sys.stderr)
-        sys.exit(1)
-
     # JSON mode
     if args.json:
-        import json
+        from scripts.v460.analysis.analysis_common import write_json_output
         result = build_json_summary(records, args)
-        output = json.dumps(result, indent=2, ensure_ascii=False)
-        if args.output:
-            pathlib.Path(args.output).write_text(output, encoding="utf-8")
-            print(f"JSON written to {args.output}", file=sys.stderr)
-        else:
-            print(output)
+        write_json_output(result, args.output)
         return
 
     # Text mode: assemble all sections
@@ -1165,14 +1107,7 @@ def main() -> None:
     all_lines.extend(section_buffer_decomposition(records))
     all_lines.extend(section_sidecar_signal(records))
 
-    output_text = "\n".join(all_lines)
-
-    if args.output:
-        pathlib.Path(args.output).parent.mkdir(parents=True, exist_ok=True)
-        pathlib.Path(args.output).write_text(output_text, encoding="utf-8")
-        print(f"Report written to {args.output} ({len(records)} records)", file=sys.stderr)
-    else:
-        print(output_text)
+    write_output("\n".join(all_lines), args.output)
 
 
 if __name__ == "__main__":

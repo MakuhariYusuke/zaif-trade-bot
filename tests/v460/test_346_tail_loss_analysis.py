@@ -12,16 +12,18 @@ import numpy as np
 import pytest
 
 # --- テスト対象のインポート ---
+from scripts.v460.analysis.analysis_common import (
+    extract_filled as _extract_filled,
+    extract_pnl_array as _pnl_array,
+    record_to_utc_hour as _record_to_utc_hour,
+)
 from scripts.v460.analysis.tail_loss_analysis import (
     _as_rate,
     _compute_hour_overrep,
     _compute_overrep,
     _derive_actionable_filters,
-    _extract_filled,
     _flag_rate,
     _numeric_field_stats,
-    _pnl_array,
-    _record_to_utc_hour,
     analyze_tail_loss,
 )
 

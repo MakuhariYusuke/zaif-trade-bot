@@ -28,8 +28,8 @@ from typing import TypedDict, cast
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
+from scripts.v460.analysis.analysis_common import get_pnl
 from ztb.metrics.fill_quality import load_fill_record_objects_glob
-from ztb.utils.safety import safe_to_finite
 
 # ── Constants ──
 _RESULTS_DIR = _PROJECT_ROOT / "results" / "v460" / "fill_test"
@@ -88,14 +88,7 @@ class HourComparisonResult(TypedDict):
     by_hour: list[HourComparisonRow]
 
 
-def _get_pnl(r: dict[str, object]) -> float | None:
-    for key in ("ev_weighted_pnl", "post_fill_30s_pnl", "pnl_bps"):
-        v = r.get(key)
-        if v is not None:
-            val = safe_to_finite(v)
-            if val is not None:
-                return float(val)
-    return None
+# _get_pnl → analysis_common.get_pnl
 
 
 def _utc_hour_from_record(r: dict[str, object]) -> int | None:
@@ -145,7 +138,7 @@ def _compute_bucket(
     pnl_values: list[float] = []
     as_count = 0
     for r in filled:
-        pnl = _get_pnl(r)
+        pnl = get_pnl(r)
         if pnl is not None:
             pnl_values.append(pnl)
         if r.get("adverse_selected"):
