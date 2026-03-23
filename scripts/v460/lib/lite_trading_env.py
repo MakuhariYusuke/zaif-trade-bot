@@ -24,6 +24,11 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
+from ztb.trading.environment.components.calculators.reward_kernel import (
+    RewardKernel,
+    RewardParams,
+)
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -45,6 +50,9 @@ class LiteEnvConfig:
     initial_portfolio_value: float = 10_000_000.0  # JPY
     transaction_cost_rate: float = 0.001  # 0.1 %
     reward_scaling: float = 1.0
+    hold_penalty_multiplier: float = 1.0
+    trade_frequency_bonus: float = 0.0
+    bankruptcy_penalty: float = -100.0
     feature_columns: list[str] | None = None
     random_start: bool = True
     random_start_buffer: int = 100  # 先頭 N 行はスキップ候補

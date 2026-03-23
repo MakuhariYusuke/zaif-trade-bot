@@ -40,6 +40,8 @@
   - `NamedTemporaryFile()`
   - `time.sleep()`
   の grep hit を解消済み
+- `tests/unit/v460` broad では `LiteTradingEnv` の `RewardKernel` wiring 漏れを 1 件拾って修正済み
+- 修正後の `tests/unit/v460` broad は `4758 passed, 2 skipped` まで進み、assertion failure の再発はなかったが、環境側 `KeyboardInterrupt` で完走確認までは至っていない
 
 ## Wave 別の残課題
 

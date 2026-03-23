@@ -8714,3 +8714,13 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   の grep hit は解消
 - focused:
   - `38 passed, 1 skipped in 5.96s`
+## 2026-03-23 wave5 v460 broad residual fix
+- `scripts/v460/lib/lite_trading_env.py`
+  - `RewardKernel` / `RewardParams` / action constants import を復旧
+  - `LiteEnvConfig` に reward kernel 用の最小パラメータを明示追加
+- focused:
+  - `tests/unit/v460/test_p7_p8_sac_env.py`
+  - `32 passed in 2.43s`
+- `tests/unit/v460` broad:
+  - `4758 passed, 2 skipped, 14 warnings in 40.84s`
+  - assertion failure は解消したが、環境側 `KeyboardInterrupt` で完走確認までは至らず

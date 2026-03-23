@@ -102,6 +102,7 @@
 - attach 側も helper 化し、payload の「抽出」と「report/callback への搭載」を同じ canonical path で扱えるようにした
 - filtered broad (`tests/unit/training tests/unit/evaluation tests/training`) も通過しており、current suite での reward payload helper 契約はかなり安定してきている
 - current suite 側の temp file / fixed wait cleanup も進み、報酬 payload consumer の broad 前ノイズはかなり減っている
+- `LiteTradingEnv` 側でも `RewardKernel` / `RewardParams` / action constants の wiring を明示し、broad で拾われた import 漏れを修正済み
 
 ---
 

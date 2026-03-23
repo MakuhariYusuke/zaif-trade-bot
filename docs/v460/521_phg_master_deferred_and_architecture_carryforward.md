@@ -697,3 +697,6 @@ docs の先送り管理は、本書へかなり一元化できる状態に入っ
   - background monitor の停止は `Event.wait()` ベースにして、停止待ちの固定 sleep を持たない
 - `Wave4`
   - training 系 test の `sleep` は、契約確認に不要なものから CPU work ベースへ置換して固定費を削る
+ - `Wave5`
+  - `tests/unit/v460` broad で broad 実行時にしか出ない wiring 漏れを拾い、`LiteTradingEnv` の `RewardKernel` 参照を補正
+  - ただし broad 自体は環境側 `KeyboardInterrupt` が残っており、完走確認は別 batch で再試行余地がある
