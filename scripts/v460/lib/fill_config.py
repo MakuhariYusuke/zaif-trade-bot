@@ -356,13 +356,14 @@ class FillTestConfig:
 
     # ---- 568# M1/M2: Additive Pipeline & eDRC Transition ----
     experimental_additive_pipeline: bool = False
-    edrc_alpha: float = 0.0          # eDRC (Exponential Dynamic Risk Ceiling) alpha (1 min Volatility)
-    edrc_beta: float = 0.0           # eDRC beta (OFI)
+    edrc_alpha: float = 0.0          # eDRC alpha (1-min Volatility 感度)
+    edrc_beta: float = 0.0           # eDRC beta (OFI 感度)
     edrc_c_base: float = 0.40        # eDRC Base Ceiling (baseline offset ratio max)
-    additive_base_bps: float = 0.0   # Additive offset base (M2)
+    additive_base_bps: float = 0.0   # Additive offset base (M2, 将来用)
 
     def resolve_offset_ceiling(
-        self, side: str, *, utc_hour: int | None = None, sigma: float = 0.0, adverse_ofi: float = 0.0
+        self, side: str, *, utc_hour: int | None = None,
+        sigma: float = 0.0, adverse_ofi: float = 0.0,
     ) -> float:
         """421# DRY: サイド別 offset ceiling を解決する共通ヘルパー.
 
@@ -376,15 +377,13 @@ class FillTestConfig:
         if self.experimental_additive_pipeline:
             from math import exp
 
-            # sigma = min1 vol, spread=1.0 as denominator proxy for now within this function if not supplied
-            ceiling_dynamic = self.edrc_c_base * exp(self.edrc_alpha * sigma + self.edrc_beta * adverse_ofi)
-            
-            # UTC hour multiplier is kept for compatibility? Or maybe disabled in 568#. Keep it for now structure-wise.
+            ceiling_dynamic = self.edrc_c_base * exp(
+                self.edrc_alpha * sigma + self.edrc_beta * adverse_ofi
+            )
             if utc_hour is not None and self.hour_ceiling_mult:
                 mult = self.hour_ceiling_mult.get(utc_hour)
                 if mult is not None:
                     ceiling_dynamic *= mult
-            
             return ceiling_dynamic
 
         # ----- 既存ロジック -----

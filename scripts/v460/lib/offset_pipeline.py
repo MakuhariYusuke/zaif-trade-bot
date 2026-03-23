@@ -286,7 +286,7 @@ class OffsetPipelineMixin(PreOrderAdjustmentsMixin):
                 side,
                 utc_hour=current_utc_hour(),
                 sigma=self._maker_price.last_sigma,
-                adverse_ofi=self._maker_price.get_adverse_ofi(side)
+                adverse_ofi=self._maker_price.get_adverse_ofi(side),
             )
             _ceiling = clamp_offset_ratio_to_ceiling(
                 effective_offset_ratio=effective_offset_ratio,

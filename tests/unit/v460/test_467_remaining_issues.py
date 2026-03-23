@@ -133,6 +133,52 @@ class TestHourCeilingMult:
         from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         assert "hour_ceiling_mult" in _HOT_RELOADABLE_FIELDS
 
+    # ---- 568# eDRC A/B Toggle Tests ----
+
+    def test_resolve_offset_ceiling_edrc_disabled(self) -> None:
+        """experimental_additive_pipeline=False → 従来ロジック."""
+        cfg = FillTestConfig(
+            offset_ceiling_ratio=0.15,
+            experimental_additive_pipeline=False,
+            edrc_c_base=0.40,
+        )
+        assert cfg.resolve_offset_ceiling("buy") == 0.15
+
+    def test_resolve_offset_ceiling_edrc_enabled_zero_inputs(self) -> None:
+        """eDRC 有効 + sigma=0, ofi=0 → c_base そのまま."""
+        cfg = FillTestConfig(
+            experimental_additive_pipeline=True,
+            edrc_c_base=0.40,
+            edrc_alpha=0.5,
+            edrc_beta=0.3,
+        )
+        # exp(0) = 1.0 → 0.40
+        assert cfg.resolve_offset_ceiling("buy", sigma=0.0, adverse_ofi=0.0) == pytest.approx(0.40)
+
+    def test_resolve_offset_ceiling_edrc_with_sigma(self) -> None:
+        """eDRC 有効 + sigma > 0 → ceiling 拡大."""
+        from math import exp
+        cfg = FillTestConfig(
+            experimental_additive_pipeline=True,
+            edrc_c_base=0.40,
+            edrc_alpha=1.0,
+            edrc_beta=0.0,
+        )
+        expected = 0.40 * exp(1.0 * 0.5)
+        assert cfg.resolve_offset_ceiling("buy", sigma=0.5) == pytest.approx(expected)
+
+    def test_resolve_offset_ceiling_edrc_with_hour(self) -> None:
+        """eDRC 有効 + hour_ceiling_mult の組み合わせ."""
+        cfg = FillTestConfig(
+            experimental_additive_pipeline=True,
+            edrc_c_base=0.40,
+            edrc_alpha=0.0,
+            edrc_beta=0.0,
+            hour_ceiling_mult={13: 1.5},
+        )
+        # exp(0) = 1.0 → 0.40 × 1.5 = 0.60
+        assert cfg.resolve_offset_ceiling("buy", utc_hour=13) == pytest.approx(0.60)
+
 
 # ══════════════════════════════════════════════════════════════════════
 # 3. status_unknown_fast 連続検知

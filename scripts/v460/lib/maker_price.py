@@ -418,8 +418,9 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         return self._last_ofi_lite
 
     def get_adverse_ofi(self, side: str) -> float:
-        """568# eDRC用: 現在のOFI履歴から見た逆選択圧力(Adverse OFI).
-        OFI > 0: 買い圧力 (sell側に不利), OFI < 0: 売り圧力 (buy側に不利)
+        """568# eDRC用: OFI履歴から逆選択圧力を算出.
+
+        OFI > 0: 買い圧力 (sell側に不利), OFI < 0: 売り圧力 (buy側に不利).
         不利な圧力を正の float として返す。有利なら 0 を返す。
         """
         if not self._ofi_history:
