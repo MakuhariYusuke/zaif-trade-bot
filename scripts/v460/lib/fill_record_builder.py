@@ -16,14 +16,18 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
+from scripts.v460.lib.constants import BPS_FACTOR as _BPS_FACTOR
 from scripts.v460.lib.cross_venue_lead_lag import build_cross_venue_fill_fields
 from scripts.v460.lib.fill_config import (
     PnlMeasurement as _PnlMeasurement,
 )
 
 if TYPE_CHECKING:
+    from scripts.v460.lib.cycle_strategy import DefaultCycleStrategy
     from scripts.v460.lib.fill_config import FillTestConfig
+    from scripts.v460.lib.maker_price import MakerPriceCalculator
     from ztb.metrics.fill_quality import FillRecord
+    from ztb.trading.risk.fast_fill_defense import FastFillDefense
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +43,15 @@ class FillRecordBuilderMixin:
     ────────────────────────────────────────────────────
     323# fill_cycle_executor.py からの抽出
     """
+
+    config: FillTestConfig
+    _maker_price: MakerPriceCalculator
+    _fast_fill_defense: FastFillDefense
+    _cycle_strategy: DefaultCycleStrategy | None = None
+    _run_id: str = ""
+    _git_sha: str = ""
+    _config_hash: str = ""
+    _BPS_FACTOR: float = _BPS_FACTOR
 
     def _resolve_fill_cancel_reason(
         self,
@@ -113,10 +126,10 @@ class FillRecordBuilderMixin:
         effective_offset_ratio: float,
         reprice_count: int,
         reprice_drift_bps: float | None,
-        sg_skipped: bool,
-        sg_score: float,
-        sg_reason: str,
-        sg_model_used: str,
+        sg_skipped: bool | None,
+        sg_score: float | None,
+        sg_reason: str | None,
+        sg_model_used: str | None,
         sg_as_prob: float | None,
         sg_threshold_used: float | None,
         sg_hour_offset: float | None,
@@ -211,7 +224,7 @@ class FillRecordBuilderMixin:
         enabled = self.config.cross_venue_lead_lag_enabled
         hint = self._maker_price.cross_venue_lead_lag_hint
         vetoed = self._maker_price.cross_venue_lead_lag_vetoed
-        fields = build_cross_venue_fill_fields(
+        fields: dict[str, object] = build_cross_venue_fill_fields(
             enabled=enabled,
             hint=hint,
             side=side,
@@ -311,10 +324,10 @@ class FillRecordBuilderMixin:
         effective_timeout: float | None,
         cancel_failed_likely_filled: bool,
         pnl: _PnlMeasurement,
-        sg_skipped: bool,
-        sg_score: float,
-        sg_reason: str,
-        sg_model_used: str,
+        sg_skipped: bool | None,
+        sg_score: float | None,
+        sg_reason: str | None,
+        sg_model_used: str | None,
         sg_as_prob: float | None,
         sg_threshold_used: float | None,
         sg_hour_offset: float | None,
@@ -464,12 +477,12 @@ class FillRecordBuilderMixin:
     def _derive_decision_path(
         *,
         ev_score_pretrade: float | None,
-        skip_gate_reason: str,
+        skip_gate_reason: str | None,
         ev_offset_applied: bool,
     ) -> str:
         """292# P0: FillRecord.decision_path を一元導出する."""
         if ev_score_pretrade is None:
             return "primary_only"
-        if "emergency_skip" in skip_gate_reason:
+        if skip_gate_reason is not None and "emergency_skip" in skip_gate_reason:
             return "ev_emergency_skip"
         return "ev_offset" if ev_offset_applied else "ev_no_change"

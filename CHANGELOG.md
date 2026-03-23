@@ -6432,3 +6432,7 @@ python scripts/unified_trainer.py \
 - repo-wide baseline error を suppress しつつ、changed files / target modules のみ確認できる targeted mypy 入口を追加
 - `fast` (`follow-imports=skip`) / `deep` (`follow-imports=silent`) の 2 モードを用意
 - `scripts/v460/lib/config_hot_reload.py` の `_HotReloadableRunner` protocol に `_config_hash` を追加し、targeted mypy で拾えた実エラーを解消
+## 2026-03-24 targeted mypy follow-up cleanup
+- `scripts/v460/lib/fill_config.py` の lazy parser resolver に返り値型を追加し、`from_yaml()` の `Any` 流出を解消
+- `scripts/v460/lib/fill_record_builder.py` に mixin 依存属性の型宣言を追加し、SkipGate optional payload / decision-path シグネチャを実呼び出しに合わせて整理
+- `scripts/v460/lib/fill_cycle_executor.py` に cross-venue EMA / narrow-spread counter / order placement の型を追加し、targeted mypy で `fill_config` / `fill_record_builder` / `fill_cycle_executor` / `offset_pipeline` / `multiplicative_pipeline` の 5 ファイル clean を確認

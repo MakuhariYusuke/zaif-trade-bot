@@ -56,3 +56,33 @@ repo 全体の `mypy --config-file mypy.ini ...` は、現状では次の 2 問�
 - `scripts/v460/lib/config_hot_reload.py`
   - `_HotReloadableRunner` protocol に `_config_hash` が漏れていた
   - targeted mypy で検出し、その場で補修した
+
+## フォローアップ
+
+targeted runner をそのまま使って、`scripts/v460` の低リスクな型残差も追加で整理した。
+
+- `scripts/v460/lib/fill_config.py`
+  - lazy parser resolver の返り値型を明示
+  - `from_yaml()` の `Any` 流出を解消
+- `scripts/v460/lib/fill_record_builder.py`
+  - mixin 依存属性を型宣言
+  - `SkipGate` 関連 payload を optional 契約に揃えた
+- `scripts/v460/lib/fill_cycle_executor.py`
+  - cross-venue EMA state / narrow-spread counter / place_order 戻り値の型を明示
+
+確認コマンド:
+
+```bash
+.venv/Scripts/python.exe scripts/quality/run_targeted_mypy.py \
+  scripts/v460/lib/fill_config.py \
+  scripts/v460/lib/fill_record_builder.py \
+  scripts/v460/lib/fill_cycle_executor.py \
+  scripts/v460/lib/offset_pipeline.py \
+  scripts/v460/lib/multiplicative_pipeline.py
+```
+
+結果:
+
+```text
+Success: no issues found in 5 source files
+```

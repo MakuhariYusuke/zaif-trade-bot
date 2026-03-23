@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from functools import lru_cache
+from typing import Callable, cast
 
 # 329# re-export: 既存の import パスを維持
 from scripts.v460.lib.fill_config_results import (  # noqa: F401
@@ -29,11 +30,11 @@ from scripts.v460.lib.fill_config_results import (  # noqa: F401
 
 
 @lru_cache(maxsize=1)
-def _resolve_fill_config_yaml_parser():
+def _resolve_fill_config_yaml_parser() -> Callable[[dict], FillTestConfig]:
     """Resolve the split YAML parser once while keeping circular imports lazy."""
     from scripts.v460.lib.fill_config_parser import parse_fill_config_yaml
 
-    return parse_fill_config_yaml
+    return cast(Callable[[dict], FillTestConfig], parse_fill_config_yaml)
 
 @dataclass
 class FillTestConfig:

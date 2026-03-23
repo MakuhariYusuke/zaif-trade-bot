@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, cast
 
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.cross_venue_lead_lag import (
+    CrossVenueEMAState,
     VenueMidSnapshot,
     build_cross_venue_event_details,
     compute_cross_venue_lead_lag_hint,
@@ -40,6 +41,7 @@ from scripts.v460.lib.fill_record_builder import FillRecordBuilderMixin
 from scripts.v460.lib.maker_price import InfeasibleQuoteError
 from scripts.v460.lib.ob_utils import best_bid_ask  # 200# 10-C: module-level import
 from scripts.v460.lib.offset_pipeline import OffsetPipelineMixin
+from ztb.trading.execution.contracts import OrderLike as _ExecutionOrderLike
 
 if TYPE_CHECKING:
     from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
@@ -139,6 +141,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
     _dd_soft_lot_scale_sell: float = 1.0
     _cross_venue_reference_adapter: IBroker | None = None
     _cross_venue_prev_reference_snapshot: VenueMidSnapshot | None = None
+    _cross_venue_ema_state: CrossVenueEMAState | None = None
+    _narrow_spread_consecutive: int = 0
     # 449# getattr 排除: orchestrator が設定する run/sha 属性
     _run_id: str = ""
     _git_sha: str = ""
@@ -156,7 +160,10 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
 
     async def _get_mid_price(self) -> float:
         """板の best bid/ask から mid price を算出 — 120# MakerPriceCalculator に委譲."""
-        return await self._maker_price.get_mid_price(self.adapter, self.config.symbol)
+        return cast(
+            float,
+            await self._maker_price.get_mid_price(self.adapter, self.config.symbol),
+        )
 
     async def _compute_maker_price(self, side: str) -> tuple[float, float, float]:
         """maker limit 価格を算出 — 120# MakerPriceCalculator に委譲."""
@@ -954,7 +961,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                 queue_fill_prob_est = _math.exp(-queue_depth_ahead / max(order_lot, 1e-8))
 
         t_submit = time.time()
-        order: object | None = None
+        order: _ExecutionOrderLike | None = None
         last_error: str | None = None
         cancel_reason: str = CR.UNKNOWN
         order_price = pre_order.order_price
@@ -981,12 +988,15 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                 except Exception as pre_e:
                     logger.debug(f"[postonly_guard] Pre-check failed (non-fatal): {pre_e}")
 
-                order = await self.adapter.place_order(
-                    symbol=self.config.symbol,
-                    side=pre_order.side,
-                    quantity=order_lot,
-                    price=order_price,
-                    order_type="limit",
+                order = cast(
+                    _ExecutionOrderLike,
+                    await self.adapter.place_order(
+                        symbol=self.config.symbol,
+                        side=pre_order.side,
+                        quantity=order_lot,
+                        price=order_price,
+                        order_type="limit",
+                    ),
                 )
                 self._pending_order_id = order.order_id
                 logger.info(

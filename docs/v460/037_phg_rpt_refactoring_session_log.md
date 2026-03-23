@@ -8841,3 +8841,15 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - 背景:
   - repo-wide mypy は既存負債が大きく、日常の差分確認に使いにくい
   - strict config は維持しつつ、入口だけ practical にする方針
+## 2026-03-24 targeted mypy follow-up cleanup
+- `scripts/v460/lib/fill_config.py`
+  - `_resolve_fill_config_yaml_parser()` に返り値型を追加
+  - `from_yaml()` の `Any` 流出を解消
+- `scripts/v460/lib/fill_record_builder.py`
+  - mixin の必須属性を型宣言
+  - `sg_*` と `skip_gate_reason` の optional 契約を実呼び出しに追随
+- `scripts/v460/lib/fill_cycle_executor.py`
+  - `_cross_venue_ema_state` / `_narrow_spread_consecutive` / `place_order()` 戻り値の型を明示
+- targeted mypy:
+  - `.venv/Scripts/python.exe scripts/quality/run_targeted_mypy.py scripts/v460/lib/fill_config.py scripts/v460/lib/fill_record_builder.py scripts/v460/lib/fill_cycle_executor.py scripts/v460/lib/offset_pipeline.py scripts/v460/lib/multiplicative_pipeline.py`
+  - `Success: no issues found in 5 source files`
