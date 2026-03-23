@@ -31,7 +31,7 @@ from tests.unit.v460._fill_test_source import ORCHESTRATOR_MID_CYCLE, read_sourc
 
 _RUN_SINGLE_CYCLE_SIG = inspect.signature(FillTestRunner.run_single_cycle)
 _RUN_SINGLE_CYCLE_SOURCE = inspect.getsource(FillCycleExecutorMixin.run_single_cycle)
-_OFFSET_PIPELINE_SOURCE = inspect.getsource(OffsetPipelineMixin._apply_offset_pipeline)
+_OFFSET_PIPELINE_SOURCE = inspect.getsource(OffsetPipelineMixin._apply_offset_pipeline_multiplicative)
 _CHECK_TRENDING_SELL_SOURCE = inspect.getsource(CycleGateAggregator._check_trending_sell)
 
 def _make_config(**overrides):

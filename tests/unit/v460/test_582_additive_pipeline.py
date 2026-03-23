@@ -1,0 +1,248 @@
+"""582# Additive Pipeline テスト — RMS Toxicity/Liquidity バッファ分離.
+
+テスト対象:
+  A. _apply_offset_pipeline dispatcher: config flag で加法/乗法を切り替え
+  B. _apply_offset_pipeline_additive: RMS 結合ロジック
+  C. Toxicity/Liquidity 分類の正確性
+  D. 全 multiplier ≤ 1.0 のとき base_ratio 保持
+"""
+
+from __future__ import annotations
+
+import inspect
+import json
+import math
+from unittest.mock import MagicMock, PropertyMock
+
+import pytest
+
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.offset_pipeline import OffsetPipelineMixin, OffsetPipelineResult
+
+
+def _make_mixin(
+    *,
+    experimental_additive: bool = True,
+    ev_as_offset_enabled: bool = True,
+    ev_offset_sensitivity: float = 1.0,
+    ev_offset_min_mult: float = 1.0,
+    ev_offset_max_mult: float = 3.0,
+    ev_warning_threshold: float = 0.8,
+    ev_warning_offset_factor: float = 1.5,
+    vg_velocity_threshold_bps: float = 10.0,
+    vg_offset_boost_factor: float = 1.5,
+    execution_final_clamp_enabled: bool = False,
+    alert_offset_mult: float = 1.0,
+    last_macro_trend: str | None = None,
+    last_vg_triggered: bool = False,
+    macro_sell_boost_strong_up: float = 1.0,
+    macro_sell_boost_weak_up: float = 1.0,
+    macro_buy_boost_strong_down: float = 1.0,
+    macro_buy_boost_weak_down: float = 1.0,
+) -> OffsetPipelineMixin:
+    """テスト用 mixin stub を構築."""
+    obj = object.__new__(OffsetPipelineMixin)
+    cfg = MagicMock(spec=FillTestConfig)
+    cfg.experimental_additive_pipeline = experimental_additive
+    cfg.skip_gate_ev_as_offset_enabled = ev_as_offset_enabled
+    cfg.skip_gate_ev_offset_sensitivity = ev_offset_sensitivity
+    cfg.skip_gate_ev_offset_min_mult = ev_offset_min_mult
+    cfg.skip_gate_ev_offset_max_mult = ev_offset_max_mult
+    cfg.skip_gate_ev_warning_threshold = ev_warning_threshold
+    cfg.skip_gate_ev_warning_offset_factor = ev_warning_offset_factor
+    cfg.volatility_guard_velocity_threshold_bps = vg_velocity_threshold_bps
+    cfg.volatility_guard_offset_boost_factor = vg_offset_boost_factor
+    cfg.execution_final_clamp_enabled = execution_final_clamp_enabled
+    cfg.macro_sell_boost_strong_up = macro_sell_boost_strong_up
+    cfg.macro_sell_boost_weak_up = macro_sell_boost_weak_up
+    cfg.macro_buy_boost_strong_down = macro_buy_boost_strong_down
+    cfg.macro_buy_boost_weak_down = macro_buy_boost_weak_down
+    obj.config = cfg  # type: ignore[attr-defined]
+
+    maker = MagicMock()
+    maker.last_vg_triggered = last_vg_triggered
+    maker.last_sigma = 0.01
+    maker.get_adverse_ofi = MagicMock(return_value=0.0)
+    obj._maker_price = maker  # type: ignore[attr-defined]
+
+    obj._last_macro_trend = last_macro_trend  # type: ignore[attr-defined]
+    obj._alert_offset_mult = alert_offset_mult  # type: ignore[attr-defined]
+
+    # _recalc_price_with_new_offset: identity stub
+    def _recalc(side: str, order_price: float, spread: float, old_r: float, new_r: float) -> float:
+        # 簡易: new_ratio に比例して価格をずらす
+        delta = spread * (new_r - old_r) / 2
+        return round(order_price - delta) if side == "sell" else round(order_price + delta)
+
+    obj._recalc_price_with_new_offset = _recalc  # type: ignore[attr-defined]
+    return obj
+
+
+_COMMON_KWARGS: dict = dict(
+    side="sell",
+    order_price=13_000_000,
+    spread_at_order=3000.0,
+    effective_offset_ratio=0.05,
+    sg_ev_score=None,
+    sg_velocity_offset_mult=None,
+    sg_velocity_bps=None,
+    trending_offset_mult=None,
+    toxicity_offset_mult=1.0,
+    sidecar_offset_bps=0.0,
+    cycle_id="test-cycle",
+)
+
+
+# ── A. Dispatcher ──
+
+
+class TestDispatcher:
+    """_apply_offset_pipeline が flag に応じて正しいメソッドを呼ぶ."""
+
+    def test_dispatcher_routes_to_multiplicative_by_default(self) -> None:
+        mixin = _make_mixin(experimental_additive=False)
+        with pytest.MonkeyPatch.context() as mp:
+            called: list[str] = []
+            mp.setattr(
+                OffsetPipelineMixin,
+                "_apply_offset_pipeline_multiplicative",
+                lambda self, **kw: (called.append("mult"), OffsetPipelineResult(
+                    order_price=0, effective_offset_ratio=0,
+                    ev_offset_applied=False, ev_score_pretrade=None,
+                    ev_offset_mult_applied=None, macro_boost_applied=False,
+                    execution_pre_clamp_offset=None, executor_offset_stages_json=None,
+                ))[1],
+            )
+            mixin._apply_offset_pipeline(**_COMMON_KWARGS)
+            assert called == ["mult"]
+
+    def test_dispatcher_routes_to_additive_when_flag_true(self) -> None:
+        mixin = _make_mixin(experimental_additive=True)
+        with pytest.MonkeyPatch.context() as mp:
+            called: list[str] = []
+            mp.setattr(
+                OffsetPipelineMixin,
+                "_apply_offset_pipeline_additive",
+                lambda self, **kw: (called.append("add"), OffsetPipelineResult(
+                    order_price=0, effective_offset_ratio=0,
+                    ev_offset_applied=False, ev_score_pretrade=None,
+                    ev_offset_mult_applied=None, macro_boost_applied=False,
+                    execution_pre_clamp_offset=None, executor_offset_stages_json=None,
+                ))[1],
+            )
+            mixin._apply_offset_pipeline(**_COMMON_KWARGS)
+            assert called == ["add"]
+
+
+# ── B. RMS 計算ロジック ──
+
+
+class TestRmsComputation:
+    """RMS 結合が正しく動作すること."""
+
+    def test_no_multipliers_returns_base_ratio(self) -> None:
+        """全 multiplier ≤ 1.0 → base_ratio が保持される."""
+        mixin = _make_mixin(ev_as_offset_enabled=False)
+        result = mixin._apply_offset_pipeline_additive(**_COMMON_KWARGS)
+        assert result.effective_offset_ratio == pytest.approx(0.05)
+
+    def test_single_toxicity_factor(self) -> None:
+        """velocity mult=1.5 → tox_rms = base*(1.5-1.0) = 0.025."""
+        mixin = _make_mixin(ev_as_offset_enabled=False)
+        kw = {**_COMMON_KWARGS, "sg_velocity_offset_mult": 1.5}
+        result = mixin._apply_offset_pipeline_additive(**kw)
+        expected = 0.05 + 0.05 * 0.5  # base + sqrt((base*0.5)^2) = base + base*0.5
+        assert result.effective_offset_ratio == pytest.approx(expected, abs=1e-6)
+
+    def test_two_toxicity_factors_rms(self) -> None:
+        """velocity=1.5, toxicity=2.0 → RMS 結合."""
+        mixin = _make_mixin(ev_as_offset_enabled=False)
+        kw = {**_COMMON_KWARGS, "sg_velocity_offset_mult": 1.5, "toxicity_offset_mult": 2.0}
+        result = mixin._apply_offset_pipeline_additive(**kw)
+        d_vel = 0.05 * 0.5
+        d_tox = 0.05 * 1.0
+        tox_rms = math.sqrt(d_vel**2 + d_tox**2)
+        expected = 0.05 + tox_rms
+        assert result.effective_offset_ratio == pytest.approx(expected, abs=1e-6)
+
+    def test_toxicity_and_liquidity_independent(self) -> None:
+        """tox と liq が独立に RMS 結合される。"""
+        from scripts.v460.lib.macro_regime import MacroTrend
+
+        mixin = _make_mixin(
+            ev_as_offset_enabled=False,
+            last_macro_trend=MacroTrend.STRONG_UP.value,
+            macro_sell_boost_strong_up=1.8,
+        )
+        kw = {
+            **_COMMON_KWARGS,
+            "sg_velocity_offset_mult": 1.5,  # Toxicity
+        }
+        result = mixin._apply_offset_pipeline_additive(**kw)
+        d_vel = 0.05 * 0.5
+        d_macro = 0.05 * 0.8
+        expected = 0.05 + math.sqrt(d_vel**2) + math.sqrt(d_macro**2)
+        assert result.effective_offset_ratio == pytest.approx(expected, abs=1e-6)
+
+
+# ── C. Stages JSON 出力 ──
+
+
+class TestStagesJson:
+    """executor_offset_stages_json に tox_buffer / liq_buffer が記録される."""
+
+    def test_stages_json_contains_buffers(self) -> None:
+        mixin = _make_mixin(ev_as_offset_enabled=False, alert_offset_mult=1.3)
+        result = mixin._apply_offset_pipeline_additive(**_COMMON_KWARGS)
+        assert result.executor_offset_stages_json is not None
+        stages = json.loads(result.executor_offset_stages_json)
+        assert "tox_buffer" in stages
+        assert "liq_buffer" in stages
+        # alert=1.3 → tox_buffer > 0, liq_buffer = 0
+        assert stages["tox_buffer"] > 0
+        assert stages["liq_buffer"] == 0.0
+
+    def test_stages_json_records_individual_mults(self) -> None:
+        mixin = _make_mixin(ev_as_offset_enabled=False)
+        kw = {**_COMMON_KWARGS, "sg_velocity_offset_mult": 1.5}
+        result = mixin._apply_offset_pipeline_additive(**kw)
+        stages = json.loads(result.executor_offset_stages_json)  # type: ignore[arg-type]
+        assert stages["velocity"] == 1.5
+        assert stages["trending"] is None
+        assert stages["toxicity"] is None
+
+
+# ── D. Sidecar bps ──
+
+
+class TestSidecar:
+    """Sidecar bps が RMS の外側で加算される."""
+
+    def test_sidecar_adjusts_price(self) -> None:
+        mixin = _make_mixin(ev_as_offset_enabled=False)
+        kw_no_sc = {**_COMMON_KWARGS}
+        kw_with_sc = {**_COMMON_KWARGS, "sidecar_offset_bps": 10.0}
+        r_no = mixin._apply_offset_pipeline_additive(**kw_no_sc)
+        r_sc = mixin._apply_offset_pipeline_additive(**kw_with_sc)
+        # sidecar_offset_bps=10 → 13_000_000 * 10/10000 = 13000 delta for sell: price -= delta
+        assert r_sc.order_price < r_no.order_price
+
+
+# ── E. メソッド存在テスト ──
+
+
+class TestMethodExistence:
+    """OffsetPipelineMixin に 3 つのメソッドが存在する."""
+
+    def test_dispatcher_exists(self) -> None:
+        assert hasattr(OffsetPipelineMixin, "_apply_offset_pipeline")
+
+    def test_additive_exists(self) -> None:
+        assert hasattr(OffsetPipelineMixin, "_apply_offset_pipeline_additive")
+
+    def test_multiplicative_exists(self) -> None:
+        assert hasattr(OffsetPipelineMixin, "_apply_offset_pipeline_multiplicative")
+
+    def test_dispatcher_source_references_flag(self) -> None:
+        src = inspect.getsource(OffsetPipelineMixin._apply_offset_pipeline)
+        assert "experimental_additive_pipeline" in src
