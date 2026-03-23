@@ -29,6 +29,13 @@
 4. broad 前の real-data / wait / setup 固定費
 5. broad 最終確認そのもの
 
+### filtered broad の最新確認
+
+- `tests/unit/training tests/unit/evaluation tests/training`
+  - `677 passed, 17 skipped, 8 warnings in 28.41s`
+- `Wave5` の入口確認は取れている
+- 以後は broad failure 対応よりも、Wave3/4 の残差整理と current suite 固定費削減を優先してよい
+
 ## Wave 別の残課題
 
 ### Wave 2: stateful ownership の最終整理
@@ -103,6 +110,7 @@ Done の基準:
 2. `time.sleep()` ベース wait の `Event.wait()` / predicate wait 化を継続
 3. real-data setup の fixture 再利用 / sample cap 見直し
 4. stale source-contract test の stage/helper 契約化
+5. current suite に残る `NamedTemporaryFile()` の `tmp_path` 化を進める
 
 直近で前進したもの:
 - `tests/training/callbacks/performance/test_performance.py` の skipped benchmark fixed wait を `Event.wait()` 化
@@ -110,6 +118,8 @@ Done の基準:
 - `tests/unit/utils/test_path_utils.py` の tempdir 使用を `tmp_path` 化
 - `tests/unit/trading/components/test_performance_optimizer.py` の fixed `sleep` を小さい CPU work に置換
 - `cache/*.db-shm` / `cache/*.db-wal` / `cache/sidecar_signal.json` を ignore し、`sidecar_signal.json` も追跡から外して broad 前の worktree ノイズを削減
+- `tests/unit/training/test_unified_data_loading.py` の CSV/Parquet fixture を `tmp_path` ベースへ整理
+- `tests/training/distributed/test_distributed_training.py` の checkpoint fixture を `tmp_path` ベースへ整理
 
 Done の基準:
 - broad 上位が「本物の計算 / 実データ / I/O」に再集中する
@@ -218,6 +228,11 @@ Done の基準:
 - Wave 2 はかなり終盤で、次は ownership の最終整理と Wave 3/4 の仕上げを並行で進めるのが安全
 - `550#` は設計の基準、`551#` は実行順の基準、`521#` は全体の母艦、という役割分担で運用する
 - 報酬系の詳細設計と実行順は `557#` を正本とし、`551#` では Wave 全体との接続だけを持つ
+- `scripts/v460` 側の helper 再利用は
+  - `metrics`
+  - `memory_monitor`
+  - `offset_stages`
+  周辺の主要ポイントはかなり回収済みで、残るものは無理に shared 化せず local ownership を保つ方が安全
 
 ## 直近の前進メモ
 

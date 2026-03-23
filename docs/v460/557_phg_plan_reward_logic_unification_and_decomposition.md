@@ -100,6 +100,7 @@
   旧来の `*_penalty` / `*_shaping` flat field の両方を安全に収束できる
 - reporting 側も同 helper に追随し、reward payload の outward contract が callback/reporting で揃った
 - attach 側も helper 化し、payload の「抽出」と「report/callback への搭載」を同じ canonical path で扱えるようにした
+- filtered broad (`tests/unit/training tests/unit/evaluation tests/training`) も通過しており、current suite での reward payload helper 契約はかなり安定してきている
 
 ---
 

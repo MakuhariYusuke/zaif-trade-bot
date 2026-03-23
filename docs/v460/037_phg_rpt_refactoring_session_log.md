@@ -8696,3 +8696,11 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `TemporaryDirectory()` fixture を `tmp_path` ベースへ整理
 - focused:
   - `46 passed in 5.26s`
+## 2026-03-23 wave5 filtered broad confirmation + current-suite tmp-path cleanup
+- filtered broad:
+  - `tests/unit/training tests/unit/evaluation tests/training`
+  - `677 passed, 17 skipped, 8 warnings in 28.41s`
+- `tests/unit/training/test_unified_data_loading.py`
+  - CSV/Parquet fixture を `tmp_path` ベースへ整理
+- `tests/training/distributed/test_distributed_training.py`
+  - checkpoint fixture を `tmp_path` ベースへ整理

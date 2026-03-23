@@ -6,7 +6,6 @@ Phase 4 Week 1 Day 2-3実装検証:
 - SACTrainerでの統合経路確認
 """
 
-import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -31,106 +30,83 @@ class TestTrainer(BaseAlgorithmTrainer):
         return {}
 
 
-def test_load_csv_data():
+def test_load_csv_data(tmp_path: Path):
     """CSV読み込みの基本動作確認"""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
-        # シンプルなCSV
-        f.write("timestamp,open,high,low,close,volume\n")
-        f.write("2024-01-01,100,101,99,100,1000\n")
-        f.write("2024-01-02,100,102,99,101,1100\n")
-        csv_path = f.name
+    csv_path = tmp_path / "sample.csv"
+    csv_path.write_text(
+        "timestamp,open,high,low,close,volume\n"
+        "2024-01-01,100,101,99,100,1000\n"
+        "2024-01-02,100,102,99,101,1100\n",
+        encoding="utf-8",
+    )
 
-    try:
-        trainer = TestTrainer(config={})
-        df = trainer.load_data(csv_path)
+    trainer = TestTrainer(config={})
+    df = trainer.load_data(csv_path)
 
-        assert len(df) == 2
-        assert "open" in df.columns
-        assert "close" in df.columns
-    finally:
-        Path(csv_path).unlink(missing_ok=True)
+    assert len(df) == 2
+    assert "open" in df.columns
+    assert "close" in df.columns
 
 
-def test_load_parquet_with_precomputed_features():
+def test_load_parquet_with_precomputed_features(tmp_path: Path):
     """Parquet + 事前計算特徴の読み込みと検出"""
-    with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as f:
-        # 8特徴を含むParquet
-        df = pd.DataFrame(
-            {
-                "timestamp": pd.date_range("2024-01-01", periods=100, freq="1h"),
-                "open": np.random.randn(100) + 100,
-                "high": np.random.randn(100) + 101,
-                "low": np.random.randn(100) + 99,
-                "close": np.random.randn(100) + 100,
-                "volume": np.random.randint(1000, 10000, 100),
-                # 8特徴
-                "rsi": np.random.randn(100),
-                "macd": np.random.randn(100),
-                "bb_width": np.random.randn(100),
-                "volatility": np.random.randn(100),
-                "momentum": np.random.randn(100),
-                "volume_ma_ratio": np.random.randn(100),
-                "atr": np.random.randn(100),
-                "obv": np.random.randn(100),
-            }
-        )
-        df.to_parquet(f.name)
-        parquet_path = f.name
+    parquet_path = tmp_path / "precomputed.parquet"
+    df = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2024-01-01", periods=100, freq="1h"),
+            "open": np.random.randn(100) + 100,
+            "high": np.random.randn(100) + 101,
+            "low": np.random.randn(100) + 99,
+            "close": np.random.randn(100) + 100,
+            "volume": np.random.randint(1000, 10000, 100),
+            "rsi": np.random.randn(100),
+            "macd": np.random.randn(100),
+            "bb_width": np.random.randn(100),
+            "volatility": np.random.randn(100),
+            "momentum": np.random.randn(100),
+            "volume_ma_ratio": np.random.randn(100),
+            "atr": np.random.randn(100),
+            "obv": np.random.randn(100),
+        }
+    )
+    df.to_parquet(parquet_path)
 
-    try:
-        trainer = TestTrainer(config={})
-        loaded_df = trainer.load_data(parquet_path)
+    trainer = TestTrainer(config={})
+    loaded_df = trainer.load_data(parquet_path)
 
-        # データが正しく読み込まれる
-        assert len(loaded_df) == 100
-        assert "rsi" in loaded_df.columns
-        assert "macd" in loaded_df.columns
-
-        # 事前計算特徴が検出される
-        assert trainer._has_precomputed_features(loaded_df) is True
-
-        # feature_set が minimal に設定される
-        assert trainer.config.get("training", {}).get("features", {}).get(
-            "feature_set"
-        ) == "minimal"
-    finally:
-        Path(parquet_path).unlink(missing_ok=True)
+    assert len(loaded_df) == 100
+    assert "rsi" in loaded_df.columns
+    assert "macd" in loaded_df.columns
+    assert trainer._has_precomputed_features(loaded_df) is True
+    assert trainer.config.get("training", {}).get("features", {}).get(
+        "feature_set"
+    ) == "minimal"
 
 
-def test_parquet_without_features_not_detected():
+def test_parquet_without_features_not_detected(tmp_path: Path):
     """Parquet（OHLCVのみ）は事前計算特徴として検出されない"""
-    with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as f:
-        # OHLCVのみ
-        df = pd.DataFrame(
-            {
-                "timestamp": pd.date_range("2024-01-01", periods=100, freq="1h"),
-                "open": np.random.randn(100) + 100,
-                "high": np.random.randn(100) + 101,
-                "low": np.random.randn(100) + 99,
-                "close": np.random.randn(100) + 100,
-                "volume": np.random.randint(1000, 10000, 100),
-            }
-        )
-        df.to_parquet(f.name)
-        parquet_path = f.name
+    parquet_path = tmp_path / "ohlcv_only.parquet"
+    df = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2024-01-01", periods=100, freq="1h"),
+            "open": np.random.randn(100) + 100,
+            "high": np.random.randn(100) + 101,
+            "low": np.random.randn(100) + 99,
+            "close": np.random.randn(100) + 100,
+            "volume": np.random.randint(1000, 10000, 100),
+        }
+    )
+    df.to_parquet(parquet_path)
 
-    try:
-        trainer = TestTrainer(config={})
-        loaded_df = trainer.load_data(parquet_path)
+    trainer = TestTrainer(config={})
+    loaded_df = trainer.load_data(parquet_path)
 
-        # データが正しく読み込まれる
-        assert len(loaded_df) == 100
-
-        # 事前計算特徴は検出されない（OHLCVのみ）
-        assert trainer._has_precomputed_features(loaded_df) is False
-
-        # feature_set は設定されない
-        assert (
-            trainer.config.get("training", {}).get("features", {}).get("feature_set")
-            is None
-        )
-    finally:
-        Path(parquet_path).unlink(missing_ok=True)
+    assert len(loaded_df) == 100
+    assert trainer._has_precomputed_features(loaded_df) is False
+    assert (
+        trainer.config.get("training", {}).get("features", {}).get("feature_set")
+        is None
+    )
 
 
 def test_strict_feature_detection():

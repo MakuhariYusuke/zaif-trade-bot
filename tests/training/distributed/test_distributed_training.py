@@ -9,7 +9,7 @@ Tests distributed training functionality including:
 """
 
 import os
-import tempfile
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -156,33 +156,24 @@ class TestDistributedTrainer:
         unwrapped = trainer.get_model()
         assert unwrapped is model
 
-    def test_checkpoint_save_load(self):
+    def test_checkpoint_save_load(self, tmp_path: Path):
         """Test checkpoint saving and loading."""
         model = SimpleModel()
         config = DistributedTrainingConfig(world_size=1, rank=0)
 
         trainer = DistributedTrainer(model, config)
 
-        with tempfile.NamedTemporaryFile(suffix=".pth", delete=False) as f:
-            checkpoint_path = f.name
+        checkpoint_path = tmp_path / "distributed_checkpoint.pth"
 
-        try:
-            # Save checkpoint
-            trainer.save_checkpoint(checkpoint_path, epoch=10, custom_data="test")
+        trainer.save_checkpoint(checkpoint_path, epoch=10, custom_data="test")
+        loaded_data = trainer.load_checkpoint(checkpoint_path)
 
-            # Load checkpoint
-            loaded_data = trainer.load_checkpoint(checkpoint_path)
+        assert loaded_data["epoch"] == 10
+        assert loaded_data["custom_data"] == "test"
+        assert "model_state_dict" in loaded_data
+        assert "distributed_config" in loaded_data
 
-            assert loaded_data["epoch"] == 10
-            assert loaded_data["custom_data"] == "test"
-            assert "model_state_dict" in loaded_data
-            assert "distributed_config" in loaded_data
-
-        finally:
-            if os.path.exists(checkpoint_path):
-                os.unlink(checkpoint_path)
-
-    def test_non_master_checkpoint_save(self):
+    def test_non_master_checkpoint_save(self, tmp_path: Path):
         """Test that non-master processes don't save checkpoints."""
         model = SimpleModel()
         config = DistributedTrainingConfig(
@@ -190,18 +181,10 @@ class TestDistributedTrainer:
         )  # Single process to avoid DDP
 
         trainer = DistributedTrainer(model, config)
+        checkpoint_path = tmp_path / "non_master_checkpoint.pth"
 
-        with tempfile.NamedTemporaryFile(suffix=".pth", delete=False) as f:
-            checkpoint_path = f.name
-
-        try:
-            # For single process, should save
-            trainer.save_checkpoint(checkpoint_path)
-            assert os.path.exists(checkpoint_path)
-
-        finally:
-            if os.path.exists(checkpoint_path):
-                os.unlink(checkpoint_path)
+        trainer.save_checkpoint(checkpoint_path)
+        assert checkpoint_path.exists()
 
 
 class TestDistributedUtilities:

@@ -6379,3 +6379,7 @@ python scripts/unified_trainer.py \
 - `tests/unit/evaluation/test_walk_forward_checkpoint.py`
 - `tests/unit/evaluation/test_walk_forward_integration_e2e.py`
   の `TemporaryDirectory()` fixture を `tmp_path` ベースへ整理
+## 2026-03-23 wave5 filtered broad confirmation and current-suite tmp-path cleanup
+- filtered broad (`tests/unit/training tests/unit/evaluation tests/training`) が `677 passed, 17 skipped, 8 warnings in 28.41s` で通過
+- `tests/unit/training/test_unified_data_loading.py` の CSV/Parquet fixture を `tmp_path` ベースへ整理
+- `tests/training/distributed/test_distributed_training.py` の checkpoint fixture を `tmp_path` ベースへ整理
