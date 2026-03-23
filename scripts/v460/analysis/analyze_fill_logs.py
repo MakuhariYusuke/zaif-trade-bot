@@ -838,6 +838,61 @@ def section_microstructure_correlation(records: list[dict[str, Any]]) -> list[st
     return lines
 
 
+def section_pre_clamp_distribution(records: list[dict[str, Any]]) -> list[str]:
+    """565# I3: pre_clamp offset 分布の取得."""
+    filled = [r for r in records if r.get("filled")]
+    if not filled:
+        return ["## Pre-clamp Offset Distribution", "  (no fills)", ""]
+
+    lines = ["## Pre-clamp Offset Distribution (I3)"]
+    for side in ["buy", "sell"]:
+        vals = [
+            float(r["execution_pre_clamp_offset"]) 
+            for r in filled 
+            if r.get("side") == side and r.get("execution_pre_clamp_offset") is not None
+        ]
+        if vals:
+            arr = np.array(vals)
+            lines.append(
+                f"  {side:4s}: Median={np.median(arr):.4f}, P90={np.percentile(arr, 90):.4f}, "
+                f"P99={np.percentile(arr, 99):.4f}, Max={np.max(arr):.4f} (n={len(arr)})"
+            )
+    lines.append("")
+    return lines
+
+
+def section_spread_decomposition(records: list[dict[str, Any]]) -> list[str]:
+    """565# I2: Spread Capture / Adverse Selection Cost 分解."""
+    filled = [r for r in records if r.get("filled")]
+    if not filled:
+        return ["## Spread Decomposition", "  (no fills)", ""]
+
+    lines = ["## Spread Decomposition (I2: Kissell & Glantz)"]
+    regimes = sorted(list(set(str(r.get("regime", "null")) for r in records)))
+    
+    for side in ["buy", "sell"]:
+        lines.append(f"  --- {side.upper()} ---")
+        for reg in regimes:
+            rf = [
+                r for r in filled 
+                if r.get("side") == side and str(r.get("regime", "null")) == reg
+            ]
+            if not rf:
+                continue
+            
+            captures = [float(r["spread_capture_bps"]) for r in rf if r.get("spread_capture_bps") is not None]
+            costs = [float(r["adverse_selection_cost_bps"]) for r in rf if r.get("adverse_selection_cost_bps") is not None]
+            
+            if captures and costs:
+                avg_cap = np.mean(captures)
+                avg_cost = np.mean(costs)
+                lines.append(
+                    f"    {reg:12s}: Capture={avg_cap:+.2f}bps, AS_Cost={avg_cost:+.2f}bps, Net={avg_cap+avg_cost:+.2f}bps (n={len(rf)})"
+                )
+    lines.append("")
+    return lines
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -904,6 +959,8 @@ def main() -> None:
     all_lines.extend(section_ob_age(records))
     all_lines.extend(section_model_used(records))
     all_lines.extend(section_microstructure_correlation(records))
+    all_lines.extend(section_pre_clamp_distribution(records))
+    all_lines.extend(section_spread_decomposition(records))
 
     output_text = "\n".join(all_lines)
 
