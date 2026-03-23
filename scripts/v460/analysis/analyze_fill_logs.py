@@ -430,10 +430,82 @@ def section_sell_guard(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_clamp_saturation(records: list[dict[str, Any]]) -> list[str]:
-    """531# Offset Clamp Saturation — pipeline 出力の ceiling 飽和率."""
+def section_execution_quality(records: list[dict[str, Any]]) -> list[str]:
+    """565# I2: Execution Quality 分解 (Kissell & Glantz 2003).
+
+    PnL = spread_capture + adverse_selection_cost を side×regime で分解し
+    offset 戦略の質と市場毒性を独立評価する。
+    """
     filled = [r for r in records if r.get("filled")]
-    lines = ["## Clamp Saturation (531#)"]
+    lines = ["## Execution Quality (565# I2 / 305#)"]
+    if not filled:
+        lines.append("  (no fills)")
+        lines.append("")
+        return lines
+
+    # --- 全体 ---
+    sc_all = _np([float(r["spread_capture_bps"]) for r in filled if r.get("spread_capture_bps") is not None])
+    ac_all = _np([float(r["adverse_selection_cost_bps"]) for r in filled if r.get("adverse_selection_cost_bps") is not None])
+    if len(sc_all) == 0:
+        lines.append(f"  spread_capture_bps 未記録 (0/{len(filled)} fills)")
+        lines.append("  → fill_recorder で spread_capture_bps を記録する実装が必要")
+        lines.append("")
+        return lines
+    lines.append(
+        f"  Overall: spread_capture={float(np.mean(sc_all)):+.2f}bps, "
+        f"AS_cost={float(np.mean(ac_all)):+.2f}bps (n={len(sc_all)})"
+    )
+
+    # --- Side × Regime ---
+    regimes = sorted({r.get("regime", "unknown") for r in filled})
+    for side in ["buy", "sell"]:
+        for regime in regimes:
+            subset = [
+                r for r in filled
+                if r.get("requested_side") == side
+                and r.get("regime") == regime
+                and r.get("spread_capture_bps") is not None
+            ]
+            if len(subset) < 3:
+                continue
+            sc = _np([float(r["spread_capture_bps"]) for r in subset])
+            ac = _np([float(r["adverse_selection_cost_bps"]) for r in subset
+                     if r.get("adverse_selection_cost_bps") is not None])
+            pnls = _pnls(subset)
+            lines.append(
+                f"  {side:4s}/{regime}: "
+                f"sc={float(np.mean(sc)):+.2f}, as_cost={float(np.mean(ac)):+.2f}, "
+                f"pnl={float(np.mean(pnls)):+.2f}bps (n={len(subset)})"
+            )
+
+    # --- AS/Non-AS 別 ---
+    for label, predicate in [("AS", True), ("Non-AS", False)]:
+        sub = [
+            r for r in filled
+            if r.get("adverse_selected") == predicate
+            and r.get("spread_capture_bps") is not None
+        ]
+        if len(sub) < 3:
+            continue
+        sc = _np([float(r["spread_capture_bps"]) for r in sub])
+        ac = _np([float(r["adverse_selection_cost_bps"]) for r in sub
+                 if r.get("adverse_selection_cost_bps") is not None])
+        lines.append(
+            f"  {label}: spread_capture={float(np.mean(sc)):+.2f}, "
+            f"AS_cost={float(np.mean(ac)):+.2f} (n={len(sub)})"
+        )
+    lines.append("")
+    return lines
+
+
+def section_clamp_saturation(records: list[dict[str, Any]]) -> list[str]:
+    """531# Offset Clamp Saturation — pipeline 出力の ceiling 飽和率.
+
+    565# I3: pre_clamp offset の分布（p50/p75/p90/p99）を追加。
+    ceiling 引上げ幅の根拠データとして使用する。
+    """
+    filled = [r for r in records if r.get("filled")]
+    lines = ["## Clamp Saturation (531# / 565# I3)"]
     if not filled:
         lines.append("  (no fills)")
         lines.append("")
@@ -466,6 +538,15 @@ def section_clamp_saturation(records: list[dict[str, Any]]) -> list[str]:
                 lines.append(f"    clamped PnL avg={float(np.mean(clamp_pnl)):.2f}bps")
             if len(unclamp_pnl):
                 lines.append(f"    unclamped PnL avg={float(np.mean(unclamp_pnl)):.2f}bps")
+            # 565# I3: pre_clamp offset 分布
+            p50 = float(np.percentile(pre_vals, 50))
+            p75 = float(np.percentile(pre_vals, 75))
+            p90 = float(np.percentile(pre_vals, 90))
+            p99 = float(np.percentile(pre_vals, 99))
+            lines.append(
+                f"    pre_clamp distribution: "
+                f"p50={p50:.4f}, p75={p75:.4f}, p90={p90:.4f}, p99={p99:.4f}"
+            )
         else:
             lines.append(f"  {side}: (no offset data)")
     lines.append("")
@@ -811,6 +892,7 @@ def main() -> None:
     all_lines.extend(section_spread(records))
     all_lines.extend(section_balance_forced(records))
     all_lines.extend(section_sell_guard(records))
+    all_lines.extend(section_execution_quality(records))
     all_lines.extend(section_clamp_saturation(records))
     all_lines.extend(section_cross_venue_engagement(records))
     all_lines.extend(section_tail_risk(records))

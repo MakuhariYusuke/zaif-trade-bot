@@ -683,3 +683,4 @@ NNN_phX_TYPE_description.md
 | 563 | review | [563_phg_rev_560_562_second_opinion_and_split_tasks.md](563_phg_rev_560_562_second_opinion_and_split_tasks.md) | 560#・561#・562# セカンドオピニオンと著者別タスク分離 |
 | 564 | review | [564_phg_integration_blind_spots_and_financial_engineering.md](564_phg_integration_blind_spots_and_financial_engineering.md) | 560-563の統合解剖と四者の盲点指摘・金融工学的改善案 |
 | 565 | review | [565_phg_review_cross_verification_and_residual_blind_spots.md](565_phg_review_cross_verification_and_residual_blind_spots.md) | 560-564 横断検証と残存盲点の拾い上げ |
+| 567 | impl | [567_phg_impl_measurement_infrastructure_i1_i3.md](567_phg_impl_measurement_infrastructure_i1_i3.md) | 計測基盤修正 I1–I3: E3 sell窓崩壊修正, Execution Quality分解, pre_clamp分布可視化 |

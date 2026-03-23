@@ -157,9 +157,12 @@ class PnlMeasurer:
         m.early_exit_triggered = early_exit_triggered
 
         # 047# E3: +30s (=60s) 計測 — 049# サンプリング制御
+        # 565# I1: ベースを cfg.post_fill_wait_sec → 実際の wait_sec に修正
+        #   旧: sell(90s)で e3_target_60s = 30*2.0=60s → 既に経過 → "60s PnL" が "30s PnL" と同一地点に崩壊
+        #   新: sell(90s)で e3_target_60s = 90*2.0=180s → 正しい2倍窓で計測
         do_e3 = m.mid_at_fill is not None and _rng.random() < cfg.e3_sampling_ratio
         if do_e3:
-            e3_target_60s = cfg.post_fill_wait_sec * cfg.e3_60s_multiplier
+            e3_target_60s = wait_sec * cfg.e3_60s_multiplier
             e3_elapsed = time.time() - t_post_fill_start
             e3_wait_60 = max(0.0, e3_target_60s - e3_elapsed)
             if e3_wait_60 > 0:
@@ -170,7 +173,7 @@ class PnlMeasurer:
             except Exception as exc:
                 logger.debug("mid_60s_after PnL failed: %s", exc)
 
-            e3_target_120s = cfg.post_fill_wait_sec * cfg.e3_120s_multiplier
+            e3_target_120s = wait_sec * cfg.e3_120s_multiplier
             e3_elapsed = time.time() - t_post_fill_start
             e3_wait_120 = max(0.0, e3_target_120s - e3_elapsed)
             if e3_wait_120 > 0:
