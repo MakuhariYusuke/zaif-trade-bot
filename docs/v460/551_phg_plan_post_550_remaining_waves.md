@@ -41,7 +41,7 @@
   - `time.sleep()`
   の grep hit を解消済み
 - `tests/unit/v460` broad では `LiteTradingEnv` の `RewardKernel` wiring 漏れを 1 件拾って修正済み
-- 修正後の `tests/unit/v460` broad は `4758 passed, 2 skipped` まで進み、assertion failure の再発はなかったが、環境側 `KeyboardInterrupt` で完走確認までは至っていない
+- 修正後の `tests/unit/v460` broad は `4762 passed, 2 skipped` まで進み、assertion failure の再発はなかったが、環境側 `KeyboardInterrupt` で完走確認までは至っていない
 
 ## Wave 別の残課題
 
@@ -128,6 +128,8 @@ Done の基準:
 - `tests/unit/training/test_unified_data_loading.py` の CSV/Parquet fixture を `tmp_path` ベースへ整理
 - `tests/training/distributed/test_distributed_training.py` の checkpoint fixture を `tmp_path` ベースへ整理
 - `tests/unit/evaluation/test_unified_evaluation.py` の temp file fixture を cleanup-aware path helper に整理
+- `tests/unit/v460/test_v460_core.py` の gate-check JSON fixture を `tmp_path` ベースへ整理
+- `tests/unit/v460/test_189_alt_horizon_macro_integration.py` の YAML fixture を `tmp_path` ベースへ整理
 
 Done の基準:
 - broad 上位が「本物の計算 / 実データ / I/O」に再集中する

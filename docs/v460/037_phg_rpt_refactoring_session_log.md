@@ -8722,5 +8722,15 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/v460/test_p7_p8_sac_env.py`
   - `32 passed in 2.43s`
 - `tests/unit/v460` broad:
-  - `4758 passed, 2 skipped, 14 warnings in 40.84s`
+  - `4762 passed, 2 skipped, 14 warnings in 38.14s`
   - assertion failure は解消したが、環境側 `KeyboardInterrupt` で完走確認までは至らず
+## 2026-03-23 wave4 v460 temp file cleanup
+- `tests/unit/v460/test_v460_core.py`
+  - gate-check JSON fixture を `tmp_path` ベースへ整理
+- `tests/unit/v460/test_189_alt_horizon_macro_integration.py`
+  - YAML fixture を `tmp_path` ベースへ整理
+- focused:
+  - `tests/unit/v460/test_v460_core.py`
+  - `tests/unit/v460/test_189_alt_horizon_macro_integration.py`
+  - `tests/unit/v460/test_p7_p8_sac_env.py`
+  - `138 passed in 5.09s`

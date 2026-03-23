@@ -7,7 +7,6 @@ v460 単体テスト: gate_checks, config_loader, data_loader, manifest, microst
 from __future__ import annotations
 
 import json
-import tempfile
 from functools import lru_cache
 from pathlib import Path
 from types import SimpleNamespace
@@ -849,7 +848,7 @@ class TestGateCheckG1AnyLogic:
             "fold_results": fold_results or {},
         }
 
-    def test_any_pass_single_target(self) -> None:
+    def test_any_pass_single_target(self, tmp_path: Path) -> None:
         """1 target だけ閾値クリア → extra_any_pass = True."""
 
         # 2 targets: 1 passes thresholds, 1 fails
@@ -867,13 +866,10 @@ class TestGateCheckG1AnyLogic:
         }
         exp_results = self._make_exp_results(targets)
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8",
-        ) as f:
-            json.dump(exp_results, f)
-            tmp_path = f.name
+        cache_path = tmp_path / "single_target.json"
+        cache_path.write_text(json.dumps(exp_results), encoding="utf-8")
 
-        result = run_g1_judgment(tmp_path)
+        result = run_g1_judgment(str(cache_path))
         checks = result.get("threshold_checks", {})
 
         # direction_h1 should pass, direction_h5 should fail
@@ -884,7 +880,7 @@ class TestGateCheckG1AnyLogic:
         # (g1_judgment itself will likely fail due to no fold_results,
         #  but the threshold_checks logic should use any())
 
-    def test_all_fail_no_extra_pass(self) -> None:
+    def test_all_fail_no_extra_pass(self, tmp_path: Path) -> None:
         """全 target が閾値未達 → extra_any_pass = False."""
 
         targets = {
@@ -901,13 +897,10 @@ class TestGateCheckG1AnyLogic:
         }
         exp_results = self._make_exp_results(targets)
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8",
-        ) as f:
-            json.dump(exp_results, f)
-            tmp_path = f.name
+        cache_path = tmp_path / "all_fail.json"
+        cache_path.write_text(json.dumps(exp_results), encoding="utf-8")
 
-        result = run_g1_judgment(tmp_path)
+        result = run_g1_judgment(str(cache_path))
         # No fold_results → g1_judgment returns g1_pass=False
         # All targets fail thresholds → extra_any_pass=False
         # final_pass = False AND False = False
@@ -981,7 +974,7 @@ class TestFoldResultsSlimming:
 class TestGateCheckCacheCompat:
     """007# F5: stats-only JSON でも run_gate_check が動作することを検証."""
 
-    def test_cached_judgment_used(self) -> None:
+    def test_cached_judgment_used(self, tmp_path: Path) -> None:
         """g1_judgment_cache があればそれを使用し、fold_results を再計算しない."""
 
         # Stats-only fold_results (g1_judgment() に直接渡すとクラッシュする)
@@ -1012,17 +1005,14 @@ class TestGateCheckCacheCompat:
             },
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8",
-        ) as f:
-            json.dump(exp_results, f)
-            tmp_path = f.name
+        cache_path = tmp_path / "cached_judgment.json"
+        cache_path.write_text(json.dumps(exp_results), encoding="utf-8")
 
-        result = run_g1_judgment(tmp_path)
+        result = run_g1_judgment(str(cache_path))
         # Cache says PASS, extra threshold direction_h1 passes → final PASS
         assert result["gate_result"] == "PASS"
 
-    def test_stats_only_no_cache_fallback(self) -> None:
+    def test_stats_only_no_cache_fallback(self, tmp_path: Path) -> None:
         """g1_judgment_cache がなく fold_results が stats → FAIL (クラッシュしない)."""
 
         exp_results = {
@@ -1040,14 +1030,11 @@ class TestGateCheckCacheCompat:
             },
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8",
-        ) as f:
-            json.dump(exp_results, f)
-            tmp_path = f.name
+        cache_path = tmp_path / "stats_only_no_cache.json"
+        cache_path.write_text(json.dumps(exp_results), encoding="utf-8")
 
         # Should NOT crash — graceful fallback to FAIL
-        result = run_g1_judgment(tmp_path)
+        result = run_g1_judgment(str(cache_path))
         assert result["gate_result"] == "FAIL"
 
 

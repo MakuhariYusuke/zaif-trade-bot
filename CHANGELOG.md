@@ -6394,4 +6394,7 @@ python scripts/unified_trainer.py \
 - `scripts/v460/lib/lite_trading_env.py` に `RewardKernel` / `RewardParams` / action constants import を復旧
 - `LiteEnvConfig` に reward kernel 用の最小パラメータを明示追加
 - `tests/unit/v460/test_p7_p8_sac_env.py` は `32 passed`
-- `tests/unit/v460` broad は `4758 passed, 2 skipped, 14 warnings` まで進み、assertion failure は再発しなかったが、環境側 `KeyboardInterrupt` で完走確認までは至らず
+- `tests/unit/v460` broad は `4762 passed, 2 skipped, 14 warnings` まで進み、assertion failure は再発しなかったが、環境側 `KeyboardInterrupt` で完走確認までは至らず
+## 2026-03-23 wave4 v460 temp file cleanup
+- `tests/unit/v460/test_v460_core.py` の gate-check JSON fixture を `tmp_path` ベースへ整理
+- `tests/unit/v460/test_189_alt_horizon_macro_integration.py` の YAML fixture を `tmp_path` ベースへ整理

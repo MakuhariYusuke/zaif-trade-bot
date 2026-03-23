@@ -103,6 +103,7 @@
 - filtered broad (`tests/unit/training tests/unit/evaluation tests/training`) も通過しており、current suite での reward payload helper 契約はかなり安定してきている
 - current suite 側の temp file / fixed wait cleanup も進み、報酬 payload consumer の broad 前ノイズはかなり減っている
 - `LiteTradingEnv` 側でも `RewardKernel` / `RewardParams` / action constants の wiring を明示し、broad で拾われた import 漏れを修正済み
+- `tests/unit/v460` broad 上でも、この wiring 修正後は報酬系 assertion failure の再発は確認されていない
 
 ---
 

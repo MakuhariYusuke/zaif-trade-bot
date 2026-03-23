@@ -14,7 +14,6 @@ from __future__ import annotations
 import copy
 import importlib
 import math
-import tempfile
 import time
 from pathlib import Path
 from typing import Optional
@@ -112,7 +111,7 @@ class TestRetrainMultiHorizon:
         labels = [s[3] for s in specs]
         assert labels == ["primary", "primary"]
 
-    def test_load_retrain_config_inherits_alt_paths(self) -> None:
+    def test_load_retrain_config_inherits_alt_paths(self, tmp_path: Path) -> None:
         """load_retrain_config が skip_gate.model_path_buy_long を継承すること."""
         yaml_data = {
             "skip_gate": {
@@ -132,21 +131,15 @@ class TestRetrainMultiHorizon:
             },
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
-            yaml.dump(yaml_data, f)
-            tmp_path = Path(f.name)
+        config_path = tmp_path / "alt_horizon.yaml"
+        config_path.write_text(yaml.dump(yaml_data), encoding="utf-8")
 
-        try:
-            cfg = load_retrain_config(tmp_path)
-            assert cfg["model_path_buy_long"] == "models/v460/skip_gate_lgbm_pnl120_buy.pkl"
-            assert cfg["model_path_sell_short"] == "models/v460/skip_gate_lgbm_pnl30_sell.pkl"
-            assert cfg["alt_horizon_enabled"] is True
-            assert cfg["target_buy_alt"] == "pnl120"
-            assert cfg["target_sell_alt"] == "pnl30"
-        finally:
-            tmp_path.unlink(missing_ok=True)
+        cfg = load_retrain_config(config_path)
+        assert cfg["model_path_buy_long"] == "models/v460/skip_gate_lgbm_pnl120_buy.pkl"
+        assert cfg["model_path_sell_short"] == "models/v460/skip_gate_lgbm_pnl30_sell.pkl"
+        assert cfg["alt_horizon_enabled"] is True
+        assert cfg["target_buy_alt"] == "pnl120"
+        assert cfg["target_sell_alt"] == "pnl30"
 
     @staticmethod
     def _build_train_specs(
