@@ -875,9 +875,6 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         _macro_boost_applied = _offset_result.macro_boost_applied
         _execution_pre_clamp_offset = _offset_result.execution_pre_clamp_offset
         _executor_offset_stages_json = _offset_result.executor_offset_stages_json
-        _execution_sigma = _offset_result.execution_sigma
-        _execution_adverse_ofi = _offset_result.execution_adverse_ofi
-        _execution_additive_enabled = _offset_result.execution_additive_enabled
 
         # 2. 発注 (CM-2: リトライ付き)
         t_submit = time.time()
@@ -1384,10 +1381,6 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             execution_pre_clamp_offset=_execution_pre_clamp_offset,
             executor_offset_stages=_executor_offset_stages_json,  # 420# P1
             log_cycle_no=self._cycle_count,  # 533# ログ⇔JSONL join key
-            # 573# eDRC テレメトリ
-            execution_sigma=_execution_sigma,
-            execution_adverse_ofi=_execution_adverse_ofi,
-            execution_additive_enabled=_execution_additive_enabled,
         )
 
         self._log_cycle_result(
