@@ -351,6 +351,10 @@ class FillRecordBuilderMixin:
         requested_side: str | None = None,
         resolved_side_reason: str | None = None,
         log_cycle_no: int | None = None,
+        # 573# eDRC テレメトリ
+        execution_sigma: float | None = None,
+        execution_adverse_ofi: float | None = None,
+        execution_additive_enabled: bool | None = None,
     ) -> FillRecord:
         """188# FillRecord を組み立てる.
 
@@ -391,6 +395,10 @@ class FillRecordBuilderMixin:
             "resolved_side_reason": resolved_side_reason,
             # 533# log_cycle_no: ログ⇔JSONL join key
             "log_cycle_no": log_cycle_no,
+            # 573# eDRC テレメトリ
+            "execution_sigma": execution_sigma,
+            "execution_adverse_ofi": execution_adverse_ofi,
+            "execution_additive_enabled": execution_additive_enabled,
         }
         payload.update(
             self._build_fill_measurement_fields(
