@@ -30,27 +30,30 @@ import sys
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Final, TypedDict
+from typing import Final, TypedDict, cast
 
 import numpy as np
 
-_SCRIPT_DIR = Path(__file__).resolve().parent
-_PROJECT_ROOT = _SCRIPT_DIR.parent.parent.parent
-sys.path.insert(0, str(_PROJECT_ROOT))
-
-from ztb.metrics.fill_quality import (
-    apply_fill_record_filters,
-    iter_fill_record_objects_glob,
+from scripts.v460.analysis.analysis_common import (
+    DEFAULT_RESULTS_DIR,
+    Record,
+    extract_filled,
+    extract_pnl_array,
+    load_and_filter_records,
+    record_to_utc_hour,
 )
 from ztb.utils.safety import safe_to_finite
 
 logger = logging.getLogger(__name__)
 
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_PROJECT_ROOT: Final[Path] = _SCRIPT_DIR.parent.parent.parent
+sys.path.insert(0, str(_PROJECT_ROOT))
+
 # ======================================================================
 # 定数
 # ======================================================================
 
-_DEFAULT_RESULTS_DIR: Final[str] = "results/v460/fill_test"
 _DEFAULT_PERCENTILE: Final[float] = 10.0
 _MIN_RECORDS_FOR_ANALYSIS: Final[int] = 20
 _MIN_TAIL_FOR_OVERREP: Final[int] = 3
@@ -122,33 +125,10 @@ class SideResult(TypedDict, total=False):
 # ヘルパー関数
 # ======================================================================
 
-def _extract_filled(
-    records: list[dict[str, object]],
-    *,
-    side: str | None = None,
-) -> list[dict[str, object]]:
-    """約定済みレコードを抽出."""
-    out: list[dict[str, object]] = []
-    for r in records:
-        if not r.get("filled"):
-            continue
-        if side and r.get("side") != side:
-            continue
-        out.append(r)
-    return out
+# _extract_filled / _pnl_array → analysis_common.extract_filled / extract_pnl_array
 
 
-def _pnl_array(records: list[dict[str, object]]) -> np.ndarray:
-    """post_fill_30s_pnl を float 配列に変換."""
-    vals: list[float] = []
-    for r in records:
-        v = safe_to_finite(r.get("post_fill_30s_pnl"))
-        if v is not None:
-            vals.append(v)
-    return np.array(vals, dtype=float) if vals else np.array([], dtype=float)
-
-
-def _as_rate(records: list[dict[str, object]]) -> float:
+def _as_rate(records: list[Record]) -> float:
     """Adverse Selection レート."""
     if not records:
         return 0.0
@@ -157,7 +137,7 @@ def _as_rate(records: list[dict[str, object]]) -> float:
 
 
 def _flag_rate(
-    records: list[dict[str, object]], key: str,
+    records: list[Record], key: str,
 ) -> float | None:
     """bool フラグのレート (None 非対応を無視)."""
     valid = [r for r in records if r.get(key) is not None]
@@ -166,26 +146,12 @@ def _flag_rate(
     return sum(1 for r in valid if r.get(key)) / len(valid)
 
 
-def _record_to_utc_hour(r: dict[str, object]) -> int | None:
-    """レコードの timestamp → UTC hour."""
-    ts = r.get("timestamp")
-    if ts is None:
-        return None
-    try:
-        if isinstance(ts, str):
-            dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-        elif isinstance(ts, (int, float)):
-            dt = datetime.fromtimestamp(float(ts), tz=timezone.utc)
-        else:
-            return None
-        return dt.hour
-    except (ValueError, OSError, OverflowError):
-        return None
+# _record_to_utc_hour → analysis_common.record_to_utc_hour
 
 
 def _numeric_field_stats(
-    tail_records: list[dict[str, object]],
-    all_records: list[dict[str, object]],
+    tail_records: list[Record],
+    all_records: list[Record],
     field: str,
 ) -> FeatureStats:
     """数値フィールドの tail/total 比較統計."""
@@ -216,8 +182,8 @@ def _numeric_field_stats(
 
 
 def _compute_overrep(
-    tail_records: list[dict[str, object]],
-    all_records: list[dict[str, object]],
+    tail_records: list[Record],
+    all_records: list[Record],
     key: str,
     *,
     coerce_str: bool = True,
@@ -255,19 +221,19 @@ def _compute_overrep(
 
 
 def _compute_hour_overrep(
-    tail_records: list[dict[str, object]],
-    all_records: list[dict[str, object]],
+    tail_records: list[Record],
+    all_records: list[Record],
 ) -> list[HourEntry]:
     """時間帯別 over-representation を計算 (上位順ソート)."""
     tail_hours: dict[int, int] = defaultdict(int)
     total_hours: dict[int, int] = defaultdict(int)
 
     for r in tail_records:
-        h = _record_to_utc_hour(r)
+        h = record_to_utc_hour(r)
         if h is not None:
             tail_hours[h] += 1
     for r in all_records:
-        h = _record_to_utc_hour(r)
+        h = record_to_utc_hour(r)
         if h is not None:
             total_hours[h] += 1
 
@@ -300,8 +266,8 @@ def _compute_hour_overrep(
 # ======================================================================
 
 def _derive_actionable_filters(
-    tail_records: list[dict[str, object]],
-    all_records: list[dict[str, object]],
+    tail_records: list[Record],
+    all_records: list[Record],
     regime_overrep: dict[str, OverrepEntry],
     hour_overrep: list[HourEntry],
 ) -> list[dict[str, object]]:
@@ -407,7 +373,10 @@ def _derive_actionable_filters(
             })
 
     # ソート: 効率性降順
-    proposals.sort(key=lambda x: float(x.get("efficiency", 0)), reverse=True)
+    proposals.sort(
+        key=lambda x: safe_to_finite(x.get("efficiency")) or 0.0,
+        reverse=True,
+    )
     return proposals
 
 
@@ -416,7 +385,7 @@ def _derive_actionable_filters(
 # ======================================================================
 
 def analyze_tail_loss(
-    records: list[dict[str, object]],
+    records: list[Record],
     percentile: float = _DEFAULT_PERCENTILE,
 ) -> dict[str, SideResult]:
     """side 別にテール損失を分析.
@@ -431,8 +400,8 @@ def analyze_tail_loss(
     result: dict[str, SideResult] = {}
 
     for side in ["sell", "buy"]:
-        filled = _extract_filled(records, side=side)
-        arr = _pnl_array(filled)
+        filled = extract_filled(records, side=side)
+        arr = extract_pnl_array(filled)
 
         if len(arr) < _MIN_RECORDS_FOR_ANALYSIS:
             result[side] = SideResult(
@@ -445,13 +414,13 @@ def analyze_tail_loss(
         threshold = float(np.percentile(arr, percentile))
 
         # テール records 抽出
-        tail_records: list[dict[str, object]] = []
+        tail_records: list[Record] = []
         for r in filled:
             pnl_val = safe_to_finite(r.get("post_fill_30s_pnl"))
             if pnl_val is not None and pnl_val <= threshold:
                 tail_records.append(r)
 
-        tail_pnl = _pnl_array(tail_records)
+        tail_pnl = extract_pnl_array(tail_records)
 
         # --- 分析軸 ---
         # 1) Regime over-representation
@@ -621,7 +590,7 @@ def print_analysis(
             ("orderbook_imbalance", "obi_stats"),
             ("skip_gate_score", "skip_gate_score_stats"),
         ]:
-            stats = d.get(stats_key, {})
+            stats = cast(FeatureStats, d.get(stats_key, {}))
             if not stats:
                 continue
             t_mean = stats.get("tail_mean")
@@ -656,8 +625,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--results-dir",
-        default=_DEFAULT_RESULTS_DIR,
-        help=f"fill_records ディレクトリ (default: {_DEFAULT_RESULTS_DIR})",
+        default=DEFAULT_RESULTS_DIR,
+        help=f"fill_records ディレクトリ (default: {DEFAULT_RESULTS_DIR})",
     )
     parser.add_argument(
         "--percentile",
@@ -686,23 +655,16 @@ def main(args: argparse.Namespace | None = None) -> dict[str, SideResult]:
     results_dir = Path(args.results_dir)
     print(f"\n  Loading fill records from: {results_dir}")
 
-    raw = list(iter_fill_record_objects_glob(results_dir, include_emergency=False))
-    print(f"  Total raw records: {len(raw)}")
+    records = load_and_filter_records(
+        str(results_dir),
+        git_sha=args.git_sha,
+        date_from=args.date_from,
+        date_to=args.date_to,
+        include_emergency=False,
+    )
+    print(f"  Total records: {len(records)}")
 
-    # フィルタ適用
-    if args.git_sha or args.date_from or args.date_to:
-        records, filters = apply_fill_record_filters(
-            raw,
-            git_sha=args.git_sha,
-            date_from=args.date_from,
-            date_to=args.date_to,
-        )
-        print(f"  Filtered: {len(raw)} → {len(records)} "
-              f"(sha={args.git_sha}, from={args.date_from}, to={args.date_to})")
-    else:
-        records = raw
-
-    filled = _extract_filled(records)
+    filled = extract_filled(records)
     print(f"  Filled records: {len(filled)}")
 
     # 分析実行

@@ -6447,3 +6447,7 @@ python scripts/unified_trainer.py \
 - `scripts/v460/analysis/ab_offset_comparison.py` の filtered return を `dict[str, object]` 契約へ明示 cast し、shared filter API と整合
 - `scripts/v460/analysis/hour_matched_comparison.py` に `HourComparisonResult` を追加し、`start_ts` / `by_hour` / overall summary の型を `TypedDict` ベースへ整理
 - targeted mypy で `ab_offset_comparison.py` / `hour_matched_comparison.py` の 2 ファイル clean を確認
+## 2026-03-24 analysis typing tail-loss follow-up
+- `scripts/v460/analysis/tail_loss_analysis.py` に shared `Record` alias を取り込み、proposal sort / feature stats access / output path の型崩れを整理
+- `safe_to_finite(...)` を使って actionable proposal の efficiency sort を型安全にし、`_PROJECT_ROOT` 未定義の出力経路も補正
+- targeted mypy で `tail_loss_analysis.py` clean、focused pytest で `tests/v460/test_346_tail_loss_analysis.py` の `32 passed, 1 skipped` を確認

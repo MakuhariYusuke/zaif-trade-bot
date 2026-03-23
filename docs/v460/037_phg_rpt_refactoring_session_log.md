@@ -8889,3 +8889,15 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - targeted mypy:
   - `.venv/Scripts/python.exe scripts/quality/run_targeted_mypy.py scripts/v460/analysis/ab_offset_comparison.py scripts/v460/analysis/hour_matched_comparison.py`
   - `Success: no issues found in 2 source files`
+## 2026-03-24 analysis typing tail-loss follow-up
+- `scripts/v460/analysis/tail_loss_analysis.py`
+  - shared `Record` alias を取り込み、analysis 層の型契約に合わせた
+  - actionable proposal の efficiency sort を `safe_to_finite(...)` ベースへ変更し、`object -> float` の強引な変換を除去
+  - `FeatureStats` 参照箇所を cast で明示し、`stats.get(...)` の型崩れを解消
+  - `_PROJECT_ROOT` を analysis script 共通パターンに合わせて定義し、JSON 出力先の未定義参照を解消
+- targeted mypy:
+  - `.venv/Scripts/python.exe scripts/quality/run_targeted_mypy.py scripts/v460/analysis/tail_loss_analysis.py`
+  - `Success: no issues found in 1 source file`
+- focused pytest:
+  - `tests/v460/test_346_tail_loss_analysis.py`
+  - `32 passed, 1 skipped`
