@@ -871,6 +871,23 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
             ),
         )
 
+    def _apply_cross_venue_offset_stage(
+        self,
+        stages: OffsetStageStore | None,
+        side: str,
+        current_ratio: float,
+    ) -> float:
+        """Apply cross-venue guard and raise the canonical veto when needed."""
+        updated_ratio = self._apply_offset_ratio_stage(
+            stages,
+            "cross_venue",
+            self._apply_cross_venue_lead_lag_guard,
+            side,
+            current_ratio,
+        )
+        self._raise_cross_venue_veto_if_needed()
+        return updated_ratio
+
     def _resolve_cached_imbalance(self, cfg: FillTestConfig) -> float:
         """Resolve the imbalance input for this cycle from cached state."""
         if cfg.imbalance_enabled:
@@ -1219,14 +1236,11 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         )
 
         # 439# cross-venue lead-lag guard: adverse-side retreat / veto
-        effective_offset_ratio = self._apply_offset_ratio_stage(
+        effective_offset_ratio = self._apply_cross_venue_offset_stage(
             _stages,
-            "cross_venue",
-            self._apply_cross_venue_lead_lag_guard,
             side,
             effective_offset_ratio,
         )
-        self._raise_cross_venue_veto_if_needed()
 
         # 163# ステージ抽出: _apply_imbalance_risk()
         # 541#: disabled 時はステージ記録のみ

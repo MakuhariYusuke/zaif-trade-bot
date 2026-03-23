@@ -214,3 +214,13 @@ Done の基準:
 - Wave 2 はかなり終盤で、次は ownership の最終整理と Wave 3/4 の仕上げを並行で進めるのが安全
 - `550#` は設計の基準、`551#` は実行順の基準、`521#` は全体の母艦、という役割分担で運用する
 - 報酬系の詳細設計と実行順は `557#` を正本とし、`551#` では Wave 全体との接続だけを持つ
+
+## 直近の前進メモ
+
+- `maker_price`
+  - cross-venue stage + veto raise を local helper に寄せ、`compute()` の責務をさらに薄くした
+- `ab_judgment`
+  - per-regime criteria 構築と single-regime evaluation を local helper に寄せた
+- Wave 3
+  - `training_stats_payloads.py` に reward payload 抽出 helper を追加し、
+    callback 側の `reward_components` 取得経路を canonical 化した

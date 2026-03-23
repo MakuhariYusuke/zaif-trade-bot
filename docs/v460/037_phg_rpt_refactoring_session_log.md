@@ -8660,3 +8660,17 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `RewardKernel` 境界
     - テストの守り方
     を明文化
+## 2026-03-23 wave2 ownership + wave3 reward payload extraction
+- `scripts/v460/lib/maker_price.py`
+  - `_apply_cross_venue_offset_stage(...)` を追加し、cross-venue stage と veto raise を local helper に集約
+- `scripts/v460/lib/ab_judgment.py`
+  - `_collect_all_regimes(...)`
+  - `_build_per_regime_criteria(...)`
+  - `_evaluate_single_regime(...)`
+  を追加し、per-regime orchestration を薄くした
+- `ztb/training/utils/training_stats_payloads.py`
+  - `extract_reward_component_metrics(...)` を追加
+- `ztb/training/unified_trainer/base/callbacks.py`
+  - reward payload 抽出を shared helper 経由へ統一
+- focused:
+  - `165 passed in 17.18s`

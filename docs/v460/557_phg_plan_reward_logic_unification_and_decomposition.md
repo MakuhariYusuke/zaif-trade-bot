@@ -93,6 +93,12 @@
 - trainer/SAC
 が見る `reward_components` の shape を段階的に揃える。
 
+直近の前進:
+- `training_stats_payloads.extract_reward_component_metrics(...)` を追加し、
+  callback 側の canonical payload / legacy flat info の両方を 1 経路で扱えるようにした
+- これにより、`reward_components` を持つ env info と、
+  旧来の `*_penalty` / `*_shaping` flat field の両方を安全に収束できる
+
 ---
 
 ## 3. 実行ロードマップ (更新)

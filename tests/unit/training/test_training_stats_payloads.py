@@ -3,8 +3,10 @@ from __future__ import annotations
 from ztb.training.utils.training_stats_payloads import (
     average_reward_component_history,
     build_optimization_training_stats,
+    extract_reward_component_metrics,
     get_reward_components_payload,
     record_average_reward_components,
+    record_optimization_training_stats,
     record_training_stat,
 )
 
@@ -75,3 +77,49 @@ def test_get_reward_components_payload_returns_shallow_copy() -> None:
 
 def test_get_reward_components_payload_ignores_invalid_payload() -> None:
     assert get_reward_components_payload({"reward_components": 1.0}) is None
+
+
+def test_extract_reward_component_metrics_prefers_canonical_payload() -> None:
+    payload = extract_reward_component_metrics(
+        {
+            "reward_components": {"balance_penalty": -0.2},
+            "balance_penalty": -1.0,
+        }
+    )
+
+    assert payload == {"balance_penalty": -0.2}
+
+
+def test_extract_reward_component_metrics_falls_back_to_flat_info() -> None:
+    payload = extract_reward_component_metrics(
+        {
+            "balance_penalty": -0.2,
+            "entropy_shaping": 0.1,
+            "action_bonus": 0.05,
+            "portfolio_value": 10_000.0,
+        }
+    )
+
+    assert payload == {
+        "balance_penalty": -0.2,
+        "entropy_shaping": 0.1,
+        "action_bonus": 0.05,
+    }
+
+
+def test_record_optimization_training_stats_builds_and_persists_payload() -> None:
+    training_stats: dict[str, object] = {}
+
+    payload = record_optimization_training_stats(
+        training_stats,
+        memory_stats={"rss_mb": 100.0},
+        performance_profile={"step_s": 0.5},
+        parallel_processing_enabled=True,
+        cache_size=12,
+    )
+
+    assert payload["memory_stats"] == {"rss_mb": 100.0}
+    assert payload["performance_profile"] == {"step_s": 0.5}
+    assert payload["parallel_processing_enabled"] is True
+    assert payload["cache_size"] == 12
+    assert training_stats["optimization"] == payload

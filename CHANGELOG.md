@@ -6361,3 +6361,8 @@ python scripts/unified_trainer.py \
 - `551#` に Wave ごとの理由・具体手順・止めどころ・着手判断ルールを追記
 - `557#` に報酬系の実装単位と「やらないこと」を追記
 - `521#` に `551#` / `557#` の役割分担を補強
+## 2026-03-23 wave2 ownership follow-up and reward payload extraction
+- `scripts/v460/lib/maker_price.py` に `_apply_cross_venue_offset_stage(...)` を追加し、cross-venue stage と veto raise を local helper 化
+- `scripts/v460/lib/ab_judgment.py` に per-regime helper 群を追加し、criteria/evaluation ownership を整理
+- `ztb/training/utils/training_stats_payloads.py` に `extract_reward_component_metrics(...)` を追加し、callback 側の reward payload 抽出を canonical 化
+- `tests/unit/training/test_training_stats_payloads.py` と `tests/unit/training/test_reward_components_persistence.py` に関連回帰を追加

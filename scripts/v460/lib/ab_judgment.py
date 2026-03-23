@@ -1000,6 +1000,65 @@ class PerRegimeResult:
     result: ABJudgmentResult
 
 
+def _collect_all_regimes(
+    variant_records: list[FillRecord],
+    control_records: list[FillRecord],
+    *,
+    target_regimes: list[str] | None = None,
+) -> list[str]:
+    """Collect the sorted regime set targeted for per-regime evaluation."""
+    all_regimes: set[str] = set()
+    for record in variant_records:
+        all_regimes.add(str(record.get("regime") or "none"))
+    for record in control_records:
+        all_regimes.add(str(record.get("regime") or "none"))
+    if target_regimes is not None:
+        all_regimes &= set(target_regimes)
+    return sorted(all_regimes)
+
+
+def _build_per_regime_criteria(
+    criteria: ABJudgmentCriteria,
+) -> ABJudgmentCriteria:
+    """Build per-regime criteria with outer regime filtering disabled."""
+    return ABJudgmentCriteria(
+        min_filled_records=criteria.min_filled_records,
+        min_control_filled_records=criteria.min_control_filled_records,
+        min_calendar_days=criteria.min_calendar_days,
+        fill_rate_min=criteria.fill_rate_min,
+        fill_rate_degradation_tolerance=criteria.fill_rate_degradation_tolerance,
+        avg_pnl30_min_bps=criteria.avg_pnl30_min_bps,
+        avg_pnl30_must_improve=criteria.avg_pnl30_must_improve,
+        downside_p10_min_bps=criteria.downside_p10_min_bps,
+        downside_p10_degradation_max_bps=criteria.downside_p10_degradation_max_bps,
+        exclude_regimes=[],
+    )
+
+
+def _evaluate_single_regime(
+    regime: str,
+    *,
+    variant_records: list[FillRecord],
+    control_records: list[FillRecord],
+    criteria: ABJudgmentCriteria,
+    variant_label: str,
+    control_label: str,
+) -> PerRegimeResult | None:
+    """Evaluate one regime or skip when both sides are empty."""
+    v_filtered = _filter_by_regime(variant_records, regime)
+    c_filtered = _filter_by_regime(control_records, regime)
+    if not v_filtered and not c_filtered:
+        return None
+    ab_result = evaluate_ab_variant(
+        variant_records=v_filtered,
+        control_records=c_filtered,
+        criteria=criteria,
+        variant_label=f"{variant_label}[{regime}]",
+        control_label=f"{control_label}[{regime}]",
+    )
+    return PerRegimeResult(regime=regime, result=ab_result)
+
+
 def evaluate_per_regime(
     variant_records: list[FillRecord],
     control_records: list[FillRecord],
@@ -1028,47 +1087,25 @@ def evaluate_per_regime(
     if criteria is None:
         criteria = ABJudgmentCriteria()
 
-    # regime 別に分類
-    all_regimes: set[str] = set()
-    for r in variant_records:
-        all_regimes.add(str(r.get("regime") or "none"))
-    for r in control_records:
-        all_regimes.add(str(r.get("regime") or "none"))
-
-    if target_regimes is not None:
-        all_regimes = all_regimes & set(target_regimes)
-
-    # per-regime 判定: exclude_regimes を無効化して個別 regime を評価
-    per_regime_criteria = ABJudgmentCriteria(
-        min_filled_records=criteria.min_filled_records,
-        min_control_filled_records=criteria.min_control_filled_records,
-        min_calendar_days=criteria.min_calendar_days,
-        fill_rate_min=criteria.fill_rate_min,
-        fill_rate_degradation_tolerance=criteria.fill_rate_degradation_tolerance,
-        avg_pnl30_min_bps=criteria.avg_pnl30_min_bps,
-        avg_pnl30_must_improve=criteria.avg_pnl30_must_improve,
-        downside_p10_min_bps=criteria.downside_p10_min_bps,
-        downside_p10_degradation_max_bps=criteria.downside_p10_degradation_max_bps,
-        exclude_regimes=[],  # regime filtering は外側で行う
+    all_regimes = _collect_all_regimes(
+        variant_records,
+        control_records,
+        target_regimes=target_regimes,
     )
+    per_regime_criteria = _build_per_regime_criteria(criteria)
 
     results: list[PerRegimeResult] = []
-    for regime in sorted(all_regimes):
-        v_filtered = _filter_by_regime(variant_records, regime)
-        c_filtered = _filter_by_regime(control_records, regime)
-
-        # どちらかが空なら INSUFFICIENT
-        if not v_filtered and not c_filtered:
-            continue
-
-        ab_result = evaluate_ab_variant(
-            variant_records=v_filtered,
-            control_records=c_filtered,
+    for regime in all_regimes:
+        per_regime_result = _evaluate_single_regime(
+            regime,
+            variant_records=variant_records,
+            control_records=control_records,
             criteria=per_regime_criteria,
-            variant_label=f"{variant_label}[{regime}]",
-            control_label=f"{control_label}[{regime}]",
+            variant_label=variant_label,
+            control_label=control_label,
         )
-        results.append(PerRegimeResult(regime=regime, result=ab_result))
+        if per_regime_result is not None:
+            results.append(per_regime_result)
 
     return results
 

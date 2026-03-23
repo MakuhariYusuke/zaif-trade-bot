@@ -24,7 +24,7 @@ from ztb.trading.environment.constants import continuous_to_discrete_action
 from ztb.training.constants import ENV_EVAL_FREQUENCY, DEFAULT_CHECK_FREQ
 from ztb.training.unified_trainer.base.lr_scheduler import DynamicLRScheduler
 from ztb.training.system_optimizer import SystemOptimizer
-from ztb.training.utils.training_stats_payloads import get_reward_components_payload
+from ztb.training.utils.training_stats_payloads import extract_reward_component_metrics
 
 class TrainingProgressCallback(BaseCallback):
     """Enhanced callback for monitoring training progress and action distribution."""
@@ -164,7 +164,7 @@ class TrainingProgressCallback(BaseCallback):
                             info.get("market_regime", "unknown")
 
                             # Collect reward_components if available for AB analysis
-                            reward_components = get_reward_components_payload(info)
+                            reward_components = extract_reward_component_metrics(info)
                             if reward_components is not None:
                                 self.reward_components_history.append(reward_components)
 
@@ -483,15 +483,7 @@ class TrainingProgressCallback(BaseCallback):
                             if infos and len(infos) > 0 and isinstance(infos[0], dict):
                                 info = infos[0]
                                 # reward components are added to info by environment: e.g. skew_penalty, balance_penalty
-                                components = {}
-                                for k, v in info.items():
-                                    # only include reward-related metrics to keep reports compact
-                                    if (
-                                        k.endswith("_penalty")
-                                        or k.endswith("_shaping")
-                                        or k == "action_bonus"
-                                    ):
-                                        components[k] = v
+                                components = extract_reward_component_metrics(info)
                                 if components:
                                     stats["reward_components"] = components
                         except Exception:

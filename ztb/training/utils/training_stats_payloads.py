@@ -30,6 +30,27 @@ def build_optimization_training_stats(
     }
 
 
+def record_optimization_training_stats(
+    training_stats: MutableMapping[str, object],
+    *,
+    memory_stats: object,
+    performance_profile: object,
+    parallel_processing_enabled: bool,
+    cache_size: int,
+    data_optimization_applied: bool = True,
+) -> dict[str, object]:
+    """Build and persist optimization stats through the canonical training-stats path."""
+    payload = build_optimization_training_stats(
+        memory_stats=memory_stats,
+        performance_profile=performance_profile,
+        parallel_processing_enabled=parallel_processing_enabled,
+        cache_size=cache_size,
+        data_optimization_applied=data_optimization_applied,
+    )
+    record_training_stat(training_stats, "optimization", payload)
+    return payload
+
+
 def average_reward_component_history(
     history: Sequence[Mapping[str, object]],
 ) -> dict[str, float]:
@@ -73,10 +94,31 @@ def get_reward_components_payload(
     return dict(payload)
 
 
+def extract_reward_component_metrics(
+    container: Mapping[str, object],
+) -> dict[str, object] | None:
+    """Extract reward-component metrics from canonical payload or legacy flat info."""
+    payload = get_reward_components_payload(container)
+    if payload is not None:
+        return payload
+
+    fallback: dict[str, object] = {}
+    for key, value in container.items():
+        if (
+            key.endswith("_penalty")
+            or key.endswith("_shaping")
+            or key == "action_bonus"
+        ):
+            fallback[key] = value
+    return fallback or None
+
+
 __all__ = [
     "average_reward_component_history",
     "build_optimization_training_stats",
+    "extract_reward_component_metrics",
     "get_reward_components_payload",
+    "record_optimization_training_stats",
     "record_average_reward_components",
     "record_training_stat",
 ]

@@ -45,7 +45,7 @@ class TestComputeExtractMethod:
     def test_compute_calls_cross_venue_veto_helper(self) -> None:
         """compute() が veto raise helper を経由する."""
         src = self._maker_price_source("compute")
-        assert "self._raise_cross_venue_veto_if_needed()" in src
+        assert "self._apply_cross_venue_offset_stage(" in src
 
     def test_compute_calls_optional_stage_helper(self) -> None:
         """compute() が optional stage helper 経由で disabled/no-op を扱う."""

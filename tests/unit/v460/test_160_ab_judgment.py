@@ -38,6 +38,7 @@ from scripts.v460.lib.ab_judgment import (
     _cliffs_delta,
     _apply_statistical_comparison_payload,
     _build_ab_judgment_result,
+    _build_per_regime_criteria,
     _build_statistical_summary_lines,
     _holm_bonferroni,
     _mann_whitney_u,
@@ -899,6 +900,17 @@ class TestExcludeRegimes:
 
 class TestEvaluatePerRegime:
     """evaluate_per_regime テスト."""
+
+    def test_build_per_regime_criteria_clears_exclude_regimes(self) -> None:
+        criteria = ABJudgmentCriteria(
+            min_filled_records=12,
+            exclude_regimes=["none", "unknown"],
+        )
+
+        per_regime = _build_per_regime_criteria(criteria)
+
+        assert per_regime.min_filled_records == 12
+        assert per_regime.exclude_regimes == []
 
     def test_basic_per_regime(self) -> None:
         """regime 別に分離して判定が行われる."""
