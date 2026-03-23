@@ -861,6 +861,62 @@ def section_pre_clamp_distribution(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
+def section_execution_quality_comparison(records: list[dict[str, Any]]) -> list[str]:
+    """571# Task A: 加法 vs 乗法パイプラインの執行品質比較分析.
+
+    experimental_additive_pipeline トグルの有無で fill を分類し、
+    Kissell & Glantz 指標 (Spread Capture, AS Cost, ICR) を比較する。
+    """
+    filled = [r for r in records if r.get("filled")]
+    if not filled:
+        return ["## Execution Quality Comparison", "  (no fills)", ""]
+
+    groups: dict[str, list[dict[str, Any]]] = {"multiplicative": [], "additive": []}
+    for r in filled:
+        mode = "additive" if r.get("execution_additive_enabled") else "multiplicative"
+        groups[mode].append(r)
+
+    lines = ["## Execution Quality Comparison (571# Additive vs Multiplicative)"]
+
+    for mode, recs in groups.items():
+        if not recs:
+            continue
+
+        captures = [
+            float(r["spread_capture_bps"])
+            for r in recs
+            if r.get("spread_capture_bps") is not None
+        ]
+        costs = [
+            float(r["adverse_selection_cost_bps"])
+            for r in recs
+            if r.get("adverse_selection_cost_bps") is not None
+        ]
+
+        if not captures or not costs:
+            lines.append(f"  --- {mode.upper()} (n={len(recs)}) ---")
+            lines.append("    (spread_capture_bps / adverse_selection_cost_bps not recorded)")
+            continue
+
+        avg_cap = float(np.mean(captures))
+        avg_cost = float(np.mean(costs))
+        net_pnl = avg_cap + avg_cost
+
+        icr = avg_cap / abs(avg_cost) if avg_cost != 0 else 0.0
+
+        lines.append(f"  --- {mode.upper()} (n={len(recs)}) ---")
+        lines.append(f"    Spread Capture: {avg_cap:+.2f} bps")
+        lines.append(f"    AS Cost (90s):  {avg_cost:+.2f} bps")
+        lines.append(f"    Net Spread PnL: {net_pnl:+.2f} bps")
+        lines.append(f"    Info Capture Ratio: {icr:.3f}")
+
+    if not any(groups.values()):
+        lines.append("  (no pipeline data)")
+
+    lines.append("")
+    return lines
+
+
 def section_spread_decomposition(records: list[dict[str, Any]]) -> list[str]:
     """565# I2: Spread Capture / Adverse Selection Cost 分解."""
     filled = [r for r in records if r.get("filled")]
@@ -961,6 +1017,7 @@ def main() -> None:
     all_lines.extend(section_microstructure_correlation(records))
     all_lines.extend(section_pre_clamp_distribution(records))
     all_lines.extend(section_spread_decomposition(records))
+    all_lines.extend(section_execution_quality_comparison(records))
 
     output_text = "\n".join(all_lines)
 
