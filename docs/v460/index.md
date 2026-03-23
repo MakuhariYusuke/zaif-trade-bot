@@ -680,6 +680,7 @@ NNN_phX_TYPE_description.md
 | 568 | spec | [568_phg_spec_execution_engine_mathematical_renewal.md](568_phg_spec_execution_engine_mathematical_renewal.md) | 執行エンジンの数理刷新仕様書: 加法パイプラインと指数的 DRC |
 | 569 | spec | [569_phg_spec_coefficient_mapping_and_quantization.md](569_phg_spec_coefficient_mapping_and_quantization.md) | 執行エンジンの係数マッピングと量子化パラメータ定義 |
 | 570 | spec | [570_phg_spec_robust_inputs_and_additive_parameters.md](570_phg_spec_robust_inputs_and_additive_parameters.md) | 執行エンジンのロバスト入力設計と加法パイプライン本番係数マッピング |
+| 571 | impl | [571_phg_impl_robust_stats_and_quality_metrics_draft.md](571_phg_impl_robust_stats_and_quality_metrics_draft.md) | ロバスト統計ユーティリティの実装と執行品質比較分析ドラフト |
 | 559 | impl | [559_phg_impl_self_review_and_bugfix.md](559_phg_impl_self_review_and_bugfix.md) | 553#–555# セルフレビュー: PnL単位/Action bin 不整合修正 + Entry Gate ログ出力 |
 | 560 | rpt | [560_phg_rpt_fill_test_post_restart_analysis.md](560_phg_rpt_fill_test_post_restart_analysis.md) | Fill Test 再起動後パフォーマンス分析 (3/12–3/22) |
 | 562 | review | [562_phg_review_560_561_analysis_and_proposals.md](562_phg_review_560_561_analysis_and_proposals.md) | 560#・561# レビュー: 実データ検証と統合改善提案 |
