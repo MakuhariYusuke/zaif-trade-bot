@@ -281,7 +281,13 @@ class OffsetPipelineMixin(PreOrderAdjustmentsMixin):
             )
         if self.config.execution_final_clamp_enabled:
             # 467#: hour_ceiling_mult 反映
-            _fc_ceil = self.config.resolve_offset_ceiling(side, utc_hour=current_utc_hour())
+            # 568#: eDRC 用に sigma と adverse_ofi を渡す
+            _fc_ceil = self.config.resolve_offset_ceiling(
+                side,
+                utc_hour=current_utc_hour(),
+                sigma=self._maker_price.last_sigma,
+                adverse_ofi=self._maker_price.get_adverse_ofi(side)
+            )
             _ceiling = clamp_offset_ratio_to_ceiling(
                 effective_offset_ratio=effective_offset_ratio,
                 ceiling_ratio=_fc_ceil,

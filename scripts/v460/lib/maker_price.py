@@ -417,6 +417,17 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         """543# OFI-Lite: 直近の cycle-to-cycle OFI [-1, +1]."""
         return self._last_ofi_lite
 
+    def get_adverse_ofi(self, side: str) -> float:
+        """568# eDRC用: 現在のOFI履歴から見た逆選択圧力(Adverse OFI).
+        OFI > 0: 買い圧力 (sell側に不利), OFI < 0: 売り圧力 (buy側に不利)
+        不利な圧力を正の float として返す。有利なら 0 を返す。
+        """
+        if not self._ofi_history:
+            return 0.0
+        ofi_mean = sum(self._ofi_history) / len(self._ofi_history)
+        adverse = -ofi_mean if side == "buy" else ofi_mean
+        return max(0.0, adverse)
+
     def update_fast_fill_defense(self, ffd: "FastFillDefense") -> None:
         """210# F: hot-reload 後の FastFillDefense 参照更新 (カプセル化維持)."""
         self._fast_fill_defense = ffd

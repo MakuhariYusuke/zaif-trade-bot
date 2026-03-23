@@ -79,6 +79,11 @@ class PreOrderAdjustmentsMixin:
         if not aggressive_when_multiplier_gt_one and offset_mult < 1.0:
             return order_price, effective_offset_ratio, None, None
 
+        # 565# P3: Stage max_mult導入 (各段上限2.0)
+        # 乗数チェーンの爆発を防ぐため、1段あたりの multiplier を最大2.0に制限
+        if offset_mult > 2.0:
+            offset_mult = 2.0
+
         old_offset = spread_at_order * effective_offset_ratio
         new_offset = old_offset * offset_mult
         delta = new_offset - old_offset

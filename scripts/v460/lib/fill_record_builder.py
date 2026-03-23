@@ -90,6 +90,8 @@ class FillRecordBuilderMixin:
             "post_fill_30s_pnl": pnl.post_fill_pnl,
             "post_fill_60s_pnl": pnl.post_fill_60s_pnl,
             "post_fill_120s_pnl": pnl.post_fill_120s_pnl,
+            "spread_capture_bps": pnl.spread_capture_bps,
+            "adverse_selection_cost_bps": pnl.adverse_selection_cost_bps,
             "adverse_selected": pnl.adverse_selected,
             "adverse_selected_raw": pnl.adverse_selected_raw,
             "cancel_reason": self._resolve_fill_cancel_reason(

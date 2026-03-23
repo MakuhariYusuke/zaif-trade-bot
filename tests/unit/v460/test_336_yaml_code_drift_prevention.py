@@ -196,8 +196,6 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "volatility_guard_vpin_threshold",
     "vpin_vol_sync_enabled",
     "wide_spread_bps",
-    # --- 555# entry gate ---
-    "entry_gate_calibration_map_path",  # 555# YAML has path, code default empty
 })
 
 

@@ -167,6 +167,18 @@ def _parse_trading_features(yaml_cfg: dict) -> dict:
         if yaml_key in ee:
             kwargs[config_key] = ee[yaml_key]
 
+    # ---- 568# M1/M2: Additive Pipeline & eDRC Transition ----
+    # 移行中の動的パラメータ設定
+    edrc = yaml_cfg.get("experimental_additive_pipeline", {})
+    if isinstance(edrc, bool):
+        kwargs["experimental_additive_pipeline"] = edrc
+    elif isinstance(edrc, dict):
+        if edrc.get("enabled") is not None:
+            kwargs["experimental_additive_pipeline"] = edrc["enabled"]
+        for key in ["edrc_alpha", "edrc_beta", "edrc_c_base", "additive_base_bps"]:
+            if key in edrc:
+                kwargs[key] = float(edrc[key])
+
     # 054# S4: Spread Adaptive Offset
     sa = yaml_cfg.get("spread_adaptive", {})
     if sa.get("enabled") is not None:

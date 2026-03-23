@@ -265,7 +265,8 @@ class RiskGuardsMixin:
 
         # 512# favorable-side tightening: adverse 側でなくても favorable 側で offset 縮小
         if hint.adverse_side != side:
-            if not cfg.cross_venue_favorable_tighten_enabled:
+            # 565# P2: CV favorable_tighten sell側無効化 (564# 指摘)
+            if not cfg.cross_venue_favorable_tighten_enabled or side == "sell":
                 return effective_offset_ratio
             # favorable side: offset を confidence 比例で縮小 (fill rate 向上)
             # tighten_factor = 1 - (1 - mult) × confidence

@@ -104,7 +104,7 @@ confidence_lot:
 # 用途: lot_sizer の step-based 増量結果を Kelly 推奨ロット以下にクランプ
 # edge < 0 ならロット=最小値 → 理論的ストッパー
 kelly:
-  enabled: true               # 274# 観測 + 天井適用開始
+  enabled: false              # 565# 盲点6: lot_sizingがfalseのため矛盾解消で一時的に無効化
   equity_btc: 0.002           # Kelly 推奨ロット計算用 BTC 建て自己資本
   fraction: 0.5               # Fractional Kelly (0.5 = half-Kelly、保守的)
   max_fraction: 0.25          # f* の上限 (暴走防止、full-Kelly の 25%)
@@ -684,8 +684,17 @@ offset_stage_recording:
 # - sell ceiling=0.50 に引上げ → regime boost(×1.8=0.54)が ceil で 0.50 まで有効化
 # - buy ceiling=0.15 据置 → buy side には十分な制御
 offset_ceiling_ratio: 0.15        # 共通デフォルト (サイド別が未設定時に使用)
-offset_ceiling_ratio_buy: 0.30    # 542# 0.25→0.30 (540#§2: spread_adapt narrow boost→0.30出力を0.25でclamp→76.7%飽和。max_offset_ratio=0.30と統一し情報損失を撤廃)
-offset_ceiling_ratio_sell: 0.30   # 542# 0.25→0.30 (540#§2: 同上。sell_hour_boost/toxicity等の上位防御は hour_ceiling_mult + executor final_clamp で別途保証)
+offset_ceiling_ratio_buy: 0.35    # 565# P1: 0.30→0.35 (I3 pre_clamp分布 p50=0.3067 のため引上げ、562# P-B提案)
+offset_ceiling_ratio_sell: 0.40   # 565# P1: 0.30→0.40 (sell側テールリスク対応のための上限解放)
+
+# ---- 568# M1/M2: Additive Pipeline & eDRC Transition ----
+experimental_additive_pipeline:
+  enabled: false
+  edrc_alpha: 0.0          # eDRC (Exponential Dynamic Risk Ceiling) alpha
+  edrc_beta: 0.0           # eDRC beta
+  edrc_c_base: 0.40        # eDRC Base Ceiling (baseline offset ratio max)
+  additive_base_bps: 0.0   # Additive offset base (M2)
+
 # ---- 421# P0: Execution Final Clamp (416#/417# review) ----
 # maker_price ceiling 後の executor multiplier chain (EV/velocity/toxicity 等) が
 # ceiling を迂回する構造欠陥の修正。全 multiplier 適用後に ceiling を再適用。
@@ -1166,19 +1175,3 @@ composite_risk_weight_unknown_regime: 0.6
 composite_risk_weight_ranging_low_vol: 0.5
 composite_risk_weight_trending_sell: 0.7
 composite_risk_weight_velocity: 0.4
-
-# ---- 555# Entry Gate: CalibrationMap EV ベースエントリー判定 (546# §B) ----
-# CalibrationMap の統計量 (p_win, avg_win, avg_loss) と CostModel から
-# 期待値 (EV) を算出し、EV ≤ 0 の場面で新規エントリーを抑制。
-# enabled=false の場合は EV をログ記録のみ (実際の blocking はしない)。
-entry_gate:
-  enabled: false                    # 555# 初期は観測モード (log_only)
-  calibration_map_path: "models/v460/entry_gate_calibration.json"
-  probability_mode: "lcb"           # lcb / mean / ucb
-  ewma_tau: 100.0                   # EWMA 時定数
-  n_min: 30.0                       # 信頼必要サンプル数
-  fee_rate: 0.0                     # maker fee (Coincheck maker=0)
-  c_spread: 0.3                     # spread cost weight
-  c_vol: 0.2                        # volatility cost weight
-  c_imp: 0.5                        # market impact weight
-  online_update: true               # 約定後に CalibrationMap を online 更新
