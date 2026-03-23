@@ -677,6 +677,7 @@ NNN_phX_TYPE_description.md
 | 558 | impl | [558_phg_impl_reward_logic_unification_report.md](558_phg_impl_reward_logic_unification_report.md) | 報酬計算ロジックの一元化と RewardKernel の実装報告 |
 | 561 | rpt | [561_phg_rpt_sell_side_tail_risk_analysis.md](561_phg_rpt_sell_side_tail_risk_analysis.md) | Sell側テールの脆弱性と動的天井（Dynamic Ceiling）への移行論証 |
 | 566 | plan | [566_phg_plan_drc_integration_and_mathematical_fix.md](566_phg_plan_drc_integration_and_mathematical_fix.md) | 執行エンジンの「幾何学的欠陥」の修正と指数的 DRC への統合設計 |
+| 568 | spec | [568_phg_spec_execution_engine_mathematical_renewal.md](568_phg_spec_execution_engine_mathematical_renewal.md) | 執行エンジンの数理刷新仕様書: 加法パイプラインと指数的 DRC |
 | 559 | impl | [559_phg_impl_self_review_and_bugfix.md](559_phg_impl_self_review_and_bugfix.md) | 553#–555# セルフレビュー: PnL単位/Action bin 不整合修正 + Entry Gate ログ出力 |
 | 560 | rpt | [560_phg_rpt_fill_test_post_restart_analysis.md](560_phg_rpt_fill_test_post_restart_analysis.md) | Fill Test 再起動後パフォーマンス分析 (3/12–3/22) |
 | 562 | review | [562_phg_review_560_561_analysis_and_proposals.md](562_phg_review_560_561_analysis_and_proposals.md) | 560#・561# レビュー: 実データ検証と統合改善提案 |
