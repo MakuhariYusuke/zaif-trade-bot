@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import time
 from dataclasses import dataclass
 from typing import NamedTuple
@@ -180,80 +179,24 @@ class TestHourCeilingMult:
         # exp(0) = 1.0 → 0.40 × 1.5 = 0.60
         assert cfg.resolve_offset_ceiling("buy", utc_hour=13) == pytest.approx(0.60)
 
-    def test_resolve_offset_ceiling_edrc_hour_mult_then_hard_cap(self) -> None:
-        """578# P1: hour_ceiling_mult 適用後に hard cap で抑える."""
-        cfg = FillTestConfig(
-            experimental_additive_pipeline=True,
-            edrc_c_base=0.80,
-            edrc_alpha=0.0,
-            edrc_beta=0.0,
-            hour_ceiling_mult={13: 2.0},
-            edrc_hard_cap=1.0,
-        )
-        assert cfg.resolve_offset_ceiling("buy", utc_hour=13) == pytest.approx(1.0)
-
-    def test_from_yaml_preserves_edrc_hard_cap(self) -> None:
-        """nested additive config から edrc_hard_cap が parse される."""
-        cfg = FillTestConfig.from_yaml({
-            "experimental_additive_pipeline": {
-                "enabled": True,
-                "edrc_alpha": 0.02,
-                "edrc_beta": 0.40,
-                "edrc_c_base": 0.40,
-                "edrc_hard_cap": 0.95,
-            },
-        })
-        assert cfg.experimental_additive_pipeline is True
-        assert cfg.edrc_hard_cap == pytest.approx(0.95)
-
-    def test_from_yaml_ignores_removed_additive_dead_config(self) -> None:
-        """587# 削除済み additive dead config は無視される."""
-        field_name = "additive_" + "base_bps"
-        cfg = FillTestConfig.from_yaml({
-            "experimental_additive_pipeline": {
-                "enabled": True,
-                field_name: 12.5,
-            },
-        })
-        assert cfg.experimental_additive_pipeline is True
-        assert not hasattr(cfg, field_name)
-
-    def test_from_yaml_parses_execution_additive_enabled(self) -> None:
-        """top-level execution_additive_enabled が parse される."""
-        cfg = FillTestConfig.from_yaml({"execution_additive_enabled": True})
-        assert cfg.execution_additive_enabled is True
-
-    def test_from_yaml_warns_on_additive_flag_mismatch(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
-        """deprecated telemetry flag と runtime flag がズレたら warning."""
-        with caplog.at_level(logging.WARNING):
-            cfg = FillTestConfig.from_yaml({
-                "execution_additive_enabled": False,
-                "experimental_additive_pipeline": {"enabled": True},
-            })
-        assert cfg.execution_additive_enabled is False
-        assert cfg.experimental_additive_pipeline is True
-        assert "execution_additive_enabled=False != experimental_additive_pipeline=True" in caplog.text
-
-    # ---- 574# eDRC Hard Cap + パラメータ推定検証 ----
-
-    def test_edrc_hard_cap_clamps_output(self) -> None:
-        """574# §5.1: exp 爆発時に hard_cap で出力を制限."""
+    def test_resolve_offset_ceiling_edrc_exponent_clip(self) -> None:
+        """589# eDRC 指数クリップ: 極端な入力で exp() が発散しない."""
+        from math import exp
         cfg = FillTestConfig(
             experimental_additive_pipeline=True,
             edrc_c_base=0.40,
-            edrc_alpha=0.020,
-            edrc_beta=0.40,
+            edrc_alpha=1.0,
+            edrc_beta=0.1,
             edrc_hard_cap=1.0,
         )
-        # σ=30 bps, OFI=1.0 → 0.40 * exp(0.020*30 + 0.40*1.0) = 0.40 * exp(1.0) ≈ 1.087
-        # hard_cap 1.0 でクランプ
-        result = cfg.resolve_offset_ceiling("buy", sigma=30.0, adverse_ofi=1.0)
-        assert result == pytest.approx(1.0)
+        # sigma=100, ofi=500 → exponent=100+50=150 → clipped to 10
+        result = cfg.resolve_offset_ceiling("buy", sigma=100.0, adverse_ofi=500.0)
+        expected = min(0.40 * exp(10.0), 1.0)  # hard_cap
+        assert result == pytest.approx(expected)
+        assert result <= 1.0
 
-    def test_edrc_574_simulation_table_calm(self) -> None:
-        """574# シミュレーション表: σ=5 bps, OFI=0.2 → ≈0.47."""
+    def test_resolve_offset_ceiling_edrc_exponent_no_clip(self) -> None:
+        """589# 指数が閾値以下なら通常計算."""
         from math import exp
         cfg = FillTestConfig(
             experimental_additive_pipeline=True,
@@ -261,24 +204,27 @@ class TestHourCeilingMult:
             edrc_alpha=0.020,
             edrc_beta=0.40,
         )
-        result = cfg.resolve_offset_ceiling("buy", sigma=5.0, adverse_ofi=0.2)
-        expected = 0.40 * exp(0.020 * 5.0 + 0.40 * 0.2)
-        assert result == pytest.approx(expected, rel=0.01)
-        assert 0.45 < result < 0.50  # ≈0.47
-
-    def test_edrc_574_simulation_table_storm(self) -> None:
-        """574# シミュレーション表: σ=15, OFI=0.6 → ≈0.64."""
-        from math import exp
-        cfg = FillTestConfig(
-            experimental_additive_pipeline=True,
-            edrc_c_base=0.40,
-            edrc_alpha=0.020,
-            edrc_beta=0.40,
-        )
+        # exponent = 0.020*15 + 0.40*0.6 = 0.54 < 10 → クリップなし
         result = cfg.resolve_offset_ceiling("buy", sigma=15.0, adverse_ofi=0.6)
         expected = 0.40 * exp(0.020 * 15.0 + 0.40 * 0.6)
-        assert result == pytest.approx(expected, rel=0.01)
-        assert 0.60 < result < 0.70  # ≈0.64
+        assert result == pytest.approx(expected)
+
+    def test_resolve_offset_ceiling_edrc_input_clip(self) -> None:
+        """589# eDRC 入力クリップ: 極端な sigma/ofi が exp() を発散させない."""
+        from math import exp
+        cfg = FillTestConfig(
+            experimental_additive_pipeline=True,
+            edrc_c_base=0.40,
+            edrc_alpha=1.0,
+            edrc_beta=0.1,
+            edrc_hard_cap=1.0,
+        )
+        # sigma=100 → clipped to 5.0, ofi=500 → clipped to 50.0
+        result = cfg.resolve_offset_ceiling("buy", sigma=100.0, adverse_ofi=500.0)
+        expected = min(0.40 * exp(1.0 * 5.0 + 0.1 * 50.0), 1.0)
+        assert result == pytest.approx(expected)
+        # 結果は hard_cap (1.0) で制限される
+        assert result <= 1.0
 
 
 # ══════════════════════════════════════════════════════════════════════

@@ -378,9 +378,11 @@ class FillTestConfig:
         if self.experimental_additive_pipeline:
             from math import exp
 
-            ceiling_dynamic = self.edrc_c_base * exp(
-                self.edrc_alpha * sigma + self.edrc_beta * adverse_ofi
-            )
+            # 589# exp() 発散防止: 指数を上限クリップしてから exp に渡す
+            # (入力値ではなく指数をクリップし、alpha/beta の組み合わせに依存しない)
+            exponent = self.edrc_alpha * sigma + self.edrc_beta * adverse_ofi
+            exponent = min(exponent, 10.0)  # exp(10) ≈ 22026; hard_cap で最終制限
+            ceiling_dynamic = self.edrc_c_base * exp(exponent)
             # 578# P1: hour_ceiling_mult適用後にhard_capを適用する
             if utc_hour is not None and self.hour_ceiling_mult:
                 mult = self.hour_ceiling_mult.get(utc_hour)

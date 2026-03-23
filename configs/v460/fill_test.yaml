@@ -691,14 +691,11 @@ offset_ceiling_ratio_sell: 0.40   # 565# P1: 0.30→0.40 (sell側テールリス
 # 経路2 (A/Bトグル方式): enabled=false で既存乗法チェーンを維持。
 # true にすると eDRC (Exponential Dynamic Risk Ceiling) ベースの
 # 動的 ceiling に切り替わる (570# 仕様準拠)。
-# 574# 推奨パラメータ: α=0.020 (σ30bps→1.8x), β=0.40 (OFI0.8→1.38x)
-# 575# 有効化: RobustStats統合 + hard_cap=1.0 で安全性確保済み
 experimental_additive_pipeline:
-  enabled: true
-  edrc_alpha: 0.020        # 574# eDRC α: σ(bps)感度 (σ=30→ceiling 1.8x)
-  edrc_beta: 0.40          # 574# eDRC β: OFI感度 (OFI=0.8→ceiling 1.38x)
+  enabled: false
+  edrc_alpha: 0.0          # eDRC alpha: 1分足ボラティリティ感度
+  edrc_beta: 0.0           # eDRC beta: OFI (逆選択圧力) 感度
   edrc_c_base: 0.40        # eDRC Base Ceiling (baseline offset ratio max)
-  edrc_hard_cap: 1.0       # 574# §5.1: exp爆発防止 (C_dynamic上限)
 
 # ---- 421# P0: Execution Final Clamp (416#/417# review) ----
 # maker_price ceiling 後の executor multiplier chain (EV/velocity/toxicity 等) が
@@ -1180,3 +1177,5 @@ composite_risk_weight_unknown_regime: 0.6
 composite_risk_weight_ranging_low_vol: 0.5
 composite_risk_weight_trending_sell: 0.7
 composite_risk_weight_velocity: 0.4
+# 555# Entry Gate: CalibrationMap EV ベースエントリー判定
+entry_gate_enabled: false              # True=EV≤0 でブロック, False=ログのみ

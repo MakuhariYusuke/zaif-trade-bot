@@ -1035,6 +1035,48 @@ def section_buffer_decomposition(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
+def section_sidecar_signal(records: list[dict[str, Any]]) -> list[str]:
+    """589# Sidecar signal status 分布分析.
+
+    sidecar_signal_status (fresh/stale/missing/error) の分布と
+    ステータス別 PnL を集計し、SAC sidecar の有効性を可視化する。
+    """
+    filled = [r for r in records if r.get("filled")]
+    if not filled:
+        return ["## Sidecar Signal Distribution (589#)", "  (no fills)", ""]
+
+    statuses: dict[str, list[dict[str, Any]]] = {}
+    for r in filled:
+        status = r.get("sidecar_signal_status") or "missing"
+        statuses.setdefault(status, []).append(r)
+
+    lines = ["## Sidecar Signal Distribution (589#)"]
+    total = len(filled)
+
+    for status in ["fresh", "stale", "missing", "error"]:
+        recs = statuses.get(status, [])
+        n = len(recs)
+        pct = 100.0 * n / total if total else 0.0
+        if not recs:
+            lines.append(f"  {status:8s}: {n:4d} ({pct:5.1f}%)")
+            continue
+
+        pnls = [float(r["post_fill_30s_pnl"]) for r in recs if r.get("post_fill_30s_pnl") is not None]
+        as_vals = [float(r["adverse_selection_cost_bps"]) for r in recs if r.get("adverse_selection_cost_bps") is not None]
+
+        pnl_str = f"PnL30s mean={np.mean(pnls):+.1f}" if pnls else "PnL30s N/A"
+        as_str = f"AS mean={np.mean(as_vals):+.2f}bps" if as_vals else "AS N/A"
+        lines.append(f"  {status:8s}: {n:4d} ({pct:5.1f}%)  {pnl_str}  {as_str}")
+
+    # 未知ステータスがあれば表示
+    for status, recs in statuses.items():
+        if status not in ("fresh", "stale", "missing", "error"):
+            lines.append(f"  {status:8s}: {len(recs):4d} ({100.0 * len(recs) / total:5.1f}%)  (unknown)")
+
+    lines.append("")
+    return lines
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -1106,6 +1148,7 @@ def main() -> None:
     all_lines.extend(section_spread_decomposition(records))
     all_lines.extend(section_execution_quality_comparison(records))
     all_lines.extend(section_buffer_decomposition(records))
+    all_lines.extend(section_sidecar_signal(records))
 
     output_text = "\n".join(all_lines)
 

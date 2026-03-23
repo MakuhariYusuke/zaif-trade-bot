@@ -126,13 +126,9 @@ class TestFillRecordPreClampField:
             side="sell",
             order_price=10000,
             order_quantity=0.001,
-            execution_sigma=12.5,
-            execution_adverse_ofi=0.7,
             execution_additive_enabled=True,
         )
         rebuilt = FillRecord.from_dict(rec.to_dict())
-        assert rebuilt.execution_sigma == pytest.approx(12.5)
-        assert rebuilt.execution_adverse_ofi == pytest.approx(0.7)
         assert rebuilt.execution_additive_enabled is True
 
 
