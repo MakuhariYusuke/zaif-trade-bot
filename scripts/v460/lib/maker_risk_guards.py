@@ -396,6 +396,25 @@ class RiskGuardsMixin:
         self._cross_venue_lead_lag_pre_offset = pre_offset
         self._cross_venue_lead_lag_post_offset = effective_offset_ratio
         self._cross_venue_lead_lag_cap_hit = cap_hit
+
+        # 593# B: sell × cap_hit → veto 昇格
+        # Widen が上限に張り付いて防御不能な sell は veto で阻止
+        if (
+            cap_hit
+            and side == "sell"
+            and cfg.cross_venue_cap_hit_sell_veto_enabled
+        ):
+            self._cross_venue_lead_lag_vetoed = True
+            self._cross_venue_lead_lag_veto_reason = (
+                f"cross_venue_cap_hit_sell_veto: spread={hint.spread_bps:+.2f}bps, "
+                f"conf={hint.confidence:.2f}, boost={actual_boost:.3f}, "
+                f"cap={self._effective_max_ratio(side):.4f}"
+            )
+            logger.warning(
+                "[cross_venue] 593# sell cap_hit → veto: %s",
+                self._cross_venue_lead_lag_veto_reason,
+            )
+            return effective_offset_ratio
         ps_info = (
             f", pt_spread={hint.point_spread_bps:+.2f}bps"
             if hint.point_spread_bps is not None

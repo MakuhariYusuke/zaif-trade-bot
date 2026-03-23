@@ -245,6 +245,8 @@ def _parse_cross_venue_section(yaml_cfg: dict) -> dict:
         "preemptive_sell_kill_confidence_floor": "sell_preemptive_cv_confidence_floor",
         "preemptive_sell_kill_consecutive_threshold": "sell_preemptive_cv_consecutive_threshold",
         "preemptive_sell_kill_cooldown_cycles": "sell_preemptive_cv_cooldown_cycles",
+        # 593# B: CV cap_hit sell veto
+        "cap_hit_sell_veto_enabled": "cross_venue_cap_hit_sell_veto_enabled",
     }
     for yaml_key, config_key in cv_map.items():
         if yaml_key in cv:
@@ -281,6 +283,8 @@ def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
         "ev_offset_min_mult": "skip_gate_ev_offset_min_mult",
         "ev_offset_max_mult": "skip_gate_ev_offset_max_mult",
         "ev_emergency_skip_threshold": "skip_gate_ev_emergency_skip_threshold",
+        # 593# A: Toxic skip 中間帯スキップ
+        "ev_toxic_skip_threshold": "skip_gate_ev_toxic_skip_threshold",
         # 200# M: ev warning zone
         "ev_warning_threshold": "skip_gate_ev_warning_threshold",
         "ev_warning_offset_factor": "skip_gate_ev_warning_offset_factor",

@@ -174,27 +174,45 @@ class SkipGateEvWeightedMixin:
         primary_decision: _SkipDecisionLike,
     ) -> _SkipDecisionLike:
         """193#: ev_weighted を offset 修飾子として機能させる."""
-        config: FillTestConfig = self._config  # type: ignore[attr-defined]
-        _emergency = config.skip_gate_ev_emergency_skip_threshold
-        if ev_score < _emergency:
-            logger.warning(
-                "[skip_gate] 193# ev_weighted EMERGENCY SKIP: "
-                "ev_score=%.3f < emergency_threshold=%.3f",
-                ev_score, _emergency,
-            )
-            self._ev_consecutive_skip_count = 0  # type: ignore[attr-defined]
+        from ztb.ml.skip_gate import SkipDecision
 
-            from ztb.ml.skip_gate import SkipDecision
+        config: FillTestConfig = self._config  # type: ignore[attr-defined]
+
+        def _make_skip_decision(
+            should_skip: bool, reason: str, threshold_used: float,
+        ) -> SkipDecision:
             return SkipDecision(
-                should_skip=True,
+                should_skip=should_skip,
                 predicted_pnl_bps=ev_score,
                 threshold_bps=primary_decision.threshold_bps,
                 features_used=primary_decision.features_used if hasattr(primary_decision, "features_used") else 0,
-                reason="ev_weighted_emergency_skip",
+                reason=reason,
                 model_used="ev_weighted",
                 as_probability=primary_decision.as_probability,
-                threshold_used=_emergency,
+                threshold_used=threshold_used,
             )
+
+        # --- 193# Emergency skip ---
+        _emergency = config.skip_gate_ev_emergency_skip_threshold
+        if ev_score < _emergency:
+            logger.warning(
+                "[skip_gate] ev_weighted EMERGENCY SKIP: "
+                "ev_score=%.3f < threshold=%.3f, side=%s",
+                ev_score, _emergency, side,
+            )
+            self._ev_consecutive_skip_count = 0  # type: ignore[attr-defined]
+            return _make_skip_decision(True, "ev_weighted_emergency_skip", _emergency)
+
+        # --- 593# A: Toxic skip (emergency と warning の中間帯) ---
+        _toxic = config.skip_gate_ev_toxic_skip_threshold
+        if ev_score < _toxic:
+            logger.warning(
+                "[skip_gate] ev_weighted TOXIC SKIP: "
+                "ev_score=%.3f < threshold=%.3f, side=%s",
+                ev_score, _toxic, side,
+            )
+            self._ev_consecutive_skip_count = 0  # type: ignore[attr-defined]
+            return _make_skip_decision(True, "ev_toxic_skip", _toxic)
 
         # offset 修飾子モード: 安全弁カウンタリセット
         self._ev_consecutive_skip_count = 0  # type: ignore[attr-defined]
@@ -211,7 +229,7 @@ class SkipGateEvWeightedMixin:
         )
 
         logger.info(
-            "[skip_gate] 193# ev_weighted→offset: side=%s ev_score=%.3f "
+            "[skip_gate] ev_weighted→offset: side=%s ev_score=%.3f "
             "→ offset_mult=%.3f (sens=%.3f, clamp=[%.2f,%.2f])",
             side, ev_score, _clamped_mult,
             config.skip_gate_ev_offset_sensitivity,
@@ -219,14 +237,4 @@ class SkipGateEvWeightedMixin:
             config.skip_gate_ev_offset_max_mult,
         )
 
-        from ztb.ml.skip_gate import SkipDecision
-        return SkipDecision(
-            should_skip=False,
-            predicted_pnl_bps=ev_score,
-            threshold_bps=primary_decision.threshold_bps,
-            features_used=primary_decision.features_used if hasattr(primary_decision, "features_used") else 0,
-            reason="ev_weighted_offset",
-            model_used="ev_weighted",
-            as_probability=primary_decision.as_probability,
-            threshold_used=0.0,
-        )
+        return _make_skip_decision(False, "ev_weighted_offset", 0.0)

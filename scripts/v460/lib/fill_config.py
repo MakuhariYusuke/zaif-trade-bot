@@ -459,6 +459,8 @@ class FillTestConfig:
     # 532# §4: sell_dynamic_kill は事後反応(損失後にkill)→ CV signal で事前に kill する
     sell_preemptive_cv_kill_enabled: bool = False
     sell_preemptive_cv_velocity_threshold: float = 2.0   # adverse velocity >= この値で警戒 (bps/s)
+    # 593# B: CV cap_hit 時に sell を veto へ昇格 (Widen が cap に当たり no-op の場合)
+    cross_venue_cap_hit_sell_veto_enabled: bool = False
     sell_preemptive_cv_confidence_floor: float = 0.5      # conf >= この値で signal 有効
     sell_preemptive_cv_consecutive_threshold: int = 3     # N 回連続 adverse → pre-emptive kill 発動
     sell_preemptive_cv_cooldown_cycles: int = 5           # kill 発動後の継続サイクル数
@@ -496,6 +498,9 @@ class FillTestConfig:
     skip_gate_ev_offset_max_mult: float = 1.5
     # 緊急スキップ: ev_score がこの値未満なら依然ハードスキップ
     skip_gate_ev_emergency_skip_threshold: float = -8.0
+    # 593# Toxic skip: emergency より緩いが warning より厳しい中間スキップ閾値
+    # offset 修飾子モードでも ev_score がこの値未満なら SKIP (Widen では防げない帯域)
+    skip_gate_ev_toxic_skip_threshold: float = -5.0
     # 200# M: ev warning zone — emergency と通常の間の中間段階
     # warning zone: emergency < ev_score < warning → offset を追加縮小
     skip_gate_ev_warning_threshold: float = -4.0  # この値未満で warning zone 発動
