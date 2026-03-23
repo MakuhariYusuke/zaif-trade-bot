@@ -678,6 +678,7 @@ NNN_phX_TYPE_description.md
 | 561 | rpt | [561_phg_rpt_sell_side_tail_risk_analysis.md](561_phg_rpt_sell_side_tail_risk_analysis.md) | Sell側テールの脆弱性と動的天井（Dynamic Ceiling）への移行論証 |
 | 566 | plan | [566_phg_plan_drc_integration_and_mathematical_fix.md](566_phg_plan_drc_integration_and_mathematical_fix.md) | 執行エンジンの「幾何学的欠陥」の修正と指数的 DRC への統合設計 |
 | 568 | spec | [568_phg_spec_execution_engine_mathematical_renewal.md](568_phg_spec_execution_engine_mathematical_renewal.md) | 執行エンジンの数理刷新仕様書: 加法パイプラインと指数的 DRC |
+| 569 | spec | [569_phg_spec_coefficient_mapping_and_quantization.md](569_phg_spec_coefficient_mapping_and_quantization.md) | 執行エンジンの係数マッピングと量子化パラメータ定義 |
 | 559 | impl | [559_phg_impl_self_review_and_bugfix.md](559_phg_impl_self_review_and_bugfix.md) | 553#–555# セルフレビュー: PnL単位/Action bin 不整合修正 + Entry Gate ログ出力 |
 | 560 | rpt | [560_phg_rpt_fill_test_post_restart_analysis.md](560_phg_rpt_fill_test_post_restart_analysis.md) | Fill Test 再起動後パフォーマンス分析 (3/12–3/22) |
 | 562 | review | [562_phg_review_560_561_analysis_and_proposals.md](562_phg_review_560_561_analysis_and_proposals.md) | 560#・561# レビュー: 実データ検証と統合改善提案 |
@@ -685,3 +686,4 @@ NNN_phX_TYPE_description.md
 | 564 | review | [564_phg_integration_blind_spots_and_financial_engineering.md](564_phg_integration_blind_spots_and_financial_engineering.md) | 560-563の統合解剖と四者の盲点指摘・金融工学的改善案 |
 | 565 | review | [565_phg_review_cross_verification_and_residual_blind_spots.md](565_phg_review_cross_verification_and_residual_blind_spots.md) | 560-564 横断検証と残存盲点の拾い上げ |
 | 567 | impl | [567_phg_impl_measurement_infrastructure_i1_i3.md](567_phg_impl_measurement_infrastructure_i1_i3.md) | 計測基盤修正 I1–I3: E3 sell窓崩壊修正, Execution Quality分解, pre_clamp分布可視化 |
+| 569 | impl | [569_phg_impl_measurements_and_parameters.md](569_phg_impl_measurements_and_parameters.md) | 565# 指摘の計測基盤の補完(I2)と即時パラメータ修正(P1-P3) |
