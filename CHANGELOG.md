@@ -6383,3 +6383,10 @@ python scripts/unified_trainer.py \
 - filtered broad (`tests/unit/training tests/unit/evaluation tests/training`) が `677 passed, 17 skipped, 8 warnings in 28.41s` で通過
 - `tests/unit/training/test_unified_data_loading.py` の CSV/Parquet fixture を `tmp_path` ベースへ整理
 - `tests/training/distributed/test_distributed_training.py` の checkpoint fixture を `tmp_path` ベースへ整理
+## 2026-03-23 wave4 current-suite temp file cleanup completion
+- `tests/unit/evaluation/test_unified_evaluation.py` の temp file fixture を cleanup-aware path helper に整理
+- current suite (`tests/unit/training tests/unit/evaluation tests/training`) に対する
+  - `TemporaryDirectory()`
+  - `NamedTemporaryFile()`
+  - `time.sleep()`
+  の grep hit を解消

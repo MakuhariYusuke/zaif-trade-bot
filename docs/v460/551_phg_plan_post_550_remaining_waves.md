@@ -35,6 +35,11 @@
   - `677 passed, 17 skipped, 8 warnings in 28.41s`
 - `Wave5` の入口確認は取れている
 - 以後は broad failure 対応よりも、Wave3/4 の残差整理と current suite 固定費削減を優先してよい
+- current suite (`tests/unit/training tests/unit/evaluation tests/training`) では
+  - `TemporaryDirectory()`
+  - `NamedTemporaryFile()`
+  - `time.sleep()`
+  の grep hit を解消済み
 
 ## Wave 別の残課題
 
@@ -120,6 +125,7 @@ Done の基準:
 - `cache/*.db-shm` / `cache/*.db-wal` / `cache/sidecar_signal.json` を ignore し、`sidecar_signal.json` も追跡から外して broad 前の worktree ノイズを削減
 - `tests/unit/training/test_unified_data_loading.py` の CSV/Parquet fixture を `tmp_path` ベースへ整理
 - `tests/training/distributed/test_distributed_training.py` の checkpoint fixture を `tmp_path` ベースへ整理
+- `tests/unit/evaluation/test_unified_evaluation.py` の temp file fixture を cleanup-aware path helper に整理
 
 Done の基準:
 - broad 上位が「本物の計算 / 実データ / I/O」に再集中する

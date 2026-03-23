@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from datetime import datetime
 from pathlib import Path
+import shutil
 from unittest.mock import patch
 
 import pandas as pd
@@ -36,6 +37,11 @@ class TestUnifiedEvaluator(unittest.TestCase):
         }
         self.df = pd.DataFrame(self.sample_data)
 
+    def _make_temp_path(self, filename: str) -> Path:
+        temp_dir = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: shutil.rmtree(temp_dir, ignore_errors=True))
+        return temp_dir / filename
+
     def test_unified_evaluator_creation(self):
         """UnifiedEvaluatorの作成テスト"""
         evaluator = UnifiedEvaluator()
@@ -53,8 +59,8 @@ class TestUnifiedEvaluator(unittest.TestCase):
         # モックデータの設定
         mock_read_csv.return_value = self.df
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
-            temp_data_path = Path(f.name)
+        temp_data_path = self._make_temp_path("sample.csv")
+        temp_data_path.write_text("timestamp,returns,price\n", encoding="utf-8")
 
         # 評価実行
         result = self.evaluator.evaluate_model(
@@ -69,8 +75,6 @@ class TestUnifiedEvaluator(unittest.TestCase):
         self.assertEqual(result.evaluation_type, EvaluationType.BACKTEST)
         self.assertIsInstance(result.timestamp, datetime)
         self.assertGreater(len(result.results), 0)
-
-        temp_data_path.unlink()
 
     def test_evaluation_result_creation(self):
         """EvaluationResultの作成テスト"""
@@ -204,25 +208,20 @@ class TestUnifiedEvaluator(unittest.TestCase):
             results=results,
         )
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            temp_path = Path(f.name)
+        temp_path = self._make_temp_path("evaluation.json")
 
-        try:
-            # 保存
-            self.evaluator.save_evaluation(evaluation, temp_path)
+        # 保存
+        self.evaluator.save_evaluation(evaluation, temp_path)
 
-            # 読み込み
-            loaded_evaluation = self.evaluator.load_evaluation(temp_path)
+        # 読み込み
+        loaded_evaluation = self.evaluator.load_evaluation(temp_path)
 
-            # 検証
-            self.assertEqual(loaded_evaluation.model_name, evaluation.model_name)
-            self.assertEqual(
-                loaded_evaluation.evaluation_type, evaluation.evaluation_type
-            )
-            self.assertEqual(len(loaded_evaluation.results), len(evaluation.results))
-
-        finally:
-            temp_path.unlink()
+        # 検証
+        self.assertEqual(loaded_evaluation.model_name, evaluation.model_name)
+        self.assertEqual(
+            loaded_evaluation.evaluation_type, evaluation.evaluation_type
+        )
+        self.assertEqual(len(loaded_evaluation.results), len(evaluation.results))
 
     def test_evaluator_compare_evaluations(self):
         """評価結果比較テスト"""

@@ -8704,3 +8704,13 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - CSV/Parquet fixture を `tmp_path` ベースへ整理
 - `tests/training/distributed/test_distributed_training.py`
   - checkpoint fixture を `tmp_path` ベースへ整理
+## 2026-03-23 wave4 current-suite temp file cleanup completion
+- `tests/unit/evaluation/test_unified_evaluation.py`
+  - `NamedTemporaryFile()` ベースの temp file を cleanup-aware path helper に整理
+- current suite (`tests/unit/training tests/unit/evaluation tests/training`) に対する
+  - `TemporaryDirectory()`
+  - `NamedTemporaryFile()`
+  - `time.sleep()`
+  の grep hit は解消
+- focused:
+  - `38 passed, 1 skipped in 5.96s`
