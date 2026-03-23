@@ -86,3 +86,71 @@ targeted runner をそのまま使って、`scripts/v460` の低リスクな型�
 ```text
 Success: no issues found in 5 source files
 ```
+
+## 深掘り: どの順番で適用すると労力が小さいか
+
+targeted mypy は「とりあえず全部にかける」より、次の順で当てる方が明らかに効率が良い。
+
+1. **shared contract が既にある層**
+   - 例:
+     - `ztb.metrics.fill_quality`
+     - `dict[str, object]` payload
+     - `Protocol`
+     - `dataclass`
+     - `TypeAlias`
+   - ここは `Any` を新しく発明しなくて済む
+
+2. **mixin / helper の境界**
+   - `fill_record_builder`
+   - `fill_cycle_executor`
+   - `config_hot_reload`
+   - ここは「実際に必要な属性を宣言していない」だけのケースが多い
+
+3. **analysis / reporting の read-only 層**
+   - `scripts/v460/analysis/*`
+   - 数値比較前に `float(...)` 正規化
+   - `numpy.typing` と `TypeAlias` で enough
+
+4. **stateful orchestration の本体**
+   - ここは最後
+   - targeted mypy を使っても、先に shared contract を固めないと直す量が増える
+
+## 深掘り: low-risk fix の判断基準
+
+今回の運用では、次を **low-risk** とみなす。
+
+- 既存 API の返り値型を明示する
+- lazy import resolver に返り値型を付ける
+- `dict[str, object]` / `TypeAlias` / `Protocol` を使って `Any` 流出を止める
+- optional 実引数に合わせて helper シグネチャを広げる
+- 読み取り専用 script で比較前に `float(...)` 正規化する
+
+逆に、次は **別タスク扱い** にする。
+
+- repo-wide mypy を一気に clean にする
+- stateful object の大分割
+- 新しい base class / 共通抽象の導入
+- runtime 振る舞いを変える型修正
+
+## 深掘り: analysis 系での型ルール
+
+analysis 系は次を正本ルールにする。
+
+1. レコードは `dict[str, object]`
+   - shared loader/filter と一致させる
+2. 比較・集計前に `float(...)` / `int(...)` 正規化する
+   - `object | None` のまま演算しない
+3. numpy 配列は `numpy.typing` を使う
+   - `NDArray[np.float64]`
+4. `type: ignore` は最後の手段
+   - まず `cast(...)` と `TypeAlias` を使う
+
+## 深掘り: 実運用上の止めどころ
+
+targeted mypy を回していて、次の状態になったらその module 群はいったん止めてよい。
+
+- requested targets で diagnostics が 0
+- focused pytest が通る
+- その先が「他人の並行差分」か「repo-wide baseline debt」に依存する
+
+この止めどころを守ると、型改善が無限化しにくい。

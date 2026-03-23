@@ -147,6 +147,38 @@ Done の基準:
 - broad が安定して回る
 - 残課題が「future に送るもの」と「今やるべきもの」に明確に分かれる
 
+## 追加方針: targeted mypy をどう Wave に織り込むか
+
+Wave 3-5 では、型改善を独立タスクとして扱わず、各 Wave の入口確認として使う。
+
+### Wave 3
+
+- telemetry / payload の outward contract を変える前に targeted mypy を回す
+- `dict[str, object]` / `Protocol` / `TypeAlias` へ寄せられるものだけ直す
+- runtime の意味変更はしない
+
+### Wave 4
+
+- cleanup 対象 test の helper / fixture 変更前後で targeted mypy を回す
+- 「cleanup で型が崩れた」事故を早めに止める
+
+### Wave 5
+
+- broad 前に、直近で触った module 群だけ targeted mypy を回す
+- repo-wide mypy は broad の gate にしない
+- 差分確認の入口は 589# の targeted runner を正本にする
+
+## 実装判断を減らすための優先規則
+
+次に着手するときは、この順で判断する。
+
+1. 既存の shared type があるか
+2. `Any` を増やさず `Protocol` / `TypeAlias` / `cast` で止められるか
+3. focused pytest で守れるか
+4. 並行差分に触れずに切り出せるか
+
+4 を満たさない場合は、その module は後ろに回す。
+
 ## 優先順
 
 1. `maker_price` veto/telemetry/cache ownership の最終整理

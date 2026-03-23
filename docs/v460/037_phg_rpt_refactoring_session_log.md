@@ -8867,3 +8867,15 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/test_analyze_fill_logs.py`
   - `tests/unit/v460/test_169_config_hot_reload.py`
   - `38 passed, 1 skipped`
+## 2026-03-24 targeted mypy planning deep-dive
+- `589#`
+  - targeted mypy の適用順を
+    1. shared contract
+    2. mixin/helper 境界
+    3. analysis/read-only 層
+    4. stateful orchestration
+    に固定
+  - low-risk fix の判断基準と stop condition を明記
+- `551#`
+  - Wave3-5 の各 Wave で targeted mypy をどこで回すかを明記
+  - 並行差分がある module は後ろに回す、という優先規則を追加

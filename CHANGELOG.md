@@ -6440,3 +6440,6 @@ python scripts/unified_trainer.py \
 - `scripts/v460/analysis/analyze_fill_logs.py` を shared API (`dict[str, object]`) に揃え、record / numpy payload の type alias を追加
 - `load_records()` / `apply_filters()` / `_np()` / `_pnls()` の返り値型を明示し、microstructure correlation の数値比較を `float` 正規化へ整理
 - targeted mypy で `scripts/v460/analysis` は no diagnostics、`analyze_fill_logs.py` / `fill_config_parser.py` / `config_hot_reload.py` も clean を確認
+## 2026-03-24 targeted mypy planning deep-dive
+- `589#` に targeted mypy の適用順、low-risk fix の判断基準、analysis 系の型ルール、止めどころを追記
+- `551#` に Wave3-5 へ targeted mypy を織り込む運用方針と、実装判断を減らすための優先規則を追記
