@@ -72,6 +72,9 @@ from ztb.trading.environment.heavy_env.mixins.reward import (
     _get_reward_setting_float,
     _get_reward_setting_int,
 )
+from ztb.trading.environment.components.calculators.reward_component_tracking import (
+    snapshot_reward_components,
+)
 from ztb.trading.environment.heavy_env.mixins.streaming import (
     _append_streaming_rows,
     _ensure_data_available,
@@ -165,7 +168,7 @@ def _sync_terminal_reward_outputs(
     reward_components.update(terminal_reward_components)
     info.update(reward_components)
     _apply_terminal_info_overrides(info, terminal_reward_components)
-    info["reward_components"] = reward_components.copy()
+    info["reward_components"] = snapshot_reward_components(reward_components)
 
 
 def _append_reward_diagnostics_to_info(

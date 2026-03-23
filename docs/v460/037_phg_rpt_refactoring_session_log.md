@@ -8625,3 +8625,23 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `record_advanced_feature_stats(...)` を追加し、advanced feature stats 記録を helper 経由へ整理
 - focused:
   - `84 passed in 4.34s`
+## 2026-03-23 wave3/wave4 follow-up
+- `ztb/training/utils/training_stats_payloads.py`
+  - `record_optimization_training_stats(...)` を追加
+- `ztb/training/unified_trainer/trainer.py`
+  - optimization stats 記録を helper 経由へ整理
+- `tests/unit/trading/components/test_performance_optimizer.py`
+  - fixed `sleep` を小さい CPU work に置換
+- `.gitignore`
+  - `cache/*.db-shm`
+  - `cache/*.db-wal`
+  を追加して worktree ノイズを削減
+## 2026-03-23 reward payload snapshot + cache ignore cleanup
+- `ztb/trading/environment/heavy_env/core.py`
+  - `_sync_terminal_reward_outputs(...)` で `info["reward_components"]` を snapshot helper 経由に統一
+- `tests/unit/v460/test_codex_408_409_fixes.py`
+  - `info["reward_components"] is not reward_components` の契約回帰を追加
+- `.gitignore`
+  - `cache/sidecar_signal.json` を追加
+- `git rm --cached cache/sidecar_signal.json`
+  - ファイルを残したまま Git 追跡だけ解除

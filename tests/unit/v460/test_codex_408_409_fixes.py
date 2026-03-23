@@ -202,6 +202,7 @@ class TestT2RewardComponents:
         assert reward_components["drawdown_penalty"] == pytest.approx(-0.02)
         assert info["drawdown_penalty"] == pytest.approx(0.02)
         assert info["reward_components"] == reward_components
+        assert info["reward_components"] is not reward_components
 
     def test_append_reward_diagnostics_to_info_adds_optional_fields(self) -> None:
         trend_detector = Mock()
