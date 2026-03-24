@@ -367,8 +367,6 @@ cross_venue_lead_lag:
   preemptive_sell_kill_confidence_floor: 0.5      # confidence >= 0.5 で signal 有効
   preemptive_sell_kill_consecutive_threshold: 3   # 3回連続 adverse → pre-emptive kill 発動
   preemptive_sell_kill_cooldown_cycles: 5         # kill 発動後 5サイクル継続
-  # 593# B: CV cap_hit 時に sell を veto へ昇格 (widen が上限張り付きで防御不能)
-  cap_hit_sell_veto_enabled: true
 
 # ---- 211# Spread Anomaly Detector (513# YAML化) ----
 # スプレッドの異常拡大を検出し offset/interval/lot を自動調整する。
@@ -427,13 +425,14 @@ skip_gate:
   ev_offset_min_mult: 0.5       # offset 乗数下限 (最も保守的)
   ev_offset_max_mult: 1.5       # offset 乗数上限 (最も積極的)
   ev_emergency_skip_threshold: -8.0  # この値未満は依然ハードスキップ
-  # 593# A: Toxic skip — emergency(-8) と warning(-4) の間の中間帯スキップ
-  ev_toxic_skip_threshold: -5.0      # -8 < score < -5 帯: widen では防げない toxic flow をスキップ
   # 200# M: ev warning zone — emergency と通常の間の中間段階
   ev_warning_threshold: -4.0         # この値未満で warning zone 発動
   ev_warning_offset_factor: 0.7      # warning zone での追加 offset 乗数 (保守化)
   # 190# A: ev_weighted 連続 skip 安全弁 (193# offset モードでは無視)
   ev_max_consecutive_skip: 5
+  # 596# Primary model 連続 skip 安全弁 (evaluator-level, mode 非依存)
+  # 190# A が offset モードで死コード化する問題の根本修正。BTC=0 death spiral 防止。
+  primary_max_consecutive_skip: 10
   # 190# B: 片側 balance 時の ev_weighted threshold 緩和 (193# offset モードでは無視)
   ev_one_sided_threshold_shift: -1.0  # threshold を -1.0bps シフト（取引再開優先）
   as_threshold: 0.50           # 120# 0.52→0.50: P(AS)=0.50 が変曲点 (AS 18.1%→36.7%)

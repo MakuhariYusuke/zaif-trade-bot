@@ -484,6 +484,10 @@ class FillTestConfig:
     # 190# A: ev_weighted 連続 skip 安全弁 (0=無効, N回連続skipで強制PASS)
     # 193#: 安全弁は廃止予定。ev_as_offset_enabled=True 時は無視される。
     skip_gate_ev_max_consecutive_skip: int = 0
+    # 596# Primary model 連続 skip 安全弁 (0=無効, N回連続skipで強制PASS)
+    # ev_weighted mode (hard gate / offset) に依存しない evaluator-level 安全弁。
+    # 190# A が offset モードで無効化される問題の根本修正。
+    skip_gate_primary_max_consecutive_skip: int = 0
     # 190# B: 片側 balance 時の ev_weighted threshold 緩和シフト (bps)
     # 193#: ev_as_offset_enabled=True 時は無視される。
     skip_gate_ev_one_sided_threshold_shift: float = 0.0

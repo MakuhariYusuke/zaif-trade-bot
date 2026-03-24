@@ -106,6 +106,8 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         self._model_file_hash_alt_sell: str = ""
         # 190# A: ev_weighted 連続 skip 安全弁カウンタ
         self._ev_consecutive_skip_count: int = 0
+        # 596# Primary model 連続 skip 安全弁カウンタ (evaluator-level)
+        self._primary_consecutive_skip_count: int = 0
         # 156# D-1: OB fetch 失敗カウンタ
         self._ob_fetch_fail_count: int = 0
         self._ob_fetch_total_count: int = 0
@@ -718,6 +720,35 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                         decision = _ev_combined
                 else:
                     decision = _ev_combined
+
+            # 596# Primary model 連続 skip 安全弁 (evaluator-level).
+            # 190# A は ev_as_offset_enabled=True で無効化されるため、
+            # mode に依存しない evaluator-level の安全弁を追加。
+            _primary_max = self._config.skip_gate_primary_max_consecutive_skip
+            if decision.should_skip and _primary_max > 0:
+                self._primary_consecutive_skip_count += 1
+                if self._primary_consecutive_skip_count >= _primary_max:
+                    logger.warning(
+                        "[skip_gate] 596# primary consecutive skip safety valve: "
+                        "%d consecutive skips >= limit %d — forcing PASS "
+                        "(score=%.3f, side=%s)",
+                        self._primary_consecutive_skip_count, _primary_max,
+                        decision.predicted_pnl_bps, side,
+                    )
+                    from ztb.ml.skip_gate import SkipDecision as _SD
+                    decision = _SD(
+                        should_skip=False,
+                        predicted_pnl_bps=decision.predicted_pnl_bps,
+                        threshold_bps=decision.threshold_bps,
+                        features_used=decision.features_used,
+                        reason="primary_safety_valve_pass",
+                        model_used=decision.model_used,
+                        as_probability=decision.as_probability,
+                        threshold_used=decision.threshold_used,
+                    )
+                    self._primary_consecutive_skip_count = 0
+            elif not decision.should_skip:
+                self._primary_consecutive_skip_count = 0
 
             self._apply_decision_to_result(
                 result,

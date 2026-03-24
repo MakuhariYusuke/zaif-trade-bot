@@ -158,6 +158,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "skip_gate_as_threshold_sell",
     "skip_gate_ev_max_consecutive_skip",
     "skip_gate_ev_one_sided_threshold_shift",
+    "skip_gate_primary_max_consecutive_skip",
     "skip_gate_hour_offsets",
     "sidecar_max_boost_bps",  # 546# YAML=0.2 vs code=0.15
     "sidecar_shaping",  # 546# YAML='quadratic' vs code='linear'

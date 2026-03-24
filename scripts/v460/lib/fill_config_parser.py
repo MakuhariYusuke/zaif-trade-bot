@@ -277,6 +277,8 @@ def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
         # 190# A/B: ev_weighted 安全弁 + 片側 balance threshold 緩和
         "ev_max_consecutive_skip": "skip_gate_ev_max_consecutive_skip",
         "ev_one_sided_threshold_shift": "skip_gate_ev_one_sided_threshold_shift",
+        # 596# Primary model 連続 skip 安全弁 (evaluator-level)
+        "primary_max_consecutive_skip": "skip_gate_primary_max_consecutive_skip",
         # 193#: ev_weighted → offset 修飾子モード
         "ev_as_offset_enabled": "skip_gate_ev_as_offset_enabled",
         "ev_offset_sensitivity": "skip_gate_ev_offset_sensitivity",

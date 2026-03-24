@@ -1,7 +1,7 @@
-# v460 ドキュメント索引
+﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-24 (591# 590# fill test 再起動前レビュー)
+> 最終更新: 2026-03-24 (596# primary skip safety valve — death spiral 防止)
 
 ---
 
@@ -710,3 +710,4 @@ NNN_phX_TYPE_description.md
 | 589 | impl | [589_review_residual_fixes.md](589_review_residual_fixes.md) | 585#/586#/588# レビュープロセス残課題の修正: eDRC指数クリップ・entry gate YAML・sidecar signal 分析追加 |
 | 590 | report | [590_fill_test_log_analysis_5day.md](590_fill_test_log_analysis_5day.md) | Fill Test 5日窓ログ分析と改善機会整理 |
 | 591 | review | [591_phg_rev_590_fill_test_trade_level_root_cause_review.md](591_phg_rev_590_fill_test_trade_level_root_cause_review.md) | 590# 再検証: trade-level 根本原因、mixed-SHA 補正、restart 前優先順位整理 |
+| 596 | impl | [596_primary_skip_safety_valve_death_spiral_fix.md](596_primary_skip_safety_valve_death_spiral_fix.md) | Primary model 連続 skip 安全弁: BTC=0 death spiral 防止 (190# A offset モード死コード化の根本修正) |
