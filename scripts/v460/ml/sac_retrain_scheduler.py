@@ -387,9 +387,16 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
     if hasattr(val_df, "columns"):
         _val_df_typed = cast("pd.DataFrame", val_df)
         if "timestamp" in _val_df_typed.columns:
-            _current_val_ts_max = float(_val_df_typed["timestamp"].iloc[-1])
+            _ts_val = _val_df_typed["timestamp"].iloc[-1]
+            # pandas Timestamp → Unix epoch float
+            _current_val_ts_max = float(
+                _ts_val.timestamp() if hasattr(_ts_val, "timestamp") else _ts_val
+            )
         elif _val_df_typed.index.name == "timestamp":
-            _current_val_ts_max = float(_val_df_typed.index[-1])
+            _idx_val = _val_df_typed.index[-1]
+            _current_val_ts_max = float(
+                _idx_val.timestamp() if hasattr(_idx_val, "timestamp") else _idx_val
+            )
 
     if (
         _last_deployed_val_ts_max > 0
