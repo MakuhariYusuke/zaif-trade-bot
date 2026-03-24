@@ -97,8 +97,6 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "vg_vpin_buy_extra_mult",
     "vg_vpin_continuous_enabled",
     "volatility_guard_enabled",
-    "mcb_enabled",  # 606# SAD/MCB 有効化 (code=False, YAML=True)
-    "sad_enabled",  # 606# SAD/MCB 有効化 (code=False, YAML=True)
     # --- 数値パラメータのチューニング (YAML ≠ code default) ---
     "adapt_recency_window",
     "buy_dynamic_kill_regime_thresholds",
@@ -109,7 +107,6 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "dd_cooldown_rearm_budget_bps",
     "dd_cooldown_release_sec",
     "e3_sampling_ratio",
-    "entry_gate_calibration_map_path",  # 606# CalibrationMap 接続
     "execution_final_clamp_hard_skip_mult",  # 421# P0: Execution Final Clamp
     "fast_fill_offset_boost_sell",
     "fast_fill_threshold_sec_buy",
@@ -167,7 +164,6 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "sidecar_shaping",  # 546# YAML='quadratic' vs code='linear'
     "skip_gate_mode",
     "skip_gate_model_path",
-    # 606# cleanup: skip_gate_model_path_buy, _buy_long は値一致のため除去
     "skip_gate_model_path_sell",
     "skip_gate_model_path_sell_short",
     "skip_gate_narrow_spread_offset",

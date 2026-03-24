@@ -222,7 +222,9 @@ class TestHeavyTradingEnv:
         )
 
         assert len(env.features) == 5
-        assert env.observation_space.shape[0] == 5
+        # observation_space = market features + env internal features (e.g. env_tracker)
+        internal_dim = len(env.env_tracker.get_feature_vector()) if hasattr(env, "env_tracker") and env.env_tracker is not None else 0
+        assert env.observation_space.shape[0] == 5 + internal_dim
         for feature_name in env.features:
             assert feature_name in df.columns
             assert pd.api.types.is_numeric_dtype(df[feature_name])

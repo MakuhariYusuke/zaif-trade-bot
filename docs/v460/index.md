@@ -715,8 +715,9 @@ NNN_phX_TYPE_description.md
 | 606 | plan | [606_phg_unfreeze_sad_mcb_entry_gate.md](606_phg_unfreeze_sad_mcb_entry_gate.md) | SAD/MCB 有効化 + entry_gate CalibrationMap 接続 |
 | 607 | impl | [607_phg_hotreload_sad_mcb_rebuild_and_architecture_audit.md](607_phg_hotreload_sad_mcb_rebuild_and_architecture_audit.md) | SAD/MCB hot-reload 再構築とアーキテクチャ監査 |
 | 608 | plan | [608_phg_plan_pipeline_attribution_and_sidecar_revival.md](608_phg_plan_pipeline_attribution_and_sidecar_revival.md) | 執行パイプラインの寄与度分析 (Attribution) と Sidecar (SAC) の再活性化計画 |
-| 609 | review | [609_phg_review_608_pipeline_attribution_and_sidecar.md](609_phg_review_608_pipeline_attribution_and_sidecar.md) | 608# レビュー: Attribution / Sidecar 再活性化計画の実装・理論検証 |
+| 609 | review | [609_phg_review_608_pipeline_attribution_and_sidecar.md](609_phg_review_608_pipeline_attribution_and_sidecar.md) | レビュー: 608# 執行パイプライン寄与度分析と Sidecar 再活性化計画 |
 | 610 | review | [610_phg_rev_605_609_three_way_validation_and_two_person_split.md](610_phg_rev_605_609_three_way_validation_and_two_person_split.md) | 605#-609# 三者主張の検証と二名へのタスク再配分 |
-| 611 | review | [611_cplt_second_opinion_605_610_review.md](611_cplt_second_opinion_605_610_review.md) | 605#-610# 四者主張の監査と金融工学的盲点の指摘 |
-| 612 | impl | [612_phg_test_runtime_optimization_wave1.md](612_phg_test_runtime_optimization_wave1.md) | テスト実行時間最適化 Wave 1: coverage 除去・YAML cache・xdist 準備 |
-| 613 | review | [613_cplt_deep_review_609_611_and_gemini_task.md](613_cplt_deep_review_609_611_and_gemini_task.md) | 609#-611# 深堀りレビューと 608# 著者への課題整理 |
+| 611 | review | [611_cplt_second_opinion_605_610_review.md](611_cplt_second_opinion_605_610_review.md) | 605#-610# レビュー: 四者主張の監査と金融工学的盲点の指摘 |
+| 612 | impl | [612_phg_test_runtime_optimization_wave1.md](612_phg_test_runtime_optimization_wave1.md) | テスト実行時最適化 Wave 1: クリーンアップと高速化 |
+| 613 | review | [613_cplt_deep_review_609_611_and_gemini_task.md](613_cplt_deep_review_609_611_and_gemini_task.md) | 深堀りレビュー: 609#-611# および Gemini 向けタスク指示 |
+| 614 | spec | [614_phg_attribution_spec_and_sidecar_contract.md](614_phg_attribution_spec_and_sidecar_contract.md) | 執行パイプライン寄与度分析仕様および Sidecar Feature Contract 策定 |

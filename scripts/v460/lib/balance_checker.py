@@ -67,9 +67,6 @@ class BalanceChecker:
         # 238# C-2: 直前クエリの BTC/JPY 残高キャッシュ (phantom guard snapshot 用)
         self._last_btc_free: float | None = None
         self._last_jpy_free: float | None = None
-        # 604# locked 残高キャッシュ (preflight 診断ログ用)
-        self._last_btc_locked: float | None = None
-        self._last_jpy_locked: float | None = None
 
     @property
     def last_btc_free(self) -> float | None:
@@ -80,16 +77,6 @@ class BalanceChecker:
     def last_jpy_free(self) -> float | None:
         """251# 直前の JPY 残高クエリ結果 (phantom guard buy 側照合用)."""
         return self._last_jpy_free
-
-    @property
-    def last_btc_locked(self) -> float | None:
-        """604# 直前の BTC locked 残高."""
-        return self._last_btc_locked
-
-    @property
-    def last_jpy_locked(self) -> float | None:
-        """604# 直前の JPY locked 残高."""
-        return self._last_jpy_locked
 
     @property
     def current_lot(self) -> float:
@@ -165,7 +152,6 @@ class BalanceChecker:
         btc_balances = await adapter.get_balance("BTC")
         btc_free = sum(b.free for b in btc_balances) if btc_balances else 0.0
         self._last_btc_free = btc_free  # 238# C-2: phantom guard snapshot 用キャッシュ
-        self._last_btc_locked = sum(b.locked for b in btc_balances) if btc_balances else 0.0
 
         effective_lot = self._current_lot * regime_mult
         if btc_free < effective_lot:
@@ -189,8 +175,7 @@ class BalanceChecker:
             self._log_insufficient(
                 "sell",
                 f"[balance] Insufficient BTC for sell: "
-                f"free={btc_free:.8f}, locked={self._last_btc_locked:.8f} "
-                f"< min={self._min_order_btc:.4f} "
+                f"free={btc_free:.8f} < min={self._min_order_btc:.4f} "
                 f"(regime_mult={regime_mult:.2f}). "
                 f"Skipping sell → will retry buy next.",
             )
@@ -241,7 +226,6 @@ class BalanceChecker:
         jpy_balances = await adapter.get_balance("JPY")
         jpy_free = sum(b.free for b in jpy_balances) if jpy_balances else 0.0
         self._last_jpy_free = jpy_free  # 238# C-2: phantom guard snapshot 用キャッシュ
-        self._last_jpy_locked = sum(b.locked for b in jpy_balances) if jpy_balances else 0.0
 
         if jpy_free < jpy_needed:
             # 052# + 476#: satoshi 精度で JPY から base ロットを逆算
@@ -262,8 +246,7 @@ class BalanceChecker:
             self._log_insufficient(
                 "buy",
                 f"[balance] Insufficient JPY for buy: "
-                f"free={jpy_free:.2f}, locked={self._last_jpy_locked:.2f} "
-                f"< min={self._min_order_btc * regime_mult * price * self._config.balance_margin_ratio:.2f} "
+                f"free={jpy_free:.2f} < min={self._min_order_btc * regime_mult * price * self._config.balance_margin_ratio:.2f} "
                 f"(regime_mult={regime_mult:.2f}). "
                 f"Skipping buy → will retry sell next.",
             )

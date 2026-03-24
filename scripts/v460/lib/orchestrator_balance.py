@@ -117,19 +117,6 @@ class OrchestratorBalanceMixin:
         self._preflight_skip_count += 1
         self._inc_guard_fire("preflight_insufficient")
 
-        # 604# preflight 連続失敗毎に残高コンテキストを出力
-        _bc = self._balance_checker
-        logger.warning(
-            "[preflight_skip] count=%d/%d "
-            "btc_free=%s, btc_locked=%s, jpy_free=%s, jpy_locked=%s",
-            self._preflight_skip_count,
-            self.config.max_preflight_skip,
-            f"{_bc.last_btc_free:.8f}" if _bc.last_btc_free is not None else "?",
-            f"{_bc.last_btc_locked:.8f}" if _bc.last_btc_locked is not None else "?",
-            f"{_bc.last_jpy_free:.2f}" if _bc.last_jpy_free is not None else "?",
-            f"{_bc.last_jpy_locked:.2f}" if _bc.last_jpy_locked is not None else "?",
-        )
-
         st.batch.append(self._make_loop_skip_record(
             side=next_side,
             cancel_reason=CR.PREFLIGHT_INSUFFICIENT,
@@ -214,8 +201,7 @@ class OrchestratorBalanceMixin:
                         except Exception as e:
                             logger.error(
                                 f"[602# preflight_recovery] Failed to cancel "
-                                f"order {order.order_id}: {e}",
-                                exc_info=True,
+                                f"order {order.order_id}: {e}"
                             )
                     if cancelled > 0:
                         logger.warning(
@@ -228,8 +214,7 @@ class OrchestratorBalanceMixin:
                         return True
             except Exception as e:
                 logger.error(
-                    f"[602# preflight_recovery] Open order check failed: {e}",
-                    exc_info=True,
+                    f"[602# preflight_recovery] Open order check failed: {e}"
                 )
 
             # 044# F8: 連続 preflight 失敗上限 → SAFE_STOP

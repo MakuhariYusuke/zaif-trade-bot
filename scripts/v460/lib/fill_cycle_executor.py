@@ -1154,13 +1154,11 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                     if mt_elapsed >= mt_total_cap:
                         logger.info(
                             "[509#] micro_timeout sell_age_cap exceeded: "
-                            "elapsed=%.1fs >= cap=%.0fs, stopping at attempt %d/%d, "
-                            "order_id=%s",
+                            "elapsed=%.1fs >= cap=%.0fs, stopping at attempt %d/%d",
                             mt_elapsed,
                             mt_total_cap,
                             mt_attempt + 1,
                             mt_max,
-                            order.order_id,
                         )
                         # 603# age_cap exceeded: 滞留注文をキャンセル
                         try:
@@ -1175,7 +1173,6 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                                 "exceeded (may be filled/cancelled): %s",
                                 order.order_id,
                                 e,
-                                exc_info=True,
                             )
                         break
 
