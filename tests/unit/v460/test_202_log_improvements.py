@@ -63,7 +63,7 @@ class TestLossCooldownMixin:
 # ============================================================
 
 class TestOneSidedBalanceRescueConfig:
-    """202# B: one_sided_balance_rescue_offset config."""
+    """202# B / 598#: legacy one-sided rescue config の互換確認."""
 
     def test_config_default_true(self) -> None:
         cfg = FillTestConfig()

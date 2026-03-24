@@ -48,6 +48,8 @@
 
 - `fill_config.py` に `DEAD CODE (598#)` 注釈を追加
 - `fill_config_parser.py` に後方互換読み取り専用の注釈を追加
+- `test_285_split_brain_guard.py` / `test_346_fill_config_validation.py` の説明も
+  「runtime で効く前提」から「legacy read-only field の存在確認」へ補正
 
 ### B. `skip_gate_ev_*` 旧 hard-gate 系
 
@@ -139,6 +141,16 @@ Success: no issues found in 3 source files
 
 が不一致のとき warning を出すことで、
 「logic は additive、telemetry は multiplicative」などの読み違いを検知できる。
+
+### analysis / observability 側の low-risk 型 sweep
+
+`hindsight_filter.py` は TypedDict の整理範囲が大きく、別タスク向きだった。
+一方で次の 2 本は low-risk に targeted mypy を進められると判断した。
+
+- `compare_regime_ab.py`
+  - detector subclass の内部属性型を宣言
+- `side_regime_dashboard.py`
+  - YAML judgment mapping と per-regime criteria の cast を明示
 
 ## 次の自然な一手
 

@@ -8933,3 +8933,12 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/v460/test_169_config_hot_reload.py`
   - `tests/unit/v460/test_467_remaining_issues.py`
   - additive dual-line / legacy hot-reload guard を含めて確認
+- legacy/read-only 意味付けの追随:
+  - `tests/unit/v460/test_285_split_brain_guard.py`
+  - `tests/unit/v460/test_346_fill_config_validation.py`
+  - `tests/unit/v460/test_202_log_improvements.py`
+  の docstring を 598# に合わせて更新
+- analysis typing sweep:
+  - `scripts/v460/analysis/compare_regime_ab.py`
+  - `scripts/v460/analysis/side_regime_dashboard.py`
+  の low-risk な型残差を別枠で整理

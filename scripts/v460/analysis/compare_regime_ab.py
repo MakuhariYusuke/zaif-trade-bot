@@ -28,6 +28,7 @@ from collections import Counter, defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ztb.trading.signal.regime.regime_detector import (
     FillTestRegime,
@@ -57,6 +58,10 @@ class OldFillTestRegimeDetector(FillTestRegimeDetector):
       - _apply_hysteresis() で accelerated threshold を使わない
       - majority fallback を実行しない
     """
+
+    if TYPE_CHECKING:
+        _raw_history: list[FillTestRegime]
+        _confirmed_regime: FillTestRegime
 
     def _apply_hysteresis(self, raw_regime: FillTestRegime) -> FillTestRegime:
         """旧ロジック: N 回連続一致のみ (加速なし、フォールバックなし)."""

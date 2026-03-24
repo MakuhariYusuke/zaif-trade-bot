@@ -454,7 +454,7 @@ def _print_dashboard(result: DashboardResult) -> None:
     prj = result.get("per_regime_judgment")
     if prj:
         print(f"\n  --- Per-Regime Side Comparison ---")
-        for entry in prj:  # type: ignore[union-attr]
+        for entry in prj:
             regime = str(entry["regime"])
             overall = str(entry["overall"])
             flag = "✅" if overall == "pass" else (
@@ -464,7 +464,7 @@ def _print_dashboard(result: DashboardResult) -> None:
             nc = entry.get("n_control", 0)
             print(f"    {flag} {regime:15s}  [{overall.upper()}]  "
                   f"sell(n={nv}) vs buy(n={nc})")
-            criteria_list: list[dict[str, object]] = entry.get("criteria", [])  # type: ignore[assignment]
+            criteria_list = cast(list[dict[str, object]], entry.get("criteria", []))
             for c in criteria_list:
                 cv = str(c.get("verdict", ""))
                 cf = "✅" if cv == "pass" else "❌"
@@ -481,13 +481,17 @@ def _load_judgment_config(
         config_path = str(_PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml")
     try:
         cfg = _read_judgment_mapping(Path(config_path))
-        judgment = cfg.get("judgment", {})
+        judgment = cast(dict[str, object], cfg.get("judgment", {}))
         ab = None
         trending = None
         if "ab_criteria" in judgment:
-            ab = ABJudgmentCriteria.from_dict(judgment["ab_criteria"])
+            ab = ABJudgmentCriteria.from_dict(
+                cast(dict[str, object], judgment["ab_criteria"]),
+            )
         if "trending_down_sell" in judgment:
-            trending = TrendingEvalCriteria.from_dict(judgment["trending_down_sell"])
+            trending = TrendingEvalCriteria.from_dict(
+                cast(dict[str, object], judgment["trending_down_sell"]),
+            )
         return ab, trending
     except Exception as e:
         logger.debug("Failed to parse judgment: %s", e)

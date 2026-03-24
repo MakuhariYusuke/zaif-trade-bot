@@ -310,7 +310,7 @@ class TestStructuralConsistency:
 
 class TestPerSideDDDeadlock:
     def test_halt_zero_no_ie_no_longer_raises(self, cfg: FillTestConfig) -> None:
-        """522# IE 撤廃: halt_cycles=0 + IE無効 でもエラーなし。"""
+        """522#/598#: IE は legacy read-only。halt_cycles=0 + IE無効でもエラーなし。"""
         cfg.per_side_dd_enabled = True
         cfg.per_side_dd_halt_cycles = 0
         cfg.inventory_escape_enabled = False

@@ -1,8 +1,9 @@
-"""285# テスト: 283#/284# P0 対応 — 設定相互制約 + FillRecord pid フィールド.
+"""285# テスト: 283#/284# P0 対応 — legacy config 相互制約 + FillRecord pid フィールド.
 
 283# P0-1: FillRecord に pid フィールドを追加し、Split-Brain 検知を可能に。
 283# P0-2: per_side_dd_halt_cycles=0 + inventory_escape_enabled=False の組合せ禁止。
 522# inventory_escape 完全撤廃: IE 必須バリデーション削除。
+598#: inventory_escape は runtime では使われず、legacy read-only field として残置。
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ import pytest
 
 
 class TestConfigMutualConstraint:
-    """283# P0-2 / 522#: IE 撤廃によりバリデーション削除済み."""
+    """283# P0-2 / 522# / 598#: legacy field の存在だけを確認."""
 
     def test_halt_cycles_zero_ie_disabled_no_longer_raises(self):
         """522# 撤廃: halt_cycles=0 + IE無効 でも ValueError は発生しない."""
