@@ -187,3 +187,22 @@ Success: no issues found in 3 source files
 - `hindsight_filter.py` 独自の `_load_records(...)` 依存を外せた
 - 既存 CLI 互換を維持したまま、他 analysis script と同じ loader/output policy に寄せられた
 - 今後は `analysis_common` の helper 拡張を `hindsight_filter.py` にも横展開しやすい
+
+`analysis_common` の横展開先も見えてきた。
+
+- `stopgap_daily_report.py`
+  - loader 自体は `stopgap_health` 固有のため維持
+  - ただし
+    - `add_common_filter_args(...)`
+    - `add_output_args(...)`
+    - `write_json_output(...)`
+    はそのまま再利用可能
+- `print_ab_summary.py`
+  - record loader は不要
+  - しかし output helper / JSON read helper の共通化余地はある
+
+この時点の方針:
+
+1. loader を shared 化できる script は `load_records_from_args(...)`
+2. loader は専用のままでも、filter/output 契約は `analysis_common` に寄せる
+3. script 固有の集計や report formatting は無理に共通化しない

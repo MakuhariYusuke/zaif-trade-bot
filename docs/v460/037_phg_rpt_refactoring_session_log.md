@@ -8961,3 +8961,12 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - focused pytest:
     - `tests/unit/v460/test_155_hindsight_review.py`
     - legacy CLI alias と shared loader/output reuse を確認
+- analysis helper applicability sweep (追加):
+  - `scripts/v460/analysis/stopgap_daily_report.py`
+    - loader は `stopgap_health` 専用のまま維持
+    - `add_common_filter_args(...)`
+    - `add_output_args(...)`
+    - `write_json_output(...)`
+    を再利用する形に整理
+  - `tests/unit/v460/test_stopgap_daily_report_cli.py`
+    - shared filter args / output helper の契約回帰を追加
