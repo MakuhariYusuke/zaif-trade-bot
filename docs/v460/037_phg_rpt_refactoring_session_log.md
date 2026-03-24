@@ -8987,3 +8987,8 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `tests/unit/v460/test_239_feasible_quote.py`
     - `tests/unit/v460/test_240_toxicity_budget.py`
     - `137 passed`
+- analysis candidate screening (追加):
+  - `scripts/v460/analysis/print_ab_summary.py`
+    - `main() -> None` と JSON row/object 判定を追加すれば low-risk に片付くことを確認
+  - `scripts/v460/analysis/sha_comparison.py`
+    - 集計 container の型揺れが残っており、別 batch での整理対象と判断

@@ -206,3 +206,18 @@ Success: no issues found in 3 source files
 1. loader を shared 化できる script は `load_records_from_args(...)`
 2. loader は専用のままでも、filter/output 契約は `analysis_common` に寄せる
 3. script 固有の集計や report formatting は無理に共通化しない
+
+2026-03-25 追加棚卸し:
+
+- `print_ab_summary.py`
+  - 低リスクな型残差のみ存在
+  - `main() -> None` と JSON row/object の判定を入れれば targeted mypy で片付く
+- `sha_comparison.py`
+  - container の型推論が揺れていて、`dict[str, list[float]]` と `dict[str, list[dict]]` が混ざっている
+  - こちらは helper 化より先に集計 container の型整理が必要
+
+したがって次の優先順は:
+
+1. `print_ab_summary.py` の low-risk typing
+2. `sha_comparison.py` の集計 container 整理
+3. その後に `analysis_common` の追加横展開を検討
