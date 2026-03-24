@@ -59,6 +59,7 @@ class CycleContext:
     requested_side: str = ""
     #: 420# P1: side 切替理由 (522# 撤廃: balance_switch/recovery_skew は不使用)
     resolved_side_reason: str | None = None
+    #: DEAD CODE (596#): 522# で trigger 消失、常時 False
     #: 片方のみ残高あり → degraded one-sided 実行
     one_sided_balance: bool = False
     #: レジームベースの lot 倍率 (preflight-lot alignment 用)

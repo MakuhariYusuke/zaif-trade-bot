@@ -483,6 +483,7 @@ class FillTestConfig:
     skip_gate_ev_w120: float = 0.6  # ev_weighted の pnl120 重み
     # 190# A: ev_weighted 連続 skip 安全弁 (0=無効, N回連続skipで強制PASS)
     # 193#: 安全弁は廃止予定。ev_as_offset_enabled=True 時は無視される。
+    # 596#: primary safety valve で代替済み。
     skip_gate_ev_max_consecutive_skip: int = 0
     # 596# Primary model 連続 skip 安全弁 (0=無効, N回連続skipで強制PASS)
     # ev_weighted mode (hard gate / offset) に依存しない evaluator-level 安全弁。
@@ -490,6 +491,7 @@ class FillTestConfig:
     skip_gate_primary_max_consecutive_skip: int = 0
     # 190# B: 片側 balance 時の ev_weighted threshold 緩和シフト (bps)
     # 193#: ev_as_offset_enabled=True 時は無視される。
+    # 596#: primary safety valve で代替済み。
     skip_gate_ev_one_sided_threshold_shift: float = 0.0
     # 193#: ev_weighted → offset 修飾子モード (192# §5.2 + Gemini §9.4)
     # True: ev_weighted は PASS/SKIP ゲートではなく offset 乗数として機能
@@ -678,6 +680,7 @@ class FillTestConfig:
     # loss_cooldown (202# A) は interval 2x 延長のみで不十分。同一サイドの連鎖損失を遮断
     toxic_fill_veto_threshold_bps: float = -5.0  # この PnL 以下で同一サイド拒否発動
     toxic_fill_veto_cycles: int = 3              # 拒否サイクル数 (0=無効)
+    # DEAD CODE (596#): 522# で trigger 消失、常時 False
     # 202# B: 片側残高枯渇時にも rescue offset を適用 (通常の rescue は deadlock 用)
     one_sided_balance_rescue_offset: bool = True  # True で one_sided_balance 時も offset 保護
     # 207# §4: one-sided 連続実行制限 — 片側残高枯渇での連続強制実行を制限

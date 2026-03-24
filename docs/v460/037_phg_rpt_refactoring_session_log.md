@@ -8901,3 +8901,18 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - focused pytest:
   - `tests/v460/test_346_tail_loss_analysis.py`
   - `32 passed, 1 skipped`
+## 2026-03-24 597# dead-code annotation follow-up
+- `scripts/v460/lib/skip_gate_ev_weighted.py`
+  - 190# A/B の旧ハードゲート分岐に `DEAD CODE (596#)` 注釈を追加
+- `scripts/v460/lib/orchestrator_pre_cycle.py`
+  - `one_sided_balance: bool = False` に 522# 起因の死コード注釈を追加
+- `scripts/v460/lib/fill_config.py`
+  - `skip_gate_ev_max_consecutive_skip` / `skip_gate_ev_one_sided_threshold_shift` に `596# primary safety valve で代替済み` を追記
+  - `one_sided_balance_rescue_offset` に 522# 起因の死コード注釈を追加
+- focused pytest:
+  - `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
+  - `tests/unit/v460/test_190_ev_weighted_safety.py`
+  - `tests/unit/v460/test_596_primary_consecutive_skip_safety.py`
+  - `tests/unit/v460/test_593_ev_toxic_skip_and_cap_hit_veto.py`
+  - `tests/unit/v460/test_193_ev_offset.py`
+  - `75 passed`

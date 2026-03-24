@@ -112,6 +112,7 @@ class SkipGateEvWeightedMixin:
         if threshold_used is None:
             threshold_used = 0.0
 
+        # DEAD CODE (596#): offset mode では到達不可、primary safety valve で代替
         # 190# B: 片側 balance 時の threshold 緩和
         _threshold_relaxation = config.skip_gate_ev_one_sided_threshold_shift
         if one_sided_balance and _threshold_relaxation != 0.0:
@@ -125,6 +126,7 @@ class SkipGateEvWeightedMixin:
 
         should_skip = ev_score < threshold_used
 
+        # DEAD CODE (596#): offset mode では到達不可、primary safety valve で代替
         # 190# A: 連続 skip 安全弁
         _max_consecutive = config.skip_gate_ev_max_consecutive_skip
         if should_skip and _max_consecutive > 0:
