@@ -9092,3 +9092,14 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `--results-dir` 定義を shared helper に統一
   - `tests/unit/v460/test_analysis_results_dir_contracts.py`
     - parser/entrypoint が shared results-dir 契約を使うことを focused で追加
+- analysis typing/container sweep (追加):
+  - `scripts/v460/analysis/oracle_baseline.py`
+    - `Optional[float]` を `float | None` に統一
+  - `scripts/v460/analysis/reproduce_152_metrics.py`
+    - shared `Record` alias と `MetricsMap` TypeAlias に寄せた
+  - `scripts/v460/analysis/ab_offset_comparison.py`
+    - record container を shared `Record` alias に統一
+  - `scripts/v460/analysis/sha_comparison.py`
+    - `main(argv)` 化
+  - `tests/unit/v460/test_sha_comparison_cli.py`
+    - argv ベースの entrypoint 契約に追随

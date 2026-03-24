@@ -43,8 +43,7 @@ from ztb.metrics.fill_quality import (
     iter_fill_record_objects_glob,
 )
 from ztb.utils.safety import safe_to_finite
-from scripts.v460.analysis.analysis_common import write_json_output
-from scripts.v460.analysis.analysis_common import add_results_dir_arg
+from scripts.v460.analysis.analysis_common import Record, add_results_dir_arg, write_json_output
 
 # ── Constants ──
 _RESULTS_DIR = Path("results/v460/fill_test")
@@ -105,13 +104,13 @@ def _load_records(
         filtered, _ = apply_fill_record_filters(
             raw, git_sha=git_sha, run_id=run_id,
         )
-        return cast(list[dict[str, object]], filtered)
+        return cast(list[Record], filtered)
     return raw
 
 
-def _compute_bucket_metrics(records: list[dict[str, object]]) -> dict[str, BucketMetrics]:
+def _compute_bucket_metrics(records: list[Record]) -> dict[str, BucketMetrics]:
     """レコードを regime×side でグルーピングし、バケット別メトリクスを算出."""
-    groups: dict[str, list[dict[str, object]]] = defaultdict(list)
+    groups: dict[str, list[Record]] = defaultdict(list)
     for r in records:
         regime = str(r.get("regime") or "none")
         side = str(r.get("side", "unknown"))
@@ -348,8 +347,8 @@ def _run_comparison(
     if split_date:
         # 日付文字列 (YYYYMMDD or YYYY-MM-DD) で分割
         split_str = split_date.replace("-", "")
-        before_recs: list[dict[str, object]] = []
-        after_recs: list[dict[str, object]] = []
+        before_recs: list[Record] = []
+        after_recs: list[Record] = []
         for r in records:
             ts = safe_to_finite(r.get("timestamp"))
             if ts is None:
@@ -364,7 +363,7 @@ def _run_comparison(
         # デフォルト: 最新日のみを After、残りを Before
         from ztb.metrics.fill_quality import format_utc_day
 
-        days: dict[str, list[dict[str, object]]] = defaultdict(list)
+        days: dict[str, list[Record]] = defaultdict(list)
         for r in records:
             ts = safe_to_finite(r.get("timestamp"))
             if ts is None:

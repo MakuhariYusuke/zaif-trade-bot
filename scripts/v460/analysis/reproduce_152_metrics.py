@@ -16,9 +16,10 @@ import sys
 from collections import Counter, defaultdict
 from collections.abc import Sequence
 from pathlib import Path
-from typing import cast
+from typing import TypeAlias, cast
 
 from scripts.v460.analysis.analysis_common import (
+    Record,
     add_common_filter_args,
     load_and_filter_records,
     load_records_from_args,
@@ -31,8 +32,8 @@ from ztb.utils.safety import ensure_dict, safe_to_int, safe_to_finite
 # Constants
 # ---------------------------------------------------------------------------
 DEFAULT_DATA_DIR = "results/v460/fill_test"
-FillRecord = dict[str, object]
-MetricsMap = dict[str, object]
+FillRecord: TypeAlias = Record
+MetricsMap: TypeAlias = dict[str, object]
 
 
 
@@ -41,8 +42,8 @@ def _to_str(value: object) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
-def _to_dict(value: object) -> dict[str, object]:
-    return cast(dict[str, object], ensure_dict(value))
+def _to_dict(value: object) -> Record:
+    return cast(Record, ensure_dict(value))
 
 
 # ---------------------------------------------------------------------------
@@ -211,7 +212,7 @@ def _as_float_or_zero(value: object) -> float:
     return finite if finite is not None else 0.0
 
 
-def _print_report(metrics: MetricsMap, params: dict[str, object]) -> None:
+def _print_report(metrics: MetricsMap, params: Record) -> None:
     """Print human-readable report matching §1 format."""
     regime_distribution = _to_dict(metrics.get("regime_distribution"))
     regime_pnl_30s = _to_dict(metrics.get("regime_pnl_30s"))
@@ -315,7 +316,7 @@ def main(argv: Sequence[str] | None = None) -> MetricsMap:
         print("ERROR: No records after filtering", file=sys.stderr)
         sys.exit(1)
 
-    params: dict[str, object] = {
+    params: Record = {
         "data_dir": args.results_dir,
         "start_date": args.date_from,
         "end_date": args.date_to,

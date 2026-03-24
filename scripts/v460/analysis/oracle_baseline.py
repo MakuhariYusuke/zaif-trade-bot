@@ -32,7 +32,6 @@ import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _SCRIPT_DIR.parent.parent.parent
@@ -68,15 +67,15 @@ class OracleMetrics:
     oracle_pnl_mean: float
     oracle_pnl_sum: float
     # 30s/60s/120s 別
-    pnl_60s_mean: Optional[float] = None
-    pnl_120s_mean: Optional[float] = None
-    oracle_60s_mean: Optional[float] = None
-    oracle_120s_mean: Optional[float] = None
+    pnl_60s_mean: float | None = None
+    pnl_120s_mean: float | None = None
+    oracle_60s_mean: float | None = None
+    oracle_120s_mean: float | None = None
     # JPY 換算 (lot_btc × btc_price × pnl_bps / BPS_FACTOR)
-    actual_jpy_per_cycle: Optional[float] = None
-    oracle_jpy_per_cycle: Optional[float] = None
-    monthly_actual_jpy: Optional[float] = None  # 月間推定 (21,600 cycles)
-    monthly_oracle_jpy: Optional[float] = None
+    actual_jpy_per_cycle: float | None = None
+    oracle_jpy_per_cycle: float | None = None
+    monthly_actual_jpy: float | None = None  # 月間推定 (21,600 cycles)
+    monthly_oracle_jpy: float | None = None
 
 
 @dataclass

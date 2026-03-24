@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import scripts.v460.analysis.sha_comparison as sha_comparison
@@ -89,9 +88,8 @@ def test_main_writes_json_via_shared_output(monkeypatch, tmp_path: Path) -> None
     monkeypatch.setattr(sha_comparison, "run_analysis", fake_run_analysis)
     monkeypatch.setattr(sha_comparison, "write_json_output", fake_write_json_output)
     monkeypatch.setattr(sha_comparison, "OUTPUT_DIR", tmp_path)
-    monkeypatch.setattr(sys, "argv", ["sha_comparison.py", "--json"])
 
-    sha_comparison.main()
+    sha_comparison.main(["--json"])
 
     assert captured["shas"] == sha_comparison.DEFAULT_SHAS
     assert isinstance(captured["data"], dict)

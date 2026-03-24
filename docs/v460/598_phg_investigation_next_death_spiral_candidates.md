@@ -432,6 +432,36 @@ Success: no issues found in 3 source files
 - parser 契約の drift を減らせる
 - 今後 `results-dir` の default/help を直すときに横展開が不要になる
 
+## 2026-03-25 追加追記: typing / container contract 第1段
+
+対象:
+
+1. `scripts/v460/analysis/oracle_baseline.py`
+2. `scripts/v460/analysis/reproduce_152_metrics.py`
+3. `scripts/v460/analysis/ab_offset_comparison.py`
+4. `scripts/v460/analysis/sha_comparison.py`
+5. `tests/unit/v460/test_sha_comparison_cli.py`
+6. `docs/v460/598_phg_investigation_next_death_spiral_candidates.md`
+7. `docs/v460/037_phg_rpt_refactoring_session_log.md`
+
+今回の寄せ方:
+
+- `oracle_baseline.py`
+  - `Optional[float]` を `float | None` に統一
+- `reproduce_152_metrics.py`
+  - shared `Record` alias を採用
+  - `MetricsMap` を `TypeAlias` として明示
+  - `_to_dict(...)` / `_print_report(...)` / `params` の型を shared contract に寄せた
+- `ab_offset_comparison.py`
+  - record container を shared `Record` alias に統一
+- `sha_comparison.py`
+  - `main(argv)` 化して CLI test と entrypoint 契約を他 script と揃えた
+
+判断:
+
+- runtime 振る舞いを変えずに型/entrypoint だけ揃えられる
+- mypy と focused pytest の両方で守りやすい
+
 ### Batch C: analysis typing / container 整理
 
 対象:

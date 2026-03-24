@@ -20,6 +20,7 @@ import argparse
 import math
 import sys
 from collections import Counter, defaultdict
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -645,7 +646,7 @@ def run_analysis(sha_prefixes: list[str]) -> AnalysisResult:
 # ======================================================================
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description="SHA-isolated fill record analysis (333#)",
     )
@@ -660,7 +661,7 @@ def main() -> None:
         action="store_true",
         help="Output JSON to analysis_results/",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     result = run_analysis(args.sha)
 
