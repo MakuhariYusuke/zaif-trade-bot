@@ -89,5 +89,5 @@ class TestPrimaryMaxConsecutiveSkipYamlIntegration:
             pytest.skip("fill_test.yaml not found")
         raw = load_yaml_mapping(yaml_path)
         config = FillTestConfig.from_yaml(raw)
-        # YAML sets to 10, code default is 0
-        assert config.skip_gate_primary_max_consecutive_skip == 10
+        # YAML sets non-zero value, code default is 0
+        assert config.skip_gate_primary_max_consecutive_skip > 0

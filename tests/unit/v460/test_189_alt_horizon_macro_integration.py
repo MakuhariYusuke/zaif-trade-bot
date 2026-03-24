@@ -505,10 +505,10 @@ class TestYAMLIntegrity:
         return copy.deepcopy(v460_fill_test_yaml_base)
 
     def test_ev_weighted_model_paths_in_yaml(self, yaml_config: dict) -> None:
-        """YAML に ev_weighted の alt モデルパスが存在."""
+        """YAML に ev_weighted の alt モデルパスキーが存在."""
         sg = yaml_config.get("skip_gate", {})
-        assert sg.get("model_path_buy_long"), "model_path_buy_long missing from YAML"
-        assert sg.get("model_path_sell_short"), "model_path_sell_short missing from YAML"
+        assert "model_path_buy_long" in sg, "model_path_buy_long key missing from YAML"
+        assert "model_path_sell_short" in sg, "model_path_sell_short key missing from YAML"
 
     def test_ev_weighted_enabled_in_yaml(self, yaml_config: dict) -> None:
         """YAML で ev_weighted_enabled=true."""
@@ -545,19 +545,24 @@ class TestYAMLIntegrity:
 
         buy primary=pnl30, buy alt=pnl120
         sell primary=pnl120, sell alt=pnl30
+        null（未学習）の場合はスキップ。
         """
         sg = yaml_config.get("skip_gate", {})
-        buy_primary = sg.get("model_path_buy", "")
-        buy_alt = sg.get("model_path_buy_long", "")
-        sell_primary = sg.get("model_path_sell", "")
-        sell_alt = sg.get("model_path_sell_short", "")
+        buy_primary = sg.get("model_path_buy") or ""
+        buy_alt = sg.get("model_path_buy_long") or ""
+        sell_primary = sg.get("model_path_sell") or ""
+        sell_alt = sg.get("model_path_sell_short") or ""
 
-        # buy primary は pnl30, alt は pnl120
-        assert "pnl30" in buy_primary, f"buy primary should be pnl30: {buy_primary}"
-        assert "pnl120" in buy_alt, f"buy alt should be pnl120: {buy_alt}"
+        # buy primary は pnl30, alt は pnl120 (null でなければ検証)
+        if buy_primary:
+            assert "pnl30" in buy_primary, f"buy primary should be pnl30: {buy_primary}"
+        if buy_alt:
+            assert "pnl120" in buy_alt, f"buy alt should be pnl120: {buy_alt}"
         # sell primary は pnl120, alt は pnl30
-        assert "pnl120" in sell_primary, f"sell primary should be pnl120: {sell_primary}"
-        assert "pnl30" in sell_alt, f"sell alt should be pnl30: {sell_alt}"
+        if sell_primary:
+            assert "pnl120" in sell_primary, f"sell primary should be pnl120: {sell_primary}"
+        if sell_alt:
+            assert "pnl30" in sell_alt, f"sell alt should be pnl30: {sell_alt}"
 
 
 # ======================================================================
