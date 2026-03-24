@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
 
 
@@ -51,7 +52,7 @@ class TestPreflightPause:
 
     def test_yaml_parsing(self) -> None:
         """YAML から preflight_pause 設定が正しくパースされる."""
-        cfg = FillTestConfig.from_yaml(_PREFLIGHT_PAUSE_YAML)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(_PREFLIGHT_PAUSE_YAML))
         assert cfg.preflight_pause_enabled is False
         assert cfg.preflight_pause_threshold == 3
         assert cfg.preflight_pause_sec == 120.0
@@ -226,7 +227,7 @@ class TestScoreCalibrationConfig:
         assert cfg.skip_gate_calibrator_refit_interval == 100
 
     def test_yaml_parsing(self) -> None:
-        cfg = FillTestConfig.from_yaml(_SCORE_CALIBRATION_YAML)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(_SCORE_CALIBRATION_YAML))
         assert cfg.skip_gate_score_calibration is True
         assert cfg.skip_gate_calibrator_path == "checkpoints/cal.pkl"
         assert cfg.skip_gate_calibrator_min_samples == 50

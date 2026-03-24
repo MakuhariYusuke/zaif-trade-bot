@@ -29,6 +29,7 @@ from tests.unit.v460._fill_test_source import (
     read_class_method_source,
     read_source_text,
 )
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 from ztb.analysis.regime import MarketRegime, MarketRegimeDetector
 from ztb.trading.common import cancel_reasons as CR
 from ztb.trading.signal.regime.regime_detector import FillTestRegime
@@ -173,7 +174,7 @@ class TestFillConfigBuyDynamicKill:
 
     def test_yaml_buy_dynamic_kill_parsing(self) -> None:
         """YAML から buy_dynamic_kill 設定を読み込む."""
-        cfg = FillTestConfig.from_yaml(_BUY_DYNAMIC_KILL_YAML)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(_BUY_DYNAMIC_KILL_YAML))
         assert cfg.buy_dynamic_kill_enabled is True
         assert cfg.buy_dynamic_kill_window == 30
         assert cfg.buy_dynamic_kill_threshold_bps == -0.6
@@ -198,7 +199,7 @@ class TestTrendingOffsetAsymmetry:
 
     def test_yaml_side_specific_boost(self) -> None:
         """YAML から side-specific boost を読み込む."""
-        cfg = FillTestConfig.from_yaml(_TRENDING_OFFSET_BOOST_YAML)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(_TRENDING_OFFSET_BOOST_YAML))
         assert cfg.regime_trending_offset_boost == 1.5
         assert cfg.regime_trending_offset_boost_buy == 1.0
         assert cfg.regime_trending_offset_boost_sell == 1.8

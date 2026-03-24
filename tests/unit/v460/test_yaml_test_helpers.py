@@ -4,6 +4,7 @@ from pathlib import Path
 
 from tests.unit.v460._yaml_test_helpers import (
     clone_fill_test_config,
+    load_fill_test_config_from_mapping,
     load_fill_test_config_from_path,
     load_fill_test_config_from_text,
 )
@@ -38,3 +39,30 @@ def test_load_fill_test_config_from_path_caches_by_path(tmp_path: Path) -> None:
 
     assert first is second
     assert second.order_quantity == 0.003
+
+
+def test_load_fill_test_config_from_mapping_caches_by_mapping_value() -> None:
+    first = clone_fill_test_config(
+        load_fill_test_config_from_mapping(
+            {
+                "micro_timeout": {
+                    "enabled": True,
+                    "wait_sec": 12.0,
+                },
+            }
+        )
+    )
+    second = clone_fill_test_config(
+        load_fill_test_config_from_mapping(
+            {
+                "micro_timeout": {
+                    "wait_sec": 12.0,
+                    "enabled": True,
+                },
+            }
+        )
+    )
+
+    assert first.micro_timeout_enabled is True
+    assert second.micro_timeout_enabled is True
+    assert first.micro_timeout_wait_sec == second.micro_timeout_wait_sec == 12.0

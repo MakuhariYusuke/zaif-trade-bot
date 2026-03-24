@@ -12,6 +12,7 @@ import pytest
 from scripts.v460.lib.balance_checker import BalanceChecker
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.lock_manager import LockConflictError, LockManager
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config
 
 
 @pytest.fixture(scope="module")
@@ -174,9 +175,9 @@ class TestTrendingSellSkipRebalance:
         val = hotfix_yaml.get("loss_control", {}).get("max_consecutive_trending_sell_skip", None)
         assert val == 10, f"Expected 10, got {val}"
 
-    def test_config_loads_max_consecutive(self, hotfix_yaml: dict[str, object]):
+    def test_config_loads_max_consecutive(self, v460_fill_test_config_base: FillTestConfig):
         """FillTestConfig が max_consecutive_trending_sell_skip を正しくロードする (171# 10)."""
-        cfg = FillTestConfig.from_yaml(hotfix_yaml)
+        cfg = clone_fill_test_config(v460_fill_test_config_base)
         assert cfg.max_consecutive_trending_sell_skip == 10
 
 
@@ -206,7 +207,7 @@ class TestTrendingSellSkipRebalance2:
         val = hotfix_yaml.get("loss_control", {}).get("max_consecutive_trending_sell_skip", None)
         assert val == 10, f"Expected 10, got {val}"
 
-    def test_config_loads_max_consecutive(self, hotfix_yaml: dict[str, object]):
+    def test_config_loads_max_consecutive(self, v460_fill_test_config_base: FillTestConfig):
         """FillTestConfig が max_consecutive_trending_sell_skip を正しくロードする (169# C3: 20)."""
-        cfg = FillTestConfig.from_yaml(hotfix_yaml)
+        cfg = clone_fill_test_config(v460_fill_test_config_base)
         assert cfg.max_consecutive_trending_sell_skip == 10  # 171# 20→10

@@ -54,6 +54,19 @@
   - inline YAML を `load_fill_test_config_from_text(...)` ベースの cached config fixture に寄せた
 - `tests/unit/v460/test_yaml_test_helpers.py`
   - helper の cache / clone 契約を追加
+- `tests/unit/v460/test_micro_timeout.py`
+  - inline mapping を `load_fill_test_config_from_mapping(...)` ベースへ寄せた
+  - production YAML 読み込みも `v460_fill_test_config_base` を再利用
+- `tests/unit/v460/test_151_confidence_lot.py`
+  - fixed mapping の `from_yaml(...)` を cached helper に寄せた
+- `tests/unit/v460/test_138_p1_preflight_calibration.py`
+  - preflight / score calibration の固定 mapping を cached helper に寄せた
+- `tests/unit/v460/test_157_regime_features.py`
+  - regime feature の固定 mapping を cached helper に寄せた
+- `tests/unit/v460/test_166_hotfixes.py`
+  - production YAML 由来 config を `v460_fill_test_config_base` から clone する形へ寄せた
+- `tests/unit/v460/test_202_log_improvements.py`
+  - inline YAML text を `load_fill_test_config_from_text(...)` ベースへ寄せた
 
 ### 4. xdist 準備
 
@@ -62,6 +75,15 @@
   - `serial` marker を追加
 - `tests/unit/v460/test_retrain_hot_reload.py`
   - module-level で `pytest.mark.serial` を付与
+
+### 5. mapping ベース cache helper の追加
+
+- `tests/unit/v460/_yaml_test_helpers.py`
+  - `load_fill_test_config_from_mapping(...)`
+  - JSON canonicalization を使った cache path
+  を追加
+- dict literal / fixed nested mapping を直接 `FillTestConfig.from_yaml(...)` していたテストを、
+  検出力を変えずに cached helper ベースへ移行した
 
 ## 重量テストの初期観測
 
@@ -122,3 +144,12 @@
   - `tests/unit/v460/test_yaml_test_helpers.py`
   - `tests/unit/v460/test_retrain_hot_reload.py`
   - 結果: `187 passed in 4.97s`
+- focused pytest:
+  - `tests/unit/v460/test_yaml_test_helpers.py`
+  - `tests/unit/v460/test_micro_timeout.py`
+  - `tests/unit/v460/test_151_confidence_lot.py`
+  - `tests/unit/v460/test_138_p1_preflight_calibration.py`
+  - `tests/unit/v460/test_157_regime_features.py`
+  - `tests/unit/v460/test_166_hotfixes.py`
+  - `tests/unit/v460/test_202_log_improvements.py`
+  - 結果: `134 passed in 5.25s`

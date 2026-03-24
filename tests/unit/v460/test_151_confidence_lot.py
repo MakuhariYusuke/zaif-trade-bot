@@ -28,6 +28,7 @@ import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.run_fill_test import FillTestRunner
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 from ztb.metrics.fill_quality import FillRecord
 
 
@@ -279,22 +280,25 @@ class TestFromYaml:
     """FillTestConfig.from_yaml の confidence_lot 読込テスト."""
 
     def test_confidence_lot_from_yaml(self) -> None:
-        yaml_cfg: dict = {
-            "confidence_lot": {
-                "enabled": True,
-                "scale": 0.8,
-                "floor": 0.4,
-                "mode": "as",
-            }
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "confidence_lot": {
+                        "enabled": True,
+                        "scale": 0.8,
+                        "floor": 0.4,
+                        "mode": "as",
+                    }
+                }
+            )
+        )
         assert cfg.enable_confidence_lot is True
         assert cfg.confidence_lot_scale == 0.8
         assert cfg.confidence_lot_floor == 0.4
         assert cfg.confidence_lot_mode == "as"
 
     def test_confidence_lot_absent_uses_defaults(self) -> None:
-        cfg = FillTestConfig.from_yaml({})
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping({}))
         assert cfg.enable_confidence_lot is False
         assert cfg.confidence_lot_scale == 1.0
 

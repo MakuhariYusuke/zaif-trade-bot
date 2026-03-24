@@ -12,7 +12,7 @@ import pytest
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
 from scripts.v460.lib.maker_price import MakerPriceCalculator
-from tests.unit.v460._yaml_test_helpers import parse_yaml_mapping
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_text
 from ztb.trading.risk.fast_fill_defense import FastFillDefense
 
 
@@ -37,14 +37,12 @@ class TestLossCooldownConfig:
         assert cfg.loss_cooldown_interval_mult == 1.0
 
     def test_yaml_parsing(self) -> None:
-        yaml_str = """
+        cfg = clone_fill_test_config(load_fill_test_config_from_text("""
 止血:
   loss_cooldown_threshold_bps: -8.0
   loss_cooldown_interval_mult: 3.0
   one_sided_balance_rescue_offset: false
-"""
-        data = parse_yaml_mapping(yaml_str)
-        cfg = FillTestConfig.from_yaml(data)
+"""))
         assert cfg.loss_cooldown_threshold_bps == -8.0
         assert cfg.loss_cooldown_interval_mult == 3.0
         assert cfg.one_sided_balance_rescue_offset is False

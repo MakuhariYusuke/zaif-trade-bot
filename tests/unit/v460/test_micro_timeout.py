@@ -11,6 +11,7 @@ import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.fill_config_results import FillMonitorResult
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 
 # ======================================================================
@@ -50,17 +51,20 @@ class TestMicroTimeoutYamlParsing:
     """YAML → FillTestConfig の micro_timeout セクションパース."""
 
     def test_from_yaml_micro_timeout_enabled(self) -> None:
-        yaml_cfg = {
-            "micro_timeout": {
-                "enabled": True,
-                "wait_sec": 12.0,
-                "wait_sec_sell": 9.0,
-                "max_requote_per_cycle": 5,
-                "requote_cooloff_sec": 2.0,
-                "cancel_on_cross_venue_flip": False,
-            },
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "micro_timeout": {
+                        "enabled": True,
+                        "wait_sec": 12.0,
+                        "wait_sec_sell": 9.0,
+                        "max_requote_per_cycle": 5,
+                        "requote_cooloff_sec": 2.0,
+                        "cancel_on_cross_venue_flip": False,
+                    },
+                }
+            )
+        )
         assert cfg.micro_timeout_enabled is True
         assert cfg.micro_timeout_wait_sec == 12.0
         assert cfg.micro_timeout_wait_sec_sell == 9.0
@@ -69,26 +73,26 @@ class TestMicroTimeoutYamlParsing:
         assert cfg.micro_timeout_cancel_on_cv_flip is False
 
     def test_from_yaml_micro_timeout_disabled(self) -> None:
-        yaml_cfg = {
-            "micro_timeout": {"enabled": False},
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping({"micro_timeout": {"enabled": False}}))
         assert cfg.micro_timeout_enabled is False
         # other fields should be defaults
         assert cfg.micro_timeout_wait_sec == 15.0
 
     def test_from_yaml_no_micro_timeout_section(self) -> None:
-        cfg = FillTestConfig.from_yaml({})
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping({}))
         assert cfg.micro_timeout_enabled is False
 
     def test_from_yaml_partial_micro_timeout(self) -> None:
-        yaml_cfg = {
-            "micro_timeout": {
-                "enabled": True,
-                "wait_sec": 20.0,
-            },
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "micro_timeout": {
+                        "enabled": True,
+                        "wait_sec": 20.0,
+                    },
+                }
+            )
+        )
         assert cfg.micro_timeout_enabled is True
         assert cfg.micro_timeout_wait_sec == 20.0
         # defaults for unspecified
@@ -160,13 +164,11 @@ class TestProductionYamlMicroTimeout:
         assert "max_requote_per_cycle" in mt
         assert "requote_cooloff_sec" in mt
 
-    def test_yaml_micro_timeout_defaults_disabled(self) -> None:
-        from pathlib import Path
-        import yaml
-        yaml_path = Path(__file__).resolve().parent.parent.parent.parent / "configs" / "v460" / "fill_test.yaml"
-        with open(yaml_path) as f:
-            raw = yaml.safe_load(f)
-        cfg = FillTestConfig.from_yaml(raw)
+    def test_yaml_micro_timeout_defaults_disabled(
+        self,
+        v460_fill_test_config_base: FillTestConfig,
+    ) -> None:
+        cfg = clone_fill_test_config(v460_fill_test_config_base)
         # 454# Step 1: 保守的設定で有効化済み → 496# TTL 短縮
         assert cfg.micro_timeout_enabled is True
         assert cfg.micro_timeout_wait_sec == 15.0     # 496# 30→15

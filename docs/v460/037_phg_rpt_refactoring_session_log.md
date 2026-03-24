@@ -9135,3 +9135,22 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
       - `test_yaml_test_helpers.py`
       - `test_retrain_hot_reload.py`
       - `187 passed in 4.97s`
+  - YAML/mapping cache sweep (追加):
+    - `tests/unit/v460/_yaml_test_helpers.py`
+      - `load_fill_test_config_from_mapping(...)` を追加
+    - `tests/unit/v460/test_micro_timeout.py`
+    - `tests/unit/v460/test_151_confidence_lot.py`
+    - `tests/unit/v460/test_138_p1_preflight_calibration.py`
+    - `tests/unit/v460/test_157_regime_features.py`
+    - `tests/unit/v460/test_166_hotfixes.py`
+    - `tests/unit/v460/test_202_log_improvements.py`
+      - fixed mapping / fixed YAML text / production YAML config clone を shared helper に寄せた
+    - focused pytest:
+      - `test_yaml_test_helpers.py`
+      - `test_micro_timeout.py`
+      - `test_151_confidence_lot.py`
+      - `test_138_p1_preflight_calibration.py`
+      - `test_157_regime_features.py`
+      - `test_166_hotfixes.py`
+      - `test_202_log_improvements.py`
+      - `134 passed in 5.25s`
