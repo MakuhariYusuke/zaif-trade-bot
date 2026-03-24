@@ -1160,6 +1160,20 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                             mt_attempt + 1,
                             mt_max,
                         )
+                        # 603# age_cap exceeded: 滞留注文をキャンセル
+                        try:
+                            await self.adapter.cancel_order(order.order_id)
+                            logger.info(
+                                "[603#] Cancelled order %s on age_cap exceeded",
+                                order.order_id,
+                            )
+                        except Exception as e:
+                            logger.warning(
+                                "[603#] Cancel failed for order %s on age_cap "
+                                "exceeded (may be filled/cancelled): %s",
+                                order.order_id,
+                                e,
+                            )
                         break
 
                 object.__setattr__(self.config, "order_timeout_sec", mt_wait)

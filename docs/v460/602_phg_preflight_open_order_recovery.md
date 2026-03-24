@@ -56,4 +56,4 @@ shrink → pause (×3) → [NEW] open order cancel attempt → retry or SAFE_STO
 
 ## 残課題
 
-- `sell_age_cap exceeded` 時のキャンセル漏れ修正 (上流バグ、別チケットで対応)
+- ~~`sell_age_cap exceeded` 時のキャンセル漏れ修正 (上流バグ、別チケットで対応)~~ → 603# で修正済み

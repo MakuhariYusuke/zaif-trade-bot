@@ -757,6 +757,33 @@ class TestPreflightOpenOrderRecovery:
         assert "preflight_skip_exceeded" in src
 
 
+class TestAgeCapCancelOrder:
+    """603# sell_age_cap exceeded 時の滞留注文キャンセル."""
+
+    def test_monitor_fill_phase_cancels_on_age_cap(self) -> None:
+        """_monitor_fill_phase に age_cap exceeded 後の cancel_order がある."""
+        src = read_fill_test_method_source("_monitor_fill_phase")
+        idx_age_cap = src.index("sell_age_cap exceeded")
+        idx_cancel = src.index("cancel_order", idx_age_cap)
+        assert idx_cancel > idx_age_cap
+
+    def test_cancel_precedes_break(self) -> None:
+        """cancel_order が break より前に呼ばれる."""
+        src = read_fill_test_method_source("_monitor_fill_phase")
+        idx_age_cap = src.index("sell_age_cap exceeded")
+        idx_cancel = src.index("cancel_order", idx_age_cap)
+        # age_cap の後の最初の break
+        idx_break = src.index("break", idx_age_cap)
+        assert idx_cancel < idx_break
+        idx_reset = src.index("_preflight_skip_count = 0", idx_open)
+        assert idx_reset > idx_open
+
+    def test_safe_stop_still_reachable(self) -> None:
+        """open order recovery 失敗時は SAFE_STOP に到達する."""
+        src = read_fill_test_method_source("_handle_preflight_failure")
+        assert "preflight_skip_exceeded" in src
+
+
 class TestCleanupSyncImproved:
     """044# A-4: _cleanup_sync の改善テスト."""
 
