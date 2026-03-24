@@ -28,6 +28,7 @@ Coincheck BTC/JPY マーケットメイカー（SAC強化学習）。短期高�
 
 ## git 運用ルール
 - `git add` は対象ファイルを**個別指定**。`git add .` 禁止
+- 日常確認は `git status -uno` を基本にし、untracked 確認が必要な時だけ通常 `git status` を使う
 - コミット前に `git diff --cached --stat` で差分確認必須
 - ドキュメントは毎回更新してコミットに含める
 - ドキュメント番号 `NNN#` はインクリメンタルに採番（既存最大+1）
@@ -39,3 +40,4 @@ Coincheck BTC/JPY マーケットメイカー（SAC強化学習）。短期高�
 
 ## ⚠ 既知の問題: git 追跡ファイル消失
 session037 コミット群（116個）が `git add` 漏れにより追跡ファイルを 5,002→105 に激減させた。ディスク上のファイルは無事。修復手順は `temp/prompt_git_fix.md` を参照。
+- `core.splitIndex` は壊れると追跡消失に見えるため、この repo では無効を維持する

@@ -2,7 +2,6 @@
 Unit tests for ztb.cache.parquet_io module.
 """
 
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -207,27 +206,23 @@ class TestParquetIO:
     @patch("ztb.cache.parquet_io.write_parquet")
     @patch("ztb.cache.parquet_io.print")
     def test_convert_to_parquet_csv(
-        self, mock_print, mock_write_parquet, mock_load_config
+        self, mock_print, mock_write_parquet, mock_load_config, tmp_path
     ):
         """Test convert_to_parquet with CSV input."""
         mock_load_config.return_value = {}
 
-        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp_file:
-            tmp_file.write(b"col1,col2\n1,2\n3,4\n")
-            tmp_file_path = Path(tmp_file.name)
+        tmp_file_path = tmp_path / "input.csv"
+        tmp_file_path.write_text("col1,col2\n1,2\n3,4\n")
 
-        try:
-            with patch("ztb.cache.parquet_io.pd.read_csv") as mock_read_csv:
-                mock_read_csv.return_value = pd.DataFrame(
-                    {"col1": [1, 3], "col2": [2, 4]}
-                )
+        with patch("ztb.cache.parquet_io.pd.read_csv") as mock_read_csv:
+            mock_read_csv.return_value = pd.DataFrame(
+                {"col1": [1, 3], "col2": [2, 4]}
+            )
 
-                convert_to_parquet(tmp_file_path, Path("output.parquet"))
+            convert_to_parquet(tmp_file_path, Path("output.parquet"))
 
-                mock_read_csv.assert_called_once_with(tmp_file_path)
-                mock_write_parquet.assert_called_once()
-        finally:
-            tmp_file_path.unlink(missing_ok=True)
+            mock_read_csv.assert_called_once_with(tmp_file_path)
+            mock_write_parquet.assert_called_once()
 
     @patch("ztb.cache.parquet_io.load_config")
     @patch("ztb.cache.parquet_io.write_parquet")

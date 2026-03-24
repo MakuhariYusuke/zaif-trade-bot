@@ -9219,3 +9219,13 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
       - `TemporaryDirectory()` / `NamedTemporaryFile()` を `tmp_path` ベースへ置換
     - focused pytest:
       - `60 passed in 6.39s`
+  - cache/parquet tempfile sweep (追加):
+    - `tests/unit/cache/test_parquet_io.py`
+      - CSV 入力 fixture を `tmp_path` 化
+  - git 修復/運用メモ (追加):
+    - `core.splitIndex=true` で壊れた shared index (`sharedindex.000...`) を参照し、tracked 消失状態に見えていた
+    - `core.splitIndex=false` に戻し、index を `HEAD` から再構築して復旧
+    - repo-local alias を追加:
+      - `git st` = `status --short -uno`
+      - `git stu` = `status --short --untracked-files=normal`
+      - `git dcs` = `diff --cached --stat`

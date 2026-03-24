@@ -259,6 +259,28 @@
     - 上記 4 ファイル
     - 結果: `60 passed in 6.39s`
 
+- cache/parquet tempfile sweep:
+  - 追加適用:
+    - `tests/unit/cache/test_parquet_io.py`
+  - 内容:
+    - CSV 入力 fixture を `NamedTemporaryFile()` から `tmp_path` へ移行
+  - focused pytest:
+    - `tests/unit/cache/test_parquet_io.py`
+
+## git 運用メモ
+
+- WSL + NTFS 上では `git status --untracked-files=normal` が重い
+  - 修復後実測:
+    - `git status --short --untracked-files=normal`: `54.05s`
+    - `git status --short --untracked-files=no`: `9.47s`
+- repo-local に維持する設定:
+  - `core.untrackedcache=true`
+  - `core.preloadindex=true`
+  - `core.fscache=true`
+  - `fetch.writeCommitGraph=true`
+  - `core.splitIndex=false`
+- `splitIndex` は壊れた shared index 参照で tracked 消失に見えるため、この repo では無効が安全
+
 ## 本体コード側の所見
 
 - `FillTestConfig` 読み込みの production 側 short-path はすでにかなり整っている
