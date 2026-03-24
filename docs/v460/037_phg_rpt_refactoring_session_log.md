@@ -9169,3 +9169,35 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `tests/unit/v460/test_retrain_hot_reload.py --durations=20 --no-cov`
       - `86 passed in 4.47s`
       - slowest は `0.05s` 台で、現時点では top offender ではなかった
+  - broad cached-helper sweep (追加):
+    - `test_velocity_skip_rule.py`
+    - `test_fill_quality.py`
+    - `test_141_side_specific_models.py`
+    - `test_168_pnl_measurer_sell_hold.py`
+    - `test_168_daily_drawdown_guard.py`
+    - `test_306_proposals.py`
+    - `test_593_ev_toxic_skip_and_cap_hit_veto.py`
+    - `test_139_review_fixes.py`
+    - `test_143_regime_utilization.py`
+    - `test_155_hindsight_review.py`
+    - `test_158_regime_deadlock_fix.py`
+    - `test_176_trending_offset_asymmetry.py`
+    - `test_187_chase_direction_guard_trace.py`
+    - `test_188_split_evc_macro.py`
+    - `test_190_ev_weighted_safety.py`
+    - `test_193_ev_offset.py`
+    - `test_195_velocity_b1_soft.py`
+    - `test_226_loss_boost_decay_inv_skew_state.py`
+    - `test_228_inv_decay_hasattr_removal.py`
+    - `test_273_kill_time_limit_halt_untick_recovery_grace.py`
+    - `test_274_pattern_c_theory_cleanup.py`
+    - `test_276_blocking_policy_dry.py`
+    - `test_277_magic_number_grounding.py`
+    - `test_292_observability.py`
+    - `test_303_review_implementations.py`
+    - `test_421_final_clamp_deadlock.py`
+    - `test_440_regime_side_offset.py`
+    - `test_skip_gate_v3.py`
+      - 単発 `FillTestConfig.from_yaml(...)` を cached helper に寄せた
+    - focused pytest:
+      - `1101 passed in 11.41s`

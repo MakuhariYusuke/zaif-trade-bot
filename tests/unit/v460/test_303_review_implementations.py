@@ -25,6 +25,7 @@ from scripts.v460.lib.daily_drawdown_guard import (
 )
 from scripts.v460.lib.fill_config import FillTestConfig
 from tests.unit.v460._fill_test_source import MAKER_PRICE, read_class_method_source
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 from ztb.io.json_io import JSONObject
 from ztb.metrics.fill_quality import FillRecord
 
@@ -361,7 +362,7 @@ class TestSideSpecificCeiling:
             "offset_ceiling_ratio_buy": 0.15,
             "offset_ceiling_ratio_sell": 0.50,
         }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_cfg))
         assert cfg.offset_ceiling_ratio == 0.15
         assert cfg.offset_ceiling_ratio_buy == 0.15
         assert cfg.offset_ceiling_ratio_sell == 0.50
@@ -369,7 +370,7 @@ class TestSideSpecificCeiling:
     def test_side_specific_ceiling_yaml_absent_stays_none(self) -> None:
         """321#: YAML にサイド別 ceiling がない場合 None のまま."""
         yaml_cfg: dict = {"offset_ceiling_ratio": 0.20}
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_cfg))
         assert cfg.offset_ceiling_ratio == 0.20
         assert cfg.offset_ceiling_ratio_buy is None
         assert cfg.offset_ceiling_ratio_sell is None

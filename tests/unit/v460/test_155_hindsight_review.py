@@ -35,6 +35,7 @@ from tests.unit.v460._fill_test_source import (
     read_fill_test_runner_source,
     read_source_text,
 )
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 _GET_FALLBACK_PRICE_SIG = inspect.signature(MakerPriceCalculator.get_fallback_price)
 from ztb.metrics.fill_quality import FillRecord
@@ -362,7 +363,7 @@ class TestSellTimeoutConfig:
 
     def test_from_yaml_loads(self) -> None:
         yaml_cfg = {"order_timeout_sec_sell": 72.0}
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_cfg))
         assert cfg.order_timeout_sec_sell == 72.0
 
 

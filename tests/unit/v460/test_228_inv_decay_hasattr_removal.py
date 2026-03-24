@@ -19,6 +19,7 @@ from scripts.v460.lib.maker_price import MakerPriceCalculator as MakerPrice
 from ztb.trading.signal.regime.regime_detector import FillTestRegime
 from tests.unit.v460.conftest import make_maker_price_config as _make_config
 from tests.unit.v460._fill_test_source import read_inspect_source
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 import scripts.v460.lib.fill_loop_orchestrator as fill_loop_orchestrator_mod
 
@@ -215,7 +216,7 @@ class TestInvDecayYaml:
                 },
             },
         }
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert cfg.inv_decay_tau_sec == 1800.0
 
 

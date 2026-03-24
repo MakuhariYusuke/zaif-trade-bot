@@ -28,6 +28,7 @@ from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
 from scripts.v460.lib.micro_circuit_breaker import MCBConfig, MicroCircuitBreaker
 from scripts.v460.lib.regime_policy import DefaultCycleStrategy, RegimePolicyConfig
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 if TYPE_CHECKING:
     pass
@@ -75,7 +76,7 @@ class TestNewConfigFields:
             "fallback_duration_sec": 1800.0,
             "unknown_regime_max_consecutive": 15,
         }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_cfg))
         assert cfg.phantom_detection_sleep_multiplier == 4.0
         assert cfg.halt_persist_interval == 5
         assert cfg.stop_condition_check_interval == 20

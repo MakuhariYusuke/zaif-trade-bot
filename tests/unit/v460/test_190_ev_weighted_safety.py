@@ -23,6 +23,7 @@ from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 _RUN_SINGLE_CYCLE_SIG = inspect.signature(FillCycleExecutorMixin.run_single_cycle)
 _EVALUATE_SKIP_GATE_SIG = inspect.signature(FillCycleExecutorMixin._evaluate_skip_gate)
@@ -321,7 +322,7 @@ class TestFillConfigNewFields:
                 "ev_one_sided_threshold_shift": -1.0,
             },
         }
-        config = FillTestConfig.from_yaml(yaml_dict)
+        config = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_dict))
         assert config.skip_gate_ev_max_consecutive_skip == 5
         assert config.skip_gate_ev_one_sided_threshold_shift == -1.0
 

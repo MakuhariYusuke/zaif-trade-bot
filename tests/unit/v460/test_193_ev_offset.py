@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 
 # ─── helper ─────────────────────────────────────────────────────────
@@ -267,7 +268,7 @@ class TestEvOffsetConfig:
                 "ev_emergency_skip_threshold": -10.0,
             }
         }
-        c = FillTestConfig.from_yaml(yaml_data)
+        c = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert c.skip_gate_ev_as_offset_enabled is True
         assert c.skip_gate_ev_offset_sensitivity == pytest.approx(0.1)
         assert c.skip_gate_ev_offset_min_mult == pytest.approx(0.3)

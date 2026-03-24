@@ -45,6 +45,7 @@ from tests.unit.v460._fill_test_source import (
     read_fill_test_runner_source,
     read_source_text,
 )
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
 from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
 
@@ -288,7 +289,7 @@ class TestRegimeThresholdsWiring:
         }
         yaml_path = tmp_path / "test.yaml"
         yaml_path.write_text(yaml.dump(yaml_data, allow_unicode=True))
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert cfg.sell_dynamic_kill_regime_thresholds == {
             "trending_up": -0.3,
             "trending_down": -1.0,

@@ -192,3 +192,50 @@
   - `tests/unit/v460/test_retrain_hot_reload.py --durations=20 --no-cov`
   - 結果: `86 passed in 4.47s`
   - 最遅ケースも `0.05s` 台で、現時点では top offender ではなかった
+- broad cached-helper sweep:
+  - 追加適用:
+    - `tests/unit/v460/test_velocity_skip_rule.py`
+    - `tests/unit/v460/test_fill_quality.py`
+    - `tests/unit/v460/test_141_side_specific_models.py`
+    - `tests/unit/v460/test_168_pnl_measurer_sell_hold.py`
+    - `tests/unit/v460/test_168_daily_drawdown_guard.py`
+    - `tests/unit/v460/test_306_proposals.py`
+    - `tests/unit/v460/test_593_ev_toxic_skip_and_cap_hit_veto.py`
+    - `tests/unit/v460/test_139_review_fixes.py`
+    - `tests/unit/v460/test_143_regime_utilization.py`
+    - `tests/unit/v460/test_155_hindsight_review.py`
+    - `tests/unit/v460/test_158_regime_deadlock_fix.py`
+    - `tests/unit/v460/test_176_trending_offset_asymmetry.py`
+    - `tests/unit/v460/test_187_chase_direction_guard_trace.py`
+    - `tests/unit/v460/test_188_split_evc_macro.py`
+    - `tests/unit/v460/test_190_ev_weighted_safety.py`
+    - `tests/unit/v460/test_193_ev_offset.py`
+    - `tests/unit/v460/test_195_velocity_b1_soft.py`
+    - `tests/unit/v460/test_226_loss_boost_decay_inv_skew_state.py`
+    - `tests/unit/v460/test_228_inv_decay_hasattr_removal.py`
+    - `tests/unit/v460/test_273_kill_time_limit_halt_untick_recovery_grace.py`
+    - `tests/unit/v460/test_274_pattern_c_theory_cleanup.py`
+    - `tests/unit/v460/test_276_blocking_policy_dry.py`
+    - `tests/unit/v460/test_277_magic_number_grounding.py`
+    - `tests/unit/v460/test_292_observability.py`
+    - `tests/unit/v460/test_303_review_implementations.py`
+    - `tests/unit/v460/test_421_final_clamp_deadlock.py`
+    - `tests/unit/v460/test_440_regime_side_offset.py`
+    - `tests/unit/v460/test_skip_gate_v3.py`
+  - 内容:
+    - 単発 `FillTestConfig.from_yaml(...)` を `clone_fill_test_config(load_fill_test_config_from_mapping(...))` に寄せた
+    - 固定 dict / 空 dict / 単発 YAML mapping の重複初期化を shared cache に吸収
+  - focused pytest:
+    - 上記 28 ファイル
+    - 結果: `1101 passed in 11.41s`
+
+## 本体コード側の所見
+
+- `FillTestConfig` 読み込みの production 側 short-path はすでにかなり整っている
+  - `scripts/v460/ml/retrain_scheduler.py`
+  - `scripts/v460/lib/config_loader.py`
+  - file signature + `@lru_cache` が入っているため、ここをさらに触る優先度は高くない
+- したがって現時点で最も効率が良いのは
+  - coverage デフォルト解除
+  - test 側の repeated `FillTestConfig.from_yaml(...)` 削減
+  の継続

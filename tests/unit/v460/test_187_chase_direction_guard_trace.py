@@ -15,6 +15,7 @@ from scripts.v460.lib.regime_policy import (
     RegimePolicyConfig,
 )
 from ztb.metrics.fill_quality import FillRecord
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 
 # ======================================================================
@@ -197,7 +198,7 @@ class TestClampYAMLExternalization:
                 "offset_ceil": 0.8,
             }
         }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_cfg))
         assert cfg.skip_gate_offset_floor == pytest.approx(-0.5)
         assert cfg.skip_gate_offset_ceil == pytest.approx(0.8)
 

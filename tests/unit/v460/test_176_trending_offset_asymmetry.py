@@ -22,6 +22,7 @@ from scripts.v460.lib.maker_price import MakerPriceCalculator
 from scripts.v460.lib.regime_detector import FillTestRegime
 from scripts.v460.ml.skip_gate import build_features_from_market_state
 from tests.unit.v460._fill_test_source import CYCLE_GATE_AGGREGATOR, read_source_text
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 _CYCLE_GATE_AGGREGATOR_SOURCE = read_source_text(CYCLE_GATE_AGGREGATOR)
 
@@ -102,7 +103,7 @@ class TestDirectionalBoostConfig:
                 "trending_down_sell_offset_boost": 0.7,
             },
         }
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert cfg.trending_up_buy_offset_boost == 0.7
         assert cfg.trending_up_sell_offset_boost == 1.8
         assert cfg.trending_down_buy_offset_boost == 1.8

@@ -34,6 +34,7 @@ from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from scripts.v460.lib.param_adapter import AdaptationConfig, compute_adaptation
 from scripts.v460.lib.side_selector import SideSelector
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 from ztb.metrics.fill_quality import FillRecord
 
 
@@ -813,9 +814,13 @@ class TestSellHourOffsetBoost:
 
     def test_yaml_parsing(self) -> None:
         """YAML sell_hour_offset_boost parses correctly."""
-        config = FillTestConfig.from_yaml({
-            "sell_hour_offset_boost": {"8": 1.5, "16": 1.5},
-        })
+        config = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "sell_hour_offset_boost": {"8": 1.5, "16": 1.5},
+                }
+            )
+        )
         assert config.sell_hour_offset_boost == {8: 1.5, 16: 1.5}
 
 
@@ -912,13 +917,17 @@ class TestMicropriceGuardrails:
 
     def test_yaml_guardrail_parsing(self) -> None:
         """YAML guardrails parse correctly."""
-        config = FillTestConfig.from_yaml({
-            "microprice_side": {
-                "enabled": True,
-                "threshold_bps": 0.3,
-                "min_spread_bps": 20.0,
-                "regime_gate": ["ranging", "high_vol"],
-            },
-        })
+        config = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "microprice_side": {
+                        "enabled": True,
+                        "threshold_bps": 0.3,
+                        "min_spread_bps": 20.0,
+                        "regime_gate": ["ranging", "high_vol"],
+                    },
+                }
+            )
+        )
         assert config.microprice_side_min_spread_bps == 20.0
         assert config.microprice_side_regime_gate == ["ranging", "high_vol"]

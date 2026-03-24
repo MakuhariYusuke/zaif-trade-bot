@@ -17,6 +17,7 @@ import pytest
 from scripts.v460.lib.cross_venue_lead_lag import CrossVenueLeadLagHint
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 from ztb.trading.risk.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 
 
@@ -338,19 +339,25 @@ class TestConfig593:
         assert c.cross_venue_cap_hit_sell_veto_enabled is False
 
     def test_yaml_parse_toxic_skip(self) -> None:
-        yaml_data = {
-            "skip_gate": {
-                "ev_toxic_skip_threshold": -6.0,
-            }
-        }
-        c = FillTestConfig.from_yaml(yaml_data)
+        c = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "skip_gate": {
+                        "ev_toxic_skip_threshold": -6.0,
+                    }
+                }
+            )
+        )
         assert c.skip_gate_ev_toxic_skip_threshold == pytest.approx(-6.0)
 
     def test_yaml_parse_cap_hit_sell_veto(self) -> None:
-        yaml_data = {
-            "cross_venue_lead_lag": {
-                "cap_hit_sell_veto_enabled": True,
-            }
-        }
-        c = FillTestConfig.from_yaml(yaml_data)
+        c = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "cross_venue_lead_lag": {
+                        "cap_hit_sell_veto_enabled": True,
+                    }
+                }
+            )
+        )
         assert c.cross_venue_cap_hit_sell_veto_enabled is True

@@ -21,6 +21,7 @@ from types import SimpleNamespace
 import pytest
 from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin, RunSessionState
 from tests.unit.v460._fill_test_source import read_fill_test_runner_source
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 _EXECUTE_SKIP_SIG = inspect.signature(FillLoopOrchestratorMixin._execute_skip)
 
@@ -213,7 +214,7 @@ class TestHaltSleepMultiplierConfig:
             "max_cycle_sleep_sec": 840.0,  # 277# >= cycle_interval × halt_mult
             "results_dir": "results/test",
         }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_cfg))
         assert cfg.halt_sleep_multiplier == 7.0
 
     def test_yaml_file_has_halt_sleep_multiplier(

@@ -26,6 +26,7 @@ from scripts.v460.lib.macro_regime import (
     compose_regimes,
 )
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 # ======================================================================
 # 1. regime_policy → cycle_strategy 分割の後方互換テスト
@@ -309,7 +310,7 @@ class TestEvWeightedDecision:
                 "model_path_sell_short": "models/test_sell_short.pkl",
             }
         }
-        config = FillTestConfig.from_yaml(yaml_cfg)
+        config = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_cfg))
         assert config.skip_gate_ev_weighted_enabled is True
         assert config.skip_gate_ev_w30 == 0.3
         assert config.skip_gate_ev_w120 == 0.7

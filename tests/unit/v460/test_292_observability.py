@@ -19,6 +19,7 @@ import sys
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from scripts.v460.run_fill_test import FillTestConfig
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 from ztb.metrics.fill_quality import FillRecord, build_fill_record
 
 
@@ -128,7 +129,7 @@ class TestRepriceDeadbandYAML:
                 "reprice_min_delta_jpy": 300.0,
             }
         }
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert cfg.stale_reprice_min_delta_jpy == pytest.approx(300.0)
 
     def test_from_yaml_reprice_deadband_absent(self) -> None:
@@ -138,7 +139,7 @@ class TestRepriceDeadbandYAML:
                 "enabled": True,
             }
         }
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert cfg.stale_reprice_min_delta_jpy == pytest.approx(0.0)
 
     def test_production_yaml_has_reprice_deadband(self) -> None:

@@ -17,6 +17,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig, SkipGateResult
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 from ztb.metrics.fill_quality import FillRecord
 
 
@@ -246,16 +247,19 @@ class TestVelocityYamlParsing:
 
     def test_from_yaml_with_velocity_config(self) -> None:
         """FillTestConfig.from_yaml should parse velocity skip fields."""
-        yaml_dict = {
-            "skip_gate": {
-                "enabled": True,
-                "sell_velocity_skip_enabled": True,
-                "sell_velocity_skip_threshold_bps": 5.0,
-                "buy_velocity_skip_enabled": True,
-                "buy_velocity_skip_threshold_bps": -5.0,
-            }
-        }
-        cfg = FillTestConfig.from_yaml(yaml_dict)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "skip_gate": {
+                        "enabled": True,
+                        "sell_velocity_skip_enabled": True,
+                        "sell_velocity_skip_threshold_bps": 5.0,
+                        "buy_velocity_skip_enabled": True,
+                        "buy_velocity_skip_threshold_bps": -5.0,
+                    }
+                }
+            )
+        )
         assert cfg.sell_velocity_skip_enabled is True
         assert cfg.sell_velocity_skip_threshold_bps == 5.0
         assert cfg.buy_velocity_skip_enabled is True
@@ -263,8 +267,7 @@ class TestVelocityYamlParsing:
 
     def test_from_yaml_defaults_when_absent(self) -> None:
         """When velocity fields are absent, defaults apply."""
-        yaml_dict = {"skip_gate": {"enabled": True}}
-        cfg = FillTestConfig.from_yaml(yaml_dict)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping({"skip_gate": {"enabled": True}}))
         assert cfg.sell_velocity_skip_enabled is False
         assert cfg.sell_velocity_skip_threshold_bps == 8.0
 

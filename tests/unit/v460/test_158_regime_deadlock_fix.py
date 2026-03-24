@@ -27,7 +27,7 @@ from tests.unit.v460._fill_test_source import (
     read_fill_test_runner_source,
     read_source_text,
 )
-from tests.unit.v460._yaml_test_helpers import parse_yaml_mapping
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping, parse_yaml_mapping
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 import ztb.trading.common.cancel_reasons as CR
 from ztb.trading.signal.regime.regime_detector import (
@@ -162,7 +162,7 @@ class TestMaxConsecutiveTrendingSellSkip:
   max_consecutive_trending_sell_skip: 20
 """
         yaml_cfg = parse_yaml_mapping(yaml_str)
-        config = FillTestConfig.from_yaml(yaml_cfg)
+        config = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_cfg))
         assert config.max_consecutive_trending_sell_skip == 20
         assert config.skip_sell_trending is True
 

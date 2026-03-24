@@ -28,6 +28,7 @@ from tests.unit.v460._fill_test_source import (
     read_fill_test_method_source,
     read_source_text,
 )
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 
 # ======================================================================
@@ -400,13 +401,13 @@ class TestFillConfigYAMLParser:
                 "loss_boost_decay_tau_sec": 200.0,
             },
         }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_cfg))
         assert cfg.loss_boost_decay_tau_sec == 200.0
         assert cfg.loss_boost_offset_mult == 1.3
 
     def test_from_yaml_default_tau(self) -> None:
         """YAML 未指定時はデフォルト値 (300.0s)."""
-        cfg = FillTestConfig.from_yaml({})
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping({}))
         assert cfg.loss_boost_decay_tau_sec == 300.0
 
     def test_from_yaml_loss_control_alias(self) -> None:
@@ -416,7 +417,7 @@ class TestFillConfigYAMLParser:
                 "loss_boost_decay_tau_sec": 150.0,
             },
         }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_cfg))
         assert cfg.loss_boost_decay_tau_sec == 150.0
 
 

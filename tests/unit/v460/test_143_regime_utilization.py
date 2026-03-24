@@ -40,6 +40,7 @@ from tests.unit.v460._fill_test_source import (
     read_fill_test_method_source,
     read_inspect_source,
 )
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 from ztb.metrics.fill_quality import FillRecord, _quarantine_reason
 from ztb.ml import online_monitor
 from ztb.trading.execution.order_monitor_policy import compute_stale_reprice_policy
@@ -294,7 +295,7 @@ class TestRegimeOffsetYamlMapping:
             }
         }
 
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert cfg.regime_high_vol_offset_boost == 1.3
         assert cfg.regime_ranging_offset_discount == 0.85
 
@@ -309,7 +310,7 @@ class TestRegimeOffsetYamlMapping:
             }
         }
 
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert cfg.regime_lot_multipliers == {
             "high_vol": 0.7,
             "trending": 1.2,
@@ -660,7 +661,7 @@ class TestRegimeRepriceConfig:
                 }
             }
         }
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert cfg.regime_reprice_adjustments == {
             "high_vol": 1,
             "trending": 2,
@@ -683,7 +684,7 @@ class TestRegimeTimeoutConfig:
                 }
             }
         }
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert cfg.regime_timeout_multipliers == {
             "high_vol": 0.7,
             "trending": 1.3,

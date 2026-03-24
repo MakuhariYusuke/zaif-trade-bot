@@ -24,6 +24,7 @@ import pytest
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from scripts.v460.lib.regime_detector import FillTestRegime
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 
 # ======================================================================
@@ -320,7 +321,7 @@ class TestYamlMapping440:
                 "ranging_offset_discount_sell": 0.85,
             },
         }
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert cfg.regime_ranging_offset_discount == 0.90
         assert cfg.regime_ranging_offset_discount_buy == 1.15
         assert cfg.regime_ranging_offset_discount_sell == 0.85
@@ -331,7 +332,7 @@ class TestYamlMapping440:
                 "ranging_offset_discount": 0.90,
             },
         }
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert cfg.regime_ranging_offset_discount == 0.90
         assert cfg.regime_ranging_offset_discount_buy is None
         assert cfg.regime_ranging_offset_discount_sell is None
@@ -342,7 +343,7 @@ class TestYamlMapping440:
                 "unknown_sell_offset_boost": 1.3,
             },
         }
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert cfg.unknown_sell_offset_boost == 1.3
 
     def test_unknown_sell_offset_boost_default(self) -> None:

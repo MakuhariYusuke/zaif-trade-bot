@@ -11,6 +11,7 @@ from __future__ import annotations
 import time
 
 import pytest
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 from ztb.risk.sell_dynamic_kill import (
     DynamicKillConfig,
@@ -417,6 +418,6 @@ class TestConfigWiring:
                 },
             },
         }
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert cfg.sell_dynamic_kill_max_duration_sec == 1800.0
         assert cfg.buy_dynamic_kill_max_duration_sec == 900.0

@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 from ztb.ml.skip_gate import (
     SkipGate,
@@ -268,7 +269,7 @@ class TestSkipSellUnknownRegime:
                 "skip_sell_unknown_regime": True,
             },
         }
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert cfg.skip_sell_unknown_regime is True
 
     def test_evaluator_skips_sell_unknown(self, config: "FillTestConfig") -> None:

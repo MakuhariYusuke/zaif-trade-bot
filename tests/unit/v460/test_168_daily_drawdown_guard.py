@@ -28,6 +28,7 @@ from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from scripts.v460.lib.resilience import FillTestState
 from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 from ztb.utils.dataclass_utils import filter_known_dataclass_fields
 
 
@@ -1159,18 +1160,21 @@ class TestCooldownReleaseConfig246:
 
     def test_config_yaml_parsing(self) -> None:
         """YAML から cooldown_release 設定がパースされる."""
-        yaml_cfg = {
-            "loss_control": {
-                "daily_drawdown": {
-                    "enabled": True,
-                    "hard_limit_bps": -50.0,
-                    "soft_limit_bps": -30.0,
-                    "cooldown_release_sec": 7200.0,
-                    "cooldown_release_lot_scale": 0.5,
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "loss_control": {
+                        "daily_drawdown": {
+                            "enabled": True,
+                            "hard_limit_bps": -50.0,
+                            "soft_limit_bps": -30.0,
+                            "cooldown_release_sec": 7200.0,
+                            "cooldown_release_lot_scale": 0.5,
+                        }
+                    }
                 }
-            }
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+            )
+        )
         assert cfg.dd_cooldown_release_sec == 7200.0
         assert cfg.dd_cooldown_release_lot_scale == 0.5
 
@@ -1252,17 +1256,20 @@ class TestDayResetTimezone:
 
     def test_config_yaml_parsing_tz(self) -> None:
         """YAML から day_reset_utc_offset_hours がパースされる."""
-        yaml_cfg = {
-            "loss_control": {
-                "daily_drawdown": {
-                    "enabled": True,
-                    "hard_limit_bps": -50.0,
-                    "soft_limit_bps": -30.0,
-                    "day_reset_utc_offset_hours": 9.0,
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "loss_control": {
+                        "daily_drawdown": {
+                            "enabled": True,
+                            "hard_limit_bps": -50.0,
+                            "soft_limit_bps": -30.0,
+                            "day_reset_utc_offset_hours": 9.0,
+                        }
+                    }
                 }
-            }
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+            )
+        )
         assert cfg.dd_day_reset_utc_offset_hours == 9.0
 
     def test_today_uses_configured_tz(self) -> None:

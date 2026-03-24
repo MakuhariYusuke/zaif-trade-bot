@@ -21,6 +21,7 @@ from scripts.v460.lib.cycle_gate_aggregator import (
 )
 
 from tests.unit.v460.conftest import make_gate_config
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -278,7 +279,7 @@ class TestMacroRegimeYAMLWiring:
                 },
             },
         }
-        cfg = FillTestConfig.from_yaml(yaml_data)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert cfg.enable_macro_regime is True
 
 

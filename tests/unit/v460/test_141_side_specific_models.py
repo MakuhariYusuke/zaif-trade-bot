@@ -29,6 +29,7 @@ import yaml
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 import scripts.v460.ml.retrain_scheduler as retrain_scheduler_mod
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 from scripts.v460.ml.retrain_scheduler import (
     _DEFAULT_CONFIG,
     _retrain_side_specific,
@@ -136,7 +137,7 @@ class TestFillConfigSideModelPaths:
             },
         }
 
-        config = FillTestConfig.from_yaml(yaml_content)
+        config = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_content))
         assert config.skip_gate_model_path_buy == "models/v460/buy.pkl"
         assert config.skip_gate_model_path_sell == "models/v460/sell.pkl"
 
@@ -792,7 +793,7 @@ class TestRegimeThresholdFillConfig:
                 },
             },
         }
-        config = FillTestConfig.from_yaml(yaml_dict)
+        config = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_dict))
         assert config.skip_gate_regime_thresholds == {
             "high_vol": 0.2,
             "ranging": 0.1,

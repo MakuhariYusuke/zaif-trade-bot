@@ -21,6 +21,7 @@ from tests.unit.v460._fill_test_source import (
     SKIP_GATE_EVALUATOR as SKIP_GATE_EVALUATOR_PATH,
     read_source_text,
 )
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 _FILL_CYCLE_EXECUTOR_SOURCE = read_source_text(FILL_CYCLE_EXECUTOR)
 _OFFSET_PIPELINE_SOURCE = inspect.getsource(
@@ -448,7 +449,7 @@ class TestConfigYamlParse:
                 "velocity_offset_boost_factor": 1.8,
             },
         }
-        config = FillTestConfig.from_yaml(yaml_data)
+        config = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert config.velocity_skip_as_offset_enabled is True
         assert config.velocity_offset_boost_factor == 1.8
 
@@ -459,7 +460,7 @@ class TestConfigYamlParse:
                 "ranging_buy_low_vol_as_offset": True,
             },
         }
-        config = FillTestConfig.from_yaml(yaml_data)
+        config = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_data))
         assert config.ranging_buy_low_vol_as_offset is True
 
 

@@ -13,6 +13,7 @@ import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.pnl_measurer import PnlMeasurer
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 
 def _make_config(**overrides: object) -> FillTestConfig:
@@ -198,19 +199,19 @@ class TestFillTestConfigSellHold:
 
     def test_from_yaml_with_sell_hold(self) -> None:
         """YAML に post_fill_wait_sec_sell が指定されている場合."""
-        yaml_cfg = {
-            "post_fill_wait_sec": 30.0,
-            "post_fill_wait_sec_sell": 90.0,
-        }
-        config = FillTestConfig.from_yaml(yaml_cfg)
+        config = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "post_fill_wait_sec": 30.0,
+                    "post_fill_wait_sec_sell": 90.0,
+                }
+            )
+        )
         assert config.post_fill_wait_sec == 30.0
         assert config.post_fill_wait_sec_sell == 90.0
 
     def test_from_yaml_without_sell_hold(self) -> None:
         """YAML に post_fill_wait_sec_sell がない場合は None."""
-        yaml_cfg = {
-            "post_fill_wait_sec": 30.0,
-        }
-        config = FillTestConfig.from_yaml(yaml_cfg)
+        config = clone_fill_test_config(load_fill_test_config_from_mapping({"post_fill_wait_sec": 30.0}))
         assert config.post_fill_wait_sec == 30.0
         assert config.post_fill_wait_sec_sell is None

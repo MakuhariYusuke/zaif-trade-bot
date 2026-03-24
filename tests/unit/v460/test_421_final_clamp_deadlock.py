@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import pytest
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.pre_order_adjustments import PreOrderAdjustmentsMixin
@@ -392,21 +393,21 @@ class TestFillConfigParserFinalClamp:
 
     def test_parser_reads_enabled(self) -> None:
         from scripts.v460.lib.fill_config import FillTestConfig
-        cfg = FillTestConfig.from_yaml({
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping({
             "execution_final_clamp_enabled": False,
-        })
+        }))
         assert cfg.execution_final_clamp_enabled is False
 
     def test_parser_reads_hard_skip_mult(self) -> None:
         from scripts.v460.lib.fill_config import FillTestConfig
-        cfg = FillTestConfig.from_yaml({
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping({
             "execution_final_clamp_hard_skip_mult": 2.5,
-        })
+        }))
         assert cfg.execution_final_clamp_hard_skip_mult == 2.5
 
     def test_parser_default_when_absent(self) -> None:
         from scripts.v460.lib.fill_config import FillTestConfig
-        cfg = FillTestConfig.from_yaml({})
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping({}))
         assert cfg.execution_final_clamp_enabled is True
         assert cfg.execution_final_clamp_hard_skip_mult == 0.0
 

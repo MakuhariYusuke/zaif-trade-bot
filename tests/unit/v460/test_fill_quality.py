@@ -38,6 +38,7 @@ from scripts.v460.lib.order_monitor import OrderMonitor
 from scripts.v460.lib.pnl_measurer import PnlMeasurer
 from scripts.v460.monitor_fill_test import _check_cumulative_loss, print_report, run_monitor
 from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 from scripts.v460.run_gate_check import run_g1_1
 from tests.unit.v460._fill_test_source import (
     MAKER_PRICE,
@@ -2490,7 +2491,7 @@ class Test049E3Sampling:
 
     def test_e3_sampling_from_yaml(self) -> None:
         """YAML の e3.sampling_ratio が正しくパースされる."""
-        cfg = FillTestConfig.from_yaml({"e3": {"sampling_ratio": 0.33}})
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping({"e3": {"sampling_ratio": 0.33}}))
         assert cfg.e3_sampling_ratio == pytest.approx(0.33)
 
     def test_e3_sampling_ratio_zero_skips_all(self) -> None:
@@ -2515,9 +2516,7 @@ class Test049SideOffset:
 
     def test_side_offset_from_yaml(self) -> None:
         """YAML の side_offset.buy/sell が正しくパースされる."""
-        cfg = FillTestConfig.from_yaml({
-            "side_offset": {"buy": 0.03, "sell": 0.08}
-        })
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping({"side_offset": {"buy": 0.03, "sell": 0.08}}))
         assert cfg.spread_offset_ratio_buy == pytest.approx(0.03)
         assert cfg.spread_offset_ratio_sell == pytest.approx(0.08)
 
@@ -2550,13 +2549,17 @@ class Test049FastFillDefense:
 
     def test_fast_fill_defense_from_yaml(self) -> None:
         """YAML の fast_fill_defense セクションが正しくパースされる."""
-        cfg = FillTestConfig.from_yaml({
-            "fast_fill_defense": {
-                "enabled": True,
-                "threshold_sec": 3.0,
-                "offset_boost": 1.5,
-            }
-        })
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "fast_fill_defense": {
+                        "enabled": True,
+                        "threshold_sec": 3.0,
+                        "offset_boost": 1.5,
+                    }
+                }
+            )
+        )
         assert cfg.fast_fill_defense_enabled is True
         assert cfg.fast_fill_threshold_sec == pytest.approx(3.0)
         assert cfg.fast_fill_offset_boost == pytest.approx(1.5)
@@ -2589,21 +2592,21 @@ class Test050SideOffsetSellOnly:
     def test_sell_only_offset_from_yaml(self) -> None:
         """side_offset に sell のみ指定 → buy は None のまま."""
 
-        cfg = FillTestConfig.from_yaml({"side_offset": {"sell": 0.07}})
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping({"side_offset": {"sell": 0.07}}))
         assert cfg.spread_offset_ratio_buy is None
         assert cfg.spread_offset_ratio_sell == pytest.approx(0.07)
 
     def test_buy_only_offset_from_yaml(self) -> None:
         """side_offset に buy のみ指定 → sell は None のまま."""
 
-        cfg = FillTestConfig.from_yaml({"side_offset": {"buy": 0.04}})
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping({"side_offset": {"buy": 0.04}}))
         assert cfg.spread_offset_ratio_buy == pytest.approx(0.04)
         assert cfg.spread_offset_ratio_sell is None
 
     def test_empty_side_offset_from_yaml(self) -> None:
         """side_offset が空 dict → 両方 None."""
 
-        cfg = FillTestConfig.from_yaml({"side_offset": {}})
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping({"side_offset": {}}))
         assert cfg.spread_offset_ratio_buy is None
         assert cfg.spread_offset_ratio_sell is None
 
