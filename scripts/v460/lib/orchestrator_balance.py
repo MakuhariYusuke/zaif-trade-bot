@@ -180,8 +180,44 @@ class OrchestratorBalanceMixin:
             await asyncio.sleep(pause_sec)
             return True
 
-        # 044# F8: 連続 preflight 失敗上限 → SAFE_STOP
+        # 602# open order recovery: SAFE_STOP 直前に滞留注文をキャンセル
+        # btc_reserved が open order に拘束され sell 不可 → 両側膠着のパターン
         if self._preflight_skip_count >= self.config.max_preflight_skip:
+            try:
+                open_orders = await self.adapter.get_open_orders(
+                    self.config.symbol,
+                )
+                if open_orders:
+                    cancelled = 0
+                    for order in open_orders:
+                        try:
+                            await self.adapter.cancel_order(order.order_id)
+                            cancelled += 1
+                            logger.warning(
+                                f"[602# preflight_recovery] Cancelled stale "
+                                f"order: id={order.order_id}, side={order.side}"
+                                f", price={order.price}, qty={order.quantity}"
+                            )
+                        except Exception as e:
+                            logger.error(
+                                f"[602# preflight_recovery] Failed to cancel "
+                                f"order {order.order_id}: {e}"
+                            )
+                    if cancelled > 0:
+                        logger.warning(
+                            f"[602# preflight_recovery] Cancelled "
+                            f"{cancelled}/{len(open_orders)} stale orders. "
+                            f"Resetting preflight counter to retry."
+                        )
+                        self._preflight_skip_count = 0
+                        await self._effective_sleep()
+                        return True
+            except Exception as e:
+                logger.error(
+                    f"[602# preflight_recovery] Open order check failed: {e}"
+                )
+
+            # 044# F8: 連続 preflight 失敗上限 → SAFE_STOP
             logger.error(
                 f"SAFE_STOP: 連続 preflight スキップ {self._preflight_skip_count} 回 "
                 f"(上限 {self.config.max_preflight_skip}). "

@@ -730,6 +730,33 @@ class TestPreflightSkipLimit:
         config = FillTestConfig()
         assert not hasattr(config, "max_consecutive_same_side")
 
+class TestPreflightOpenOrderRecovery:
+    """602# preflight SAFE_STOP 直前の open order recovery."""
+
+    def test_handle_preflight_failure_calls_get_open_orders(self) -> None:
+        """_handle_preflight_failure に get_open_orders 呼び出しが存在する."""
+        src = read_fill_test_method_source("_handle_preflight_failure")
+        assert "get_open_orders" in src
+
+    def test_handle_preflight_failure_calls_cancel_order(self) -> None:
+        """_handle_preflight_failure に cancel_order 呼び出しが存在する."""
+        src = read_fill_test_method_source("_handle_preflight_failure")
+        assert "cancel_order" in src
+
+    def test_recovery_resets_preflight_skip_count(self) -> None:
+        """cancel 成功後に _preflight_skip_count = 0 にリセットされる."""
+        src = read_fill_test_method_source("_handle_preflight_failure")
+        # get_open_orders の後に skip_count リセットがある
+        idx_open = src.index("get_open_orders")
+        idx_reset = src.index("_preflight_skip_count = 0", idx_open)
+        assert idx_reset > idx_open
+
+    def test_safe_stop_still_reachable(self) -> None:
+        """open order recovery 失敗時は SAFE_STOP に到達する."""
+        src = read_fill_test_method_source("_handle_preflight_failure")
+        assert "preflight_skip_exceeded" in src
+
+
 class TestCleanupSyncImproved:
     """044# A-4: _cleanup_sync の改善テスト."""
 
