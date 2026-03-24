@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-24 (596# primary skip safety valve — death spiral 防止)
+> 最終更新: 2026-03-25 (610# 605#-609# 三者検証と二名タスク再配分)
 
 ---
 
@@ -711,3 +711,12 @@ NNN_phX_TYPE_description.md
 | 590 | report | [590_fill_test_log_analysis_5day.md](590_fill_test_log_analysis_5day.md) | Fill Test 5日窓ログ分析と改善機会整理 |
 | 591 | review | [591_phg_rev_590_fill_test_trade_level_root_cause_review.md](591_phg_rev_590_fill_test_trade_level_root_cause_review.md) | 590# 再検証: trade-level 根本原因、mixed-SHA 補正、restart 前優先順位整理 |
 | 596 | impl | [596_primary_skip_safety_valve_death_spiral_fix.md](596_primary_skip_safety_valve_death_spiral_fix.md) | Primary model 連続 skip 安全弁: BTC=0 death spiral 防止 (190# A offset モード死コード化の根本修正) |
+| 605 | report | [605_phg_retrospective_post_dispersion_cycle.md](605_phg_retrospective_post_dispersion_cycle.md) | 風水渙 総決算 — 536#-604# 断捨離サイクルの回顧と現況俯瞰 |
+| 606 | plan | [606_phg_unfreeze_sad_mcb_entry_gate.md](606_phg_unfreeze_sad_mcb_entry_gate.md) | SAD/MCB 有効化 + entry_gate CalibrationMap 接続 |
+| 607 | impl | [607_phg_hotreload_sad_mcb_rebuild_and_architecture_audit.md](607_phg_hotreload_sad_mcb_rebuild_and_architecture_audit.md) | SAD/MCB hot-reload 再構築とアーキテクチャ監査 |
+| 608 | plan | [608_phg_plan_pipeline_attribution_and_sidecar_revival.md](608_phg_plan_pipeline_attribution_and_sidecar_revival.md) | 執行パイプラインの寄与度分析 (Attribution) と Sidecar (SAC) の再活性化計画 |
+| 609 | review | [609_phg_review_608_pipeline_attribution_and_sidecar.md](609_phg_review_608_pipeline_attribution_and_sidecar.md) | 608# レビュー: Attribution / Sidecar 再活性化計画の実装・理論検証 |
+| 610 | review | [610_phg_rev_605_609_three_way_validation_and_two_person_split.md](610_phg_rev_605_609_three_way_validation_and_two_person_split.md) | 605#-609# 三者主張の検証と二名へのタスク再配分 |
+| 611 | review | [611_cplt_second_opinion_605_610_review.md](611_cplt_second_opinion_605_610_review.md) | 605#-610# 四者主張の監査と金融工学的盲点の指摘 |
+| 612 | impl | [612_phg_test_runtime_optimization_wave1.md](612_phg_test_runtime_optimization_wave1.md) | テスト実行時間最適化 Wave 1: coverage 除去・YAML cache・xdist 準備 |
+| 613 | review | [613_cplt_deep_review_609_611_and_gemini_task.md](613_cplt_deep_review_609_611_and_gemini_task.md) | 609#-611# 深堀りレビューと 608# 著者への課題整理 |
