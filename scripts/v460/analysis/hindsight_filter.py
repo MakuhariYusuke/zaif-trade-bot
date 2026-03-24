@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import argparse
 import bisect
-import json
 import logging
 
 from ztb.utils.safety import safe_to_finite
@@ -30,8 +29,9 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TypeAlias, TypedDict
+from typing import TypeAlias, TypedDict, cast
 
+from scripts.v460.analysis.analysis_common import write_json_output
 from scripts.v460.analysis.reproduce_152_metrics import _load_records
 from scripts.v460.lib import cancel_reasons as CR
 from ztb.metrics.fill_quality import PnlAccumulator
@@ -864,6 +864,139 @@ def _analyze_ev_per_cycle(results: list[HindsightResult]) -> EvPerCycleReport:
 # Display
 # ---------------------------------------------------------------------------
 
+
+def _print_side_reversal_summary(
+    side_reversal: dict[str, SideReversalSummary],
+) -> None:
+    print("\n--- H3: Side 逆転分析 (逆サイドが良かったケース) ---")
+    for side_name, summary in side_reversal.items():
+        print(
+            f"  [{side_name}] filled={summary['total_filled']}, "
+            f"reverse_better={summary['reverse_better_count']} "
+            f"({summary['reverse_better_pct']}%), "
+            f"avg_actual={summary['avg_actual_pnl']:.4f} bps, "
+            f"avg_reverse={summary['avg_reverse_pnl']:.4f} bps"
+        )
+
+
+def _print_hourly_summary(hourly: dict[str, HourlySummary]) -> None:
+    print("\n--- H4: 時間帯別 (JST, skipped 機会損失) ---")
+    print(f"  {'Hour':<8} {'skipped':>7} {'skip_avg':>9} {'profit_skip':>10}")
+    for hour, summary in hourly.items():
+        if summary["skipped"] > 0:
+            print(
+                f"  {hour:<8} {summary['skipped']:>7} "
+                f"{summary['skipped_avg']:>9.4f} "
+                f"{summary['profitable_skipped']:>10}"
+            )
+
+
+def _print_skip_gate_calibration(
+    skip_gate_cal: SkipGateCalibrationReport,
+) -> None:
+    print("\n--- skip_gate 閾値シミュレーション ---")
+    threshold_simulation = cast(
+        dict[str, SkipGateThresholdSummary] | None,
+        skip_gate_cal.get("threshold_simulation"),
+    )
+    if threshold_simulation:
+        print(f"  {'Threshold':<18} {'execute':>8} {'skip':>6} {'avg_pnl':>9} {'total_pnl':>10}")
+        for thresh, threshold_summary in threshold_simulation.items():
+            print(
+                f"  {thresh:<18} {threshold_summary['would_execute']:>8} "
+                f"{threshold_summary['would_skip']:>6} "
+                f"{threshold_summary['avg_exec_pnl']:>9.4f} "
+                f"{threshold_summary['total_exec_pnl']:>10.2f}"
+            )
+
+    by_as_prob_bin = cast(
+        dict[str, SkipGateBinSummary] | None,
+        skip_gate_cal.get("by_as_prob_bin"),
+    )
+    if by_as_prob_bin:
+        print("\n--- skip_gate AS確率帯別 (skipされたもの) ---")
+        print(f"  {'AS Band':<20} {'N':>5} {'avg_pnl':>9} {'profit%':>8} {'profit':>8} {'loss':>8}")
+        for band, bin_summary in by_as_prob_bin.items():
+            print(
+                f"  {band:<20} {bin_summary['count']:>5} "
+                f"{bin_summary['avg_pnl_30s']:>9.4f} "
+                f"{bin_summary['profitable_pct']:>7.1f}% "
+                f"{bin_summary['total_profit_bps']:>8.2f} "
+                f"{bin_summary['total_loss_bps']:>8.2f}"
+            )
+
+
+def _print_aggregate_pnl_summary(
+    title: str,
+    label: str,
+    summaries: Mapping[str, AggregatePnlSummary],
+) -> None:
+    print(f"\n--- {title} ---")
+    print(f"  {label:<20} {'N':>5} {'avg_pnl':>9} {'profit%':>8} {'total':>8}")
+    for key, summary in summaries.items():
+        print(
+            f"  {key:<20} {summary['count']:>5} "
+            f"{summary['avg_pnl_30s']:>9.4f} "
+            f"{summary['profitable_pct']:>7.1f}% "
+            f"{summary['total_pnl']:>8.2f}"
+        )
+
+
+def _print_interpolated_stats(
+    interpolated_stats: InterpolatedStats,
+) -> None:
+    print("\n--- 補間参照価格の統計 (§9.4 #1) ---")
+    for label, raw_summary in interpolated_stats.items():
+        summary = cast(InterpolatedSplitStats, raw_summary)
+        avg = summary.get("avg_hindsight_30s")
+        avg_s = f"{avg:.4f}" if avg is not None else "N/A"
+        print(
+            f"  {label}: count={summary['count']}, "
+            f"with_pnl={summary['with_pnl']}, avg_30s={avg_s}",
+        )
+
+
+def _print_ev_per_cycle(ev_per_cycle: EvPerCycleReport) -> None:
+    print("\n--- 172# EV_per_cycle (fill_prob × avg_pnl_if_filled) ---")
+    ov = ev_per_cycle["overall"]
+    print(f"  Overall: fill_prob={ov['fill_prob']:.3f}, "
+          f"avg_pnl={ov['avg_pnl_if_filled']:.4f}, "
+          f"EV={ov['ev_per_cycle']:.4f} bps/cycle")
+    if ov["guard_value"] is not None:
+        print(f"  guard_value={ov['guard_value']:.4f} "
+              f"(>0: guards help, <0: guards harmful)")
+
+    print(f"\n  {'Regime_Side':<22} {'N':>5} {'fill%':>6} {'avg_pnl':>8} "
+          f"{'EV':>8} {'blocked':>7} {'blk_h30':>8} {'guard_v':>8}")
+    for key, summary in ev_per_cycle["by_regime_side"].items():
+        gv_s = f"{summary['guard_value']:.4f}" if summary["guard_value"] is not None else "N/A"
+        bh_s = (
+            f"{summary['avg_hindsight_blocked']:.4f}"
+            if summary["avg_hindsight_blocked"] is not None else "N/A"
+        )
+        print(f"  {key:<22} {summary['total_cycles']:>5} "
+              f"{summary['fill_prob']:>5.1%} "
+              f"{summary['avg_pnl_if_filled']:>8.4f} "
+              f"{summary['ev_per_cycle']:>8.4f} "
+              f"{summary['blocked_cycles']:>7} "
+              f"{bh_s:>8} {gv_s:>8}")
+
+    print(f"\n  {'Guard_Cat':<22} {'N':>5} {'fill%':>6} {'avg_pnl':>8} "
+          f"{'EV':>8} {'blocked':>7} {'blk_h30':>8} {'guard_v':>8}")
+    for category, summary in ev_per_cycle["by_guard"].items():
+        gv_s = f"{summary['guard_value']:.4f}" if summary["guard_value"] is not None else "N/A"
+        bh_s = (
+            f"{summary['avg_hindsight_blocked']:.4f}"
+            if summary["avg_hindsight_blocked"] is not None else "N/A"
+        )
+        print(f"  {category:<22} {summary['total_cycles']:>5} "
+              f"{summary['fill_prob']:>5.1%} "
+              f"{summary['avg_pnl_if_filled']:>8.4f} "
+              f"{summary['ev_per_cycle']:>8.4f} "
+              f"{summary['blocked_cycles']:>7} "
+              f"{bh_s:>8} {gv_s:>8}")
+
+
 def _print_report(
     categories: dict[str, CategoryAnalysis],
     side_reversal: dict[str, SideReversalSummary],
@@ -897,118 +1030,33 @@ def _print_report(
             f"{c.total_missed_profit_120s:>10.2f}"
         )
 
-    # H3: Side reversal
-    print("\n--- H3: Side 逆転分析 (逆サイドが良かったケース) ---")
-    for side_name, data in side_reversal.items():
-        print(
-            f"  [{side_name}] filled={data['total_filled']}, "
-            f"reverse_better={data['reverse_better_count']} "
-            f"({data['reverse_better_pct']}%), "
-            f"avg_actual={data['avg_actual_pnl']:.4f} bps, "
-            f"avg_reverse={data['avg_reverse_pnl']:.4f} bps"
-        )
-
-    # H4: Hourly
-    print("\n--- H4: 時間帯別 (JST, skipped 機会損失) ---")
-    print(f"  {'Hour':<8} {'skipped':>7} {'skip_avg':>9} {'profit_skip':>10}")
-    for hour, data in hourly.items():
-        if data["skipped"] > 0:
-            print(
-                f"  {hour:<8} {data['skipped']:>7} "
-                f"{data['skipped_avg']:>9.4f} "
-                f"{data['profitable_skipped']:>10}"
-            )
-
-    # Skip gate calibration
-    print("\n--- skip_gate 閾値シミュレーション ---")
-    if "threshold_simulation" in skip_gate_cal:
-        print(f"  {'Threshold':<18} {'execute':>8} {'skip':>6} {'avg_pnl':>9} {'total_pnl':>10}")
-        for thresh, data in skip_gate_cal["threshold_simulation"].items():
-            print(
-                f"  {thresh:<18} {data['would_execute']:>8} "
-                f"{data['would_skip']:>6} "
-                f"{data['avg_exec_pnl']:>9.4f} "
-                f"{data['total_exec_pnl']:>10.2f}"
-            )
-
-    if "by_as_prob_bin" in skip_gate_cal:
-        print("\n--- skip_gate AS確率帯別 (skipされたもの) ---")
-        print(f"  {'AS Band':<20} {'N':>5} {'avg_pnl':>9} {'profit%':>8} {'profit':>8} {'loss':>8}")
-        for band, data in skip_gate_cal["by_as_prob_bin"].items():
-            print(
-                f"  {band:<20} {data['count']:>5} "
-                f"{data['avg_pnl_30s']:>9.4f} "
-                f"{data['profitable_pct']:>7.1f}% "
-                f"{data['total_profit_bps']:>8.2f} "
-                f"{data['total_loss_bps']:>8.2f}"
-            )
+    _print_side_reversal_summary(side_reversal)
+    _print_hourly_summary(hourly)
+    _print_skip_gate_calibration(skip_gate_cal)
 
     # §9.2 #3: Wait time bands
     if wait_bands:
-        print("\n--- 待機時間帯別 PnL (filled, actual 30s) ---")
-        print(f"  {'Band':<10} {'N':>5} {'avg_pnl':>9} {'profit%':>8} {'total':>8}")
-        for band, data in wait_bands.items():
-            print(
-                f"  {band:<10} {data['count']:>5} "
-                f"{data['avg_pnl_30s']:>9.4f} "
-                f"{data['profitable_pct']:>7.1f}% "
-                f"{data['total_pnl']:>8.2f}"
-            )
+        _print_aggregate_pnl_summary(
+            "待機時間帯別 PnL (filled, actual 30s)",
+            "Band",
+            wait_bands,
+        )
 
     # §9.2 #4: Regime × Side
     if regime_side:
-        print("\n--- レジーム×Side 別 PnL (filled, actual 30s) ---")
-        print(f"  {'Regime_Side':<20} {'N':>5} {'avg_pnl':>9} {'profit%':>8} {'total':>8}")
-        for key, data in regime_side.items():
-            print(
-                f"  {key:<20} {data['count']:>5} "
-                f"{data['avg_pnl_30s']:>9.4f} "
-                f"{data['profitable_pct']:>7.1f}% "
-                f"{data['total_pnl']:>8.2f}"
-            )
+        _print_aggregate_pnl_summary(
+            "レジーム×Side 別 PnL (filled, actual 30s)",
+            "Regime_Side",
+            regime_side,
+        )
 
     # §9.4 #1: Interpolated stats
     if interpolated_stats:
-        print("\n--- 補間参照価格の統計 (§9.4 #1) ---")
-        for label, data in interpolated_stats.items():
-            avg = data.get("avg_hindsight_30s")
-            avg_s = f"{avg:.4f}" if avg is not None else "N/A"
-            print(f"  {label}: count={data['count']}, with_pnl={data['with_pnl']}, avg_30s={avg_s}")
+        _print_interpolated_stats(interpolated_stats)
 
     # 172# EV_per_cycle
     if ev_per_cycle:
-        print("\n--- 172# EV_per_cycle (fill_prob × avg_pnl_if_filled) ---")
-        ov = ev_per_cycle["overall"]
-        print(f"  Overall: fill_prob={ov['fill_prob']:.3f}, "
-              f"avg_pnl={ov['avg_pnl_if_filled']:.4f}, "
-              f"EV={ov['ev_per_cycle']:.4f} bps/cycle")
-        if ov["guard_value"] is not None:
-            print(f"  guard_value={ov['guard_value']:.4f} "
-                  f"(>0: guards help, <0: guards harmful)")
-
-        print(f"\n  {'Regime_Side':<22} {'N':>5} {'fill%':>6} {'avg_pnl':>8} "
-              f"{'EV':>8} {'blocked':>7} {'blk_h30':>8} {'guard_v':>8}")
-        for key, s in ev_per_cycle["by_regime_side"].items():
-            gv_s = f"{s['guard_value']:.4f}" if s["guard_value"] is not None else "N/A"
-            bh_s = f"{s['avg_hindsight_blocked']:.4f}" if s["avg_hindsight_blocked"] is not None else "N/A"
-            print(f"  {key:<22} {s['total_cycles']:>5} "
-                  f"{s['fill_prob']:>5.1%} "
-                  f"{s['avg_pnl_if_filled']:>8.4f} "
-                  f"{s['ev_per_cycle']:>8.4f} "
-                  f"{s['blocked_cycles']:>7} "
-                  f"{bh_s:>8} {gv_s:>8}")
-
-        print(f"\n  {'Guard_Cat':<22} {'N':>5} {'fill%':>6} {'avg_pnl':>8} "
-              f"{'EV':>8} {'blocked':>7} {'blk_h30':>8} {'guard_v':>8}")
-        for cat, s in ev_per_cycle["by_guard"].items():
-            gv_s = f"{s['guard_value']:.4f}" if s["guard_value"] is not None else "N/A"
-            bh_s = f"{s['avg_hindsight_blocked']:.4f}" if s["avg_hindsight_blocked"] is not None else "N/A"
-            print(f"  {cat:<22} {s['total_cycles']:>5} "
-                  f"{s['fill_prob']:>5.1%} "
-                  f"{s['avg_pnl_if_filled']:>8.4f} "
-                  f"{s['ev_per_cycle']:>8.4f} "
-                  f"{s['blocked_cycles']:>7} "
-                  f"{bh_s:>8} {gv_s:>8}")
+        _print_ev_per_cycle(ev_per_cycle)
 
     print(f"\n{'='*70}")
 
@@ -1156,13 +1204,7 @@ def main(argv: Sequence[str] | None = None) -> dict[str, object]:
     ]
 
     if args.output:
-        out_path = Path(args.output)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(
-            json.dumps(output, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-        print(f"\nSaved to {out_path}")
+        write_json_output(output, args.output)
 
     return output
 

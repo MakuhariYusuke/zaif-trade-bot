@@ -157,3 +157,18 @@ Success: no issues found in 3 source files
 1. `inventory_escape_*` / `recovery_skew_*` を「読み取り専用 legacy field」として docs 側にも明記
 2. `skip_gate_ev_*` の existence/hot-reload test を、legacy compatibility 契約として整理
 3. additive dual-line については telemetry と logic の責務分離を保つ focused test を追加
+
+### analysis / observability 側の low-risk 型 sweep (追加)
+
+`hindsight_filter.py` は TypedDict の総整理が重いため、まず low-risk な第1段だけ入れた。
+
+- `scripts/v460/analysis/hindsight_filter.py`
+  - `_print_report(...)` を section helper 群へ分割
+  - `SkipGateCalibrationReport` の union 参照を `cast` で明示
+  - JSON 出力は `analysis_common.write_json_output(...)` を再利用
+
+効果:
+
+- `_print_report(...)` 内の TypedDict 混線が解消
+- targeted mypy を semantics 変更なしで clean 化
+- 次の batch では I/O 共通化 (`args`, record loading, output policy) をより安全に進められる

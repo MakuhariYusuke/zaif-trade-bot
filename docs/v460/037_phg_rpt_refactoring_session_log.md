@@ -8942,3 +8942,14 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `scripts/v460/analysis/compare_regime_ab.py`
   - `scripts/v460/analysis/side_regime_dashboard.py`
   の low-risk な型残差を別枠で整理
+- analysis typing sweep (追加):
+  - `scripts/v460/analysis/hindsight_filter.py`
+    - `_print_report(...)` を section helper 群へ分割
+    - `SkipGateCalibrationReport` の union access を `cast` で明示
+    - `analysis_common.write_json_output(...)` を再利用
+  - targeted mypy:
+    - `.venv/Scripts/python.exe scripts/quality/run_targeted_mypy.py scripts/v460/analysis/hindsight_filter.py`
+    - `Success: no issues found in 1 source file`
+  - focused pytest:
+    - `tests/unit/v460/test_155_hindsight_review.py`
+    - `39 passed`
