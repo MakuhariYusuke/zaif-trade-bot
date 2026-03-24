@@ -127,6 +127,18 @@ class TestSACRetrainConfig:
         assert cfg.confidence_roi_full == pytest.approx(0.005)
         assert cfg.min_trade_count == 3
 
+    def test_from_yaml_dict_600_max_signal_staleness(self) -> None:
+        """600# max_signal_staleness_hours のパース."""
+        cfg = SACRetrainConfig.from_yaml_dict({
+            "sac_retrain": {"max_signal_staleness_hours": 12.0},
+        })
+        assert cfg.max_signal_staleness_hours == pytest.approx(12.0)
+
+    def test_from_yaml_dict_600_max_signal_staleness_default(self) -> None:
+        """600# max_signal_staleness_hours デフォルト値."""
+        cfg = SACRetrainConfig.from_yaml_dict({})
+        assert cfg.max_signal_staleness_hours == pytest.approx(24.0)
+
 
 # ════════════════════════════════════════════════════════════════
 # §2 SACRetrainTrigger
@@ -443,10 +455,12 @@ class TestRetrainOnce:
         mock_sac_cls.load.assert_called_once()
         mock_model.load_replay_buffer.assert_called_once()
 
+    @patch("scripts.v460.ml.sac_retrain_scheduler._is_signal_fresh_and_active", return_value=False)
     @patch("scripts.v460.ml.sac_retrain_scheduler._push_neutral_fallback")
     def test_oos_failed(
         self,
         mock_push_neutral: MagicMock,
+        mock_is_fresh: MagicMock,
         tmp_path: Path,
     ) -> None:
         mock_env = _make_mock_env()
@@ -465,8 +479,35 @@ class TestRetrainOnce:
 
         assert result.status == "oos_failed"
         assert result.gross_roi < 0
-        # 379# P3-C: neutral fallback が呼ばれることを検証
+        # 379# P3-C: signal が stale なら neutral fallback が呼ばれる
         mock_push_neutral.assert_called_once()
+
+    @patch("scripts.v460.ml.sac_retrain_scheduler._is_signal_fresh_and_active", return_value=True)
+    @patch("scripts.v460.ml.sac_retrain_scheduler._push_neutral_fallback")
+    def test_oos_failed_keeps_fresh_signal(
+        self,
+        mock_push_neutral: MagicMock,
+        mock_is_fresh: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """600# OOS 失敗でも直近 deploy 済み signal が fresh なら neutral 化しない."""
+        mock_env = _make_mock_env()
+
+        cfg = _make_retrain_cfg(tmp_path, min_gross_roi=0.0)
+
+        mock_model = _make_mock_model()
+        with _run_retrain_once_with_patches(
+            cfg,
+            mock_model=mock_model,
+            mock_env=mock_env,
+            eval_result=_EVAL_RESULT_FAIL,
+        ) as (mock_sac_cls, _):
+            mock_sac_cls.return_value = mock_model
+            result = retrain_once(cfg)
+
+        assert result.status == "oos_failed"
+        # 600#: fresh signal → neutral 化されない
+        mock_push_neutral.assert_not_called()
 
     def test_data_load_error(self, tmp_path: Path) -> None:
         cfg = SACRetrainConfig(

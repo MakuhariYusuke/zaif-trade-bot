@@ -64,6 +64,13 @@ def _install_signal_handlers() -> None:
     signal.signal(signal.SIGINT, _handler)
 
 
+# 600# データウィンドウ重複検出 — warm-start 過学習防止
+# 前回 deploy 成功時の val 最終タイムスタンプを記録
+# 同一ウィンドウで連続 warm-start すると過学習するため、
+# データウィンドウが更新されるまで retrain をスキップする
+_last_deployed_val_ts_max: float = 0.0
+
+
 # ════════════════════════════════════════════════════════════════
 # Config
 # ════════════════════════════════════════════════════════════════
@@ -123,6 +130,10 @@ class SACRetrainConfig:
     min_new_rows: int = 120  # rolling 更新に必要な新規行数 (2h分 = 120行)
     history_path: Path = field(default_factory=lambda: Path("logs/sac_retrain_history.jsonl"))
 
+    # ── 600# Conditional neutral fallback ──
+    # OOS 失敗時、直近 deploy 済み signal がこの時間(h)以内なら neutral 化しない
+    max_signal_staleness_hours: float = 24.0
+
     @classmethod
     def from_yaml_dict(cls, cfg: dict) -> SACRetrainConfig:
         """g2_sac_train.yaml の dict から SACRetrainConfig を構築."""
@@ -175,6 +186,9 @@ class SACRetrainConfig:
             history_path=Path(str(retrain_cfg.get("history_path", "logs/sac_retrain_history.jsonl"))),
             confidence_roi_full=float(retrain_cfg.get("confidence_roi_full", 0.005)),
             min_trade_count=int(retrain_cfg.get("min_trade_count", 3)),
+            max_signal_staleness_hours=float(
+                retrain_cfg.get("max_signal_staleness_hours", 24.0)
+            ),
         )
 
     def __post_init__(self) -> None:
@@ -363,6 +377,36 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
 
     logger.info(f"Train: {len(train_df)} rows, Val: {len(val_df)} rows")
 
+    # ── 600# データウィンドウ重複検出 ──
+    # 同一 val ウィンドウで warm-start を繰り返すと過学習するため、
+    # 前回 deploy 時と同じウィンドウならスキップ
+    global _last_deployed_val_ts_max
+    import pandas as pd
+
+    _current_val_ts_max: float = 0.0
+    if hasattr(val_df, "columns"):
+        _val_df_typed = cast("pd.DataFrame", val_df)
+        if "timestamp" in _val_df_typed.columns:
+            _current_val_ts_max = float(_val_df_typed["timestamp"].iloc[-1])
+        elif _val_df_typed.index.name == "timestamp":
+            _current_val_ts_max = float(_val_df_typed.index[-1])
+
+    if (
+        _last_deployed_val_ts_max > 0
+        and _current_val_ts_max > 0
+        and _current_val_ts_max == _last_deployed_val_ts_max
+    ):
+        logger.info(
+            "[600#] Data window unchanged since last deploy "
+            f"(val_ts_max={_current_val_ts_max:.0f}) — skipping warm-start retrain"
+        )
+        return RetrainResult(
+            status="oos_failed",
+            timestamp=timestamp,
+            model_version=model_version,
+            error_message="data_window_unchanged",
+        )
+
     try:
         # 384# import_real_sb3 廃止 — pip版 SB3 を直接 import
         from stable_baselines3 import SAC as SB3_SAC  # noqa: F811
@@ -446,10 +490,19 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
         if eval_result["gross_roi"] <= cfg.min_gross_roi:
             logger.warning(
                 f"OOS validation FAILED: gross_roi={eval_result['gross_roi']:.6f} "
-                f"<= {cfg.min_gross_roi:.6f} — enforcing neutral bias fallback"
+                f"<= {cfg.min_gross_roi:.6f}"
             )
-            # 379# P3-C: Neutral Bias Fallback
-            _push_neutral_fallback(cfg.signal_path)
+            # 600# Conditional neutral fallback:
+            # 直近 deploy 済み signal が fresh なら neutral 化をスキップ
+            if _is_signal_fresh_and_active(
+                cfg.signal_path, cfg.max_signal_staleness_hours
+            ):
+                logger.info(
+                    "[600#] Keeping existing sidecar signal "
+                    f"(last deploy < {cfg.max_signal_staleness_hours:.0f}h)"
+                )
+            else:
+                _push_neutral_fallback(cfg.signal_path)
             return RetrainResult(
                 status="oos_failed",
                 timestamp=timestamp,
@@ -467,10 +520,18 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
         if cfg.min_trade_count > 0 and _oos_trade_count < cfg.min_trade_count:
             logger.warning(
                 f"OOS validation FAILED: trade_count={_oos_trade_count} "
-                f"< {cfg.min_trade_count} — enforcing neutral bias fallback"
+                f"< {cfg.min_trade_count}"
             )
-            # 379# P3-C: Neutral Bias Fallback
-            _push_neutral_fallback(cfg.signal_path)
+            # 600# Conditional neutral fallback
+            if _is_signal_fresh_and_active(
+                cfg.signal_path, cfg.max_signal_staleness_hours
+            ):
+                logger.info(
+                    "[600#] Keeping existing sidecar signal "
+                    f"(last deploy < {cfg.max_signal_staleness_hours:.0f}h)"
+                )
+            else:
+                _push_neutral_fallback(cfg.signal_path)
             return RetrainResult(
                 status="oos_failed",
                 timestamp=timestamp,
@@ -490,6 +551,10 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
         _update_sidecar_signal(
             model, env, cfg, model_version, eval_result,
         )
+
+        # 600# Deploy 成功 → データウィンドウを記録
+        if _current_val_ts_max > 0:
+            _last_deployed_val_ts_max = _current_val_ts_max
 
         logger.info(
             f"✅ Deploy SUCCESS: {model_version} | "
@@ -876,6 +941,36 @@ def _get_latest_obs(env: TrainingEnvProtocol) -> object:
         latest_env.current_step = saved_step
 
     return obs
+
+
+def _is_signal_fresh_and_active(
+    signal_path: Path | str,
+    max_staleness_hours: float,
+) -> bool:
+    """600# 既存 sidecar signal が non-neutral かつ fresh かどうか判定.
+
+    直近 deploy 成功した signal がまだ有効なら True を返す。
+    OOS 失敗時に neutral 化するかどうかの判定に使用する。
+    """
+    from datetime import datetime, timezone
+
+    try:
+        from scripts.v460.lib.sidecar_signal_io import read_sidecar_signal
+
+        signal = read_sidecar_signal(signal_path, ttl_sec=0)
+        if signal is None:
+            return False
+        if signal.model_version == "neutral" or signal.directional_bias == 0.0:
+            return False
+        # timestamp パース → 経過時間チェック
+        ts = datetime.fromisoformat(signal.timestamp)
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        age_hours = (datetime.now(timezone.utc) - ts).total_seconds() / 3600.0
+        return age_hours < max_staleness_hours
+    except Exception as e:
+        logger.debug(f"[600#] Signal freshness check failed: {e}")
+        return False
 
 
 def _push_neutral_fallback(
