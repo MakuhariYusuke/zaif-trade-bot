@@ -58,19 +58,42 @@ PNL_FIELD_PRIORITY: Final[tuple[str, ...]] = (
 # CLI 引数ビルダー
 # ======================================================================
 
-def add_common_filter_args(parser: argparse.ArgumentParser) -> None:
+def add_common_filter_args(
+    parser: argparse.ArgumentParser,
+    *,
+    include_legacy_aliases: bool = False,
+) -> None:
     """共通フィルタ引数を parser に追加.
 
     追加される引数:
       --results-dir, --date-from, --date-to, --git-sha, --run-id
     """
+    results_dir_flags = ["--results-dir"]
+    date_from_flags = ["--date-from"]
+    date_to_flags = ["--date-to"]
+    if include_legacy_aliases:
+        results_dir_flags.append("--data-dir")
+        date_from_flags.append("--start")
+        date_to_flags.append("--end")
+
     parser.add_argument(
-        "--results-dir",
+        *results_dir_flags,
+        dest="results_dir",
         default=DEFAULT_RESULTS_DIR,
         help=f"fill_records ディレクトリ (default: {DEFAULT_RESULTS_DIR})",
     )
-    parser.add_argument("--date-from", default=None, help="開始日 inclusive (YYYY-MM-DD)")
-    parser.add_argument("--date-to", default=None, help="終了日 inclusive (YYYY-MM-DD)")
+    parser.add_argument(
+        *date_from_flags,
+        dest="date_from",
+        default=None,
+        help="開始日 inclusive (YYYY-MM-DD)",
+    )
+    parser.add_argument(
+        *date_to_flags,
+        dest="date_to",
+        default=None,
+        help="終了日 inclusive (YYYY-MM-DD)",
+    )
     parser.add_argument("--git-sha", default=None, help="git SHA 前方一致フィルタ (短縮 SHA 可)")
     parser.add_argument("--run-id", default=None, help="run_id 完全一致フィルタ")
 

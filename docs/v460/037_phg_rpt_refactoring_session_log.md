@@ -9073,3 +9073,12 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - summary JSON 保存を `write_json_output(...)` に統一
   - `tests/unit/v460/test_analysis_reporting_entrypoints.py`
     - reporting entrypoint の shared output helper 利用を focused で追加
+- analysis loader/filter sweep (追加):
+  - `scripts/v460/analysis/analysis_common.py`
+    - `add_common_filter_args(...)` に legacy alias 吸収を追加
+  - `scripts/v460/analysis/reproduce_152_metrics.py`
+    - main の record loading を `load_records_from_args(...)` に統一
+  - `scripts/v460/analysis/compare_regime_ab.py`
+    - main の record loading を `load_records_from_args(...)` に統一
+  - `tests/unit/v460/test_analysis_loader_contracts.py`
+    - `--data-dir/--start/--end` の shared parser/loader 契約を focused で追加

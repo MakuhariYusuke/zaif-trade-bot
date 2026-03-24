@@ -369,6 +369,39 @@ Success: no issues found in 3 source files
 - fill-record 系 script の shared loader 再利用を一段進められる
 - ただし domain 固有 loader が強い script は無理に寄せない
 
+## 2026-03-25 追加追記: Batch B 第1段
+
+実施対象:
+
+1. `scripts/v460/analysis/analysis_common.py`
+2. `scripts/v460/analysis/reproduce_152_metrics.py`
+3. `scripts/v460/analysis/compare_regime_ab.py`
+4. `tests/unit/v460/test_analysis_loader_contracts.py`
+5. `tests/unit/v460/test_152_parallel_tasks.py`
+6. `docs/v460/598_phg_investigation_next_death_spiral_candidates.md`
+7. `docs/v460/037_phg_rpt_refactoring_session_log.md`
+
+今回の寄せ方:
+
+- `analysis_common.add_common_filter_args(...)`
+  - `include_legacy_aliases=True` で
+    - `--data-dir`
+    - `--start`
+    - `--end`
+    を吸収できるようにした
+- `reproduce_152_metrics.py`
+  - main の record loading を `load_records_from_args(...)` に統一
+  - 既存 CLI 互換は alias で維持
+- `compare_regime_ab.py`
+  - main の record loading を `load_records_from_args(...)` に統一
+  - 既存 CLI 互換は alias で維持
+
+判断:
+
+- parser/loader の shared contract を先に作ると、他 script へも横展開しやすい
+- `_load_records(...)` 相当のローカル helper は test/compat 用に残してもよいが、
+  main entrypoint は shared contract を通す方が読みやすい
+
 ### Batch C: analysis typing / container 整理
 
 対象:

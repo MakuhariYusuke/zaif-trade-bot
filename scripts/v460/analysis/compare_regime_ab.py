@@ -36,9 +36,12 @@ from ztb.trading.signal.regime.regime_detector import (
     RegimeConfig,
 )
 
-# Re-use data loading from reproduce script
-from scripts.v460.analysis.analysis_common import write_json_output
-from scripts.v460.analysis.reproduce_152_metrics import _load_records
+# Shared analysis contracts
+from scripts.v460.analysis.analysis_common import (
+    add_common_filter_args,
+    load_records_from_args,
+    write_json_output,
+)
 from ztb.metrics.fill_quality import PnlAccumulator
 from ztb.utils.safety import safe_to_finite
 
@@ -435,10 +438,7 @@ def main(argv: Sequence[str] | None = None) -> list[GateResult]:
     parser = argparse.ArgumentParser(
         description="152# regime A/B 比較ハーネス — old vs new detector",
     )
-    parser.add_argument("--start", default=None, help="Start date (YYYY-MM-DD)")
-    parser.add_argument("--end", default=None, help="End date (YYYY-MM-DD)")
-    parser.add_argument("--run-id", default=None, help="Filter by run_id")
-    parser.add_argument("--data-dir", default="results/v460/fill_test")
+    add_common_filter_args(parser, include_legacy_aliases=True)
     parser.add_argument("--output", default=None, help="Output directory")
     parser.add_argument(
         "--min-confidence", type=float, default=0.2,
@@ -446,12 +446,7 @@ def main(argv: Sequence[str] | None = None) -> list[GateResult]:
     )
     args = parser.parse_args(argv)
 
-    records = _load_records(
-        args.data_dir,
-        start_date=args.start,
-        end_date=args.end,
-        run_id=args.run_id,
-    )
+    records = load_records_from_args(args)
 
     if not records:
         print("ERROR: No records", file=sys.stderr)

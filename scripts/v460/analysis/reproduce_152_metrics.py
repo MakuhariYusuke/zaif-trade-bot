@@ -18,7 +18,12 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import cast
 
-from scripts.v460.analysis.analysis_common import write_json_output
+from scripts.v460.analysis.analysis_common import (
+    add_common_filter_args,
+    load_and_filter_records,
+    load_records_from_args,
+    write_json_output,
+)
 from ztb.metrics.fill_quality import PnlAccumulator, load_fill_record_objects_glob
 from ztb.utils.safety import ensure_dict, safe_to_int, safe_to_finite
 
@@ -52,22 +57,14 @@ def _load_records(
     run_id: str | None = None,
 ) -> list[FillRecord]:
     """Load fill records with optional date/run_id filtering."""
-    records = [
-        _to_dict(record)
-        for record in load_fill_record_objects_glob(
+    records = load_and_filter_records(
         data_dir,
+        date_from=start_date,
+        date_to=end_date,
+        run_id=run_id,
         include_emergency=False,
-        start_date=start_date,
-        end_date=end_date,
-        )
-    ]
-    if not records:
-        print(f"ERROR: No fill record files found in {data_dir}", file=sys.stderr)
-        sys.exit(1)
-
-    if run_id:
-        records = [r for r in records if r.get("run_id") == run_id]
-    return records
+    )
+    return [_to_dict(record) for record in records]
 
 
 # ---------------------------------------------------------------------------
@@ -297,22 +294,7 @@ def main(argv: Sequence[str] | None = None) -> MetricsMap:
     parser = argparse.ArgumentParser(
         description="152# 集計再現スクリプト — §1 データの再現",
     )
-    parser.add_argument(
-        "--start", default=None,
-        help="Start date (YYYY-MM-DD), inclusive",
-    )
-    parser.add_argument(
-        "--end", default=None,
-        help="End date (YYYY-MM-DD), inclusive",
-    )
-    parser.add_argument(
-        "--run-id", default=None,
-        help="Filter by specific run_id",
-    )
-    parser.add_argument(
-        "--data-dir", default=DEFAULT_DATA_DIR,
-        help=f"Data directory (default: {DEFAULT_DATA_DIR})",
-    )
+    add_common_filter_args(parser, include_legacy_aliases=True)
     parser.add_argument(
         "--output", default=None,
         help="Output JSON file path (optional)",
@@ -327,21 +309,16 @@ def main(argv: Sequence[str] | None = None) -> MetricsMap:
     )
     args = parser.parse_args(argv)
 
-    records = _load_records(
-        args.data_dir,
-        start_date=args.start,
-        end_date=args.end,
-        run_id=args.run_id,
-    )
+    records = [_to_dict(record) for record in load_records_from_args(args)]
 
     if not records:
         print("ERROR: No records after filtering", file=sys.stderr)
         sys.exit(1)
 
     params: dict[str, object] = {
-        "data_dir": args.data_dir,
-        "start_date": args.start,
-        "end_date": args.end,
+        "data_dir": args.results_dir,
+        "start_date": args.date_from,
+        "end_date": args.date_to,
         "run_id": args.run_id,
         "record_count": len(records),
     }
