@@ -85,6 +85,33 @@
 - dict literal / fixed nested mapping を直接 `FillTestConfig.from_yaml(...)` していたテストを、
   検出力を変えずに cached helper ベースへ移行した
 
+### 6. fixed YAML wiring sweep
+
+- 追加で以下を cached helper に横展開:
+  - `tests/unit/v460/test_093_side_params.py`
+  - `tests/unit/v460/test_094_stale_order.py`
+  - `tests/unit/v460/test_243_yaml_wiring.py`
+  - `tests/unit/v460/test_154_deadlock_prevention.py`
+  - `tests/unit/v460/test_137_p1_features.py`
+- いずれも fixed dict / fixed YAML text を対象にしており、
+  assert の緩和や production 挙動変更は行わず、初期化重複だけを削減した
+
+### 7. 本体コード側の確認
+
+- `scripts/v460/ml/retrain_scheduler.py::load_retrain_config(...)` を確認
+- YAML 読み込み自体は
+  [config_loader.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/config_loader.py)
+  の `_read_config_section()` で
+  - file signature (`mtime_ns`, `size`)
+  - `@lru_cache`
+  を使ってすでにキャッシュされていた
+- そのため現時点では、本体コードにさらに low-risk な大きい短縮余地は小さく、
+  先に test 側の repeated `FillTestConfig.from_yaml(...)` を潰す方が効率的と判断
+- `tests/unit/v460/test_retrain_hot_reload.py` 単体も確認:
+  - `86 passed in 4.47s`
+  - slowest でも `0.05s` 台
+  - ここは「見た目ほど本丸ではない」
+
 ## 重量テストの初期観測
 
 - baseline 実行:
@@ -128,6 +155,7 @@
 2. `test_retrain_hot_reload.py` など autouse fixture の重いファイルを個別に軽量化する
 3. `FillTestConfig.from_yaml()` の高頻度呼び出しファイルをさらに横展開する
 4. before / after 比較をこの文書に追記していく
+5. `tests/ --durations=30 --no-cov` を改めて取り切り、top 30 を分類する
 
 ## 検証
 
@@ -153,3 +181,14 @@
   - `tests/unit/v460/test_166_hotfixes.py`
   - `tests/unit/v460/test_202_log_improvements.py`
   - 結果: `134 passed in 5.25s`
+- focused pytest:
+  - `tests/unit/v460/test_093_side_params.py`
+  - `tests/unit/v460/test_094_stale_order.py`
+  - `tests/unit/v460/test_243_yaml_wiring.py`
+  - `tests/unit/v460/test_154_deadlock_prevention.py`
+  - `tests/unit/v460/test_137_p1_features.py`
+  - 結果: `120 passed in 4.36s`
+- targeted hotspot check:
+  - `tests/unit/v460/test_retrain_hot_reload.py --durations=20 --no-cov`
+  - 結果: `86 passed in 4.47s`
+  - 最遅ケースも `0.05s` 台で、現時点では top offender ではなかった

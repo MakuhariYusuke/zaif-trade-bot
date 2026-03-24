@@ -9154,3 +9154,18 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
       - `test_166_hotfixes.py`
       - `test_202_log_improvements.py`
       - `134 passed in 5.25s`
+  - fixed YAML wiring sweep (追加):
+    - `tests/unit/v460/test_093_side_params.py`
+    - `tests/unit/v460/test_094_stale_order.py`
+    - `tests/unit/v460/test_243_yaml_wiring.py`
+    - `tests/unit/v460/test_154_deadlock_prevention.py`
+    - `tests/unit/v460/test_137_p1_features.py`
+      - fixed dict / fixed YAML text の `FillTestConfig.from_yaml(...)` を shared cached helper に寄せた
+    - focused pytest:
+      - `120 passed in 4.36s`
+  - 本体コード側 short-path 確認 (追加):
+    - `scripts/v460/ml/retrain_scheduler.py::load_retrain_config(...)`
+      - YAML 読み込みは `config_loader._read_config_section()` ですでに file-signature cache 済み
+    - `tests/unit/v460/test_retrain_hot_reload.py --durations=20 --no-cov`
+      - `86 passed in 4.47s`
+      - slowest は `0.05s` 台で、現時点では top offender ではなかった

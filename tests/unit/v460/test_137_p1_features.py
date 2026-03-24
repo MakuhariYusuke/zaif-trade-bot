@@ -18,6 +18,7 @@ import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.pnl_measurer import PnlMeasurer
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 from ztb.ml.retrain_trigger import RetrainTriggerConfig
 
 
@@ -125,17 +126,20 @@ class TestNarrowSpreadPause:
 
     def test_yaml_parsing(self) -> None:
         """YAML から narrow_spread_pause を正しくパース."""
-        yaml_content = {
-            "loss_control": {
-                "narrow_spread_pause": {
-                    "enabled": True,
-                    "threshold_bps": 5.0,
-                    "pause_sec": 10.0,
-                    "max_consecutive": 5,
-                },
-            },
-        }
-        cfg = FillTestConfig.from_yaml(yaml_content)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "loss_control": {
+                        "narrow_spread_pause": {
+                            "enabled": True,
+                            "threshold_bps": 5.0,
+                            "pause_sec": 10.0,
+                            "max_consecutive": 5,
+                        },
+                    },
+                }
+            )
+        )
         assert cfg.narrow_spread_pause_enabled is True
         assert cfg.narrow_spread_pause_bps == 5.0
         assert cfg.narrow_spread_pause_sec == 10.0
@@ -157,16 +161,19 @@ class TestFeeConfigParsing:
 
     def test_yaml_parsing(self) -> None:
         """YAML から PnL fee 設定をパース."""
-        yaml_content = {
-            "loss_control": {
-                "pnl_fee_deduction": {
-                    "enabled": True,
-                    "maker_fee_bps": 1.5,
-                    "taker_fee_bps": 3.0,
-                },
-            },
-        }
-        cfg = FillTestConfig.from_yaml(yaml_content)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "loss_control": {
+                        "pnl_fee_deduction": {
+                            "enabled": True,
+                            "maker_fee_bps": 1.5,
+                            "taker_fee_bps": 3.0,
+                        },
+                    },
+                }
+            )
+        )
         assert cfg.pnl_fee_deduction_enabled is True
         assert cfg.maker_fee_bps == 1.5
         assert cfg.taker_fee_bps == 3.0
@@ -186,13 +193,16 @@ class TestRepriceSellMax:
 
     def test_yaml_sell_reprice_override(self) -> None:
         """YAML で sell 側 max_reprice を上書きできる."""
-        yaml_content = {
-            "stale_order": {
-                "enabled": True,
-                "max_reprice_sell": 1,
-            },
-        }
-        cfg = FillTestConfig.from_yaml(yaml_content)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "stale_order": {
+                        "enabled": True,
+                        "max_reprice_sell": 1,
+                    },
+                }
+            )
+        )
         assert cfg.stale_max_reprice_sell == 1
 
 

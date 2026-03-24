@@ -28,7 +28,11 @@ from scripts.v460.lib.maker_price import MakerPriceCalculator
 from ztb.ml.skip_gate import SkipGate
 from scripts.v460.run_fill_test import FillTestConfig
 from tests.unit.v460._fill_test_source import ORDER_MONITOR, read_class_method_source
-from tests.unit.v460._yaml_test_helpers import parse_yaml_mapping
+from tests.unit.v460._yaml_test_helpers import (
+    clone_fill_test_config,
+    load_fill_test_config_from_mapping,
+    parse_yaml_mapping,
+)
 from ztb.metrics.fill_quality import FillRecord
 
 _FILL_CONFIG_FIELDS = FillTestConfig.__dataclass_fields__
@@ -82,16 +86,19 @@ class TestStaleOrderYAML:
     """094# YAML stale_order セクションのパース検証."""
 
     def test_from_yaml_with_stale_order(self) -> None:
-        yaml_cfg = {
-            "stale_order": {
-                "enabled": True,
-                "check_after_sec": 45.0,
-                "drift_bps": 7.0,
-                "max_reprice": 3,
-                "cooldown_sec": 12.0,
-            }
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "stale_order": {
+                        "enabled": True,
+                        "check_after_sec": 45.0,
+                        "drift_bps": 7.0,
+                        "max_reprice": 3,
+                        "cooldown_sec": 12.0,
+                    }
+                }
+            )
+        )
         assert cfg.stale_order_enabled is True
         assert cfg.stale_check_after_sec == pytest.approx(45.0)
         assert cfg.stale_drift_bps == pytest.approx(7.0)
@@ -100,19 +107,22 @@ class TestStaleOrderYAML:
 
     def test_from_yaml_without_stale_order(self) -> None:
         """stale_order セクション省略時はデフォルト値."""
-        cfg = FillTestConfig.from_yaml({})
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping({}))
         assert cfg.stale_order_enabled is False
         assert cfg.stale_check_after_sec == pytest.approx(30.0)
 
     def test_from_yaml_partial_stale_order(self) -> None:
         """一部のみ指定 → 指定分のみ上書き."""
-        yaml_cfg = {
-            "stale_order": {
-                "enabled": True,
-                "drift_bps": 10.0,
-            }
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "stale_order": {
+                        "enabled": True,
+                        "drift_bps": 10.0,
+                    }
+                }
+            )
+        )
         assert cfg.stale_order_enabled is True
         assert cfg.stale_drift_bps == pytest.approx(10.0)
         # 未指定はデフォルト

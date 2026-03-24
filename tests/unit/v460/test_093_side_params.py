@@ -24,7 +24,11 @@ from tests.unit.v460._fill_test_source import (
     read_fill_test_method_source,
     read_source_text,
 )
-from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
+from tests.unit.v460._yaml_test_helpers import (
+    clone_fill_test_config,
+    load_fill_test_config_from_mapping,
+    load_yaml_mapping,
+)
 
 _FILL_CONFIG_FIELDS = FillTestConfig.__dataclass_fields__
 _FILL_TEST_YAML = load_yaml_mapping(
@@ -106,31 +110,37 @@ class TestSpreadAdaptiveSideYAML:
     """093# YAML から spread_adaptive side 別が正しくパースされる."""
 
     def test_from_yaml_with_side_boost(self) -> None:
-        yaml_cfg = {
-            "spread_adaptive": {
-                "enabled": True,
-                "narrow_spread_bps": 10.0,
-                "narrow_spread_boost": 2.0,
-                "narrow_spread_boost_buy": 1.5,
-                "narrow_spread_boost_sell": 2.0,
-                "wide_spread_bps": 25.0,
-                "wide_spread_ratio": 0.5,
-            }
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "spread_adaptive": {
+                        "enabled": True,
+                        "narrow_spread_bps": 10.0,
+                        "narrow_spread_boost": 2.0,
+                        "narrow_spread_boost_buy": 1.5,
+                        "narrow_spread_boost_sell": 2.0,
+                        "wide_spread_bps": 25.0,
+                        "wide_spread_ratio": 0.5,
+                    }
+                }
+            )
+        )
         assert cfg.narrow_spread_boost_buy == pytest.approx(1.5)
         assert cfg.narrow_spread_boost_sell == pytest.approx(2.0)
         assert cfg.narrow_spread_boost == pytest.approx(2.0)
 
     def test_from_yaml_without_side_boost(self) -> None:
         """side 別を省略した場合は None (共通値使用)."""
-        yaml_cfg = {
-            "spread_adaptive": {
-                "enabled": True,
-                "narrow_spread_boost": 2.0,
-            }
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "spread_adaptive": {
+                        "enabled": True,
+                        "narrow_spread_boost": 2.0,
+                    }
+                }
+            )
+        )
         assert cfg.narrow_spread_boost_buy is None
         assert cfg.narrow_spread_boost_sell is None
 
@@ -151,32 +161,38 @@ class TestFastFillDefenseSideYAML:
     """093# YAML から fast_fill_defense side 別が正しくパースされる."""
 
     def test_from_yaml_with_side_params(self) -> None:
-        yaml_cfg = {
-            "fast_fill_defense": {
-                "enabled": True,
-                "threshold_sec": 5.0,
-                "threshold_sec_buy": 5.0,
-                "threshold_sec_sell": 15.0,
-                "offset_boost": 2.0,
-                "offset_boost_buy": 2.0,
-                "offset_boost_sell": 2.5,
-            }
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "fast_fill_defense": {
+                        "enabled": True,
+                        "threshold_sec": 5.0,
+                        "threshold_sec_buy": 5.0,
+                        "threshold_sec_sell": 15.0,
+                        "offset_boost": 2.0,
+                        "offset_boost_buy": 2.0,
+                        "offset_boost_sell": 2.5,
+                    }
+                }
+            )
+        )
         assert cfg.fast_fill_threshold_sec_buy == pytest.approx(5.0)
         assert cfg.fast_fill_threshold_sec_sell == pytest.approx(15.0)
         assert cfg.fast_fill_offset_boost_buy == pytest.approx(2.0)
         assert cfg.fast_fill_offset_boost_sell == pytest.approx(2.5)
 
     def test_from_yaml_without_side_params(self) -> None:
-        yaml_cfg = {
-            "fast_fill_defense": {
-                "enabled": True,
-                "threshold_sec": 5.0,
-                "offset_boost": 2.0,
-            }
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "fast_fill_defense": {
+                        "enabled": True,
+                        "threshold_sec": 5.0,
+                        "offset_boost": 2.0,
+                    }
+                }
+            )
+        )
         assert cfg.fast_fill_threshold_sec_buy is None
         assert cfg.fast_fill_threshold_sec_sell is None
         assert cfg.fast_fill_offset_boost_buy is None

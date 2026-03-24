@@ -9,6 +9,7 @@ from __future__ import annotations
 import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 
 # ============================================================
@@ -25,11 +26,14 @@ class TestQuiescenceYAMLWiring243:
 
     def test_quiescence_from_yaml_flat_keys(self) -> None:
         """YAML の flat key から quiescence_* が読み込まれる."""
-        yaml_cfg: dict = {
-            "quiescence_gate_blocks_threshold": 30,
-            "quiescence_sleep_sec": 3600.0,
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "quiescence_gate_blocks_threshold": 30,
+                    "quiescence_sleep_sec": 3600.0,
+                }
+            )
+        )
         assert cfg.quiescence_gate_blocks_threshold == 30
         assert cfg.quiescence_sleep_sec == 3600.0
 
@@ -58,37 +62,46 @@ class TestToxicStaleMultYAMLWiring243:
 
     def test_sell_toxic_stale_from_yaml(self) -> None:
         """YAML 止血.sell_dynamic_kill.toxic_stale_multiplier が配線される."""
-        yaml_cfg: dict = {
-            "止血": {
-                "sell_dynamic_kill": {
-                    "toxic_stale_multiplier": 5,
-                },
-            },
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "止血": {
+                        "sell_dynamic_kill": {
+                            "toxic_stale_multiplier": 5,
+                        },
+                    },
+                }
+            )
+        )
         assert cfg.sell_dynamic_kill_toxic_stale_mult == 5
 
     def test_buy_toxic_stale_from_yaml(self) -> None:
         """YAML 止血.buy_dynamic_kill.toxic_stale_multiplier が配線される."""
-        yaml_cfg: dict = {
-            "止血": {
-                "buy_dynamic_kill": {
-                    "toxic_stale_multiplier": 3,
-                },
-            },
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "止血": {
+                        "buy_dynamic_kill": {
+                            "toxic_stale_multiplier": 3,
+                        },
+                    },
+                }
+            )
+        )
         assert cfg.buy_dynamic_kill_toxic_stale_mult == 3
 
     def test_both_sides_from_yaml(self) -> None:
         """sell/buy 両方の toxic_stale_multiplier が同時に配線."""
-        yaml_cfg: dict = {
-            "止血": {
-                "sell_dynamic_kill": {"toxic_stale_multiplier": 7},
-                "buy_dynamic_kill": {"toxic_stale_multiplier": 15},
-            },
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "止血": {
+                        "sell_dynamic_kill": {"toxic_stale_multiplier": 7},
+                        "buy_dynamic_kill": {"toxic_stale_multiplier": 15},
+                    },
+                }
+            )
+        )
         assert cfg.sell_dynamic_kill_toxic_stale_mult == 7
         assert cfg.buy_dynamic_kill_toxic_stale_mult == 15
 

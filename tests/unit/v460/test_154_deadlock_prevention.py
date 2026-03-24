@@ -12,7 +12,11 @@ import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig
 from tests.unit.v460._fill_test_source import ORDER_MONITOR, read_class_method_source
-from tests.unit.v460._yaml_test_helpers import parse_yaml_mapping
+from tests.unit.v460._yaml_test_helpers import (
+    clone_fill_test_config,
+    load_fill_test_config_from_mapping,
+    load_fill_test_config_from_text,
+)
 
 
 # ======================================================================
@@ -31,15 +35,11 @@ class TestABTestVariantConfig:
         assert cfg.ab_test_variant == "sell_offset_015"
 
     def test_ab_variant_yaml_parsing(self) -> None:
-        yaml_cfg = {
-            "ab_test": {"variant": "rescue_enabled"},
-        }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping({"ab_test": {"variant": "rescue_enabled"}}))
         assert cfg.ab_test_variant == "rescue_enabled"
 
     def test_ab_variant_yaml_absent(self) -> None:
-        yaml_cfg: dict = {}
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping({}))
         assert cfg.ab_test_variant == ""
 
 
@@ -104,13 +104,11 @@ class TestRepriceOffsetTighten:
         assert cfg.stale_reprice_tighten == pytest.approx(0.85)
 
     def test_yaml_parsing(self) -> None:
-        yaml_str = """
+        cfg = clone_fill_test_config(load_fill_test_config_from_text("""
 stale_order:
   enabled: true
   reprice_tighten: 0.80
-"""
-        data = parse_yaml_mapping(yaml_str)
-        cfg = FillTestConfig.from_yaml(data)
+"""))
         assert cfg.stale_reprice_tighten == pytest.approx(0.80)
 
     def test_tighten_logic_in_order_monitor(self) -> None:
