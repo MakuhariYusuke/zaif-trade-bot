@@ -229,6 +229,23 @@
     - 上記 28 ファイル
     - 結果: `1101 passed in 11.41s`
 
+- residual safe sweep:
+  - 追加適用:
+    - `tests/unit/v460/test_094_stale_order.py`
+    - `tests/unit/v460/test_163_regime_adaptive_gating.py`
+    - `tests/unit/v460/test_183_log_analysis_improvements.py`
+    - `tests/unit/v460/test_249_directional_alpha.py`
+    - `tests/unit/v460/test_596_primary_consecutive_skip_safety.py`
+  - 内容:
+    - 単発 `FillTestConfig.from_yaml(...)` を cached helper に寄せた
+  - focused pytest:
+    - 上記 5 ファイル
+    - 結果: `125 passed in 2.78s`
+  - 現時点で残している `from_yaml(...)` は主に
+    - parser 契約そのものを検証するファイル
+    - 並行差分の影響を受けやすいファイル
+    に絞られている
+
 ## 本体コード側の所見
 
 - `FillTestConfig` 読み込みの production 側 short-path はすでにかなり整っている

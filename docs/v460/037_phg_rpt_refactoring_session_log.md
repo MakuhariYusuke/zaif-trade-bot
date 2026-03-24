@@ -9201,3 +9201,13 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
       - 単発 `FillTestConfig.from_yaml(...)` を cached helper に寄せた
     - focused pytest:
       - `1101 passed in 11.41s`
+  - residual safe sweep (追加):
+    - `test_094_stale_order.py`
+    - `test_163_regime_adaptive_gating.py`
+    - `test_183_log_analysis_improvements.py`
+    - `test_249_directional_alpha.py`
+    - `test_596_primary_consecutive_skip_safety.py`
+      - 単発 `FillTestConfig.from_yaml(...)` を cached helper に寄せた
+    - focused pytest:
+      - `125 passed in 2.78s`
+    - 残る `from_yaml(...)` は parser 契約テストか、並行差分依存のファイルにほぼ限定された

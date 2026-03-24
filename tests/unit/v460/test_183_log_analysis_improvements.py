@@ -18,6 +18,7 @@ from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
 from scripts.v460.lib.fill_config import FillTestConfig
 from tests.unit.v460._yaml_test_helpers import (
     clone_fill_test_config,
+    load_fill_test_config_from_mapping,
     load_fill_test_config_from_text,
     parse_yaml_mapping,
 )
@@ -339,7 +340,7 @@ class TestFillTestYAMLIntegration:
 
     def test_load_fill_test_yaml(self, v460_fill_test_yaml: dict[str, object]) -> None:
         data = v460_fill_test_yaml
-        cfg = FillTestConfig.from_yaml(data)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(data))
 
         # 183# velocity skip  (353# buy -6→-4)
         assert cfg.buy_velocity_skip_enabled is True

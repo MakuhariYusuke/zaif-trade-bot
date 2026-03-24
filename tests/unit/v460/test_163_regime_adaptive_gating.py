@@ -14,6 +14,7 @@ import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.time_filter import TimeFilter
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 
 # ── helpers ──────────────────────────────────────────────
@@ -196,7 +197,7 @@ class TestFillTestConfigRegimeAdaptive:
         v460_fill_test_yaml: dict[str, object],
     ) -> None:
         """YAML から regime_adaptive_* が正しく読み込まれる."""
-        cfg = FillTestConfig.from_yaml(v460_fill_test_yaml)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(v460_fill_test_yaml))
         assert cfg.regime_adaptive_enabled is True
         # 169# time_filter 全廃: regime_adaptive リストも空 (VG + sell_dynamic_kill が根本対策)
         assert cfg.regime_adaptive_extra_buy == []

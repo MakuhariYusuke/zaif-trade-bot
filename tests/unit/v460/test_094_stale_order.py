@@ -491,7 +491,7 @@ skip_gate:
     15: -0.03
 """
         data = parse_yaml_mapping(yaml_str)
-        cfg = FillTestConfig.from_yaml(data)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(data))
         assert cfg.skip_gate_hour_offsets[0] == pytest.approx(0.05)
         assert cfg.skip_gate_hour_offsets[1] == pytest.approx(0.03)
         assert cfg.skip_gate_hour_offsets[14] == pytest.approx(-0.02)

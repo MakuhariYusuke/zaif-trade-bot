@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 
 
 def _make_evaluator(
@@ -88,6 +89,6 @@ class TestPrimaryMaxConsecutiveSkipYamlIntegration:
         if not yaml_path.exists():
             pytest.skip("fill_test.yaml not found")
         raw = load_yaml_mapping(yaml_path)
-        config = FillTestConfig.from_yaml(raw)
+        config = clone_fill_test_config(load_fill_test_config_from_mapping(raw))
         # YAML sets non-zero value, code default is 0
         assert config.skip_gate_primary_max_consecutive_skip > 0

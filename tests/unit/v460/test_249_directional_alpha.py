@@ -23,6 +23,7 @@ from scripts.v460.lib.daily_drawdown_guard import (
 )
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 from ztb.trading.signal.regime.regime_detector import FillTestRegime
 
 
@@ -285,7 +286,7 @@ class TestInvSkewRegimeGate249:
                 }
             }
         }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_cfg))
         assert cfg.inv_skew_regime_gate_enabled is True
 
 
@@ -379,7 +380,7 @@ class TestDualKillQuiescence249:
                 "dual_kill_quiescence_enabled": True,
             }
         }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_cfg))
         assert cfg.dual_kill_quiescence_enabled is True
 
 
@@ -456,7 +457,7 @@ class TestConfigWiring249:
                 }
             }
         }
-        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(load_fill_test_config_from_mapping(yaml_cfg))
         assert cfg.dd_cooldown_rearm_budget_bps == -15.0
 
     def test_inv_skew_regime_gate_defaults(self) -> None:
