@@ -5,6 +5,7 @@ Unit tests for Unified Configuration System
 """
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -39,6 +40,14 @@ class TestUnifiedConfig(unittest.TestCase):
             "logging": {"tensorboard_log": "./logs"},
             "checkpoint": {"save_freq": 100},
         }
+
+    def _make_temp_path(self, suffix: str) -> Path:
+        """Create a temp file path and register cleanup."""
+        fd, name = tempfile.mkstemp(suffix=suffix)
+        os.close(fd)
+        path = Path(name)
+        self.addCleanup(path.unlink, missing_ok=True)
+        return path
 
     def test_unified_config_creation(self):
         """UnifiedConfigの作成テスト"""
@@ -85,73 +94,51 @@ class TestUnifiedConfig(unittest.TestCase):
     def test_unified_config_save_load_json(self):
         """JSON形式での保存・読み込みテスト"""
         config = UnifiedConfig.from_dict(self.sample_config)
+        temp_path = self._make_temp_path(".json")
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            temp_path = Path(f.name)
+        # 保存
+        config.save(temp_path, ConfigFormat.JSON)
 
-        try:
-            # 保存
-            config.save(temp_path, ConfigFormat.JSON)
+        # 読み込み
+        loaded_config = UnifiedConfig.from_file(temp_path, ConfigFormat.JSON)
 
-            # 読み込み
-            loaded_config = UnifiedConfig.from_file(temp_path, ConfigFormat.JSON)
-
-            # 検証
-            self.assertEqual(loaded_config.model_name, config.model_name)
-            self.assertEqual(loaded_config.version, config.version)
-            self.assertEqual(
-                loaded_config.get_feature_count(), config.get_feature_count()
-            )
-
-        finally:
-            temp_path.unlink()
+        # 検証
+        self.assertEqual(loaded_config.model_name, config.model_name)
+        self.assertEqual(loaded_config.version, config.version)
+        self.assertEqual(
+            loaded_config.get_feature_count(), config.get_feature_count()
+        )
 
     def test_unified_config_save_load_yaml(self):
         """YAML形式での保存・読み込みテスト"""
         config = UnifiedConfig.from_dict(self.sample_config)
+        temp_path = self._make_temp_path(".yaml")
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            temp_path = Path(f.name)
+        # 保存
+        config.save(temp_path, ConfigFormat.YAML)
 
-        try:
-            # 保存
-            config.save(temp_path, ConfigFormat.YAML)
+        # 読み込み
+        loaded_config = UnifiedConfig.from_file(temp_path, ConfigFormat.YAML)
 
-            # 読み込み
-            loaded_config = UnifiedConfig.from_file(temp_path, ConfigFormat.YAML)
-
-            # 検証
-            self.assertEqual(loaded_config.model_name, config.model_name)
-            self.assertEqual(loaded_config.version, config.version)
-
-        finally:
-            temp_path.unlink()
+        # 検証
+        self.assertEqual(loaded_config.model_name, config.model_name)
+        self.assertEqual(loaded_config.version, config.version)
 
     def test_unified_config_auto_format_detection(self):
         """自動形式検知テスト"""
         config = UnifiedConfig.from_dict(self.sample_config)
 
         # JSONファイル
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            temp_path = Path(f.name)
-
-        try:
-            config.save(temp_path, ConfigFormat.JSON)
-            loaded_config = UnifiedConfig.from_file(temp_path, ConfigFormat.AUTO)
-            self.assertEqual(loaded_config.model_name, config.model_name)
-        finally:
-            temp_path.unlink()
+        temp_path = self._make_temp_path(".json")
+        config.save(temp_path, ConfigFormat.JSON)
+        loaded_config = UnifiedConfig.from_file(temp_path, ConfigFormat.AUTO)
+        self.assertEqual(loaded_config.model_name, config.model_name)
 
         # YAMLファイル
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            temp_path = Path(f.name)
-
-        try:
-            config.save(temp_path, ConfigFormat.YAML)
-            loaded_config = UnifiedConfig.from_file(temp_path, ConfigFormat.AUTO)
-            self.assertEqual(loaded_config.model_name, config.model_name)
-        finally:
-            temp_path.unlink()
+        temp_path = self._make_temp_path(".yaml")
+        config.save(temp_path, ConfigFormat.YAML)
+        loaded_config = UnifiedConfig.from_file(temp_path, ConfigFormat.AUTO)
+        self.assertEqual(loaded_config.model_name, config.model_name)
 
     def test_unified_config_file_not_found(self):
         """存在しないファイルの読み込みテスト"""
@@ -189,6 +176,15 @@ class TestUnifiedConfigManager(unittest.TestCase):
             "features": {"basic_features": ["open", "high"]},
         }
 
+    def _write_temp_json(self, data: dict[str, object]) -> Path:
+        """Write JSON data to a temp path with automatic cleanup."""
+        fd, name = tempfile.mkstemp(suffix=".json")
+        os.close(fd)
+        path = Path(name)
+        self.addCleanup(path.unlink, missing_ok=True)
+        path.write_text(json.dumps(data), encoding="utf-8")
+        return path
+
     def test_config_manager_creation(self):
         """ConfigManagerの作成テスト"""
         self.assertIsInstance(self.manager, UnifiedConfigManager)
@@ -196,23 +192,17 @@ class TestUnifiedConfigManager(unittest.TestCase):
 
     def test_config_manager_load_config(self):
         """設定の読み込みテスト"""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump(self.sample_config, f)
-            temp_path = Path(f.name)
+        temp_path = self._write_temp_json(self.sample_config)
 
-        try:
-            config = self.manager.load_config("test_config", temp_path)
+        config = self.manager.load_config("test_config", temp_path)
 
-            self.assertEqual(config.model_name, "test_model")
-            self.assertEqual(len(self.manager.list_configs()), 1)
-            self.assertIn("test_config", self.manager.list_configs())
+        self.assertEqual(config.model_name, "test_model")
+        self.assertEqual(len(self.manager.list_configs()), 1)
+        self.assertIn("test_config", self.manager.list_configs())
 
-            # 取得テスト
-            retrieved_config = self.manager.get_config("test_config")
-            self.assertEqual(retrieved_config.model_name, "test_model")
-
-        finally:
-            temp_path.unlink()
+        # 取得テスト
+        retrieved_config = self.manager.get_config("test_config")
+        self.assertEqual(retrieved_config.model_name, "test_model")
 
     def test_config_manager_get_nonexistent_config(self):
         """存在しない設定の取得テスト"""
@@ -222,37 +212,24 @@ class TestUnifiedConfigManager(unittest.TestCase):
     def test_config_manager_validate_all_configs(self):
         """全設定の検証テスト"""
         # 有効な設定を追加
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump(self.sample_config, f)
-            temp_path = Path(f.name)
+        temp_path = self._write_temp_json(self.sample_config)
+        self.manager.load_config("valid_config", temp_path)
 
-        try:
-            self.manager.load_config("valid_config", temp_path)
+        # 無効な設定を追加
+        invalid_config = self.sample_config.copy()
+        invalid_config["model_name"] = ""
+        temp_path2 = self._write_temp_json(invalid_config)
 
-            # 無効な設定を追加
-            invalid_config = self.sample_config.copy()
-            invalid_config["model_name"] = ""
+        self.manager.load_config("invalid_config", temp_path2)
 
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".json", delete=False
-            ) as f2:
-                json.dump(invalid_config, f2)
-                temp_path2 = Path(f2.name)
+        # 検証
+        results = self.manager.validate_all_configs()
 
-            self.manager.load_config("invalid_config", temp_path2)
-
-            # 検証
-            results = self.manager.validate_all_configs()
-
-            # 有効な設定はエラーがないためresultsに含まれない
-            self.assertNotIn("valid_config", results)
-            # 無効な設定のみresultsに含まれる
-            self.assertIn("invalid_config", results)
-            self.assertGreater(len(results["invalid_config"]), 0)  # 無効な設定
-
-        finally:
-            temp_path.unlink()
-            temp_path2.unlink()
+        # 有効な設定はエラーがないためresultsに含まれない
+        self.assertNotIn("valid_config", results)
+        # 無効な設定のみresultsに含まれる
+        self.assertIn("invalid_config", results)
+        self.assertGreater(len(results["invalid_config"]), 0)  # 無効な設定
 
 
 if __name__ == "__main__":

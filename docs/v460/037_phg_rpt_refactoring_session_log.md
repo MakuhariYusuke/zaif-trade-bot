@@ -9229,3 +9229,8 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
       - `git st` = `status --short -uno`
       - `git stu` = `status --short --untracked-files=normal`
       - `git dcs` = `diff --cached --stat`
+
+- 2026-03-25 Codex:
+  - `tests/unit/config/test_unified_config.py` の tempfile を `mkstemp` + `addCleanup` に整理
+  - `tests/integration/smoke_tests.py` の synthetic data / output artifact を `mkdtemp()` ベースに整理
+  - focused pytest: `tests/unit/config/test_unified_config.py` → `13 passed in 2.96s`

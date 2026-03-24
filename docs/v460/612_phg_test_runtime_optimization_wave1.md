@@ -291,3 +291,16 @@
   - coverage デフォルト解除
   - test 側の repeated `FillTestConfig.from_yaml(...)` 削減
   の継続
+
+
+- unittest / smoke tempfile sweep:
+  - 追加適用:
+    - `tests/unit/config/test_unified_config.py`
+    - `tests/integration/smoke_tests.py`
+  - 内容:
+    - `NamedTemporaryFile(delete=False)` を `mkstemp` + `addCleanup` へ整理
+    - smoke artifacts を `mkdtemp()` ベースにして cleanup を明示
+    - 未使用 `TemporaryDirectory()` を削除
+  - focused pytest:
+    - `tests/unit/config/test_unified_config.py`
+    - 結果: `13 passed in 2.96s`

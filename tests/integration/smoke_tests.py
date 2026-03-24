@@ -8,7 +8,13 @@ and catch regressions early.
 import subprocess
 import sys
 import tempfile
+import shutil
 from pathlib import Path
+
+
+def _make_temp_dir() -> Path:
+    """Create a temporary directory path for smoke test artifacts."""
+    return Path(tempfile.mkdtemp())
 
 
 def create_synthetic_data(output_path: Path, n_samples: int = 100) -> None:
@@ -68,6 +74,7 @@ def create_synthetic_data(output_path: Path, n_samples: int = 100) -> None:
 def run_paper_trader_smoke_test(data_path: Path) -> bool:
     """Run paper trader with synthetic data."""
     try:
+        output_dir = _make_temp_dir()
         cmd = [
             sys.executable,
             "-m",
@@ -81,7 +88,7 @@ def run_paper_trader_smoke_test(data_path: Path) -> bool:
             "--duration-minutes",
             "5",
             "--output-dir",
-            tempfile.mkdtemp(),
+            str(output_dir),
             "--enable-risk",
             "--risk-profile",
             "conservative",
@@ -109,16 +116,18 @@ def run_paper_trader_smoke_test(data_path: Path) -> bool:
     except Exception as e:
         print(f"Paper trader smoke test error: {e}")
         return False
+    finally:
+        if "output_dir" in locals():
+            shutil.rmtree(output_dir, ignore_errors=True)
 
 
 def run_ppo_trainer_smoke_test(data_path: Path) -> bool:
     """Run PPO trainer with synthetic data for initialization test."""
     try:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            cmd = [
-                sys.executable,
-                "-c",
-                f"""
+        cmd = [
+            sys.executable,
+            "-c",
+            f"""
 import sys
 import os
 sys.path.insert(0, r'{Path(__file__).parent.parent}')
@@ -139,23 +148,23 @@ print(f"Loaded {{len(df)}} samples")
 print("PPO trainer import successful")
 print("Smoke test passed")
 """,
-            ]
+        ]
 
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=30,
-                cwd=Path(__file__).parent.parent,
-            )
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=Path(__file__).parent.parent,
+        )
 
-            success = result.returncode == 0
-            if not success:
-                print("PPO trainer smoke test failed:")
-                print(f"STDOUT: {result.stdout}")
-                print(f"STDERR: {result.stderr}")
+        success = result.returncode == 0
+        if not success:
+            print("PPO trainer smoke test failed:")
+            print(f"STDOUT: {result.stdout}")
+            print(f"STDERR: {result.stderr}")
 
-            return success
+        return success
 
     except subprocess.TimeoutExpired:
         print("PPO trainer smoke test timed out")
@@ -204,11 +213,11 @@ def run_venue_health_check_smoke_test() -> bool:
         return False
 
 
-def main():
+def main() -> int:
     """Run all regression smoke tests."""
     print("Running regression smoke tests...")
 
-    results = []
+    results: list[tuple[str, bool]] = []
 
     # Test 1: Venue health check
     print("\n1. Testing venue health check...")
@@ -218,35 +227,34 @@ def main():
 
     # Test 2: Create synthetic data
     print("\n2. Creating synthetic data...")
-    with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as f:
-        data_path = Path(f.name)
+    temp_dir = _make_temp_dir()
+    data_path = temp_dir / "synthetic.parquet"
 
     try:
-        create_synthetic_data(data_path, n_samples=100)
-        data_created = True
-    except Exception as e:
-        print(f"Failed to create synthetic data: {e}")
-        data_created = False
+        try:
+            create_synthetic_data(data_path, n_samples=100)
+            data_created = True
+        except Exception as e:
+            print(f"Failed to create synthetic data: {e}")
+            data_created = False
 
-    results.append(("synthetic_data_creation", data_created))
-    print(f"   Result: {'PASS' if data_created else 'FAIL'}")
+        results.append(("synthetic_data_creation", data_created))
+        print(f"   Result: {'PASS' if data_created else 'FAIL'}")
 
-    if data_created:
-        # Test 3: Paper trader
-        print("\n3. Testing paper trader...")
-        trader_success = run_paper_trader_smoke_test(data_path)
-        results.append(("paper_trader", trader_success))
-        print(f"   Result: {'PASS' if trader_success else 'FAIL'}")
+        if data_created:
+            # Test 3: Paper trader
+            print("\n3. Testing paper trader...")
+            trader_success = run_paper_trader_smoke_test(data_path)
+            results.append(("paper_trader", trader_success))
+            print(f"   Result: {'PASS' if trader_success else 'FAIL'}")
 
-        # Test 4: PPO trainer
-        print("\n4. Testing PPO trainer...")
-        ppo_success = run_ppo_trainer_smoke_test(data_path)
-        results.append(("ppo_trainer", ppo_success))
-        print(f"   Result: {'PASS' if ppo_success else 'FAIL'}")
-
-    # Cleanup
-    if data_path.exists():
-        data_path.unlink()
+            # Test 4: PPO trainer
+            print("\n4. Testing PPO trainer...")
+            ppo_success = run_ppo_trainer_smoke_test(data_path)
+            results.append(("ppo_trainer", ppo_success))
+            print(f"   Result: {'PASS' if ppo_success else 'FAIL'}")
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
     # Summary
     print("\n" + "=" * 50)
@@ -256,7 +264,7 @@ def main():
     all_passed = True
     for test_name, passed in results:
         status = "PASS" if passed else "FAIL"
-        print("25")
+        print(f"{test_name:25} {status}")
         if not passed:
             all_passed = False
 
