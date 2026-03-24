@@ -457,3 +457,36 @@ Batch A の評価:
 - commit として意味がはっきりしている
 - review 時に「analysis output/CLI contract の統一」と一目で追える
 - 次は Batch C の typing/container 整理へ、そのまま接続しやすい
+
+## 2026-03-25 追加追記: reporting / entrypoint contract の横展開
+
+Batch A の続きとして、reporting 色の強い analysis script も同じ契約へ寄せる。
+
+対象:
+
+1. `scripts/v460/analysis/diagnose_deadlock.py`
+2. `scripts/v460/analysis/side_regime_dashboard.py`
+3. `scripts/v460/analysis/compare_regime_ab.py`
+4. `tests/unit/v460/test_analysis_reporting_entrypoints.py`
+5. `tests/unit/v460/test_159_side_regime_dashboard.py`
+6. `tests/unit/v460/test_152_parallel_tasks.py`
+7. `tests/unit/v460/test_regime_detector.py`
+8. `docs/v460/598_phg_investigation_next_death_spiral_candidates.md`
+9. `docs/v460/037_phg_rpt_refactoring_session_log.md`
+
+今回の寄せ方:
+
+- `diagnose_deadlock.py`
+  - `main(argv)` を維持したまま、最終出力を `write_output(...)` に統一
+- `side_regime_dashboard.py`
+  - `--json` 出力を `write_json_output(...)` に統一
+  - report 本文は従来どおり human-readable print を維持
+- `compare_regime_ab.py`
+  - summary JSON 保存を `write_json_output(...)` に統一
+  - CSV と human-readable report は現行のまま維持
+
+判断:
+
+- script ごとの集計/表示はそのまま
+- output boundary だけを揃えるので低リスク
+- 後から見返したときも「analysis reporting entrypoint の統一」として意味が読みやすい

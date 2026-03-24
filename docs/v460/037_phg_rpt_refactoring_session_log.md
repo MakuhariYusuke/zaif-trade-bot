@@ -9064,3 +9064,12 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `tests/unit/v460/test_441_ab_offset_comparison.py`
     - `tests/unit/v460/test_158_oracle_test.py`
     - `46 passed`
+- analysis reporting/entrypoint sweep (追加):
+  - `scripts/v460/analysis/diagnose_deadlock.py`
+    - 最終レポート出力を `write_output(...)` に統一
+  - `scripts/v460/analysis/side_regime_dashboard.py`
+    - `--json` 出力を `write_json_output(...)` に統一
+  - `scripts/v460/analysis/compare_regime_ab.py`
+    - summary JSON 保存を `write_json_output(...)` に統一
+  - `tests/unit/v460/test_analysis_reporting_entrypoints.py`
+    - reporting entrypoint の shared output helper 利用を focused で追加

@@ -37,8 +37,8 @@ from ztb.trading.signal.regime.regime_detector import (
 )
 
 # Re-use data loading from reproduce script
+from scripts.v460.analysis.analysis_common import write_json_output
 from scripts.v460.analysis.reproduce_152_metrics import _load_records
-from ztb.io.json_io import write_json
 from ztb.metrics.fill_quality import PnlAccumulator
 from ztb.utils.safety import safe_to_finite
 
@@ -421,7 +421,7 @@ def _save_summary(
     }
 
     json_path = output_dir / "regime_ab_summary.json"
-    write_json(json_path, summary, indent=2, ensure_ascii=False)
+    write_json_output(summary, json_path)
     print(f"Saved: {json_path}")
 
 

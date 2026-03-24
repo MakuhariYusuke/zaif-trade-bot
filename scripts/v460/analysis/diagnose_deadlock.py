@@ -16,8 +16,11 @@ import argparse
 import re
 import sys
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from scripts.v460.analysis.analysis_common import write_output
 
 DEFAULT_LOG = Path("results/v460/fill_test/logs/fill_test.log")
 DEFAULT_LOG_PREV = DEFAULT_LOG.with_suffix(".log.1")
@@ -264,7 +267,7 @@ def format_report(events: list[DeadlockEvent]) -> str:
 # CLI
 # ---------------------------------------------------------------------------
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description="604# fill_test ログ膠着パターン診断",
     )
@@ -280,7 +283,7 @@ def main() -> None:
         default=0,
         help="末尾 N 行のみ分析 (0=全行)",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     log_files: list[Path] = []
     if args.log:
@@ -306,13 +309,11 @@ def main() -> None:
 
     events = analyze_log(all_lines)
     report = format_report(events)
-    print(report)
-
-    # サマリー統計
     safe_stops = sum(1 for e in events if e.safe_stopped)
     recovered = sum(1 for e in events if e.recovery_cancelled)
-    print(f"サマリー: 膠着={len(events)}, SAFE_STOP={safe_stops}, "
-          f"602#回復={recovered}")
+    write_output(
+        f"{report}\nサマリー: 膠着={len(events)}, SAFE_STOP={safe_stops}, 602#回復={recovered}"
+    )
 
 
 if __name__ == "__main__":

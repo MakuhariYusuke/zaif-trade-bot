@@ -16,10 +16,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 from collections import defaultdict
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -42,6 +42,7 @@ from ztb.metrics.record_metrics import (
 # 160# P0-B/C: judgment 統合
 from ztb.io.yaml_io import read_yaml
 from ztb.utils.safety import safe_to_finite
+from scripts.v460.analysis.analysis_common import write_json_output
 from scripts.v460.lib.ab_judgment import (
     ABJudgmentCriteria,
     ABJudgmentResult,
@@ -498,7 +499,7 @@ def _load_judgment_config(
         return None, None
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     """CLI エントリポイント."""
     parser = argparse.ArgumentParser(
         description="159# P0-B/C: Side × Regime 3指標ダッシュボード",
@@ -512,7 +513,7 @@ def main() -> None:
                         help="160# P0-B/C: A/B判定 + trending_down sell 評価を実行")
     parser.add_argument("--config", type=str, default=None,
                         help="YAML 設定ファイルパス (judgment section を参照)")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     ab_criteria = None
     trending_criteria = None
@@ -528,7 +529,7 @@ def main() -> None:
     _print_dashboard(result)
 
     if args.json:
-        print(f"\n{json.dumps(result, indent=2, default=str)}")
+        write_json_output(result)
 
 
 if __name__ == "__main__":
