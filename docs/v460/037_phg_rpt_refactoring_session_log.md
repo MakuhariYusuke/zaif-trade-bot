@@ -9022,3 +9022,45 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `main(argv)` 化で focused test しやすくした
   - `tests/unit/v460/test_analysis_output_contracts.py`
     - 3 script の output helper 利用を focused で確認
+- analysis batch planning (追加):
+  - `docs/v460/598_phg_investigation_next_death_spiral_candidates.md`
+    に次の十数ファイル batch を明文化
+  - 3 batch に切り分け:
+    - Batch A: output / CLI contract 統一
+    - Batch B: loader / filter contract 統一
+    - Batch C: typing / container 整理
+  - 次の実行順は
+    1. Batch A
+    2. Batch C
+    3. Batch B
+    と整理
+- analysis Batch A (追加):
+  - `scripts/v460/analysis/print_ab_summary.py`
+    - `main(argv)` 化
+    - `write_output(...)` 利用へ整理
+  - `scripts/v460/analysis/reproduce_152_metrics.py`
+    - JSON 保存を `write_json_output(...)` に統一
+  - `scripts/v460/analysis/oracle_baseline.py`
+    - `run_oracle_baseline(..., output_path=...)` の保存を `write_json_output(...)` に統一
+    - `main(argv)` 化
+  - `scripts/v460/analysis/oracle_test.py`
+    - `main(argv)` 化
+    - 最後の JSON 出力を `write_json_output(...)` に統一
+  - `scripts/v460/analysis/ab_offset_comparison.py`
+    - baseline/comparison 保存を `write_json_output(...)` に統一
+    - `main(argv)` 化
+  - `tests/unit/v460/test_analysis_batch_a_cli_contracts.py`
+    - 5 script の output/CLI contract を focused で追加
+  - targeted mypy:
+    - `print_ab_summary.py`
+    - `reproduce_152_metrics.py`
+    - `oracle_baseline.py`
+    - `oracle_test.py`
+    - `ab_offset_comparison.py`
+    - `Success: no issues found in 5 source files`
+  - focused pytest:
+    - `tests/unit/v460/test_analysis_batch_a_cli_contracts.py`
+    - `tests/unit/v460/test_152_parallel_tasks.py`
+    - `tests/unit/v460/test_441_ab_offset_comparison.py`
+    - `tests/unit/v460/test_158_oracle_test.py`
+    - `46 passed`

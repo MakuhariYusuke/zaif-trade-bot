@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 
+from collections.abc import Sequence
 from ztb.utils.safety import safe_to_finite
 import sys
 from collections import defaultdict
@@ -43,7 +44,7 @@ from ztb.metrics.fill_quality import (
     iter_fill_records_glob,
     partition_clean_records,
 )
-from ztb.io.json_io import write_json
+from scripts.v460.analysis.analysis_common import write_json_output
 from ztb.utils.dataclass_utils import shallow_asdict
 
 
@@ -432,13 +433,13 @@ def run_oracle_baseline(
     if output_path:
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
-        write_json(out, report, indent=2, ensure_ascii=False)
+        write_json_output(report, out)
         print(f"\n  Report saved to: {out}")
 
     return report
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     """CLI エントリポイント."""
     parser = argparse.ArgumentParser(description="131# D2: Oracle PnL Baseline")
     parser.add_argument(
@@ -459,7 +460,7 @@ def main() -> None:
         default=15_000_000,
         help="BTC/JPY price assumption (default: 15,000,000)",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     run_oracle_baseline(
         results_dir=args.results_dir,
         output_path=args.output,

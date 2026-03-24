@@ -16,8 +16,9 @@ import sys
 from collections import Counter, defaultdict
 from collections.abc import Sequence
 from pathlib import Path
+from typing import cast
 
-from ztb.io.json_io import write_json
+from scripts.v460.analysis.analysis_common import write_json_output
 from ztb.metrics.fill_quality import PnlAccumulator, load_fill_record_objects_glob
 from ztb.utils.safety import ensure_dict, safe_to_int, safe_to_finite
 
@@ -36,7 +37,7 @@ def _to_str(value: object) -> str | None:
 
 
 def _to_dict(value: object) -> dict[str, object]:
-    return ensure_dict(value)
+    return cast(dict[str, object], ensure_dict(value))
 
 
 # ---------------------------------------------------------------------------
@@ -205,7 +206,7 @@ def _compute_metrics(
 # ---------------------------------------------------------------------------
 
 def _as_int(value: object) -> int:
-    return safe_to_int(value, 0)
+    return int(safe_to_int(value, 0))
 
 
 def _as_float_or_zero(value: object) -> float:
@@ -275,8 +276,8 @@ def _print_report(metrics: MetricsMap, params: dict[str, object]) -> None:
         hour_pnl.items(),
         key=lambda x: _as_float_or_zero(_to_dict(x[1]).get("avg_pnl_bps")),
     )
-    for hour_label, data in sorted_hours[:6]:
-        hour_data = _to_dict(data)
+    for hour_label, hour_data_obj in sorted_hours[:6]:
+        hour_data = _to_dict(hour_data_obj)
         print(
             f"  {hour_label}: n={_as_int(hour_data.get('fills'))}, "
             f"avg={_as_float_or_zero(hour_data.get('avg_pnl_bps')):.4f} bps"
@@ -353,12 +354,7 @@ def main(argv: Sequence[str] | None = None) -> MetricsMap:
     if args.output:
         out_path = Path(args.output)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        write_json(
-            out_path,
-            {"params": params, "metrics": metrics},
-            indent=2,
-            ensure_ascii=False,
-        )
+        write_json_output({"params": params, "metrics": metrics}, out_path)
         print(f"\nSaved to {out_path}")
 
     return metrics

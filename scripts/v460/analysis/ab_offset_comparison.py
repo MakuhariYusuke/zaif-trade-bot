@@ -23,11 +23,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import math
 import sys
 from collections import defaultdict
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TypedDict, cast
@@ -43,6 +43,7 @@ from ztb.metrics.fill_quality import (
     iter_fill_record_objects_glob,
 )
 from ztb.utils.safety import safe_to_finite
+from scripts.v460.analysis.analysis_common import write_json_output
 
 # ── Constants ──
 _RESULTS_DIR = Path("results/v460/fill_test")
@@ -300,8 +301,7 @@ def _save_baseline(
         "buckets": serializable,
     }
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2, ensure_ascii=False, default=str)
+    write_json_output(payload, output_path)
     print(f"Baseline saved: {output_path} ({len(records)} records)")
 
 
@@ -425,28 +425,24 @@ def _run_comparison(
 
     # Save result
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "type": "comparison_440_offset",
-                "created": datetime.now(timezone.utc).isoformat(),
-                "split_date": split_date,
-                "filters": {"git_sha": git_sha, "run_id": run_id},
-                "before_n": len(before_recs),
-                "after_n": len(after_recs),
-                "rows": rows,
-                "overall_before_pnl30": round(b_avg, 4),
-                "overall_after_pnl30": round(a_avg, 4),
-            },
-            f,
-            indent=2,
-            ensure_ascii=False,
-            default=str,
-        )
+    write_json_output(
+        {
+            "type": "comparison_440_offset",
+            "created": datetime.now(timezone.utc).isoformat(),
+            "split_date": split_date,
+            "filters": {"git_sha": git_sha, "run_id": run_id},
+            "before_n": len(before_recs),
+            "after_n": len(after_recs),
+            "rows": rows,
+            "overall_before_pnl30": round(b_avg, 4),
+            "overall_after_pnl30": round(a_avg, 4),
+        },
+        output_path,
+    )
     print(f"\nSaved: {output_path}")
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="441# A/B Offset Comparison")
     parser.add_argument("--results-dir", default="results/v460/fill_test")
     parser.add_argument("--save-baseline", action="store_true", help="Save baseline (before deploy)")
@@ -457,7 +453,7 @@ def main() -> None:
     parser.add_argument("--run-id", help="run_id 完全一致フィルタ")
     parser.add_argument("--output", default=str(_COMPARISON_PATH))
     parser.add_argument("--baseline-path", default=str(_BASELINE_PATH))
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     results_dir = Path(args.results_dir)
 

@@ -314,3 +314,146 @@ Success: no issues found in 3 source files
   - `reproduce_152_metrics.py`
   - `ab_offset_comparison.py`
   のような script へ自然に広げられる
+
+## 2026-03-25 追加追記: 次の十数ファイル batch 見立て
+
+以後の analysis 系 sweep は、単発ではなく「同じ改善軸」を持つ束で進める。
+現時点で最も見返しやすく、安全にまとめやすいのは次の 3 batch である。
+
+### Batch A: analysis output / CLI contract 統一
+
+対象:
+
+1. `scripts/v460/analysis/ab_offset_comparison.py`
+2. `scripts/v460/analysis/oracle_baseline.py`
+3. `scripts/v460/analysis/reproduce_152_metrics.py`
+4. `scripts/v460/analysis/print_ab_summary.py`
+5. `scripts/v460/analysis/oracle_test.py`
+6. `docs/v460/598_phg_investigation_next_death_spiral_candidates.md`
+7. `docs/v460/037_phg_rpt_refactoring_session_log.md`
+
+改善軸:
+
+- `write_json_output(...)`
+- `write_output(...)`
+- `main(argv)` 化
+- output path / stdout 契約の統一
+
+判断:
+
+- 既存集計ロジックに手を入れずに寄せられる
+- 後から見たときも「出力 contract を揃えた commit」として追いやすい
+
+### Batch B: analysis loader / filter contract 統一
+
+対象:
+
+1. `scripts/v460/analysis/ab_offset_comparison.py`
+2. `scripts/v460/analysis/reproduce_152_metrics.py`
+3. `scripts/v460/analysis/compare_regime_ab.py`
+4. `scripts/v460/analysis/analysis_common.py`
+5. `tests/unit/v460/test_441_ab_offset_comparison.py`
+6. `tests/unit/v460/test_511_shared_contracts_migration.py`
+7. `docs/v460/598_phg_investigation_next_death_spiral_candidates.md`
+8. `docs/v460/037_phg_rpt_refactoring_session_log.md`
+
+改善軸:
+
+- `add_common_filter_args(...)`
+- `load_records_from_args(...)`
+- `DEFAULT_RESULTS_DIR`
+- filter alias (`--start/--end` vs `--date-from/--date-to`)
+
+判断:
+
+- fill-record 系 script の shared loader 再利用を一段進められる
+- ただし domain 固有 loader が強い script は無理に寄せない
+
+### Batch C: analysis typing / container 整理
+
+対象:
+
+1. `scripts/v460/analysis/ab_offset_comparison.py`
+2. `scripts/v460/analysis/oracle_baseline.py`
+3. `scripts/v460/analysis/oracle_test.py`
+4. `scripts/v460/analysis/reproduce_152_metrics.py`
+5. `tests/unit/v460/test_441_ab_offset_comparison.py`
+6. `tests/unit/v460/test_467_remaining_issues.py`
+7. `docs/v460/598_phg_investigation_next_death_spiral_candidates.md`
+8. `docs/v460/037_phg_rpt_refactoring_session_log.md`
+
+改善軸:
+
+- `TypeAlias`
+- `TypedDict`
+- `cast`
+- `main() -> None / argv`
+- targeted mypy clean 化
+
+判断:
+
+- `sha_comparison.py` と同じ粒度で進められる
+- `dict[str, dict]` / `defaultdict` の型揺れを先に止めるのが主眼
+
+## 今の推奨順
+
+1. **Batch A**
+   - 低リスク
+   - commit の意味が明瞭
+   - review しやすい
+2. **Batch C**
+   - output contract が揃った後に型を詰めると差分が読みやすい
+3. **Batch B**
+   - loader/shared args は script ごとの事情差が大きいため最後
+
+## 今回の結論
+
+次の「十数ファイルを一気にまとめる」なら、
+まずは **Batch A: analysis output / CLI contract 統一** が最も良い。
+
+## 2026-03-25 追加追記: Batch A 実施結果
+
+実施対象:
+
+1. `scripts/v460/analysis/print_ab_summary.py`
+2. `scripts/v460/analysis/reproduce_152_metrics.py`
+3. `scripts/v460/analysis/oracle_baseline.py`
+4. `scripts/v460/analysis/oracle_test.py`
+5. `scripts/v460/analysis/ab_offset_comparison.py`
+6. `tests/unit/v460/test_analysis_batch_a_cli_contracts.py`
+7. `tests/unit/v460/test_152_parallel_tasks.py`
+8. `tests/unit/v460/test_441_ab_offset_comparison.py`
+9. `tests/unit/v460/test_158_oracle_test.py`
+10. `docs/v460/598_phg_investigation_next_death_spiral_candidates.md`
+11. `docs/v460/037_phg_rpt_refactoring_session_log.md`
+
+今回の寄せ方:
+
+- `print_ab_summary.py`
+  - `main(argv)` 化
+  - `write_output(...)` を使う形に整理
+- `reproduce_152_metrics.py`
+  - `--output` は `write_json_output(...)` に統一
+- `oracle_baseline.py`
+  - `run_oracle_baseline(..., output_path=...)` で `write_json_output(...)` を利用
+  - `main(argv)` 化
+- `oracle_test.py`
+  - `main(argv)` 化
+  - 最後の JSON 表示を `write_json_output(...)` へ統一
+- `ab_offset_comparison.py`
+  - baseline/comparison 保存を `write_json_output(...)` に統一
+  - `main(argv)` 化
+
+補助的に入れた型整理:
+
+- `reproduce_152_metrics.py`
+  - `_to_dict(...)` / `_as_int(...)` の戻り値型を固定
+  - hour 集計の変数名を分けて mypy の型揺れを解消
+- `oracle_test.py`
+  - `_to_finite_float_array(...)` を `NDArray[np.float64]` で固定
+
+Batch A の評価:
+
+- commit として意味がはっきりしている
+- review 時に「analysis output/CLI contract の統一」と一目で追える
+- 次は Batch C の typing/container 整理へ、そのまま接続しやすい

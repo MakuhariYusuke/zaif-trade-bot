@@ -17,16 +17,18 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
+from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, cast
 
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 from ztb.io.jsonl import append_jsonl
+from scripts.v460.analysis.analysis_common import write_json_output
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
@@ -98,13 +100,13 @@ class OracleRunResult(TypedDict, total=False):
     kill_switch: KillSwitchResult
 
 
-def _to_finite_float_array(series: pd.Series) -> np.ndarray:
+def _to_finite_float_array(series: pd.Series) -> NDArray[np.float64]:
     """Series を有限 float 配列へ正規化する."""
     numeric = pd.to_numeric(series, errors="coerce").to_numpy(dtype=float, copy=False)
-    return numeric[np.isfinite(numeric)]
+    return cast(NDArray[np.float64], numeric[np.isfinite(numeric)])
 
 
-def _summarize_pnl_array(pnl_arr: np.ndarray) -> tuple[float, float, float, float, float]:
+def _summarize_pnl_array(pnl_arr: NDArray[np.float64]) -> tuple[float, float, float, float, float]:
     """PnL 配列から主要 Oracle 指標を算出する."""
     n = len(pnl_arr)
     if n == 0:
@@ -292,14 +294,14 @@ def run_oracle_test(
     return result
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     """CLI エントリポイント."""
     parser = argparse.ArgumentParser(description="Z2 Oracle テスト (理論上限)")
     parser.add_argument(
         "--results-dir", type=str, default="results/v460/fill_test",
         help="fill_records のディレクトリ",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     logging.basicConfig(
         level=logging.INFO,
@@ -370,7 +372,8 @@ def main() -> None:
     print(f"\n  Result logged to {log_path}")
 
     # 全結果 JSON
-    print(f"\n{json.dumps(result, indent=2, default=str)}")
+    print()
+    write_json_output(result)
 
 
 if __name__ == "__main__":
