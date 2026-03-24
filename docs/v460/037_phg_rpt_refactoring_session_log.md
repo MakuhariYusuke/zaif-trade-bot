@@ -8953,3 +8953,11 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - focused pytest:
     - `tests/unit/v460/test_155_hindsight_review.py`
     - `39 passed`
+- analysis I/O reuse sweep (追加):
+  - `scripts/v460/analysis/hindsight_filter.py`
+    - `load_records_from_args(...)` を利用して shared loader へ移行
+    - `--start/--end/--data-dir` は alias として維持
+    - `add_output_args(...)` を再利用して output 契約も統一
+  - focused pytest:
+    - `tests/unit/v460/test_155_hindsight_review.py`
+    - legacy CLI alias と shared loader/output reuse を確認

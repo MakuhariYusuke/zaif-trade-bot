@@ -172,3 +172,18 @@ Success: no issues found in 3 source files
 - `_print_report(...)` 内の TypedDict 混線が解消
 - targeted mypy を semantics 変更なしで clean 化
 - 次の batch では I/O 共通化 (`args`, record loading, output policy) をより安全に進められる
+
+さらに第2段として、CLI / I/O も `analysis_common` に寄せた。
+
+- `scripts/v460/analysis/hindsight_filter.py`
+  - `load_records_from_args(...)` を利用して record loading を共通化
+  - `--start/--end/--data-dir` は維持しつつ
+    - `date_from/date_to/results_dir`
+    へ alias 解決して shared loader に渡す
+  - `add_output_args(...)` を再利用して output 契約も統一
+
+効果:
+
+- `hindsight_filter.py` 独自の `_load_records(...)` 依存を外せた
+- 既存 CLI 互換を維持したまま、他 analysis script と同じ loader/output policy に寄せられた
+- 今後は `analysis_common` の helper 拡張を `hindsight_filter.py` にも横展開しやすい

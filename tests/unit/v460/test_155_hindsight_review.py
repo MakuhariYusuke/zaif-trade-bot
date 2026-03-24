@@ -11,6 +11,7 @@ import inspect
 
 import pytest
 
+import scripts.v460.analysis.hindsight_filter as hindsight_filter
 from scripts.v460.analysis.hindsight_filter import (
     HindsightResult,
     PricePoint,
@@ -631,6 +632,63 @@ class TestHindsightFilterLogger:
         src = read_source_text(HINDSIGHT_FILTER)
         assert "_skipped_invalid_side" in src
         assert "Excluded" in src
+
+
+class TestHindsightFilterCliReuse:
+    """analysis_common helper 再利用と旧CLI互換の確認."""
+
+    def test_main_uses_shared_loader_and_output_aliases(self, monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+        records = [
+            {
+                "timestamp": 1000.0,
+                "order_price": 10_000_000.0,
+                "side": "buy",
+                "filled": True,
+                "cancel_reason": "",
+                "cycle_id": "c1",
+                "post_fill_30s_pnl": 0.5,
+            },
+        ]
+
+        captured: dict[str, object] = {}
+
+        def fake_load_records_from_args(args: object) -> list[dict[str, object]]:
+            captured["date_from"] = getattr(args, "date_from")
+            captured["date_to"] = getattr(args, "date_to")
+            captured["results_dir"] = getattr(args, "results_dir")
+            captured["run_id"] = getattr(args, "run_id")
+            return records
+
+        def fake_build_price_timeline(_records: object) -> list[PricePoint]:
+            return [
+                PricePoint(1000.0, 10_000_000.0),
+                PricePoint(1030.0, 10_000_500.0),
+                PricePoint(1060.0, 10_001_000.0),
+                PricePoint(1120.0, 10_002_000.0),
+            ]
+
+        def fake_write_json_output(data: object, output_path: object) -> None:
+            captured["output"] = data
+            captured["output_path"] = output_path
+
+        monkeypatch.setattr(hindsight_filter, "load_records_from_args", fake_load_records_from_args)
+        monkeypatch.setattr(hindsight_filter, "_build_price_timeline", fake_build_price_timeline)
+        monkeypatch.setattr(hindsight_filter, "write_json_output", fake_write_json_output)
+
+        result = hindsight_filter.main([
+            "--start", "2026-03-01",
+            "--end", "2026-03-02",
+            "--data-dir", str(tmp_path),
+            "--run-id", "run-123",
+            "--output", str(tmp_path / "out.json"),
+        ])
+
+        assert captured["date_from"] == "2026-03-01"
+        assert captured["date_to"] == "2026-03-02"
+        assert captured["results_dir"] == str(tmp_path)
+        assert captured["run_id"] == "run-123"
+        assert captured["output_path"] == str(tmp_path / "out.json")
+        assert captured["output"] == result
 
 
 class TestNoTimestampFallbackStale:

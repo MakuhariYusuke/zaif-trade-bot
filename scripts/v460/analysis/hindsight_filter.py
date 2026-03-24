@@ -31,8 +31,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TypeAlias, TypedDict, cast
 
-from scripts.v460.analysis.analysis_common import write_json_output
-from scripts.v460.analysis.reproduce_152_metrics import _load_records
+from scripts.v460.analysis.analysis_common import add_output_args, load_records_from_args, write_json_output
 from scripts.v460.lib import cancel_reasons as CR
 from ztb.metrics.fill_quality import PnlAccumulator
 
@@ -1070,19 +1069,15 @@ def main(argv: Sequence[str] | None = None) -> dict[str, object]:
     parser = argparse.ArgumentParser(
         description="155# 後知恵フィルター分析 — missed profit opportunities",
     )
-    parser.add_argument("--start", default=None, help="Start date (YYYY-MM-DD)")
-    parser.add_argument("--end", default=None, help="End date (YYYY-MM-DD)")
+    parser.add_argument("--start", "--date-from", dest="date_from", default=None, help="Start date (YYYY-MM-DD)")
+    parser.add_argument("--end", "--date-to", dest="date_to", default=None, help="End date (YYYY-MM-DD)")
     parser.add_argument("--run-id", default=None)
-    parser.add_argument("--data-dir", default="results/v460/fill_test")
-    parser.add_argument("--output", default=None, help="Output JSON path")
+    parser.add_argument("--git-sha", default=None)
+    parser.add_argument("--data-dir", "--results-dir", dest="results_dir", default="results/v460/fill_test")
+    add_output_args(parser)
     args = parser.parse_args(argv)
 
-    records = _load_records(
-        args.data_dir,
-        start_date=args.start,
-        end_date=args.end,
-        run_id=args.run_id,
-    )
+    records = load_records_from_args(args)
 
     if not records:
         print("ERROR: No records", file=sys.stderr)
