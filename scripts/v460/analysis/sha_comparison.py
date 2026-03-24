@@ -17,31 +17,29 @@ Outputs:
 from __future__ import annotations
 
 import argparse
-import json
 import math
 import sys
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from typing import TypeAlias, TypedDict
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from scripts.v460.analysis.analysis_common import (
     AS_THRESHOLD_BPS,
-    DEFAULT_RESULTS_DIR,
+    Record,
     SEVERE_AS_THRESHOLD_BPS,
     get_pnl,
+    write_json_output,
 )
 from scripts.v460.lib.ab_judgment import (
     ABJudgmentCriteria,
     evaluate_ab_variant,
 )
-from ztb.metrics.fill_quality import (
-    load_fill_record_objects_glob,
-    apply_fill_record_filters,
-)
+from ztb.metrics.fill_quality import load_fill_record_objects_glob
 
 # ======================================================================
 # Configuration
@@ -54,6 +52,32 @@ OUTPUT_DIR = _PROJECT_ROOT / "analysis_results"
 DEFAULT_SHAS = ["dcc3064", "4e67014"]
 
 # AS_THRESHOLD_BPS / SEVERE_AS_THRESHOLD_BPS → analysis_common からインポート
+
+FillRecord: TypeAlias = Record
+
+
+class RegimeBuckets(TypedDict):
+    """レジーム別の fill/all バケット."""
+
+    filled: list[FillRecord]
+    all: list[FillRecord]
+
+
+class HourlyBuckets(TypedDict):
+    """時間帯別 PnL バケット."""
+
+    pnls: list[float]
+    sell_pnls: list[float]
+    buy_pnls: list[float]
+
+
+class DailyBuckets(TypedDict):
+    """日次集計の可変バケット."""
+
+    total: int
+    filled: int
+    pnls: list[float]
+    bf: int
 
 
 # ======================================================================
@@ -172,13 +196,13 @@ def _percentile(vals: list[float], p: float) -> float:
     return s[f] * (c - k) + s[c] * (k - f)
 
 
-def _is_target(r: dict, sha_prefixes: list[str]) -> bool:
+def _is_target(r: FillRecord, sha_prefixes: list[str]) -> bool:
     sha = (str(r.get("git_sha", "")) or "")[:7]
     return any(sha == prefix[:7] for prefix in sha_prefixes)
 
 
 def _compute_side_metrics(
-    filled: list[dict], all_records: list[dict], side: str,
+    filled: list[FillRecord], all_records: list[FillRecord], side: str,
 ) -> SideMetrics | None:
     """指定サイドの集計."""
     sf = [r for r in filled if r.get("side") == side]
@@ -320,7 +344,7 @@ def run_analysis(sha_prefixes: list[str]) -> AnalysisResult:
     print(f"  Regime Analysis")
     print(f"{'=' * 72}")
 
-    regime_data: dict[str, dict[str, list[dict]]] = defaultdict(
+    regime_data: dict[str, RegimeBuckets] = defaultdict(
         lambda: {"filled": [], "all": []},
     )
     for r in dcc:
@@ -331,11 +355,11 @@ def run_analysis(sha_prefixes: list[str]) -> AnalysisResult:
 
     regime_metrics_list: list[RegimeMetrics] = []
     for regime in sorted(regime_data.keys()):
-        d = regime_data[regime]
-        n_all = len(d["all"])
-        n_filled = len(d["filled"])
+        regime_bucket = regime_data[regime]
+        n_all = len(regime_bucket["all"])
+        n_filled = len(regime_bucket["filled"])
         fill_rate = n_filled / n_all if n_all else 0
-        pnls_r = [p for p in (get_pnl(r) for r in d["filled"]) if p is not None]
+        pnls_r = [p for p in (get_pnl(r) for r in regime_bucket["filled"]) if p is not None]
 
         rm = RegimeMetrics(
             regime=regime,
@@ -354,7 +378,7 @@ def run_analysis(sha_prefixes: list[str]) -> AnalysisResult:
                   f"win={100 * len(pw) / len(pnls_r):.1f}%")
 
             for side in ["sell", "buy"]:
-                sm = _compute_side_metrics(d["filled"], d["all"], side)
+                sm = _compute_side_metrics(regime_bucket["filled"], regime_bucket["all"], side)
                 if sm:
                     rm.by_side.append(sm)
                     print(f"      {side}: n={sm.n_filled}, "
@@ -434,7 +458,7 @@ def run_analysis(sha_prefixes: list[str]) -> AnalysisResult:
     print(f"  Time-of-Day (UTC hour)")
     print(f"{'=' * 72}")
 
-    hourly: dict[int, dict[str, list[float]]] = defaultdict(
+    hourly: dict[int, HourlyBuckets] = defaultdict(
         lambda: {"pnls": [], "sell_pnls": [], "buy_pnls": []},
     )
     for r in filled:
@@ -443,25 +467,30 @@ def run_analysis(sha_prefixes: list[str]) -> AnalysisResult:
             utc_hour = datetime.fromtimestamp(ts, tz=timezone.utc).hour
             p = get_pnl(r)
             if p is not None:
-                hourly[utc_hour]["pnls"].append(p)
-                hourly[utc_hour][f"{r.get('side', '?')}_pnls"].append(p)
+                hour_bucket = hourly[utc_hour]
+                hour_bucket["pnls"].append(p)
+                side = r.get("side")
+                if side == "sell":
+                    hour_bucket["sell_pnls"].append(p)
+                elif side == "buy":
+                    hour_bucket["buy_pnls"].append(p)
 
     print(f"  {'UTC':>3s}  {'n':>4s}  {'mean':>8s}  {'p10':>7s}  "
           f"{'win%':>5s}  {'sell_n':>6s}  {'sell_avg':>9s}  "
           f"{'buy_n':>5s}  {'buy_avg':>9s}")
     for h in sorted(hourly.keys()):
-        d = hourly[h]
-        n = len(d["pnls"])
+        hour_bucket = hourly[h]
+        n = len(hour_bucket["pnls"])
         if n == 0:
             continue
-        mean_p = sum(d["pnls"]) / n
-        hp10 = _percentile(d["pnls"], 10) if n >= 3 else float("nan")
-        wn = sum(1 for p in d["pnls"] if p > 0)
+        mean_p = sum(hour_bucket["pnls"]) / n
+        hp10 = _percentile(hour_bucket["pnls"], 10) if n >= 3 else float("nan")
+        wn = sum(1 for p in hour_bucket["pnls"] if p > 0)
         wr = 100 * wn / n
-        sn = len(d["sell_pnls"])
-        sa_v = sum(d["sell_pnls"]) / sn if sn else float("nan")
-        bn = len(d["buy_pnls"])
-        ba_v = sum(d["buy_pnls"]) / bn if bn else float("nan")
+        sn = len(hour_bucket["sell_pnls"])
+        sa_v = sum(hour_bucket["sell_pnls"]) / sn if sn else float("nan")
+        bn = len(hour_bucket["buy_pnls"])
+        ba_v = sum(hour_bucket["buy_pnls"]) / bn if bn else float("nan")
         print(f"  {h:3d}  {n:4d}  {mean_p:+8.3f}  {hp10:+7.3f}  "
               f"{wr:5.1f}  {sn:6d}  {sa_v:+9.3f}  {bn:5d}  {ba_v:+9.3f}")
 
@@ -472,7 +501,7 @@ def run_analysis(sha_prefixes: list[str]) -> AnalysisResult:
     print(f"  Daily Breakdown (JST)")
     print(f"{'=' * 72}")
 
-    daily_data: dict[str, dict] = defaultdict(
+    daily_data: dict[str, DailyBuckets] = defaultdict(
         lambda: {"total": 0, "filled": 0, "pnls": [], "bf": 0},
     )
     for r in dcc:
@@ -492,7 +521,7 @@ def run_analysis(sha_prefixes: list[str]) -> AnalysisResult:
     print(f"  {'Day':>5s}  {'All':>4s}  {'Fill':>4s}  {'Rate%':>5s}  "
           f"{'mean':>8s}  {'sum':>8s}  {'win%':>5s}  {'p10':>7s}  {'BF%':>4s}")
     for day in sorted(daily_data.keys()):
-        dd = daily_data[day]
+        dd: DailyBuckets = daily_data[day]
         fr = dd["filled"] / dd["total"] if dd["total"] else 0
         bf_pct = 100 * dd["bf"] / dd["total"] if dd["total"] else 0
         dm = DailyMetrics(
@@ -639,10 +668,7 @@ def main() -> None:
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         sha_tag = "_".join(s[:7] for s in args.sha)
         out_path = OUTPUT_DIR / f"333_sha_isolated_{sha_tag}.json"
-        out_path.write_text(
-            json.dumps(asdict(result), indent=2, ensure_ascii=False, default=str),
-            encoding="utf-8",
-        )
+        write_json_output(asdict(result), out_path)
         print(f"\n  JSON → {out_path}")
 
 

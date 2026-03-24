@@ -8992,3 +8992,20 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `main() -> None` と JSON row/object 判定を追加すれば low-risk に片付くことを確認
   - `scripts/v460/analysis/sha_comparison.py`
     - 集計 container の型揺れが残っており、別 batch での整理対象と判断
+- analysis container typing sweep (追加):
+  - `scripts/v460/analysis/sha_comparison.py`
+    - `RegimeBuckets`
+    - `HourlyBuckets`
+    - `DailyBuckets`
+    を導入して集計 container の shape を固定
+    - JSON 出力は `analysis_common.write_json_output(...)` を再利用
+  - `tests/unit/v460/test_sha_comparison_cli.py`
+    - `run_analysis()` の hourly/daily 集計
+    - `main(--json)` の shared output helper 利用
+    を focused で確認
+  - targeted mypy:
+    - `.venv/Scripts/python.exe scripts/quality/run_targeted_mypy.py scripts/v460/analysis/sha_comparison.py`
+    - `Success: no issues found in 1 source file`
+  - focused pytest:
+    - `tests/unit/v460/test_sha_comparison_cli.py`
+    - `2 passed`

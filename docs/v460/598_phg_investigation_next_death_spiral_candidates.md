@@ -221,3 +221,50 @@ Success: no issues found in 3 source files
 1. `print_ab_summary.py` の low-risk typing
 2. `sha_comparison.py` の集計 container 整理
 3. その後に `analysis_common` の追加横展開を検討
+
+## 2026-03-25 追加追記: `sha_comparison.py` first batch
+
+`sha_comparison.py` は当初見立てどおり、helper 再利用より先に
+集計 container の型固定が必要だった。
+
+今回の対応:
+
+- `RegimeBuckets`
+- `HourlyBuckets`
+- `DailyBuckets`
+
+を導入し、
+
+- regime 別 `filled/all`
+- UTC hour 別 `pnls/sell_pnls/buy_pnls`
+- day 別 `total/filled/pnls/bf`
+
+の shape を固定した。
+
+また、JSON 出力は `analysis_common.write_json_output(...)` に寄せた。
+
+効果:
+
+1. `dict[str, dict]` / `defaultdict` 由来の型崩れを局所的に止められた
+2. `sha_comparison.py` が targeted mypy clean になった
+3. analysis script の共通化は
+   - loader まで shared 化するもの
+   - output helper だけ shared 化するもの
+   の 2 系統で十分だと再確認できた
+
+追加した focused test:
+
+- `tests/unit/v460/test_sha_comparison_cli.py`
+  - `run_analysis()` の hourly/daily 集計が崩れないこと
+  - `main(--json)` が `write_json_output(...)` を使うこと
+
+次の候補:
+
+1. `sha_comparison.py` に `add_output_args(...)` を寄せるかの判断
+   - ただし現状は `--json` boolean 契約で十分なので急がない
+2. `analysis_common` の横展開先として
+   - `sha_comparison.py`
+   - `print_ab_summary.py`
+   - `stopgap_daily_report.py`
+   の 3 本を基準形にする
+3. より重い script は I/O と report を先に分離してから着手する
