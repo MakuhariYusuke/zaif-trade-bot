@@ -8,7 +8,11 @@ import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator
-from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
+from tests.unit.v460._yaml_test_helpers import (
+    clone_fill_test_config,
+    load_fill_test_config_from_path,
+    load_yaml_mapping,
+)
 from ztb.metrics.fill_quality import FillRecord
 from ztb.trading.risk.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 
@@ -74,6 +78,18 @@ def v460_fill_test_yaml_base(v460_fill_test_yaml_path: Path) -> dict[str, object
 def v460_fill_test_yaml(v460_fill_test_yaml_base: dict[str, object]) -> dict[str, object]:
     """fill_test.yaml のテストごと deepcopy."""
     return copy.deepcopy(v460_fill_test_yaml_base)
+
+
+@pytest.fixture(scope="session")
+def v460_fill_test_config_base(v460_fill_test_yaml_path: Path) -> FillTestConfig:
+    """fill_test.yaml 由来の FillTestConfig を session キャッシュ."""
+    return load_fill_test_config_from_path(v460_fill_test_yaml_path)
+
+
+@pytest.fixture
+def v460_fill_test_config_yaml(v460_fill_test_config_base: FillTestConfig) -> FillTestConfig:
+    """共有 FillTestConfig のテストごと copy."""
+    return clone_fill_test_config(v460_fill_test_config_base)
 
 
 @pytest.fixture

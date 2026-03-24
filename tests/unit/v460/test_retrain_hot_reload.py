@@ -19,6 +19,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.serial
+
 try:
     import lightgbm  # noqa: F401
     _HAS_LIGHTGBM = True

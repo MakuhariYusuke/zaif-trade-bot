@@ -21,7 +21,7 @@ from tests.unit.v460._fill_test_source import (
     read_fill_test_runner_source,
     read_source_text,
 )
-from tests.unit.v460._yaml_test_helpers import parse_yaml_mapping
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, parse_yaml_mapping
 from ztb.metrics.fill_quality import (
     FillRecord,
     RoundTripRecord,
@@ -122,10 +122,9 @@ class TestLoadFillTestConfig:
 class TestFillTestConfigFromYaml:
     """FillTestConfig.from_yaml のテスト."""
 
-    def test_from_yaml_defaults(self) -> None:
+    def test_from_yaml_defaults(self, v460_fill_test_config_yaml: FillTestConfig) -> None:
         """YAML デフォルト値から FillTestConfig が構築される."""
-        cfg = load_fill_test_config()
-        config = FillTestConfig.from_yaml(cfg)
+        config = v460_fill_test_config_yaml
         assert config.symbol == "btc_jpy"
         assert config.order_quantity == 0.001
         assert config.spread_offset_ratio == 0.05
@@ -231,20 +230,28 @@ class TestFillTestYamlFile:
         """YAML として正しく parse できる."""
         assert isinstance(v460_fill_test_yaml, dict)
 
-    def test_yaml_roundtrip(self, v460_fill_test_yaml: dict[str, object]) -> None:
+    def test_yaml_roundtrip(
+        self,
+        v460_fill_test_yaml: dict[str, object],
+        v460_fill_test_config_base: FillTestConfig,
+    ) -> None:
         """YAML → FillTestConfig → 主要フィールドが一致."""
         cfg = v460_fill_test_yaml
-        config = FillTestConfig.from_yaml(cfg)
+        config = clone_fill_test_config(v460_fill_test_config_base)
         assert config.symbol == cfg["symbol"]
         assert config.order_quantity == cfg["order_quantity"]
         assert config.spread_offset_ratio == cfg["spread_offset_ratio"]
         assert config.loss_cap_jpy == cfg["safety"]["loss_cap_jpy"]
         assert config.hm_check_interval_sec == cfg["resilience"]["health_monitor"]["check_interval_sec"]
 
-    def test_yaml_tuning_roundtrip(self, v460_fill_test_yaml: dict[str, object]) -> None:
+    def test_yaml_tuning_roundtrip(
+        self,
+        v460_fill_test_yaml: dict[str, object],
+        v460_fill_test_config_base: FillTestConfig,
+    ) -> None:
         """103# tuning セクションの全 18 キーが FillTestConfig に正しくマッピングされる."""
         cfg = v460_fill_test_yaml
-        config = FillTestConfig.from_yaml(cfg)
+        config = clone_fill_test_config(v460_fill_test_config_base)
         tuning = cfg.get("tuning", {})
         assert config.max_offset_ratio == tuning["max_offset_ratio"]
         assert config.min_offset_ratio == tuning["min_offset_ratio"]
@@ -431,10 +438,14 @@ class Test054SpreadAdaptiveConfig:
         assert config.wide_spread_bps == 30.0
         assert config.wide_spread_ratio == 0.6
 
-    def test_yaml_roundtrip_054(self, v460_fill_test_yaml: dict[str, object]) -> None:
+    def test_yaml_roundtrip_054(
+        self,
+        v460_fill_test_yaml: dict[str, object],
+        v460_fill_test_config_base: FillTestConfig,
+    ) -> None:
         """054# 全設定の YAML → FillTestConfig roundtrip."""
         cfg = v460_fill_test_yaml
-        config = FillTestConfig.from_yaml(cfg)
+        config = clone_fill_test_config(v460_fill_test_config_base)
         # S1 (071# disabled — OB無視)
         assert config.imbalance_enabled is False
         assert config.imbalance_depth == cfg["imbalance"]["depth"]

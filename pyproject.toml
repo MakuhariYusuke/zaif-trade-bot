@@ -194,7 +194,7 @@ ignore_errors = true
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-addopts = "-ra -q --cov=ztb --cov-report=html --cov-report=term-missing"
+addopts = "-ra -q"
 testpaths = [
     "tests",
 ]
@@ -206,6 +206,7 @@ markers = [
     "integration: marks tests as integration tests",
     "slow: marks tests as slow tests",
     "performance: marks tests as performance tests",
+    "serial: marks tests that should not be run in parallel with xdist",
 ]
 
 [tool.coverage.run]

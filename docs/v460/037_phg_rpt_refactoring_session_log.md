@@ -9103,3 +9103,35 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `main(argv)` 化
   - `tests/unit/v460/test_sha_comparison_cli.py`
     - argv ベースの entrypoint 契約に追随
+- test runtime optimization wave 1 (追加):
+  - `pytest.ini` / `pyproject.toml`
+    - dev デフォルトから coverage addopts を除去
+    - `serial` marker を追加
+  - `tests/unit/v460/_yaml_test_helpers.py`
+    - `load_fill_test_config_from_text(...)`
+    - `load_fill_test_config_from_path(...)`
+    - `clone_fill_test_config(...)`
+    を追加
+  - `tests/unit/v460/conftest.py`
+    - session cache の `v460_fill_test_config_base`
+    - copy fixture の `v460_fill_test_config_yaml`
+    を追加
+  - `tests/unit/v460/test_fill_test_config.py`
+    - production YAML roundtrip を shared config fixture に寄せた
+  - `tests/unit/v460/test_183_log_analysis_improvements.py`
+    - inline YAML を cached config fixture に寄せた
+  - `tests/unit/v460/test_yaml_test_helpers.py`
+    - helper 契約の focused 回帰を追加
+  - `tests/unit/v460/test_retrain_hot_reload.py`
+    - xdist 準備として `pytest.mark.serial` を付与
+  - 実測:
+    - focused subset (`test_fill_test_config.py`, `test_183_log_analysis_improvements.py`, `test_yaml_test_helpers.py`)
+      - with coverage: `101 passed in 15.53s` + `cov-fail-under=20` で exit 1
+      - without coverage: `10 passed, 177 deselected in 3.56s`
+    - `pytest-xdist` は現環境未導入 (`pip show pytest-xdist` → not found)
+    - related focused suite:
+      - `test_fill_test_config.py`
+      - `test_183_log_analysis_improvements.py`
+      - `test_yaml_test_helpers.py`
+      - `test_retrain_hot_reload.py`
+      - `187 passed in 4.97s`
