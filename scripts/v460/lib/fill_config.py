@@ -698,9 +698,11 @@ class FillTestConfig:
     degraded_liquidation_lot_mult: float = 0.2      # 通常 lot の 20% (min lot 相当)
     degraded_liquidation_offset_mult: float = 3.0   # offset を通常の 3 倍 (wide offset)
     degraded_liquidation_duty_cycle: int = 3        # N サイクルに 1 回のみ実行 (dutyCycle=3 → 33%)
+    # DEAD CODE (598#): 522# で runtime trigger 撤廃、設定読み取りのみ後方互換で残置
     # 269# / 522# Inventory Escape Mode — 完全撤廃 (balance-forcing の一形態)
     inventory_escape_enabled: bool = False          # 522# 撤廃
     inventory_escape_duty_cycle: int = 5            # 522# 残置 (後方互換)
+    # DEAD CODE (598#): 522# で runtime trigger 撤廃、設定読み取りのみ後方互換で残置
     # 496# / 522# Recovery Skew — 完全撤廃 (balance-forcing の一形態)
     recovery_skew_enabled: bool = False             # 522# 撤廃
     recovery_skew_offset_mult: float = 2.0          # 522# 残置 (後方互換)

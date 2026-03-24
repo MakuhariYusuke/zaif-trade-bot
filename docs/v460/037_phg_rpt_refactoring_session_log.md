@@ -8916,3 +8916,13 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/v460/test_593_ev_toxic_skip_and_cap_hit_veto.py`
   - `tests/unit/v460/test_193_ev_offset.py`
   - `75 passed`
+## 2026-03-24 598# next death-spiral candidate investigation
+- `inventory_escape_*` / `recovery_skew_*`
+  - runtime trigger は 522# で撤廃済み
+  - parser / YAML / validation test が後方互換で残っていることを確認
+  - `fill_config.py` / `fill_config_parser.py` に `DEAD CODE (598#)` 注釈を追加
+- additive dual-line (`execution_additive_enabled` vs `experimental_additive_pipeline`)
+  - dead-code ではなく role split の維持課題として整理
+- targeted mypy:
+  - `.venv/Scripts/python.exe scripts/quality/run_targeted_mypy.py scripts/v460/lib/fill_config.py scripts/v460/lib/fill_config_parser.py scripts/v460/lib/config_hot_reload.py`
+  - `Success: no issues found in 3 source files`

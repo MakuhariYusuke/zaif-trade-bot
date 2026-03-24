@@ -661,6 +661,7 @@ def _parse_stopgap_section(yaml_cfg: dict) -> dict:
         kwargs["degraded_liquidation_offset_mult"] = float(止血["degraded_liquidation_offset_mult"])
     if "degraded_liquidation_duty_cycle" in 止血:
         kwargs["degraded_liquidation_duty_cycle"] = int(止血["degraded_liquidation_duty_cycle"])
+    # DEAD CODE (598#): 522# で runtime trigger 撤廃。YAML 読み取りのみ後方互換で維持
     # 269# Inventory Escape Mode
     if "inventory_escape_enabled" in 止血:
         kwargs["inventory_escape_enabled"] = bool(止血["inventory_escape_enabled"])
