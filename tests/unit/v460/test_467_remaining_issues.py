@@ -5,11 +5,12 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from typing import NamedTuple
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.fill_config_parser import parse_fill_config_yaml
 from scripts.v460.lib.hour_rules import resolve_hour_float, resolve_optional_hour_float
 from ztb.metrics.fill_quality import FillRecord
 
@@ -208,6 +209,25 @@ class TestHourCeilingMult:
         result = cfg.resolve_offset_ceiling("buy", sigma=15.0, adverse_ofi=0.6)
         expected = 0.40 * exp(0.020 * 15.0 + 0.40 * 0.6)
         assert result == pytest.approx(expected)
+
+    def test_parse_warns_when_execution_flag_mismatches_logic_flag(self) -> None:
+        """598#: telemetry flag と logic flag の不一致は warning で明示."""
+        yaml_cfg = {
+            "execution_additive_enabled": False,
+            "experimental_additive_pipeline": {
+                "enabled": True,
+                "alpha": 0.2,
+                "beta": 0.1,
+                "c_base": 0.4,
+                "hard_cap": 1.0,
+            },
+        }
+        with patch("scripts.v460.lib.fill_config_parser.logger.warning") as mock_warning:
+            cfg = parse_fill_config_yaml(yaml_cfg)
+        assert cfg.execution_additive_enabled is False
+        assert cfg.experimental_additive_pipeline is True
+        mock_warning.assert_called_once()
+        assert "experimental_additive_pipeline" in str(mock_warning.call_args[0][0])
 
     def test_resolve_offset_ceiling_edrc_input_clip(self) -> None:
         """589# eDRC 入力クリップ: 極端な sigma/ofi が exp() を発散させない."""

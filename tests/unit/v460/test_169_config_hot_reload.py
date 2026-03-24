@@ -523,6 +523,7 @@ class TestReloadableFieldsConsistency:
 
     def test_phase6_additive_and_entry_gate_fields_are_reloadable(self) -> None:
         expected = {
+            "execution_additive_enabled",
             "experimental_additive_pipeline",
             "edrc_alpha",
             "edrc_beta",
@@ -535,3 +536,10 @@ class TestReloadableFieldsConsistency:
             f"Phase 6 additive/entry-gate fields should be hot-reloadable: {missing}"
         )
         assert "entry_gate_calibration_map_path" not in _HOT_RELOADABLE_FIELDS
+
+    def test_legacy_inventory_escape_fields_are_not_reloadable(self) -> None:
+        """598#: legacy read-only field は hot-reload 対象にしない."""
+        assert "inventory_escape_enabled" not in _HOT_RELOADABLE_FIELDS
+        assert "inventory_escape_duty_cycle" not in _HOT_RELOADABLE_FIELDS
+        assert "recovery_skew_enabled" not in _HOT_RELOADABLE_FIELDS
+        assert "recovery_skew_offset_mult" not in _HOT_RELOADABLE_FIELDS

@@ -1,5 +1,12 @@
 # 598# 次のデススパイラル候補 調査メモ
 
+## 位置付け
+
+この系統の cleanup / 調査は、以後この `598#` に集約して更新する。
+
+- 597# は 190# A/B + `one_sided_balance` の個別 cleanup 記録
+- 598# は、その次に再燃しうる候補の調査・判断・追記の正本
+
 ## 背景
 
 596# で primary safety valve を導入し、597# で 190# A/B と `one_sided_balance`
@@ -115,6 +122,23 @@ Success: no issues found in 3 source files
    - 597# の注釈で現状十分、次は docs/test の意味付け整理
 3. additive dual-line
    - dead-code ではなく contract drift 防止が主眼
+
+## 追加確認
+
+### additive dual-line の守り
+
+次の 2 点をテストで固定した。
+
+1. `execution_additive_enabled` は telemetry 契約として hot-reload 対象に残す
+2. `inventory_escape_*` / `recovery_skew_*` は legacy read-only 扱いのため hot-reload 対象にしない
+
+また、parser は
+
+- `execution_additive_enabled`
+- `experimental_additive_pipeline`
+
+が不一致のとき warning を出すことで、
+「logic は additive、telemetry は multiplicative」などの読み違いを検知できる。
 
 ## 次の自然な一手
 

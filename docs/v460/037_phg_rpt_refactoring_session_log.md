@@ -8926,3 +8926,10 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - targeted mypy:
   - `.venv/Scripts/python.exe scripts/quality/run_targeted_mypy.py scripts/v460/lib/fill_config.py scripts/v460/lib/fill_config_parser.py scripts/v460/lib/config_hot_reload.py`
   - `Success: no issues found in 3 source files`
+- focused pytest:
+  - `tests/unit/v460/test_285_split_brain_guard.py`
+  - `tests/unit/v460/test_346_fill_config_validation.py`
+  - `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
+  - `tests/unit/v460/test_169_config_hot_reload.py`
+  - `tests/unit/v460/test_467_remaining_issues.py`
+  - additive dual-line / legacy hot-reload guard を含めて確認
