@@ -319,43 +319,6 @@ Week 2 終了時に以下を評価:
 
 ---
 
----
-
-## §8 正誤表 — 592# 教訓の再適用
-
-本文書の初版（§0.2, §3, §4, §7）に、536#/537# 時点の提案をそのまま「未着手」と記載した事実誤認があった。592# で戒めた「AI が過去の分析結果を記憶違いしたまま提案を生成する」パターンの再発である。以下に訂正を記す。
-
-| 初版の記載 | 実際の現在値 | 実装済み時期 | 訂正 |
-|-----------|------------|------------|------|
-| T0-1: ceiling 0.25→0.35 が必要 | buy=0.35, sell=0.40 | 565# P1 | ✅ **実装済み** |
-| T0-2: composite_risk_enabled: true が必要 | 既に true (threshold=1.0) | 540# | ✅ **実装済み** |
-| T1-1: Stage Max Mult 未実装 | cap=2.0 (hardcoded) | 565# P3 | ✅ **実装済み** |
-| T1-4: Sidecar TTL 600s で 8% stale | TTL=7800s (retrain+10min buffer) | 372# | ✅ **実装済み** |
-| T1-5: sell_dynamic_kill max_duration 1800s | 既に 600s (sell), 900s (buy) | 540#/370# | ✅ **実装済み** |
-| T1-3: EV toxic skip 未設定 | コード default -5.0 で稼働中 | 593# | ✅ **実装済み** |
-| §7: Pipeline clamp rate 100% | ceiling 0.35/0.40 で飽和率は低下済み | 565# | ✅ **改善済み** |
-| §7: SAC active rate ~8% | TTL=7800s で概ね有効 | 372# | ✅ **改善済み** |
-| T0-4: SAD 未インスタンス化 | run_fill_test.py でインスタンス化済み、enabled:false のみ | 211# | ⚠️ **YAML コメント古い** |
-| T0-5: MCB 未インスタンス化 | run_fill_test.py でインスタンス化済み、enabled:false のみ | 211# | ⚠️ **YAML コメント古い** |
-| T1-2: CV Widen 廃止 | CV lead-lag は enabled:true で稼働中 | 442# | ⚠️ **要再分析** |
-
-**教訓（再掲）**: 提案文書の「現在値」は必ず `configs/v460/fill_test.yaml` と実コードで検証すること。536#/537# は 300 番台の状態を前提としており、400-565# で大幅に改善されていた。
-
-### §8.1 真に残存する凍結課題（修正版 rev.2 — 606# 検証後）
-
-上記訂正を踏まえた、**実際にまだ凍っている氷**:
-
-| # | 課題 | 現在値 | 対処案 | 606# 結果 |
-|---|------|--------|--------|-----------|
-| R1 | entry_gate_enabled が false | YAML + CalibrationMap JSON 不在 | JSON 生成 + observe モード接続 | ✅ **606# で対処**: CalibrationMap 生成 + YAML nested block 化 (observe mode) |
-| R2 | spread_anomaly_detector enabled:false | YAML 無効 (コードは配線済み) | enabled: true に変更 | ✅ **606# で対処**: YAML enabled:true + コメント修正 |
-| R3 | micro_circuit_breaker enabled:false | YAML 無効 (コードは配線済み) | enabled: true に変更 | ✅ **606# で対処**: YAML enabled:true + コメント修正 |
-| R4 | CV lead-lag buy 側の PnL 影響 | enabled:true, offset_boost=1.25 | 592# 再検証（-3.21bps の真偽確認） | ⏳ 分析優先 (コード変更なし) |
-
----
-
 *風水渙。亨。王格有廟。利渉大川。*
 *氷は半ば溶け、廟は立ち、大川を渉る準備は整った。*
-*——但し、溶けたと思った氷の一部は、既に 565#/540#/372# で流れ去っていた。*
-*残る氷を正しく見定め、改めて風を通す。*
 *以上*

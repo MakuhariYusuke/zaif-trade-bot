@@ -74,4 +74,4 @@ $$Ceiling_{dynamic} = Base\_Ceiling \times \left( 1 + \alpha \cdot \frac{\sigma_
 1.  **Current-State Matrix の更新**: 0.25 以上の Offset を許容した際の「反実仮想的 PnL」の推計。
 2.  **DRC プロトタイプの実装**: `MakerPrice` の最終段に、ボラティリティ感応型のスケーラーを試験導入する（報酬関数は弄らない）。
 
----
+--
