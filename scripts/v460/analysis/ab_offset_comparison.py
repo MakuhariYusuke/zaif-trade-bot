@@ -44,6 +44,7 @@ from ztb.metrics.fill_quality import (
 )
 from ztb.utils.safety import safe_to_finite
 from scripts.v460.analysis.analysis_common import write_json_output
+from scripts.v460.analysis.analysis_common import add_results_dir_arg
 
 # ── Constants ──
 _RESULTS_DIR = Path("results/v460/fill_test")
@@ -444,7 +445,7 @@ def _run_comparison(
 
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="441# A/B Offset Comparison")
-    parser.add_argument("--results-dir", default="results/v460/fill_test")
+    add_results_dir_arg(parser)
     parser.add_argument("--save-baseline", action="store_true", help="Save baseline (before deploy)")
     parser.add_argument("--show-baseline", action="store_true", help="Show current baseline metrics")
     parser.add_argument("--compare", action="store_true", help="Run Before/After comparison")

@@ -402,6 +402,36 @@ Success: no issues found in 3 source files
 - `_load_records(...)` 相当のローカル helper は test/compat 用に残してもよいが、
   main entrypoint は shared contract を通す方が読みやすい
 
+## 2026-03-25 追加追記: results-dir parser contract の横展開
+
+対象:
+
+1. `scripts/v460/analysis/analysis_common.py`
+2. `scripts/v460/analysis/oracle_baseline.py`
+3. `scripts/v460/analysis/oracle_test.py`
+4. `scripts/v460/analysis/vg_and_trend.py`
+5. `scripts/v460/analysis/ab_offset_comparison.py`
+6. `tests/unit/v460/test_analysis_results_dir_contracts.py`
+7. `tests/unit/v460/test_analysis_batch_a_cli_contracts.py`
+8. `tests/unit/v460/test_analysis_output_contracts.py`
+9. `docs/v460/598_phg_investigation_next_death_spiral_candidates.md`
+10. `docs/v460/037_phg_rpt_refactoring_session_log.md`
+
+今回の寄せ方:
+
+- `analysis_common.add_results_dir_arg(...)` を新設
+- `oracle_baseline.py`
+- `oracle_test.py`
+- `vg_and_trend.py`
+- `ab_offset_comparison.py`
+  の `--results-dir` 定義を shared helper に統一
+
+判断:
+
+- 変更内容が単純で review しやすい
+- parser 契約の drift を減らせる
+- 今後 `results-dir` の default/help を直すときに横展開が不要になる
+
 ### Batch C: analysis typing / container 整理
 
 対象:

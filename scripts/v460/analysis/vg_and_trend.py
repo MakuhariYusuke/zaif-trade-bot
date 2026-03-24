@@ -43,7 +43,7 @@ from ztb.metrics.fill_quality import (
     filter_clean_records,
     load_fill_records_glob,
 )
-from scripts.v460.analysis.analysis_common import write_json_output, write_output
+from scripts.v460.analysis.analysis_common import add_results_dir_arg, write_json_output, write_output
 
 
 # ======================================================================
@@ -517,11 +517,7 @@ def _load_all_records(results_dir: Path) -> list[FillRecord]:
 
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="122# A4+B4 VG effectiveness and daily trend analysis")
-    parser.add_argument(
-        "--results-dir",
-        default="results/v460/fill_test",
-        help="fill_records JSONL ディレクトリ",
-    )
+    add_results_dir_arg(parser, help_text="fill_records JSONL ディレクトリ")
     parser.add_argument(
         "--log-file",
         default=None,

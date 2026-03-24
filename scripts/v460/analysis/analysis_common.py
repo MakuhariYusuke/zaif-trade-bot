@@ -58,6 +58,20 @@ PNL_FIELD_PRIORITY: Final[tuple[str, ...]] = (
 # CLI 引数ビルダー
 # ======================================================================
 
+def add_results_dir_arg(
+    parser: argparse.ArgumentParser,
+    *,
+    default: str = DEFAULT_RESULTS_DIR,
+    help_text: str | None = None,
+) -> None:
+    """共通 `--results-dir` 引数を parser に追加."""
+    parser.add_argument(
+        "--results-dir",
+        default=default,
+        help=help_text or f"fill_records ディレクトリ (default: {default})",
+    )
+
+
 def add_common_filter_args(
     parser: argparse.ArgumentParser,
     *,
@@ -76,12 +90,15 @@ def add_common_filter_args(
         date_from_flags.append("--start")
         date_to_flags.append("--end")
 
-    parser.add_argument(
-        *results_dir_flags,
-        dest="results_dir",
-        default=DEFAULT_RESULTS_DIR,
-        help=f"fill_records ディレクトリ (default: {DEFAULT_RESULTS_DIR})",
-    )
+    if include_legacy_aliases:
+        parser.add_argument(
+            *results_dir_flags,
+            dest="results_dir",
+            default=DEFAULT_RESULTS_DIR,
+            help=f"fill_records ディレクトリ (default: {DEFAULT_RESULTS_DIR})",
+        )
+    else:
+        add_results_dir_arg(parser)
     parser.add_argument(
         *date_from_flags,
         dest="date_from",

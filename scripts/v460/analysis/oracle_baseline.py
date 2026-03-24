@@ -44,7 +44,7 @@ from ztb.metrics.fill_quality import (
     iter_fill_records_glob,
     partition_clean_records,
 )
-from scripts.v460.analysis.analysis_common import write_json_output
+from scripts.v460.analysis.analysis_common import add_results_dir_arg, write_json_output
 from ztb.utils.dataclass_utils import shallow_asdict
 
 
@@ -442,11 +442,7 @@ def run_oracle_baseline(
 def main(argv: Sequence[str] | None = None) -> None:
     """CLI エントリポイント."""
     parser = argparse.ArgumentParser(description="131# D2: Oracle PnL Baseline")
-    parser.add_argument(
-        "--results-dir",
-        default="results/v460/fill_test",
-        help="Fill records directory",
-    )
+    add_results_dir_arg(parser, help_text="Fill records directory")
     parser.add_argument("--output", default=None, help="JSON output path")
     parser.add_argument(
         "--lot-btc",

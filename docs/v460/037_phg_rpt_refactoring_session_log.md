@@ -9082,3 +9082,13 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - main の record loading を `load_records_from_args(...)` に統一
   - `tests/unit/v460/test_analysis_loader_contracts.py`
     - `--data-dir/--start/--end` の shared parser/loader 契約を focused で追加
+- analysis results-dir parser sweep (追加):
+  - `scripts/v460/analysis/analysis_common.py`
+    - `add_results_dir_arg(...)` を新設
+  - `scripts/v460/analysis/oracle_baseline.py`
+  - `scripts/v460/analysis/oracle_test.py`
+  - `scripts/v460/analysis/vg_and_trend.py`
+  - `scripts/v460/analysis/ab_offset_comparison.py`
+    - `--results-dir` 定義を shared helper に統一
+  - `tests/unit/v460/test_analysis_results_dir_contracts.py`
+    - parser/entrypoint が shared results-dir 契約を使うことを focused で追加

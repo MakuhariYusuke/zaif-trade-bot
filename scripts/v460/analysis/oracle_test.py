@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 from ztb.io.jsonl import append_jsonl
-from scripts.v460.analysis.analysis_common import write_json_output
+from scripts.v460.analysis.analysis_common import add_results_dir_arg, write_json_output
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
@@ -297,10 +297,7 @@ def run_oracle_test(
 def main(argv: Sequence[str] | None = None) -> None:
     """CLI エントリポイント."""
     parser = argparse.ArgumentParser(description="Z2 Oracle テスト (理論上限)")
-    parser.add_argument(
-        "--results-dir", type=str, default="results/v460/fill_test",
-        help="fill_records のディレクトリ",
-    )
+    add_results_dir_arg(parser, help_text="fill_records のディレクトリ")
     args = parser.parse_args(argv)
 
     logging.basicConfig(
