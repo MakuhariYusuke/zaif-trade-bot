@@ -56,6 +56,8 @@ class _HotReloadableRunner(Protocol):
     def _rebuild_daily_drawdown_guard(self) -> None: ...
     def _rebuild_fast_fill_defense(self) -> None: ...
     def _rebuild_cycle_strategy(self) -> None: ...  # 179#
+    def _rebuild_mcb(self) -> None: ...  # 607#
+    def _rebuild_sad(self) -> None: ...  # 607#
 
 
 @lru_cache(maxsize=1)
@@ -625,6 +627,8 @@ _COMPONENT_REBUILD_PREFIXES: dict[str, str] = {
     "daily_drawdown_": "_rebuild_daily_drawdown_guard",
     "per_side_dd_": "_rebuild_daily_drawdown_guard",  # 215# P0-B: 片側 DD も同再構築
     "fast_fill_": "_rebuild_fast_fill_defense",
+    "mcb_": "_rebuild_mcb",  # 607# SAD/MCB hot-reload 再構築
+    "sad_": "_rebuild_sad",  # 607#
 }
 
 

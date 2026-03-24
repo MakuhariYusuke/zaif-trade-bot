@@ -175,6 +175,10 @@ class SpreadAnomalyDetector:
             )
 
         if len(self._spread_buffer) < 3:
+            logger.debug(
+                "[607#] SAD warmup: buffer=%d/3, spread protection inactive",
+                len(self._spread_buffer),
+            )
             return SADResult()
 
         # baseline: 窓内の spread 中央値

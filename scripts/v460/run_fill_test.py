@@ -661,6 +661,39 @@ class FillTestRunner(
             f"chase={_rp.chase_enabled}"
         )
 
+    def _rebuild_mcb(self) -> None:
+        """607# MCB 設定変更時にコンポーネントを再構築 (状態継承)."""
+        from scripts.v460.lib.micro_circuit_breaker import MicroCircuitBreaker, MCBConfig
+        old_state = self._mcb.export_state() if self._mcb else None
+        self._mcb = MicroCircuitBreaker(MCBConfig(
+            enabled=self.config.mcb_enabled,
+            caution_sigma=self.config.mcb_caution_sigma,
+            warning_sigma=self.config.mcb_warning_sigma,
+            halt_sigma=self.config.mcb_halt_sigma,
+            halt_cooldown_sec=self.config.mcb_halt_cooldown_sec,
+            warning_offset_mult=self.config.mcb_warning_offset_mult,
+            warning_interval_mult=self.config.mcb_warning_interval_mult,
+            check_call_interval_sec=self.config.cycle_interval_sec,
+        ))
+        if old_state:
+            self._mcb.import_state(old_state)
+            logger.info("[607#] MCB hot-reload: state preserved")
+
+    def _rebuild_sad(self) -> None:
+        """607# SAD 設定変更時にコンポーネントを再構築 (状態継承)."""
+        from scripts.v460.lib.spread_anomaly_detector import SpreadAnomalyDetector, SADConfig
+        old_state = self._sad.export_state() if self._sad else None
+        self._sad = SpreadAnomalyDetector(SADConfig(
+            enabled=self.config.sad_enabled,
+            wide_ratio=self.config.sad_wide_ratio,
+            dry_ratio=self.config.sad_dry_ratio,
+            frozen_ratio=self.config.sad_frozen_ratio,
+            baseline_window_sec=self.config.sad_baseline_window_sec,
+        ))
+        if old_state:
+            self._sad.import_state(old_state)
+            logger.info("[607#] SAD hot-reload: state preserved")
+
     # ==================================================================
     # 163# Mixin 分割: 以下のメソッドは個別ファイルに抽出済み
     # - fill_record_helpers.py: _make_skip_record, regime/lot/side helpers
