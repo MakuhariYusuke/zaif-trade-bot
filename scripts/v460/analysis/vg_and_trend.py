@@ -23,14 +23,14 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import re
 import sys
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _SCRIPT_DIR.parent.parent.parent
@@ -43,7 +43,7 @@ from ztb.metrics.fill_quality import (
     filter_clean_records,
     load_fill_records_glob,
 )
-from ztb.io.json_io import write_json
+from scripts.v460.analysis.analysis_common import write_json_output, write_output
 
 
 # ======================================================================
@@ -512,10 +512,10 @@ def _load_all_records(results_dir: Path) -> list[FillRecord]:
     all_records = load_fill_records_glob(results_dir, include_emergency=False)
     if not all_records:
         raise FileNotFoundError(f"No fill_records_*.jsonl in {results_dir}")
-    return all_records
+    return cast(list[FillRecord], all_records)
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="122# A4+B4 VG effectiveness and daily trend analysis")
     parser.add_argument(
         "--results-dir",
@@ -531,7 +531,7 @@ def main() -> None:
     parser.add_argument("--output", default=None, help="出力ファイルパス")
     parser.add_argument("--skip-vg", action="store_true", help="A4 VG 分析をスキップ")
     parser.add_argument("--skip-trend", action="store_true", help="B4 トレンド分析をスキップ")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     results_dir = Path(args.results_dir)
     log_file = Path(args.log_file) if args.log_file else results_dir / "logs" / "fill_test.log"
@@ -591,10 +591,9 @@ def main() -> None:
         if args.output:
             output_path = Path(args.output)
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            write_json(output_path, output_data, indent=2, ensure_ascii=False, default=str)
-            print(f"Written to {args.output}")
+            write_json_output(output_data, output_path)
         else:
-            print(json.dumps(output_data, indent=2, ensure_ascii=False, default=str))
+            write_json_output(output_data)
     elif args.output:
         # テキストレポートをファイルに保存
         import io
@@ -606,9 +605,7 @@ def main() -> None:
             if not args.skip_trend and "daily_trend" in output_data:
                 print_daily_report(output_data["daily_trend"])
                 print_8h_report(output_data["8h_trend"])
-        Path(args.output).parent.mkdir(parents=True, exist_ok=True)
-        Path(args.output).write_text(buf.getvalue(), encoding="utf-8")
-        print(f"Report written to {args.output}")
+        write_output(buf.getvalue(), args.output)
 
 
 if __name__ == "__main__":

@@ -9009,3 +9009,16 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - focused pytest:
     - `tests/unit/v460/test_sha_comparison_cli.py`
     - `2 passed`
+- analysis output contract sweep (追加):
+  - `scripts/v460/analysis/hour_matched_comparison.py`
+    - `add_output_args(...)` を導入
+    - JSON 出力を `write_json_output(...)` に統一
+  - `scripts/v460/analysis/tail_loss_analysis.py`
+    - JSON 保存を `write_json_output(...)` に統一
+    - `main(args)` は `Sequence[str]` も受けるよう整理
+  - `scripts/v460/analysis/vg_and_trend.py`
+    - JSON/stdout/text file 出力を
+      `write_json_output(...)` / `write_output(...)` に統一
+    - `main(argv)` 化で focused test しやすくした
+  - `tests/unit/v460/test_analysis_output_contracts.py`
+    - 3 script の output helper 利用を focused で確認

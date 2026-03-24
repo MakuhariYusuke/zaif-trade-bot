@@ -24,10 +24,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 from collections import defaultdict
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Final, TypedDict, cast
@@ -41,6 +41,7 @@ from scripts.v460.analysis.analysis_common import (
     extract_pnl_array,
     load_and_filter_records,
     record_to_utc_hour,
+    write_json_output,
 )
 from ztb.utils.safety import safe_to_finite
 
@@ -645,10 +646,12 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(args: argparse.Namespace | None = None) -> dict[str, SideResult]:
+def main(args: argparse.Namespace | Sequence[str] | None = None) -> dict[str, SideResult]:
     """メインエントリポイント."""
     if args is None:
         args = _build_parser().parse_args()
+    elif not isinstance(args, argparse.Namespace):
+        args = _build_parser().parse_args(list(args))
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
@@ -699,10 +702,7 @@ def main(args: argparse.Namespace | None = None) -> dict[str, SideResult]:
     }
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(output_data, indent=2, ensure_ascii=False, default=str),
-        encoding="utf-8",
-    )
+    write_json_output(output_data, output_path)
     print(f"\n  JSON saved: {output_path}")
 
     return analysis

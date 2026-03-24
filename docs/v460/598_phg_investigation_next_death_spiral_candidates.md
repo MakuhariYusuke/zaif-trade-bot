@@ -268,3 +268,49 @@ Success: no issues found in 3 source files
    - `stopgap_daily_report.py`
    の 3 本を基準形にする
 3. より重い script は I/O と report を先に分離してから着手する
+
+## 2026-03-25 追加追記: analysis output contract batch
+
+`analysis_common` の helper をさらに広げる際、
+最も低リスクでまとまりやすいのは「出力 contract」の統一だった。
+
+今回対象:
+
+- `hour_matched_comparison.py`
+- `tail_loss_analysis.py`
+- `vg_and_trend.py`
+
+判断:
+
+1. いずれも集計ロジックはそのままでよい
+2. 差し替える価値があるのは
+   - `write_json_output(...)`
+   - `write_output(...)`
+   - 一部 `argv` 受け取り
+3. parser や集計 helper を無理に共通化するより、
+   まず output contract を揃える方が安全
+
+今回の対応方針:
+
+- `hour_matched_comparison.py`
+  - `add_output_args(...)` を導入
+  - `--json` 時の保存は `write_json_output(...)`
+- `tail_loss_analysis.py`
+  - JSON 保存を `write_json_output(...)` に統一
+  - `main()` は `Sequence[str]` でも呼べるようにする
+- `vg_and_trend.py`
+  - JSON/stdout/text file 出力を
+    - `write_json_output(...)`
+    - `write_output(...)`
+    に統一
+  - `main(argv)` で focused test をしやすくする
+
+この batch の意味:
+
+- analysis script の「出力の仕方」がかなり揃う
+- focused test は I/O contract だけを薄く守ればよくなる
+- 次の横展開は
+  - `oracle_baseline.py`
+  - `reproduce_152_metrics.py`
+  - `ab_offset_comparison.py`
+  のような script へ自然に広げられる

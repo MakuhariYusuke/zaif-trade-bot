@@ -17,18 +17,18 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import math
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from collections.abc import Sequence
 from typing import TypedDict, cast
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-from scripts.v460.analysis.analysis_common import get_pnl
+from scripts.v460.analysis.analysis_common import add_output_args, get_pnl, write_json_output
 from ztb.metrics.fill_quality import load_fill_record_objects_glob
 
 # ── Constants ──
@@ -304,14 +304,14 @@ def _print_report(result: HourComparisonResult) -> None:
     print()
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="467# Hour-Matched Comparison")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--sha", nargs=2, metavar=("SHA_A", "SHA_B"))
     group.add_argument("--config-hash", nargs=2, metavar=("HASH_A", "HASH_B"))
     parser.add_argument("--side", choices=["buy", "sell"], default=None)
-    parser.add_argument("--json", action="store_true", help="JSON output")
-    args = parser.parse_args()
+    add_output_args(parser)
+    args = parser.parse_args(argv)
 
     if args.sha:
         key_field = "git_sha"
@@ -329,19 +329,15 @@ def main() -> None:
     _print_report(result)
 
     if args.json:
-        _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        out_path = _OUTPUT_DIR / f"hour_matched_{variant_a}_{variant_b}.json"
+        out_path = Path(args.output) if args.output else _OUTPUT_DIR / f"hour_matched_{variant_a}_{variant_b}.json"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
         # pnl_values はサイズ大のため除外
         export = dict(result)
         export["by_hour"] = [
             {k: v for k, v in row.items() if k != "pnl_values"}
             for row in result["by_hour"]
         ]
-        out_path.write_text(
-            json.dumps(export, indent=2, ensure_ascii=False, default=str),
-            encoding="utf-8",
-        )
-        print(f"  Saved: {out_path}")
+        write_json_output(export, out_path)
 
 
 if __name__ == "__main__":
