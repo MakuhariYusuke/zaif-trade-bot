@@ -1027,10 +1027,10 @@ class TestBug10InsufficientFundsNoRetry:
     """046# Bug10: insufficient_funds 時にリトライしない."""
 
     def test_source_has_insufficient_funds_break(self) -> None:
-        """run_single_cycle のソースに insufficient_funds → break が含まれる."""
+        """_submit_order_phase のソースに insufficient_funds 非再試行が含まれる."""
 
-        source = read_fill_test_method_source("run_single_cycle")
-        # 084# 改修: 非リトライ対象をセットで管理
+        source = read_fill_test_method_source("_submit_order_phase")
+        # 084# 改修 + 323# 分割後: 非リトライ対象は submit helper が責務を持つ
         assert '"insufficient_funds"' in source
         assert "not retriable" in source.lower() or "_non_retriable" in source
         assert "break" in source

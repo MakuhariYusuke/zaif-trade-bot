@@ -8970,3 +8970,20 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     を再利用する形に整理
   - `tests/unit/v460/test_stopgap_daily_report_cli.py`
     - shared filter args / output helper の契約回帰を追加
+- Wave2 resume sweep (605# 追随):
+  - `scripts/v460/lib/ab_judgment.py`
+    - `FillRecord` を `TypeAlias` 化
+    - ndarray payload / analyzer protocol を明示して targeted mypy clean 化
+  - `tests/unit/v460/test_regime_detector.py`
+    - stale source-contract を `run_single_cycle()` 直参照から
+      `_submit_order_phase()` helper 契約へ更新
+  - targeted mypy:
+    - `.venv/Scripts/python.exe scripts/quality/run_targeted_mypy.py scripts/v460/lib/ab_judgment.py`
+    - `Success: no issues found in 1 source file`
+  - focused pytest:
+    - `tests/unit/v460/test_regime_detector.py`
+    - `113 passed`
+    - `tests/unit/v460/test_145_structural_fixes.py`
+    - `tests/unit/v460/test_239_feasible_quote.py`
+    - `tests/unit/v460/test_240_toxicity_budget.py`
+    - `137 passed`

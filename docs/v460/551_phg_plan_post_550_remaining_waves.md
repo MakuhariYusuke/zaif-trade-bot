@@ -67,6 +67,9 @@ Done の基準:
 現在の見立て:
 - `maker_price` / `ab_judgment` ともに終盤
 - 以後は大分割ではなく、Wave3/4 を進めながら residual を拾う運用でよい
+- 2026-03-25 時点で stale source-contract 1件
+  - `run_single_cycle()` 直参照
+  を `_submit_order_phase()` helper 契約へ更新済み
 
 #### B. `ab_judgment.py`
 
@@ -83,6 +86,15 @@ Done の基準:
 Done の基準:
 - pure rule / local orchestration / reporting の 3 層が混ざらない
 - `judgment_rules.py` は pure rule に留まり、script 側は result/report の責務だけ持つ
+
+2026-03-25 追加前進:
+- targeted mypy:
+  - `scripts/v460/lib/ab_judgment.py`
+  - `Success: no issues found in 1 source file`
+- low-risk fix:
+  - `FillRecord` を `TypeAlias` 化
+  - ndarray payload / analyzer protocol を明示
+  - `ABTestAnalyzer` fallback 経路の callable/type 契約を固定
 
 ### Wave 3: telemetry / diagnostics / leak prevention
 

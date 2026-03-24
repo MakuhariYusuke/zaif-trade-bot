@@ -18,11 +18,12 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
-from typing import TypedDict
+from typing import Protocol, TypeAlias, TypedDict, cast
 
 logger = logging.getLogger(__name__)
 
 import numpy as np
+from numpy.typing import NDArray
 
 from ztb.adaptation.ab_test.judgment_rules import (
     CriterionAssessment as _CriterionAssessment,
@@ -38,7 +39,21 @@ from ztb.metrics.record_metrics import MetricsAccumulator, compute_base_metrics
 from ztb.utils.dataclass_utils import filter_known_dataclass_fields
 from ztb.utils.safety import safe_to_finite
 
-FillRecord = JSONObject
+FillRecord: TypeAlias = JSONObject
+PnlArray: TypeAlias = NDArray[np.float64]
+
+
+class _ABTestAnalyzerResultLike(Protocol):
+    p_value: float
+    effect_size: float
+
+
+class _ABTestAnalyzerLike(Protocol):
+    def analyze_parallel(
+        self,
+        control_pnl: PnlArray,
+        variant_pnl: PnlArray,
+    ) -> _ABTestAnalyzerResultLike: ...
 
 
 class JudgmentMetrics(TypedDict):
@@ -102,8 +117,8 @@ def _append_primary_criteria(
 def _apply_nonparametric_comparison(
     result: ABJudgmentResult,
     *,
-    control_pnl: np.ndarray,
-    variant_pnl: np.ndarray,
+    control_pnl: PnlArray,
+    variant_pnl: PnlArray,
     p_value: float | None,
 ) -> None:
     """Attach nonparametric comparison payloads to the result."""
@@ -130,8 +145,8 @@ def _apply_nonparametric_comparison(
 def _apply_bootstrap_comparison(
     result: ABJudgmentResult,
     *,
-    control_pnl: np.ndarray,
-    variant_pnl: np.ndarray,
+    control_pnl: PnlArray,
+    variant_pnl: PnlArray,
 ) -> None:
     """Attach block-bootstrap comparison payloads to the result."""
     try:
@@ -176,8 +191,8 @@ def _apply_matched_temporal_comparison(
 def _apply_statistical_comparison_payload(
     result: ABJudgmentResult,
     *,
-    control_pnl: np.ndarray,
-    variant_pnl: np.ndarray,
+    control_pnl: PnlArray,
+    variant_pnl: PnlArray,
     control_records: list[FillRecord],
     variant_records: list[FillRecord],
 ) -> None:
@@ -389,16 +404,16 @@ def _build_statistical_summary_lines(result: ABJudgmentResult) -> list[str]:
 
 
 
-def _extract_pnl30_array(records: list[FillRecord]) -> np.ndarray:
+def _extract_pnl30_array(records: list[FillRecord]) -> PnlArray:
     """filled レコードから PnL30 配列を抽出."""
-    vals = []
+    vals: list[float] = []
     for r in records:
         if not r.get("filled"):
             continue
         v = safe_to_finite(r.get("post_fill_30s_pnl"))
         if v is not None:
             vals.append(v)
-    return np.array(vals, dtype=float) if vals else np.array([], dtype=float)
+    return np.array(vals, dtype=np.float64) if vals else np.array([], dtype=np.float64)
 
 
 def _compute_metrics(records: list[FillRecord]) -> JudgmentMetrics:
@@ -420,7 +435,7 @@ def _compute_metrics(records: list[FillRecord]) -> JudgmentMetrics:
 
 def _compute_metrics_with_pnl(
     records: list[FillRecord],
-) -> tuple[JudgmentMetrics, np.ndarray]:
+) -> tuple[JudgmentMetrics, PnlArray]:
     """判定用メトリクスと PnL30 配列を同時計算（再走査回避）."""
     base = compute_base_metrics(records)
     metrics: JudgmentMetrics = {
@@ -432,21 +447,21 @@ def _compute_metrics_with_pnl(
         "downside_p05_bps": base["downside_p05_bps"],
         "calendar_days": base["calendar_days"],
     }
-    return metrics, base["pnl30_array"]
+    return metrics, cast(PnlArray, base["pnl30_array"])
 
 
 @lru_cache(maxsize=1)
-def _resolve_ab_test_analyzer_class() -> object | None:
+def _resolve_ab_test_analyzer_class() -> type[_ABTestAnalyzerLike] | None:
     """ABTestAnalyzer クラスを遅延解決してキャッシュ."""
     try:
         from ztb.adaptation.ab_test.analyzer import ABTestAnalyzer
-        return ABTestAnalyzer
+        return cast(type[_ABTestAnalyzerLike], ABTestAnalyzer)
     except Exception as e:
         logger.debug("ABTestAnalyzer import failed: %s", e)
         return None
 
 
-def _cohen_d(sample_a: np.ndarray, sample_b: np.ndarray) -> float:
+def _cohen_d(sample_a: PnlArray, sample_b: PnlArray) -> float:
     """Cohen's d (sample_b - sample_a)."""
     mean_a = float(np.mean(sample_a))
     mean_b = float(np.mean(sample_b))
@@ -483,7 +498,7 @@ def _norm_cdf(z: float) -> float:
 
 
 def _pairwise_counts(
-    x: np.ndarray, y: np.ndarray,
+    x: PnlArray, y: PnlArray,
 ) -> tuple[int, int, int]:
     """全ペア比較で (more, less, equal) カウントを返す (numpy ベクトル化).
 
@@ -499,7 +514,7 @@ def _pairwise_counts(
 
 
 def _mann_whitney_u(
-    x: np.ndarray, y: np.ndarray,
+    x: PnlArray, y: PnlArray,
 ) -> tuple[float, float]:
     """Mann-Whitney U 検定 (正規近似, numpy ベクトル化).
 
@@ -524,7 +539,7 @@ def _mann_whitney_u(
 
 
 def _cliffs_delta(
-    x: np.ndarray, y: np.ndarray,
+    x: PnlArray, y: PnlArray,
 ) -> tuple[float, str]:
     """Cliff's Delta (ノンパラメトリック効果量, numpy ベクトル化).
 
@@ -603,24 +618,24 @@ def _benjamini_hochberg(
 
 
 def _bootstrap_sample_means(
-    arr: np.ndarray,
+    arr: PnlArray,
     *,
     rng: np.random.Generator,
     n_bootstrap: int,
     sample_size: int,
-) -> np.ndarray:
+) -> PnlArray:
     """IID bootstrap の標本平均をベクトル化計算する."""
     idx = rng.integers(0, len(arr), size=(n_bootstrap, sample_size))
-    return np.mean(arr[idx], axis=1, dtype=float)
+    return cast(PnlArray, np.mean(arr[idx], axis=1, dtype=float))
 
 
 def _block_bootstrap_sample_means(
-    arr: np.ndarray,
+    arr: PnlArray,
     *,
     rng: np.random.Generator,
     n_bootstrap: int,
     block_size: int,
-) -> np.ndarray:
+) -> PnlArray:
     """移動ブロックブートストラップの標本平均をベクトル化計算する."""
     n = len(arr)
     if n <= block_size:
@@ -633,14 +648,14 @@ def _block_bootstrap_sample_means(
 
     n_blocks = max(1, int(math.ceil(n / block_size)))
     starts = rng.integers(0, n - block_size + 1, size=(n_bootstrap, n_blocks))
-    offsets = np.arange(block_size, dtype=int)
+    offsets: NDArray[np.int_] = np.arange(block_size, dtype=int)
     indices = (starts[..., None] + offsets).reshape(n_bootstrap, -1)[:, :n]
-    return np.mean(arr[indices], axis=1, dtype=float)
+    return cast(PnlArray, np.mean(arr[indices], axis=1, dtype=float))
 
 
 def _block_bootstrap_mean_diff(
-    x: np.ndarray,
-    y: np.ndarray,
+    x: PnlArray,
+    y: PnlArray,
     *,
     n_bootstrap: int = 2000,
     block_size: int = 10,
@@ -757,7 +772,7 @@ def _matched_temporal_comparison(
     if n_pairs < 10:
         return n_pairs, None, None, None, None
 
-    diffs = np.array([v - c for v, c in pairs], dtype=float)
+    diffs: PnlArray = np.array([v - c for v, c in pairs], dtype=np.float64)
     mean_diff = float(np.mean(diffs))
 
     # Bootstrap CI for paired differences
@@ -778,7 +793,7 @@ def _matched_temporal_comparison(
     return n_pairs, mean_diff, ci_lower, ci_upper, p_value
 
 
-def _wilcoxon_signed_rank(diffs: np.ndarray) -> float:
+def _wilcoxon_signed_rank(diffs: PnlArray) -> float:
     """Wilcoxon signed-rank test (正規近似, pure Python/numpy).
 
     ゼロ差は除外し、残りに対して正規近似 z-test を行う。
@@ -793,7 +808,7 @@ def _wilcoxon_signed_rank(diffs: np.ndarray) -> float:
         return 1.0
 
     abs_vals = np.abs(nonzero)
-    ranks = np.empty(n, dtype=float)
+    ranks: PnlArray = np.empty(n, dtype=np.float64)
     sorted_idx = np.argsort(abs_vals)
     # 平均順位 (tie 処理)
     i = 0
@@ -819,8 +834,8 @@ def _wilcoxon_signed_rank(diffs: np.ndarray) -> float:
 
 
 def _compute_statistical_comparison(
-    control_pnl: np.ndarray,
-    variant_pnl: np.ndarray,
+    control_pnl: PnlArray,
+    variant_pnl: PnlArray,
 ) -> tuple[float | None, float | None]:
     """P値と効果量を計算（軽量経路優先、必要時のみ互換fallback）。"""
     try:
