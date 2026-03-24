@@ -157,6 +157,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         "_mid_low",                  # 305# Parkinson σ: rolling window 内 min mid
         "_mid_hl_reset_time",        # 305# Parkinson σ: high/low リセット時刻
         "_last_sigma",               # 306# L1: 最新 σ キャッシュ (dynamic cycle interval)
+        "_robust_sigma",             # 575# RobustStats: asymmetric EMA σ
         "_last_offset_stages",       # 306# E1: offset stage recording (JSON)
         "_prev_ob_snapshot",         # 543# OFI-Lite: 前回サイクルの OB snapshot
         "_last_ofi_lite",            # 543# OFI-Lite: 最新のOFI値 [-1,+1]
@@ -240,6 +241,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         self._mid_hl_reset_time: float = 0.0
         # 306# L1: 最新 σ キャッシュ (dynamic cycle interval 用)
         self._last_sigma: float = 0.0
+        self._robust_sigma: float = 0.0  # 575# RobustStats: asymmetric EMA σ
         # 306# E1: offset stage recording
         self._last_offset_stages: str | None = None
 

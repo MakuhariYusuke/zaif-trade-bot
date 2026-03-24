@@ -128,6 +128,8 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     # 190# A/B: ev_weighted 連続 skip 安全弁 + 片側 balance threshold 緩和
     "skip_gate_ev_max_consecutive_skip",
     "skip_gate_ev_one_sided_threshold_shift",
+    # 596# Primary model 連続 skip 安全弁 (evaluator-level)
+    "skip_gate_primary_max_consecutive_skip",
     # 193# EV soft offset
     "skip_gate_ev_as_offset_enabled",
     "skip_gate_ev_offset_sensitivity",
