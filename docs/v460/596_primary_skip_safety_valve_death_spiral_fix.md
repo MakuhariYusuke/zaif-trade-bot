@@ -96,6 +96,29 @@ elif not decision.should_skip:
 
 ## 残課題
 
-1. **即時対応**: fill test プロセス (PID 3012) の hot_swap_restart が必要。安全弁コードは次回デプロイで有効化。
+1. ~~**即時対応**: fill test プロセス (PID 3012) の hot_swap_restart が必要。~~ → **完了** (PID 14796, SHA bc2691711)
 2. **`one_sided_balance` の配線**: CycleContext で `one_sided_balance=True` が設定されない (190# 設計のみ、実装漏れ)。今後の拡張で検討。
 3. **Primary model の偏り調査**: buy 側 sg_score が恒常的に -2 ~ -3.8 と極端に負 → モデル再訓練 or 特徴量診断が必要。
+
+## 横展開調査結果
+
+全安全弁メカニズムを監査し、以下を確認:
+
+### 死コード化している安全弁
+
+| 安全弁 | 原因 | 596# でカバー |
+|--------|------|---------------|
+| 190# A `ev_max_consecutive_skip` | `ev_as_offset_enabled=True` で offset 分岐を取り、ハードゲート分岐のカウンタに到達不可 | ✅ primary safety valve で代替 |
+| 190# B `ev_one_sided_threshold_shift` | 上記 + `one_sided_balance` が常時 `False` | ✅ primary safety valve で代替 |
+| `one_sided_balance_rescue_offset` | 522# `balance_forced` 撤廃時にトリガー設定ロジックも消失 | △ 間接的 |
+
+### 正常に機能している安全弁
+
+| 安全弁 | ファイル | 制限値 | 状態 |
+|--------|----------|--------|------|
+| `max_consecutive_trending_sell_skip` | cycle_gate_aggregator.py | 10 | ✅ |
+| `narrow_spread_pause_max_consecutive` | fill_cycle_executor.py | 3 | ✅ |
+| `smart_side_max_consecutive` | side_selector.py | 2 | ✅ |
+| `veto_max_consecutive` | maker_risk_guards.py | 20 | ✅ |
+| `unknown_regime_max_consecutive` | cycle_gate_aggregator.py | 5 | ✅ |
+| **596# `primary_max_consecutive_skip`** | skip_gate_evaluator.py | 10 | ✅ NEW |
