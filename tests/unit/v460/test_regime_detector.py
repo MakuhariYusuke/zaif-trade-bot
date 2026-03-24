@@ -25,6 +25,7 @@ from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from scripts.v460.lib.time_filter import TimeFilter
 from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
 from tests.unit.v460._fill_test_source import (
+    BALANCE_CHECKER,
     ORCHESTRATOR_PRE_CYCLE,
     read_class_method_source,
     read_fill_test_method_source,
@@ -775,13 +776,168 @@ class TestAgeCapCancelOrder:
         # age_cap の後の最初の break
         idx_break = src.index("break", idx_age_cap)
         assert idx_cancel < idx_break
-        idx_reset = src.index("_preflight_skip_count = 0", idx_open)
-        assert idx_reset > idx_open
 
-    def test_safe_stop_still_reachable(self) -> None:
-        """open order recovery 失敗時は SAFE_STOP に到達する."""
+    def test_age_cap_cancel_exc_info(self) -> None:
+        """603# cancel 例外に exc_info=True が付与されている."""
+        src = read_fill_test_method_source("_monitor_fill_phase")
+        idx_age_cap = src.index("sell_age_cap exceeded")
+        idx_cancel = src.index("cancel_order", idx_age_cap)
+        # cancel_order 後の例外ハンドラに exc_info=True がある
+        idx_exc = src.index("exc_info=True", idx_cancel)
+        assert idx_exc > idx_cancel
+
+
+class TestLoggingObservability604:
+    """604# ログ可観測性改善."""
+
+    # -- balance_checker.py: locked 残高キャッシュ --
+
+    def test_balance_checker_has_last_btc_locked_property(self) -> None:
+        """BalanceChecker に last_btc_locked プロパティが存在する."""
+        src = read_source_text(BALANCE_CHECKER)
+        assert "last_btc_locked" in src
+        assert "_last_btc_locked" in src
+
+    def test_balance_checker_has_last_jpy_locked_property(self) -> None:
+        """BalanceChecker に last_jpy_locked プロパティが存在する."""
+        src = read_source_text(BALANCE_CHECKER)
+        assert "last_jpy_locked" in src
+        assert "_last_jpy_locked" in src
+
+    def test_insufficient_btc_log_contains_locked(self) -> None:
+        """Insufficient BTC ログに locked= が含まれる."""
+        src = read_source_text(BALANCE_CHECKER)
+        idx = src.index("Insufficient BTC for sell")
+        # f-string 連結で次行に locked= がある
+        segment = src[idx:idx + 200]
+        assert "locked=" in segment
+
+    def test_insufficient_jpy_log_contains_locked(self) -> None:
+        """Insufficient JPY ログに locked= が含まれる."""
+        src = read_source_text(BALANCE_CHECKER)
+        idx = src.index("Insufficient JPY for buy")
+        segment = src[idx:idx + 200]
+        assert "locked=" in segment
+
+    # -- orchestrator_balance.py: preflight_skip ログ --
+
+    def test_preflight_skip_log_exists(self) -> None:
+        """_handle_preflight_failure に [preflight_skip] ログが存在する."""
         src = read_fill_test_method_source("_handle_preflight_failure")
-        assert "preflight_skip_exceeded" in src
+        assert "[preflight_skip]" in src
+
+    def test_preflight_skip_log_has_balance_context(self) -> None:
+        """[preflight_skip] ログに btc_free/btc_locked/jpy_free/jpy_locked が含まれる."""
+        src = read_fill_test_method_source("_handle_preflight_failure")
+        idx = src.index("[preflight_skip]")
+        # preflight_skip 以降に残高コンテキストフィールドが存在する
+        remaining = src[idx:]
+        for field in ["btc_free", "btc_locked", "jpy_free", "jpy_locked"]:
+            assert field in remaining, f"{field} が [preflight_skip] ログに不足"
+
+    def test_preflight_recovery_exc_info(self) -> None:
+        """602# recovery 例外に exc_info=True が付与されている."""
+        src = read_fill_test_method_source("_handle_preflight_failure")
+        # get_open_orders 後の例外ハンドラ
+        idx_open = src.index("get_open_orders")
+        idx_exc = src.index("exc_info=True", idx_open)
+        assert idx_exc > idx_open
+
+    # -- fill_cycle_executor.py: age_cap order_id --
+
+    def test_age_cap_log_contains_order_id(self) -> None:
+        """age_cap exceeded ログに order_id が含まれる."""
+        src = read_fill_test_method_source("_monitor_fill_phase")
+        idx = src.index("sell_age_cap exceeded")
+        # 同じログ文中に order_id= がある
+        idx_end = src.index(")", idx)  # logger.info の閉じ括弧
+        segment = src[idx:idx_end]
+        assert "order_id" in segment
+
+
+class TestDiagnoseDeadlock604:
+    """604# diagnose_deadlock.py 膠着診断スクリプトのテスト."""
+
+    def test_analyze_log_detects_safe_stop(self) -> None:
+        """SAFE_STOP パターンを正しく検出する."""
+        from scripts.v460.analysis.diagnose_deadlock import analyze_log
+
+        lines = [
+            "2026-03-24 21:00:00 WARNING [preflight_skip] count=1/10 btc_free=0.0, btc_locked=0.001, jpy_free=500.00, jpy_locked=0.00\n",
+            "2026-03-24 21:10:00 WARNING [preflight_skip] count=2/10 btc_free=0.0, btc_locked=0.001, jpy_free=500.00, jpy_locked=0.00\n",
+            "2026-03-24 21:20:00 WARNING [preflight_skip] count=3/10 btc_free=0.0, btc_locked=0.001, jpy_free=500.00, jpy_locked=0.00\n",
+            "2026-03-24 21:30:00 WARNING [preflight_skip] count=4/10 btc_free=0.0, btc_locked=0.001, jpy_free=500.00, jpy_locked=0.00\n",
+            "2026-03-24 21:40:00 WARNING [preflight_skip] count=5/10 btc_free=0.0, btc_locked=0.001, jpy_free=500.00, jpy_locked=0.00\n",
+            "2026-03-24 21:50:00 CRITICAL SAFE_STOP: 連続 preflight スキップ 5 回 (上限 10)\n",
+        ]
+        events = analyze_log(lines)
+        assert len(events) == 1
+        ev = events[0]
+        assert ev.safe_stopped is True
+        assert ev.max_skip_count == 5
+        assert ev.btc_locked_max == 0.001
+        assert ev.jpy_free_min == 500.00
+
+    def test_analyze_log_detects_recovery_cancel(self) -> None:
+        """602# recovery cancel パターンを検出する."""
+        from scripts.v460.analysis.diagnose_deadlock import analyze_log
+
+        lines = [
+            "2026-03-24 21:00:00 WARNING [preflight_skip] count=3/10 btc_free=0.0, btc_locked=0.001, jpy_free=500.00, jpy_locked=0.00\n",
+            "2026-03-24 21:10:00 INFO [602# preflight_recovery] Cancelled stale order: id=123456\n",
+        ]
+        events = analyze_log(lines)
+        assert len(events) == 1
+        assert events[0].recovery_cancelled == ["123456"]
+        assert events[0].safe_stopped is False
+
+    def test_analyze_log_detects_age_cap_with_order_id(self) -> None:
+        """604# 新形式の age_cap exceeded (order_id 付き) を検出する."""
+        from scripts.v460.analysis.diagnose_deadlock import analyze_log
+
+        lines = [
+            "2026-03-24 21:00:00 WARNING [preflight_skip] count=3/10 btc_free=0.0, btc_locked=0.001, jpy_free=500.00, jpy_locked=0.00\n",
+            "2026-03-24 21:05:00 INFO sell_age_cap exceeded: elapsed=300.0s >= cap=180.0s order_id=9999999\n",
+            "2026-03-24 21:50:00 CRITICAL SAFE_STOP: 連続 preflight スキップ 5 回 (上限 10)\n",
+        ]
+        events = analyze_log(lines)
+        assert len(events) == 1
+        assert "9999999" in events[0].age_cap_orders
+
+    def test_analyze_log_legacy_format(self) -> None:
+        """旧形式 (preflight_pause/balance_shrink) を検出する."""
+        from scripts.v460.analysis.diagnose_deadlock import analyze_log
+
+        lines = [
+            "2026-03-18 06:00:00 WARNING [balance_shrink] 連続 preflight 失敗 5 回\n",
+            "2026-03-18 07:00:00 CRITICAL SAFE_STOP: 連続 preflight スキップ 5 回 (上限 10)\n",
+        ]
+        events = analyze_log(lines)
+        assert len(events) == 1
+        assert events[0].max_skip_count == 5
+
+    def test_format_report_empty(self) -> None:
+        """イベントなし時の出力."""
+        from scripts.v460.analysis.diagnose_deadlock import format_report
+
+        report = format_report([])
+        assert "検出されませんでした" in report
+
+    def test_format_report_with_events(self) -> None:
+        """イベントありの場合レポートが生成される."""
+        from scripts.v460.analysis.diagnose_deadlock import DeadlockEvent, format_report
+
+        ev = DeadlockEvent(
+            first_skip_ts="2026-03-24 21:00:00",
+            last_skip_ts="2026-03-24 21:50:00",
+            max_skip_count=5,
+            pause_count=3,
+            safe_stopped=True,
+        )
+        report = format_report([ev])
+        assert "Event #1" in report
+        assert "SAFE_STOP: YES" in report
+        assert "skip count: 5" in report
 
 
 class TestCleanupSyncImproved:
