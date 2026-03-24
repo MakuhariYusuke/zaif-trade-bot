@@ -2,7 +2,6 @@
 Unit tests for ztb.cache.sqlite_cache module.
 """
 
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -14,32 +13,30 @@ from ztb.cache.sqlite_cache import SQLiteCache, close_global_cache, get_cache, s
 class TestSQLiteCache:
     """Test cases for SQLiteCache class."""
 
-    def test_init_default(self):
+    def test_init_default(self, tmp_path: Path):
         """Test SQLiteCache initialization with defaults."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            db_path = Path(tmp_dir) / "test.db"
-            cache = SQLiteCache(db_path=db_path)
+        db_path = tmp_path / "test.db"
+        cache = SQLiteCache(db_path=db_path)
 
-            assert cache.db_path == db_path
-            assert cache.max_items == 50000
-            assert cache.task_mode == "default"
-            assert cache.get_default_ttl() == 3600
-            assert cache.conn is not None
+        assert cache.db_path == db_path
+        assert cache.max_items == 50000
+        assert cache.task_mode == "default"
+        assert cache.get_default_ttl() == 3600
+        assert cache.conn is not None
 
-            cache.close()
+        cache.close()
 
-    def test_init_custom(self):
+    def test_init_custom(self, tmp_path: Path):
         """Test SQLiteCache initialization with custom parameters."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            db_path = Path(tmp_dir) / "test.db"
-            cache = SQLiteCache(db_path=db_path, max_items=1000, task_mode="training")
+        db_path = tmp_path / "test.db"
+        cache = SQLiteCache(db_path=db_path, max_items=1000, task_mode="training")
 
-            assert cache.db_path == db_path
-            assert cache.max_items == 1000
-            assert cache.task_mode == "training"
-            assert cache.get_default_ttl() == 1800  # training TTL
+        assert cache.db_path == db_path
+        assert cache.max_items == 1000
+        assert cache.task_mode == "training"
+        assert cache.get_default_ttl() == 1800  # training TTL
 
-            cache.close()
+        cache.close()
 
     def test_get_default_ttl(self):
         """Test get_default_ttl for different task modes."""
@@ -92,98 +89,84 @@ class TestSQLiteCache:
 
         cache.close()
 
-    def test_set_get(self):
+    def test_set_get(self, tmp_path: Path):
         """Test basic set and get operations."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            db_path = Path(tmp_dir) / "test.db"
-            cache = SQLiteCache(db_path=db_path)
+        db_path = tmp_path / "test.db"
+        cache = SQLiteCache(db_path=db_path)
 
-            # Test set and get
-            test_data = {"key": "value", "number": 42}
-            cache.set("test_key", test_data)
+        test_data = {"key": "value", "number": 42}
+        cache.set("test_key", test_data)
 
-            result = cache.get("test_key")
-            assert result == test_data
+        result = cache.get("test_key")
+        assert result == test_data
 
-            # Test get non-existent key
-            result = cache.get("non_existent")
-            assert result is None
+        result = cache.get("non_existent")
+        assert result is None
 
-            cache.close()
+        cache.close()
 
-    def test_set_with_ttl(self):
+    def test_set_with_ttl(self, tmp_path: Path):
         """Test set with custom TTL."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            db_path = Path(tmp_dir) / "test.db"
-            cache = SQLiteCache(db_path=db_path, enable_memory_cache=False)
-            try:
-                with patch("ztb.cache.sqlite_cache.time.time", return_value=1000.0):
-                    cache.set("ttl_key", "ttl_value", ttl_sec=1)
-                    result = cache.get("ttl_key")
-                assert result == "ttl_value"
+        db_path = tmp_path / "test.db"
+        cache = SQLiteCache(db_path=db_path, enable_memory_cache=False)
+        try:
+            with patch("ztb.cache.sqlite_cache.time.time", return_value=1000.0):
+                cache.set("ttl_key", "ttl_value", ttl_sec=1)
+                result = cache.get("ttl_key")
+            assert result == "ttl_value"
 
-                with patch("ztb.cache.sqlite_cache.time.time", return_value=1001.0):
-                    result = cache.get("ttl_key")
-                assert result is None
-            finally:
-                cache.close()
+            with patch("ztb.cache.sqlite_cache.time.time", return_value=1001.0):
+                result = cache.get("ttl_key")
+            assert result is None
+        finally:
+            cache.close()
 
-    def test_touch(self):
+    def test_touch(self, tmp_path: Path):
         """Test touch method."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            db_path = Path(tmp_dir) / "test.db"
-            cache = SQLiteCache(db_path=db_path)
+        db_path = tmp_path / "test.db"
+        cache = SQLiteCache(db_path=db_path)
 
-            cache.set("touch_key", "touch_value")
+        cache.set("touch_key", "touch_value")
 
-            # Touch should not fail
-            cache.touch("touch_key")
+        cache.touch("touch_key")
 
-            # Value should still be retrievable
-            result = cache.get("touch_key")
-            assert result == "touch_value"
+        result = cache.get("touch_key")
+        assert result == "touch_value"
 
-            cache.close()
+        cache.close()
 
-    def test_purge(self):
+    def test_purge(self, tmp_path: Path):
         """Test manual purge."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            db_path = Path(tmp_dir) / "test.db"
-            cache = SQLiteCache(db_path=db_path, max_items=2)
+        db_path = tmp_path / "test.db"
+        cache = SQLiteCache(db_path=db_path, max_items=2)
 
-            # Add items
-            cache.set("key1", "value1")
-            cache.set("key2", "value2")
-            cache.set("key3", "value3")  # Should trigger purge
+        cache.set("key1", "value1")
+        cache.set("key2", "value2")
+        cache.set("key3", "value3")
 
-            # Should have only 2 items
-            result1 = cache.get("key1")
-            result2 = cache.get("key2")
-            result3 = cache.get("key3")
+        result1 = cache.get("key1")
+        result2 = cache.get("key2")
+        result3 = cache.get("key3")
 
-            # At least key3 should exist, others may be purged
-            assert result3 == "value3"
+        assert result3 == "value3"
 
-            cache.close()
+        cache.close()
 
-    def test_close(self):
+    def test_close(self, tmp_path: Path):
         """Test close method."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            db_path = Path(tmp_dir) / "test.db"
-            cache = SQLiteCache(db_path=db_path)
+        db_path = tmp_path / "test.db"
+        cache = SQLiteCache(db_path=db_path)
 
-            # Close should not raise exception
-            cache.close()
-            assert cache.conn is None
+        cache.close()
+        assert cache.conn is None
 
-    def test_close_is_idempotent(self):
+    def test_close_is_idempotent(self, tmp_path: Path):
         """Repeated close should be harmless."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            db_path = Path(tmp_dir) / "test.db"
-            cache = SQLiteCache(db_path=db_path)
-            cache.close()
-            cache.close()
-            assert cache.conn is None
+        db_path = tmp_path / "test.db"
+        cache = SQLiteCache(db_path=db_path)
+        cache.close()
+        cache.close()
+        assert cache.conn is None
 
     @patch("ztb.cache.sqlite_cache._global_cache")
     def test_global_functions(self, mock_global_cache):

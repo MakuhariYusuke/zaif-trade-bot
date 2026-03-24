@@ -9211,3 +9211,11 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - focused pytest:
       - `125 passed in 2.78s`
     - 残る `from_yaml(...)` は parser 契約テストか、並行差分依存のファイルにほぼ限定された
+  - tempfile / tmpdir sweep (追加):
+    - `tests/unit/config/test_config_manager.py`
+    - `tests/unit/config/test_config.py`
+    - `tests/unit/cache/test_sqlite_cache.py`
+    - `tests/unit/cache/test_data_loader.py`
+      - `TemporaryDirectory()` / `NamedTemporaryFile()` を `tmp_path` ベースへ置換
+    - focused pytest:
+      - `60 passed in 6.39s`

@@ -3,7 +3,6 @@ Unit tests for ztb.cache.data_loader module.
 """
 
 import pickle
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -15,12 +14,11 @@ from ztb.cache.data_loader import CacheDataLoader
 class TestDataLoader:
     """Test cases for CacheDataLoader class."""
 
-    def test_init(self):
+    def test_init(self, tmp_path: Path):
         """Test DataLoader initialization."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            loader = CacheDataLoader(cache_dir=tmp_dir)
-            assert loader.cache_dir == Path(tmp_dir)
-            assert loader.cache_dir.exists()
+        loader = CacheDataLoader(cache_dir=str(tmp_path))
+        assert loader.cache_dir == tmp_path
+        assert loader.cache_dir.exists()
 
     def test_init_default_cache_dir(self):
         """Test DataLoader with default cache directory."""

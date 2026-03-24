@@ -2,7 +2,6 @@
 Tests for configuration utilities.
 """
 
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -98,99 +97,70 @@ class TestValidatedConfig:
 class TestConfigLoader:
     """Test ConfigLoader functionality."""
 
-    def test_load_yaml_config(self):
+    def test_load_yaml_config(self, tmp_path: Path):
         """Test loading YAML configuration."""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            f.write(
-                """
+        temp_path = tmp_path / "config.yaml"
+        temp_path.write_text(
+            """
 learning_rate: 0.001
 batch_size: 32
 gamma: 0.99
 """
-            )
-            temp_path = f.name
+        )
+        config = load_config(temp_path)
+        assert config["learning_rate"] == 0.001
+        assert config["batch_size"] == 32
+        assert config["gamma"] == 0.99
 
-        try:
-            config = load_config(temp_path)
-            assert config["learning_rate"] == 0.001
-            assert config["batch_size"] == 32
-            assert config["gamma"] == 0.99
-        finally:
-            Path(temp_path).unlink()
-
-    def test_load_json_config(self):
+    def test_load_json_config(self, tmp_path: Path):
         """Test loading JSON configuration."""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            f.write(
-                """
+        temp_path = tmp_path / "config.json"
+        temp_path.write_text(
+            """
 {
   "learning_rate": 0.001,
   "batch_size": 32,
   "gamma": 0.99
 }
 """
-            )
-            temp_path = f.name
+        )
+        config = load_config(temp_path)
+        assert config["learning_rate"] == 0.001
+        assert config["batch_size"] == 32
+        assert config["gamma"] == 0.99
 
-        try:
-            config = load_config(temp_path)
-            assert config["learning_rate"] == 0.001
-            assert config["batch_size"] == 32
-            assert config["gamma"] == 0.99
-        finally:
-            Path(temp_path).unlink()
-
-    def test_load_toml_config(self):
+    def test_load_toml_config(self, tmp_path: Path):
         """Test loading TOML configuration."""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
-            f.write(
-                """
+        temp_path = tmp_path / "config.toml"
+        temp_path.write_text(
+            """
 learning_rate = 0.001
 batch_size = 32
 gamma = 0.99
 """
-            )
-            temp_path = f.name
+        )
+        config = load_toml_config(temp_path)
+        assert config["learning_rate"] == 0.001
+        assert config["batch_size"] == 32
+        assert config["gamma"] == 0.99
 
-        try:
-            config = load_toml_config(temp_path)
-            assert config["learning_rate"] == 0.001
-            assert config["batch_size"] == 32
-            assert config["gamma"] == 0.99
-        finally:
-            Path(temp_path).unlink()
-
-    def test_config_loader_class(self):
+    def test_config_loader_class(self, tmp_path: Path):
         """Test ConfigLoader class methods."""
-        save_path = None
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            f.write(
-                """
+        temp_path = tmp_path / "config.yaml"
+        temp_path.write_text(
+            """
 learning_rate: 0.001
 batch_size: 32
 """
-            )
-            temp_path = f.name
-
-        try:
-            # Test load
-            config = ConfigLoader.load(temp_path)
-            assert config["learning_rate"] == 0.001
-            assert config["batch_size"] == 32
-
-            # Test save
-            save_path = temp_path.replace(".yaml", "_saved.json")
-            ConfigLoader.save(config, save_path, format="json")
-
-            # Verify saved file
-            saved_config = ConfigLoader.load(save_path)
-            assert saved_config["learning_rate"] == 0.001
-            assert saved_config["batch_size"] == 32
-
-        finally:
-            Path(temp_path).unlink()
-            if save_path:
-                Path(save_path).unlink(missing_ok=True)
+        )
+        config = ConfigLoader.load(temp_path)
+        assert config["learning_rate"] == 0.001
+        assert config["batch_size"] == 32
+        save_path = tmp_path / "config_saved.json"
+        ConfigLoader.save(config, save_path, format="json")
+        saved_config = ConfigLoader.load(save_path)
+        assert saved_config["learning_rate"] == 0.001
+        assert saved_config["batch_size"] == 32
 
     def test_unsupported_format(self):
         """Test unsupported file format."""

@@ -246,6 +246,19 @@
     - 並行差分の影響を受けやすいファイル
     に絞られている
 
+- tempfile / tmpdir sweep:
+  - 追加適用:
+    - `tests/unit/config/test_config_manager.py`
+    - `tests/unit/config/test_config.py`
+    - `tests/unit/cache/test_sqlite_cache.py`
+    - `tests/unit/cache/test_data_loader.py`
+  - 内容:
+    - `TemporaryDirectory()` / `NamedTemporaryFile()` を `tmp_path` ベースへ置換
+    - delete=False cleanup や一時ディレクトリ生成の固定費を削減
+  - focused pytest:
+    - 上記 4 ファイル
+    - 結果: `60 passed in 6.39s`
+
 ## 本体コード側の所見
 
 - `FillTestConfig` 読み込みの production 側 short-path はすでにかなり整っている

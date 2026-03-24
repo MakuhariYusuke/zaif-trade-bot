@@ -5,7 +5,6 @@ Unit tests for config_manager.py
 Tests for ConfigManager class and configuration validation utilities.
 """
 
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -27,92 +26,80 @@ class TestConfigManager:
         assert isinstance(manager._cache, dict)
         assert manager._cache == {}
 
-    def test_initialization_custom_dir(self):
+    def test_initialization_custom_dir(self, tmp_path: Path):
         """Test ConfigManager initialization with custom config directory."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            custom_dir = Path(temp_dir) / "custom_config"
-            manager = UtilsConfigManager(custom_dir)
+        custom_dir = tmp_path / "custom_config"
+        manager = UtilsConfigManager(custom_dir)
 
-            assert manager.config_dir == custom_dir
-            assert manager.config_dir.exists()
+        assert manager.config_dir == custom_dir
+        assert manager.config_dir.exists()
 
-    def test_load_config_json(self):
+    def test_load_config_json(self, tmp_path: Path):
         """Test loading JSON configuration."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            manager = UtilsConfigManager(temp_dir)
+        manager = UtilsConfigManager(tmp_path)
 
-            # Create a test JSON config file
-            config_file = Path(temp_dir) / "test.json"
-            config_data = {"key": "value", "number": 42}
-            config_file.write_text('{"key": "value", "number": 42}')
+        config_file = tmp_path / "test.json"
+        config_data = {"key": "value", "number": 42}
+        config_file.write_text('{"key": "value", "number": 42}')
 
-            result = manager.load_config("test", config_type="general")
+        result = manager.load_config("test", config_type="general")
 
-            assert result == config_data
-            assert "general_test" in manager._cache
+        assert result == config_data
+        assert "general_test" in manager._cache
 
-    def test_load_config_yaml(self):
+    def test_load_config_yaml(self, tmp_path: Path):
         """Test loading YAML configuration."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            manager = UtilsConfigManager(temp_dir)
+        manager = UtilsConfigManager(tmp_path)
 
-            # Create a test YAML config file
-            config_file = Path(temp_dir) / "test.yaml"
-            config_content = "key: value\nnumber: 42\n"
-            config_file.write_text(config_content)
+        config_file = tmp_path / "test.yaml"
+        config_content = "key: value\nnumber: 42\n"
+        config_file.write_text(config_content)
 
-            result = manager.load_config("test", config_type="general")
+        result = manager.load_config("test", config_type="general")
 
-            assert result == {"key": "value", "number": 42}
+        assert result == {"key": "value", "number": 42}
 
-    def test_save_config(self):
+    def test_save_config(self, tmp_path: Path):
         """Test saving configuration."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            manager = UtilsConfigManager(temp_dir)
+        manager = UtilsConfigManager(tmp_path)
 
-            config_data = {"key": "value", "number": 42}
-            manager.save_config(config_data, "test_save", format="json")
+        config_data = {"key": "value", "number": 42}
+        manager.save_config(config_data, "test_save", format="json")
 
-            # Check that file was created
-            config_file = Path(temp_dir) / "test_save.json"
-            assert config_file.exists()
+        config_file = tmp_path / "test_save.json"
+        assert config_file.exists()
 
-            # Check content
-            import json
-            with open(config_file, 'r') as f:
-                saved_data = json.load(f)
-            assert saved_data == config_data
+        import json
+        with open(config_file, 'r') as f:
+            saved_data = json.load(f)
+        assert saved_data == config_data
 
-    def test_clear_cache(self):
+    def test_clear_cache(self, tmp_path: Path):
         """Test clearing configuration cache."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            manager = UtilsConfigManager(temp_dir)
+        manager = UtilsConfigManager(tmp_path)
 
-            # Add something to cache
-            manager._cache["test"] = {"cached": True}
+        manager._cache["test"] = {"cached": True}
 
-            assert len(manager._cache) > 0
+        assert len(manager._cache) > 0
 
-            manager.clear_cache()
+        manager.clear_cache()
 
-            assert len(manager._cache) == 0
+        assert len(manager._cache) == 0
 
-    def test_get_cached_configs(self):
+    def test_get_cached_configs(self, tmp_path: Path):
         """Test getting cached configurations."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            manager = UtilsConfigManager(temp_dir)
+        manager = UtilsConfigManager(tmp_path)
 
-            test_config = {"test": "data"}
-            manager._cache["test_key"] = test_config
+        test_config = {"test": "data"}
+        manager._cache["test_key"] = test_config
 
-            cached = manager.get_cached_configs()
+        cached = manager.get_cached_configs()
 
-            assert "test_key" in cached
-            assert cached["test_key"] == test_config
+        assert "test_key" in cached
+        assert cached["test_key"] == test_config
 
-            # Ensure it's a copy, not reference
-            cached["test_key"]["modified"] = True
-            assert "modified" not in manager._cache["test_key"]
+        cached["test_key"]["modified"] = True
+        assert "modified" not in manager._cache["test_key"]
 
 
 class TestConfigValidation:
@@ -167,57 +154,47 @@ class TestConfigValidation:
 class TestConfigManagerIntegration:
     """Integration tests for ConfigManager."""
 
-    def test_load_save_roundtrip(self):
+    def test_load_save_roundtrip(self, tmp_path: Path):
         """Test loading and saving configuration in a roundtrip."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            manager = UtilsConfigManager(temp_dir)
-
-            original_config = {
-                "model": {
-                    "type": "ppo",
-                    "learning_rate": 0.001,
-                    "batch_size": 64
-                },
-                "environment": {
-                    "name": "trading_env",
-                    "max_steps": 1000
-                },
-                "training": {
-                    "epochs": 100,
-                    "validation_freq": 10
-                }
+        manager = UtilsConfigManager(tmp_path)
+        original_config = {
+            "model": {
+                "type": "ppo",
+                "learning_rate": 0.001,
+                "batch_size": 64
+            },
+            "environment": {
+                "name": "trading_env",
+                "max_steps": 1000
+            },
+            "training": {
+                "epochs": 100,
+                "validation_freq": 10
             }
+        }
+        manager.save_config(original_config, "integration_test")
+        loaded_config = manager.load_config("integration_test")
+        assert loaded_config == original_config
 
-            # Save config
-            manager.save_config(original_config, "integration_test")
-
-            # Load config
-            loaded_config = manager.load_config("integration_test")
-
-            assert loaded_config == original_config
-
-    def test_config_file_not_found(self):
+    def test_config_file_not_found(self, tmp_path: Path):
         """Test handling of non-existent configuration file."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            manager = UtilsConfigManager(temp_dir)
+        manager = UtilsConfigManager(tmp_path)
 
-            with pytest.raises(ConfigurationError):
-                manager.load_config("nonexistent_config")
+        with pytest.raises(ConfigurationError):
+            manager.load_config("nonexistent_config")
 
     @patch('ztb.utils.config_manager.yaml.safe_load')
-    def test_yaml_parsing_error(self, mock_yaml_load):
+    def test_yaml_parsing_error(self, mock_yaml_load, tmp_path: Path):
         """Test handling of YAML parsing errors."""
         mock_yaml_load.side_effect = Exception("YAML parsing failed")
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            manager = UtilsConfigManager(temp_dir)
+        manager = UtilsConfigManager(tmp_path)
 
-            # Create a malformed YAML file
-            config_file = Path(temp_dir) / "malformed.yaml"
-            config_file.write_text("invalid: yaml: content: [")
+        config_file = tmp_path / "malformed.yaml"
+        config_file.write_text("invalid: yaml: content: [")
 
-            with pytest.raises(Exception):
-                manager.load_config("malformed")
+        with pytest.raises(Exception):
+            manager.load_config("malformed")
 
 
 class TestTrainingConfigManagerUnifiedConfig:
