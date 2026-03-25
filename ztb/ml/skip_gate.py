@@ -485,6 +485,15 @@ class SkipGate:
             if len(side_skips) > 20:
                 del side_skips[: len(side_skips) - 20]
 
+        # 622# 診断ログ: 判定結果・閾値・regime を INFO で記録
+        if self.config.mode == "pnl":
+            _rf_str = f" regime_floor={regime_floor:.3f}" if regime_floor is not None else ""
+            logger.info(
+                f"[skip_gate] {side or '?'}/{regime or '?'}: "
+                f"pnl={pred_pnl:+.3f} th={threshold_used:.3f}{_rf_str} "
+                f"-> {reason}"
+            )
+
         return SkipDecision(
             should_skip=should_skip,
             predicted_pnl_bps=pred_pnl,

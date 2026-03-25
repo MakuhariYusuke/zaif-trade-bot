@@ -226,6 +226,43 @@ def section_skip_gate(records: list[dict[str, Any]]) -> list[str]:
         lines.append("  --- Model Usage ---")
         for m, cnt in sg_models.most_common(5):
             lines.append(f"    {m}: {cnt}")
+
+    # 622# threshold_used 分布分析 — adaptive bypass 検出
+    passed = [r for r in records if not r.get("skip_gate_skipped")]
+    if passed:
+        th_vals = [r.get("skip_gate_threshold_used") for r in passed
+                   if r.get("skip_gate_threshold_used") is not None]
+        score_vals = [r.get("skip_gate_score") for r in passed
+                      if r.get("skip_gate_score") is not None]
+        if th_vals:
+            lines.append("  --- Threshold Used (passed fills) ---")
+            th_arr = sorted(th_vals)
+            lines.append(
+                f"    min={th_arr[0]:.3f}  p50={th_arr[len(th_arr)//2]:.3f}  "
+                f"max={th_arr[-1]:.3f}  n={len(th_arr)}"
+            )
+        if score_vals and th_vals and len(score_vals) == len(th_vals):
+            margin = [s - t for s, t in zip(score_vals, th_vals)]
+            margin.sort()
+            lines.append(
+                f"    margin(score-th): min={margin[0]:.3f}  "
+                f"p50={margin[len(margin)//2]:.3f}  max={margin[-1]:.3f}"
+            )
+        # Regime 別 threshold 分布
+        regime_ths: dict[str, list[float]] = {}
+        for r in passed:
+            reg = r.get("regime", "unknown")
+            th = r.get("skip_gate_threshold_used")
+            if th is not None:
+                regime_ths.setdefault(reg, []).append(th)
+        if len(regime_ths) > 1:
+            lines.append("  --- Threshold by Regime ---")
+            for reg, vals in sorted(regime_ths.items()):
+                vals_s = sorted(vals)
+                lines.append(
+                    f"    {reg}: min={vals_s[0]:.3f} p50={vals_s[len(vals_s)//2]:.3f} "
+                    f"max={vals_s[-1]:.3f} n={len(vals_s)}"
+                )
     lines.append("")
     return lines
 
