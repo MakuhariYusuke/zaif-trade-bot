@@ -721,3 +721,6 @@ NNN_phX_TYPE_description.md
 | 612 | impl | [612_phg_test_runtime_optimization_wave1.md](612_phg_test_runtime_optimization_wave1.md) | テスト実行時最適化 Wave 1: クリーンアップと高速化 |
 | 613 | review | [613_cplt_deep_review_609_611_and_gemini_task.md](613_cplt_deep_review_609_611_and_gemini_task.md) | 深堀りレビュー: 609#-611# および Gemini 向けタスク指示 |
 | 614 | spec | [614_phg_attribution_spec_and_sidecar_contract.md](614_phg_attribution_spec_and_sidecar_contract.md) | 執行パイプライン寄与度分析仕様および Sidecar Feature Contract 策定 |
+| 615 | spec | [615_phg_614_errata_and_spec_refinement.md](615_phg_614_errata_and_spec_refinement.md) | 614# 補修と実装精度への仕様引き上げ |
+| 616 | spec | [616_phg_attribution_phase2_and_live_feature_spec.md](616_phg_attribution_phase2_and_live_feature_spec.md) | Attribution Phase 2 および Live Feature Builder 数理仕様 |
+| 617 | spec | [617_phg_feature_parity_and_live_extraction_spec.md](617_phg_feature_parity_and_live_extraction_spec.md) | Feature Parity および Live 同期抽出数理仕様 |

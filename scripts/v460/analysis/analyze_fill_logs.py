@@ -212,6 +212,14 @@ def section_skip_gate(records: list[dict[str, Any]]) -> list[str]:
     for reason, cnt in skip_reasons.most_common(10):
         lines.append(f"  {reason}: {cnt}")
 
+    # composite_risk_exceeded などの詳細
+    cr_skipped = [r for r in skipped if "composite_risk" in str(r.get("skip_gate_reason", ""))]
+    if cr_skipped:
+        lines.append("  --- Composite Risk Breakdown ---")
+        cr_details = collections.Counter(str(r.get("composite_risk_details", "none")) for r in cr_skipped)
+        for detail, dcnt in cr_details.most_common(5):
+            lines.append(f"    {detail}: {dcnt}")
+
     # Model usage
     sg_models = collections.Counter(str(r.get("skip_gate_model_used", "?")) for r in skipped)
     if sg_models:
@@ -514,6 +522,86 @@ def section_clamp_saturation(records: list[dict[str, Any]]) -> list[str]:
             )
         else:
             lines.append(f"  {side}: (no offset data)")
+    lines.append("")
+    return lines
+
+
+def section_information_loss(records: list[dict[str, Any]]) -> list[str]:
+    """614# Phase 1 Attribution: Information Loss from Clamping."""
+    filled = [r for r in records if r.get("filled")]
+    lines = ["--- Pipeline Attribution (Phase 1) ---", "## Information Loss"]
+    if not filled:
+        lines.append("  (no fills)")
+        lines.append("")
+        return lines
+
+    for side in ["buy", "sell"]:
+        sf = [r for r in filled if r.get("requested_side") == side]
+        with_data = [
+            r for r in sf
+            if r.get("execution_pre_clamp_offset") is not None
+            and r.get("effective_offset_used") is not None
+        ]
+        clamped = [
+            r for r in with_data
+            if r["execution_pre_clamp_offset"] > r["effective_offset_used"] + 0.0001
+        ]
+        if not with_data:
+            lines.append(f"  {side}: (no data)")
+            continue
+        
+        # Calculate loss in bps (ratios to bps)
+        loss_bps = [(r["execution_pre_clamp_offset"] - r["effective_offset_used"]) * 10000 for r in clamped]
+        avg_loss = float(np.mean(loss_bps)) if loss_bps else 0.0
+        total_loss = float(np.sum(loss_bps)) if loss_bps else 0.0
+        lines.append(f"  {side}: Loss applied in {len(clamped)}/{len(with_data)} fills")
+        if clamped:
+            lines.append(f"    Avg Loss: {avg_loss:.2f} bps, Total Loss: {total_loss:.2f} bps")
+    lines.append("")
+    return lines
+
+
+def section_stage_saturation(records: list[dict[str, Any]]) -> list[str]:
+    """614# Phase 1 Attribution: Stage Saturation (>= 1.99)."""
+    import json
+    filled = [r for r in records if r.get("filled")]
+    lines = ["## Stage Saturation"]
+    if not filled:
+        lines.append("  (no fills)")
+        lines.append("")
+        return lines
+
+    saturations = {"buy": collections.Counter(), "sell": collections.Counter()}
+    valid_records = {"buy": 0, "sell": 0}
+
+    for r in filled:
+        side = r.get("requested_side")
+        if side not in ["buy", "sell"]:
+            continue
+        raw_stages = r.get("executor_offset_stages")
+        if not raw_stages or not isinstance(raw_stages, str):
+            continue
+        try:
+            stages = json.loads(raw_stages)
+            valid_records[side] += 1
+            for k, v in stages.items():
+                if v is None:
+                    continue
+                if abs(float(v)) >= 1.99:
+                    saturations[side][k] += 1
+        except json.JSONDecodeError:
+            pass
+
+    for side in ["buy", "sell"]:
+        if valid_records[side] == 0:
+            lines.append(f"  {side}: (no stage data)")
+            continue
+        lines.append(f"  {side}: valid parses={valid_records[side]}")
+        if not saturations[side]:
+            lines.append("    No saturated stages (>= 1.99)")
+        else:
+            for k, v in saturations[side].most_common():
+                lines.append(f"    {k}: {v}/{valid_records[side]} ({v/valid_records[side]*100:.1f}%)")
     lines.append("")
     return lines
 
@@ -1004,6 +1092,146 @@ def section_buffer_decomposition(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
+def section_attribution_phase2(records: list[dict[str, Any]]) -> list[str]:
+    """616# §1: Euler RMS 分解 + Ceiling Occupancy.
+
+    加法パイプラインの tox/liq RMS を Euler 定理で個別ステージに分解し、
+    Ceiling に対する消費率 (Occupancy) を算出する。
+    """
+    import json as _json
+
+    filled = [r for r in records if r.get("filled")]
+    lines = ["## Attribution Phase 2 (616# §1 Euler RMS Decomposition)"]
+    if not filled:
+        lines.append("  (no fills)")
+        lines.append("")
+        return lines
+
+    # Tox ステージ名 / Liq ステージ名
+    tox_stage_names = ["velocity", "trending", "toxicity", "vg_supp", "alert"]
+    liq_stage_names = ["ev", "macro"]
+
+    # Ceiling 値は fill_record から取得できないので、
+    # execution_pre_clamp_offset と effective_offset_used の差で間接推定
+    # → 直接 base_ratio を使えないため、base = effective - tox_rms - liq_rms で逆算
+
+    for side in ["buy", "sell"]:
+        side_records = [r for r in filled if r.get("requested_side") == side]
+        parsed: list[tuple[dict[str, object], dict[str, float]]] = []
+        for r in side_records:
+            raw = r.get("executor_offset_stages")
+            if not raw or not isinstance(raw, str):
+                continue
+            try:
+                stages = _json.loads(raw)
+            except (ValueError, TypeError):
+                continue
+            if "tox_buffer" not in stages:
+                continue
+            parsed.append((r, stages))
+
+        if not parsed:
+            lines.append(f"  {side}: (no additive pipeline data)")
+            continue
+
+        lines.append(f"  --- {side.upper()} (n={len(parsed)}) ---")
+
+        # Euler 寄与度を集計
+        euler_contrib: dict[str, list[float]] = {s: [] for s in tox_stage_names + liq_stage_names}
+        occupancy_vals: list[float] = []
+
+        for r, stages in parsed:
+            tox_rms = float(stages.get("tox_buffer", 0.0))
+            liq_rms = float(stages.get("liq_buffer", 0.0))
+
+            # 各 tox ステージの delta を再構築:
+            # stages[name] は multiplier 値。delta_i = base * (mult - 1.0)
+            # ただし base_ratio は不明なので、C_i の比率のみで按分
+            # Euler: C_i = delta_i^2 / rms
+            if tox_rms > 1e-8:
+                tox_sq_sum = 0.0
+                stage_sq: dict[str, float] = {}
+                for sn in tox_stage_names:
+                    mult = stages.get(sn)
+                    if mult is None or float(mult) <= 1.0:
+                        stage_sq[sn] = 0.0
+                        continue
+                    # delta は未知 base を含むが、C_i/tox_rms = delta_i^2/Σdelta_j^2
+                    # → tox_rms^2 = Σdelta_j^2 なので C_i = delta_i^2 / tox_rms
+                    # delta_i^2 は比例項として (mult-1)^2 を使用
+                    sq = (float(mult) - 1.0) ** 2
+                    stage_sq[sn] = sq
+                    tox_sq_sum += sq
+
+                for sn in tox_stage_names:
+                    if tox_sq_sum > 0:
+                        # C_i = tox_rms * (sq_i / tox_sq_sum)
+                        euler_contrib[sn].append(tox_rms * stage_sq[sn] / tox_sq_sum)
+                    else:
+                        euler_contrib[sn].append(0.0)
+
+            if liq_rms > 1e-8:
+                liq_sq_sum = 0.0
+                liq_stage_sq: dict[str, float] = {}
+                for sn in liq_stage_names:
+                    mult = stages.get(sn)
+                    if mult is None or float(mult) <= 1.0:
+                        liq_stage_sq[sn] = 0.0
+                        continue
+                    sq = (float(mult) - 1.0) ** 2
+                    liq_stage_sq[sn] = sq
+                    liq_sq_sum += sq
+
+                for sn in liq_stage_names:
+                    if liq_sq_sum > 0:
+                        euler_contrib[sn].append(liq_rms * liq_stage_sq[sn] / liq_sq_sum)
+                    else:
+                        euler_contrib[sn].append(0.0)
+
+            # Occupancy: tox_rms / (ceiling - base_ratio) * 100
+            eff = r.get("effective_offset_used")
+            if eff is not None and float(eff) > 1e-8:
+                base_est = float(eff) - tox_rms - liq_rms
+                if base_est > 0:
+                    headroom = float(eff) - base_est  # = tox_rms + liq_rms
+                    # pre_clamp があれば ceiling を推定可能
+                    pre_clamp = r.get("execution_pre_clamp_offset")
+                    if pre_clamp is not None:
+                        ceiling_est = max(float(pre_clamp), float(eff))
+                        denom = ceiling_est - base_est
+                        if denom > 1e-8:
+                            occupancy_vals.append(headroom / denom * 100.0)
+
+        # Euler 寄与度の出力
+        lines.append("    Euler Contribution (avg bps):")
+        for sn in tox_stage_names + liq_stage_names:
+            vals = euler_contrib[sn]
+            if vals:
+                avg_c = float(np.mean(vals)) * 10000  # ratio → bps
+                max_c = float(np.max(vals)) * 10000
+                nonzero = sum(1 for v in vals if v > 1e-8)
+                if nonzero > 0:
+                    lines.append(
+                        f"      {sn:12s}: avg={avg_c:+.2f}bps, max={max_c:.2f}bps, "
+                        f"active={nonzero}/{len(vals)}"
+                    )
+
+        # Occupancy の出力
+        if occupancy_vals:
+            occ_arr = _np(occupancy_vals)
+            lines.append(
+                f"    Occupancy: mean={float(np.mean(occ_arr)):.1f}%, "
+                f"p90={float(np.percentile(occ_arr, 90)):.1f}%, "
+                f"saturated(>100%)={sum(1 for o in occupancy_vals if o > 100)}/"
+                f"{len(occupancy_vals)}"
+            )
+        else:
+            lines.append("    Occupancy: (insufficient data)")
+
+    lines.append("")
+    return lines
+
+
 def section_sidecar_signal(records: list[dict[str, Any]]) -> list[str]:
     """589# Sidecar signal status 分布分析.
 
@@ -1091,6 +1319,8 @@ def main() -> None:
     all_lines.extend(section_sell_guard(records))
     all_lines.extend(section_execution_quality(records))
     all_lines.extend(section_clamp_saturation(records))
+    all_lines.extend(section_information_loss(records))
+    all_lines.extend(section_stage_saturation(records))
     all_lines.extend(section_cross_venue_engagement(records))
     all_lines.extend(section_tail_risk(records))
     all_lines.extend(section_confidence_lot(records))
@@ -1105,6 +1335,7 @@ def main() -> None:
     all_lines.extend(section_spread_decomposition(records))
     all_lines.extend(section_execution_quality_comparison(records))
     all_lines.extend(section_buffer_decomposition(records))
+    all_lines.extend(section_attribution_phase2(records))
     all_lines.extend(section_sidecar_signal(records))
 
     write_output("\n".join(all_lines), args.output)

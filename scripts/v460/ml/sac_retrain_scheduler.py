@@ -91,6 +91,7 @@ class SACRetrainConfig:
     model_path: Path = field(default_factory=lambda: Path("models/v460/sac_sidecar.zip"))
     buffer_path: Path = field(default_factory=lambda: Path("models/v460/sac_sidecar.buffer.pkl"))
     signal_path: Path = field(default_factory=lambda: Path("cache/sidecar_signal.json"))
+    norm_path: Path = field(default_factory=lambda: Path("models/v460/sac_sidecar.norm.json"))
 
     # ── 訓練 ──
     total_timesteps: int = 50_000  # 初回 (cold-start)
@@ -554,6 +555,9 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
         # ── 5. Atomic deploy ──
         _atomic_deploy_model(model, cfg, model_version)
 
+        # ── 5b. Feature norms (617# §3.1) ──
+        _export_feature_norms(train_df, cfg.feature_columns, cfg.norm_path)
+
         # ── 6. Sidecar signal 更新 ──
         _update_sidecar_signal(
             model, env, cfg, model_version, eval_result,
@@ -907,6 +911,64 @@ def _atomic_deploy_model(
         try:
             os.unlink(tmp_buffer)
         except (OSError, NameError):
+            pass
+
+
+def _export_feature_norms(
+    train_df: object,
+    feature_columns: list[str],
+    output_path: Path,
+) -> None:
+    """617# §3.1: 訓練データの特徴量統計を norm.json として出力.
+
+    retrain 成功時にモデルと同時に保存し、推論時の Z-score 変換に使用する。
+    """
+    import tempfile
+
+    import pandas as pd
+
+    df = cast(pd.DataFrame, train_df)
+    feature_stats: dict[str, dict[str, float]] = {}
+    for col in feature_columns:
+        if col not in df.columns:
+            continue
+        series = df[col].dropna()
+        if len(series) == 0:
+            continue
+        std_val = float(series.std())
+        feature_stats[col] = {
+            "mean": float(series.mean()),
+            "std": std_val if std_val > 1e-10 else 1e-10,
+            "min": float(series.min()),
+            "max": float(series.max()),
+        }
+
+    payload = {
+        "feature_stats": feature_stats,
+        "metadata": {
+            "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "n_features": len(feature_stats),
+            "n_rows": len(df),
+        },
+    }
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(
+        dir=str(output_path.parent),
+        prefix=".sac_norm_",
+        suffix=".tmp.json",
+    )
+    os.close(fd)
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_path, str(output_path))
+        logger.info(f"Feature norms deployed: {output_path} ({len(feature_stats)} features)")
+    except Exception as e:
+        logger.warning(f"Feature norms save failed (non-critical): {e}")
+        try:
+            os.unlink(tmp_path)
+        except OSError:
             pass
 
 
