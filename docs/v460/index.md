@@ -731,3 +731,4 @@ NNN_phX_TYPE_description.md
 | 622 | impl | [622_cplt_sad_mcb_enablement_and_diagnostic_logging.md](622_cplt_sad_mcb_enablement_and_diagnostic_logging.md) | SAD/MCB 有効化 + skip_gate 診断ログ改善 |
 | 623 | config | [623_cplt_hard_skip_abolition_dynamic_defense_delegation.md](623_cplt_hard_skip_abolition_dynamic_defense_delegation.md) | hard_skip_utc_hours 廃止: 536# 渙原則に基づき skip_gate/ceiling/boost に委譲 |
 | 624 | impl | [624_cplt_kill_drift_fix_and_min_spread_atr.md](624_cplt_kill_drift_fix_and_min_spread_atr.md) | kill duration drift 修正 + min_spread ATR 連動 (536# 渙) |
+| 625 | impl | [625_cplt_min_spread_dynamic_bps_floor.md](625_cplt_min_spread_dynamic_bps_floor.md) | min_spread 動的 BPS フロア (Stoll 1978) + 624# バグ修正 3 件 |
