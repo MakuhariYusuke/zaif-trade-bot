@@ -726,4 +726,4 @@ NNN_phX_TYPE_description.md
 | 617 | spec | [617_phg_feature_parity_and_live_extraction_spec.md](617_phg_feature_parity_and_live_extraction_spec.md) | Feature Parity: Train-Serve Skew 解消と同期バッチ抽出仕様 |
 | 618 | impl | [618_phg_impl_attribution_phase2_and_feature_parity.md](618_phg_impl_attribution_phase2_and_feature_parity.md) | 執行寄与度分析および特徴量 Parity 実装報告 (Gemini) |
 | 619 | report | [619_cplt_milestone_605_619_integration_report.md](619_cplt_milestone_605_619_integration_report.md) | 605#-619# マイルストーン統合報告 + NormLoader clipping 修正 |
-| 620 | fix | — | skip_gate regime_thresholds bypass 修正 + sidecar ceiling 適用順序修正 |
+| 620 | fix | [620_cplt_skip_gate_regime_bypass_and_sidecar_ceiling_fix.md](620_cplt_skip_gate_regime_bypass_and_sidecar_ceiling_fix.md) | skip_gate regime_thresholds bypass 修正 + sidecar ceiling 適用順序修正 |
