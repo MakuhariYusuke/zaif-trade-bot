@@ -370,10 +370,9 @@ cross_venue_lead_lag:
 
 # ---- 211# Spread Anomaly Detector (513# YAML化) ----
 # スプレッドの異常拡大を検出し offset/interval/lot を自動調整する。
-# 現状は未インスタンス化のためこのセクションは設定参照のみ。
-# 有効化にはオーケストレータでのインスタンス化が必要。
+# 607# hot-reload 対応済み: enabled 変更時にコンポーネント再構築 (状態継承あり)。
 spread_anomaly_detector:
-  enabled: false                   # 513# デフォルト無効 (インスタンス化未実装)
+  enabled: true                    # 622# true化 (606# 決定, 607# hot-reload対応)
   wide_ratio: 2.0                  # spread > baseline × 2.0 → WIDE
   dry_ratio: 4.0                   # spread > baseline × 4.0 → DRY
   frozen_ratio: 8.0                # spread > baseline × 8.0 → FROZEN
@@ -381,10 +380,9 @@ spread_anomaly_detector:
 
 # ---- 211# Micro Circuit Breaker (513# YAML化) ----
 # ボラティリティ急騰を検出し offset/interval を自動調整する。
-# 現状は未インスタンス化のためこのセクションは設定参照のみ。
-# dynamic_cycle_interval (306#) が一部の役割を代替中。
+# 607# hot-reload 対応済み: enabled 変更時にコンポーネント再構築 (状態継承あり)。
 micro_circuit_breaker:
-  enabled: false                   # 513# デフォルト無効 (インスタンス化未実装)
+  enabled: true                    # 622# true化 (606# 決定, 607# hot-reload対応)
   caution_sigma: 1.0               # σ > 1.0 → CAUTION
   warning_sigma: 1.5               # σ > 1.5 → WARNING (offset/interval 変更)
   halt_sigma: 2.0                  # σ > 2.0 → HALT (全注文停止)
