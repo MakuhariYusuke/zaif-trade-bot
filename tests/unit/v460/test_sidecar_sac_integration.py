@@ -25,6 +25,7 @@ from scripts.v460.lib.sidecar_signal_io import (
     get_sidecar_signal_cache_stats,
     make_timestamp,
     read_sidecar_signal,
+    read_sidecar_signal_with_status,
     write_sidecar_signal,
 )
 from scripts.v460.lib.sidecar_types import (
@@ -275,6 +276,24 @@ class TestSignalStaleness:
 
         loaded = read_sidecar_signal(out, ttl_sec=60)
         assert loaded is None  # stale
+
+    def test_stale_signal_twice_stays_stale(self, tmp_path: Path) -> None:
+        """629# 回帰テスト: stale signal を 2 回読んでも stale のまま (error に化けない)."""
+        clear_sidecar_signal_cache()
+        old_ts = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+        sig = SidecarSignal(timestamp=old_ts, directional_bias=0.3)
+        out = tmp_path / "sig.json"
+        write_sidecar_signal(sig, out)
+
+        # 1 回目: stale
+        r1, s1 = read_sidecar_signal_with_status(out, ttl_sec=60)
+        assert s1 == "stale"
+        assert r1 is None
+
+        # 2 回目: キャッシュヒットでも stale のまま (修正前は "error" に化けていた)
+        r2, s2 = read_sidecar_signal_with_status(out, ttl_sec=60)
+        assert s2 == "stale", f"expected 'stale' but got '{s2}' (stale→error regression)"
+        assert r2 is None
 
 
 class TestHelpers:

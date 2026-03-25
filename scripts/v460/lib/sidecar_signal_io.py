@@ -183,7 +183,9 @@ def _read_sidecar_signal_core(
             f"Sidecar signal stale: timestamp={signal.timestamp}, "
             f"ttl={ttl_sec}s exceeded"
         )
-        _store_sidecar_cache(abs_path, (mtime, None))
+        # 629# fix: signal 実体を保持し、次回キャッシュヒット時に
+        # _is_stale() で都度判定させる。(mtime, None) だと "error" に化ける。
+        _store_sidecar_cache(abs_path, (mtime, signal))
         return None, "stale"
 
     # キャッシュ更新
