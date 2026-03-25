@@ -114,7 +114,9 @@ class FillTestConfig:
     # CM-3: AS 判定デッドゾーン (bps)
     as_deadzone_bps: float = 2.5  # 052# ±2.5 bps 以内の逆行は AS と判定しない
     # 031# スプレッドフィルター
-    min_spread_jpy: float = 0.0  # 0 = フィルタなし
+    min_spread_jpy: float = 0.0  # 0 = フィルタなし (625# で安全ネットに格下げ)
+    # 625# BPS動的フロア: Stoll (1978) order processing cost
+    min_spread_floor_bps: float = 0.0  # mid × bps / 10000 = 動的最小スプレッド (JPY)
     # 624# ATR連動最小スプレッド (536# シナリオA: 固定値→動的微視的構造)
     min_spread_atr_enabled: bool = False  # True で σ×mid×mult を min_spread に加算
     min_spread_atr_mult: float = 2.0  # σ(fractional) × mid_price × mult = 動的最小スプレッド (JPY)

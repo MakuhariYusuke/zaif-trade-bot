@@ -360,7 +360,7 @@ class TestYAMLIntegrity190:
 
     def test_min_spread_jpy_reduced(self, yaml_config: dict) -> None:
         """190# C: min_spread_jpy が現行 YAML の緩和値に追随している."""
-        assert yaml_config.get("min_spread_jpy") == 500  # 535# 700→500
+        assert yaml_config.get("min_spread_jpy") == 100  # 625# 500→100 (安全ネットに格下げ, BPSフロアが主)
 
     def test_pnl_threshold_relaxed(self, yaml_config: dict) -> None:
         """190# D: pnl_threshold が 0.0→-0.5 に更新."""

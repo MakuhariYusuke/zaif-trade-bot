@@ -1043,23 +1043,39 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         *,
         side: str,
         spread: float,
+        mid_price: float,
         cfg: FillTestConfig,
     ) -> None:
-        """Run the early spread-based infeasibility checks."""
-        # 624# ATR 連動最小スプレッド (536# シナリオ A: 固定値→動的微視的構造)
+        """Run the early spread-based infeasibility checks.
+
+        625# 3-tier min spread (Glosten-Milgrom 1985 decomposition):
+          effective_min = max(S_abs, BPS_floor, ATR_floor)
+          - S_abs:      min_spread_jpy — 絶対安全ネット
+          - BPS_floor:  mid × floor_bps / 10000 — Stoll (1978) order processing cost
+          - ATR_floor:  σ × mid × mult — adverse selection cost
+        """
         effective_min = cfg.min_spread_jpy
-        if cfg.min_spread_atr_enabled and self._last_sigma > 0:
-            mid = self._last_mid or 0.0
-            if mid > 0:
-                atr_min = self._last_sigma * mid * cfg.min_spread_atr_mult
-                effective_min = max(effective_min, atr_min)
+        bps_floor = 0.0
+        atr_floor = 0.0
+
+        # 625# Tier 2: BPS floor (Stoll 1978 order processing cost)
+        if cfg.min_spread_floor_bps > 0 and mid_price > 0:
+            bps_floor = mid_price * cfg.min_spread_floor_bps / 10000
+            effective_min = max(effective_min, bps_floor)
+
+        # 624# Tier 3: ATR floor (σ-based adverse selection cost)
+        if cfg.min_spread_atr_enabled and self._last_sigma > 0 and mid_price > 0:
+            atr_floor = self._last_sigma * mid_price * cfg.min_spread_atr_mult
+            effective_min = max(effective_min, atr_floor)
 
         if spread < effective_min:
             raise InfeasibleQuoteError(
                 reason="spread_too_narrow",
                 msg=(
                     f"Spread too narrow: {spread:.0f} JPY < min {effective_min:.0f}"
-                    f" (base={cfg.min_spread_jpy:.0f}, atr={effective_min - cfg.min_spread_jpy:.0f})"
+                    f" (abs={cfg.min_spread_jpy:.0f}"
+                    f", bps={bps_floor:.0f}"
+                    f", atr={atr_floor:.0f})"
                 ),
             )
 

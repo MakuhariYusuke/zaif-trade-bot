@@ -39,10 +39,13 @@ max_preflight_skip: 10        # preflight 連続失敗の上限
 # ---- スプレッド比例オフセット (CM-1) ----
 spread_offset_ratio: 0.05     # 031# 0.2→0.05: AS 低減のため保守化
 min_offset_jpy: 1.0           # 最小オフセット (JPY)
-min_spread_jpy: 500            # 535# 700→500: 532# P1-6 buy NFQ 94%集中改善 (実勢243-522JPY, 700では大半を阻害)
-# 624# ATR連動最小スプレッド (536# シナリオA: 固定値→動的微視的構造)
-# effective_min = max(min_spread_jpy, σ × mid_price × mult)
-# σ: Parkinson/Roll estimator (maker_microstructure)
+min_spread_jpy: 100            # 625# 500→100: 絶対安全ネット (BPSフロアが主フロアに昇格)
+# 625# 3-tier min spread (Glosten-Milgrom 1985 decomposition):
+#   effective_min = max(S_abs, BPS_floor, ATR_floor)
+#   S_abs     = min_spread_jpy        — 絶対安全ネット (mid 不正時の最終防衛)
+#   BPS_floor = mid × bps / 10000     — Stoll (1978) order processing cost
+#   ATR_floor = σ × mid × mult        — adverse selection cost
+min_spread_floor_bps: 3.8      # BTC 13M時 ≈ 494JPY (旧500JPYと同等, 価格連動で自動調整)
 min_spread_atr_enabled: true   # σベース動的最小スプレッド有効化
 min_spread_atr_mult: 2.0       # σ × mid × 2.0 = ATR proxy の最小スプレッド
 

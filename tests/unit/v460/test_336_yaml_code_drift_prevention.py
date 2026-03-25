@@ -121,6 +121,8 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "macro_sell_timeout_weak_up",  # 458# macro sell timeout
     "max_consecutive_trending_sell_skip",
     "min_spread_jpy",
+    "min_spread_atr_enabled",  # 624# ATR連動
+    "min_spread_floor_bps",  # 625# BPS動的フロア
     "micro_timeout_enabled",  # 454# Step 1: 保守的設定で有効化
     "micro_timeout_wait_sec_sell",
     "narrow_spread_boost_buy",
