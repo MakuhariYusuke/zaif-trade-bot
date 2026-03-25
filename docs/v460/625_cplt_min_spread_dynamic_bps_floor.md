@@ -34,7 +34,7 @@ $$\text{effective\_min} = \max\left(\underbrace{S_{\text{abs}}}_{\text{Tier 1}},
 | Tier | パラメータ | 役割 | 値 |
 |------|-----------|------|-----|
 | 1 | `min_spread_jpy: 100` | 絶対安全ネット (mid 不正時) | 100 JPY |
-| 2 | `min_spread_floor_bps: 3.8` | 価格連動フロア | BTC 13M → 494 JPY |
+| 2 | `min_spread_floor_bps: 0.38` | 価格連動フロア | BTC 13M → 494 JPY |
 | 3 | `min_spread_atr_mult: 2.0` | ボラティリティ連動 | σ × mid × 2.0 |
 
 ## 624# バグ修正 (3 件)
@@ -61,7 +61,7 @@ $$\text{effective\_min} = \max\left(\underbrace{S_{\text{abs}}}_{\text{Tier 1}},
 
 | ファイル | 変更内容 |
 |---------|---------|
-| `configs/v460/fill_test.yaml` | `min_spread_jpy: 500→100`, `min_spread_floor_bps: 3.8` 追加 |
+| `configs/v460/fill_test.yaml` | `min_spread_jpy: 500→100`, `min_spread_floor_bps: 0.38` 追加 (※631#で3.8→0.38修正: 10×計算ミス) |
 | `scripts/v460/lib/fill_config.py` | `min_spread_floor_bps` フィールド追加 |
 | `scripts/v460/lib/fill_config_parser.py` | `flat_keys` に 3 フィールド追加 |
 | `scripts/v460/lib/maker_price.py` | 3-tier min spread 実装 + Bug 1/2 修正 |
@@ -70,7 +70,7 @@ $$\text{effective\_min} = \max\left(\underbrace{S_{\text{abs}}}_{\text{Tier 1}},
 
 ## 価格帯別 BPS フロアの変化
 
-| BTC/JPY | 固定 500 JPY (旧) | BPS × 3.8 (新) | 差分 |
+| BTC/JPY | 固定 500 JPY (旧) | BPS × 0.38 (新) | 差分 |
 |---------|:---:|:---:|:---:|
 | 10,000,000 | 500 | 380 | -24% |
 | 13,000,000 | 500 | 494 | -1% |
