@@ -40,6 +40,11 @@ max_preflight_skip: 10        # preflight 連続失敗の上限
 spread_offset_ratio: 0.05     # 031# 0.2→0.05: AS 低減のため保守化
 min_offset_jpy: 1.0           # 最小オフセット (JPY)
 min_spread_jpy: 500            # 535# 700→500: 532# P1-6 buy NFQ 94%集中改善 (実勢243-522JPY, 700では大半を阻害)
+# 624# ATR連動最小スプレッド (536# シナリオA: 固定値→動的微視的構造)
+# effective_min = max(min_spread_jpy, σ × mid_price × mult)
+# σ: Parkinson/Roll estimator (maker_microstructure)
+min_spread_atr_enabled: true   # σベース動的最小スプレッド有効化
+min_spread_atr_mult: 2.0       # σ × mid × 2.0 = ATR proxy の最小スプレッド
 
 # ---- リトライ (CM-2) ----
 max_order_retries: 2              # 041# 1→2: api_error 削減のため

@@ -1046,10 +1046,21 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         cfg: FillTestConfig,
     ) -> None:
         """Run the early spread-based infeasibility checks."""
-        if spread < cfg.min_spread_jpy:
+        # 624# ATR 連動最小スプレッド (536# シナリオ A: 固定値→動的微視的構造)
+        effective_min = cfg.min_spread_jpy
+        if cfg.min_spread_atr_enabled and self._last_sigma > 0:
+            mid = self._last_mid or 0.0
+            if mid > 0:
+                atr_min = self._last_sigma * mid * cfg.min_spread_atr_mult
+                effective_min = max(effective_min, atr_min)
+
+        if spread < effective_min:
             raise InfeasibleQuoteError(
                 reason="spread_too_narrow",
-                msg=f"Spread too narrow: {spread:.0f} JPY < min {cfg.min_spread_jpy:.0f}",
+                msg=(
+                    f"Spread too narrow: {spread:.0f} JPY < min {effective_min:.0f}"
+                    f" (base={cfg.min_spread_jpy:.0f}, atr={effective_min - cfg.min_spread_jpy:.0f})"
+                ),
             )
 
         if (
@@ -1177,6 +1188,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         self._enforce_spread_guards(
             side=side,
             spread=spread,
+            mid_price=mid_price,
             cfg=cfg,
         )
 

@@ -102,7 +102,6 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "buy_dynamic_kill_regime_thresholds",
     "buy_dynamic_kill_ewma_time_decay_tau_sec",
     "buy_dynamic_kill_ewma_input_clamp_bps",  # 549# Winsorization clamp
-    "buy_dynamic_kill_max_duration_sec",
     "buy_velocity_skip_threshold_bps",
     "dd_cooldown_rearm_budget_bps",
     "dd_cooldown_release_sec",
@@ -145,7 +144,6 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "sell_dynamic_kill_window",  # 519# 50→30
     "sell_dynamic_kill_ewma_input_clamp_bps",  # 549# Winsorization clamp
     "sell_dynamic_kill_ewma_time_decay_tau_sec",
-    "sell_dynamic_kill_max_duration_sec",  # YAML=600 vs code=1800
     "sell_age_cap_sec",
     "sell_hour_offset_boost",
     "sell_max_spread_jpy",

@@ -115,6 +115,9 @@ class FillTestConfig:
     as_deadzone_bps: float = 2.5  # 052# ±2.5 bps 以内の逆行は AS と判定しない
     # 031# スプレッドフィルター
     min_spread_jpy: float = 0.0  # 0 = フィルタなし
+    # 624# ATR連動最小スプレッド (536# シナリオA: 固定値→動的微視的構造)
+    min_spread_atr_enabled: bool = False  # True で σ×mid×mult を min_spread に加算
+    min_spread_atr_mult: float = 2.0  # σ(fractional) × mid_price × mult = 動的最小スプレッド (JPY)
     # 保存
     batch_size: int = 10  # バッチ保存のサイクル数
     batch_flush_interval_sec: float = 600.0  # 079# 時間ベース定期flush (秒)
@@ -743,7 +746,7 @@ class FillTestConfig:
     sell_dynamic_kill_max_stale_cycles: int = 0    # 336# drift fix: YAML=0 (269# probe無効)
     sell_dynamic_kill_max_force_probes: int = 0    # 336# drift fix: YAML=0 (269# force-release無効)
     # 273# kill 時間上限 (268# I5: Pattern B kill↔halt 相互ロック防止)
-    sell_dynamic_kill_max_duration_sec: float = 1800.0  # 336# drift fix: YAML=1800 (273#)
+    sell_dynamic_kill_max_duration_sec: float = 600.0  # 624# drift fix: YAML=600 (540# 短縮)
     sell_dynamic_kill_ewma_alpha: float = 0.05  # 344# 342#D: EWMA α (0=無効)
     sell_dynamic_kill_ewma_time_decay_tau_sec: float = 0.0  # 353# EWMA 時間減衰 τ (0=無効)
     sell_dynamic_kill_ewma_input_clamp_bps: float = 0.0  # 549# Winsorization: EWMA入力クランプ (0=無効)
@@ -757,7 +760,7 @@ class FillTestConfig:
     buy_dynamic_kill_max_stale_cycles: int = 0     # 336# drift fix: YAML=0 (269# probe無効)
     buy_dynamic_kill_max_force_probes: int = 0     # 336# drift fix: YAML=0 (269# force-release無効)
     # 273# kill 時間上限 (268# I5)
-    buy_dynamic_kill_max_duration_sec: float = 1800.0  # 336# drift fix: YAML=1800 (273#)
+    buy_dynamic_kill_max_duration_sec: float = 900.0  # 624# drift fix: YAML=900 (370# 短縮)
     buy_dynamic_kill_ewma_alpha: float = 0.05  # 344# 342#D: EWMA α (0=無効)
     buy_dynamic_kill_ewma_time_decay_tau_sec: float = 0.0  # 353# EWMA 時間減衰 τ (0=無効)
     buy_dynamic_kill_ewma_input_clamp_bps: float = 0.0  # 549# Winsorization (0=無効)
