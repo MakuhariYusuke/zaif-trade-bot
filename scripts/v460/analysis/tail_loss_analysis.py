@@ -29,6 +29,7 @@ import sys
 from collections import defaultdict
 from collections.abc import Sequence
 from datetime import datetime, timezone
+from io import StringIO
 from pathlib import Path
 from typing import Final, TypedDict, cast
 
@@ -41,6 +42,7 @@ from scripts.v460.analysis.analysis_common import (
     extract_pnl_array,
     load_and_filter_records,
     record_to_utc_hour,
+    write_output,
     write_json_output,
 )
 from ztb.utils.safety import safe_to_finite
@@ -502,9 +504,14 @@ def print_analysis(
     percentile: float = _DEFAULT_PERCENTILE,
 ) -> None:
     """分析結果をコンソール出力."""
-    print("=" * 70)
-    print(f"  346# S-7: テール損失分析 (p{percentile:.0f} 以下)")
-    print("=" * 70)
+    buffer = StringIO()
+
+    def emit(*values: object) -> None:
+        print(*values, file=buffer)
+
+    emit("=" * 70)
+    emit(f"  346# S-7: テール損失分析 (p{percentile:.0f} 以下)")
+    emit("=" * 70)
 
     for side in ["sell", "buy"]:
         d = analysis.get(side)
@@ -513,7 +520,7 @@ def print_analysis(
 
         msg = d.get("message", "")
         if msg:
-            print(f"\n  [{side.upper()}] {msg}")
+            emit(f"\n  [{side.upper()}] {msg}")
             continue
 
         n = d.get("n", 0)
@@ -522,38 +529,40 @@ def print_analysis(
         tail_mean = d.get("tail_mean_pnl_bps")
         tail_p5 = d.get("tail_p5_pnl_bps")
 
-        print(f"\n{'─' * 70}")
-        print(f"  [{side.upper()}] n={n}, tail(p{percentile:.0f}以下): n={tail_n}")
-        print(f"{'─' * 70}")
-        print(f"    tail threshold:  {threshold:+.4f} bps")
+        emit(f"\n{'─' * 70}")
+        emit(f"  [{side.upper()}] n={n}, tail(p{percentile:.0f}以下): n={tail_n}")
+        emit(f"{'─' * 70}")
+        emit(f"    tail threshold:  {threshold:+.4f} bps")
         if tail_mean is not None:
-            print(f"    tail mean pnl:   {tail_mean:+.4f} bps")
+            emit(f"    tail mean pnl:   {tail_mean:+.4f} bps")
         if tail_p5 is not None:
-            print(f"    tail p5 (worst): {tail_p5:+.4f} bps")
+            emit(f"    tail p5 (worst): {tail_p5:+.4f} bps")
 
         # AS
         as_tail = d.get("as_rate_tail", 0.0)
         as_total = d.get("as_rate_total", 0.0)
         as_overrep = d.get("as_overrep")
-        print(f"\n    [AS] tail={as_tail:.1%} vs total={as_total:.1%}"
-              f" (overrep={as_overrep:.2f}x)" if as_overrep else "")
+        emit(
+            f"\n    [AS] tail={as_tail:.1%} vs total={as_total:.1%}"
+            f" (overrep={as_overrep:.2f}x)" if as_overrep else ""
+        )
 
         # Early Exit
         ee_tail = d.get("early_exit_rate_tail")
         ee_total = d.get("early_exit_rate_total")
         if ee_tail is not None and ee_total is not None:
-            print(f"    [EE] tail={ee_tail:.1%} vs total={ee_total:.1%}")
+            emit(f"    [EE] tail={ee_tail:.1%} vs total={ee_total:.1%}")
 
         # Balance forced
         bf_tail = d.get("balance_forced_rate_tail")
         bf_total = d.get("balance_forced_rate_total")
         if bf_tail is not None and bf_total is not None:
-            print(f"    [BF] tail={bf_tail:.1%} vs total={bf_total:.1%}")
+            emit(f"    [BF] tail={bf_tail:.1%} vs total={bf_total:.1%}")
 
         # Regime over-representation
         regime_overrep = d.get("regime_overrep", {})
         if regime_overrep:
-            print(f"\n    Regime over-representation:")
+            emit("\n    Regime over-representation:")
             sorted_regimes = sorted(
                 regime_overrep.items(),
                 key=lambda x: x[1]["overrep_ratio"],
@@ -561,28 +570,32 @@ def print_analysis(
             )
             for regime, info in sorted_regimes:
                 marker = " ⚠" if info["overrep_ratio"] >= _OVERREP_SIGNIFICANT_THRESHOLD else ""
-                print(f"      {regime:15s}: tail={info['tail_n']:3d}/{info['total_n']:4d}"
-                      f" ({info['tail_share']:.1%} vs {info['total_share']:.1%})"
-                      f" overrep={info['overrep_ratio']:.2f}x{marker}")
+                emit(
+                    f"      {regime:15s}: tail={info['tail_n']:3d}/{info['total_n']:4d}"
+                    f" ({info['tail_share']:.1%} vs {info['total_share']:.1%})"
+                    f" overrep={info['overrep_ratio']:.2f}x{marker}"
+                )
 
         # Hour over-representation (top-5)
         hour_overrep = d.get("hour_overrep", [])
         if hour_overrep:
-            print(f"\n    Hour over-representation (top-5):")
+            emit("\n    Hour over-representation (top-5):")
             for h_entry in hour_overrep[:5]:
                 marker = " ⚠" if h_entry["overrep_ratio"] >= _OVERREP_SIGNIFICANT_THRESHOLD else ""
                 jst_h = (h_entry["hour"] + 9) % 24
-                print(f"      UTC {h_entry['hour']:02d} (JST {jst_h:02d}): "
-                      f"tail={h_entry['tail_n']:3d}/{h_entry['total_n']:4d}"
-                      f" overrep={h_entry['overrep_ratio']:.2f}x{marker}")
+                emit(
+                    f"      UTC {h_entry['hour']:02d} (JST {jst_h:02d}): "
+                    f"tail={h_entry['tail_n']:3d}/{h_entry['total_n']:4d}"
+                    f" overrep={h_entry['overrep_ratio']:.2f}x{marker}"
+                )
 
         # Decision path
         path_counts = d.get("decision_path_counts", {})
         if path_counts:
-            print(f"\n    Decision path (tail):")
+            emit("\n    Decision path (tail):")
             for path, count in sorted(path_counts.items(), key=lambda x: -x[1]):
                 pct = count / tail_n if tail_n > 0 else 0
-                print(f"      {path:25s}: {count:3d} ({pct:.1%})")
+                emit(f"      {path:25s}: {count:3d} ({pct:.1%})")
 
         # Feature stats
         for label, stats_key in [
@@ -597,23 +610,27 @@ def print_analysis(
             t_mean = stats.get("tail_mean")
             a_mean = stats.get("total_mean")
             if t_mean is not None and a_mean is not None:
-                print(f"\n    [{label}] tail_mean={t_mean:+.4f} vs total_mean={a_mean:+.4f}")
+                emit(f"\n    [{label}] tail_mean={t_mean:+.4f} vs total_mean={a_mean:+.4f}")
                 t_med = stats.get("tail_median")
                 a_med = stats.get("total_median")
                 if t_med is not None and a_med is not None:
-                    print(f"      tail_median={t_med:+.4f} vs total_median={a_med:+.4f}")
+                    emit(f"      tail_median={t_med:+.4f} vs total_median={a_med:+.4f}")
 
         # Actionable filters
         actionable = d.get("actionable_filters", [])
         if actionable:
-            print(f"\n    {'─' * 50}")
-            print(f"    Actionable skip rule 候補 (効率性順):")
+            emit(f"\n    {'─' * 50}")
+            emit("    Actionable skip rule 候補 (効率性順):")
             for i, prop in enumerate(actionable, 1):
                 tail_pct = prop.get("tail_avoided_pct", 0)
-                print(f"      [{i}] {prop['type']}: {prop['condition']}")
-                print(f"          回避テール: {prop['tail_avoided']}件 ({tail_pct:.0%})"
-                      f"  犠牲非テール: {prop['sacrifice_non_tail']}件"
-                      f"  効率: {prop['efficiency']:.2f}")
+                emit(f"      [{i}] {prop['type']}: {prop['condition']}")
+                emit(
+                    f"          回避テール: {prop['tail_avoided']}件 ({tail_pct:.0%})"
+                    f"  犠牲非テール: {prop['sacrifice_non_tail']}件"
+                    f"  効率: {prop['efficiency']:.2f}"
+                )
+
+    write_output(buffer.getvalue().rstrip())
 
 
 # ======================================================================
@@ -656,7 +673,7 @@ def main(args: argparse.Namespace | Sequence[str] | None = None) -> dict[str, Si
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
     results_dir = Path(args.results_dir)
-    print(f"\n  Loading fill records from: {results_dir}")
+    write_output(f"Loading fill records from: {results_dir}")
 
     records = load_and_filter_records(
         str(results_dir),
@@ -665,10 +682,10 @@ def main(args: argparse.Namespace | Sequence[str] | None = None) -> dict[str, Si
         date_to=args.date_to,
         include_emergency=False,
     )
-    print(f"  Total records: {len(records)}")
+    write_output(f"Total records: {len(records)}")
 
     filled = extract_filled(records)
-    print(f"  Filled records: {len(filled)}")
+    write_output(f"Filled records: {len(filled)}")
 
     # 分析実行
     analysis = analyze_tail_loss(records, percentile=args.percentile)
@@ -703,7 +720,7 @@ def main(args: argparse.Namespace | Sequence[str] | None = None) -> dict[str, Si
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     write_json_output(output_data, output_path)
-    print(f"\n  JSON saved: {output_path}")
+    write_output(f"JSON saved: {output_path}")
 
     return analysis
 

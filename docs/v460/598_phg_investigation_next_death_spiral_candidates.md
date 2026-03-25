@@ -207,6 +207,31 @@ Success: no issues found in 3 source files
 2. loader は専用のままでも、filter/output 契約は `analysis_common` に寄せる
 3. script 固有の集計や report formatting は無理に共通化しない
 
+2026-03-26 追加:
+
+- `reproduce_152_metrics.py`
+- `oracle_test.py`
+- `oracle_baseline.py`
+- `tail_loss_analysis.py`
+
+について、人向け report 出力も `analysis_common.write_output(...)` へ寄せた。
+
+判断:
+
+1. JSON 出力はすでに `write_json_output(...)` へ揃っていた
+2. 次の drift は text/report 側で起きやすい
+3. ここを buffer 化して helper へ統一すると
+   - stdout / file 出力の扱いが一貫する
+   - test で monkeypatch しやすい
+   - targeted mypy にも悪影響がない
+
+このため、analysis batch の次の基準形は
+
+- machine-readable: `write_json_output(...)`
+- human-readable: `write_output(...)`
+
+の 2 本立てとする。
+
 2026-03-25 追加棚卸し:
 
 - `print_ab_summary.py`

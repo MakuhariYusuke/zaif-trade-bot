@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 
 from collections.abc import Sequence
+from io import StringIO
 from ztb.utils.safety import safe_to_finite
 import sys
 from collections import defaultdict
@@ -43,7 +44,7 @@ from ztb.metrics.fill_quality import (
     iter_fill_records_glob,
     partition_clean_records,
 )
-from scripts.v460.analysis.analysis_common import add_results_dir_arg, write_json_output
+from scripts.v460.analysis.analysis_common import add_results_dir_arg, write_output, write_json_output
 from ztb.utils.dataclass_utils import shallow_asdict
 
 
@@ -314,7 +315,7 @@ def run_oracle_baseline(
     del clean
 
     if all_agg.n_total == 0:
-        print("[oracle] filled かつ PnL 計測済みのレコードがありません。")
+        write_output("[oracle] filled かつ PnL 計測済みのレコードがありません。")
         return {"error": "no filled records"}
 
     # --- 全体 ---
@@ -387,32 +388,38 @@ def run_oracle_baseline(
     }
 
     # --- 表示 ---
-    print("=" * 72)
-    print("  131# D2: Oracle PnL Baseline Report")
-    print(f"  BTC price assumption: ¥{btc_price_jpy:,.0f}")
-    print(f"  Default lot: {lot_btc} BTC")
-    print("=" * 72)
+    buffer = StringIO()
 
-    print(_format_metrics(all_metrics))
-    print(_format_metrics(buy_metrics))
-    print(_format_metrics(sell_metrics))
+    def emit(*values: object) -> None:
+        print(*values, file=buffer)
+
+    emit("=" * 72)
+    emit("  131# D2: Oracle PnL Baseline Report")
+    emit(f"  BTC price assumption: ¥{btc_price_jpy:,.0f}")
+    emit(f"  Default lot: {lot_btc} BTC")
+    emit("=" * 72)
+
+    emit(_format_metrics(all_metrics))
+    emit(_format_metrics(buy_metrics))
+    emit(_format_metrics(sell_metrics))
 
     for m in regime_metrics:
-        print(_format_metrics(m))
+        emit(_format_metrics(m))
 
-    print("\n  --- Lot Size Scenarios (月間) ---")
+    emit("\n  --- Lot Size Scenarios (月間) ---")
     for s in lot_scenarios:
-        print(
+        emit(
             f"    {s['lot_btc']:.3f} BTC: "
             f"actual={s['monthly_actual_jpy']:+,.0f} JPY, "
             f"oracle={s['monthly_oracle_jpy']:+,.0f} JPY, "
-            f"gap={s['improvement_gap_jpy']:+,.0f} JPY"
+            f"gap={s['improvement_gap_jpy']:+,.0f} JPY",
         )
 
-    print(f"\n  --- ph3 Pre-check ---")
-    print(f"    Oracle PnL30 > 0: {'YES' if ph3_check['oracle_pnl30_positive'] else 'NO'}")
-    print(f"    Verdict: {ph3_check['verdict']}")
-    print("=" * 72)
+    emit("\n  --- ph3 Pre-check ---")
+    emit(f"    Oracle PnL30 > 0: {'YES' if ph3_check['oracle_pnl30_positive'] else 'NO'}")
+    emit(f"    Verdict: {ph3_check['verdict']}")
+    emit("=" * 72)
+    write_output(buffer.getvalue().rstrip())
 
     # --- レポート構築 ---
     report = {
@@ -433,7 +440,7 @@ def run_oracle_baseline(
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
         write_json_output(report, out)
-        print(f"\n  Report saved to: {out}")
+        write_output(f"Report saved to: {out}")
 
     return report
 

@@ -21,6 +21,7 @@ import logging
 import sys
 from collections.abc import Sequence
 from datetime import datetime
+from io import StringIO
 from pathlib import Path
 from typing import TypedDict, cast
 
@@ -28,7 +29,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 from ztb.io.jsonl import append_jsonl
-from scripts.v460.analysis.analysis_common import add_results_dir_arg, write_json_output
+from scripts.v460.analysis.analysis_common import add_results_dir_arg, write_output, write_json_output
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
@@ -307,69 +308,76 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     result = run_oracle_test(results_dir=args.results_dir)
 
-    # 結果表示
-    print("\n" + "=" * 70)
-    print("Z2 Oracle テスト結果 (121# §6.3, 122# R7)")
-    print("=" * 70)
+    buffer = StringIO()
+
+    def emit(*values: object) -> None:
+        print(*values, file=buffer)
+
+    emit("\n" + "=" * 70)
+    emit("Z2 Oracle テスト結果 (121# §6.3, 122# R7)")
+    emit("=" * 70)
 
     if result.get("status") != "completed":
-        print(f"ERROR: {result.get('reason', 'unknown')}")
+        emit(f"ERROR: {result.get('reason', 'unknown')}")
+        write_output(buffer.getvalue().rstrip())
         return
 
-    print(f"  Total records: {result['total_records']}")
-    print(f"  Filled records: {result['filled_records']}")
+    emit(f"  Total records: {result['total_records']}")
+    emit(f"  Filled records: {result['filled_records']}")
 
     for label, data in result["oracle"].items():
-        print(f"\n  --- {label.upper()} ---")
+        emit(f"\n  --- {label.upper()} ---")
         if data.get("status") == "no_data":
-            print(f"    No data available")
+            emit("    No data available")
             continue
-        print(f"    Samples:             {data['n']}")
-        print(f"    Baseline mean:       {data['baseline_mean_bps']:+.4f} bps")
-        print(f"    Oracle Skip mean:    {data['oracle_skip_mean_bps']:+.4f} bps")
-        print(f"    Oracle Flip mean:    {data['oracle_flip_mean_bps']:+.4f} bps")
-        print(f"    Skip improvement:    {data['oracle_skip_improvement_bps']:+.4f} bps")
-        print(f"    Profitable rate:     {data['profitable_rate']:.1%}")
+        emit(f"    Samples:             {data['n']}")
+        emit(f"    Baseline mean:       {data['baseline_mean_bps']:+.4f} bps")
+        emit(f"    Oracle Skip mean:    {data['oracle_skip_mean_bps']:+.4f} bps")
+        emit(f"    Oracle Flip mean:    {data['oracle_flip_mean_bps']:+.4f} bps")
+        emit(f"    Skip improvement:    {data['oracle_skip_improvement_bps']:+.4f} bps")
+        emit(f"    Profitable rate:     {data['profitable_rate']:.1%}")
 
         if data.get("side_analysis"):
             for side, sa in data["side_analysis"].items():
-                print(f"    [{side:4s}] n={sa['n']:4d}, mean={sa['mean_bps']:+.4f}, "
-                      f"profitable={sa['profitable_rate']:.1%}, "
-                      f"oracle_skip={sa['oracle_skip_mean_bps']:+.4f}")
+                emit(
+                    f"    [{side:4s}] n={sa['n']:4d}, mean={sa['mean_bps']:+.4f}, "
+                    f"profitable={sa['profitable_rate']:.1%}, "
+                    f"oracle_skip={sa['oracle_skip_mean_bps']:+.4f}",
+                )
 
-    print(f"\n  === AS Cost Analysis (158# P0-4) ===")
+    emit("\n  === AS Cost Analysis (158# P0-4) ===")
     as_cost = result.get("as_cost", {})
     if as_cost.get("n_as"):
-        print(f"    AS records:   {as_cost['n_as']} ({as_cost['as_ratio']:.1%})")
-        print(f"    Non-AS:       {as_cost['n_non_as']} ({1-as_cost['as_ratio']:.1%})")
-        print(f"    AS avg PnL30: {as_cost['as_avg_pnl30_bps']:+.4f} bps")
-        print(f"    Non-AS PnL30: {as_cost['non_as_avg_pnl30_bps']:+.4f} bps")
-        print(f"    AS cost:      {as_cost['as_cost_bps']:+.4f} bps  (AS_ratio x |avg_AS_loss|)")
-        print(f"    Oracle net:   {as_cost['oracle_net_of_as_bps']:+.4f} bps  (Oracle Flip - AS cost)")
+        emit(f"    AS records:   {as_cost['n_as']} ({as_cost['as_ratio']:.1%})")
+        emit(f"    Non-AS:       {as_cost['n_non_as']} ({1-as_cost['as_ratio']:.1%})")
+        emit(f"    AS avg PnL30: {as_cost['as_avg_pnl30_bps']:+.4f} bps")
+        emit(f"    Non-AS PnL30: {as_cost['non_as_avg_pnl30_bps']:+.4f} bps")
+        emit(f"    AS cost:      {as_cost['as_cost_bps']:+.4f} bps  (AS_ratio x |avg_AS_loss|)")
+        emit(f"    Oracle net:   {as_cost['oracle_net_of_as_bps']:+.4f} bps  (Oracle Flip - AS cost)")
         verdict = "PASS" if as_cost["oracle_net_of_as_bps"] > 0 else "FAIL"
-        print(f"    158# P0-4 verdict: {verdict}")
+        emit(f"    158# P0-4 verdict: {verdict}")
     else:
-        print("    No AS data available")
+        emit("    No AS data available")
 
-    print(f"\n  === Kill Switch ===")
+    emit("\n  === Kill Switch ===")
     ks = result.get("kill_switch", {})
     for key in ["pnl30", "pnl120"]:
         status = ks.get(key, "N/A")
         oracle_val = ks.get(f"oracle_{key}_bps", "?")
         action = ks.get(f"{key}_action", "")
-        print(f"    {key}: {status} (Oracle={oracle_val} bps)")
+        emit(f"    {key}: {status} (Oracle={oracle_val} bps)")
         if action:
-            print(f"      → {action}")
+            emit(f"      → {action}")
 
-    print("=" * 70)
+    emit("=" * 70)
+    write_output(buffer.getvalue().rstrip())
 
     # JSONL ログ出力
     log_path = Path("logs") / "oracle_test.jsonl"
     append_jsonl(log_path, [result], ensure_ascii=False, default=str)
-    print(f"\n  Result logged to {log_path}")
+    write_output(f"Result logged to {log_path}")
 
     # 全結果 JSON
-    print()
     write_json_output(result)
 
 

@@ -219,6 +219,31 @@
   - `test_155_hindsight_review.py`: hindsight_filter / FillConfig / cancel_reasons / source helper import を先頭集約
   - `test_enricher_skip_gate.py`: sklearn / skip_gate / data_loader / datetime の反復 import を先頭集約
 
+## 2026-03-26 / Session 037-613
+
+### 実施
+- analysis report 出力の shared helper 化
+  - `reproduce_152_metrics.py`
+  - `oracle_test.py`
+  - `oracle_baseline.py`
+  - `tail_loss_analysis.py`
+- 人向け report を buffer 化し、`analysis_common.write_output(...)` へ統一
+- `test_analysis_output_contracts.py` に focused 回帰を追加
+
+### 結果
+- machine-readable は `write_json_output(...)`
+- human-readable は `write_output(...)`
+  という analysis 側の基準形が一段明確になった
+- targeted mypy:
+  - 上記 4 file `Success: no issues found`
+- focused pytest:
+  - `67 passed, 4 skipped`
+
+### 次アクション
+1. `analysis / metrics bridge` の残差確認
+2. テスト軽量化 batch を継続
+3. 触っていない `analyze_fill_logs.py` 側の並行差分が落ち着いたら bridge 整理を再開
+
 ## 2026-03-23 / Session 037-561
 
 ### 実施

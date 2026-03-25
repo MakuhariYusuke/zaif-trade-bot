@@ -3,8 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import scripts.v460.analysis.hour_matched_comparison as hour_matched_comparison
+import scripts.v460.analysis.oracle_baseline as oracle_baseline
+import scripts.v460.analysis.oracle_test as oracle_test
+import scripts.v460.analysis.reproduce_152_metrics as reproduce_152_metrics
 import scripts.v460.analysis.tail_loss_analysis as tail_loss_analysis
 import scripts.v460.analysis.vg_and_trend as vg_and_trend
+from ztb.metrics.fill_quality import FillRecord
 
 
 def test_hour_matched_main_uses_shared_json_output(monkeypatch, tmp_path: Path) -> None:
@@ -97,6 +101,129 @@ def test_tail_loss_main_uses_shared_json_output(monkeypatch, tmp_path: Path) -> 
     assert captured["data"]["analysis"] == analysis
 
 
+def test_tail_loss_main_uses_shared_text_output(monkeypatch, tmp_path: Path) -> None:
+    text_outputs: list[str] = []
+    records = [{"filled": True, "post_fill_30s_pnl": -1.0}]
+    analysis = {"buy": {"message": "ok"}}
+
+    monkeypatch.setattr(tail_loss_analysis, "load_and_filter_records", lambda *args, **kwargs: records)
+    monkeypatch.setattr(tail_loss_analysis, "extract_filled", lambda recs: recs)
+    monkeypatch.setattr(tail_loss_analysis, "analyze_tail_loss", lambda recs, percentile: analysis)
+    monkeypatch.setattr(tail_loss_analysis, "write_output", lambda content, output_path=None: text_outputs.append(content))
+    monkeypatch.setattr(tail_loss_analysis, "write_json_output", lambda data, output_path=None: None)
+
+    tail_loss_analysis.main(["--results-dir", str(tmp_path), "--output", str(tmp_path / "tail.json")])
+
+    assert any("Loading fill records from" in output for output in text_outputs)
+    assert any("346# S-7: テール損失分析" in output for output in text_outputs)
+    assert any("JSON saved:" in output for output in text_outputs)
+
+
+def test_reproduce_152_report_uses_shared_text_output(monkeypatch, tmp_path: Path) -> None:
+    captured: dict[str, object] = {}
+    metrics = {
+        "total_records": 1,
+        "records_with_order_quantity": 1,
+        "filled": 1,
+        "fill_rate_pct": 100.0,
+        "regime_tagged": 1,
+        "regime_distribution": {"ranging": 1},
+        "regime_pnl_30s": {"ranging": {"fills": 1, "avg_pnl_bps": 0.5, "sum_pnl_bps": 0.5}},
+        "lot_distribution": {"0.001": 1},
+        "side_regime_pnl": {"buy": {"ranging": {"fills": 1, "avg_pnl_bps": 0.5, "sum_pnl_bps": 0.5}}},
+        "hour_pnl": {"00": {"fills": 1, "avg_pnl_bps": 0.5}},
+        "run_ids": {"run-a": 1},
+    }
+
+    monkeypatch.setattr(reproduce_152_metrics, "load_records_from_args", lambda args: [{"cycle_id": "c1"}])
+    monkeypatch.setattr(reproduce_152_metrics, "_compute_metrics", lambda records, include_zero_qty=False: metrics)
+    monkeypatch.setattr(
+        reproduce_152_metrics,
+        "write_output",
+        lambda content, output_path=None: captured.update({"content": content, "output_path": output_path}),
+    )
+
+    reproduce_152_metrics.main(["--data-dir", str(tmp_path)])
+
+    assert captured["output_path"] is None
+    assert "152# 集計再現レポート" in str(captured["content"])
+
+
+def test_oracle_test_main_uses_shared_text_output(monkeypatch, tmp_path: Path) -> None:
+    text_outputs: list[str] = []
+    result: oracle_test.OracleRunResult = {
+        "status": "completed",
+        "total_records": 2,
+        "filled_records": 2,
+        "oracle": {
+            "pnl30": {
+                "status": "ok",
+                "n": 2,
+                "baseline_mean_bps": 0.5,
+                "oracle_skip_mean_bps": 0.8,
+                "oracle_flip_mean_bps": 1.0,
+                "oracle_skip_improvement_bps": 0.3,
+                "profitable_rate": 0.5,
+            },
+        },
+        "as_cost": {},
+        "kill_switch": {
+            "pnl30": "PASS",
+            "oracle_pnl30_bps": 1.2,
+            "pnl120": "PASS",
+            "oracle_pnl120_bps": 1.1,
+        },
+    }
+
+    monkeypatch.setattr(oracle_test, "run_oracle_test", lambda results_dir="results/v460/fill_test": result)
+    monkeypatch.setattr(oracle_test, "append_jsonl", lambda *args, **kwargs: None)
+    monkeypatch.setattr(oracle_test, "write_output", lambda content, output_path=None: text_outputs.append(content))
+    monkeypatch.setattr(oracle_test, "write_json_output", lambda data, output_path=None: None)
+
+    oracle_test.main(["--results-dir", str(tmp_path)])
+
+    assert any("Z2 Oracle テスト結果" in output for output in text_outputs)
+    assert any("Result logged to" in output for output in text_outputs)
+
+
+def test_oracle_baseline_uses_shared_text_output(monkeypatch, tmp_path: Path) -> None:
+    text_outputs: list[str] = []
+    records = [
+        FillRecord(
+            cycle_id="o1",
+            timestamp=1_700_000_000.0,
+            side="buy",
+            order_price=10_000_000,
+            order_quantity=0.001,
+            filled=True,
+            post_fill_30s_pnl=0.8,
+            post_fill_60s_pnl=0.6,
+            post_fill_120s_pnl=0.4,
+            regime="ranging",
+        ),
+        FillRecord(
+            cycle_id="o2",
+            timestamp=1_700_000_120.0,
+            side="sell",
+            order_price=10_000_000,
+            order_quantity=0.001,
+            filled=True,
+            post_fill_30s_pnl=-0.2,
+            post_fill_60s_pnl=-0.1,
+            post_fill_120s_pnl=0.2,
+            regime="trending",
+        ),
+    ]
+
+    monkeypatch.setattr(oracle_baseline, "iter_fill_records_glob", lambda *args, **kwargs: records)
+    monkeypatch.setattr(oracle_baseline, "partition_clean_records", lambda iterable: (list(iterable), []))
+    monkeypatch.setattr(oracle_baseline, "write_output", lambda content, output_path=None: text_outputs.append(content))
+
+    oracle_baseline.run_oracle_baseline(results_dir=str(tmp_path))
+
+    assert any("Oracle PnL Baseline Report" in output for output in text_outputs)
+
+
 def test_vg_and_trend_main_uses_shared_output_helpers(monkeypatch, tmp_path: Path) -> None:
     captured: dict[str, object] = {}
     fake_records: list[object] = []
@@ -133,4 +260,3 @@ def test_vg_and_trend_main_uses_shared_output_helpers(monkeypatch, tmp_path: Pat
     vg_and_trend.main(["--results-dir", str(tmp_path), "--output", str(tmp_path / "vg.txt")])
     assert captured["text_path"] == str(tmp_path / "vg.txt")
     assert isinstance(captured["text_content"], str)
-

@@ -15,6 +15,7 @@ import json
 import sys
 from collections import Counter, defaultdict
 from collections.abc import Sequence
+from io import StringIO
 from pathlib import Path
 from typing import TypeAlias, cast
 
@@ -23,6 +24,7 @@ from scripts.v460.analysis.analysis_common import (
     add_common_filter_args,
     load_and_filter_records,
     load_records_from_args,
+    write_output,
     write_json_output,
 )
 from ztb.metrics.fill_quality import PnlAccumulator, load_fill_record_objects_glob
@@ -212,8 +214,8 @@ def _as_float_or_zero(value: object) -> float:
     return finite if finite is not None else 0.0
 
 
-def _print_report(metrics: MetricsMap, params: Record) -> None:
-    """Print human-readable report matching §1 format."""
+def _render_report(metrics: MetricsMap, params: Record) -> str:
+    """Build human-readable report matching §1 format."""
     regime_distribution = _to_dict(metrics.get("regime_distribution"))
     regime_pnl_30s = _to_dict(metrics.get("regime_pnl_30s"))
     lot_distribution = _to_dict(metrics.get("lot_distribution"))
@@ -223,67 +225,74 @@ def _print_report(metrics: MetricsMap, params: Record) -> None:
     regime_tagged = _as_int(metrics.get("regime_tagged"))
     records_with_qty = _as_int(metrics.get("records_with_order_quantity"))
 
-    print("=" * 60)
-    print("152# 集計再現レポート")
-    print("=" * 60)
-    print(f"Parameters: {json.dumps(params, ensure_ascii=False)}")
-    print()
+    buffer = StringIO()
 
-    print(f"Total records: {_as_int(metrics.get('total_records')):,}")
-    print(f"Records with order_quantity: {records_with_qty:,}")
-    print(f"Filled: {_as_int(metrics.get('filled')):,}")
-    print(f"Fill rate: {_as_float_or_zero(metrics.get('fill_rate_pct'))}%")
-    print(f"Regime-tagged records: {regime_tagged:,}")
+    def emit(*values: object) -> None:
+        print(*values, file=buffer)
 
-    print("\n--- Regime Distribution ---")
+    emit("=" * 60)
+    emit("152# 集計再現レポート")
+    emit("=" * 60)
+    emit(f"Parameters: {json.dumps(params, ensure_ascii=False)}")
+    emit()
+
+    emit(f"Total records: {_as_int(metrics.get('total_records')):,}")
+    emit(f"Records with order_quantity: {records_with_qty:,}")
+    emit(f"Filled: {_as_int(metrics.get('filled')):,}")
+    emit(f"Fill rate: {_as_float_or_zero(metrics.get('fill_rate_pct'))}%")
+    emit(f"Regime-tagged records: {regime_tagged:,}")
+
+    emit("\n--- Regime Distribution ---")
     for regime, count in regime_distribution.items():
         count_int = _as_int(count)
         pct = count_int / regime_tagged * 100 if regime_tagged else 0
-        print(f"  {regime}: {count} ({pct:.1f}%)")
+        emit(f"  {regime}: {count} ({pct:.1f}%)")
 
-    print("\n--- Regime × PnL (30s) ---")
-    print(f"  {'Regime':<12} {'fills':>6} {'avg PnL':>10} {'sum PnL':>10}")
+    emit("\n--- Regime × PnL (30s) ---")
+    emit(f"  {'Regime':<12} {'fills':>6} {'avg PnL':>10} {'sum PnL':>10}")
     for regime, raw_data in regime_pnl_30s.items():
         data = _to_dict(raw_data)
-        print(
+        emit(
             f"  {regime:<12} {_as_int(data.get('fills')):>6} "
             f"{_as_float_or_zero(data.get('avg_pnl_bps')):>10.4f} "
             f"{_as_float_or_zero(data.get('sum_pnl_bps')):>10.2f}"
         )
 
-    print("\n--- Lot Distribution ---")
+    emit("\n--- Lot Distribution ---")
     for lot, count in lot_distribution.items():
         count_int = _as_int(count)
         pct = count_int / records_with_qty * 100 if records_with_qty else 0
-        print(f"  {lot} BTC: {count} ({pct:.1f}%)")
+        emit(f"  {lot} BTC: {count} ({pct:.1f}%)")
 
-    print("\n--- Side × Regime × PnL (30s) ---")
+    emit("\n--- Side × Regime × PnL (30s) ---")
     for side, raw_regimes in side_regime_pnl.items():
         regimes = _to_dict(raw_regimes)
-        print(f"  [{side}]")
+        emit(f"  [{side}]")
         for regime, raw_data in regimes.items():
             data = _to_dict(raw_data)
-            print(
+            emit(
                 f"    {regime:<12} fills={_as_int(data.get('fills')):>4}, "
                 f"avg={_as_float_or_zero(data.get('avg_pnl_bps')):>8.4f} bps, "
                 f"sum={_as_float_or_zero(data.get('sum_pnl_bps')):>8.2f} bps"
             )
 
-    print("\n--- Hour × PnL (worst 6) ---")
+    emit("\n--- Hour × PnL (worst 6) ---")
     sorted_hours = sorted(
         hour_pnl.items(),
         key=lambda x: _as_float_or_zero(_to_dict(x[1]).get("avg_pnl_bps")),
     )
     for hour_label, hour_data_obj in sorted_hours[:6]:
         hour_data = _to_dict(hour_data_obj)
-        print(
+        emit(
             f"  {hour_label}: n={_as_int(hour_data.get('fills'))}, "
             f"avg={_as_float_or_zero(hour_data.get('avg_pnl_bps')):.4f} bps"
         )
 
-    print(f"\n--- Run IDs ({len(run_ids)}) ---")
+    emit(f"\n--- Run IDs ({len(run_ids)}) ---")
     for rid, count in run_ids.items():
-        print(f"  {rid}: {count}")
+        emit(f"  {rid}: {count}")
+
+    return buffer.getvalue().rstrip()
 
 
 # ---------------------------------------------------------------------------
@@ -327,13 +336,13 @@ def main(argv: Sequence[str] | None = None) -> MetricsMap:
     metrics = _compute_metrics(records, include_zero_qty=args.include_zero_qty)
 
     if not args.quiet:
-        _print_report(metrics, params)
+        write_output(_render_report(metrics, params))
 
     if args.output:
         out_path = Path(args.output)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         write_json_output({"params": params, "metrics": metrics}, out_path)
-        print(f"\nSaved to {out_path}")
+        write_output(f"Saved to {out_path}")
 
     return metrics
 
