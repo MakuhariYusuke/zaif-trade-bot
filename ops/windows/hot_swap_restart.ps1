@@ -72,6 +72,9 @@ if (-not (Test-Path $pythonExe)) {
     Log "ERROR" "Python 実行ファイルが見つかりません: $pythonExe"
     exit 1
 }
+# NOTE: venv launcher はトランポリンとして子プロセスを spawn する。
+# 起動後に launcher (親) を kill すると子 (実体) も死ぬため、
+# post-startup のorphan cleanupは行わない。launcher は ~2MB でharmless。
 Log "INFO" "Pre-flight OK: config=$Config, python=$pythonExe, sha=$gitSha"
 
 # ======================================================================
