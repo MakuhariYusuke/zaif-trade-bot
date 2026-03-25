@@ -42,10 +42,31 @@ $$13{,}000{,}000 \times \frac{0.38}{10{,}000} = 494 \text{ JPY} \approx \text{�
 - BPS フロア (3.8bps): ~4,340 JPY → **常に spread < min → 全棄却**
 - BPS フロア (0.38bps): ~434 JPY → spread > min で正常通過
 
-## 副次発見: 重複プロセス
+## 副次発見・修正
 
-hot_swap 再起動時に PID 36852 (venv Python) と PID 37536 (system Python) の重複を検出。
-Lock ファイルは PID 37536 を保持。PID 36852 を手動停止。
+### 重複プロセス問題
+
+hot_swap 再起動時にプロセスが重複する問題を特定。
+
+**原因**: Windows の venv `python.exe` はトランポリン (ランチャー) として機能し、
+underlying Python (system Python) を子プロセスとして spawn する。
+`Start-Process` で venv Python を起動すると、launcher (親) + 実体 (子) の 2 プロセスが残る。
+
+**影響**: 
+- fill_test: 2 プロセス (launcher + 実体)、lock は実体 PID が保持。harmless。
+- retrain_scheduler: hot_swap + fill_test_cli の両方が起動 → 最大 4 プロセス
+
+**初期修正の失敗**: post-startup orphan cleanup で launcher を kill → 子 (実体) もプロセスツリーごと死亡。
+これにより fill_test がサイレントクラッシュ (ログに例外なし)。
+
+**最終対応**: orphan cleanup を撤去。launcher は ~2MB で harmless のため許容。
+
+### コミット
+
+| SHA | 内容 |
+|-----|------|
+| `0faf7ad7c` | BPS フロア 3.8→0.38、625# ドキュメント修正 |
+| `a8275cc32` | hot_swap orphan cleanup 撤去 + venv launcher コメント追記 |
 
 ## 変更ファイル
 
@@ -53,6 +74,7 @@ Lock ファイルは PID 37536 を保持。PID 36852 を手動停止。
 |---------|---------|
 | `configs/v460/fill_test.yaml` | `min_spread_floor_bps: 3.8` → `0.38` |
 | `docs/v460/625_cplt_min_spread_dynamic_bps_floor.md` | 3 箇所の `3.8` → `0.38` 修正 (記録修正) |
+| `ops/windows/hot_swap_restart.ps1` | venv launcher トランポリンのコメント追記 |
 
 ## 教訓
 
