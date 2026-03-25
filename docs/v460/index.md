@@ -729,3 +729,4 @@ NNN_phX_TYPE_description.md
 | 620 | fix | [620_cplt_skip_gate_regime_bypass_and_sidecar_ceiling_fix.md](620_cplt_skip_gate_regime_bypass_and_sidecar_ceiling_fix.md) | skip_gate regime_thresholds bypass 修正 + sidecar ceiling 適用順序修正 |
 | 621 | impl | [621_cplt_619_remaining_tasks_normloader_and_entry_gate.md](621_cplt_619_remaining_tasks_normloader_and_entry_gate.md) | 619# 残課題解消: NormLoader 推論統合 + entry_gate observe 接続 |
 | 622 | impl | [622_cplt_sad_mcb_enablement_and_diagnostic_logging.md](622_cplt_sad_mcb_enablement_and_diagnostic_logging.md) | SAD/MCB 有効化 + skip_gate 診断ログ改善 |
+| 623 | config | — | hard_skip_utc_hours 廃止: 536# 渙原則に基づき skip_gate/ceiling/boost に委譲 |
