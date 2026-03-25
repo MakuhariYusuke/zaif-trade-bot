@@ -111,7 +111,6 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "fast_fill_threshold_sec_buy",
     "fast_fill_threshold_sec_sell",
     "glft_dynamic_k_enabled",
-    "hard_skip_utc_hours",
     "loss_boost_offset_mult",
     "low_vol_offset_boost",  # 459# 1.4→1.5 チューニング
     "low_vol_threshold",  # 468# 0.75→0.65 偽陽性削減
@@ -120,8 +119,11 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "macro_sell_timeout_strong_up",  # 458# macro sell timeout
     "macro_sell_timeout_weak_up",  # 458# macro sell timeout
     "max_consecutive_trending_sell_skip",
+    "mcb_enabled",  # 606# Safety層: code=False, YAML=True
     "min_spread_jpy",
     "min_spread_atr_enabled",  # 624# ATR連動
+    "min_spread_atr_mult",  # 632# 2.0→1.2: Roll proxy circularity 緩和
+    "min_spread_atr_cap_bps",  # 632# ATR floor cap (YAML=3.0, code=0.0)
     "min_spread_floor_bps",  # 625# BPS動的フロア
     "micro_timeout_enabled",  # 454# Step 1: 保守的設定で有効化
     "micro_timeout_wait_sec_sell",
@@ -140,6 +142,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "regime_ranging_offset_discount",
     "regime_ranging_offset_discount_buy",
     "regime_ranging_offset_discount_sell",
+    "regime_trend_threshold_pct",  # 630# 0.5→0.20: P1 感度向上
     "regime_trending_offset_boost_buy",
     "regime_trending_offset_boost_sell",
     "sell_dynamic_kill_regime_thresholds",
@@ -194,6 +197,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "volatility_guard_velocity_threshold_bps",
     "volatility_guard_vpin_threshold",
     "vpin_vol_sync_enabled",
+    "sad_enabled",  # 606# Safety層: code=False, YAML=True
     "wide_spread_bps",
 })
 

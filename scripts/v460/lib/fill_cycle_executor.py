@@ -641,6 +641,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         sidecar_offset_bps: float = 0.0,
         sidecar_signal_status: str | None = None,
         order_id: str | None = None,
+        regime: str = "n/a",
     ) -> None:
         # 487# P0: sidecar summary を cycle log に追記
         _sidecar_tag = ""
@@ -655,17 +656,19 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         # 533# BTC 残高コンテキスト (在庫状態の可視化)
         _btc = self._balance_checker.last_btc_free
         _bal_tag = f", btc={_btc:.6f}" if _btc is not None else ""
+        # 632# regime context
+        _regime_tag = f", regime={regime}"
         if post_fill_pnl is not None:
             logger.info(
                 f"Cycle {self._cycle_count} result: "
                 f"filled={filled}, wait={queue_wait:.1f}s, pnl={post_fill_pnl:.2f}bps"
-                f"{_id_tag}{_bal_tag}{_sidecar_tag}"
+                f"{_id_tag}{_bal_tag}{_regime_tag}{_sidecar_tag}"
             )
             return
         logger.info(
             f"Cycle {self._cycle_count} result: "
             f"filled={filled}, wait={queue_wait:.1f}s"
-            f"{_id_tag}{_cancel_tag}{_bal_tag}{_sidecar_tag}"
+            f"{_id_tag}{_cancel_tag}{_bal_tag}{_regime_tag}{_sidecar_tag}"
         )
 
     def _log_cycle_revenue_context(self, record: "FillRecord") -> None:
@@ -1441,6 +1444,10 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             sidecar_offset_bps=sidecar_offset_bps,
             sidecar_signal_status=sidecar_signal_status,
             order_id=self._pending_order_id,
+            regime=(
+                self._regime_detector.current_regime.value
+                if self._regime_detector else "n/a"
+            ),
         )
         self._log_cycle_revenue_context(record)
         if fill_phase.pending_reconciliation:

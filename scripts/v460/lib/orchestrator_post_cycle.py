@@ -283,6 +283,12 @@ class OrchestratorPostCycleMixin:
                 st.filled_count / st.total_count * 100.0
                 if st.total_count > 0 else 0.0
             )
+            # 632# σ / vol_ratio snapshot for ATR floor diagnostics
+            _sigma = self._maker_price.last_sigma if self._maker_price else 0.0
+            _vr = (
+                self._regime_detector.last_volatility_ratio
+                if self._regime_detector else 1.0
+            )
             logger.info(
                 f"Progress: {self._cycle_count} cycles, "
                 f"fill rate={st.filled_count}/{st.total_count} "
@@ -291,6 +297,7 @@ class OrchestratorPostCycleMixin:
                 f"btcDelta={st.cumulative_btc_delta:+.4f}BTC, "
                 f"lot={self._current_lot:.4f}BTC, "
                 f"regime={regime_tag}, "
+                f"σ={_sigma:.6f}, vr={_vr:.3f}, "
                 f"none_regime={self._none_regime_cycle_count}/{self._total_regime_cycle_count}, "
                 f"unsaved_batch={len(st.batch)}"
             )

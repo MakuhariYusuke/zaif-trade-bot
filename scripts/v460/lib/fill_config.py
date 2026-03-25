@@ -120,6 +120,7 @@ class FillTestConfig:
     # 624# ATR連動最小スプレッド (536# シナリオA: 固定値→動的微視的構造)
     min_spread_atr_enabled: bool = False  # True で σ×mid×mult を min_spread に加算
     min_spread_atr_mult: float = 2.0  # σ(fractional) × mid_price × mult = 動的最小スプレッド (JPY)
+    min_spread_atr_cap_bps: float = 0.0  # 632# ATR floor 上限 (bps). 0=無制限
     # 保存
     batch_size: int = 10  # バッチ保存のサイクル数
     batch_flush_interval_sec: float = 600.0  # 079# 時間ベース定期flush (秒)

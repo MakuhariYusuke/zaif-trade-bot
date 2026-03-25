@@ -732,3 +732,10 @@ NNN_phX_TYPE_description.md
 | 623 | config | [623_cplt_hard_skip_abolition_dynamic_defense_delegation.md](623_cplt_hard_skip_abolition_dynamic_defense_delegation.md) | hard_skip_utc_hours 廃止: 536# 渙原則に基づき skip_gate/ceiling/boost に委譲 |
 | 624 | impl | [624_cplt_kill_drift_fix_and_min_spread_atr.md](624_cplt_kill_drift_fix_and_min_spread_atr.md) | kill duration drift 修正 + min_spread ATR 連動 (536# 渙) |
 | 625 | impl | [625_cplt_min_spread_dynamic_bps_floor.md](625_cplt_min_spread_dynamic_bps_floor.md) | min_spread 動的 BPS フロア (Stoll 1978) + 624# バグ修正 3 件 |
+| 626 | analysis | [626_cplt_sell_loss_structural_root_cause_analysis.md](626_cplt_sell_loss_structural_root_cause_analysis.md) | Sell 損失の構造的根本原因分析 |
+| 627 | review | [627_phg_rev_620_626_multifaceted_validation_and_structural_loss_debug.md](627_phg_rev_620_626_multifaceted_validation_and_structural_loss_debug.md) | 620#-626# 多角的検証レビューと構造損失デバッグ |
+| 628 | review | [628_cplt_second_opinion_626_627_structural_review.md](628_cplt_second_opinion_626_627_structural_review.md) | 626#-627# セカンドオピニオン構造レビュー |
+| 629 | review | [629_cplt_review_evaluation_sidecar_cache_fix.md](629_cplt_review_evaluation_sidecar_cache_fix.md) | レビュー評価 + sidecar キャッシュ修正 |
+| 630 | impl | [630_cplt_p1_threshold_tuning.md](630_cplt_p1_threshold_tuning.md) | P1 閾値チューニング (vel_skip/regime/VG) |
+| 631 | fix | [631_cplt_min_spread_bps_floor_10x_fix.md](631_cplt_min_spread_bps_floor_10x_fix.md) | BPS floor 10× 計算ミス修正 + hot_swap cascade 修正 |
+| 632 | impl | [632_cplt_p2_atr_floor_log_improvements.md](632_cplt_p2_atr_floor_log_improvements.md) | P2 ATR floor calibration + ログ/ヘルパー改善 |

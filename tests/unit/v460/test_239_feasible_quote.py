@@ -317,3 +317,58 @@ class TestFeasibleQuoteTheory:
         assert guard_pos < offset_logic_pos, (
             "_enforce_spread_guards should appear BEFORE offset calculations"
         )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# G. 632# ATR floor cap テスト
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestATRFloorCap:
+    """632# ATR floor cap (min_spread_atr_cap_bps) の動作検証."""
+
+    def test_atr_cap_limits_floor(self) -> None:
+        """ATR floor が cap_bps を超えない — cap が有効な場合."""
+        calc = _make_calculator(
+            min_spread_jpy=100.0,
+            min_spread_floor_bps=0.38,
+            min_spread_atr_enabled=True,
+            min_spread_atr_mult=2.0,
+            min_spread_atr_cap_bps=2.0,  # 低めの cap
+        )
+        # σ を直接セットして ATR floor が cap を超えるケースをテスト
+        calc._last_sigma = 0.001  # 高い σ → ATR=0.001*10M*2.0=20,000 JPY
+        # spread=5000 < ATR(20000) だが cap 2.0bps → 10M*2.0/10000=2,000 JPY
+        # effective_min = max(100, 380, 2000) = 2000 < 5000 → OK
+        adapter = _make_adapter(best_bid=10_000_000.0, best_ask=10_005_000.0)
+        result = asyncio.run(calc.compute("buy", adapter, "btc_jpy"))
+        assert isinstance(result, MakerPriceResult)
+
+    def test_atr_no_cap_blocks(self) -> None:
+        """ATR floor cap=0 (無制限) で高 σ 時にブロックされること."""
+        calc = _make_calculator(
+            min_spread_jpy=100.0,
+            min_spread_atr_enabled=True,
+            min_spread_atr_mult=2.0,
+            min_spread_atr_cap_bps=0.0,  # 無制限
+        )
+        calc._last_sigma = 0.001  # ATR=0.001*10M*2.0=20,000 JPY > spread=5000
+        adapter = _make_adapter(best_bid=10_000_000.0, best_ask=10_005_000.0)
+        with pytest.raises(InfeasibleQuoteError) as exc_info:
+            asyncio.run(calc.compute("buy", adapter, "btc_jpy"))
+        assert exc_info.value.reason == "spread_too_narrow"
+
+    def test_atr_cap_config_field_exists(self) -> None:
+        """FillTestConfig に min_spread_atr_cap_bps フィールドが存在."""
+        cfg = FillTestConfig()
+        assert hasattr(cfg, "min_spread_atr_cap_bps")
+
+    def test_sigma_in_error_message(self) -> None:
+        """632# spread_too_narrow エラーメッセージに σ 値が含まれること."""
+        calc = _make_calculator(
+            min_spread_jpy=100000.0,  # 強制ブロック
+        )
+        adapter = _make_adapter(best_bid=10_000_000.0, best_ask=10_005_000.0)
+        with pytest.raises(InfeasibleQuoteError) as exc_info:
+            asyncio.run(calc.compute("buy", adapter, "btc_jpy"))
+        assert "σ=" in str(exc_info.value)

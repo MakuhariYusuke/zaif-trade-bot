@@ -837,7 +837,7 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
         "spread_offset_ratio", "min_offset_jpy",
         "max_order_retries", "retry_delay_sec",
         "as_deadzone_bps", "min_spread_jpy", "min_spread_floor_bps",
-        "min_spread_atr_enabled", "min_spread_atr_mult",
+        "min_spread_atr_enabled", "min_spread_atr_mult", "min_spread_atr_cap_bps",
         "batch_size", "max_save_retries", "save_fail_threshold",
         "progress_log_interval",
         "log_max_bytes", "log_backup_count",

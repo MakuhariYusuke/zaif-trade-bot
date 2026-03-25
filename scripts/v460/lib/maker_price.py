@@ -1066,6 +1066,10 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         # 624# Tier 3: ATR floor (σ-based adverse selection cost)
         if cfg.min_spread_atr_enabled and self._last_sigma > 0 and mid_price > 0:
             atr_floor = self._last_sigma * mid_price * cfg.min_spread_atr_mult
+            # 632# ATR cap: bps 上限で Roll proxy 循環による過大値を抑制
+            if cfg.min_spread_atr_cap_bps > 0:
+                atr_cap = mid_price * cfg.min_spread_atr_cap_bps / 10000
+                atr_floor = min(atr_floor, atr_cap)
             effective_min = max(effective_min, atr_floor)
 
         if spread < effective_min:
@@ -1075,7 +1079,8 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
                     f"Spread too narrow: {spread:.0f} JPY < min {effective_min:.0f}"
                     f" (abs={cfg.min_spread_jpy:.0f}"
                     f", bps={bps_floor:.0f}"
-                    f", atr={atr_floor:.0f})"
+                    f", atr={atr_floor:.0f}"
+                    f", σ={self._last_sigma:.6f})"
                 ),
             )
 

@@ -312,9 +312,14 @@ def print_report(
 
         if pnls:
             import numpy as np
-            print(f"  PnL mean:   {_fmt_bps(float(np.mean(pnls)))}")
-            print(f"  PnL median: {_fmt_bps(float(np.median(pnls)))}")
-            print(f"  PnL std:    {float(np.std(pnls)):.3f} bps")
+            from ztb.utils.robust_stats import RobustStats
+            pnls_arr = np.array(pnls, dtype=np.float64)
+            pnls_robust = RobustStats.clip_outliers_mad(pnls_arr)
+            print(f"  PnL mean:   {_fmt_bps(float(np.mean(pnls_arr)))}")
+            print(f"  PnL median: {_fmt_bps(float(np.median(pnls_arr)))}")
+            print(f"  PnL std:    {float(np.std(pnls_arr)):.3f} bps")
+            # 632# RobustStats: MAD-clip 後のロバスト統計 (外れ値耐性)
+            print(f"  PnL robust: mean={float(np.mean(pnls_robust)):.3f} std={float(np.std(pnls_robust)):.3f} bps")
             pos_ratio = sum(1 for p in pnls if p > 0) / len(pnls)
             print(f"  PnL 正率:   {_fmt_pct(pos_ratio)}")
 

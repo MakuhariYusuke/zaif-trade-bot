@@ -47,7 +47,8 @@ min_spread_jpy: 100            # 625# 500→100: 絶対安全ネット (BPSフ�
 #   ATR_floor = σ × mid × mult        — adverse selection cost
 min_spread_floor_bps: 0.38     # 631# 3.8→0.38 (625#計算ミス修正: 13M×0.38/10000=494JPY≈旧500JPY)
 min_spread_atr_enabled: true   # σベース動的最小スプレッド有効化
-min_spread_atr_mult: 2.0       # σ × mid × 2.0 = ATR proxy の最小スプレッド
+min_spread_atr_mult: 1.2       # 632# 2.0→1.2: Roll proxy循環緩和 (ATR≈spread×vr×0.6)
+min_spread_atr_cap_bps: 3.0    # 632# ATR floor cap (3.0bps≈3,405JPY @mid=11.35M)
 
 # ---- リトライ (CM-2) ----
 max_order_retries: 2              # 041# 1→2: api_error 削減のため
