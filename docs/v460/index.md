@@ -724,3 +724,4 @@ NNN_phX_TYPE_description.md
 | 615 | spec | [615_phg_614_errata_and_spec_refinement.md](615_phg_614_errata_and_spec_refinement.md) | 614# 補修と実装精度への仕様引き上げ |
 | 616 | spec | [616_phg_attribution_phase2_and_live_feature_spec.md](616_phg_attribution_phase2_and_live_feature_spec.md) | Attribution Phase 2 および Live Feature Builder 数理仕様 |
 | 617 | spec | [617_phg_feature_parity_and_live_extraction_spec.md](617_phg_feature_parity_and_live_extraction_spec.md) | Feature Parity および Live 同期抽出数理仕様 |
+| 618 | impl | [618_phg_impl_attribution_phase2_and_feature_parity.md](618_phg_impl_attribution_phase2_and_feature_parity.md) | 執行寄与度分析および特徴量 Parity 実装報告 |

@@ -17,23 +17,29 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
+# OnlineScaler (訓練環境) と同一のクリップ範囲
+_DEFAULT_CLIP: float = 5.0
+
+
 class NormLoader:
     """617# §3.2: 推論時の特徴量標準化.
 
     norm.json を読み込み、特徴量ベクトルの正規化を行う。
     mtime ベースの hot-reload で retrain 後の自動取り込みに対応。
+
+    クリッピングは訓練環境の OnlineScaler と一致させ、
+    Z-score 後の値を ±5.0 に制限する。
     """
 
     _EPS: float = 1e-10
 
-    def __init__(self, norm_path: Path) -> None:
+    def __init__(self, norm_path: Path, clip: float = _DEFAULT_CLIP) -> None:
         self._path = norm_path
+        self._clip = clip
         self._mtime: float = 0.0
         self._feature_names: list[str] = []
         self._means: NDArray[np.float64] = np.array([], dtype=np.float64)
         self._stds: NDArray[np.float64] = np.array([], dtype=np.float64)
-        self._mins: NDArray[np.float64] = np.array([], dtype=np.float64)
-        self._maxs: NDArray[np.float64] = np.array([], dtype=np.float64)
         self._loaded = False
         self._load()
 
@@ -80,8 +86,9 @@ class NormLoader:
         # Z-score
         z = (values - self._means) / (self._stds + self._EPS)
 
-        # Clipping
-        z = np.clip(z, self._mins, self._maxs)
+        # Clipping: OnlineScaler (clip=5.0) と同一
+        if self._clip > 0:
+            z = np.clip(z, -self._clip, self._clip)
 
         return z
 
@@ -106,8 +113,6 @@ class NormLoader:
         names: list[str] = []
         means: list[float] = []
         stds: list[float] = []
-        mins: list[float] = []
-        maxs: list[float] = []
 
         for name, s in stats.items():
             if not isinstance(s, dict):
@@ -115,14 +120,10 @@ class NormLoader:
             names.append(name)
             means.append(float(s.get("mean", 0.0)))
             stds.append(float(s.get("std", 1.0)))
-            mins.append(float(s.get("min", -5.0)))
-            maxs.append(float(s.get("max", 5.0)))
 
         self._feature_names = names
         self._means = np.array(means, dtype=np.float64)
         self._stds = np.array(stds, dtype=np.float64)
-        self._mins = np.array(mins, dtype=np.float64)
-        self._maxs = np.array(maxs, dtype=np.float64)
         self._mtime = self._path.stat().st_mtime
         self._loaded = True
         logger.info(
