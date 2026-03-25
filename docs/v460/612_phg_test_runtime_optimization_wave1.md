@@ -304,3 +304,15 @@
   - focused pytest:
     - `tests/unit/config/test_unified_config.py`
     - 結果: `13 passed in 2.96s`
+
+- named-tempfile cleanup sweep:
+  - 追加適用:
+    - `tests/unit/algorithms/test_market_regime_system.py`
+    - `tests/unit/analysis/test_v4xx_unified_analyzer.py`
+    - `tests/unit/integration/test_unified_trainer_integration.py`
+  - 内容:
+    - `NamedTemporaryFile(delete=False)` を `mkstemp` / `tmp_path` ベースへ置換
+    - analyzer fixture と integration config file の cleanup を簡素化
+  - focused pytest:
+    - 上記 3 ファイル
+    - 結果: `28 passed, 3 warnings in 5.32s`

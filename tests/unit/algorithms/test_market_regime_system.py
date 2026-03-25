@@ -9,6 +9,7 @@ RegimeAdaptiveTrainerMixin.
 import os
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import numpy as np
@@ -165,6 +166,14 @@ class TestRegimeAdaptiveTrainerMixin(unittest.TestCase):
             market_data=self.sample_data,
         )
 
+    def _make_temp_path(self, suffix: str) -> Path:
+        """Create a temp file path and register cleanup."""
+        fd, name = tempfile.mkstemp(suffix=suffix)
+        os.close(fd)
+        path = Path(name)
+        self.addCleanup(path.unlink, missing_ok=True)
+        return path
+
     def test_initialization(self):
         """Test mixin initialization"""
         self.assertIsInstance(self.mixin, RegimeAdaptiveTrainerMixin)
@@ -238,23 +247,17 @@ class TestRegimeAdaptiveTrainerMixin(unittest.TestCase):
         mixin.current_regime = RegimeType.STRONG_BULL
         mixin.update_regime_performance(RegimeType.STRONG_BULL, 1.5, 100)
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            temp_file = f.name
+        temp_file = self._make_temp_path(".json")
 
-        try:
-            # Export data
-            mixin.export_regime_data(temp_file)
+        # Export data
+        mixin.export_regime_data(str(temp_file))
 
-            # Create new mixin and import data
-            new_mixin = _ConcreteRegimeAdaptiveTrainer({"enabled": True}, market_data=self.sample_data)
-            new_mixin.load_regime_data(temp_file)
+        # Create new mixin and import data
+        new_mixin = _ConcreteRegimeAdaptiveTrainer({"enabled": True}, market_data=self.sample_data)
+        new_mixin.load_regime_data(str(temp_file))
 
-            # Check data was imported
-            self.assertEqual(new_mixin.current_regime, RegimeType.STRONG_BULL)
-
-        finally:
-            if os.path.exists(temp_file):
-                os.unlink(temp_file)
+        # Check data was imported
+        self.assertEqual(new_mixin.current_regime, RegimeType.STRONG_BULL)
 
 
 class TestRegimeIntegration(unittest.TestCase):

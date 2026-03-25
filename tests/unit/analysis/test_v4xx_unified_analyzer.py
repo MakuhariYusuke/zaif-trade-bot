@@ -11,7 +11,6 @@ import numpy as np
 from unittest.mock import Mock, patch
 from pathlib import Path
 import json
-import tempfile
 
 from ztb.analysis.v4xx_unified_analyzer import V4XXUnifiedAnalyzer
 
@@ -51,16 +50,12 @@ class TestV4XXUnifiedAnalyzer:
         }
 
     @pytest.fixture
-    def temp_results_file(self, sample_backtest_results):
+    def temp_results_file(self, sample_backtest_results, tmp_path: Path):
         """Temporary results file"""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-            json.dump(sample_backtest_results, f)
-            temp_path = f.name
+        temp_path = tmp_path / "backtest_results.json"
+        temp_path.write_text(json.dumps(sample_backtest_results), encoding="utf-8")
 
-        yield temp_path
-
-        # Cleanup
-        Path(temp_path).unlink()
+        yield str(temp_path)
 
     @pytest.fixture
     def analyzer(self, temp_results_file):

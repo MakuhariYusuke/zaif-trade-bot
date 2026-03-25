@@ -9234,3 +9234,13 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/config/test_unified_config.py` の tempfile を `mkstemp` + `addCleanup` に整理
   - `tests/integration/smoke_tests.py` の synthetic data / output artifact を `mkdtemp()` ベースに整理
   - focused pytest: `tests/unit/config/test_unified_config.py` → `13 passed in 2.96s`
+
+- 2026-03-25 Codex:
+  - `test_market_regime_system.py` の export/import 用 JSON temp file を `mkstemp` + cleanup へ整理
+  - `test_v4xx_unified_analyzer.py` の temp results fixture を `tmp_path` 化
+  - `test_unified_trainer_integration.py` の temp config file を `mkstemp` 化
+  - focused pytest:
+    - `tests/unit/algorithms/test_market_regime_system.py`
+    - `tests/unit/analysis/test_v4xx_unified_analyzer.py`
+    - `tests/unit/integration/test_unified_trainer_integration.py`
+    - `28 passed, 3 warnings in 5.32s`

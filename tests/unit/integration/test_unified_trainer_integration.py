@@ -4,6 +4,7 @@ Integration test for V4XXUnifiedTrainer with enhanced optimizer features
 """
 
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -61,13 +62,14 @@ def test_unified_trainer_integration():
 
     # 一時設定ファイルを作成
     config = create_test_config()
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-        json.dump(config, f, indent=2)
-        config_path = f.name
+    fd, config_name = tempfile.mkstemp(suffix=".json")
+    os.close(fd)
+    config_path = Path(config_name)
+    config_path.write_text(json.dumps(config, indent=2), encoding="utf-8")
 
     try:
         # トレーナーを初期化
-        trainer = V4XXUnifiedTrainer(config_path)
+        trainer = V4XXUnifiedTrainer(str(config_path))
 
         # 設定が正しく読み込まれたか確認
         assert trainer.config is not None
@@ -118,7 +120,7 @@ def test_unified_trainer_integration():
 
     finally:
         # 一時ファイルを削除
-        Path(config_path).unlink(missing_ok=True)
+        config_path.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
