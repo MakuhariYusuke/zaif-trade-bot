@@ -324,7 +324,6 @@ def print_report(
             print(f"  PnL 正率:   {_fmt_pct(pos_ratio)}")
 
         if waits:
-            import numpy as np
             print(f"  Wait mean:  {float(np.mean(waits)):.1f}s")
             print(f"  Wait median:{float(np.median(waits)):.1f}s")
 
