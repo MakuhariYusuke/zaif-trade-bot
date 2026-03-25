@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-25 (620# skip_gate regime bypass + sidecar ceiling bypass 修正)
+> 最終更新: 2026-03-25 (621# NormLoader 推論統合 + entry_gate observe 接続)
 
 ---
 
@@ -727,3 +727,4 @@ NNN_phX_TYPE_description.md
 | 618 | impl | [618_phg_impl_attribution_phase2_and_feature_parity.md](618_phg_impl_attribution_phase2_and_feature_parity.md) | 執行寄与度分析および特徴量 Parity 実装報告 (Gemini) |
 | 619 | report | [619_cplt_milestone_605_619_integration_report.md](619_cplt_milestone_605_619_integration_report.md) | 605#-619# マイルストーン統合報告 + NormLoader clipping 修正 |
 | 620 | fix | [620_cplt_skip_gate_regime_bypass_and_sidecar_ceiling_fix.md](620_cplt_skip_gate_regime_bypass_and_sidecar_ceiling_fix.md) | skip_gate regime_thresholds bypass 修正 + sidecar ceiling 適用順序修正 |
+| 621 | impl | [621_cplt_619_remaining_tasks_normloader_and_entry_gate.md](621_cplt_619_remaining_tasks_normloader_and_entry_gate.md) | 619# 残課題解消: NormLoader 推論統合 + entry_gate observe 接続 |

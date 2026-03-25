@@ -1184,3 +1184,4 @@ composite_risk_weight_trending_sell: 0.7
 composite_risk_weight_velocity: 0.4
 # 555# Entry Gate: CalibrationMap EV ベースエントリー判定
 entry_gate_enabled: false              # True=EV≤0 でブロック, False=ログのみ
+entry_gate_calibration_map_path: "models/v460/entry_gate_calibration.json"  # 621# observe接続

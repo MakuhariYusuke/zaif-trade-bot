@@ -558,9 +558,10 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
         # ── 5b. Feature norms (617# §3.1) ──
         _export_feature_norms(train_df, cfg.feature_columns, cfg.norm_path)
 
-        # ── 6. Sidecar signal 更新 ──
+        # ── 6. Sidecar signal 更新 (621# NormLoader 統合) ──
         _update_sidecar_signal(
             model, env, cfg, model_version, eval_result,
+            train_df=train_df,
         )
 
         # 600# Deploy 成功 → データウィンドウを記録
@@ -1070,20 +1071,58 @@ def _update_sidecar_signal(
     cfg: SACRetrainConfig,
     model_version: str,
     eval_result: dict[str, float | int],
+    train_df: object | None = None,
 ) -> None:
     """Sidecar signal ファイルを更新.
 
     365# §5.2 step 6 / §5.3 フォーマット準拠。
     372# F2 fix: 訓練データ末尾 (最新) の observation で推論。
-    env.reset() は訓練データ先頭にリワインドするため使用しない。
+    621# NormLoader 統合: train_df + norm.json ベースの正規化を優先。
     """
+    import numpy as np
+
     from scripts.v460.lib.sidecar_signal_io import write_sidecar_signal
     from scripts.v460.lib.sidecar_types import SidecarSignal
 
-    # 372# F2 fix: 訓練データ末尾 (= 最新市場状態) で推論
     features_snapshot: dict[str, float] = {}
     try:
-        obs = _get_latest_obs(env)
+        # 621# NormLoader 推論パス: norm.json ベースの正規化を優先
+        obs = None
+        if train_df is not None and cfg.norm_path.exists():
+            import pandas as pd
+
+            from ztb.features.norm_loader import NormLoader
+
+            _df = cast(pd.DataFrame, train_df)
+            _norm = NormLoader(cfg.norm_path)
+            if _norm.is_loaded:
+                _raw: dict[str, float] = {}
+                for col in cfg.feature_columns:
+                    if col in _df.columns:
+                        _raw[col] = float(_df[col].iloc[-1])
+                norm_obs = _norm.normalize(_raw).astype(np.float32)
+                # 621# Feature Parity 診断: NormLoader vs OnlineScaler
+                env_obs = np.asarray(_get_latest_obs(env), dtype=np.float32)
+                if len(norm_obs) == len(env_obs):
+                    obs = norm_obs
+                    _dot = float(np.dot(norm_obs, env_obs))
+                    _norms = float(
+                        np.linalg.norm(norm_obs) * np.linalg.norm(env_obs)
+                    )
+                    _cos = _dot / (_norms + 1e-10)
+                    _maxd = float(np.max(np.abs(norm_obs - env_obs)))
+                    logger.info(
+                        f"[621#] NormLoader parity: cos_sim={_cos:.6f} "
+                        f"max_diff={_maxd:.4f} dim={len(norm_obs)}"
+                    )
+                else:
+                    logger.warning(
+                        f"[621#] NormLoader dim mismatch: "
+                        f"norm={len(norm_obs)} vs env={len(env_obs)}"
+                    )
+        if obs is None:
+            obs = np.asarray(_get_latest_obs(env), dtype=np.float32)
+
         action, _ = model.predict(obs, deterministic=True)
         # SB3 SAC continuous → action[0] が [-1, +1]
         raw_bias = float(action[0]) if hasattr(action, "__getitem__") else float(action)
