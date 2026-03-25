@@ -204,17 +204,6 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
                     f"(delta={_a_delta:+.0f}JPY, price={order_price:.0f})"
                 )
 
-        if sidecar_offset_bps != 0.0 and order_price > 0:
-            _sidecar_delta = round(sidecar_offset_bps / 10000.0 * order_price)
-            if side == "buy":
-                order_price = round(order_price + _sidecar_delta)
-            else:
-                order_price = round(order_price - _sidecar_delta)
-            logger.info(
-                f"[372# sidecar] {side}: offset={sidecar_offset_bps:+.4f}bps "
-                f"-> delta={_sidecar_delta:+.0f}JPY, price={order_price:.0f}"
-            )
-
         _execution_pre_clamp_offset: float | None = None
         _exec_stages: dict[str, float | None] = {
             "ev": _ev_offset_mult_applied,
@@ -289,6 +278,19 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
                     f"(clamped, price={order_price:.0f})"
                 )
                 effective_offset_ratio = _ceiling.updated_ratio
+
+        # 620# sidecar injection: ceiling clamp の後に適用。
+        # sidecar は ceiling 制約を尊重した上での微調整として機能する。
+        if sidecar_offset_bps != 0.0 and order_price > 0:
+            _sidecar_delta = round(sidecar_offset_bps / 10000.0 * order_price)
+            if side == "buy":
+                order_price = round(order_price + _sidecar_delta)
+            else:
+                order_price = round(order_price - _sidecar_delta)
+            logger.info(
+                f"[372# sidecar] {side}: offset={sidecar_offset_bps:+.4f}bps "
+                f"-> delta={_sidecar_delta:+.0f}JPY, price={order_price:.0f}"
+            )
 
         return OffsetPipelineResult(
             order_price=order_price,

@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-25 (610# 605#-609# 三者検証と二名タスク再配分)
+> 最終更新: 2026-03-25 (620# skip_gate regime bypass + sidecar ceiling bypass 修正)
 
 ---
 
@@ -721,7 +721,9 @@ NNN_phX_TYPE_description.md
 | 612 | impl | [612_phg_test_runtime_optimization_wave1.md](612_phg_test_runtime_optimization_wave1.md) | テスト実行時最適化 Wave 1: クリーンアップと高速化 |
 | 613 | review | [613_cplt_deep_review_609_611_and_gemini_task.md](613_cplt_deep_review_609_611_and_gemini_task.md) | 深堀りレビュー: 609#-611# および Gemini 向けタスク指示 |
 | 614 | spec | [614_phg_attribution_spec_and_sidecar_contract.md](614_phg_attribution_spec_and_sidecar_contract.md) | 執行パイプライン寄与度分析仕様および Sidecar Feature Contract 策定 |
-| 615 | spec | [615_phg_614_errata_and_spec_refinement.md](615_phg_614_errata_and_spec_refinement.md) | 614# 補修と実装精度への仕様引き上げ |
-| 616 | spec | [616_phg_attribution_phase2_and_live_feature_spec.md](616_phg_attribution_phase2_and_live_feature_spec.md) | Attribution Phase 2 および Live Feature Builder 数理仕様 |
-| 617 | spec | [617_phg_feature_parity_and_live_extraction_spec.md](617_phg_feature_parity_and_live_extraction_spec.md) | Feature Parity および Live 同期抽出数理仕様 |
-| 618 | impl | [618_phg_impl_attribution_phase2_and_feature_parity.md](618_phg_impl_attribution_phase2_and_feature_parity.md) | 執行寄与度分析および特徴量 Parity 実装報告 |
+| 615 | spec | [615_phg_614_errata_and_spec_refinement.md](615_phg_614_errata_and_spec_refinement.md) | 614# errata: composite_risk 補完と仕様精度向上 |
+| 616 | spec | [616_phg_attribution_phase2_and_live_feature_spec.md](616_phg_attribution_phase2_and_live_feature_spec.md) | Attribution Phase 2 Euler RMS 分解 + Live Feature Builder 数理仕様 |
+| 617 | spec | [617_phg_feature_parity_and_live_extraction_spec.md](617_phg_feature_parity_and_live_extraction_spec.md) | Feature Parity: Train-Serve Skew 解消と同期バッチ抽出仕様 |
+| 618 | impl | [618_phg_impl_attribution_phase2_and_feature_parity.md](618_phg_impl_attribution_phase2_and_feature_parity.md) | 執行寄与度分析および特徴量 Parity 実装報告 (Gemini) |
+| 619 | report | [619_cplt_milestone_605_619_integration_report.md](619_cplt_milestone_605_619_integration_report.md) | 605#-619# マイルストーン統合報告 + NormLoader clipping 修正 |
+| 620 | fix | — | skip_gate regime_thresholds bypass 修正 + sidecar ceiling 適用順序修正 |

@@ -232,15 +232,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
         liq_rms = math.sqrt(sum(d * d for d in liq_deltas)) if liq_deltas else 0.0
         effective_offset_ratio = base_ratio + tox_rms + liq_rms
 
-        # ── 3. Sidecar (bps 加算、RMS 外) ──
-        if sidecar_offset_bps != 0.0 and order_price > 0:
-            _sidecar_delta = round(sidecar_offset_bps / 10000.0 * order_price)
-            if side == "buy":
-                order_price = round(order_price + _sidecar_delta)
-            else:
-                order_price = round(order_price - _sidecar_delta)
-
-        # ── 4. Price 再計算 (新 offset_ratio に合わせて) ──
+        # ── 3. Price 再計算 (新 offset_ratio に合わせて) ──
         if spread_at_order is not None and spread_at_order > 0:
             order_price = self._recalc_price_with_new_offset(
                 side, order_price, spread_at_order, base_ratio, effective_offset_ratio,
@@ -310,6 +302,14 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
                         effective_offset_ratio, _fc_ceil,
                     )
                 effective_offset_ratio = _ceiling.updated_ratio
+
+        # ── 620# Sidecar (bps 加算): ceiling clamp の後に適用 ──
+        if sidecar_offset_bps != 0.0 and order_price > 0:
+            _sidecar_delta = round(sidecar_offset_bps / 10000.0 * order_price)
+            if side == "buy":
+                order_price = round(order_price + _sidecar_delta)
+            else:
+                order_price = round(order_price - _sidecar_delta)
 
         logger.info(
             "[582# additive] %s: base=%.4f tox_rms=%.4f liq_rms=%.4f "

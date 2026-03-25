@@ -440,17 +440,22 @@ class SkipGate:
                     pred_pnl = cal.calibrate(pred_pnl)
             # 141# P1-04: regime 別 PnL 閾値オーバーライド
             base_threshold = self.config.threshold_bps
+            regime_floor: float | None = None
             if regime and self.config.regime_thresholds:
-                base_threshold = self.config.regime_thresholds.get(
-                    regime, base_threshold
-                )
+                regime_val = self.config.regime_thresholds.get(regime)
+                if regime_val is not None:
+                    base_threshold = regime_val
+                    regime_floor = regime_val
             # 158# P1-6: 時間帯別閾値調整 (PnL mode: 正=厳格化=閾値上昇)
             if threshold_offset != 0.0:
                 base_threshold += threshold_offset
+                if regime_floor is not None:
+                    regime_floor += threshold_offset
             # 125# 動的較正: mode=pnl でも target_skip_rate にあわせて閾値を調整
             if self.config.adaptive_threshold and side is not None:
                 threshold_used = self._calibrate_pnl_threshold(
                     side, pred_pnl, base_threshold=base_threshold,
+                    regime_floor=regime_floor,
                 )
             else:
                 threshold_used = base_threshold
@@ -567,6 +572,7 @@ class SkipGate:
     def _calibrate_pnl_threshold(
         self, side: str, current_pnl: float,
         base_threshold: float | None = None,
+        regime_floor: float | None = None,
     ) -> float:
         """125# PnL 回帰用の動的閾値較正.
 
@@ -574,11 +580,15 @@ class SkipGate:
         ロジック: 直近 N 件の予測 PnL 分布で target_skip_rate に対応する
         分位点 (下位) を閾値とする。
 
+        620# regime_floor: regime_thresholds で指定された閾値。
+        adaptive が regime_floor 未満に緩和されるのを防止する。
+
         Args:
             side: "buy" or "sell".
             current_pnl: 今回の予測 PnL (bps).
             base_threshold: 142# 起点閾値 (regime 別オーバーライド後の値)。
                 None の場合は config.threshold_bps を使用。
+            regime_floor: 620# regime 別閾値の下限。None ならば制約なし。
 
         Returns:
             較正後の閾値 (bps). predicted_pnl < threshold → skip.
@@ -642,12 +652,19 @@ class SkipGate:
                 f"quantile={target_threshold:.3f}, n={len(history)})"
             )
 
-        # side 別閾値を更新
+        # side 別閾値を更新 (adaptive 収束の継続性のため raw 値を保持)
         if side == "buy":
             self._pnl_threshold_buy = new_threshold
         else:
             self._pnl_threshold_sell = new_threshold
 
+        # 620# regime_thresholds enforcement:
+        # adaptive が regime 別閾値より緩和方向に逸脱するのを防止。
+        # PnL mode では threshold が高い = 厳格 (skip 多) なので、
+        # max(regime_floor, adaptive) で regime floors を保証する。
+        # regime_floor=None の場合は制約なし (default threshold_bps のみの場合)。
+        if regime_floor is not None:
+            return max(regime_floor, new_threshold)
         return new_threshold
 
     def save(self, path: Optional[Path] = None) -> Path:
