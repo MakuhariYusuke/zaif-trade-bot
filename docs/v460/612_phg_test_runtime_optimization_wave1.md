@@ -316,3 +316,16 @@
   - focused pytest:
     - 上記 3 ファイル
     - 結果: `28 passed, 3 warnings in 5.32s`
+
+- training / integration tempdir lifecycle sweep:
+  - 追加適用:
+    - `tests/unit/training/test_training_resume.py`
+    - `tests/unit/training/test_checkpoint_manager.py`
+    - `tests/integration/test_checkpoint_logging_integration.py`
+  - 内容:
+    - `mkdtemp()` の cleanup を `addCleanup` ベースに統一
+    - temp directory を `Path` で扱い、`save_dir` 渡し口だけ `str(...)` 化
+    - shutdown と filesystem cleanup の責務を分離
+  - focused pytest:
+    - 上記 3 ファイル
+    - 結果: `25 passed in 3.17s`

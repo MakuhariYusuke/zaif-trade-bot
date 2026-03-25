@@ -6,8 +6,10 @@ Tests TrainingCheckpointManager, checkpoint validation, and save/load functional
 """
 
 import os
+import shutil
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
 import torch
 try:
@@ -34,7 +36,8 @@ class TestTrainingCheckpointManager(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
+        self.temp_dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.temp_dir, ignore_errors=True)
         self.config = TrainingCheckpointConfig(
             interval_steps=1000,
             keep_last=3,
@@ -44,7 +47,7 @@ class TestTrainingCheckpointManager(unittest.TestCase):
             include_replay_buffer=False,
         )
         self.manager = TrainingCheckpointManager(
-            save_dir=self.temp_dir,
+            save_dir=str(self.temp_dir),
             config=self.config
         )
 
@@ -60,14 +63,11 @@ class TestTrainingCheckpointManager(unittest.TestCase):
     def tearDown(self):
         """Clean up after tests."""
         self.manager.shutdown()
-        # Clean up temp directory
-        import shutil
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_checkpoint_manager_initialization(self):
         """Test TrainingCheckpointManager initialization."""
         self.assertIsInstance(self.manager, TrainingCheckpointManager)
-        self.assertEqual(self.manager.save_dir, self.temp_dir)
+        self.assertEqual(self.manager.save_dir, str(self.temp_dir))
         self.assertEqual(self.manager.config.interval_steps, 1000)
 
     def test_should_checkpoint(self):
@@ -178,7 +178,7 @@ class TestTrainingCheckpointManager(unittest.TestCase):
         """Test async save configuration."""
         config = TrainingCheckpointConfig(async_save=True)
         manager = TrainingCheckpointManager(
-            save_dir=self.temp_dir,
+            save_dir=str(self.temp_dir),
             config=config
         )
 

@@ -6,8 +6,10 @@ Tests the ability to save, load, and resume training state across interruptions.
 
 import importlib
 import os
+import shutil
 import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -24,8 +26,9 @@ class TestTrainingResume(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures"""
-        self.temp_dir = tempfile.mkdtemp()
-        self.training_state_manager = TrainingStateManager(self.temp_dir)
+        self.temp_dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.temp_dir, ignore_errors=True)
+        self.training_state_manager = TrainingStateManager(str(self.temp_dir))
 
         self.mock_torch = Mock()
         self.mock_torch.cuda.is_available.return_value = False
@@ -57,10 +60,7 @@ class TestTrainingResume(unittest.TestCase):
 
     def tearDown(self):
         """Clean up test fixtures"""
-        import shutil
-
         self.import_module_patcher.stop()
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_save_training_state(self):
         """Test saving training state"""
@@ -214,7 +214,7 @@ class TestTrainingResume(unittest.TestCase):
                 "resume_from": "nonexistent_path.pkl",  # This should fail gracefully
                 "data_config": {"data_path": "test.csv"},
                 "sac_hyperparameters": {},
-                "checkpoint_dir": self.temp_dir,
+                "checkpoint_dir": str(self.temp_dir),
             },
             "model_name": "test_model",
         }
@@ -231,6 +231,7 @@ class TestUnifiedResumeManager(unittest.TestCase):
 
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.temp_dir, ignore_errors=True)
         self.resume_manager = Mock()
         # In real implementation, this would be:
         # from ztb.training.unified_resume import UnifiedResumeManager

@@ -7,8 +7,10 @@ Tests the integration of checkpoint management and logging optimization.
 
 import logging
 import os
+import shutil
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
 import numpy as np
 from stable_baselines3 import SAC
@@ -46,7 +48,8 @@ class TestCheckpointLoggingIntegration(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
+        self.temp_dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.temp_dir, ignore_errors=True)
 
         # Setup checkpoint manager
         self.checkpoint_config = TrainingCheckpointConfig(
@@ -55,7 +58,7 @@ class TestCheckpointLoggingIntegration(unittest.TestCase):
             async_save=False,
         )
         self.checkpoint_manager = TrainingCheckpointManager(
-            save_dir=self.temp_dir,
+            save_dir=str(self.temp_dir),
             config=self.checkpoint_config
         )
 
@@ -67,9 +70,6 @@ class TestCheckpointLoggingIntegration(unittest.TestCase):
     def tearDown(self):
         """Clean up after tests."""
         self.checkpoint_manager.shutdown()
-        # Clean up temp directory
-        import shutil
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_checkpoint_with_structured_logging(self):
         """Test checkpoint saving with structured logging."""
@@ -98,7 +98,7 @@ class TestCheckpointLoggingIntegration(unittest.TestCase):
         # Log successful save
         self.structured_logger.info(
             "Checkpoint saved successfully",
-            extra={"step": step, "checkpoint_path": self.temp_dir}
+            extra={"step": step, "checkpoint_path": str(self.temp_dir)}
         )
 
         # Verify checkpoint was saved
@@ -284,6 +284,7 @@ class TestPerformanceUnderLoad(unittest.TestCase):
     def setUp(self):
         """Set up performance test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.temp_dir, ignore_errors=True)
         self.checkpoint_manager = TrainingCheckpointManager(
             save_dir=self.temp_dir,
             config=TrainingCheckpointConfig(async_save=False)
@@ -294,8 +295,6 @@ class TestPerformanceUnderLoad(unittest.TestCase):
     def tearDown(self):
         """Clean up after tests."""
         self.checkpoint_manager.shutdown()
-        import shutil
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_checkpoint_performance_under_load(self):
         """Test checkpoint performance with multiple rapid saves."""

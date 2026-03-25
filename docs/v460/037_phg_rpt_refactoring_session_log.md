@@ -9244,3 +9244,13 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `tests/unit/analysis/test_v4xx_unified_analyzer.py`
     - `tests/unit/integration/test_unified_trainer_integration.py`
     - `28 passed, 3 warnings in 5.32s`
+
+- 2026-03-25 Codex:
+  - `tests/unit/training/test_training_resume.py` の temp dir cleanup を `addCleanup` に整理
+  - `tests/unit/training/test_checkpoint_manager.py` の temp dir cleanup を `addCleanup` + `Path` に整理
+  - `tests/integration/test_checkpoint_logging_integration.py` の temp dir cleanup を `addCleanup` + `Path` に整理
+  - focused pytest:
+    - `tests/unit/training/test_training_resume.py`
+    - `tests/unit/training/test_checkpoint_manager.py`
+    - `tests/integration/test_checkpoint_logging_integration.py`
+    - `25 passed in 3.17s`
