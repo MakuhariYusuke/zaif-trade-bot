@@ -742,4 +742,5 @@ NNN_phX_TYPE_description.md
 | 633 | analysis | [633_cplt_post_restart_analysis.md](633_cplt_post_restart_analysis.md) | SHA別性能分析: Era-D 黒字構造と Era-E の clamp 飽和問題 |
 | 634 | review | [634_phg_rev_628_633_profitability_reality_check_and_focus_plan.md](634_phg_rev_628_633_profitability_reality_check_and_focus_plan.md) | 628#-633# 収益性リアリティチェックと集中改善レビュー |
 | 635 | impl | [635_cplt_profitability_focus_and_alpha_execution.md](635_cplt_profitability_focus_and_alpha_execution.md) | 収益性改善: sell/ranging 抑制 + no_feasible freeze + skip_gate penalty |
-| 636 | review | [635_cplt_profitability_focus_and_alpha_execution.md](635_cplt_profitability_focus_and_alpha_execution.md#レビュー-636) | 635# レビュー: getattr 違反修正 + offset_ceil 有効化 + テスト追加 |
+| 636 | review | [636_cplt_review_635_sell_ranging_bugfix.md](636_cplt_review_635_sell_ranging_bugfix.md) | 635# レビュー: 5 バグ修正 + offset_ceil 0.8 + 11 テスト追加 |
+| 637 | analysis | [637_cplt_post_restart_triple_loss_analysis.md](637_cplt_post_restart_triple_loss_analysis.md) | 三重構造損失分析: 逆選択/レートリミッター/残高制約の根本原因特定 |
