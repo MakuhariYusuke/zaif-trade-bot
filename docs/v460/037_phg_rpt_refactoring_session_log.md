@@ -9346,3 +9346,12 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `tests/unit/training/test_checkpoint_manager.py`
     - `tests/integration/test_checkpoint_logging_integration.py`
     - `25 passed in 3.17s`
+
+- 2026-03-27 Codex:
+  - `tests/unit/v460/test_215_dd_fix_alert_mode.py` の tempdir を `Path(mkdtemp())` + `teardown_method` に整理
+  - `tests/legacy_tests/unit/utils/test_feature_cache.py` / `test_checkpoint_light.py` の tempdir cleanup を `shutil.rmtree(..., ignore_errors=True)` に統一
+  - focused pytest:
+    - `tests/unit/v460/test_215_dd_fix_alert_mode.py`
+    - `tests/legacy_tests/unit/utils/test_feature_cache.py`
+    - `tests/legacy_tests/unit/utils/test_checkpoint_light.py`
+    - `31 passed, 9 skipped in 2.04s`

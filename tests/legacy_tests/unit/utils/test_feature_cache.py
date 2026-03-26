@@ -1,13 +1,14 @@
 import os
 import tempfile
+from pathlib import Path
 
 from ztb.utils.cache.feature_cache import FeatureCache
 
 
 class TestFeatureCache:
     def setup_method(self):
-        self.test_cache_dir = tempfile.mkdtemp(prefix="test_cache_")
-        self.cache = FeatureCache(self.test_cache_dir, 10, 1)  # 10MB, 1日
+        self.test_cache_dir = Path(tempfile.mkdtemp(prefix="test_cache_"))
+        self.cache = FeatureCache(str(self.test_cache_dir), 10, 1)  # 10MB, 1日
         # テスト時はサイズ制限を無効化
         self.cache._enforce_size_limit = lambda: None
 
@@ -15,7 +16,7 @@ class TestFeatureCache:
         # クリーンアップ
         import shutil
 
-        if os.path.exists(self.test_cache_dir):
+        if self.test_cache_dir.exists():
             shutil.rmtree(self.test_cache_dir)
 
     def test_select_compressor_small_data(self):
@@ -45,7 +46,7 @@ class TestFeatureCache:
         """プロセス分離されたディレクトリが作成される"""
         cache_dir = str(self.cache.cache_dir)
         assert "process_" in cache_dir
-        assert self.test_cache_dir in cache_dir
+        assert str(self.test_cache_dir) in cache_dir
 
     def test_cache_operations(self):
         """基本的なキャッシュ操作"""

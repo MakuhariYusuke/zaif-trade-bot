@@ -1,6 +1,7 @@
 import os
 import sys
 import tempfile
+from pathlib import Path
 from unittest.mock import Mock
 
 sys.path.insert(0, "src")
@@ -8,7 +9,7 @@ sys.path.insert(0, "src")
 
 class TestCheckpointLight:
     def setup_method(self):
-        self.test_dir = tempfile.mkdtemp(prefix="test_checkpoint_")
+        self.test_dir = Path(tempfile.mkdtemp(prefix="test_checkpoint_"))
         self.model = Mock()
         self.model.policy.state_dict.return_value = {"layer1": "policy_data"}
         self.model.value_net = Mock()
@@ -18,7 +19,7 @@ class TestCheckpointLight:
     def teardown_method(self):
         import shutil
 
-        if os.path.exists(self.test_dir):
+        if self.test_dir.exists():
             shutil.rmtree(self.test_dir)
 
     def test_light_checkpoint_size_reduction(self):

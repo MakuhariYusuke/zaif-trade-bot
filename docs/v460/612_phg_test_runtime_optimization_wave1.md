@@ -314,6 +314,17 @@ subset 実行:
   - focused pytest:
     - `tests/unit/cache/test_parquet_io.py`
 
+- alert-mode / legacy tempdir cleanup sweep:
+  - 追加適用:
+    - `tests/unit/v460/test_215_dd_fix_alert_mode.py`
+    - `tests/legacy_tests/unit/utils/test_feature_cache.py`
+    - `tests/legacy_tests/unit/utils/test_checkpoint_light.py`
+  - 内容:
+    - `mkdtemp()` の返り値を `Path` で保持し、teardown で `shutil.rmtree(..., ignore_errors=True)` に統一
+    - `test_215_dd_fix_alert_mode.py` では invalid-values 系 fixture に `teardown_method()` を追加し、tempdir leak を止めた
+  - focused pytest:
+    - `31 passed, 9 skipped in 2.04s`
+
 ## git 運用メモ
 
 - WSL + NTFS 上では `git status --untracked-files=normal` が重い

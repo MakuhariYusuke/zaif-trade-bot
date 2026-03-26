@@ -140,7 +140,7 @@ class TestAlertMode:
     """215# P0-C: ファイルタッチ型 alert_mode."""
 
     def setup_method(self) -> None:
-        self._tmpdir = tempfile.mkdtemp()
+        self._tmpdir = Path(tempfile.mkdtemp())
         # Reset module-level cache
         alert_mode_module._last_logged_state = None
 
@@ -149,7 +149,7 @@ class TestAlertMode:
         shutil.rmtree(self._tmpdir, ignore_errors=True)
 
     def _alert_mode_path(self) -> Path:
-        return Path(self._tmpdir) / "alert_mode.json"
+        return self._tmpdir / "alert_mode.json"
 
     def _write_alert_mode(self, payload: object | str) -> Path:
         path = self._alert_mode_path()
@@ -366,10 +366,14 @@ class TestAlertModeInvalidValues217:
 
     def setup_method(self) -> None:
         alert_mode_module._last_logged_state = None
-        self._tmpdir = tempfile.mkdtemp()
+        self._tmpdir = Path(tempfile.mkdtemp())
+
+    def teardown_method(self) -> None:
+        import shutil
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
 
     def _write_alert_mode(self, payload: object) -> Path:
-        path = Path(self._tmpdir) / "alert_mode.json"
+        path = self._tmpdir / "alert_mode.json"
         path.write_text(json.dumps(payload))
         return path
 
