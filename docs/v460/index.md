@@ -744,3 +744,6 @@ NNN_phX_TYPE_description.md
 | 635 | impl | [635_cplt_profitability_focus_and_alpha_execution.md](635_cplt_profitability_focus_and_alpha_execution.md) | 収益性改善: sell/ranging 抑制 + no_feasible freeze + skip_gate penalty |
 | 636 | review | [636_cplt_review_635_sell_ranging_bugfix.md](636_cplt_review_635_sell_ranging_bugfix.md) | 635# レビュー: 5 バグ修正 + offset_ceil 0.8 + 11 テスト追加 |
 | 637 | analysis | [637_cplt_post_restart_triple_loss_analysis.md](637_cplt_post_restart_triple_loss_analysis.md) | 三重構造損失分析: 逆選択/レートリミッター/残高制約の根本原因特定 |
+| 638 | review | [638_phg_rev_635_637_multifaceted_validation_and_profit_actions.md](638_phg_rev_635_637_multifaceted_validation_and_profit_actions.md) | 635#-637# 多角的検証レビューと収益改善アクション |
+| 639 | review | [639_cplt_deep_review_beyond_638_and_strategic_proposals.md](639_cplt_deep_review_beyond_638_and_strategic_proposals.md) | 638# を超えた戦略提言 (EV floor/inventory skew/動的 timeout) |
+| 640 | analysis | [640_cplt_synthesis_638_639_verification_and_action_plan.md](640_cplt_synthesis_638_639_verification_and_action_plan.md) | 638#/639# 検証・総合判定: CV widen 有害性確認、hard_skip 2件、P0-A/B/C 策定 |
