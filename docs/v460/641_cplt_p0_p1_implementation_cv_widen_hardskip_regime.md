@@ -126,3 +126,54 @@ by_regime = Counter((r['side'], r['regime']) for r in forced)
 forced = [r for r in records if r.get('skip_gate_forced_pass')]
 # side_skip_rate で閾値接近度も即座に確認
 ```
+
+---
+
+## デプロイ・分析スケジュール
+
+### タイムライン
+
+| イベント | 日時 (JST) | SHA | 備考 |
+|---------|-----------|-----|------|
+| **Before 最終 fill** | 2026-03-27 02:35 | `4aa931b20` | 旧設定での最後のデータ |
+| **641#+642# コミット** | 2026-03-27 03:00頃 | `95101ca44` | hot reload で自動反映 |
+| **デプロイ反映** | 2026-03-27 03:02頃 | — | YAML ポーリング ~120秒で適用 |
+| **中間確認** | **2026-03-29 (日) AM** | — | 約2日分 ~300 fills。方向性確認 |
+| **本格分析** | **2026-03-31 (火) AM** | — | 約4日分 ~600 fills。統計的比較 |
+
+### Before/After 分析方法
+
+**Before 期間**: `20260320`–`20260326` (7日, 1034 fills, SHA `4aa931b20` 以前)
+**After 期間**: `20260327` 以降 (SHA `95101ca44`)
+
+```python
+# SHA ベースで分割
+before = [r for r in all_records if r.get('git_sha') in ('4aa931b20...', ...)]
+after  = [r for r in all_records if r.get('git_sha') == '95101ca44...']
+```
+
+### 確認すべき指標 (優先順)
+
+| # | 指標 | Before 基準値 | 期待方向 | 対応変更 |
+|---|------|-------------|---------|---------|
+| 1 | forced fill 件数 / 日 | 24件/日 (169÷7) | ↓↓ 大幅減 | P0-B max_skip_rate 0.4 |
+| 2 | forced fill avg pnl | -0.92bps | → (減少で改善) | P0-B |
+| 3 | buy/trending_down fill 数 | 40件/7日 | ↑ 増加 | P1-A hard_skip 緩和 |
+| 4 | buy/trending_down avg pnl | +2.03bps | → 維持 | P1-A |
+| 5 | CV widen 発生数 | 276件/7日 | → 0 | P0-A offset_boost=1.0 |
+| 6 | balance_freeze 発動頻度 | — | ↓ 減少 | P0-C freeze=1 |
+| 7 | 全体 avg pnl_bps | -0.28bps | ↑ 改善 | 総合 |
+
+### 中間確認 (3/29) で判断する閾値
+
+- **成功**: forced fill 50%以上減少 + buy/trending_down fill 数増加
+- **要注意**: forced fill 減少なし → max_skip_rate の反映確認
+- **ロールバック**: 全体 avg pnl が -0.50bps 以下に悪化 → 要因分析後 YAML 巻き戻し
+
+### 642# 新フィールドの検証 (3/29 中間確認時)
+
+After 期間のレコードで以下を確認:
+- `skip_gate_forced_pass` フィールドが `true`/`false` で記録されているか
+- `skip_gate_side_skip_rate` が数値で記録されているか
+- `cv_offset_action` が `None` (P0-A で widen 無効化済みなので)
+- `balance_jpy_at_order` / `balance_btc_at_order` が非 null で記録されているか
