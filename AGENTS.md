@@ -34,10 +34,6 @@ Coincheck BTC/JPY マーケットメイカー（SAC強化学習）。短期高�
 - ドキュメント番号 `NNN#` はインクリメンタルに採番（既存最大+1）
 
 ## 現行アーキテクチャ要点 (606#時点)
-- **Safety層**: SAD / MCB は `enabled: true`（606#）。hot-reload では `MCBConfig`/`SADConfig` の enabled が**再構築されない**（プロセス再起動で反映）
+- **Safety層**: SAD / MCB は `enabled: true`（606#）。607# で hot-reload 対応済み（`mcb_enabled`/`sad_enabled` 変更時にコンポーネント再構築、状態継承あり）
 - **entry_gate**: observe モード（`enabled: false` + CalibrationMap 接続済み）
 - **提案文書の検証**: AI 生成の「現在値」は必ず YAML + コードで検証すること（592#/605# 教訓）
-
-## ⚠ 既知の問題: git 追跡ファイル消失
-session037 コミット群（116個）が `git add` 漏れにより追跡ファイルを 5,002→105 に激減させた。ディスク上のファイルは無事。修復手順は `temp/prompt_git_fix.md` を参照。
-- `core.splitIndex` は壊れると追跡消失に見えるため、この repo では無効を維持する

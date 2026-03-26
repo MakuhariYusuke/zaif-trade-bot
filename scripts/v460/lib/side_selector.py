@@ -95,6 +95,12 @@ class SideSelector:
 
         base_side = "buy" if (self._last_side is None or self._last_side == "sell") else "sell"
 
+        # 634# P1-3: ranging では buy 優先 (sell の無理な試行を減らしつつ profitable な buy を増やす)
+        if regime == "ranging" and base_side == "sell":
+            if self._consecutive_same_side < self._config.ranging_buy_priority_max_consecutive:
+                base_side = "buy"
+                logger.debug(f"[634#] regime=ranging prioritizing 'buy' over 'sell' (consecutive={self._consecutive_same_side})")
+
         # 120# A5: inventory-aware — frozen side は反対に迂回
         if self._frozen_side is not None and self._frozen_remaining > 0:
             if base_side == self._frozen_side:

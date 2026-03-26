@@ -196,6 +196,16 @@ def section_cancel(records: list[dict[str, Any]]) -> list[str]:
         reasons = collections.Counter(r.get("cancel_reason", "unknown") for r in cancels)
         for reason, cnt in reasons.most_common(15):
             lines.append(f"  {reason}: {cnt} ({cnt/len(cancels)*100:.1f}%)")
+            
+        # Top 3 reasons breakdown by side and regime
+        lines.append("\n  [Breakdown of Top 3 Reasons]")
+        for reason, _ in reasons.most_common(3):
+            sub_records = [r for r in cancels if r.get("cancel_reason", "unknown") == reason]
+            sub_counter = collections.Counter(f"{r.get('side', 'unknown')} / {r.get('regime', 'unknown')}" for r in sub_records)
+            lines.append(f"  * {reason}")
+            for k, v in sub_counter.most_common(5):
+                lines.append(f"      - {k}: {v}")
+
     lines.append("")
     return lines
 

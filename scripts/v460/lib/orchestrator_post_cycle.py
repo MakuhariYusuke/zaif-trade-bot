@@ -57,6 +57,12 @@ class OrchestratorPostCycleMixin:
             # 487# P2: unfilled cancel_reason tracking
             _cr = record.cancel_reason or "unknown"
             st.cancel_reason_counts[_cr] = st.cancel_reason_counts.get(_cr, 0) + 1
+            
+            # 634# P1-1: no_feasible_quote 連続時の side cooldown
+            if _cr == "no_feasible_quote" and record.side in ("buy", "sell"):
+                self._side_selector.freeze_side(record.side, cycles=2)
+                logger.info(f"[634#] NO_FEASIBLE_QUOTE on {record.side} -> freezing for 2 cycles to avoid spam")
+                
             # 202# A: 単一サイクル大損失クールダウン
             if (
                 record.post_fill_30s_pnl is not None

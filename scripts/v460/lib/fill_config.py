@@ -308,6 +308,8 @@ class FillTestConfig:
     smart_side_enabled: bool = False
     smart_side_mode: str = "suppress"      # suppress / follow
     smart_side_max_consecutive: int = 2    # 片側蓄積防止 (000# §3.3)
+    # 634# P1-3: ranging では buy 優先。連続 buy 上限を超えたら sell を許可
+    ranging_buy_priority_max_consecutive: int = 3
     # ---- 306# L2: Microprice Side Selection ----
     # microprice = (Pb·Qa + Pa·Qb) / (Qa + Qb)
     # microprice > mid → sell 優先 (買い圧力強), microprice < mid → buy 優先
@@ -571,6 +573,9 @@ class FillTestConfig:
     # ログ分析: spread<2kでAS32% (全体28%) → 閾値厳格化で AS fill削減
     skip_gate_narrow_spread_threshold_jpy: float = 0.0  # 0.0=無効
     skip_gate_narrow_spread_offset: float = 0.0  # 正=厳格化 (PnLモード)
+    # 634# P0: ranging + sell の skip 確率を大幅に上げる (閾値を厳格化)
+    skip_gate_sell_ranging_offset: float = 0.5
+
     # 187# clamp YAML外部化: skip_gate offset の上下限
     skip_gate_offset_floor: float = -0.3   # 最大緩和
     skip_gate_offset_ceil: float = 0.5     # 最大厳格化

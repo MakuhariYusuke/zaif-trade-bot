@@ -171,6 +171,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "skip_gate_model_path_sell_short",
     "skip_gate_narrow_spread_offset",
     "skip_gate_narrow_spread_threshold_jpy",
+    "skip_gate_offset_ceil",  # 634# 0.5→0.8: sell_ranging_offset有効化
     "skip_gate_pnl_threshold",
     "skip_gate_regime_thresholds",
     "skip_gate_target_skip_rate_buy",

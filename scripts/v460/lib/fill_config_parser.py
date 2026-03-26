@@ -157,6 +157,8 @@ def _parse_trading_features(yaml_cfg: dict) -> dict:
         kwargs["smart_side_mode"] = ss["mode"]
     if "max_consecutive_same" in ss:
         kwargs["smart_side_max_consecutive"] = ss["max_consecutive_same"]
+    if "ranging_buy_priority_max_consecutive" in ss:
+        kwargs["ranging_buy_priority_max_consecutive"] = ss["ranging_buy_priority_max_consecutive"]
 
     # 054# S3: Early Exit (テール損失カット)
     ee = yaml_cfg.get("early_exit", {})
@@ -343,6 +345,8 @@ def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
         # 343# skip_gate/kill 連携
         "kill_release_grace_cycles": "skip_gate_kill_release_grace_cycles",
         "kill_release_offset": "skip_gate_kill_release_offset",
+        # 634# P0: sell ranging penalty
+        "sell_ranging_offset": "skip_gate_sell_ranging_offset",
     }
     for yaml_key, config_key in sg_map.items():
         if yaml_key in sg and sg[yaml_key] is not None:

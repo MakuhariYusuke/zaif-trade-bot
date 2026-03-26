@@ -687,6 +687,12 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                     kill_release_offset,
                 )
 
+            # 634# P0: ranging + sell の skip 確率を大幅に上げる (閾値を厳格化)
+            if side == "sell" and sg_regime == "ranging":
+                _sell_ranging_penalty = self._config.skip_gate_sell_ranging_offset
+                _total_offset += _sell_ranging_penalty
+                logger.debug(f"[634# SkipGate] applied sell/ranging penalty offset: +{_sell_ranging_penalty}")
+
             # 186# strictness clamp: 過剰な厳格化/緩和を防止 (187# YAML外部化)
             _OFFSET_FLOOR = self._config.skip_gate_offset_floor
             _OFFSET_CEIL = self._config.skip_gate_offset_ceil

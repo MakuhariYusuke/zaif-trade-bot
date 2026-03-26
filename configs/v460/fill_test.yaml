@@ -310,6 +310,8 @@ smart_side:
   enabled: false               # 071# 無効化
   mode: suppress
   max_consecutive_same: 2
+  # 634# P1-3: ranging buy 優先の連続上限
+  ranging_buy_priority_max_consecutive: 3
 
 # ---- 054# S3: テール損失カット (Early Exit) ----
 # 120# P0: 119# 分析で EE 48件=-345.5bps が全損失の137%を生成。
@@ -517,9 +519,11 @@ skip_gate:
   # ログ分析: spread<2kでAS32% (全体28%), PnL=-0.46bps (全体-0.30bps)
   skip_gate_narrow_spread_threshold_jpy: 2000.0
   skip_gate_narrow_spread_offset: 0.2     # PnLモード: threshold += 0.2 (厳格化)
+  # 634# P0: sell/ranging ペナルティ (閾値を厳格化して sell/ranging の skip 率を上げる)
+  sell_ranging_offset: 0.5
   # 187# clamp: offset 合計の上下限 (hot-reload 対応)
   offset_floor: -0.3   # 最大緩和
-  offset_ceil: 0.5     # 最大厳格化
+  offset_ceil: 0.8     # 最大厳格化 (634# sell_ranging_offset=0.5 が有効に機能するよう引き上げ)
   # 343# skip_gate/kill 連携: kill 解除直後の skip_gate 緩和
   kill_release_grace_cycles: 3   # kill 解除後の緩和サイクル数
   kill_release_offset: -0.1     # 緩和 offset (負=緩和)

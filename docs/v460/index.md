@@ -739,3 +739,7 @@ NNN_phX_TYPE_description.md
 | 630 | impl | [630_cplt_p1_threshold_tuning.md](630_cplt_p1_threshold_tuning.md) | P1 閾値チューニング (vel_skip/regime/VG) |
 | 631 | fix | [631_cplt_min_spread_bps_floor_10x_fix.md](631_cplt_min_spread_bps_floor_10x_fix.md) | BPS floor 10× 計算ミス修正 + hot_swap cascade 修正 |
 | 632 | impl | [632_cplt_p2_atr_floor_log_improvements.md](632_cplt_p2_atr_floor_log_improvements.md) | P2 ATR floor calibration + ログ/ヘルパー改善 |
+| 633 | analysis | [633_cplt_post_restart_analysis.md](633_cplt_post_restart_analysis.md) | SHA別性能分析: Era-D 黒字構造と Era-E の clamp 飽和問題 |
+| 634 | review | [634_phg_rev_628_633_profitability_reality_check_and_focus_plan.md](634_phg_rev_628_633_profitability_reality_check_and_focus_plan.md) | 628#-633# 収益性リアリティチェックと集中改善レビュー |
+| 635 | impl | [635_cplt_profitability_focus_and_alpha_execution.md](635_cplt_profitability_focus_and_alpha_execution.md) | 収益性改善: sell/ranging 抑制 + no_feasible freeze + skip_gate penalty |
+| 636 | review | [635_cplt_profitability_focus_and_alpha_execution.md](635_cplt_profitability_focus_and_alpha_execution.md#レビュー-636) | 635# レビュー: getattr 違反修正 + offset_ceil 有効化 + テスト追加 |
