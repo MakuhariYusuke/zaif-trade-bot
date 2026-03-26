@@ -273,6 +273,44 @@
 2. `mkdtemp` / `NamedTemporaryFile` の残件をさらに sweep
 3. テスト軽量化を主線にしつつ、analysis / metrics bridge も並走する
 
+## 2026-03-27 / Session 037-615
+
+### 実施
+- `git` の遅さを repo-local 設定と実測で切り分け
+- 測定:
+  - `git status --short -uno`
+  - `git diff --name-only`
+  - `git update-index --refresh`
+- `core.checkStat=minimal` / `core.trustctime=false` も試験したが、今回の環境では改善せず revert
+- repo-local alias を追加
+  - `git dm` = `git diff --name-only`
+  - `git ds` = `git diff --stat`
+
+### 結果
+- 主因は untracked 列挙より、**tracked file の metadata refresh**
+- 実測の目安:
+  - `git diff --name-only`: 約 `4s`
+  - `git status --short -uno`: 約 `5-6s`
+- つまり WSL 上の `/mnt/c/...` (NTFS) で、tracked file の `stat` が支配的
+- `fsmonitor--daemon` はこの platform では未対応
+
+### 判断
+1. 既存の
+   - `core.untrackedcache=true`
+   - `core.preloadindex=true`
+   - `core.fscache=true`
+   - `core.splitIndex=false`
+   は維持
+2. 日常確認は引き続き
+   - `git st`
+   - `git dm`
+   - `git ds`
+   を優先
+3. 本質的な改善は
+   - repo を Linux FS 側へ置く
+   - もしくは Windows 側 Git で運用する
+   のどちらかが効く
+
 ## 2026-03-23 / Session 037-561
 
 ### 実施
