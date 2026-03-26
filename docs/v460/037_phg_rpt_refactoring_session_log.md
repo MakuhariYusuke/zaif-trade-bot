@@ -9366,3 +9366,11 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `test_499_loss_cap_daily_scope.py`
     - `test_384_pipeline_fixes.py`
     - `test_enricher_skip_gate.py`
+
+- 2026-03-27 Codex:
+  - 次の batch を docs に整理:
+    - Batch T2: top duration test cleanup
+    - Batch T3: helper / type cleanup
+    - Batch C1: Wave 2 code health residual
+  - `tests/unit/v460/_real_data_test_helpers.py` に `JsonRow = dict[str, object]` を導入
+  - real-data helper の `Any` を局所的に削減

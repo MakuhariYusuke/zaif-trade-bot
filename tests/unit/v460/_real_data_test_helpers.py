@@ -4,7 +4,7 @@ import gzip
 import json
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Callable
+from typing import TypeAlias, Callable
 
 import numpy as np
 import pandas as pd
@@ -13,6 +13,7 @@ from ztb.io.jsonl import read_tail_jsonl_objects
 
 
 _DEFAULT_RESULTS_DIR = Path("results/v460/fill_test")
+JsonRow: TypeAlias = dict[str, object]
 
 
 @lru_cache(maxsize=8)
@@ -71,14 +72,14 @@ def has_fill_records(
     return latest_fill_records_file(results_dir) is not None
 
 
-def write_jsonl_sample(path: Path, rows: list[dict[str, Any]]) -> None:
+def write_jsonl_sample(path: Path, rows: list[JsonRow]) -> None:
     path.write_text(
         "\n".join(json.dumps(row, ensure_ascii=False) for row in rows) + "\n",
         encoding="utf-8",
     )
 
 
-def write_jsonl_gz(path: Path, rows: list[dict[str, Any]]) -> None:
+def write_jsonl_gz(path: Path, rows: list[JsonRow]) -> None:
     with gzip.open(path, "wt", encoding="utf-8") as f:
         for row in rows:
             f.write(json.dumps(row, ensure_ascii=False))

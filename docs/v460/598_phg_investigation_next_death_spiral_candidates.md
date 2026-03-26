@@ -207,6 +207,26 @@ Success: no issues found in 3 source files
 2. loader は専用のままでも、filter/output 契約は `analysis_common` に寄せる
 3. script 固有の集計や report formatting は無理に共通化しない
 
+2026-03-27 追加棚卸し:
+
+- `tests/unit/v460/_real_data_test_helpers.py`
+  - `write_jsonl_sample(...)` / `write_jsonl_gz(...)` は複数 real-data test の実質共通 helper
+  - まずは test helper のまま `JsonRow = dict[str, object]` へ寄せて `Any` を減らす
+  - その上で reuse 範囲が `tests/` を超えるなら `ztb.io.jsonl` 周辺へ移管を検討
+- `analyze_fill_logs.py` / `fill_quality.py`
+  - observability / metrics bridge の基準点
+  - 次の batch では
+    - output helper
+    - typed record alias
+    - execution telemetry field
+    を同じ基準で揃える
+- `maker_price.py` / `ab_judgment.py`
+  - Wave 2 の残差として、god object 化を再燃させやすい inline ownership 点だけを棚卸し対象にする
+  - 大分割ではなく
+    - veto/cache/telemetry
+    - result/report
+    の update ownership を薄くするところで止める
+
 2026-03-26 追加:
 
 - `reproduce_152_metrics.py`

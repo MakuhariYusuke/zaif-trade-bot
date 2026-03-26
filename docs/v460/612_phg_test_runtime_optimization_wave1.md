@@ -394,6 +394,42 @@ slowest 25 から見えた優先候補:
   - `test_enricher_skip_gate.py`
   の順が効きやすい
 
+## 次の batch 方針
+
+同質なものをまとめて進める。
+
+### Batch T2: top duration test cleanup
+
+- `tests/unit/v460/test_552_update_training_data.py`
+  - parquet / DataFrame fixture を module-scope へ寄せられるか確認
+  - `_download_ohlcv()` の mocked path を focused 計測し、import/dataframe build のどちらが支配的か分離
+- `tests/unit/v460/test_499_loss_cap_daily_scope.py`
+  - 日次 reset stub 生成の helper 化
+  - import-heavy であれば module-level import か shared fixture に寄せる
+- `tests/unit/v460/test_384_pipeline_fixes.py`
+  - long step loop を contract を崩さず短くできるか確認
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - real-data setup の sample cap / cache reuse を再点検
+
+### Batch T3: helper / type cleanup と横展開
+
+- `tests/unit/v460/_real_data_test_helpers.py`
+  - generic helper の `Any` を減らし、`JsonRow` alias へ寄せる
+- `analysis / metrics bridge`
+  - `analyze_fill_logs.py`
+  - `fill_quality.py`
+  - `oracle_* / reproduce_152_metrics / tail_loss_analysis`
+  の出力・型・metrics bridge を同じ基準で揃える
+
+### Batch C1: code health candidates
+
+- `scripts/v460/lib/maker_price.py`
+  - Wave 2A の残差として veto/cache/telemetry ownership の inline update 点を棚卸し
+- `scripts/v460/lib/ab_judgment.py`
+  - result/report ownership の残差確認
+- `tests/unit/v460/_real_data_test_helpers.py` と同種の helper は、
+  汎用化できるものだけ `ztb` 側移管候補として見る
+
 
 - unittest / smoke tempfile sweep:
   - 追加適用:
