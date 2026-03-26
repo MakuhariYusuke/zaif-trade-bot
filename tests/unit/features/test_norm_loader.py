@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -102,9 +103,9 @@ class TestReload:
         # 内容を書き換え
         data = json.loads(norm_json.read_text(encoding="utf-8"))
         data["feature_stats"]["new_feat"] = {"mean": 0.0, "std": 1.0}
-        import time
-        time.sleep(0.05)  # mtime 変化のため
         norm_json.write_text(json.dumps(data), encoding="utf-8")
+        stat = norm_json.stat()
+        os.utime(norm_json, (stat.st_atime, stat.st_mtime + 1.0))
         changed = nl.reload_if_changed()
         assert changed
         assert "new_feat" in nl.feature_names

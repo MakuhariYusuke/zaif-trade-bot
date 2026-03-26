@@ -3,6 +3,7 @@
 コアエンコーダーと設定管理クラスのテストを含む。
 """
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -201,8 +202,8 @@ class TestMultimodalConfig(unittest.TestCase):
 
     def test_yaml_save_load(self):
         """YAML保存・読み込みテスト"""
-        with tempfile.NamedTemporaryFile(mode="w+", suffix=".yaml", delete=False) as f:
-            temp_path = f.name
+        fd, temp_path = tempfile.mkstemp(suffix=".yaml")
+        os.close(fd)
 
         try:
             # 保存

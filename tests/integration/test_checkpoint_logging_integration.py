@@ -283,10 +283,10 @@ class TestPerformanceUnderLoad(unittest.TestCase):
 
     def setUp(self):
         """Set up performance test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
+        self.temp_dir = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.temp_dir, ignore_errors=True)
         self.checkpoint_manager = TrainingCheckpointManager(
-            save_dir=self.temp_dir,
+            save_dir=str(self.temp_dir),
             config=TrainingCheckpointConfig(async_save=False)
         )
 

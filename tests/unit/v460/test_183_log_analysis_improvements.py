@@ -342,10 +342,11 @@ class TestFillTestYAMLIntegration:
         data = v460_fill_test_yaml
         cfg = clone_fill_test_config(load_fill_test_config_from_mapping(data))
 
-        # 183# velocity skip  (353# buy -6→-4)
+        # velocity skip 現在値
+        # buy=-4.0, sell=4.0 は現行 fill_test.yaml の対称設定に追随
         assert cfg.buy_velocity_skip_enabled is True
         assert cfg.buy_velocity_skip_threshold_bps == pytest.approx(-4.0)
-        assert cfg.sell_velocity_skip_threshold_bps == pytest.approx(6.0)
+        assert cfg.sell_velocity_skip_threshold_bps == pytest.approx(4.0)
 
         # 183# hour offsets
         assert 16 in cfg.skip_gate_hour_offsets
@@ -355,8 +356,8 @@ class TestFillTestYAMLIntegration:
         assert cfg.skip_gate_narrow_spread_threshold_jpy == pytest.approx(2000.0)
         assert cfg.skip_gate_narrow_spread_offset == pytest.approx(0.2)
 
-        # 183# VG tuning
-        assert cfg.volatility_guard_velocity_threshold_bps == pytest.approx(12.0)
+        # VG tuning 現在値
+        assert cfg.volatility_guard_velocity_threshold_bps == pytest.approx(6.0)
         assert cfg.volatility_guard_vpin_threshold == pytest.approx(0.80)
 
         # 183# narrow spread boost

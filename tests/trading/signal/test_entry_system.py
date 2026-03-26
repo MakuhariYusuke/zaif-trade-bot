@@ -1,4 +1,6 @@
 import unittest
+import os
+import tempfile
 
 from ztb.trading.signal.entry_system import IntegratedEntrySystem
 from ztb.trading.types import MarketState
@@ -53,14 +55,11 @@ class TestIntegratedEntrySystem(unittest.TestCase):
         self.assertGreater(stats["l1"]["avg_win"], 0.0)
 
     def test_save_load_state(self):
-        import os
-        import tempfile
-
         # Update some stats
         self.system.update_outcome("bull", 0.8, 10.0, 100)
 
-        with tempfile.NamedTemporaryFile(delete=False) as tmp:
-            path = tmp.name
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
 
         try:
             self.system.save_state(path)

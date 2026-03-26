@@ -244,6 +244,35 @@
 2. テスト軽量化 batch を継続
 3. 触っていない `analyze_fill_logs.py` 側の並行差分が落ち着いたら bridge 整理を再開
 
+## 2026-03-26 / Session 037-614
+
+### 実施
+- temp lifecycle / mtime wait の同型 cleanup をまとめて実施
+  - `test_training_resume.py`
+  - `test_checkpoint_logging_integration.py`
+  - `test_integration.py`
+  - `test_callbacks.py`
+  - `test_ab_test_framework.py`
+  - `test_configuration_manager.py`
+  - `test_norm_loader.py`
+  - `test_multimodal_core.py`
+  - `test_entry_system.py`
+  - `test_rollup_artifacts.py`
+- `tests/unit/v460/test_183_log_analysis_improvements.py` を現行 `fill_test.yaml` の値へ追随
+
+### 結果
+- focused pytest:
+  - temp/multimodal/features/signal/core batch `116 passed, 10 skipped`
+- subset broad (`-x --tb=short --no-cov`) 途中で拾えた failure は
+  - `test_183_log_analysis_improvements.py`
+  - live YAML 値 drift
+  だったため、その場で回帰を補正
+
+### 次アクション
+1. `--durations` の top offender 分類を続ける
+2. `mkdtemp` / `NamedTemporaryFile` の残件をさらに sweep
+3. テスト軽量化を主線にしつつ、analysis / metrics bridge も並走する
+
 ## 2026-03-23 / Session 037-561
 
 ### 実施

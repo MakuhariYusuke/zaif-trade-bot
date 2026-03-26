@@ -157,6 +157,53 @@
 4. before / after 比較をこの文書に追記していく
 5. `tests/ --durations=30 --no-cov` を改めて取り切り、top 30 を分類する
 
+## 追加の tempfile / mtime cleanup
+
+次の同型パターンも low-risk に整理した。
+
+- `tempfile.mkdtemp()` + 手動 cleanup
+  - `tests/unit/training/test_training_resume.py`
+  - `tests/integration/test_checkpoint_logging_integration.py`
+  - `tests/training/callbacks/test_integration.py`
+  - `tests/training/callbacks/test_callbacks.py`
+  - `tests/unit/algorithms/test_ab_test_framework.py`
+  - `tests/training/config/test_configuration_manager.py`
+- `NamedTemporaryFile(delete=False)`
+  - `tests/multimodal/test_multimodal_core.py`
+  - `tests/trading/signal/test_entry_system.py`
+- `TemporaryDirectory()`
+  - `tests/unit/core/test_rollup_artifacts.py`
+- `time.sleep()` による mtime 待機
+  - `tests/unit/features/test_norm_loader.py`
+  - `os.utime(...)` 明示更新へ変更
+
+効果:
+
+- temp lifecycle の実装揺れを減らせた
+- Windows/WSL 環境でのファイルハンドル残りリスクを下げられた
+- `sleep` 依存の小さな固定費も 1 本削れた
+
+## 実行中の分類メモ
+
+subset 実行:
+
+```bash
+.venv/Scripts/python.exe -m pytest \
+  tests/unit/v460 tests/unit/training tests/integration tests/training \
+  tests/unit/config tests/unit/cache tests/unit/algorithms tests/unit/analysis \
+  tests/unit/features tests/multimodal tests/trading/signal tests/unit/core \
+  -x --tb=short --no-cov
+```
+
+この途中で拾えた実 failure:
+
+- `tests/unit/v460/test_183_log_analysis_improvements.py`
+  - `fill_test.yaml` の live 値 drift により
+    `sell_velocity_skip_threshold_bps`
+    の期待値が `6.0 -> 4.0` へ更新必要だった
+
+これは今回の cleanup 起因ではなく、現行 YAML 追随の回帰修正として吸収した。
+
 ## 検証
 
 - `python3 -m py_compile`

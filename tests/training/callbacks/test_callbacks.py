@@ -293,12 +293,9 @@ class TestCheckpointCallback(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.callback = CheckpointCallback(save_interval=10, save_path=self.temp_dir)
-
-    def tearDown(self):
-        """Clean up test fixtures."""
-        shutil.rmtree(self.temp_dir)
+        self.temp_dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.temp_dir, ignore_errors=True)
+        self.callback = CheckpointCallback(save_interval=10, save_path=str(self.temp_dir))
 
     def test_checkpoint_save_interval(self):
         """Test checkpoint saving at specified intervals."""
@@ -330,7 +327,7 @@ class TestCheckpointCallback(unittest.TestCase):
         """Test saving best model based on metric."""
         callback = CheckpointCallback(
             save_interval=1000,
-            save_path=self.temp_dir,  # Large interval to avoid regular saves
+            save_path=str(self.temp_dir),  # Large interval to avoid regular saves
         )
         callback.checkpoint_config.save_best_only = True
         callback.checkpoint_config.best_metric = "reward"

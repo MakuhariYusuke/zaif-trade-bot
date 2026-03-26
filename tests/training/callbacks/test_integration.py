@@ -32,13 +32,14 @@ class TestCallbackSystemIntegration(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
+        self.temp_dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.temp_dir, ignore_errors=True)
         self.manager = CallbackManager()
 
         # Create callbacks
         self.progress_callback = ProgressCallback(log_interval=5)
         self.checkpoint_callback = CheckpointCallback(
-            save_interval=10, save_path=self.temp_dir
+            save_interval=10, save_path=str(self.temp_dir)
         )
         self.metrics_callback = MetricsCallback(collection_interval=2, log_interval=5)
         self.logging_callback = LoggingCallback()

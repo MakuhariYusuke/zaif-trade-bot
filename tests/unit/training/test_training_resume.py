@@ -230,7 +230,7 @@ class TestUnifiedResumeManager(unittest.TestCase):
     """Test cases for unified resume manager"""
 
     def setUp(self):
-        self.temp_dir = tempfile.mkdtemp()
+        self.temp_dir = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.temp_dir, ignore_errors=True)
         self.resume_manager = Mock()
         # In real implementation, this would be:

@@ -7,6 +7,7 @@ import shutil
 import tempfile
 import time
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import numpy as np
@@ -165,8 +166,8 @@ class TestABTestExecutor(unittest.TestCase):
 
     def setUp(self):
         """テストセットアップ"""
-        self.temp_dir = tempfile.mkdtemp()
-        self.executor = ABTestExecutor(base_path=self.temp_dir)
+        self.temp_dir = Path(tempfile.mkdtemp())
+        self.executor = ABTestExecutor(base_path=str(self.temp_dir))
 
         # テスト設定
         self.test_config = ABTestConfiguration(

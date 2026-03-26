@@ -5,6 +5,7 @@ Tests for the unified configuration management system.
 
 import json
 import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -27,6 +28,7 @@ class TestConfigurationManager(unittest.TestCase):
         """Set up test fixtures."""
         self.manager = ConfigurationManager()
         self.temp_dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.temp_dir, ignore_errors=True)
 
         # Create sample configuration
         self.sample_config = {
@@ -43,13 +45,6 @@ class TestConfigurationManager(unittest.TestCase):
                 },
             },
         }
-
-    def tearDown(self):
-        """Clean up test fixtures."""
-        # Remove temporary files
-        for file in self.temp_dir.glob("*"):
-            file.unlink()
-        self.temp_dir.rmdir()
 
     def test_load_valid_config(self):
         """Test loading a valid configuration file."""
@@ -183,6 +178,7 @@ class TestConvenienceFunctions(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.temp_dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.temp_dir, ignore_errors=True)
         self.sample_config = {
             "version": "1.0",
             "training": {
@@ -192,12 +188,6 @@ class TestConvenienceFunctions(unittest.TestCase):
                 "data_config": {"data_path": "data/test.csv", "use_real_data": True},
             },
         }
-
-    def tearDown(self):
-        """Clean up test fixtures."""
-        for file in self.temp_dir.glob("*"):
-            file.unlink()
-        self.temp_dir.rmdir()
 
     def test_load_training_config(self):
         """Test load_training_config convenience function."""

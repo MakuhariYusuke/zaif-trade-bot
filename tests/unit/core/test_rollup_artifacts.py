@@ -1,7 +1,5 @@
 import json
-import tempfile
 from pathlib import Path
-from typing import Generator
 from unittest.mock import MagicMock, patch
 
 import jsonschema
@@ -16,9 +14,8 @@ from ztb.ops.rollup.rollup_artifacts import (
 
 
 @pytest.fixture
-def temp_artifacts() -> Generator[Path, None, None]:
-    with tempfile.TemporaryDirectory() as tmp:
-        yield Path(tmp)
+def temp_artifacts(tmp_path: Path) -> Path:
+    return tmp_path
 
 
 def test_aggregate_metrics(temp_artifacts: Path) -> None:
