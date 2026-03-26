@@ -430,6 +430,62 @@ slowest 25 から見えた優先候補:
 - `tests/unit/v460/_real_data_test_helpers.py` と同種の helper は、
   汎用化できるものだけ `ztb` 側移管候補として見る
 
+## Batch T2 進捗 (top duration cleanup 1st)
+
+対象:
+
+- `tests/unit/v460/test_552_update_training_data.py`
+- `tests/unit/v460/test_499_loss_cap_daily_scope.py`
+- `tests/unit/v460/test_384_pipeline_fixes.py`
+
+内容:
+
+- `test_552_update_training_data.py`
+  - target function import を module-level に集約
+  - parquet template を module-scope fixture 化
+  - 各 test は template を `tmp_path` に copy する形へ変更
+  - fixture 側で `pd.read_parquet(..., columns=["timestamp"])` を1回実行し、初回 engine 初期化を吸収
+- `test_499_loss_cap_daily_scope.py`
+  - module import を集約
+  - `_make_pre_cycle_mixin(...)` helper を追加し、日次 reset stub 構築を共通化
+- `test_384_pipeline_fixes.py`
+  - `evaluate_model_oos`
+  - `_build_val_env_config`
+  の import を module-level に集約
+
+focused 実測:
+
+```bash
+.venv/Scripts/python.exe -m pytest \
+  tests/unit/v460/test_552_update_training_data.py \
+  tests/unit/v460/test_499_loss_cap_daily_scope.py \
+  tests/unit/v460/test_384_pipeline_fixes.py \
+  --durations=15 -q --no-cov
+```
+
+結果:
+
+- `31 passed, 1 warning in 3.99s`
+
+durations 変化で特に効いた点:
+
+- `test_552_update_training_data.py::TestGetParquetLastTimestamp::test_returns_last_ts`
+  - call `1.23s -> 0.02s`
+- 同 test setup
+  - `0.51s -> 0.11s`
+- `TestDownloadOhlcv::test_returns_dataframe`
+  - `0.78s -> 0.48s`
+
+現時点の判断:
+
+- `552` は parquet template 共有がかなり効く
+- `499` / `384` は import 集約で十分 low-risk
+- 次の本丸は引き続き
+  - `test_enricher_skip_gate.py`
+  - `test_552_update_training_data.py` の `_download_ohlcv` path
+  - `test_499_loss_cap_daily_scope.py` の direct mixin path
+ である
+
 
 - unittest / smoke tempfile sweep:
   - 追加適用:

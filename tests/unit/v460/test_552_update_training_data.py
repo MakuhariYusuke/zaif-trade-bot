@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import tempfile
 from datetime import datetime, timezone
+import shutil
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -11,8 +11,18 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from scripts.v460.ml.update_training_data import (
+    _SAC_FEATURES,
+    _download_ohlcv,
+    _get_all_parquet_features,
+    _get_parquet_last_timestamp,
+    _hours_since_last_update,
+    _merge_into_parquet,
+    ensure_data_fresh,
+)
 
-@pytest.fixture
+
+@pytest.fixture(scope="module")
 def sample_ohlcv() -> pd.DataFrame:
     """テスト用 OHLCV DataFrame."""
     n = 100
@@ -29,16 +39,33 @@ def sample_ohlcv() -> pd.DataFrame:
     })
 
 
-@pytest.fixture
-def sample_parquet(sample_ohlcv: pd.DataFrame, tmp_path: Path) -> Path:
-    """テスト用 parquet ファイル."""
-    path = tmp_path / "test.parquet"
+def _build_sample_parquet(path: Path, sample_ohlcv: pd.DataFrame) -> None:
     # tz を除去して保存 (本番と同じ形式)
     df = sample_ohlcv.copy()
     df["timestamp"] = df["timestamp"].dt.tz_localize(None)
     df["price_velocity"] = np.float32(0.0)
     df["micro_trend"] = np.float32(0.0)
     df.to_parquet(path, index=False)
+
+
+@pytest.fixture(scope="module")
+def sample_parquet_template(
+    sample_ohlcv: pd.DataFrame,
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Path:
+    """読み取り専用の parquet template を module 単位で共有する."""
+    path = tmp_path_factory.mktemp("update_training_data") / "test.parquet"
+    _build_sample_parquet(path, sample_ohlcv)
+    # 初回 engine 初期化を fixture 側で吸収し、individual test の first-call cost を減らす.
+    pd.read_parquet(path, columns=["timestamp"])
+    return path
+
+
+@pytest.fixture
+def sample_parquet(sample_parquet_template: Path, tmp_path: Path) -> Path:
+    """各テスト用の parquet ファイルを template から複製する."""
+    path = tmp_path / "test.parquet"
+    shutil.copy2(sample_parquet_template, path)
     return path
 
 
@@ -46,21 +73,15 @@ class TestGetParquetLastTimestamp:
     """_get_parquet_last_timestamp のテスト."""
 
     def test_nonexistent_file(self, tmp_path: Path) -> None:
-        from scripts.v460.ml.update_training_data import _get_parquet_last_timestamp
-
         result = _get_parquet_last_timestamp(tmp_path / "no.parquet")
         assert result is None
 
     def test_returns_last_ts(self, sample_parquet: Path) -> None:
-        from scripts.v460.ml.update_training_data import _get_parquet_last_timestamp
-
         result = _get_parquet_last_timestamp(sample_parquet)
         assert result is not None
         assert isinstance(result, datetime)
 
     def test_tz_aware(self, sample_parquet: Path) -> None:
-        from scripts.v460.ml.update_training_data import _get_parquet_last_timestamp
-
         result = _get_parquet_last_timestamp(sample_parquet)
         assert result is not None
         assert result.tzinfo is not None
@@ -70,14 +91,10 @@ class TestHoursSinceLastUpdate:
     """_hours_since_last_update のテスト."""
 
     def test_nonexistent_returns_inf(self, tmp_path: Path) -> None:
-        from scripts.v460.ml.update_training_data import _hours_since_last_update
-
         result = _hours_since_last_update(tmp_path / "nope.parquet")
         assert result == float("inf")
 
     def test_returns_positive(self, sample_parquet: Path) -> None:
-        from scripts.v460.ml.update_training_data import _hours_since_last_update
-
         result = _hours_since_last_update(sample_parquet)
         assert result > 0
 
@@ -86,8 +103,6 @@ class TestMergeIntoParquet:
     """_merge_into_parquet のテスト."""
 
     def test_creates_new_parquet(self, tmp_path: Path) -> None:
-        from scripts.v460.ml.update_training_data import _merge_into_parquet
-
         path = tmp_path / "new.parquet"
         df = pd.DataFrame({
             "timestamp": pd.date_range("2026-03-01", periods=5, freq="1min"),
@@ -99,8 +114,6 @@ class TestMergeIntoParquet:
         assert path.exists()
 
     def test_deduplicates(self, sample_parquet: Path) -> None:
-        from scripts.v460.ml.update_training_data import _merge_into_parquet
-
         existing = pd.read_parquet(sample_parquet)
         n_before = len(existing)
 
@@ -113,8 +126,6 @@ class TestMergeIntoParquet:
         assert len(after) == n_before
 
     def test_appends_new_rows(self, sample_parquet: Path) -> None:
-        from scripts.v460.ml.update_training_data import _merge_into_parquet
-
         existing = pd.read_parquet(sample_parquet)
         n_before = len(existing)
 
@@ -137,8 +148,6 @@ class TestEnsureDataFresh:
     """ensure_data_fresh のテスト."""
 
     def test_fresh_data_no_update(self, sample_parquet: Path) -> None:
-        from scripts.v460.ml.update_training_data import ensure_data_fresh
-
         with patch(
             "scripts.v460.ml.update_training_data._hours_since_last_update",
             return_value=1.0,
@@ -147,8 +156,6 @@ class TestEnsureDataFresh:
             assert result is False
 
     def test_stale_data_triggers_update(self, sample_parquet: Path) -> None:
-        from scripts.v460.ml.update_training_data import ensure_data_fresh
-
         with patch(
             "scripts.v460.ml.update_training_data._hours_since_last_update",
             return_value=100.0,
@@ -161,8 +168,6 @@ class TestEnsureDataFresh:
             mock_update.assert_called_once_with(sample_parquet)
 
     def test_update_failure_returns_false(self, sample_parquet: Path) -> None:
-        from scripts.v460.ml.update_training_data import ensure_data_fresh
-
         with patch(
             "scripts.v460.ml.update_training_data._hours_since_last_update",
             return_value=100.0,
@@ -178,20 +183,10 @@ class TestGetAllParquetFeatures:
     """_get_all_parquet_features のテスト."""
 
     def test_nonexistent_returns_sac_features(self, tmp_path: Path) -> None:
-        from scripts.v460.ml.update_training_data import (
-            _SAC_FEATURES,
-            _get_all_parquet_features,
-        )
-
         result = _get_all_parquet_features(tmp_path / "no.parquet")
         assert set(result) == set(_SAC_FEATURES)
 
     def test_includes_sac_features(self, sample_parquet: Path) -> None:
-        from scripts.v460.ml.update_training_data import (
-            _SAC_FEATURES,
-            _get_all_parquet_features,
-        )
-
         result = _get_all_parquet_features(sample_parquet)
         for feat in _SAC_FEATURES:
             assert feat in result
@@ -200,10 +195,9 @@ class TestGetAllParquetFeatures:
 class TestDownloadOhlcv:
     """_download_ohlcv のテスト (mocked)."""
 
-    def test_returns_dataframe(self) -> None:
-        from scripts.v460.ml.update_training_data import _download_ohlcv
-
-        mock_hist = pd.DataFrame(
+    @pytest.fixture(scope="class")
+    def mock_hist(self) -> pd.DataFrame:
+        return pd.DataFrame(
             {
                 "Open": [14_000_000.0] * 5,
                 "High": [14_100_000.0] * 5,
@@ -212,6 +206,11 @@ class TestDownloadOhlcv:
                 "Volume": [0.5] * 5,
             },
             index=pd.date_range("2026-03-20", periods=5, freq="1min", tz="UTC"),
+        )
+
+    def test_returns_dataframe(self, mock_hist: pd.DataFrame) -> None:
+        mock_hist = pd.DataFrame(
+            mock_hist,
         )
         mock_ticker = MagicMock()
         mock_ticker.history.return_value = mock_hist
@@ -224,8 +223,6 @@ class TestDownloadOhlcv:
             ]
 
     def test_raises_on_empty(self) -> None:
-        from scripts.v460.ml.update_training_data import _download_ohlcv
-
         mock_ticker = MagicMock()
         mock_ticker.history.return_value = pd.DataFrame()
 

@@ -9374,3 +9374,18 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - Batch C1: Wave 2 code health residual
   - `tests/unit/v460/_real_data_test_helpers.py` に `JsonRow = dict[str, object]` を導入
   - real-data helper の `Any` を局所的に削減
+
+- 2026-03-27 Codex:
+  - `tests/unit/v460/test_552_update_training_data.py`
+    - parquet template を module-scope 化
+    - import を module-level に集約
+  - `tests/unit/v460/test_499_loss_cap_daily_scope.py`
+    - `_make_pre_cycle_mixin(...)` helper を追加
+    - import を module-level に集約
+  - `tests/unit/v460/test_384_pipeline_fixes.py`
+    - `evaluate_model_oos` / `_build_val_env_config` import を module-level に集約
+  - focused pytest:
+    - `tests/unit/v460/test_552_update_training_data.py`
+    - `tests/unit/v460/test_499_loss_cap_daily_scope.py`
+    - `tests/unit/v460/test_384_pipeline_fixes.py`
+    - `31 passed in 3.99s`
