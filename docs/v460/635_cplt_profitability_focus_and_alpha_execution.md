@@ -79,3 +79,21 @@
   - No feasible freeze: 2 tests (source check, freeze 動作)
   - Config integration: 2 tests (default, YAML round-trip)
 - **既存**: 259 passed (test_255, test_336, test_fill_quality, test_254, test_250 含む)
+
+### 残課題 (634# 由来)
+
+| 優先度 | 課題 | 状態 | 備考 |
+|:------:|------|:----:|------|
+| P0 | sell/ranging 削減 | ✅ 完了 | 3 重防御で実装済み |
+| P1 | no_feasible_quote 冷却 | ✅ 完了 | freeze_side(2 cycles) |
+| P1 | Hour skip UTC 6 時問題 | ⚠️ 未対応 | 634# tail_loss 分析で指摘。hour_offset がこの時帯に過度に厳格化している可能性。要データ確認 |
+| P2 | 630# 選別的 rollback | ⚠️ 保留 | `trend_threshold_pct=0.20` / VG `velocity=6.0`。sell/trending_up=+4.53bps 維持中のため全面 rollback は時期尚早。1-2 週間の実データ後に切り分け検証推奨 |
+| P3 | Cross-venue sell 側チューニング | ❌ 据え置き | buy CV は有効、sell CV は実質 no-op。大改造は収益改善効果確認後に検討 |
+| — | Sidecar status=error 100% | ❌ 据え置き | 629# 修正後も改善なし。615# 級の改修が必要だが P3 以降 |
+
+### 運用監視チェックリスト
+
+- [ ] **1-2 日後**: `analyze_fill_logs` で buy/sell 比率の改善を確認 (ranging 相場)
+- [ ] **1 週後**: no_feasible_quote 連続発生数が減少しているか (side/regime 別)
+- [ ] **1-2 週後**: PnL の底上げ (sell/ranging の赤字縮小)、offset_ceil=0.8 の副作用監視
+- [ ] **2 週後**: 630# パラメータ (trend_threshold / VG velocity) の選別的見直し可否の判断
