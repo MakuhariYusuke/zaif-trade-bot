@@ -345,7 +345,7 @@ cross_venue_lead_lag:
   max_age_sec: 3.0
   spread_bps_threshold: 1.0       # 444# 実測0.5-1.7bps → 2.0では発火せず → 1.0
   velocity_bps_threshold: 0.01    # 444# 120s cycleではvel~0.01-0.07bps/s: 5.98bps乖離捕捉に0.01必要
-  offset_boost: 1.25
+  offset_boost: 1.0                # 641# P0-A: 1.25→1.0 (CV widen 全面無効化。7日間データ: buy uncapped=-0.56bps, sell=-1.56bps)
   veto_enabled: true               # 442# Hard veto 有効化 (6bps超の大乖離で注文抑止)
   veto_threshold_bps: 8.0          # 481# 6.0→8.0: 49件中41件(84%)が6-8帯,本当にtoxicな8bps超のみvetoする
   # 533# veto deadlock 防止
@@ -450,7 +450,7 @@ skip_gate:
   as_threshold_buy: 0.50       # 120# A3: [0.50,0.52) 帯 n=60 PnL=-0.247 AS=36.7% → skip 対象化
   as_threshold_sell: 0.50      # 100# P0-2: sell 側厳格化 (旧 0.60 → 0.50)
   pnl_threshold: -0.5          # 190# D: 0.0→-0.5 (ev_weighted score が常時負のため閾値緩和)
-  max_skip_rate: 0.3
+  max_skip_rate: 0.4               # 641# P0-B: 0.3→0.4 (forced fill 169件=-154.65bps, sell/ranging dominant)
   use_ob_features: true        # 127# H4: retrain と統一 (false→true)
   # 088# 動的閾値較正: 目標 skip 率ベースで閾値を自動調整
   adaptive_threshold: true     # P(AS) 分位点から閾値を動的設定
@@ -720,6 +720,10 @@ experimental_additive_pipeline:
 # ceiling を迂回する構造欠陥の修正。全 multiplier 適用後に ceiling を再適用。
 execution_final_clamp_enabled: true
 execution_final_clamp_hard_skip_mult: 2.5  # 420# 有効化: ceiling×2.5 超で hard skip (buy:0.50超, sell:1.25超)
+# 641# P1-A: regime 別 hard_skip_mult override (side/regime → mult)
+# buy/trending_down は唯一の収益バケット(+81.29bps, n=40)だが 14件が hard_skip で機会損失
+execution_final_clamp_hard_skip_mult_overrides:
+  buy/trending_down: 4.0           # 641# ceiling×4.0 に緩和 (buy:ceil=0.35→1.40超で初めて hard skip)
 
 # ---- 452# Micro-timeouts (TIF Emulation) ----
 # 指値の生存時間を短縮し、サブサイクル re-quote で逆選択リスクを低減。
@@ -982,7 +986,7 @@ tuning:
   hot_reload_check_interval_sec: 120.0   # SkipGate モデル差替チェック間隔 (秒, cycle_interval と同程度)
   records_cache_ttl_sec: 10.0             # 適応エンジン レコードキャッシュ TTL (秒)
   trades_recorder_fetch_limit: 100        # TradesRecorder 取得件数 (VPIN 計算用)
-  balance_freeze_cycles: 3                # 残高不足 side の凍結サイクル数 (cycle_interval × N)
+  balance_freeze_cycles: 1                # 641# P0-C: 3→1 (freeze_side 汚染軽減。638#/640# 検証済)
 
 # ---- 126# SkipGate 定期再学習 ----
 # retrain_scheduler.py がバックグラウンドで実行、fill_test とは別プロセス

@@ -1099,6 +1099,12 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
         kwargs["execution_final_clamp_hard_skip_mult"] = float(
             yaml_cfg["execution_final_clamp_hard_skip_mult"]
         )
+    # 641# P1-A: side/regime 別 hard_skip_mult override
+    _hs_overrides = yaml_cfg.get("execution_final_clamp_hard_skip_mult_overrides")
+    if isinstance(_hs_overrides, dict):
+        kwargs["execution_final_clamp_hard_skip_mult_overrides"] = {
+            str(k): float(v) for k, v in _hs_overrides.items()
+        }
 
     # ---- 366# 市場理論システム M2-M5 ----
     # M2: Bayesian Regime Filter

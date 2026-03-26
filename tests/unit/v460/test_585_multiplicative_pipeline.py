@@ -61,6 +61,8 @@ def _make_mixin(
     cfg.volatility_guard_offset_boost_factor = vg_offset_boost_factor
     cfg.execution_final_clamp_enabled = execution_final_clamp_enabled
     cfg.execution_final_clamp_hard_skip_mult = execution_final_clamp_hard_skip_mult
+    cfg.execution_final_clamp_hard_skip_mult_overrides = {}
+    cfg.resolve_hard_skip_mult = lambda side, regime: execution_final_clamp_hard_skip_mult
     cfg.macro_sell_boost_strong_up = macro_sell_boost_strong_up
     cfg.macro_sell_boost_weak_up = macro_sell_boost_weak_up
     cfg.macro_buy_boost_strong_down = macro_buy_boost_strong_down
@@ -485,6 +487,63 @@ class TestFinalClamp:
             sigma=11.2,
             adverse_ofi=0.6,
         )
+
+    def test_regime_aware_hard_skip_relaxed(self) -> None:
+        """641# P1-A: buy/trending_down override(4.0) でハードスキップ閾値が緩和."""
+        m = _make_mixin(
+            execution_final_clamp_enabled=True,
+            execution_final_clamp_hard_skip_mult=2.0,
+        )
+        # toxicity_offset_mult=2.5 → stage cap 2.0 → offset=0.05*2.0=0.10
+        # ceiling=0.04, default(2.0)→ threshold=0.08; override(4.0)→ threshold=0.16
+        m.config.resolve_offset_ceiling = MagicMock(return_value=0.04)
+        # Override: mult=4.0 → threshold=0.16 → 0.10 < 0.16 → no skip
+        m.config.resolve_hard_skip_mult = MagicMock(return_value=4.0)
+        r = _run(m, side="buy", effective_offset_ratio=0.05, toxicity_offset_mult=2.5)
+        assert r.early_return_record is None
+
+    def test_regime_aware_hard_skip_default_still_skips(self) -> None:
+        """641# 非オーバーライド regime ではデフォルト mult で引き続きスキップ."""
+        m = _make_mixin(
+            execution_final_clamp_enabled=True,
+            execution_final_clamp_hard_skip_mult=2.0,
+        )
+        m.config.resolve_offset_ceiling = MagicMock(return_value=0.04)
+        # Default mult=2.0 → threshold=0.08 → 0.10 > 0.08 → skip
+        m.config.resolve_hard_skip_mult = MagicMock(return_value=2.0)
+        r = _run(m, side="buy", effective_offset_ratio=0.05, toxicity_offset_mult=2.5)
+        assert r.early_return_record is not None
+        m._make_cycle_skip_record.assert_called_once()
+
+
+# ── J-2. resolve_hard_skip_mult 単体テスト (641#) ──
+
+
+class TestResolveHardSkipMult:
+    """641# FillTestConfig.resolve_hard_skip_mult の単体テスト."""
+
+    def _make_config(self, overrides: dict[str, float] | None = None) -> FillTestConfig:
+        cfg = FillTestConfig()
+        cfg.execution_final_clamp_hard_skip_mult = 2.5
+        if overrides:
+            cfg.execution_final_clamp_hard_skip_mult_overrides = overrides
+        return cfg
+
+    def test_no_override_returns_default(self) -> None:
+        cfg = self._make_config()
+        assert cfg.resolve_hard_skip_mult("buy", "ranging") == 2.5
+
+    def test_override_returns_override_value(self) -> None:
+        cfg = self._make_config({"buy/trending_down": 4.0})
+        assert cfg.resolve_hard_skip_mult("buy", "trending_down") == 4.0
+
+    def test_override_miss_returns_default(self) -> None:
+        cfg = self._make_config({"buy/trending_down": 4.0})
+        assert cfg.resolve_hard_skip_mult("sell", "trending_down") == 2.5
+
+    def test_regime_none_returns_default(self) -> None:
+        cfg = self._make_config({"buy/trending_down": 4.0})
+        assert cfg.resolve_hard_skip_mult("buy", None) == 2.5
 
 
 # ── K. 統合テスト: 複数段チェーン ──

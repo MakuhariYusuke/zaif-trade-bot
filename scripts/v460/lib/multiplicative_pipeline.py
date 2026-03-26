@@ -233,7 +233,11 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
             )
             if _ceiling.clamped:
                 _execution_pre_clamp_offset = effective_offset_ratio
-                _hs_mult = self.config.execution_final_clamp_hard_skip_mult
+                # 641# P1-A: resolve_hard_skip_mult で regime 別 override を参照
+                _regime_val: str | None = None
+                if hasattr(self, "_current_regime_value"):
+                    _regime_val = self._current_regime_value()  # type: ignore[attr-defined]
+                _hs_mult = self.config.resolve_hard_skip_mult(side, _regime_val)
                 if _hs_mult > 0 and effective_offset_ratio > _fc_ceil * _hs_mult:
                     logger.warning(
                         f"[421# final_clamp] HARD SKIP: {side} "

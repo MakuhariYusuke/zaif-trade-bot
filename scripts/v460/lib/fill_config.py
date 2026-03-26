@@ -358,6 +358,8 @@ class FillTestConfig:
     execution_final_clamp_enabled: bool = True   # Final Clamp 有効化 (安全のためデフォルト有効)
     execution_additive_enabled: bool = False     # DEPRECATED: telemetry 記録用。ロジック分岐は experimental_additive_pipeline を使用
     execution_final_clamp_hard_skip_mult: float = 0.0  # >0: pre-clamp が ceiling×この倍率を超えたら hard skip (0=無効)
+    # 641# P1-A: side/regime 別 hard_skip_mult override
+    execution_final_clamp_hard_skip_mult_overrides: dict[str, float] = field(default_factory=dict)
     # ---- 467# deep-night ceiling 緩和 (461# P0 残課題) ----
     # UTC hour 別の ceiling 乗数。深夜帯 (JST 22-03h = UTC 13-18h) で
     # AS 率が 57-100% に達する → ceiling を緩和し offset 防御を許容する。
@@ -412,6 +414,19 @@ class FillTestConfig:
             if mult is not None:
                 ceil *= mult
         return ceil
+
+    def resolve_hard_skip_mult(self, side: str, regime: str | None) -> float:
+        """641# side/regime 別 hard_skip_mult を解決する.
+
+        overrides に "side/regime" キーがあればそれを返し、
+        なければデフォルトの execution_final_clamp_hard_skip_mult を返す。
+        """
+        if regime and self.execution_final_clamp_hard_skip_mult_overrides:
+            key = f"{side}/{regime}"
+            override = self.execution_final_clamp_hard_skip_mult_overrides.get(key)
+            if override is not None:
+                return override
+        return self.execution_final_clamp_hard_skip_mult
 
     # 054# S3: テール損失カット (post-fill早期監視)
     early_exit_enabled: bool = False

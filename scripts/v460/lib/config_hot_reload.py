@@ -503,6 +503,7 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "execution_final_clamp_enabled",
     "execution_additive_enabled",
     "execution_final_clamp_hard_skip_mult",
+    "execution_final_clamp_hard_skip_mult_overrides",  # 641# P1-A
     # 587# additive pipeline / eDRC runtime tuning
     "experimental_additive_pipeline",
     "edrc_alpha",

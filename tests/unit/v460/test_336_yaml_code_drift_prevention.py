@@ -107,6 +107,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "dd_cooldown_release_sec",
     "e3_sampling_ratio",
     "execution_final_clamp_hard_skip_mult",  # 421# P0: Execution Final Clamp
+    "execution_final_clamp_hard_skip_mult_overrides",  # 641# P1-A: regime別override
     "fast_fill_offset_boost_sell",
     "fast_fill_threshold_sec_buy",
     "fast_fill_threshold_sec_sell",
@@ -199,6 +200,9 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "volatility_guard_vpin_threshold",
     "vpin_vol_sync_enabled",
     "sad_enabled",  # 606# Safety層: code=False, YAML=True
+    "balance_freeze_cycles",  # 641# P0-C: 3→1
+    "cross_venue_lead_lag_offset_boost",  # 641# P0-A: 1.25→1.0
+    "skip_gate_max_skip_rate",  # 641# P0-B: 0.3→0.4
     "wide_spread_bps",
 })
 
