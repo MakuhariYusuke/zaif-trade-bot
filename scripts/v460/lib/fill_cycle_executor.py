@@ -79,6 +79,10 @@ class _PreOrderPhaseResult:
     regime_at_order: str | None
     regime_obs_count: int | None
     mid_at_order: float | None
+    # 642# 可観測性
+    skip_gate_forced_pass: bool
+    skip_gate_side_skip_rate: float | None
+    execution_hard_skip_mult_used: float | None
 
 
 @dataclass
@@ -907,6 +911,9 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             regime_at_order=regime_at_order,
             regime_obs_count=regime_obs_count,
             mid_at_order=mid_at_order,
+            skip_gate_forced_pass=sg.forced_pass,
+            skip_gate_side_skip_rate=sg.side_skip_rate,
+            execution_hard_skip_mult_used=offset_result.execution_hard_skip_mult_used,
         )
 
     async def _submit_order_phase(
@@ -1434,6 +1441,12 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             executor_offset_stages=pre_order.executor_offset_stages_json,
             execution_additive_enabled=self.config.experimental_additive_pipeline,
             log_cycle_no=self._cycle_count,
+            # 642# 可観測性
+            sg_forced_pass=pre_order.skip_gate_forced_pass,
+            sg_side_skip_rate=pre_order.skip_gate_side_skip_rate,
+            execution_hard_skip_mult_used=pre_order.execution_hard_skip_mult_used,
+            balance_jpy_at_order=self._balance_checker.last_jpy_free,
+            balance_btc_at_order=self._balance_checker.last_btc_free,
         )
 
         self._log_cycle_result(

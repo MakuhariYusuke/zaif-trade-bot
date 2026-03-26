@@ -254,6 +254,7 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
                         macro_boost_applied=_macro_boost_applied,
                         execution_pre_clamp_offset=_execution_pre_clamp_offset,
                         executor_offset_stages_json=_executor_offset_stages_json,
+                        execution_hard_skip_mult_used=_hs_mult,
                         early_return_record=self._make_cycle_skip_record(
                             side=side,
                             cancel_reason=CR.FINAL_CLAMP_HARD_SKIP,

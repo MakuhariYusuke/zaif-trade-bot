@@ -50,6 +50,9 @@ class SkipDecisionLike(Protocol):
     as_probability: float | None
     threshold_used: float | None
     features_used: int
+    # 642# 可観測性
+    forced_pass: bool
+    side_skip_rate: float | None
 
 
 class SkipGateLike(Protocol):

@@ -26,6 +26,8 @@ class _DecisionStub:
     as_probability: float | None
     threshold_used: float | None
     features_used: int
+    forced_pass: bool = False
+    side_skip_rate: float | None = None
 
 
 class TestSkipGateResultFieldsMigration:
@@ -72,6 +74,8 @@ class TestSkipGateResultFieldsMigration:
             threshold_used=-0.1,
             hour_offset=0.2,
             price_velocity_bps=1.5,
+            forced_pass=False,
+            side_skip_rate=None,
         )
 
     def test_build_skip_fill_record_extra_fields(self) -> None:

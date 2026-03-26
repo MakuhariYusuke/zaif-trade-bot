@@ -272,6 +272,9 @@ class SkipDecision:
     # 084# P(AS) 可観測性: 確率と使用閾値を直接記録
     as_probability: Optional[float] = None   # AS 分類器の P(AS) (0.0-1.0)
     threshold_used: Optional[float] = None   # 実際に適用された閾値 (side別含む)
+    # 642# 可観測性: skip_rate_limit による強制 pass と判定時 skip rate
+    forced_pass: bool = False                # rate_limit が skip を override したか
+    side_skip_rate: float | None = None      # 判定時の side 別 skip 率
 
 
 class SkipGate:
@@ -473,8 +476,10 @@ class SkipGate:
             )
         else:
             recent_rate = 0.0
+        _forced_pass = False
         if recent_rate > self.config.max_skip_rate and should_skip:
             should_skip = False
+            _forced_pass = True
             reason = f"skip_rate_limit({recent_rate:.0%}>{self.config.max_skip_rate:.0%})"
         else:
             reason = "skip" if should_skip else "pass"
@@ -503,6 +508,8 @@ class SkipGate:
             model_used="primary",
             as_probability=as_prob,
             threshold_used=threshold_used,
+            forced_pass=_forced_pass,
+            side_skip_rate=recent_rate,
         )
 
     def _calibrate_threshold(

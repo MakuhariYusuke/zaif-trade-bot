@@ -19,6 +19,9 @@ class SkipDecisionResultFields:
     threshold_used: float | None
     hour_offset: float
     price_velocity_bps: float | None
+    # 642# 可観測性
+    forced_pass: bool
+    side_skip_rate: float | None
 
 
 @dataclass(frozen=True)
@@ -75,6 +78,8 @@ def build_skip_decision_result_fields(
         threshold_used=decision.threshold_used,
         hour_offset=hour_offset,
         price_velocity_bps=price_velocity_bps,
+        forced_pass=getattr(decision, "forced_pass", False),
+        side_skip_rate=getattr(decision, "side_skip_rate", None),
     )
 
 

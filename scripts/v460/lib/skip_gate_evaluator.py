@@ -264,6 +264,8 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         threshold_used: float | None = None,
         hour_offset: float = 0.0,
         price_velocity_bps: float | None = None,
+        forced_pass: bool = False,
+        side_skip_rate: float | None = None,
     ) -> None:
         """SkipGateResult の共通フィールドを一括設定する."""
         result.skipped = skipped
@@ -274,6 +276,8 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         result.threshold_used = threshold_used
         result.hour_offset = hour_offset
         result.price_velocity_bps = price_velocity_bps
+        result.forced_pass = forced_pass
+        result.side_skip_rate = side_skip_rate
 
     def _apply_decision_to_result(
         self,
@@ -306,6 +310,8 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             threshold_used=fields.threshold_used,
             hour_offset=fields.hour_offset,
             price_velocity_bps=fields.price_velocity_bps,
+            forced_pass=fields.forced_pass,
+            side_skip_rate=fields.side_skip_rate,
         )
 
     def _set_early_skip_result(

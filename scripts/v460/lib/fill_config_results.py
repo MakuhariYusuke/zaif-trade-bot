@@ -38,6 +38,9 @@ class SkipGateResult:
     ev_score: float | None = None
     # 195#: velocity_skip ソフトモード — offset boost 倍率
     velocity_offset_mult: float | None = None
+    # 642# 可観測性: skip_rate_limit 強制 pass / side skip rate
+    forced_pass: bool = False
+    side_skip_rate: float | None = None
 
 
 @dataclass

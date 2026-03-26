@@ -49,6 +49,8 @@ class OffsetPipelineResult:
     execution_pre_clamp_offset: float | None
     executor_offset_stages_json: str | None
     early_return_record: FillRecord | None = None
+    # 642# hard skip 時に使用した mult 値
+    execution_hard_skip_mult_used: float | None = None
 
 
 class OffsetPipelineMixin(MultiplicativePipelineMixin):

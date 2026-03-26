@@ -237,6 +237,11 @@ class FillRecordBuilderMixin:
         fields["cross_venue_lead_lag_cap_hit"] = self._maker_price._cross_venue_lead_lag_cap_hit
         # 533# veto deadlock 防止: 連続 veto 回数
         fields["cross_venue_lead_lag_veto_consecutive"] = self._maker_price._consecutive_veto_count
+        # 642# cv_offset_action: widen/tighten 方向を直接記録
+        _pre = self._maker_price._cross_venue_lead_lag_pre_offset
+        _post = self._maker_price._cross_venue_lead_lag_post_offset
+        if _pre is not None and _post is not None and _pre != _post:
+            fields["cv_offset_action"] = "widen" if _post > _pre else "tighten"
         return fields
 
     def _build_fill_strategy_fields(
@@ -368,6 +373,12 @@ class FillRecordBuilderMixin:
         execution_sigma: float | None = None,
         execution_adverse_ofi: float | None = None,
         execution_additive_enabled: bool | None = None,
+        # 642# 可観測性
+        sg_forced_pass: bool = False,
+        sg_side_skip_rate: float | None = None,
+        execution_hard_skip_mult_used: float | None = None,
+        balance_jpy_at_order: float | None = None,
+        balance_btc_at_order: float | None = None,
     ) -> FillRecord:
         """188# FillRecord を組み立てる.
 
@@ -412,6 +423,12 @@ class FillRecordBuilderMixin:
             "execution_sigma": execution_sigma,
             "execution_adverse_ofi": execution_adverse_ofi,
             "execution_additive_enabled": execution_additive_enabled,
+            # 642# 可観測性
+            "skip_gate_forced_pass": sg_forced_pass or None,
+            "skip_gate_side_skip_rate": sg_side_skip_rate,
+            "execution_hard_skip_mult_used": execution_hard_skip_mult_used,
+            "balance_jpy_at_order": balance_jpy_at_order,
+            "balance_btc_at_order": balance_btc_at_order,
         }
         payload.update(
             self._build_fill_measurement_fields(

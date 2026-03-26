@@ -239,6 +239,13 @@ class FillRecord:
     execution_sigma: float | None = None
     execution_adverse_ofi: float | None = None
     execution_additive_enabled: bool | None = None
+    # ---- 642# 可観測性改善: skip_rate / hard_skip / CV / balance ----
+    skip_gate_forced_pass: bool | None = None       # rate_limit が skip を override したか
+    skip_gate_side_skip_rate: float | None = None   # 判定時の side 別 skip 率
+    execution_hard_skip_mult_used: float | None = None  # hard skip 時に使用した mult 値
+    cv_offset_action: str | None = None             # "widen"/"tighten"/None (CV 適用方向)
+    balance_jpy_at_order: float | None = None       # 発注時 JPY 残高
+    balance_btc_at_order: float | None = None       # 発注時 BTC 残高
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

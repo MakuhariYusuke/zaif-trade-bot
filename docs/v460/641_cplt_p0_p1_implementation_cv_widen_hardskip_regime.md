@@ -74,3 +74,55 @@ buy/trending_down は avg +2.03bps の唯一の黒字 buy regime であり、過
 | max_skip_rate 0.4 | forced fill 削減 → -154.65bps の損失縮小 |
 | balance_freeze 1 | freeze_side 汚染軽減、反応速度向上 |
 | hard_skip regime override | buy/trending_down +2.03bps の fill 機会回復 |
+
+---
+
+## 642# 可観測性改善 (637#-640# 分析の教訓)
+
+### 背景
+
+637#-640# の分析過程で、以下のデータが手動集計でしか得られず、
+分析の効率を大幅に下げていた。次回以降の分析を自動化するため
+FillRecord に6フィールドを追加。
+
+### 追加フィールド
+
+| フィールド | 型 | 目的 | 解決する分析課題 |
+|-----------|-----|------|----------------|
+| `skip_gate_forced_pass` | bool | rate_limit が skip を override したか | 637# 強制fill 169件の手動集計不要に |
+| `skip_gate_side_skip_rate` | float | 判定時の side 別 skip 率 | skip率の閾値接近度を直接可視化 |
+| `execution_hard_skip_mult_used` | float | hard skip 時に使用した mult 値 | 641# regime override のトレース |
+| `cv_offset_action` | str | "widen"/"tighten" (CV 方向) | 638# CV widen 損失の手動計算不要に |
+| `balance_jpy_at_order` | float | 発注時 JPY 残高 | freeze loop / state pollution 即時診断 |
+| `balance_btc_at_order` | float | 発注時 BTC 残高 | inventory skew 分析の自動化 |
+
+### 変更ファイル
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `ztb/metrics/fill_quality.py` | FillRecord に6フィールド追加 |
+| `ztb/ml/skip_gate.py` | SkipDecision に `forced_pass`, `side_skip_rate` 追加 |
+| `ztb/ml/skip_gate_contracts.py` | SkipDecisionLike protocol 更新 |
+| `ztb/ml/skip_gate_result_fields.py` | SkipDecisionResultFields 伝播 |
+| `scripts/v460/lib/fill_config_results.py` | SkipGateResult に2フィールド追加 |
+| `scripts/v460/lib/skip_gate_evaluator.py` | _assign_result_fields 経由で伝播 |
+| `scripts/v460/lib/offset_pipeline.py` | OffsetPipelineResult に hard_skip_mult_used 追加 |
+| `scripts/v460/lib/multiplicative_pipeline.py` | hard skip 時に _hs_mult を結果に含める |
+| `scripts/v460/lib/fill_record_builder.py` | 5フィールド受け入れ + cv_offset_action 計算 |
+| `scripts/v460/lib/fill_cycle_executor.py` | _PreOrderPhaseResult + balance snapshot 伝播 |
+
+### 分析効率の改善例
+
+**Before (637#):**
+```python
+# 手動で169件のforced fillを集計
+forced = [r for r in records if 'skip_rate_limit' in (r.get('skip_gate_reason') or '')]
+by_regime = Counter((r['side'], r['regime']) for r in forced)
+```
+
+**After (642#):**
+```python
+# 直接フィルタ
+forced = [r for r in records if r.get('skip_gate_forced_pass')]
+# side_skip_rate で閾値接近度も即座に確認
+```

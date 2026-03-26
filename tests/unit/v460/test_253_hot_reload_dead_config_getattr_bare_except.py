@@ -231,7 +231,8 @@ class TestRegressionIntegrity:
         # 439# cross-venue lead-lag guard + event-log observability の追加後も
         # 445# EMA平滑化 + confidence scoring 追加 (+7行)
         # 448# cross-venue event details helper 連携と observability 追加で再増加
-        assert lines < 1535, f"fill_cycle_executor.py has {lines} lines"
+        # 642# 可観測性改善: 5フィールド追加 (+5行)
+        assert lines < 1545, f"fill_cycle_executor.py has {lines} lines"
 
     def test_event_logger_has_logger(self) -> None:
         """event_logger.py にモジュールレベル logger が存在。"""
