@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-25 (621# NormLoader 推論統合 + entry_gate observe 接続)
+> 最終更新: 2026-03-27 (643# 分析スケジュール記録)
 
 ---
 
@@ -747,3 +747,6 @@ NNN_phX_TYPE_description.md
 | 638 | review | [638_phg_rev_635_637_multifaceted_validation_and_profit_actions.md](638_phg_rev_635_637_multifaceted_validation_and_profit_actions.md) | 635#-637# 多角的検証レビューと収益改善アクション |
 | 639 | review | [639_cplt_deep_review_beyond_638_and_strategic_proposals.md](639_cplt_deep_review_beyond_638_and_strategic_proposals.md) | 638# を超えた戦略提言 (EV floor/inventory skew/動的 timeout) |
 | 640 | analysis | [640_cplt_synthesis_638_639_verification_and_action_plan.md](640_cplt_synthesis_638_639_verification_and_action_plan.md) | 638#/639# 検証・総合判定: CV widen 有害性確認、hard_skip 2件、P0-A/B/C 策定 |
+| 641 | impl | [641_cplt_p0_p1_implementation_cv_widen_hardskip_regime.md](641_cplt_p0_p1_implementation_cv_widen_hardskip_regime.md) | P0-A/B/C + P1-A 実装: CV widen 無効化, skip_rate 緩和, freeze 短縮, regime 別 hard_skip |
+| 642 | impl | [642_cplt_observability_fill_record_6_fields.md](642_cplt_observability_fill_record_6_fields.md) | 可観測性改善: FillRecord 6フィールド追加 (forced_pass/skip_rate/hard_skip_mult/cv_action/balance) |
+| 643 | docs | [641_cplt_p0_p1_implementation_cv_widen_hardskip_regime.md](641_cplt_p0_p1_implementation_cv_widen_hardskip_regime.md) | 641#/642# before/after 分析スケジュール・指標を記録 |

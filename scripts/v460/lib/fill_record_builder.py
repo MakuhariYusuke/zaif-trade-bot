@@ -424,7 +424,7 @@ class FillRecordBuilderMixin:
             "execution_adverse_ofi": execution_adverse_ofi,
             "execution_additive_enabled": execution_additive_enabled,
             # 642# 可観測性
-            "skip_gate_forced_pass": sg_forced_pass or None,
+            "skip_gate_forced_pass": sg_forced_pass,
             "skip_gate_side_skip_rate": sg_side_skip_rate,
             "execution_hard_skip_mult_used": execution_hard_skip_mult_used,
             "balance_jpy_at_order": balance_jpy_at_order,

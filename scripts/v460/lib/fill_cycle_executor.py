@@ -80,9 +80,9 @@ class _PreOrderPhaseResult:
     regime_obs_count: int | None
     mid_at_order: float | None
     # 642# 可観測性
-    skip_gate_forced_pass: bool
-    skip_gate_side_skip_rate: float | None
-    execution_hard_skip_mult_used: float | None
+    skip_gate_forced_pass: bool = False
+    skip_gate_side_skip_rate: float | None = None
+    execution_hard_skip_mult_used: float | None = None
 
 
 @dataclass
