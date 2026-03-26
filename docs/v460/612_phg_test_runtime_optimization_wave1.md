@@ -350,6 +350,50 @@ subset 実行:
   - test 側の repeated `FillTestConfig.from_yaml(...)` 削減
   の継続
 
+## `--durations=25` による中間観測
+
+subset 実行:
+
+```bash
+.venv/Scripts/python.exe -m pytest \
+  tests/unit/v460 tests/unit/training tests/integration tests/training \
+  tests/unit/config tests/unit/cache tests/unit/algorithms tests/unit/analysis \
+  tests/unit/features tests/multimodal tests/trading/signal tests/unit/core \
+  --durations=25 -x --tb=short --no-cov -q
+```
+
+- 実行結果:
+  - `1 failed, 4584 passed, 15 skipped, 10 warnings in 64.64s`
+- 途中 failure:
+  - `tests/unit/v460/test_fill_test_config.py::Test062SkipGateConfig::test_yaml_has_skip_gate_section`
+  - 原因: live YAML drift
+    - `skip_gate.max_skip_rate: 0.3 -> 0.4`
+
+slowest 25 から見えた優先候補:
+
+1. `test_552_update_training_data.py::TestDownloadOhlcv::test_returns_dataframe` `1.15s`
+2. `test_499_loss_cap_daily_scope.py` 系 2 本 `0.40s-0.53s`
+3. `test_384_pipeline_fixes.py::TestEvaluateModelOOS::test_multi_slice_metrics_present` `0.26s`
+4. `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.25s`
+5. YAML/config 読み込み系
+   - `test_202_log_improvements.py::TestLossCooldownConfig::test_yaml_parsing`
+   - `test_596_primary_consecutive_skip_safety.py::test_yaml_overrides_default`
+   - `test_157_regime_features.py::test_retrain_config_loads_from_yaml`
+
+現時点の判断:
+
+- top offender は `sleep` より
+  - data download / dataframe build
+  - real-data setup
+  - YAML live-config verification
+  が中心
+- 次の軽量化 batch は
+  - `test_552_update_training_data.py`
+  - `test_499_loss_cap_daily_scope.py`
+  - `test_384_pipeline_fixes.py`
+  - `test_enricher_skip_gate.py`
+  の順が効きやすい
+
 
 - unittest / smoke tempfile sweep:
   - 追加適用:

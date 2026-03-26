@@ -837,7 +837,7 @@ class Test062SkipGateConfig:
         assert cfg["skip_gate"]["enabled"] is True  # 065#: 学習済みモデルで有効化
         assert cfg["skip_gate"]["mode"] == "pnl"  # 127# C1: as→pnl
         assert cfg["skip_gate"]["as_threshold"] == 0.50  # 120# A3: 0.52→0.50 (変曲点)
-        assert cfg["skip_gate"]["max_skip_rate"] == 0.3
+        assert cfg["skip_gate"]["max_skip_rate"] == 0.4  # 641# P0-B: 0.3→0.4
 
     def test_from_yaml_skip_gate(self) -> None:
         """SkipGate config が FillTestConfig に正しくマッピングされる."""

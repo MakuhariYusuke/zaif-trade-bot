@@ -9355,3 +9355,14 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `tests/legacy_tests/unit/utils/test_feature_cache.py`
     - `tests/legacy_tests/unit/utils/test_checkpoint_light.py`
     - `31 passed, 9 skipped in 2.04s`
+
+- 2026-03-27 Codex:
+  - subset broad (`--durations=25 -x --tb=short --no-cov`) を再実行
+  - live YAML drift を検出:
+    - `tests/unit/v460/test_fill_test_config.py`
+    - `skip_gate.max_skip_rate: 0.3 -> 0.4`
+  - slowest 候補を抽出:
+    - `test_552_update_training_data.py`
+    - `test_499_loss_cap_daily_scope.py`
+    - `test_384_pipeline_fixes.py`
+    - `test_enricher_skip_gate.py`
