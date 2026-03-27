@@ -751,3 +751,4 @@ NNN_phX_TYPE_description.md
 | 642 | impl | [642_cplt_observability_fill_record_6_fields.md](642_cplt_observability_fill_record_6_fields.md) | 可観測性改善: FillRecord 6フィールド追加 (forced_pass/skip_rate/hard_skip_mult/cv_action/balance) |
 | 643 | docs | [641_cplt_p0_p1_implementation_cv_widen_hardskip_regime.md](641_cplt_p0_p1_implementation_cv_widen_hardskip_regime.md) | 641#/642# before/after 分析スケジュール・指標を記録 |
 | 645 | fix | [645_cplt_p0_degenerate_sell_model_fix.md](645_cplt_p0_degenerate_sell_model_fix.md) | P0: 退化 sell モデル無効化 (-132bps=24.9%), degenerate 検出ガード追加 |
+| 646 | fix | [646_cplt_overfitting_guards.md](646_cplt_overfitting_guards.md) | 過学習防止: n_estimators サンプル比率cap, D2 OOS検証, side_min_samples 200 |

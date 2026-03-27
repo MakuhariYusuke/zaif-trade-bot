@@ -1014,7 +1014,7 @@ retrain:
   alt_horizon_enabled: true          # alt horizon モデルの自動再学習
   target_buy_alt: pnl120             # buy alt ターゲット (長期回復を補完)
   target_sell_alt: pnl30             # sell alt ターゲット (即時平均回帰を補完)
-  side_min_samples: 50               # side 別学習の最小サンプル数
+  side_min_samples: 200              # 646# P0-C: side 別学習の最小サンプル数 (50→200, 過学習防止)
   # 141# P1-12: オンラインパフォーマンスモニター
   online_monitor_enabled: true       # 直近 N fill で skip gate 品質を online 評価
   online_monitor_window: 100         # 評価ウィンドウ (直近 N fill)

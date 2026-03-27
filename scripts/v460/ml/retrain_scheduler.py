@@ -237,7 +237,7 @@ _DEFAULT_CONFIG: ConfigMap = {
     "side_specific_enabled": False,       # side 別モデル追加学習を有効化
     "target_buy": "pnl30",               # buy 側ターゲット (primary)
     "target_sell": "pnl30",              # sell 側ターゲット (YAML で pnl120 に上書き)
-    "side_min_samples": 50,              # side 別学習の最小サンプル数
+    "side_min_samples": 200,             # 646# P0-C: side 別学習の最小サンプル数 (50→200)
     # 189# multi-horizon: alt (副 horizon) モデル学習
     "alt_horizon_enabled": False,         # alt horizon モデル追加学習を有効化
     "target_buy_alt": "pnl120",           # buy 側 alt ターゲット (長期)
@@ -526,8 +526,15 @@ def _save_enriched_cache(
         except Exception:  # noqa: R-18 cleanup best-effort
             pass
 
-def _resolve_early_stopping(cfg: ConfigMap) -> tuple[int, int]:
+def _resolve_early_stopping(
+    cfg: ConfigMap,
+    n_samples: int | None = None,
+) -> tuple[int, int]:
     """E2: early_stopping_rounds と n_estimators を一括解決 (DRY).
+
+    646# P0-A: n_samples が指定された場合、サンプル数に基づいて
+    n_estimators の上限を適用 (過学習防止)。
+    n_samples=229 で n_estimators=300 のような過学習を防止。
 
     Returns:
         (early_stopping_rounds, n_estimators)
@@ -537,6 +544,20 @@ def _resolve_early_stopping(cfg: ConfigMap) -> tuple[int, int]:
         n_est = safe_to_int(cfg.get("lgbm_n_estimators_max", 300), 300)
     else:
         n_est = safe_to_int(cfg.get("lgbm_n_estimators", 150), 150)
+
+    # 646# P0-A: サンプル数ベースの n_estimators 上限
+    # n_samples / n_estimators 比率が低いと過学習リスクが高い
+    # 下限30木は確保しつつ、n_samples の半分を上限とする
+    if n_samples is not None and n_samples > 0:
+        sample_cap = max(30, n_samples // 2)
+        if n_est > sample_cap:
+            logger.info(
+                f"646# P0-A: n_estimators capped {n_est} → {sample_cap} "
+                f"(n_samples={n_samples}, ratio would be "
+                f"{n_samples / n_est:.1f} → {n_samples / sample_cap:.1f})"
+            )
+            n_est = sample_cap
+
     return early_stop, n_est
 
 
@@ -669,7 +690,8 @@ def _evaluate_wf_multi(
     total_n_test = 0
     total_n_train = 0
 
-    early_stop, n_est = _resolve_early_stopping(cfg)
+    # 646# P0-A: WF eval でも同じサンプル数ベースの上限を適用
+    early_stop, n_est = _resolve_early_stopping(cfg, n_samples=len(X))
     skip_pct = safe_to_float(cfg.get("skip_percentile", 20), 20.0)
     pnl30_all = _extract_numeric_column(enriched, X.index, "post_fill_30s_pnl")
     pnl120_all = _extract_numeric_column(enriched, X.index, "post_fill_120s_pnl")
@@ -821,7 +843,8 @@ def _evaluate_wf_single(
     y_test = y.iloc[test_start_idx:]  # noqa: F841
 
     # E2: early stopping 有効時は上限を引き上げ
-    early_stop, n_est = _resolve_early_stopping(cfg)
+    # 646# P0-A: WF single でも n_samples ベースの上限を適用
+    early_stop, n_est = _resolve_early_stopping(cfg, n_samples=len(X_train))
 
     lgbm_model = _build_lgbm_regressor(cfg, n_estimators_override=n_est)
 
@@ -1613,7 +1636,8 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
     )
 
     # E2: early stopping 有効時は train/val 分割
-    early_stop, n_est = _resolve_early_stopping(cfg)
+    # 646# P0-A: n_samples を渡してサンプル数ベースの上限を適用
+    early_stop, n_est = _resolve_early_stopping(cfg, n_samples=len(X_valid))
 
     lgbm = _build_lgbm_regressor(cfg, n_estimators_override=n_est)
 
@@ -1676,9 +1700,22 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
         }
 
     # 465# D2: 予測分散ガード — 定数出力モデルの検出
-    preds = lgbm.predict(X_sc)
-    pred_std = float(np.std(preds))
+    # 646# P0-B: eval_set は LightGBM のモニタリング専用であり訓練データから
+    # 除外されないため、真の OOS データではない。D2 ゲート判定には全訓練データの
+    # pred_std を使用し、eval_set の pred_std は診断フィールドとして記録する。
+    preds_all = lgbm.predict(X_sc)
+    pred_std = float(np.std(preds_all))
     result["pred_std"] = pred_std
+
+    # 646# P0-B: eval_set があれば val split の pred_std も診断用に記録
+    if early_stop > 0 and "eval_set" in fit_kwargs:
+        es_X, _ = fit_kwargs["eval_set"][0]  # type: ignore[index]
+        preds_val = lgbm.predict(es_X)
+        pred_std_val = float(np.std(preds_val))
+        result["pred_std_val"] = pred_std_val
+        if pred_std > 1e-9:
+            result["pred_std_ratio"] = pred_std_val / pred_std
+
     min_pred_std = safe_to_float(cfg.get("min_pred_std", 0.01), 0.01)
     if pred_std < min_pred_std:
         logger.warning(
