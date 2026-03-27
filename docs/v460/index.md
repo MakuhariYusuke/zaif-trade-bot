@@ -752,3 +752,4 @@ NNN_phX_TYPE_description.md
 | 643 | docs | [641_cplt_p0_p1_implementation_cv_widen_hardskip_regime.md](641_cplt_p0_p1_implementation_cv_widen_hardskip_regime.md) | 641#/642# before/after 分析スケジュール・指標を記録 |
 | 645 | fix | [645_cplt_p0_degenerate_sell_model_fix.md](645_cplt_p0_degenerate_sell_model_fix.md) | P0: 退化 sell モデル無効化 (-132bps=24.9%), degenerate 検出ガード追加 |
 | 646 | fix | [646_cplt_overfitting_guards.md](646_cplt_overfitting_guards.md) | 過学習防止: n_estimators サンプル比率cap, D2 OOS検証, side_min_samples 200 |
+| 647 | analysis | [647_cplt_post_deploy_analysis_sigma_fill_rate.md](647_cplt_post_deploy_analysis_sigma_fill_rate.md) | ポスト645#/646#分析: fill rate 7.2%はσ高騰(ATR閾値固定)が原因、コード変更は無関係 |
