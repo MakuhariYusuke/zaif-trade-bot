@@ -167,6 +167,76 @@ class SkipGateModelLoaderMixin:
 
     # --- side / alt model loading ---
 
+    @staticmethod
+    def _check_model_degeneracy(
+        gate: _SkipGateLike,
+        side: str,
+        *,
+        max_dominant_ratio: float = 0.40,
+    ) -> bool:
+        """645# モデル退化チェック: 合成入力で予測が定数出力に崩壊していないか検証.
+
+        Returns:
+            True if degenerate (should reject), False if OK.
+        """
+        import numpy as np
+        import pandas as pd
+        from ztb.ml.skip_gate import build_features_from_market_state
+
+        if gate._pipeline is None:
+            return False  # Pipeline なし = テスト/モック — チェック不要
+
+        preds: list[float] = []
+        test_cases = [
+            ("ranging", 1500, 0.3), ("ranging", 2500, 0.5), ("ranging", 3500, 0.7),
+            ("trending", 1500, 0.3), ("trending", 2500, 0.5), ("trending", 3500, 0.7),
+            ("high_vol", 2000, 0.4), ("unknown", 2000, 0.5),
+            ("ranging", 1000, 0.2), ("ranging", 4000, 0.8),
+            ("trending_up", 2000, 0.5), ("trending_down", 3000, 0.6),
+        ]
+        for regime, spread, offset in test_cases:
+            try:
+                feat = build_features_from_market_state(
+                    side=side,
+                    spread_jpy=float(spread),
+                    offset_ratio=offset,
+                    regime=regime,
+                    recent_trades=None,
+                    use_ob_features=gate.config.use_ob_features,
+                    best_bid=13_500_000.0,
+                    best_ask=13_500_000.0 + spread,
+                    bid_vol_5=0.1 if gate.config.use_ob_features else None,
+                    ask_vol_5=0.1 if gate.config.use_ob_features else None,
+                )
+                x = pd.DataFrame(
+                    [{fc: feat.get(fc, np.nan) for fc in gate.feature_cols}],
+                )
+                if gate._pipeline is not None:
+                    pred = float(gate._pipeline.predict(x)[0])
+                else:
+                    pred = 0.0
+                preds.append(round(pred, 4))
+            except Exception:
+                continue
+
+        if len(preds) < 6:
+            return False  # 判定不能
+
+        from collections import Counter
+        most_common_count = Counter(preds).most_common(1)[0][1]
+        dominant_ratio = most_common_count / len(preds)
+        is_degenerate = dominant_ratio > max_dominant_ratio
+
+        if is_degenerate:
+            modal_val = Counter(preds).most_common(1)[0][0]
+            logger.warning(
+                f"[skip_gate] 645# DEGENERATE model detected for {side}: "
+                f"{most_common_count}/{len(preds)} predictions = {modal_val:.4f} "
+                f"(dominant_ratio={dominant_ratio:.0%} > {max_dominant_ratio:.0%}). "
+                f"Rejecting model — will use unified fallback."
+            )
+        return is_degenerate
+
     def _load_side_models(self, skip_gate_cls: _SkipGateClassLike) -> None:
         """141# P1-01: side 別モデルをロード."""
         config: FillTestConfig = self._config  # type: ignore[attr-defined]
@@ -183,6 +253,13 @@ class SkipGateModelLoaderMixin:
                 continue
             try:
                 side_gate = self._load_gate_from_path(skip_gate_cls, gate_path)
+                # 645# 退化チェック: 定数出力モデルを拒否
+                if self._check_model_degeneracy(side_gate, side):
+                    logger.warning(
+                        f"[skip_gate] 645# {side} model rejected (degenerate): "
+                        f"{gate_path}. Will use unified model."
+                    )
+                    continue
                 setattr(self, attr_gate, side_gate)
                 setattr(self, attr_path, gate_path)
                 setattr(self, attr_hash, self._read_model_hash(gate_path))
@@ -309,6 +386,12 @@ class SkipGateModelLoaderMixin:
                 # 新規モデルファイル出現 → ロード
                 try:
                     new_gate = self._load_gate_from_path(skip_gate_cls, gate_path)
+                    # 645# 退化チェック
+                    if self._check_model_degeneracy(new_gate, side):
+                        logger.warning(
+                            f"[skip_gate] 645# {side} hot-reload rejected (degenerate): {gate_path}"
+                        )
+                        continue
                     setattr(self, attr_gate, new_gate)
                     setattr(self, attr_path, gate_path)
                     setattr(self, attr_hash, self._read_model_hash(gate_path))
@@ -325,6 +408,13 @@ class SkipGateModelLoaderMixin:
                 continue
             try:
                 new_gate = self._load_gate_from_path(skip_gate_cls, gate_path)
+                # 645# 退化チェック
+                if self._check_model_degeneracy(new_gate, side):
+                    logger.warning(
+                        f"[skip_gate] 645# {side} hot-reload rejected (degenerate): "
+                        f"{gate_path}. Keeping previous."
+                    )
+                    continue
                 setattr(self, attr_gate, new_gate)
                 setattr(self, attr_hash, new_hash)
                 logger.info(

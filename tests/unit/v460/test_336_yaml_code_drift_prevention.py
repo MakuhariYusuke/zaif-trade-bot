@@ -168,8 +168,6 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "sidecar_shaping",  # 546# YAML='quadratic' vs code='linear'
     "skip_gate_mode",
     "skip_gate_model_path",
-    "skip_gate_model_path_sell",
-    "skip_gate_model_path_sell_short",
     "skip_gate_narrow_spread_offset",
     "skip_gate_narrow_spread_threshold_jpy",
     "skip_gate_offset_ceil",  # 634# 0.5→0.8: sell_ranging_offset有効化
