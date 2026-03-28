@@ -546,4 +546,25 @@ durations 変化で特に効いた点:
   - `test_enricher_skip_gate.py`
   - `test_552_update_training_data.py` の `_download_ohlcv` path
   - temp file / temp dir 残件
- である
+  である
+
+- `test_552_update_training_data.py` second sweep:
+  - 追加適用:
+    - `_download_ohlcv` test で `patch("yfinance.Ticker")` ではなく
+      `patch.dict(sys.modules, {"yfinance": fake_module})` を使い、
+      test call から実 import コストを除去
+    - `_get_all_parquet_features(...)` を module-scope fixture で warm up し、
+      test 本体は fixture 結果を再利用
+  - focused pytest:
+    - `tests/unit/v460/test_552_update_training_data.py --durations=10 -q --no-cov`
+    - `15 passed in 2.09s`
+  - before/after:
+    - file total: `2.99s -> 2.09s`
+    - `_download_ohlcv` top duration から脱落
+    - 次の支配点は `TestGetAllParquetFeatures` setup `0.94s`
+
+現時点の top residual:
+
+1. `test_enricher_skip_gate.py` real-data setup
+2. `test_552_update_training_data.py` feature registry warm-up
+3. `test_499_loss_cap_daily_scope.py` daily reset path

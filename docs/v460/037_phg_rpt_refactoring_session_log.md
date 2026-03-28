@@ -9419,3 +9419,12 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - focused pytest:
     - 上記 4 ファイル
     - `99 passed in 2.38s`
+
+- 2026-03-29 Codex:
+  - `tests/unit/v460/test_552_update_training_data.py`
+    - `_download_ohlcv` test を `patch.dict(sys.modules, {"yfinance": ...})` へ変更し、
+      実 import コストを除去
+    - `_get_all_parquet_features(...)` を module fixture で warm up
+  - focused pytest:
+    - `tests/unit/v460/test_552_update_training_data.py --durations=10 -q --no-cov`
+    - `15 passed in 2.09s`

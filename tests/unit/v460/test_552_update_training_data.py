@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+from types import SimpleNamespace
 from datetime import datetime, timezone
 import shutil
 from pathlib import Path
@@ -67,6 +69,12 @@ def sample_parquet(sample_parquet_template: Path, tmp_path: Path) -> Path:
     path = tmp_path / "test.parquet"
     shutil.copy2(sample_parquet_template, path)
     return path
+
+
+@pytest.fixture(scope="module")
+def sample_parquet_features(sample_parquet_template: Path) -> tuple[str, ...]:
+    """parquet の feature 名取得を module 単位で warm up する."""
+    return tuple(_get_all_parquet_features(sample_parquet_template))
 
 
 class TestGetParquetLastTimestamp:
@@ -186,8 +194,11 @@ class TestGetAllParquetFeatures:
         result = _get_all_parquet_features(tmp_path / "no.parquet")
         assert set(result) == set(_SAC_FEATURES)
 
-    def test_includes_sac_features(self, sample_parquet: Path) -> None:
-        result = _get_all_parquet_features(sample_parquet)
+    def test_includes_sac_features(
+        self,
+        sample_parquet_features: tuple[str, ...],
+    ) -> None:
+        result = sample_parquet_features
         for feat in _SAC_FEATURES:
             assert feat in result
 
@@ -215,7 +226,8 @@ class TestDownloadOhlcv:
         mock_ticker = MagicMock()
         mock_ticker.history.return_value = mock_hist
 
-        with patch("yfinance.Ticker", return_value=mock_ticker):
+        fake_yfinance = SimpleNamespace(Ticker=MagicMock(return_value=mock_ticker))
+        with patch.dict(sys.modules, {"yfinance": fake_yfinance}):
             result = _download_ohlcv("7d")
             assert len(result) == 5
             assert list(result.columns) == [
@@ -226,6 +238,7 @@ class TestDownloadOhlcv:
         mock_ticker = MagicMock()
         mock_ticker.history.return_value = pd.DataFrame()
 
-        with patch("yfinance.Ticker", return_value=mock_ticker):
+        fake_yfinance = SimpleNamespace(Ticker=MagicMock(return_value=mock_ticker))
+        with patch.dict(sys.modules, {"yfinance": fake_yfinance}):
             with pytest.raises(RuntimeError, match="empty"):
                 _download_ohlcv("7d")
