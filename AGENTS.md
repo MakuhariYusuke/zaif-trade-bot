@@ -33,7 +33,8 @@ Coincheck BTC/JPY マーケットメイカー（SAC強化学習）。短期高�
 - ドキュメントは毎回更新してコミットに含める
 - ドキュメント番号 `NNN#` はインクリメンタルに採番（既存最大+1）
 
-## 現行アーキテクチャ要点 (606#時点)
+## 現行アーキテクチャ要点 (649#時点)
 - **Safety層**: SAD / MCB は `enabled: true`（606#）。607# で hot-reload 対応済み（`mcb_enabled`/`sad_enabled` 変更時にコンポーネント再構築、状態継承あり）
 - **entry_gate**: observe モード（`enabled: false` + CalibrationMap 接続済み）
+- **retrain_scheduler**: 649# でデータ鮮度チェックを retrain trigger から分離。`data_freshness_check_interval_sec` (1h) で独立して OHLCV 更新
 - **提案文書の検証**: AI 生成の「現在値」は必ず YAML + コードで検証すること（592#/605# 教訓）

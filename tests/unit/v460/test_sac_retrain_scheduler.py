@@ -1132,3 +1132,172 @@ class TestCrashResilience495:
 
         assert result.status == "error"
         mock_cleanup.assert_called_once()
+
+
+# ════════════════════════════════════════════════════════════════
+# §14 649# Data freshness decoupling tests
+# ════════════════════════════════════════════════════════════════
+
+
+class TestDataFreshnessDecoupling649:
+    """649# retrain trigger から独立したデータ鮮度チェックのテスト."""
+
+    def test_config_defaults(self) -> None:
+        """649# 新フィールドのデフォルト値."""
+        cfg = SACRetrainConfig()
+        assert cfg.data_freshness_check_interval_sec == 3600
+        assert cfg.max_data_stale_hours == pytest.approx(48.0)
+
+    def test_config_from_yaml(self) -> None:
+        """649# YAML からのパース."""
+        raw = {"sac_retrain": {
+            "data_freshness_check_interval_sec": 1800,
+            "max_data_stale_hours": 24.0,
+        }}
+        cfg = SACRetrainConfig.from_yaml_dict(raw)
+        assert cfg.data_freshness_check_interval_sec == 1800
+        assert cfg.max_data_stale_hours == pytest.approx(24.0)
+
+    def test_config_validation_interval_too_small(self) -> None:
+        """649# data_freshness_check_interval_sec < 60 はバリデーションエラー."""
+        with pytest.raises(ValueError, match="data_freshness_check_interval_sec"):
+            SACRetrainConfig(data_freshness_check_interval_sec=30)
+
+    def test_config_validation_stale_hours_zero(self) -> None:
+        """649# max_data_stale_hours <= 0 はバリデーションエラー."""
+        with pytest.raises(ValueError, match="max_data_stale_hours"):
+            SACRetrainConfig(max_data_stale_hours=0.0)
+
+    @patch("scripts.v460.ml.sac_retrain_scheduler.retrain_once")
+    @patch("scripts.v460.ml.sac_retrain_scheduler._install_signal_handlers")
+    def test_periodic_data_check_called_in_scheduler(
+        self,
+        mock_signals: MagicMock,
+        mock_retrain: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """649# run_scheduler がデータ鮮度チェックを retrain trigger の前に呼ぶ."""
+        data_file = tmp_path / "data.parquet"
+        data_file.write_bytes(b"dummy")
+
+        cfg = SACRetrainConfig(
+            ohlcv_path=str(data_file),
+            check_interval_sec=1,
+            retrain_interval_sec=1,
+            history_path=tmp_path / "history.jsonl",
+            data_freshness_check_interval_sec=60,
+            max_data_stale_hours=48.0,
+        )
+
+        mock_retrain.return_value = RetrainResult(status="deployed")
+        _shutdown_event.clear()
+
+        with (
+            patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait()),
+            patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
+            patch(
+                "scripts.v460.ml.update_training_data.ensure_data_fresh",
+                return_value=False,
+            ) as mock_fresh,
+        ):
+            run_scheduler(cfg)
+
+        # 初回ループで data freshness check が呼ばれるはず
+        mock_fresh.assert_called_once_with(
+            str(data_file),
+            max_stale_hours=48.0,
+        )
+        _shutdown_event.clear()
+
+    @patch("scripts.v460.ml.sac_retrain_scheduler.retrain_once")
+    @patch("scripts.v460.ml.sac_retrain_scheduler._install_signal_handlers")
+    def test_data_check_failure_does_not_kill_loop(
+        self,
+        mock_signals: MagicMock,
+        mock_retrain: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """649# ensure_data_fresh 失敗時もループ継続."""
+        data_file = tmp_path / "data.parquet"
+        data_file.write_bytes(b"dummy")
+
+        cfg = SACRetrainConfig(
+            ohlcv_path=str(data_file),
+            check_interval_sec=1,
+            retrain_interval_sec=1,
+            history_path=tmp_path / "history.jsonl",
+            data_freshness_check_interval_sec=60,
+        )
+
+        mock_retrain.return_value = RetrainResult(status="deployed")
+        _shutdown_event.clear()
+
+        with (
+            patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait()),
+            patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
+            patch(
+                "scripts.v460.ml.update_training_data.ensure_data_fresh",
+                side_effect=RuntimeError("yfinance down"),
+            ),
+        ):
+            # ループが例外で死なないことを確認
+            run_scheduler(cfg)
+
+        # ensure_data_fresh が例外でも retrain_once は呼ばれるはず
+        mock_retrain.assert_called_once()
+        _shutdown_event.clear()
+
+    @patch("scripts.v460.ml.sac_retrain_scheduler.retrain_once")
+    @patch("scripts.v460.ml.sac_retrain_scheduler._install_signal_handlers")
+    def test_data_check_respects_interval(
+        self,
+        mock_signals: MagicMock,
+        mock_retrain: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """649# data freshness check はインターバルを守る (連続呼出しされない)."""
+        data_file = tmp_path / "data.parquet"
+        data_file.write_bytes(b"dummy")
+
+        cfg = SACRetrainConfig(
+            ohlcv_path=str(data_file),
+            check_interval_sec=1,
+            retrain_interval_sec=1,
+            history_path=tmp_path / "history.jsonl",
+            data_freshness_check_interval_sec=9999,  # very long interval
+        )
+
+        mock_retrain.return_value = RetrainResult(status="deployed")
+        _shutdown_event.clear()
+
+        call_count = 0
+        is_set_count = 0
+
+        def counting_is_set() -> bool:
+            nonlocal is_set_count
+            is_set_count += 1
+            return is_set_count > 3
+
+        wait_count = 0
+
+        def counting_wait(timeout: float | None = None) -> bool:
+            nonlocal wait_count
+            wait_count += 1
+            if wait_count >= 3:
+                _shutdown_event.set()
+                return True
+            return False
+
+        with (
+            patch.object(_shutdown_event, "wait", side_effect=counting_wait),
+            patch.object(_shutdown_event, "is_set", side_effect=counting_is_set),
+            patch(
+                "scripts.v460.ml.update_training_data.ensure_data_fresh",
+                return_value=False,
+            ) as mock_fresh,
+        ):
+            run_scheduler(cfg)
+
+        # 初回は呼ばれるが、interval が長いので 2 回目以降はスキップ
+        assert mock_fresh.call_count == 1
+        _shutdown_event.clear()

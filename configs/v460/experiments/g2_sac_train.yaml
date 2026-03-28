@@ -145,3 +145,6 @@ sac_retrain:
   min_trade_count: 3                 # 372# Deploy Gate
   confidence_roi_full: 0.005         # confidence=1.0 閾値
   history_path: "logs/sac_retrain_history.jsonl"
+  # 649# データ鮮度チェック (retrain trigger 非依存)
+  data_freshness_check_interval_sec: 3600  # 鮮度チェック間隔 (1h)
+  max_data_stale_hours: 48.0               # この時間超過で自動更新

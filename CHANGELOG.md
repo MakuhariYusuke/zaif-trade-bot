@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 649# retrain_scheduler data freshness decoupling (2026-03-29)
+
+### Fixed
+- **Chicken-and-egg deadlock**: `ensure_data_fresh()` が `retrain_once()` 内にしか存在せず、
+  `should_retrain()` が `data_unchanged` を返す限り到達不可能だった問題を修正
+  - `run_scheduler()` メインループに独立した周期的データ鮮度チェックを追加
+  - retrain trigger に依存しない `data_freshness_check_interval_sec` (デフォルト: 1h) で制御
+  - `retrain_once()` 内の既存呼び出しはバックアップとして保持
+
+### Added
+- `SACRetrainConfig.data_freshness_check_interval_sec`: データ鮮度チェック間隔 (デフォルト: 3600s)
+- `SACRetrainConfig.max_data_stale_hours`: 自動更新閾値 (デフォルト: 48.0h)
+- YAML 設定: `g2_sac_train.yaml` に上記 2 フィールド追加
+- バリデーション: `data_freshness_check_interval_sec >= 60`, `max_data_stale_hours > 0`
+- テスト: `TestDataFreshnessDecoupling649` (7 cases — config, YAML parse, validation, scheduler integration, failure resilience, interval respect)
+
 ## 555# CalibrationMap runtime integration (2026-03-23)
 
 ### Added

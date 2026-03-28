@@ -131,6 +131,10 @@ class SACRetrainConfig:
     min_new_rows: int = 120  # rolling 更新に必要な新規行数 (2h分 = 120行)
     history_path: Path = field(default_factory=lambda: Path("logs/sac_retrain_history.jsonl"))
 
+    # ── 649# データ鮮度チェック (retrain trigger 非依存) ──
+    data_freshness_check_interval_sec: int = 3600  # 鮮度チェック間隔 (1h)
+    max_data_stale_hours: float = 48.0  # この時間を超えると自動更新
+
     # ── 600# Conditional neutral fallback ──
     # OOS 失敗時、直近 deploy 済み signal がこの時間(h)以内なら neutral 化しない
     max_signal_staleness_hours: float = 24.0
@@ -190,6 +194,12 @@ class SACRetrainConfig:
             max_signal_staleness_hours=float(
                 retrain_cfg.get("max_signal_staleness_hours", 24.0)
             ),
+            data_freshness_check_interval_sec=int(
+                retrain_cfg.get("data_freshness_check_interval_sec", 3600)
+            ),
+            max_data_stale_hours=float(
+                retrain_cfg.get("max_data_stale_hours", 48.0)
+            ),
         )
 
     def __post_init__(self) -> None:
@@ -223,6 +233,15 @@ class SACRetrainConfig:
             raise ValueError(f"n_eval_episodes must be >= 1, got {self.n_eval_episodes}")
         if self.min_trade_count < 0:
             raise ValueError(f"min_trade_count must be >= 0, got {self.min_trade_count}")
+        if self.data_freshness_check_interval_sec < 60:
+            raise ValueError(
+                f"data_freshness_check_interval_sec must be >= 60, "
+                f"got {self.data_freshness_check_interval_sec}"
+            )
+        if self.max_data_stale_hours <= 0:
+            raise ValueError(
+                f"max_data_stale_hours must be > 0, got {self.max_data_stale_hours}"
+            )
 
 
 # ════════════════════════════════════════════════════════════════
@@ -341,7 +360,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
     try:
         from scripts.v460.ml.update_training_data import ensure_data_fresh
 
-        ensure_data_fresh(cfg.ohlcv_path, max_stale_hours=48.0)
+        ensure_data_fresh(cfg.ohlcv_path, max_stale_hours=cfg.max_data_stale_hours)
     except Exception as e:
         logger.warning(f"[552#] Data freshness check failed (non-fatal): {e}")
 
@@ -754,12 +773,19 @@ def run_scheduler(cfg: SACRetrainConfig) -> None:
     365# §5.2 / §6.2 に準拠。
     既存 retrain_scheduler.py (SkipGate) と同一パターン:
       while not shutdown → trigger check → retrain → wait
+
+    649#: データ鮮度チェックを retrain trigger から分離。
+    ensure_data_fresh() を独立した周期で呼び出し、
+    chicken-and-egg デッドロック (data_unchanged ループ) を解消。
     """
     # 495# シグナルハンドラは main() で既にインストール済み — 二重登録は安全
     _install_signal_handlers()
     logger.info("[365# P6] Signal handlers installed (SIGTERM/SIGINT)")
 
     trigger = SACRetrainTrigger(cfg=cfg)
+
+    # 649# データ鮮度チェック用タイマー (retrain trigger とは独立)
+    _last_data_freshness_check: float = 0.0
 
     logger.info(
         f"=== 365# SAC Retrain Scheduler started ===\n"
@@ -770,12 +796,33 @@ def run_scheduler(cfg: SACRetrainConfig) -> None:
         f"  incremental_timesteps: {cfg.incremental_timesteps}\n"
         f"  rolling_window_days: {cfg.rolling_window_days}\n"
         f"  ohlcv_path: {cfg.ohlcv_path}\n"
-        f"  min_gross_roi: {cfg.min_gross_roi}"
+        f"  min_gross_roi: {cfg.min_gross_roi}\n"
+        f"  data_freshness_check: every {cfg.data_freshness_check_interval_sec}s, "
+        f"stale_threshold={cfg.max_data_stale_hours}h"
     )
 
     cfg.history_path.parent.mkdir(parents=True, exist_ok=True)
 
     while not _shutdown_event.is_set():
+        # ── 649# 周期的データ鮮度チェック (retrain trigger 非依存) ──
+        now = time.time()
+        if now - _last_data_freshness_check >= cfg.data_freshness_check_interval_sec:
+            _last_data_freshness_check = now
+            try:
+                from scripts.v460.ml.update_training_data import ensure_data_fresh
+
+                updated = ensure_data_fresh(
+                    cfg.ohlcv_path,
+                    max_stale_hours=cfg.max_data_stale_hours,
+                )
+                if updated:
+                    logger.info(
+                        "[649#] Data refreshed by periodic check — "
+                        "next retrain trigger should detect mtime change"
+                    )
+            except Exception as e:
+                logger.warning(f"[649#] Periodic data freshness check failed: {e}")
+
         # 495# trigger/history 操作を try/except で保護 — ループ死亡を防止
         try:
             should_run, reason = trigger.should_retrain()
