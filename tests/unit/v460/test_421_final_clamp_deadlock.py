@@ -576,11 +576,11 @@ class TestSideObservability:
 class TestHardSkipMultConfig:
     """420# hard_skip_mult 有効化テスト."""
 
-    def test_yaml_has_nonzero_hard_skip_mult(self) -> None:
-        import yaml
-        from pathlib import Path
-        with open(Path("configs/v460/fill_test.yaml")) as f:
-            cfg = yaml.safe_load(f)
+    def test_yaml_has_nonzero_hard_skip_mult(
+        self,
+        v460_fill_test_yaml_base: dict[str, object],
+    ) -> None:
+        cfg = v460_fill_test_yaml_base
         assert cfg["execution_final_clamp_hard_skip_mult"] == 2.5
 
 

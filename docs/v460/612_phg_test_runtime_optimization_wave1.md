@@ -523,3 +523,27 @@ durations 変化で特に効いた点:
   - focused pytest:
     - 上記 3 ファイル
     - 結果: `25 passed in 3.17s`
+
+- live `fill_test.yaml` shared fixture sweep:
+  - 追加適用:
+    - `tests/unit/v460/test_micro_timeout.py`
+    - `tests/unit/v460/test_634_sell_ranging_suppression.py`
+    - `tests/unit/v460/test_421_final_clamp_deadlock.py`
+    - `tests/unit/v460/test_596_primary_consecutive_skip_safety.py`
+  - 内容:
+    - `v460_fill_test_yaml_base` / `v460_fill_test_config_base` に寄せて
+      live YAML の再 open / 再 parse を削減
+    - `clone_fill_test_config(...)` 経由で mutation-safe を維持
+  - focused pytest:
+    - 上記 4 ファイル
+    - 結果: `99 passed in 2.38s`
+
+現時点の判断:
+
+- live config を読むだけの v460 test は shared fixture 化がかなり効く
+- parser 契約そのものを見ているテストは無理に helper 化しない
+- 次の本丸は引き続き
+  - `test_enricher_skip_gate.py`
+  - `test_552_update_training_data.py` の `_download_ohlcv` path
+  - temp file / temp dir 残件
+ である

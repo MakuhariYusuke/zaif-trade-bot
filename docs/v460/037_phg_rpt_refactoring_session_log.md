@@ -9405,3 +9405,17 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `tests/test_analyze_fill_logs.py`
     - `tests/unit/v460/test_fill_quality.py`
     - `229 passed, 297 deselected, 5 warnings`
+
+- 2026-03-29 Codex:
+  - `tests/unit/v460/test_micro_timeout.py`
+    - `v460_fill_test_yaml_base` を利用して live YAML の再 open を削減
+  - `tests/unit/v460/test_634_sell_ranging_suppression.py`
+    - `v460_fill_test_config_base` + `clone_fill_test_config(...)` に寄せて
+      live `fill_test.yaml` 再 parse を削減
+  - `tests/unit/v460/test_421_final_clamp_deadlock.py`
+    - `v460_fill_test_yaml_base` へ寄せて hard skip mult の確認を共有 fixture 化
+  - `tests/unit/v460/test_596_primary_consecutive_skip_safety.py`
+    - live YAML 統合確認を shared config fixture に寄せた
+  - focused pytest:
+    - 上記 4 ファイル
+    - `99 passed in 2.38s`

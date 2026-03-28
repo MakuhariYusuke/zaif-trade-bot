@@ -151,12 +151,11 @@ class TestFillRecordRequoteFields:
 class TestProductionYamlMicroTimeout:
     """本番 fill_test.yaml に micro_timeout セクションが存在するか."""
 
-    def test_yaml_has_micro_timeout_section(self) -> None:
-        from pathlib import Path
-        import yaml
-        yaml_path = Path(__file__).resolve().parent.parent.parent.parent / "configs" / "v460" / "fill_test.yaml"
-        with open(yaml_path) as f:
-            raw = yaml.safe_load(f)
+    def test_yaml_has_micro_timeout_section(
+        self,
+        v460_fill_test_yaml_base: dict[str, object],
+    ) -> None:
+        raw = v460_fill_test_yaml_base
         mt = raw.get("micro_timeout", {})
         assert isinstance(mt, dict)
         assert "enabled" in mt

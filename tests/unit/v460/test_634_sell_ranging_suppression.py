@@ -12,6 +12,7 @@ import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.side_selector import SideSelector
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config
 
 
 # =========================================================
@@ -115,13 +116,12 @@ class TestSkipGateSellRangingPenalty:
         penalty_lines = [l for l in lines if "sell_ranging" in l]
         assert not any("getattr" in l for l in penalty_lines)
 
-    def test_offset_ceil_accommodates_penalty(self) -> None:
+    def test_offset_ceil_accommodates_penalty(
+        self,
+        v460_fill_test_config_base: FillTestConfig,
+    ) -> None:
         """offset_ceil が sell_ranging_offset より大きいこと (有効性確認)."""
-        from pathlib import Path
-
-        from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
-
-        cfg = FillTestConfig.from_yaml(load_yaml_mapping(Path("configs/v460/fill_test.yaml")))
+        cfg = clone_fill_test_config(v460_fill_test_config_base)
         assert cfg.skip_gate_offset_ceil > cfg.skip_gate_sell_ranging_offset, (
             f"offset_ceil ({cfg.skip_gate_offset_ceil}) must exceed "
             f"sell_ranging_offset ({cfg.skip_gate_sell_ranging_offset}) "
@@ -191,13 +191,12 @@ class TestConfigIntegration:
         cfg = FillTestConfig()
         assert cfg.ranging_buy_priority_max_consecutive == 3
 
-    def test_yaml_round_trip(self) -> None:
+    def test_yaml_round_trip(
+        self,
+        v460_fill_test_config_base: FillTestConfig,
+    ) -> None:
         """YAML → FillTestConfig で 634# フィールドが正しくパースされる."""
-        from pathlib import Path
-
-        from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
-
-        cfg = FillTestConfig.from_yaml(load_yaml_mapping(Path("configs/v460/fill_test.yaml")))
+        cfg = clone_fill_test_config(v460_fill_test_config_base)
         assert cfg.skip_gate_sell_ranging_offset == 0.5
         assert cfg.skip_gate_offset_ceil == 0.8
         assert cfg.ranging_buy_priority_max_consecutive == 3
