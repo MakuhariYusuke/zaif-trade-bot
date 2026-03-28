@@ -616,3 +616,30 @@ durations 変化で特に効いた点:
 1. `test_enricher_skip_gate.py` real-data setup
 2. `test_552_update_training_data.py` feature registry warm-up
 3. `test_499_loss_cap_daily_scope.py` daily reset path
+
+- cached config + lightweight stub sweep:
+  - 追加適用:
+    - `tests/unit/v460/test_499_loss_cap_daily_scope.py`
+    - `tests/unit/v460/test_169_c1_c3_c4_config.py`
+    - `tests/unit/v460/test_168_low_vol_offset_boost.py`
+    - `tests/unit/v460/test_169_ranging_buy_skip_and_metrics.py`
+  - 内容:
+    - `test_499_loss_cap_daily_scope.py` で `MagicMock` / ad-hoc record をやめ、
+      軽量 stub + 実 `FillRecord` に置換
+    - live `fill_test.yaml` を読むだけのテストを
+      `v460_fill_test_config_base` + `clone_fill_test_config(...)` に寄せた
+    - 固定 mapping の `FillConfig.from_yaml(...)` を cached helper に寄せた
+    - decorator / fixture 起点の targeted mypy ノイズも整理
+  - 検証:
+    - targeted mypy:
+      - 上記 4 ファイル
+      - `Success: no issues found in 4 source files`
+    - focused pytest:
+      - 上記 4 ファイル
+      - `63 passed, 1 warning in 2.20s`
+
+次の residual 候補:
+
+1. `tests/unit/v460/test_fill_test_config.py` など parser 契約そのものを見る `from_yaml(...)` テスト群
+2. `tests/unit/v460/test_enricher_skip_gate.py` real-data setup
+3. `tests/legacy_tests/unit/test_event_sourcing.py` の `TemporaryDirectory()` 残差

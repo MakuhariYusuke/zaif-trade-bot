@@ -11,29 +11,31 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
 from datetime import datetime, timezone
-from unittest.mock import MagicMock
 
 import pytest
 
 from scripts.v460.lib.fill_loop_orchestrator import RunSessionState
 from scripts.v460.lib.orchestrator_pre_cycle import OrchestratorPreCycleMixin
 from ztb.data.raw_paths import utc_day_str_from_timestamp
-from ztb.metrics.fill_quality import compute_record_pnl_jpy
+from ztb.metrics.fill_quality import FillRecord, compute_record_pnl_jpy
 
 
 # ─── 軽量スタブ ────────────────────────────────────────────
-@dataclass
-class _FakeRecord:
-    timestamp: float = 0.0
-    filled: bool = True
-    post_fill_30s_pnl: float | None = None
-    fill_price: float | None = None
-    order_quantity: float | None = None
-    side: str = "buy"
-    adverse_selected: bool = False
-    cycle_id: str = ""
+class _DailyDrawdownGuardStub:
+    def __init__(self, *, day_changed: bool) -> None:
+        self._day_changed = day_changed
+
+    def maybe_reset_day(self) -> bool:
+        return self._day_changed
+
+
+class _KillManagerStub:
+    def is_kill_active(self) -> tuple[bool, float, int]:
+        return (False, 0.0, 0)
+
+    def reset(self) -> None:
+        return None
 
 
 def _make_record(
@@ -43,19 +45,20 @@ def _make_record(
     side: str = "buy",
     price: float = 10_000_000.0,
     qty: float = 0.001,
-) -> _FakeRecord:
+) -> FillRecord:
     """指定 UTC 日のダミーレコードを生成."""
     dt = datetime.strptime(utc_day, "%Y%m%d").replace(
         hour=12, tzinfo=timezone.utc,
     )
-    return _FakeRecord(
+    return FillRecord(
+        cycle_id=f"cycle_{utc_day}_{side}_{pnl_bps}",
         timestamp=dt.timestamp(),
+        side=side,
+        order_price=price,
+        order_quantity=qty,
         filled=True,
         post_fill_30s_pnl=pnl_bps,
         fill_price=price,
-        order_quantity=qty,
-        side=side,
-        cycle_id=f"cycle_{utc_day}_{side}_{pnl_bps}",
     )
 
 
@@ -64,22 +67,15 @@ def _make_pre_cycle_mixin(
     day_changed: bool,
     soft_loss_cap_triggered: bool = False,
 ) -> OrchestratorPreCycleMixin:
-    mock_dd = MagicMock()
-    mock_dd.maybe_reset_day.return_value = day_changed
-
-    mock_km = MagicMock()
-    mock_km.is_kill_active.return_value = (False, 0.0, 0)
-    mock_km.reset = MagicMock()
-
     obj = object.__new__(OrchestratorPreCycleMixin)
-    obj._daily_drawdown_guard = mock_dd
+    obj._daily_drawdown_guard = _DailyDrawdownGuardStub(day_changed=day_changed)
     obj._soft_drawdown_interval_multiplier = 1.0
     obj._dd_soft_lot_scale_buy = 1.0
     obj._dd_soft_lot_scale_sell = 1.0
     obj._toxic_veto = {}
     obj._one_sided_consecutive_count = 0
-    obj._sell_kill_mgr = mock_km
-    obj._buy_kill_mgr = mock_km
+    obj._sell_kill_mgr = _KillManagerStub()
+    obj._buy_kill_mgr = _KillManagerStub()
     obj._soft_loss_cap_triggered = soft_loss_cap_triggered
     obj._guard_fire_counts = {}
     obj._preflight_pause_count = 0

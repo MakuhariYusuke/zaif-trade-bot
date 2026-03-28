@@ -12,11 +12,12 @@ from __future__ import annotations
 import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig as FillConfig
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config
 
-@pytest.fixture(scope="module")
-def config_from_yaml(v460_fill_test_yaml_base: dict[str, object]) -> FillConfig:
-    """fill_test.yaml から FillConfig を構築（module 再利用で高速化）."""
-    return FillConfig.from_yaml(v460_fill_test_yaml_base)
+@pytest.fixture(scope="module")  # type: ignore[untyped-decorator]
+def config_from_yaml(v460_fill_test_config_base: FillConfig) -> FillConfig:
+    """共有 FillConfig を clone して module 再利用する."""
+    return clone_fill_test_config(v460_fill_test_config_base)
 
 
 # ================================================================

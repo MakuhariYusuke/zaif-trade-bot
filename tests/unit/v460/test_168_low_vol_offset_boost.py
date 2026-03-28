@@ -13,6 +13,7 @@ import pytest
 
 from scripts.v460.lib.fill_config import FillTestConfig as FillConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config
 from ztb.trading.risk.fast_fill_defense import FastFillDefense
 from ztb.trading.signal.regime.regime_detector import (
     FillTestRegime,
@@ -78,10 +79,9 @@ class TestLowVolOffsetBoostConfig:
         assert cfg.low_vol_offset_boost == 1.4
         assert cfg.low_vol_threshold == 0.75
 
-    def test_yaml_parsing(self, v460_fill_test_yaml: dict[str, object]) -> None:
-        """YAML から正しく読み込まれる."""
-        raw = v460_fill_test_yaml
-        cfg = FillConfig.from_yaml(raw)
+    def test_yaml_parsing(self, v460_fill_test_config_base: FillConfig) -> None:
+        """live YAML の共有 config から正しく読み込まれる."""
+        cfg = clone_fill_test_config(v460_fill_test_config_base)
         assert cfg.low_vol_offset_boost_enabled is True
         assert cfg.low_vol_offset_boost == 1.8
         assert cfg.low_vol_threshold == 0.65
@@ -117,7 +117,7 @@ class TestLowVolOffsetBoostMakerPrice:
         adapter = _make_adapter()
         return calc, adapter
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio  # type: ignore[untyped-decorator]
     async def test_low_vol_boosts_offset(self) -> None:
         """vol_ratio < threshold で offset が boost される."""
         calc, adapter = self._make_calc(vol_ratio=0.5, threshold=0.70, boost=1.4)
@@ -125,7 +125,7 @@ class TestLowVolOffsetBoostMakerPrice:
         # base=0.05, ranging discount=1.0 (default), low_vol boost=1.4 → 0.07
         assert result.effective_offset_ratio == pytest.approx(0.07, abs=0.005)
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio  # type: ignore[untyped-decorator]
     async def test_no_boost_above_threshold(self) -> None:
         """vol_ratio >= threshold ではブースト不発動."""
         calc, adapter = self._make_calc(vol_ratio=0.80, threshold=0.70)
@@ -133,14 +133,14 @@ class TestLowVolOffsetBoostMakerPrice:
         # base=0.05 のまま
         assert result.effective_offset_ratio == pytest.approx(0.05, abs=0.005)
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio  # type: ignore[untyped-decorator]
     async def test_disabled_no_boost(self) -> None:
         """enabled=False では低 vol でもブースト不発動."""
         calc, adapter = self._make_calc(enabled=False, vol_ratio=0.3)
         result = await calc.compute("buy", adapter, "btc_jpy")
         assert result.effective_offset_ratio == pytest.approx(0.05, abs=0.005)
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio  # type: ignore[untyped-decorator]
     async def test_sell_side_boost(self) -> None:
         """sell 側でもブースト発動."""
         cfg = FillConfig(
@@ -166,7 +166,7 @@ class TestLowVolOffsetBoostMakerPrice:
         # sell base=0.18, low_vol boost=1.4 → 0.252
         assert result.effective_offset_ratio == pytest.approx(0.252, abs=0.01)
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio  # type: ignore[untyped-decorator]
     async def test_max_offset_cap(self) -> None:
         """max_offset_ratio を超えない."""
         calc, adapter = self._make_calc(
@@ -176,7 +176,7 @@ class TestLowVolOffsetBoostMakerPrice:
         result = await calc.compute("buy", adapter, "btc_jpy")
         assert result.effective_offset_ratio <= 0.30
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio  # type: ignore[untyped-decorator]
     async def test_low_vol_stacks_with_regime_boost(self) -> None:
         """trending + 低 vol の複合ケース: 両方のブーストが適用される."""
         cfg = FillConfig(
@@ -231,7 +231,7 @@ class TestOffsetScalingHelper:
 class TestFFDBoostConsistency:
     """FFD boost 後の価格補正量と ratio が整合すること."""
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio  # type: ignore[untyped-decorator]
     async def test_clamped_ffd_recomputes_offset_from_ratio(self) -> None:
         cfg = FillConfig(
             spread_offset_ratio=0.2,

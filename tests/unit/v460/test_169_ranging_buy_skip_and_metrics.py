@@ -23,6 +23,7 @@ import pytest
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import FillTestConfig as FillConfig
 from tests.unit.v460._fill_test_source import CYCLE_GATE_AGGREGATOR, read_source_text
+from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 from ztb.metrics.fill_quality import FillRecord, compute_fill_metrics
 
 _CYCLE_GATE_AGGREGATOR_SOURCE = read_source_text(CYCLE_GATE_AGGREGATOR)
@@ -65,21 +66,25 @@ class TestSkipRangingBuyLowVolConfig:
 
     def test_yaml_parsing(self) -> None:
         """YAML dict から読み込めること."""
-        yaml_cfg = {
-            "regime": {
-                "enabled": True,
-                "skip_ranging_buy_low_vol": True,
-                "low_vol_threshold": 0.80,
-            }
-        }
-        cfg = FillConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {
+                    "regime": {
+                        "enabled": True,
+                        "skip_ranging_buy_low_vol": True,
+                        "low_vol_threshold": 0.80,
+                    }
+                }
+            )
+        )
         assert cfg.skip_ranging_buy_low_vol is True
         assert cfg.low_vol_threshold == 0.80
 
     def test_yaml_default_false(self) -> None:
         """YAML に未指定なら False."""
-        yaml_cfg = {"regime": {"enabled": True}}
-        cfg = FillConfig.from_yaml(yaml_cfg)
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping({"regime": {"enabled": True}})
+        )
         assert cfg.skip_ranging_buy_low_vol is False
 
 
@@ -160,7 +165,7 @@ class TestThreeSeriesStructure:
         ]
 
         # Mock gate thresholds to avoid file dependency
-        mock_thresholds = {
+        mock_thresholds: dict[str, dict[str, object]] = {
             "g1_1_exec": {},
             "g1_1_quick_exec": {},
             "g1_2_full_exec": {},

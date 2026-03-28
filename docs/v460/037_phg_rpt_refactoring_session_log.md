@@ -9451,3 +9451,19 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `8 passed, 1 warning, 3 subtests passed in 37.95s`
     - `tests/unit/v460/test_regime_detector.py`
     - `99 passed in 2.44s`
+
+- 2026-03-29 Codex:
+  - `tests/unit/v460/test_499_loss_cap_daily_scope.py`
+    - `MagicMock` 依存を軽量 stub に置換
+    - `_make_record(...)` を実 `FillRecord` ベースへ変更
+  - `tests/unit/v460/test_169_c1_c3_c4_config.py`
+  - `tests/unit/v460/test_168_low_vol_offset_boost.py`
+  - `tests/unit/v460/test_169_ranging_buy_skip_and_metrics.py`
+    - live YAML / fixed mapping の `from_yaml(...)` を shared cached helper に寄せた
+    - targeted mypy の decorator / fixture ノイズも整理
+  - targeted mypy:
+    - 上記 4 ファイル
+    - `Success: no issues found in 4 source files`
+  - focused pytest:
+    - 上記 4 ファイル
+    - `63 passed, 1 warning in 2.20s`
