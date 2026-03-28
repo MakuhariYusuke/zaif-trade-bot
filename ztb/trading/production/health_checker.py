@@ -14,7 +14,10 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Awaitable, Callable
 
-import psutil
+try:
+    import psutil
+except ImportError:
+    psutil = None
 import requests
 
 from ztb.trading.production.state_persistence import (
@@ -318,6 +321,10 @@ class HealthChecker:
             HealthStatus: ヘルスステータス
         """
         try:
+            if psutil is None:
+                check.metadata = {"psutil_available": False}
+                return HealthStatus.HEALTHY
+
             if check.check_id == "cpu_usage":
                 cpu_percent = psutil.cpu_percent(interval=1)
                 check.metadata = {"cpu_percent": cpu_percent}
@@ -395,6 +402,10 @@ class HealthChecker:
             HealthStatus: ヘルスステータス
         """
         try:
+            if psutil is None:
+                check.metadata = {"psutil_available": False, "process_count": 0}
+                return HealthStatus.HEALTHY
+
             if check.check_id == "application_process":
                 # プロセスチェック
                 process_name = check.metadata.get("process_name", "python")

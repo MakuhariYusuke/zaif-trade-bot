@@ -18,15 +18,36 @@ from ztb.trading.production.state_persistence import (
     read_state_payload,
     write_state_payload,
 )
-from market_data_simulator import MarketDataSimulator, SimulatedTick
-from performance_validator import PerformanceValidator, ValidationReport
-from virtual_portfolio_manager import VirtualPortfolioManager
+try:
+    from ztb.trading.production.market_data_simulator import (
+        MarketDataSimulator as ProductionMarketDataSimulator,
+        SimulatedTick,
+    )
+    from ztb.trading.production.performance_validator import (
+        PerformanceValidator as ProductionPerformanceValidator,
+        ValidationReport,
+    )
+    from ztb.trading.production.virtual_portfolio_manager import (
+        VirtualPortfolioManager as ProductionVirtualPortfolioManager,
+    )
+except ImportError:
+    from market_data_simulator import MarketDataSimulator as ProductionMarketDataSimulator, SimulatedTick
+    from performance_validator import PerformanceValidator as ProductionPerformanceValidator, ValidationReport
+    from virtual_portfolio_manager import VirtualPortfolioManager as ProductionVirtualPortfolioManager
 
 # Mock classes for testing
 
 class OrderType(Enum):
     MARKET = "market"
     LIMIT = "limit"
+
+
+class OrderSide(Enum):
+    BUY = "buy"
+    SELL = "sell"
+
+
+@dataclass
 class Order:
     order_id: str
     symbol: str
@@ -103,18 +124,18 @@ class PaperTradingManager:
         self.market_data_provider = market_data_provider
 
         # コンポーネント初期化
-        self.portfolio_manager = VirtualPortfolioManager(
+        self.portfolio_manager = ProductionVirtualPortfolioManager(
             initial_balance=self.config.initial_balance,
             commission_rate=self.config.commission_rate,
             max_position_size=self.config.max_position_size,
             max_drawdown_limit=self.config.max_drawdown_limit,
         )
 
-        self.market_simulator = MarketDataSimulator(
+        self.market_simulator = ProductionMarketDataSimulator(
             market_data_provider=market_data_provider
         )
 
-        self.performance_validator = PerformanceValidator(
+        self.performance_validator = ProductionPerformanceValidator(
             min_trades_required=self.config.min_trades_required
         )
 

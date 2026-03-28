@@ -9428,3 +9428,26 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - focused pytest:
     - `tests/unit/v460/test_552_update_training_data.py --durations=10 -q --no-cov`
     - `15 passed in 2.09s`
+
+- 2026-03-29 Codex:
+  - `tests/integration/test_v433_phase5_integration.py`
+    - package import に戻して collection error を解消
+    - `CircuitBreaker` の現行 API に追随
+    - `failure_recovery` の unsupported scenario を除外し、短い polling に変更
+    - `performance_under_load` の timeout / concurrency を現実的な値へ調整
+  - `ztb/trading/production/`
+    - `paper_trading_manager.py`
+    - `virtual_portfolio_manager.py`
+    - `traffic_distributor.py`
+    - `result_comparator.py`
+    - `health_checker.py`
+    - `real_time_metrics.py`
+    の importability を戻す最小修復を実施
+  - `tests/unit/v460/test_regime_detector.py`
+    - fixed mapping の `FillTestConfig.from_yaml(...)` を cached helper に寄せた
+    - stale source-contract 2 件を現行 helper 境界へ更新
+  - focused pytest:
+    - `tests/integration/test_v433_phase5_integration.py`
+    - `8 passed, 1 warning, 3 subtests passed in 37.95s`
+    - `tests/unit/v460/test_regime_detector.py`
+    - `99 passed in 2.44s`

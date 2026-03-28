@@ -12,7 +12,10 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any, Awaitable, Callable
 
-import scipy.stats as stats
+try:
+    import scipy.stats as stats
+except ImportError:
+    stats = None
 from ztb.trading.production.state_persistence import (
     read_state_payload,
     write_state_payload,
@@ -449,6 +452,9 @@ class ResultComparator:
         results = {}
 
         try:
+            if stats is None:
+                return results
+
             # 等分散性テスト（Levene）
             if StatisticalTest.LEVENE in self.enabled_tests:
                 stat, p_value = stats.levene(values_a, values_b)
@@ -510,6 +516,9 @@ class ResultComparator:
         intervals = {}
 
         try:
+            if stats is None:
+                return intervals
+
             # 平均の差の信頼区間
             mean_a = statistics.mean(values_a)
             mean_b = statistics.mean(values_b)

@@ -25,12 +25,24 @@ from ztb.trading.production.state_persistence import (
 class OrderType(Enum):
     MARKET = "market"
     LIMIT = "limit"
+
+
+class OrderSide(Enum):
+    BUY = "buy"
+    SELL = "sell"
+
+
+@dataclass
 class Order:
     order_id: str
     symbol: str
     side: OrderSide
     quantity: Decimal
     price: Decimal | None = None
+
+
+class DistributionMode(Enum):
+    FIXED = "fixed"
     DYNAMIC = "dynamic"  # 動的調整
     PERFORMANCE_BASED = "performance_based"  # パフォーマンスベース
     GRADUAL = "gradual"  # 段階的移行

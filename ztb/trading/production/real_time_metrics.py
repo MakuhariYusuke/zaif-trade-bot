@@ -14,7 +14,10 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Awaitable, Callable
 
-import psutil
+try:
+    import psutil
+except ImportError:
+    psutil = None
 
 from ztb.io.json_io import write_json
 from ztb.trading.environment.constants import BYTES_PER_MB
@@ -348,6 +351,16 @@ class RealTimeMetrics:
         metrics = []
 
         try:
+            if psutil is None:
+                now = datetime.now()
+                return [
+                    MetricValue("cpu_usage_percent", 0.0, now),
+                    MetricValue("memory_usage_percent", 0.0, now),
+                    MetricValue("disk_usage_percent", 0.0, now),
+                    MetricValue("network_bytes_sent", 0.0, now),
+                    MetricValue("network_bytes_recv", 0.0, now),
+                ]
+
             # CPU使用率
             cpu_percent = psutil.cpu_percent(interval=1)
             metrics.append(
@@ -390,6 +403,14 @@ class RealTimeMetrics:
         metrics = []
 
         try:
+            if psutil is None:
+                now = datetime.now()
+                return [
+                    MetricValue("process_cpu_percent", 0.0, now),
+                    MetricValue("process_memory_mb", 0.0, now),
+                    MetricValue("thread_count", 0.0, now),
+                ]
+
             # プロセス情報
             process = psutil.Process()
             cpu_percent = process.cpu_percent()

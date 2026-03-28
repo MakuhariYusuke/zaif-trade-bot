@@ -21,13 +21,21 @@ from ztb.trading.production.state_persistence import (
 class OrderType(Enum):
     MARKET = "market"
     LIMIT = "limit"
+
+
+class OrderSide(Enum):
+    BUY = "buy"
+    SELL = "sell"
+
+
+@dataclass
 class Order:
     order_id: str
     symbol: str
     side: OrderSide
     quantity: Decimal
     price: Decimal | None = None
-    average_price: Decimal
+    average_price: Decimal = Decimal("0")
     current_price: Decimal | None = None
     unrealized_pnl: Decimal = Decimal("0")
     realized_pnl: Decimal = Decimal("0")
@@ -37,8 +45,11 @@ class Trade:
     trade_id: str
     order_id: str
     symbol: str
+
+
 class RiskManager:
     pass
+
 
 class PortfolioState(Enum):
     """ポートフォリオ状態"""
@@ -46,6 +57,13 @@ class PortfolioState(Enum):
     ACTIVE = "active"
     PAUSED = "paused"
     STOPPED = "stopped"
+
+
+@dataclass
+class VirtualPosition:
+    symbol: str
+    side: OrderSide
+    quantity: Decimal
     entry_price: Decimal
     current_price: Decimal
     unrealized_pnl: Decimal = field(default=Decimal("0"))

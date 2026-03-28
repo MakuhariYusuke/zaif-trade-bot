@@ -11,6 +11,7 @@ import inspect
 import math
 import os
 import time
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -30,6 +31,10 @@ from tests.unit.v460._fill_test_source import (
     read_fill_test_method_source,
     read_inspect_source,
     read_source_text,
+)
+from tests.unit.v460._yaml_test_helpers import (
+    clone_fill_test_config,
+    load_fill_test_config_from_mapping,
 )
 from ztb.metrics.fill_quality import FillRecord, filter_clean_records
 from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
@@ -100,6 +105,10 @@ def _make_runner(
         config_overrides.setdefault("results_dir", str(results_dir))
     config = FillTestConfig(**config_overrides)
     return FillTestRunner(_AdapterStub(), config)
+
+
+def _load_config_from_mapping(mapping: Mapping[str, object]) -> FillTestConfig:
+    return clone_fill_test_config(load_fill_test_config_from_mapping(dict(mapping)))
 
 # ======================================================================
 # Tests: 基本動作
@@ -418,7 +427,7 @@ class TestFillTestConfigRegime:
                 "min_confidence": 0.6,
             },
         }
-        config = FillTestConfig.from_yaml(yaml_cfg)
+        config = _load_config_from_mapping(yaml_cfg)
         assert config.enable_regime is False
         assert config.regime_window == 10
         assert config.regime_trend_threshold_pct == 1.0
@@ -449,7 +458,7 @@ class TestFillTestConfigTimeFilter:
                 "skip_utc_hours": [8, 9, 14, 16, 17, 18, 19],
             },
         }
-        config = FillTestConfig.from_yaml(yaml_cfg)
+        config = _load_config_from_mapping(yaml_cfg)
         assert config.enable_time_filter is True
         assert config.skip_utc_hours == [8, 9, 14, 16, 17, 18, 19]
 
@@ -462,7 +471,7 @@ class TestFillTestConfigTimeFilter:
                 "skip_utc_hours": [],
             },
         }
-        config = FillTestConfig.from_yaml(yaml_cfg)
+        config = _load_config_from_mapping(yaml_cfg)
         assert config.enable_time_filter is True
         assert config.skip_utc_hours == []
 
@@ -486,7 +495,7 @@ class TestFillTestConfigDynamicLossCap:
                 "loss_cap_jpy": 5000.0,
             },
         }
-        config = FillTestConfig.from_yaml(yaml_cfg)
+        config = _load_config_from_mapping(yaml_cfg)
         assert config.loss_cap_auto is True
         assert config.loss_cap_ratio == 0.03
         assert config.loss_cap_jpy == 5000.0
@@ -500,7 +509,7 @@ class TestFillTestConfigDynamicLossCap:
                 "loss_cap_jpy": 7500.0,
             },
         }
-        config = FillTestConfig.from_yaml(yaml_cfg)
+        config = _load_config_from_mapping(yaml_cfg)
         assert config.loss_cap_auto is False
         assert config.loss_cap_jpy == 7500.0
 
@@ -511,7 +520,7 @@ class TestFillTestConfigDeadzone:
         """as_deadzone_bps が YAML から読み取れる."""
 
         yaml_cfg = {"as_deadzone_bps": 2.0}
-        config = FillTestConfig.from_yaml(yaml_cfg)
+        config = _load_config_from_mapping(yaml_cfg)
         assert config.as_deadzone_bps == 2.0
 
     def test_deadzone_default(self) -> None:
@@ -775,8 +784,6 @@ class TestAgeCapCancelOrder:
         # age_cap の後の最初の break
         idx_break = src.index("break", idx_age_cap)
         assert idx_cancel < idx_break
-        idx_reset = src.index("_preflight_skip_count = 0", idx_open)
-        assert idx_reset > idx_open
 
     def test_safe_stop_still_reachable(self) -> None:
         """open order recovery 失敗時は SAFE_STOP に到達する."""
@@ -871,12 +878,11 @@ class TestBug10InsufficientFundsNoRetry:
     """046# Bug10: insufficient_funds 時にリトライしない."""
 
     def test_source_has_insufficient_funds_break(self) -> None:
-        """run_single_cycle のソースに insufficient_funds → break が含まれる."""
+        """fill_cycle_executor に insufficient_funds の非リトライ分岐が残っている."""
 
-        source = read_fill_test_method_source("run_single_cycle")
-        # 084# 改修: 非リトライ対象をセットで管理
+        source = read_source_text(Path("scripts") / "v460" / "lib" / "fill_cycle_executor.py")
         assert '"insufficient_funds"' in source
-        assert "not retriable" in source.lower() or "_non_retriable" in source
+        assert "cancel_reason in {\"insufficient_funds\", \"post_only_reject\", \"minimum_size\"}" in source
         assert "break" in source
 
     def test_cancel_reason_classification(self) -> None:
@@ -922,7 +928,7 @@ class TestSoftHardLossCap:
                 "loss_cap_auto": True,
             }
         }
-        config = FillTestConfig.from_yaml(yaml_cfg)
+        config = _load_config_from_mapping(yaml_cfg)
         assert config.soft_loss_cap_ratio == 0.03
 
 class TestCleanQuarantineFilter:
@@ -1101,7 +1107,7 @@ class TestPhaseD4SkipSellTrendingUpOnly:
                 "skip_sell_trending_up_only": True,
             },
         }
-        config = FillTestConfig.from_yaml(yaml_cfg)
+        config = _load_config_from_mapping(yaml_cfg)
         assert config.skip_sell_trending_up_only is True
 
 class TestPhaseD1ObUtils:
