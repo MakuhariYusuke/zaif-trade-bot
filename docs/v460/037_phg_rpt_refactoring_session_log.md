@@ -9389,3 +9389,19 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `tests/unit/v460/test_499_loss_cap_daily_scope.py`
     - `tests/unit/v460/test_384_pipeline_fixes.py`
     - `31 passed in 3.99s`
+
+- 2026-03-29 Codex:
+  - `scripts/v460/analysis/analyze_fill_logs.py`
+    - shared `Record` alias 基準へ寄せ、section / JSON summary / additive classification の container 型を整理
+  - `tests/test_analyze_fill_logs.py`
+    - fixture / helper を `Record` ベースへ追随
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - raw cache invalidation helper の row 型を `JsonRow` に統一
+  - targeted mypy:
+    - `scripts/v460/analysis/analyze_fill_logs.py`
+    - `Success: no issues found in 1 source file`
+  - focused pytest:
+    - `tests/unit/v460/test_enricher_skip_gate.py -k "raw_load_cache or real_data"`
+    - `tests/test_analyze_fill_logs.py`
+    - `tests/unit/v460/test_fill_quality.py`
+    - `229 passed, 297 deselected, 5 warnings`

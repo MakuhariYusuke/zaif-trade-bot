@@ -628,3 +628,31 @@ Batch A の続きとして、reporting 色の強い analysis script も同じ契
 - script ごとの集計/表示はそのまま
 - output boundary だけを揃えるので低リスク
 - 後から見返したときも「analysis reporting entrypoint の統一」として意味が読みやすい
+
+## 2026-03-29 追加追記: analysis / metrics bridge の low-risk 型整理
+
+`analyze_fill_logs.py` と downstream test を、shared `Record` alias 基準へ寄せる。
+
+対象:
+
+1. `scripts/v460/analysis/analyze_fill_logs.py`
+2. `tests/test_analyze_fill_logs.py`
+3. `tests/unit/v460/test_enricher_skip_gate.py`
+4. `ztb/metrics/fill_quality.py` は今回は読取基準点としてのみ確認
+
+今回の線引き:
+
+- `analyze_fill_logs.py`
+  - `list[dict[str, Any]]` を `list[Record]` に寄せる
+  - nested container も `dict[str, list[Record]]` / `dict[str, object]` に寄せる
+  - additive / executor stage 判定の helper 引数も `Record` に統一
+- `tests/test_analyze_fill_logs.py`
+  - fixture と helper を `Record` ベースへ追随
+- `test_enricher_skip_gate.py`
+  - real-data helper で導入した `JsonRow` を raw cache invalidation helper に横展開
+
+判断:
+
+- 既存の出力・集計意味は変えない
+- observability / metrics bridge の境界だけを明示する
+- `fill_quality.py` は今回 `to_dict()` 型を締めると baseline mypy が広く波及したため、別 batch に分離する

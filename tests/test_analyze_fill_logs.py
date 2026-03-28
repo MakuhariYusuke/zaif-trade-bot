@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 import pytest
 
 from scripts.v460.analysis.analysis_common import (
+    Record,
     load_and_filter_records,
 )
 from scripts.v460.analysis.analyze_fill_logs import (
@@ -35,7 +36,7 @@ def _make_record(
     regime: str = "ranging",
     timestamp: float = 1771900000.0,
     pnl30: float = 1.5,
-) -> dict:
+) -> Record:
     return {
         "side": side,
         "filled": filled,
@@ -51,7 +52,7 @@ def _make_record(
 
 
 @pytest.fixture
-def sample_records() -> list[dict]:
+def sample_records() -> list[Record]:
     """12 records spanning 2 days, 2 shas, 2 sides."""
     base_ts = datetime(2026, 2, 20, 0, 0, tzinfo=timezone.utc).timestamp()
     recs = []
@@ -71,7 +72,7 @@ def sample_records() -> list[dict]:
 
 
 @pytest.fixture
-def tmp_data_dir(tmp_path: pathlib.Path, sample_records: list[dict]) -> pathlib.Path:
+def tmp_data_dir(tmp_path: pathlib.Path, sample_records: list[Record]) -> pathlib.Path:
     """Write sample records as JSONL to a temp dir."""
     p = tmp_path / "fill_records_20260220.jsonl"
     lines = [json.dumps(r, ensure_ascii=False) for r in sample_records]
@@ -124,7 +125,7 @@ class TestApplyFilters:
 
     def _filter(
         self,
-        records: list[dict],
+        records: list[Record],
         *,
         run_id: str | None = None,
         git_sha: str | None = None,
@@ -132,11 +133,9 @@ class TestApplyFilters:
         regime: str | None = None,
         date_from: str | None = None,
         date_to: str | None = None,
-    ) -> list[dict]:
+    ) -> list[Record]:
         """テスト用ヘルパー: analysis_common のフィルタ API を直接呼び出す."""
         from ztb.metrics.fill_quality import apply_fill_record_filters as _apply
-        from typing import cast
-
         filtered, _ = _apply(
             records,
             run_id=run_id,
@@ -148,47 +147,47 @@ class TestApplyFilters:
             filtered = [r for r in filtered if r.get("side") == side]
         if regime:
             filtered = [r for r in filtered if r.get("regime") == regime]
-        return cast(list[dict], filtered)
+        return filtered
 
-    def test_no_filter(self, sample_records: list[dict]) -> None:
+    def test_no_filter(self, sample_records: list[Record]) -> None:
         result = self._filter(sample_records)
         assert len(result) == 12
 
-    def test_run_id_filter(self, sample_records: list[dict]) -> None:
+    def test_run_id_filter(self, sample_records: list[Record]) -> None:
         result = self._filter(sample_records, run_id="run_1")
         assert len(result) == 6
         assert all(r["run_id"] == "run_1" for r in result)
 
-    def test_git_sha_prefix(self, sample_records: list[dict]) -> None:
+    def test_git_sha_prefix(self, sample_records: list[Record]) -> None:
         result = self._filter(sample_records, git_sha="sha_A")
         assert len(result) == 6
 
-    def test_git_sha_prefix_partial(self, sample_records: list[dict]) -> None:
+    def test_git_sha_prefix_partial(self, sample_records: list[Record]) -> None:
         result = self._filter(sample_records, git_sha="sha_")
         assert len(result) == 12  # both sha_A and sha_B match
 
-    def test_side_filter(self, sample_records: list[dict]) -> None:
+    def test_side_filter(self, sample_records: list[Record]) -> None:
         result = self._filter(sample_records, side="buy")
         assert all(r["side"] == "buy" for r in result)
         assert len(result) == 6
 
-    def test_regime_filter(self, sample_records: list[dict]) -> None:
+    def test_regime_filter(self, sample_records: list[Record]) -> None:
         result = self._filter(sample_records, regime="trending_up")
         assert len(result) == 4
         assert all(r["regime"] == "trending_up" for r in result)
 
-    def test_date_from_filter(self, sample_records: list[dict]) -> None:
+    def test_date_from_filter(self, sample_records: list[Record]) -> None:
         # Records span 12h from base. Filter to last 6h.
         mid_date = "2026-02-20"  # same day, so all should pass
         result = self._filter(sample_records, date_from=mid_date)
         assert len(result) == 12
 
-    def test_date_to_filter_exclusive(self, sample_records: list[dict]) -> None:
+    def test_date_to_filter_exclusive(self, sample_records: list[Record]) -> None:
         """date_to is inclusive of the day."""
         result = self._filter(sample_records, date_to="2026-02-19")
         assert len(result) == 0  # all records are Feb 20
 
-    def test_combined_filters(self, sample_records: list[dict]) -> None:
+    def test_combined_filters(self, sample_records: list[Record]) -> None:
         result = self._filter(
             sample_records,
             git_sha="sha_A",
@@ -218,7 +217,7 @@ class TestLoadRecords:
 # ---------------------------------------------------------------------------
 
 class TestSections:
-    def test_section_header(self, sample_records: list[dict]) -> None:
+    def test_section_header(self, sample_records: list[Record]) -> None:
         args = argparse.Namespace(
             data_dir="test", run_id=None, git_sha=None,
             date_from=None, date_to=None, side=None, regime=None,
@@ -229,13 +228,13 @@ class TestSections:
         assert "run_id" in text
         assert "git_sha_unique" in text
 
-    def test_section_basic(self, sample_records: list[dict]) -> None:
+    def test_section_basic(self, sample_records: list[Record]) -> None:
         lines = section_basic(sample_records)
         text = "\n".join(lines)
         assert "Total: 12" in text
         assert "Filled: 8" in text  # 2/3 of 12
 
-    def test_section_side(self, sample_records: list[dict]) -> None:
+    def test_section_side(self, sample_records: list[Record]) -> None:
         lines = section_side(sample_records)
         text = "\n".join(lines)
         assert "buy:" in text
@@ -247,7 +246,7 @@ class TestSections:
 # ---------------------------------------------------------------------------
 
 class TestJsonSummary:
-    def test_basic_json(self, sample_records: list[dict]) -> None:
+    def test_basic_json(self, sample_records: list[Record]) -> None:
         args = argparse.Namespace(
             data_dir="test", run_id=None, git_sha=None,
             date_from=None, date_to=None, side=None, regime=None,

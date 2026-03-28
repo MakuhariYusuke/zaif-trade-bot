@@ -7,7 +7,6 @@ import json
 from datetime import datetime as dt
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
 from unittest.mock import patch
 
 import numpy as np
@@ -44,6 +43,7 @@ from ztb.ml.skip_gate import (
 )
 from scripts.v460.ml.data_loader import build_as_features, load_fill_records as load_fill_records_df
 from tests.unit.v460._real_data_test_helpers import (
+    JsonRow,
     has_fill_records,
     load_recent_fill_records_df as _load_recent_fill_records_df,
     select_minimum_trainable_fill_df,
@@ -63,8 +63,8 @@ def _assert_raw_cache_invalidates_on_file_update(
     tmp_path: Path,
     subdir: str,
     filename: str,
-    first_rows: list[dict[str, Any]],
-    second_rows: list[dict[str, Any]],
+    first_rows: list[JsonRow],
+    second_rows: list[JsonRow],
     load_fn,
 ) -> None:
     clear_raw_load_caches()
@@ -152,7 +152,7 @@ def _make_synthetic_fill_df() -> pd.DataFrame:
 
     rows = []
     for i in range(n):
-        row: dict[str, Any] = {
+        row: JsonRow = {
             "cycle_id": f"test_{i}",
             "timestamp": timestamps[i],
             "side": sides[i],

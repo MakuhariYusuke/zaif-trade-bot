@@ -19,7 +19,7 @@ import collections
 import pathlib
 import sys
 from datetime import datetime, timezone
-from typing import Any, cast
+from typing import cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -102,7 +102,7 @@ def _pnls(records: list[Record], key: str = "post_fill_30s_pnl") -> FloatArray:
     return extract_pnl_array(records, key=key)
 
 
-def section_header(records: list[dict[str, Any]], args: argparse.Namespace) -> list[str]:
+def section_header(records: list[Record], args: argparse.Namespace) -> list[str]:
     """再現性ヘッダー."""
     lines = [
         "=" * 70,
@@ -135,7 +135,7 @@ def section_header(records: list[dict[str, Any]], args: argparse.Namespace) -> l
     return lines
 
 
-def section_basic(records: list[dict[str, Any]]) -> list[str]:
+def section_basic(records: list[Record]) -> list[str]:
     """基本統計."""
     n = len(records)
     filled = [r for r in records if r.get("filled")]
@@ -148,7 +148,7 @@ def section_basic(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_side(records: list[dict[str, Any]]) -> list[str]:
+def section_side(records: list[Record]) -> list[str]:
     """Side 別."""
     lines = ["## Side 別"]
     n = len(records)
@@ -172,7 +172,7 @@ def section_side(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_regime(records: list[dict[str, Any]]) -> list[str]:
+def section_regime(records: list[Record]) -> list[str]:
     """Regime 別."""
     lines = ["## Regime 別"]
     regime_counter = collections.Counter(r.get("regime", "null") for r in records)
@@ -186,7 +186,7 @@ def section_regime(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_cancel(records: list[dict[str, Any]]) -> list[str]:
+def section_cancel(records: list[Record]) -> list[str]:
     """Cancel Reason."""
     cancels = [r for r in records if not r.get("filled")]
     lines = ["## Cancel Reason (top 15)"]
@@ -210,7 +210,7 @@ def section_cancel(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_skip_gate(records: list[dict[str, Any]]) -> list[str]:
+def section_skip_gate(records: list[Record]) -> list[str]:
     """SkipGate 統計."""
     n = len(records)
     skipped = [r for r in records if r.get("skip_gate_skipped")]
@@ -277,7 +277,7 @@ def section_skip_gate(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_adverse_selection(records: list[dict[str, Any]]) -> list[str]:
+def section_adverse_selection(records: list[Record]) -> list[str]:
     """Adverse Selection 詳細."""
     filled = [r for r in records if r.get("filled")]
     nf = len(filled)
@@ -298,7 +298,7 @@ def section_adverse_selection(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_hourly(records: list[dict[str, Any]]) -> list[str]:
+def section_hourly(records: list[Record]) -> list[str]:
     """時間帯別 (UTC)."""
     filled = [r for r in records if r.get("filled")]
     hour_pnls: dict[int, list[float]] = collections.defaultdict(list)
@@ -320,9 +320,9 @@ def section_hourly(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_daily(records: list[dict[str, Any]]) -> list[str]:
+def section_daily(records: list[Record]) -> list[str]:
     """日別サマリ."""
-    day_records: dict[str, list[dict[str, Any]]] = collections.defaultdict(list)
+    day_records: dict[str, list[Record]] = collections.defaultdict(list)
     for r in records:
         ts = r.get("timestamp")
         if ts:
@@ -345,7 +345,7 @@ def section_daily(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_git_sha(records: list[dict[str, Any]]) -> list[str]:
+def section_git_sha(records: list[Record]) -> list[str]:
     """git_sha 別 (因果混在の可視化)."""
     lines = ["## git_sha 別"]
     sha_counter = collections.Counter(r.get("git_sha", "?") for r in records)
@@ -358,7 +358,7 @@ def section_git_sha(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_reprice(records: list[dict[str, Any]]) -> list[str]:
+def section_reprice(records: list[Record]) -> list[str]:
     """Reprice 統計."""
     filled = [r for r in records if r.get("filled")]
     nf = len(filled)
@@ -380,7 +380,7 @@ def section_reprice(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_queue_wait(records: list[dict[str, Any]]) -> list[str]:
+def section_queue_wait(records: list[Record]) -> list[str]:
     """Queue Wait 統計."""
     filled = [r for r in records if r.get("filled")]
     wait_vals = [float(r["queue_wait_sec"]) for r in filled if r.get("queue_wait_sec") is not None]
@@ -397,7 +397,7 @@ def section_queue_wait(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_spread(records: list[dict[str, Any]]) -> list[str]:
+def section_spread(records: list[Record]) -> list[str]:
     """Spread."""
     spreads = [float(r["spread_bps"]) for r in records if r.get("spread_bps") is not None]
     lines = ["## Spread (at order)"]
@@ -413,7 +413,7 @@ def section_spread(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_balance_forced(records: list[dict[str, Any]]) -> list[str]:
+def section_balance_forced(records: list[Record]) -> list[str]:
     """Balance Forced."""
     bf = [r for r in records if r.get("cancel_reason") == "balance_forced_skip"]
     lines = ["## Balance Forced"]
@@ -435,7 +435,7 @@ def section_balance_forced(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_sell_guard(records: list[dict[str, Any]]) -> list[str]:
+def section_sell_guard(records: list[Record]) -> list[str]:
     """Sell Guard / Dynamic Kill."""
     sdk = [r for r in records if r.get("cancel_reason") == "sell_dynamic_kill"]
     tss = [r for r in records if r.get("cancel_reason") == "trending_sell_skip"]
@@ -450,7 +450,7 @@ def section_sell_guard(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_execution_quality(records: list[dict[str, Any]]) -> list[str]:
+def section_execution_quality(records: list[Record]) -> list[str]:
     """565# I2: Execution Quality 分解 (Kissell & Glantz 2003).
 
     PnL = spread_capture + adverse_selection_cost を side×regime で分解し
@@ -518,7 +518,7 @@ def section_execution_quality(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_clamp_saturation(records: list[dict[str, Any]]) -> list[str]:
+def section_clamp_saturation(records: list[Record]) -> list[str]:
     """531# Offset Clamp Saturation — pipeline 出力の ceiling 飽和率.
 
     565# I3: pre_clamp offset の分布（p50/p75/p90/p99）を追加。
@@ -573,7 +573,7 @@ def section_clamp_saturation(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_information_loss(records: list[dict[str, Any]]) -> list[str]:
+def section_information_loss(records: list[Record]) -> list[str]:
     """614# Phase 1 Attribution: Information Loss from Clamping."""
     filled = [r for r in records if r.get("filled")]
     lines = ["--- Pipeline Attribution (Phase 1) ---", "## Information Loss"]
@@ -608,7 +608,7 @@ def section_information_loss(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_stage_saturation(records: list[dict[str, Any]]) -> list[str]:
+def section_stage_saturation(records: list[Record]) -> list[str]:
     """614# Phase 1 Attribution: Stage Saturation (>= 1.99)."""
     import json
     filled = [r for r in records if r.get("filled")]
@@ -618,7 +618,10 @@ def section_stage_saturation(records: list[dict[str, Any]]) -> list[str]:
         lines.append("")
         return lines
 
-    saturations = {"buy": collections.Counter(), "sell": collections.Counter()}
+    saturations: dict[str, collections.Counter[str]] = {
+        "buy": collections.Counter(),
+        "sell": collections.Counter(),
+    }
     valid_records = {"buy": 0, "sell": 0}
 
     for r in filled:
@@ -653,7 +656,7 @@ def section_stage_saturation(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_cross_venue_engagement(records: list[dict[str, Any]]) -> list[str]:
+def section_cross_venue_engagement(records: list[Record]) -> list[str]:
     """531# Cross-Venue Engagement — CV適用率・方向別PnL."""
     filled = [r for r in records if r.get("filled")]
     lines = ["## Cross-Venue Engagement (531#)"]
@@ -698,7 +701,7 @@ def section_cross_venue_engagement(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_tail_risk(records: list[dict[str, Any]]) -> list[str]:
+def section_tail_risk(records: list[Record]) -> list[str]:
     """531# Tail Risk Concentration — 損失のテール集中度."""
     filled = [r for r in records if r.get("filled")]
     lines = ["## Tail Risk Concentration (531#)"]
@@ -726,7 +729,7 @@ def section_tail_risk(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_confidence_lot(records: list[dict[str, Any]]) -> list[str]:
+def section_confidence_lot(records: list[Record]) -> list[str]:
     """Confidence Lot."""
     filled = [r for r in records if r.get("filled")]
     lines = ["## Confidence Lot"]
@@ -741,7 +744,7 @@ def section_confidence_lot(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_early_exit(records: list[dict[str, Any]]) -> list[str]:
+def section_early_exit(records: list[Record]) -> list[str]:
     """Early Exit."""
     filled = [r for r in records if r.get("filled")]
     ee = [r for r in filled if r.get("early_exit_triggered")]
@@ -757,7 +760,7 @@ def section_early_exit(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_volatility_guard(records: list[dict[str, Any]]) -> list[str]:
+def section_volatility_guard(records: list[Record]) -> list[str]:
     """Volatility Guard."""
     n = len(records)
     vg = [r for r in records if r.get("vg_triggered")]
@@ -769,7 +772,7 @@ def section_volatility_guard(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_ffd_boost(records: list[dict[str, Any]]) -> list[str]:
+def section_ffd_boost(records: list[Record]) -> list[str]:
     """FFD Boost."""
     filled = [r for r in records if r.get("filled")]
     nf = len(filled)
@@ -782,7 +785,7 @@ def section_ffd_boost(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_ab_test(records: list[dict[str, Any]]) -> list[str]:
+def section_ab_test(records: list[Record]) -> list[str]:
     """A/B Test Variant."""
     lines = ["## A/B Test Variant"]
     variants = collections.Counter(r.get("ab_test_variant", "none") for r in records)
@@ -795,7 +798,7 @@ def section_ab_test(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_ob_age(records: list[dict[str, Any]]) -> list[str]:
+def section_ob_age(records: list[Record]) -> list[str]:
     """OB Age."""
     filled = [r for r in records if r.get("filled")]
     ob_ages = [float(r["ob_age_ms"]) for r in filled if r.get("ob_age_ms") is not None]
@@ -817,7 +820,7 @@ def section_ob_age(records: list[dict[str, Any]]) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def section_model_used(records: list[dict[str, Any]]) -> list[str]:
+def section_model_used(records: list[Record]) -> list[str]:
     """165# model_used 経路別 AS/PnL 分析."""
     filled = [r for r in records if r.get("filled")]
     nf = len(filled)
@@ -827,7 +830,7 @@ def section_model_used(records: list[dict[str, Any]]) -> list[str]:
         lines.append("")
         return lines
 
-    groups: dict[str, list[dict[str, Any]]] = collections.defaultdict(list)
+    groups: dict[str, list[Record]] = collections.defaultdict(list)
     for r in filled:
         model = str(r.get("skip_gate_model_used") or "none")
         groups[model].append(r)
@@ -849,14 +852,14 @@ def section_model_used(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def build_json_summary(records: list[dict[str, Any]], args: argparse.Namespace) -> dict[str, Any]:
+def build_json_summary(records: list[Record], args: argparse.Namespace) -> dict[str, object]:
     """JSON 形式のサマリーを構築."""
     n = len(records)
     filled = [r for r in records if r.get("filled")]
     nf = len(filled)
     pnl_arr = _pnls(filled)
 
-    summary: dict[str, Any] = {
+    summary: dict[str, object] = {
         "filters": {
             "data_dir": args.data_dir,
             "run_id": args.run_id,
@@ -875,7 +878,7 @@ def build_json_summary(records: list[dict[str, Any]], args: argparse.Namespace) 
     }
 
     # Side breakdown
-    sides: dict[str, Any] = {}
+    sides: dict[str, object] = {}
     for side in ["buy", "sell"]:
         s_all = [r for r in records if r.get("side") == side]
         s_filled = [r for r in s_all if r.get("filled")]
@@ -895,7 +898,7 @@ def build_json_summary(records: list[dict[str, Any]], args: argparse.Namespace) 
     return summary
 
 
-def section_microstructure_correlation(records: list[dict[str, Any]]) -> list[str]:
+def section_microstructure_correlation(records: list[Record]) -> list[str]:
     """561# Sell AS とマイクロ構造指標の相関深掘り."""
     filled_sell = [r for r in records if r.get("side") == "sell" and r.get("filled")]
     if not filled_sell:
@@ -942,7 +945,7 @@ def section_microstructure_correlation(records: list[dict[str, Any]]) -> list[st
     return lines
 
 
-def section_pre_clamp_distribution(records: list[dict[str, Any]]) -> list[str]:
+def section_pre_clamp_distribution(records: list[Record]) -> list[str]:
     """565# I3: pre_clamp offset 分布の取得."""
     filled = [r for r in records if r.get("filled")]
     if not filled:
@@ -965,7 +968,7 @@ def section_pre_clamp_distribution(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_execution_quality_comparison(records: list[dict[str, Any]]) -> list[str]:
+def section_execution_quality_comparison(records: list[Record]) -> list[str]:
     """582# 加法 vs 乗法パイプラインの執行品質比較分析.
 
     execution_additive_enabled を優先し、未記録の旧データでは
@@ -978,7 +981,7 @@ def section_execution_quality_comparison(records: list[dict[str, Any]]) -> list[
     if not filled:
         return ["## Execution Quality Comparison", "  (no fills)", ""]
 
-    def _load_executor_offset_stages(record: dict[str, Any]) -> dict[str, Any] | None:
+    def _load_executor_offset_stages(record: Record) -> dict[str, object] | None:
         _raw = record.get("executor_offset_stages")
         if not _raw or not isinstance(_raw, str):
             return None
@@ -988,14 +991,14 @@ def section_execution_quality_comparison(records: list[dict[str, Any]]) -> list[
             return None
         return _parsed if isinstance(_parsed, dict) else None
 
-    def _is_additive_execution(record: dict[str, Any]) -> bool:
+    def _is_additive_execution(record: Record) -> bool:
         _explicit = record.get("execution_additive_enabled")
         if _explicit is not None:
             return bool(_explicit)
         _stages = _load_executor_offset_stages(record)
         return bool(_stages and "tox_buffer" in _stages)
 
-    groups: dict[str, list[dict[str, Any]]] = {"multiplicative": [], "additive": []}
+    groups: dict[str, list[Record]] = {"multiplicative": [], "additive": []}
     for r in filled:
         _is_additive = _is_additive_execution(r)
         mode = "additive" if _is_additive else "multiplicative"
@@ -1042,7 +1045,7 @@ def section_execution_quality_comparison(records: list[dict[str, Any]]) -> list[
     return lines
 
 
-def section_spread_decomposition(records: list[dict[str, Any]]) -> list[str]:
+def section_spread_decomposition(records: list[Record]) -> list[str]:
     """565# I2: Spread Capture / Adverse Selection Cost 分解."""
     filled = [r for r in records if r.get("filled")]
     if not filled:
@@ -1074,7 +1077,7 @@ def section_spread_decomposition(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_buffer_decomposition(records: list[dict[str, Any]]) -> list[str]:
+def section_buffer_decomposition(records: list[Record]) -> list[str]:
     """582# Toxicity / Liquidity バッファ分解分析.
 
     executor_offset_stages JSON から tox_buffer / liq_buffer を抽出し、
@@ -1087,7 +1090,7 @@ def section_buffer_decomposition(records: list[dict[str, Any]]) -> list[str]:
         return ["## Buffer Decomposition (582#)", "  (no fills)", ""]
 
     # Parse stages JSON
-    parsed: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    parsed: list[tuple[Record, dict[str, object]]] = []
     for r in filled:
         _raw = r.get("executor_offset_stages")
         if not _raw or not isinstance(_raw, str):
@@ -1110,12 +1113,24 @@ def section_buffer_decomposition(records: list[dict[str, Any]]) -> list[str]:
     lines.append(f"  Additive fills: {len(parsed)} / {len(filled)} total fills")
     lines.append("")
 
-    tox_vals = [s["tox_buffer"] for _, s in parsed]
-    liq_vals = [s["liq_buffer"] for _, s in parsed]
+    tox_vals = [
+        float(cast(float | int | str, s["tox_buffer"]))
+        for _, s in parsed
+        if s.get("tox_buffer") is not None
+    ]
+    liq_vals = [
+        float(cast(float | int | str, s["liq_buffer"]))
+        for _, s in parsed
+        if s.get("liq_buffer") is not None
+    ]
     lines.append("  --- OVERALL ---")
     lines.append(f"    Tox Buffer: mean={np.mean(tox_vals):.4f}, p50={np.median(tox_vals):.4f}, p90={np.percentile(tox_vals, 90):.4f}")
     lines.append(f"    Liq Buffer: mean={np.mean(liq_vals):.4f}, p50={np.median(liq_vals):.4f}, p90={np.percentile(liq_vals, 90):.4f}")
-    lines.append(f"    Tox Dominant: {sum(1 for t, l in zip(tox_vals, liq_vals) if t > l)}/{len(parsed)} ({100*sum(1 for t, l in zip(tox_vals, liq_vals) if t > l)/len(parsed):.1f}%)")
+    tox_dominant = sum(1 for t, l in zip(tox_vals, liq_vals) if bool(t > l))
+    lines.append(
+        f"    Tox Dominant: {tox_dominant}/{len(parsed)} "
+        f"({100 * tox_dominant / len(parsed):.1f}%)"
+    )
     lines.append("")
 
     # Per side
@@ -1139,7 +1154,7 @@ def section_buffer_decomposition(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_attribution_phase2(records: list[dict[str, Any]]) -> list[str]:
+def section_attribution_phase2(records: list[Record]) -> list[str]:
     """616# §1: Euler RMS 分解 + Ceiling Occupancy.
 
     加法パイプラインの tox/liq RMS を Euler 定理で個別ステージに分解し、
@@ -1236,15 +1251,21 @@ def section_attribution_phase2(records: list[dict[str, Any]]) -> list[str]:
                         euler_contrib[sn].append(0.0)
 
             # Occupancy: tox_rms / (ceiling - base_ratio) * 100
-            eff = r.get("effective_offset_used")
-            if eff is not None and float(eff) > 1e-8:
-                base_est = float(eff) - tox_rms - liq_rms
+            eff_obj = r.get("effective_offset_used")
+            eff = float(eff_obj) if isinstance(eff_obj, (int, float)) else None
+            if eff is not None and eff > 1e-8:
+                base_est = eff - tox_rms - liq_rms
                 if base_est > 0:
-                    headroom = float(eff) - base_est  # = tox_rms + liq_rms
+                    headroom = eff - base_est  # = tox_rms + liq_rms
                     # pre_clamp があれば ceiling を推定可能
-                    pre_clamp = r.get("execution_pre_clamp_offset")
+                    pre_clamp_obj = r.get("execution_pre_clamp_offset")
+                    pre_clamp = (
+                        float(pre_clamp_obj)
+                        if isinstance(pre_clamp_obj, (int, float))
+                        else None
+                    )
                     if pre_clamp is not None:
-                        ceiling_est = max(float(pre_clamp), float(eff))
+                        ceiling_est = max(pre_clamp, eff)
                         denom = ceiling_est - base_est
                         if denom > 1e-8:
                             occupancy_vals.append(headroom / denom * 100.0)
@@ -1279,7 +1300,7 @@ def section_attribution_phase2(records: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
-def section_sidecar_signal(records: list[dict[str, Any]]) -> list[str]:
+def section_sidecar_signal(records: list[Record]) -> list[str]:
     """589# Sidecar signal status 分布分析.
 
     sidecar_signal_status (fresh/stale/missing/error) の分布と
@@ -1289,7 +1310,7 @@ def section_sidecar_signal(records: list[dict[str, Any]]) -> list[str]:
     if not filled:
         return ["## Sidecar Signal Distribution (589#)", "  (no fills)", ""]
 
-    statuses: dict[str, list[dict[str, Any]]] = {}
+    statuses: dict[str, list[Record]] = {}
     for r in filled:
         status = r.get("sidecar_signal_status") or "missing"
         statuses.setdefault(status, []).append(r)
