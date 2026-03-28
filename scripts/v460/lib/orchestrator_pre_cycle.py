@@ -141,6 +141,15 @@ class OrchestratorPreCycleMixin:
             )
             self._one_sided_consecutive_count = 0
 
+        # 648# preflight_pause_count 日替わりリセット:
+        # 長時間稼働で回復後も pause 枠を再利用可能にする
+        if self._preflight_pause_count > 0:
+            logger.info(
+                f"[daily_drawdown] Day reset → preflight_pause_count "
+                f"{self._preflight_pause_count} → 0"
+            )
+            self._preflight_pause_count = 0
+
         # 224# B2: 日替わりリセット × dynamic kill 矛盾検出
         # maybe_reset_day() は per-side halt/PnL を全クリアするが、
         # DynamicKillManager の rolling window は cross-day で残存。

@@ -292,6 +292,9 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     # --- balance / inventory ---
     "balance_freeze_cycles",
     "balance_margin_ratio",
+    # 648# inventory deadlock detection
+    "inventory_deadlock_threshold",
+    "inventory_deadlock_alert_interval_sec",
     "balance_shrink_consecutive",
     "balance_shrink_divisor",
     "one_sided_balance_rescue_offset",

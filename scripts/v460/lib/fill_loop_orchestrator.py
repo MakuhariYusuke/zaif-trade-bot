@@ -205,6 +205,8 @@ class FillLoopOrchestratorMixin(
     # 475# メモリリーク防止: 定期 GC サイクルカウンタ
     _gc_cycle_counter: int = 0
     _GC_INTERVAL_CYCLES: int = 30  # ~1h at 120s cycle
+    # 138# P1-10: preflight pause 累積カウンタ (SAFE_STOP 前)
+    _preflight_pause_count: int = 0
     # 648# Inventory Deadlock Detection: fill なし連続サイクル数
     _inventory_deadlock_counter: int = 0
     _last_inventory_deadlock_alert_time: float = 0.0

@@ -105,8 +105,13 @@ class MicrostructureMixin:
         if cfg.sigma_parkinson_enabled and mid_price > 0:
             now = time.time()
             window = cfg.sigma_parkinson_window_sec
+            _prev_sigma = self._last_sigma  # 648# 窓リセット時のフォールバック用
             # window 経過でリセット
             if now - self._mid_hl_reset_time > window:
+                # 648# 窓境界改善: リセット直後は H==L で Roll proxy に
+                # フォールバックするため、前窓の sigma を保持して
+                # ATR floor の急変を防ぐ。次 tick で H!=L になれば
+                # Parkinson が自然に引き継ぐ。
                 self._mid_high = mid_price
                 self._mid_low = mid_price
                 self._mid_hl_reset_time = now
@@ -121,8 +126,12 @@ class MicrostructureMixin:
                 log_hl = math.log(self._mid_high / self._mid_low)
                 sigma = log_hl / (2.0 * math.sqrt(math.log(2.0)))
             else:
-                # high == low (動きなし) → Roll proxy にフォールバック
-                sigma = spread / (2.0 * mid_price) if mid_price > 0 else 0.0
+                # high == low (窓リセット直後) → 前窓 σ を継続使用
+                # Roll proxy フォールバックでの ATR floor 急変を防止
+                if _prev_sigma > 0:
+                    sigma = _prev_sigma / vol_ratio if vol_ratio > 0 else _prev_sigma
+                else:
+                    sigma = spread / (2.0 * mid_price) if mid_price > 0 else 0.0
         else:
             sigma = spread / (2.0 * mid_price) if mid_price > 0 else 0.0
 

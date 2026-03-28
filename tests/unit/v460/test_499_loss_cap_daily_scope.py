@@ -82,6 +82,7 @@ def _make_pre_cycle_mixin(
     obj._buy_kill_mgr = mock_km
     obj._soft_loss_cap_triggered = soft_loss_cap_triggered
     obj._guard_fire_counts = {}
+    obj._preflight_pause_count = 0
     return obj
 
 

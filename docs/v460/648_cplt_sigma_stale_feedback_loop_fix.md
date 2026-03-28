@@ -153,18 +153,46 @@ cap=3.0bps は Parkinson H-L > ~5,300 JPY の**真の高ボラ時のみ**作動�
 - Guard fire counts unbounded → 固定 ~15 キー、bounded
 - Counter timing race → 単一スレッドの async loop、race condition なし
 
-**低優先度の改善候補:**
-- `_preflight_pause_count` 日替わりリセット未実装（SAFE_STOP がカバー）
-- Parkinson σ 窓境界での一瞬の Roll proxy フォールバック（設計制限）
-- 新 deadlock config の `_HOT_RELOADABLE_FIELDS` 未登録（alert 閾値のみ）
+**低優先度の改善（Part 3 で実装済み）:**
+- ~~`_preflight_pause_count` 日替わりリセット未実装~~ → ✅ `_process_daily_reset` に追加
+- ~~Parkinson σ 窓境界での一瞬の Roll proxy フォールバック~~ → ✅ 前窓 σ 継続使用に改善
+- ~~新 deadlock config の `_HOT_RELOADABLE_FIELDS` 未登録~~ → ✅ 登録済み
+
+### Part 3: 低優先度改善
+
+#### 1. `_preflight_pause_count` 日替わりリセット
+
+`_preflight_pause_count` は run 全体で累積し、`preflight_max_pauses` に達すると
+pause 枠を使い切って SAFE_STOP に移行する仕組み。だが日替わりでリセットされないため、
+長時間稼働で一度 pause 枠を使い切ると、回復後もパ pause 枠が復活しない問題があった。
+
+修正: `_process_daily_reset` 内で `_preflight_pause_count = 0` にリセット。
+`fill_loop_orchestrator.py` にクラスレベル属性宣言も追加（mixin 安全ネット）。
+
+#### 2. Parkinson σ 窓境界フォールバック改善
+
+Parkinson estimator の 5分窓リセット直後は H==L（1 tick のみ）となり、
+従来は Roll proxy σ = spread/(2·mid) にフォールバックしていた。
+これにより ATR floor が急変（通常 Parkinson σ >> Roll proxy σ → floor が急落、
+または逆に spread 拡大時に floor が急騰）する可能性があった。
+
+修正: 窓リセット直後（H==L）では `_prev_sigma`（前窓の `_last_sigma`）を継続使用。
+次の tick で mid_price が変動すれば H!=L となり Parkinson が自然に引き継ぐ。
+初回（`_last_sigma == 0`）のみ Roll proxy にフォールバック（安全ネット）。
+
+#### 3. deadlock config の Hot-Reload 登録
+
+`inventory_deadlock_threshold` と `inventory_deadlock_alert_interval_sec` を
+`_HOT_RELOADABLE_FIELDS` に追加。YAML 変更で fill_test 再起動なしに閾値調整可能。
 
 ## 残存課題
 
 | 優先度 | 課題 | 状態 |
 |--------|------|------|
-| ~~P1~~ | ~~在庫デッドロック検出~~ | ✅ 実装済み |
+| ~~P1~~ | ~~在庫デッドロック検出~~ | ✅ Part 2 で実装 |
 | ~~P2~~ | ~~ATR cap チューニング~~ | ✅ 変更不要と結論 |
-| P2 | preflight_insufficient 継続検出 | 648# deadlock detection でカバー |
+| ~~P2~~ | ~~preflight_insufficient 継続検出~~ | ✅ deadlock detection でカバー |
+| ~~P3~~ | ~~低優先度改善 3 件~~ | ✅ Part 3 で実装 |
 | P3 | sell timeout 分析 | timeout 売注文の fill 失敗原因 |
 
 ## 変更ファイル一覧
@@ -178,7 +206,7 @@ cap=3.0bps は Parkinson H-L > ~5,300 JPY の**真の高ボラ時のみ**作動�
 | `tests/unit/v460/test_143_regime_utilization.py` | mock 修正 (`last_volatility_ratio`) |
 | `tests/unit/v460/test_157_regime_features.py` | mock 修正 (`last_volatility_ratio`) |
 
-### Part 2
+### Part 2 (SHA d0598932e)
 
 | ファイル | 変更内容 |
 |----------|----------|
@@ -189,4 +217,15 @@ cap=3.0bps は Parkinson H-L > ~5,300 JPY の**真の高ボラ時のみ**作動�
 | `scripts/v460/lib/orchestrator_post_cycle.py` | fill/unfill 時のカウンタリセット/増分 |
 | `tests/unit/v460/test_145_structural_fixes.py` | AUDIT frozenset に INVENTORY_DEADLOCK 追加 |
 | `tests/unit/v460/test_648_inventory_deadlock.py` | 新テスト 15件 |
-| `docs/v460/648_cplt_sigma_stale_feedback_loop_fix.md` | Part 2 追記 |
+
+### Part 3
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `scripts/v460/lib/orchestrator_pre_cycle.py` | `_process_daily_reset`: `_preflight_pause_count` リセット追加 |
+| `scripts/v460/lib/fill_loop_orchestrator.py` | クラス属性 `_preflight_pause_count` 宣言 |
+| `scripts/v460/lib/maker_microstructure.py` | Parkinson σ 窓境界: 前窓 σ 継続使用 |
+| `scripts/v460/lib/config_hot_reload.py` | deadlock config を hot-reload 対象に登録 |
+| `tests/unit/v460/test_499_loss_cap_daily_scope.py` | mock に `_preflight_pause_count` 追加 |
+| `tests/unit/v460/test_648_inventory_deadlock.py` | 7 テスト追加（計 22 件） |
+| `docs/v460/648_cplt_sigma_stale_feedback_loop_fix.md` | Part 3 追記 |
