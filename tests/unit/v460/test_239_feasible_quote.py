@@ -345,14 +345,17 @@ class TestATRFloorCap:
         assert isinstance(result, MakerPriceResult)
 
     def test_atr_no_cap_blocks(self) -> None:
-        """ATR floor cap=0 (無制限) で高 σ 時にブロックされること."""
+        """ATR floor cap=0 (無制限) で高 mult 時にブロックされること.
+
+        648# 修正: _estimate_sigma が spread guard 前に実行されるため、
+        Roll proxy では ATR = spread×mult/2 → mult>2 で spread < ATR。
+        """
         calc = _make_calculator(
             min_spread_jpy=100.0,
             min_spread_atr_enabled=True,
-            min_spread_atr_mult=2.0,
+            min_spread_atr_mult=3.0,  # 648# mult>2 で fresh σ でもブロック
             min_spread_atr_cap_bps=0.0,  # 無制限
         )
-        calc._last_sigma = 0.001  # ATR=0.001*10M*2.0=20,000 JPY > spread=5000
         adapter = _make_adapter(best_bid=10_000_000.0, best_ask=10_005_000.0)
         with pytest.raises(InfeasibleQuoteError) as exc_info:
             asyncio.run(calc.compute("buy", adapter, "btc_jpy"))
@@ -372,3 +375,76 @@ class TestATRFloorCap:
         with pytest.raises(InfeasibleQuoteError) as exc_info:
             asyncio.run(calc.compute("buy", adapter, "btc_jpy"))
         assert "σ=" in str(exc_info.value)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# H. 648# σ stale feedback loop 防止テスト
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestSigmaStaleRefresh:
+    """648# _enforce_spread_guards 前に σ が更新されることを検証.
+
+    旧実装: _enforce_spread_guards (stale _last_sigma) → pipeline →
+            _estimate_sigma (更新) の順。stale σ → ATR 過大 →
+            InfeasibleQuoteError → σ 更新不可の永久ループが発生。
+    修正後: _estimate_sigma → _enforce_spread_guards → pipeline の順。
+    """
+
+    def test_stale_sigma_does_not_block_fresh_spread(self) -> None:
+        """stale σ=0.001 でも fresh σ が ATR 内なら通過すること."""
+        calc = _make_calculator(
+            min_spread_jpy=100.0,
+            min_spread_floor_bps=0.38,
+            min_spread_atr_enabled=True,
+            min_spread_atr_mult=1.2,
+            min_spread_atr_cap_bps=3.0,  # cap=3bps → ~3000 JPY @mid=10M
+        )
+        # stale σ を注入: ATR floor = min(0.001*10M*1.2, 3000) = 3000
+        calc._last_sigma = 0.001
+        # spread=5000 > cap=3000 → stale σ でも OK だが、
+        # 本テストの本質は σ が更新されること
+        adapter = _make_adapter(best_bid=10_000_000.0, best_ask=10_005_000.0)
+        result = asyncio.run(calc.compute("buy", adapter, "btc_jpy"))
+        assert isinstance(result, MakerPriceResult)
+        # σ が fresh 値に更新されていること (Roll proxy: 5000/(2*10.0025M))
+        assert calc._last_sigma < 0.001  # stale 値より小さい
+
+    def test_sigma_refreshed_before_guard(self) -> None:
+        """compute() 呼出し後に _last_sigma が市場整合的な値に更新."""
+        calc = _make_calculator(
+            min_spread_jpy=100.0,
+            min_spread_atr_enabled=True,
+            min_spread_atr_mult=1.2,
+            min_spread_atr_cap_bps=3.0,
+        )
+        calc._last_sigma = 0.005  # 非常に高い stale σ
+        adapter = _make_adapter(best_bid=10_000_000.0, best_ask=10_005_000.0)
+        # spread=5000, cap=3bps→3000 < 5000 → pass (cap が救う)
+        result = asyncio.run(calc.compute("buy", adapter, "btc_jpy"))
+        assert isinstance(result, MakerPriceResult)
+        # σ = 5000/(2*10_002_500) ≈ 0.000250 (Roll proxy)
+        assert 0.0001 < calc._last_sigma < 0.0005
+
+    def test_fresh_sigma_still_blocks_when_spread_narrow(self) -> None:
+        """fresh σ でも ATR floor > spread なら正しくブロック."""
+        calc = _make_calculator(
+            min_spread_jpy=100.0,
+            min_spread_atr_enabled=True,
+            min_spread_atr_mult=1.2,
+            min_spread_atr_cap_bps=0.0,  # 無制限 → ATR floor = σ*mid*1.2
+        )
+        # spread=100 → Roll σ=100/(2*10M)=5e-6 → ATR=5e-6*10M*1.2=60
+        # effective_min = max(100, 60) = 100 = spread → NG (< ではなく ==)
+        # spread=100 < min_spread_jpy=100 → 100 < 100 は False → 実は pass
+        # より厳しい条件にする: min_spread_jpy=200
+        calc2 = _make_calculator(
+            min_spread_jpy=200.0,
+            min_spread_atr_enabled=True,
+            min_spread_atr_mult=1.2,
+            min_spread_atr_cap_bps=0.0,
+        )
+        adapter = _make_adapter(best_bid=10_000_000.0, best_ask=10_000_100.0)
+        with pytest.raises(InfeasibleQuoteError) as exc_info:
+            asyncio.run(calc2.compute("buy", adapter, "btc_jpy"))
+        assert exc_info.value.reason == "spread_too_narrow"

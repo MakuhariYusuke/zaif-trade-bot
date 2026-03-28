@@ -1206,6 +1206,10 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
             now=now,
             cfg=cfg,
         )
+        # 648# σ refresh: spread guard より前に σ を更新し、
+        # stale σ→ATR floor 過大→InfeasibleQuoteError→σ 更新不可
+        # のフィードバックループを防止する。
+        self._estimate_sigma(spread, mid_price)
         self._enforce_spread_guards(
             side=side,
             spread=spread,

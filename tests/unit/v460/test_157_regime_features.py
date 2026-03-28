@@ -222,6 +222,7 @@ class TestTrendingOffsetAsymmetry:
         )
         regime_detector = MagicMock()
         regime_detector.current_regime = FillTestRegime.TRENDING_UP
+        regime_detector.last_volatility_ratio = 1.0  # 648# σ refresh 対応
 
         ffd = MagicMock()
         ffd.should_boost.return_value = False

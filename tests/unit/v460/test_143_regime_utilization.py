@@ -175,6 +175,7 @@ class TestRegimeOffsetBoostFunctional:
         if regime_value is not None:
             regime_det = MagicMock()
             regime_det.current_regime = FillTestRegime(regime_value)
+            regime_det.last_volatility_ratio = 1.0  # 648# σ refresh 対応
 
         calc = MakerPriceCalculator(
             config=cfg,
