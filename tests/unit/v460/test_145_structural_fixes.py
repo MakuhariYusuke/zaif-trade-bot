@@ -186,6 +186,7 @@ class TestCancelReasons:
             CR.POLL_ERROR_LIMIT,               # 373# F9 poll error
             CR.FINAL_CLAMP_HARD_SKIP,          # 421# P0 Final Clamp
             CR.ROUTE_TO_KILL_DEADLOCK,          # 421# P0 Route-to-Kill
+            CR.INVENTORY_DEADLOCK,              # 648# 在庫デッドロック
         }
         assert CR.AUDIT_CANCEL_REASONS == expected
 

@@ -86,6 +86,10 @@ class OrchestratorBalanceMixin:
         )
         self._inc_guard_fire("balance_insufficient_skip")
 
+        # 648# Inventory Deadlock Detection: 片側 preflight + 反対側 no_feasible
+        self._inventory_deadlock_counter += 1
+        self._check_inventory_deadlock(next_side, opposite)
+
         # 372# dust buy-to-clear: micro-dust 検出時は buy ロット準備
         if self._balance_checker.dust_buy_pending:
             self._balance_checker.prepare_dust_buy()
@@ -116,6 +120,7 @@ class OrchestratorBalanceMixin:
         self._last_side = next_side
         self._preflight_skip_count += 1
         self._inc_guard_fire("preflight_insufficient")
+        self._inventory_deadlock_counter += 1
 
         st.batch.append(self._make_loop_skip_record(
             side=next_side,
@@ -228,3 +233,43 @@ class OrchestratorBalanceMixin:
 
         await self._effective_sleep()
         return True
+
+    # ------------------------------------------------------------------
+    # 648# Inventory Deadlock Detection
+    # ------------------------------------------------------------------
+    def _check_inventory_deadlock(
+        self, insufficient_side: str, opposite_side: str,
+    ) -> None:
+        """648# 片側 preflight_insufficient + 反対側 no_feasible の膠着検出.
+
+        preflight で片側がブロック → freeze → 反対側が実行されるが
+        no_feasible_quote で連続失敗 → 結果として全注文停止。
+        閾値超で WARNING ログ + guard_fire + event 記録。
+        """
+        threshold = self.config.inventory_deadlock_threshold
+        counter = self._inventory_deadlock_counter
+        if counter < threshold:
+            return
+
+        # 反対側の no_feasible_quote 連続回数を確認
+        opposite_nfq = self._consecutive_no_feasible.get(opposite_side, 0)
+        if opposite_nfq < 2:
+            return
+
+        now = time.time()
+        interval = self.config.inventory_deadlock_alert_interval_sec
+        if now - self._last_inventory_deadlock_alert_time < interval:
+            return
+
+        self._last_inventory_deadlock_alert_time = now
+        self._inc_guard_fire("inventory_deadlock")
+        btc = getattr(self._balance_checker, "last_btc_free", None)
+        jpy = getattr(self._balance_checker, "last_jpy_free", None)
+        logger.warning(
+            f"[648#] INVENTORY_DEADLOCK detected: "
+            f"{insufficient_side} blocked by preflight "
+            f"(counter={counter}, btc={btc}, jpy={jpy}), "
+            f"{opposite_side} blocked by no_feasible_quote "
+            f"(consecutive={opposite_nfq}). "
+            f"No orders possible for {counter} consecutive cycles."
+        )

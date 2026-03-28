@@ -53,10 +53,15 @@ class OrchestratorPostCycleMixin:
         if record.filled:
             st.filled_count += 1
             self._track_side_pnl(record)
+            # 648# Inventory Deadlock: fill 成功でカウンタリセット
+            self._inventory_deadlock_counter = 0
         else:
             # 487# P2: unfilled cancel_reason tracking
             _cr = record.cancel_reason or "unknown"
             st.cancel_reason_counts[_cr] = st.cancel_reason_counts.get(_cr, 0) + 1
+
+            # 648# Inventory Deadlock: unfilled もインクリメント
+            self._inventory_deadlock_counter += 1
             
             # 634# P1-1: no_feasible_quote 連続時の side cooldown
             if _cr == "no_feasible_quote" and record.side in ("buy", "sell"):

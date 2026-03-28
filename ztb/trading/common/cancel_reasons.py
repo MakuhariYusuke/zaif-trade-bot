@@ -76,6 +76,8 @@ POLL_ERROR_LIMIT = "poll_error_limit"
 FINAL_CLAMP_HARD_SKIP = "final_clamp_hard_skip"
 # 421# P0: Route-to-Kill Deadlock (buy残高不足×sell kill-gated ⇒ 両側封鎖)
 ROUTE_TO_KILL_DEADLOCK = "route_to_kill_deadlock"
+# 648# Inventory Deadlock (片側 preflight_insufficient + 反対側 no_feasible の cross-cycle 膠着)
+INVENTORY_DEADLOCK = "inventory_deadlock"
 
 AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     CIRCUIT_BREAKER_OPEN,
@@ -114,6 +116,7 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     POLL_ERROR_LIMIT,
     FINAL_CLAMP_HARD_SKIP,
     ROUTE_TO_KILL_DEADLOCK,
+    INVENTORY_DEADLOCK,
 })
 
 # ======================================================================
@@ -209,4 +212,6 @@ CancelReason = Literal[
     # 421# P0: Final Clamp + Route-to-Kill
     "final_clamp_hard_skip",
     "route_to_kill_deadlock",
+    # 648# Inventory Deadlock
+    "inventory_deadlock",
 ]

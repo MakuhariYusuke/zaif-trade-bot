@@ -107,16 +107,69 @@ Roll proxy: ATR = spread × mult/2 = spread × 0.6 (@mult=1.2)
 Parkinson 窓リセット直後は Roll proxy がフォールバックに使われるため、
 ワーストケースでも **300 秒以内に取引可能状態に復帰**。
 
+## Part 2: 在庫デッドロック検出 + ATR cap 検証
+
+### 在庫デッドロック検出
+
+03/28 インシデントで判明した**buy preflight_insufficient と sell no_feasible_quote の
+クロスチャネル検出不在**を解消。
+
+**既存メカニズムの限界:**
+- `_preflight_skip_count`: 両側不足 → balance_shrink → SAFE_STOP のみ
+- `_consecutive_no_feasible`: 片側毎の追跡、反対側との交差検出なし
+- buy 残高不足 + sell no_feasible が同時発生しても、別チャネルでカウントされ
+  エスカレーションされない
+
+**新メカニズム: `_inventory_deadlock_counter`**
+
+```
+non-fill cycle (preflight skip / unfilled / 片側残高不足) → counter++
+fill success → counter = 0
+
+if counter >= threshold(10) AND opposite_no_feasible >= 2:
+    → WARNING ログ + _inc_guard_fire("inventory_deadlock")
+    → 300秒インターバルでスロットル
+```
+
+### ATR cap 検証結果
+
+σ stale fix が根本原因であり、**ATR cap=3.0bps の変更は不要**。
+
+| シナリオ | H-L 幅 | ATR | cap 3,180 | 判定 |
+|----------|--------|-----|-----------|------|
+| 通常市場 | 1,500 | 1,081 | 不作動 | spread > ATR → 通過 |
+| 中ボラ | 3,000 | 2,162 | 不作動 | spread > ATR → 通過 |
+| 高ボラ | 5,300+ | 3,200+ | **作動** | cap で 3,180 に抑制 |
+| 窓リセット | H==L | Roll proxy | 不作動 | ATR = spread×0.6 < spread |
+
+cap=3.0bps は Parkinson H-L > ~5,300 JPY の**真の高ボラ時のみ**作動する
+安全弁として適切。σ stale fix により循環ブロックは解消されているため変更不要。
+
+### 潜在課題調査
+
+網羅的調査により Critical/High バグは検出されず：
+- Alert multiplier compound → 毎サイクルリセット + MCB_SAD_ESCALATION でスキップ。問題なし
+- MCB/SAD hot-reload gap → 607# で対応済み
+- Guard fire counts unbounded → 固定 ~15 キー、bounded
+- Counter timing race → 単一スレッドの async loop、race condition なし
+
+**低優先度の改善候補:**
+- `_preflight_pause_count` 日替わりリセット未実装（SAFE_STOP がカバー）
+- Parkinson σ 窓境界での一瞬の Roll proxy フォールバック（設計制限）
+- 新 deadlock config の `_HOT_RELOADABLE_FIELDS` 未登録（alert 閾値のみ）
+
 ## 残存課題
 
-| 優先度 | 課題 | 説明 |
+| 優先度 | 課題 | 状態 |
 |--------|------|------|
-| P1 | 在庫デッドロック検出 | buy/sell 両方 N 回連続 cancel で alert/halt |
-| P2 | ATR cap チューニング | 3.0 bps → 2.0 bps の検討（現市場スプレッド考慮） |
-| P2 | preflight_insufficient 継続検出 | N 回連続で同一理由の cancel → adaptive 行動 |
-| P3 | sell timeout 分析 | timeout 売注文（offset=0.40bps, spread=None）の fill 失敗原因 |
+| ~~P1~~ | ~~在庫デッドロック検出~~ | ✅ 実装済み |
+| ~~P2~~ | ~~ATR cap チューニング~~ | ✅ 変更不要と結論 |
+| P2 | preflight_insufficient 継続検出 | 648# deadlock detection でカバー |
+| P3 | sell timeout 分析 | timeout 売注文の fill 失敗原因 |
 
 ## 変更ファイル一覧
+
+### Part 1 (SHA f35ef8ee5)
 
 | ファイル | 変更内容 |
 |----------|----------|
@@ -124,4 +177,16 @@ Parkinson 窓リセット直後は Roll proxy がフォールバックに使わ�
 | `tests/unit/v460/test_239_feasible_quote.py` | ATR テスト修正 + σ stale テスト追加 |
 | `tests/unit/v460/test_143_regime_utilization.py` | mock 修正 (`last_volatility_ratio`) |
 | `tests/unit/v460/test_157_regime_features.py` | mock 修正 (`last_volatility_ratio`) |
-| `docs/v460/648_cplt_sigma_stale_feedback_loop_fix.md` | 本ドキュメント |
+
+### Part 2
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `ztb/trading/common/cancel_reasons.py` | `INVENTORY_DEADLOCK` 定数 + AUDIT set + Literal |
+| `scripts/v460/lib/fill_config.py` | `inventory_deadlock_threshold/alert_interval_sec` 追加 |
+| `scripts/v460/lib/fill_loop_orchestrator.py` | クラス属性 `_inventory_deadlock_counter`, `_last_inventory_deadlock_alert_time` |
+| `scripts/v460/lib/orchestrator_balance.py` | `_check_inventory_deadlock()` + カウンタ増分 |
+| `scripts/v460/lib/orchestrator_post_cycle.py` | fill/unfill 時のカウンタリセット/増分 |
+| `tests/unit/v460/test_145_structural_fixes.py` | AUDIT frozenset に INVENTORY_DEADLOCK 追加 |
+| `tests/unit/v460/test_648_inventory_deadlock.py` | 新テスト 15件 |
+| `docs/v460/648_cplt_sigma_stale_feedback_loop_fix.md` | Part 2 追記 |

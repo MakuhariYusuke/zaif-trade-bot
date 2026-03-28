@@ -921,6 +921,11 @@ class FillTestConfig:
     records_cache_ttl_sec: float = 10.0             # 適応エンジン キャッシュ TTL
     trades_recorder_fetch_limit: int = 100          # TradesRecorder 取得件数
     balance_freeze_cycles: int = 3                  # 残高不足 side の凍結サイクル数
+    # ---- 648# Inventory Deadlock Detection ----
+    # 片側 preflight_insufficient + 反対側 no_feasible_quote の cross-cycle 膠着を検出。
+    # 閾値超で alert ログ + event 出力。
+    inventory_deadlock_threshold: int = 10           # 連続スキップ合計で alert 発動
+    inventory_deadlock_alert_interval_sec: float = 300.0  # alert 再発間隔 (秒)
     # ---- 452# Micro-timeouts (TIF Emulation) ----
     # 指値の生存時間を短縮し、逆選択リスクを低減するサブサイクル再クオート方式。
     # order_timeout_sec (90s) の代わりに wait_sec (15s) 単位で繰り返しキャンセル→再発注。
