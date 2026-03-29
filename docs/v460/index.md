@@ -758,3 +758,4 @@ NNN_phX_TYPE_description.md
 | 651 | review | [651_phg_rev_639_650_profit_preserving_loss_suppression_review.md](651_phg_rev_639_650_profit_preserving_loss_suppression_review.md) | 639#-650# 利益保全型レビューと負け筋遮断提案 |
 | 652 | review | [652_cplt_second_opinion_and_asymmetric_exit.md](652_cplt_second_opinion_and_asymmetric_exit.md) | 651# セカンドオピニオン: price_velocity / regime-drift exit / 非対称RT exit |
 | 654 | impl | [654_cplt_651_652_review_verification_and_action_plan.md](654_cplt_651_652_review_verification_and_action_plan.md) | 651#/652# 検証・実装: P0-1 inv_skew調整 + P0-2 toxic sell veto |
+| 655 | review | [655_cplt_retrospective_536_to_654_and_new_findings.md](655_cplt_retrospective_536_to_654_and_new_findings.md) | 536# 渙～654# 振り返り: 未達事項棚卸し + 新規4課題発見 |
