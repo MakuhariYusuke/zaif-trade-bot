@@ -272,6 +272,10 @@ Success: no issues found in 3 source files
     - metrics 集計
     - JSONL / DataFrame bridge
     の責務を混ぜない方向で進める
+  - 2026-03-30 追記:
+    - `_build_skip_fill_record_payload(...)` を local helper として切り出し、
+      `build_skip_fill_record(...)` の責務を payload shaping に限定した
+    - この粒度なら `test_fill_quality.py` の回帰で守りやすく、分割過剰にもならない
   - `to_dict()` の型を無理に強めると波及が広いので、
     先に test/runtime 側の固定費を削る判断が妥当
 

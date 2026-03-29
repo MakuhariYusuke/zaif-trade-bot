@@ -9541,3 +9541,12 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - docs:
     - `612#` に current slowest と subset 実測を追記
     - `598#` に `fill_quality.py` の次の扱い方を追記
+
+- 2026-03-30 Codex:
+  - `ztb/metrics/fill_quality.py`
+    - `_build_skip_fill_record_payload(...)` を追加
+    - `build_skip_fill_record(...)` は payload shaping helper + `build_fill_record(...)` に整理
+  - `tests/unit/v460/test_fill_quality.py`
+    - protected field (`cancelled=False`) が skip record で上書きされない回帰を追加
+  - docs:
+    - `598#` に god object 対策としての `fill_quality` helper 境界を追記

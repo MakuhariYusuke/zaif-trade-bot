@@ -493,6 +493,7 @@ class TestFillRecord:
             git_sha="abc123",
             regime="trending",
             filled=True,
+            cancelled=False,
             skip_gate_skipped=True,
             skip_gate_reason="threshold",
             unknown_extra="ignored",

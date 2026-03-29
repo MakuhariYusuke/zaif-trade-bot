@@ -274,19 +274,20 @@ _SKIP_RECORD_PROTECTED_FIELDS: Final[frozenset[str]] = frozenset({
     "balance_forced_switch",
     "ab_test_variant",
 })
+FillRecordPayload = dict[str, object]
 
 def _sanitize_fill_record_fields(
     values: Mapping[str, object],
     *,
     context: str,
     protected_keys: frozenset[str] = frozenset(),
-) -> dict[str, object]:
+) -> FillRecordPayload:
     """FillRecord に存在するキーだけ通し、不要キーは無視する."""
     # 216# §6: 旧フィールド名 → 新フィールド名 のマイグレーション
     _FIELD_ALIASES: dict[str, str] = {
         "price_velocity_60s": "price_velocity_bps",
     }
-    filtered: dict[str, object] = {}
+    filtered: FillRecordPayload = {}
     unknown_keys: list[str] = []
     protected_hits: list[str] = []
 
@@ -328,7 +329,8 @@ def build_fill_record(**data: object) -> FillRecord:
     """
     return FillRecord(**_sanitize_fill_record_fields(data, context="build_fill_record"))
 
-def build_skip_fill_record(
+
+def _build_skip_fill_record_payload(
     *,
     cycle_id: str,
     timestamp: float,
@@ -343,13 +345,10 @@ def build_skip_fill_record(
     regime: str | None = None,
     balance_forced_switch: bool = False,
     ab_test_variant: str | None = None,
-    **extra: object,
-) -> FillRecord:
-    """skip/監査系 FillRecord の共通 builder.
-
-    追加フィールドは FillRecord に存在するものだけを反映し、それ以外は無視する。
-    """
-    payload: dict[str, object] = {
+    extra: Mapping[str, object],
+) -> FillRecordPayload:
+    """skip/監査系 FillRecord の payload shaping を集約する."""
+    payload: FillRecordPayload = {
         "cycle_id": cycle_id,
         "timestamp": timestamp,
         "side": side,
@@ -372,6 +371,45 @@ def build_skip_fill_record(
             context="build_skip_fill_record",
             protected_keys=_SKIP_RECORD_PROTECTED_FIELDS,
         )
+    )
+    return payload
+
+def build_skip_fill_record(
+    *,
+    cycle_id: str,
+    timestamp: float,
+    side: str,
+    order_price: float,
+    order_quantity: float,
+    cancel_reason: str,
+    run_id: str | None,
+    git_sha: str | None,
+    spread_at_order: float | None = None,
+    spread_offset_ratio: float | None = None,
+    regime: str | None = None,
+    balance_forced_switch: bool = False,
+    ab_test_variant: str | None = None,
+    **extra: object,
+) -> FillRecord:
+    """skip/監査系 FillRecord の共通 builder.
+
+    追加フィールドは FillRecord に存在するものだけを反映し、それ以外は無視する。
+    """
+    payload = _build_skip_fill_record_payload(
+        cycle_id=cycle_id,
+        timestamp=timestamp,
+        side=side,
+        order_price=order_price,
+        order_quantity=order_quantity,
+        cancel_reason=cancel_reason,
+        run_id=run_id,
+        git_sha=git_sha,
+        spread_at_order=spread_at_order,
+        spread_offset_ratio=spread_offset_ratio,
+        regime=regime,
+        balance_forced_switch=balance_forced_switch,
+        ab_test_variant=ab_test_variant,
+        extra=extra,
     )
     return build_fill_record(**payload)
 
