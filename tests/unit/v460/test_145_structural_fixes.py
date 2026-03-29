@@ -169,6 +169,7 @@ class TestCancelReasons:
             CR.POSTONLY_CROSSING_SKIP,          # 200# B/I
             CR.HARD_SKIP_UTC_HOUR,             # 205# §9.4
             CR.TOXIC_FILL_SIDE_VETO,           # 205# §9.2
+            CR.TOXIC_LOW_SPREAD_SELL_VETO,     # 654# P0-2
             CR.PHANTOM_SIDE_VETO,              # 238# S-2
             CR.TOXICITY_PARTICIPATION_SKIP,    # 240# Toxicity Budget
             CR.CROSS_VENUE_LEAD_LAG_VETO,      # 439# cross-venue lead-lag

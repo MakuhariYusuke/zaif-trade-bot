@@ -44,6 +44,8 @@ POSTONLY_CROSSING_SKIP = "postonly_crossing_skip"
 HARD_SKIP_UTC_HOUR = "hard_skip_utc_hour"
 # 205# §9.2: Toxic Fill 同一サイド拒否 (大損後に同一方向を N サイクル封鎖)
 TOXIC_FILL_SIDE_VETO = "toxic_fill_side_veto"
+# 654# P0-2: Toxic Low-Spread Sell Veto (651#/652# compound guard)
+TOXIC_LOW_SPREAD_SELL_VETO = "toxic_low_spread_sell_veto"
 # 238# S-2: Phantom 検出後の同 side 一時拒否 (逆選択防御)
 PHANTOM_SIDE_VETO = "phantom_side_veto"
 # 240# Toxicity Budget: 確率的不参加 (232# §2.2 Glosten-Milgrom)
@@ -99,6 +101,7 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     POSTONLY_CROSSING_SKIP,
     HARD_SKIP_UTC_HOUR,
     TOXIC_FILL_SIDE_VETO,
+    TOXIC_LOW_SPREAD_SELL_VETO,
     PHANTOM_SIDE_VETO,
     TOXICITY_PARTICIPATION_SKIP,
     CROSS_VENUE_LEAD_LAG_VETO,
@@ -172,6 +175,7 @@ CancelReason = Literal[
     "postonly_crossing_skip",
     "hard_skip_utc_hour",
     "toxic_fill_side_veto",
+    "toxic_low_spread_sell_veto",
     "phantom_side_veto",
     "toxicity_participation_skip",
     "cross_venue_lead_lag_veto",

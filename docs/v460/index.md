@@ -753,3 +753,8 @@ NNN_phX_TYPE_description.md
 | 645 | fix | [645_cplt_p0_degenerate_sell_model_fix.md](645_cplt_p0_degenerate_sell_model_fix.md) | P0: 退化 sell モデル無効化 (-132bps=24.9%), degenerate 検出ガード追加 |
 | 646 | fix | [646_cplt_overfitting_guards.md](646_cplt_overfitting_guards.md) | 過学習防止: n_estimators サンプル比率cap, D2 OOS検証, side_min_samples 200 |
 | 647 | analysis | [647_cplt_post_deploy_analysis_sigma_fill_rate.md](647_cplt_post_deploy_analysis_sigma_fill_rate.md) | ポスト645#/646#分析: fill rate 7.2%はσ高騰(ATR閾値固定)が原因、コード変更は無関係 |
+| 648 | fix | [648_cplt_sigma_stale_feedback_loop_fix.md](648_cplt_sigma_stale_feedback_loop_fix.md) | σ stale feedback loop 修正 + inventory deadlock 検出 + 低優先度改善 |
+| 650 | analysis | [650_cplt_roundtrip_analysis_sections.md](650_cplt_roundtrip_analysis_sections.md) | Roundtrip / Inventory / MCB / Spread-Quality 分析セクション追加と 2026-03-29 実測分析 |
+| 651 | review | [651_phg_rev_639_650_profit_preserving_loss_suppression_review.md](651_phg_rev_639_650_profit_preserving_loss_suppression_review.md) | 639#-650# 利益保全型レビューと負け筋遮断提案 |
+| 652 | review | [652_cplt_second_opinion_and_asymmetric_exit.md](652_cplt_second_opinion_and_asymmetric_exit.md) | 651# セカンドオピニオン: price_velocity / regime-drift exit / 非対称RT exit |
+| 654 | impl | [654_cplt_651_652_review_verification_and_action_plan.md](654_cplt_651_652_review_verification_and_action_plan.md) | 651#/652# 検証・実装: P0-1 inv_skew調整 + P0-2 toxic sell veto |

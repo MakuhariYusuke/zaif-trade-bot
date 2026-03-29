@@ -283,7 +283,7 @@ class TestYamlParsing:
         # A/B/C: パラメータ有効化
         assert cfg.velocity_ema_alpha == 0.3
         assert cfg.ranging_obi_asymmetry_factor == 0.3
-        assert cfg.inv_decay_tau_sec == 1800.0
+        assert cfg.inv_decay_tau_sec == 3600.0  # 654# P0-1: 1800→3600
         # D: inv_bypass → gradual
         assert cfg.sell_guard_inv_bypass_threshold == 0.0
         assert cfg.sell_dynamic_kill_inv_relaxation_max_bps == 0.5

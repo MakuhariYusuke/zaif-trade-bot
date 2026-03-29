@@ -488,6 +488,13 @@ skip_gate:
   sell_velocity_skip_threshold_bps: 4.0   # 630# 6.0→4.0 (626#/629# AS防御: buy=-4.0と対称化。vel≥4bps帯のsell AS率60%超)
   buy_velocity_skip_enabled: true          # 183# false→true (buy AS率28%≒sell同等。急落局面で買い参入を抑制)
   buy_velocity_skip_threshold_bps: -4.0   # 353# -6.0→-4.0 (buy逆走許容を絞る: 164# SHAP buy_vpin=0.548)
+  # 654# P0-2: Toxic Low-Spread Sell Veto (651#/652# Glosten-Milgrom compound guard)
+  # sell + 狭spread + 高OBI + 高VPIN + 上方velocity = informed flow → veto
+  toxic_sell_veto_enabled: true            # 654# 有効化
+  toxic_sell_veto_spread_bps: 2.3          # 651# Q1 bucket上限: spread<2.3bpsで期待値マイナス
+  toxic_sell_veto_obi_threshold: 0.25      # 651#: OBI>0.25 (買い板優勢 = sell逆選択)
+  toxic_sell_veto_vpin_threshold: 0.65     # 651#: VPIN>0.65 (informed flow高)
+  toxic_sell_veto_velocity_threshold: 0.0  # 652# 推奨 >0 だが初期は無効 (0=条件スキップ)
   # 195# velocity_skip ソフト化: hard skip → offset boost
   velocity_skip_as_offset_enabled: true
   velocity_offset_boost_factor: 1.5       # 197# 2.0→1.5 (boost 1.0-1.5帯 PnL+0.47 vs 2.0帯 PnL-0.37)
@@ -919,9 +926,9 @@ loss_control:
     enabled: true                # 163# 有効化 (段階デプロイ: まずドライランで検証)
     window: 100                  # 直近 N fill の在庫偏重を計算
     max_factor: 0.4              # 最大 offset 補正倍率 (40%)
-    neutral_band: 0.1            # |imbalance| < 0.1 では補正なし (中立帯)
+    neutral_band: 0.05           # 654# P0-1: 0.1→0.05 (651#/652#: 在庫5%偏りで補正開始。650#で25/27=0発動→解消)
     # 228# C2: 在庫偏重の時間減衰 — 古い fill 履歴の影響を指数関数的に減衰
-    decay_tau_sec: 1800.0        # 344#: 0→1800 有効化 (30分 τ: 古い fill 履歴の時間減衰)
+    decay_tau_sec: 3600.0        # 654# P0-1: 1800→3600 (651#: τ延長で古い偏重の影響を長く保持、ranging収益を壊さない)
     # 249# Regime Gate: trending時はinv_skewを無効化 (方向α保全)
     regime_gate_enabled: true    # trending中の在庫中立ロジック停止
   # 168# §4.1 #3: 日次ドローダウンガード (1日の累積損失制限)

@@ -336,6 +336,12 @@ def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
         "calibrator_path": "skip_gate_calibrator_path",
         "calibrator_min_samples": "skip_gate_calibrator_min_samples",
         "calibrator_refit_interval": "skip_gate_calibrator_refit_interval",
+        # 654# P0-2: Toxic Low-Spread Sell Veto
+        "toxic_sell_veto_enabled": "toxic_sell_veto_enabled",
+        "toxic_sell_veto_spread_bps": "toxic_sell_veto_spread_bps",
+        "toxic_sell_veto_obi_threshold": "toxic_sell_veto_obi_threshold",
+        "toxic_sell_veto_vpin_threshold": "toxic_sell_veto_vpin_threshold",
+        "toxic_sell_veto_velocity_threshold": "toxic_sell_veto_velocity_threshold",
         # 183# narrow spread adverse guard
         "skip_gate_narrow_spread_threshold_jpy": "skip_gate_narrow_spread_threshold_jpy",
         "skip_gate_narrow_spread_offset": "skip_gate_narrow_spread_offset",

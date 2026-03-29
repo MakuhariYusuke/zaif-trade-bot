@@ -201,6 +201,9 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "balance_freeze_cycles",  # 641# P0-C: 3→1
     "cross_venue_lead_lag_offset_boost",  # 641# P0-A: 1.25→1.0
     "skip_gate_max_skip_rate",  # 641# P0-B: 0.3→0.4
+    "toxic_sell_veto_enabled",  # 654# P0-2: code=False, YAML=True
+    "inventory_skewing_neutral_band",  # 654# P0-1: 0.1→0.05
+    "inv_decay_tau_sec",  # 654# P0-1: 1800→3600
     "wide_spread_bps",
 })
 
@@ -283,10 +286,10 @@ class TestYamlCodeDefaultDrift:
         """FillTestConfig のフィールド数が大幅に変化していないこと (God Object 監視)."""
         n_fields = len(dataclasses.fields(FillTestConfig))
         # 336# 時点: 390 fields. 491# composite_risk 追加で 454 fields.
-        # 555# entry_gate 追加で 481 fields.
-        assert 350 <= n_fields <= 500, (
+        # 555# entry_gate 追加で 481 fields. 654# toxic_sell_veto 追加で 504 fields.
+        assert 350 <= n_fields <= 520, (
             f"FillTestConfig のフィールド数が {n_fields} です。"
-            f" 350-500 の範囲外です — God Object 化の兆候かもしれません。"
+            f" 350-520 の範囲外です — God Object 化の兆候かもしれません。"
         )
 
 

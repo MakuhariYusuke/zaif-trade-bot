@@ -493,3 +493,162 @@ class TestSkipSellUnknownRegime:
         )
         assert result.skipped is True
         assert result.reason == "rule_skip_unknown_sell"
+
+
+# =====================================================================
+# 654# P0-2: Toxic Low-Spread Sell Veto
+# =====================================================================
+
+
+class TestToxicLowSpreadSellVeto:
+    """654# P0-2: compound sell veto (651#/652# Glosten-Milgrom guard)."""
+
+    @pytest.fixture()
+    def config_enabled(self) -> "FillTestConfig":
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        return FillTestConfig(
+            skip_gate_enabled=True,
+            skip_gate_model_path="models/v460/skip_gate_rb30.pkl",
+            skip_sell_unknown_regime=False,
+            toxic_sell_veto_enabled=True,
+            toxic_sell_veto_spread_bps=2.3,
+            toxic_sell_veto_obi_threshold=0.25,
+            toxic_sell_veto_vpin_threshold=0.65,
+            toxic_sell_veto_velocity_threshold=0.0,
+        )
+
+    @pytest.fixture()
+    def config_disabled(self) -> "FillTestConfig":
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        return FillTestConfig(
+            skip_gate_enabled=True,
+            skip_gate_model_path="models/v460/skip_gate_rb30.pkl",
+            skip_sell_unknown_regime=False,
+            toxic_sell_veto_enabled=False,
+        )
+
+    def _eval(
+        self,
+        config: "FillTestConfig",
+        *,
+        side: str = "sell",
+        order_price: float = 15_000_000.0,
+        spread_at_order: float = 2000.0,
+        last_imbalance: float | None = 0.35,
+        regime_value: str = "ranging",
+    ) -> "SkipGateResult":
+        from scripts.v460.lib.fill_config import SkipGateResult
+
+        evaluator = _make_bypassed_evaluator(config)
+        # MagicMock._skip_gate の config.use_ob_features が truthy で
+        # OB fetch → format error になるのを防止
+        evaluator._skip_gate.config.use_ob_features = False
+        evaluator._ob_fetch_fail_count = 0
+        evaluator._ob_fetch_total_count = 0
+        return asyncio.run(
+            evaluator.evaluate(
+                side=side,
+                cycle_id="test_toxic",
+                order_price=order_price,
+                spread_at_order=spread_at_order,
+                effective_offset_ratio=0.05,
+                adapter=_AdapterStub(),
+                symbol="btc_jpy",
+                current_lot=0.001,
+                run_id="test_run",
+                git_sha=None,
+                regime_value=regime_value,
+                last_imbalance=last_imbalance,
+                last_bid_depth=100.0,
+                last_ask_depth=50.0,
+                imbalance_enabled=True,
+            )
+        )
+
+    def test_veto_disabled_does_not_skip(self, config_disabled: "FillTestConfig") -> None:
+        """veto disabled -> skip しない (ML判定に委譲)."""
+        result = self._eval(config_disabled, spread_at_order=1500.0)
+        assert result.reason != "rule_toxic_low_spread_sell_veto"
+
+    def test_veto_triggers_on_toxic_sell(self, config_enabled: "FillTestConfig") -> None:
+        """sell + 狭spread + 高OBI + 高VPIN -> veto."""
+        from scripts.v460.lib import skip_gate_evaluator as sge_mod
+
+        original_build = sge_mod.build_features_from_market_state
+
+        def _patched_build(*args: object, **kwargs: object) -> dict[str, float]:
+            feats = original_build(*args, **kwargs)  # type: ignore[misc]
+            feats["vpin_60s"] = 0.75
+            feats["price_velocity_bps"] = 1.2
+            return feats
+
+        with patch.object(sge_mod, "build_features_from_market_state", side_effect=_patched_build):
+            result = self._eval(
+                config_enabled,
+                spread_at_order=1500.0,
+                last_imbalance=0.35,
+            )
+        assert result.skipped is True
+        assert result.reason == "rule_toxic_low_spread_sell_veto"
+        assert result.early_return_record is not None
+        assert result.early_return_record.cancel_reason == CR.TOXIC_LOW_SPREAD_SELL_VETO
+
+    def test_buy_side_not_vetoed(self, config_enabled: "FillTestConfig") -> None:
+        """buy side -> veto 対象外."""
+        from scripts.v460.lib import skip_gate_evaluator as sge_mod
+        original_build = sge_mod.build_features_from_market_state
+
+        def _patched_build(*args: object, **kwargs: object) -> dict[str, float]:
+            feats = original_build(*args, **kwargs)  # type: ignore[misc]
+            feats["vpin_60s"] = 0.75
+            feats["price_velocity_bps"] = 1.2
+            return feats
+
+        with patch.object(sge_mod, "build_features_from_market_state", side_effect=_patched_build):
+            result = self._eval(
+                config_enabled,
+                side="buy",
+                spread_at_order=1500.0,
+                last_imbalance=0.35,
+            )
+        assert result.reason != "rule_toxic_low_spread_sell_veto"
+
+    def test_wide_spread_not_vetoed(self, config_enabled: "FillTestConfig") -> None:
+        """spread >= 閾値 -> veto しない."""
+        from scripts.v460.lib import skip_gate_evaluator as sge_mod
+        original_build = sge_mod.build_features_from_market_state
+
+        def _patched_build(*args: object, **kwargs: object) -> dict[str, float]:
+            feats = original_build(*args, **kwargs)  # type: ignore[misc]
+            feats["vpin_60s"] = 0.75
+            feats["price_velocity_bps"] = 1.2
+            return feats
+
+        with patch.object(sge_mod, "build_features_from_market_state", side_effect=_patched_build):
+            result = self._eval(
+                config_enabled,
+                spread_at_order=5000.0,
+                last_imbalance=0.35,
+            )
+        assert result.reason != "rule_toxic_low_spread_sell_veto"
+
+    def test_low_obi_not_vetoed(self, config_enabled: "FillTestConfig") -> None:
+        """OBI <= 閾値 -> veto しない."""
+        from scripts.v460.lib import skip_gate_evaluator as sge_mod
+        original_build = sge_mod.build_features_from_market_state
+
+        def _patched_build(*args: object, **kwargs: object) -> dict[str, float]:
+            feats = original_build(*args, **kwargs)  # type: ignore[misc]
+            feats["vpin_60s"] = 0.75
+            feats["price_velocity_bps"] = 1.2
+            return feats
+
+        with patch.object(sge_mod, "build_features_from_market_state", side_effect=_patched_build):
+            result = self._eval(
+                config_enabled,
+                spread_at_order=1500.0,
+                last_imbalance=0.10,
+            )
+        assert result.reason != "rule_toxic_low_spread_sell_veto"

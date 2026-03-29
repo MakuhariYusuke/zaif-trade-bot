@@ -668,6 +668,56 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                     )
                     return result
 
+            # 654# P0-2: Toxic Low-Spread Sell Veto (651#/652# compound guard)
+            # Glosten-Milgrom: 狭spreading + 高VPIN + OBI偏り + 上方加速 = informed flow
+            if (
+                self._config.toxic_sell_veto_enabled
+                and side == "sell"
+                and order_price > 0
+                and spread_at_order is not None
+            ):
+                _spread_bps = (spread_at_order / order_price) * 10000.0
+                _obi = last_imbalance if last_imbalance is not None else 0.0
+                _vpin = vpin_value if vpin_value is not None else 0.0
+                _vel = _pv60 if isinstance(_pv60, (int, float)) else 0.0
+                _vel_th = self._config.toxic_sell_veto_velocity_threshold
+                if (
+                    _spread_bps < self._config.toxic_sell_veto_spread_bps
+                    and _obi > self._config.toxic_sell_veto_obi_threshold
+                    and _vpin > self._config.toxic_sell_veto_vpin_threshold
+                    and (_vel_th <= 0.0 or _vel > _vel_th)
+                ):
+                    logger.info(
+                        "[skip_gate] 654# VETO: toxic low-spread sell "
+                        "spread=%.2fbps OBI=%.3f VPIN=%.3f vel=%.2fbps",
+                        _spread_bps, _obi, _vpin, _vel,
+                    )
+                    early_context = self._build_skip_fill_record_context(
+                        cycle_id=cycle_id,
+                        timestamp=market_ts,
+                        side=side,
+                        order_price=order_price,
+                        order_quantity=current_lot,
+                        cancel_reason=CR.TOXIC_LOW_SPREAD_SELL_VETO,
+                        spread_at_order=spread_at_order,
+                        spread_offset_ratio=effective_offset_ratio,
+                        run_id=run_id,
+                        git_sha=git_sha,
+                        regime_value=regime_value,
+                    )
+                    self._set_early_skip_result(
+                        result,
+                        context=early_context,
+                        score=_spread_bps,
+                        reason="rule_toxic_low_spread_sell_veto",
+                        model_used="rule",
+                        last_imbalance=last_imbalance,
+                        last_bid_depth=last_bid_depth,
+                        last_ask_depth=last_ask_depth,
+                        price_velocity_bps=_pv60 if isinstance(_pv60, (int, float)) else None,
+                    )
+                    return result
+
             # 158# P1-6: 時間帯別 skip_gate 閾値調整
             _utc_hour = utc_hour_from_timestamp(market_ts)
             _hour_offset = resolve_hour_float(

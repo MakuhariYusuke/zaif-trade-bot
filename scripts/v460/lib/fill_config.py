@@ -583,6 +583,13 @@ class FillTestConfig:
     # 196# velocity offset 段階的 boost: 閾値超過量に比例した乗数
     velocity_offset_proportional: bool = False  # True=比例, False=固定
     velocity_offset_max_mult: float = 4.0  # 比例モード時の上限乗数
+    # 654# P0-2: Toxic Low-Spread Sell Veto (651#/652# compound guard)
+    # Glosten-Milgrom: 狭スプレッド + 高 VPIN + OBI偏り + 価格加速 = informed flow
+    toxic_sell_veto_enabled: bool = False  # True で複合条件 sell veto 有効
+    toxic_sell_veto_spread_bps: float = 2.3  # 651# Q1 bucket上限: spread < this で発動候補
+    toxic_sell_veto_obi_threshold: float = 0.25  # 651#: OBI > this (買板厚い = sell 逆選択)
+    toxic_sell_veto_vpin_threshold: float = 0.65  # 651#: VPIN > this (informed flow 高)
+    toxic_sell_veto_velocity_threshold: float = 0.0  # 652#: velocity > this (上方加速, 0=無効)
     # 183# narrow spread 時の skip_gate 閾値オフセット (逆選択防御)
     # spread < narrow_spread_skip_threshold_jpy のとき threshold に加算。
     # ログ分析: spread<2kでAS32% (全体28%) → 閾値厳格化で AS fill削減
