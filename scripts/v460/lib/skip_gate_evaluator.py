@@ -686,12 +686,11 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                 _vel = _pv60 if isinstance(_pv60, (int, float)) else 0.0
                 _vel_th = self._config.toxic_sell_veto_velocity_threshold
 
-                # 各条件を個別評価してスコアリング
+                # 各条件を個別評価
                 _cond_spread = _spread_bps < self._config.toxic_sell_veto_spread_bps
                 _cond_obi = _obi > self._config.toxic_sell_veto_obi_threshold
                 _cond_vpin = _vpin > self._config.toxic_sell_veto_vpin_threshold
                 _cond_vel = (_vel_th <= 0.0 or _vel > _vel_th)
-                _conditions_met = sum([_cond_spread, _cond_obi, _cond_vpin, _cond_vel])
 
                 if _cond_spread and _cond_obi and _cond_vpin and _cond_vel:
                     # 全条件充足
@@ -702,10 +701,13 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                         self._toxic_veto_consecutive_count - 1
                     )
 
-                    if (
+                    # 分岐: as_offset=true→常にソフト / false→decayが
+                    # 50%未満でソフト化へフォールバック / それ以外→hard skip
+                    _soft_mode = (
                         self._config.toxic_sell_veto_as_offset_enabled
-                        or _decay < 0.5  # A-5: 減衰で50%未満→ソフト化にフォールバック
-                    ):
+                        or _decay < 0.5
+                    )
+                    if _soft_mode:
                         # 657# A-4: ソフトモード — offset boost で保守的に発注
                         _boost = self._config.toxic_sell_veto_offset_boost_factor
                         # A-5 減衰適用: boost_effective = 1.0 + (boost - 1.0) * decay

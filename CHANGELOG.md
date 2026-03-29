@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 658# セルフレビュー: 657# ログ・可読性・observability改善 (2026-03-30)
+
+### Fixed
+- dead code `_conditions_met` 削除 (skip_gate_evaluator.py)
+- fill_config.py A-4 コメント修正 (存在しない `soft_max_conditions` 参照を除去)
+- multiplicative_pipeline `_exec_stages` に `toxic_veto` stage 記録追加
+
+### Changed
+- `[inv_skew]` ログ: info→debug + 60秒毎INFOサマリ (time throttle)
+- inv_skew ログに `max_f=` (regime別max_factor) フィールド追加
+- toxic_sell_veto 分岐ロジック可読性向上: `_soft_mode` 変数導入 + コメント補強
+
 ## 657# B-3 regime別max_factor + A-4/A-5 toxic_sell_veto段階化 (2026-03-30)
 
 ### Changed

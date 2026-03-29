@@ -144,6 +144,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         "_inv_buy_count",            # 226# P5: O(1) incremental buy counter
         "_inv_last_update_time",     # 228# C2: last fill timestamp for time-decay
         "_last_inv_skew_factor",     # 168# last applied inv_skew factor
+        "_inv_skew_last_info_time",  # 657# log throttle: 周期的INFOサマリ
         "_last_vg_reason",           # 510# VG boost reason (velocity/vpin/both)
         "_last_ob_snapshot",
         "_last_spread",              # 197# cached spread for Gate pre-check
@@ -222,6 +223,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         self._inv_last_update_time: float = 0.0  # 228# C2: time-decay 基準時刻
         # 168# InvSkew/VG 競合解消: 直近の InvSkew 補正係数 (負=sell緩和)
         self._last_inv_skew_factor: float = 0.0
+        self._inv_skew_last_info_time: float = 0.0  # 657# log throttle
         # 197# cached spread for CycleGateAggregator pre-check
         self._last_spread: float | None = None
         self._last_spread_time: float | None = None  # 210# M5: staleness tracking
@@ -810,11 +812,18 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
             min_ratio=cfg.min_offset_ratio,
         )
         self._last_inv_skew_factor = _factor
-        logger.info(
-            f"[inv_skew] {side} imbalance={_imb:+.3f} "
-            f"raw={_raw_factor:+.4f} smo={_factor:+.4f} mult={_applied_mult:.4f} "
+        # 657# log throttle: 毎回debug + 60秒ごとINFOサマリ
+        _log_msg = (
+            f"[inv_skew] {side} imb={_imb:+.3f} "
+            f"max_f={_effective_max_factor:.2f} raw={_raw_factor:+.4f} "
+            f"smo={_factor:+.4f} mult={_applied_mult:.4f} "
             f"offset {_prev:.4f}->{effective_offset_ratio:.4f}"
         )
+        logger.debug(_log_msg)
+        _now_mono = time.monotonic()
+        if _now_mono - self._inv_skew_last_info_time >= 60.0:
+            logger.info(_log_msg)
+            self._inv_skew_last_info_time = _now_mono
         return effective_offset_ratio
 
     def _apply_spread_adaptive(

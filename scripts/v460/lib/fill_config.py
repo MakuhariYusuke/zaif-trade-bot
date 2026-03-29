@@ -592,7 +592,7 @@ class FillTestConfig:
     toxic_sell_veto_velocity_threshold: float = 0.0  # 652#: velocity > this (上方加速, 0=無効)
     # 657# A-4: toxic_sell_veto ソフト化 (656# Glosten-Milgrom staged response)
     # velocity_skip_as_offset パターン踏襲: hard veto → offset boost
-    # 段階制: 条件充足数 ≤ soft_max_conditions → offset boost, 全条件充足 → hard skip
+    # 全条件充足時でも hard skip せず offset boost で保守的に発注
     toxic_sell_veto_as_offset_enabled: bool = False  # True でソフトモード有効
     toxic_sell_veto_offset_boost_factor: float = 1.8  # ソフト時 offset boost 倍率
     # 657# A-5: 連続 veto 時間減衰 (656# 指数減衰でスティッキー回避)

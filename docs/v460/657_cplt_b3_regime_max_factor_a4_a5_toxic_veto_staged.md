@@ -99,3 +99,23 @@ toxic_sell_veto_decay_alpha: 0.7
 | A-5 連続veto時間減衰 | ✅ 実装済 | このPR |
 | C-4 sell_dynamic_kill ARL最適化 | ⏳ 保留 | 50+ RT蓄積後にARL計測が必要 |
 | D-2/D-6 preflight balance改善 | ⏳ 保留 | B-3効果の計測を先行 |
+
+## セルフレビュー (658#)
+
+657# コミット後の自己レビューで以下を検出・修正。
+
+### 修正済
+
+| ID | 種別 | 内容 | 対応 |
+|----|------|------|------|
+| R1 | dead code | `_conditions_met = sum([...])` 未使用変数 (skip_gate_evaluator.py) | 削除 |
+| R2 | comment | fill_config.py A-4 コメントが存在しない `soft_max_conditions` を参照 | 修正 |
+| R3 | log level | `[inv_skew]` がINFOで毎サイクル出力 | debug化 + 60秒毎INFOサマリ (time throttle) |
+| R4 | observability | inv_skew ログに regime 別 max_factor 情報なし | `max_f=` フィールド追加 |
+| R5 | _exec_stages | multiplicative_pipeline の stage 記録に toxic_veto 欠落 | 追加 |
+| R6 | readability | toxic_sell_veto OR 分岐の可読性 | コメント補強 + `_soft_mode` 変数導入 |
+
+### 要注意事項
+
+- **regime 遷移時の offset 不連続**: ranging→trending 遷移で max_factor が 0.4→0.15 に step change。
+  tanh で滑らかだが regime detector の遅延分ジャンプが発生。fill records で計測推奨。

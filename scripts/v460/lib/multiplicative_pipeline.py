@@ -227,6 +227,7 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
         _exec_stages: dict[str, float | None] = {
             "ev": _ev_offset_mult_applied,
             "velocity": _vel_mult if _vel_offset_applied else None,
+            "toxic_veto": sg_toxic_veto_offset_mult if _toxic_veto_offset_applied else None,  # 657# A-4
             "trending": _trend_mult,
             "toxicity": _tox_mult,
             "vg_supp": _vg_supp_mult,
