@@ -27,8 +27,21 @@ from ztb.metrics.fill_quality import (
     RoundTripRecord,
     compute_round_trip_metrics,
 )
+from ztb.types.common import ConfigSection
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+
+
+@pytest.fixture(scope="module")
+def loaded_default_fill_test_yaml() -> ConfigSection:
+    """load_fill_test_config() の default path 呼び出しを module で共有する."""
+    return load_fill_test_config()
+
+
+@pytest.fixture(scope="module")
+def loaded_explicit_fill_test_yaml() -> ConfigSection:
+    """明示 path 呼び出しも module で共有する."""
+    return load_fill_test_config(_PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml")
 
 
 class _LightweightFillTestRunner:
@@ -80,9 +93,9 @@ def _make_runner(
 class TestLoadFillTestConfig:
     """load_fill_test_config のテスト."""
 
-    def test_load_default_path(self) -> None:
+    def test_load_default_path(self, loaded_default_fill_test_yaml: ConfigSection) -> None:
         """デフォルトパスから fill_test.yaml をロードできる."""
-        cfg = load_fill_test_config()
+        cfg = loaded_default_fill_test_yaml
         assert isinstance(cfg, dict)
         assert cfg["symbol"] == "btc_jpy"
         assert cfg["order_quantity"] == 0.001
@@ -90,15 +103,14 @@ class TestLoadFillTestConfig:
         assert "lot_sizing" in cfg
         assert "safety" in cfg
 
-    def test_load_explicit_path(self) -> None:
+    def test_load_explicit_path(self, loaded_explicit_fill_test_yaml: ConfigSection) -> None:
         """明示パスからロードできる."""
-        path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
-        cfg = load_fill_test_config(path)
+        cfg = loaded_explicit_fill_test_yaml
         assert cfg["spread_offset_ratio"] == 0.05
 
-    def test_yaml_has_all_sections(self) -> None:
+    def test_yaml_has_all_sections(self, loaded_default_fill_test_yaml: ConfigSection) -> None:
         """YAML が全セクションを含む."""
-        cfg = load_fill_test_config()
+        cfg = loaded_default_fill_test_yaml
         # フラットキー
         assert "cycle_interval_sec" in cfg
         assert "order_timeout_sec" in cfg

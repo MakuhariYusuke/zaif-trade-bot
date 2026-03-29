@@ -9467,3 +9467,16 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - focused pytest:
     - 上記 4 ファイル
     - `63 passed, 1 warning in 2.20s`
+
+- 2026-03-30 Codex:
+  - `tests/unit/v460/_real_data_test_helpers.py`
+    - `has_fill_records(...)` を `cached_latest_fill_records_file(...)` 経由へ変更
+  - `tests/unit/v460/test_fill_test_config.py`
+    - default / explicit `load_fill_test_config(...)` を module fixture 化
+  - focused pytest:
+    - `tests/unit/v460/test_fill_test_config.py`
+    - `tests/unit/v460/test_enricher_skip_gate.py`
+    - `154 passed, 1 skipped in 4.14s`
+  - residual:
+    - `test_552_update_training_data.py::TestGetAllParquetFeatures` setup
+    - `test_enricher_skip_gate.py` real-data setup

@@ -643,3 +643,30 @@ durations 変化で特に効いた点:
 1. `tests/unit/v460/test_fill_test_config.py` など parser 契約そのものを見る `from_yaml(...)` テスト群
 2. `tests/unit/v460/test_enricher_skip_gate.py` real-data setup
 3. `tests/legacy_tests/unit/test_event_sourcing.py` の `TemporaryDirectory()` 残差
+
+- default loader + real-data helper sweep:
+  - 追加適用:
+    - `tests/unit/v460/_real_data_test_helpers.py`
+    - `tests/unit/v460/test_fill_test_config.py`
+  - 内容:
+    - `has_fill_records(...)` を `cached_latest_fill_records_file(...)` 経由にして
+      real-data setup 時の glob を 1 段キャッシュ
+    - `test_fill_test_config.py` の default / explicit loader 呼び出しを
+      module-scope fixture に寄せた
+  - focused pytest:
+    - `tests/unit/v460/test_fill_test_config.py`
+    - `tests/unit/v460/test_enricher_skip_gate.py`
+    - `154 passed, 1 skipped in 4.14s`
+  - slowest 12:
+    - `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup `0.29s`
+    - `test_fill_test_config.py::TestFillTestConfigFromYaml::test_from_yaml_defaults` setup `0.11s`
+    - `test_fill_test_config.py::TestLoadFillTestConfig::test_load_default_path` setup `0.11s`
+  - targeted mypy:
+    - `tests/unit/v460/_real_data_test_helpers.py`
+    - `Success: no issues found in 1 source file`
+
+現時点の次残差:
+
+1. `test_552_update_training_data.py` の `TestGetAllParquetFeatures` setup
+2. `test_enricher_skip_gate.py` の real-data enriched setup
+3. `test_fill_test_config.py` の parser-heavy path (baseline mypy 厚め)

@@ -69,7 +69,7 @@ def latest_fill_records_file(
 def has_fill_records(
     results_dir: Path = _DEFAULT_RESULTS_DIR,
 ) -> bool:
-    return latest_fill_records_file(results_dir) is not None
+    return cached_latest_fill_records_file(results_dir) is not None
 
 
 def write_jsonl_sample(path: Path, rows: list[JsonRow]) -> None:
