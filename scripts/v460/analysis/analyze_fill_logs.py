@@ -1318,6 +1318,7 @@ def section_roundtrip(records: list[Record]) -> list[str]:
 
     # ペアリング: 連続する異サイドの約定をペアにする
     roundtrips: list[dict[str, object]] = []
+    paired_indices: set[int] = set()
     i = 0
     while i < len(filled) - 1:
         f1, f2 = filled[i], filled[i + 1]
@@ -1337,13 +1338,17 @@ def section_roundtrip(records: list[Record]) -> list[str]:
             "entry_side": str(f1.get("side", "?")),
             "regime_in": str(f1.get("regime", "?")),
             "regime_out": str(f2.get("regime", "?")),
-            "spread_in": float(f1.get("spread_bps", 0)),
-            "spread_out": float(f2.get("spread_bps", 0)),
+            "spread_in": float(f1.get("spread_bps") or 0),
+            "spread_out": float(f2.get("spread_bps") or 0),
             "gross_jpy": sell_p - buy_p,
             "sidecar_in": str(f1.get("sidecar_signal_status", "?")),
             "sidecar_out": str(f2.get("sidecar_signal_status", "?")),
         })
+        paired_indices.add(i)
+        paired_indices.add(i + 1)
         i += 2
+
+    unpaired = len(filled) - len(paired_indices)
 
     if not roundtrips:
         lines.append("  (no paired roundtrips found)")
@@ -1361,6 +1366,8 @@ def section_roundtrip(records: list[Record]) -> list[str]:
     hold_arr = _np([float(rt["hold_min"]) for rt in roundtrips])
 
     lines.append(f"  RTs: {n_rt}, Win: {n_w}, Loss: {n_l}, WR: {n_w/n_rt*100:.1f}%")
+    if unpaired:
+        lines.append(f"  Unpaired fills: {unpaired}/{len(filled)}")
     lines.append(
         f"  Total: {float(np.sum(pnls)):+.2f}bps, Avg: {float(np.mean(pnls)):+.2f}bps/RT, "
         f"PF: {pf:.2f}"
@@ -1625,18 +1632,17 @@ def section_spread_fill_quality(records: list[Record]) -> list[str]:
     lines.append("  [Side Breakdown]")
     for side in ["buy", "sell"]:
         sf = [r for r in filled if r.get("side") == side]
-        if len(sf) < 3:
-            continue
-        s_spreads = [float(r["spread_bps"]) for r in sf]
-        s_pnls = [
-            float(r.get("post_fill_30s_pnl", 0))
+        # spread と pnl30 の両方が有効なレコードのみペアリング
+        pairs = [
+            (float(r["spread_bps"]), float(r["post_fill_30s_pnl"]))
             for r in sf
             if r.get("post_fill_30s_pnl") is not None
         ]
-        if len(s_spreads) == len(s_pnls) and len(s_pnls) >= 3:
+        if len(pairs) >= 3:
+            s_spreads, s_pnls = zip(*pairs)
             corr = float(np.corrcoef(s_spreads, s_pnls)[0, 1])
             lines.append(
-                f"    {side}: spread-PnL corr={corr:+.3f} (n={len(s_pnls)})"
+                f"    {side}: spread-PnL corr={corr:+.3f} (n={len(pairs)})"
             )
 
     lines.append("")
