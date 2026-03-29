@@ -759,3 +759,4 @@ NNN_phX_TYPE_description.md
 | 652 | review | [652_cplt_second_opinion_and_asymmetric_exit.md](652_cplt_second_opinion_and_asymmetric_exit.md) | 651# セカンドオピニオン: price_velocity / regime-drift exit / 非対称RT exit |
 | 654 | impl | [654_cplt_651_652_review_verification_and_action_plan.md](654_cplt_651_652_review_verification_and_action_plan.md) | 651#/652# 検証・実装: P0-1 inv_skew調整 + P0-2 toxic sell veto |
 | 655 | review | [655_cplt_retrospective_536_to_654_and_new_findings.md](655_cplt_retrospective_536_to_654_and_new_findings.md) | 536# 渙～654# 振り返り: 未達事項棚卸し + 新規4課題発見 |
+| 656 | analysis | [656_cplt_deep_dive_655_four_issues.md](656_cplt_deep_dive_655_four_issues.md) | 655# 4課題の深堀り: 金融工学・市場理論・設計面からの多角的分析 |
