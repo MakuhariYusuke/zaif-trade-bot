@@ -1300,6 +1300,349 @@ def section_attribution_phase2(records: list[Record]) -> list[str]:
     return lines
 
 
+def section_roundtrip(records: list[Record]) -> list[str]:
+    """650# Roundtrip PnL — 買売ペアの Gross PnL 分析.
+
+    個別 fill の 30s post-fill PnL ではなく、実際の買→売 / 売→買 ペアの
+    実現損益 (Gross Roundtrip PnL) を計算する。
+    Market Making の収益は roundtrip 単位で評価すべき (Avellaneda & Stoikov 2008)。
+    """
+    filled = sorted(
+        [r for r in records if r.get("filled") and r.get("fill_price") is not None],
+        key=lambda r: float(r.get("timestamp", 0)),
+    )
+    if len(filled) < 2:
+        return ["## Roundtrip PnL (650#)", "  (insufficient fills for pairing)", ""]
+
+    lines = ["## Roundtrip PnL (650# / Avellaneda-Stoikov)"]
+
+    # ペアリング: 連続する異サイドの約定をペアにする
+    roundtrips: list[dict[str, object]] = []
+    i = 0
+    while i < len(filled) - 1:
+        f1, f2 = filled[i], filled[i + 1]
+        if f1.get("side") == f2.get("side"):
+            i += 1
+            continue
+        sell_p = float(f1["fill_price"]) if f1["side"] == "sell" else float(f2["fill_price"])
+        buy_p = float(f2["fill_price"]) if f1["side"] == "sell" else float(f1["fill_price"])
+        mid = (sell_p + buy_p) / 2.0
+        pnl_bps = (sell_p - buy_p) / mid * 10000.0 if mid > 0 else 0.0
+        ts1 = float(f1.get("timestamp", 0))
+        ts2 = float(f2.get("timestamp", 0))
+        hold_min = (ts2 - ts1) / 60.0 if ts2 > ts1 else 0.0
+        roundtrips.append({
+            "pnl_bps": pnl_bps,
+            "hold_min": hold_min,
+            "entry_side": str(f1.get("side", "?")),
+            "regime_in": str(f1.get("regime", "?")),
+            "regime_out": str(f2.get("regime", "?")),
+            "spread_in": float(f1.get("spread_bps", 0)),
+            "spread_out": float(f2.get("spread_bps", 0)),
+            "gross_jpy": sell_p - buy_p,
+            "sidecar_in": str(f1.get("sidecar_signal_status", "?")),
+            "sidecar_out": str(f2.get("sidecar_signal_status", "?")),
+        })
+        i += 2
+
+    if not roundtrips:
+        lines.append("  (no paired roundtrips found)")
+        lines.append("")
+        return lines
+
+    n_rt = len(roundtrips)
+    pnls = _np([float(rt["pnl_bps"]) for rt in roundtrips])
+    wins = [rt for rt in roundtrips if float(rt["pnl_bps"]) > 0]
+    losses = [rt for rt in roundtrips if float(rt["pnl_bps"]) <= 0]
+    n_w, n_l = len(wins), len(losses)
+    avg_w = float(np.mean([float(w["pnl_bps"]) for w in wins])) if wins else 0.0
+    avg_l = float(np.mean([float(l["pnl_bps"]) for l in losses])) if losses else 0.0
+    pf = abs(avg_w * n_w / (avg_l * n_l)) if n_l and avg_l != 0 else float("inf")
+    hold_arr = _np([float(rt["hold_min"]) for rt in roundtrips])
+
+    lines.append(f"  RTs: {n_rt}, Win: {n_w}, Loss: {n_l}, WR: {n_w/n_rt*100:.1f}%")
+    lines.append(
+        f"  Total: {float(np.sum(pnls)):+.2f}bps, Avg: {float(np.mean(pnls)):+.2f}bps/RT, "
+        f"PF: {pf:.2f}"
+    )
+    lines.append(f"  Avg Win: {avg_w:+.2f}bps, Avg Loss: {avg_l:+.2f}bps")
+    lines.append(
+        f"  Hold: mean={float(np.mean(hold_arr)):.1f}m, "
+        f"median={float(np.median(hold_arr)):.1f}m, max={float(np.max(hold_arr)):.1f}m"
+    )
+
+    # --- Regime 別 ---
+    lines.append("  [Regime Breakdown]")
+    regime_groups: dict[str, list[float]] = {}
+    for rt in roundtrips:
+        reg = str(rt["regime_in"])
+        regime_groups.setdefault(reg, []).append(float(rt["pnl_bps"]))
+    for reg, rpnls in sorted(regime_groups.items()):
+        rw = sum(1 for p in rpnls if p > 0)
+        rl = len(rpnls) - rw
+        lines.append(
+            f"    {reg}: {len(rpnls)} RTs, {sum(rpnls):+.2f}bps, "
+            f"WR={rw/(rw+rl)*100:.0f}%"
+        )
+
+    # --- Entry side 別 ---
+    lines.append("  [Entry Side]")
+    for entry in ["buy", "sell"]:
+        erts = [rt for rt in roundtrips if rt["entry_side"] == entry]
+        if erts:
+            ep = _np([float(rt["pnl_bps"]) for rt in erts])
+            ew = sum(1 for rt in erts if float(rt["pnl_bps"]) > 0)
+            lines.append(
+                f"    {entry}-entry: {len(erts)} RTs, {float(np.sum(ep)):+.2f}bps, "
+                f"WR={ew/len(erts)*100:.0f}%"
+            )
+
+    # --- Worst 3 roundtrips ---
+    sorted_rts = sorted(roundtrips, key=lambda x: float(x["pnl_bps"]))
+    lines.append("  [Worst Roundtrips]")
+    for rt in sorted_rts[:3]:
+        lines.append(
+            f"    {rt['entry_side']}-entry: {float(rt['pnl_bps']):+.2f}bps, "
+            f"hold={float(rt['hold_min']):.1f}m, "
+            f"reg={rt['regime_in']}->{rt['regime_out']}, "
+            f"spread={float(rt['spread_in']):.1f}/{float(rt['spread_out']):.1f}bps"
+        )
+
+    lines.append("")
+    return lines
+
+
+def section_inventory_health(records: list[Record]) -> list[str]:
+    """650# 在庫非対称性分析 — preflight_insufficient から在庫バランスを評価.
+
+    Kyle (1985) の逆選択モデルにおいて、在庫制約は informed trader への
+    情報的不利を生む。片側のみ取引可能 ≒ 逆選択リスクの非対称増大。
+
+    preflight_insufficient の集中度は「その側の注文がシステム的に
+    不可能」を意味し、残存ポジションの手仕舞い能力に直結する。
+    """
+    cancels = [r for r in records if not r.get("filled")]
+    n_total = len(records)
+    lines = ["## Inventory Health (650# / Kyle 1985)"]
+    if not records:
+        lines.append("  (no records)")
+        lines.append("")
+        return lines
+
+    # preflight_insufficient の side 別分布
+    pi_records = [r for r in cancels if r.get("cancel_reason") == "preflight_insufficient"]
+    n_pi = len(pi_records)
+    lines.append(
+        f"  preflight_insufficient: {n_pi}/{n_total} "
+        f"({n_pi/n_total*100:.1f}% of all cycles)"
+    )
+
+    # side 別
+    pi_buy = [r for r in pi_records if r.get("side") == "buy"]
+    pi_sell = [r for r in pi_records if r.get("side") == "sell"]
+    lines.append(f"    buy-side blocked: {len(pi_buy)}, sell-side blocked: {len(pi_sell)}")
+
+    # Balance snapshot from latest fill record
+    balance_records = [
+        r for r in records
+        if r.get("balance_jpy_at_order") is not None and r.get("balance_btc_at_order") is not None
+    ]
+    if balance_records:
+        latest = max(balance_records, key=lambda r: float(r.get("timestamp", 0)))
+        jpy = float(latest["balance_jpy_at_order"])
+        btc = float(latest["balance_btc_at_order"])
+        # BTC → JPY 変換 (直近 mid_at_order)
+        mid = float(latest.get("mid_at_order", 0))
+        btc_jpy = btc * mid if mid > 0 else 0
+        total_jpy = jpy + btc_jpy
+        jpy_ratio = jpy / total_jpy * 100 if total_jpy > 0 else 0
+        btc_ratio = btc_jpy / total_jpy * 100 if total_jpy > 0 else 0
+        lines.append(
+            f"  Balance snapshot: JPY={jpy:.0f}, BTC={btc:.8f} "
+            f"(≈{btc_jpy:.0f}JPY)"
+        )
+        lines.append(f"    JPY ratio: {jpy_ratio:.1f}%, BTC ratio: {btc_ratio:.1f}%")
+        # 50/50 からの乖離度 (inventory risk indicator)
+        imbalance = abs(jpy_ratio - 50.0)
+        risk_label = "LOW" if imbalance < 15 else "MEDIUM" if imbalance < 30 else "HIGH"
+        lines.append(
+            f"    Inventory imbalance: {imbalance:.1f}pp from 50/50 [{risk_label}]"
+        )
+
+    # preflight_insufficient の時間帯集中度
+    if pi_records:
+        pi_hours: dict[int, int] = {}
+        for r in pi_records:
+            ts = r.get("timestamp")
+            if ts:
+                h = datetime.fromtimestamp(float(ts), tz=timezone.utc).hour
+                pi_hours[h] = pi_hours.get(h, 0) + 1
+        if pi_hours:
+            peak_h = max(pi_hours, key=pi_hours.get)  # type: ignore[arg-type]
+            lines.append(
+                f"  Peak hour for preflight_insufficient: "
+                f"{peak_h:02d}h UTC ({pi_hours[peak_h]} cycles)"
+            )
+
+    # deadlock indicator: 連続 preflight の max run length
+    consec = 0
+    max_consec = 0
+    for r in sorted(records, key=lambda x: float(x.get("timestamp", 0))):
+        if r.get("cancel_reason") == "preflight_insufficient":
+            consec += 1
+            max_consec = max(max_consec, consec)
+        else:
+            consec = 0
+    if max_consec > 0:
+        lines.append(f"  Max consecutive preflight_insufficient: {max_consec}")
+
+    lines.append("")
+    return lines
+
+
+def section_mcb_impact(records: list[Record]) -> list[str]:
+    """650# MCB 影響分析 — MCB HALT が open position の P&L に与える影響.
+
+    Foucault, Moinas & Theissen (2007) が示す通り、取引停止中は
+    既存ポジションのヘッジ不能によるインベントリリスクが拡大する。
+    MCB halt 直前/直後の fill を分析し、halt に「挟まれた」ポジションの
+    PnL 劣化を評価する。
+    """
+    filled = sorted(
+        [r for r in records if r.get("filled")],
+        key=lambda r: float(r.get("timestamp", 0)),
+    )
+    mcb_halts = [r for r in records if r.get("cancel_reason") == "mcb_halt"]
+    lines = ["## MCB Impact on Open Positions (650# / Foucault et al. 2007)"]
+
+    n_halts = len(mcb_halts)
+    if not n_halts:
+        lines.append("  MCB halts: 0 (no impact)")
+        lines.append("")
+        return lines
+
+    lines.append(f"  MCB halts: {n_halts} cycles")
+
+    # MCB の時間帯集中
+    mcb_hours: dict[int, int] = {}
+    for r in mcb_halts:
+        ts = r.get("timestamp")
+        if ts:
+            h = datetime.fromtimestamp(float(ts), tz=timezone.utc).hour
+            mcb_hours[h] = mcb_hours.get(h, 0) + 1
+    if mcb_hours:
+        lines.append(
+            f"  MCB hour distribution: "
+            + ", ".join(f"{h:02d}h={c}" for h, c in sorted(mcb_hours.items()))
+        )
+
+    # MCB halt 前後の fill PnL 比較
+    if len(filled) < 2:
+        lines.append("  (insufficient fills for before/after analysis)")
+        lines.append("")
+        return lines
+
+    mcb_timestamps = sorted(
+        [float(r["timestamp"]) for r in mcb_halts if r.get("timestamp")]
+    )
+    if not mcb_timestamps:
+        lines.append("")
+        return lines
+
+    first_mcb = mcb_timestamps[0]
+    last_mcb = mcb_timestamps[-1]
+
+    # MCB 期間に挟まれた fill: MCB 開始直前に entry し、MCB 後に exit したペア
+    # → roundtrip の hold_min が MCB 期間をカバーしているもの
+    before_mcb = [r for r in filled if float(r.get("timestamp", 0)) < first_mcb]
+    during_after = [r for r in filled if float(r.get("timestamp", 0)) >= first_mcb]
+    outside_mcb = [r for r in filled if float(r.get("timestamp", 0)) < first_mcb or float(r.get("timestamp", 0)) > last_mcb + 600]
+
+    pnl_before = _pnls(before_mcb) if before_mcb else _np([])
+    pnl_during = _pnls(during_after) if during_after else _np([])
+    pnl_outside = _pnls(outside_mcb) if outside_mcb else _np([])
+
+    if len(pnl_before):
+        lines.append(f"  Pre-MCB fills: n={len(pnl_before)}, avg_pnl30={float(np.mean(pnl_before)):+.2f}bps")
+    if len(pnl_during):
+        lines.append(f"  During/Post-MCB fills: n={len(pnl_during)}, avg_pnl30={float(np.mean(pnl_during)):+.2f}bps")
+    if len(pnl_outside):
+        lines.append(f"  Outside MCB window fills: n={len(pnl_outside)}, avg_pnl30={float(np.mean(pnl_outside)):+.2f}bps")
+
+    # MCB regime 分布
+    mcb_regimes = collections.Counter(str(r.get("regime", "?")) for r in mcb_halts)
+    lines.append(f"  MCB regime: {dict(mcb_regimes.most_common())}")
+
+    lines.append("")
+    return lines
+
+
+def section_spread_fill_quality(records: list[Record]) -> list[str]:
+    """650# Spread vs Fill Quality — 約定時スプレッドと PnL の相関分析.
+
+    Glosten & Milgrom (1985) の逆選択モデルでは、
+    タイトなスプレッドでの約定ほど informed trader に picked off される
+    リスクが高い。ここでは spread_bps を quartile 分割し、
+    各帯での avg PnL / AS率 を比較して toxicity の構造を可視化する。
+    """
+    filled = [r for r in records if r.get("filled") and r.get("spread_bps") is not None]
+    lines = ["## Spread vs Fill Quality (650# / Glosten-Milgrom 1985)"]
+    if len(filled) < 4:
+        lines.append("  (insufficient fills with spread data)")
+        lines.append("")
+        return lines
+
+    spreads = _np([float(r["spread_bps"]) for r in filled])
+    q25 = float(np.percentile(spreads, 25))
+    q50 = float(np.percentile(spreads, 50))
+    q75 = float(np.percentile(spreads, 75))
+
+    quartile_labels = [
+        (f"Q1 (< {q25:.1f}bps)", lambda s: s < q25),
+        (f"Q2 ({q25:.1f}-{q50:.1f}bps)", lambda s: q25 <= s < q50),
+        (f"Q3 ({q50:.1f}-{q75:.1f}bps)", lambda s: q50 <= s < q75),
+        (f"Q4 (>= {q75:.1f}bps)", lambda s: s >= q75),
+    ]
+
+    for label, pred in quartile_labels:
+        subset = [r for r in filled if pred(float(r["spread_bps"]))]
+        if not subset:
+            continue
+        pnl_arr = _pnls(subset)
+        as_cnt = sum(1 for r in subset if r.get("adverse_selected"))
+        avg_pnl = float(np.mean(pnl_arr)) if len(pnl_arr) else 0.0
+        as_rate = as_cnt / len(subset) * 100
+        avg_wait = float(np.mean([
+            float(r["queue_wait_sec"]) for r in subset
+            if r.get("queue_wait_sec") is not None
+        ] or [0.0]))
+        lines.append(
+            f"  {label}: n={len(subset)}, avg_pnl30={avg_pnl:+.2f}bps, "
+            f"AS={as_rate:.0f}%, avg_wait={avg_wait:.1f}s"
+        )
+
+    # Side 別のスプレッド vs PnL 相関
+    lines.append("  [Side Breakdown]")
+    for side in ["buy", "sell"]:
+        sf = [r for r in filled if r.get("side") == side]
+        if len(sf) < 3:
+            continue
+        s_spreads = [float(r["spread_bps"]) for r in sf]
+        s_pnls = [
+            float(r.get("post_fill_30s_pnl", 0))
+            for r in sf
+            if r.get("post_fill_30s_pnl") is not None
+        ]
+        if len(s_spreads) == len(s_pnls) and len(s_pnls) >= 3:
+            corr = float(np.corrcoef(s_spreads, s_pnls)[0, 1])
+            lines.append(
+                f"    {side}: spread-PnL corr={corr:+.3f} (n={len(s_pnls)})"
+            )
+
+    lines.append("")
+    return lines
+
+
 def section_sidecar_signal(records: list[Record]) -> list[str]:
     """589# Sidecar signal status 分布分析.
 
@@ -1405,6 +1748,10 @@ def main() -> None:
     all_lines.extend(section_buffer_decomposition(records))
     all_lines.extend(section_attribution_phase2(records))
     all_lines.extend(section_sidecar_signal(records))
+    all_lines.extend(section_roundtrip(records))
+    all_lines.extend(section_inventory_health(records))
+    all_lines.extend(section_mcb_impact(records))
+    all_lines.extend(section_spread_fill_quality(records))
 
     write_output("\n".join(all_lines), args.output)
 

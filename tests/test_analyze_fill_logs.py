@@ -18,8 +18,12 @@ from scripts.v460.analysis.analyze_fill_logs import (
     build_parser,
     section_basic,
     section_header,
+    section_inventory_health,
+    section_mcb_impact,
     section_model_used,
+    section_roundtrip,
     section_side,
+    section_spread_fill_quality,
 )
 
 
@@ -301,3 +305,139 @@ class TestSectionModelUsed:
         assert "none" in joined
         assert "primary:side_sell" in joined
         assert "primary:unified" in joined
+
+
+# ---------------------------------------------------------------------------
+# Tests: section_roundtrip (650#)
+# ---------------------------------------------------------------------------
+
+
+class TestSectionRoundtrip:
+    def test_empty(self) -> None:
+        lines = section_roundtrip([])
+        assert any("insufficient" in l for l in lines)
+
+    def test_basic_pairing(self) -> None:
+        """buy → sell ペアが正しく認識され PnL が計算される."""
+        recs = [
+            {**_make_record(side="buy", filled=True, pnl30=1.0, timestamp=1000.0),
+             "fill_price": 10_000_000},
+            {**_make_record(side="sell", filled=True, pnl30=-1.0, timestamp=1060.0),
+             "fill_price": 10_010_000},
+        ]
+        lines = section_roundtrip(recs)
+        text = "\n".join(lines)
+        assert "RTs: 1" in text
+        assert "Win: 1" in text
+
+    def test_same_side_skipped(self) -> None:
+        """同一 side が連続する場合はスキップされる."""
+        recs = [
+            {**_make_record(side="buy", filled=True, pnl30=1.0, timestamp=1000.0),
+             "fill_price": 10_000_000},
+            {**_make_record(side="buy", filled=True, pnl30=2.0, timestamp=1060.0),
+             "fill_price": 10_001_000},
+            {**_make_record(side="sell", filled=True, pnl30=-1.0, timestamp=1120.0),
+             "fill_price": 10_005_000},
+        ]
+        lines = section_roundtrip(recs)
+        text = "\n".join(lines)
+        assert "RTs: 1" in text
+
+    def test_worst_roundtrips_shown(self) -> None:
+        recs = [
+            {**_make_record(side="sell", filled=True, pnl30=-5.0, timestamp=1000.0),
+             "fill_price": 10_000_000},
+            {**_make_record(side="buy", filled=True, pnl30=0.0, timestamp=1060.0),
+             "fill_price": 10_020_000},
+        ]
+        lines = section_roundtrip(recs)
+        text = "\n".join(lines)
+        assert "Worst Roundtrips" in text
+
+
+# ---------------------------------------------------------------------------
+# Tests: section_inventory_health (650#)
+# ---------------------------------------------------------------------------
+
+
+class TestSectionInventoryHealth:
+    def test_empty(self) -> None:
+        lines = section_inventory_health([])
+        assert any("no records" in l for l in lines)
+
+    def test_preflight_counting(self) -> None:
+        recs = [
+            _make_record(side="buy", filled=False),
+            _make_record(side="buy", filled=False),
+            _make_record(side="sell", filled=True, pnl30=1.0),
+        ]
+        recs[0]["cancel_reason"] = "preflight_insufficient"
+        recs[1]["cancel_reason"] = "preflight_insufficient"
+        lines = section_inventory_health(recs)
+        text = "\n".join(lines)
+        assert "preflight_insufficient: 2/3" in text
+
+    def test_balance_snapshot(self) -> None:
+        rec = _make_record(side="sell", filled=True, pnl30=1.0, timestamp=2000.0)
+        rec["balance_jpy_at_order"] = 500.0
+        rec["balance_btc_at_order"] = 0.002
+        rec["mid_at_order"] = 10_000_000
+        lines = section_inventory_health([rec])
+        text = "\n".join(lines)
+        assert "JPY ratio" in text
+        assert "Inventory imbalance" in text
+
+
+# ---------------------------------------------------------------------------
+# Tests: section_mcb_impact (650#)
+# ---------------------------------------------------------------------------
+
+
+class TestSectionMcbImpact:
+    def test_no_halts(self) -> None:
+        recs = [_make_record(filled=True, pnl30=1.0)]
+        lines = section_mcb_impact(recs)
+        text = "\n".join(lines)
+        assert "MCB halts: 0" in text
+
+    def test_with_halts(self) -> None:
+        recs = [
+            _make_record(side="buy", filled=True, pnl30=2.0, timestamp=1000.0),
+            _make_record(side="sell", filled=False, timestamp=1500.0),
+            _make_record(side="buy", filled=True, pnl30=-3.0, timestamp=2000.0),
+        ]
+        recs[1]["cancel_reason"] = "mcb_halt"
+        lines = section_mcb_impact(recs)
+        text = "\n".join(lines)
+        assert "MCB halts: 1" in text
+
+
+# ---------------------------------------------------------------------------
+# Tests: section_spread_fill_quality (650#)
+# ---------------------------------------------------------------------------
+
+
+class TestSectionSpreadFillQuality:
+    def test_insufficient(self) -> None:
+        recs = [_make_record(filled=True, pnl30=1.0)]
+        lines = section_spread_fill_quality(recs)
+        assert any("insufficient" in l for l in lines)
+
+    def test_quartile_output(self) -> None:
+        recs = []
+        for i in range(8):
+            r = _make_record(
+                side="buy" if i % 2 == 0 else "sell",
+                filled=True,
+                pnl30=float(i) - 3.0,
+                timestamp=1000.0 + i * 60,
+            )
+            r["spread_bps"] = 1.0 + i * 0.5
+            r["adverse_selected"] = i < 2
+            r["queue_wait_sec"] = 10.0 + i
+            recs.append(r)
+        lines = section_spread_fill_quality(recs)
+        text = "\n".join(lines)
+        assert "Q1" in text or "Q2" in text
+        assert "avg_pnl30" in text
