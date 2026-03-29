@@ -670,3 +670,36 @@ durations 変化で特に効いた点:
 1. `test_552_update_training_data.py` の `TestGetAllParquetFeatures` setup
 2. `test_enricher_skip_gate.py` の real-data enriched setup
 3. `test_fill_test_config.py` の parser-heavy path (baseline mypy 厚め)
+
+- production/runtime cache sweep (`update_training_data`):
+  - 追加適用:
+    - `scripts/v460/ml/update_training_data.py`
+    - `tests/unit/v460/test_552_update_training_data.py`
+  - 内容:
+    - parquet schema 列取得を file-signature cache 化
+    - 最終 timestamp 取得も file-signature cache 化
+    - heavy な feature module import は `_ensure_feature_registry_loaded()` に集約し、
+      実際に feature 計算が必要な経路に遅延
+    - `_get_all_parquet_features(...)` は parquet schema + SAC 必須列を基準に解決
+  - 検証:
+    - targeted mypy:
+      - `scripts/v460/ml/update_training_data.py`
+      - `tests/unit/v460/test_552_update_training_data.py`
+      - `tests/unit/v460/_real_data_test_helpers.py`
+      - `Success: no issues found in 3 source files`
+    - focused pytest:
+      - `tests/unit/v460/test_552_update_training_data.py`
+      - `16 passed, 1 warning in 0.98s`
+      - `tests/unit/v460/test_552_update_training_data.py`
+      - `tests/unit/v460/test_enricher_skip_gate.py`
+      - `tests/unit/v460/test_fill_test_config.py`
+      - `170 passed, 1 skipped, 1 warning in 3.40s`
+  - before/after:
+    - `test_552_update_training_data.py --durations=12`
+      - before top setup:
+        - `TestGetAllParquetFeatures::test_includes_sac_features` setup `0.60s`
+      - after top setup:
+        - `TestGetParquetLastTimestamp::test_returns_last_ts` setup `0.09s`
+    - combined subset (`552 + enricher + fill_test_config`)
+      - before: `169 passed, 1 skipped, 1 warning in 4.47s`
+      - after: `170 passed, 1 skipped, 1 warning in 3.40s`

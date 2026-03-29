@@ -9480,3 +9480,22 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - residual:
     - `test_552_update_training_data.py::TestGetAllParquetFeatures` setup
     - `test_enricher_skip_gate.py` real-data setup
+
+- 2026-03-30 Codex:
+  - `scripts/v460/ml/update_training_data.py`
+    - parquet schema / last timestamp を file-signature cache 化
+    - feature registry import を `_ensure_feature_registry_loaded()` に集約
+  - `tests/unit/v460/test_552_update_training_data.py`
+    - parquet cache invalidation 回帰を追加
+  - targeted mypy:
+    - `scripts/v460/ml/update_training_data.py`
+    - `tests/unit/v460/test_552_update_training_data.py`
+    - `tests/unit/v460/_real_data_test_helpers.py`
+    - `Success: no issues found in 3 source files`
+  - focused pytest:
+    - `tests/unit/v460/test_552_update_training_data.py`
+    - `16 passed, 1 warning in 0.98s`
+    - `tests/unit/v460/test_552_update_training_data.py`
+    - `tests/unit/v460/test_enricher_skip_gate.py`
+    - `tests/unit/v460/test_fill_test_config.py`
+    - `170 passed, 1 skipped, 1 warning in 3.40s`

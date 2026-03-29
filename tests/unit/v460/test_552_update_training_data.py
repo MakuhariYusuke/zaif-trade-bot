@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from datetime import datetime, timezone
 import shutil
 from pathlib import Path
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -24,7 +25,7 @@ from scripts.v460.ml.update_training_data import (
 )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module")  # type: ignore[untyped-decorator]
 def sample_ohlcv() -> pd.DataFrame:
     """テスト用 OHLCV DataFrame."""
     n = 100
@@ -50,20 +51,20 @@ def _build_sample_parquet(path: Path, sample_ohlcv: pd.DataFrame) -> None:
     df.to_parquet(path, index=False)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module")  # type: ignore[untyped-decorator]
 def sample_parquet_template(
     sample_ohlcv: pd.DataFrame,
     tmp_path_factory: pytest.TempPathFactory,
 ) -> Path:
     """読み取り専用の parquet template を module 単位で共有する."""
-    path = tmp_path_factory.mktemp("update_training_data") / "test.parquet"
+    path = cast(Path, tmp_path_factory.mktemp("update_training_data")) / "test.parquet"
     _build_sample_parquet(path, sample_ohlcv)
     # 初回 engine 初期化を fixture 側で吸収し、individual test の first-call cost を減らす.
     pd.read_parquet(path, columns=["timestamp"])
     return path
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[untyped-decorator]
 def sample_parquet(sample_parquet_template: Path, tmp_path: Path) -> Path:
     """各テスト用の parquet ファイルを template から複製する."""
     path = tmp_path / "test.parquet"
@@ -71,7 +72,7 @@ def sample_parquet(sample_parquet_template: Path, tmp_path: Path) -> Path:
     return path
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module")  # type: ignore[untyped-decorator]
 def sample_parquet_features(sample_parquet_template: Path) -> tuple[str, ...]:
     """parquet の feature 名取得を module 単位で warm up する."""
     return tuple(_get_all_parquet_features(sample_parquet_template))
@@ -202,11 +203,26 @@ class TestGetAllParquetFeatures:
         for feat in _SAC_FEATURES:
             assert feat in result
 
+    def test_cache_invalidates_when_parquet_changes(
+        self,
+        sample_parquet: Path,
+    ) -> None:
+        initial = set(_get_all_parquet_features(sample_parquet))
+
+        updated = pd.read_parquet(sample_parquet)
+        updated["price_velocity"] = updated["price_velocity"].astype(np.float32)
+        updated["ema_velocity_bps"] = np.float32(0.0)
+        updated.to_parquet(sample_parquet, index=False)
+
+        refreshed = set(_get_all_parquet_features(sample_parquet))
+        assert initial <= refreshed
+        assert "ema_velocity_bps" in refreshed
+
 
 class TestDownloadOhlcv:
     """_download_ohlcv のテスト (mocked)."""
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture(scope="class")  # type: ignore[untyped-decorator]
     def mock_hist(self) -> pd.DataFrame:
         return pd.DataFrame(
             {

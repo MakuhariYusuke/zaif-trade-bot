@@ -23,7 +23,9 @@ from __future__ import annotations
 import logging
 import sys
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -60,18 +62,63 @@ _SAC_FEATURES = [
 _WARMUP_ROWS = 500  # RSI 等のウォームアップに必要な行数
 
 
+def _parquet_file_signature(path: Path) -> tuple[int, int]:
+    """Return (mtime_ns, size) so cached parquet metadata can invalidate safely."""
+    try:
+        st = path.stat()
+    except OSError:
+        return -1, -1
+    return st.st_mtime_ns, st.st_size
+
+
+@lru_cache(maxsize=1)
+def _ensure_feature_registry_loaded() -> None:
+    """FeatureRegistry import/register の重い初期化を 1 度だけ行う."""
+    import ztb.features.scalping  # noqa: F401
+    import ztb.features.market_theory  # noqa: F401
+    import ztb.features.time.time_features  # noqa: F401
+    try:
+        import ztb.features.generators.technical.volume.chaikin_ad  # noqa: F401
+    except ImportError:
+        pass
+    try:
+        import ztb.features.volatility.normalized_atr  # noqa: F401
+    except ImportError:
+        pass
+
+
+@lru_cache(maxsize=32)
+def _cached_parquet_feature_columns(
+    path_str: str,
+    mtime_ns: int,
+    size: int,
+) -> tuple[str, ...]:
+    """Read parquet schema once per file signature."""
+    del mtime_ns, size  # only used as cache key
+    return tuple(pd.read_parquet(path_str, columns=[]).columns)
+
+
 def _get_parquet_last_timestamp(parquet_path: Path) -> datetime | None:
     """parquet の最終タイムスタンプを取得."""
     if not parquet_path.exists():
         return None
-    df = pd.read_parquet(parquet_path, columns=["timestamp"])
+    mtime_ns, size = _parquet_file_signature(parquet_path)
+    return _cached_parquet_last_timestamp(str(parquet_path), mtime_ns, size)
+
+
+@lru_cache(maxsize=32)
+def _cached_parquet_last_timestamp(
+    path_str: str,
+    mtime_ns: int,
+    size: int,
+) -> datetime | None:
+    """Read last parquet timestamp once per file signature."""
+    del mtime_ns, size  # only used as cache key
+    df = pd.read_parquet(path_str, columns=["timestamp"])
     if df.empty:
         return None
     last_ts = df["timestamp"].iloc[-1]
-    if hasattr(last_ts, "to_pydatetime"):
-        dt = last_ts.to_pydatetime()
-    else:
-        dt = pd.Timestamp(last_ts).to_pydatetime()
+    dt = cast(datetime, pd.Timestamp(last_ts).to_pydatetime())
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt
@@ -120,18 +167,7 @@ def _download_ohlcv(period: str = "7d") -> pd.DataFrame:
 def _compute_features(df: pd.DataFrame, feature_names: list[str]) -> pd.DataFrame:
     """FeatureRegistry を使って特徴量を計算."""
     # Feature modules を import して register
-    import ztb.features.scalping  # noqa: F401
-    import ztb.features.market_theory  # noqa: F401
-    import ztb.features.time.time_features  # noqa: F401
-
-    try:
-        import ztb.features.generators.technical.volume.chaikin_ad  # noqa: F401
-    except ImportError:
-        pass
-    try:
-        import ztb.features.volatility.normalized_atr  # noqa: F401
-    except ImportError:
-        pass
+    _ensure_feature_registry_loaded()
 
     from ztb.features.core.registry import FeatureRegistry
 
@@ -250,33 +286,16 @@ def update_training_parquet(
 
 
 def _get_all_parquet_features(parquet_path: Path) -> list[str]:
-    """parquet に存在する FeatureRegistry 計算可能な特徴量名を取得."""
+    """parquet schema に存在する特徴量名を取得し、SAC 必須列を補完する."""
     if not parquet_path.exists():
         return list(_SAC_FEATURES)
 
-    existing_cols = set(pd.read_parquet(parquet_path, columns=[]).columns)
+    mtime_ns, size = _parquet_file_signature(parquet_path)
+    existing_cols = set(
+        _cached_parquet_feature_columns(str(parquet_path), mtime_ns, size)
+    )
     non_feature_cols = set(_OHLCV_COLS)
-
-    # FeatureRegistry から計算可能な名前のみ
-    try:
-        import ztb.features.scalping  # noqa: F401
-        import ztb.features.market_theory  # noqa: F401
-        import ztb.features.time.time_features  # noqa: F401
-        try:
-            import ztb.features.generators.technical.volume.chaikin_ad  # noqa: F401
-        except ImportError:
-            pass
-        try:
-            import ztb.features.volatility.normalized_atr  # noqa: F401
-        except ImportError:
-            pass
-        from ztb.features.core.registry import FeatureRegistry
-        registry_names = set(FeatureRegistry.list())
-    except Exception:
-        registry_names = set(_SAC_FEATURES)
-
-    # 既存 parquet にある列 AND registry に登録されている特徴量
-    computable = (existing_cols - non_feature_cols) & registry_names
+    computable = existing_cols - non_feature_cols
 
     # SAC必須特徴量は必ず含める
     computable |= set(_SAC_FEATURES)
