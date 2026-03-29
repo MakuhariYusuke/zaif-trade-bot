@@ -44,7 +44,7 @@ from ztb.ml.skip_gate import (
 from scripts.v460.ml.data_loader import build_as_features, load_fill_records as load_fill_records_df
 from tests.unit.v460._real_data_test_helpers import (
     JsonRow,
-    has_fill_records,
+    has_fill_records_and_raw_data,
     load_recent_fill_records_df as _load_recent_fill_records_df,
     select_minimum_trainable_fill_df,
     write_jsonl_gz as _write_jsonl_gz,
@@ -1022,10 +1022,7 @@ class Test058Integration:
 
     @pytest.fixture(scope="class")
     def real_data_available(self) -> bool:
-        return (
-            has_fill_records()
-            and Path("data/v460/raw/orderbook").exists()
-        )
+        return has_fill_records_and_raw_data()
 
     @pytest.fixture(scope="class")
     def real_enriched_df(

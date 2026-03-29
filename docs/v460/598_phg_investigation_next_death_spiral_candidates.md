@@ -227,6 +227,38 @@ Success: no issues found in 3 source files
     - result/report
     の update ownership を薄くするところで止める
 
+2026-03-30 god object 再確認:
+
+- `scripts/v460/lib/maker_price.py`
+  - `compute()` 自体は pipeline 化が進んでおり、次の大分割対象ではない
+  - 残る局所候補は
+    - stage store の seed/persist
+    - cache / snapshot refresh
+    - cross-venue veto raise
+    の ownership 境界
+  - したがって次の手は「新ファイル分割」ではなく、
+    helper 契約の追加と source-contract test の追随で十分
+- `scripts/v460/lib/ab_judgment.py`
+  - statistical payload / per-regime orchestration / summary builder に分解済み
+  - 残る候補は
+    - analyzer fallback
+    - report line shaping
+    の境界固定で、こちらも大分割は不要
+- 次の god object 予備軍としては
+  - `ztb/metrics/fill_quality.py`
+    - outward dict / telemetry field が増えやすい
+  - `tests/unit/v460/test_fill_test_config.py`
+    - parser 契約テストが集まりやすい
+  の 2 本の方が先に注意対象
+
+判断:
+
+- `maker_price` / `ab_judgment` は「再分割するより、今の helper 境界を壊さない」フェーズ
+- 今の実利は
+  - test/runtime 固定費の削減
+  - `fill_quality` 周辺の outward contract 管理
+  にある
+
 2026-03-26 追加:
 
 - `reproduce_152_metrics.py`

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Quick validation test for reward_components persistence."""
 import json
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 # Add project root to path
@@ -10,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from ztb.training.unified_trainer.main import main as unified_trainer_main
 
 
-def create_minimal_config(output_path: str):
+def create_minimal_config(output_path: str) -> str:
     """Create minimal config for quick validation."""
     config = {
         "version": "test",
@@ -73,7 +75,7 @@ def create_minimal_config(output_path: str):
     return output_path
 
 
-def check_training_report(report_dir: Path):
+def check_training_report(report_dir: Path) -> bool:
     """Check if training reports contain reward_components."""
     reports = list(report_dir.glob("training_report_*.json"))
     
@@ -105,11 +107,10 @@ def check_training_report(report_dir: Path):
 
 
 if __name__ == "__main__":
-    import tempfile
-    
     print("Creating minimal test config...")
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-        config_path = f.name
+    fd, config_path = tempfile.mkstemp(suffix=".json")
+    os.close(fd)
+    Path(config_path).unlink(missing_ok=True)
     
     try:
         config_path = create_minimal_config(config_path)

@@ -13,6 +13,7 @@ from ztb.io.jsonl import read_tail_jsonl_objects
 
 
 _DEFAULT_RESULTS_DIR = Path("results/v460/fill_test")
+_DEFAULT_RAW_DIR = Path("data/v460/raw")
 JsonRow: TypeAlias = dict[str, object]
 
 
@@ -70,6 +71,14 @@ def has_fill_records(
     results_dir: Path = _DEFAULT_RESULTS_DIR,
 ) -> bool:
     return cached_latest_fill_records_file(results_dir) is not None
+
+
+@lru_cache(maxsize=4)
+def has_fill_records_and_raw_data(
+    results_dir: Path = _DEFAULT_RESULTS_DIR,
+    raw_dir: Path = _DEFAULT_RAW_DIR,
+) -> bool:
+    return has_fill_records(results_dir) and (raw_dir / "orderbook").exists()
 
 
 def write_jsonl_sample(path: Path, rows: list[JsonRow]) -> None:

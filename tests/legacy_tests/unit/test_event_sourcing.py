@@ -3,7 +3,6 @@ Tests for Event Sourcing functionality in CoverageValidator.
 """
 
 import json
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -80,99 +79,95 @@ class TestEventSourcing:
         # Last updated should be the latest timestamp
         assert coverage_data["metadata"]["last_updated"] == ts2
 
-    def test_archive_coverage_data(self):
+    def test_archive_coverage_data(self, tmp_path: Path):
         """Test archiving coverage data"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            archive_dir = Path(temp_dir) / "archive"
-            archive_dir.mkdir()
+        archive_dir = tmp_path / "archive"
+        archive_dir.mkdir()
 
-            coverage_data = {
-                "events": [
-                    {
-                        "timestamp": "2024-01-15T10:00:00",
-                        "type": "feature_promoted",
-                        "feature": "rsi_14",
-                    },
-                    {
-                        "timestamp": "2024-01-16T10:00:00",
-                        "type": "feature_promoted",
-                        "feature": "ema_20",
-                    },
-                ],
-                "current_state": {},
-                "metadata": {},
-            }
-
-            CoverageValidator.archive_coverage_data(coverage_data, str(archive_dir))
-
-            # Check archive file was created
-            archive_file = archive_dir / "coverage_2024.json"
-            assert archive_file.exists()
-
-            # Check archive contents
-            with open(archive_file, "r") as f:
-                archive_content = json.load(f)
-
-            assert "events" in archive_content
-            assert len(archive_content["events"]) == 2
-            assert archive_content["metadata"]["year"] == 2024
-
-    def test_archive_coverage_data_empty_events(self):
-        """Test archiving with no events"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            archive_dir = Path(temp_dir) / "archive"
-            archive_dir.mkdir()
-
-            coverage_data = {"events": [], "current_state": {}, "metadata": {}}
-
-            # Should not create archive file
-            CoverageValidator.archive_coverage_data(coverage_data, str(archive_dir))
-
-            # No files should be created
-            assert len(list(archive_dir.glob("*.json"))) == 0
-
-    def test_load_coverage_files_with_events(self):
-        """Test loading coverage files with event sourcing structure"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            coverage_dir = Path(temp_dir) / "coverage"
-            coverage_dir.mkdir()
-
-            # Create main coverage.json with events
-            main_coverage = {
-                "events": [
-                    {
-                        "timestamp": "2024-01-15T10:00:00",
-                        "type": "feature_promoted",
-                        "feature": "rsi_14",
-                        "from_status": "pending",
-                        "to_status": "staging",
-                    }
-                ],
-                "current_state": {
-                    "staging": ["rsi_14"],
-                    "pending": ["ema_20"],
-                    "verified": [],
-                    "failed": [],
-                    "unverified": [],
+        coverage_data = {
+            "events": [
+                {
+                    "timestamp": "2024-01-15T10:00:00",
+                    "type": "feature_promoted",
+                    "feature": "rsi_14",
                 },
-                "metadata": {"last_updated": "2024-01-15T10:00:00"},
-            }
+                {
+                    "timestamp": "2024-01-16T10:00:00",
+                    "type": "feature_promoted",
+                    "feature": "ema_20",
+                },
+            ],
+            "current_state": {},
+            "metadata": {},
+        }
 
-            with open(coverage_dir / "coverage.json", "w") as f:
-                json.dump(main_coverage, f)
+        CoverageValidator.archive_coverage_data(coverage_data, str(archive_dir))
 
-            # Load coverage
-            loaded = CoverageValidator.load_coverage_files(str(coverage_dir))
+        # Check archive file was created
+        archive_file = archive_dir / "coverage_2024.json"
+        assert archive_file.exists()
 
-            # Check events are preserved
-            assert "events" in loaded
-            assert len(loaded["events"]) == 1
-            assert loaded["events"][0]["feature"] == "rsi_14"
+        # Check archive contents
+        with open(archive_file, "r") as f:
+            archive_content = json.load(f)
 
-            # Check current_state is accessible
-            assert "current_state" in loaded
-            assert "staging" in loaded["current_state"]
-            assert "rsi_14" in loaded["current_state"]["staging"]
+        assert "events" in archive_content
+        assert len(archive_content["events"]) == 2
+        assert archive_content["metadata"]["year"] == 2024
+
+    def test_archive_coverage_data_empty_events(self, tmp_path: Path):
+        """Test archiving with no events"""
+        archive_dir = tmp_path / "archive"
+        archive_dir.mkdir()
+
+        coverage_data = {"events": [], "current_state": {}, "metadata": {}}
+
+        # Should not create archive file
+        CoverageValidator.archive_coverage_data(coverage_data, str(archive_dir))
+
+        # No files should be created
+        assert len(list(archive_dir.glob("*.json"))) == 0
+
+    def test_load_coverage_files_with_events(self, tmp_path: Path):
+        """Test loading coverage files with event sourcing structure"""
+        coverage_dir = tmp_path / "coverage"
+        coverage_dir.mkdir()
+
+        # Create main coverage.json with events
+        main_coverage = {
+            "events": [
+                {
+                    "timestamp": "2024-01-15T10:00:00",
+                    "type": "feature_promoted",
+                    "feature": "rsi_14",
+                    "from_status": "pending",
+                    "to_status": "staging",
+                }
+            ],
+            "current_state": {
+                "staging": ["rsi_14"],
+                "pending": ["ema_20"],
+                "verified": [],
+                "failed": [],
+                "unverified": [],
+            },
+            "metadata": {"last_updated": "2024-01-15T10:00:00"},
+        }
+
+        with open(coverage_dir / "coverage.json", "w") as f:
+            json.dump(main_coverage, f)
+
+        loaded = CoverageValidator.load_coverage_files(str(coverage_dir))
+
+        # Check events are preserved
+        assert "events" in loaded
+        assert len(loaded["events"]) == 1
+        assert loaded["events"][0]["feature"] == "rsi_14"
+
+        # Check current_state is accessible
+        assert "current_state" in loaded
+        assert "staging" in loaded["current_state"]
+        assert "rsi_14" in loaded["current_state"]["staging"]
 
     def test_merge_coverage_with_events(self):
         """Test merging coverage data that includes events"""
@@ -226,35 +221,33 @@ class TestEventSourcing:
         # Check metadata is updated
         assert target["metadata"]["last_updated"] == "2024-01-15T10:00:00"
 
-    def test_backward_compatibility_old_format(self):
+    def test_backward_compatibility_old_format(self, tmp_path: Path):
         """Test loading old format coverage files without events"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            coverage_dir = Path(temp_dir) / "coverage"
-            coverage_dir.mkdir()
+        coverage_dir = tmp_path / "coverage"
+        coverage_dir.mkdir()
 
-            # Create old format coverage.json
-            old_coverage = {
-                "verified": ["rsi_14"],
-                "pending": ["ema_20"],
-                "failed": [],
-                "unverified": [],
-                "metadata": {"last_updated": "2024-01-15T10:00:00"},
-            }
+        # Create old format coverage.json
+        old_coverage = {
+            "verified": ["rsi_14"],
+            "pending": ["ema_20"],
+            "failed": [],
+            "unverified": [],
+            "metadata": {"last_updated": "2024-01-15T10:00:00"},
+        }
 
-            with open(coverage_dir / "coverage.json", "w") as f:
-                json.dump(old_coverage, f)
+        with open(coverage_dir / "coverage.json", "w") as f:
+            json.dump(old_coverage, f)
 
-            # Load coverage
-            loaded = CoverageValidator.load_coverage_files(str(coverage_dir))
+        loaded = CoverageValidator.load_coverage_files(str(coverage_dir))
 
-            # Check events array is created
-            assert "events" in loaded
-            assert isinstance(loaded["events"], list)
+        # Check events array is created
+        assert "events" in loaded
+        assert isinstance(loaded["events"], list)
 
-            # Check current_state is created from old format
-            assert "current_state" in loaded
-            assert loaded["current_state"]["verified"] == ["rsi_14"]
-            assert loaded["current_state"]["pending"] == ["ema_20"]
+        # Check current_state is created from old format
+        assert "current_state" in loaded
+        assert loaded["current_state"]["verified"] == ["rsi_14"]
+        assert loaded["current_state"]["pending"] == ["ema_20"]
 
     def test_event_sourcing_preserves_order(self):
         """Test that events are preserved in chronological order"""

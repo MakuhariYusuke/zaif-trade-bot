@@ -9508,3 +9508,21 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `tests/unit/v460/test_552_update_training_data.py`
     - `tests/unit/v460/test_enricher_skip_gate.py`
     - `170 passed, 1 skipped, 1 warning in 3.12s`
+
+- 2026-03-30 Codex:
+  - `tests/unit/v460/_real_data_test_helpers.py`
+    - `has_fill_records_and_raw_data(...)` を追加
+    - real-data integration の可用性判定を helper 側へ集約
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - real-data availability fixture を shared helper に寄せた
+  - `tests/unit/v460/test_fill_test_config.py`
+    - `loaded_default_fill_test_yaml`
+    - `empty_fill_test_config`
+    を追加し、read-only default/live YAML path を共有化
+  - `tests/legacy_tests/unit/test_event_sourcing.py`
+    - `TemporaryDirectory()` を `tmp_path` ベースへ整理
+  - `tests/unit/reward/validate_reward_components.py`
+    - temp config 作成を `mkstemp()` ベースへ整理
+  - docs:
+    - `612#` に test runtime residual を追記
+    - `598#` に `maker_price` / `ab_judgment` の god object 再確認を追記

@@ -32,16 +32,22 @@ from ztb.types.common import ConfigSection
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module")  # type: ignore[untyped-decorator]
 def loaded_default_fill_test_yaml() -> ConfigSection:
     """load_fill_test_config() の default path 呼び出しを module で共有する."""
     return load_fill_test_config()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module")  # type: ignore[untyped-decorator]
 def loaded_explicit_fill_test_yaml() -> ConfigSection:
     """明示 path 呼び出しも module で共有する."""
     return load_fill_test_config(_PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml")
+
+
+@pytest.fixture(scope="module")  # type: ignore[untyped-decorator]
+def empty_fill_test_config() -> FillTestConfig:
+    """空 YAML 由来のデフォルト設定を module で共有する."""
+    return FillTestConfig.from_yaml({})
 
 
 class _LightweightFillTestRunner:
@@ -324,9 +330,9 @@ class TestFillTestYamlFile:
 class Test054ImbalanceConfig:
     """054# S1: Imbalance 設定のテスト."""
 
-    def test_yaml_has_imbalance_section(self) -> None:
+    def test_yaml_has_imbalance_section(self, loaded_default_fill_test_yaml: ConfigSection) -> None:
         """YAML に imbalance セクションがある (071# disabled)."""
-        cfg = load_fill_test_config()
+        cfg = loaded_default_fill_test_yaml
         assert "imbalance" in cfg
         assert cfg["imbalance"]["enabled"] is False  # 071# OB無視
         assert cfg["imbalance"]["depth"] == 5
@@ -350,9 +356,9 @@ class Test054ImbalanceConfig:
         assert config.imbalance_offset_boost == 2.0
         assert config.imbalance_skip_threshold == 0.8
 
-    def test_from_yaml_imbalance_defaults(self) -> None:
+    def test_from_yaml_imbalance_defaults(self, empty_fill_test_config: FillTestConfig) -> None:
         """Imbalance 未設定時のデフォルト値."""
-        config = FillTestConfig.from_yaml({})
+        config = empty_fill_test_config
         assert config.imbalance_enabled is False
         assert config.imbalance_depth == 5
         assert config.imbalance_threshold == 0.3
@@ -363,9 +369,9 @@ class Test054ImbalanceConfig:
 class Test054SmartSideConfig:
     """054# S2: Smart Side 設定のテスト."""
 
-    def test_yaml_has_smart_side_section(self) -> None:
+    def test_yaml_has_smart_side_section(self, loaded_default_fill_test_yaml: ConfigSection) -> None:
         """YAML に smart_side セクションがある (071# disabled)."""
-        cfg = load_fill_test_config()
+        cfg = loaded_default_fill_test_yaml
         assert "smart_side" in cfg
         assert cfg["smart_side"]["enabled"] is False  # 071# OB無視
         assert cfg["smart_side"]["mode"] == "suppress"
@@ -385,9 +391,9 @@ class Test054SmartSideConfig:
         assert config.smart_side_mode == "follow"
         assert config.smart_side_max_consecutive == 3
 
-    def test_from_yaml_smart_side_defaults(self) -> None:
+    def test_from_yaml_smart_side_defaults(self, empty_fill_test_config: FillTestConfig) -> None:
         """Smart Side 未設定時のデフォルト値."""
-        config = FillTestConfig.from_yaml({})
+        config = empty_fill_test_config
         assert config.smart_side_enabled is False
         assert config.smart_side_mode == "suppress"
         assert config.smart_side_max_consecutive == 2
@@ -396,9 +402,9 @@ class Test054SmartSideConfig:
 class Test054EarlyExitConfig:
     """054# S3: Early Exit 設定のテスト."""
 
-    def test_yaml_has_early_exit_section(self) -> None:
+    def test_yaml_has_early_exit_section(self, loaded_default_fill_test_yaml: ConfigSection) -> None:
         """YAML に early_exit セクションがある."""
-        cfg = load_fill_test_config()
+        cfg = loaded_default_fill_test_yaml
         assert "early_exit" in cfg
         # 120# P0: EE は 119# 分析結果に基づき無効化
         assert cfg["early_exit"]["enabled"] is False
@@ -424,9 +430,9 @@ class Test054EarlyExitConfig:
 class Test054SpreadAdaptiveConfig:
     """054# S4: Spread Adaptive 設定のテスト."""
 
-    def test_yaml_has_spread_adaptive_section(self) -> None:
+    def test_yaml_has_spread_adaptive_section(self, loaded_default_fill_test_yaml: ConfigSection) -> None:
         """YAML に spread_adaptive セクションがある."""
-        cfg = load_fill_test_config()
+        cfg = loaded_default_fill_test_yaml
         assert "spread_adaptive" in cfg
         assert cfg["spread_adaptive"]["enabled"] is True
         # 121# A3: postonly_reject 抑制のため P50 近辺に引き上げ (2.0→2.5)
@@ -842,9 +848,9 @@ class Test055RoundTripBidirectional:
 class Test062SkipGateConfig:
     """062# S5: SkipGate 設定のテスト."""
 
-    def test_yaml_has_skip_gate_section(self) -> None:
+    def test_yaml_has_skip_gate_section(self, loaded_default_fill_test_yaml: ConfigSection) -> None:
         """YAML に skip_gate セクションがある."""
-        cfg = load_fill_test_config()
+        cfg = loaded_default_fill_test_yaml
         assert "skip_gate" in cfg
         assert cfg["skip_gate"]["enabled"] is True  # 065#: 学習済みモデルで有効化
         assert cfg["skip_gate"]["mode"] == "pnl"  # 127# C1: as→pnl
@@ -871,9 +877,9 @@ class Test062SkipGateConfig:
         assert config.skip_gate_pnl_threshold == -1.0
         assert config.skip_gate_max_skip_rate == 0.2
 
-    def test_from_yaml_skip_gate_defaults(self) -> None:
+    def test_from_yaml_skip_gate_defaults(self, empty_fill_test_config: FillTestConfig) -> None:
         """SkipGate 未設定時のデフォルト値."""
-        config = FillTestConfig.from_yaml({})
+        config = empty_fill_test_config
         assert config.skip_gate_enabled is False
         assert config.skip_gate_mode == "as"
         assert config.skip_gate_model_path == "models/v460/skip_gate_as.pkl"
@@ -904,21 +910,21 @@ class Test062SkipGateConfig:
         assert config.skip_gate_mode == cfg["skip_gate"]["mode"]
         assert config.skip_gate_as_threshold == cfg["skip_gate"]["as_threshold"]
 
-    def test_071_no_fallback_path_in_config(self) -> None:
+    def test_071_no_fallback_path_in_config(self, empty_fill_test_config: FillTestConfig) -> None:
         """071# fallback_path は OB 除去で廃止済み."""
-        config = FillTestConfig.from_yaml({})
+        config = empty_fill_test_config
         assert not hasattr(config, "skip_gate_fallback_path")
 
-    def test_071_no_ob_freshness_in_config(self) -> None:
+    def test_071_no_ob_freshness_in_config(self, empty_fill_test_config: FillTestConfig) -> None:
         """071# ob_freshness_sec は OB 除去で廃止済み."""
-        config = FillTestConfig.from_yaml({})
+        config = empty_fill_test_config
         assert not hasattr(config, "skip_gate_ob_freshness_sec")
         assert not hasattr(config, "ob_fail_max_consecutive")
         assert not hasattr(config, "ob_fail_offset_boost")
 
-    def test_072_use_ob_features_default_false(self) -> None:
+    def test_072_use_ob_features_default_false(self, empty_fill_test_config: FillTestConfig) -> None:
         """072# use_ob_features のデフォルトは False."""
-        config = FillTestConfig.from_yaml({})
+        config = empty_fill_test_config
         assert config.skip_gate_use_ob_features is False
 
     def test_072_use_ob_features_from_yaml(self) -> None:

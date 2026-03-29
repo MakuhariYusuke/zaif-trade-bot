@@ -157,6 +157,44 @@
 4. before / after 比較をこの文書に追記していく
 5. `tests/ --durations=30 --no-cov` を改めて取り切り、top 30 を分類する
 
+## 追加の shared fixture / tempfile hygiene
+
+2026-03-30 時点で、次の 3 系統をさらにまとめて整理した。
+
+1. `fill_test.yaml` / default config の再読込削減
+   - `tests/unit/v460/test_fill_test_config.py`
+   - `loaded_default_fill_test_yaml`
+   - `loaded_explicit_fill_test_yaml`
+   - `empty_fill_test_config`
+   を module fixture 化し、
+   `load_fill_test_config()` / `FillTestConfig.from_yaml({})`
+   の read-only 呼び出しを shared に寄せた
+2. real-data 可用性判定の共有
+   - `tests/unit/v460/_real_data_test_helpers.py`
+   - `has_fill_records_and_raw_data(...)`
+   を追加し、
+   `tests/unit/v460/test_enricher_skip_gate.py`
+   の integration fixture で再利用
+3. legacy tempfile cleanup
+   - `tests/legacy_tests/unit/test_event_sourcing.py`
+   - `tests/unit/reward/validate_reward_components.py`
+   を `tmp_path` / `mkstemp()` ベースに整理
+
+効果:
+
+- `fill_test_config` での default/live YAML 再 open を削減
+- `enricher_skip_gate` の real-data 可用性判定を helper 側へ集約
+- skip 中でも読みにくい legacy tempdir パターンを減らし、保守性を上げた
+
+この時点の残差は次の順。
+
+1. `tests/unit/v460/test_enricher_skip_gate.py`
+   - real-data enriched setup
+2. `tests/unit/v460/test_fill_test_config.py`
+   - parser-heavy path
+3. `tests/legacy_tests/unit/test_event_sourcing.py`
+   - runtime 影響は小さいが、legacy cleanup の残り
+
 ## 追加の tempfile / mtime cleanup
 
 次の同型パターンも low-risk に整理した。
