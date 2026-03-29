@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 657# B-3 regime別max_factor + A-4/A-5 toxic_sell_veto段階化 (2026-03-30)
+
+### Changed
+- **B-3 regime別max_factor**: trending時のinv_skew完全停止→低減max_factor(0.15)で在庫管理継続
+  - `inv_skew_regime_gate_enabled: true→false` (binary gate廃止)
+  - 新フィールド `inv_skew_max_factor_trending: 0.15` (ranging 0.4の37.5%)
+  - 後方互換: `regime_gate_enabled=True` で従来の完全停止動作を保持
+- **A-4 toxic_sell_veto段階化**: hard veto→offset boostモード追加
+  - `toxic_sell_veto_as_offset_enabled: true` で全条件充足時もoffset boost発注
+  - `toxic_sell_veto_offset_boost_factor: 1.8` (80%増幅)
+  - velocity_skip_as_offset パターン踏襲、offset_pipeline両系統に配線
+- **A-5 連続veto時間減衰**: α^(n-1)指数減衰でsticky veto防止
+  - `toxic_sell_veto_decay_alpha: 0.7` (1回100%, 2回70%, 3回49%)
+  - decay < 0.5 でhard modeもソフトにフォールバック
+
+### Added
+- `FillTestConfig.inv_skew_max_factor_trending` — trending用低減max_factor
+- `FillTestConfig.toxic_sell_veto_as_offset_enabled` — ソフトモードフラグ
+- `FillTestConfig.toxic_sell_veto_offset_boost_factor` — offset boost倍率
+- `FillTestConfig.toxic_sell_veto_decay_alpha` — 連続veto減衰係数
+- `SkipGateResult.toxic_veto_offset_mult` — offset pipeline downstream用フィールド
+- `SkipGateEvaluator._toxic_veto_consecutive_count` — 連続vetoカウンタ
+- テスト: `test_657_regime_max_factor_and_toxic_veto_offset.py` (13テスト)
+- ドキュメント: `docs/v460/657_cplt_b3_regime_max_factor_a4_a5_toxic_veto_staged.md`
+
 ## 649# retrain_scheduler data freshness decoupling (2026-03-29)
 
 ### Fixed

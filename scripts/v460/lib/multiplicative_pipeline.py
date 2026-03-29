@@ -37,6 +37,7 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
         sg_ev_score: float | None,
         sg_velocity_offset_mult: float | None,
         sg_velocity_bps: float | None,
+        sg_toxic_veto_offset_mult: float | None = None,  # 657# A-4
         trending_offset_mult: float | None,
         toxicity_offset_mult: float,
         sidecar_offset_bps: float,
@@ -99,6 +100,24 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
                 f"-> offset_mult={_vel_mult:.2f} "
                 f"(delta={_delta:+.0f}JPY, price={order_price:.0f})"
             )
+
+        # 657# A-4: toxic_sell_veto offset boost
+        _toxic_veto_offset_applied = False
+        if sg_toxic_veto_offset_mult is not None and sg_toxic_veto_offset_mult > 1.0:
+            order_price, effective_offset_ratio, _tv_mult, _tv_delta = self._apply_offset_multiplier(
+                side=side,
+                order_price=order_price,
+                spread_at_order=spread_at_order,
+                effective_offset_ratio=effective_offset_ratio,
+                offset_mult=sg_toxic_veto_offset_mult,
+            )
+            if _tv_mult is not None and _tv_delta is not None:
+                _toxic_veto_offset_applied = True
+                logger.info(
+                    f"[657# toxic_veto_offset] {side}: "
+                    f"offset_mult={_tv_mult:.2f} "
+                    f"(delta={_tv_delta:+.0f}JPY, price={order_price:.0f})"
+                )
 
         order_price, effective_offset_ratio, _trend_mult, _delta = self._apply_offset_multiplier(
             side=side,

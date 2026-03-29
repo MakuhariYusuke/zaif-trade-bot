@@ -763,17 +763,28 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         cfg = self._config
         _decayed_imb = self._decayed_imbalance(now)
 
-        # 249# Regime-aware inventory skewing: trending 時は inv_skew を無効化
-        # — トレンド方向のポジション蓄積を在庫中立ロジックが阻害しないため
+        # 657# B-3: regime別max_factor (656# Ho-Stoll/Cartea-Jaimungal)
+        # trending時: 完全停止→低減max_factorで在庫管理を継続 (方向α保全 + 在庫管理両立)
+        # legacy regime_gate_enabled=True の場合は後方互換で従来動作
         _inv_skew_regime_blocked = False
-        if cfg.inv_skew_regime_gate_enabled and self._regime_detector is not None:
+        _effective_max_factor = cfg.inventory_skewing_max_factor
+        if self._regime_detector is not None:
             _r = self._regime_detector.current_regime
             if _r.is_trending:
-                _inv_skew_regime_blocked = True
-                logger.debug(
-                    f"[249# inv_skew_gate] regime={_r.value} — "
-                    f"inv_skew DISABLED (directional alpha preservation)"
-                )
+                if cfg.inv_skew_regime_gate_enabled:
+                    # legacy: 完全停止 (249# 旧動作)
+                    _inv_skew_regime_blocked = True
+                    logger.debug(
+                        f"[249# inv_skew_gate] regime={_r.value} — "
+                        f"inv_skew DISABLED (legacy regime_gate_enabled)"
+                    )
+                else:
+                    # 657# B-3: trending用の低減max_factorを使用
+                    _effective_max_factor = cfg.inv_skew_max_factor_trending
+                    logger.debug(
+                        f"[657# inv_skew_B3] regime={_r.value} — "
+                        f"max_factor={_effective_max_factor:.3f} (trending)"
+                    )
 
         if (
             not cfg.inventory_skewing_enabled
@@ -787,7 +798,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         _sign = 1.0 if side == "buy" else -1.0
         
         # 579# Tanh smoothing applied to raw multiplier
-        _raw_factor = _imb * _sign * cfg.inventory_skewing_max_factor
+        _raw_factor = _imb * _sign * _effective_max_factor  # 657# B-3: regime別max_factor
         
         # Smooth factor inside [-1, 1] range to avoid abrupt full closure
         _factor = math.tanh(_raw_factor)

@@ -342,6 +342,10 @@ def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
         "toxic_sell_veto_obi_threshold": "toxic_sell_veto_obi_threshold",
         "toxic_sell_veto_vpin_threshold": "toxic_sell_veto_vpin_threshold",
         "toxic_sell_veto_velocity_threshold": "toxic_sell_veto_velocity_threshold",
+        # 657# A-4/A-5: toxic_sell_veto ソフト化 + 時間減衰
+        "toxic_sell_veto_as_offset_enabled": "toxic_sell_veto_as_offset_enabled",
+        "toxic_sell_veto_offset_boost_factor": "toxic_sell_veto_offset_boost_factor",
+        "toxic_sell_veto_decay_alpha": "toxic_sell_veto_decay_alpha",
         # 183# narrow spread adverse guard
         "skip_gate_narrow_spread_threshold_jpy": "skip_gate_narrow_spread_threshold_jpy",
         "skip_gate_narrow_spread_offset": "skip_gate_narrow_spread_offset",
@@ -609,6 +613,7 @@ def _parse_stopgap_section(yaml_cfg: dict) -> dict:
     for yk, ck in {
         "window": "inventory_skewing_window",
         "max_factor": "inventory_skewing_max_factor",
+        "max_factor_trending": "inv_skew_max_factor_trending",  # 657# B-3
         "neutral_band": "inventory_skewing_neutral_band",
         "decay_tau_sec": "inv_decay_tau_sec",  # 228# C2
     }.items():

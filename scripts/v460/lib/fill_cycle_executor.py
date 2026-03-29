@@ -879,6 +879,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             sg_ev_score=sg.ev_score,
             sg_velocity_offset_mult=sg.velocity_offset_mult,
             sg_velocity_bps=sg.price_velocity_bps,
+            sg_toxic_veto_offset_mult=sg.toxic_veto_offset_mult,  # 657# A-4
             trending_offset_mult=trending_offset_mult,
             toxicity_offset_mult=toxicity_offset_mult,
             sidecar_offset_bps=sidecar_offset_bps,

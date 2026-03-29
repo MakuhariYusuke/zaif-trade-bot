@@ -76,6 +76,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
         sg_ev_score: float | None,
         sg_velocity_offset_mult: float | None,
         sg_velocity_bps: float | None,
+        sg_toxic_veto_offset_mult: float | None = None,  # 657# A-4
         trending_offset_mult: float | None,
         toxicity_offset_mult: float,
         sidecar_offset_bps: float,
@@ -91,6 +92,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
                 sg_ev_score=sg_ev_score,
                 sg_velocity_offset_mult=sg_velocity_offset_mult,
                 sg_velocity_bps=sg_velocity_bps,
+                sg_toxic_veto_offset_mult=sg_toxic_veto_offset_mult,
                 trending_offset_mult=trending_offset_mult,
                 toxicity_offset_mult=toxicity_offset_mult,
                 sidecar_offset_bps=sidecar_offset_bps,
@@ -104,6 +106,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
             sg_ev_score=sg_ev_score,
             sg_velocity_offset_mult=sg_velocity_offset_mult,
             sg_velocity_bps=sg_velocity_bps,
+            sg_toxic_veto_offset_mult=sg_toxic_veto_offset_mult,
             trending_offset_mult=trending_offset_mult,
             toxicity_offset_mult=toxicity_offset_mult,
             sidecar_offset_bps=sidecar_offset_bps,
@@ -122,6 +125,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
         sg_ev_score: float | None,
         sg_velocity_offset_mult: float | None,
         sg_velocity_bps: float | None,
+        sg_toxic_veto_offset_mult: float | None = None,  # 657# A-4
         trending_offset_mult: float | None,
         toxicity_offset_mult: float,
         sidecar_offset_bps: float,
@@ -180,6 +184,10 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
         if sg_velocity_offset_mult is not None and sg_velocity_offset_mult > 1.0:
             _vel_mult = sg_velocity_offset_mult
             tox_deltas.append(base_ratio * (_vel_mult - 1.0))
+
+        # 657# A-4: Toxic Sell Veto offset → Toxicity buffer
+        if sg_toxic_veto_offset_mult is not None and sg_toxic_veto_offset_mult > 1.0:
+            tox_deltas.append(base_ratio * (sg_toxic_veto_offset_mult - 1.0))
 
         # 196# Trending (sell only) → Toxicity buffer
         if side == "sell" and trending_offset_mult is not None and trending_offset_mult > 1.0:

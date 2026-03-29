@@ -108,6 +108,8 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         self._ev_consecutive_skip_count: int = 0
         # 596# Primary model 連続 skip 安全弁カウンタ (evaluator-level)
         self._primary_consecutive_skip_count: int = 0
+        # 657# A-5: toxic_sell_veto 連続 veto カウンタ (時間減衰用)
+        self._toxic_veto_consecutive_count: int = 0
         # 156# D-1: OB fetch 失敗カウンタ
         self._ob_fetch_fail_count: int = 0
         self._ob_fetch_total_count: int = 0
@@ -669,6 +671,8 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                     return result
 
             # 654# P0-2: Toxic Low-Spread Sell Veto (651#/652# compound guard)
+            # 657# A-4: ソフト化 — 全条件充足時もoffset boostモード選択可
+            # 657# A-5: 時間減衰 — 連続 veto で α^n 減衰、sticky 防止
             # Glosten-Milgrom: 狭spreading + 高VPIN + OBI偏り + 上方加速 = informed flow
             if (
                 self._config.toxic_sell_veto_enabled
@@ -681,42 +685,78 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                 _vpin = vpin_value if vpin_value is not None else 0.0
                 _vel = _pv60 if isinstance(_pv60, (int, float)) else 0.0
                 _vel_th = self._config.toxic_sell_veto_velocity_threshold
-                if (
-                    _spread_bps < self._config.toxic_sell_veto_spread_bps
-                    and _obi > self._config.toxic_sell_veto_obi_threshold
-                    and _vpin > self._config.toxic_sell_veto_vpin_threshold
-                    and (_vel_th <= 0.0 or _vel > _vel_th)
-                ):
-                    logger.info(
-                        "[skip_gate] 654# VETO: toxic low-spread sell "
-                        "spread=%.2fbps OBI=%.3f VPIN=%.3f vel=%.2fbps",
-                        _spread_bps, _obi, _vpin, _vel,
+
+                # 各条件を個別評価してスコアリング
+                _cond_spread = _spread_bps < self._config.toxic_sell_veto_spread_bps
+                _cond_obi = _obi > self._config.toxic_sell_veto_obi_threshold
+                _cond_vpin = _vpin > self._config.toxic_sell_veto_vpin_threshold
+                _cond_vel = (_vel_th <= 0.0 or _vel > _vel_th)
+                _conditions_met = sum([_cond_spread, _cond_obi, _cond_vpin, _cond_vel])
+
+                if _cond_spread and _cond_obi and _cond_vpin and _cond_vel:
+                    # 全条件充足
+                    self._toxic_veto_consecutive_count += 1
+
+                    # 657# A-5: 時間減衰 — 連続 veto が続くほどboostのみに軟化
+                    _decay = self._config.toxic_sell_veto_decay_alpha ** (
+                        self._toxic_veto_consecutive_count - 1
                     )
-                    early_context = self._build_skip_fill_record_context(
-                        cycle_id=cycle_id,
-                        timestamp=market_ts,
-                        side=side,
-                        order_price=order_price,
-                        order_quantity=current_lot,
-                        cancel_reason=CR.TOXIC_LOW_SPREAD_SELL_VETO,
-                        spread_at_order=spread_at_order,
-                        spread_offset_ratio=effective_offset_ratio,
-                        run_id=run_id,
-                        git_sha=git_sha,
-                        regime_value=regime_value,
-                    )
-                    self._set_early_skip_result(
-                        result,
-                        context=early_context,
-                        score=_spread_bps,
-                        reason="rule_toxic_low_spread_sell_veto",
-                        model_used="rule",
-                        last_imbalance=last_imbalance,
-                        last_bid_depth=last_bid_depth,
-                        last_ask_depth=last_ask_depth,
-                        price_velocity_bps=_pv60 if isinstance(_pv60, (int, float)) else None,
-                    )
-                    return result
+
+                    if (
+                        self._config.toxic_sell_veto_as_offset_enabled
+                        or _decay < 0.5  # A-5: 減衰で50%未満→ソフト化にフォールバック
+                    ):
+                        # 657# A-4: ソフトモード — offset boost で保守的に発注
+                        _boost = self._config.toxic_sell_veto_offset_boost_factor
+                        # A-5 減衰適用: boost_effective = 1.0 + (boost - 1.0) * decay
+                        _boost_eff = 1.0 + (_boost - 1.0) * _decay
+                        result.toxic_veto_offset_mult = _boost_eff
+                        logger.info(
+                            "[skip_gate] 657# toxic_veto→offset: "
+                            "spread=%.2fbps OBI=%.3f VPIN=%.3f vel=%.2fbps "
+                            "→ offset_mult=%.2f (decay=%.2f, consec=%d)",
+                            _spread_bps, _obi, _vpin, _vel,
+                            _boost_eff, _decay,
+                            self._toxic_veto_consecutive_count,
+                        )
+                        # hard skip しない → ML 判定に進む
+                    else:
+                        # 旧モード: hard veto
+                        logger.info(
+                            "[skip_gate] 654# VETO: toxic low-spread sell "
+                            "spread=%.2fbps OBI=%.3f VPIN=%.3f vel=%.2fbps "
+                            "(consec=%d, decay=%.2f)",
+                            _spread_bps, _obi, _vpin, _vel,
+                            self._toxic_veto_consecutive_count, _decay,
+                        )
+                        early_context = self._build_skip_fill_record_context(
+                            cycle_id=cycle_id,
+                            timestamp=market_ts,
+                            side=side,
+                            order_price=order_price,
+                            order_quantity=current_lot,
+                            cancel_reason=CR.TOXIC_LOW_SPREAD_SELL_VETO,
+                            spread_at_order=spread_at_order,
+                            spread_offset_ratio=effective_offset_ratio,
+                            run_id=run_id,
+                            git_sha=git_sha,
+                            regime_value=regime_value,
+                        )
+                        self._set_early_skip_result(
+                            result,
+                            context=early_context,
+                            score=_spread_bps,
+                            reason="rule_toxic_low_spread_sell_veto",
+                            model_used="rule",
+                            last_imbalance=last_imbalance,
+                            last_bid_depth=last_bid_depth,
+                            last_ask_depth=last_ask_depth,
+                            price_velocity_bps=_pv60 if isinstance(_pv60, (int, float)) else None,
+                        )
+                        return result
+                else:
+                    # 条件不充足 → 連続カウンタリセット
+                    self._toxic_veto_consecutive_count = 0
 
             # 158# P1-6: 時間帯別 skip_gate 閾値調整
             _utc_hour = utc_hour_from_timestamp(market_ts)

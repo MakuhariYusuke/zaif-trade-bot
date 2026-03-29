@@ -590,6 +590,13 @@ class FillTestConfig:
     toxic_sell_veto_obi_threshold: float = 0.25  # 651#: OBI > this (買板厚い = sell 逆選択)
     toxic_sell_veto_vpin_threshold: float = 0.65  # 651#: VPIN > this (informed flow 高)
     toxic_sell_veto_velocity_threshold: float = 0.0  # 652#: velocity > this (上方加速, 0=無効)
+    # 657# A-4: toxic_sell_veto ソフト化 (656# Glosten-Milgrom staged response)
+    # velocity_skip_as_offset パターン踏襲: hard veto → offset boost
+    # 段階制: 条件充足数 ≤ soft_max_conditions → offset boost, 全条件充足 → hard skip
+    toxic_sell_veto_as_offset_enabled: bool = False  # True でソフトモード有効
+    toxic_sell_veto_offset_boost_factor: float = 1.8  # ソフト時 offset boost 倍率
+    # 657# A-5: 連続 veto 時間減衰 (656# 指数減衰でスティッキー回避)
+    toxic_sell_veto_decay_alpha: float = 0.7  # 連続 veto 回数の指数減衰係数 (α^n)
     # 183# narrow spread 時の skip_gate 閾値オフセット (逆選択防御)
     # spread < narrow_spread_skip_threshold_jpy のとき threshold に加算。
     # ログ分析: spread<2kでAS32% (全体28%) → 閾値厳格化で AS fill削減
@@ -818,9 +825,12 @@ class FillTestConfig:
     inventory_skewing_enabled: bool = False    # True で在庫偏重 offset 補正を有効化
     inventory_skewing_window: int = 100        # 直近 N fill で在庫偏重を計算
     inventory_skewing_max_factor: float = 0.4  # 最大 offset 補正倍率 (0.4 = 40%)
+    # 657# B-3: regime別max_factor (656# Ho-Stoll/Cartea-Jaimungal 理論根拠)
+    # trending時は完全停止ではなく低減されたmax_factorで在庫管理を継続
+    inv_skew_max_factor_trending: float = 0.15  # trending時の max_factor (方向α保全 + 在庫管理両立)
     inventory_skewing_neutral_band: float = 0.1  # |imbalance| < この値なら補正なし
     # 249# Regime-aware inv skewing: trending 時は在庫偏重補正を無効化
-    inv_skew_regime_gate_enabled: bool = False  # True で trending 時の inv_skew を停止
+    inv_skew_regime_gate_enabled: bool = False  # True で trending 時の inv_skew を停止 (657# B-3でdeprecated)
     # 228# C2: 在庫偏重の時間減衰 — 古い fill 履歴の影響を指数関数的に減衰
     inv_decay_tau_sec: float = 1800.0          # 344#: 0→1800 (30分 τ 古いfill履歴減衰)
     # ---- 257# AS Reservation Price: Avellaneda-Stoikov 在庫×ボラ連動 offset ----
