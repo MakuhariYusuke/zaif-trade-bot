@@ -9499,3 +9499,12 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `tests/unit/v460/test_enricher_skip_gate.py`
     - `tests/unit/v460/test_fill_test_config.py`
     - `170 passed, 1 skipped, 1 warning in 3.40s`
+
+- 2026-03-30 Codex:
+  - `tests/unit/v460/test_fill_test_config.py`
+    - read-only roundtrip / default-load を base fixture へ寄せて deepcopy を削減
+  - focused pytest:
+    - `tests/unit/v460/test_fill_test_config.py`
+    - `tests/unit/v460/test_552_update_training_data.py`
+    - `tests/unit/v460/test_enricher_skip_gate.py`
+    - `170 passed, 1 skipped, 1 warning in 3.12s`

@@ -703,3 +703,24 @@ durations 変化で特に効いた点:
     - combined subset (`552 + enricher + fill_test_config`)
       - before: `169 passed, 1 skipped, 1 warning in 4.47s`
       - after: `170 passed, 1 skipped, 1 warning in 3.40s`
+
+- read-only base fixture sweep (`fill_test_config`):
+  - 追加適用:
+    - `tests/unit/v460/test_fill_test_config.py`
+  - 内容:
+    - read-only な roundtrip / default path 検証を
+      `v460_fill_test_yaml_base` / `v460_fill_test_config_base` に寄せた
+    - `clone_fill_test_config(...)` と function-scope YAML deepcopy を
+      必要な箇所だけに限定
+  - focused pytest:
+    - `tests/unit/v460/test_fill_test_config.py`
+    - `tests/unit/v460/test_552_update_training_data.py`
+    - `tests/unit/v460/test_enricher_skip_gate.py`
+    - `170 passed, 1 skipped, 1 warning in 3.12s`
+  - before/after (same combined subset):
+    - `test_fill_test_config.py::TestFillTestConfigFromYaml::test_from_yaml_defaults`
+      - `0.10s -> 0.08s` setup
+    - `test_fill_test_config.py::TestLoadFillTestConfig::test_load_default_path`
+      - `0.18s -> 0.07s` setup
+    - combined subset
+      - `3.40s -> 3.12s`

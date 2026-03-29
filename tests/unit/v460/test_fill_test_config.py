@@ -134,9 +134,9 @@ class TestLoadFillTestConfig:
 class TestFillTestConfigFromYaml:
     """FillTestConfig.from_yaml のテスト."""
 
-    def test_from_yaml_defaults(self, v460_fill_test_config_yaml: FillTestConfig) -> None:
+    def test_from_yaml_defaults(self, v460_fill_test_config_base: FillTestConfig) -> None:
         """YAML デフォルト値から FillTestConfig が構築される."""
-        config = v460_fill_test_config_yaml
+        config = v460_fill_test_config_base
         assert config.symbol == "btc_jpy"
         assert config.order_quantity == 0.001
         assert config.spread_offset_ratio == 0.05
@@ -238,18 +238,18 @@ class TestFillTestConfigFromYaml:
 class TestFillTestYamlFile:
     """configs/v460/fill_test.yaml ファイル自体のバリデーション."""
 
-    def test_yaml_is_valid(self, v460_fill_test_yaml: dict[str, object]) -> None:
+    def test_yaml_is_valid(self, v460_fill_test_yaml_base: dict[str, object]) -> None:
         """YAML として正しく parse できる."""
-        assert isinstance(v460_fill_test_yaml, dict)
+        assert isinstance(v460_fill_test_yaml_base, dict)
 
     def test_yaml_roundtrip(
         self,
-        v460_fill_test_yaml: dict[str, object],
+        v460_fill_test_yaml_base: dict[str, object],
         v460_fill_test_config_base: FillTestConfig,
     ) -> None:
         """YAML → FillTestConfig → 主要フィールドが一致."""
-        cfg = v460_fill_test_yaml
-        config = clone_fill_test_config(v460_fill_test_config_base)
+        cfg = v460_fill_test_yaml_base
+        config = v460_fill_test_config_base
         assert config.symbol == cfg["symbol"]
         assert config.order_quantity == cfg["order_quantity"]
         assert config.spread_offset_ratio == cfg["spread_offset_ratio"]
@@ -258,12 +258,12 @@ class TestFillTestYamlFile:
 
     def test_yaml_tuning_roundtrip(
         self,
-        v460_fill_test_yaml: dict[str, object],
+        v460_fill_test_yaml_base: dict[str, object],
         v460_fill_test_config_base: FillTestConfig,
     ) -> None:
         """103# tuning セクションの全 18 キーが FillTestConfig に正しくマッピングされる."""
-        cfg = v460_fill_test_yaml
-        config = clone_fill_test_config(v460_fill_test_config_base)
+        cfg = v460_fill_test_yaml_base
+        config = v460_fill_test_config_base
         tuning = cfg.get("tuning", {})
         assert config.max_offset_ratio == tuning["max_offset_ratio"]
         assert config.min_offset_ratio == tuning["min_offset_ratio"]
@@ -935,10 +935,14 @@ class Test062SkipGateConfig:
         config = FillTestConfig.from_yaml(yaml_cfg)
         assert config.skip_gate_use_ob_features is True
 
-    def test_072_yaml_roundtrip_use_ob_features(self, v460_fill_test_yaml: dict[str, object]) -> None:
+    def test_072_yaml_roundtrip_use_ob_features(
+        self,
+        v460_fill_test_yaml_base: dict[str, object],
+        v460_fill_test_config_base: FillTestConfig,
+    ) -> None:
         """072# fill_test.yaml の use_ob_features roundtrip."""
-        cfg = v460_fill_test_yaml
-        config = FillTestConfig.from_yaml(cfg)
+        cfg = v460_fill_test_yaml_base
+        config = v460_fill_test_config_base
         assert config.skip_gate_use_ob_features == cfg["skip_gate"]["use_ob_features"]
 
 
