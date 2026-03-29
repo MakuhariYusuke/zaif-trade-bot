@@ -259,6 +259,22 @@ Success: no issues found in 3 source files
   - `fill_quality` 周辺の outward contract 管理
   にある
 
+2026-03-30 追加メモ:
+
+- `ztb/metrics/fill_quality.py`
+  - 次の改善は大分割ではなく
+    - `build_fill_record(...)`
+    - `build_skip_fill_record(...)`
+    - `_sanitize_fill_record_fields(...)`
+    の helper 境界を維持しながら、outward contract を崩さないこと
+  - god object 対策としても、まずは
+    - skip payload shaping
+    - metrics 集計
+    - JSONL / DataFrame bridge
+    の責務を混ぜない方向で進める
+  - `to_dict()` の型を無理に強めると波及が広いので、
+    先に test/runtime 側の固定費を削る判断が妥当
+
 2026-03-26 追加:
 
 - `reproduce_152_metrics.py`

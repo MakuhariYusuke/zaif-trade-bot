@@ -9526,3 +9526,18 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - docs:
     - `612#` に test runtime residual を追記
     - `598#` に `maker_price` / `ab_judgment` の god object 再確認を追記
+
+- 2026-03-30 Codex:
+  - `tests/unit/v460/test_fill_test_config.py`
+    - `test_from_yaml_empty`
+    - `test_yaml_roundtrip_skip_gate`
+    を base fixture へ寄せて、read-only default path 再評価を削減
+  - `tests/legacy_tests/unit/utils/test_feature_cache.py`
+  - `tests/legacy_tests/unit/utils/test_checkpoint_light.py`
+    - `tmp_path` autouse fixture に寄せて manual `mkdtemp` / `rmtree` を削減
+  - `tests/integration/test_v433_phase5_integration.py`
+    - tempdir cleanup を `addCleanup(...)` に載せて teardown を単純化
+    - subset の最遅は `test_performance_under_load` `21.46s call` で、次の本命として記録
+  - docs:
+    - `612#` に current slowest と subset 実測を追記
+    - `598#` に `fill_quality.py` の次の扱い方を追記

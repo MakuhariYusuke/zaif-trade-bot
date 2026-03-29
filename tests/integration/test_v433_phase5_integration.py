@@ -56,6 +56,7 @@ class TestV433Phase5Integration(unittest.IsolatedAsyncioTestCase):
         """テストセットアップ"""
         # 一時ディレクトリ作成
         self.temp_dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.temp_dir, True)
 
         # コンポーネント初期化
         await self._initialize_components()
@@ -68,9 +69,6 @@ class TestV433Phase5Integration(unittest.IsolatedAsyncioTestCase):
         """テストクリーンアップ"""
         # コンポーネント停止
         await self._cleanup_components()
-
-        # 一時ディレクトリ削除
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     async def _initialize_components(self):
         """コンポーネント初期化"""

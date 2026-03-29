@@ -1,23 +1,19 @@
 import os
-import tempfile
 from pathlib import Path
+
+import pytest
 
 from ztb.utils.cache.feature_cache import FeatureCache
 
 
 class TestFeatureCache:
-    def setup_method(self):
-        self.test_cache_dir = Path(tempfile.mkdtemp(prefix="test_cache_"))
+    @pytest.fixture(autouse=True)
+    def _setup(self, tmp_path: Path) -> None:
+        self.test_cache_dir = tmp_path / "test_cache"
+        self.test_cache_dir.mkdir()
         self.cache = FeatureCache(str(self.test_cache_dir), 10, 1)  # 10MB, 1日
         # テスト時はサイズ制限を無効化
         self.cache._enforce_size_limit = lambda: None
-
-    def teardown_method(self):
-        # クリーンアップ
-        import shutil
-
-        if self.test_cache_dir.exists():
-            shutil.rmtree(self.test_cache_dir)
 
     def test_select_compressor_small_data(self):
         """小規模データでlz4が選択される"""

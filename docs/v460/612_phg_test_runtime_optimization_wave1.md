@@ -195,6 +195,38 @@
 3. `tests/legacy_tests/unit/test_event_sourcing.py`
    - runtime 影響は小さいが、legacy cleanup の残り
 
+追加メモ:
+
+- `tests/unit/v460/test_fill_test_config.py`
+  - `test_from_yaml_empty`
+  - `test_yaml_roundtrip_skip_gate`
+  を base fixture へ寄せて、read-only default path の再評価をさらに削減した
+- 直近 subset:
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_fill_test_config.py`
+  - `tests/legacy_tests/unit/test_event_sourcing.py`
+  - `154 passed, 10 skipped in 4.11s`
+- まだ最遅は
+  - `Test058Integration::test_enrichment_with_real_data`
+  - `0.21s setup`
+  で、ここは real-data を読む限り次の本丸
+
+- legacy / integration cleanup 追加:
+  - `tests/legacy_tests/unit/utils/test_feature_cache.py`
+  - `tests/legacy_tests/unit/utils/test_checkpoint_light.py`
+  - `tests/integration/test_v433_phase5_integration.py`
+  で tempdir lifecycle を整理
+- 直近 bundle:
+  - `tests/unit/v460/test_fill_test_config.py`
+  - `tests/legacy_tests/unit/utils/test_feature_cache.py`
+  - `tests/legacy_tests/unit/utils/test_checkpoint_light.py`
+  - `tests/integration/test_v433_phase5_integration.py`
+  - `91 passed, 9 skipped, 1 warning, 3 subtests passed in 40.46s`
+- ただし subset の最遅は
+  - `tests/integration/test_v433_phase5_integration.py::TestV433Phase5Integration::test_performance_under_load`
+  - `21.46s call`
+  で、次の重いテスト cleanup の最優先候補
+
 ## 追加の tempfile / mtime cleanup
 
 次の同型パターンも low-risk に整理した。

@@ -218,9 +218,9 @@ class TestFillTestConfigFromYaml:
         assert config.enable_auto_adapt is False
         assert config.loss_cap_jpy == 10_000.0
 
-    def test_from_yaml_empty(self) -> None:
+    def test_from_yaml_empty(self, empty_fill_test_config: FillTestConfig) -> None:
         """空 dict → 全デフォルト."""
-        config = FillTestConfig.from_yaml({})
+        config = empty_fill_test_config
         assert config.order_quantity == 0.001
         assert config.enable_auto_adapt is False
         # 035# 新フィールドもデフォルト
@@ -902,10 +902,14 @@ class Test062SkipGateConfig:
         assert config.skip_gate_mode == "as"
         assert config.skip_gate_model_path == "models/v460/skip_gate_as.pkl"
 
-    def test_yaml_roundtrip_skip_gate(self, v460_fill_test_yaml_base: dict[str, object]) -> None:
+    def test_yaml_roundtrip_skip_gate(
+        self,
+        v460_fill_test_yaml_base: dict[str, object],
+        v460_fill_test_config_base: FillTestConfig,
+    ) -> None:
         """YAML → FillTestConfig roundtrip for skip_gate."""
         cfg = v460_fill_test_yaml_base
-        config = FillTestConfig.from_yaml(cfg)
+        config = v460_fill_test_config_base
         assert config.skip_gate_enabled == cfg["skip_gate"]["enabled"]
         assert config.skip_gate_mode == cfg["skip_gate"]["mode"]
         assert config.skip_gate_as_threshold == cfg["skip_gate"]["as_threshold"]

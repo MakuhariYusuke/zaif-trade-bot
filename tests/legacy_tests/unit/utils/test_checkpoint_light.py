@@ -1,26 +1,23 @@
 import os
 import sys
-import tempfile
 from pathlib import Path
 from unittest.mock import Mock
+
+import pytest
 
 sys.path.insert(0, "src")
 
 
 class TestCheckpointLight:
-    def setup_method(self):
-        self.test_dir = Path(tempfile.mkdtemp(prefix="test_checkpoint_"))
+    @pytest.fixture(autouse=True)
+    def _setup(self, tmp_path: Path) -> None:
+        self.test_dir = tmp_path / "test_checkpoint"
+        self.test_dir.mkdir()
         self.model = Mock()
         self.model.policy.state_dict.return_value = {"layer1": "policy_data"}
         self.model.value_net = Mock()
         self.model.value_net.state_dict.return_value = {"layer2": "value_data"}
         self.model.scaler = "scaler_data"
-
-    def teardown_method(self):
-        import shutil
-
-        if self.test_dir.exists():
-            shutil.rmtree(self.test_dir)
 
     def test_light_checkpoint_size_reduction(self):
         """軽量チェックポイントのサイズ削減効果"""
