@@ -9566,3 +9566,13 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
       - `save_fill_records(...)`
       - `fill_records_to_dataframe(...)`
       の bridge を共通化
+
+- 2026-03-30 Codex:
+  - `tests/unit/v460/test_fill_quality.py`
+    - load/list/glob 系の setup を direct JSONL seed helper へ寄せた
+    - `save_fill_records(...)` 自体を検証しない test では save path の固定費を踏まないよう整理
+  - focused:
+    - `test_iter_fill_record_objects_glob_roundtrip`
+    - `test_list_fill_record_files_*`
+    - `test_load_fill_record_objects_glob_supports_date_range`
+    - `5 passed in 3.55s`

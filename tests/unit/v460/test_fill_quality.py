@@ -375,6 +375,57 @@ def _save_generated_records(
     save_fill_records(builder(**kwargs), path)
 
 
+def _seed_fill_records_direct(records: Iterable[FillRecord], path: Path) -> None:
+    """save path を検証しないテスト向けの軽量 JSONL seed."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = "".join(
+        json.dumps(record.to_dict(), ensure_ascii=False) + "\n"
+        for record in records
+    )
+    path.write_text(payload, encoding="utf-8")
+
+
+def _seed_linear_records(path: Path, **kwargs: object) -> None:
+    """線形レコードを直接 JSONL seed する."""
+    _seed_fill_records_direct(_make_linear_records(**kwargs), path)
+
+
+def _seed_dated_linear_record(
+    root: Path,
+    *,
+    day: str,
+    prefix: str,
+    start_index: int,
+    base_ts: float,
+    include_emergency: bool = False,
+    side: str = "buy",
+    order_price: float = 100.0,
+    separator: str = "_",
+) -> None:
+    """list/load/glob テスト向けに日付付き JSONL を直接 seed する."""
+    _seed_linear_records(
+        root / f"fill_records_{day}.jsonl",
+        prefix=prefix,
+        count=1,
+        start_index=start_index,
+        base_ts=base_ts,
+        side=side,
+        order_price=order_price,
+        separator=separator,
+    )
+    if include_emergency:
+        _seed_linear_records(
+            root / "emergency" / f"emergency_{day}.jsonl",
+            prefix=prefix,
+            count=1,
+            start_index=start_index,
+            base_ts=base_ts + 60.0,
+            side="sell",
+            order_price=order_price + 1.0,
+            separator=separator,
+        )
+
+
 def _save_dated_linear_record(
     root: Path,
     *,
@@ -1459,14 +1510,14 @@ class TestFillRecordIO:
         root = tmp_path
         emergency = root / "emergency"
         emergency.mkdir()
-        _save_linear_records(
+        _seed_linear_records(
             root / "fill_records_20260101.jsonl",
             prefix="obj",
             count=1,
             start_index=1,
             base_ts=1700000000.0,
         )
-        _save_linear_records(
+        _seed_linear_records(
             emergency / "emergency_20260101.jsonl",
             prefix="obj",
             count=2,
@@ -1501,14 +1552,14 @@ class TestFillRecordIO:
 
     def test_list_fill_record_files_supports_date_range(self, tmp_path: Path) -> None:
         root = tmp_path
-        _save_dated_linear_record(
+        _seed_dated_linear_record(
             root,
             day="20260101",
             prefix="d",
             start_index=1,
             base_ts=1700000000.0,
         )
-        _save_dated_linear_record(
+        _seed_dated_linear_record(
             root,
             day="20260102",
             prefix="d",
@@ -1527,7 +1578,7 @@ class TestFillRecordIO:
 
     def test_list_fill_record_files_date_range_uses_direct_resolution(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         root = tmp_path
-        _save_dated_linear_record(
+        _seed_dated_linear_record(
             root,
             day="20260102",
             prefix="d",
@@ -1560,7 +1611,7 @@ class TestFillRecordIO:
 
     def test_list_fill_record_files_cache_invalidates_when_directory_changes(self, tmp_path: Path) -> None:
         root = tmp_path
-        _save_dated_linear_record(
+        _seed_dated_linear_record(
             root,
             day="20260101",
             prefix="d",
@@ -1570,7 +1621,7 @@ class TestFillRecordIO:
         before = list_fill_record_files(root, include_emergency=False)
         assert [path.name for path in before] == ["fill_records_20260101.jsonl"]
 
-        _save_dated_linear_record(
+        _seed_dated_linear_record(
             root,
             day="20260102",
             prefix="d",
@@ -1588,7 +1639,7 @@ class TestFillRecordIO:
 
     def test_load_fill_record_objects_glob_supports_date_range(self, tmp_path: Path) -> None:
         root = tmp_path
-        _save_dated_linear_record(
+        _seed_dated_linear_record(
             root,
             day="20260101",
             prefix="r",
@@ -1596,7 +1647,7 @@ class TestFillRecordIO:
             base_ts=1700000000.0,
             separator="",
         )
-        _save_dated_linear_record(
+        _seed_dated_linear_record(
             root,
             day="20260103",
             prefix="r",

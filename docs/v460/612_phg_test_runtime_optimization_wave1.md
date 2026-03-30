@@ -241,6 +241,11 @@
   - `tests/unit/v460/test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data`
     - setup `0.21s -> 0.18s`
     - 小幅だが smoke/training 分離で責務が明確になった
+  - `tests/unit/v460/test_fill_quality.py`
+    - load/list/glob 系の setup を `save_fill_records(...)` 経由ではなく direct JSONL seed へ切り替える余地がある
+    - focused subset:
+      - `5 passed in 3.55s`
+      - slowest call は `test_iter_fill_record_objects_glob_roundtrip` `0.04s`
 
 ## 追加の tempfile / mtime cleanup
 
