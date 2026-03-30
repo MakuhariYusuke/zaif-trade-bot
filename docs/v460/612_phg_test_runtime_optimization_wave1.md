@@ -227,6 +227,21 @@
   - `21.46s call`
   で、次の重いテスト cleanup の最優先候補
 
+- 次の cleanup 方向:
+  - `v433` load test は integration の意味を残しつつ、負荷下の並列安定性だけを見る lightweight mock に寄せる
+  - `test_enricher_skip_gate.py` は
+    - smoke 用 enriched df
+    - training 用 enriched df
+    を分離して、実データ setup を段階化する
+
+- 追記:
+  - `tests/integration/test_v433_phase5_integration.py::TestV433Phase5Integration::test_performance_under_load`
+    - before: `21.46s call`
+    - after: `0.09s call`
+  - `tests/unit/v460/test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data`
+    - setup `0.21s -> 0.18s`
+    - 小幅だが smoke/training 分離で責務が明確になった
+
 ## 追加の tempfile / mtime cleanup
 
 次の同型パターンも low-risk に整理した。

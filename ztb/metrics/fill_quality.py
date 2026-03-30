@@ -1179,8 +1179,8 @@ def save_fill_records(records: Iterable[FillRecord], path: str | Path) -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
     payload_parts: list[str] = []
     count = 0
-    for record in records:
-        payload_parts.append(json.dumps(record.to_dict(), ensure_ascii=False))
+    for record_dict in iter_fill_record_dicts(records):
+        payload_parts.append(json.dumps(record_dict, ensure_ascii=False))
         payload_parts.append("\n")
         count += 1
     payload = "".join(payload_parts)
@@ -1311,7 +1311,13 @@ def fill_records_to_dataframe(records: Iterable[FillRecord]) -> "pd.DataFrame":
     """FillRecord iterable を DataFrame に変換する."""
     import pandas as pd
 
-    return pd.DataFrame.from_records(record.to_dict() for record in records)
+    return pd.DataFrame.from_records(iter_fill_record_dicts(records))
+
+
+def iter_fill_record_dicts(records: Iterable[FillRecord]) -> Iterator[FillRecordPayload]:
+    """FillRecord iterable を serializable dict へ変換する共通 bridge."""
+    for record in records:
+        yield record.to_dict()
 
 def _normalize_fill_record_date(value: str | None) -> str | None:
     if value is None:

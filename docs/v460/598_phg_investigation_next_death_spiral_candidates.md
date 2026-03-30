@@ -276,6 +276,11 @@ Success: no issues found in 3 source files
     - `_build_skip_fill_record_payload(...)` を local helper として切り出し、
       `build_skip_fill_record(...)` の責務を payload shaping に限定した
     - この粒度なら `test_fill_quality.py` の回帰で守りやすく、分割過剰にもならない
+    - 次の low-risk 候補は
+      - `iter_fill_record_dicts(...)`
+      - `save_fill_records(...)`
+      - `fill_records_to_dataframe(...)`
+      の bridge 境界を揃えること
   - `to_dict()` の型を無理に強めると波及が広いので、
     先に test/runtime 側の固定費を削る判断が妥当
 

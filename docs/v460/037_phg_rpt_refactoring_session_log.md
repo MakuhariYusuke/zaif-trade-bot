@@ -9550,3 +9550,19 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - protected field (`cancelled=False`) が skip record で上書きされない回帰を追加
   - docs:
     - `598#` に god object 対策としての `fill_quality` helper 境界を追記
+
+- 2026-03-30 Codex:
+  - `tests/integration/test_v433_phase5_integration.py`
+    - `test_performance_under_load` を lightweight mock ベースへ寄せ、並列安定性の確認に責務を絞る
+    - `21.46s call -> 0.09s call`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - real-data integration を
+      - smoke 用 enriched df
+      - training 用 enriched df
+      に分離して setup を段階化
+    - `test_enrichment_with_real_data` setup は `0.21s -> 0.18s`
+  - `ztb/metrics/fill_quality.py`
+    - `iter_fill_record_dicts(...)` を追加して
+      - `save_fill_records(...)`
+      - `fill_records_to_dataframe(...)`
+      の bridge を共通化

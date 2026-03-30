@@ -53,6 +53,7 @@ from tests.unit.v460._skip_gate_test_helpers import save_and_load_skip_gate
 from ztb.ml.artifact_paths import hash_sidecar_path
 
 _REAL_DATA_SAMPLE_ROWS = 50
+_REAL_DATA_SMOKE_SAMPLE_ROWS = 36
 _REAL_DATA_FALLBACK_SAMPLE_ROWS = 56
 _REAL_DATA_EXPANDED_SAMPLE_ROWS = 72
 _REAL_DATA_MIN_TRAIN_SAMPLES = 20
@@ -105,6 +106,14 @@ def _select_real_enriched_training_df(
 @lru_cache(maxsize=1)
 def _cached_real_enriched_training_df() -> pd.DataFrame:
     return _select_real_enriched_training_df()
+
+
+@lru_cache(maxsize=1)
+def _cached_real_enriched_smoke_df() -> pd.DataFrame:
+    recent_fill_df = _load_recent_fill_records_df(sample_rows=_REAL_DATA_SMOKE_SAMPLE_ROWS)
+    if recent_fill_df.empty:
+        return pd.DataFrame()
+    return enrich_fill_records(recent_fill_df)
 
 
 def _make_negative_skip_gate(
@@ -1025,7 +1034,19 @@ class Test058Integration:
         return has_fill_records_and_raw_data()
 
     @pytest.fixture(scope="class")
-    def real_enriched_df(
+    def real_smoke_enriched_df(
+        self,
+        real_data_available: bool,
+    ) -> pd.DataFrame:
+        if not real_data_available:
+            pytest.skip("No real data")
+        enriched = _cached_real_enriched_smoke_df()
+        if enriched.empty:
+            pytest.skip("No fill records")
+        return enriched
+
+    @pytest.fixture(scope="class")
+    def real_trainable_enriched_df(
         self,
         real_data_available: bool,
     ) -> pd.DataFrame:
@@ -1039,20 +1060,20 @@ class Test058Integration:
     def test_enrichment_with_real_data(
         self,
         real_data_available: bool,
-        real_enriched_df: pd.DataFrame,
+        real_smoke_enriched_df: pd.DataFrame,
     ) -> None:
         """実データでのエンリッチメント."""
         if not real_data_available:
             pytest.skip("No real data")
 
-        assert "spread_bps_ob" in real_enriched_df.columns
-        n_matched = real_enriched_df["spread_bps_ob"].notna().sum()
+        assert "spread_bps_ob" in real_smoke_enriched_df.columns
+        n_matched = real_smoke_enriched_df["spread_bps_ob"].notna().sum()
         assert n_matched > 0
 
     def test_train_skip_gate_real(
         self,
         real_data_available: bool,
-        real_enriched_df: pd.DataFrame,
+        real_trainable_enriched_df: pd.DataFrame,
         tmp_path: Path,
     ) -> None:
         """実データでの SkipGate 学習."""
@@ -1060,9 +1081,9 @@ class Test058Integration:
             pytest.skip("No real data")
 
         # 559# fix: PnL サンプル数が学習最小要件 (20) 未満ならスキップ
-        _filled_pnl = real_enriched_df[
-            real_enriched_df["filled"].astype(bool)
-            & real_enriched_df["post_fill_30s_pnl"].notna()
+        _filled_pnl = real_trainable_enriched_df[
+            real_trainable_enriched_df["filled"].astype(bool)
+            & real_trainable_enriched_df["post_fill_30s_pnl"].notna()
         ]
         if len(_filled_pnl) < 20:
             pytest.skip(f"Insufficient PnL samples for training: {len(_filled_pnl)}")
@@ -1070,7 +1091,7 @@ class Test058Integration:
         path = tmp_path / "test_gate.pkl"
         gate = train_and_save_skip_gate(
             output_path=path,
-            enriched_df=real_enriched_df,
+            enriched_df=real_trainable_enriched_df,
         )
         assert path.exists()
         # 最新サンプルからの高速読み込みでも学習が成立する最小件数を確認
