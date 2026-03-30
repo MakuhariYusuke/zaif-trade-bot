@@ -166,6 +166,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         "_consecutive_veto_count",   # 533# veto deadlock 防止
         "_veto_btc_balance",         # 533# veto 判定用 BTC 残高
         "_fill_prob_model",          # 366# GLFT fill probability model
+        "_deadlock_escape_active",   # 664# deadlock escape flag
     )
 
     def __init__(
@@ -208,6 +209,8 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         self._consecutive_veto_count: int = 0
         self._veto_btc_balance: float | None = None
         self._fill_prob_model: FillProbabilityModel | None = None
+        # 664# Deadlock Escape
+        self._deadlock_escape_active: bool = False
         # 129# OB recorder: 生スナップショットキャッシュ
         # 261# P2-5: object → OrderBookSnapshot (型安全化)
         self._last_ob_snapshot: OrderBookSnapshot | None = None
@@ -258,6 +261,15 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
     def set_fill_prob_model(self, model: FillProbabilityModel | None) -> None:
         """366# M4: GLFT fill probability model を注入する."""
         self._fill_prob_model = model
+
+    def set_deadlock_escape(self, active: bool) -> None:
+        """664# Deadlock escape フラグを設定する."""
+        self._deadlock_escape_active = active
+
+    @property
+    def deadlock_escape_active(self) -> bool:
+        """664# Deadlock escape 状態を参照する."""
+        return self._deadlock_escape_active
 
     def set_cross_venue_lead_lag_hint(
         self,
@@ -1091,6 +1103,15 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
                 atr_cap = mid_price * cfg.min_spread_atr_cap_bps / 10000
                 atr_floor = min(atr_floor, atr_cap)
             effective_min = max(effective_min, atr_floor)
+
+        # 664# Deadlock Escape: min_spread を一時的に緩和して膠着脱出を試みる
+        if self._deadlock_escape_active and cfg.deadlock_escape_spread_mult > 0:
+            original_min = effective_min
+            effective_min *= cfg.deadlock_escape_spread_mult
+            logger.debug(
+                f"[664#] DEADLOCK_ESCAPE: effective_min {original_min:.0f}"
+                f" -> {effective_min:.0f} JPY (×{cfg.deadlock_escape_spread_mult})"
+            )
 
         if spread < effective_min:
             raise InfeasibleQuoteError(

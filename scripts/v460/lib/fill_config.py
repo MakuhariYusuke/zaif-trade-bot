@@ -945,6 +945,12 @@ class FillTestConfig:
     # 閾値超で alert ログ + event 出力。
     inventory_deadlock_threshold: int = 10           # 連続スキップ合計で alert 発動
     inventory_deadlock_alert_interval_sec: float = 300.0  # alert 再発間隔 (秒)
+    # ---- 664# Deadlock Escape ----
+    # 648# deadlock が長期化した場合に min_spread を一時緩和しクオート再開を試みる。
+    # threshold=0 で無効。有効時: effective_min *= spread_mult (e.g. 0.5=半減)。
+    # fill 成功で自動解除。
+    deadlock_escape_threshold: int = 0               # 0=無効, >0=escape 発動サイクル数
+    deadlock_escape_spread_mult: float = 0.5         # escape 中の effective_min 乗数
     # ---- 452# Micro-timeouts (TIF Emulation) ----
     # 指値の生存時間を短縮し、逆選択リスクを低減するサブサイクル再クオート方式。
     # order_timeout_sec (90s) の代わりに wait_sec (15s) 単位で繰り返しキャンセル→再発注。

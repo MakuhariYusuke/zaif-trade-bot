@@ -55,6 +55,10 @@ class OrchestratorPostCycleMixin:
             self._track_side_pnl(record)
             # 648# Inventory Deadlock: fill 成功でカウンタリセット
             self._inventory_deadlock_counter = 0
+            # 664# Deadlock Escape: fill 成功で緩和解除
+            if hasattr(self, "_maker_price") and self._maker_price.deadlock_escape_active:
+                self._maker_price.set_deadlock_escape(False)
+                logger.info("[664#] DEADLOCK_ESCAPE deactivated: fill succeeded")
         else:
             # 487# P2: unfilled cancel_reason tracking
             _cr = record.cancel_reason or "unknown"

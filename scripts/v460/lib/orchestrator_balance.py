@@ -256,6 +256,22 @@ class OrchestratorBalanceMixin:
         if opposite_nfq < 2:
             return
 
+        # 664# Deadlock Escape: 閾値超でスプレッドガード緩和を有効化
+        escape_threshold = self.config.deadlock_escape_threshold
+        if (
+            escape_threshold > 0
+            and counter >= escape_threshold
+            and hasattr(self, "_maker_price")
+            and not self._maker_price.deadlock_escape_active
+        ):
+            self._maker_price.set_deadlock_escape(True)
+            self._inc_guard_fire("deadlock_escape")
+            logger.warning(
+                f"[664#] DEADLOCK_ESCAPE activated: counter={counter} >= "
+                f"{escape_threshold}. Relaxing min spread "
+                f"×{self.config.deadlock_escape_spread_mult}"
+            )
+
         now = time.time()
         interval = self.config.inventory_deadlock_alert_interval_sec
         if now - self._last_inventory_deadlock_alert_time < interval:
