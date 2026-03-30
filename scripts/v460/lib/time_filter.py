@@ -13,6 +13,8 @@ from __future__ import annotations
 import logging
 import time as _time
 
+from datetime import datetime, timezone
+
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.hour_rules import current_utc_hour
 
@@ -65,6 +67,13 @@ class TimeFilter:
         """
         if not self._config.enable_time_filter:
             return False
+
+        # 661# 曜日フィルター: 指定曜日は全スキップ
+        if self._config.skip_days_of_week:
+            utc_dow = datetime.now(timezone.utc).weekday()
+            if utc_dow in self._config.skip_days_of_week:
+                return True
+
         utc_hour = current_utc_hour()
 
         global_hours = set(self._config.skip_utc_hours or [])

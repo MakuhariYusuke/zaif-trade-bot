@@ -205,6 +205,8 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "toxic_sell_veto_as_offset_enabled",  # 657# A-4: code=False, YAML=True
     "inventory_skewing_neutral_band",  # 654# P0-1: 0.1→0.05
     "inv_decay_tau_sec",  # 654# P0-1: 1800→3600
+    "ranging_buy_priority_max_consecutive",  # 661# 3→0: buy bias解消
+    "skip_days_of_week",  # 661# 週末スキップ [5,6]
     "wide_spread_bps",
 })
 

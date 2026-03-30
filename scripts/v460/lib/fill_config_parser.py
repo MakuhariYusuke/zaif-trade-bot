@@ -998,6 +998,9 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
         kwargs["skip_utc_hours_buy"] = tf["skip_utc_hours_buy"]
     if "skip_utc_hours_sell" in tf:
         kwargs["skip_utc_hours_sell"] = tf["skip_utc_hours_sell"]
+    # 661# 曜日フィルター
+    if "skip_days_of_week" in tf:
+        kwargs["skip_days_of_week"] = [int(d) for d in tf["skip_days_of_week"]]
     # 110# 086# デッドロック修正
     if "max_086_consecutive_wait" in tf:
         kwargs["max_086_consecutive_wait"] = tf["max_086_consecutive_wait"]

@@ -244,6 +244,8 @@ class FillTestConfig:
     # 073# side 別時間帯フィルター: 指定時は side 固有リストを優先
     skip_utc_hours_buy: list[int] | None = None
     skip_utc_hours_sell: list[int] | None = None
+    # 661# 曜日フィルター: 指定曜日は全サイクルスキップ (0=Mon, 5=Sat, 6=Sun)
+    skip_days_of_week: list[int] = field(default_factory=list)
     # 安全設計 (000# §3.9)
     loss_cap_jpy: float = 10_000.0
     loss_cap_warning_ratio: float = 0.7

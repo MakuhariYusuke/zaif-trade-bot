@@ -226,6 +226,7 @@ time_filter:
   skip_utc_hours: []           # 163# Step2: global block 廃止
   skip_utc_hours_buy: []       # 169# 全廃: B1' + SkipGate + VG が根本対策
   skip_utc_hours_sell: []      # 169# 全廃: sell_dynamic_kill + trending_sell_skip + VG
+  skip_days_of_week: [5, 6]    # 661# Sat/Sun全停止: 週末=-3.0mBTC (全損失の55%)
   # 110# 086# デッドロック修正: 時間帯遮断が空なら不要だが安全弁として維持
   max_086_consecutive_wait: 3
   # 163# regime 連動動的ゲーティング — 機構維持 (VG が high_vol を直接処理)
@@ -311,7 +312,7 @@ smart_side:
   mode: suppress
   max_consecutive_same: 2
   # 634# P1-3: ranging buy 優先の連続上限
-  ranging_buy_priority_max_consecutive: 3
+  ranging_buy_priority_max_consecutive: 0   # 661# 3→0: buy bias解消 (VWAP spread=-13,252 JPY の主因)
 
 # ---- 054# S3: テール損失カット (Early Exit) ----
 # 120# P0: 119# 分析で EE 48件=-345.5bps が全損失の137%を生成。

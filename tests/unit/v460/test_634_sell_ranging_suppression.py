@@ -199,4 +199,4 @@ class TestConfigIntegration:
         cfg = clone_fill_test_config(v460_fill_test_config_base)
         assert cfg.skip_gate_sell_ranging_offset == 0.5
         assert cfg.skip_gate_offset_ceil == 0.8
-        assert cfg.ranging_buy_priority_max_consecutive == 3
+        assert cfg.ranging_buy_priority_max_consecutive == 0  # 661# 3→0: buy bias解消
