@@ -188,7 +188,8 @@ class TestB3RegimeMaxFactor:
         eff_down = mp_down._apply_inventory_skew("buy", time.time(), 0.05)
 
         # 両方とも trending → 同じ max_factor_trending
-        assert eff_up == pytest.approx(eff_down, abs=1e-10)
+        # time.time() 差でわずかに変わるため abs=1e-8
+        assert eff_up == pytest.approx(eff_down, abs=1e-8)
 
     def test_last_inv_skew_factor_stored_correctly(self) -> None:
         """trending 時の _last_inv_skew_factor が正しく記録される."""

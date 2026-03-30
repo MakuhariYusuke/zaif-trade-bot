@@ -396,7 +396,7 @@ micro_circuit_breaker:
   enabled: true                    # 622# true化 (606# 決定, 607# hot-reload対応)
   caution_sigma: 1.0               # σ > 1.0 → CAUTION
   warning_sigma: 1.5               # σ > 1.5 → WARNING (offset/interval 変更)
-  halt_sigma: 2.0                  # σ > 2.0 → HALT (全注文停止)
+  halt_sigma: 2.5                  # 660# 2.0→2.5: 3/29-30で46回halt(6.3%)。2σは感度過剰、2.5σで偽陽性削減しサイクル回復
   halt_cooldown_sec: 300.0         # HALT 後のクールダウン (5min)
   warning_offset_mult: 1.5         # WARNING 時の offset 乗数
   warning_interval_mult: 2.0       # WARNING 時の interval 乗数
@@ -475,8 +475,8 @@ skip_gate:
     high_vol: 0.2              # 高ボラ: 厳格化 (予測精度低下を補正)
     ranging: 0.1               # レンジ: やや厳格化
     trending: -0.1             # トレンド: 緩和 (トレンド追従に優位性あり)
-    trending_up: -0.1          # 176# 横展開: 方向別キー追加 (フォールバック防止)
-    trending_down: -0.1        # 176# 横展開: 方向別キー追加
+    trending_up: 0.3           # 660# -0.1→0.3: 3/29-30実測 trending_up PnL30=-1.90bps(18fills)が全損失72%。閾値厳格化で悪質トレードを排除
+    trending_down: 0.1         # 660# -0.1→0.1: trending_down PnL30=-0.80bps(10fills)。軽度厳格化
   # 124# Rule: unknown regime での sell スキップ (WF: S20%_30=+0.198, S20%_120=+0.140)
   skip_sell_unknown_regime: true
   # 130# unknown regime buy offset boost (128# 分析: unknown buy -1.384bps)
@@ -887,7 +887,7 @@ loss_control:
     toxicity_caution_min_participation: 0.4  # 451#: buy+ranging 過抑制防止: sell(0.5) よりやや絞る
     regime_thresholds:
       trending_down: -0.5          # 341# revert: 下降トレンド時buyは逆張り→厳しめ
-      trending_up: -1.5            # 上昇トレンド時は buy に寛容 (順張り) — 据置き
+      trending_up: -1.0            # 660# -1.5→-1.0: trending_up buy PnL30=-1.90bps(実測)。順張りでも逆選択リスク確認→寛容度縮小
       high_vol: -0.5               # 341# revert: 高ボラ時は慎重に
       ranging: -0.7                # 438# -1.0→-0.7: 432# buy+ranging PF=0.766 対策
                                      # effective -0.7-0.3=-1.0 (inv_relax込), 旧-1.3 より 0.3bps 厳格化

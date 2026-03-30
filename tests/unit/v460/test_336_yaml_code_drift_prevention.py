@@ -120,6 +120,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "macro_sell_timeout_weak_up",  # 458# macro sell timeout
     "max_consecutive_trending_sell_skip",
     "mcb_enabled",  # 606# Safety層: code=False, YAML=True
+    "mcb_halt_sigma",  # 660# 2.0→2.5: 偽HALT削減
     "min_spread_jpy",
     "min_spread_atr_enabled",  # 624# ATR連動
     "min_spread_atr_mult",  # 632# 2.0→1.2: Roll proxy circularity 緩和
