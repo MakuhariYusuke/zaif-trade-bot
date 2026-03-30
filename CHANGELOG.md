@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 659# balance_checker重複排除 + MCB HALTポジション警告 (2026-03-31)
+
+### Changed
+- balance_checker: _apply_lot_shrink / _try_lot_restore 共通ヘルパー抽出 (sell/buy 重複排除)
+- orchestrator_pre_cycle: MCB HALT 時に BTC ポジション露出の WARNING ログ追加 (T1-1)
+
+### Fixed
+- test_585: 657# A-4 toxic_veto ステージキーを expected_keys に追加
+- test_276: MCB HALT 検索窓 500→800 (659# 警告コード追加による位置移動対応)
+
+### Investigated
+- T1-6 (skip_rate × toxic_veto 干渉): rule-based skip は ML skip_rate に影響しない構造。変更不要
+
 ## 658# セルフレビュー: 657# ログ・可読性・observability改善 (2026-03-30)
 
 ### Fixed

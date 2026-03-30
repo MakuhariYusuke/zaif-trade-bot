@@ -88,7 +88,7 @@ class TestSkipCeremonyMigration:
     def test_mcb_halt_uses_execute_skip(self) -> None:
         """MCB HALT パスが _execute_skip を使用."""
         idx = self.src.find("MCBLevel.HALT")
-        nearby = self.src[idx:idx + 500]
+        nearby = self.src[idx:idx + 800]
         assert "_execute_skip" in nearby
 
     def test_sad_frozen_uses_execute_skip(self) -> None:

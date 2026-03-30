@@ -283,6 +283,14 @@ class OrchestratorPreCycleMixin:
             _mcb_result = self._mcb.check(time.time())
             if _mcb_result.level == MCBLevel.HALT:
                 self._inc_guard_fire("mcb_halt")
+                # 659# T1-1: HALT 中に BTC ポジションがあれば警告
+                _btc = getattr(self._balance_checker, "last_btc_free", None)
+                if _btc is not None and _btc > 0:
+                    logger.warning(
+                        "[659# MCB] HALT with open BTC position: "
+                        "%.8f BTC exposed during cooldown %.0fs",
+                        _btc, self._mcb.config.halt_cooldown_sec,
+                    )
                 await self._execute_skip(
                     st, side="none", cancel_reason=CR.MCB_HALT,
                     heartbeat=True, multiplier=_halt_mult,

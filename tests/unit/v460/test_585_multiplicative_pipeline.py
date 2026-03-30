@@ -423,7 +423,7 @@ class TestStagesJson:
         )
         assert r.executor_offset_stages_json is not None
         stages = json.loads(r.executor_offset_stages_json)
-        expected_keys = {"ev", "velocity", "trending", "toxicity", "vg_supp", "alert"}
+        expected_keys = {"ev", "velocity", "trending", "toxicity", "vg_supp", "alert", "toxic_veto"}
         assert expected_keys == set(stages.keys())
 
 
