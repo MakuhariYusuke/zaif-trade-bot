@@ -8,8 +8,11 @@ from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
 import pandas as pd
 import pytest
+from gymnasium import spaces
+from numpy.typing import NDArray
 
 from sb3_contrib.common.wrappers import ActionMasker
 from tests.helpers.environment import make_schema_feature_env_config
@@ -24,6 +27,35 @@ pytestmark = [
     pytest.mark.integration,
     pytest.mark.slow,
 ]
+
+
+class _TinyMaskedEnv:
+    """Minimal discrete env for PPO trainer integration smoke."""
+
+    action_space = spaces.Discrete(3)
+    observation_space = spaces.Box(
+        low=-1.0,
+        high=1.0,
+        shape=(4,),
+        dtype=np.float32,
+    )
+
+    def reset(self, *_args: object, **_kwargs: object) -> tuple[np.ndarray, dict[str, object]]:
+        return np.zeros(4, dtype=np.float32), {}
+
+    def step(
+        self, _action: int
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, object]]:
+        return np.zeros(4, dtype=np.float32), 0.0, False, False, {}
+
+    def close(self) -> None:
+        return None
+
+    def get_action_masks(self) -> NDArray[np.bool_]:
+        return np.asarray([True, True, True], dtype=np.bool_)
+
+    def get_legal_actions(self) -> NDArray[np.int_]:
+        raise AssertionError("legacy get_legal_actions mask path should not be used")
 
 
 @pytest.fixture(scope="module")
@@ -159,8 +191,17 @@ class TestSellMitigationTrainerIntegration:
             enable_stratified_sampling=False,
         )
         trainer = SELLBiasMitigationPPOTrainer(params)
+        tiny_env = _TinyMaskedEnv()
 
         with (
+            patch(
+                "ztb.training.experiments.sell_mitigation_ppo_trainer.DataLoader.load_csv_strict",
+                return_value=simple_df.copy(),
+            ),
+            patch(
+                "ztb.training.experiments.sell_mitigation_ppo_trainer.HeavyTradingEnv",
+                return_value=tiny_env,
+            ),
             patch.object(CustomPPO, "learn", autospec=True, return_value=None) as mock_learn,
             patch.object(trainer, "_final_validation", return_value=None),
             patch.object(trainer, "start_training", return_value=None),

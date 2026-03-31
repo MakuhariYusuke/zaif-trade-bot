@@ -16,7 +16,6 @@ from typing import Any
 
 import numpy as np
 from sb3_contrib import MaskablePPO
-from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 
 from ztb.io.data_loader import DataLoader
@@ -27,12 +26,12 @@ from ztb.training.callbacks_lib import SELLBiasMitigationCallback
 from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
 from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG, PPOConfig
 from ztb.training.config.trainer_params import SELLMitigationParams
-from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt as PPOTrainer
-from ztb.training.entropy_temperature import TargetEntropyController
+from ztb.training.core.ppo_trainer import (
+    PPOTrainerAutoHalt as PPOTrainer,
+    wrap_env_with_action_masker,
+)
 from ztb.training.models.custom_ppo import CustomPPO
-from ztb.training.optimization.adv_norm import PerActionAdvantageNormalizer
 from ztb.training.optimization.lagrange_constraint import LagrangeConstraint
-from ztb.training.optimization.stratified_sampler import StratifiedSampler
 from ztb.training.utils.grad_probes import SELLGradientProbe, create_failsafe_dump
 from ztb.training.utils.weights import ActionWeightCalculator
 from ztb.utils.config import ZTBConfig
@@ -66,14 +65,14 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         params: SELLMitigationParams containing all training and mitigation configuration
     """
 
-    config: dict[str, Any]  # Declare config attribute for mypy  # type: ignore[misc]
+    config: dict[str, Any]
 
     def __init__(
         self,
         params: SELLMitigationParams,
     ):
         # Call parent PPOTrainer __init__ with TrainerParams (SELLMitigationParams inherits from TrainerParams)
-        super().__init__(params)  # type: ignore[arg-type,call-arg]
+        super().__init__(params)
 
         self.enable_lagrange = params.enable_lagrange
         self.enable_probes = params.enable_probes
@@ -127,33 +126,13 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             )
             logger.info("Action weighting enabled (beta=3.0, ema_alpha=0.1)")
 
-        # New: Initialize PAN (Per-Action Advantage Normalization)
         if params.enable_pan:
-            self.pan_normalizer = PerActionAdvantageNormalizer(
-                n_actions=3,
-                epsilon=EPSILON,
-                min_samples_per_action=1,  # HOLD, BUY, SELL
-            )
             logger.info("PAN (Per-Action Advantage Normalization) enabled")
 
-        # New: Initialize Target Entropy Controller
         if params.enable_target_entropy:
-            self.entropy_controller = TargetEntropyController(
-                n_actions=3,
-                target_entropy_ratio=0.7,  # 0.7 × log(3) ≈ 0.769
-                lr_temperature=3e-4,
-                initial_temperature=0.01,
-            )
             logger.info("Target Entropy Controller enabled (target=0.769)")
 
-        # New: Initialize Stratified Sampler
         if params.enable_stratified_sampling:
-            self.stratified_sampler = StratifiedSampler(
-                n_actions=3,
-                regime_window=20,
-                regime_threshold=0.001,
-                min_samples_per_bucket=1,
-            )
             logger.info(
                 "Stratified Mini-batch Sampler enabled (9 buckets: 3 regimes × 3 actions)"
             )
@@ -163,7 +142,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
 
     def _create_callback(self) -> BaseCallback:
         """Create composite training callback with SELL bias mitigation."""
-        base_callback = PPOTrainer._create_callback(self)  # type: ignore[attr-defined]
+        base_callback = PPOTrainer._create_callback(self)
 
         # ★ Get components from model (not from self)
         # Lagrange, PAN, and Entropy Controller are managed by CustomPPO
@@ -213,13 +192,13 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         logger.info(
             f"Stratified Sampling: {'✅' if self.enable_stratified_sampling else '❌'}"
         )
-        logger.info(f"Data: {self.data_path}")  # type: ignore[attr-defined]
+        logger.info(f"Data: {self.data_path}")
 
         try:
             # ★ MODIFIED: Create model with CustomPPO instead of standard flow
             if self.model is None:
                 # Load data
-                df_full = DataLoader.load_csv_strict(self.data_path)  # type: ignore[attr-defined]
+                df_full = DataLoader.load_csv_strict(self.data_path)
 
                 # ====================================================================
                 # UNIFIED MEMORY OPTIMIZATION (Bug #52 fix)
@@ -275,11 +254,8 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
                     df=df, config=env_config, max_features=max_features
                 )
 
-                # Wrap with ActionMasker for MaskablePPO
-                def mask_fn(env: Any) -> Any:
-                    return env.get_legal_actions().astype(bool)
-
-                env = ActionMasker(env, mask_fn)  # type: ignore[assignment]
+                # Keep the same action-mask contract as the core PPO trainer.
+                env = wrap_env_with_action_masker(env)
 
                 # ★ Create CustomPPO with integrated bias mitigations
                 self.model = CustomPPO(
@@ -344,7 +320,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             self._setup_sell_bonus_weighting()
 
             # Start training session
-            self.start_training()  # type: ignore[attr-defined]
+            self.start_training()
 
             # Train the model - support both unified config (with a 'training'
             # section) and legacy flat config keys.
@@ -407,7 +383,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             # Create failsafe dump if probes are enabled
             if self.probe is not None and self.model is not None:
                 try:
-                    dump_dir = Path(self.checkpoint_dir) / "failsafe_dump"  # type: ignore[attr-defined]
+                    dump_dir = Path(self.checkpoint_dir) / "failsafe_dump"
                     create_failsafe_dump(self.model, self.probe, dump_dir)
                     logger.info(f"Failsafe dump created: {dump_dir}")
                 except Exception as dump_e:

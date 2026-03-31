@@ -164,6 +164,101 @@ class TestCreateAlgorithmTrainer:
         assert isinstance(trainer, SelfSupervisedTrainer)
 
 
+class _FakePPOModel:
+    def __init__(self, *args, **kwargs) -> None:
+        self.args = args
+        self.kwargs = kwargs
+        self.policy = MagicMock()
+        self.policy.optimizer = MagicMock()
+        self.learn_calls: list[dict[str, object]] = []
+
+    def learn(self, **kwargs) -> "_FakePPOModel":
+        self.learn_calls.append(dict(kwargs))
+        return self
+
+
+class TestUnifiedPPOTrainer:
+    """Focused tests for the unified PPO trainer current execution path."""
+
+    @pytest.fixture
+    def basic_config(self) -> dict[str, object]:
+        return {
+            "version": "test",
+            "model_name": "ppo_unified_smoke",
+            "training": {
+                "algorithm": "ppo",
+                "total_timesteps": 64,
+                "data_config": {"data_path": "dummy.csv"},
+                "ppo_hyperparameters": {
+                    "learning_rate": 3e-4,
+                    "n_steps": 32,
+                    "batch_size": 16,
+                    "n_epochs": 1,
+                    "gamma": 0.99,
+                },
+                "environment": {"config": {"use_continuous_actions": False}},
+            },
+        }
+
+    @patch("ztb.training.unified_trainer.algorithms.ppo_trainer.os.path.exists")
+    def test_validate_config_accepts_current_training_layout(
+        self, mock_exists: MagicMock, basic_config: dict[str, object]
+    ) -> None:
+        mock_exists.return_value = True
+        trainer = PPOTrainer(dict(basic_config))
+        assert trainer.validate_config() is True
+
+    @patch("ztb.training.unified_trainer.algorithms.ppo_trainer.DataLoader.load_csv_strict")
+    @patch("ztb.training.unified_trainer.algorithms.ppo_trainer.HeavyTradingEnv")
+    @patch("stable_baselines3.PPO", _FakePPOModel)
+    @patch("ztb.training.unified_trainer.algorithms.ppo_trainer.os.path.exists")
+    def test_execute_ppo_training_smoke_uses_current_env_path(
+        self,
+        mock_exists: MagicMock,
+        mock_env_cls: MagicMock,
+        mock_load_csv: MagicMock,
+        basic_config: dict[str, object],
+    ) -> None:
+        mock_exists.return_value = True
+        mock_load_csv.return_value = pd.DataFrame(
+            {
+                "timestamp": pd.date_range("2024-01-01", periods=8, freq="1min"),
+                "open": [100.0] * 8,
+                "high": [101.0] * 8,
+                "low": [99.0] * 8,
+                "close": [100.5] * 8,
+                "volume": [1000.0] * 8,
+            }
+        )
+        mock_env = MagicMock()
+        mock_env_cls.return_value = mock_env
+
+        trainer = PPOTrainer(dict(basic_config))
+        callback = MagicMock()
+        callback.reward_history = [1.0]
+        callback.discrete_actions = [0, 1, -1]
+        trainer.create_training_callback = MagicMock(return_value=callback)
+        trainer.cleanup_metrics_collection = MagicMock()
+        trainer.cleanup_training_environment = MagicMock()
+        trainer.save_model = MagicMock(return_value="ppo_model.zip")
+        trainer.collect_training_stats = MagicMock(
+            return_value={"model_path": "ppo_model.zip", "algorithm": "PPO"}
+        )
+
+        ok = trainer._execute_ppo_training(
+            total_timesteps=64,
+            callback=callback,
+            start_time=0.0,
+        )
+
+        assert ok is True
+        assert isinstance(trainer.model, _FakePPOModel)
+        assert trainer.model.learn_calls
+        learn_kwargs = trainer.model.learn_calls[0]
+        assert learn_kwargs["total_timesteps"] == 64
+        mock_env_cls.assert_called_once()
+
+
 class TestSelfSupervisedTrainer:
     """Unit tests for SelfSupervisedTrainer"""
 

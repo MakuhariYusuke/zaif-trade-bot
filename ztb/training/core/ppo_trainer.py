@@ -11,7 +11,7 @@ PPO Trainer implementations:
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, TypeAlias
 
 import numpy as np
 from numpy.typing import NDArray
@@ -43,9 +43,19 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 # Type aliases for better type safety
-Observation = NDArray[np.float32]
+Observation: TypeAlias = NDArray[np.float32]
 Action = int
-PredictionResult = tuple[Action, Any | None]  # (action, additional_info)
+PredictionResult: TypeAlias = tuple[Action, Any | None]  # (action, additional_info)
+
+
+def _get_action_masks(env: Any) -> NDArray[np.bool_]:
+    """Return the current boolean action mask from a trading environment."""
+    return env.get_action_masks()
+
+
+def wrap_env_with_action_masker(env: HeavyTradingEnv) -> ActionMasker:
+    """Wrap a trading env with the current sb3-contrib action-mask contract."""
+    return ActionMasker(env, mask_fn=_get_action_masks)
 
 class PPOTrainerProtocol(Protocol):
     """Protocol for PPO Trainer implementations."""
@@ -412,10 +422,7 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
         # Use the current HeavyTradingEnv contract (`get_action_masks`) and the
         # standard `mask_fn` keyword so the local compatibility shim and the real
         # sb3-contrib wrapper both accept the call.
-        env = ActionMasker(
-            env,
-            mask_fn=lambda e: e.get_action_masks(),
-        )
+        env = wrap_env_with_action_masker(env)
 
         logger.info("Created trading environment with enhanced details:")
         logger.info(f"  Dataset shape: {df.shape}")
@@ -612,7 +619,7 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
                         logger.warning(f"Error closing environment: {env_error}")
 
                 # Clear instance references to allow garbage collection
-                self.env = None  # type: ignore
+                self.env = None
                 # Note: Do NOT clear self.model internals (policy, etc.) as it's being returned
                 # Only clear the instance reference after successful return
                 logger.debug("Instance references cleared")

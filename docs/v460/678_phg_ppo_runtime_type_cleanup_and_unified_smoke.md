@@ -1,0 +1,121 @@
+# 678# PPO runtime/type cleanup と unified smoke 追加
+
+## 概要
+
+676# / 677# で PPO の互換 shim と action-mask runtime は復旧したが、
+まだ次の 3 点が残っていた。
+
+1. `core` と `sell_mitigation` で action-mask の張り方が重複していた
+2. `CustomPPO` / `PPOTrainer` 周辺に low-risk な mypy 残差が残っていた
+3. unified trainer 側の PPO 実行経路に focused smoke が無かった
+
+今回の batch では、runtime を変えすぎずにこの 3 点をまとめて整理した。
+
+## 実施内容
+
+### 1. action-mask 契約の共有化
+
+- `ztb/training/core/ppo_trainer.py`
+  - `_get_action_masks(...)`
+  - `wrap_env_with_action_masker(...)`
+  を追加
+- `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+  - 独自の `get_legal_actions().astype(bool)` 経路をやめ、
+    `wrap_env_with_action_masker(...)` を再利用
+
+これで PPO の active path はどちらも
+`mask_fn=lambda env: env.get_action_masks()`
+の current contract に揃った。
+
+### 2. `SELLBiasMitigationPPOTrainer` の重複解消
+
+- `sell_mitigation_ppo_trainer.py`
+  - `PerActionAdvantageNormalizer`
+  - `TargetEntropyController`
+  - `StratifiedSampler`
+  の trainer-side 重複初期化を削除
+
+これらはすでに `CustomPPO` が正本として管理しており、
+callback も `self.model.*` を見ていたため、trainer 側の別インスタンスは
+保守ノイズになっていた。
+
+### 3. low-risk mypy cleanup
+
+対象:
+
+- `ztb/training/models/custom_ppo.py`
+- `ztb/training/core/ppo_trainer.py`
+- `ztb/training/unified_trainer/algorithms/ppo_trainer.py`
+- `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+
+主な修正:
+
+- `TypeAlias` で `Observation` / `PredictionResult` を明示
+- `CustomPPO` の `action_space` 解決を helper 化
+- 使われなくなった `type: ignore` を削除
+- `explained_variance(...)` の戻り値を `float` に固定
+- unified trainer 側の `self.model` 型注釈 drift を修正
+- `train()` の bool 返却を明示化
+
+### 4. テスト強化と高速化
+
+- `tests/training/test_ppo_trainer.py`
+  - core trainer が `ActionMasker(..., mask_fn=...)` を使うことを明示
+- `tests/integration/test_custom_ppo_integration.py`
+  - `SELLBiasMitigationPPOTrainer` の integration を lightweight fake env 化
+  - fake env の `get_legal_actions()` は敢えて失敗させ、
+    legacy mask path が再発しないことを guard
+- `tests/training/unified_trainer/test_algorithms.py`
+  - unified PPO trainer の current training path smoke を追加
+
+## 検証
+
+### targeted mypy
+
+```bash
+.venv/Scripts/python.exe scripts/quality/run_targeted_mypy.py \
+  ztb/training/models/custom_ppo.py \
+  ztb/training/experiments/sell_mitigation_ppo_trainer.py \
+  ztb/training/unified_trainer/algorithms/ppo_trainer.py \
+  ztb/training/core/ppo_trainer.py \
+  tests/integration/test_custom_ppo_integration.py
+```
+
+- `Success: no issues found in 5 source files`
+
+### focused pytest
+
+```bash
+.venv/Scripts/python.exe -m pytest \
+  tests/training/test_ppo_trainer.py \
+  tests/unit/algorithms/test_ppo_algorithm.py \
+  tests/unit/training/test_ppo_trainer.py \
+  tests/integration/test_custom_ppo_integration.py \
+  tests/training/unified_trainer/test_algorithms.py \
+  -x --tb=short --no-cov --durations=20
+```
+
+- `92 passed, 2 skipped in 11.06s`
+
+主な改善:
+
+- `tests/integration/test_custom_ppo_integration.py::TestSellMitigationTrainerIntegration::test_trainer_uses_current_params_interface`
+  - `11.80s -> 0.02s`
+
+## 追加で確認した archive 候補
+
+今回の sweep では、次の PPO legacy script 群は引き続き archive 候補だった。
+
+- `experiments/train_sac_v443_2_market_regime_adaptation.py`
+- `experiments/train_v443_2_phase1.py`
+- `experiments/train_v443_2_phase2.py`
+- `experiments/sac_v446_algorithm_tuning.py`
+
+いずれもヘッダ上は PPO 実験コードで、current v460/v461 active path ではない。
+ただし今回の batch では runtime 復旧と current path の整理を優先し、移動は行っていない。
+
+## 次の一手
+
+1. `CustomPPO` / `SELLBiasMitigationPPOTrainer` の残る baseline mypy を小さく減らす
+2. PPO sidecar scheduler / signal 形式を、SAC sidecar の current I/O と並べて設計する
+3. legacy PPO 実験コードを archive batch として別 commit で切る

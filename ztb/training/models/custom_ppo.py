@@ -14,7 +14,7 @@ at the appropriate points in the learning loop.
 from __future__ import annotations
 
 import warnings
-from typing import Any, Optional, TypeVar
+from typing import Any, TypeAlias, TypeVar, cast
 
 import numpy as np
 import torch as th
@@ -37,6 +37,27 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 SelfCustomPPO = TypeVar("SelfCustomPPO", bound="CustomPPO")
+ActionSpace: TypeAlias = spaces.Space[Any]
+
+
+def _resolve_action_space(
+    env: GymEnv | str, current_action_space: ActionSpace | None
+) -> ActionSpace:
+    """Return a concrete action space even when the base class leaves it unset."""
+    if current_action_space is not None:
+        return current_action_space
+    if hasattr(env, "action_space"):
+        action_space = getattr(env, "action_space")
+        if isinstance(action_space, spaces.Space):
+            return cast(ActionSpace, action_space)
+    return spaces.Discrete(3)
+
+
+def _num_actions(action_space: ActionSpace) -> int:
+    """Get the discrete action count, or fall back to the trading default."""
+    if isinstance(action_space, spaces.Discrete):
+        return int(action_space.n)
+    return 3
 
 class CustomPPO(MaskablePPO):
     """
@@ -127,21 +148,10 @@ class CustomPPO(MaskablePPO):
         self.enable_stratified_sampling = enable_stratified_sampling
         self.enable_lagrange = enable_lagrange
 
-        # Ensure action_space exists on the model in case base class didn't
-        # populate it during initialization (some SB3 versions or stubs
-        # may not set this attribute reliably at __init__ time).
-        if not hasattr(self, "action_space") or self.action_space is None:
-            try:
-                # If env is a Gym env instance, use its action_space
-                if hasattr(env, "action_space"):
-                    self.action_space = env.action_space
-            except Exception:
-                # Best-effort: fall back to Discrete(3) for trading actions
-                try:
-                    # `spaces` is imported at module level; use it if available
-                    self.action_space = spaces.Discrete(3)
-                except Exception:
-                    pass
+        # Some local shims and SB3 stubs do not populate action_space reliably.
+        self.action_space = _resolve_action_space(
+            env, getattr(self, "action_space", None)
+        )
 
         # Initialize custom components
         self.pan_normalizer: PerActionAdvantageNormalizer | None = None
@@ -150,11 +160,7 @@ class CustomPPO(MaskablePPO):
         self.lagrange: LagrangeConstraint | None = None
 
         if enable_pan:
-            # Determine number of actions from action space
-            if isinstance(self.action_space, spaces.Discrete):
-                n_actions = int(self.action_space.n)
-            else:
-                n_actions = 3  # Default for trading (HOLD, BUY, SELL)
+            n_actions = _num_actions(self.action_space)
 
             self.pan_normalizer = PerActionAdvantageNormalizer(
                 n_actions=n_actions,
@@ -163,10 +169,7 @@ class CustomPPO(MaskablePPO):
             logger.info(f"✓ PAN enabled (n_actions={n_actions}, epsilon={pan_epsilon})")
 
         if enable_target_entropy:
-            if isinstance(self.action_space, spaces.Discrete):
-                n_actions = int(self.action_space.n)
-            else:
-                n_actions = 3
+            n_actions = _num_actions(self.action_space)
 
             self.entropy_controller = TargetEntropyController(
                 n_actions=n_actions,
@@ -184,9 +187,7 @@ class CustomPPO(MaskablePPO):
                 "Consider using PAN and Target Entropy first."
             )
             self.stratified_sampler = StratifiedSampler(
-                n_actions=int(self.action_space.n)
-                if isinstance(self.action_space, spaces.Discrete)
-                else 3,
+                n_actions=_num_actions(self.action_space),
                 regime_window=20,
                 regime_threshold=0.001,
             )
@@ -194,7 +195,7 @@ class CustomPPO(MaskablePPO):
 
         if enable_lagrange:
             self.lagrange = LagrangeConstraint(
-                target_action=lagrange_target_action,  # type: ignore[arg-type]
+                target_action=lagrange_target_action,
                 r_target=lagrange_r_target,
                 tolerance=lagrange_tolerance,
                 eta=lagrange_eta,
@@ -237,11 +238,11 @@ class CustomPPO(MaskablePPO):
         self._update_learning_rate(self.policy.optimizer)
 
         # Compute current clip range
-        clip_range = self.clip_range(self._current_progress_remaining)  # type: ignore[operator]
+        clip_range = self.clip_range(self._current_progress_remaining)
 
         # Optional: clip range for the value function
         if self.clip_range_vf is not None:
-            clip_range_vf = self.clip_range_vf(self._current_progress_remaining)  # type: ignore[operator]
+            clip_range_vf = self.clip_range_vf(self._current_progress_remaining)
 
         entropy_losses = []
         pg_losses, value_losses = [], []
@@ -276,7 +277,7 @@ class CustomPPO(MaskablePPO):
                     # Apply PAN
                     advantages_np = self.pan_normalizer.normalize(
                         advantages_np, actions_np
-                    )  # type: ignore
+                    )
 
                     # Convert back to torch
                     advantages = th.tensor(
@@ -432,7 +433,7 @@ class CustomPPO(MaskablePPO):
 
                 # Optimization step
                 self.policy.optimizer.zero_grad()
-                loss.backward()  # type: ignore[no-untyped-call]
+                loss.backward()
 
                 # Clip grad norm
                 th.nn.utils.clip_grad_norm_(
@@ -482,7 +483,7 @@ def explained_variance(
     """
     assert y_true.ndim == 1 and y_pred.ndim == 1
     var_y = np.var(y_true)
-    return np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
+    return float(np.nan) if var_y == 0 else float(1 - np.var(y_true - y_pred) / var_y)
 
 if __name__ == "__main__":
     print("CustomPPO module loaded successfully")

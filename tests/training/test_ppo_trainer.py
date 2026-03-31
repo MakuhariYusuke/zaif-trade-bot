@@ -179,6 +179,9 @@ class TestPPOTrainerAutoHalt:
         mock_load_data.assert_called_once_with("dummy_path.csv")
         mock_env.assert_called_once()
         mock_action_masker.assert_called_once()
+        _, masker_kwargs = mock_action_masker.call_args
+        assert "mask_fn" in masker_kwargs
+        assert "action_mask_fn" not in masker_kwargs
 
         assert env == mock_action_masker_instance
 

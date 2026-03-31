@@ -854,3 +854,26 @@ durations 変化で特に効いた点:
       - `2.97s` が支配点だったので次回比較基準として記録
     - `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data`
       - setup `0.31s`
+
+- PPO integration/runtime sweep:
+  - 追加適用:
+    - `tests/integration/test_custom_ppo_integration.py`
+    - `tests/training/test_ppo_trainer.py`
+    - `tests/training/unified_trainer/test_algorithms.py`
+  - 内容:
+    - `SELLBiasMitigationPPOTrainer` の current params smoke を lightweight fake env 化
+    - action-mask contract を `mask_fn -> get_action_masks()` 前提で固定
+    - unified trainer 側の PPO current training path smoke を追加
+  - focused pytest:
+    - `tests/training/test_ppo_trainer.py`
+    - `tests/unit/algorithms/test_ppo_algorithm.py`
+    - `tests/unit/training/test_ppo_trainer.py`
+    - `tests/integration/test_custom_ppo_integration.py`
+    - `tests/training/unified_trainer/test_algorithms.py`
+    - `92 passed, 2 skipped in 11.06s`
+  - before/after:
+    - `tests/integration/test_custom_ppo_integration.py::TestSellMitigationTrainerIntegration::test_trainer_uses_current_params_interface`
+      - `11.80s -> 0.02s`
+  - slowest 20:
+    - PPO 系では `sell_mitigation` integration が支配点から外れた
+    - 現在の上位は self-supervised trainer integration 側へ移動

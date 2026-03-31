@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import os
 import time
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -12,6 +12,11 @@ import numpy as np
 # collection-time failures in minimal test environments. Import lazily
 # in the training method when actually needed.
 _SB3_PPO = None
+
+if TYPE_CHECKING:
+    from stable_baselines3 import PPO as StableBaselinesPPO
+else:
+    StableBaselinesPPO = Any
 
 from ztb.training.config.configuration_manager import ConfigurationManager
 from ztb.training.constants import DEFAULT_LEARNING_RATE_PPO, DEFAULT_BATCH_SIZE_PPO, DEFAULT_GAMMA, DEFAULT_CLIP_RANGE, DEFAULT_ENT_COEF_PPO, DEFAULT_N_EPOCHS_PPO, DEFAULT_GAE_LAMBDA, DEFAULT_VF_COEF, DEFAULT_MAX_GRAD_NORM
@@ -42,7 +47,7 @@ class PPOTrainer(BaseAlgorithmTrainer):
         super().__init__(config, logger)
 
         # model will be instantiated later; annotate as optional to satisfy mypy
-        self.model: PPO | None = None
+        self.model: StableBaselinesPPO | None = None
         self.gradient_accumulation_steps = gradient_accumulation_steps
         self.system_optimizer = system_optimizer
         self.optimizer_tracker = optimizer_tracker
@@ -122,8 +127,10 @@ class PPOTrainer(BaseAlgorithmTrainer):
 
     def train(self) -> bool:
         """Execute PPO training with unified error handling and structured logging."""
-        return self.execute_training_pipeline(
-            algorithm_name="PPO", training_function=self._execute_ppo_training
+        return bool(
+            self.execute_training_pipeline(
+                algorithm_name="PPO", training_function=self._execute_ppo_training
+            )
         )
 
     def _execute_ppo_training(

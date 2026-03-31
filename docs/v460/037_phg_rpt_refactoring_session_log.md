@@ -9645,3 +9645,41 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
       - `Discrete (3,)`
       - `learned_is_self True`
       - `entropy_updates 4`
+
+- 2026-04-01 Codex:
+  - PPO foundation の次段として `678#` を追加
+  - `ztb/training/core/ppo_trainer.py`
+    - `wrap_env_with_action_masker(...)` を追加し、
+      core PPO path の action-mask 契約を helper 化
+  - `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+    - legacy `get_legal_actions().astype(bool)` path を除去し、
+      core と同じ helper を再利用
+    - trainer 側で重複初期化していた
+      `PAN / entropy controller / stratified sampler`
+      を削除
+  - `ztb/training/models/custom_ppo.py`
+  - `ztb/training/unified_trainer/algorithms/ppo_trainer.py`
+    - low-risk mypy cleanup
+      - `TypeAlias`
+      - unused ignore 削除
+      - bool return / action_space drift 修正
+  - `tests/integration/test_custom_ppo_integration.py`
+    - lightweight fake env で sell mitigation integration を高速化
+    - legacy action-mask path が再発しない guard を追加
+  - `tests/training/unified_trainer/test_algorithms.py`
+    - unified PPO trainer の current training path smoke を追加
+  - 検証:
+    - targeted mypy:
+      - `ztb/training/models/custom_ppo.py`
+      - `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+      - `ztb/training/unified_trainer/algorithms/ppo_trainer.py`
+      - `ztb/training/core/ppo_trainer.py`
+      - `tests/integration/test_custom_ppo_integration.py`
+      - `Success: no issues found in 5 source files`
+    - focused pytest:
+      - `tests/training/test_ppo_trainer.py`
+      - `tests/unit/algorithms/test_ppo_algorithm.py`
+      - `tests/unit/training/test_ppo_trainer.py`
+      - `tests/integration/test_custom_ppo_integration.py`
+      - `tests/training/unified_trainer/test_algorithms.py`
+      - `92 passed, 2 skipped in 11.06s`
