@@ -277,6 +277,7 @@ class TestPreflightRegimeMult:
             min_order_btc=0.001,
             balance_margin_ratio=1.01,
             dust_sweep_enabled=False,  # 476#: regime_mult テストは dust sweep と分離
+            max_lot=1.0,  # 673#: regime_mult テストに 669# max_lot clamp を干渉させない
         )
         return BalanceChecker(config)
 

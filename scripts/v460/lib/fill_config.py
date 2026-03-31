@@ -139,7 +139,7 @@ class FillTestConfig:
     min_adapt_samples: int = 50  # 方策 A/B 発動の最小サンプル数
     # 方策 B: 動的ロットサイジング
     enable_dynamic_lot: bool = False
-    max_lot: float = 0.005
+    max_lot: float = 0.001  # 669# 0.005→0.001: 1mBTC cap
     lot_adapt_interval_cycles: int = 50
     recent_pnl_window: int = 50  # 方策 B 直近 PnL 計算ウィンドウ
     # 151# P3-03: AS 確率連動ロットサイジング (confidence_lot)
