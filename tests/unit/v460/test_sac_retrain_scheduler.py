@@ -210,6 +210,25 @@ class TestSACRetrainTrigger:
         trigger.record_result("deployed")
         assert trigger._consecutive_failures == 0
 
+    def test_time_forced_fallback_680(self, tmp_path: Path) -> None:
+        """680# data_unchanged でも MAX_STALENESS_MULT × interval 超過で強制発火."""
+        trigger, data_file = self._make_trigger(tmp_path)
+        # retrain_interval=60, MAX_STALENESS_MULT=3.0 → 180s で強制
+        trigger._last_data_mtime = data_file.stat().st_mtime
+        trigger._last_retrain_time = time.time() - 200  # 200s > 180s
+        should, reason = trigger.should_retrain()
+        assert should is True
+        assert "time_forced" in reason
+
+    def test_data_unchanged_within_staleness_mult(self, tmp_path: Path) -> None:
+        """680# MAX_STALENESS_MULT 未満なら従来通り data_unchanged."""
+        trigger, data_file = self._make_trigger(tmp_path)
+        trigger._last_data_mtime = data_file.stat().st_mtime
+        trigger._last_retrain_time = time.time() - 120  # 120s < 180s
+        should, reason = trigger.should_retrain()
+        assert should is False
+        assert "data_unchanged" in reason
+
 
 # ════════════════════════════════════════════════════════════════
 # §3 RetrainResult

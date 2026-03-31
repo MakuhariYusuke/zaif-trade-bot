@@ -77,9 +77,14 @@ class OrchestratorBalanceMixin:
         # ── 522# 片側のみ残高不足 → side を freeze してスキップ ──
         # balance_switch/recovery_skew/inventory_escape は全廃。
         # freeze により次サイクルで自然に opposite が選択される。
+        # 680#: 残高詳細をログに含めて diagnose を容易にする
+        _jpy = self._balance_checker.last_jpy_free
+        _btc = self._balance_checker.last_btc_free
+        _bal_str = f"jpy={_jpy}, btc={_btc}" if _jpy is not None else "N/A"
         logger.info(
             f"[522#] {next_side} insufficient, {opposite} available — "
-            f"freezing {next_side} and skipping (no forced switching)"
+            f"freezing {next_side} and skipping (no forced switching) "
+            f"[bal: {_bal_str}, lot={self._current_lot}]"
         )
         self._side_selector.freeze_side(
             next_side, cycles=self.config.balance_freeze_cycles,

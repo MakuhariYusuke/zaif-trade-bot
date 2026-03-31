@@ -561,7 +561,7 @@ volatility_guard:
   inv_skew_damping_enabled: true
   # 269# 257# VPIN Continuous Modulator: バイナリ→連続スケーリング
   vpin_continuous_enabled: true     # 269# 有効化
-  vpin_continuous_min: 0.40         # 連続スケーリング開始の VPIN 下限
+  vpin_continuous_min: 0.50         # 680# 0.40→0.50: VPIN avg=0.68で94%発火→60%台へ選択性向上 (H(filter)≈0→>0)
   # 353# VPIN 非対称 buy boost (351# 盲点1: Ranging ≠ 対称)
   # buy は informed trading の逆選択リスクが構造的に高い (164# SHAP buy=0.548 vs sell=0.316)
   vpin_buy_extra_mult: 1.5          # buy 側 VPIN boost を 1.5 倍増幅
