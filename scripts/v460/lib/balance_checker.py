@@ -163,6 +163,7 @@ class BalanceChecker:
         """101# §6: 残高十分時のロット復元 (共通).
 
         balance_shrink_active でない場合のみ復元する。
+        669#: 復元先が max_lot を超える場合はクランプする。
         """
         if (
             not self._balance_shrink_active
@@ -170,7 +171,12 @@ class BalanceChecker:
             and can_afford_pre_shrink
         ):
             old_lot = self._current_lot
-            self._current_lot = self._pre_shrink_lot
+            # 669#: hot-reload で max_lot が縮小された場合に旧値へ戻るのを防止
+            _max_lot = self._config.max_lot
+            restored = self._pre_shrink_lot
+            if _max_lot > 0 and restored > _max_lot:
+                restored = _max_lot
+            self._current_lot = restored
             logger.info(
                 f"[balance] {side} 残高回復: ロット復元 "
                 f"{old_lot:.4f} → {self._current_lot:.4f} BTC"
@@ -402,10 +408,18 @@ class BalanceChecker:
             logger.info("[dust_sweep] Buy-to-clear pending cleared.")
 
     def restore_lot_on_success(self) -> None:
-        """051# P2-3: 成功時に balance_shrink を解除し、ロットを原値に復元."""
+        """051# P2-3: 成功時に balance_shrink を解除し、ロットを原値に復元.
+
+        669#: 復元先が max_lot を超える場合はクランプする。
+        """
         if self._balance_shrink_active:
             old_lot = self._current_lot
-            self._current_lot = self._pre_shrink_lot
+            # 669#: hot-reload で max_lot が縮小された場合に旧値へ戻るのを防止
+            _max_lot = self._config.max_lot
+            restored = self._pre_shrink_lot
+            if _max_lot > 0 and restored > _max_lot:
+                restored = _max_lot
+            self._current_lot = restored
             self._balance_shrink_active = False
             logger.info(
                 f"[balance_shrink] 解除: ロット復元 {old_lot:.4f} → {self._current_lot:.4f} BTC"

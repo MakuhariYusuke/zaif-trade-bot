@@ -767,6 +767,11 @@ NNN_phX_TYPE_description.md
 | 660 | review | [660_cplt_self_review_profitability_tuning.md](660_cplt_self_review_profitability_tuning.md) | セルフレビュー: 収益性分析とパラメータチューニング |
 | 661 | analysis | [661_cplt_btc_pnl_structure_weekday_weekend_fix.md](661_cplt_btc_pnl_structure_weekday_weekend_fix.md) | BTC建て収益構造分析・曜日効果・B-3結論・構造改善 |
 | 662 | review | [662_phg_rev_652_661_multifaceted_validation_and_debug.md](662_phg_rev_652_661_multifaceted_validation_and_debug.md) | 652#-661# 多角的検証レビューとデバッグ整理 |
-| 663 | review | [663_cplt_deep_theoretical_review_and_profit_proposals.md](663_cplt_deep_theoretical_review_and_profit_proposals.md) | 理論レビュー: deadlock jitter・stale sidecar・reservation price・eDRC 提案 |
-| 664 | impl | [664_cplt_662_663_review_verification_deadlock_escape.md](664_cplt_662_663_review_verification_deadlock_escape.md) | 662/663レビュー検証 + Deadlock Escape 実装 |
-| 665 | impl | [665_cplt_deadlock_escape_yaml_activation.md](665_cplt_deadlock_escape_yaml_activation.md) | Deadlock Escape YAML 有効化 + stale warning 修正 + 初動検証 |
+| 663 | review | [663_cplt_deep_theoretical_review_and_profit_proposals.md](663_cplt_deep_theoretical_review_and_profit_proposals.md) | 理論に基づく収益化と死角の打破 — 653#-662# レビュー |
+| 664 | impl | [664_cplt_662_663_review_verification_deadlock_escape.md](664_cplt_662_663_review_verification_deadlock_escape.md) | 662/663 レビュー検証 + Deadlock Escape 実装 |
+| 665 | impl | [665_cplt_deadlock_escape_yaml_activation.md](665_cplt_deadlock_escape_yaml_activation.md) | Deadlock Escape YAML 有効化 + Stale Warning 修正 |
+| 666 | plan | [666_cplt_dynamic_lot_sizing_balance_aware_proposal.md](666_cplt_dynamic_lot_sizing_balance_aware_proposal.md) | 動的ロットサイジング: 1mBTC / 2mBTC 適応制御の設計提案 |
+| 666 | review | [666_review_dynamic_lot_sizing_validation.md](666_review_dynamic_lot_sizing_validation.md) | AI レビュー: 動的ロットサイジング提案の多角的検証 |
+| 667 | review | [667_phg_rev_663_666_1mbtc_cap_validation.md](667_phg_rev_663_666_1mbtc_cap_validation.md) | 663#-666# 検証レビュー: 1mBTC 制限機構の妥当性・反証・実装順序 |
+| 668 | review | [668_cplt_review_and_consensus_on_1mbtc_cap.md](668_cplt_review_and_consensus_on_1mbtc_cap.md) | 668# 検証と合意: 1mBTC Cap と非対称制約の確立 |
+| 669 | impl | [669_cplt_1mbtc_cap_restore_clamp.md](669_cplt_1mbtc_cap_restore_clamp.md) | 1mBTC Cap 実装: restore パス max_lot クランプ + YAML 設定 |

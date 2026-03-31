@@ -84,7 +84,7 @@ lot_sizing:
   enabled: false              # 動的ロット有効化
   interval_cycles: 50         # ロット適応判定の間隔
   min_lot: 0.001              # ロット下限 (BTC)
-  max_lot: 0.005              # ロット上限 (BTC)
+  max_lot: 0.001              # 669# 1mBTC cap: PI/Deadlock 撲滅 (旧: 0.005)
   lot_step: 0.00000001         # 348# satoshi 精度 (1e-8 BTC)
   min_fill_rate: 0.70         # 増量に必要な約定率
   max_as_ratio: 0.30          # 増量に必要な AS 上限
