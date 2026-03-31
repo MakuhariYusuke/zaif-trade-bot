@@ -143,7 +143,24 @@ v461 の PPO sidecar 再開に向けて、現行 repo に残っている PPO 関
 1. `ppo_retrain_scheduler.py`
    - 実装済み
    - 現段階は `fresh fit + shorter budget` で安全側に運用し、trainer 側 warm-start は別 batch に分離
+   - shared trigger は `mtime` 不変でも `max_staleness_mult × interval` 経過後に `time_forced` で再訓練する
 2. `ztb/training/models/custom_ppo.py`
    - runtime は復旧したが、mypy baseline はまだ厚い
 3. 過去バージョンの PPO 実験コード
    - いきなり archive 移動せず、参照実態を見てから別 batch で整理する
+
+## 追記: scheduler 安全弁と運用安定化
+
+foundation 後段として、PPO scheduler 側に次の安全弁を追加した。
+
+- `scripts/v460/ml/sidecar_scheduler_common.py`
+  - `DataFileRetrainTrigger`
+  - `mtime` 不変でも `MAX_STALENESS_MULT × interval` 経過後は
+    `time_forced (...)` で再訓練を許可
+- `scripts/v460/ml/ppo_retrain_scheduler.py`
+  - training を別 thread で実行し、timeout 超過時は `TimeoutError`
+  - cycle 終了時に `clear_cuda_cache()` と `gc.collect()` を必ず実行
+
+これにより、649# 系の data freshness check でファイル更新が抑制される期間でも
+PPO scheduler が永久停止せず、また長時間学習や GPU メモリ滞留のリスクも
+低減できる。

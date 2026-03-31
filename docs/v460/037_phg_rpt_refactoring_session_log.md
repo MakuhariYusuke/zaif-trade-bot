@@ -9796,3 +9796,14 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
       - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
       - `tests/unit/v460/test_sac_retrain_scheduler.py`
       - `69 passed in 14.18s`
+### 037-678E PPO scheduler hardening
+
+- `sidecar_scheduler_common.DataFileRetrainTrigger`
+  - `time_forced` fallback を追加
+  - `mtime` 不変でも `max_staleness_mult × interval` 経過後は再訓練を再開
+- `ppo_retrain_scheduler`
+  - training timeout guard を追加
+  - retrain cycle 終了時に `clear_cuda_cache()` / `gc.collect()` を実行
+- focused:
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`

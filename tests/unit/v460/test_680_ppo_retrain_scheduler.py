@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import time
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -16,7 +17,9 @@ from scripts.v460.lib.sidecar_types import PPOSidecarSignal
 from scripts.v460.ml.ppo_retrain_scheduler import (
     PPORetrainResult,
     PPORetrainTrigger,
+    _TRAINING_TIMEOUT_SEC,
     _push_neutral_fallback,
+    _train_with_timeout,
     _update_ppo_sidecar_signal,
     load_config,
     retrain_once,
@@ -100,6 +103,17 @@ class TestPPORetrainTrigger:
         trigger.record_result("error")
         trigger.record_result("error")
         assert trigger.effective_interval == 240.0
+
+    def test_time_forced_retrain_when_mtime_is_unchanged(self, tmp_path: Path) -> None:
+        trigger, data_file = self._make_trigger(tmp_path)
+        trigger.record_result("deployed")
+        trigger._last_data_mtime = data_file.stat().st_mtime
+        trigger._last_retrain_time = time.time() - (trigger.effective_interval * 3.0 + 1.0)
+
+        should, reason = trigger.should_retrain()
+
+        assert should is True
+        assert "time_forced" in reason
 
 
 class TestPPORetrainResult:
@@ -252,3 +266,23 @@ class TestPPORetrainOnce:
         loaded = read_ppo_sidecar_signal(cfg.signal_path)
         assert loaded is not None
         assert loaded.action == "skip"
+
+
+class TestPPOTrainingTimeout:
+    def test_timeout_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        trainer = MagicMock()
+
+        def _slow_train(*_args: object, **_kwargs: object) -> object:
+            time.sleep(0.05)
+            return _FakePPOModel()
+
+        trainer.train.side_effect = _slow_train
+        monkeypatch.setattr(
+            "scripts.v460.ml.ppo_retrain_scheduler._TRAINING_TIMEOUT_SEC",
+            0.01,
+        )
+
+        with pytest.raises(TimeoutError, match="exceeded"):
+            _train_with_timeout(trainer, session_id="ppo_timeout")
+
+        assert _TRAINING_TIMEOUT_SEC >= 1

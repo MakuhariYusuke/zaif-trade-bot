@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import argparse
+import gc
 import logging
 import os
 import signal
@@ -48,11 +49,13 @@ from ztb.training.experiments.sell_mitigation_ppo_trainer import (
     SELLBiasMitigationPPOTrainer,
 )
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.memory_utils import clear_cuda_cache
 from ztb.utils.time_utils import current_compact_timestamp, current_iso_timestamp
 
 logger = get_logger(__name__)
 
 _shutdown_event = threading.Event()
+_TRAINING_TIMEOUT_SEC = 3600
 
 
 def _install_signal_handlers() -> None:
@@ -282,6 +285,44 @@ def _build_trainer_params(
     )
 
 
+def _train_with_timeout(
+    trainer: SELLBiasMitigationPPOTrainer,
+    *,
+    session_id: str,
+) -> _PPOModelProtocol:
+    """PPO training を timeout 保護付きで実行する."""
+
+    trained_model: object | None = None
+    training_error: BaseException | None = None
+
+    def _target() -> None:
+        nonlocal trained_model, training_error
+        try:
+            trained_model = trainer.train(session_id=session_id)
+        except BaseException as exc:  # pragma: no cover - error path validated via wrapper
+            training_error = exc
+
+    train_thread = threading.Thread(target=_target, daemon=True)
+    train_thread.start()
+    train_thread.join(timeout=_TRAINING_TIMEOUT_SEC)
+
+    if train_thread.is_alive():
+        raise TimeoutError(
+            f"PPO trainer exceeded {_TRAINING_TIMEOUT_SEC}s timeout"
+        )
+    if training_error is not None:
+        raise training_error
+    if trained_model is None:
+        raise RuntimeError("PPO trainer returned no model")
+    return cast(_PPOModelProtocol, trained_model)
+
+
+def _cleanup_training_cycle() -> None:
+    """PPO retrain cycle 後の best-effort cleanup."""
+    clear_cuda_cache()
+    gc.collect()
+
+
 def retrain_once(cfg: PPOSidecarConfig) -> PPORetrainResult:
     """1 サイクルの PPO sidecar retrain を実行する."""
 
@@ -295,13 +336,10 @@ def retrain_once(cfg: PPOSidecarConfig) -> PPORetrainResult:
 
     try:
         start_time = time.time()
-        model = trainer.train(session_id=model_version)
-        if model is None:
-            raise RuntimeError("PPO trainer returned no model")
-
-        _atomic_deploy_model(cast(_PPOModelProtocol, model), cfg.model_path)
+        model = _train_with_timeout(trainer, session_id=model_version)
+        _atomic_deploy_model(model, cfg.model_path)
         signal_obj = _update_ppo_sidecar_signal(
-            cast(_PPOModelProtocol, model),
+            model,
             cfg,
             model_version,
         )
@@ -334,6 +372,8 @@ def retrain_once(cfg: PPOSidecarConfig) -> PPORetrainResult:
             error_message=str(exc),
             debug_details={"data_path": cfg.data_path},
         )
+    finally:
+        _cleanup_training_cycle()
 
 
 def run_scheduler(cfg: PPOSidecarConfig) -> None:

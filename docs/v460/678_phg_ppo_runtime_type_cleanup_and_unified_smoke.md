@@ -275,6 +275,60 @@ weights の warm-start は別 batch に分離した。
 
 - `69 passed in 14.18s`
 
+### 9. scheduler staleness / timeout hardening
+
+foundation の次段として、PPO sidecar scheduler の停止耐性とメモリ健全性を
+さらに補強した。
+
+- `scripts/v460/ml/sidecar_scheduler_common.py`
+  - `DataFileRetrainTrigger.MAX_STALENESS_MULT = 3.0`
+  - `mtime` 不変でも `effective_interval × 3` 経過後は
+    `time_forced (...)` で再訓練を再開
+- `scripts/v460/ml/ppo_retrain_scheduler.py`
+  - `_TRAINING_TIMEOUT_SEC = 3600`
+  - `_train_with_timeout(...)`
+  - `_cleanup_training_cycle()`
+  を追加
+  - training timeout 時は `TimeoutError` で cycle を fail-fast
+  - cycle 終了時に `clear_cuda_cache()` と `gc.collect()` を実行
+
+この batch で追加した guard は次の性質を持つ。
+
+1. data freshness 側がファイル更新を抑制しても scheduler が永久停止しない
+2. 学習 thread が長時間ぶら下がるケースを live 側へ波及させない
+3. retrain ごとに GPU/CPU の一時メモリを明示解放し、sidecar 常駐時のリークを抑える
+
+### 10. focused test 追記
+
+```bash
+.venv/Scripts/python.exe -m pytest \
+  tests/unit/v460/test_680_ppo_retrain_scheduler.py \
+  tests/unit/v460/test_sac_retrain_scheduler.py \
+  -x --tb=short --no-cov
+```
+
+- `time_forced` fallback
+- training timeout
+- neutral fallback / deploy path
+
+を focused で確認した。
+  scripts/v460/ml/ppo_sidecar_config.py \
+  scripts/v460/ml/ppo_retrain_scheduler.py \
+  tests/unit/v460/test_680_ppo_retrain_scheduler.py
+```
+
+- `Success: no issues found in 4 source files`
+
+```bash
+.venv/Scripts/python.exe -m pytest \
+  tests/unit/v460/test_679_ppo_sidecar_foundation.py \
+  tests/unit/v460/test_680_ppo_retrain_scheduler.py \
+  tests/unit/v460/test_sac_retrain_scheduler.py \
+  -x --tb=short --no-cov
+```
+
+- `69 passed in 14.18s`
+
 - `100 passed in 7.40s`
 
 targeted mypy は `sidecar_types.py` / foundation test では clean を維持。
