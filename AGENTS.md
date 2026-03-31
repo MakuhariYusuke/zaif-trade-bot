@@ -38,3 +38,9 @@ Coincheck BTC/JPY マーケットメイカー（SAC強化学習）。短期高�
 - **entry_gate**: observe モード（`enabled: false` + CalibrationMap 接続済み）
 - **retrain_scheduler**: 649# でデータ鮮度チェックを retrain trigger から分離。`data_freshness_check_interval_sec` (1h) で独立して OHLCV 更新
 - **提案文書の検証**: AI 生成の「現在値」は必ず YAML + コードで検証すること（592#/605# 教訓）
+
+## データ解釈の原則
+- **数値は切り取り方で真逆の結論を導く**。集計期間・フィルタ条件・母集団を常に明示すること
+- 「平均 PnL が正」でも母集団に NFQ/MCB halt が混在すれば fill-only 平均とは別物。層別分析を怠らない
+- ログ・メトリクスの因果推論は原則不可（観察データ）。相関を因果と断定しない
+- AI 生成の分析結果は**再現コマンド付き**で検証可能にすること（675#/679# 教訓）
