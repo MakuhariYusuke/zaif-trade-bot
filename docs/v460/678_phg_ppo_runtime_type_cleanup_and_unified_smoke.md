@@ -119,3 +119,73 @@ callback も `self.model.*` を見ていたため、trainer 側の別インス�
 1. `CustomPPO` / `SELLBiasMitigationPPOTrainer` の残る baseline mypy を小さく減らす
 2. PPO sidecar scheduler / signal 形式を、SAC sidecar の current I/O と並べて設計する
 3. legacy PPO 実験コードを archive batch として別 commit で切る
+
+## ステータス追記
+
+678# の後段として、current PPO foundation はさらに次の状態まで進んだ。
+
+### 1. `PPOAlgorithm` wrapper の hidden gap を解消
+
+- `ztb/training/algorithms/ppo/ppo_algorithm.py`
+  - `create_model()` が current config から `CustomPPO` / `MaskablePPO` を選んで生成
+  - `train()` は placeholder ではなく `model.learn(...)` に委譲
+
+これで inventory 上 **ACTIVE** とされていた wrapper が、
+実際に `BaseRLAlgorithm` 契約どおり前に進む状態になった。
+
+### 2. PPO sidecar signal foundation を追加
+
+- `scripts/v460/lib/sidecar_types.py`
+  - `PPOSidecarSignal`
+  - `normalize_ppo_action_probabilities(...)`
+  - `resolve_ppo_sidecar_action(...)`
+- `scripts/v460/lib/sidecar_signal_io.py`
+  - `write_ppo_sidecar_signal(...)`
+  - `read_ppo_sidecar_signal(...)`
+  - `create_neutral_ppo_signal(...)`
+- `scripts/v460/ml/ppo_sidecar_config.py`
+  - discrete action / override threshold を固定する最小 config helper
+
+SAC sidecar の atomic JSON I/O と TTL/stale 判定をそのまま再利用し、
+PPO sidecar だけ別フォーマットを増やさない形に寄せた。
+
+### 3. 設計上の固定
+
+PPO sidecar は **side selection のみ** を扱い、
+価格 aggressiveness は SAC / executor 側に残す。
+
+この責務分離により:
+
+- PPO:
+  - BUY / SELL / SKIP の離散判断
+  - top probability と probability gap による override 安定度
+- SAC:
+  - quote offset / aggressiveness の連続制御
+
+という境界が保てる。
+
+### 4. 追加 focused 確認
+
+```bash
+.venv/Scripts/python.exe scripts/quality/run_targeted_mypy.py \
+  scripts/v460/lib/sidecar_types.py \
+  scripts/v460/lib/sidecar_signal_io.py \
+  scripts/v460/ml/ppo_sidecar_config.py \
+  ztb/training/algorithms/ppo/ppo_algorithm.py \
+  tests/unit/v460/test_679_ppo_sidecar_foundation.py
+```
+
+- `Success: no issues found in 5 source files`
+
+```bash
+.venv/Scripts/python.exe -m pytest \
+  tests/unit/v460/test_679_ppo_sidecar_foundation.py \
+  tests/unit/algorithms/test_ppo_algorithm.py \
+  tests/unit/environment/test_heavy_env_initialization.py \
+  tests/training/test_ppo_trainer.py \
+  tests/unit/training/test_ppo_trainer.py \
+  tests/integration/test_custom_ppo_integration.py \
+  -x --tb=short --no-cov --durations=20
+```
+
+- `77 passed, 2 skipped in 17.71s`

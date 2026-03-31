@@ -9683,3 +9683,43 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
       - `tests/integration/test_custom_ppo_integration.py`
       - `tests/training/unified_trainer/test_algorithms.py`
       - `92 passed, 2 skipped in 11.06s`
+
+- 2026-04-01 Codex:
+  - PPO foundation を `675/676/678` に集約しつつ、current active path と
+    PPO sidecar foundation の残差を追加整理
+  - `ztb/training/algorithms/ppo/ppo_algorithm.py`
+    - `create_model()` が current config から `CustomPPO` / `MaskablePPO`
+      を選択して生成するよう修正
+    - `train()` は placeholder ではなく `model.learn(...)` 委譲へ修正
+  - `ztb/training/core/ppo_trainer.pyi`
+    - `PPOTrainingConfig.from_dict(...)` と core attribute 群を stub に反映
+  - `scripts/v460/lib/sidecar_types.py`
+    - `PPOSidecarSignal`
+    - `normalize_ppo_action_probabilities(...)`
+    - `resolve_ppo_sidecar_action(...)`
+    を追加
+  - `scripts/v460/lib/sidecar_signal_io.py`
+    - SAC sidecar の atomic JSON / TTL path を再利用しつつ
+      PPO sidecar signal の read/write foundation を追加
+  - `scripts/v460/ml/ppo_sidecar_config.py`
+    - discrete action / override threshold を固定する最小 config helper を追加
+  - `tests/unit/v460/test_679_ppo_sidecar_foundation.py`
+    - PPO sidecar signal / JSON I/O / config foundation の focused test を追加
+  - `tests/unit/environment/test_heavy_env_initialization.py`
+    - discrete mode の boolean action mask guard を追加
+  - 検証:
+    - targeted mypy:
+      - `scripts/v460/lib/sidecar_types.py`
+      - `scripts/v460/lib/sidecar_signal_io.py`
+      - `scripts/v460/ml/ppo_sidecar_config.py`
+      - `ztb/training/algorithms/ppo/ppo_algorithm.py`
+      - `tests/unit/v460/test_679_ppo_sidecar_foundation.py`
+      - `Success: no issues found in 5 source files`
+    - focused pytest:
+      - `tests/unit/v460/test_679_ppo_sidecar_foundation.py`
+      - `tests/unit/algorithms/test_ppo_algorithm.py`
+      - `tests/unit/environment/test_heavy_env_initialization.py`
+      - `tests/training/test_ppo_trainer.py`
+      - `tests/unit/training/test_ppo_trainer.py`
+      - `tests/integration/test_custom_ppo_integration.py`
+      - `77 passed, 2 skipped in 17.71s`

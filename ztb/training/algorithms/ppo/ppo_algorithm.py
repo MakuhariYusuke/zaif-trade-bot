@@ -11,14 +11,15 @@ Example:
     >>> ppo.train(model, total_timesteps=100000)
 """
 
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 from sb3_contrib import MaskablePPO
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.vec_env import VecEnv
 
 from ztb.training.algorithms.base_algorithm import BaseRLAlgorithm
-from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt
+from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt, PPOTrainingConfig
+from ztb.training.custom_ppo import CustomPPO
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -44,7 +45,7 @@ class PPOAlgorithm(BaseRLAlgorithm):
         """
         self._use_auto_halt = use_auto_halt
         self._trainer: PPOTrainerAutoHalt | None = None
-        self._model: MaskablePPO | None = None
+        self._model: BaseAlgorithm | None = None
         self._config: dict[str, Any] | None = None
 
     @property
@@ -84,18 +85,34 @@ class PPOAlgorithm(BaseRLAlgorithm):
             ...     }
             ... )
         """
-        logger.info(f"Creating PPO model (use_auto_halt={self._use_auto_halt})")
+        logger.info("Creating PPO model (use_auto_halt=%s)", self._use_auto_halt)
+        self._config = dict(config)
 
-        self._config = config
-
-        # Use PPOTrainerAutoHalt for all cases
-        self._trainer = None  # Will be initialized when needed
-
-        logger.info("✅ PPO model created successfully")
-        # Create a placeholder model for now - actual model creation is handled by trainer
-        self._model = MaskablePPO(
-            "MlpPolicy", env, verbose=1, tensorboard_log=tensorboard_log
+        training_config = PPOTrainingConfig.from_dict(config)
+        model_cls = CustomPPO if training_config.use_custom_ppo else MaskablePPO
+        self._model = model_cls(
+            "MlpPolicy",
+            env,
+            learning_rate=training_config.learning_rate,
+            n_steps=training_config.n_steps,
+            batch_size=training_config.batch_size,
+            n_epochs=training_config.n_epochs,
+            gamma=training_config.gamma,
+            gae_lambda=training_config.gae_lambda,
+            clip_range=training_config.clip_range,
+            clip_range_vf=training_config.clip_range_vf,
+            normalize_advantage=training_config.normalize_advantage,
+            ent_coef=training_config.ent_coef,
+            vf_coef=training_config.vf_coef,
+            max_grad_norm=training_config.max_grad_norm,
+            use_sde=training_config.use_sde,
+            sde_sample_freq=training_config.sde_sample_freq,
+            target_kl=training_config.target_kl,
+            verbose=training_config.verbose,
+            tensorboard_log=tensorboard_log,
         )
+        model_name = getattr(model_cls, "__name__", model_cls.__class__.__name__)
+        logger.info("✅ PPO model created successfully (%s)", model_name)
         return self._model
 
     def train(
@@ -126,15 +143,20 @@ class PPOAlgorithm(BaseRLAlgorithm):
             ...     callback=checkpoint_callback
             ... )
         """
-        logger.info(f"Training PPO model for {total_timesteps} timesteps")
+        logger.info("Training PPO model for %s timesteps", total_timesteps)
 
-        if self._trainer is None:
-            raise RuntimeError("Trainer not initialized. Call create_model() first.")
+        learnable_model = cast(Any, model)
+        if not hasattr(learnable_model, "learn"):
+            raise TypeError("PPO model must expose learn(...)")
 
-        # 既存のPPOTrainer.train()を呼び出す
-        # unified_trainer.py の既存ロジックを使用
+        learn_kwargs: dict[str, Any] = {"total_timesteps": total_timesteps}
+        if callback is not None:
+            learn_kwargs["callback"] = callback
+        learn_kwargs.update(kwargs)
+        trained_model = cast(BaseAlgorithm, learnable_model.learn(**learn_kwargs))
+        self._model = trained_model
         logger.info("✅ PPO training completed")
-        return model
+        return trained_model
 
     def get_default_config(self) -> dict[str, Any]:
         """

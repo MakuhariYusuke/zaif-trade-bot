@@ -9,7 +9,26 @@ from ztb.training.config.trainer_params import TrainerParams
 class PPOTrainingConfig:
     """Runtime training config dataclass."""
 
+    learning_rate: float
+    n_steps: int
+    batch_size: int
+    n_epochs: int
+    gamma: float
+    gae_lambda: float
+    clip_range: float
+    clip_range_vf: float | None
+    normalize_advantage: bool
+    ent_coef: float
+    vf_coef: float
+    max_grad_norm: float
+    use_sde: bool
+    sde_sample_freq: int
+    target_kl: float | None
+    verbose: int
     use_custom_ppo: bool
+
+    @classmethod
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "PPOTrainingConfig": ...
 
 class PPOTrainerProtocol(Protocol):
     """Protocol for PPO Trainer implementations."""

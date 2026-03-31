@@ -1,6 +1,3 @@
-prompts\codex_task_ppo_foundation.md
-docs\v460\675_cplt_ml_sac_improvement_analysis.md
-さて、テストについては引続きお願いしたいところですが、並行して別タスクをお願いしたいです。具体的にはPPOの復活支援ということでおねがいします。又適宜PPO関連でも重複解消出来るかどうかも確認するのと、その他デバッグもお願いします。ドキュメント発行時番号重複に注意して下さい。
 # 675# ML/SAC 総合分析 — 現状の問題と改善ロードマップ
 
 ## 概要
@@ -223,6 +220,49 @@ PPO 関連コードは広範に存在する（120+ ファイル）。主要な�
 5. `ppo_sidecar_signal.json` — 出力形式設計
 6. `cycle_gate_aggregator.py` への PPO signal reader 追加
 7. A/B テスト基盤
+
+## PPO 実装ステータス更新
+
+675# で挙げた PPO 側の再建タスクは、2026-04-01 時点で次のように前進している。
+
+### すでに固まったもの
+
+- `676#`
+  - PPO 関連ファイルの **ACTIVE / REFACTOR / ARCHIVE** 棚卸し
+  - legacy shim / import path の互換整理
+  - `HeavyTradingEnv` の離散 action mode guard
+- `677#`
+  - action-mask runtime 復旧
+  - `CustomPPO.learn()` が現行 env 契約で前に進む状態へ復帰
+- `678#`
+  - action-mask helper の共有化
+  - `SELLBiasMitigationPPOTrainer` の重複初期化削減
+  - unified trainer PPO smoke の追加
+- current batch
+  - `PPOAlgorithm` wrapper が `BaseRLAlgorithm` 契約どおり
+    `create_model()` / `train()` を実行可能な状態へ復帰
+  - PPO sidecar 用の `signal` / `JSON I/O` / `config foundation` を追加
+
+### まだ残るもの
+
+1. `ppo_retrain_scheduler.py` 本体
+2. `cycle_gate_aggregator.py` 側の PPO signal reader / merge
+3. legacy PPO 実験コードの archive batch
+
+### 市場理論上の役割分離
+
+PPO sidecar は **side selection** に限定し、
+quote aggressiveness は引き続き SAC / executor 側に残すのが安全である。
+
+- PPO:
+  - BUY / SELL / SKIP の離散判断
+  - top probability と probability gap による override 安定度評価
+- SAC:
+  - 連続 offset / aggressiveness の微調整
+
+この分離により、
+離散行動 policy と価格付け policy の credit assignment を混ぜずに済み、
+microstructure noise による flip-flop override も抑えやすい。
 
 ## 推奨アクション順序
 

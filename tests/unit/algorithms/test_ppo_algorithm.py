@@ -3,9 +3,14 @@ Unit tests for PPOAlgorithm.
 
 Tests PPO-specific functionality, validation, and configuration.
 """
+# mypy: disable-error-code="no-untyped-def,var-annotated"
 
 
+from unittest.mock import MagicMock, patch
+
+import numpy as np
 import pytest
+from gymnasium import spaces
 
 from ztb.training.algorithms.ppo import PPOAlgorithm
 
@@ -190,16 +195,79 @@ class TestPPOCreateModel:
         assert ppo_standard._use_auto_halt is False
         assert ppo_auto_halt._use_auto_halt is True
 
+    def test_create_model_uses_custom_ppo_when_enabled(self):
+        """current config では CustomPPO path を選べること。"""
+        env = MagicMock()
+        env.action_space = spaces.Discrete(3)
+        env.observation_space = spaces.Box(
+            low=-1.0,
+            high=1.0,
+            shape=(4,),
+            dtype=np.float32,
+        )
+        ppo = PPOAlgorithm()
+        config = {
+            "ppo": {
+                "use_custom_ppo": True,
+                "learning_rate": 3e-4,
+                "n_steps": 32,
+                "batch_size": 16,
+                "n_epochs": 1,
+            }
+        }
+
+        with patch("ztb.training.algorithms.ppo.ppo_algorithm.CustomPPO") as mock_custom:
+            model = ppo.create_model(env, config)
+
+        mock_custom.assert_called_once()
+        assert model == mock_custom.return_value
+
+    def test_create_model_uses_maskable_ppo_when_custom_disabled(self):
+        """standard path では MaskablePPO を使うこと。"""
+        env = MagicMock()
+        env.action_space = spaces.Discrete(3)
+        env.observation_space = spaces.Box(
+            low=-1.0,
+            high=1.0,
+            shape=(4,),
+            dtype=np.float32,
+        )
+        ppo = PPOAlgorithm()
+        config = {
+            "ppo": {
+                "use_custom_ppo": False,
+                "learning_rate": 3e-4,
+                "n_steps": 32,
+                "batch_size": 16,
+                "n_epochs": 1,
+            }
+        }
+
+        with patch("ztb.training.algorithms.ppo.ppo_algorithm.MaskablePPO") as mock_maskable:
+            model = ppo.create_model(env, config)
+
+        mock_maskable.assert_called_once()
+        assert model == mock_maskable.return_value
+
 
 class TestPPOTrain:
     """train()のテスト（プレースホルダー確認）"""
 
-    def test_train_requires_initialization(self):
-        """train()は初期化が必要"""
+    def test_train_delegates_to_model_learn(self):
+        """wrapper train() は current SB3 model.learn へ委譲する。"""
         ppo = PPOAlgorithm()
+        model = MagicMock()
+        model.learn.return_value = model
+        callback = MagicMock()
 
-        # trainerが初期化されていない
-        assert ppo._trainer is None
+        trained = ppo.train(model, total_timesteps=64, callback=callback, progress_bar=False)
+
+        model.learn.assert_called_once_with(
+            total_timesteps=64,
+            callback=callback,
+            progress_bar=False,
+        )
+        assert trained is model
 
 
 class TestPPOConfigCompatibility:

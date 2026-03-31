@@ -15,9 +15,10 @@ SAC の連続出力 [-1, +1] を方向性バイアスとして定義する型群
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import math
 from dataclasses import dataclass, field
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 
 
 class SidecarDirection(IntEnum):
@@ -26,6 +27,14 @@ class SidecarDirection(IntEnum):
     BUY_BIAS = 1
     NEUTRAL = 0
     SELL_BIAS = -1
+
+
+class PPOSidecarAction(StrEnum):
+    """PPO sidecar の離散 side selection 出力."""
+
+    BUY = "buy"
+    SELL = "sell"
+    SKIP = "skip"
 
 
 # ── 閾値定数 ──────────────────────────────────────────────
@@ -92,6 +101,116 @@ class SidecarSignal:
     def direction(self) -> SidecarDirection:
         """bias 値から方向性を分類."""
         return classify_bias(self.directional_bias)
+
+
+_PPO_ACTION_NAMES: tuple[str, ...] = (
+    PPOSidecarAction.BUY.value,
+    PPOSidecarAction.SELL.value,
+    PPOSidecarAction.SKIP.value,
+)
+
+
+def normalize_ppo_action_probabilities(
+    probabilities: Mapping[str, float] | dict[str, float],
+) -> dict[str, float]:
+    """PPO sidecar の action probability dict を正規化する."""
+    normalized: dict[str, float] = {}
+    total = 0.0
+    for action_name in _PPO_ACTION_NAMES:
+        value = float(probabilities.get(action_name, 0.0))
+        if value < 0.0:
+            raise ValueError(
+                f"action_probabilities[{action_name!r}] must be >= 0.0, got {value}"
+            )
+        normalized[action_name] = value
+        total += value
+    if total <= 0.0:
+        raise ValueError("action_probabilities must contain a positive total weight")
+    return {name: value / total for name, value in normalized.items()}
+
+
+def resolve_ppo_sidecar_action(
+    probabilities: Mapping[str, float] | dict[str, float],
+) -> str:
+    """最大確率 action から PPO sidecar の選択を返す."""
+    normalized = normalize_ppo_action_probabilities(probabilities)
+    return max(
+        _PPO_ACTION_NAMES,
+        key=lambda action_name: (
+            normalized[action_name],
+            -_PPO_ACTION_NAMES.index(action_name),
+        ),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class PPOSidecarSignal:
+    """PPO sidecar の離散 side selection シグナル."""
+
+    timestamp: str
+    action: str
+    action_probabilities: dict[str, float] = field(default_factory=dict)
+    model_version: str = ""
+    confidence: float = 1.0
+    regime_hint: str = ""
+    features_snapshot: dict[str, float] = field(default_factory=dict)
+    training_metrics: dict[str, float] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        normalized_action = str(self.action).lower()
+        if normalized_action not in _PPO_ACTION_NAMES:
+            raise ValueError(
+                f"action must be one of {_PPO_ACTION_NAMES}, got {self.action!r}"
+            )
+        if not (0.0 <= self.confidence <= 1.0):
+            raise ValueError(
+                f"confidence must be in [0.0, 1.0], got {self.confidence}"
+            )
+        object.__setattr__(self, "action", normalized_action)
+        normalized_probs = normalize_ppo_action_probabilities(self.action_probabilities)
+        object.__setattr__(self, "action_probabilities", normalized_probs)
+
+    @classmethod
+    def from_probabilities(
+        cls,
+        *,
+        timestamp: str,
+        action_probabilities: Mapping[str, float] | dict[str, float],
+        model_version: str = "",
+        confidence: float | None = None,
+        regime_hint: str = "",
+        features_snapshot: dict[str, float] | None = None,
+        training_metrics: dict[str, float] | None = None,
+    ) -> "PPOSidecarSignal":
+        """確率分布から action / confidence を補完して signal を組み立てる."""
+        normalized_probs = normalize_ppo_action_probabilities(action_probabilities)
+        resolved_action = resolve_ppo_sidecar_action(normalized_probs)
+        resolved_confidence = (
+            normalized_probs[resolved_action] if confidence is None else confidence
+        )
+        return cls(
+            timestamp=timestamp,
+            action=resolved_action,
+            action_probabilities=normalized_probs,
+            model_version=model_version,
+            confidence=resolved_confidence,
+            regime_hint=regime_hint,
+            features_snapshot=features_snapshot or {},
+            training_metrics=training_metrics or {},
+        )
+
+    @property
+    def selected_side(self) -> str | None:
+        """skip でなければ buy/sell を返す."""
+        return None if self.action == PPOSidecarAction.SKIP.value else self.action
+
+    @property
+    def action_margin(self) -> float:
+        """上位2 action の確率差. side override の安定度診断に使う."""
+        ordered = sorted(self.action_probabilities.values(), reverse=True)
+        if len(ordered) < 2:
+            return 0.0
+        return float(ordered[0] - ordered[1])
 
 
 def classify_bias(

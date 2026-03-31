@@ -190,3 +190,21 @@ class TestHeavyTradingEnvInitialization:
             assert env.action_space.shape == (1,)
         finally:
             env.close()
+
+    def test_discrete_mode_exposes_boolean_action_mask(
+        self, base_ohlcv_df: pd.DataFrame
+    ) -> None:
+        """PPO/discrete mode should expose a boolean 3-action mask."""
+        env = HeavyTradingEnv(
+            df=base_ohlcv_df.copy(),
+            config=make_schema_feature_env_config(
+                base_ohlcv_df,
+                use_continuous_actions=False,
+            ),
+        )
+        try:
+            masks = env.get_action_masks()
+            assert masks.shape == (3,)
+            assert masks.dtype.name == "bool"
+        finally:
+            env.close()

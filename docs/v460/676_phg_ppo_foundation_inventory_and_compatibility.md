@@ -16,7 +16,10 @@ v461 の PPO sidecar 再開に向けて、現行 repo に残っている PPO 関
 
 | ファイル | 判定 | メモ |
 |---|---|---|
-| `ztb/training/algorithms/ppo/ppo_algorithm.py` | ACTIVE | `BaseRLAlgorithm` 互換 wrapper。config validation と basic tests は通る |
+| `ztb/training/algorithms/ppo/ppo_algorithm.py` | ACTIVE | `BaseRLAlgorithm` 互換 wrapper。current config から model を生成し、`train()` は `model.learn()` に委譲できる状態 |
+| `scripts/v460/lib/sidecar_types.py` | ACTIVE | `PPOSidecarSignal` / action probability contract を追加。SAC sidecar の隣で foundation を共有 |
+| `scripts/v460/lib/sidecar_signal_io.py` | ACTIVE | SAC sidecar の atomic JSON I/O を再利用し、PPO sidecar signal の read/write foundation を追加 |
+| `scripts/v460/ml/ppo_sidecar_config.py` | ACTIVE | scheduler 実装前の最小 config foundation。discrete action / override threshold を固定 |
 | `ztb/training/core/ppo_trainer.py` | ACTIVE | いまの PPO 本体。`PPOTrainerAutoHalt` と `PPOTrainer` の正本 |
 | `ztb/training/unified_trainer/algorithms/ppo_trainer.py` | REFACTOR | unified trainer 側。`HeavyTradingEnv(data=...)` の drift を今回修正 |
 | `ztb/training/trainers/ppo_trainer.py` | ACTIVE | orchestration 層。trainer 生成パスに古い呼び出し形が残っていたので今回修正 |
@@ -132,9 +135,11 @@ v461 の PPO sidecar 再開に向けて、現行 repo に残っている PPO 関
 
 ## 残課題
 
-1. `ztb/training/unified_trainer/algorithms/ppo_trainer.py`
-   - real training path の smoke test を追加したい
-2. `ztb/training/models/custom_ppo.py`
+1. `ppo_retrain_scheduler.py`
+   - current foundation (`PPOSidecarSignal`, JSON I/O, config helper) の上に実装する
+2. `cycle_gate_aggregator.py`
+   - PPO sidecar reader と merge policy を追加する
+3. `ztb/training/models/custom_ppo.py`
    - runtime は復旧したが、mypy baseline はまだ厚い
-3. 過去バージョンの PPO 実験コード
+4. 過去バージョンの PPO 実験コード
    - いきなり archive 移動せず、参照実態を見てから別 batch で整理する
