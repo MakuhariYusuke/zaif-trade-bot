@@ -117,6 +117,8 @@ class SACRetrainConfig:
     transaction_cost: float = 0.001
     max_position_size: float = 0.01
     initial_portfolio_value: float = 10_000_000.0
+    use_simple_reward: bool = False  # 677# P0-1: True で simple reward (PnL直結)
+    reward_scaling: float = 1.0  # 677# reward scaling factor
 
     # ── OOS Gate ──
     min_gross_roi: float = 0.0  # > 0 で gate 通過
@@ -183,6 +185,8 @@ class SACRetrainConfig:
             transaction_cost=float(env_cfg.get("transaction_cost", 0.001)),
             max_position_size=float(env_cfg.get("max_position_size", 0.01)),
             initial_portfolio_value=float(env_cfg.get("initial_portfolio_value", 10_000_000.0)),
+            use_simple_reward=bool(env_cfg.get("use_simple_reward", False)),
+            reward_scaling=float(env_cfg.get("reward_scaling", 1.0)),
             min_gross_roi=float(retrain_cfg.get("min_gross_roi", 0.0)),
             n_eval_episodes=int(retrain_cfg.get("n_eval_episodes", cfg.get("evaluation", {}).get("n_episodes", 3))),
             check_interval_sec=int(retrain_cfg.get("check_interval_sec", 300)),
@@ -913,7 +917,7 @@ def _create_env(
     cfg: SACRetrainConfig,
 ) -> TrainingEnvProtocol:
     """487# 重複削減: create_env_from_config に委譲."""
-    from ztb.trading.environment.utils.config import EnvironmentConfig
+    from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 
     env_config = EnvironmentConfig(
         transaction_cost=cfg.transaction_cost,
@@ -923,6 +927,11 @@ def _create_env(
         action_space_type="continuous_1d",
         exchange="coincheck",
         timeframe="1m",
+        # 677# P0-1: YAML の use_simple_reward を環境に反映
+        reward_settings=RewardSettings(
+            use_simple_reward=cfg.use_simple_reward,
+            reward_scaling=cfg.reward_scaling,
+        ),
     )
 
     if cfg.feature_columns:

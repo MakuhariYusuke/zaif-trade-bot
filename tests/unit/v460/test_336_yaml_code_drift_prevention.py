@@ -165,6 +165,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "skip_gate_primary_max_consecutive_skip",
     "skip_gate_hour_offsets",
     "sidecar_max_boost_bps",  # 546# YAML=0.2 vs code=0.15
+    "sidecar_dead_zone",  # 676# 0.10→0.05: confidence binding constraint修正
     "sidecar_shaping",  # 546# YAML='quadratic' vs code='linear'
     "skip_gate_mode",
     "skip_gate_model_path",
