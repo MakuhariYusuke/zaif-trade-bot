@@ -9623,3 +9623,25 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - trainable real-data が成立する場合は smoke 側も同じ enriched df を再利用
   - docs:
     - `612#` に emergency stop / real-data enrich residual sweep を追記
+
+- 2026-04-01 Codex:
+  - `sb3_contrib/common/wrappers.py`
+    - local `ActionMasker` shim を Gymnasium wrapper 契約へ修正
+    - `mask_fn` / `action_mask_fn` 両対応
+    - `action_masks()` / `get_action_masks()` を追加
+  - `ztb/training/core/ppo_trainer.py`
+    - `mask_fn=lambda e: e.get_action_masks()` に統一
+  - `ztb/training/models/custom_ppo.py`
+  - `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+    - `TargetEntropyController` を canonical path へ寄せた
+  - `tests/conftest.py`
+    - pytest 側の `ActionMasker` stub も wrapper 契約へ追随
+  - `tests/integration/test_custom_ppo_integration.py`
+    - module skip を解除
+    - current env / current trainer params 前提の focused integration harness に更新
+  - 検証:
+    - focused pytest: `46 passed in 34.10s`
+    - runtime smoke:
+      - `Discrete (3,)`
+      - `learned_is_self True`
+      - `entropy_updates 4`

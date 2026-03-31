@@ -1139,9 +1139,24 @@ if "sb3_contrib.common.wrappers" not in sys.modules:
     sb3_wrappers = types.ModuleType("sb3_contrib.common.wrappers")
 
     class ActionMasker:  # pragma: no cover - minimal stub
-        def __init__(self, env, mask_fn):
+        def __init__(self, env, mask_fn=None, **kwargs):
             self.env = env
-            self.mask_fn = mask_fn
+            self.mask_fn = mask_fn or kwargs.get("action_mask_fn")
+            self.action_space = getattr(env, "action_space", None)
+            self.observation_space = getattr(env, "observation_space", None)
+
+        def action_masks(self):
+            if self.mask_fn is not None:
+                return self.mask_fn(self.env)
+            if hasattr(self.env, "get_action_masks"):
+                return self.env.get_action_masks()
+            return self.env.get_legal_actions()
+
+        def get_action_masks(self):
+            return self.action_masks()
+
+        def __getattr__(self, name):
+            return getattr(self.env, name)
 
     sb3_wrappers.ActionMasker = ActionMasker
     sys.modules["sb3_contrib.common.wrappers"] = sb3_wrappers

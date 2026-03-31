@@ -21,7 +21,9 @@ v461 の PPO sidecar 再開に向けて、現行 repo に残っている PPO 関
 | `ztb/training/unified_trainer/algorithms/ppo_trainer.py` | REFACTOR | unified trainer 側。`HeavyTradingEnv(data=...)` の drift を今回修正 |
 | `ztb/training/trainers/ppo_trainer.py` | ACTIVE | orchestration 層。trainer 生成パスに古い呼び出し形が残っていたので今回修正 |
 | `ztb/training/custom_ppo.py` | ACTIVE | `ztb.training.models.custom_ppo.CustomPPO` への shim |
+| `ztb/training/models/custom_ppo.py` | ACTIVE | current `CustomPPO` 本体。`TargetEntropyController` を canonical path に寄せた |
 | `sb3_contrib/__init__.py` | ACTIVE | lightweight `MaskablePPO` compatibility shim |
+| `sb3_contrib/common/wrappers.py` | REFACTOR → ACTIVE | `ActionMasker` を Gymnasium wrapper 契約へ修正 |
 
 ### 設定・互換層
 
@@ -39,7 +41,7 @@ v461 の PPO sidecar 再開に向けて、現行 repo に残っている PPO 関
 | `tests/training/test_ppo_trainer.py` | ACTIVE | core trainer / algorithm trainer の focused suite。pass |
 | `tests/unit/algorithms/test_ppo_algorithm.py` | ACTIVE | `21 passed, 2 skipped`。skip は `get_default_config()` の仕様差を明示 |
 | `tests/unit/training/test_ppo_trainer.py` | REFACTOR → ACTIVE | 古い no-arg trainer 前提をやめ、互換 shim contract test に刷新 |
-| `tests/integration/test_custom_ppo_integration.py` | REFACTOR | 現状は module-level skip。old harness の再設計が必要 |
+| `tests/integration/test_custom_ppo_integration.py` | REFACTOR → ACTIVE | current env / current trainer params 前提の focused integration harness に更新 |
 
 ### archive / legacy
 
@@ -69,6 +71,21 @@ v461 の PPO sidecar 再開に向けて、現行 repo に残っている PPO 関
   - SELL mitigation path も shim import に寄せ、`SELLBiasMitigationPPOTrainer(params)` を使う形に統一
 - `ztb/training/unified_trainer/algorithms/ppo_trainer.py`
   - `HeavyTradingEnv(data=df, ...)` を `HeavyTradingEnv(df=df, ...)` に修正
+
+### 2.5. ActionMasker / entropy controller の runtime drift 修正
+
+- `sb3_contrib/common/wrappers.py`
+  - `ActionMasker` を単なる箱から `Gymnasium Wrapper` 契約へ修正
+  - `mask_fn` / `action_mask_fn` の両キーワードに対応
+  - `action_masks()` / `get_action_masks()` を提供
+- `ztb/training/core/ppo_trainer.py`
+  - `ActionMasker(..., action_mask_fn=env.action_mask())` の古い呼び出しを
+    `mask_fn=lambda e: e.get_action_masks()` に修正
+- `ztb/training/models/custom_ppo.py`
+  - `experiments.entropy_temperature` ではなく canonical
+    `ztb.training.entropy_temperature` を使用
+- `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+  - 同じく canonical `TargetEntropyController` へ寄せた
 
 ### 3. HeavyTradingEnv 離散 action mode の guard 追加
 
@@ -104,14 +121,20 @@ v461 の PPO sidecar 再開に向けて、現行 repo に残っている PPO 関
 .venv/Scripts/python.exe -m pytest tests/integration/test_custom_ppo_integration.py -x --tb=short --no-cov
 ```
 
-- `1 skipped`
-- skip 理由は明示的で、old integration harness の rewrite 待ち
+- before: `1 skipped`
+- after: `5 passed`
+
+```bash
+.venv/Scripts/python.exe -m pytest tests/integration/test_custom_ppo_integration.py tests/training/test_ppo_trainer.py tests/unit/training/test_ppo_trainer.py tests/unit/environment/test_heavy_env_initialization.py -x --tb=short --no-cov
+```
+
+- `46 passed in 34.10s`
 
 ## 残課題
 
-1. `tests/integration/test_custom_ppo_integration.py`
-   - old harness を current `CustomPPO` / action masking path に合わせて再設計する
-2. `ztb/training/unified_trainer/algorithms/ppo_trainer.py`
+1. `ztb/training/unified_trainer/algorithms/ppo_trainer.py`
    - real training path の smoke test を追加したい
+2. `ztb/training/models/custom_ppo.py`
+   - runtime は復旧したが、mypy baseline はまだ厚い
 3. 過去バージョンの PPO 実験コード
    - いきなり archive 移動せず、参照実態を見てから別 batch で整理する

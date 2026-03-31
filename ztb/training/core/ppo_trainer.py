@@ -408,8 +408,14 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
             max_features=max_features,
         )
 
-        # Wrap with action masker for valid action masking
-        env = ActionMasker(env, action_mask_fn=lambda e: e.action_mask())  # type: ignore
+        # Wrap with action masker for valid action masking.
+        # Use the current HeavyTradingEnv contract (`get_action_masks`) and the
+        # standard `mask_fn` keyword so the local compatibility shim and the real
+        # sb3-contrib wrapper both accept the call.
+        env = ActionMasker(
+            env,
+            mask_fn=lambda e: e.get_action_masks(),
+        )
 
         logger.info("Created trading environment with enhanced details:")
         logger.info(f"  Dataset shape: {df.shape}")

@@ -28,9 +28,7 @@ from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
 from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG, PPOConfig
 from ztb.training.config.trainer_params import SELLMitigationParams
 from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt as PPOTrainer
-from ztb.training.experiments.entropy_temperature import (
-    TargetEntropyController,
-)
+from ztb.training.entropy_temperature import TargetEntropyController
 from ztb.training.models.custom_ppo import CustomPPO
 from ztb.training.optimization.adv_norm import PerActionAdvantageNormalizer
 from ztb.training.optimization.lagrange_constraint import LagrangeConstraint
