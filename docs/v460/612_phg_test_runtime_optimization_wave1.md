@@ -828,3 +828,29 @@ durations 変化で特に効いた点:
       - `0.18s -> 0.07s` setup
     - combined subset
       - `3.40s -> 3.12s`
+
+- emergency stop / real-data enrich residual sweep:
+  - 追加適用:
+    - `tests/integration/test_v433_phase5_integration.py`
+    - `tests/unit/v460/test_enricher_skip_gate.py`
+  - 内容:
+    - `test_emergency_control_integration`
+      - `emergency_stop.trigger_emergency_stop(...)` 内の `asyncio.sleep(...)` を test 側で no-op 化
+      - integration の責務は維持しつつ長待機だけ外した
+    - `test_enricher_skip_gate.py`
+      - class-scope の `real_smoke_enriched_df` / `real_trainable_enriched_df` を
+        `real_enriched_bundle` へ統合
+      - trainable real-data が取れる場合は smoke 用も同じ enriched df を再利用し、
+        二重 enrich を避けた
+  - subset 実測:
+    - `tests/unit/v460/test_fill_quality.py`
+    - `tests/unit/v460/test_enricher_skip_gate.py`
+    - `tests/integration/test_v433_phase5_integration.py`
+    - `tests/unit/v460/test_552_update_training_data.py`
+    - `tests/unit/v460/test_fill_test_config.py`
+    - `384 passed, 1 skipped, 6 warnings, 3 subtests passed in 11.15s`
+  - slowest 20 の変化:
+    - `test_v433_phase5_integration.py::test_emergency_control_integration`
+      - `2.97s` が支配点だったので次回比較基準として記録
+    - `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data`
+      - setup `0.31s`

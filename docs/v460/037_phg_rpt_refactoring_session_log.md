@@ -9612,3 +9612,14 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `_create_ppo_trainer(...)` の standard / SELL mitigation path 回帰を追加
   - `tests/unit/environment/test_heavy_env_initialization.py`
     - PPO/discrete mode の `Discrete(3)` guard を追加
+
+- 2026-04-01 Codex:
+  - `tests/integration/test_v433_phase5_integration.py`
+    - `test_emergency_control_integration` の `emergency_stop` 内 sleep を no-op 化し、
+      long wait を外した
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - `real_smoke_enriched_df` / `real_trainable_enriched_df` を
+      `real_enriched_bundle` に集約
+    - trainable real-data が成立する場合は smoke 側も同じ enriched df を再利用
+  - docs:
+    - `612#` に emergency stop / real-data enrich residual sweep を追記

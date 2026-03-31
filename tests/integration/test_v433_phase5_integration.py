@@ -12,7 +12,7 @@ import unittest
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 from ztb.trading.production.alert_system import AlertSystem
 from ztb.trading.production.emergency_stop import (
@@ -307,6 +307,9 @@ class TestV433Phase5Integration(unittest.IsolatedAsyncioTestCase):
         """Emergency Control統合テスト"""
         self._install_lightweight_recovery_mocks()
 
+        async def _fast_sleep(_delay: float) -> None:
+            return None
+
         # サーキットブレーカー設定 - 設定不要（コンストラクタで設定済み）
 
         # 正常動作テスト
@@ -327,11 +330,15 @@ class TestV433Phase5Integration(unittest.IsolatedAsyncioTestCase):
         self.emergency_stop.add_stop_callback(emergency_callback)
 
         # 緊急停止トリガー
-        event = await self.emergency_stop.trigger_emergency_stop(
-            EmergencyStopLevel.CRITICAL,
-            EmergencyStopTrigger.MANUAL,
-            "Integration test emergency stop",
-        )
+        with patch(
+            "ztb.trading.production.emergency_stop.asyncio.sleep",
+            new=_fast_sleep,
+        ):
+            event = await self.emergency_stop.trigger_emergency_stop(
+                EmergencyStopLevel.CRITICAL,
+                EmergencyStopTrigger.MANUAL,
+                "Integration test emergency stop",
+            )
         self.assertIsNotNone(event)  # イベントが返れば成功
 
         # 復旧テスト
