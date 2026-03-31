@@ -206,6 +206,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "inventory_skewing_neutral_band",  # 654# P0-1: 0.1→0.05
     "inv_decay_tau_sec",  # 654# P0-1: 1800→3600
     "ranging_buy_priority_max_consecutive",  # 661# 3→0: buy bias解消
+    "deadlock_escape_threshold",  # 664# code=0(無効), YAML=20
     "wide_spread_bps",
 })
 

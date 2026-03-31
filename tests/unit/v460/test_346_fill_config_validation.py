@@ -324,13 +324,14 @@ class TestPerSideDDDeadlock:
 
 
 class TestKyleLambdaImbalanceDep:
-    def test_kyle_without_imbalance_warns(self, cfg: FillTestConfig) -> None:
+    def test_kyle_without_imbalance_no_longer_warns(self, cfg: FillTestConfig) -> None:
+        """665# 修正: depth cache は imbalance_enabled 無関係に更新されるため警告不要."""
         cfg.kyle_lambda_enabled = True
         cfg.imbalance_enabled = False
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             validate_fill_config(cfg)
-            assert any("Kyle" in str(x.message) or "kyle" in str(x.message) for x in w)
+            assert not any("Kyle" in str(x.message) or "kyle" in str(x.message) for x in w)
 
 
 class TestSigmaFloorVolRatio:

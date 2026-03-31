@@ -1005,6 +1005,9 @@ tuning:
   records_cache_ttl_sec: 10.0             # 適応エンジン レコードキャッシュ TTL (秒)
   trades_recorder_fetch_limit: 100        # TradesRecorder 取得件数 (VPIN 計算用)
   balance_freeze_cycles: 1                # 641# P0-C: 3→1 (freeze_side 汚染軽減。638#/640# 検証済)
+  # 664# Deadlock Escape: 648# inventory deadlock 長期化時の min_spread 一時緩和
+  deadlock_escape_threshold: 20            # 20サイクル≈40分で escape 発動 (0=無効)
+  deadlock_escape_spread_mult: 0.5         # escape 中の effective_min 乗数 (0.5=半減)
 
 # ---- 126# SkipGate 定期再学習 ----
 # retrain_scheduler.py がバックグラウンドで実行、fill_test とは別プロセス

@@ -306,21 +306,10 @@ def validate_fill_config(config: FillTestConfig) -> None:
     # 285# 283# P0-2: per-side halt + IE 相互制約
     # 522# inventory_escape 完全撤廃 — IE 必須バリデーション削除
     # per_side_dd_halt_cycles=0 の永久封鎖は side freeze + natural skip で解消される
-    # 330# B4: kyle_lambda / amihud_illiq は compute_imbalance で depth が
-    # 更新されるため、imbalance_enabled=False だと depth が永久 0 のまま
-    # サイレント無効になる。設定ミスを早期検出。
-    if (
-        (config.kyle_lambda_enabled or config.amihud_illiq_enabled)
-        and not config.imbalance_enabled
-    ):
-        import warnings
-        warnings.warn(
-            "kyle_lambda_enabled / amihud_illiq_enabled が True ですが "
-            "imbalance_enabled=False のため depth キャッシュが更新されず、"
-            "Kyle λ / Amihud ILLIQ が常にスキップされます。"
-            "imbalance_enabled=True を推奨します。",
-            stacklevel=3,
-        )
+    # 330# B4: kyle_lambda / amihud_illiq は depth キャッシュに依存するが、
+    # depth は _run_pre_order_phase で imbalance_enabled 無関係に更新されるため
+    # 実際にはサイレント無効にはならない。
+    # 664# 修正: 誤警告を削除（depth cache は常に更新される）。
 
     # 331# M-1: sigma_floor / vol_ratio_floor 値域チェック
     # 488# P0-3: sigma_floor=0 は AS 計算で σ²=0 除算を引き起こすため禁止

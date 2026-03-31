@@ -783,6 +783,9 @@ def _parse_infra_section(yaml_cfg: dict) -> dict:
         "records_cache_ttl_sec": "records_cache_ttl_sec",
         "trades_recorder_fetch_limit": "trades_recorder_fetch_limit",
         "balance_freeze_cycles": "balance_freeze_cycles",
+        # 664# Deadlock Escape
+        "deadlock_escape_threshold": "deadlock_escape_threshold",
+        "deadlock_escape_spread_mult": "deadlock_escape_spread_mult",
     }
     for yaml_key, config_key in tuning_map.items():
         if yaml_key in tuning:

@@ -47,11 +47,13 @@ inventory deadlock の escape 機構を実装した。
 
 ## 3. 盲点 (662#/663# に含まれない発見)
 
-### Blind Spot 1: Kyle λ / Amihud ILLIQ 死コード
-- `kyle_lambda_enabled = True` + `amihud_illiq_enabled = True` だが `imbalance_enabled = False`
-- → depth cache が更新されない → Kyle λ / Amihud ILLIQ は常に skip
-- FillTestConfig ロード時に UserWarning が発火するが、実行に影響なし
-- **影響**: 計算リソースの無駄遣い (軽微)。要 config 整合修正
+### ~~Blind Spot 1: Kyle λ / Amihud ILLIQ 死コード~~ → 665# 訂正: 誤報
+- ~~`kyle_lambda_enabled = True` + `amihud_illiq_enabled = True` だが `imbalance_enabled = False`~~
+- ~~→ depth cache が更新されない → Kyle λ / Amihud ILLIQ は常に skip~~
+- **665# 追加検証で誤りと判明**: `_run_pre_order_phase` が `imbalance_enabled` に関係なく
+  `_compute_orderbook_imbalance()` を毎サイクル呼出し、depth cache は常に更新される
+- `fill_config_validation.py` の UserWarning (330# B4) が古く、誤解を招いていた → **665# で削除済み**
+- Kyle λ / Amihud ILLIQ は正常に稼働中
 
 ### Blind Spot 2: Dual Price Control Competition
 - `micro_timeout_enabled = True` + `stale_order_enabled = True`
@@ -127,8 +129,8 @@ deadlock_escape_spread_mult: 0.5 # min_spread を半減
 
 | 優先度 | 項目 | 概要 |
 |---|---|---|
-| P1 | YAML 有効化 | `deadlock_escape_threshold: 20` を本番 YAML に投入 + bot restart |
-| P1 | Kyle/Amihud config 整合 | `imbalance_enabled: true` にするか kyle/amihud を `false` に |
+| ~~P1~~ | ~~YAML 有効化~~ | **665# 完了**: `deadlock_escape_threshold: 20` + parser support |
+| ~~P1~~ | ~~Kyle/Amihud config 整合~~ | **665# 訂正**: 正常稼働中。stale warning 削除済 |
 | P2 | Stale sidecar offset boost | 影響 0.2 bps と小さいが防御としては有効 |
 | P2 | eDRC 独立検証 | alpha/beta のキャリブレーション必要 |
 | P3 | Reservation price | A-S モデル full 実装 (257# で P1 future work) |
