@@ -168,7 +168,6 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "sidecar_shaping",  # 546# YAML='quadratic' vs code='linear'
     "skip_gate_mode",
     "skip_gate_model_path",
-    "skip_gate_narrow_spread_offset",
     "skip_gate_narrow_spread_threshold_jpy",
     "skip_gate_offset_ceil",  # 634# 0.5→0.8: sell_ranging_offset有効化
     "skip_gate_pnl_threshold",
@@ -200,7 +199,6 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "sad_enabled",  # 606# Safety層: code=False, YAML=True
     "balance_freeze_cycles",  # 641# P0-C: 3→1
     "cross_venue_lead_lag_offset_boost",  # 641# P0-A: 1.25→1.0
-    "skip_gate_max_skip_rate",  # 641# P0-B: 0.3→0.4
     "toxic_sell_veto_enabled",  # 654# P0-2: code=False, YAML=True
     "toxic_sell_veto_as_offset_enabled",  # 657# A-4: code=False, YAML=True
     "inventory_skewing_neutral_band",  # 654# P0-1: 0.1→0.05

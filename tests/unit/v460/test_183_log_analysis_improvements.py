@@ -354,12 +354,12 @@ class TestFillTestYAMLIntegration:
 
         # 183# narrow spread adverse guard
         assert cfg.skip_gate_narrow_spread_threshold_jpy == pytest.approx(2000.0)
-        assert cfg.skip_gate_narrow_spread_offset == pytest.approx(0.2)
+        assert cfg.skip_gate_narrow_spread_offset == pytest.approx(0.0)  # 674# 0.2→0.0
 
         # VG tuning 現在値
         assert cfg.volatility_guard_velocity_threshold_bps == pytest.approx(6.0)
         assert cfg.volatility_guard_vpin_threshold == pytest.approx(0.80)
 
         # 183# narrow spread boost
-        assert cfg.narrow_spread_boost_buy == pytest.approx(2.0)
-        assert cfg.narrow_spread_boost_sell == pytest.approx(2.5)
+        assert cfg.narrow_spread_boost_buy == pytest.approx(1.0)  # 674# 2.0→1.0
+        assert cfg.narrow_spread_boost_sell == pytest.approx(1.5)  # 674# 2.5→1.5

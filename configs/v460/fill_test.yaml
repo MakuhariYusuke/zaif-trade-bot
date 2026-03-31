@@ -330,8 +330,8 @@ spread_adaptive:
   enabled: true                # スプレッド幅に応じた offset 動的調整
   narrow_spread_bps: 2.5       # 121# A3: 2.0→2.5 P50近辺に引上げ→postonly_reject -20~30%削減 (168h 65件→~45件)
   narrow_spread_boost: 2.0     # 狭スプレッド時の offset 倍率 (共通フォールバック)
-  narrow_spread_boost_buy: 2.0 # 183# 1.5→2.0 (spread<2kでAS32%: buy/sell対称化。<2k帯PnL=-0.46bps改善狙い)
-  narrow_spread_boost_sell: 2.5 # 183# 2.0→2.5 (spread<2kでAS32%: sell側のoffset拡大で逆選択回避強化)
+  narrow_spread_boost_buy: 1.0 # 674# 2.0→1.0: 672#分析でα最低帯(0-1500)にboostは逆効果。fill促進に転換
+  narrow_spread_boost_sell: 1.5 # 674# 2.5→1.5: 672#α分析に基づき最低限防御のみ維持
   wide_spread_bps: 4.5         # 120# 25.0→4.5: P95相当。max(5.03)に近い帯で wide 判定
   wide_spread_ratio: 0.5       # 広スプレッド時の offset 割引
   ofi_boost_sensitivity: 0.5   # 546# OFI adverse方向 boost 感度 (0=無効, 0.5=最大50%増)
@@ -455,7 +455,7 @@ skip_gate:
   as_threshold_buy: 0.50       # 120# A3: [0.50,0.52) 帯 n=60 PnL=-0.247 AS=36.7% → skip 対象化
   as_threshold_sell: 0.50      # 100# P0-2: sell 側厳格化 (旧 0.60 → 0.50)
   pnl_threshold: -0.5          # 190# D: 0.0→-0.5 (ev_weighted score が常時負のため閾値緩和)
-  max_skip_rate: 0.4               # 641# P0-B: 0.3→0.4 (forced fill 169件=-154.65bps, sell/ranging dominant)
+  max_skip_rate: 0.3               # 674# 0.4→0.3復元: 672# CI=[−0.53,+0.07]でskip増はPnL改善に寄与せず。fill rate直結
   use_ob_features: true        # 127# H4: retrain と統一 (false→true)
   # 088# 動的閾値較正: 目標 skip 率ベースで閾値を自動調整
   adaptive_threshold: true     # P(AS) 分位点から閾値を動的設定
@@ -531,11 +531,11 @@ skip_gate:
     16: 2.0    # 623# 01h JST: AS64% → hard_skip廃止に伴い ceiling 防御追加
     17: 1.5    # 02h JST: AS36.4% → ceiling 0.30→0.45
     18: 2.0    # 03h JST: AS100%, PnL-6.90bps → ceiling 0.30→0.60
-    21: 1.5    # 623# 06h JST: PnL-125.8bps/日 → hard_skip廃止に伴い ceiling 防御追加
+    21: 2.5    # 674# 1.5→2.5: PnL-125.8bps/日の最危険時間帯。ceiling強化
   # 183# narrow spread adverse guard: spread < threshold で skip_gate 閾値厳格化
   # ログ分析: spread<2kでAS32% (全体28%), PnL=-0.46bps (全体-0.30bps)
   skip_gate_narrow_spread_threshold_jpy: 2000.0
-  skip_gate_narrow_spread_offset: 0.2     # PnLモード: threshold += 0.2 (厳格化)
+  skip_gate_narrow_spread_offset: 0.0     # 674# 0.2→0.0: 672#でα最低帯ペナルティ撤廃 (狭spread=低情報非対称)
   # 634# P0: sell/ranging ペナルティ (閾値を厳格化して sell/ranging の skip 率を上げる)
   sell_ranging_offset: 0.5
   # 187# clamp: offset 合計の上下限 (hot-reload 対応)
