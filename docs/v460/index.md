@@ -757,6 +757,16 @@ NNN_phX_TYPE_description.md
 | 650 | analysis | [650_cplt_roundtrip_analysis_sections.md](650_cplt_roundtrip_analysis_sections.md) | Roundtrip / Inventory / MCB / Spread-Quality 分析セクション追加と 2026-03-29 実測分析 |
 | 651 | review | [651_phg_rev_639_650_profit_preserving_loss_suppression_review.md](651_phg_rev_639_650_profit_preserving_loss_suppression_review.md) | 639#-650# 利益保全型レビューと負け筋遮断提案 |
 | 652 | review | [652_cplt_second_opinion_and_asymmetric_exit.md](652_cplt_second_opinion_and_asymmetric_exit.md) | 651# セカンドオピニオン: price_velocity / regime-drift exit / 非対称RT exit |
+| 653 | review | [653_cplt_561_562_review_verification_and_residual_analysis.md](653_cplt_561_562_review_verification_and_residual_analysis.md) | 561-562 レビュー検証: 650# 実測による提案の成否判定と残存盲点 |
 | 654 | impl | [654_cplt_651_652_review_verification_and_action_plan.md](654_cplt_651_652_review_verification_and_action_plan.md) | 651#/652# 検証・実装: P0-1 inv_skew調整 + P0-2 toxic sell veto |
 | 655 | review | [655_cplt_retrospective_536_to_654_and_new_findings.md](655_cplt_retrospective_536_to_654_and_new_findings.md) | 536# 渙～654# 振り返り: 未達事項棚卸し + 新規4課題発見 |
 | 656 | analysis | [656_cplt_deep_dive_655_four_issues.md](656_cplt_deep_dive_655_four_issues.md) | 655# 4課題の深堀り: 金融工学・市場理論・設計面からの多角的分析 |
+| 657 | impl | [657_cplt_b3_regime_max_factor_a4_a5_toxic_veto_staged.md](657_cplt_b3_regime_max_factor_a4_a5_toxic_veto_staged.md) | B-3 regime別max_factor + A-4/A-5 toxic_sell_veto段階化 |
+| 658 | review | [658_cplt_self_review_657_log_readability_observability.md](658_cplt_self_review_657_log_readability_observability.md) | 657# セルフレビュー: ログ・可読性・observability改善 |
+| 659 | impl | [659_cplt_balance_checker_refactor_mcb_position_warning.md](659_cplt_balance_checker_refactor_mcb_position_warning.md) | balance_checker 重複排除 + MCB HALT ポジション警告 |
+| 660 | review | [660_cplt_self_review_profitability_tuning.md](660_cplt_self_review_profitability_tuning.md) | セルフレビュー: 収益性分析とパラメータチューニング |
+| 661 | analysis | [661_cplt_btc_pnl_structure_weekday_weekend_fix.md](661_cplt_btc_pnl_structure_weekday_weekend_fix.md) | BTC建て収益構造分析・曜日効果・B-3結論・構造改善 |
+| 662 | review | [662_phg_rev_652_661_multifaceted_validation_and_debug.md](662_phg_rev_652_661_multifaceted_validation_and_debug.md) | 652#-661# 多角的検証レビューとデバッグ整理 |
+| 663 | review | [663_cplt_deep_theoretical_review_and_profit_proposals.md](663_cplt_deep_theoretical_review_and_profit_proposals.md) | 理論レビュー: deadlock jitter・stale sidecar・reservation price・eDRC 提案 |
+| 664 | impl | [664_cplt_662_663_review_verification_deadlock_escape.md](664_cplt_662_663_review_verification_deadlock_escape.md) | 662/663レビュー検証 + Deadlock Escape 実装 |
+| 665 | impl | [665_cplt_deadlock_escape_yaml_activation.md](665_cplt_deadlock_escape_yaml_activation.md) | Deadlock Escape YAML 有効化 + stale warning 修正 + 初動検証 |
