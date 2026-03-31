@@ -251,6 +251,16 @@
   - `test_enricher_skip_gate.py` の smoke sample は `24 -> 36 -> 48` の段階 fallback に変更
   - `test_fill_quality.py` の glob/load roundtrip で残っていた `save_fill_records(...)` 経由 setup も direct seed に統一
 
+- broad subset で見えた追加点:
+  - `test_fill_test_config.py::Test062SkipGateConfig::test_yaml_has_skip_gate_section`
+    - live YAML の `skip_gate.max_skip_rate=0.3` に追随
+  - `v433` の残差:
+    - `test_full_system_integration` `6.17s`
+    - `test_monitoring_integration` `6.16s`
+    - `test_emergency_control_integration` `3.11s`
+  - 対応方針:
+    - monitoring / recovery 系は integration の意味を残しつつ lightweight mock へ寄せる
+
 ## 追加の tempfile / mtime cleanup
 
 次の同型パターンも low-risk に整理した。

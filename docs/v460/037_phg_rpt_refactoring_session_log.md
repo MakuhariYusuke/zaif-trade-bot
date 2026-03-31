@@ -9586,3 +9586,12 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `test_iter_glob_load_roundtrip`
     - `test_iter_glob_load_can_exclude_emergency`
     も direct JSONL seed に統一
+
+- 2026-04-01 Codex:
+  - `tests/unit/v460/test_fill_test_config.py`
+    - live YAML drift に合わせて `skip_gate.max_skip_rate=0.3` へ追随
+  - `tests/integration/test_v433_phase5_integration.py`
+    - `test_monitoring_integration`
+    - `test_emergency_control_integration`
+    - `test_full_system_integration`
+    で monitoring / recovery 依存を lightweight mock 化

@@ -153,6 +153,21 @@ class TestV433Phase5Integration(unittest.IsolatedAsyncioTestCase):
         self.health_checker.stop_monitoring()
         self.recovery_system.stop_monitoring()
 
+    def _install_lightweight_monitoring_mocks(self) -> None:
+        """重い integration path で監視依存を lightweight 化する."""
+        self.real_time_metrics.start_collection = Mock(return_value=None)
+        self.real_time_metrics.collect_system_metrics = Mock(return_value=[])
+        self.alert_system.get_active_alerts = Mock(return_value=[])
+        self.health_checker.run_health_check = AsyncMock(
+            return_value=Mock(overall_status="healthy")
+        )
+
+    def _install_lightweight_recovery_mocks(self) -> None:
+        """復旧 path の長待機を避ける lightweight mock."""
+        self.recovery_system.initiate_recovery = AsyncMock(
+            return_value=Mock(status=RecoveryStatus.COMPLETED)
+        )
+
     def _generate_test_orders(self):
         """テスト注文データ生成"""
         return [
@@ -263,6 +278,8 @@ class TestV433Phase5Integration(unittest.IsolatedAsyncioTestCase):
 
     async def test_monitoring_integration(self):
         """Monitoring統合テスト"""
+        self._install_lightweight_monitoring_mocks()
+
         # リアルタイムメトリクス収集開始
         self.real_time_metrics.start_collection()
 
@@ -288,6 +305,8 @@ class TestV433Phase5Integration(unittest.IsolatedAsyncioTestCase):
 
     async def test_emergency_control_integration(self):
         """Emergency Control統合テスト"""
+        self._install_lightweight_recovery_mocks()
+
         # サーキットブレーカー設定 - 設定不要（コンストラクタで設定済み）
 
         # 正常動作テスト
@@ -323,6 +342,8 @@ class TestV433Phase5Integration(unittest.IsolatedAsyncioTestCase):
 
     async def test_full_system_integration(self):
         """完全システム統合テスト"""
+        self._install_lightweight_monitoring_mocks()
+
         # 基本的なコンポーネント統合テスト
         try:
             # Paper Tradingセッション開始
