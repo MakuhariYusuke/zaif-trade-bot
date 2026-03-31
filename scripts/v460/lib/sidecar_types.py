@@ -46,6 +46,10 @@ BIAS_THRESHOLD: float = 0.3
 # 376#: 0.15 bps を絶対上限。ladder 検証 0.1/0.15/0.2
 DEFAULT_SIDECAR_BOOST_BPS: float = 0.15
 
+# 675# PPO sidecar の side override 安定化閾値
+DEFAULT_PPO_MIN_OVERRIDE_CONFIDENCE: float = 0.55
+DEFAULT_PPO_MIN_ACTION_MARGIN: float = 0.10
+
 # シグナルの有効期限 (秒)
 # 372# fix: retrain_interval=7200s なので TTL も合わせる。
 # 600s では retrain 間の ~92% で stale 判定 → sidecar 事実上無効だった。
@@ -211,6 +215,24 @@ class PPOSidecarSignal:
         if len(ordered) < 2:
             return 0.0
         return float(ordered[0] - ordered[1])
+
+
+def should_activate_ppo_sidecar(
+    signal: PPOSidecarSignal,
+    *,
+    min_confidence: float = DEFAULT_PPO_MIN_OVERRIDE_CONFIDENCE,
+    min_action_margin: float = DEFAULT_PPO_MIN_ACTION_MARGIN,
+) -> bool:
+    """PPO sidecar を live gate に反映してよいか判定する.
+
+    金融工学的には、top probability だけでなく 2位との差も見ないと
+    microstructure noise による flip-flop override が増える。
+    そのため confidence と action_margin の両方を通過条件にする。
+    """
+    return (
+        signal.confidence >= min_confidence
+        and signal.action_margin >= min_action_margin
+    )
 
 
 def classify_bias(

@@ -242,12 +242,14 @@ PPO 関連コードは広範に存在する（120+ ファイル）。主要な�
   - `PPOAlgorithm` wrapper が `BaseRLAlgorithm` 契約どおり
     `create_model()` / `train()` を実行可能な状態へ復帰
   - PPO sidecar 用の `signal` / `JSON I/O` / `config foundation` を追加
+  - `orchestrator_mid_cycle.py` / `cycle_gate_aggregator.py` に
+    PPO signal reader / safe veto wiring を追加
+  - `FillRecord` に PPO sidecar telemetry を追加
 
 ### まだ残るもの
 
 1. `ppo_retrain_scheduler.py` 本体
-2. `cycle_gate_aggregator.py` 側の PPO signal reader / merge
-3. legacy PPO 実験コードの archive batch
+2. legacy PPO 実験コードの archive batch
 
 ### 市場理論上の役割分離
 
@@ -263,6 +265,21 @@ quote aggressiveness は引き続き SAC / executor 側に残すのが安全で�
 この分離により、
 離散行動 policy と価格付け policy の credit assignment を混ぜずに済み、
 microstructure noise による flip-flop override も抑えやすい。
+
+### current wiring の安全側設計
+
+2026-04-01 時点の live wiring は、いきなり side selector を置換せず、
+**高 confidence の veto から先に有効化**している。
+
+- `skip` signal:
+  - per-cycle veto として扱う
+- reverse-side signal:
+  - current side を block する
+- same-side signal:
+  - まず telemetry として保存し、price aggressiveness には触れない
+
+この形なら、PPO がまだ十分に calibration されていなくても
+「危ないサイクルを止める」方向にしか効かないため、安全余地が大きい。
 
 ## 推奨アクション順序
 

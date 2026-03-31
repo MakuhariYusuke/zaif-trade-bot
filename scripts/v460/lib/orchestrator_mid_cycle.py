@@ -140,13 +140,15 @@ class OrchestratorMidCycleMixin:
             next_side,
         )
 
-        # 372# F1 Gap-1: SAC sidecar signal を読み込み gate に注入
-        # 487# P0: signal_status も取得して attribution 可観測性を確保
+        # 372# F1 Gap-1 / 675#: SAC + PPO sidecar signal を読み込み gate に注入
+        # signal_status も取得して attribution 可観測性を確保
         from scripts.v460.lib.sidecar_signal_io import (
+            read_ppo_sidecar_signal_with_status,
             read_sidecar_signal_with_status,
         )
 
         _sidecar_signal, _sidecar_signal_status = read_sidecar_signal_with_status()
+        _ppo_sidecar_signal, _ppo_sidecar_signal_status = read_ppo_sidecar_signal_with_status()
 
         # 487# P2: sidecar activity tracking (progress log 用)
         if _sidecar_signal_status == "fresh":
@@ -181,6 +183,7 @@ class OrchestratorMidCycleMixin:
             sell_toxicity=_sell_tox,
             halt_recovery_active=_halt_recovery_active,
             sidecar_signal=_sidecar_signal,
+            ppo_sidecar_signal=_ppo_sidecar_signal,
             # 545# δ* → sidecar dynamic ceiling
             delta_star_ratio=self._maker_price._last_as_delta_star_ratio,
         )
@@ -190,6 +193,12 @@ class OrchestratorMidCycleMixin:
         if _sidecar_signal is not None:
             _gate_result.sidecar_confidence = _sidecar_signal.confidence
             _gate_result.sidecar_model_version = _sidecar_signal.model_version
+        _gate_result.ppo_sidecar_signal_status = _ppo_sidecar_signal_status
+        if _ppo_sidecar_signal is not None:
+            _gate_result.ppo_sidecar_action = _ppo_sidecar_signal.action
+            _gate_result.ppo_sidecar_confidence = _ppo_sidecar_signal.confidence
+            _gate_result.ppo_sidecar_action_margin = _ppo_sidecar_signal.action_margin
+            _gate_result.ppo_sidecar_model_version = _ppo_sidecar_signal.model_version
 
         if _gate_result.blocked:
             await self._handle_gate_block(st, ctx, _gate_result)
@@ -486,6 +495,12 @@ class OrchestratorMidCycleMixin:
                 sidecar_confidence=gate_result.sidecar_confidence,
                 sidecar_model_version=gate_result.sidecar_model_version,
                 sidecar_signal_status=gate_result.sidecar_signal_status,
+                ppo_sidecar_action=gate_result.ppo_sidecar_action,
+                ppo_sidecar_confidence=gate_result.ppo_sidecar_confidence,
+                ppo_sidecar_action_margin=gate_result.ppo_sidecar_action_margin,
+                ppo_sidecar_model_version=gate_result.ppo_sidecar_model_version,
+                ppo_sidecar_signal_status=gate_result.ppo_sidecar_signal_status,
+                ppo_sidecar_override_active=gate_result.ppo_sidecar_override_active,
             )
             # 420# P1: Side 切替可観測性 — CycleContext の情報を FillRecord に転記
             record.requested_side = ctx.requested_side

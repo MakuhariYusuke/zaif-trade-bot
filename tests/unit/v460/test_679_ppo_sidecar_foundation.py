@@ -22,6 +22,7 @@ from scripts.v460.lib.sidecar_types import (
     PPOSidecarSignal,
     normalize_ppo_action_probabilities,
     resolve_ppo_sidecar_action,
+    should_activate_ppo_sidecar,
 )
 from scripts.v460.ml.ppo_sidecar_config import PPOSidecarConfig
 
@@ -54,6 +55,21 @@ class TestPPOSidecarSignal:
         assert signal.action == "skip"
         assert signal.selected_side is None
         assert signal.confidence == 0.0
+
+    def test_override_activation_requires_confidence_and_margin(self) -> None:
+        strong = PPOSidecarSignal.from_probabilities(
+            timestamp="2026-04-01T00:00:00+00:00",
+            action_probabilities={"buy": 0.72, "sell": 0.18, "skip": 0.10},
+            model_version="ppo_sidecar_v1",
+        )
+        weak = PPOSidecarSignal.from_probabilities(
+            timestamp="2026-04-01T00:00:00+00:00",
+            action_probabilities={"buy": 0.52, "sell": 0.38, "skip": 0.10},
+            model_version="ppo_sidecar_v1",
+        )
+
+        assert should_activate_ppo_sidecar(strong) is True
+        assert should_activate_ppo_sidecar(weak) is False
 
 
 class TestPPOSidecarSignalIo:

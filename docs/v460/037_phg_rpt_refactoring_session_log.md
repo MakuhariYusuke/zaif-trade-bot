@@ -9723,3 +9723,36 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
       - `tests/unit/training/test_ppo_trainer.py`
       - `tests/integration/test_custom_ppo_integration.py`
       - `77 passed, 2 skipped in 17.71s`
+
+- 2026-04-01 Codex:
+  - PPO sidecar の current live wiring を安全側で追加
+  - `scripts/v460/lib/cycle_gate_aggregator.py`
+    - PPO signal の confidence / action_margin を通過したときだけ
+      veto を有効化
+    - `skip` と reverse-side signal を先に block 対象へ整理
+  - `scripts/v460/lib/orchestrator_mid_cycle.py`
+    - PPO sidecar signal reader を cycle 実行前に注入
+  - `scripts/v460/lib/fill_record_builder.py`
+  - `scripts/v460/lib/fill_cycle_executor.py`
+  - `ztb/metrics/fill_quality.py`
+    - PPO action / confidence / margin / model_version / signal_status /
+      override_active を FillRecord に保存
+  - `scripts/v460/lib/orchestrator_lifecycle.py`
+    - PPO sidecar signal cache cleanup を追加
+  - `tests/unit/v460/test_sidecar_sac_integration.py`
+    - PPO skip veto / side conflict / observe-only / FillRecord roundtrip
+      を focused 回帰に追加
+  - `tests/unit/v460/test_679_ppo_sidecar_foundation.py`
+    - override activation threshold helper の回帰を追加
+  - 検証:
+    - `py_compile`
+      - sidecar/gate/fill-record wiring 対象を通過
+    - focused pytest:
+      - `tests/unit/v460/test_679_ppo_sidecar_foundation.py`
+      - `tests/unit/v460/test_sidecar_sac_integration.py`
+      - `tests/unit/environment/test_heavy_env_initialization.py`
+      - `100 passed in 7.40s`
+    - targeted mypy:
+      - `sidecar_types.py` / foundation test は clean 維持
+      - `orchestrator_mid_cycle.py` は既存 mixin baseline が厚く、
+        今回も focused pytest 優先で据え置き

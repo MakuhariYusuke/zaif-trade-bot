@@ -189,3 +189,42 @@ PPO sidecar は **side selection のみ** を扱い、
 ```
 
 - `77 passed, 2 skipped in 17.71s`
+
+### 5. PPO sidecar reader / safe veto wiring
+
+current foundation の次段として、PPO signal を live pipeline に observe-safe に接続した。
+
+- `scripts/v460/lib/cycle_gate_aggregator.py`
+  - PPO signal を per-cycle gate に接続
+  - confidence / action margin を通過したときだけ override を有効化
+  - `skip` は veto
+  - reverse-side signal も veto
+  - same-side signal は telemetry のみ残して通す
+- `scripts/v460/lib/orchestrator_mid_cycle.py`
+  - `read_ppo_sidecar_signal_with_status()` を current cycle に注入
+- `scripts/v460/lib/fill_record_builder.py`
+- `scripts/v460/lib/fill_cycle_executor.py`
+- `ztb/metrics/fill_quality.py`
+  - PPO action / confidence / margin / model_version / signal_status / override_active を FillRecord に保存
+- `scripts/v460/lib/orchestrator_lifecycle.py`
+  - PPO sidecar signal cache cleanup を追加
+
+この batch は live 挙動を急に大きく変えない。
+`ppo_sidecar_signal.json` が存在しない限り従来動作のままで、
+signal が存在しても **危険側 veto を先に有効化**する構造に留めている。
+
+### 6. 追加 focused 確認
+
+```bash
+.venv/Scripts/python.exe -m pytest \
+  tests/unit/v460/test_679_ppo_sidecar_foundation.py \
+  tests/unit/v460/test_sidecar_sac_integration.py \
+  tests/unit/environment/test_heavy_env_initialization.py \
+  -x --tb=short --no-cov --durations=20
+```
+
+- `100 passed in 7.40s`
+
+targeted mypy は `sidecar_types.py` / foundation test では clean を維持。
+一方 `orchestrator_mid_cycle.py` は既存 mixin baseline が厚いため、
+今回もそこは広く崩さず focused pytest と `py_compile` を主検証にした。

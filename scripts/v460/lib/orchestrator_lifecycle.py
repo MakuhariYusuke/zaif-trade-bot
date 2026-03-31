@@ -510,9 +510,13 @@ class OrchestratorLifecycleMixin:
 
         # sidecar signal mtime cache も終了時に破棄
         try:
-            from scripts.v460.lib.sidecar_signal_io import clear_sidecar_signal_cache
+            from scripts.v460.lib.sidecar_signal_io import (
+                clear_ppo_sidecar_signal_cache,
+                clear_sidecar_signal_cache,
+            )
 
             clear_sidecar_signal_cache()
+            clear_ppo_sidecar_signal_cache()
         except Exception as e:
             logger.debug("Sidecar signal cache cleanup failed: %s", e, exc_info=True)
 

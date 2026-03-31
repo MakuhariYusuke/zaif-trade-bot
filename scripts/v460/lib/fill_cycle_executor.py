@@ -1325,6 +1325,12 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         sidecar_confidence: float | None,
         sidecar_model_version: str | None,
         sidecar_signal_status: str | None,
+        ppo_sidecar_action: str | None,
+        ppo_sidecar_confidence: float | None,
+        ppo_sidecar_action_margin: float | None,
+        ppo_sidecar_model_version: str | None,
+        ppo_sidecar_signal_status: str | None,
+        ppo_sidecar_override_active: bool,
     ) -> "FillRecord":
         """Task C: post-fill phase (PnL/record/log) をまとめる."""
         pnl = await self._measure_post_fill_pnl(
@@ -1444,6 +1450,12 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             sidecar_confidence=sidecar_confidence,
             sidecar_model_version=sidecar_model_version or None,
             sidecar_signal_status=sidecar_signal_status,
+            ppo_sidecar_action=ppo_sidecar_action,
+            ppo_sidecar_confidence=ppo_sidecar_confidence,
+            ppo_sidecar_action_margin=ppo_sidecar_action_margin,
+            ppo_sidecar_model_version=ppo_sidecar_model_version or None,
+            ppo_sidecar_signal_status=ppo_sidecar_signal_status,
+            ppo_sidecar_override_active=ppo_sidecar_override_active or None,
             queue_depth_ahead=submission.queue_depth_ahead,
             queue_fill_prob_est=submission.queue_fill_prob_est,
             regime_at_order=pre_order.regime_at_order,
@@ -1498,6 +1510,12 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         sidecar_confidence: float | None = None,
         sidecar_model_version: str | None = None,
         sidecar_signal_status: str | None = None,
+        ppo_sidecar_action: str | None = None,
+        ppo_sidecar_confidence: float | None = None,
+        ppo_sidecar_action_margin: float | None = None,
+        ppo_sidecar_model_version: str | None = None,
+        ppo_sidecar_signal_status: str | None = None,
+        ppo_sidecar_override_active: bool = False,
     ) -> FillRecord:
         """1 サイクル: 発注 → 監視 → 結果記録."""
         self._cycle_count += 1
@@ -1549,4 +1567,10 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             sidecar_confidence=sidecar_confidence,
             sidecar_model_version=sidecar_model_version,
             sidecar_signal_status=sidecar_signal_status,
+            ppo_sidecar_action=ppo_sidecar_action,
+            ppo_sidecar_confidence=ppo_sidecar_confidence,
+            ppo_sidecar_action_margin=ppo_sidecar_action_margin,
+            ppo_sidecar_model_version=ppo_sidecar_model_version,
+            ppo_sidecar_signal_status=ppo_sidecar_signal_status,
+            ppo_sidecar_override_active=ppo_sidecar_override_active,
         )

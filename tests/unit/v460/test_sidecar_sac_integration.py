@@ -29,6 +29,7 @@ from scripts.v460.lib.sidecar_signal_io import (
     write_sidecar_signal,
 )
 from scripts.v460.lib.sidecar_types import (
+    PPOSidecarSignal,
     SidecarDirection,
     SidecarSignal,
     classify_bias,
@@ -340,6 +341,20 @@ def _make_signal(bias: float, confidence: float = 1.0):
     )
 
 
+def _make_ppo_signal(
+    *,
+    buy: float,
+    sell: float,
+    skip: float,
+    model_version: str = "ppo_v1",
+) -> PPOSidecarSignal:
+    return PPOSidecarSignal.from_probabilities(
+        timestamp=make_timestamp(),
+        action_probabilities={"buy": buy, "sell": sell, "skip": skip},
+        model_version=model_version,
+    )
+
+
 class TestCycleGateSidecarInjection:
     """365# P5: cycle_gate_aggregator への sidecar injection."""
 
@@ -458,6 +473,87 @@ class TestCycleGateResultSidecarFields:
         # 基本的なフィールドが設定されている
         assert result.sidecar_bias == pytest.approx(0.6)
         assert result.sidecar_direction == "buy_bias"
+
+
+class TestCycleGatePPOSidecarInjection:
+    """675# PPO sidecar の safe veto / telemetry."""
+
+    def test_skip_signal_blocks_cycle(self) -> None:
+        agg = _make_aggregator()
+        signal = _make_ppo_signal(buy=0.10, sell=0.15, skip=0.75)
+
+        result = agg.evaluate(
+            side="buy",
+            regime="ranging",
+            vol_ratio=1.0,
+            inv_net_imbalance=0.0,
+            is_buy_killed=False,
+            is_sell_killed=False,
+            ppo_sidecar_signal=signal,
+        )
+
+        assert result.blocked is True
+        assert result.blocking_reason == "ppo_sidecar_skip"
+        assert result.ppo_sidecar_action == "skip"
+        assert result.ppo_sidecar_override_active is True
+
+    def test_conflicting_side_blocks_cycle(self) -> None:
+        agg = _make_aggregator()
+        signal = _make_ppo_signal(buy=0.12, sell=0.76, skip=0.12)
+
+        result = agg.evaluate(
+            side="buy",
+            regime="ranging",
+            vol_ratio=1.0,
+            inv_net_imbalance=0.0,
+            is_buy_killed=False,
+            is_sell_killed=False,
+            ppo_sidecar_signal=signal,
+        )
+
+        assert result.blocked is True
+        assert result.blocking_reason == "ppo_sidecar_side_conflict"
+        assert result.ppo_sidecar_action == "sell"
+        assert result.ppo_sidecar_override_active is True
+
+    def test_below_threshold_is_observe_only(self) -> None:
+        agg = _make_aggregator()
+        signal = _make_ppo_signal(buy=0.52, sell=0.38, skip=0.10)
+
+        result = agg.evaluate(
+            side="buy",
+            regime="ranging",
+            vol_ratio=1.0,
+            inv_net_imbalance=0.0,
+            is_buy_killed=False,
+            is_sell_killed=False,
+            ppo_sidecar_signal=signal,
+        )
+
+        assert result.blocked is False
+        assert result.ppo_sidecar_action == "buy"
+        assert result.ppo_sidecar_override_active is False
+
+    def test_matching_side_passes_with_telemetry(self) -> None:
+        agg = _make_aggregator()
+        signal = _make_ppo_signal(buy=0.72, sell=0.18, skip=0.10)
+
+        result = agg.evaluate(
+            side="buy",
+            regime="ranging",
+            vol_ratio=1.0,
+            inv_net_imbalance=0.0,
+            is_buy_killed=False,
+            is_sell_killed=False,
+            ppo_sidecar_signal=signal,
+        )
+
+        assert result.blocked is False
+        assert result.ppo_sidecar_action == "buy"
+        assert result.ppo_sidecar_confidence == pytest.approx(0.72)
+        assert result.ppo_sidecar_action_margin == pytest.approx(0.54)
+        assert result.ppo_sidecar_model_version == "ppo_v1"
+        assert result.ppo_sidecar_override_active is True
 
 
 # ════════════════════════════════════════════════════════════════
@@ -887,3 +983,38 @@ class TestFillRecordSidecarAttributionFields:
         assert r2.sidecar_confidence == pytest.approx(0.7)
         assert r2.sidecar_model_version == "v1"
         assert r2.sidecar_signal_status == "stale"
+
+
+class TestFillRecordPPOSidecarFields:
+    """675# PPO sidecar attribution フィールド."""
+
+    def test_new_fields_exist(self) -> None:
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+        )
+        assert r.ppo_sidecar_action is None
+        assert r.ppo_sidecar_confidence is None
+        assert r.ppo_sidecar_action_margin is None
+        assert r.ppo_sidecar_model_version is None
+        assert r.ppo_sidecar_signal_status is None
+        assert r.ppo_sidecar_override_active is None
+
+    def test_round_trip(self) -> None:
+        r1 = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+            ppo_sidecar_action="skip",
+            ppo_sidecar_confidence=0.81,
+            ppo_sidecar_action_margin=0.47,
+            ppo_sidecar_model_version="ppo_v461_20260401",
+            ppo_sidecar_signal_status="fresh",
+            ppo_sidecar_override_active=True,
+        )
+        r2 = FillRecord.from_dict(r1.to_dict())
+        assert r2.ppo_sidecar_action == "skip"
+        assert r2.ppo_sidecar_confidence == pytest.approx(0.81)
+        assert r2.ppo_sidecar_action_margin == pytest.approx(0.47)
+        assert r2.ppo_sidecar_model_version == "ppo_v461_20260401"
+        assert r2.ppo_sidecar_signal_status == "fresh"
+        assert r2.ppo_sidecar_override_active is True

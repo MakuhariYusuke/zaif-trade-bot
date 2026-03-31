@@ -184,6 +184,12 @@ class FillRecord:
     sidecar_confidence: float | None = None       # SAC confidence [0,1]
     sidecar_model_version: str | None = None      # モデル識別子 (e.g. 'sac_sidecar_v460_...')
     sidecar_signal_status: str | None = None      # "fresh"/"stale"/"missing"/"error"
+    ppo_sidecar_action: str | None = None         # "buy"/"sell"/"skip"
+    ppo_sidecar_confidence: float | None = None   # PPO top action confidence [0,1]
+    ppo_sidecar_action_margin: float | None = None  # top1 - top2 probability
+    ppo_sidecar_model_version: str | None = None  # PPO モデル識別子
+    ppo_sidecar_signal_status: str | None = None  # "fresh"/"stale"/"missing"/"error"
+    ppo_sidecar_override_active: bool | None = None  # threshold 通過で veto 判定が有効化されたか
     # ---- 439# P1: Cross-Venue Lead-Lag 可観測性 ----
     cross_venue_reference_exchange: str | None = None
     cross_venue_lead_lag_direction: str | None = None

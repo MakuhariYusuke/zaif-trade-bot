@@ -50,6 +50,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
+    from scripts.v460.lib.sidecar_types import PPOSidecarSignal
     from scripts.v460.lib.sidecar_types import SidecarSignal
     from ztb.risk.toxicity_types import ToxicityAssessment
 
@@ -85,6 +86,8 @@ _GATE_TO_CANCEL_REASON: dict[str, str] = {
     "toxicity_participation_skip": "toxicity_participation_skip",  # 240# Toxicity Budget
     "composite_risk_exceeded": "composite_risk_exceeded",  # 491# Composite Risk Score
     "entry_gate_ev_negative": "entry_gate_ev_negative",  # 555# CalibrationMap EV gate
+    "ppo_sidecar_skip": "ppo_sidecar_skip",
+    "ppo_sidecar_side_conflict": "ppo_sidecar_side_conflict",
 }
 
 
@@ -132,6 +135,12 @@ class CycleGateResult:
     sidecar_confidence: float | None = None
     sidecar_model_version: str | None = None
     sidecar_signal_status: str = "missing"
+    ppo_sidecar_action: str | None = None
+    ppo_sidecar_confidence: float | None = None
+    ppo_sidecar_action_margin: float | None = None
+    ppo_sidecar_model_version: str | None = None
+    ppo_sidecar_signal_status: str = "missing"
+    ppo_sidecar_override_active: bool = False
     # 491# Composite Risk Score (490# architectural pivot)
     composite_risk_score: float = 0.0   # soft gate risk weight の加算値
     composite_risk_details: list[str] = field(default_factory=list)  # gate→weight 内訳
@@ -160,7 +169,7 @@ class CycleGateResult:
         if not self.blocking_reason:
             return ""
         from scripts.v460.lib.guard_reason_classifier import classify_guard
-        return classify_guard(f"gate_{self.blocking_reason}").value
+        return str(classify_guard(f"gate_{self.blocking_reason}").value)
 
 
 class CycleGateAggregator:
@@ -212,6 +221,7 @@ class CycleGateAggregator:
         halt_recovery_active: bool = False,
         # 365# P5: SAC Sidecar signal
         sidecar_signal: SidecarSignal | None = None,
+        ppo_sidecar_signal: PPOSidecarSignal | None = None,
         # 545# δ* → sidecar dynamic ceiling
         delta_star_ratio: float = 0.0,
     ) -> CycleGateResult:
@@ -430,6 +440,27 @@ class CycleGateAggregator:
                     f"< threshold={_threshold:.2f} [{', '.join(result.composite_risk_details)}]"
                 )
 
+        # --- 675# PPO sidecar: discrete veto / side conflict gate ---
+        if ppo_sidecar_signal is not None:
+            g_ppo = self._apply_ppo_sidecar_gate(
+                result,
+                ppo_sidecar_signal,
+                side,
+            )
+            result.checks.append(g_ppo)
+            if g_ppo.blocked:
+                result.blocked = True
+                result.blocking_reason = g_ppo.reason
+                logger.info(
+                    "[675#] PPO sidecar block: side=%s action=%s confidence=%.3f margin=%.3f reason=%s",
+                    side,
+                    result.ppo_sidecar_action,
+                    result.ppo_sidecar_confidence or 0.0,
+                    result.ppo_sidecar_action_margin or 0.0,
+                    g_ppo.reason,
+                )
+                return result
+
         # --- 365# P5: Sidecar offset injection ---
         if sidecar_signal is not None:
             # 545# side-matching toxicity を sidecar confidence に反映
@@ -440,6 +471,61 @@ class CycleGateAggregator:
             )
 
         return result
+
+    def _apply_ppo_sidecar_gate(
+        self,
+        result: CycleGateResult,
+        signal: PPOSidecarSignal,
+        side: str,
+    ) -> GateCheckResult:
+        """675# PPO sidecar の離散 signal を per-cycle gate に反映する.
+
+        ここでは安全側に留め、十分な confidence / margin を通過したときだけ
+        - skip signal は即 skip
+        - 反対 side signal は current side を veto
+        とする。matching side は telemetry のみ記録する。
+        """
+        from scripts.v460.lib.sidecar_types import (
+            PPOSidecarAction,
+            should_activate_ppo_sidecar,
+        )
+
+        result.ppo_sidecar_action = signal.action
+        result.ppo_sidecar_confidence = signal.confidence
+        result.ppo_sidecar_action_margin = signal.action_margin
+        result.ppo_sidecar_model_version = signal.model_version
+
+        if not should_activate_ppo_sidecar(signal):
+            result.ppo_sidecar_override_active = False
+            return GateCheckResult(
+                gate_name="ppo_sidecar",
+                blocked=False,
+                detail="below_threshold",
+            )
+
+        result.ppo_sidecar_override_active = True
+        if signal.action == PPOSidecarAction.SKIP.value:
+            return GateCheckResult(
+                gate_name="ppo_sidecar",
+                blocked=True,
+                reason="ppo_sidecar_skip",
+                detail="skip_override",
+            )
+
+        selected_side = signal.selected_side
+        if selected_side is not None and selected_side != side:
+            return GateCheckResult(
+                gate_name="ppo_sidecar",
+                blocked=True,
+                reason="ppo_sidecar_side_conflict",
+                detail=f"selected={selected_side}",
+            )
+
+        return GateCheckResult(
+            gate_name="ppo_sidecar",
+            blocked=False,
+            detail=f"selected={selected_side or signal.action}",
+        )
 
     # ================================================================
     # 365# P5: SAC Sidecar — offset injection
