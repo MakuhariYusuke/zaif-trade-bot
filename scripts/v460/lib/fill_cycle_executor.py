@@ -399,6 +399,16 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                 f"[155# ob_fallback] Using last mid_price={_fallback_price:.0f} "
                 f"(no timestamp, treated as stale) as reference for skip record"
             )
+        # 671# NFQ 構造化ログ: InfeasibleQuoteError から数値フィールドを抽出
+        _nfq_extra: dict[str, object] = {}
+        if isinstance(error, InfeasibleQuoteError):
+            _nfq_extra = {
+                "nfq_actual_spread": error.actual_spread,
+                "nfq_min_spread_effective": error.min_spread_effective,
+                "nfq_min_spread_abs": error.min_spread_abs,
+                "nfq_min_spread_atr": error.min_spread_atr,
+                "nfq_sigma": error.sigma,
+            }
         return self._make_cycle_skip_record(
             side=side,
             cancel_reason=cancel_reason,
@@ -409,6 +419,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                 f"{error} [fallback_age={_fallback_age:.1f}s stale={_fallback_stale}]"
                 if _fallback_age is not None else str(error)
             ),
+            **_nfq_extra,
         )
 
     def _make_cycle_skip_record(

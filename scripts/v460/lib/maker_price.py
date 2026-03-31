@@ -74,13 +74,37 @@ class InfeasibleQuoteError(ValueError):
     Reasons:
         - ``"spread_too_narrow"`` — spread < min_spread_jpy
         - ``"sell_guard_reject"`` — sell 時 spread > sell_max_spread_jpy
+
+    671# 構造化フィールド追加: error_message パース不要で NFQ 分析が可能。
     """
 
-    __slots__ = ("reason",)
+    __slots__ = (
+        "reason",
+        "actual_spread",
+        "min_spread_effective",
+        "min_spread_abs",
+        "min_spread_atr",
+        "sigma",
+    )
 
-    def __init__(self, reason: str, msg: str) -> None:
+    def __init__(
+        self,
+        reason: str,
+        msg: str,
+        *,
+        actual_spread: float = 0.0,
+        min_spread_effective: float = 0.0,
+        min_spread_abs: float = 0.0,
+        min_spread_atr: float = 0.0,
+        sigma: float = 0.0,
+    ) -> None:
         super().__init__(msg)
         self.reason = reason
+        self.actual_spread = actual_spread
+        self.min_spread_effective = min_spread_effective
+        self.min_spread_abs = min_spread_abs
+        self.min_spread_atr = min_spread_atr
+        self.sigma = sigma
 
 
 from scripts.v460.lib.constants import BPS_FACTOR as _BPS_FACTOR
@@ -1123,6 +1147,11 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
                     f", atr={atr_floor:.0f}"
                     f", σ={self._last_sigma:.6f})"
                 ),
+                actual_spread=spread,
+                min_spread_effective=effective_min,
+                min_spread_abs=cfg.min_spread_jpy,
+                min_spread_atr=atr_floor,
+                sigma=self._last_sigma,
             )
 
         if (

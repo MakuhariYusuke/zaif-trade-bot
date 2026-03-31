@@ -321,7 +321,7 @@ def section_hourly(records: list[Record]) -> list[str]:
 
 
 def section_daily(records: list[Record]) -> list[str]:
-    """日別サマリ."""
+    """日別サマリ (671# 改善: 30s/EV/120s 3 指標並列表示)."""
     day_records: dict[str, list[Record]] = collections.defaultdict(list)
     for r in records:
         ts = r.get("timestamp")
@@ -329,17 +329,35 @@ def section_daily(records: list[Record]) -> list[str]:
             d = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
             day_records[d].append(r)
 
-    lines = ["## 日別サマリ"]
+    lines = ["## 日別サマリ (multi-metric)"]
+    lines.append(
+        f"  {'date':>10s} | {'total':>5s} | {'fill':>4s} | {'fill%':>5s} | "
+        f"{'avg30':>7s} | {'avgEV':>7s} | {'avg120':>7s} | {'sum30':>8s} | {'sumEV':>8s} | {'sum120':>8s}"
+    )
+    lines.append("  " + "-" * 100)
     for d in sorted(day_records.keys()):
         day_r = day_records[d]
         day_f = [r for r in day_r if r.get("filled")]
-        pnl_arr = _pnls(day_f)
-        avg_pnl = float(np.mean(pnl_arr)) if len(pnl_arr) else float("nan")
-        total_pnl = float(np.sum(pnl_arr)) if len(pnl_arr) else 0
-        fill_rate = len(day_f) / len(day_r) * 100 if day_r else 0
+        n_total = len(day_r)
+        n_fill = len(day_f)
+        fill_rate = n_fill / n_total * 100 if n_total else 0
+
+        p30 = _np([float(r["post_fill_30s_pnl"]) for r in day_f if r.get("post_fill_30s_pnl") is not None])
+        pev = _np([float(r["ev_weighted_pnl"]) for r in day_f if r.get("ev_weighted_pnl") is not None])
+        p120 = _np([float(r["post_fill_120s_pnl"]) for r in day_f if r.get("post_fill_120s_pnl") is not None])
+
+        def _fmt(arr: FloatArray) -> tuple[str, str]:
+            if len(arr) == 0:
+                return ("   N/A", "     N/A")
+            return (f"{float(np.mean(arr)):+7.2f}", f"{float(np.sum(arr)):+8.1f}")
+
+        a30, s30 = _fmt(p30)
+        aev, sev = _fmt(pev)
+        a120, s120 = _fmt(p120)
+
         lines.append(
-            f"  {d}: {len(day_r)} orders, {len(day_f)} filled ({fill_rate:.0f}%), "
-            f"avg_pnl30={avg_pnl:+.2f}bps, sum_pnl30={total_pnl:+.1f}bps"
+            f"  {d:>10s} | {n_total:>5d} | {n_fill:>4d} | {fill_rate:>4.0f}% | "
+            f"{a30} | {aev} | {a120} | {s30} | {sev} | {s120}"
         )
     lines.append("")
     return lines
@@ -848,6 +866,121 @@ def section_model_used(records: list[Record]) -> list[str]:
             f"  {model:>25s} {len(recs):>5d} {len(as_recs):>4d} "
             f"{as_rate:>5.1f}% {avg_pnl:>+8.2f} {avg_as:>+8.2f}"
         )
+    lines.append("")
+    return lines
+
+
+def section_nfq_analysis(records: list[Record]) -> list[str]:
+    """671# NFQ (no_feasible_quote) 構造化分析.
+
+    NFQ の原因を構造化フィールド (671#) または error_message パースで分析。
+    日別 NFQ 率、スプレッドギャップ、時間帯パターンを表示。
+    """
+    import re as _re
+
+    nfq_records = [r for r in records if r.get("cancel_reason") == "no_feasible_quote"]
+    n_total = len(records)
+    lines = [
+        "## NFQ (no_feasible_quote) 分析 (671#)",
+        f"  NFQ total: {len(nfq_records)}/{n_total} ({len(nfq_records)/n_total*100:.1f}%)" if n_total else "  (no data)",
+    ]
+    if not nfq_records:
+        lines.append("  (no NFQ records)")
+        lines.append("")
+        return lines
+
+    # --- reason breakdown ---
+    narrow_count = 0
+    sell_guard_count = 0
+    other_count = 0
+    spread_gaps: list[float] = []
+    sigmas: list[float] = []
+    for r in nfq_records:
+        # 671# 構造化フィールド優先
+        nfq_actual = r.get("nfq_actual_spread")
+        nfq_min = r.get("nfq_min_spread_effective")
+        if nfq_actual is not None and nfq_min is not None:
+            narrow_count += 1
+            spread_gaps.append(float(nfq_min) - float(nfq_actual))
+            sig = r.get("nfq_sigma")
+            if sig is not None and float(sig) > 0:
+                sigmas.append(float(sig))
+            continue
+
+        # fallback: error_message パース (旧レコード互換)
+        em = str(r.get("error_message", ""))
+        m = _re.search(r"Spread too narrow: (\d+) JPY < min (\d+)", em)
+        if m:
+            narrow_count += 1
+            spread_gaps.append(float(m.group(2)) - float(m.group(1)))
+            m_sigma = _re.search(r"σ=([\d.]+)", em)
+            if m_sigma:
+                sigmas.append(float(m_sigma.group(1)))
+        elif "sell_guard" in em:
+            sell_guard_count += 1
+        else:
+            other_count += 1
+
+    lines.append(f"  Breakdown: narrow_spread={narrow_count}, sell_guard={sell_guard_count}, other={other_count}")
+
+    # --- spread gap stats ---
+    if spread_gaps:
+        gap_arr = _np(spread_gaps)
+        lines.append(
+            f"  Spread gap (min_required - actual): "
+            f"mean={float(np.mean(gap_arr)):.0f} JPY, "
+            f"median={float(np.median(gap_arr)):.0f} JPY, "
+            f"p90={float(np.percentile(gap_arr, 90)):.0f} JPY"
+        )
+    if sigmas:
+        sig_arr = _np(sigmas)
+        lines.append(
+            f"  σ distribution: mean={float(np.mean(sig_arr)):.6f}, "
+            f"median={float(np.median(sig_arr)):.6f}, "
+            f"max={float(np.max(sig_arr)):.6f}"
+        )
+
+    # --- daily NFQ rate ---
+    day_nfq: dict[str, tuple[int, int]] = collections.defaultdict(lambda: (0, 0))
+    for r in records:
+        ts = r.get("timestamp")
+        if not ts:
+            continue
+        d = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
+        total, nfq = day_nfq.get(d, (0, 0))
+        total += 1
+        if r.get("cancel_reason") == "no_feasible_quote":
+            nfq += 1
+        day_nfq[d] = (total, nfq)
+
+    lines.append("")
+    lines.append("  日別 NFQ 率:")
+    for d in sorted(day_nfq.keys()):
+        total, nfq = day_nfq[d]
+        rate = nfq / total * 100 if total else 0
+        bar = "█" * int(rate / 2) if rate > 0 else ""
+        lines.append(f"    {d}: {nfq:>3d}/{total:>4d} ({rate:>5.1f}%) {bar}")
+
+    # --- hourly NFQ rate ---
+    hour_nfq: dict[int, tuple[int, int]] = {}
+    for r in records:
+        ts = r.get("timestamp")
+        if not ts:
+            continue
+        h = datetime.fromtimestamp(ts, tz=timezone.utc).hour
+        total, nfq = hour_nfq.get(h, (0, 0))
+        total += 1
+        if r.get("cancel_reason") == "no_feasible_quote":
+            nfq += 1
+        hour_nfq[h] = (total, nfq)
+
+    lines.append("")
+    lines.append("  時間帯別 NFQ 率 (UTC):")
+    for h in sorted(hour_nfq.keys()):
+        total, nfq = hour_nfq[h]
+        rate = nfq / total * 100 if total else 0
+        lines.append(f"    {h:02d}h: {nfq:>3d}/{total:>4d} ({rate:>5.1f}%)")
+
     lines.append("")
     return lines
 
@@ -1727,6 +1860,7 @@ def main() -> None:
     all_lines.extend(section_hourly(records))
     all_lines.extend(section_git_sha(records))
     all_lines.extend(section_cancel(records))
+    all_lines.extend(section_nfq_analysis(records))
     all_lines.extend(section_skip_gate(records))
     all_lines.extend(section_adverse_selection(records))
     all_lines.extend(section_reprice(records))

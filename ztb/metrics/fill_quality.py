@@ -246,6 +246,13 @@ class FillRecord:
     cv_offset_action: str | None = None             # "widen"/"tighten"/None (CV 適用方向)
     balance_jpy_at_order: float | None = None       # 発注時 JPY 残高
     balance_btc_at_order: float | None = None       # 発注時 BTC 残高
+    # ---- 671# NFQ (no_feasible_quote) 構造化ログ ----
+    # error_message パース不要で NFQ 原因分析を可能にする
+    nfq_actual_spread: float | None = None         # 実際の市場スプレッド (JPY)
+    nfq_min_spread_effective: float | None = None  # 適用された最小スプレッド (JPY)
+    nfq_min_spread_abs: float | None = None        # config.min_spread_jpy (JPY)
+    nfq_min_spread_atr: float | None = None        # ATR ベース最小スプレッド (JPY)
+    nfq_sigma: float | None = None                 # ATR 計算時の σ 値
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""
