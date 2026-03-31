@@ -159,7 +159,7 @@ class PPOTrainer(BaseAlgorithmTrainer):
         self.log_structured_event(
             "environment", "creation", {"type": "HeavyTradingEnv"}
         )
-        env = HeavyTradingEnv(data=df, config=env_config)
+        env = HeavyTradingEnv(df=df, config=env_config)
         # Remove Monitor wrapper to prevent reward corruption from Pendulum environment
         # wrapped_env: Monitor = Monitor(env)
         wrapped_env = env

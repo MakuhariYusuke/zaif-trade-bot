@@ -9595,3 +9595,20 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `test_emergency_control_integration`
     - `test_full_system_integration`
     で monitoring / recovery 依存を lightweight mock 化
+
+- 2026-04-01 Codex:
+  - PPO foundation 棚卸しを `676#` に整理
+    - `ztb/training/ppo_trainer.py`
+    - `ztb/training/ppo_config.py`
+    を canonical 実装への compatibility shim に更新
+  - `ztb/training/trainers/ppo_trainer.py`
+    - standard PPO path を `TrainerParams -> PPOTrainerAutoHalt(params)` に修正
+    - SELL mitigation path も shim import へ統一
+  - `ztb/training/unified_trainer/algorithms/ppo_trainer.py`
+    - `HeavyTradingEnv(data=...)` を `HeavyTradingEnv(df=...)` に修正
+  - `tests/unit/training/test_ppo_trainer.py`
+    - old no-arg trainer 前提をやめ、compatibility shim contract test に刷新
+  - `tests/training/test_ppo_trainer.py`
+    - `_create_ppo_trainer(...)` の standard / SELL mitigation path 回帰を追加
+  - `tests/unit/environment/test_heavy_env_initialization.py`
+    - PPO/discrete mode の `Discrete(3)` guard を追加

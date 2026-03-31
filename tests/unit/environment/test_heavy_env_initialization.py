@@ -1,5 +1,8 @@
+# mypy: disable-error-code="untyped-decorator"
+
 import pandas as pd
 import pytest
+from gymnasium import spaces
 from unittest.mock import patch
 
 from tests.helpers import (
@@ -57,7 +60,7 @@ def mtf_env(base_ohlcv_df: pd.DataFrame) -> HeavyTradingEnv:
 class TestHeavyTradingEnvInitialization:
     """Test cases for HeavyTradingEnv initialization."""
 
-    def test_protocol_implementation(self):
+    def test_protocol_implementation(self) -> None:
         """Test that HeavyTradingEnv exposes the TradingEnvironment surface."""
         assert hasattr(HeavyTradingEnv, 'reset')
         assert hasattr(HeavyTradingEnv, 'step')
@@ -65,7 +68,9 @@ class TestHeavyTradingEnvInitialization:
         assert hasattr(HeavyTradingEnv, 'close')
         assert hasattr(HeavyTradingEnv, "get_legal_actions")
 
-    def test_observation_space_dimension_consistency(self, schema_feature_env):
+    def test_observation_space_dimension_consistency(
+        self, schema_feature_env: HeavyTradingEnv
+    ) -> None:
         """Test that observation space dimension matches feature matrix columns and features list length."""
         env = schema_feature_env
 
@@ -90,14 +95,16 @@ class TestHeavyTradingEnvInitialization:
             feature_matrix_cols == features_len
         ), f"Feature matrix cols {feature_matrix_cols} != features len {features_len}"
 
-    def test_multi_timeframe_features_merged_into_df(self, mtf_env):
+    def test_multi_timeframe_features_merged_into_df(
+        self, mtf_env: HeavyTradingEnv
+    ) -> None:
         """Test that multi-timeframe features are properly merged into self.df."""
         env = mtf_env
 
         for column in ("mtf_stub_0", "mtf_stub_1"):
             assert column in env.df.columns
 
-    def test_schema_scaler_skips_full_data_scaler_computation(self):
+    def test_schema_scaler_skips_full_data_scaler_computation(self) -> None:
         """Schema-provided scaler should bypass full feature-matrix scan."""
         df = pd.DataFrame(
             {
@@ -132,3 +139,54 @@ class TestHeavyTradingEnvInitialization:
         assert env.scaler_std is not None
         assert env.scaler_mean.tolist() == scaler_mean
         assert env.scaler_std.tolist() == scaler_std
+
+    def test_discrete_action_space_when_continuous_actions_disabled(
+        self, base_ohlcv_df: pd.DataFrame
+    ) -> None:
+        """PPO/discrete mode should expose Discrete(3)."""
+        env = HeavyTradingEnv(
+            df=base_ohlcv_df.copy(),
+            config=make_schema_feature_env_config(
+                base_ohlcv_df,
+                use_continuous_actions=False,
+            ),
+        )
+        try:
+            assert isinstance(env.action_space, spaces.Discrete)
+            assert env.action_space.n == 3
+        finally:
+            env.close()
+
+    def test_discrete_action_space_when_action_space_type_is_discrete(
+        self, base_ohlcv_df: pd.DataFrame
+    ) -> None:
+        """Legacy discrete selector should still force PPO-compatible actions."""
+        env = HeavyTradingEnv(
+            df=base_ohlcv_df.copy(),
+            config=make_schema_feature_env_config(
+                base_ohlcv_df,
+                action_space_type="discrete",
+            ),
+        )
+        try:
+            assert isinstance(env.action_space, spaces.Discrete)
+            assert env.action_space.n == 3
+        finally:
+            env.close()
+
+    def test_continuous_action_space_when_enabled(
+        self, base_ohlcv_df: pd.DataFrame
+    ) -> None:
+        """SAC/continuous mode should expose the Box action space."""
+        env = HeavyTradingEnv(
+            df=base_ohlcv_df.copy(),
+            config=make_schema_feature_env_config(
+                base_ohlcv_df,
+                use_continuous_actions=True,
+            ),
+        )
+        try:
+            assert isinstance(env.action_space, spaces.Box)
+            assert env.action_space.shape == (1,)
+        finally:
+            env.close()

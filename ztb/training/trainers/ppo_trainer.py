@@ -11,7 +11,7 @@ Handles PPO-specific training logic including:
 import gc
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from ztb.training.constants import SAVE_INTERVAL
 from ztb.training.unified_trainer.components.config_manager import TrainingConfigManager
@@ -145,18 +145,11 @@ class PPOAlgorithmTrainer(EnsembleMixin):
                 lagrange_params=lagrange_params,
             )
 
-            from ztb.training.experiments.sell_mitigation_ppo_trainer import (
+            from ztb.training.sell_mitigation_ppo_trainer import (
                 SELLBiasMitigationPPOTrainer,
             )
 
-            return SELLBiasMitigationPPOTrainer(
-                data_path=mitigation_params.data_path,
-                config=mitigation_params.config,
-                checkpoint_dir=mitigation_params.checkpoint_dir,
-                checkpoint_interval=mitigation_params.checkpoint_interval,
-                eval_gates=mitigation_params.eval_gates,
-                halt_callback=mitigation_params.halt_callback,
-            )
+            return SELLBiasMitigationPPOTrainer(mitigation_params)
         else:
             # Import TrainerParams for standard PPO
             from ztb.training.config.trainer_params import TrainerParams
@@ -169,16 +162,9 @@ class PPOAlgorithmTrainer(EnsembleMixin):
                 progress_bar=self.progress_bar_enabled,
             )
 
-            from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt as PPOTrainer
+            from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt
 
-            return PPOTrainer(
-                data_path=trainer_params.data_path,
-                config=trainer_params.config,
-                checkpoint_dir=trainer_params.checkpoint_dir,
-                checkpoint_interval=trainer_params.checkpoint_interval,
-                eval_gates=trainer_params.eval_gates,
-                halt_callback=trainer_params.halt_callback,
-            )
+            return PPOTrainerAutoHalt(trainer_params)
 
     def _save_model_and_schema(
         self, model: Any, unified_config: dict[str, Any]

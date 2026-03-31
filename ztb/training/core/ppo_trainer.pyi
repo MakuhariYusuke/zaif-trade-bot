@@ -1,15 +1,16 @@
-"""
-Type stubs for PPO trainer implementations.
-
-This module provides type annotations for complex PPO trainer classes
-to improve IDE support and type checking.
-"""
+"""Type stubs for PPO trainer implementations."""
 
 from typing import Any, Dict, Optional, Protocol
 
 from sb3_contrib import MaskablePPO
+from ztb.training.config.trainer_params import TrainerParams
 
-# Type stubs for PPO trainer classes
+
+class PPOTrainingConfig:
+    """Runtime training config dataclass."""
+
+    use_custom_ppo: bool
+
 class PPOTrainerProtocol(Protocol):
     """Protocol for PPO Trainer implementations."""
 
@@ -26,15 +27,10 @@ class PPOTrainerProtocol(Protocol):
 class PPOTrainerAutoHalt:
     """Auto-halt capable PPO trainer."""
 
-    def __init__(
-        self,
-        data_path: str,
-        config: Dict[str, Any],
-        checkpoint_dir: str,
-        eval_gates: Optional[Any] = None,
-        halt_callback: Optional[Any] = None,
-        checkpoint_interval: int = 10000,
-    ) -> None: ...
+    data_path: str
+    training_config: PPOTrainingConfig
+
+    def __init__(self, params: TrainerParams) -> None: ...
     def train(self, session_id: str) -> Optional[MaskablePPO]:
         """Train the model with auto-halt capability."""
         ...
@@ -44,3 +40,15 @@ class PPOTrainerAutoHalt:
     def neutralize_policy_bias(self) -> None:
         """Neutralize policy head bias."""
         ...
+
+
+class PPOTrainer(PPOTrainerAutoHalt):
+    """Standard PPO trainer compatibility surface."""
+
+    def __init__(
+        self,
+        data_path: str,
+        config: Dict[str, Any],
+        checkpoint_dir: str,
+        max_features: int | None = None,
+    ) -> None: ...

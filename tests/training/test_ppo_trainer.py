@@ -182,8 +182,8 @@ class TestPPOTrainerAutoHalt:
 
         assert env == mock_action_masker_instance
 
-    @patch("ztb.training.core.ppo_trainer.CustomPPO")
-    @patch("ztb.training.core.ppo_trainer.MaskablePPO")
+    @patch("ztb.training.ppo_trainer.CustomPPO")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
     def test_create_model_custom_ppo(
         self, mock_maskable_ppo, mock_custom_ppo, trainer_params
     ):
@@ -206,8 +206,8 @@ class TestPPOTrainerAutoHalt:
         mock_maskable_ppo.assert_not_called()
         assert model == mock_custom_ppo.return_value
 
-    @patch("ztb.training.core.ppo_trainer.CustomPPO")
-    @patch("ztb.training.core.ppo_trainer.MaskablePPO")
+    @patch("ztb.training.ppo_trainer.CustomPPO")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
     def test_create_model_standard_ppo(
         self, mock_maskable_ppo, mock_custom_ppo, trainer_params
     ):
@@ -265,7 +265,7 @@ class TestPPOTrainerAutoHalt:
     @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
     @patch("ztb.training.core.ppo_trainer.HeavyTradingEnv")
     @patch("ztb.training.core.ppo_trainer.ActionMasker")
-    @patch("ztb.training.core.ppo_trainer.MaskablePPO")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
     @patch("ztb.training.core.ppo_trainer.CompositeTrainingCallback")
     def test_train_success_path(
         self,
@@ -322,7 +322,7 @@ class TestPPOTrainerAutoHalt:
     @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
     @patch("ztb.training.core.ppo_trainer.HeavyTradingEnv")
     @patch("ztb.training.core.ppo_trainer.ActionMasker")
-    @patch("ztb.training.core.ppo_trainer.MaskablePPO")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
     @patch("ztb.training.core.ppo_trainer.CompositeTrainingCallback")
     def test_train_with_exception(
         self,
@@ -363,7 +363,7 @@ class TestPPOTrainerAutoHalt:
     @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
     @patch("ztb.training.core.ppo_trainer.HeavyTradingEnv")
     @patch("ztb.training.core.ppo_trainer.ActionMasker")
-    @patch("ztb.training.core.ppo_trainer.MaskablePPO")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
     @patch("ztb.training.core.ppo_trainer.CompositeTrainingCallback")
     def test_train_complete_success_path(
         self,
@@ -422,7 +422,7 @@ class TestPPOTrainerAutoHalt:
     @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
     @patch("ztb.training.core.ppo_trainer.HeavyTradingEnv")
     @patch("ztb.training.core.ppo_trainer.ActionMasker")
-    @patch("ztb.training.core.ppo_trainer.MaskablePPO")
+    @patch("ztb.training.ppo_trainer.MaskablePPO")
     @patch("ztb.training.core.ppo_trainer.CompositeTrainingCallback")
     def test_train_with_exception_logging(
         self,
@@ -849,3 +849,59 @@ class TestPPOAlgorithmTrainer:
         assert hasattr(trainer, "ui_manager")
         assert hasattr(trainer, "reporter")
         assert trainer.logger is not None
+
+    @patch("ztb.training.core.ppo_trainer.PPOTrainerAutoHalt")
+    def test_create_standard_ppo_trainer_uses_trainer_params(
+        self, mock_auto_halt, temp_dir
+    ):
+        """Standard PPO path should instantiate PPOTrainerAutoHalt with TrainerParams."""
+        from ztb.training.config.trainer_params import TrainerParams
+        from ztb.training.unified_trainer.components.config_manager import (
+            TrainingConfigManager,
+        )
+
+        config_manager = TrainingConfigManager()
+        trainer = PPOAlgorithmTrainer(config_manager, progress_bar_enabled=True)
+        unified_config = {
+            "data_path": "dummy_path.csv",
+            "checkpoint_dir": temp_dir,
+            "checkpoint_interval": 1234,
+        }
+
+        trainer._create_ppo_trainer(unified_config, enable_sell_mitigation=False)
+
+        mock_auto_halt.assert_called_once()
+        (params,), _ = mock_auto_halt.call_args
+        assert isinstance(params, TrainerParams)
+        assert params.data_path == "dummy_path.csv"
+        assert str(params.checkpoint_dir) == temp_dir
+        assert params.checkpoint_interval == 1234
+
+    @patch("ztb.training.sell_mitigation_ppo_trainer.SELLBiasMitigationPPOTrainer")
+    def test_create_sell_mitigation_ppo_trainer_uses_shim(
+        self, mock_sell_mitigation_trainer, temp_dir
+    ):
+        """SELL mitigation path should go through the compatibility shim."""
+        from ztb.training.config.trainer_params import SELLMitigationParams
+        from ztb.training.unified_trainer.components.config_manager import (
+            TrainingConfigManager,
+        )
+
+        config_manager = TrainingConfigManager()
+        trainer = PPOAlgorithmTrainer(config_manager, progress_bar_enabled=True)
+        unified_config = {
+            "data_path": "dummy_path.csv",
+            "checkpoint_dir": temp_dir,
+            "checkpoint_interval": 4321,
+            "enable_lagrange": True,
+            "enable_pan": True,
+        }
+
+        trainer._create_ppo_trainer(unified_config, enable_sell_mitigation=True)
+
+        mock_sell_mitigation_trainer.assert_called_once()
+        (params,), _ = mock_sell_mitigation_trainer.call_args
+        assert isinstance(params, SELLMitigationParams)
+        assert params.data_path == "dummy_path.csv"
+        assert str(params.checkpoint_dir) == temp_dir
+        assert params.checkpoint_interval == 4321

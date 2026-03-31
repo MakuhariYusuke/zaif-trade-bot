@@ -1,12 +1,17 @@
-"""Minimal PPOConfig stub for tests."""
-from dataclasses import dataclass
-from typing import Any
+"""Compatibility exports for legacy PPO config import paths."""
 
-@dataclass
-class PPOConfig:
-    lr: float = 3e-4
-    gamma: float = 0.99
-    n_steps: int = 2048
-    policy_kwargs: dict[str, Any] = None
+from ztb.training.config.ppo_config import (
+    DEFAULT_PPO_CONFIG,
+    PPOConfig,
+    get_aggressive_ppo_config,
+    get_conservative_ppo_config,
+    get_ppo_config,
+)
 
-__all__ = ["PPOConfig"]
+__all__ = [
+    "DEFAULT_PPO_CONFIG",
+    "PPOConfig",
+    "get_aggressive_ppo_config",
+    "get_conservative_ppo_config",
+    "get_ppo_config",
+]
