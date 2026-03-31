@@ -135,15 +135,16 @@ sac_retrain:
   model_name: "sac_sidecar.zip"      # deploy 先モデルファイル名
   buffer_name: "sac_sidecar.buffer.pkl"
   signal_path: "cache/sidecar_signal.json"
-  incremental_timesteps: 15000       # warm-start 追加ステップ数
+  incremental_timesteps: 25000       # 676# 15K→25K: 1.86→3.1 epoch相当, 収束改善
   check_interval_sec: 300            # polling 間隔 (5分)
   retrain_interval_sec: 7200         # 最短再訓練間隔 (2h)
   retrain_interval_max_sec: 14400    # 最長再訓練間隔 (4h)
   min_new_rows: 120                  # 再訓練に必要な新規行数 (2h分)
   min_gross_roi: 0.0                 # OOS gate: gross_roi > 0 で通過
   n_eval_episodes: 1                 # 384# 準拠: holdout 全走査
-  min_trade_count: 3                 # 372# Deploy Gate
-  confidence_roi_full: 0.005         # confidence=1.0 閾値
+  min_trade_count: 50                # 676# 3→50: OOS 2016 rows で 50 trades = 2.5% frequency (意味のある最低ライン)
+  min_profit_factor: 0.8             # 676# PF gate: PF<0.8 は明らかに学習失敗 (PF≥1.0で収支均衡)
+  confidence_roi_full: 0.002         # 676# 0.005→0.002: 現ROI≈0.03%でconfidence=0.06→0.16 (tick size超えの最低ライン)
   history_path: "logs/sac_retrain_history.jsonl"
   # 649# データ鮮度チェック (retrain trigger 非依存)
   data_freshness_check_interval_sec: 3600  # 鮮度チェック間隔 (1h)

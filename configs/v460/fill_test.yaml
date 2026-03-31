@@ -660,7 +660,7 @@ vpin_vol_sync:
 sidecar:
   enabled: true                    # sidecar offset 注入の有効/無効
   max_boost_bps: 0.20              # 544# 377# ladder Step2: 0.15→0.20 (Phase 4 SAC影響力拡大)
-  dead_zone: 0.10                  # |bias| ≤ この値で offset=0 (ノイズ除去)
+  dead_zone: 0.05                  # 676# 0.10→0.05: 弱signal活用 (binding constraintはconfidenceであり、dead_zoneではない)
   shaping: quadratic               # 546# "linear" | "quadratic" | "sigmoid" — quadratic: 弱signal抑制、強signal集中
   use_v2: true                     # true=v2(比例), false=v1(離散) — A/B切替用
 

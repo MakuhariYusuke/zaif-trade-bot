@@ -1,3 +1,6 @@
+prompts\codex_task_ppo_foundation.md
+docs\v460\675_cplt_ml_sac_improvement_analysis.md
+さて、テストについては引続きお願いしたいところですが、並行して別タスクをお願いしたいです。具体的にはPPOの復活支援ということでおねがいします。又適宜PPO関連でも重複解消出来るかどうかも確認するのと、その他デバッグもお願いします。ドキュメント発行時番号重複に注意して下さい。
 # 675# ML/SAC 総合分析 — 現状の問題と改善ロードマップ
 
 ## 概要
@@ -43,7 +46,18 @@ gross_roi = mark-to-market drift → trending期は常に > 0
 - `confidence: 0.063` (低い)
 - fill_test での適用: `sidecar_offset_bps: -0.004bps` (無視できる微小値)
 
-dead_zone=0.10 に対して confidence=0.063 であるため、**offset 算出が dead_zone で潰されている**。
+#### 676# 深掘り: binding constraint は dead_zone ではなく confidence
+
+初期分析では「dead_zone=0.10 で offset が潰される」と推定したが、深掘りで訂正:
+
+- `abs(bias)=0.628 > dead_zone=0.10` → dead_zone は通過する
+- 実際の binding constraint は **confidence=0.063**
+- `magnitude = max_boost(0.20) × shaped(normalized(0.628)) × confidence(0.063) ≈ 0.007 bps`
+- BTC@10.6M JPY で 0.007bps = **0.74 JPY** — tick size 未満で実効ゼロ
+
+confidence = (OOS_ROI - 0) / (confidence_roi_full - 0) = 0.031% / 0.5% = 0.063
+
+**つまり SAC の OOS ROI が低すぎて confidence が潰れ、sidecar 全体が常時無効化。**
 
 ### 報酬関数の複雑性
 

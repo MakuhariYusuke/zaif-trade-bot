@@ -123,6 +123,7 @@ class SACRetrainConfig:
     n_eval_episodes: int = 3
     confidence_roi_full: float = 0.005  # この ROI 以上で confidence=1.0
     min_trade_count: int = 3  # 372# Deploy Gate: OOS 中の最低取引回数
+    min_profit_factor: float = 0.0  # 676# Deploy Gate: OOS profit_factor 下限 (0=無効)
 
     # ── スケジューラ ──
     check_interval_sec: int = 300  # polling 間隔 (5分)
@@ -191,6 +192,7 @@ class SACRetrainConfig:
             history_path=Path(str(retrain_cfg.get("history_path", "logs/sac_retrain_history.jsonl"))),
             confidence_roi_full=float(retrain_cfg.get("confidence_roi_full", 0.005)),
             min_trade_count=int(retrain_cfg.get("min_trade_count", 3)),
+            min_profit_factor=float(retrain_cfg.get("min_profit_factor", 0.0)),
             max_signal_staleness_hours=float(
                 retrain_cfg.get("max_signal_staleness_hours", 24.0)
             ),
@@ -233,6 +235,8 @@ class SACRetrainConfig:
             raise ValueError(f"n_eval_episodes must be >= 1, got {self.n_eval_episodes}")
         if self.min_trade_count < 0:
             raise ValueError(f"min_trade_count must be >= 0, got {self.min_trade_count}")
+        if self.min_profit_factor < 0:
+            raise ValueError(f"min_profit_factor must be >= 0, got {self.min_profit_factor}")
         if self.data_freshness_check_interval_sec < 60:
             raise ValueError(
                 f"data_freshness_check_interval_sec must be >= 60, "
@@ -550,6 +554,34 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
                 f"< {cfg.min_trade_count}"
             )
             # 600# Conditional neutral fallback
+            if _is_signal_fresh_and_active(
+                cfg.signal_path, cfg.max_signal_staleness_hours
+            ):
+                logger.info(
+                    "[600#] Keeping existing sidecar signal "
+                    f"(last deploy < {cfg.max_signal_staleness_hours:.0f}h)"
+                )
+            else:
+                _push_neutral_fallback(cfg.signal_path)
+            return RetrainResult(
+                status="oos_failed",
+                timestamp=timestamp,
+                model_version=model_version,
+                training_time_sec=training_time,
+                total_timesteps=timesteps,
+                warm_start=is_warm_start,
+                gross_roi=float(eval_result["gross_roi"]),
+                trade_count=_oos_trade_count,
+                debug_details=debug_details,
+            )
+
+        # 676# Deploy Gate: profit_factor チェック
+        _oos_pf = float(eval_result.get("pf", 0.0))
+        if cfg.min_profit_factor > 0 and _oos_pf < cfg.min_profit_factor:
+            logger.warning(
+                f"OOS validation FAILED: profit_factor={_oos_pf:.3f} "
+                f"< {cfg.min_profit_factor:.3f}"
+            )
             if _is_signal_fresh_and_active(
                 cfg.signal_path, cfg.max_signal_staleness_hours
             ):
