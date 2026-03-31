@@ -53,7 +53,9 @@ from tests.unit.v460._skip_gate_test_helpers import save_and_load_skip_gate
 from ztb.ml.artifact_paths import hash_sidecar_path
 
 _REAL_DATA_SAMPLE_ROWS = 50
-_REAL_DATA_SMOKE_SAMPLE_ROWS = 36
+_REAL_DATA_SMOKE_SAMPLE_ROWS = 24
+_REAL_DATA_SMOKE_FALLBACK_SAMPLE_ROWS = 36
+_REAL_DATA_SMOKE_EXPANDED_SAMPLE_ROWS = 48
 _REAL_DATA_FALLBACK_SAMPLE_ROWS = 56
 _REAL_DATA_EXPANDED_SAMPLE_ROWS = 72
 _REAL_DATA_MIN_TRAIN_SAMPLES = 20
@@ -110,10 +112,20 @@ def _cached_real_enriched_training_df() -> pd.DataFrame:
 
 @lru_cache(maxsize=1)
 def _cached_real_enriched_smoke_df() -> pd.DataFrame:
-    recent_fill_df = _load_recent_fill_records_df(sample_rows=_REAL_DATA_SMOKE_SAMPLE_ROWS)
-    if recent_fill_df.empty:
-        return pd.DataFrame()
-    return enrich_fill_records(recent_fill_df)
+    for sample_rows in (
+        _REAL_DATA_SMOKE_SAMPLE_ROWS,
+        _REAL_DATA_SMOKE_FALLBACK_SAMPLE_ROWS,
+        _REAL_DATA_SMOKE_EXPANDED_SAMPLE_ROWS,
+    ):
+        recent_fill_df = _load_recent_fill_records_df(sample_rows=sample_rows)
+        if recent_fill_df.empty:
+            continue
+        enriched = enrich_fill_records(recent_fill_df)
+        if "spread_bps_ob" not in enriched.columns:
+            continue
+        if enriched["spread_bps_ob"].notna().any():
+            return enriched
+    return pd.DataFrame()
 
 
 def _make_negative_skip_gate(

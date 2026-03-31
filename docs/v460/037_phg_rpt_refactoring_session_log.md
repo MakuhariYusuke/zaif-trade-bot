@@ -9576,3 +9576,13 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `test_list_fill_record_files_*`
     - `test_load_fill_record_objects_glob_supports_date_range`
     - `5 passed in 3.55s`
+
+- 2026-04-01 Codex:
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - smoke real-data sample を段階 fallback (`24 -> 36 -> 48`) に変更
+  - `tests/unit/v460/test_fill_quality.py`
+    - `test_glob_load`
+    - `test_glob_load_deduplicates_emergency_records`
+    - `test_iter_glob_load_roundtrip`
+    - `test_iter_glob_load_can_exclude_emergency`
+    も direct JSONL seed に統一

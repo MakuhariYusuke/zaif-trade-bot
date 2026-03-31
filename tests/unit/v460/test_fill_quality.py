@@ -1416,7 +1416,7 @@ class TestFillRecordIO:
 
     def test_glob_load(self, tmp_path: Path) -> None:
         for day in ["20260101", "20260102"]:
-            _save_linear_records(
+            _seed_linear_records(
                 tmp_path / f"fill_records_{day}.jsonl",
                 prefix=day,
                 count=3,
@@ -1431,14 +1431,14 @@ class TestFillRecordIO:
         root = tmp_path
         emergency = root / "emergency"
         emergency.mkdir()
-        _save_linear_records(
+        _seed_linear_records(
             root / "fill_records_20260101.jsonl",
             prefix="dup",
             count=1,
             start_index=1,
             base_ts=1700000000.0,
         )
-        _save_linear_records(
+        _seed_linear_records(
             emergency / "emergency_20260101.jsonl",
             prefix="dup",
             count=1,
@@ -1452,7 +1452,7 @@ class TestFillRecordIO:
 
     def test_iter_glob_load_roundtrip(self, tmp_path: Path) -> None:
         root = tmp_path
-        _save_linear_records(
+        _seed_linear_records(
             root / "fill_records_20260101.jsonl",
             prefix="g",
             count=2,
@@ -1469,14 +1469,14 @@ class TestFillRecordIO:
         root = tmp_path
         emergency = root / "emergency"
         emergency.mkdir()
-        _save_linear_records(
+        _seed_linear_records(
             root / "fill_records_20260101.jsonl",
             prefix="main",
             count=1,
             start_index=1,
             base_ts=1700000000.0,
         )
-        _save_linear_records(
+        _seed_linear_records(
             emergency / "emergency_20260101.jsonl",
             prefix="emg",
             count=1,

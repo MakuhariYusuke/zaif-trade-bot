@@ -247,6 +247,10 @@
       - `5 passed in 3.55s`
       - slowest call は `test_iter_fill_record_objects_glob_roundtrip` `0.04s`
 
+- 追加 sweep:
+  - `test_enricher_skip_gate.py` の smoke sample は `24 -> 36 -> 48` の段階 fallback に変更
+  - `test_fill_quality.py` の glob/load roundtrip で残っていた `save_fill_records(...)` 経由 setup も direct seed に統一
+
 ## 追加の tempfile / mtime cleanup
 
 次の同型パターンも low-risk に整理した。
