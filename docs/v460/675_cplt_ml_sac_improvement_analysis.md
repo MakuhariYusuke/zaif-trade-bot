@@ -245,11 +245,16 @@ PPO 関連コードは広範に存在する（120+ ファイル）。主要な�
   - `orchestrator_mid_cycle.py` / `cycle_gate_aggregator.py` に
     PPO signal reader / safe veto wiring を追加
   - `FillRecord` に PPO sidecar telemetry を追加
+  - `ppo_retrain_scheduler.py` を追加し、
+    current PPO trainer / sidecar signal / history path を live foundation に接続
+  - `sidecar_scheduler_common.py` を追加し、
+    scheduler の result / history / mtime trigger を SAC と最小共有化
 
 ### まだ残るもの
 
-1. `ppo_retrain_scheduler.py` 本体
+1. `ztb/training/models/custom_ppo.py` 周辺の baseline mypy 圧縮
 2. legacy PPO 実験コードの archive batch
+3. PPO sidecar scheduler の warm-start を current trainer にどう載せるかの設計整理
 
 ### 市場理論上の役割分離
 
@@ -280,6 +285,21 @@ microstructure noise による flip-flop override も抑えやすい。
 
 この形なら、PPO がまだ十分に calibration されていなくても
 「危ないサイクルを止める」方向にしか効かないため、安全余地が大きい。
+
+### scheduler 実装の安全側判断
+
+`ppo_retrain_scheduler.py` は current foundation の上に追加したが、
+現段階では **fresh fit + shorter budget** を採っている。
+
+- 既存 model が無い:
+  - `total_timesteps` で cold-start
+- 既存 model がある:
+  - `incremental_timesteps` に短縮して再学習
+  - ただし model weight の warm-start 自体はまだ行わない
+
+これは、現行 `SELLBiasMitigationPPOTrainer` が warm-start API を持たないためである。
+無理に半端な load path を足すより、
+signal / deploy / veto wiring を先に固める方が live 安定性に優れる。
 
 ## 推奨アクション順序
 

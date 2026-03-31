@@ -41,6 +41,11 @@ logger = logging.getLogger(__name__)
 from ztb.io.yaml_io import read_yaml
 from ztb.utils.time_utils import current_compact_timestamp, current_iso_timestamp
 from ztb.utils.memory_utils import clear_cuda_cache
+from scripts.v460.ml.sidecar_scheduler_common import (
+    BaseRetrainResult,
+    DataFileRetrainTrigger,
+    append_history_jsonl,
+)
 
 # ── graceful shutdown ──────────────────────────────────────
 _shutdown_event = threading.Event()
@@ -278,35 +283,19 @@ from ztb.training.sac import (  # noqa: E402
 
 
 @dataclass
-class RetrainResult:
+class RetrainResult(BaseRetrainResult):
     """1 サイクルの再訓練結果."""
 
-    status: str  # "deployed" | "oos_failed" | "error" | "skipped"
-    timestamp: str = ""
-    model_version: str = ""
-    training_time_sec: float = 0.0
-    total_timesteps: int = 0
-    warm_start: bool = False
     gross_roi: float = 0.0
     trade_count: int = 0
-    error_message: str = ""
-    debug_details: dict[str, object] = field(default_factory=dict)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, object]:
         """JSON serializable dict."""
-        payload = {
-            "status": self.status,
-            "timestamp": self.timestamp,
-            "model_version": self.model_version,
-            "training_time_sec": round(self.training_time_sec, 1),
-            "total_timesteps": self.total_timesteps,
-            "warm_start": self.warm_start,
+        payload = BaseRetrainResult.to_dict(self)
+        payload.update({
             "gross_roi": round(self.gross_roi, 6),
             "trade_count": self.trade_count,
-            "error_message": self.error_message,
-        }
-        if self.debug_details:
-            payload["debug_details"] = self.debug_details
+        })
         return payload
 
 
@@ -678,8 +667,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
 # ════════════════════════════════════════════════════════════════
 
 
-@dataclass
-class SACRetrainTrigger:
+class SACRetrainTrigger(DataFileRetrainTrigger[SACRetrainConfig]):
     """再訓練トリガー判定.
 
     365# §5.2: 新規データ蓄積量ベースの判定。
@@ -687,70 +675,8 @@ class SACRetrainTrigger:
     - 最短 retrain_interval_sec 経過後にトリガー
     - 連続失敗時は backoff
     """
-
-    cfg: SACRetrainConfig
-    _last_retrain_time: float = 0.0
-    _last_data_mtime: float = 0.0
-    _consecutive_failures: int = 0
-
-    def should_retrain(self) -> tuple[bool, str]:
-        """再訓練すべきか判定.
-
-        Returns:
-            (should_retrain, reason)
-        """
-        now = time.time()
-
-        # 最短間隔チェック
-        elapsed = now - self._last_retrain_time
-        effective_interval = self._get_effective_interval()
-        if elapsed < effective_interval:
-            remaining = effective_interval - elapsed
-            return False, f"interval_wait ({remaining:.0f}s remaining)"
-
-        # データファイル更新チェック
-        data_path = Path(self.cfg.ohlcv_path)
-        if not data_path.exists():
-            return False, f"data_not_found: {data_path}"
-
-        try:
-            current_mtime = data_path.stat().st_mtime
-        except OSError as e:
-            return False, f"stat_failed: {e}"
-
-        if self._last_data_mtime > 0 and current_mtime <= self._last_data_mtime:
-            return False, "data_unchanged"
-
-        return True, "data_updated"
-
-    def record_result(self, status: str) -> None:
-        """結果を記録しトリガー状態を更新."""
-        self._last_retrain_time = time.time()
-        if status == "deployed":
-            self._consecutive_failures = 0
-        elif status in ("oos_failed", "error"):
-            self._consecutive_failures += 1
-        # data mtime 更新
-        data_path = Path(self.cfg.ohlcv_path)
-        if data_path.exists():
-            try:
-                self._last_data_mtime = data_path.stat().st_mtime
-            except OSError:
-                pass
-
-    def _get_effective_interval(self) -> float:
-        """連続失敗時の backoff を考慮した実効間隔."""
-        base = self.cfg.retrain_interval_sec
-        if self._consecutive_failures > 0:
-            # exponential backoff (capped at max)
-            backoff_mult = 2.0 ** min(self._consecutive_failures, 4)
-            return min(base * backoff_mult, self.cfg.retrain_interval_max_sec)
-        return float(base)
-
-    @property
-    def effective_interval(self) -> float:
-        """現在の実効間隔 (外部参照用)."""
-        return self._get_effective_interval()
+    def __init__(self, cfg: SACRetrainConfig) -> None:
+        super().__init__(cfg=cfg, data_path_getter=lambda current_cfg: current_cfg.ohlcv_path)
 
 
 # ════════════════════════════════════════════════════════════════
@@ -869,8 +795,13 @@ def run_scheduler(cfg: SACRetrainConfig) -> None:
             continue
 
         if not should_run:
-            logger.debug(
+            # 680#: data_unchanged は INFO に昇格 (沈黙バグの早期検出)
+            _log_fn = logger.info if reason == "data_unchanged" else logger.debug
+            _elapsed = time.time() - trigger._last_retrain_time
+            _log_fn(
                 f"[365# P6] Trigger skip: {reason} | "
+                f"since_last_retrain={_elapsed:.0f}s "
+                f"({_elapsed / 3600:.1f}h) | "
                 f"next_check_in={cfg.check_interval_sec}s"
             )
             if _shutdown_event.wait(timeout=cfg.check_interval_sec):
@@ -1260,10 +1191,8 @@ def _update_sidecar_signal(
 
 def _append_history(path: Path, result: RetrainResult) -> None:
     """再訓練履歴を JSONL に追記."""
-    path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        with open(path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(result.to_dict(), ensure_ascii=False) + "\n")
+        append_history_jsonl(path, result.to_dict())
     except OSError as e:
         logger.warning(f"History append failed: {e}")
 

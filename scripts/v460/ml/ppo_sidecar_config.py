@@ -25,6 +25,8 @@ class PPOSidecarConfig:
     incremental_timesteps: int = 50_000
     check_interval_sec: int = 300
     retrain_interval_sec: int = 7200
+    retrain_interval_max_sec: int = 14_400
+    history_path: Path = field(default_factory=lambda: Path("logs/ppo_retrain_history.jsonl"))
     min_override_confidence: float = 0.55
     min_action_probability_gap: float = 0.10
     use_continuous_actions: bool = False
@@ -47,6 +49,10 @@ class PPOSidecarConfig:
         if self.retrain_interval_sec < self.check_interval_sec:
             raise ValueError(
                 "retrain_interval_sec must be >= check_interval_sec"
+            )
+        if self.retrain_interval_max_sec < self.retrain_interval_sec:
+            raise ValueError(
+                "retrain_interval_max_sec must be >= retrain_interval_sec"
             )
         if not (0.0 <= self.min_override_confidence <= 1.0):
             raise ValueError("min_override_confidence must be in [0.0, 1.0]")
@@ -107,6 +113,18 @@ class PPOSidecarConfig:
                 ppo_sidecar_cfg.get("retrain_interval_sec", 7200),
                 7200,
             ),
+            retrain_interval_max_sec=safe_to_int(
+                ppo_sidecar_cfg.get("retrain_interval_max_sec", 14_400),
+                14_400,
+            ),
+            history_path=Path(
+                str(
+                    ppo_sidecar_cfg.get(
+                        "history_path",
+                        "logs/ppo_retrain_history.jsonl",
+                    )
+                )
+            ),
             min_override_confidence=safe_to_float(
                 ppo_sidecar_cfg.get("min_override_confidence", 0.55),
                 0.55,
@@ -141,21 +159,28 @@ class PPOSidecarConfig:
             ppo_hyperparameters=ppo_hyperparameters,
         )
 
-    def build_trainer_config(self) -> dict[str, object]:
+    def build_trainer_config(self, *, total_timesteps: int | None = None) -> dict[str, object]:
         """current PPO trainer が受け取れる最小 config を構築する."""
+        resolved_total_timesteps = (
+            self.total_timesteps if total_timesteps is None else total_timesteps
+        )
+        flattened_hyperparameters = {
+            str(key): value for key, value in self.ppo_hyperparameters.items()
+        }
         trainer_config: dict[str, object] = {
             "algorithm": "ppo",
             "data_path": self.data_path,
             "checkpoint_dir": str(self.checkpoint_dir),
-            "total_timesteps": self.total_timesteps,
+            "total_timesteps": resolved_total_timesteps,
             "use_continuous_actions": False,
             "action_space_type": "discrete",
             "enable_pan": self.enable_pan,
             "enable_target_entropy": self.enable_target_entropy,
             "enable_stratified_sampling": self.enable_stratified_sampling,
             "allow_reverse": self.allow_reverse,
+            **flattened_hyperparameters,
             "ppo": {
-                **self.ppo_hyperparameters,
+                **flattened_hyperparameters,
                 "use_custom_ppo": bool(
                     self.ppo_hyperparameters.get("use_custom_ppo", True)
                 ),

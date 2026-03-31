@@ -9756,3 +9756,43 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
       - `sidecar_types.py` / foundation test は clean 維持
       - `orchestrator_mid_cycle.py` は既存 mixin baseline が厚く、
         今回も focused pytest 優先で据え置き
+
+- 2026-04-01 Codex:
+  - PPO 復活支援の次段として scheduler foundation を追加
+  - `scripts/v460/ml/sidecar_scheduler_common.py`
+    - sidecar scheduler の
+      - result
+      - history JSONL append
+      - file-mtime trigger
+      を SAC / PPO で最小共有化
+  - `scripts/v460/ml/ppo_sidecar_config.py`
+    - `history_path`
+    - `retrain_interval_max_sec`
+    - trainer config の top-level flatten
+    を追加して current PPO trainer 契約に追随
+  - `scripts/v460/ml/ppo_retrain_scheduler.py`
+    - current `SELLBiasMitigationPPOTrainer` を使う PPO sidecar scheduler を追加
+    - atomic deploy / neutral fallback / signal 更新 / history append を実装
+    - warm-start はまだ無理に入れず、
+      `fresh fit + shorter budget` に留めた
+  - `scripts/v460/ml/sac_retrain_scheduler.py`
+    - shared scheduler helper に result/history/trigger を寄せた
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+    - config flatten
+    - trigger
+    - neutral fallback
+    - signal 更新
+    - retrain_once
+    の focused 回帰を追加
+  - 検証:
+    - targeted mypy:
+      - `scripts/v460/ml/sidecar_scheduler_common.py`
+      - `scripts/v460/ml/ppo_sidecar_config.py`
+      - `scripts/v460/ml/ppo_retrain_scheduler.py`
+      - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+      - `Success: no issues found in 4 source files`
+    - focused pytest:
+      - `tests/unit/v460/test_679_ppo_sidecar_foundation.py`
+      - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+      - `tests/unit/v460/test_sac_retrain_scheduler.py`
+      - `69 passed in 14.18s`

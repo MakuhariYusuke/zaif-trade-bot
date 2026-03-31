@@ -3,7 +3,9 @@
 from typing import Any, Dict, Optional, Protocol
 
 from sb3_contrib import MaskablePPO
+from sb3_contrib.common.wrappers import ActionMasker
 from ztb.training.config.trainer_params import TrainerParams
+from ztb.trading.environment.environment import HeavyTradingEnv
 
 
 class PPOTrainingConfig:
@@ -71,3 +73,6 @@ class PPOTrainer(PPOTrainerAutoHalt):
         checkpoint_dir: str,
         max_features: int | None = None,
     ) -> None: ...
+
+
+def wrap_env_with_action_masker(env: HeavyTradingEnv) -> ActionMasker: ...

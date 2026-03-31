@@ -117,7 +117,7 @@ callback も `self.model.*` を見ていたため、trainer 側の別インス�
 ## 次の一手
 
 1. `CustomPPO` / `SELLBiasMitigationPPOTrainer` の残る baseline mypy を小さく減らす
-2. PPO sidecar scheduler / signal 形式を、SAC sidecar の current I/O と並べて設計する
+2. PPO sidecar scheduler の warm-start 設計を、current trainer 契約の上で整理する
 3. legacy PPO 実験コードを archive batch として別 commit で切る
 
 ## ステータス追記
@@ -222,6 +222,58 @@ signal が存在しても **危険側 veto を先に有効化**する構造に�
   tests/unit/environment/test_heavy_env_initialization.py \
   -x --tb=short --no-cov --durations=20
 ```
+
+### 7. PPO sidecar scheduler foundation
+
+current foundation の次段として、`scripts/v460/ml/ppo_retrain_scheduler.py` を追加した。
+
+- `scripts/v460/ml/sidecar_scheduler_common.py`
+  - scheduler の `result / history / file-mtime trigger` を SAC と最小共有化
+- `scripts/v460/ml/ppo_sidecar_config.py`
+  - `history_path`
+  - `retrain_interval_max_sec`
+  - trainer config の top-level flatten
+  を追加し、current PPO trainer 契約に追随
+- `scripts/v460/ml/ppo_retrain_scheduler.py`
+  - `SELLBiasMitigationPPOTrainer` を用いた sidecar retrain foundation
+  - atomic deploy
+  - neutral fallback
+  - action probability から `PPOSidecarSignal` を更新
+- `scripts/v460/ml/sac_retrain_scheduler.py`
+  - shared scheduler helper に history/result/trigger を寄せた
+
+この batch でも live 安全性を優先している。
+
+- model が無い:
+  - cold-start の full timesteps
+- model がある:
+  - current trainer は warm-start API をまだ持たないため、
+    **fresh fit の shorter budget** に留める
+
+つまり、signal/deploy/history を先に正本化し、
+weights の warm-start は別 batch に分離した。
+
+### 8. 追加 focused 確認
+
+```bash
+.venv/Scripts/python.exe scripts/quality/run_targeted_mypy.py \
+  scripts/v460/ml/sidecar_scheduler_common.py \
+  scripts/v460/ml/ppo_sidecar_config.py \
+  scripts/v460/ml/ppo_retrain_scheduler.py \
+  tests/unit/v460/test_680_ppo_retrain_scheduler.py
+```
+
+- `Success: no issues found in 4 source files`
+
+```bash
+.venv/Scripts/python.exe -m pytest \
+  tests/unit/v460/test_679_ppo_sidecar_foundation.py \
+  tests/unit/v460/test_680_ppo_retrain_scheduler.py \
+  tests/unit/v460/test_sac_retrain_scheduler.py \
+  -x --tb=short --no-cov
+```
+
+- `69 passed in 14.18s`
 
 - `100 passed in 7.40s`
 

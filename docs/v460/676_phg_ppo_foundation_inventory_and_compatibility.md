@@ -20,6 +20,8 @@ v461 の PPO sidecar 再開に向けて、現行 repo に残っている PPO 関
 | `scripts/v460/lib/sidecar_types.py` | ACTIVE | `PPOSidecarSignal` / action probability contract を追加。SAC sidecar の隣で foundation を共有 |
 | `scripts/v460/lib/sidecar_signal_io.py` | ACTIVE | SAC sidecar の atomic JSON I/O を再利用し、PPO sidecar signal の read/write foundation を追加 |
 | `scripts/v460/ml/ppo_sidecar_config.py` | ACTIVE | scheduler 実装前の最小 config foundation。discrete action / override threshold を固定 |
+| `scripts/v460/ml/sidecar_scheduler_common.py` | ACTIVE | SAC / PPO sidecar scheduler の result / history / file-mtime trigger の最小共有 helper |
+| `scripts/v460/ml/ppo_retrain_scheduler.py` | ACTIVE | current PPO trainer を sidecar signal / history / deploy path に接続する scheduler foundation |
 | `scripts/v460/lib/cycle_gate_aggregator.py` | ACTIVE | PPO sidecar の safe veto merge 点。skip / reverse-side のみを先に live wiring |
 | `scripts/v460/lib/orchestrator_mid_cycle.py` | ACTIVE | PPO signal reader を current cycle pipeline に接続 |
 | `scripts/v460/lib/fill_record_builder.py` | ACTIVE | PPO sidecar telemetry を FillRecord に転記 |
@@ -139,7 +141,8 @@ v461 の PPO sidecar 再開に向けて、現行 repo に残っている PPO 関
 ## 残課題
 
 1. `ppo_retrain_scheduler.py`
-   - current foundation (`PPOSidecarSignal`, JSON I/O, config helper) の上に実装する
+   - 実装済み
+   - 現段階は `fresh fit + shorter budget` で安全側に運用し、trainer 側 warm-start は別 batch に分離
 2. `ztb/training/models/custom_ppo.py`
    - runtime は復旧したが、mypy baseline はまだ厚い
 3. 過去バージョンの PPO 実験コード
