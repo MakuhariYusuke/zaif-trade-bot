@@ -11,10 +11,11 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 import gc
 import json
+import logging
 from pathlib import Path
 import threading
 import time
-from typing import Generic, TypeVar
+from typing import Generic, Protocol, TypeVar
 
 from ztb.utils.atomic_io import atomic_replace_with_tmp
 from ztb.utils.memory_utils import clear_cuda_cache
@@ -51,6 +52,12 @@ class BaseRetrainResult:
 ConfigT = TypeVar("ConfigT")
 ResultT = TypeVar("ResultT")
 _MISSING_RESULT = object()
+
+
+class SupportsRecordResult(Protocol):
+    """Minimal trigger contract used by scheduler loops."""
+
+    def record_result(self, status: str) -> None: ...
 
 
 class DataFileRetrainTrigger(Generic[ConfigT]):
@@ -133,6 +140,36 @@ def append_history_jsonl(path: Path, payload: Mapping[str, object]) -> None:
         handle.write(json.dumps(dict(payload), ensure_ascii=False) + "\n")
 
 
+def append_history_best_effort(
+    *,
+    path: Path,
+    payload: Mapping[str, object],
+    logger_obj: logging.Logger,
+    label: str,
+) -> None:
+    """Append scheduler history without letting loop bookkeeping kill the process."""
+
+    try:
+        append_history_jsonl(path, payload)
+    except Exception as exc:  # pragma: no cover - exercised via loop tests
+        logger_obj.warning("%s history append failed: %s", label, exc, exc_info=True)
+
+
+def record_trigger_result_best_effort(
+    *,
+    trigger: SupportsRecordResult,
+    status: str,
+    logger_obj: logging.Logger,
+    label: str,
+) -> None:
+    """Record trigger state without letting bookkeeping exceptions kill the loop."""
+
+    try:
+        trigger.record_result(status)
+    except Exception as exc:  # pragma: no cover - exercised via loop tests
+        logger_obj.warning("%s trigger.record_result failed: %s", label, exc, exc_info=True)
+
+
 def run_with_timeout(
     *,
     timeout_sec: float,
@@ -172,8 +209,10 @@ def best_effort_training_cleanup() -> None:
 __all__ = [
     "BaseRetrainResult",
     "DataFileRetrainTrigger",
+    "append_history_best_effort",
     "append_history_jsonl",
     "atomic_replace_with_tmp",
     "best_effort_training_cleanup",
+    "record_trigger_result_best_effort",
     "run_with_timeout",
 ]

@@ -413,6 +413,7 @@ def _run_retrain_once_with_patches(
         patch("scripts.v460.ml.sac_retrain_scheduler._evaluate_model", return_value=eval_result) as mock_evaluate_model,
         patch("scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check", return_value=False),
         patch("scripts.v460.lib.data_loader.load_parquet", return_value=_MOCK_OHLCV_DF),
+        patch("scripts.v460.ml.sac_retrain_scheduler.cleanup_training_resources", return_value=None),
         _mock_sb3_import(mock_model) as mock_sac_cls,
     ):
         yield mock_sac_cls, mock_evaluate_model
@@ -449,8 +450,12 @@ class TestRetrainOnce:
         mock_deploy.assert_called_once()
         mock_update_signal.assert_called_once()
 
+    @patch("scripts.v460.ml.sac_retrain_scheduler._atomic_deploy_model")
+    @patch("scripts.v460.ml.sac_retrain_scheduler._update_sidecar_signal")
     def test_warm_start(
         self,
+        mock_update_signal: MagicMock,
+        mock_deploy: MagicMock,
         tmp_path: Path,
     ) -> None:
         mock_env = _make_mock_env()
@@ -481,6 +486,8 @@ class TestRetrainOnce:
         assert result.warm_start is True
         mock_sac_cls.load.assert_called_once()
         mock_model.load_replay_buffer.assert_called_once()
+        mock_deploy.assert_called_once()
+        mock_update_signal.assert_called_once()
 
     @patch("scripts.v460.ml.sac_retrain_scheduler._is_signal_fresh_and_active", return_value=False)
     @patch("scripts.v460.ml.sac_retrain_scheduler._push_neutral_fallback")

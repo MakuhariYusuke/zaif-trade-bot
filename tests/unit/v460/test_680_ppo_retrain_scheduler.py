@@ -347,6 +347,10 @@ class TestPPORetrainOnce:
                 "scripts.v460.ml.ppo_retrain_scheduler._update_ppo_sidecar_signal",
                 return_value=fake_signal,
             ) as mock_update_signal,
+            patch(
+                "scripts.v460.ml.ppo_retrain_scheduler._cleanup_training_cycle",
+                return_value=None,
+            ),
         ):
             result = retrain_once(cfg)
 
@@ -383,6 +387,10 @@ class TestPPORetrainOnce:
                 "scripts.v460.ml.ppo_retrain_scheduler._update_ppo_sidecar_signal",
                 return_value=fake_signal,
             ),
+            patch(
+                "scripts.v460.ml.ppo_retrain_scheduler._cleanup_training_cycle",
+                return_value=None,
+            ),
         ):
             result = retrain_once(cfg)
 
@@ -400,16 +408,24 @@ class TestPPORetrainOnce:
         fake_trainer = MagicMock()
         fake_trainer.train.side_effect = RuntimeError("boom")
 
-        with patch(
-            "scripts.v460.ml.ppo_retrain_scheduler.SELLBiasMitigationPPOTrainer",
-            return_value=fake_trainer,
+        with (
+            patch(
+                "scripts.v460.ml.ppo_retrain_scheduler.SELLBiasMitigationPPOTrainer",
+                return_value=fake_trainer,
+            ),
+            patch(
+                "scripts.v460.ml.ppo_retrain_scheduler._push_neutral_fallback",
+                return_value=True,
+            ) as mock_fallback,
+            patch(
+                "scripts.v460.ml.ppo_retrain_scheduler._cleanup_training_cycle",
+                return_value=None,
+            ),
         ):
             result = retrain_once(cfg)
 
         assert result.status == "error"
-        loaded = read_ppo_sidecar_signal(cfg.signal_path)
-        assert loaded is not None
-        assert loaded.action == "skip"
+        mock_fallback.assert_called_once_with(cfg.signal_path)
 
 
 class TestPPORunScheduler:
@@ -543,13 +559,19 @@ class TestPPORunScheduler:
                 "scripts.v460.ml.ppo_retrain_scheduler._update_ppo_sidecar_signal",
                 side_effect=RuntimeError("signal boom"),
             ),
+            patch(
+                "scripts.v460.ml.ppo_retrain_scheduler._push_neutral_fallback",
+                return_value=True,
+            ) as mock_fallback,
+            patch(
+                "scripts.v460.ml.ppo_retrain_scheduler._cleanup_training_cycle",
+                return_value=None,
+            ),
         ):
             result = retrain_once(cfg)
 
         assert result.status == "error"
-        loaded = read_ppo_sidecar_signal(cfg.signal_path)
-        assert loaded is not None
-        assert loaded.action == "skip"
+        mock_fallback.assert_called_once_with(cfg.signal_path)
 
 
 class TestPPOTrainingTimeout:

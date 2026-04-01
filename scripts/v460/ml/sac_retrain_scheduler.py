@@ -43,8 +43,10 @@ from scripts.v460.ml.sidecar_scheduler_common import (
     BaseRetrainResult,
     DataFileRetrainTrigger,
     atomic_replace_with_tmp,
+    append_history_best_effort,
     append_history_jsonl,
     best_effort_training_cleanup,
+    record_trigger_result_best_effort,
     run_with_timeout,
 )
 
@@ -814,16 +816,19 @@ def run_scheduler(cfg: SACRetrainConfig) -> None:
         logger.info(f"[365# P6] Trigger fired: {reason}")
         result = retrain_once(cfg)
 
-        # 495# record_result / _append_history もループ外に漏れないよう保護
-        try:
-            trigger.record_result(result.status)
-        except Exception as e:
-            logger.error(f"[495#] trigger.record_result() failed: {e}", exc_info=True)
-
-        try:
-            _append_history(cfg.history_path, result)
-        except Exception as e:
-            logger.error(f"[495#] _append_history() failed: {e}", exc_info=True)
+        # 495# record_result / history append もループ外に漏れないよう保護
+        record_trigger_result_best_effort(
+            trigger=trigger,
+            status=result.status,
+            logger_obj=logger,
+            label="[495#] SAC",
+        )
+        append_history_best_effort(
+            path=cfg.history_path,
+            payload=result.to_dict(),
+            logger_obj=logger,
+            label="[495#] SAC",
+        )
 
         # 495# サイクル後 RSS モニタリング — リーク早期検出
         _post_cycle_memory_check()

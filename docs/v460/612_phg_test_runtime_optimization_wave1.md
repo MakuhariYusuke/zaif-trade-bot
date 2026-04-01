@@ -1022,3 +1022,32 @@ durations 変化で特に効いた点:
       - `tests/unit/v460/test_enricher_skip_gate.py`
       - `tests/test_analyze_fill_logs.py`
       - `355 passed, 1 skipped in 11.59s`
+
+- 2026-04-01 sidecar + entropy trim:
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+    - `retrain_once()` 系で `_cleanup_training_cycle()` を patch し、
+      neutral fallback / error handling の責務だけを見るよう整理
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+    - shared retrain helper で `cleanup_training_resources()` を patch
+    - warm-start test も deploy/signal update を mock 化
+  - `tests/unit/training/test_target_entropy.py`
+    - tiny tensor batch に縮小
+    - `torch.set_num_threads(1)` を適用し、CPU thread fan-out を抑制
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - real-data smoke sample を `12/18/24` へ縮小
+  - focused durations:
+    - before:
+      - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+      - `tests/unit/v460/test_sac_retrain_scheduler.py`
+      - `tests/unit/training/test_target_entropy.py`
+      - `tests/unit/v460/test_enricher_skip_gate.py`
+      - `162 passed, 1 skipped in 17.99s`
+    - after:
+      - 同 subset で `162 passed, 1 skipped in 11.39s`
+  - 主な変化:
+    - `test_alpha_increases_on_low_entropy`: `5.33s -> 3.77s`
+    - `test_error_pushes_neutral_fallback`: `1.18s -> 0.50s`
+    - `test_cold_start_success`: `0.47s -> 0.08s`
+  - broader regression:
+    - PPO/SAC + fill_quality + enricher + target_entropy
+    - `562 passed, 3 skipped in 23.41s`

@@ -10046,3 +10046,36 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/v460/test_enricher_skip_gate.py`
   - `tests/test_analyze_fill_logs.py`
   - `355 passed, 1 skipped in 11.59s`
+
+### 2026-04-01 sidecar helper structure + heavy test trim
+
+- `ztb/training/sidecar/ppo_policy.py` を追加
+  - PPO policy からの probability 抽出 helper を `scripts/` から分離
+- `ztb/training/sidecar/scheduler_common.py`
+  - `append_history_best_effort(...)`
+  - `record_trigger_result_best_effort(...)`
+  を追加
+- `scripts/v460/ml/ppo_retrain_scheduler.py`
+  - shared sidecar helper を利用するよう整理
+- `scripts/v460/ml/sac_retrain_scheduler.py`
+  - trigger/history bookkeeping を shared helper に寄せた
+- `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - cleanup を mock 化して neutral fallback/error handling の責務へ寄せた
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - retrain helper で `cleanup_training_resources()` を mock 化
+- `tests/unit/training/test_target_entropy.py`
+  - tiny tensor + `torch.set_num_threads(1)` で CPU 固定費を削減
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - real-data smoke sample を `12/18/24` へ縮小
+- validation
+  - targeted mypy:
+    - `scheduler_common.py`
+    - `ppo_policy.py`
+    - `ppo_retrain_scheduler.py`
+    - `test_680_ppo_retrain_scheduler.py`
+    - `test_target_entropy.py`
+    - `Success: no issues found in 5 source files`
+  - focused:
+    - `162 passed, 1 skipped in 11.39s`
+  - broader regression:
+    - `562 passed, 3 skipped in 23.41s`

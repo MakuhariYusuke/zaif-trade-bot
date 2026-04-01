@@ -622,3 +622,38 @@ shared helper で drift を止める方が安全と判断した。
 
 これは速度改善というより、PPO を長時間回したときの
 「他テスト/他コードが grad-mode を壊したまま残る」系の不安定性を潰す対応。
+
+### 23. sidecar runtime helper の追加共有
+
+`scripts/v460/ml` に残っていた scheduler bookkeeping の共通部分を、
+さらに `ztb/training/sidecar/` へ寄せた。
+
+- `ztb/training/sidecar/scheduler_common.py`
+  - `append_history_best_effort(...)`
+  - `record_trigger_result_best_effort(...)`
+- `ztb/training/sidecar/ppo_policy.py`
+  - `extract_action_probabilities(...)`
+  - `one_hot_ppo_probabilities(...)`
+  - `coerce_action_index(...)`
+
+これにより
+- `scripts/v460/ml/ppo_retrain_scheduler.py`
+- `scripts/v460/ml/sac_retrain_scheduler.py`
+
+は entrypoint / runtime wiring に寄せやすくなり、`scripts` 混雑を少し緩和できた。
+
+無理に SAC/PPO の signal semantics を共通化するのではなく、
+- timeout / bookkeeping / trigger bookkeeping
+- PPO policy probability 抽出
+
+のような純粋 helper だけを共有している。
+
+### 24. PPO warm-start 周辺の hidden 残課題
+
+684# とその周辺ドキュメントの意図から見える、未記載だが重要な残件は次のとおり。
+
+1. `custom_ppo.py` と `sell_mitigation_ppo_trainer.py` の state/weight 継承境界
+2. `ppo_retrain_scheduler.py` の warm-start deploy/fallback safety を、SAC 側と同粒度で維持
+3. `scripts/` 配下に残る generic helper を今後も `ztb/training/sidecar/` へ戻すこと
+
+今回の shared helper 追加は、この 3 点の前提整備として妥当だった。

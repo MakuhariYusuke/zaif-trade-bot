@@ -20,11 +20,9 @@ import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import Any, cast
 
 import numpy as np
-import torch
-from numpy.typing import NDArray
 
 from scripts.v460.lib.sidecar_signal_io import (
     create_neutral_ppo_signal,
@@ -36,8 +34,9 @@ from scripts.v460.ml.sidecar_scheduler_common import (
     BaseRetrainResult,
     DataFileRetrainTrigger,
     atomic_replace_with_tmp,
-    append_history_jsonl,
+    append_history_best_effort,
     best_effort_training_cleanup,
+    record_trigger_result_best_effort,
     run_with_timeout,
 )
 from ztb.io.data_loader import DataLoader
@@ -47,6 +46,11 @@ from ztb.training.config.trainer_params import SELLMitigationParams
 from ztb.training.core.ppo_trainer import wrap_env_with_action_masker
 from ztb.training.experiments.sell_mitigation_ppo_trainer import (
     SELLBiasMitigationPPOTrainer,
+)
+from ztb.training.sidecar.ppo_policy import (
+    PPOPolicyLike as _PPOModelProtocol,
+    extract_action_probabilities as _extract_action_probabilities,
+    one_hot_ppo_probabilities as _one_hot_ppo_probabilities,
 )
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.time_utils import current_compact_timestamp, current_iso_timestamp
@@ -94,91 +98,6 @@ class PPORetrainTrigger(DataFileRetrainTrigger[PPOSidecarConfig]):
 
     def __init__(self, cfg: PPOSidecarConfig) -> None:
         super().__init__(cfg=cfg, data_path_getter=lambda current_cfg: current_cfg.data_path)
-
-
-class _PPOModelProtocol(Protocol):
-    @property
-    def policy(self) -> object: ...
-
-    def save(self, path: str) -> None: ...
-
-    def predict(
-        self,
-        observation: object,
-        deterministic: bool = True,
-    ) -> tuple[object, object | None]: ...
-
-
-def _coerce_action_index(action: object) -> int:
-    if isinstance(action, np.ndarray):
-        if action.size == 0:
-            return 0
-        return int(action.reshape(-1)[0])
-    if isinstance(action, (int, np.integer)):
-        return int(action)
-    return 0
-
-
-def _one_hot_ppo_probabilities(action_index: int) -> dict[str, float]:
-    clamped_action = 0 if action_index < 0 or action_index > 2 else action_index
-    return {
-        "skip": 1.0 if clamped_action == 0 else 0.0,
-        "buy": 1.0 if clamped_action == 1 else 0.0,
-        "sell": 1.0 if clamped_action == 2 else 0.0,
-    }
-
-
-def _extract_action_probabilities(
-    model: _PPOModelProtocol,
-    observation: object,
-    *,
-    action_masks: NDArray[np.bool_] | None = None,
-) -> dict[str, float]:
-    """current PPO policy から buy/sell/skip probability を抽出する."""
-
-    policy = getattr(model, "policy", None)
-    if policy is None or not hasattr(policy, "obs_to_tensor") or not hasattr(
-        policy, "get_distribution"
-    ):
-        action, _ = model.predict(observation, deterministic=True)
-        return _one_hot_ppo_probabilities(_coerce_action_index(action))
-
-    obs_to_tensor = cast(Any, getattr(policy, "obs_to_tensor"))
-    get_distribution = cast(Any, getattr(policy, "get_distribution"))
-    obs_tensor, _ = obs_to_tensor(observation)
-    distribution = get_distribution(obs_tensor)
-    raw_distribution = getattr(distribution, "distribution", distribution)
-
-    probs_like = getattr(raw_distribution, "probs", None)
-    if probs_like is None:
-        logits = getattr(raw_distribution, "logits", None)
-        if logits is not None:
-            probs_like = torch.softmax(logits, dim=-1)
-
-    if probs_like is None:
-        action, _ = model.predict(observation, deterministic=True)
-        return _one_hot_ppo_probabilities(_coerce_action_index(action))
-
-    if hasattr(probs_like, "detach"):
-        probabilities = np.asarray(probs_like.detach().cpu().numpy(), dtype=float)
-    else:
-        probabilities = np.asarray(probs_like, dtype=float)
-    flat_probabilities = probabilities.reshape(-1)
-    if flat_probabilities.size < 3:
-        action, _ = model.predict(observation, deterministic=True)
-        return _one_hot_ppo_probabilities(_coerce_action_index(action))
-
-    clipped = flat_probabilities[:3]
-    if action_masks is not None and action_masks.shape[0] >= 3:
-        masked = clipped * action_masks[:3].astype(float)
-        if masked.sum() > 0.0:
-            clipped = masked / masked.sum()
-
-    return {
-        "skip": float(clipped[0]),
-        "buy": float(clipped[1]),
-        "sell": float(clipped[2]),
-    }
 
 
 def _build_inference_env(cfg: PPOSidecarConfig) -> HeavyTradingEnv:
@@ -307,26 +226,6 @@ def _make_scheduler_error_result(
     )
 
 
-def _record_result_best_effort(
-    trigger: PPORetrainTrigger,
-    status: str,
-) -> None:
-    try:
-        trigger.record_result(status)
-    except Exception as exc:  # pragma: no cover - exercised via loop tests
-        logger.warning("PPO trigger record_result failed: %s", exc)
-
-
-def _append_history_best_effort(
-    history_path: Path,
-    payload: dict[str, object],
-) -> None:
-    try:
-        append_history_jsonl(history_path, payload)
-    except OSError as exc:
-        logger.warning("PPO history append failed: %s", exc)
-
-
 def _run_retrain_cycle(
     cfg: PPOSidecarConfig,
     trigger: PPORetrainTrigger,
@@ -339,8 +238,18 @@ def _run_retrain_cycle(
         _push_neutral_fallback(cfg.signal_path)
         result = _make_scheduler_error_result(cfg=cfg, error=exc)
 
-    _record_result_best_effort(trigger, result.status)
-    _append_history_best_effort(cfg.history_path, result.to_dict())
+    record_trigger_result_best_effort(
+        trigger=trigger,
+        status=result.status,
+        logger_obj=logger,
+        label="[675#] PPO",
+    )
+    append_history_best_effort(
+        path=cfg.history_path,
+        payload=result.to_dict(),
+        logger_obj=logger,
+        label="[675#] PPO",
+    )
     return result
 
 

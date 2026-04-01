@@ -29,11 +29,14 @@ except ImportError:
         allow_module_level=True,
     )
 
+# Heavy CPU thread fan-out does not buy us anything in these tiny tensor tests.
+torch.set_num_threads(1)
+
 
 class TestTargetEntropyController:
     """Test suite for TargetEntropyController."""
 
-    def test_initialization(self):
+    def test_initialization(self) -> None:
         """Test controller initialization."""
         controller = TargetEntropyController(
             n_actions=3, target_entropy_ratio=0.7, initial_temperature=0.01
@@ -46,30 +49,30 @@ class TestTargetEntropyController:
         # Initial alpha should match
         assert abs(controller.alpha - 0.01) < 1e-6
 
-    def test_entropy_computation_uniform(self):
+    def test_entropy_computation_uniform(self) -> None:
         """Test entropy computation for uniform distribution."""
         controller = TargetEntropyController(n_actions=3)
 
         # Uniform distribution: all actions equally likely
-        logits = torch.tensor([[0.0, 0.0, 0.0]] * 10)
+        logits = torch.tensor([[0.0, 0.0, 0.0]] * 2)
         entropy = controller.compute_entropy(logits)
 
         # Uniform entropy = log(3) ≈ 1.0986
         expected_entropy = np.log(3)
         assert abs(entropy.item() - expected_entropy) < 0.01
 
-    def test_entropy_computation_deterministic(self):
+    def test_entropy_computation_deterministic(self) -> None:
         """Test entropy computation for deterministic distribution."""
         controller = TargetEntropyController(n_actions=3)
 
         # Deterministic distribution: one action with prob ≈ 1
-        logits = torch.tensor([[100.0, 0.0, 0.0]] * 10)
+        logits = torch.tensor([[100.0, 0.0, 0.0]] * 2)
         entropy = controller.compute_entropy(logits)
 
         # Deterministic entropy ≈ 0
         assert entropy.item() < 0.1
 
-    def test_alpha_increases_on_low_entropy(self):
+    def test_alpha_increases_on_low_entropy(self) -> None:
         """Test that alpha adjusts when entropy collapses.
 
         Note: The current implementation minimizes L = α · (H* - H_π)
@@ -87,8 +90,8 @@ class TestTargetEntropyController:
         initial_alpha = controller.alpha
 
         # Feed low entropy repeatedly
-        for _ in range(3):
-            logits = torch.tensor([[10.0, 0.0, 0.0]] * 10)  # Very peaked
+        for _ in range(2):
+            logits = torch.tensor([[10.0, 0.0, 0.0]] * 2)  # Very peaked
             entropy = controller.compute_entropy(logits)
             controller.update(entropy)
 
@@ -100,7 +103,7 @@ class TestTargetEntropyController:
             final_alpha < initial_alpha
         ), f"Alpha decreased (current behavior): {initial_alpha:.6f} → {final_alpha:.6f}"
 
-    def test_alpha_decreases_on_high_entropy(self):
+    def test_alpha_decreases_on_high_entropy(self) -> None:
         """Test that alpha adjusts when entropy is too high.
 
         Note: When H_π > H* (high entropy), loss is negative, and gradient
@@ -116,8 +119,8 @@ class TestTargetEntropyController:
         initial_alpha = controller.alpha
 
         # Feed high entropy repeatedly
-        for _ in range(3):
-            logits = torch.tensor([[0.0, 0.0, 0.0]] * 10)  # Uniform (max entropy)
+        for _ in range(2):
+            logits = torch.tensor([[0.0, 0.0, 0.0]] * 2)  # Uniform (max entropy)
             entropy = controller.compute_entropy(logits)
             controller.update(entropy)
 
@@ -129,7 +132,7 @@ class TestTargetEntropyController:
             final_alpha > initial_alpha
         ), f"Alpha increased (current behavior): {initial_alpha:.6f} → {final_alpha:.6f}"
 
-    def test_alpha_stabilizes_at_target(self):
+    def test_alpha_stabilizes_at_target(self) -> None:
         """Test that alpha stabilizes when entropy is near target."""
         controller = TargetEntropyController(
             n_actions=3,
@@ -142,18 +145,18 @@ class TestTargetEntropyController:
         # Target ≈ 0.7 * log(3) ≈ 0.769
         # Need moderate imbalance
         alphas = []
-        for _ in range(10):
+        for _ in range(6):
             # Adjust logits to get near-target entropy
-            logits = torch.tensor([[0.8, 0.4, 0.2]] * 10)
+            logits = torch.tensor([[0.8, 0.4, 0.2]] * 2)
             entropy = controller.compute_entropy(logits)
             controller.update(entropy)
             alphas.append(controller.alpha)
 
         # Alpha should show small variance (stable)
-        alpha_std = np.std(alphas[-5:])
+        alpha_std = np.std(alphas[-3:])
         assert alpha_std < 0.01, f"Alpha should stabilize (std={alpha_std:.6f})"
 
-    def test_update_reenables_grad_mode_when_outer_context_disabled(self):
+    def test_update_reenables_grad_mode_when_outer_context_disabled(self) -> None:
         """Target entropy update should survive leaked no-grad contexts."""
         controller = TargetEntropyController(
             n_actions=3,
@@ -162,7 +165,7 @@ class TestTargetEntropyController:
             lr_temperature=1e-2,
         )
 
-        logits = torch.tensor([[10.0, 0.0, 0.0]] * 10)
+        logits = torch.tensor([[10.0, 0.0, 0.0]] * 2)
         entropy = controller.compute_entropy(logits)
 
         with torch.no_grad():
@@ -172,7 +175,7 @@ class TestTargetEntropyController:
         assert current_alpha > 0.0
         assert controller.get_statistics()["num_updates"] == 1
 
-    def test_statistics_tracking(self):
+    def test_statistics_tracking(self) -> None:
         """Test statistics tracking."""
         controller = TargetEntropyController(n_actions=3)
 
@@ -181,19 +184,19 @@ class TestTargetEntropyController:
         assert stats["num_updates"] == 0
 
         # Perform some updates
-        for _ in range(5):
-            logits = torch.tensor([[1.0, 0.5, 0.3]] * 10)
+        for _ in range(3):
+            logits = torch.tensor([[1.0, 0.5, 0.3]] * 2)
             entropy = controller.compute_entropy(logits)
             controller.update(entropy)
 
         # Check stats
         stats = controller.get_statistics()
-        assert stats["num_updates"] == 5
+        assert stats["num_updates"] == 3
         assert "mean_entropy" in stats
         assert "mean_alpha" in stats
         assert "alpha_std" in stats
 
-    def test_should_update_frequency(self):
+    def test_should_update_frequency(self) -> None:
         """Test update frequency control."""
         controller = TargetEntropyController(n_actions=3)
 
@@ -207,7 +210,7 @@ class TestTargetEntropyController:
         assert not controller.should_update(4, update_frequency=5)
         assert controller.should_update(5, update_frequency=5)
 
-    def test_different_n_actions(self):
+    def test_different_n_actions(self) -> None:
         """Test with different number of actions."""
         # Binary action space
         controller_2 = TargetEntropyController(n_actions=2, target_entropy_ratio=0.7)
@@ -219,12 +222,12 @@ class TestTargetEntropyController:
         expected_5 = 0.7 * np.log(5)
         assert abs(controller_5.target_entropy - expected_5) < 1e-6
 
-    def test_gradient_flow(self):
+    def test_gradient_flow(self) -> None:
         """Test that gradients flow properly."""
         controller = TargetEntropyController(n_actions=3, lr_temperature=1e-3)
 
         # Perform one update
-        logits = torch.tensor([[1.0, 0.5, 0.3]] * 10, requires_grad=True)
+        logits = torch.tensor([[1.0, 0.5, 0.3]] * 2, requires_grad=True)
         entropy = controller.compute_entropy(logits)
 
         initial_log_alpha = controller.log_alpha.item()
@@ -234,26 +237,26 @@ class TestTargetEntropyController:
         # log_alpha should have changed
         assert initial_log_alpha != updated_log_alpha
 
-    def test_extreme_logits(self):
+    def test_extreme_logits(self) -> None:
         """Test with extreme logit values."""
         controller = TargetEntropyController(n_actions=3)
 
         # Very large logits
-        large_logits = torch.tensor([[1000.0, 0.0, 0.0]] * 10)
+        large_logits = torch.tensor([[1000.0, 0.0, 0.0]] * 2)
         entropy_large = controller.compute_entropy(large_logits)
 
         # Should be near 0 (deterministic)
         assert entropy_large.item() < 0.1
 
         # Very small logits (negative)
-        small_logits = torch.tensor([[-1000.0, -1000.0, -1000.0]] * 10)
+        small_logits = torch.tensor([[-1000.0, -1000.0, -1000.0]] * 2)
         entropy_small = controller.compute_entropy(small_logits)
 
         # Should be near log(3) (uniform after softmax)
         assert abs(entropy_small.item() - np.log(3)) < 0.1
 
 
-def test_convergence_simulation():
+def test_convergence_simulation() -> None:
     """Simulate convergence behavior over extended training."""
     controller = TargetEntropyController(
         n_actions=3,
@@ -266,9 +269,9 @@ def test_convergence_simulation():
 
     # Simulate 3 phases
     phases = [
-        ("Collapsed", [[10.0, 0.0, 0.0]] * 10, 8),  # Low entropy
-        ("Recovery", [[2.0, 1.0, 0.5]] * 10, 10),  # Moderate entropy
-        ("Ideal", [[1.0, 0.8, 0.6]] * 10, 8),  # Near target
+        ("Collapsed", [[10.0, 0.0, 0.0]] * 2, 4),  # Low entropy
+        ("Recovery", [[2.0, 1.0, 0.5]] * 2, 5),  # Moderate entropy
+        ("Ideal", [[1.0, 0.8, 0.6]] * 2, 4),  # Near target
     ]
 
     for _, logits_template, n_steps in phases:
