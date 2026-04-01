@@ -94,7 +94,7 @@
 | C2 | _execute_skip 監査 + Decision Trace ID | S | `688_codex_task_skip_audit_trace_id.md` |
 
 ### 残 Codex バックログ
-- 638# P1: bucket 別 skip budget (M) — regime bucketing 基盤が必要
+- 638# P1: bucket 別 skip budget (M) — 690# で regime×side×window bucket と FillRecord observability まで実装
 - 672# P1: AS 予測モデル再構築 (L) — 長期課題
 - 687# torch test isolation — 主要 entrypoint の lazy import 化まで完了、横展開は継続観察
 

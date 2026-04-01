@@ -459,6 +459,19 @@ skip_gate:
   # 190# A が offset モードで死コード化する問題の根本修正。BTC=0 death spiral 防止。
   # 597# 10→5: stale buy model (1ヶ月未更新) による全件 skip バイアス対策
   primary_max_consecutive_skip: 5
+  budget_enabled: false
+  budget_window_min: 60
+  budget_limits:
+    default: 8
+    trending_up:
+      sell: 3
+      buy: 12
+    trending_down:
+      sell: 12
+      buy: 3
+    ranging:
+      sell: 6
+      buy: 10
   # 190# B: 片側 balance 時の ev_weighted threshold 緩和 (193# offset モードでは無視)
   ev_one_sided_threshold_shift: -1.0  # threshold を -1.0bps シフト（取引再開優先）
   as_threshold: 0.50           # 120# 0.52→0.50: P(AS)=0.50 が変曲点 (AS 18.1%→36.7%)

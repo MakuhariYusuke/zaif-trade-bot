@@ -526,6 +526,12 @@ class FillTestConfig:
     # ev_weighted mode (hard gate / offset) に依存しない evaluator-level 安全弁。
     # 190# A が offset モードで無効化される問題の根本修正。
     skip_gate_primary_max_consecutive_skip: int = 0
+    # 690# regime×side bucketed skip budget
+    skip_gate_budget_enabled: bool = False
+    skip_gate_budget_window_min: int = 60
+    skip_gate_budget_limits: dict[str, dict[str, int] | int] = field(
+        default_factory=lambda: {"default": 8}
+    )
     # 190# B: 片側 balance 時の ev_weighted threshold 緩和シフト (bps)
     # 193#: ev_as_offset_enabled=True 時は無視される。
     # 596#: primary safety valve で代替済み。
@@ -1026,6 +1032,29 @@ class FillTestConfig:
             return None
         normalized = regime.strip().lower()
         return normalized or None
+
+    @staticmethod
+    def _normalize_side_name(side: str) -> str:
+        normalized = side.strip().lower()
+        return normalized or "buy"
+
+    def get_budget_limit(self, regime: str | None, side: str) -> int:
+        """690# Resolve the active skip budget limit for regime×side."""
+        normalized_regime = self._normalize_timeout_regime(regime) or "unknown"
+        normalized_side = self._normalize_side_name(side)
+        default_limit = 8
+
+        for candidate_regime in (normalized_regime, "default"):
+            budget_value = self.skip_gate_budget_limits.get(candidate_regime)
+            if budget_value is None:
+                continue
+            if isinstance(budget_value, dict):
+                limit = budget_value.get(normalized_side)
+                if limit is not None:
+                    return int(limit)
+                continue
+            return int(budget_value)
+        return default_limit
 
     def get_timeout_with_reason(
         self,

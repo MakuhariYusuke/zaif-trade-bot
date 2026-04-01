@@ -570,10 +570,16 @@ class TestFillRecord:
             order_quantity=0.02,
             skip_gate_skipped=False,
             skip_gate_bypassed=True,
+            skip_gate_budget_regime="ranging",
+            skip_gate_budget_remaining=2,
+            skip_gate_budget_exhausted=False,
         )
 
         assert r.skip_gate_skipped is False
         assert r.skip_gate_bypassed is True
+        assert r.skip_gate_budget_regime == "ranging"
+        assert r.skip_gate_budget_remaining == 2
+        assert r.skip_gate_budget_exhausted is False
 
     def test_build_fill_record_preserves_timeout_trace_fields(self) -> None:
 
@@ -666,15 +672,24 @@ class TestFillRecord:
             decision_trace_id="dt_trace_rt",
             timeout_applied_sec=30.0,
             timeout_reason="base_default_sell_age_cap",
+            skip_gate_budget_regime="trending_up",
+            skip_gate_budget_remaining=1,
+            skip_gate_budget_exhausted=True,
         )
         d = r.to_dict()
         assert d["decision_trace_id"] == "dt_trace_rt"
         assert d["timeout_applied_sec"] == 30.0
         assert d["timeout_reason"] == "base_default_sell_age_cap"
+        assert d["skip_gate_budget_regime"] == "trending_up"
+        assert d["skip_gate_budget_remaining"] == 1
+        assert d["skip_gate_budget_exhausted"] is True
         r2 = FillRecord.from_dict(d)
         assert r2.decision_trace_id == "dt_trace_rt"
         assert r2.timeout_applied_sec == 30.0
         assert r2.timeout_reason == "base_default_sell_age_cap"
+        assert r2.skip_gate_budget_regime == "trending_up"
+        assert r2.skip_gate_budget_remaining == 1
+        assert r2.skip_gate_budget_exhausted is True
 
     def test_cancel_reason_default_none(self) -> None:
         """CM-2: cancel_reason はデフォルト None."""

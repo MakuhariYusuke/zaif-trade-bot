@@ -10308,3 +10308,31 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - targeted mypy: `Success: no issues found in 6 source files`
     - focused pytest: `323 passed, 1 skipped, 5 warnings in 10.92s`
     - broader pytest: `409 passed, 1 skipped, 5 warnings in 10.81s`
+
+- `690# bucketed skip budget`
+  - 新規:
+    - [skip_gate_budget.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/skip_gate_budget.py)
+    - [690_phg_bucket_skip_budget_and_fill_observability.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/690_phg_bucket_skip_budget_and_fill_observability.md)
+    - [test_690_skip_budget.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_690_skip_budget.py)
+  - 更新:
+    - [fill_config.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config.py)
+    - [fill_config_parser.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config_parser.py)
+    - [fill_config_validation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config_validation.py)
+    - [config_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/config_hot_reload.py)
+    - [skip_gate_evaluator.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/skip_gate_evaluator.py)
+    - [fill_config_results.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config_results.py)
+    - [fill_record_builder.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_record_builder.py)
+    - [fill_cycle_executor.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_cycle_executor.py)
+    - [skip_gate_result_fields.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/ml/skip_gate_result_fields.py)
+    - [skip_gate_fill_record.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/ml/skip_gate_fill_record.py)
+    - [fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py)
+    - [fill_test.yaml](/mnt/c/Users/Admin/dev/zaif-trade-bot/configs/v460/fill_test.yaml)
+  - 内容:
+    - regime×side×window の bucket budget を追加
+    - `bypass_mode=true` でも raw skip 統計を保持
+    - `skip_gate_budget_regime`
+    - `skip_gate_budget_remaining`
+    - `skip_gate_budget_exhausted`
+    を FillRecord まで通した
+  - regression:
+    - focused pytest: `320 passed, 5 warnings in 5.78s`

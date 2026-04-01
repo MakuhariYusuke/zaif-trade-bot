@@ -1226,3 +1226,24 @@ durations 変化で特に効いた点:
   - `tests/unit/v460/test_sac_retrain_scheduler.py`
   - 上記 focused 群
   - `409 passed, 1 skipped, 5 warnings in 10.81s`
+
+## 2026-04-02 690# skip budget batch
+
+- 新規:
+  - `tests/unit/v460/test_690_skip_budget.py`
+- 更新:
+  - `tests/unit/v460/test_169_config_hot_reload.py`
+  - `tests/unit/v460/test_346_fill_config_validation.py`
+  - `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
+  - `tests/unit/v460/test_fill_quality.py`
+- 結果:
+  - `320 passed, 5 warnings in 5.78s`
+
+### 次の heavy-setup batch
+
+1. `fill_quality` command/source wiring
+   - source inspect / command path を read-only shared fixture に寄せる
+2. `enricher` real-data smoke
+   - smoke / trainable をさらに分離して cached subset 優先
+3. scheduler exception path
+   - cleanup / traceback / neutral fallback logging を薄くする

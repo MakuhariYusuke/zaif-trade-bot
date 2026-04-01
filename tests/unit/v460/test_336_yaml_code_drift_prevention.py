@@ -162,6 +162,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "skip_gate_as_threshold",
     "skip_gate_as_threshold_buy",
     "skip_gate_as_threshold_sell",
+    "skip_gate_budget_limits",
     "skip_gate_ev_max_consecutive_skip",
     "skip_gate_ev_one_sided_threshold_shift",
     "skip_gate_primary_max_consecutive_skip",

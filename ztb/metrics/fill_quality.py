@@ -276,6 +276,9 @@ class FillRecord:
     # ---- 642# 可観測性改善: skip_rate / hard_skip / CV / balance ----
     skip_gate_forced_pass: bool | None = None       # rate_limit が skip を override したか
     skip_gate_side_skip_rate: float | None = None   # 判定時の side 別 skip 率
+    skip_gate_budget_regime: str | None = None      # 690# bucket 判定に使った regime
+    skip_gate_budget_remaining: int | None = None   # 690# 判定後の残り budget
+    skip_gate_budget_exhausted: bool | None = None  # 690# budget 枯渇で PASS 強制
     execution_hard_skip_mult_used: float | None = None  # hard skip 時に使用した mult 値
     cv_offset_action: str | None = None             # "widen"/"tighten"/None (CV 適用方向)
     balance_jpy_at_order: float | None = None       # 発注時 JPY 残高

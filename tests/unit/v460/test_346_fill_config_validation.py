@@ -123,6 +123,21 @@ class TestRegimeDicts:
         with pytest.raises(ValueError, match="must be > 0"):
             validate_fill_config(cfg)
 
+    def test_skip_budget_window_must_be_positive(self, cfg: FillTestConfig) -> None:
+        cfg.skip_gate_budget_window_min = 0
+        with pytest.raises(ValueError, match="skip_gate_budget_window_min"):
+            validate_fill_config(cfg)
+
+    def test_skip_budget_limit_must_be_positive(self, cfg: FillTestConfig) -> None:
+        cfg.skip_gate_budget_limits = {"default": 0}
+        with pytest.raises(ValueError, match="skip_gate_budget_limits\\['default'\\]"):
+            validate_fill_config(cfg)
+
+    def test_skip_budget_side_name_is_validated(self, cfg: FillTestConfig) -> None:
+        cfg.skip_gate_budget_limits = {"trending_up": {"both": 3}}
+        with pytest.raises(ValueError, match="contains unsupported side 'both'"):
+            validate_fill_config(cfg)
+
 
 class TestConfidenceLot:
     def test_floor_above_one(self, cfg: FillTestConfig) -> None:

@@ -167,6 +167,9 @@ class FillRecordBuilderMixin:
         ppo_sidecar_model_version: str | None = None,
         ppo_sidecar_signal_status: str | None = None,
         ppo_sidecar_override_active: bool | None = None,
+        sg_budget_regime: str | None = None,
+        sg_budget_remaining: int | None = None,
+        sg_budget_exhausted: bool | None = None,
     ) -> dict[str, object]:
         """FillRecord の市場観測/実行メタ系フィールドを構築."""
         fields: dict[str, object] = {
@@ -197,6 +200,9 @@ class FillRecordBuilderMixin:
             "skip_gate_as_prob": sg_as_prob,
             "skip_gate_threshold_used": sg_threshold_used,
             "skip_gate_hour_offset": sg_hour_offset,
+            "skip_gate_budget_regime": sg_budget_regime,
+            "skip_gate_budget_remaining": sg_budget_remaining,
+            "skip_gate_budget_exhausted": sg_budget_exhausted,
             "reprice_count": reprice_count,
             "reprice_drift_bps": reprice_drift_bps if reprice_count > 0 else None,
             "ffd_boost_active": self._fast_fill_defense.is_boost_active(side),
@@ -415,6 +421,9 @@ class FillRecordBuilderMixin:
         # 642# 可観測性
         sg_forced_pass: bool = False,
         sg_side_skip_rate: float | None = None,
+        sg_budget_regime: str | None = None,
+        sg_budget_remaining: int | None = None,
+        sg_budget_exhausted: bool | None = None,
         execution_hard_skip_mult_used: float | None = None,
         balance_jpy_at_order: float | None = None,
         balance_btc_at_order: float | None = None,
@@ -532,6 +541,9 @@ class FillRecordBuilderMixin:
                 ppo_sidecar_model_version=ppo_sidecar_model_version,
                 ppo_sidecar_signal_status=ppo_sidecar_signal_status,
                 ppo_sidecar_override_active=ppo_sidecar_override_active,
+                sg_budget_regime=sg_budget_regime,
+                sg_budget_remaining=sg_budget_remaining,
+                sg_budget_exhausted=sg_budget_exhausted,
             )
         )
         payload.update(

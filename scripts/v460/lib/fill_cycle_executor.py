@@ -87,6 +87,9 @@ class _PreOrderPhaseResult:
     # 642# 可観測性
     skip_gate_forced_pass: bool = False
     skip_gate_side_skip_rate: float | None = None
+    skip_gate_budget_regime: str | None = None
+    skip_gate_budget_remaining: int | None = None
+    skip_gate_budget_exhausted: bool | None = None
     execution_hard_skip_mult_used: float | None = None
 
 
@@ -996,6 +999,9 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             mid_at_order=mid_at_order,
             skip_gate_forced_pass=sg.forced_pass,
             skip_gate_side_skip_rate=sg.side_skip_rate,
+            skip_gate_budget_regime=sg.budget_regime,
+            skip_gate_budget_remaining=sg.budget_remaining,
+            skip_gate_budget_exhausted=sg.budget_exhausted or None,
             execution_hard_skip_mult_used=offset_result.execution_hard_skip_mult_used,
         )
 
@@ -1549,6 +1555,9 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             # 642# 可観測性
             sg_forced_pass=pre_order.skip_gate_forced_pass,
             sg_side_skip_rate=pre_order.skip_gate_side_skip_rate,
+            sg_budget_regime=pre_order.skip_gate_budget_regime,
+            sg_budget_remaining=pre_order.skip_gate_budget_remaining,
+            sg_budget_exhausted=pre_order.skip_gate_budget_exhausted,
             execution_hard_skip_mult_used=pre_order.execution_hard_skip_mult_used,
             balance_jpy_at_order=self._balance_checker.last_jpy_free,
             balance_btc_at_order=self._balance_checker.last_btc_free,

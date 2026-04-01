@@ -24,10 +24,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
+from numpy.typing import NDArray
 
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import FillTestConfig, SkipGateResult
 from scripts.v460.lib.hour_rules import resolve_hour_float, utc_hour_from_timestamp
+from scripts.v460.lib.skip_gate_budget import BucketedSkipBudget
 from scripts.v460.lib.skip_gate_ev_weighted import SkipGateEvWeightedMixin
 from scripts.v460.lib.skip_gate_model_loader import SkipGateModelLoaderMixin
 from ztb.ml.skip_gate_runtime import get_trade_field, normalize_recent_trades
@@ -110,6 +112,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         self._primary_consecutive_skip_count: int = 0
         # 657# A-5: toxic_sell_veto 連続 veto カウンタ (時間減衰用)
         self._toxic_veto_consecutive_count: int = 0
+        self._budget: BucketedSkipBudget | None = (
+            BucketedSkipBudget(config) if config.skip_gate_budget_enabled else None
+        )
         # 156# D-1: OB fetch 失敗カウンタ
         self._ob_fetch_fail_count: int = 0
         self._ob_fetch_total_count: int = 0
@@ -172,12 +177,15 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         後方互換のため static method wrapper を維持。
         """
         from scripts.v460.lib.velocity_math import compute_velocity_offset_multiplier
-        return compute_velocity_offset_multiplier(
+        return cast(
+            tuple[float, bool],
+            compute_velocity_offset_multiplier(
             observed_velocity_bps=observed_velocity_bps,
             threshold_bps=threshold_bps,
             base_multiplier=base_multiplier,
             max_multiplier=max_multiplier,
             proportional=proportional,
+            ),
         )
 
     # --- 461# Mixin 移管済: _load_gate_from_path → skip_gate_model_loader.py ---
@@ -207,9 +215,12 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
     ) -> list[dict[str, object]] | None:
         """adapter の recent_trades を skip_gate 用の共通形式へ正規化."""
         del cls
-        return normalize_recent_trades(
-            trades,
-            fallback_timestamp=fallback_timestamp,
+        return cast(
+            list[dict[str, object]] | None,
+            normalize_recent_trades(
+                trades,
+                fallback_timestamp=fallback_timestamp,
+            ),
         )
 
     @staticmethod
@@ -270,6 +281,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         price_velocity_bps: float | None = None,
         forced_pass: bool = False,
         side_skip_rate: float | None = None,
+        budget_regime: str | None = None,
+        budget_remaining: int | None = None,
+        budget_exhausted: bool = False,
     ) -> None:
         """SkipGateResult の共通フィールドを一括設定する."""
         result.skipped = skipped
@@ -282,6 +296,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         result.price_velocity_bps = price_velocity_bps
         result.forced_pass = forced_pass
         result.side_skip_rate = side_skip_rate
+        result.budget_regime = budget_regime
+        result.budget_remaining = budget_remaining
+        result.budget_exhausted = budget_exhausted
 
     def _apply_decision_to_result(
         self,
@@ -291,6 +308,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         side: str,
         price_velocity_bps: float | None,
         hour_offset: float,
+        budget_regime: str | None = None,
+        budget_remaining: int | None = None,
+        budget_exhausted: bool = False,
     ) -> None:
         """最終 decision を SkipGateResult へ反映する."""
         is_side_model = (
@@ -303,6 +323,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             has_side_specific_model=is_side_model,
             hour_offset=hour_offset,
             price_velocity_bps=price_velocity_bps,
+            budget_regime=budget_regime,
+            budget_remaining=budget_remaining,
+            budget_exhausted=budget_exhausted,
         )
         self._assign_result_fields(
             result,
@@ -316,6 +339,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             price_velocity_bps=fields.price_velocity_bps,
             forced_pass=fields.forced_pass,
             side_skip_rate=fields.side_skip_rate,
+            budget_regime=fields.budget_regime,
+            budget_remaining=fields.budget_remaining,
+            budget_exhausted=fields.budget_exhausted,
         )
 
     def _set_early_skip_result(
@@ -338,6 +364,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         trend_5s_at_order: float | None = None,
         ev_score_pretrade: float | None = None,
         decision_path: str | None = None,
+        budget_regime: str | None = None,
+        budget_remaining: int | None = None,
+        budget_exhausted: bool = False,
     ) -> None:
         """Populate SkipGateResult and early-return FillRecord together.
 
@@ -360,6 +389,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             trend_5s_at_order=trend_5s_at_order,
             ev_score_pretrade=ev_score_pretrade,
             decision_path=decision_path,
+            budget_regime=budget_regime,
+            budget_remaining=budget_remaining,
+            budget_exhausted=budget_exhausted,
         )
         self._assign_result_fields(
             result,
@@ -371,6 +403,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             threshold_used=threshold_used,
             hour_offset=hour_offset or 0.0,
             price_velocity_bps=price_velocity_bps,
+            budget_regime=budget_regime,
+            budget_remaining=budget_remaining,
+            budget_exhausted=budget_exhausted,
         )
         result.early_return_record = self._make_skip_fill_record(
             context=context,
@@ -910,6 +945,43 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                 else:
                     decision = _ev_combined
 
+            budget_regime: str | None = None
+            budget_remaining: int | None = None
+            budget_exhausted = False
+            raw_budget_skip = decision.should_skip
+            if self._config.skip_gate_budget_enabled:
+                if self._budget is None:
+                    self._budget = BucketedSkipBudget(self._config)
+                budget_regime = BucketedSkipBudget.normalize_regime(sg_regime)
+                if raw_budget_skip and self._budget.is_budget_exhausted(sg_regime, side):
+                    budget_exhausted = True
+                    logger.info(
+                        "[dt=%s] [skip_gate] 690# budget exhausted: regime=%s side=%s",
+                        decision_trace_id or "n/a",
+                        budget_regime,
+                        side,
+                    )
+                    from ztb.ml.skip_gate import SkipDecision as _SD
+
+                    decision = _SD(
+                        should_skip=False,
+                        predicted_pnl_bps=decision.predicted_pnl_bps,
+                        threshold_bps=decision.threshold_bps,
+                        features_used=decision.features_used,
+                        reason="budget_exhausted_pass",
+                        model_used=decision.model_used,
+                        as_probability=decision.as_probability,
+                        threshold_used=decision.threshold_used,
+                        forced_pass=True,
+                        side_skip_rate=getattr(decision, "side_skip_rate", None),
+                    )
+                self._budget.record_decision(sg_regime, side, skipped=raw_budget_skip)
+                budget_state = self._budget.get_state(sg_regime, side)
+                budget_remaining = max(
+                    self._config.get_budget_limit(sg_regime, side) - budget_state.skip_count,
+                    0,
+                )
+
             # 596# Primary model 連続 skip 安全弁 (evaluator-level).
             # 190# A は ev_as_offset_enabled=True で無効化されるため、
             # mode に依存しない evaluator-level の安全弁を追加。
@@ -945,6 +1017,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                 side=side,
                 price_velocity_bps=gate_features.get("price_velocity_bps"),
                 hour_offset=_total_offset,
+                budget_regime=budget_regime,
+                budget_remaining=budget_remaining,
+                budget_exhausted=budget_exhausted,
             )
 
             if decision.should_skip:
@@ -989,9 +1064,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                 self._set_early_skip_result(
                     result,
                     context=early_context,
-                    score=result.score,
-                    reason=result.reason,
-                    model_used=result.model_used,
+                    score=float(result.score or 0.0),
+                    reason=result.reason or "",
+                    model_used=result.model_used or "",
                     last_imbalance=last_imbalance,
                     last_bid_depth=last_bid_depth,
                     last_ask_depth=last_ask_depth,
@@ -1000,9 +1075,14 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                     hour_offset=_total_offset if _total_offset != 0.0 else None,
                     price_velocity_bps=result.price_velocity_bps,
                     ev_score_pretrade=result.ev_score,
+                    budget_regime=result.budget_regime,
+                    budget_remaining=result.budget_remaining,
+                    budget_exhausted=result.budget_exhausted,
                     decision_path=(
                         "ev_emergency_skip"
-                        if result.ev_score is not None and "emergency_skip" in result.reason
+                        if result.ev_score is not None
+                        and result.reason is not None
+                        and "emergency_skip" in result.reason
                         else "ev_normal_skip" if result.ev_score is not None
                         else None
                     ),
@@ -1037,22 +1117,24 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         )
 
         if not trades:
-            return NEUTRAL_VPIN
+            return float(NEUTRAL_VPIN)
 
         # 累積配列を構築 (長さ N+1, [0]=0.0)
         n = len(trades)
-        cum_total = np.zeros(n + 1, dtype=np.float64)
-        cum_buy = np.zeros(n + 1, dtype=np.float64)
+        cum_total: NDArray[np.float64] = np.zeros(n + 1, dtype=np.float64)
+        cum_buy: NDArray[np.float64] = np.zeros(n + 1, dtype=np.float64)
         for i, t in enumerate(trades):
             amount = max(float(t.get("amount", 0.0)), 0.0)  # 負値ガード
             cum_total[i + 1] = cum_total[i] + amount
             is_buy = t.get("side", "").lower() in ("buy", "bid")
             cum_buy[i + 1] = cum_buy[i] + (amount if is_buy else 0.0)
 
-        return compute_vpin_volume_sync(
-            cumulative_total_volume=cum_total,
-            cumulative_buy_volume=cum_buy,
-            end_index=n,
-            bucket_size=self._config.vpin_vol_sync_bucket_btc,
-            n_buckets=self._config.vpin_vol_sync_n_buckets,
+        return float(
+            compute_vpin_volume_sync(
+                cumulative_total_volume=cum_total,
+                cumulative_buy_volume=cum_buy,
+                end_index=n,
+                bucket_size=self._config.vpin_vol_sync_bucket_btc,
+                n_buckets=self._config.vpin_vol_sync_n_buckets,
+            )
         )

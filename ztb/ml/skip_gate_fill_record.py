@@ -61,6 +61,9 @@ def build_skip_fill_record_from_context(
         trend_5s_at_order=extra_fields.trend_5s_at_order,
         ev_score_pretrade=extra_fields.ev_score_pretrade,
         decision_path=extra_fields.decision_path,
+        skip_gate_budget_regime=extra_fields.skip_gate_budget_regime,
+        skip_gate_budget_remaining=extra_fields.skip_gate_budget_remaining,
+        skip_gate_budget_exhausted=extra_fields.skip_gate_budget_exhausted,
     )
 
 

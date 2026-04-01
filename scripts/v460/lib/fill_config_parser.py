@@ -282,6 +282,8 @@ def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
         "ev_one_sided_threshold_shift": "skip_gate_ev_one_sided_threshold_shift",
         # 596# Primary model 連続 skip 安全弁 (evaluator-level)
         "primary_max_consecutive_skip": "skip_gate_primary_max_consecutive_skip",
+        "budget_enabled": "skip_gate_budget_enabled",
+        "budget_window_min": "skip_gate_budget_window_min",
         # 193#: ev_weighted → offset 修飾子モード
         "ev_as_offset_enabled": "skip_gate_ev_as_offset_enabled",
         "ev_offset_sensitivity": "skip_gate_ev_offset_sensitivity",
@@ -369,6 +371,26 @@ def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
         kwargs["skip_gate_hour_offsets"] = {
             int(k): float(v) for k, v in hour_offsets_raw.items()
         }
+
+    budget_limits_raw = sg.get("budget_limits")
+    if isinstance(budget_limits_raw, dict):
+        normalized_limits: dict[str, dict[str, int] | int] = {}
+        for regime_name, raw_limit in budget_limits_raw.items():
+            normalized_regime = str(regime_name).strip().lower()
+            if not normalized_regime:
+                continue
+            if isinstance(raw_limit, dict):
+                normalized_limits[normalized_regime] = {
+                    str(side_name).strip().lower(): (
+                        limit if isinstance(limit, bool) else int(limit)
+                    )
+                    for side_name, limit in raw_limit.items()
+                }
+            else:
+                normalized_limits[normalized_regime] = (
+                    raw_limit if isinstance(raw_limit, bool) else int(raw_limit)
+                )
+        kwargs["skip_gate_budget_limits"] = normalized_limits
 
     # 684# Phase M1: independent mid_price_trend_5s sell guard
     trend_guard = yaml_cfg.get("trend_5s_sell_guard", {})

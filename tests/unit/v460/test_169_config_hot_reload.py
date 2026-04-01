@@ -41,6 +41,13 @@ side_offset:
 skip_gate:
   enabled: true
   as_threshold: 0.52
+  budget_enabled: true
+  budget_window_min: 60
+  budget_limits:
+    default: 8
+    trending_up:
+      sell: 3
+      buy: 12
 
 sell_dynamic_kill:
   enabled: true
@@ -85,6 +92,13 @@ side_offset:
 skip_gate:
   enabled: false
   as_threshold: 0.60
+  budget_enabled: true
+  budget_window_min: 30
+  budget_limits:
+    default: 6
+    trending_up:
+      sell: 2
+      buy: 10
 
 sell_dynamic_kill:
   enabled: false
@@ -131,6 +145,12 @@ def base_config() -> FillTestConfig:
         min_spread_jpy=0.0,
         skip_gate_enabled=True,
         skip_gate_as_threshold=0.52,
+        skip_gate_budget_enabled=True,
+        skip_gate_budget_window_min=60,
+        skip_gate_budget_limits={
+            "default": 8,
+            "trending_up": {"sell": 3, "buy": 12},
+        },
         sell_dynamic_kill_enabled=True,
         sell_dynamic_kill_threshold_bps=-0.5,
         daily_drawdown_enabled=True,
@@ -361,6 +381,25 @@ class TestConfigFieldUpdate:
         assert base_config.skip_gate_enabled is False
         assert base_config.skip_gate_as_threshold == 0.60
 
+    def test_reload_updates_skip_gate_budget_fields(
+        self,
+        base_config: FillTestConfig,
+        temp_yaml: Path,
+        yaml_content_updated: str,
+    ) -> None:
+        reloader, runner, result = _run_do_reload_with_content(
+            base_config,
+            temp_yaml,
+            yaml_content_updated,
+        )
+        assert result is True
+        assert runner.config.skip_gate_budget_enabled is True
+        assert runner.config.skip_gate_budget_window_min == 30
+        assert runner.config.skip_gate_budget_limits == {
+            "default": 6,
+            "trending_up": {"sell": 2, "buy": 10},
+        }
+
     def test_non_reloadable_fields_preserved(
         self,
         base_config: FillTestConfig,
@@ -544,6 +583,9 @@ class TestReloadableFieldsConsistency:
             "skip_gate_ev_offset_min_mult",
             "skip_gate_ev_offset_max_mult",
             "skip_gate_ev_emergency_skip_threshold",
+            "skip_gate_budget_enabled",
+            "skip_gate_budget_window_min",
+            "skip_gate_budget_limits",
             "velocity_skip_as_offset_enabled",
             "velocity_offset_boost_factor",
             "velocity_offset_proportional",

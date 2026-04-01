@@ -22,6 +22,9 @@ class SkipDecisionResultFields:
     # 642# 可観測性
     forced_pass: bool
     side_skip_rate: float | None
+    budget_regime: str | None
+    budget_remaining: int | None
+    budget_exhausted: bool
 
 
 @dataclass(frozen=True)
@@ -44,6 +47,9 @@ class SkipFillRecordExtraFields:
     trend_5s_at_order: float | None
     ev_score_pretrade: float | None
     decision_path: str | None
+    skip_gate_budget_regime: str | None
+    skip_gate_budget_remaining: int | None
+    skip_gate_budget_exhausted: bool | None
 
 
 def resolve_skip_gate_model_tag(
@@ -65,6 +71,9 @@ def build_skip_decision_result_fields(
     has_side_specific_model: bool,
     hour_offset: float,
     price_velocity_bps: float | None,
+    budget_regime: str | None = None,
+    budget_remaining: int | None = None,
+    budget_exhausted: bool = False,
 ) -> SkipDecisionResultFields:
     """Convert a skip-gate decision into normalized result metadata."""
     model_tag = resolve_skip_gate_model_tag(
@@ -83,6 +92,9 @@ def build_skip_decision_result_fields(
         price_velocity_bps=price_velocity_bps,
         forced_pass=getattr(decision, "forced_pass", False),
         side_skip_rate=getattr(decision, "side_skip_rate", None),
+        budget_regime=budget_regime,
+        budget_remaining=budget_remaining,
+        budget_exhausted=budget_exhausted,
     )
 
 
@@ -103,6 +115,9 @@ def build_skip_fill_record_extra_fields(
     trend_5s_at_order: float | None = None,
     ev_score_pretrade: float | None = None,
     decision_path: str | None = None,
+    budget_regime: str | None = None,
+    budget_remaining: int | None = None,
+    budget_exhausted: bool | None = None,
 ) -> SkipFillRecordExtraFields:
     """Build canonical extra payload for skip FillRecord early returns."""
     return SkipFillRecordExtraFields(
@@ -122,6 +137,9 @@ def build_skip_fill_record_extra_fields(
         trend_5s_at_order=trend_5s_at_order,
         ev_score_pretrade=ev_score_pretrade,
         decision_path=decision_path,
+        skip_gate_budget_regime=budget_regime,
+        skip_gate_budget_remaining=budget_remaining,
+        skip_gate_budget_exhausted=budget_exhausted,
     )
 
 

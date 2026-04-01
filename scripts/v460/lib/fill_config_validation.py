@@ -85,6 +85,33 @@ def validate_fill_config(config: FillTestConfig) -> None:
                     f"regime_timeout_overrides['{regime_name}']['{side_name}'] "
                     f"must be > 0, got {timeout_sec}"
                 )
+    if config.skip_gate_budget_window_min <= 0:
+        raise ValueError(
+            "skip_gate_budget_window_min must be > 0, "
+            f"got {config.skip_gate_budget_window_min}"
+        )
+    for regime_name, budget_value in config.skip_gate_budget_limits.items():
+        if isinstance(budget_value, bool):
+            raise ValueError(
+                f"skip_gate_budget_limits['{regime_name}'] must be an int or dict"
+            )
+        if isinstance(budget_value, dict):
+            for side_name, limit in budget_value.items():
+                if side_name not in {"buy", "sell"}:
+                    raise ValueError(
+                        f"skip_gate_budget_limits['{regime_name}'] "
+                        f"contains unsupported side '{side_name}'"
+                    )
+                if isinstance(limit, bool) or limit <= 0:
+                    raise ValueError(
+                        f"skip_gate_budget_limits['{regime_name}']['{side_name}'] "
+                        f"must be > 0, got {limit}"
+                    )
+            continue
+        if budget_value <= 0:
+            raise ValueError(
+                f"skip_gate_budget_limits['{regime_name}'] must be > 0, got {budget_value}"
+            )
     for k, v in config.regime_lot_multipliers.items():
         if v <= 0:
             raise ValueError(

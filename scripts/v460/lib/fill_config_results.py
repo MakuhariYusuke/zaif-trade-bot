@@ -49,6 +49,10 @@ class SkipGateResult:
     # 642# 可観測性: skip_rate_limit 強制 pass / side skip rate
     forced_pass: bool = False
     side_skip_rate: float | None = None
+    # 690# bucketed skip budget 可観測性
+    budget_regime: str | None = None
+    budget_remaining: int | None = None
+    budget_exhausted: bool = False
 
 
 @dataclass
