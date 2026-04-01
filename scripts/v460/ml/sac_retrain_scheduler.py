@@ -46,6 +46,7 @@ from scripts.v460.ml.sidecar_scheduler_common import (
     append_history_best_effort,
     append_history_jsonl,
     best_effort_training_cleanup,
+    push_neutral_signal_best_effort,
     record_trigger_result_best_effort,
     run_with_timeout,
 )
@@ -1054,18 +1055,14 @@ def _push_neutral_fallback(
         create_neutral_signal,
         write_sidecar_signal,
     )
-    neutral_signal = create_neutral_signal()
-    try:
-        write_sidecar_signal(neutral_signal, signal_path)
-    except OSError as exc:
-        logger.warning(
-            "Neutral bias fallback write failed for %s: %s",
-            signal_path,
-            exc,
-        )
-        return False
-    logger.info("Neutral bias fallback successfully pushed to sidecar: %s", signal_path)
-    return True
+    result = push_neutral_signal_best_effort(
+        signal_path=signal_path,
+        signal_factory=create_neutral_signal,
+        signal_writer=write_sidecar_signal,
+        logger_obj=logger,
+        label="[365# P6] SAC",
+    )
+    return bool(result)
 
 
 def _update_sidecar_signal(

@@ -713,3 +713,16 @@ probe / weighting の wiring だけ current contract に揃えられた。
 - guard の事後分析可能性
 
 の 2 点を考えると必要だった。
+## 2026-04-02 追加
+
+- PPO/SAC scheduler の neutral fallback 書き込みを
+  [scheduler_common.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/sidecar/scheduler_common.py)
+  の `push_neutral_signal_best_effort(...)` に寄せた
+- 共有した責務は
+  - neutral signal の生成/書き込み I/O 失敗 handling
+  - success/failure logging
+  に限定
+- policy 判断や signal shape 自体は SAC/PPO で分けたままにしている
+- overlap 確認:
+  - 今回切り出した helper は既存 helper と実質重複していない
+  - `atomic_replace_with_tmp(...)` と同じく `ztb.training.sidecar` 配下に置くのが妥当

@@ -11,6 +11,7 @@ from ztb.training.sidecar.scheduler_common import (
     append_history_jsonl,
     atomic_replace_with_tmp,
     best_effort_training_cleanup,
+    push_neutral_signal_best_effort,
     record_trigger_result_best_effort,
     run_with_timeout,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "append_history_jsonl",
     "atomic_replace_with_tmp",
     "best_effort_training_cleanup",
+    "push_neutral_signal_best_effort",
     "record_trigger_result_best_effort",
     "run_with_timeout",
 ]

@@ -1123,3 +1123,17 @@ durations 変化で特に効いた点:
     - `tests/unit/v460/test_421_final_clamp_deadlock.py`
     - `tests/unit/v460/test_276_blocking_policy_dry.py`
     - `206 passed in 15.53s`
+## 2026-04-02 追加
+
+- `tests/unit/v460/test_fill_quality.py`
+  - `test_iter_load_roundtrip` を direct JSONL seed に変更
+  - `save_fill_records(...)` 自体を検証する roundtrip は残し、I/O helper 非依存の load-only test から保存固定費を外した
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - real-data smoke sample を `12/18/24 -> 8/12/18` に縮小
+  - trainable sample path は維持し、smoke 側だけ軽くした
+- regression:
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `356 passed, 1 skipped, 5 warnings in 9.31s`

@@ -1411,7 +1411,7 @@ class TestFillRecordIO:
 
     def test_iter_load_roundtrip(self, tmp_path: Path) -> None:
         path = tmp_path / "iter.jsonl"
-        _save_linear_records(
+        _seed_linear_records(
             path,
             prefix="iter",
             count=3,

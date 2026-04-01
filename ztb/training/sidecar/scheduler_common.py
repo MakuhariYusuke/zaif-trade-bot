@@ -51,6 +51,7 @@ class BaseRetrainResult:
 
 ConfigT = TypeVar("ConfigT")
 ResultT = TypeVar("ResultT")
+SignalT = TypeVar("SignalT")
 _MISSING_RESULT = object()
 
 
@@ -206,6 +207,25 @@ def best_effort_training_cleanup() -> None:
     gc.collect()
 
 
+def push_neutral_signal_best_effort(
+    *,
+    signal_path: Path | str,
+    signal_factory: Callable[[], SignalT],
+    signal_writer: Callable[[SignalT, Path | str], None],
+    logger_obj: logging.Logger,
+    label: str,
+) -> bool:
+    """Write a neutral fallback signal without letting scheduler code duplicate I/O handling."""
+
+    try:
+        signal_writer(signal_factory(), signal_path)
+    except OSError as exc:
+        logger_obj.warning("%s neutral fallback write failed for %s: %s", label, signal_path, exc)
+        return False
+    logger_obj.info("%s neutral fallback pushed to sidecar: %s", label, signal_path)
+    return True
+
+
 __all__ = [
     "BaseRetrainResult",
     "DataFileRetrainTrigger",
@@ -213,6 +233,7 @@ __all__ = [
     "append_history_jsonl",
     "atomic_replace_with_tmp",
     "best_effort_training_cleanup",
+    "push_neutral_signal_best_effort",
     "record_trigger_result_best_effort",
     "run_with_timeout",
 ]

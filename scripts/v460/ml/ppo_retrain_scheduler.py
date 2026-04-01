@@ -36,6 +36,7 @@ from scripts.v460.ml.sidecar_scheduler_common import (
     atomic_replace_with_tmp,
     append_history_best_effort,
     best_effort_training_cleanup,
+    push_neutral_signal_best_effort,
     record_trigger_result_best_effort,
     run_with_timeout,
 )
@@ -125,13 +126,14 @@ def _atomic_deploy_model(model: _PPOModelProtocol, model_path: Path) -> None:
 
 def _push_neutral_fallback(signal_path: Path | str) -> bool:
     """訓練失敗時に neutral PPO signal を push する."""
-    try:
-        write_ppo_sidecar_signal(create_neutral_ppo_signal(), signal_path)
-    except OSError as exc:
-        logger.warning("Neutral PPO fallback write failed for %s: %s", signal_path, exc)
-        return False
-    logger.info("Neutral PPO fallback successfully pushed to sidecar: %s", signal_path)
-    return True
+    result = push_neutral_signal_best_effort(
+        signal_path=signal_path,
+        signal_factory=create_neutral_ppo_signal,
+        signal_writer=write_ppo_sidecar_signal,
+        logger_obj=logger,
+        label="[678#] PPO",
+    )
+    return bool(result)
 
 
 def _update_ppo_sidecar_signal(

@@ -10231,3 +10231,21 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `tests/unit/v460/test_421_final_clamp_deadlock.py`
     - `tests/unit/v460/test_276_blocking_policy_dry.py`
     - `206 passed in 15.53s`
+## 2026-04-02
+
+- `fill_quality` の metrics 重複を棚卸し
+  - `fill_metrics_core` の helper は既存 helper と実質重複なし
+  - `PnlAccumulator` / `PnlWinAccumulator` は共有候補として切り出し
+- 新規:
+  - [pnl_accumulators.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/pnl_accumulators.py)
+- 更新:
+  - [fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py)
+  - [record_metrics.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/record_metrics.py)
+  - [scheduler_common.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/sidecar/scheduler_common.py)
+  - [ppo_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/ppo_retrain_scheduler.py)
+  - [sac_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/sac_retrain_scheduler.py)
+  - [test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py)
+  - [test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+- regression:
+  - targeted mypy: `Success: no issues found in 3 source files`
+  - focused/broader pytest: `356 passed, 1 skipped, 5 warnings in 9.31s`
