@@ -315,13 +315,15 @@ Offset pipeline は理論的期待に反して、何も制御できていない�
 
 ## §10 671# §3.3 優先順位の再修正
 
-| 優先度 | 施策 | 理論的根拠 | 671# からの変更 |
-|--------|------|-----------|----------------|
-| **P0** | **min_spread_atr_mult 20% 引き下げ** | Glosten-Milgrom: 低α帯域の開放。Realized spread: 1500-2500 で AS cost < 0 | 「引き下げまたは cap 見直し」→ 具体的に 20% を提案 |
-| **P0** | **3/20 (dfbe3b539eaa) diff 調査** | 引き続き最優先 | 変更なし |
-| **P1** | **AS 予測モデル再構築** (SkipGate 代替) | 情報理論: 現 feature の MI ≈ 0。cv_lead_lag + OB imbalance の組み合わせで探索 | 「再評価」→「再構築」に格上げ |
-| **P2** | offset pipeline の簡素化 | Fill Prob Model: offset が fill prob にも PnL にも無効 | 新規追加 |
-| **延期** | Sidecar / EV toxic skip | Bootstrap で avg PnL の有意差を確認できず。先に P0-P1 の効果を見る | 変更なし |
+> **686# 時点ステータス更新** (2026-04-02)
+
+| 優先度 | 施策 | 理論的根拠 | 671# からの変更 | **686# 状態** |
+|--------|------|-----------|----------------|------|
+| **P0** | **min_spread_atr_mult 20% 引き下げ** | Glosten-Milgrom: 低α帯域の開放。Realized spread: 1500-2500 で AS cost < 0 | 「引き下げまたは cap 見直し」→ 具体的に 20% を提案 | ✅ 632# mult=1.2 + 686# cap_bps=1.2。4日データで 0-1500帯(AS=17%,avg+0.91)解放確認 |
+| **P0** | **3/20 (dfbe3b539eaa) diff 調査** | 引き続き最優先 | 変更なし | ⚠️ 状態不明。後続文書で明示的完了報告なし |
+| **P1** | **AS 予測モデル再構築** (SkipGate 代替) | 情報理論: 現 feature の MI ≈ 0。cv_lead_lag + OB imbalance の組み合わせで探索 | 「再評価」→「再構築」に格上げ | ❌ 未着手。686# 四分位分析で MI≈0 を追加実証。SG bypass 実装済み (306664e32)。新特徴量設計が前提 |
+| **P2** | offset pipeline の簡素化 | Fill Prob Model: offset が fill prob にも PnL にも無効 | 新規追加 | ❌ 未着手。長期課題 |
+| **延期** | Sidecar / EV toxic skip | Bootstrap で avg PnL の有意差を確認できず。先に P0-P1 の効果を見る | 変更なし | ⏸️ 継続延期。SG bypass で先に母集団拡大を優先 |
 
 ---
 

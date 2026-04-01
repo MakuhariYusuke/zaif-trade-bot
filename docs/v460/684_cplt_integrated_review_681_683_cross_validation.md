@@ -172,27 +172,33 @@ trending_up/sell の PnL=-2.93 は**レジーム判定が fill 時点で正し�
 
 ### Phase 1: 止血（YAML 即時適用、hot-reload）
 
-| # | 施策 | 変更 | 根拠 |
-|---|------|------|------|
-| **S1** | JST 11h/13h sell hard skip | `hard_skip_utc_hours` に UTC 2,4 を sell 限定追加、または `sell_hour_offset_boost` で UTC 2=2.5, 4=2.5 | 2 時間帯で sell 損失の 88% |
-| **S2** | trend_5s > 0 sell の追加防御 | `toxic_sell_veto_velocity_threshold: 0.0` → **1.0 に引上げ**（trend_5s は velocity proxy として toxic_sell_veto に入力）| trend_5s>0 sell = -3.25 bps |
-| **S3** | Skip Gate trending_up/down 厳格化 | `trending_up: 0.3→0.5`, `trending_down: 0.1→0.3` | trending sell が損失の核 |
+> **686# 時点ステータス更新** (2026-04-02)
+
+| # | 施策 | 変更 | 根拠 | **686# 状態** |
+|---|------|------|------|------|
+| **S1** | JST 11h/13h sell hard skip | `hard_skip_utc_hours` に UTC 2,4 を sell 限定追加、または `sell_hour_offset_boost` で UTC 2=2.5, 4=2.5 | 2 時間帯で sell 損失の 88% | ✅ 685# hour_boost 適用済み |
+| **S2** | trend_5s > 0 sell の追加防御 | `toxic_sell_veto_velocity_threshold: 0.0` → **1.0 に引上げ**（trend_5s は velocity proxy として toxic_sell_veto に入力）| trend_5s>0 sell = -3.25 bps | ⏭️ 685# で前提誤り判明（60s 窓）。代替: M1 trend_5s_sell_guard で対応済み |
+| **S3** | Skip Gate trending_up/down 厳格化 | `trending_up: 0.3→0.5`, `trending_down: 0.1→0.3` | trending sell が損失の核 | ✅ 685# YAML 適用済み |
 
 ### Phase 2: 分析基盤改善（コード変更、Codex 向き）
 
-| # | 施策 | 内容 |
-|---|------|------|
-| **A1** | Sell ceiling 0.40→0.50 (0.55ではない) | Phase 1 の stop-blood 効果確認 **後** に適用。0.55 は攻めすぎ、0.50 で pipeline 情報の 80% が復元 |
-| **A2** | SAC reward 改善 & sell-aware training | §4 Codex タスク参照 |
-| **A3** | Skip Gate sell 専用 retrain | unified model の sell 判別低を改善 |
+> **686# 時点ステータス更新** (2026-04-02)
+
+| # | 施策 | 内容 | **686# 状態** |
+|---|------|------|------|
+| **A1** | Sell ceiling 0.40→0.50 (0.55ではない) | Phase 1 の stop-blood 効果確認 **後** に適用。0.55 は攻めすぎ、0.50 で pipeline 情報の 80% が復元 | ⏳ 4/2 以降のデータで Phase 1 効果検証後に判断 |
+| **A2** | SAC reward 改善 & sell-aware training | §4 Codex タスク参照 | ✅ 685# Codex で実装済み（sell_as_penalty_mult=1.5, mid_price_trend_5s/signed_obi はコメントアウト状態） |
+| **A3** | Skip Gate sell 専用 retrain | unified model の sell 判別低を改善 | ⏭️ 686# SG MI≈0 実証により bypass モードに路線変更。bypass 実装済み (306664e32) |
 
 ### Phase 3: 中期構造改善
 
-| # | 施策 |
-|---|------|
-| **M1** | trend_5s ベースの新 veto layer（velocity_skip と独立） |
-| **M2** | Decision path に roundtrip 紐付け ID を追加（682# 分析手法の基盤化）|
-| **M3** | VG vpin_continuous_min 0.50→0.55 の A/B 検証 |
+> **686# 時点ステータス更新** (2026-04-02)
+
+| # | 施策 | **686# 状態** |
+|---|------|------|
+| **M1** | trend_5s ベースの新 veto layer（velocity_skip と独立） | ✅ 685# Codex で実装済み (trend_5s_sell_guard) |
+| **M2** | Decision path に roundtrip 紐付け ID を追加（682# 分析手法の基盤化）| ❌ 未着手 |
+| **M3** | VG vpin_continuous_min 0.50→0.55 の A/B 検証 | ❌ 未着手（要 n≥300） |
 
 ---
 
