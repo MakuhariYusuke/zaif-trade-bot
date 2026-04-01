@@ -901,6 +901,28 @@ class Test072OBToggle:
         cfg = SkipGateConfig()
         assert cfg.use_ob_features is False
 
+    def test_ob_features_nan_handling_via_imputer(self) -> None:
+        """OB 特徴量の NaN は SimpleImputer で補完できる."""
+        feature_cols = get_gate_feature_cols(use_ob=True)
+        rows = []
+        for idx in range(4):
+            features = build_features_from_market_state(
+                side="buy" if idx % 2 == 0 else "sell",
+                spread_jpy=400.0 + idx * 10.0,
+                offset_ratio=0.04 + idx * 0.01,
+                regime="ranging",
+                use_ob_features=True,
+            )
+            rows.append(features)
+        frame = pd.DataFrame(rows, columns=feature_cols)
+
+        transformed = SimpleImputer(strategy="median").fit_transform(frame)
+
+        assert transformed.shape[0] == 4
+        assert transformed.shape[1] <= len(feature_cols)
+        assert transformed.shape[1] >= len(_BASE_FEATURE_COLS)
+        assert np.isfinite(transformed).all()
+
     def test_feature_count_consistency(self) -> None:
         """get_gate_feature_cols と build_features の出力が一致."""
         # OB なし

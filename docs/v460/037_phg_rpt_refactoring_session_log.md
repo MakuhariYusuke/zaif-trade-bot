@@ -9796,7 +9796,7 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
       - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
       - `tests/unit/v460/test_sac_retrain_scheduler.py`
       - `69 passed in 14.18s`
-### 037-678E PPO scheduler hardening
+### 2026-04-01 PPO scheduler hardening
 
 - `sidecar_scheduler_common.DataFileRetrainTrigger`
   - `time_forced` fallback を追加
@@ -9808,7 +9808,7 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
   - `tests/unit/v460/test_sac_retrain_scheduler.py`
 
-### 037-678F PPO kwargs reuse + integration trim
+### 2026-04-01 PPO kwargs reuse + integration trim
 
 - `core.build_ppo_model_kwargs(...)` を追加し、
   `sell_mitigation_ppo_trainer` の標準 PPO kwargs 組み立てを共有化
@@ -9817,7 +9817,7 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - `tests/training/test_ppo_trainer.py`
   - helper contract guard を追加
 
-### 037-678G SAC/PPO scheduler timeout helper reunification
+### 2026-04-01 SAC/PPO scheduler timeout helper reunification
 
 - `sidecar_scheduler_common`
   - `run_with_timeout(...)`
@@ -9829,7 +9829,7 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - `test_custom_ppo_integration`
   - `create_with_current_masked_env` を tiny env 側へ寄せて setup 削減
 
-### 037-678H PPO Phase 2 warm-start / YAML / archive
+### 2026-04-01 PPO Phase 2 warm-start / YAML / archive
 
 - `PPOTrainerAutoHalt.load_and_continue(...)` を追加
 - `ppo_retrain_scheduler`
@@ -9845,13 +9845,13 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - probability helper edge / trigger reset / neutral fallback を追加
 - legacy PPO config を `archived/configs/ppo_legacy/` へ整理
 
-### 037-678I Full-suite regression follow-up
+### 2026-04-01 PPO full-suite regression follow-up
 
 - `tests/training/unified_trainer/test_algorithms.py`
   - distributed state 持ち越しで揺れていた `total_timesteps` expectation を固定
   - `get_distributed_info()` を patch して non-distributed contract を明示
 
-### 037-678J Shared atomic deploy + scheduler test trim
+### 2026-04-01 Shared atomic deploy + scheduler test trim
 
 - `sidecar_scheduler_common`
   - `atomic_replace_with_tmp(...)` を追加
@@ -9867,7 +9867,7 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - self-supervised synthetic default を縮小
   - degraded torch fallback の固定費を削減
 
-### 037-678K CustomPPO helper split + heavy test trim
+### 2026-04-01 CustomPPO helper split + heavy test trim
 
 - `custom_ppo`
   - PAN / Lagrange / entropy / loss helper を分割
@@ -9900,3 +9900,29 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `tests/unit/v460/test_sac_retrain_scheduler.py`
   - `tests/integration/test_custom_ppo_integration.py`
     - `76 passed in 8.16s`
+
+### 2026-04-01 PPO Phase 3 coverage and sidecar structure cleanup
+
+- `ztb/training/sidecar/scheduler_common.py` を新設
+  - `sidecar_scheduler_common` の実体を `ztb` 側へ移動
+  - `scripts/v460/ml/sidecar_scheduler_common.py` は互換 shim に縮小
+- `ppo_retrain_scheduler.py`
+  - `run_scheduler()` に loop 保護を追加
+  - `should_retrain()` 例外
+  - `retrain_once()` 想定外例外
+  - `record_result()` 例外
+  を best-effort / neutral fallback で処理
+- `test_680_ppo_retrain_scheduler.py`
+  - warm-start
+  - neutral fallback write failure suppression
+  - single iteration / crash resilience / `record_result()` suppression
+- `test_sidecar_sac_integration.py`
+  - PPO gate の `None` signal / below-margin observe-only
+- `test_enricher_skip_gate.py`
+  - OB feature NaN の `SimpleImputer` 補完 path
+- `test_sac_retrain_scheduler.py`
+  - `_post_cycle_memory_check()` を deterministic mock 化
+- focused:
+  - `235 passed in 7.10s`
+- broader PPO/SAC subset:
+  - `237 passed in 8.80s`

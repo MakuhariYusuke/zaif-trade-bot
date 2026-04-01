@@ -478,6 +478,23 @@ class TestCycleGateResultSidecarFields:
 class TestCycleGatePPOSidecarInjection:
     """675# PPO sidecar の safe veto / telemetry."""
 
+    def test_none_signal_skips_gate(self) -> None:
+        agg = _make_aggregator()
+
+        result = agg.evaluate(
+            side="buy",
+            regime="ranging",
+            vol_ratio=1.0,
+            inv_net_imbalance=0.0,
+            is_buy_killed=False,
+            is_sell_killed=False,
+            ppo_sidecar_signal=None,
+        )
+
+        assert result.blocked is False
+        assert result.ppo_sidecar_action is None
+        assert result.ppo_sidecar_override_active is False
+
     def test_skip_signal_blocks_cycle(self) -> None:
         agg = _make_aggregator()
         signal = _make_ppo_signal(buy=0.10, sell=0.15, skip=0.75)
@@ -532,6 +549,31 @@ class TestCycleGatePPOSidecarInjection:
 
         assert result.blocked is False
         assert result.ppo_sidecar_action == "buy"
+        assert result.ppo_sidecar_override_active is False
+
+    def test_below_margin_threshold_is_observe_only(self) -> None:
+        agg = _make_aggregator()
+        signal = PPOSidecarSignal(
+            timestamp="2026-04-01T00:00:00+00:00",
+            action="buy",
+            action_probabilities={"buy": 0.51, "sell": 0.47, "skip": 0.02},
+            confidence=0.80,
+            model_version="ppo_v1",
+        )
+
+        result = agg.evaluate(
+            side="buy",
+            regime="ranging",
+            vol_ratio=1.0,
+            inv_net_imbalance=0.0,
+            is_buy_killed=False,
+            is_sell_killed=False,
+            ppo_sidecar_signal=signal,
+        )
+
+        assert result.blocked is False
+        assert result.ppo_sidecar_action == "buy"
+        assert result.ppo_sidecar_action_margin == pytest.approx(0.04)
         assert result.ppo_sidecar_override_active is False
 
     def test_matching_side_passes_with_telemetry(self) -> None:

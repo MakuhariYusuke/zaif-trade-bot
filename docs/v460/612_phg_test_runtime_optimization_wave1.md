@@ -972,3 +972,22 @@ durations 変化で特に効いた点:
       - after: `29 passed in 5.54s`
     - `tests/unit/training/test_checkpoint_manager.py`
       - `13 passed in 3.64s`
+
+- PPO Phase 3 scheduler / gate coverage trim:
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+    - warm-start
+    - crash resilience
+    - `record_result()` exception suppression
+  - `tests/unit/v460/test_sidecar_sac_integration.py`
+    - PPO gate の `None` signal / below-margin observe-only
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+    - `_post_cycle_memory_check()` を deterministic mock に変更
+  - focused:
+    - `235 passed in 7.10s`
+  - broader PPO/SAC subset:
+    - `237 passed in 8.80s`
+
+  ここで効いたのは単純な sleep 削減より、
+  - interval/time 依存を trigger mock に寄せる
+  - live RSS 依存を helper mock に寄せる
+  という test responsibility の整理。

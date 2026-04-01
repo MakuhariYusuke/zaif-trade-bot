@@ -1114,9 +1114,18 @@ class TestCrashResilience495:
         saved = mod._last_cycle_rss_mb
         try:
             mod._last_cycle_rss_mb = 0.0
-            _post_cycle_memory_check()
-            # 呼出後 RSS が記録される
-            assert mod._last_cycle_rss_mb > 0
+            with patch(
+                "scripts.v460.ml.sac_retrain_scheduler._build_post_cycle_memory_status",
+                return_value={
+                    "rss_mb": 48.0,
+                    "rss_delta_mb": 48.0,
+                    "cache_total_entries": 7.0,
+                    "leak_warning": False,
+                    "rss_warning": False,
+                },
+            ):
+                _post_cycle_memory_check()
+            assert mod._last_cycle_rss_mb == 48.0
         finally:
             mod._last_cycle_rss_mb = saved
 

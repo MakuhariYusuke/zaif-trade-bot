@@ -178,3 +178,24 @@ foundation 後段で、current PPO sidecar に必要だった不足点を次ま�
 
 この整理で、active runtime path と historical experiment asset の境界が
 かなり明確になった。
+
+## 追記: ディレクトリ構造の整理方針
+
+`scripts/` は entrypoint / current runtime wiring に寄せ、
+generic helper は `ztb/` 側へ戻していく方針を明記する。
+
+- 今回移したもの
+  - `sidecar_scheduler_common` の実体
+  - 移設先: `ztb/training/sidecar/scheduler_common.py`
+  - `scripts/v460/ml/sidecar_scheduler_common.py` は互換 shim のみ
+- `scripts/v460/ml` に残す責務
+  - v460 固有 scheduler entrypoint
+  - YAML / live wiring
+  - current runtime の運用層
+- 次の分割候補
+  1. `ppo_retrain_scheduler.py`
+     - loop safety / deploy / history を sidecar runtime helper 化
+  2. `sell_mitigation_ppo_trainer.py`
+     - kwargs / env wrapping / artifact wiring を helper 境界に分離
+  3. `fill_quality.py`
+     - skip payload shaping / dataframe bridge / persistence bridge を helper 化

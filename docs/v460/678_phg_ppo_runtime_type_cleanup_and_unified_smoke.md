@@ -495,3 +495,41 @@ hot path を読める長さに戻すための low-risk な整理。
 - SAC/PPO scheduler の学習本体
   - timeout / cleanup / atomic deploy は共通化できるが、
     train/eval/signal semantics まで寄せると責務が崩れる
+
+### 19. PPO Phase 3 coverage と loop crash-resilience
+
+- `ppo_retrain_scheduler.py`
+  - `run_scheduler()` を crash-resilient 化
+  - `should_retrain()` 例外は loop 継続
+  - `retrain_once()` 想定外例外は neutral fallback + error result 化
+  - `record_result()` / history append は best-effort 化
+- `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - warm-start path
+  - neutral fallback write failure suppression
+  - single iteration / crash resilience / `record_result()` suppression
+  を追加
+- `tests/unit/v460/test_sidecar_sac_integration.py`
+  - PPO gate の `None` signal / below-margin observe-only を追加
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - OB features の `SimpleImputer` 補完 path を追加
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `_post_cycle_memory_check()` を deterministic mock に変更
+
+focused:
+- `235 passed in 7.10s`
+
+broader PPO/SAC subset:
+- `237 passed in 8.80s`
+
+### 20. `scripts` 混雑緩和の最小移行
+
+`sidecar_scheduler_common.py` は v460 専用 helper ではなくなっていたため、
+実体を `ztb/training/sidecar/scheduler_common.py` に移し、
+`scripts/v460/ml/sidecar_scheduler_common.py` は互換 shim にした。
+
+これで
+- current runtime entrypoint はそのまま
+- generic sidecar helper は `ztb` 側に集約
+- 後続の package 再整理がしやすい
+
+という状態になった。

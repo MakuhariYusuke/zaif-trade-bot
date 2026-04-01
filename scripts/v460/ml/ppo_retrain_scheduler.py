@@ -293,6 +293,57 @@ def _cleanup_training_cycle() -> None:
     best_effort_training_cleanup()
 
 
+def _make_scheduler_error_result(
+    *,
+    cfg: PPOSidecarConfig,
+    error: BaseException,
+) -> PPORetrainResult:
+    """loop 保護用の error result を構築する."""
+    return PPORetrainResult(
+        status="error",
+        timestamp=current_iso_timestamp(utc=True),
+        error_message=str(error),
+        debug_details={"data_path": cfg.data_path, "stage": "scheduler_loop"},
+    )
+
+
+def _record_result_best_effort(
+    trigger: PPORetrainTrigger,
+    status: str,
+) -> None:
+    try:
+        trigger.record_result(status)
+    except Exception as exc:  # pragma: no cover - exercised via loop tests
+        logger.warning("PPO trigger record_result failed: %s", exc)
+
+
+def _append_history_best_effort(
+    history_path: Path,
+    payload: dict[str, object],
+) -> None:
+    try:
+        append_history_jsonl(history_path, payload)
+    except OSError as exc:
+        logger.warning("PPO history append failed: %s", exc)
+
+
+def _run_retrain_cycle(
+    cfg: PPOSidecarConfig,
+    trigger: PPORetrainTrigger,
+) -> PPORetrainResult:
+    """1 retrain cycle を crash-resilient に実行する."""
+    try:
+        result = retrain_once(cfg)
+    except Exception as exc:  # pragma: no cover - exercised via loop tests
+        logger.error("PPO retrain_once crashed: %s", exc, exc_info=True)
+        _push_neutral_fallback(cfg.signal_path)
+        result = _make_scheduler_error_result(cfg=cfg, error=exc)
+
+    _record_result_best_effort(trigger, result.status)
+    _append_history_best_effort(cfg.history_path, result.to_dict())
+    return result
+
+
 def retrain_once(cfg: PPOSidecarConfig) -> PPORetrainResult:
     """1 サイクルの PPO sidecar retrain を実行する."""
 
@@ -387,7 +438,13 @@ def run_scheduler(cfg: PPOSidecarConfig) -> None:
     )
 
     while not _shutdown_event.is_set():
-        should_run, reason = trigger.should_retrain()
+        try:
+            should_run, reason = trigger.should_retrain()
+        except Exception as exc:  # pragma: no cover - exercised via loop tests
+            logger.error("PPO trigger.should_retrain failed: %s", exc, exc_info=True)
+            if _shutdown_event.wait(timeout=cfg.check_interval_sec):
+                break
+            continue
         if not should_run:
             logger.debug(
                 "[675#] PPO trigger skip: %s | next_check_in=%ss",
@@ -399,12 +456,7 @@ def run_scheduler(cfg: PPOSidecarConfig) -> None:
             continue
 
         logger.info("[675#] PPO trigger fired: %s", reason)
-        result = retrain_once(cfg)
-        trigger.record_result(result.status)
-        try:
-            append_history_jsonl(cfg.history_path, result.to_dict())
-        except OSError as exc:
-            logger.warning("PPO history append failed: %s", exc)
+        result = _run_retrain_cycle(cfg, trigger)
 
         logger.info(
             "[675#] PPO cycle complete: status=%s action=%s next_in=%.0fs",

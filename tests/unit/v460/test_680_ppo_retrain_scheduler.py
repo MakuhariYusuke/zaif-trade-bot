@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 import time
 from types import SimpleNamespace
@@ -18,6 +19,7 @@ from scripts.v460.ml.ppo_retrain_scheduler import (
     PPORetrainResult,
     PPORetrainTrigger,
     _TRAINING_TIMEOUT_SEC,
+    _shutdown_event,
     _extract_action_probabilities,
     _one_hot_ppo_probabilities,
     _push_neutral_fallback,
@@ -25,8 +27,23 @@ from scripts.v460.ml.ppo_retrain_scheduler import (
     _update_ppo_sidecar_signal,
     load_config,
     retrain_once,
+    run_scheduler,
 )
 from scripts.v460.ml.ppo_sidecar_config import PPOSidecarConfig
+
+
+def _make_shutdown_wait(*, set_after: int = 2) -> Callable[..., bool]:
+    """N 回目の wait で shutdown する side effect."""
+    counter = {"calls": 0}
+
+    def _wait(*_args: object, **_kwargs: object) -> bool:
+        counter["calls"] += 1
+        if counter["calls"] >= set_after:
+            _shutdown_event.set()
+            return True
+        return False
+
+    return _wait
 
 
 class TestPPOSidecarConfig:
@@ -258,7 +275,7 @@ class TestPPOProbabilityHelpers:
         assert probs["buy"] > probs["sell"]
 
 
-class TestPPOSidecarSignalUpdate:
+class TestPPONeutralFallback:
     def test_push_neutral_fallback_writes_skip_signal(self, tmp_path: Path) -> None:
         signal_path = tmp_path / "ppo_signal.json"
 
@@ -269,6 +286,18 @@ class TestPPOSidecarSignalUpdate:
         assert loaded.action == "skip"
         assert loaded.action_probabilities["skip"] == pytest.approx(1.0)
 
+    def test_push_neutral_fallback_write_failure_is_suppressed(
+        self, tmp_path: Path
+    ) -> None:
+        signal_path = tmp_path / "ppo_signal.json"
+        with patch(
+            "scripts.v460.ml.ppo_retrain_scheduler.write_ppo_sidecar_signal",
+            side_effect=PermissionError("locked"),
+        ):
+            assert _push_neutral_fallback(signal_path) is False
+
+
+class TestPPOSidecarSignalUpdate:
     def test_update_sidecar_signal_writes_probabilities(self, tmp_path: Path) -> None:
         cfg = PPOSidecarConfig(
             data_path="data/ppo.csv",
@@ -327,6 +356,41 @@ class TestPPORetrainOnce:
         assert cfg.model_path.exists()
         mock_update_signal.assert_called_once()
 
+    def test_warm_start_prefers_load_and_continue(self, tmp_path: Path) -> None:
+        cfg = PPOSidecarConfig(
+            data_path=str(tmp_path / "ppo.csv"),
+            model_path=tmp_path / "ppo_sidecar.zip",
+            checkpoint_dir=tmp_path / "ckpt",
+            signal_path=tmp_path / "ppo_signal.json",
+        )
+        Path(cfg.data_path).write_text("timestamp,close\n1,100\n", encoding="utf-8")
+        cfg.model_path.write_bytes(b"existing-model")
+        fake_model = _FakePPOModel()
+        fake_signal = PPOSidecarSignal.from_probabilities(
+            timestamp="2026-04-01T00:00:00+00:00",
+            action_probabilities={"buy": 0.66, "sell": 0.20, "skip": 0.14},
+            model_version="ppo_v2",
+        )
+        fake_trainer = MagicMock()
+        fake_trainer.load_and_continue.return_value = fake_model
+
+        with (
+            patch(
+                "scripts.v460.ml.ppo_retrain_scheduler.SELLBiasMitigationPPOTrainer",
+                return_value=fake_trainer,
+            ),
+            patch(
+                "scripts.v460.ml.ppo_retrain_scheduler._update_ppo_sidecar_signal",
+                return_value=fake_signal,
+            ),
+        ):
+            result = retrain_once(cfg)
+
+        assert result.status == "deployed"
+        assert result.warm_start is True
+        fake_trainer.load_and_continue.assert_called_once()
+        fake_trainer.train.assert_not_called()
+
     def test_error_pushes_neutral_fallback(self, tmp_path: Path) -> None:
         cfg = PPOSidecarConfig(
             data_path=str(tmp_path / "ppo.csv"),
@@ -346,6 +410,119 @@ class TestPPORetrainOnce:
         loaded = read_ppo_sidecar_signal(cfg.signal_path)
         assert loaded is not None
         assert loaded.action == "skip"
+
+
+class TestPPORunScheduler:
+    @patch("scripts.v460.ml.ppo_retrain_scheduler._install_signal_handlers")
+    @patch("scripts.v460.ml.ppo_retrain_scheduler.retrain_once")
+    def test_single_iteration_then_shutdown(
+        self,
+        mock_retrain: MagicMock,
+        _mock_signals: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        data_file = tmp_path / "ppo.csv"
+        data_file.write_text("timestamp,close\n1,100\n", encoding="utf-8")
+        cfg = PPOSidecarConfig(
+            data_path=str(data_file),
+            check_interval_sec=1,
+            retrain_interval_sec=1,
+            history_path=tmp_path / "history.jsonl",
+        )
+        mock_retrain.return_value = PPORetrainResult(status="deployed", action="buy")
+
+        _shutdown_event.clear()
+        with (
+            patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait()),
+            patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
+            patch.object(
+                PPORetrainTrigger,
+                "should_retrain",
+                side_effect=[(True, "manual"), (False, "done")],
+            ),
+        ):
+            run_scheduler(cfg)
+
+        mock_retrain.assert_called_once()
+        _shutdown_event.clear()
+
+    @patch("scripts.v460.ml.ppo_retrain_scheduler._install_signal_handlers")
+    @patch("scripts.v460.ml.ppo_retrain_scheduler.retrain_once")
+    def test_crash_resilience(
+        self,
+        mock_retrain: MagicMock,
+        _mock_signals: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        data_file = tmp_path / "ppo.csv"
+        data_file.write_text("timestamp,close\n1,100\n", encoding="utf-8")
+        cfg = PPOSidecarConfig(
+            data_path=str(data_file),
+            check_interval_sec=1,
+            retrain_interval_sec=1,
+            signal_path=tmp_path / "ppo_signal.json",
+            history_path=tmp_path / "history.jsonl",
+        )
+        mock_retrain.side_effect = [
+            RuntimeError("boom"),
+            PPORetrainResult(status="deployed", action="buy"),
+        ]
+
+        _shutdown_event.clear()
+        with (
+            patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait(set_after=3)),
+            patch.object(_shutdown_event, "is_set", side_effect=[False, False, False, True]),
+            patch.object(
+                PPORetrainTrigger,
+                "should_retrain",
+                side_effect=[(True, "first"), (True, "second"), (False, "done")],
+            ),
+        ):
+            run_scheduler(cfg)
+
+        assert mock_retrain.call_count >= 2
+        loaded = read_ppo_sidecar_signal(cfg.signal_path)
+        assert loaded is not None
+        assert loaded.action == "skip"
+        _shutdown_event.clear()
+
+    @patch("scripts.v460.ml.ppo_retrain_scheduler._install_signal_handlers")
+    @patch("scripts.v460.ml.ppo_retrain_scheduler.retrain_once")
+    def test_record_result_exception_does_not_kill_loop(
+        self,
+        mock_retrain: MagicMock,
+        _mock_signals: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        data_file = tmp_path / "ppo.csv"
+        data_file.write_text("timestamp,close\n1,100\n", encoding="utf-8")
+        cfg = PPOSidecarConfig(
+            data_path=str(data_file),
+            check_interval_sec=1,
+            retrain_interval_sec=1,
+            history_path=tmp_path / "history.jsonl",
+        )
+        mock_retrain.return_value = PPORetrainResult(status="deployed", action="buy")
+
+        _shutdown_event.clear()
+        with (
+            patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait()),
+            patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
+            patch.object(
+                PPORetrainTrigger,
+                "should_retrain",
+                side_effect=[(True, "manual"), (False, "done")],
+            ),
+            patch.object(
+                PPORetrainTrigger,
+                "record_result",
+                side_effect=RuntimeError("record error"),
+            ),
+        ):
+            run_scheduler(cfg)
+
+        assert mock_retrain.call_count >= 1
+        _shutdown_event.clear()
 
     def test_update_signal_failure_pushes_neutral_fallback(self, tmp_path: Path) -> None:
         cfg = PPOSidecarConfig(
