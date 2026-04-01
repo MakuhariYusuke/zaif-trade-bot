@@ -32,17 +32,19 @@
 
 ### §0.2 まだ凍っている氷
 
-| 凍結物 | 出典 | 状態 |
-|--------|------|------|
-| Pipeline ceiling 100% 飽和 | 531#/536#/537# | ⏳ 0.25→0.35 未投入 |
-| 乗算膨張（9 段無制限累積） | 537# §3.2/P4 | ⏳ Stage Max Mult 未実装 |
-| Sidecar active 率 ~8%（TTL stale） | 537# P5/430# | ⏳ TTL 修正待ち |
-| sell_dynamic_kill の遅行性 | 532#/536# §2 | ⏳ Toxicity Budget 統合待ち |
-| CV Lead-Lag Widen buy 側 -3.21bps | 592# 提案 C | ⏳ 未修正 |
-| EV toxic fill tail loss | 592# 提案 A | ⏳ skip threshold 未設定 |
-| entry_gate / SAD / MCB 無効 | 600# P0 | ⏳ YAML 有効化待ち |
-| RMS additive pipeline | 581# | ⏳ A/B テスト未実施 |
-| one_sided_balance 配線欠落 | 596#/190# | ⏳ 設計のみ、実装なし |
+> **686# 時点ステータス更新** (2026-04-02)
+
+| 凍結物 | 出典 | 605# 時状態 | **686# 時点** |
+|--------|------|------|------|
+| Pipeline ceiling 100% 飽和 | 531#/536#/537# | ⏳ 0.25→0.35 未投入 | ✅ buy=0.35, sell=0.40 (641#) |
+| 乗算膨張（9 段無制限累積） | 537# §3.2/P4 | ⏳ Stage Max Mult 未実装 | ⏸️ 672# offset 無効性実証により棚上げ |
+| Sidecar active 率 ~8%（TTL stale） | 537# P5/430# | ⏳ TTL 修正待ち | ✅ 372# TTL=7800s に修正済み |
+| sell_dynamic_kill の遅行性 | 532#/536# §2 | ⏳ Toxicity Budget 統合待ち | ✅ 540# max_duration=600s + 685# hour_boost |
+| CV Lead-Lag Widen buy 側 -3.21bps | 592# 提案 C | ⏳ 未修正 | ✅ 641# offset_boost=1.0 で実質無効化 |
+| EV toxic fill tail loss | 592# 提案 A | ⏳ skip threshold 未設定 | ⏸️ 672# SG MI≈0 により EV skip 単独効果疑問で棚上げ |
+| entry_gate / SAD / MCB 無効 | 600# P0 | ⏳ YAML 有効化待ち | ✅ SAD=true (622#), MCB=true (660#), entry_gate=observe モード |
+| RMS additive pipeline | 581# | ⏳ A/B テスト未実施 | ⏸️ 672# pipeline 無効性実証により優先度低下 |
+| one_sided_balance 配線欠落 | 596#/190# | ⏳ 設計のみ、実装なし | ✅ one_sided_balance_rescue_offset=true で別経路対応 |
 
 ### §0.3 廟（みたまや）に祭られているもの
 
@@ -142,47 +144,56 @@ ph0 ──── ph1 ──── ph2 ──── ph3 ──── ph3.1 ──
 
 ### §3.1 Tier 0: 即効施策（YAML 変更のみ、リスク極低）
 
-| # | 施策 | 出典 | 変更量 | 期待効果 |
-|---|------|------|--------|---------|
-| T0-1 | `offset_ceiling_ratio_*: 0.25→0.35` | 536#/537# | YAML 2 行 | pipeline 上位 ~30% のロジックが取引価格に反映 |
-| T0-2 | `composite_risk_enabled: true` | 537# P2/600# | YAML 1 行 | Soft Gate deadlock 緩和 |
-| T0-3 | entry_gate 有効化 | 600# P0 | YAML | 不利エントリ回避 |
-| T0-4 | spread_anomaly_detector 有効化 | 600# P0 | YAML | 急変時防御 |
-| T0-5 | micro_circuit_breaker 有効化 | 600# P0 | YAML | 連続逆行停止 |
+> **686# 時点ステータス更新** (2026-04-02)
+
+| # | 施策 | 出典 | 変更量 | 期待効果 | **686# 時点** |
+|---|------|------|--------|--------|------|
+| T0-1 | `offset_ceiling_ratio_*: 0.25→0.35` | 536#/537# | YAML 2 行 | pipeline 上位 ~30% のロジックが取引価格に反映 | ✅ buy=0.35, sell=0.40 (641#) |
+| T0-2 | `composite_risk_enabled: true` | 537# P2/600# | YAML 1 行 | Soft Gate deadlock 緩和 | ✅ threshold=1.0 で有効化済み |
+| T0-3 | entry_gate 有効化 | 600# P0 | YAML | 不利エントリ回避 | ⚠️ observe モード（enabled=false + CalibrationMap 接続。607# hot-reload 対応済） |
+| T0-4 | spread_anomaly_detector 有効化 | 600# P0 | YAML | 急変時防御 | ✅ enabled=true (622#) |
+| T0-5 | micro_circuit_breaker 有効化 | 600# P0 | YAML | 連続逆行停止 | ✅ enabled=true, halt_sigma=2.5 (660#) |
 
 **投入方針**: T0-1〜T0-5 を一括投入し、24h fill_rate/AS-PnL を計測。問題があれば個別にロールバック。
+> **686# 評価**: 4/5 完了。T0-3 (entry_gate) のみ observe モードだが CalibrationMap 接続済みで有効化準備は完了。
 
 ### §3.2 Tier 1: 短期実装（コード 1-30 行、1-3 日）
 
-| # | 施策 | 出典 | 効果の根拠 |
-|---|------|------|-----------|
-| T1-1 | Stage Max Mult (各段 cap 1.5) | 537# P4 | 9 段全 max でも 0.05×1.5⁸=1.28。ceiling 0.50 で自然に収まる |
-| T1-2 | CV Lead-Lag Widen 廃止 or 片側撤退化 | 592# 提案 C | buy 側 -3.21bps の直接止血 |
-| T1-3 | EV toxic skip threshold (-5.0) | 592# 提案 A | tail loss 帯域の事前回避 |
-| T1-4 | Sidecar TTL 修正 | 537# P5 | active 率 8%→~90%（retrain_interval=7200s に合わせる） |
-| T1-5 | sell_dynamic_kill max_duration: 1800→600 | 537# Phase 0 | kill 状態の長期化防止 |
+> **686# 時点ステータス更新** (2026-04-02)
+
+| # | 施策 | 出典 | 効果の根拠 | **686# 時点** |
+|---|------|------|----------|------|
+| T1-1 | Stage Max Mult (各段 cap 1.5) | 537# P4 | 9 段全 max でも 0.05×1.5⁸=1.28。ceiling 0.50 で自然に収まる | ⏸️ 672# で offset pipeline 自体の寄与が限定的と判明。棚上げ |
+| T1-2 | CV Lead-Lag Widen 廃止 or 片側撤退化 | 592# 提案 C | buy 側 -3.21bps の直接止血 | ✅ 641# offset_boost=1.0 で実質無効化 |
+| T1-3 | EV toxic skip threshold (-5.0) | 592# 提案 A | tail loss 帯域の事前回避 | ⏸️ 672# SG MI≈0 + 686# 全pre-fill特徴量 \|r\|<0.16 で予測不能と実証。棚上げ |
+| T1-4 | Sidecar TTL 修正 | 537# P5 | active 率 8%→~90%（retrain_interval=7200s に合わせる） | ✅ 372# TTL=7800s |
+| T1-5 | sell_dynamic_kill max_duration: 1800→600 | 537# Phase 0 | kill 状態の長期化防止 | ✅ 540# duration=600s |
 
 ### §3.3 Tier 2: 中期施策（構造変更、1-2 週）
 
-| # | 施策 | 出典 | 前提条件 |
-|---|------|------|---------|
-| T2-1 | OFI-Lite (cycle OB 差分 → Toxicity 入力) | 537# P3 | OB snapshot が cycle 毎に取得可能 (✅ 既存) |
-| T2-2 | RMS additive pipeline A/B テスト | 581# | fill_rate 比較の統計的検出力確保 (n≥300) |
-| T2-3 | min_spread_jpy の ATR 連動化 | 537# §2.1 | Parkinson σ が既に実装済み (305#) |
-| T2-4 | analysis scripts batch 統一 (A→C→B) | 598# | output/CLI contract の標準化 |
-| T2-5 | **G3.1-stress テスト実施** | 0# §3.5.1 | G3 PASS 済みモデル + stress パラメータ注入 |
+> **686# 時点ステータス更新** (2026-04-02)
+
+| # | 施策 | 出典 | 前提条件 | **686# 時点** |
+|---|------|------|---------|------|
+| T2-1 | OFI-Lite (cycle OB 差分 → Toxicity 入力) | 537# P3 | OB snapshot が cycle 毎に取得可能 (✅ 既存) | ❌ 未着手。672# AS予測モデル再構築の入力候補 |
+| T2-2 | RMS additive pipeline A/B テスト | 581# | fill_rate 比較の統計的検出力確保 (n≥300) | ⏸️ 672# pipeline 無効性実証により優先度低下 |
+| T2-3 | min_spread_jpy の ATR 連動化 | 537# §2.1 | Parkinson σ が既に実装済み (305#) | ✅ min_spread_atr_enabled=true、686# cap_bps=1.2 |
+| T2-4 | analysis scripts batch 統一 (A→C→B) | 598# | output/CLI contract の標準化 | ❌ 未着手 |
+| T2-5 | **G3.1-stress テスト実施** | 0# §3.5.1 | G3 PASS 済みモデル + stress パラメータ注入 | ❌ 未着手。SAC 実効寄与≈0 で優先度再検討要 |
 
 ### §3.4 Tier 3: 長期施策（設計判断を要する）
 
-| # | 施策 | 出典 | 判断ポイント |
-|---|------|------|-------------|
-| T3-1 | A-S 最適スプレッド参照値導入 | 537# P6 | κ（注文到着強度）の推定精度に依存 |
-| T3-2 | sell_dynamic_kill → Toxicity Budget 完全統合 | 537# Phase 2 | graduated response の calibration |
-| T3-3 | SAC action 幅拡大 (±0.15→±5.0bps) | 537# P5 | SAC 学習安定性の再検証が必須 |
-| T3-4 | eDRC パラメータ再推定 (α=β=0 無効化中) | 600# P3 | 576# インシデント後の安全な再有効化手順 |
-| T3-5 | lib→ztb 統合 (106# R5) | 556# | mypy 二重名前空間問題の根本解決 |
-| T3-6 | one_sided_balance 配線復旧 | 596# | 190# 設計の再評価（offset 分岐で実質迂回中）|
-| T3-7 | walk-forward SAC 再訓練 | 422#/426# | 100K G3 FAIL の根因（val_ratio 交絡 vs 表現力限界）の切り分け |
+> **686# 時点ステータス更新** (2026-04-02)
+
+| # | 施策 | 出典 | 判断ポイント | **686# 時点** |
+|---|------|------|----------|------|
+| T3-1 | A-S 最適スプレッド参照値導入 | 537# P6 | κ（注文到着強度）の推定精度に依存 | ❌ 未着手 |
+| T3-2 | sell_dynamic_kill → Toxicity Budget 完全統合 | 537# Phase 2 | graduated response の calibration | ⏸️ 685# hour_boost で部分対応。完全統合は長期 |
+| T3-3 | SAC action 幅拡大 (±0.15→±5.0bps) | 537# P5 | SAC 学習安定性の再検証が必須 | ❌ 未着手。684# A2 (sell-aware) が前提 |
+| T3-4 | eDRC パラメータ再推定 (α=β=0 無効化中) | 600# P3 | 576# インシデント後の安全な再有効化手順 | ❌ 未着手 |
+| T3-5 | lib→ztb 統合 (106# R5) | 556# | mypy 二重名前空間問題の根本解決 | ❌ 未着手 |
+| T3-6 | one_sided_balance 配線復旧 | 596# | 190# 設計の再評価（offset 分岐で実質迂回中）| ✅ rescue_offset=true で別経路対応 |
+| T3-7 | walk-forward SAC 再訓練 | 422#/426# | 100K G3 FAIL の根因（val_ratio 交絡 vs 表現力限界）の切り分け | ❌ 未着手 |
 
 ---
 
@@ -229,6 +240,12 @@ ph0 ──── ph1 ──── ph2 ──── ph3 ──── ph3.1 ──
 **構造的ボトルネック 2 点**:
 1. **Pipeline ceiling 飽和**: 9 段の演算結果が取引価格に反映されていない（531# 実証）
 2. **SAC active 率 ~8%**: Alpha 層の出力が TTL stale で 92% 失効
+
+> **686# 時点の修正状態** (2026-04-02):
+> - Execution 層: ceiling buy=0.35, sell=0.40 に引上げ済み (641#)。飽和は部分緩和
+> - Safety 層: SAD ✅ (622#), MCB ✅ (660#), composite_risk ✅, entry_gate=observe。SkipGate は MI≈0 実証で bypass 提案中 (686#)
+> - Alpha 層: Sidecar TTL=7800s (372#) で active 率改善済み。sell-aware reward は 684# Codex タスク待ち
+> - 新層: trend_5s_sell_guard ✅ (684# M1 実装)、sell_hour_offset_boost ✅ (685#)
 
 この 2 点が「G3 PASS (PF=1.145) の実環境での再現」を阻む最大要因。
 
