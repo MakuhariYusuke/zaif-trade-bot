@@ -50,9 +50,12 @@ class PPOTrainerAutoHalt:
     """Auto-halt capable PPO trainer."""
 
     data_path: str
+    checkpoint_dir: Path
     training_config: PPOTrainingConfig
 
     def __init__(self, params: TrainerParams) -> None: ...
+    def _create_callback(self) -> Any: ...
+    def start_training(self) -> None: ...
     def train(self, session_id: str) -> Optional[MaskablePPO]:
         """Train the model with auto-halt capability."""
         ...
@@ -85,3 +88,15 @@ class PPOTrainer(PPOTrainerAutoHalt):
 
 
 def wrap_env_with_action_masker(env: HeavyTradingEnv) -> ActionMasker: ...
+def build_ppo_model_kwargs(
+    config: PPOTrainingConfig,
+    *,
+    tensorboard_log: str | None,
+    device: str = ...,
+) -> Dict[str, object]: ...
+def load_ppo_model_for_env(
+    model_path: Path,
+    *,
+    use_custom_ppo: bool,
+    env: ActionMasker,
+) -> MaskablePPO: ...

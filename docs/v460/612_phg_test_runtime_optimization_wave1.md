@@ -1051,3 +1051,36 @@ durations 変化で特に効いた点:
   - broader regression:
     - PPO/SAC + fill_quality + enricher + target_entropy
     - `562 passed, 3 skipped in 23.41s`
+
+- 2026-04-02 fill-quality / PPO structure bundle:
+  - `ztb/metrics/fill_record_io.py`
+    - `save_fill_records(...)`
+    - `iter_fill_records(...)`
+    - `load_fill_records(...)`
+    - `iter_fill_records_glob(...)`
+    - `load_fill_records_glob(...)`
+    - `fill_records_to_dataframe(...)`
+    - `iter_fill_record_dicts(...)`
+    を I/O 層へ集約
+  - `ztb/metrics/fill_quality.py`
+    - I/O utilities を再 export する thin surface に整理
+  - `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+    - warm-start / cold-start の実行フローを helper 分割
+  - `tests/integration/test_custom_ppo_integration.py`
+    - warm-start で policy bias を再ニュートラライズしない guard
+  - `tests/unit/v460/test_trend_5s_sell_guard.py`
+    - `trend_5s_at_order` telemetry guard
+  - focused:
+    - `tests/unit/v460/test_fill_quality.py`
+    - `tests/integration/test_custom_ppo_integration.py`
+    - `tests/unit/v460/test_ppo_warm_start.py`
+    - `tests/training/test_ppo_trainer.py`
+    - `tests/unit/v460/test_trend_5s_sell_guard.py`
+    - `tests/unit/v460/test_sac_sell_aware_reward.py`
+    - `265 passed in 8.55s`
+  - broader regression:
+    - PPO/SAC scheduler + sell-aware + trend guard + fill_quality + enricher
+    - `509 passed, 1 skipped in 13.95s`
+  - full suite:
+    - `tests/ -x --tb=short --no-cov`
+    - 少なくとも 16% 超までは no failure を確認

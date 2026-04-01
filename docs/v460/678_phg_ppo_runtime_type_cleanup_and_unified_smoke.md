@@ -657,3 +657,59 @@ shared helper で drift を止める方が安全と判断した。
 3. `scripts/` 配下に残る generic helper を今後も `ztb/training/sidecar/` へ戻すこと
 
 今回の shared helper 追加は、この 3 点の前提整備として妥当だった。
+
+### 25. SELL mitigation warm-start / cold-start の共有フロー整理
+
+`ztb/training/experiments/sell_mitigation_ppo_trainer.py` は、
+
+- cold start 時の model 準備
+- warm-start 時の model load
+- `learn()` 実行
+- probe cleanup
+
+が `train()` と `load_and_continue()` に分散しており、保守観点で drift しやすかった。
+
+今回は以下へ分割した。
+
+- `_prepare_cold_start_model()`
+- `_prepare_warm_start_model(...)`
+- `_run_current_model_training(...)`
+- `_close_probe()`
+
+重要な判断は、
+
+- cold start では従来どおり `neutralize_policy_bias()` を維持
+- warm-start では学習済み重みを再ニュートラライズしない
+
+という点。これにより warm-start の state 継承を壊さず、trainer-owned な
+probe / weighting の wiring だけ current contract に揃えられた。
+
+合わせて `ztb/training/core/ppo_trainer.pyi` も runtime surface に追随させ、
+
+- `build_ppo_model_kwargs(...)`
+- `load_ppo_model_for_env(...)`
+- `_create_callback()`
+- `start_training()`
+- `checkpoint_dir`
+
+を明示した。PPO 周辺の `attr-defined` ノイズを増やさないための小さいが重要な整理。
+
+### 26. 684# の hidden residual: trend_5s guard telemetry と regression
+
+684# 系は大筋実装済みだったが、post-hoc 分析の前提として
+`trend_5s_at_order` の guard 値保持を regression で固定した。
+
+- `tests/unit/v460/test_trend_5s_sell_guard.py`
+  - hard veto 時に `trend_5s_at_order == 4.0` を明示確認
+- `tests/integration/test_custom_ppo_integration.py`
+  - SELL mitigation warm-start で
+    - `_setup_sell_bonus_weighting()` は current wiring として維持
+    - `neutralize_policy_bias()` は warm-start で再実行しない
+  ことを回帰化
+
+これは 684# の本文に直接は書かれていないが、
+
+- warm-start state continuity
+- guard の事後分析可能性
+
+の 2 点を考えると必要だった。

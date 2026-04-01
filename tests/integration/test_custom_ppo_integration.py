@@ -244,6 +244,8 @@ class TestSellMitigationTrainerIntegration:
             patch.object(CustomPPO, "learn", autospec=True, return_value=None) as mock_learn,
             patch.object(trainer, "_final_validation", return_value=None),
             patch.object(trainer, "start_training", return_value=None),
+            patch.object(trainer, "_setup_sell_bonus_weighting", return_value=None) as mock_weights,
+            patch.object(trainer, "neutralize_policy_bias", return_value=None) as mock_neutralize,
         ):
             model = trainer.load_and_continue(
                 model_path=model_path,
@@ -254,3 +256,5 @@ class TestSellMitigationTrainerIntegration:
         assert model is loaded_model
         mock_load.assert_called_once()
         mock_learn.assert_called_once()
+        mock_weights.assert_called_once()
+        mock_neutralize.assert_not_called()

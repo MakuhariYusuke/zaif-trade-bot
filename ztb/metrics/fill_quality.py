@@ -12,7 +12,6 @@ E5: adverse_selection_ratio — 約定後 30 秒で逆行した注文の割合
 
 from __future__ import annotations
 
-import json
 import logging
 import math
 from collections import deque
@@ -26,10 +25,17 @@ from scipy import stats
 from ztb.io.jsonl import iter_jsonl_objects
 from ztb.metrics.fill_record_io import (
     apply_fill_record_filters,
+    fill_records_to_dataframe,
+    iter_fill_record_dicts,
     iter_fill_record_objects_from_files,
     iter_fill_record_objects_glob,
+    iter_fill_records,
+    iter_fill_records_glob,
     list_fill_record_files,
     load_fill_record_objects_glob,
+    load_fill_records,
+    load_fill_records_glob,
+    save_fill_records,
 )
 from ztb.utils.dataclass_utils import get_dataclass_field_names, shallow_asdict
 
@@ -1183,82 +1189,6 @@ def g1_2_full_judgment(
         "metrics_summary": metrics.to_dict(),
     }
 
-# ======================================================================
-# I/O utilities
-# ======================================================================
-
-def save_fill_records(records: Iterable[FillRecord], path: str | Path) -> None:
-    """JSONL 形式で FillRecord を保存.
-
-    032#17: バッチ全体を tempfile に書き出してから append する。
-    SIGINT / ディスクフル時の不完全行混入を防止。
-    """
-    import os
-    import shutil
-    import tempfile
-
-    p = Path(path)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    payload_parts: list[str] = []
-    count = 0
-    for record_dict in iter_fill_record_dicts(records):
-        payload_parts.append(json.dumps(record_dict, ensure_ascii=False))
-        payload_parts.append("\n")
-        count += 1
-    payload = "".join(payload_parts)
-    # Atomic batch: write to temp, fsync, then append to target
-    tmp_fd, tmp_path = tempfile.mkstemp(dir=str(p.parent), suffix=".tmp")
-    try:
-        with os.fdopen(tmp_fd, "w", encoding="utf-8") as tmp_f:
-            tmp_f.write(payload)
-            tmp_f.flush()
-            os.fsync(tmp_f.fileno())
-        with open(p, "a", encoding="utf-8") as f:
-            with open(tmp_path, "r", encoding="utf-8") as tmp_r:
-                shutil.copyfileobj(tmp_r, f, length=1024 * 1024)
-            f.flush()
-            os.fsync(f.fileno())
-    finally:
-        try:
-            os.remove(tmp_path)
-        except OSError:
-            pass
-    logger.info(f"Saved {count} fill records to {p}")
-
-def iter_fill_records(path: str | Path) -> Iterator[FillRecord]:
-    """JSONL ファイルから FillRecord を逐次読み込み.
-
-    032# #19: 破損行はスキップしてログ出力。
-    101# §5: cycle_id による重複排除 (SIGINT 中断時の partial+emergency 重複対策)。
-    349# P2: iter_jsonl_objects に委譲してパースロジックを一元化。
-    """
-    p = Path(path)
-    if not p.exists():
-        return
-    seen_ids: set[str] = set()
-    duplicates = 0
-    loaded = 0
-    for obj in iter_jsonl_objects(p, warn_malformed=True):
-        try:
-            rec = FillRecord.from_dict(obj)
-        except (TypeError, KeyError) as e:
-            logger.warning(f"Skipped invalid record in {p.name}: {e}")
-            continue
-        if rec.cycle_id in seen_ids:
-            duplicates += 1
-            continue
-        seen_ids.add(rec.cycle_id)
-        loaded += 1
-        yield rec
-    if duplicates:
-        logger.info(f"Deduplicated {duplicates} records in {p.name}")
-    logger.info(f"Loaded {loaded} fill records from {p}")
-
-def load_fill_records(path: str | Path) -> list[FillRecord]:
-    """JSONL ファイルから FillRecord を読み込み."""
-    return list(iter_fill_records(path))
-
-
 def detect_split_brain(
     records: Sequence[FillRecord],
     *,
@@ -1327,59 +1257,6 @@ def detect_split_brain(
             f"pids={events[0].get('pid_a')}/{events[0].get('pid_b')}"
         )
     return events
-
-
-def fill_records_to_dataframe(records: Iterable[FillRecord]) -> "pd.DataFrame":
-    """FillRecord iterable を DataFrame に変換する."""
-    import pandas as pd
-
-    return pd.DataFrame.from_records(iter_fill_record_dicts(records))
-
-
-def iter_fill_record_dicts(records: Iterable[FillRecord]) -> Iterator[FillRecordPayload]:
-    """FillRecord iterable を serializable dict へ変換する共通 bridge."""
-    for record in records:
-        yield record.to_dict()
-
-def _iter_fill_record_files(
-    directory: Path,
-    *,
-    include_emergency: bool = True,
-) -> Iterator[Path]:
-    """内部互換: fill record 系 JSONL の対象ファイルを順序付きで列挙."""
-    yield from list_fill_record_files(directory, include_emergency=include_emergency)
-
-def iter_fill_records_glob(
-    directory: str | Path,
-    *,
-    include_emergency: bool = True,
-) -> Iterator[FillRecord]:
-    """ディレクトリ内の全 JSONL ファイルから FillRecord を逐次読み込み.
-
-    101# §5: cross-file 重複排除 (emergency dump との重複対策)."""
-    d = Path(directory)
-    files = list_fill_record_files(d, include_emergency=include_emergency)
-    if not files:
-        return
-    if len(files) == 1:
-        yield from iter_fill_records(files[0])
-        return
-    seen_ids: set[str] = set()
-    for path in files:
-        for record in iter_fill_records(path):
-            if record.cycle_id in seen_ids:
-                continue
-            seen_ids.add(record.cycle_id)
-            yield record
-
-def load_fill_records_glob(
-    directory: str | Path,
-    *,
-    include_emergency: bool = True,
-) -> list[FillRecord]:
-    """ディレクトリ内の全 JSONL ファイルから FillRecord を読み込み."""
-    return list(iter_fill_records_glob(directory, include_emergency=include_emergency))
-
 def partition_clean_records(
     records: Iterable[FillRecord],
     *,

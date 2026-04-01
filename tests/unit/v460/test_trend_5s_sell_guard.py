@@ -77,6 +77,7 @@ class TestTrend5sSellGuard:
         assert result.early_return_record is not None
         assert result.early_return_record.cancel_reason == CR.TREND_5S_SELL_GUARD_VETO
         assert result.early_return_record.trend_5s_guard_action == "veto"
+        assert result.early_return_record.trend_5s_at_order == pytest.approx(4.0)
 
     def test_sell_below_threshold(self) -> None:
         evaluator = _make_direct_evaluator(FillTestConfig(

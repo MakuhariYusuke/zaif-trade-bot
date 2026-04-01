@@ -10079,3 +10079,56 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `162 passed, 1 skipped in 11.39s`
   - broader regression:
     - `562 passed, 3 skipped in 23.41s`
+
+### 2026-04-02 fill record I/O structure + PPO warm-start flow tightening
+
+- `ztb/metrics/fill_record_io.py`
+  - FillRecord JSONL I/O をここへ集約
+  - 追加:
+    - `iter_fill_record_dicts(...)`
+    - `save_fill_records(...)`
+    - `iter_fill_records(...)`
+    - `load_fill_records(...)`
+    - `iter_fill_records_glob(...)`
+    - `load_fill_records_glob(...)`
+    - `fill_records_to_dataframe(...)`
+    - `__all__`
+- `ztb/metrics/fill_quality.py`
+  - metric / judgment 本体に責務を寄せ、I/O helpers は thin re-export に縮小
+- `ztb/training/core/ppo_trainer.pyi`
+  - runtime surface に追随
+  - `build_ppo_model_kwargs(...)`
+  - `load_ppo_model_for_env(...)`
+  - `_create_callback()`
+  - `start_training()`
+  - `checkpoint_dir`
+- `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+  - helper 分割:
+    - `_prepare_cold_start_model()`
+    - `_prepare_warm_start_model(...)`
+    - `_run_current_model_training(...)`
+    - `_close_probe()`
+  - warm-start では learned weights の continuity を優先し、
+    `neutralize_policy_bias()` を再実行しない設計に固定
+- `tests/integration/test_custom_ppo_integration.py`
+  - warm-start path で
+    - `_setup_sell_bonus_weighting()` 維持
+    - `neutralize_policy_bias()` 非実行
+  を guard
+- `tests/unit/v460/test_trend_5s_sell_guard.py`
+  - hard veto 時の `trend_5s_at_order` 記録を guard
+- validation
+  - targeted mypy:
+    - `fill_record_io.py`
+    - `sell_mitigation_ppo_trainer.py`
+    - `ppo_trainer.pyi`
+    - `test_custom_ppo_integration.py`
+    - `test_trend_5s_sell_guard.py`
+    - `Success: no issues found in 5 source files`
+  - focused:
+    - `265 passed, 5 warnings in 8.55s`
+  - broader regression:
+    - `509 passed, 1 skipped, 5 warnings in 13.95s`
+  - full suite:
+    - `tests/ -x --tb=short --no-cov`
+    - 少なくとも 16% 超までは no failure

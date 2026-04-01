@@ -1,15 +1,26 @@
 from __future__ import annotations
 
+import json
+import logging
+import os
 import math
+import shutil
+import tempfile
 from collections.abc import Iterable, Iterator, Mapping
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ztb.io.jsonl import iter_jsonl_objects
 
+if TYPE_CHECKING:
+    import pandas as pd
+
+    from ztb.metrics.fill_quality import FillRecord, FillRecordPayload
 
 FillRecordObject = dict[str, object]
+logger = logging.getLogger(__name__)
 
 
 def _normalize_fill_record_date(value: str | None) -> str | None:
@@ -199,6 +210,111 @@ def load_fill_record_objects_glob(
     )
 
 
+def iter_fill_record_dicts(records: Iterable["FillRecord"]) -> Iterator["FillRecordPayload"]:
+    """Convert FillRecord payloads into JSON-serializable dicts."""
+    for record in records:
+        yield record.to_dict()
+
+
+def save_fill_records(records: Iterable["FillRecord"], path: str | Path) -> None:
+    """Persist FillRecord values as JSONL using an atomic staging file."""
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    payload_parts: list[str] = []
+    count = 0
+    for record_dict in iter_fill_record_dicts(records):
+        payload_parts.append(json.dumps(record_dict, ensure_ascii=False))
+        payload_parts.append("\n")
+        count += 1
+    payload = "".join(payload_parts)
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=str(target.parent), suffix=".tmp")
+    try:
+        with os.fdopen(tmp_fd, "w", encoding="utf-8") as tmp_f:
+            tmp_f.write(payload)
+            tmp_f.flush()
+            os.fsync(tmp_f.fileno())
+        with open(target, "a", encoding="utf-8") as f:
+            with open(tmp_path, "r", encoding="utf-8") as tmp_r:
+                shutil.copyfileobj(tmp_r, f, length=1024 * 1024)
+            f.flush()
+            os.fsync(f.fileno())
+    finally:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+    logger.info("Saved %d fill records to %s", count, target)
+
+
+def iter_fill_records(path: str | Path) -> Iterator["FillRecord"]:
+    """Load FillRecord rows from a JSONL file while skipping malformed rows."""
+    from ztb.metrics.fill_quality import FillRecord
+
+    source = Path(path)
+    if not source.exists():
+        return
+    seen_ids: set[str] = set()
+    duplicates = 0
+    loaded = 0
+    for obj in iter_jsonl_objects(source, warn_malformed=True):
+        try:
+            rec = FillRecord.from_dict(obj)
+        except (TypeError, KeyError) as exc:
+            logger.warning("Skipped invalid record in %s: %s", source.name, exc)
+            continue
+        if rec.cycle_id in seen_ids:
+            duplicates += 1
+            continue
+        seen_ids.add(rec.cycle_id)
+        loaded += 1
+        yield rec
+    if duplicates:
+        logger.info("Deduplicated %d records in %s", duplicates, source.name)
+    logger.info("Loaded %d fill records from %s", loaded, source)
+
+
+def load_fill_records(path: str | Path) -> list["FillRecord"]:
+    """Load FillRecord rows from a JSONL file."""
+    return list(iter_fill_records(path))
+
+
+def iter_fill_records_glob(
+    directory: str | Path,
+    *,
+    include_emergency: bool = True,
+) -> Iterator["FillRecord"]:
+    """Load FillRecord rows from all matching JSONL files with cross-file dedupe."""
+    files = list_fill_record_files(directory, include_emergency=include_emergency)
+    if not files:
+        return
+    if len(files) == 1:
+        yield from iter_fill_records(files[0])
+        return
+    seen_ids: set[str] = set()
+    for path in files:
+        for record in iter_fill_records(path):
+            if record.cycle_id in seen_ids:
+                continue
+            seen_ids.add(record.cycle_id)
+            yield record
+
+
+def load_fill_records_glob(
+    directory: str | Path,
+    *,
+    include_emergency: bool = True,
+) -> list["FillRecord"]:
+    """Load FillRecord rows from all matching JSONL files."""
+    return list(iter_fill_records_glob(directory, include_emergency=include_emergency))
+
+
+def fill_records_to_dataframe(records: Iterable["FillRecord"]) -> "pd.DataFrame":
+    """Convert FillRecord values into a DataFrame."""
+    import pandas as pd
+
+    return pd.DataFrame.from_records(iter_fill_record_dicts(records))
+
+
 def _coerce_filter_timestamp(value: object) -> float | None:
     if isinstance(value, bool):
         return None
@@ -252,3 +368,20 @@ def apply_fill_record_filters(
         "date_to": date_to,
     }
     return filtered, filters
+
+
+__all__ = [
+    "FillRecordObject",
+    "apply_fill_record_filters",
+    "fill_records_to_dataframe",
+    "iter_fill_record_dicts",
+    "iter_fill_record_objects_from_files",
+    "iter_fill_record_objects_glob",
+    "iter_fill_records",
+    "iter_fill_records_glob",
+    "list_fill_record_files",
+    "load_fill_record_objects_glob",
+    "load_fill_records",
+    "load_fill_records_glob",
+    "save_fill_records",
+]

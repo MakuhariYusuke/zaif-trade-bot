@@ -291,6 +291,59 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         except Exception:
             return
 
+    def _close_probe(self) -> None:
+        """Close the optional gradient probe once per training cycle."""
+        if self.probe is not None:
+            self.probe.close()
+
+    def _run_current_model_training(
+        self,
+        *,
+        total_timesteps: int,
+        session_id: str,
+    ) -> CustomPPO:
+        """Train the current model using the shared mitigation training flow."""
+        if self.model is None:
+            raise RuntimeError("SELL mitigation model is not initialized")
+
+        self.start_training()
+        self.model.learn(
+            total_timesteps=total_timesteps,
+            callback=self._create_callback(),
+            tb_log_name=session_id,
+        )
+        self._ensure_lagrange_step_count()
+        self._final_validation()
+        return self.model
+
+    def _prepare_cold_start_model(self) -> CustomPPO:
+        """Create or reuse a cold-start model and apply mitigation-only setup."""
+        if self.model is None:
+            env = self._create_training_env()
+            self.model = self._create_custom_model(env)
+            logger.info("CustomPPO model created with integrated mitigations")
+
+        # Cold start keeps the existing bias-neutralization behavior.
+        self.neutralize_policy_bias()
+        self._setup_sell_bonus_weighting()
+        return self.model
+
+    def _prepare_warm_start_model(self, model_path: Path) -> CustomPPO:
+        """Load a warm-start model and attach current trainer-side mitigations."""
+        env = self._create_training_env()
+        self.model = cast(
+            CustomPPO,
+            load_ppo_model_for_env(
+                model_path,
+                use_custom_ppo=True,
+                env=env,
+            ),
+        )
+        # Keep trainer-owned weighting/probe wiring current, but do not
+        # re-neutralize already learned policy weights on warm resume.
+        self._setup_sell_bonus_weighting()
+        return self.model
+
     def load_and_continue(
         self,
         model_path: Path,
@@ -307,24 +360,11 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             return self.train(session_id=session_id)
 
         try:
-            env = self._create_training_env()
-            self.model = cast(
-                CustomPPO,
-                load_ppo_model_for_env(
-                    model_path,
-                    use_custom_ppo=True,
-                    env=env,
-                ),
-            )
-            self.start_training()
-            self.model.learn(
+            self._prepare_warm_start_model(model_path)
+            return self._run_current_model_training(
                 total_timesteps=total_timesteps,
-                callback=self._create_callback(),
-                tb_log_name=session_id,
+                session_id=session_id,
             )
-            self._ensure_lagrange_step_count()
-            self._final_validation()
-            return self.model
         except Exception as exc:
             logger.warning(
                 "SELL mitigation warm-start failed for %s (%s), falling back to cold start",
@@ -334,8 +374,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             )
             return self.train(session_id=session_id)
         finally:
-            if self.probe is not None:
-                self.probe.close()
+            self._close_probe()
 
     def train(self, session_id: str) -> MaskablePPO:
         """Train with SELL bias mitigation using CustomPPO."""
@@ -354,21 +393,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         logger.info(f"Data: {self.data_path}")
 
         try:
-            # ★ MODIFIED: Create model with CustomPPO instead of standard flow
-            if self.model is None:
-                env = self._create_training_env()
-                self.model = self._create_custom_model(env)
-
-                logger.info("CustomPPO model created with integrated mitigations")
-
-            # Neutralize policy bias
-            self.neutralize_policy_bias()
-
-            # Add action frequency weighting for SELL bias correction
-            self._setup_sell_bonus_weighting()
-
-            # Start training session
-            self.start_training()
+            self._prepare_cold_start_model()
 
             # Train the model - support both unified config (with a 'training'
             # section) and legacy flat config keys.
@@ -381,24 +406,19 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
                 f"   Expected iterations: ~{total_timesteps // self.config.get('n_steps', 2048)}"
             )
             logger.info("=" * 80)
-            self.model.learn(
+            self._run_current_model_training(
                 total_timesteps=total_timesteps,
-                callback=self._create_callback(),
-                tb_log_name=session_id,
+                session_id=session_id,
             )
             logger.info("=" * 80)
             logger.info("✅ model.learn() completed")
             logger.info("=" * 80)
-            self._ensure_lagrange_step_count()
-
-            # Final validation
-            self._final_validation()
 
             logger.info("=" * 60)
             logger.info("SELL Bias Mitigation Training Completed")
             logger.info("=" * 60)
 
-            return self.model
+            return cast(CustomPPO, self.model)
 
         except Exception as e:
             logger.error(f"Training failed: {e}")
@@ -414,8 +434,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
 
         finally:
             # Cleanup
-            if self.probe is not None:
-                self.probe.close()
+            self._close_probe()
 
     def _final_validation(self) -> None:
         """Perform final validation of SELL bias mitigation."""
