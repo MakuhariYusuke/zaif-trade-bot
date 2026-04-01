@@ -1137,3 +1137,32 @@ durations 変化で特に効いた点:
   - `tests/unit/v460/test_fill_quality.py`
   - `tests/unit/v460/test_enricher_skip_gate.py`
   - `356 passed, 1 skipped, 5 warnings in 9.31s`
+
+## 2026-04-02 heavy-setup 計画
+
+直近の grouped `--durations=20`:
+
+- `tests/unit/v460/test_680_ppo_retrain_scheduler.py::TestPPORetrainOnce::test_error_pushes_neutral_fallback`
+- `tests/unit/v460/test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data`
+- `tests/unit/v460/test_fill_quality.py::Test050EffectiveOffsetRecord::test_run_single_cycle_unpacks_3_values`
+- `tests/unit/v460/test_fill_quality.py::Test052AdaptSellOffsetSync::test_adapt_syncs_sell_offset_in_code`
+- `tests/unit/v460/test_sac_retrain_scheduler.py` crash-resilience / data-freshness 群
+
+次の batch は以下の 3 束でまとめて取る方針:
+
+1. scheduler exception-path / cleanup fixed-cost
+   - PPO/SAC scheduler test で traceback/logging/cycle cleanup を local helper で束ねる
+2. fill-quality command/wiring setup
+   - source/yaml inspect を行う test を read-only shared fixture に寄せる
+3. real-data smoke setup
+   - `enricher_skip_gate` は smoke と trainable をさらに分離し、
+     smoke 側は最小 sample / cached enriched subset を優先する
+
+この時点の grouped subset:
+
+- `tests/unit/v460/test_fill_quality.py`
+- `tests/unit/v460/test_enricher_skip_gate.py`
+- `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+- `tests/training/test_ppo_trainer.py`
+- `388 passed, 1 skipped, 5 warnings in 14.23s`

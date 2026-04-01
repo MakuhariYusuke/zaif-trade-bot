@@ -26,6 +26,10 @@ from ztb.metrics.fill_metrics_core import (
     mean_and_one_sided_pvalue,
     scan_fill_metric_inputs,
 )
+from ztb.metrics.fill_judgment_core import (
+    build_full_gate_pnl_checks,
+    resolve_gate_result,
+)
 from ztb.metrics.pnl_accumulators import PnlAccumulator, PnlWinAccumulator
 from ztb.metrics.fill_record_io import (
     apply_fill_record_filters,
@@ -914,78 +918,7 @@ def g1_2_full_judgment(
         "pass": metrics.queue_wait_median_sec <= max_wait,
     }
 
-    # F4: PnL — 有意に負でないこと (原初 E4 維持)
-    pnl_alpha = thresholds.get("pnl_alpha", 0.05)
-
-    # 122# B2: multi-timeframe PnL + Holm-Bonferroni 補正
-    # 3 タイムフレーム (30s, 60s, 120s) の p値を収集し Holm 補正
-    pnl_tests = [
-        ("F4_pnl_30s", metrics.post_fill_30s_pnl_mean, metrics.post_fill_30s_pnl_pvalue,
-         metrics.post_fill_30s_pnl_ci_upper),
-        ("F4b_pnl_60s", metrics.post_fill_60s_pnl_mean, metrics.post_fill_60s_pnl_pvalue,
-         None),
-        ("F4c_pnl_120s", metrics.post_fill_120s_pnl_mean, metrics.post_fill_120s_pnl_pvalue,
-         None),
-    ]
-    # Holm-Bonferroni: p値を昇順ソートし α/(m-rank) で比較
-    # 「有意に負でない」ことを確認 → 有意に負 = FAIL
-    raw_pvals = [(name, p) for name, _, p, _ in pnl_tests]
-    sorted_pvals = sorted(raw_pvals, key=lambda x: x[1])
-    m = len(sorted_pvals)
-    holm_adjusted: dict[str, float] = {}
-    for rank, (name, p_raw) in enumerate(sorted_pvals):
-        # Holm 補正済み p値 = min(p_raw * (m - rank), 1.0)
-        holm_adjusted[name] = min(p_raw * (m - rank), 1.0)
-
-    for name, mean_val, p_raw, ci_upper in pnl_tests:
-        p_holm = holm_adjusted[name]
-        if mean_val >= 0:
-            f_pass = True
-        elif p_holm >= pnl_alpha:
-            f_pass = True  # 負だが Holm 補正後も有意でない
-        else:
-            f_pass = False
-        check_data: dict = {
-            "value": mean_val,
-            "pvalue_raw": p_raw,
-            "pvalue_holm": round(p_holm, 6),
-            "alpha": pnl_alpha,
-            "pass": f_pass,
-        }
-        if ci_upper is not None:
-            check_data["ci_upper"] = ci_upper
-        checks[name] = check_data
-
-    # F4d: PnL mean floor — 期待値がマイナスならリスク警告 (123# Gemini review Critical 1)
-    # 「有意に負でない」だけでなく、平均自体が許容範囲内であることを要求
-    pnl_mean_floor = thresholds.get("pnl_mean_floor_bps", -0.10)  # default: -0.10 bps
-    pnl_mean_hard_floor = thresholds.get("pnl_mean_hard_floor_bps", -0.50)  # hard FAIL
-    pnl_30s_mean = metrics.post_fill_30s_pnl_mean
-    if pnl_30s_mean >= pnl_mean_floor:
-        f4d_pass = True
-        f4d_watch = False
-    elif pnl_30s_mean >= pnl_mean_hard_floor:
-        f4d_pass = True  # soft WATCH — 統計的に有意でなくても注意
-        f4d_watch = True
-    else:
-        f4d_pass = False  # hard FAIL — 許容損失を超過
-        f4d_watch = False
-    checks["F4d_pnl_mean_floor"] = {
-        "value": pnl_30s_mean,
-        "floor": pnl_mean_floor,
-        "hard_floor": pnl_mean_hard_floor,
-        "pass": f4d_pass,
-        "watch": f4d_watch,
-    }
-
-    # 後方互換: F4_pnl キーも維持 (旧テスト参照用)
-    checks["F4_pnl"] = {
-        "value": metrics.post_fill_30s_pnl_mean,
-        "pvalue": metrics.post_fill_30s_pnl_pvalue,
-        "ci_upper": metrics.post_fill_30s_pnl_ci_upper,
-        "alpha": pnl_alpha,
-        "pass": checks["F4_pnl_30s"]["pass"],
-    }
+    checks.update(build_full_gate_pnl_checks(metrics, thresholds))
 
     # F5: AS_ratio (115# Q10.2(B): 35→30)
     max_as = thresholds.get("max_adverse_selection_ratio", 0.30)
@@ -1019,15 +952,7 @@ def g1_2_full_judgment(
         "pass": metrics.attempted_orders >= min_n,
     }
 
-    all_pass = all(c["pass"] for c in checks.values())
-    is_watch = any(c.get("watch", False) for c in checks.values())
-
-    if not all_pass:
-        gate_result = "FAIL"
-    elif is_watch:
-        gate_result = "WATCH"
-    else:
-        gate_result = "PASS"
+    gate_result, is_watch = resolve_gate_result(checks)
 
     return {
         "gate": "G1.2-full",

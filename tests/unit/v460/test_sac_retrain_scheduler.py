@@ -414,6 +414,8 @@ def _run_retrain_once_with_patches(
         patch("scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check", return_value=False),
         patch("scripts.v460.lib.data_loader.load_parquet", return_value=_MOCK_OHLCV_DF),
         patch("scripts.v460.ml.sac_retrain_scheduler.cleanup_training_resources", return_value=None),
+        patch("scripts.v460.ml.sac_retrain_scheduler.logger.error", return_value=None),
+        patch("scripts.v460.ml.sac_retrain_scheduler.logger.warning", return_value=None),
         _mock_sb3_import(mock_model) as mock_sac_cls,
     ):
         yield mock_sac_cls, mock_evaluate_model

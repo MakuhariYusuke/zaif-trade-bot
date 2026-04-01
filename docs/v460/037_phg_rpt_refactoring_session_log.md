@@ -10249,3 +10249,15 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - regression:
   - targeted mypy: `Success: no issues found in 3 source files`
   - focused/broader pytest: `356 passed, 1 skipped, 5 warnings in 9.31s`
+
+- `fill_quality` の judgment/report 長大化を追加整理
+  - 新規: [fill_judgment_core.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_judgment_core.py)
+  - [fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py)
+    の `g1_2_full_judgment()` から multi-timeframe PnL 判定と gate result 解決を helper 化
+- heavy test setup の grouped plan を
+  [612_phg_test_runtime_optimization_wave1.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/612_phg_test_runtime_optimization_wave1.md)
+  に追記
+- scheduler test では traceback/logging fixed-cost を patch helper に寄せ始めた
+- regression:
+  - targeted mypy: `Success: no issues found in 2 source files`
+  - focused pytest: `284 passed, 5 warnings in 7.47s`

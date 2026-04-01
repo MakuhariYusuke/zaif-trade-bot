@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 import time
 from types import SimpleNamespace
+from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -44,6 +46,27 @@ def _make_shutdown_wait(*, set_after: int = 2) -> Callable[..., bool]:
         return False
 
     return _wait
+
+
+@contextmanager
+def _patch_scheduler_runtime_overheads() -> Iterator[None]:
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch(
+                "scripts.v460.ml.ppo_retrain_scheduler._cleanup_training_cycle",
+                return_value=None,
+            )
+        )
+        stack.enter_context(
+            patch("scripts.v460.ml.ppo_retrain_scheduler.logger.error", return_value=None)
+        )
+        stack.enter_context(
+            patch(
+                "scripts.v460.ml.ppo_retrain_scheduler.logger.warning",
+                return_value=None,
+            )
+        )
+        yield
 
 
 class TestPPOSidecarConfig:
@@ -347,10 +370,7 @@ class TestPPORetrainOnce:
                 "scripts.v460.ml.ppo_retrain_scheduler._update_ppo_sidecar_signal",
                 return_value=fake_signal,
             ) as mock_update_signal,
-            patch(
-                "scripts.v460.ml.ppo_retrain_scheduler._cleanup_training_cycle",
-                return_value=None,
-            ),
+            _patch_scheduler_runtime_overheads(),
         ):
             result = retrain_once(cfg)
 
@@ -387,10 +407,7 @@ class TestPPORetrainOnce:
                 "scripts.v460.ml.ppo_retrain_scheduler._update_ppo_sidecar_signal",
                 return_value=fake_signal,
             ),
-            patch(
-                "scripts.v460.ml.ppo_retrain_scheduler._cleanup_training_cycle",
-                return_value=None,
-            ),
+            _patch_scheduler_runtime_overheads(),
         ):
             result = retrain_once(cfg)
 
@@ -417,10 +434,7 @@ class TestPPORetrainOnce:
                 "scripts.v460.ml.ppo_retrain_scheduler._push_neutral_fallback",
                 return_value=True,
             ) as mock_fallback,
-            patch(
-                "scripts.v460.ml.ppo_retrain_scheduler._cleanup_training_cycle",
-                return_value=None,
-            ),
+            _patch_scheduler_runtime_overheads(),
         ):
             result = retrain_once(cfg)
 
