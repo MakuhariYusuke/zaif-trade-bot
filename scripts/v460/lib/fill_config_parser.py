@@ -265,6 +265,7 @@ def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
     if sg.get("enabled") is not None:
         kwargs["skip_gate_enabled"] = sg["enabled"]
     sg_map = {
+        "bypass_mode": "skip_gate_bypass_mode",
         "mode": "skip_gate_mode",
         "model_path": "skip_gate_model_path",
         # 141# P1-01: side 別モデルパス

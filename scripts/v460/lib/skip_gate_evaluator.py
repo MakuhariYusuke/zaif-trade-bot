@@ -933,6 +933,19 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             )
 
             if decision.should_skip:
+                if self._config.skip_gate_bypass_mode:
+                    result.bypassed = True
+                    result.skipped = False
+                    logger.info(
+                        "[skip_gate] 686# BYPASS: %s skip suppressed "
+                        "(score=%.3f, reason=%s, model=%s, features=%d)",
+                        side,
+                        result.score,
+                        result.reason,
+                        result.model_used,
+                        decision.features_used,
+                    )
+                    return result
                 logger.info(
                     f"[skip_gate] SKIP: {side} order skipped "
                     f"(score={result.score:.3f}, reason={result.reason}, "

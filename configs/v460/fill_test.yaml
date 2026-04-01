@@ -456,6 +456,7 @@ skip_gate:
   as_threshold_sell: 0.50      # 100# P0-2: sell 側厳格化 (旧 0.60 → 0.50)
   pnl_threshold: -0.5          # 190# D: 0.0→-0.5 (ev_weighted score が常時負のため閾値緩和)
   max_skip_rate: 0.3               # 674# 0.4→0.3復元: 672# CI=[−0.53,+0.07]でskip増はPnL改善に寄与せず。fill rate直結
+  bypass_mode: true            # 686# SG-1: score/telemetry は維持しつつブロック停止
   use_ob_features: true        # 127# H4: retrain と統一 (false→true)
   # 088# 動的閾値較正: 目標 skip 率ベースで閾値を自動調整
   adaptive_threshold: true     # P(AS) 分位点から閾値を動的設定

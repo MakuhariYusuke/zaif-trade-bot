@@ -63,6 +63,7 @@ class _PreOrderPhaseResult:
     effective_offset_ratio: float
     regime_lot: float
     skip_gate_skipped: bool | None
+    skip_gate_bypassed: bool | None
     skip_gate_score: float | None
     skip_gate_reason: str | None
     skip_gate_model_used: str | None
@@ -912,6 +913,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             effective_offset_ratio=offset_result.effective_offset_ratio,
             regime_lot=regime_lot,
             skip_gate_skipped=sg.skipped,
+            skip_gate_bypassed=sg.bypassed or None,
             skip_gate_score=sg.score,
             skip_gate_reason=sg.reason,
             skip_gate_model_used=sg.model_used,
@@ -1431,6 +1433,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             cancel_failed_likely_filled=fill_phase.cancel_failed_likely_filled,
             pnl=pnl,
             sg_skipped=pre_order.skip_gate_skipped,
+            sg_bypassed=pre_order.skip_gate_bypassed,
             sg_score=pre_order.skip_gate_score,
             sg_reason=pre_order.skip_gate_reason,
             sg_model_used=pre_order.skip_gate_model_used,

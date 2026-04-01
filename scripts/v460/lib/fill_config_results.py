@@ -24,6 +24,7 @@ class SkipGateResult:
     """SkipGate ML 判定結果 (run_single_cycle 内部)."""
 
     skipped: bool | None = None
+    bypassed: bool = False
     score: float | None = None
     reason: str | None = None
     model_used: str | None = None

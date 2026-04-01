@@ -557,6 +557,21 @@ class TestFillRecord:
         assert r.skip_gate_reason == "threshold"
         assert not hasattr(r, "unknown_extra")
 
+    def test_build_fill_record_preserves_skip_gate_bypassed(self) -> None:
+
+        r = build_fill_record(
+            cycle_id="base_2",
+            timestamp=3.0,
+            side="sell",
+            order_price=101.0,
+            order_quantity=0.02,
+            skip_gate_skipped=False,
+            skip_gate_bypassed=True,
+        )
+
+        assert r.skip_gate_skipped is False
+        assert r.skip_gate_bypassed is True
+
     def test_build_fill_record_ignores_unknown_fields(self) -> None:
 
         r = build_fill_record(

@@ -501,6 +501,7 @@ class FillTestConfig:
     sell_preemptive_cv_cooldown_cycles: int = 5           # kill 発動後の継続サイクル数
     # 062# S5: SkipGate ML フィルター (AS 分類器ベースの注文スキップ)
     skip_gate_enabled: bool = False
+    skip_gate_bypass_mode: bool = False  # 686# SG-1: score計算継続, ブロック停止
     # 118# A3: side 別有効/無効 (sell 逆選別対策)
     skip_gate_buy_enabled: bool = True
     skip_gate_sell_enabled: bool = True

@@ -2,6 +2,7 @@
 
 import time
 from datetime import datetime, timedelta
+from typing import Callable, TypeVar
 from unittest.mock import patch
 
 import pytest
@@ -10,6 +11,8 @@ from hypothesis import strategies as st
 
 from ztb.risk.rules import RiskRuleEngine, RiskLimits
 from ztb.utils.errors import ValidationError
+
+_ResultT = TypeVar("_ResultT")
 
 
 @pytest.fixture
@@ -44,14 +47,17 @@ def risk_engine(sample_risk_limits):
 
 
 @pytest.fixture
-def benchmark():
-    """Fallback benchmark fixture when pytest-benchmark is not installed."""
+def perf_runner() -> Callable[[Callable[[], _ResultT]], _ResultT]:
+    """Plugin 非依存の軽量 performance harness."""
 
-    def _run(func, *args, **kwargs):
-        return func(*args, **kwargs)
+    def _run(fn: Callable[[], _ResultT]) -> _ResultT:
+        start = time.perf_counter()
+        result = fn()
+        elapsed = time.perf_counter() - start
+        assert elapsed >= 0.0
+        return result
 
     return _run
-
 
 class TestRiskRuleEngineInitialization:
     """Test RiskRuleEngine initialization."""
@@ -693,7 +699,7 @@ class TestRiskRuleEnginePropertyBased:
 class TestRiskRuleEnginePerformance:
     """Performance tests for risk rule operations."""
 
-    def test_validate_trade_performance(self, benchmark, risk_engine):
+    def test_validate_trade_performance(self, perf_runner, risk_engine):
         """
         Benchmark trade validation performance.
 
@@ -711,14 +717,14 @@ class TestRiskRuleEnginePerformance:
                 sharpe_ratio=1.2,
             )
 
-        result = benchmark(run_validation)
+        result = perf_runner(run_validation)
         allowed, reason = result
 
         # Ensure the operation still works correctly
         assert allowed is True
         assert reason == ""
 
-    def test_bulk_trade_recording_performance(self, benchmark, risk_engine):
+    def test_bulk_trade_recording_performance(self, perf_runner, risk_engine):
         """
         Benchmark bulk trade recording performance.
 
@@ -730,12 +736,12 @@ class TestRiskRuleEnginePerformance:
             for trade in trades:
                 risk_engine.record_trade(trade)
 
-        benchmark(record_trades)
+        perf_runner(record_trades)
 
         # Verify trades were recorded
         assert len(risk_engine.trade_history) >= 100
 
-    def test_concurrent_risk_checks_performance(self, benchmark, risk_engine):
+    def test_concurrent_risk_checks_performance(self, perf_runner, risk_engine):
         """
         Benchmark concurrent risk checks performance.
 
@@ -757,5 +763,5 @@ class TestRiskRuleEnginePerformance:
             ]
             return all(result[0] for result in checks)
 
-        result = benchmark(run_multiple_checks)
+        result = perf_runner(run_multiple_checks)
         assert result is True  # All checks should pass

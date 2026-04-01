@@ -10132,3 +10132,34 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - full suite:
     - `tests/ -x --tb=short --no-cov`
     - 少なくとも 16% 超までは no failure
+
+### 2026-04-02 skip-gate bypass + risk test infra fix
+
+- `scripts/v460/lib/fill_config.py`
+  - `skip_gate_bypass_mode` を追加
+- `scripts/v460/lib/fill_config_parser.py`
+  - `skip_gate.bypass_mode` 読み込みを追加
+- `scripts/v460/lib/fill_config_results.py`
+  - `SkipGateResult.bypassed` を追加
+- `scripts/v460/lib/skip_gate_evaluator.py`
+  - bypass 時は `early_return_record` を作らず、score telemetry を保持したまま通す経路を追加
+- `scripts/v460/lib/fill_cycle_executor.py`
+- `scripts/v460/lib/fill_record_builder.py`
+- `ztb/metrics/fill_quality.py`
+  - `skip_gate_bypassed` telemetry を FillRecord に保存
+- `tests/unit/v460/test_skip_gate_v3.py`
+  - bypass on/off 回帰を追加
+- `tests/unit/v460/test_fill_test_config.py`
+- `tests/unit/v460/test_fill_quality.py`
+  - `skip_gate_bypassed` roundtrip / builder 回帰を追加
+- `tests/unit/risk/test_rules.py`
+  - `benchmark` fallback fixture を plugin 非依存の `perf_runner` へ置換
+- validation
+  - focused:
+    - `tests/unit/risk/test_rules.py`
+    - `57 passed in 1.86s`
+  - focused:
+    - `tests/unit/v460/test_skip_gate_v3.py`
+    - `tests/unit/v460/test_fill_test_config.py`
+    - `tests/unit/v460/test_fill_quality.py`
+    - `316 passed, 5 warnings in 8.75s`

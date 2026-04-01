@@ -131,11 +131,40 @@ min_spread_atr_cap_bps: 1.2  # 686# 2.0→1.2
 - SG の予測力ゼロを受け、ブロック停止・スコア記録継続の bypass モード実装
 - `skip_gate_bypassed` フラグで事後分析可能
 - 期待効果: 48 件/日の不要ブロックを解放
+- 実装済み:
+  - `skip_gate.bypass_mode` を追加
+  - bypass 時は `early_return_record` を作らず、`skip_gate_skipped=False` / `skip_gate_bypassed=True`
+  - score / reason / probability telemetry は保持
+- hidden task:
+  - bypass fill が metrics で skip と誤集計されないよう、`skipped=True` を残さない設計に固定
+  - `FillRecord` の `to_dict()` / `from_dict()` 回帰も追加
 
 ### Task TI-1: テスト基盤修正
 - `prompts/686_codex_task_test_infra_fix.md`
 - `tests/unit/risk/test_rules.py` の fallback benchmark fixture が pytest-benchmark と競合
 - INTERNALERROR 解消で CI exit code 0 を回復
+- 実装済み:
+  - `benchmark` 名を完全撤去
+  - plugin 非依存の `perf_runner` fixture に置換
+  - `rg -n "def benchmark\\(" tests` で残件なし確認
+
+### 4.1 focused 検証
+
+```bash
+.venv/Scripts/python.exe -m pytest tests/unit/risk/test_rules.py -x --tb=short --no-cov
+```
+
+- `57 passed in 1.86s`
+
+```bash
+.venv/Scripts/python.exe -m pytest \
+  tests/unit/v460/test_skip_gate_v3.py \
+  tests/unit/v460/test_fill_test_config.py \
+  tests/unit/v460/test_fill_quality.py \
+  -x --tb=short --no-cov
+```
+
+- `316 passed, 5 warnings in 8.75s`
 
 ---
 
@@ -155,7 +184,7 @@ min_spread_atr_cap_bps: 1.2  # 686# 2.0→1.2
 ## 6. 次のアクション
 
 1. ✅ min_spread_atr_cap_bps 変更（本 686#）
-2. → Codex: SG bypass 実装（686_codex_task_skipgate_bypass.md）
-3. → Codex: テスト基盤修正（686_codex_task_test_infra_fix.md）
+2. ✅ Codex: SG bypass 実装（686_codex_task_skipgate_bypass.md）
+3. ✅ Codex: テスト基盤修正（686_codex_task_test_infra_fix.md）
 4. → 運用: 資本増強検討（preflight 35% 解消には 40,000+ JPY 必要）
 5. → 中期: pre-fill 特徴量の根本改善（マイクロストラクチャ特徴量導入）

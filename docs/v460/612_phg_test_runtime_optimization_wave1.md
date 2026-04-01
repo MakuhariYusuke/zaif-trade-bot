@@ -1084,3 +1084,12 @@ durations 変化で特に効いた点:
   - full suite:
     - `tests/ -x --tb=short --no-cov`
     - 少なくとも 16% 超までは no failure を確認
+
+- 2026-04-02 686# test infra fix:
+  - `tests/unit/risk/test_rules.py`
+    - `benchmark` fallback fixture を撤去
+    - plugin 非依存の `perf_runner` fixture に置換
+  - `rg -n "def benchmark\\(" tests` → 該当なし
+  - focused:
+    - `tests/unit/risk/test_rules.py`
+    - `57 passed in 1.86s`

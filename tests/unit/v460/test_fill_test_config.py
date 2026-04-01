@@ -1018,10 +1018,12 @@ class Test062SkipGateRunner:
             order_price=10_000_000.0,
             order_quantity=0.001,
             skip_gate_skipped=True,
+            skip_gate_bypassed=True,
             skip_gate_score=-0.5,
             skip_gate_reason="skip",
         )
         assert record.skip_gate_skipped is True
+        assert record.skip_gate_bypassed is True
         assert record.skip_gate_score == -0.5
         assert record.skip_gate_reason == "skip"
 
@@ -1035,6 +1037,7 @@ class Test062SkipGateRunner:
             order_quantity=0.001,
         )
         assert record.skip_gate_skipped is None
+        assert record.skip_gate_bypassed is None
         assert record.skip_gate_score is None
         assert record.skip_gate_reason is None
 
@@ -1047,12 +1050,14 @@ class Test062SkipGateRunner:
             order_price=10_000_000.0,
             order_quantity=0.001,
             skip_gate_skipped=False,
+            skip_gate_bypassed=True,
             skip_gate_score=0.3,
             skip_gate_reason="pass",
         )
         d = record.to_dict()
         assert "skip_gate_skipped" in d
         assert d["skip_gate_skipped"] is False
+        assert d["skip_gate_bypassed"] is True
         assert d["skip_gate_score"] == 0.3
         assert d["skip_gate_reason"] == "pass"
 
@@ -1065,11 +1070,13 @@ class Test062SkipGateRunner:
             "order_price": 10_000_000.0,
             "order_quantity": 0.001,
             "skip_gate_skipped": True,
+            "skip_gate_bypassed": True,
             "skip_gate_score": -2.5,
             "skip_gate_reason": "skip",
         }
         record = FillRecord.from_dict(d)
         assert record.skip_gate_skipped is True
+        assert record.skip_gate_bypassed is True
         assert record.skip_gate_score == -2.5
         assert record.skip_gate_reason == "skip"
 
@@ -1084,6 +1091,7 @@ class Test062SkipGateRunner:
         }
         record = FillRecord.from_dict(d)
         assert record.skip_gate_skipped is None
+        assert record.skip_gate_bypassed is None
         assert record.skip_gate_score is None
         assert record.skip_gate_reason is None
 

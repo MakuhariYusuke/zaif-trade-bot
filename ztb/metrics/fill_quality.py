@@ -105,6 +105,7 @@ class FillRecord:
     effective_offset_used: float | None = None # 実際に適用された offset 比率
     # 062# SkipGate ML 判定情報
     skip_gate_skipped: bool | None = None      # SkipGate によるスキップ判定
+    skip_gate_bypassed: bool | None = None     # 686# bypass mode で本来 skip されるはずだった判定
     skip_gate_score: float | None = None       # SkipGate 予測スコア (AS確率 or PnL予測値)
     skip_gate_reason: str | None = None        # SkipGate 判定理由
     # 068# OB 品質 + SkipGate モデル使用ログ

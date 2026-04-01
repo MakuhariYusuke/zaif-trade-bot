@@ -498,6 +498,117 @@ class TestSkipSellUnknownRegime:
         assert result.reason == "rule_skip_unknown_sell"
 
 
+class TestSkipGateBypassMode:
+    """686# SG-1: skip 判定 bypass モード."""
+
+    @pytest.fixture()
+    def config(self) -> "FillTestConfig":
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        return FillTestConfig(
+            skip_gate_enabled=True,
+            skip_gate_model_path="models/v460/skip_gate_rb30.pkl",
+            skip_gate_bypass_mode=True,
+        )
+
+    def test_yaml_mapping_reads_bypass_mode(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        cfg = clone_fill_test_config(
+            load_fill_test_config_from_mapping(
+                {"skip_gate": {"enabled": True, "bypass_mode": True}}
+            )
+        )
+        assert cfg.skip_gate_bypass_mode is True
+
+    def test_skip_decision_is_bypassed_without_early_return(
+        self,
+        config: "FillTestConfig",
+    ) -> None:
+        evaluator = _make_bypassed_evaluator(config)
+        evaluator._skip_gate.evaluate.return_value = SimpleNamespace(
+            should_skip=True,
+            predicted_pnl_bps=-2.0,
+            reason="skip",
+            model_used="primary",
+            as_probability=0.82,
+            threshold_used=0.5,
+            features_used=16,
+        )
+        evaluator._skip_gate.config = SkipGateConfig(use_ob_features=False)
+
+        result = asyncio.run(
+            evaluator.evaluate(
+                side="buy",
+                cycle_id="test_bypass_001",
+                order_price=15_000_000.0,
+                spread_at_order=2_000.0,
+                effective_offset_ratio=0.05,
+                adapter=_AdapterStub(),
+                symbol="btc_jpy",
+                current_lot=0.001,
+                run_id="test_run",
+                git_sha=None,
+                regime_value="ranging",
+                last_imbalance=None,
+                last_bid_depth=None,
+                last_ask_depth=None,
+                imbalance_enabled=False,
+            )
+        )
+
+        assert result.skipped is False
+        assert result.bypassed is True
+        assert result.early_return_record is None
+        assert result.reason == "skip"
+        assert result.as_prob == pytest.approx(0.82, abs=0.01)
+
+    def test_skip_decision_blocks_when_bypass_disabled(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        config = FillTestConfig(
+            skip_gate_enabled=True,
+            skip_gate_model_path="models/v460/skip_gate_rb30.pkl",
+            skip_gate_bypass_mode=False,
+        )
+        evaluator = _make_bypassed_evaluator(config)
+        evaluator._skip_gate.evaluate.return_value = SimpleNamespace(
+            should_skip=True,
+            predicted_pnl_bps=-2.0,
+            reason="skip",
+            model_used="primary",
+            as_probability=0.82,
+            threshold_used=0.5,
+            features_used=16,
+        )
+        evaluator._skip_gate.config = SkipGateConfig(use_ob_features=False)
+
+        result = asyncio.run(
+            evaluator.evaluate(
+                side="buy",
+                cycle_id="test_bypass_002",
+                order_price=15_000_000.0,
+                spread_at_order=2_000.0,
+                effective_offset_ratio=0.05,
+                adapter=_AdapterStub(),
+                symbol="btc_jpy",
+                current_lot=0.001,
+                run_id="test_run",
+                git_sha=None,
+                regime_value="ranging",
+                last_imbalance=None,
+                last_bid_depth=None,
+                last_ask_depth=None,
+                imbalance_enabled=False,
+            )
+        )
+
+        assert result.skipped is True
+        assert result.bypassed is False
+        assert result.early_return_record is not None
+        assert result.early_return_record.cancel_reason == CR.SKIP_GATE
+
+
 # =====================================================================
 # 654# P0-2: Toxic Low-Spread Sell Veto
 # =====================================================================
