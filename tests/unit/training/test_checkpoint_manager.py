@@ -185,6 +185,34 @@ class TestTrainingCheckpointManager(unittest.TestCase):
         self.assertTrue(manager.config.async_save)
         manager.shutdown()
 
+    def test_capture_buffer_uses_tempfile_bytes(self):
+        """Replay buffer capture should round-trip through tmpfile bytes."""
+        self.config.include_replay_buffer = True
+        self.manager = TrainingCheckpointManager(
+            save_dir=str(self.temp_dir),
+            config=self.config
+        )
+        self.mock_model.save_replay_buffer.side_effect = (
+            lambda path: Path(path).write_bytes(b"buffer-bytes")
+        )
+
+        kind, data = self.manager._capture_buffer(self.mock_model)
+
+        self.assertEqual(kind, "replay_buffer_file")
+        self.assertEqual(data, b"buffer-bytes")
+
+    def test_restore_buffer_uses_tempfile_bytes(self):
+        """Replay buffer restore should feed bytes back through tmpfile path."""
+        self.mock_model.load_replay_buffer = Mock()
+
+        self.manager._restore_buffer(
+            self.mock_model,
+            "replay_buffer_file",
+            b"buffer-bytes",
+        )
+
+        self.mock_model.load_replay_buffer.assert_called_once()
+
     @patch("psutil.virtual_memory")
     def test_memory_pressure_handling(self, mock_memory):
         """Test checkpoint behavior under memory pressure."""

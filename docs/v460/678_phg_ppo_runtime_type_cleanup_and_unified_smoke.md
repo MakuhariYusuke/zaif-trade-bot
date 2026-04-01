@@ -452,3 +452,46 @@ tmp file + rename の重複を shared helper に寄せた。
 
 これは god object を無理に大分割するのではなく、
 hot path を読める長さに戻すための low-risk な整理。
+
+### 18. Generic atomic helper の適用範囲確認 + PPO trainer test trim
+
+今回の確認で、`atomic_replace_with_tmp(...)` は
+`scripts/v460/ml/sidecar_scheduler_common.py` に閉じるより、
+`ztb/utils` 配下の generic helper として持つ方が自然、という判断になった。
+
+- 新設:
+  - `ztb/utils/atomic_io.py`
+    - `atomic_replace_with_tmp(...)`
+    - `capture_bytes_via_tmpfile(...)`
+    - `restore_bytes_via_tmpfile(...)`
+- 横展開:
+  - `scripts/v460/ml/sidecar_scheduler_common.py`
+    - atomic deploy helper は generic util を再利用
+  - `ztb/training/checkpoint/checkpoint_manager.py`
+    - replay buffer の capture / restore を generic tmpfile helper に統一
+
+あわせて、`tests/training/test_ppo_trainer.py` は
+`train()` orchestration の確認に責務を寄せ、
+`_create_environment()` / `_create_model()` / `_learn_model()` を patch する形へ整理した。
+
+- before:
+  - `tests/training/test_ppo_trainer.py`
+  - `29 passed in 9.75s`
+- after:
+  - 同 focused suite
+  - `29 passed in 5.54s`
+
+支配点だった以下は大きく減っている。
+- `test_create_sell_mitigation_ppo_trainer_uses_shim`
+  - `0.55s -> 0.13s`
+- `test_train_with_exception`
+  - `0.53s -> 0.01s`
+- `test_train_success_path`
+  - `0.24s -> 0.01s`
+
+`atomic_io` の他候補も見たが、今回は以下は据え置いた。
+- `ztb/training/run_optimization.py`
+  - temp JSON は subprocess に一時引き渡す用途で、atomic deploy helper の責務とは少し違う
+- SAC/PPO scheduler の学習本体
+  - timeout / cleanup / atomic deploy は共通化できるが、
+    train/eval/signal semantics まで寄せると責務が崩れる

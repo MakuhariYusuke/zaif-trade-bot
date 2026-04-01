@@ -9877,3 +9877,26 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - smoke path が trainable bundle 準備を踏まないようにした
 - `test_fill_quality`
   - unknown-status fast retry path をさらに短縮
+
+### 2026-04-01 PPO/SAC helper reuse and trainer-test trim
+
+- `ztb/utils/atomic_io.py` を新設
+  - `atomic_replace_with_tmp(...)`
+  - `capture_bytes_via_tmpfile(...)`
+  - `restore_bytes_via_tmpfile(...)`
+- `sidecar_scheduler_common`
+  - atomic deploy helper は generic util を参照する形に変更
+- `training/checkpoint/checkpoint_manager`
+  - replay buffer の tmpfile capture / restore を generic helper に統一
+- `tests/training/test_ppo_trainer.py`
+  - `train()` orchestration test を `_create_environment()` / `_create_model()` / `_learn_model()` patch ベースへ整理
+  - `TrainingConfigManager` 実初期化を避けて focused runtime を短縮
+- focused:
+  - `tests/training/test_ppo_trainer.py`
+    - `29 passed in 5.54s`
+  - `tests/unit/training/test_checkpoint_manager.py`
+    - `13 passed in 3.64s`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/integration/test_custom_ppo_integration.py`
+    - `76 passed in 8.16s`

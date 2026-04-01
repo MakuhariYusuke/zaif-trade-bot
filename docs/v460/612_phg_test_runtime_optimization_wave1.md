@@ -956,3 +956,19 @@ durations 変化で特に効いた点:
   - slowest 25 の変化:
     - `test_enrichment_with_real_data` setup: `0.56s -> 0.29s`
     - `test_status_none_twice_becomes_cancelled_status_unknown`: `0.58s -> 0.03s`
+
+- PPO trainer / checkpoint helper trim:
+  - `tests/training/test_ppo_trainer.py`
+    - `train()` orchestration test を internal boundary patch に寄せ、
+      DataLoader / env / model 実生成を踏まないように整理
+    - `TrainingConfigManager` の実初期化も不要な箇所では mock 化
+  - `tests/unit/training/test_checkpoint_manager.py`
+    - replay buffer capture / restore の tmpfile helper 回帰を追加
+  - `ztb/training/checkpoint/checkpoint_manager.py`
+    - replay buffer capture / restore を generic tmpfile helper に統一
+  - subset 実測:
+    - `tests/training/test_ppo_trainer.py`
+      - before: `29 passed in 9.75s`
+      - after: `29 passed in 5.54s`
+    - `tests/unit/training/test_checkpoint_manager.py`
+      - `13 passed in 3.64s`

@@ -71,6 +71,17 @@ def sample_config():
     }
 
 
+def _make_trainer_with_mocked_runtime(
+    trainer_params: TrainerParams,
+) -> tuple[PPOTrainerAutoHalt, Mock]:
+    """Create a trainer with lightweight mocked runtime dependencies."""
+    trainer = PPOTrainerAutoHalt(trainer_params)
+    model = Mock()
+    trainer.env = Mock()
+    trainer.model = model
+    return trainer, model
+
+
 class TestPPOTrainerAutoHalt:
     """Test PPOTrainerAutoHalt functionality."""
 
@@ -302,219 +313,105 @@ class TestPPOTrainerAutoHalt:
 
         mock_neutralize.assert_not_called()
 
-    @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
-    @patch("ztb.training.core.ppo_trainer.HeavyTradingEnv")
-    @patch("ztb.training.core.ppo_trainer.ActionMasker")
-    @patch("ztb.training.ppo_trainer.MaskablePPO")
-    @patch("ztb.training.core.ppo_trainer.CompositeTrainingCallback")
+    @patch.object(PPOTrainerAutoHalt, "_cleanup_training_resources")
+    @patch.object(PPOTrainerAutoHalt, "_learn_model")
+    @patch.object(PPOTrainerAutoHalt, "_create_model")
+    @patch.object(PPOTrainerAutoHalt, "_create_environment")
     def test_train_success_path(
         self,
-        mock_callback,
-        mock_ppo,
-        mock_action_masker,
-        mock_env,
-        mock_load_data,
+        mock_create_environment,
+        mock_create_model,
+        mock_learn_model,
+        mock_cleanup,
         trainer_params,
     ):
         """Test training initialization (simplified test)."""
-        # Setup mocks
-        mock_df = Mock()
-        mock_df.shape = (1000, 10)
-        mock_df.index.min.return_value = "2020-01-01"
-        mock_df.index.max.return_value = "2020-12-31"
-        mock_df.columns = [
-            "col1",
-            "col2",
-            "col3",
-            "col4",
-            "col5",
-            "col6",
-            "col7",
-            "col8",
-            "col9",
-            "col10",
-        ]
-        mock_load_data.return_value = mock_df
-
-        mock_env_instance = Mock()
-        mock_env.return_value = mock_env_instance
-
-        mock_action_masker_instance = Mock()
-        mock_action_masker.return_value = mock_action_masker_instance
-
-        mock_model = Mock()
-        mock_model.learn.side_effect = KeyboardInterrupt()  # Simulate interruption
-        mock_ppo.return_value = mock_model
-
-        mock_callback_instance = Mock()
-        mock_callback.return_value = mock_callback_instance
-
-        # Configure mock to have __name__ attribute
-        mock_ppo.configure_mock(**{"__name__": "MaskablePPO"})
-
-        # Create trainer and attempt training
-        trainer = PPOTrainerAutoHalt(trainer_params)
+        trainer, mock_model = _make_trainer_with_mocked_runtime(trainer_params)
+        mock_create_environment.return_value = trainer.env
+        mock_create_model.return_value = mock_model
+        mock_learn_model.side_effect = KeyboardInterrupt()
 
         # Current trainer propagates KeyboardInterrupt so outer runners can stop cleanly.
         with pytest.raises(KeyboardInterrupt):
             trainer.train("test_session")
 
-    @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
-    @patch("ztb.training.core.ppo_trainer.HeavyTradingEnv")
-    @patch("ztb.training.core.ppo_trainer.ActionMasker")
-    @patch("ztb.training.ppo_trainer.MaskablePPO")
-    @patch("ztb.training.core.ppo_trainer.CompositeTrainingCallback")
+        mock_create_environment.assert_called_once_with()
+        mock_create_model.assert_called_once_with()
+        mock_learn_model.assert_called_once_with(
+            mock_model,
+            total_timesteps=trainer.training_config.total_timesteps,
+            session_id="test_session",
+        )
+        mock_cleanup.assert_called_once_with()
+
+    @patch.object(PPOTrainerAutoHalt, "_cleanup_training_resources")
+    @patch.object(PPOTrainerAutoHalt, "_learn_model")
+    @patch.object(PPOTrainerAutoHalt, "_create_model")
+    @patch.object(PPOTrainerAutoHalt, "_create_environment")
     def test_train_with_exception(
         self,
-        mock_callback,
-        mock_ppo,
-        mock_action_masker,
-        mock_env,
-        mock_load_data,
+        mock_create_environment,
+        mock_create_model,
+        mock_learn_model,
+        mock_cleanup,
         trainer_params,
     ):
         """Test training with exception handling (simplified test)."""
-        # Setup mocks to cause early failure
-        mock_df = Mock()
-        mock_df.shape = (1000, 10)
-        mock_df.columns = [f"col{i}" for i in range(10)]
-        mock_load_data.return_value = mock_df
-
-        mock_env_instance = Mock()
-        mock_env.return_value = mock_env_instance
-
-        mock_action_masker_instance = Mock()
-        mock_action_masker.return_value = mock_action_masker_instance
-
-        mock_model = Mock()
-        mock_model.learn.side_effect = ValueError("Mock environment error")
-        mock_ppo.return_value = mock_model
-        mock_ppo.configure_mock(**{"__name__": "MaskablePPO"})
-
-        mock_callback_instance = Mock()
-        mock_callback.return_value = mock_callback_instance
-
-        # Create trainer and train
-        trainer = PPOTrainerAutoHalt(trainer_params)
+        trainer, mock_model = _make_trainer_with_mocked_runtime(trainer_params)
+        mock_create_environment.return_value = trainer.env
+        mock_create_model.return_value = mock_model
+        mock_learn_model.side_effect = ValueError("Mock environment error")
 
         with pytest.raises(ValueError, match="Mock environment error"):
             trainer.train("test_session")
 
-    @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
-    @patch("ztb.training.core.ppo_trainer.HeavyTradingEnv")
-    @patch("ztb.training.core.ppo_trainer.ActionMasker")
-    @patch("ztb.training.ppo_trainer.MaskablePPO")
-    @patch("ztb.training.core.ppo_trainer.CompositeTrainingCallback")
+        mock_cleanup.assert_called_once_with()
+
+    @patch.object(PPOTrainerAutoHalt, "_cleanup_training_resources")
+    @patch.object(PPOTrainerAutoHalt, "_learn_model")
+    @patch.object(PPOTrainerAutoHalt, "_create_model")
+    @patch.object(PPOTrainerAutoHalt, "_create_environment")
     def test_train_complete_success_path(
         self,
-        mock_callback,
-        mock_ppo,
-        mock_action_masker,
-        mock_env,
-        mock_load_data,
+        mock_create_environment,
+        mock_create_model,
+        mock_learn_model,
+        mock_cleanup,
         trainer_params,
     ):
         """Test complete training success path with logging."""
-        # Setup mocks
-        mock_df = Mock()
-        mock_df.shape = (1000, 10)
-        mock_df.index.min.return_value = "2020-01-01"
-        mock_df.index.max.return_value = "2020-12-31"
-        mock_df.columns = [
-            "col1",
-            "col2",
-            "col3",
-            "col4",
-            "col5",
-            "col6",
-            "col7",
-            "col8",
-            "col9",
-            "col10",
-        ]
-        mock_load_data.return_value = mock_df
-
-        mock_env_instance = Mock()
-        mock_env.return_value = mock_env_instance
-
-        mock_action_masker_instance = Mock()
-        mock_action_masker.return_value = mock_action_masker_instance
-
-        mock_model = Mock()
-        mock_model.learn.side_effect = (
-            lambda *args, **kwargs: None
-        )  # Training completes successfully
-        mock_ppo.return_value = mock_model
-
-        mock_callback_instance = Mock()
-        mock_callback.return_value = mock_callback_instance
-
-        # Configure mock to have __name__ attribute
-        mock_ppo.configure_mock(**{"__name__": "MaskablePPO"})
-
-        # Create trainer and run training
-        trainer = PPOTrainerAutoHalt(trainer_params)
+        trainer, mock_model = _make_trainer_with_mocked_runtime(trainer_params)
+        mock_create_environment.return_value = trainer.env
+        mock_create_model.return_value = mock_model
+        mock_learn_model.return_value = mock_model
 
         # Should complete successfully and return model
         result = trainer.train("test_session")
         assert result == mock_model  # Training completed successfully
+        mock_cleanup.assert_called_once_with()
 
-    @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
-    @patch("ztb.training.core.ppo_trainer.HeavyTradingEnv")
-    @patch("ztb.training.core.ppo_trainer.ActionMasker")
-    @patch("ztb.training.ppo_trainer.MaskablePPO")
-    @patch("ztb.training.core.ppo_trainer.CompositeTrainingCallback")
+    @patch.object(PPOTrainerAutoHalt, "_cleanup_training_resources")
+    @patch.object(PPOTrainerAutoHalt, "_learn_model")
+    @patch.object(PPOTrainerAutoHalt, "_create_model")
+    @patch.object(PPOTrainerAutoHalt, "_create_environment")
     def test_train_with_exception_logging(
         self,
-        mock_callback,
-        mock_ppo,
-        mock_action_masker,
-        mock_env,
-        mock_load_data,
+        mock_create_environment,
+        mock_create_model,
+        mock_learn_model,
+        mock_cleanup,
         trainer_params,
     ):
         """Test training exception handling with logging."""
-        # Setup mocks
-        mock_df = Mock()
-        mock_df.shape = (1000, 10)
-        mock_df.index.min.return_value = "2020-01-01"
-        mock_df.index.max.return_value = "2020-12-31"
-        mock_df.columns = [
-            "col1",
-            "col2",
-            "col3",
-            "col4",
-            "col5",
-            "col6",
-            "col7",
-            "col8",
-            "col9",
-            "col10",
-        ]
-        mock_load_data.return_value = mock_df
-
-        mock_env_instance = Mock()
-        mock_env.return_value = mock_env_instance
-
-        mock_action_masker_instance = Mock()
-        mock_action_masker.return_value = mock_action_masker_instance
-
-        mock_model = Mock()
-        mock_model.learn.side_effect = ValueError("Test error")
-        mock_ppo.return_value = mock_model
-
-        mock_callback_instance = Mock()
-        mock_callback.return_value = mock_callback_instance
-
-        # Configure mock to have __name__ attribute
-        mock_ppo.configure_mock(**{"__name__": "MaskablePPO"})
-
-        # Create trainer and run training
-        trainer = PPOTrainerAutoHalt(trainer_params)
+        trainer, mock_model = _make_trainer_with_mocked_runtime(trainer_params)
+        mock_create_environment.return_value = trainer.env
+        mock_create_model.return_value = mock_model
+        mock_learn_model.side_effect = ValueError("Test error")
 
         # Should handle exception and re-raise it
         with pytest.raises(ValueError, match="Test error"):
             trainer.train("test_session")
+        mock_cleanup.assert_called_once_with()
 
     @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
     def test_create_environment_data_loading(self, mock_load_data, trainer_params):
@@ -877,11 +774,7 @@ class TestPPOAlgorithmTrainer:
 
     def test_ppo_algorithm_trainer_initialization(self, temp_dir, sample_config):
         """Test PPOAlgorithmTrainer initialization."""
-        from ztb.training.unified_trainer.components.config_manager import (
-            TrainingConfigManager,
-        )
-
-        config_manager = TrainingConfigManager()
+        config_manager = Mock()
         trainer = PPOAlgorithmTrainer(config_manager, progress_bar_enabled=True)
 
         assert trainer.config_manager == config_manager
@@ -896,11 +789,7 @@ class TestPPOAlgorithmTrainer:
     ):
         """Standard PPO path should instantiate PPOTrainerAutoHalt with TrainerParams."""
         from ztb.training.config.trainer_params import TrainerParams
-        from ztb.training.unified_trainer.components.config_manager import (
-            TrainingConfigManager,
-        )
-
-        config_manager = TrainingConfigManager()
+        config_manager = Mock()
         trainer = PPOAlgorithmTrainer(config_manager, progress_bar_enabled=True)
         unified_config = {
             "data_path": "dummy_path.csv",
@@ -923,11 +812,7 @@ class TestPPOAlgorithmTrainer:
     ):
         """SELL mitigation path should go through the compatibility shim."""
         from ztb.training.config.trainer_params import SELLMitigationParams
-        from ztb.training.unified_trainer.components.config_manager import (
-            TrainingConfigManager,
-        )
-
-        config_manager = TrainingConfigManager()
+        config_manager = Mock()
         trainer = PPOAlgorithmTrainer(config_manager, progress_bar_enabled=True)
         unified_config = {
             "data_path": "dummy_path.csv",

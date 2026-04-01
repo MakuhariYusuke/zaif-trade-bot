@@ -6,13 +6,14 @@ import hashlib
 import logging
 import pickle
 import random
-import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, TypedDict, cast
 
 import numpy as np
+
+from ztb.utils.atomic_io import capture_bytes_via_tmpfile, restore_bytes_via_tmpfile
 
 if TYPE_CHECKING:
     from stable_baselines3.common.base_class import BaseAlgorithm as BaseAlgorithmType
@@ -511,21 +512,18 @@ class TrainingCheckpointManager:
             return None, None
 
         if hasattr(model, "save_replay_buffer"):
-            tmp_path = None
             try:
-                with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp:
-                    tmp_path = Path(tmp.name)
-                model.save_replay_buffer(str(tmp_path))
-                data = tmp_path.read_bytes()
+                data = capture_bytes_via_tmpfile(
+                    suffix=".pkl",
+                    prefix=".replay_buffer_",
+                    writer=model.save_replay_buffer,
+                )
                 return "replay_buffer_file", data
             except Exception:
                 logger.debug(
                     "Failed to save replay buffer using save_replay_buffer",
                     exc_info=True,
                 )
-            finally:
-                if tmp_path and tmp_path.exists():
-                    tmp_path.unlink(missing_ok=True)
 
         for attr in ("replay_buffer", "rollout_buffer"):
             buffer_obj = getattr(model, attr, None)
@@ -545,14 +543,12 @@ class TrainingCheckpointManager:
 
         try:
             if kind == "replay_buffer_file" and hasattr(model, "load_replay_buffer"):
-                with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp:
-                    tmp_path = Path(tmp.name)
-                try:
-                    tmp_path.write_bytes(data)
-                    model.load_replay_buffer(str(tmp_path))
-                finally:
-                    if tmp_path.exists():
-                        tmp_path.unlink(missing_ok=True)
+                restore_bytes_via_tmpfile(
+                    data=data,
+                    suffix=".pkl",
+                    prefix=".replay_buffer_",
+                    reader=model.load_replay_buffer,
+                )
             elif kind == "replay_buffer_pickle":
                 setattr(model, "replay_buffer", pickle.loads(data))
             elif kind == "rollout_buffer_pickle":
