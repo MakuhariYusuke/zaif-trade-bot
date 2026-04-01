@@ -28,6 +28,7 @@ from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG, PPOConfig
 from ztb.training.config.trainer_params import SELLMitigationParams
 from ztb.training.core.ppo_trainer import (
     PPOTrainerAutoHalt as PPOTrainer,
+    build_ppo_model_kwargs,
     wrap_env_with_action_masker,
 )
 from ztb.training.models.custom_ppo import CustomPPO
@@ -258,27 +259,18 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
                 env = wrap_env_with_action_masker(env)
 
                 # ★ Create CustomPPO with integrated bias mitigations
+                model_kwargs = build_ppo_model_kwargs(
+                    self.training_config,
+                    tensorboard_log=self.config.get("tensorboard_log"),
+                    device=str(self.config.get("device", "auto")),
+                )
+
                 self.model = CustomPPO(
                     policy=self.config.get("policy", "MlpPolicy"),
                     env=env,
-                    learning_rate=self.config.get("learning_rate", 3e-4),
-                    n_steps=self.config.get("n_steps", 2048),
-                    batch_size=self.config.get("batch_size", 64),
-                    n_epochs=self.config.get("n_epochs", 10),
-                    gamma=self.config.get("gamma", 0.99),
-                    gae_lambda=self.config.get("gae_lambda", 0.95),
-                    clip_range=self.config.get("clip_range", 0.2),
-                    clip_range_vf=self.config.get("clip_range_vf"),
-                    normalize_advantage=self.config.get("normalize_advantage", True),
-                    ent_coef=self.config.get("ent_coef", 0.0),
-                    vf_coef=self.config.get("vf_coef", 0.5),
-                    max_grad_norm=self.config.get("max_grad_norm", 0.5),
-                    target_kl=self.config.get("target_kl"),
-                    tensorboard_log=self.config.get("tensorboard_log"),
+                    **model_kwargs,
                     policy_kwargs=self.config.get("policy_kwargs"),
-                    verbose=self.config.get("verbose", 1),
                     seed=self.config.get("seed"),
-                    device=self.config.get("device", "auto"),
                     _init_setup_model=self.config.get("_init_setup_model", True),
                     # ★ Custom bias mitigation parameters
                     enable_pan=self.enable_pan,

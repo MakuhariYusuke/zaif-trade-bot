@@ -57,6 +57,33 @@ def wrap_env_with_action_masker(env: HeavyTradingEnv) -> ActionMasker:
     """Wrap a trading env with the current sb3-contrib action-mask contract."""
     return ActionMasker(env, mask_fn=_get_action_masks)
 
+
+def build_ppo_model_kwargs(
+    config: "PPOTrainingConfig",
+    *,
+    tensorboard_log: str | None,
+    device: str = "auto",
+) -> dict[str, object]:
+    """Build the shared standard PPO kwargs for current runtime paths."""
+    return {
+        "learning_rate": config.learning_rate,
+        "n_steps": config.n_steps,
+        "batch_size": config.batch_size,
+        "n_epochs": config.n_epochs,
+        "gamma": config.gamma,
+        "gae_lambda": config.gae_lambda,
+        "clip_range": config.clip_range,
+        "clip_range_vf": config.clip_range_vf,
+        "normalize_advantage": config.normalize_advantage,
+        "ent_coef": config.ent_coef,
+        "vf_coef": config.vf_coef,
+        "max_grad_norm": config.max_grad_norm,
+        "target_kl": config.target_kl,
+        "tensorboard_log": tensorboard_log,
+        "verbose": config.verbose,
+        "device": device,
+    }
+
 class PPOTrainerProtocol(Protocol):
     """Protocol for PPO Trainer implementations."""
 
@@ -472,22 +499,11 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
         model = model_class(
             "MlpPolicy",
             self.env,
-            learning_rate=self.training_config.learning_rate,
-            n_steps=self.training_config.n_steps,
-            batch_size=self.training_config.batch_size,
-            n_epochs=self.training_config.n_epochs,
-            gamma=self.training_config.gamma,
-            gae_lambda=self.training_config.gae_lambda,
-            clip_range=self.training_config.clip_range,
-            clip_range_vf=self.training_config.clip_range_vf,
-            normalize_advantage=self.training_config.normalize_advantage,
-            ent_coef=self.training_config.ent_coef,
-            vf_coef=self.training_config.vf_coef,
-            max_grad_norm=self.training_config.max_grad_norm,
-            target_kl=self.training_config.target_kl,
-            tensorboard_log=str(self.checkpoint_dir),
-            verbose=self.training_config.verbose,
-            device="auto",
+            **build_ppo_model_kwargs(
+                self.training_config,
+                tensorboard_log=str(self.checkpoint_dir),
+                device="auto",
+            ),
         )
 
         logger.info("Created PPO model with comprehensive configuration:")

@@ -312,25 +312,34 @@ foundation の次段として、PPO sidecar scheduler の停止耐性とメモ�
 - neutral fallback / deploy path
 
 を focused で確認した。
-  scripts/v460/ml/ppo_sidecar_config.py \
-  scripts/v460/ml/ppo_retrain_scheduler.py \
-  tests/unit/v460/test_680_ppo_retrain_scheduler.py
-```
 
-- `Success: no issues found in 4 source files`
+### 11. core / sell-mitigation の model kwargs 共有化
 
-```bash
-.venv/Scripts/python.exe -m pytest \
-  tests/unit/v460/test_679_ppo_sidecar_foundation.py \
-  tests/unit/v460/test_680_ppo_retrain_scheduler.py \
-  tests/unit/v460/test_sac_retrain_scheduler.py \
-  -x --tb=short --no-cov
-```
+PPO current path で残っていた重複のうち、標準 PPO 引数の組み立てを
+`core` 側 helper に寄せた。
 
-- `69 passed in 14.18s`
+- `ztb/training/core/ppo_trainer.py`
+  - `build_ppo_model_kwargs(...)` を追加
+- `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+  - standard PPO kwargs を上記 helper から再利用
+  - mitigation 固有引数だけを local で追加
 
-- `100 passed in 7.40s`
+この整理で、次の drift を防げる。
 
-targeted mypy は `sidecar_types.py` / foundation test では clean を維持。
-一方 `orchestrator_mid_cycle.py` は既存 mixin baseline が厚いため、
-今回もそこは広く崩さず focused pytest と `py_compile` を主検証にした。
+1. core trainer と sell-mitigation trainer の PPO ハイパーパラメータずれ
+2. 新しい top-level PPO 引数追加時の片側更新漏れ
+3. current trainer 契約の二重メンテナンス
+
+### 12. PPO integration test の軽量化
+
+PPO まわりの重い integration/setup も合わせて薄くした。
+
+- `tests/integration/test_custom_ppo_integration.py`
+  - `ActionMasker` 契約確認は `_TinyMaskedEnv` ベースへ移行
+  - short training smoke も tiny env / shorter timestep に整理
+- `tests/training/test_ppo_trainer.py`
+  - `build_ppo_model_kwargs(...)` の focused guard を追加
+
+HeavyTradingEnv を本当に見る必要がある test と、
+mask contract / trainer wiring だけ見ればよい test を分離したことで、
+検出力を維持したまま setup 固定費を落とした。

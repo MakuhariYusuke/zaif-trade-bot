@@ -27,13 +27,18 @@ if TYPE_CHECKING:
         PPOTrainer,
         PPOTrainerAutoHalt,
         TrainingConfig,
+        build_ppo_model_kwargs,
     )
 else:
     # At runtime we need the real classes; import them rather than using
     # the `object` fallback used for type checking. This avoids tests
     # attempting to construct `object()` which raises TypeError.
     from ztb.training.config.trainer_params import TrainerParams
-    from ztb.training.core.ppo_trainer import PPOTrainer, PPOTrainerAutoHalt
+    from ztb.training.core.ppo_trainer import (
+        PPOTrainer,
+        PPOTrainerAutoHalt,
+        build_ppo_model_kwargs,
+    )
     from ztb.training.core.ppo_trainer import PPOTrainingConfig as TrainingConfig
 
 
@@ -138,6 +143,38 @@ class TestPPOTrainerAutoHalt:
         )
         with pytest.raises(ValueError, match="config must be a dictionary"):
             PPOTrainerAutoHalt(params)
+
+    def test_build_ppo_model_kwargs_reuses_core_training_config(self) -> None:
+        config = TrainingConfig(
+            learning_rate=1e-4,
+            n_steps=128,
+            batch_size=16,
+            n_epochs=2,
+            gamma=0.95,
+            gae_lambda=0.91,
+            clip_range=0.15,
+            clip_range_vf=0.12,
+            normalize_advantage=False,
+            ent_coef=0.01,
+            vf_coef=0.7,
+            max_grad_norm=0.4,
+            target_kl=0.03,
+            verbose=0,
+        )
+
+        kwargs = build_ppo_model_kwargs(
+            config,
+            tensorboard_log="tb_logs",
+            device="cpu",
+        )
+
+        assert kwargs["learning_rate"] == pytest.approx(1e-4)
+        assert kwargs["n_steps"] == 128
+        assert kwargs["batch_size"] == 16
+        assert kwargs["clip_range_vf"] == pytest.approx(0.12)
+        assert kwargs["normalize_advantage"] is False
+        assert kwargs["tensorboard_log"] == "tb_logs"
+        assert kwargs["device"] == "cpu"
 
     @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
     @patch("ztb.training.core.ppo_trainer.HeavyTradingEnv")

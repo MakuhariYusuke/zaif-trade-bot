@@ -9807,3 +9807,12 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - focused:
   - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
   - `tests/unit/v460/test_sac_retrain_scheduler.py`
+
+### 037-678F PPO kwargs reuse + integration trim
+
+- `core.build_ppo_model_kwargs(...)` を追加し、
+  `sell_mitigation_ppo_trainer` の標準 PPO kwargs 組み立てを共有化
+- `tests/integration/test_custom_ppo_integration.py`
+  - tiny env を使う lightweight contract test に整理
+- `tests/training/test_ppo_trainer.py`
+  - helper contract guard を追加

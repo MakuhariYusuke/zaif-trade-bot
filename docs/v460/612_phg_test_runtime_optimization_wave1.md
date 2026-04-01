@@ -875,5 +875,16 @@ durations 変化で特に効いた点:
     - `tests/integration/test_custom_ppo_integration.py::TestSellMitigationTrainerIntegration::test_trainer_uses_current_params_interface`
       - `11.80s -> 0.02s`
   - slowest 20:
-    - PPO 系では `sell_mitigation` integration が支配点から外れた
-    - 現在の上位は self-supervised trainer integration 側へ移動
+- PPO 系では `sell_mitigation` integration が支配点から外れた
+- 現在の上位は self-supervised trainer integration 側へ移動
+
+- PPO integration / trainer sweep:
+  - 追加適用:
+    - `tests/integration/test_custom_ppo_integration.py`
+    - `tests/training/test_ppo_trainer.py`
+  - 内容:
+    - `ActionMasker` 契約確認を tiny env ベースに分離
+    - short training smoke の `n_steps` / `batch_size` / `total_timesteps` を縮小
+    - `build_ppo_model_kwargs(...)` helper の contract guard を追加
+  - 目的:
+    - PPO 復旧作業の focused suite を保守しつつ、HeavyTradingEnv setup 依存を必要箇所に限定

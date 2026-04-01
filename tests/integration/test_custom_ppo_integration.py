@@ -59,16 +59,24 @@ class _TinyMaskedEnv:
 
 
 @pytest.fixture(scope="module")
+def tiny_masked_env() -> Generator[ActionMasker, None, None]:
+    """Fast masked env for PPO compatibility smoke without HeavyTradingEnv setup."""
+    env = _TinyMaskedEnv()
+    wrapped_env = ActionMasker(env, mask_fn=lambda inner: inner.get_action_masks())
+    yield wrapped_env
+
+
+@pytest.fixture(scope="module")
 def simple_df() -> pd.DataFrame:
     """Deterministic OHLCV fixture small enough for fast PPO smoke runs."""
     return pd.DataFrame(
         {
-            "timestamp": pd.date_range("2023-01-01", periods=96, freq="1min"),
-            "open": [100.0] * 96,
-            "high": [101.0] * 96,
-            "low": [99.0] * 96,
-            "close": [100.5] * 96,
-            "volume": [1000.0] * 96,
+            "timestamp": pd.date_range("2023-01-01", periods=48, freq="1min"),
+            "open": [100.0] * 48,
+            "high": [101.0] * 48,
+            "low": [99.0] * 48,
+            "close": [100.5] * 48,
+            "volume": [1000.0] * 48,
         }
     )
 
@@ -93,27 +101,18 @@ def masked_env(simple_df: pd.DataFrame) -> Generator[ActionMasker, None, None]:
 class TestActionMaskerCompatibility:
     """Validate the local ActionMasker shim against current PPO expectations."""
 
-    def test_action_masker_preserves_env_contract(self, masked_env: ActionMasker) -> None:
-        assert masked_env.action_space.n == 3
-        assert masked_env.observation_space.shape[0] > 0
-        masks = masked_env.get_action_masks()
+    def test_action_masker_preserves_env_contract(self, tiny_masked_env: ActionMasker) -> None:
+        assert tiny_masked_env.action_space.n == 3
+        assert tiny_masked_env.observation_space.shape[0] > 0
+        masks = tiny_masked_env.get_action_masks()
         assert masks.dtype.name == "bool"
         assert masks.shape == (3,)
 
-    def test_action_masker_accepts_legacy_keyword(self, simple_df: pd.DataFrame) -> None:
-        env = HeavyTradingEnv(
-            df=simple_df.copy(),
-            config=make_schema_feature_env_config(
-                simple_df,
-                use_continuous_actions=False,
-            ),
-        )
-        try:
-            wrapped = ActionMasker(env, action_mask_fn=lambda inner: inner.get_action_masks())
-            assert wrapped.action_space.n == 3
-            assert wrapped.action_masks().shape == (3,)
-        finally:
-            env.close()
+    def test_action_masker_accepts_legacy_keyword(self) -> None:
+        env = _TinyMaskedEnv()
+        wrapped = ActionMasker(env, action_mask_fn=lambda inner: inner.get_action_masks())
+        assert wrapped.action_space.n == 3
+        assert wrapped.action_masks().shape == (3,)
 
 
 class TestCustomPPOIntegration:
@@ -137,12 +136,12 @@ class TestCustomPPOIntegration:
         assert model.pan_normalizer is not None
         assert model.entropy_controller is not None
 
-    def test_short_training_run(self, masked_env: ActionMasker) -> None:
+    def test_short_training_run(self, tiny_masked_env: ActionMasker) -> None:
         model = CustomPPO(
             policy="MlpPolicy",
-            env=masked_env,
-            n_steps=32,
-            batch_size=16,
+            env=tiny_masked_env,
+            n_steps=16,
+            batch_size=8,
             n_epochs=1,
             enable_pan=True,
             enable_target_entropy=True,
@@ -150,7 +149,7 @@ class TestCustomPPOIntegration:
             verbose=0,
         )
 
-        learned = model.learn(total_timesteps=64, progress_bar=False)
+        learned = model.learn(total_timesteps=32, progress_bar=False)
 
         assert learned is model
         assert model.pan_normalizer is not None
@@ -175,10 +174,10 @@ class TestSellMitigationTrainerIntegration:
             config={
                 "policy": "MlpPolicy",
                 "learning_rate": 3e-4,
-                "n_steps": 32,
-                "batch_size": 16,
+                "n_steps": 16,
+                "batch_size": 8,
                 "n_epochs": 1,
-                "total_timesteps": 64,
+                "total_timesteps": 32,
                 "verbose": 0,
                 "use_continuous_actions": False,
             },
