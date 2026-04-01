@@ -21,7 +21,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import gc
 import json
 import logging
 import os
@@ -40,11 +39,12 @@ logger = logging.getLogger(__name__)
 
 from ztb.io.yaml_io import read_yaml
 from ztb.utils.time_utils import current_compact_timestamp, current_iso_timestamp
-from ztb.utils.memory_utils import clear_cuda_cache
 from scripts.v460.ml.sidecar_scheduler_common import (
     BaseRetrainResult,
     DataFileRetrainTrigger,
     append_history_jsonl,
+    best_effort_training_cleanup,
+    run_with_timeout,
 )
 
 # ── graceful shutdown ──────────────────────────────────────
@@ -472,22 +472,18 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
             logger.info("Cold-start: new SAC model created")
             timesteps = cfg.total_timesteps
 
-        # Training — 495# タイムアウト付き訓練 (Windows対応: threading ベース)
-        _training_error: BaseException | None = None
-
-        def _train_target() -> None:
-            nonlocal _training_error
-            try:
-                model.learn(total_timesteps=timesteps, reset_num_timesteps=not is_warm_start)
-            except BaseException as exc:
-                _training_error = exc
-
+        # Training — 495# タイムアウト付き訓練
         start_time = time.time()
-        train_thread = threading.Thread(target=_train_target, daemon=True)
-        train_thread.start()
-        train_thread.join(timeout=_TRAINING_TIMEOUT_SEC)
-
-        if train_thread.is_alive():
+        try:
+            run_with_timeout(
+                timeout_sec=_TRAINING_TIMEOUT_SEC,
+                target=lambda: model.learn(
+                    total_timesteps=timesteps,
+                    reset_num_timesteps=not is_warm_start,
+                ),
+                timeout_message=f"model.learn() exceeded {_TRAINING_TIMEOUT_SEC}s timeout",
+            )
+        except TimeoutError:
             training_time = time.time() - start_time
             logger.error(
                 f"[495#] Training TIMEOUT after {training_time:.1f}s "
@@ -500,9 +496,6 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
             raise TimeoutError(
                 f"model.learn() exceeded {_TRAINING_TIMEOUT_SEC}s timeout"
             )
-
-        if _training_error is not None:
-            raise _training_error
 
         training_time = time.time() - start_time
         logger.info(f"Training completed in {training_time:.1f}s ({timesteps} steps)")
@@ -695,8 +688,7 @@ def _post_cycle_memory_check() -> None:
     global _last_cycle_rss_mb
 
     # PyTorch 内部キャッシュ + GC
-    clear_cuda_cache()
-    gc.collect()
+    best_effort_training_cleanup()
 
     memory_details = _build_post_cycle_memory_status(
         _last_cycle_rss_mb,

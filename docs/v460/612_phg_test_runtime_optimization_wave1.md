@@ -888,3 +888,10 @@ durations 変化で特に効いた点:
     - `build_ppo_model_kwargs(...)` helper の contract guard を追加
   - 目的:
     - PPO 復旧作業の focused suite を保守しつつ、HeavyTradingEnv setup 依存を必要箇所に限定
+
+- PPO integration trim 追記:
+  - `tests/integration/test_custom_ppo_integration.py`
+    - `test_create_with_current_masked_env` も tiny env ベースへ移行
+    - HeavyTradingEnv を必要としない setup を完全に切り離した
+  - これにより PPO focused subset の slowest setup は縮小し、
+    残る支配点は scheduler/retrain path と self-supervised integration 側へ寄った

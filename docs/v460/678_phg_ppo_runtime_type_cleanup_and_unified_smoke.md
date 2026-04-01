@@ -343,3 +343,24 @@ PPO まわりの重い integration/setup も合わせて薄くした。
 HeavyTradingEnv を本当に見る必要がある test と、
 mask contract / trainer wiring だけ見ればよい test を分離したことで、
 検出力を維持したまま setup 固定費を落とした。
+
+### 13. SAC/PPO scheduler helper の再共有化
+
+foundation が揃ってきた段階で、scheduler 側に残っていた
+「timeout 実行」と「best-effort cleanup」の重複も shared helper に戻した。
+
+- `scripts/v460/ml/sidecar_scheduler_common.py`
+  - `run_with_timeout(...)`
+  - `best_effort_training_cleanup()`
+  を追加
+- `scripts/v460/ml/sac_retrain_scheduler.py`
+  - local thread timeout 実装を shared helper に置換
+  - post-cycle cleanup も shared helper を再利用
+- `scripts/v460/ml/ppo_retrain_scheduler.py`
+  - training timeout / cleanup を同 helper に統一
+
+この整理で、SAC/PPO 間で次の drift を防げる。
+
+1. timeout 例外の扱い差
+2. cycle 後 cleanup 忘れ
+3. WSL/Windows 環境での thread timeout 実装の二重保守

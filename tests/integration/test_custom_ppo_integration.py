@@ -15,8 +15,6 @@ from gymnasium import spaces
 from numpy.typing import NDArray
 
 from sb3_contrib.common.wrappers import ActionMasker
-from tests.helpers.environment import make_schema_feature_env_config
-from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.config.trainer_params import SELLMitigationParams
 from ztb.training.experiments.sell_mitigation_ppo_trainer import (
     SELLBiasMitigationPPOTrainer,
@@ -81,23 +79,6 @@ def simple_df() -> pd.DataFrame:
     )
 
 
-@pytest.fixture
-def masked_env(simple_df: pd.DataFrame) -> Generator[ActionMasker, None, None]:
-    """Gymnasium-compatible masked env using the current discrete PPO path."""
-    env = HeavyTradingEnv(
-        df=simple_df.copy(),
-        config=make_schema_feature_env_config(
-            simple_df,
-            use_continuous_actions=False,
-        ),
-    )
-    wrapped_env = ActionMasker(env, mask_fn=lambda inner: inner.get_action_masks())
-    try:
-        yield wrapped_env
-    finally:
-        env.close()
-
-
 class TestActionMaskerCompatibility:
     """Validate the local ActionMasker shim against current PPO expectations."""
 
@@ -118,12 +99,12 @@ class TestActionMaskerCompatibility:
 class TestCustomPPOIntegration:
     """Current CustomPPO integration smoke tests."""
 
-    def test_create_with_current_masked_env(self, masked_env: ActionMasker) -> None:
+    def test_create_with_current_masked_env(self, tiny_masked_env: ActionMasker) -> None:
         model = CustomPPO(
             policy="MlpPolicy",
-            env=masked_env,
-            n_steps=32,
-            batch_size=16,
+            env=tiny_masked_env,
+            n_steps=16,
+            batch_size=8,
             n_epochs=1,
             enable_pan=True,
             enable_target_entropy=True,

@@ -9816,3 +9816,15 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - tiny env を使う lightweight contract test に整理
 - `tests/training/test_ppo_trainer.py`
   - helper contract guard を追加
+
+### 037-678G SAC/PPO scheduler timeout helper reunification
+
+- `sidecar_scheduler_common`
+  - `run_with_timeout(...)`
+  - `best_effort_training_cleanup()`
+  を追加
+- `sac_retrain_scheduler` / `ppo_retrain_scheduler`
+  - local timeout thread 実装を shared helper に統一
+  - cleanup も shared helper を再利用
+- `test_custom_ppo_integration`
+  - `create_with_current_masked_env` を tiny env 側へ寄せて setup 削減

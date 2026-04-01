@@ -8,10 +8,14 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+import gc
 import json
 from pathlib import Path
+import threading
 import time
 from typing import Generic, TypeVar
+
+from ztb.utils.memory_utils import clear_cuda_cache
 
 
 @dataclass(slots=True)
@@ -43,6 +47,8 @@ class BaseRetrainResult:
 
 
 ConfigT = TypeVar("ConfigT")
+ResultT = TypeVar("ResultT")
+_MISSING_RESULT = object()
 
 
 class DataFileRetrainTrigger(Generic[ConfigT]):
@@ -132,3 +138,39 @@ def append_history_jsonl(path: Path, payload: Mapping[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(dict(payload), ensure_ascii=False) + "\n")
+
+
+def run_with_timeout(
+    *,
+    timeout_sec: float,
+    target: Callable[[], ResultT],
+    timeout_message: str,
+) -> ResultT:
+    """Run a callable in a daemon thread and fail fast on timeout."""
+    result: object = _MISSING_RESULT
+    captured_error: BaseException | None = None
+
+    def _target() -> None:
+        nonlocal result, captured_error
+        try:
+            result = target()
+        except BaseException as exc:  # pragma: no cover - exercised via wrappers
+            captured_error = exc
+
+    worker = threading.Thread(target=_target, daemon=True)
+    worker.start()
+    worker.join(timeout=timeout_sec)
+
+    if worker.is_alive():
+        raise TimeoutError(timeout_message)
+    if captured_error is not None:
+        raise captured_error
+    if result is _MISSING_RESULT:
+        raise RuntimeError("Timed worker returned no result")
+    return result  # type: ignore[return-value]
+
+
+def best_effort_training_cleanup() -> None:
+    """Release transient CPU/GPU memory after a retrain cycle."""
+    clear_cuda_cache()
+    gc.collect()

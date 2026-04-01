@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 import argparse
-import gc
 import logging
 import os
 import signal
@@ -39,6 +38,8 @@ from scripts.v460.ml.sidecar_scheduler_common import (
     BaseRetrainResult,
     DataFileRetrainTrigger,
     append_history_jsonl,
+    best_effort_training_cleanup,
+    run_with_timeout,
 )
 from ztb.io.data_loader import DataLoader
 from ztb.io.yaml_io import read_yaml
@@ -49,7 +50,6 @@ from ztb.training.experiments.sell_mitigation_ppo_trainer import (
     SELLBiasMitigationPPOTrainer,
 )
 from ztb.utils.logging_utils import get_logger
-from ztb.utils.memory_utils import clear_cuda_cache
 from ztb.utils.time_utils import current_compact_timestamp, current_iso_timestamp
 
 logger = get_logger(__name__)
@@ -291,36 +291,17 @@ def _train_with_timeout(
     session_id: str,
 ) -> _PPOModelProtocol:
     """PPO training を timeout 保護付きで実行する."""
-
-    trained_model: object | None = None
-    training_error: BaseException | None = None
-
-    def _target() -> None:
-        nonlocal trained_model, training_error
-        try:
-            trained_model = trainer.train(session_id=session_id)
-        except BaseException as exc:  # pragma: no cover - error path validated via wrapper
-            training_error = exc
-
-    train_thread = threading.Thread(target=_target, daemon=True)
-    train_thread.start()
-    train_thread.join(timeout=_TRAINING_TIMEOUT_SEC)
-
-    if train_thread.is_alive():
-        raise TimeoutError(
-            f"PPO trainer exceeded {_TRAINING_TIMEOUT_SEC}s timeout"
-        )
-    if training_error is not None:
-        raise training_error
-    if trained_model is None:
-        raise RuntimeError("PPO trainer returned no model")
+    trained_model = run_with_timeout(
+        timeout_sec=_TRAINING_TIMEOUT_SEC,
+        target=lambda: trainer.train(session_id=session_id),
+        timeout_message=f"PPO trainer exceeded {_TRAINING_TIMEOUT_SEC}s timeout",
+    )
     return cast(_PPOModelProtocol, trained_model)
 
 
 def _cleanup_training_cycle() -> None:
     """PPO retrain cycle 後の best-effort cleanup."""
-    clear_cuda_cache()
-    gc.collect()
+    best_effort_training_cleanup()
 
 
 def retrain_once(cfg: PPOSidecarConfig) -> PPORetrainResult:
