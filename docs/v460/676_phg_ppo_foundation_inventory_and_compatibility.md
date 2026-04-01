@@ -164,3 +164,17 @@ foundation 後段として、PPO scheduler 側に次の安全弁を追加した�
 これにより、649# 系の data freshness check でファイル更新が抑制される期間でも
 PPO scheduler が永久停止せず、また長時間学習や GPU メモリ滞留のリスクも
 低減できる。
+
+## 追記: Phase 2 inventory
+
+foundation 後段で、current PPO sidecar に必要だった不足点を次までに埋めた。
+
+1. warm-start API
+   - `PPOTrainerAutoHalt.load_and_continue(...)`
+2. current v460 YAML
+   - `configs/v460/experiments/g2_ppo_sidecar.yaml`
+3. legacy config archive
+   - `archived/configs/ppo_legacy/**`
+
+この整理で、active runtime path と historical experiment asset の境界が
+かなり明確になった。

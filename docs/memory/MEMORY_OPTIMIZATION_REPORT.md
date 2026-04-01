@@ -26,7 +26,7 @@
 3. **学習完了後のメモリクリーンアップ** (`ztb/training/ppo_trainer.py`)
    - 学習完了時に明示的にgc.collect()実行
 
-#### 1.2 設定最適化 (`configs/training/ppo_memory_optimized.json`)
+#### 1.2 設定最適化 (`archived/configs/ppo_legacy/training/ppo_memory_optimized.json`)
 ```json
 {
   "n_steps": 256,          // 512 → 256 (50%削減)
@@ -241,7 +241,7 @@ shaped_reward = original_reward + 0.1 * diversity_bonus
 
 ### Step 1: Entropy係数を増やして再学習
 ```bash
-# configs/training/ppo_high_entropy.json を作成
+# archived/configs/ppo_legacy/training/ppo_high_entropy.json を作成
 {
   "session_id": "ppo_high_entropy",
   "ent_coef": 0.2,
@@ -249,7 +249,7 @@ shaped_reward = original_reward + 0.1 * diversity_bonus
   "total_timesteps": 50000
 }
 
-python run_training.py --config configs/training/ppo_high_entropy.json --force
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_high_entropy.json --force
 ```
 
 ### Step 2: Reward Shapingを実装

@@ -6,6 +6,7 @@ import json
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 # Add project root to path
 project_root = Path(__file__).parent
@@ -16,22 +17,22 @@ from ztb.utils.training_utils import display_training_complete
 CONFIGS = [
     {
         "name": "v378_scale_short",
-        "path": "configs/training/ppo_reward_v378_scale_short.json",
+        "path": "archived/configs/ppo_legacy/v378/ppo_reward_v378_scale_short.json",
         "description": "Scale-adjusted (HOLD penalty 4x, profit 3x, trading bonus 3x) - SHORT RUN",
     },
     {
         "name": "v379_dynamic_short",
-        "path": "configs/training/ppo_reward_v379_dynamic_short.json",
+        "path": "archived/configs/ppo_legacy/v379/ppo_reward_v379_dynamic_short.json",
         "description": "Dynamic market-adaptive (v378 + volatility/trend scaling) - SHORT RUN",
     },
     {
         "name": "v380_aggressive_short",
-        "path": "configs/training/ppo_reward_v380_aggressive_short.json",
+        "path": "archived/configs/ppo_legacy/v380/ppo_reward_v380_aggressive_short.json",
         "description": "Aggressive anti-HOLD (HOLD penalty 10x, profit 5x, trading bonus 6x) - SHORT RUN",
     },
 ]
 
-def run_training(config_info):
+def run_training(config_info: dict[str, str]) -> None:
     """Run training for a single config."""
     config_path = project_root / config_info["path"]
 
@@ -74,7 +75,7 @@ def run_training(config_info):
     display_training_complete({"session_id": session_id}, training_time)
     print("=" * 80 + "\n")
 
-def main():
+def main() -> None:
     print("=" * 80)
     print("Reward Function Improvements Training - SHORT RUNS")
     print("=" * 80)

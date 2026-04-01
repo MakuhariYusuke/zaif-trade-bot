@@ -60,7 +60,7 @@ def _save_model_schema(self, session_id: str, model_dir: Path, df: Optional[Any]
 
 ```bash
 # 従来通り訓練するだけ
-python run_training.py --config configs/training/ppo_reward_v385_curated.json
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_reward_v385_curated.json
 
 # スキーマが自動保存される:
 # models/ppo_reward_v385_curated.zip
@@ -229,7 +229,7 @@ pytest tests/test_feature_schema_manager.py
 ### 統合テスト
 ```bash
 # 訓練→スキーマ保存の統合テスト
-python run_training.py --config configs/training/ppo_test_schema.json
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_test_schema.json
 
 # 確認:
 # 1. models/schemas/ppo_test_schema/が作成される
@@ -255,7 +255,7 @@ python run_training.py --config configs/training/ppo_test_schema.json
 ### テスト手順
 ```bash
 # 1. 新しいモデルを訓練
-python run_training.py --config configs/training/ppo_reward_v385_test.json
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_reward_v385_test.json
 
 # 2. スキーマディレクトリを確認
 ls -R models/schemas/ppo_reward_v385_test/

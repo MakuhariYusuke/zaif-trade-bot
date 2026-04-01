@@ -353,10 +353,10 @@ python -m radon cc ztb/training/ -a
 python test_bugfixes.py
 
 # プロファイリング
-python -m cProfile -s time run_training.py --config configs/training/ppo_memory_optimized.json
+python -m cProfile -s time run_training.py --config archived/configs/ppo_legacy/training/ppo_memory_optimized.json
 
 # メモリプロファイリング
-python -m memory_profiler run_training.py --config configs/training/ppo_memory_optimized.json
+python -m memory_profiler run_training.py --config archived/configs/ppo_legacy/training/ppo_memory_optimized.json
 ```
 
 ### Step 3: コードレビュー
@@ -479,7 +479,7 @@ python -m memory_profiler run_training.py --config configs/training/ppo_memory_o
 - `test_bugfixes.py` - 自動テストスクリプト
 
 ### 設定ファイル
-- `configs/training/ppo_memory_optimized.json` - トレーニング設定
+- `archived/configs/ppo_legacy/training/ppo_memory_optimized.json` - トレーニング設定
 
 ---
 

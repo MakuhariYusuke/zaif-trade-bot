@@ -139,7 +139,7 @@ elif action == ACTION_BUY:
 ### 問題詳細
 
 **トレーニング設定間の不一致:**
-- `configs/training/ppo_memory_optimized.json`: `reward_scaling: 1.0`
+- `archived/configs/ppo_legacy/training/ppo_memory_optimized.json`: `reward_scaling: 1.0`
 - 他の設定: `reward_scaling: 6.0` (DEFAULT)
 
 **影響:**
@@ -149,7 +149,7 @@ elif action == ACTION_BUY:
 
 ### 修正内容
 
-**ファイル:** `configs/training/ppo_memory_optimized.json:29`
+**ファイル:** `archived/configs/ppo_legacy/training/ppo_memory_optimized.json:29`
 
 ```diff
 -  "reward_scaling": 1.0,
@@ -315,7 +315,7 @@ if np.isclose(self.position, 0.0, atol=1e-10):
 |---------|--------|---------|
 | `tests/unit/environment/test_forced_actions.py` | #37 | min_holding_period=0追加 |
 | `live_trade.py` | #41 | ショート決済時BUY無条件許可 |
-| `configs/training/ppo_memory_optimized.json` | #39 | reward_scaling: 1.0 → 6.0 |
+| `archived/configs/ppo_legacy/training/ppo_memory_optimized.json` | #39 | reward_scaling: 1.0 → 6.0 |
 | `ztb/utils/logging_utils.py` | #40 | RotatingFileHandler実装 |
 | `run_training.py` | #40 | ログローテーション有効化 |
 

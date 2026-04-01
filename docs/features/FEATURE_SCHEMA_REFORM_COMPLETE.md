@@ -159,7 +159,7 @@
 #### 検証結果
 
 ```bash
-$ python run_training.py --config configs/training/ppo_reward_v385_curated_60.json
+$ python run_training.py --config archived/configs/ppo_legacy/training/ppo_reward_v385_curated_60.json
 ```
 
 **出力**:

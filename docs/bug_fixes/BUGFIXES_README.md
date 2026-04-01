@@ -189,7 +189,7 @@ Tests now verify actual `_should_trade_sell_bias()` behavior with mock dependenc
 ---
 
 ### Bug #45: Configuration Inconsistency ✅ FIXED
-- **File:** `configs/training/ppo_balanced_mem_optimized.json`
+- **File:** `archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json`
 - **Severity:** HIGH
 - **Impact:** Nested `env_config` had stale values (transaction_cost: 0.0005, reward_scaling: 1.0)
 - **Discovered By:** Codex (Tenth Review)

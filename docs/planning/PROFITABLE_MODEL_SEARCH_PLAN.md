@@ -123,7 +123,7 @@ Get-ChildItem models\*_schema.json | ForEach-Object {
 **目的**: v378の設定を再現し、スキーマ保存機能付きで訓練
 
 ```json
-// configs/training/ppo_v378_baseline.json (新規作成)
+// archived/configs/ppo_legacy/training/ppo_v378_baseline.json (新規作成)
 {
   "algorithm": "PPO",
   "total_timesteps": 1000000,
@@ -145,7 +145,7 @@ Get-ChildItem models\*_schema.json | ForEach-Object {
 **目的**: v378/v379の成功要因 + Bitcoin 18M円対応
 
 ```json
-// configs/training/ppo_realistic_profitable.json (新規作成)
+// archived/configs/ppo_legacy/training/ppo_realistic_profitable.json (新規作成)
 {
   "algorithm": "PPO",
   "total_timesteps": 1000000,
@@ -170,7 +170,7 @@ Get-ChildItem models\*_schema.json | ForEach-Object {
 **目的**: v378安定性 + v379積極性のハイブリッド
 
 ```json
-// configs/training/ppo_hybrid_v378_v379.json (新規作成)
+// archived/configs/ppo_legacy/training/ppo_hybrid_v378_v379.json (新規作成)
 {
   "algorithm": "PPO",
   "total_timesteps": 2000000,          // 長期訓練
@@ -260,7 +260,7 @@ v378/v379の成功要因を特定し、`ppo_v378_baseline.json`を作成
 
 ```bash
 .venv311\Scripts\python.exe -m ztb.training.core.unified_trainer \
-  --config configs/training/ppo_v378_baseline.json
+  --config archived/configs/ppo_legacy/training/ppo_v378_baseline.json
 ```
 
 ### Step 5: 評価とイテレーション（訓練完了後） 🔄

@@ -210,11 +210,16 @@ class TestUnifiedPPOTrainer:
 
     @patch("ztb.training.unified_trainer.algorithms.ppo_trainer.DataLoader.load_csv_strict")
     @patch("ztb.training.unified_trainer.algorithms.ppo_trainer.HeavyTradingEnv")
+    @patch(
+        "ztb.training.unified_trainer.algorithms.ppo_trainer.get_distributed_info",
+        return_value={"is_distributed": False, "world_size": 1, "rank": 0},
+    )
     @patch("stable_baselines3.PPO", _FakePPOModel)
     @patch("ztb.training.unified_trainer.algorithms.ppo_trainer.os.path.exists")
     def test_execute_ppo_training_smoke_uses_current_env_path(
         self,
         mock_exists: MagicMock,
+        _mock_dist_info: MagicMock,
         mock_env_cls: MagicMock,
         mock_load_csv: MagicMock,
         basic_config: dict[str, object],

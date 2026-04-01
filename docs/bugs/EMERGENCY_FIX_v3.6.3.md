@@ -1,7 +1,7 @@
 # SELL回避緊急修正 v3.6.3 変更サマリー
 
 **適用日時**: 2025-10-08
-**対象ファイル**: `configs/training/ppo_balanced_mem_optimized.json`
+**対象ファイル**: `archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json`
 
 ---
 
@@ -66,7 +66,7 @@
 
 ### **実行コマンド**
 ```bash
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --timesteps 10000 --force
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --timesteps 10000 --force
 ```
 
 ### **成功基準**

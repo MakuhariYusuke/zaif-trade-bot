@@ -18,8 +18,8 @@
 
 ## 📋 更新対象ファイル
 
-1. `configs/training/ppo_100k_optimized.json` - メイン設定ファイル
-2. `configs/training/ppo_binary_search_validated.json` - 検証済み設定 (存在する場合)
+1. `archived/configs/ppo_legacy/training/ppo_100k_optimized.json` - メイン設定ファイル
+2. `archived/configs/ppo_legacy/training/ppo_binary_search_validated.json` - 検証済み設定 (存在する場合)
 
 ---
 
@@ -54,7 +54,7 @@ notepad configs\training\ppo_100k_optimized.json
 
 **ステップ4**: 設定ファイルの検証
 ```cmd
-python -c "import json; print(json.load(open('configs/training/ppo_100k_optimized.json')))"
+python -c "import json; print(json.load(open('archived/configs/ppo_legacy/training/ppo_100k_optimized.json')))"
 ```
 
 ---
@@ -95,7 +95,7 @@ notepad configs\training\ppo_100k_optimized.json
 
 **ステップ3**: 設定ファイルの検証
 ```cmd
-python -c "import json; config = json.load(open('configs/training/ppo_100k_optimized.json')); print('learning_rate:', config['learning_rate']); print('batch_size:', config['batch_size']); print('max_grad_norm:', config['max_grad_norm'])"
+python -c "import json; config = json.load(open('archived/configs/ppo_legacy/training/ppo_100k_optimized.json')); print('learning_rate:', config['learning_rate']); print('batch_size:', config['batch_size']); print('max_grad_norm:', config['max_grad_norm'])"
 ```
 
 **期待される出力**:
@@ -116,8 +116,8 @@ import json
 from pathlib import Path
 
 # 設定ファイルのパス
-config_path = Path("configs/training/ppo_100k_optimized.json")
-backup_path = Path("configs/training/ppo_100k_optimized_backup_20251010.json")
+config_path = Path("archived/configs/ppo_legacy/training/ppo_100k_optimized.json")
+backup_path = Path("archived/configs/ppo_legacy/training/ppo_100k_optimized_backup_20251010.json")
 
 # バックアップ作成
 if config_path.exists():
@@ -175,17 +175,17 @@ python update_config.py
 
 ```cmd
 REM JSON構文チェック
-python -c "import json; json.load(open('configs/training/ppo_100k_optimized.json')); print('✅ JSON valid')"
+python -c "import json; json.load(open('archived/configs/ppo_legacy/training/ppo_100k_optimized.json')); print('✅ JSON valid')"
 
 REM パラメータ値確認
-python -c "import json; config = json.load(open('configs/training/ppo_100k_optimized.json')); assert config['batch_size'] == 256, 'batch_size mismatch'; assert config['learning_rate'] == 0.007503, 'learning_rate mismatch'; assert config['max_grad_norm'] == 5.05, 'max_grad_norm mismatch'; print('✅ All parameters correct')"
+python -c "import json; config = json.load(open('archived/configs/ppo_legacy/training/ppo_100k_optimized.json')); assert config['batch_size'] == 256, 'batch_size mismatch'; assert config['learning_rate'] == 0.007503, 'learning_rate mismatch'; assert config['max_grad_norm'] == 5.05, 'max_grad_norm mismatch'; print('✅ All parameters correct')"
 ```
 
 ### 2. ドライラン (実行テスト)
 
 ```cmd
 REM 設定ファイルでドライラン実行
-python run_training.py --config configs/training/ppo_100k_optimized.json --dry-run
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_100k_optimized.json --dry-run
 
 REM エラーがなければ成功
 ```
@@ -194,12 +194,12 @@ REM エラーがなければ成功
 
 ```cmd
 REM 1000ステップのテスト実行
-python run_training.py --config configs/training/ppo_100k_optimized.json --force
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_100k_optimized.json --force
 
 REM または、設定ファイルを一時的にコピーしてtotal_timestepsを1000に変更
 copy configs\training\ppo_100k_optimized.json configs\training\ppo_test.json
 REM ppo_test.json の total_timesteps を 1000 に変更
-python run_training.py --config configs/training/ppo_test.json --force
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_test.json --force
 ```
 
 ---
@@ -213,7 +213,7 @@ REM バックアップから復元
 copy configs\training\ppo_100k_optimized_backup_20251010.json configs\training\ppo_100k_optimized.json
 
 REM 復元確認
-python -c "import json; print(json.load(open('configs/training/ppo_100k_optimized.json'))['learning_rate'])"
+python -c "import json; print(json.load(open('archived/configs/ppo_legacy/training/ppo_100k_optimized.json'))['learning_rate'])"
 ```
 
 ---

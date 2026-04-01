@@ -1,7 +1,7 @@
 # SELL回避修正 検証結果 (10,000ステップ)
 
 **実施日時**: 2025-10-08 12:03:02
-**設定ファイル**: `configs/training/ppo_balanced_mem_optimized.json` (v3.6.2 緊急修正版)
+**設定ファイル**: `archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json` (v3.6.2 緊急修正版)
 **ステップ数**: 10,240 steps (目標: 10,000)
 
 ---

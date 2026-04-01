@@ -1,0 +1,57 @@
+_base: configs/v460/base.yaml
+_task: ppo_sidecar
+
+data:
+  data_path: "data/btc_jpy_real_dataset.csv"
+
+output:
+  model_dir: "models/v461"
+
+training:
+  total_timesteps: 200000
+
+ppo_hyperparameters:
+  use_custom_ppo: true
+
+ppo_sidecar:
+  data_path: "data/btc_jpy_real_dataset.csv"
+  model_path: "models/v461/ppo_sidecar.zip"
+  signal_path: "cache/ppo_sidecar_signal.json"
+  checkpoint_dir: "models/v461"
+  history_path: "logs/ppo_retrain_history.jsonl"
+  total_timesteps: 200000
+  incremental_timesteps: 50000
+  retrain_interval_sec: 7200
+  retrain_interval_max_sec: 14400
+  check_interval_sec: 300
+
+  # Discrete 3-action override: SKIP=0, BUY=1, SELL=2
+  use_continuous_actions: false
+  enable_action_masking: true
+  action_space_type: "discrete"
+
+  # Reward shaping
+  use_simple_reward: true
+  gamma: 0.95
+  reward_scaling: 100.0
+
+  # PPO hyperparameters
+  n_steps: 256
+  batch_size: 64
+  n_epochs: 4
+  learning_rate: 0.0003
+  clip_range: 0.2
+  ent_coef: 0.01
+
+  # Bias mitigation
+  enable_pan: true
+  enable_target_entropy: false
+  enable_stratified_sampling: false
+  allow_reverse: false
+
+  # Deploy gate
+  min_override_confidence: 0.55
+  min_action_probability_gap: 0.15
+
+  # Data freshness
+  max_data_stale_hours: 1.5

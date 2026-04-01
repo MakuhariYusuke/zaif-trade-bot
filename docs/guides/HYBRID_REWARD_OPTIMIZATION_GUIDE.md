@@ -7,21 +7,21 @@ v379の市場適応性、v380の積極性、二分探索最適化の結果を統
 ## 🎯 作成した設定ファイル
 
 ### 1. **v381 Hybrid Optimized** (推奨スタート地点)
-- **ファイル**: `configs/training/ppo_reward_v381_hybrid_optimized.json`
+- **ファイル**: `archived/configs/ppo_legacy/training/ppo_reward_v381_hybrid_optimized.json`
 - **特徴**: バランス型 - v380の66%強度 + v379の市場適応
 - **期待HOLD率**: 35-45%
 - **リスク**: Medium
 - **用途**: まずこれから試す
 
 ### 2. **v382 Aggressive Optimized** (v381で不足時)
-- **ファイル**: `configs/training/ppo_reward_v382_aggressive_optimized.json`
+- **ファイル**: `archived/configs/ppo_legacy/training/ppo_reward_v382_aggressive_optimized.json`
 - **特徴**: 積極型 - v380の85%強度 + v379の市場適応
 - **期待HOLD率**: 30-40%
 - **リスク**: Medium-High
 - **用途**: v381でHOLD率が45-50%だった場合に使用
 
 ### 3. **v381 30k Test** (クイックテスト用)
-- **ファイル**: `configs/training/ppo_reward_v381_hybrid_optimized_30k.json`
+- **ファイル**: `archived/configs/ppo_legacy/training/ppo_reward_v381_hybrid_optimized_30k.json`
 - **特徴**: v381の短期テスト版
 - **timesteps**: 30,000
 - **用途**: 設定の動作確認
@@ -84,7 +84,7 @@ lagrange = {
 
 ```bash
 # v381のクイックテスト (約10-15分)
-python run_training.py --config configs/training/ppo_reward_v381_hybrid_optimized_30k.json
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_reward_v381_hybrid_optimized_30k.json
 ```
 
 **確認ポイント**:
@@ -96,7 +96,7 @@ python run_training.py --config configs/training/ppo_reward_v381_hybrid_optimize
 
 ```bash
 # v381ハイブリッド最適化版 (約30-45分)
-python run_training.py --config configs/training/ppo_reward_v381_hybrid_optimized.json
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_reward_v381_hybrid_optimized.json
 ```
 
 **監視ポイント**:
@@ -118,7 +118,7 @@ tensorboard --logdir tensorboard_logs/ppo_reward_v381_hybrid_optimized
 
 ```bash
 # 必要な場合のみv382実行
-python run_training.py --config configs/training/ppo_reward_v382_aggressive_optimized.json
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_reward_v382_aggressive_optimized.json
 ```
 
 ## 📊 パラメータ比較表
@@ -200,9 +200,9 @@ python run_training.py --config configs/training/ppo_reward_v382_aggressive_opti
 
 - `docs/LAGRANGE_OPTIMIZATION_RESULTS.md` - Lagrangeパラメータ最適化詳細
 - `docs/binary_search_optimization/BINARY_SEARCH_COMPREHENSIVE_RESULTS.md` - PPOハイパーパラメータ最適化詳細
-- `configs/training/ppo_reward_v379_dynamic.json` - v379の詳細
-- `configs/training/ppo_reward_v380_aggressive.json` - v380の詳細
-- `configs/training/ppo_100k_optimized.json` - 二分探索最適化結果
+- `archived/configs/ppo_legacy/v379/ppo_reward_v379_dynamic.json` - v379の詳細
+- `archived/configs/ppo_legacy/v380/ppo_reward_v380_aggressive.json` - v380の詳細
+- `archived/configs/ppo_legacy/training/ppo_100k_optimized.json` - 二分探索最適化結果
 
 ## 🎯 成功基準
 

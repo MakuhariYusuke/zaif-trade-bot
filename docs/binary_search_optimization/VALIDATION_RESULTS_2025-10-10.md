@@ -169,7 +169,7 @@ Phase 2 improvement: -303.024 - (-275.310) = 27.714 (高信頼度 ✅)
 
 2. **本番設定ファイルの更新**
    ```cmd
-   # configs/training/ppo_100k_optimized.json を更新
+   # archived/configs/ppo_legacy/training/ppo_100k_optimized.json を更新
    # batch_size: 256
    # learning_rate: 0.007503
    # max_grad_norm: 5.05 (暫定)

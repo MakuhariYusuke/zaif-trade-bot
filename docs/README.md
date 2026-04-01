@@ -8,10 +8,10 @@
 
 ```bash
 # 1. 設定ファイルの検証（ドライラン）
-python run_training.py --config configs/training/ppo_100k_optimized.json --dry-run
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_100k_optimized.json --dry-run
 
 # 2. トレーニング実行
-python run_training.py --config configs/training/ppo_100k_optimized.json --force
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_100k_optimized.json --force
 
 # 3. アルゴリズムを変更する場合
 - **学習/環境**: ztb/training/（Unified Trainer、PPO、コールバック、評価）
@@ -76,7 +76,7 @@ python run_training.py --config configs/training/ppo_100k_optimized.json --force
 
 | アルゴリズム | 説明 | 設定例 |
 |------------|------|--------|
-| `ppo` | 標準PPOトレーニング | `configs/training/ppo_100k_optimized.json` |
+| `ppo` | 標準PPOトレーニング | `archived/configs/ppo_legacy/training/ppo_100k_optimized.json` |
 | `curriculum` | カリキュラム学習（段階的難易度） | `configs/training/curriculum.json` |
 | `ensemble` | アンサンブルモデル学習 | `configs/training/ensemble.json` |
 
@@ -224,7 +224,7 @@ python -m ztb.data.validate_data ml-dataset-enhanced.csv
 
 ```bash
 # 設定ファイルの検証（ドライラン）
-python run_training.py --config configs/training/ppo_100k_optimized.json --dry-run
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_100k_optimized.json --dry-run
 
 # 特徴量数の確認
 python -c "import pandas as pd; df = pd.read_csv('ml-dataset-enhanced.csv'); exclude_cols = ['ts', 'pair', 'side', 'pnl', 'win', 'source', 'timestamp']; features = [col for col in df.columns if col not in exclude_cols and df[col].dtype in ['float64', 'int64']]; print(f'特徴量数: {len(features)}')"
@@ -234,10 +234,10 @@ python -c "import pandas as pd; df = pd.read_csv('ml-dataset-enhanced.csv'); exc
 
 ```bash
 # ✅ 推奨: Unified Trainerを使用（100kステップ）
-python run_training.py --config configs/training/ppo_100k_optimized.json --force
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_100k_optimized.json --force
 
 # 1Mステップの場合: 設定ファイルをカスタマイズ
-python run_training.py --config configs/training/ppo_1m_optimized.json --force
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_1m_optimized.json --force
 
 # カリキュラム学習
 python run_training.py --config configs/training/curriculum.json --algorithm curriculum
@@ -1012,7 +1012,7 @@ python -m pytest --cov=ztb --cov-report=html --cov-report=term-missing
 }
 ```
 
-設定ファイル: [`configs/training/ppo_binary_search_validated.json`](./configs/training/ppo_binary_search_validated.json)
+設定ファイル: [`archived/configs/ppo_legacy/training/ppo_binary_search_validated.json`](./archived/configs/ppo_legacy/training/ppo_binary_search_validated.json)
 
 ### Lagrange制約最適化 (2025年10月)
 

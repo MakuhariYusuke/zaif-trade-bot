@@ -22,22 +22,22 @@ sys.path.insert(0, str(project_root))
 CONFIGS = [
     {
         "name": "v378_scale",
-        "path": "configs/training/ppo_reward_v378_scale.json",
+        "path": "archived/configs/ppo_legacy/v378/ppo_reward_v378_scale.json",
         "description": "Scale-adjusted (HOLD penalty 4x, profit 3x, trading bonus 3x)",
     },
     {
         "name": "v379_dynamic",
-        "path": "configs/training/ppo_reward_v379_dynamic.json",
+        "path": "archived/configs/ppo_legacy/v379/ppo_reward_v379_dynamic.json",
         "description": "Dynamic market-adaptive (v378 + volatility/trend scaling)",
     },
     {
         "name": "v380_aggressive",
-        "path": "configs/training/ppo_reward_v380_aggressive.json",
+        "path": "archived/configs/ppo_legacy/v380/ppo_reward_v380_aggressive.json",
         "description": "Aggressive anti-HOLD (HOLD penalty 10x, profit 5x, trading bonus 6x)",
     },
 ]
 
-def run_training(config_info: dict[str, Any]) -> None:
+def run_training(config_info: dict[str, Any]) -> str:
     """Run training for a single config."""
     config_path = project_root / config_info["path"]
 
@@ -72,9 +72,8 @@ def run_training(config_info: dict[str, Any]) -> None:
     # Train
     logger.info("Starting training...")
     trainer.train(session_id=session_id)
-
-    trained_models.append(config_info['name'])
     logger.info(f"✅ Training completed: {config_info['name']}")
+    return str(config_info["name"])
 
 def main() -> None:
     logger.info("=" * 80)
@@ -86,7 +85,7 @@ def main() -> None:
     logger.info("=" * 80 + "\n")
 
     start_time = time.time()
-    trained_models = []
+    trained_models: list[str] = []
 
     for i, config_info in enumerate(CONFIGS, 1):
         logger.info(f"\n{'#' * 80}")
@@ -94,7 +93,7 @@ def main() -> None:
         print(f"{'#' * 80}\n")
 
         try:
-            run_training(config_info)
+            trained_models.append(run_training(config_info))
         except KeyboardInterrupt:
             print(f"\n⚠️ Training interrupted by user for: {config_info['name']}")
             response = input("Continue with next config? (y/n): ").strip().lower()

@@ -1,5 +1,6 @@
 """Type stubs for PPO trainer implementations."""
 
+from pathlib import Path
 from typing import Any, Dict, Optional, Protocol
 
 from sb3_contrib import MaskablePPO
@@ -54,6 +55,14 @@ class PPOTrainerAutoHalt:
     def __init__(self, params: TrainerParams) -> None: ...
     def train(self, session_id: str) -> Optional[MaskablePPO]:
         """Train the model with auto-halt capability."""
+        ...
+    def load_and_continue(
+        self,
+        model_path: Path,
+        total_timesteps: int,
+        session_id: str,
+    ) -> Optional[MaskablePPO]:
+        """Load an existing model and continue training."""
         ...
     def get_reward_stats(self) -> Dict[str, float]:
         """Get training reward statistics."""

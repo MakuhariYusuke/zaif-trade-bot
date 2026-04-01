@@ -282,7 +282,7 @@ zaif-trade-bot/
 ├── validate_model_behavior.py (修正済み)
 ├── backtest_model.py (修正済み)
 ├── run_training.py
-└── configs/training/ppo_memory_optimized.json
+└── archived/configs/ppo_legacy/training/ppo_memory_optimized.json
 ```
 
 ---

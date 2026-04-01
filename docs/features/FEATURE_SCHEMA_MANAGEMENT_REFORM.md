@@ -229,7 +229,7 @@ def run_backtest_with_schema(model_path: str, data_path: str):
 ### 訓練（自動スキーマ保存）
 ```bash
 # 従来通り訓練するだけでスキーマも自動保存
-python run_training.py --config configs/training/ppo_reward_v385.json
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_reward_v385.json
 
 # 結果:
 # models/ppo_reward_v385.zip

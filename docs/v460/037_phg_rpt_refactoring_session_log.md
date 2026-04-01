@@ -9828,3 +9828,25 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - cleanup も shared helper を再利用
 - `test_custom_ppo_integration`
   - `create_with_current_masked_env` を tiny env 側へ寄せて setup 削減
+
+### 037-678H PPO Phase 2 warm-start / YAML / archive
+
+- `PPOTrainerAutoHalt.load_and_continue(...)` を追加
+- `ppo_retrain_scheduler`
+  - warm-start 優先
+  - cold-start fallback
+  - `trainer_mode` telemetry を明示
+- `g2_ppo_sidecar.yaml` を追加
+- `test_ppo_warm_start.py`
+  - roundtrip / fallback を focused で追加
+- `test_679_ppo_sidecar_foundation.py`
+  - actual YAML parse guard を追加
+- `test_680_ppo_retrain_scheduler.py`
+  - probability helper edge / trigger reset / neutral fallback を追加
+- legacy PPO config を `archived/configs/ppo_legacy/` へ整理
+
+### 037-678I Full-suite regression follow-up
+
+- `tests/training/unified_trainer/test_algorithms.py`
+  - distributed state 持ち越しで揺れていた `total_timesteps` expectation を固定
+  - `get_distributed_info()` を patch して non-distributed contract を明示

@@ -154,7 +154,7 @@ trader.position = 1.0
 トレーニング設定ファイル間で `reward_scaling` の値が不一致。
 
 **不一致の詳細:**
-- `configs/training/ppo_memory_optimized.json`: `reward_scaling: 1.0`
+- `archived/configs/ppo_legacy/training/ppo_memory_optimized.json`: `reward_scaling: 1.0`
 - 他の設定（`ppo_100k_optimized.json` など）: `reward_scaling: 6.0` (DEFAULT)
 
 **影響:**
@@ -164,7 +164,7 @@ trader.position = 1.0
 
 ### 修正内容
 
-**ファイル:** `configs/training/ppo_memory_optimized.json:29`
+**ファイル:** `archived/configs/ppo_legacy/training/ppo_memory_optimized.json:29`
 
 ```json
 // BEFORE
@@ -363,7 +363,7 @@ if np.isclose(self.position, 0.0, atol=1e-10):
 
 1. `tests/unit/environment/test_forced_actions.py` - Bug #37修正
 2. `live_trade.py` - Bug #41修正
-3. `configs/training/ppo_memory_optimized.json` - Bug #39修正
+3. `archived/configs/ppo_legacy/training/ppo_memory_optimized.json` - Bug #39修正
 4. `ztb/utils/logging_utils.py` - Bug #40修正
 5. `run_training.py` - Bug #40修正
 

@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from ztb.io.yaml_io import read_yaml
 from scripts.v460.lib.sidecar_signal_io import (
     clear_ppo_sidecar_signal_cache,
     create_neutral_ppo_signal,
@@ -144,3 +145,20 @@ class TestPPOSidecarConfig:
                 data_path="data/ppo_training.csv",
                 use_continuous_actions=True,
             )
+
+    def test_parse_actual_v460_sidecar_yaml(self) -> None:
+        raw = read_yaml("configs/v460/experiments/g2_ppo_sidecar.yaml")
+
+        cfg = PPOSidecarConfig.from_yaml_dict(raw)
+        trainer_config = cfg.build_trainer_config()
+
+        assert cfg.model_path == Path("models/v461/ppo_sidecar.zip")
+        assert cfg.total_timesteps == 200_000
+        assert cfg.incremental_timesteps == 50_000
+        assert cfg.enable_action_masking is True
+        assert cfg.max_data_stale_hours == pytest.approx(1.5)
+        assert cfg.min_action_probability_gap == pytest.approx(0.15)
+        assert trainer_config["reward_scaling"] == pytest.approx(100.0)
+        assert trainer_config["use_simple_reward"] is True
+        assert trainer_config["enable_action_masking"] is True
+        assert trainer_config["gamma"] == pytest.approx(0.95)

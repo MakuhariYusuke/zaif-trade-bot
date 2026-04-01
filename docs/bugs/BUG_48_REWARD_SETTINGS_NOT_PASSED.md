@@ -91,7 +91,7 @@ env_config = {
 
 ### **再検証の実行**
 ```bash
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --timesteps 10000 --force
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --timesteps 10000 --force
 ```
 
 ### **確認ポイント**

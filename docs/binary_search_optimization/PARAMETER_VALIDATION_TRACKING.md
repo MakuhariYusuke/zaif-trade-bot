@@ -307,7 +307,7 @@ Week 5+:
 - **包括的バイナリサーチ結果**: [`BINARY_SEARCH_COMPREHENSIVE_RESULTS.md`](./BINARY_SEARCH_COMPREHENSIVE_RESULTS.md)
 - **Lagrange最適化**: [`LAGRANGE_OPTIMIZATION_RESULTS.md`](./LAGRANGE_OPTIMIZATION_RESULTS.md)
 - **旧PPO最適化**: [`PPO_HYPERPARAMETER_OPTIMIZATION_RESULTS.md`](./PPO_HYPERPARAMETER_OPTIMIZATION_RESULTS.md)
-- **設定ファイル**: [`../configs/training/ppo_binary_search_validated.json`](../configs/training/ppo_binary_search_validated.json)
+- **設定ファイル**: [`../archived/configs/ppo_legacy/training/ppo_binary_search_validated.json`](../archived/configs/ppo_legacy/training/ppo_binary_search_validated.json)
 
 ---
 

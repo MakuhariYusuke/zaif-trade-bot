@@ -11,7 +11,7 @@ PPO Trainer implementations:
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Protocol, TypeAlias
+from typing import Any, Protocol, TypeAlias, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -539,6 +539,111 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
             grad_probe_config=grad_probe_config,
         )
 
+    def _learn_model(
+        self,
+        model: MaskablePPO,
+        *,
+        total_timesteps: int,
+        session_id: str,
+    ) -> MaskablePPO:
+        """Run a PPO learn cycle with the current callback/runtime contract."""
+        logger.info("Training for %s timesteps", total_timesteps)
+        logger.info("Beginning model training with progress tracking...")
+        model.learn(
+            total_timesteps=total_timesteps,
+            callback=self._create_callback(),
+            tb_log_name=session_id,
+            progress_bar=self.progress_bar_enabled,
+        )
+        logger.info("Training loop completed, evaluating final results...")
+        return model
+
+    def _cleanup_training_resources(self) -> None:
+        """Best-effort environment cleanup after a training cycle."""
+        import gc
+        import traceback
+
+        logger.info("Cleaning up training resources...")
+        try:
+            if self.env is not None:
+                try:
+                    self.env.close()
+                    logger.debug("Environment closed")
+                except Exception as env_error:
+                    logger.warning(f"Error closing environment: {env_error}")
+
+            self.env = None
+            logger.debug("Instance references cleared")
+        except Exception as cleanup_error:
+            logger.warning(f"Error during resource cleanup: {cleanup_error}")
+            logger.warning(
+                f"Cleanup error details: {type(cleanup_error).__name__}: {cleanup_error}"
+            )
+            logger.debug(f"Cleanup traceback: {traceback.format_exc()}")
+
+        collected_count = 0
+        for i in range(3):
+            collected = gc.collect(generation=i)
+            collected_count += collected
+            if collected > 0:
+                logger.debug(f"GC generation {i}: collected {collected} objects")
+
+        if collected_count > 0:
+            logger.debug(
+                f"Total objects collected during cleanup: {collected_count}"
+            )
+        logger.info("✅ Resource cleanup completed")
+
+    def load_and_continue(
+        self,
+        model_path: Path,
+        total_timesteps: int,
+        session_id: str,
+    ) -> MaskablePPO | None:
+        """Load an existing PPO model, bind a fresh env, and continue learning.
+
+        Falls back to a cold start if loading or env rebinding fails.
+        """
+        logger.info("Starting PPO warm-start session: %s", session_id)
+        logger.info("  Warm-start model: %s", model_path)
+        logger.info("  Continue timesteps: %s", total_timesteps)
+
+        if not model_path.exists():
+            logger.warning(
+                "Warm-start model not found at %s, falling back to cold start",
+                model_path,
+            )
+            return self.train(session_id=session_id)
+
+        try:
+            self.env = self._create_environment()
+            model_class: type[MaskablePPO]
+            if self.training_config.use_custom_ppo:
+                model_class = cast(type[MaskablePPO], CustomPPO)
+            else:
+                model_class = MaskablePPO
+
+            load_fn = getattr(model_class, "load", MaskablePPO.load)
+            loaded_model = cast(MaskablePPO, load_fn(str(model_path)))
+            loaded_model.set_env(self.env)
+            self.model = loaded_model
+            return self._learn_model(
+                loaded_model,
+                total_timesteps=total_timesteps,
+                session_id=session_id,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Warm-start failed for %s (%s), falling back to cold start",
+                model_path,
+                exc,
+                exc_info=True,
+            )
+            self._cleanup_training_resources()
+            return self.train(session_id=session_id)
+        finally:
+            self._cleanup_training_resources()
+
     def train(self, session_id: str) -> MaskablePPO | None:
         """
         Train the PPO model with evaluation gates and auto-halt functionality.
@@ -578,20 +683,11 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
             self.env = self._create_environment()
             self.model = self._create_model()
 
-            # Train the model
-            logger.info(
-                f"Training for {self.training_config.total_timesteps} timesteps"
-            )
-            logger.info("Beginning model training with progress tracking...")
-
-            self.model.learn(
+            self._learn_model(
+                self.model,
                 total_timesteps=self.training_config.total_timesteps,
-                callback=self._create_callback(),
-                tb_log_name=session_id,
-                progress_bar=self.progress_bar_enabled,
+                session_id=session_id,
             )
-
-            logger.info("Training loop completed, evaluating final results...")
 
             # Training completed successfully
             logger.info(f"Training completed successfully for session: {session_id}")
@@ -620,48 +716,7 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
             raise
 
         finally:
-            # Always cleanup resources - critical for memory management
-            import gc
-
-            logger.info("Cleaning up training resources...")
-
-            try:
-                # Close environment first (don't modify model internals to preserve return value)
-                if self.env is not None:
-                    try:
-                        self.env.close()
-                        logger.debug("Environment closed")
-                    except Exception as env_error:
-                        logger.warning(f"Error closing environment: {env_error}")
-
-                # Clear instance references to allow garbage collection
-                self.env = None
-                # Note: Do NOT clear self.model internals (policy, etc.) as it's being returned
-                # Only clear the instance reference after successful return
-                logger.debug("Instance references cleared")
-
-            except Exception as cleanup_error:
-                logger.warning(f"Error during resource cleanup: {cleanup_error}")
-                logger.warning(
-                    f"Cleanup error details: {type(cleanup_error).__name__}: {cleanup_error}"
-                )
-                import traceback
-
-                logger.debug(f"Cleanup traceback: {traceback.format_exc()}")
-
-            # Force garbage collection multiple times to handle circular references
-            collected_count = 0
-            for i in range(3):
-                collected = gc.collect(generation=i)
-                collected_count += collected
-                if collected > 0:
-                    logger.debug(f"GC generation {i}: collected {collected} objects")
-
-            if collected_count > 0:
-                logger.debug(
-                    f"Total objects collected during cleanup: {collected_count}"
-                )
-            logger.info("✅ Resource cleanup completed")
+            self._cleanup_training_resources()
 
     def neutralize_policy_bias(self) -> None:
         """Neutralize policy head bias."""

@@ -99,7 +99,7 @@ else:  # HOLD
 |---------|---------|
 | `ztb/trading/constants.py` | 配列インデックス定数追加 |
 | `ztb/trading/environment/components/reward_calculator.py` | マジックナンバー → 定数化 (3箇所) |
-| `configs/training/ppo_balanced_mem_optimized.json` | 配列順序修正 + バージョン更新 |
+| `archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json` | 配列順序修正 + バージョン更新 |
 
 ---
 
@@ -119,7 +119,7 @@ else:  # HOLD
 
 ### **検証コマンド**
 ```bash
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --timesteps 10000 --force
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --timesteps 10000 --force
 ```
 
 ### **期待される結果**

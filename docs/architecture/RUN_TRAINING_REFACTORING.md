@@ -25,10 +25,10 @@ parser.add_argument(
 **使用例:**
 ```bash
 # 10000 stepsで検証実行
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --timesteps 10000
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --timesteps 10000
 
 # 5000 stepsでクイックテスト
-python run_training.py --config configs/training/ppo_100k_optimized.json --timesteps 5000
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_100k_optimized.json --timesteps 5000
 ```
 
 ---
@@ -121,13 +121,13 @@ def __init__(
 
 **Before（エラー）:**
 ```bash
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --timesteps 10000
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --timesteps 10000
 # Error: unrecognized arguments: --timesteps 10000
 ```
 
 **After（正常動作）:**
 ```bash
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --timesteps 10000
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --timesteps 10000
 # ✅ 10000 stepsで実行
 # Overriding total_timesteps: 10,000
 ```
@@ -136,14 +136,14 @@ python run_training.py --config configs/training/ppo_balanced_mem_optimized.json
 
 ```bash
 # 5000 stepsでSELL率を確認
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --timesteps 5000 --force
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --timesteps 5000 --force
 ```
 
 ### 3. Dry Run（設定検証のみ）
 
 ```bash
 # 実行せずに設定を検証
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --dry-run --timesteps 10000
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --dry-run --timesteps 10000
 ```
 
 ---
@@ -213,7 +213,7 @@ python run_training.py --help
 ```bash
 # 10000 stepsで実行
 python run_training.py \
-  --config configs/training/ppo_balanced_mem_optimized.json \
+  --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json \
   --timesteps 10000 \
   --force
 
@@ -243,7 +243,7 @@ python run_training.py \
 ```bash
 # 緊急修正後の設定で10000 steps実行
 python run_training.py \
-  --config configs/training/ppo_balanced_mem_optimized.json \
+  --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json \
   --timesteps 10000 \
   --force
 

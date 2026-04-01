@@ -455,7 +455,7 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
    - ステータスを ❌→✅ に更新
    - 結果セクションに詳細記録
 
-2. `configs/training/ppo_binary_search_validated.json`
+2. `archived/configs/ppo_legacy/training/ppo_binary_search_validated.json`
    - 最適値を反映
    - コメントに検証日追記
 
@@ -470,7 +470,7 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 - **🆕 実行ガイド**: [BINARY_SEARCH_EXECUTION_GUIDE.md](./BINARY_SEARCH_EXECUTION_GUIDE.md) - 初心者向けステップバイステップ
 - **詳細追跡**: [PARAMETER_VALIDATION_TRACKING.md](./PARAMETER_VALIDATION_TRACKING.md)
 - **包括的結果**: [BINARY_SEARCH_COMPREHENSIVE_RESULTS.md](./BINARY_SEARCH_COMPREHENSIVE_RESULTS.md)
-- **設定ファイル**: [ppo_binary_search_validated.json](../configs/training/ppo_binary_search_validated.json)
+- **設定ファイル**: [ppo_binary_search_validated.json](../archived/configs/ppo_legacy/training/ppo_binary_search_validated.json)
 
 ---
 

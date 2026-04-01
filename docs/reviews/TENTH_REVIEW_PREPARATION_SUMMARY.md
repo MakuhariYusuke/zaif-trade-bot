@@ -123,7 +123,7 @@ def close_position(self):
 |---------|------|------|
 | bug_fixes/TENTH_REVIEW_REQUEST.md | 第10回レビュー依頼文 | Codex + Copilotへの最終レビュー依頼 |
 | bug_fixes/HORIZONTAL_EXPANSION_REPORT.md | 水平展開実施報告 | 過去バグパターンの網羅的検証 |
-| configs/training/ppo_balanced_mem_optimized.json | transaction_cost追加 | 設定ファイル統一 |
+| archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json | transaction_cost追加 | 設定ファイル統一 |
 
 ---
 

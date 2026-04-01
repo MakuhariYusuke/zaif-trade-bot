@@ -895,3 +895,25 @@ durations 変化で特に効いた点:
     - HeavyTradingEnv を必要としない setup を完全に切り離した
   - これにより PPO focused subset の slowest setup は縮小し、
     残る支配点は scheduler/retrain path と self-supervised integration 側へ寄った
+
+- PPO Phase 2 focused runtime:
+  - `tests/unit/v460/test_679_ppo_sidecar_foundation.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_ppo_warm_start.py`
+  - `tests/training/test_ppo_trainer.py`
+  - `tests/integration/test_custom_ppo_integration.py`
+  - `63 passed in 5.52s`
+  - warm-start / YAML parse / scheduler edge case を focused で固定
+
+- PPO/SAC sidecar broad-ish regression:
+  - `tests/unit/v460/test_679_ppo_sidecar_foundation.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/unit/v460/test_sidecar_sac_integration.py`
+  - `tests/training/test_ppo_trainer.py`
+  - `tests/unit/algorithms/test_ppo_algorithm.py`
+  - `tests/unit/training/test_ppo_trainer.py`
+  - `tests/integration/test_custom_ppo_integration.py`
+  - `tests/training/unified_trainer/test_algorithms.py`
+  - `252 passed, 2 skipped in 20.12s` の後、
+    Phase 2 変更込みでも focused regression は維持

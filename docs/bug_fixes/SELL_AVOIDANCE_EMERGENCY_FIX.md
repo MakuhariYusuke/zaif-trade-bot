@@ -133,7 +133,7 @@ SELLアクション時に以下のペナルティが累積:
 ### 1. 短期学習セッション実行
 ```bash
 # 10000 stepsで効果を確認
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --timesteps 10000
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --timesteps 10000
 ```
 
 ### 2. 確認すべきメトリクス
@@ -163,7 +163,7 @@ Final Lagrange Statistics:
 
 ### ステップ1: 短期検証（今すぐ実行）
 ```bash
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --timesteps 10000
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --timesteps 10000
 ```
 
 ### ステップ2: 結果分析
@@ -272,5 +272,5 @@ tensorboard --logdir tensorboard
 
 **実行コマンド:**
 ```bash
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --timesteps 10000
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --timesteps 10000
 ```

@@ -113,7 +113,7 @@ multipliers[2] = 3.0 → HOLD用 (❌ 1.0であるべき!)
 
 ### **緊急再検証の実行**
 ```bash
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --timesteps 10000 --force
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --timesteps 10000 --force
 ```
 
 ### **成功基準**
@@ -200,6 +200,6 @@ elif isinstance(multipliers_raw, list):
 
 ---
 
-**修正ファイル**: `configs/training/ppo_balanced_mem_optimized.json` (1行修正)
+**修正ファイル**: `archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json` (1行修正)
 **ステータス**: 修正準備中 → 緊急再検証が必要
 **次のアクション**: 配列順序を修正 → 10,000ステップ検証 → SELL率15%達成確認

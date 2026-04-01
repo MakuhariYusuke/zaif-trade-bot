@@ -29,7 +29,9 @@ class PPOSidecarConfig:
     history_path: Path = field(default_factory=lambda: Path("logs/ppo_retrain_history.jsonl"))
     min_override_confidence: float = 0.55
     min_action_probability_gap: float = 0.10
+    max_data_stale_hours: float = 1.5
     use_continuous_actions: bool = False
+    enable_action_masking: bool = True
     action_space_type: str = "discrete"
     enable_pan: bool = True
     enable_target_entropy: bool = True
@@ -60,8 +62,12 @@ class PPOSidecarConfig:
             raise ValueError(
                 "min_action_probability_gap must be in [0.0, 1.0]"
             )
+        if self.max_data_stale_hours <= 0.0:
+            raise ValueError("max_data_stale_hours must be > 0.0")
         if self.use_continuous_actions:
             raise ValueError("PPO sidecar must run with discrete actions")
+        if not self.enable_action_masking:
+            raise ValueError("PPO sidecar requires action masking")
         if self.action_space_type != "discrete":
             raise ValueError("action_space_type must be 'discrete' for PPO sidecar")
 
@@ -73,11 +79,42 @@ class PPOSidecarConfig:
         training_cfg = ensure_dict(root.get("training"))
         output_cfg = ensure_dict(root.get("output"))
         ppo_sidecar_cfg = ensure_dict(root.get("ppo_sidecar"))
-        ppo_hyperparameters = ensure_dict(root.get("ppo_hyperparameters"))
+        base_hyperparameters = ensure_dict(root.get("ppo_hyperparameters"))
+
+        flattened_hyperparameter_keys = (
+            "learning_rate",
+            "n_steps",
+            "batch_size",
+            "n_epochs",
+            "gamma",
+            "gae_lambda",
+            "clip_range",
+            "clip_range_vf",
+            "normalize_advantage",
+            "ent_coef",
+            "vf_coef",
+            "max_grad_norm",
+            "target_kl",
+            "reward_scaling",
+            "use_simple_reward",
+            "use_custom_ppo",
+        )
+        ppo_hyperparameters = {
+            str(key): value for key, value in base_hyperparameters.items()
+        }
+        for key in flattened_hyperparameter_keys:
+            if key in ppo_sidecar_cfg:
+                ppo_hyperparameters[key] = ppo_sidecar_cfg[key]
 
         model_dir = Path(str(output_cfg.get("model_dir", "models/v461")))
         checkpoint_dir = Path(
             str(ppo_sidecar_cfg.get("checkpoint_dir", model_dir))
+        )
+        explicit_model_path = ppo_sidecar_cfg.get("model_path")
+        resolved_model_path = (
+            Path(str(explicit_model_path))
+            if explicit_model_path is not None
+            else model_dir / str(ppo_sidecar_cfg.get("model_name", "ppo_sidecar.zip"))
         )
         return cls(
             data_path=str(
@@ -86,8 +123,7 @@ class PPOSidecarConfig:
                     data_cfg.get("data_path", training_cfg.get("data_path", "")),
                 )
             ),
-            model_path=model_dir
-            / str(ppo_sidecar_cfg.get("model_name", "ppo_sidecar.zip")),
+            model_path=resolved_model_path,
             signal_path=Path(
                 str(
                     ppo_sidecar_cfg.get(
@@ -98,7 +134,10 @@ class PPOSidecarConfig:
             ),
             checkpoint_dir=checkpoint_dir,
             total_timesteps=safe_to_int(
-                training_cfg.get("total_timesteps", 200_000),
+                ppo_sidecar_cfg.get(
+                    "total_timesteps",
+                    training_cfg.get("total_timesteps", 200_000),
+                ),
                 200_000,
             ),
             incremental_timesteps=safe_to_int(
@@ -133,9 +172,17 @@ class PPOSidecarConfig:
                 ppo_sidecar_cfg.get("min_action_probability_gap", 0.10),
                 0.10,
             ),
+            max_data_stale_hours=safe_to_float(
+                ppo_sidecar_cfg.get("max_data_stale_hours", 1.5),
+                1.5,
+            ),
             use_continuous_actions=safe_to_bool(
                 ppo_sidecar_cfg.get("use_continuous_actions", False),
                 False,
+            ),
+            enable_action_masking=safe_to_bool(
+                ppo_sidecar_cfg.get("enable_action_masking", True),
+                True,
             ),
             action_space_type=str(
                 ppo_sidecar_cfg.get("action_space_type", "discrete")
@@ -173,6 +220,7 @@ class PPOSidecarConfig:
             "checkpoint_dir": str(self.checkpoint_dir),
             "total_timesteps": resolved_total_timesteps,
             "use_continuous_actions": False,
+            "enable_action_masking": self.enable_action_masking,
             "action_space_type": "discrete",
             "enable_pan": self.enable_pan,
             "enable_target_entropy": self.enable_target_entropy,

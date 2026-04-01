@@ -275,7 +275,7 @@ Trades/Episode:    4.0
 
 ## 🆕 新規設定ファイル
 
-### configs/training/ppo_realistic_btc.json
+### archived/configs/ppo_legacy/training/ppo_realistic_btc.json
 
 現実的なBitcoin取引設定を使用した訓練用設定:
 
@@ -323,7 +323,7 @@ Trades/Episode:    4.0
 5. **position_manager.py**: 資金制約対応
 
 ### 新規ファイル (1個)
-6. **configs/training/ppo_realistic_btc.json**: 現実的な訓練設定
+6. **archived/configs/ppo_legacy/training/ppo_realistic_btc.json**: 現実的な訓練設定
 
 ### 互換性
 - **既存モデル**: ✅ 完全互換 (訓練時設定が自動復元される)
@@ -337,7 +337,7 @@ Trades/Episode:    4.0
 ### 1. 新規訓練の実施
 ```bash
 .venv311\Scripts\python.exe -m ztb.training.core.unified_trainer \
-    --config configs/training/ppo_realistic_btc.json
+    --config archived/configs/ppo_legacy/training/ppo_realistic_btc.json
 ```
 
 **期待効果**:

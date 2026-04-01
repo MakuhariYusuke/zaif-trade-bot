@@ -7,8 +7,8 @@
 - signal が無い時は従来動作のまま
 - 学習失敗時は neutral PPO signal を push
 - live merge は confidence/action_margin gate により cycle 側で再判定
-- 現行 trainer が warm-start API を持たないため、
-  既存 model がある場合も timesteps だけ incremental に短縮する
+- 既存 model がある場合は warm-start を試し、
+  失敗時だけ cold start にフォールバックする
 """
 
 from __future__ import annotations
@@ -79,7 +79,7 @@ class PPORetrainResult(BaseRetrainResult):
     action_margin: float = 0.0
 
     def to_dict(self) -> dict[str, object]:
-        payload = BaseRetrainResult.to_dict(self)
+        payload: dict[str, object] = BaseRetrainResult.to_dict(self)
         payload.update(
             {
                 "action": self.action,
@@ -317,7 +317,25 @@ def retrain_once(cfg: PPOSidecarConfig) -> PPORetrainResult:
 
     try:
         start_time = time.time()
-        model = _train_with_timeout(trainer, session_id=model_version)
+        if is_warm_start and hasattr(trainer, "load_and_continue"):
+            model = run_with_timeout(
+                timeout_sec=_TRAINING_TIMEOUT_SEC,
+                target=lambda: cast(
+                    _PPOModelProtocol,
+                    trainer.load_and_continue(
+                        cfg.model_path,
+                        timesteps,
+                        session_id=model_version,
+                    ),
+                ),
+                timeout_message=(
+                    f"PPO trainer exceeded {_TRAINING_TIMEOUT_SEC}s timeout"
+                ),
+            )
+        else:
+            model = _train_with_timeout(trainer, session_id=model_version)
+        if model is None:
+            raise RuntimeError("PPO trainer returned no model")
         _atomic_deploy_model(model, cfg.model_path)
         signal_obj = _update_ppo_sidecar_signal(
             model,
@@ -338,7 +356,7 @@ def retrain_once(cfg: PPOSidecarConfig) -> PPORetrainResult:
             debug_details={
                 "data_path": cfg.data_path,
                 "checkpoint_dir": str(cfg.checkpoint_dir),
-                "trainer_mode": "fresh_fit_shorter_budget" if is_warm_start else "cold_start",
+                "trainer_mode": "warm_start_resume" if is_warm_start else "cold_start",
             },
         )
     except Exception as exc:

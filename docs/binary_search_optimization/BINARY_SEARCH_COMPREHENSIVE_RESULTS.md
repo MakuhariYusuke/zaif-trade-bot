@@ -348,7 +348,7 @@ tensorboard/binary_search/
 - **Lagrange最適化結果**: `docs/LAGRANGE_OPTIMIZATION_RESULTS.md`
 - **旧PPO最適化**: `docs/PPO_HYPERPARAMETER_OPTIMIZATION_RESULTS.md`
 - **実装コード**: `ztb/training/binary_search/*_optimized.py`
-- **設定ファイル**: `configs/training/ppo_100k_optimized.json`
+- **設定ファイル**: `archived/configs/ppo_legacy/training/ppo_100k_optimized.json`
 
 ---
 

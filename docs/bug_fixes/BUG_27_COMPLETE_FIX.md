@@ -151,7 +151,7 @@ elif old_position != 0 and self.position == 0:
 **Test Scenario 1: MaskablePPO Loading**
 ```bash
 # Create MaskablePPO model (training)
-python run_training.py --config configs/training/ppo_maskable.json
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_maskable.json
 
 # Verify live loading
 python live_trade.py --demo-mode --model models/ppo_maskable.zip

@@ -4,7 +4,7 @@
 
 ### 問題
 ```bash
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --timesteps 10000
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --timesteps 10000
 # Error: unrecognized arguments: --timesteps 10000
 ```
 
@@ -57,7 +57,7 @@ def __init__(
 ```bash
 # 10000 stepsで検証実行
 python run_training.py \
-  --config configs/training/ppo_balanced_mem_optimized.json \
+  --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json \
   --timesteps 10000 \
   --force
 ```
@@ -75,10 +75,10 @@ INFO - Lambda (final): ??    ← 20.0未満が目標
 
 ```bash
 # 5000 stepsでクイックテスト
-python run_training.py --config configs/training/ppo_100k_optimized.json --timesteps 5000
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_100k_optimized.json --timesteps 5000
 
 # Dry run（設定検証のみ）
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --dry-run --timesteps 10000
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --dry-run --timesteps 10000
 ```
 
 ---
@@ -119,7 +119,7 @@ SELL回避問題の検証を実行してください：
 
 ```bash
 python run_training.py \
-  --config configs/training/ppo_balanced_mem_optimized.json \
+  --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json \
   --timesteps 10000 \
   --force
 

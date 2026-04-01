@@ -27,9 +27,9 @@ CHECKPOINTS = {
 
 # Config files
 CONFIGS = {
-    "v378_scale": "configs/training/ppo_reward_v378_scale.json",
-    "v379_dynamic": "configs/training/ppo_reward_v379_dynamic.json",
-    "v380_aggressive": "configs/training/ppo_reward_v380_aggressive.json",
+    "v378_scale": "archived/configs/ppo_legacy/v378/ppo_reward_v378_scale.json",
+    "v379_dynamic": "archived/configs/ppo_legacy/v379/ppo_reward_v379_dynamic.json",
+    "v380_aggressive": "archived/configs/ppo_legacy/v380/ppo_reward_v380_aggressive.json",
 }
 
 def load_config(config_path: str) -> dict[str, Any]:
@@ -96,11 +96,16 @@ def analyze_checkpoint_dir(
     # Load config
     config = load_config(config_path)
     result["config"] = config
-    result["reward_settings"] = config.get("environment", {}).get("reward_settings", {})
+    environment_cfg = cast(dict[str, Any], config.get("environment", {}))
+    reward_settings = cast(
+        dict[str, Any],
+        environment_cfg.get("reward_settings", {}),
+    )
+    result["reward_settings"] = reward_settings
 
     print("  ✅ Config loaded")
     print("  Reward settings:")
-    for key, value in result["reward_settings"].items():
+    for key, value in reward_settings.items():
         print(f"    {key}: {value}")
 
     # Analyze tensorboard events
@@ -211,6 +216,15 @@ def compare_results(results: dict[str, dict[str, Any]]) -> None:
     print("3. Run backtest on best performing model")
     print("4. Analyze risk-adjusted metrics (Sharpe ratio, max drawdown)")
     print(f"{'='*80}\n")
+
+
+def main() -> None:
+    """Analyze all configured reward-improvement checkpoints and compare them."""
+    results: dict[str, dict[str, Any]] = {}
+    for name, checkpoint_dir in CHECKPOINTS.items():
+        config_path = CONFIGS[name]
+        results[name] = analyze_checkpoint_dir(name, checkpoint_dir, config_path)
+    compare_results(results)
 
 if __name__ == "__main__":
     main()

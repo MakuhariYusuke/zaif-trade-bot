@@ -18,6 +18,8 @@ from scripts.v460.ml.ppo_retrain_scheduler import (
     PPORetrainResult,
     PPORetrainTrigger,
     _TRAINING_TIMEOUT_SEC,
+    _extract_action_probabilities,
+    _one_hot_ppo_probabilities,
     _push_neutral_fallback,
     _train_with_timeout,
     _update_ppo_sidecar_signal,
@@ -104,6 +106,15 @@ class TestPPORetrainTrigger:
         trigger.record_result("error")
         assert trigger.effective_interval == 240.0
 
+    def test_deployed_resets_backoff(self, tmp_path: Path) -> None:
+        trigger, _ = self._make_trigger(tmp_path)
+        trigger.record_result("error")
+        trigger.record_result("error")
+
+        trigger.record_result("deployed")
+
+        assert trigger.effective_interval == 60.0
+
     def test_time_forced_retrain_when_mtime_is_unchanged(self, tmp_path: Path) -> None:
         trigger, data_file = self._make_trigger(tmp_path)
         trigger.record_result("deployed")
@@ -176,6 +187,75 @@ class _FakePPOModel:
     ) -> tuple[np.ndarray, None]:
         del observation, deterministic
         return np.asarray([1], dtype=np.int64), None
+
+
+class _PolicylessPPOModel(_FakePPOModel):
+    @property
+    def policy(self) -> object:
+        return None
+
+
+class _LogitOnlyPolicy(_FakePolicy):
+    def get_distribution(self, observation: object) -> object:
+        del observation
+        logits = torch.tensor([[0.2, 1.0, -0.2]], dtype=torch.float32)
+        return SimpleNamespace(distribution=SimpleNamespace(logits=logits))
+
+
+class _NoProbPolicy(_FakePolicy):
+    def get_distribution(self, observation: object) -> object:
+        del observation
+        return SimpleNamespace(distribution=SimpleNamespace())
+
+
+class _NoProbPPOModel(_FakePPOModel):
+    def __init__(self) -> None:
+        self._policy = _NoProbPolicy()
+
+
+class _LogitOnlyPPOModel(_FakePPOModel):
+    def __init__(self) -> None:
+        self._policy = _LogitOnlyPolicy()
+
+
+class TestPPOProbabilityHelpers:
+    def test_one_hot_probabilities_clamp_out_of_range(self) -> None:
+        assert _one_hot_ppo_probabilities(-1) == {
+            "skip": 1.0,
+            "buy": 0.0,
+            "sell": 0.0,
+        }
+        assert _one_hot_ppo_probabilities(9) == {
+            "skip": 1.0,
+            "buy": 0.0,
+            "sell": 0.0,
+        }
+
+    def test_extract_probabilities_falls_back_when_policy_is_missing(self) -> None:
+        probs = _extract_action_probabilities(
+            _PolicylessPPOModel(),
+            observation=np.zeros(4, dtype=np.float32),
+        )
+
+        assert probs == {"skip": 0.0, "buy": 1.0, "sell": 0.0}
+
+    def test_extract_probabilities_falls_back_when_probs_are_missing(self) -> None:
+        probs = _extract_action_probabilities(
+            _NoProbPPOModel(),
+            observation=np.zeros(4, dtype=np.float32),
+        )
+
+        assert probs == {"skip": 0.0, "buy": 1.0, "sell": 0.0}
+
+    def test_extract_probabilities_uses_logits_when_probs_absent(self) -> None:
+        probs = _extract_action_probabilities(
+            _LogitOnlyPPOModel(),
+            observation=np.zeros(4, dtype=np.float32),
+            action_masks=np.array([True, True, True], dtype=np.bool_),
+        )
+
+        assert probs["buy"] > probs["skip"]
+        assert probs["buy"] > probs["sell"]
 
 
 class TestPPOSidecarSignalUpdate:
@@ -259,6 +339,33 @@ class TestPPORetrainOnce:
         with patch(
             "scripts.v460.ml.ppo_retrain_scheduler.SELLBiasMitigationPPOTrainer",
             return_value=fake_trainer,
+        ):
+            result = retrain_once(cfg)
+
+        assert result.status == "error"
+        loaded = read_ppo_sidecar_signal(cfg.signal_path)
+        assert loaded is not None
+        assert loaded.action == "skip"
+
+    def test_update_signal_failure_pushes_neutral_fallback(self, tmp_path: Path) -> None:
+        cfg = PPOSidecarConfig(
+            data_path=str(tmp_path / "ppo.csv"),
+            signal_path=tmp_path / "ppo_signal.json",
+        )
+        Path(cfg.data_path).write_text("timestamp,close\n1,100\n", encoding="utf-8")
+        fake_model = _FakePPOModel()
+        fake_trainer = MagicMock()
+        fake_trainer.train.return_value = fake_model
+
+        with (
+            patch(
+                "scripts.v460.ml.ppo_retrain_scheduler.SELLBiasMitigationPPOTrainer",
+                return_value=fake_trainer,
+            ),
+            patch(
+                "scripts.v460.ml.ppo_retrain_scheduler._update_ppo_sidecar_signal",
+                side_effect=RuntimeError("signal boom"),
+            ),
         ):
             result = retrain_once(cfg)
 

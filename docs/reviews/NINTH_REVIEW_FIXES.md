@@ -272,9 +272,9 @@ python scripts/update_training_configs.py \
 | `ztb/tests/unit/utils/test_logging_utils.py` | 全面改修（RotatingFileHandler検証） | 9/9 PASS |
 | `tests/unit/trading/live/test_live_trade.py` | 新規作成（Bug #33, #41検証） | 7/7 PASS |
 | `scripts/update_training_configs.py` | 新規作成（一括設定管理） | 実行確認済 |
-| `configs/training/ppo_100k_optimized.json` | reward_scaling: 6.0 追加 | - |
-| `configs/training/ppo_balanced_mem_optimized.json` | reward_scaling: 6.0 追加 | - |
-| `configs/training/ppo_balanced_test.json` | reward_scaling: 6.0 追加 | - |
+| `archived/configs/ppo_legacy/training/ppo_100k_optimized.json` | reward_scaling: 6.0 追加 | - |
+| `archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json` | reward_scaling: 6.0 追加 | - |
+| `archived/configs/ppo_legacy/training/ppo_balanced_test.json` | reward_scaling: 6.0 追加 | - |
 
 ---
 

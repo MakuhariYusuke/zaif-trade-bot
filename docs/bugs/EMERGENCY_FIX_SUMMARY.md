@@ -70,7 +70,7 @@
 
 ```bash
 python run_training.py \
-  --config configs/training/ppo_balanced_mem_optimized.json \
+  --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json \
   --timesteps 10000
 ```
 
@@ -141,7 +141,7 @@ Final Lagrange Statistics:
 ## 📊 作成したファイル
 
 1. **設定ファイル修正:**
-   - `configs/training/ppo_balanced_mem_optimized.json`
+   - `archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json`
 
 2. **診断ツール:**
    - `scripts/analyze_training_logs_v2.py` - ログ自動解析
@@ -178,7 +178,7 @@ BUY:  30-35%
 
 **実行してください:**
 ```bash
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --timesteps 10000
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --timesteps 10000
 ```
 
 結果をお知らせください。SELL率が改善されない場合、さらなる調整が必要です。

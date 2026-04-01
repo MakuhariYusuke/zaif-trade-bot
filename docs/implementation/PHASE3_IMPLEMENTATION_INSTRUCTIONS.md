@@ -665,7 +665,7 @@ python backtest_with_schema.py \
 
 ```bash
 # 既存の訓練が動作することを確認
-python run_training.py --config configs/training/ppo_test.json
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_test.json
 
 # スキーマが自動保存されることを確認
 ls -R models/schemas/ppo_test/

@@ -149,7 +149,7 @@ binary_search_optimization/
 ## 🔗 関連リソース
 
 - **メインREADME**: `../../README.md`
-- **設定ファイル**: `../../configs/training/ppo_binary_search_validated.json`
+- **設定ファイル**: `../../archived/configs/ppo_legacy/training/ppo_binary_search_validated.json`
 - **実行スクリプト**: `../../ztb/training/binary_search/`
 - **TensorBoard結果**: `../../ztb/training/ppo/logs/`
 

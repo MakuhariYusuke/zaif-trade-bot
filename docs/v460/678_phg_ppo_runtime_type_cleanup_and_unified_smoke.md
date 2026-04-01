@@ -364,3 +364,51 @@ foundation が揃ってきた段階で、scheduler 側に残っていた
 1. timeout 例外の扱い差
 2. cycle 後 cleanup 忘れ
 3. WSL/Windows 環境での thread timeout 実装の二重保守
+
+### 14. PPO Phase 2: warm-start / YAML / legacy config cleanup
+
+Phase 2 では、foundation の上に運用面の不足を埋めた。
+
+- `ztb/training/core/ppo_trainer.py`
+  - `PPOTrainerAutoHalt.load_and_continue(...)` を追加
+  - 既存 model を load し、fresh env を `set_env(...)` で再bindして
+    incremental learn を継続できるようにした
+  - load 失敗時は cold start に安全側 fallback
+- `scripts/v460/ml/ppo_retrain_scheduler.py`
+  - warm-start 時は `load_and_continue(...)` を優先
+  - `trainer_mode` を `warm_start_resume` / `cold_start` で明示
+- `scripts/v460/ml/ppo_sidecar_config.py`
+  - `model_path`
+  - `max_data_stale_hours`
+  - `enable_action_masking`
+  を current sidecar contract として保持
+  - `ppo_sidecar:` 直下の hyperparameter flatten にも対応
+- `configs/v460/experiments/g2_ppo_sidecar.yaml`
+  - v460 現行運用用の PPO sidecar YAML を追加
+- `tests/unit/v460/test_ppo_warm_start.py`
+  - cold start -> save -> warm-start の focused roundtrip
+  - model missing / load failure の fallback
+- `tests/unit/v460/test_679_ppo_sidecar_foundation.py`
+  - actual YAML parse guard を追加
+- `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `_extract_action_probabilities()` edge cases
+  - `_one_hot_ppo_probabilities()` clamp
+  - trigger backoff reset
+  - signal update failure 時 neutral fallback
+  を追加
+
+### 15. Legacy PPO config archive 整理
+
+散在していた旧 PPO config は `archived/configs/ppo_legacy/` へ移動した。
+
+- 対象:
+  - `configs/v367` - `configs/v394` の PPO 実験 config
+  - `configs/v428` の PPO config
+  - `configs/training/ppo_*.json`
+  - `configs/v1` / `v2` / `v3` の PPO config
+- 維持:
+  - `configs/ppo_test_config.yaml`
+  - `configs/v460/**`
+
+コード・docs 側の参照も archived path に追随させ、
+prompt / archive 自体を除けば旧 path 参照は残さないところまで整理した。

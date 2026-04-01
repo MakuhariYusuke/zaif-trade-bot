@@ -65,7 +65,7 @@
 ### Bug #45 (HIGH): 設定ファイル不整合
 
 **問題:**
-- `configs/training/ppo_balanced_mem_optimized.json` の `env_config` 内が古い値のまま
+- `archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json` の `env_config` 内が古い値のまま
 - `transaction_cost: 0.0005` (正: 0.001)
 - `reward_scaling: 1.0` (正: 6.0)
 - トップレベル設定と `env_config` の不一致
@@ -92,7 +92,7 @@
 - ✅ 他の設定ファイルとの整合性確保
 
 **影響範囲:**
-- `configs/training/ppo_balanced_mem_optimized.json`: 2フィールド修正
+- `archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json`: 2フィールド修正
 
 ---
 

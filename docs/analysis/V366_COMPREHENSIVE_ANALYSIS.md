@@ -168,7 +168,7 @@ Option 2: Lambda無効化（推奨）
 推奨: 30,000～100,000ステップ
 
 ```bash
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --timesteps 30000 --force
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --timesteps 30000 --force
 ```
 
 ---
@@ -221,7 +221,7 @@ python run_training.py --config configs/training/ppo_balanced_mem_optimized.json
 **検証コマンド**:
 ```bash
 # v3.6.7設定作成後
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --timesteps 30000 --force
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --timesteps 30000 --force
 ```
 
 ---

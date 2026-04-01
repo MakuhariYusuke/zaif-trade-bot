@@ -19,7 +19,7 @@
 
 ### 1.1 学習の完了 (進行中)
 ```bash
-python run_training.py --config configs/training/ppo_balanced_test.json
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_test.json
 ```
 
 **期待される結果:**

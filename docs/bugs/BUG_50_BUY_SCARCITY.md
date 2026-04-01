@@ -123,7 +123,7 @@ Start with SELL target 10%, gradually increase to 33%
 ### Validation Command
 
 ```bash
-python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --timesteps 10000 --force
+python run_training.py --config archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json --timesteps 10000 --force
 ```
 
 ### Expected Log Output
@@ -147,7 +147,7 @@ OUTPUT PATHS:
 
 ### Files Modified
 
-1. **configs/training/ppo_balanced_mem_optimized.json**
+1. **archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json**
    - Line 97: `profit_bonus_multipliers: [1.0, 3.0, 1.0] → [2.0, 3.0, 0.5]`
    - Line 3: Version `3.6.4 → 3.6.5`
    - Added Bug #50 to `_bugs_fixed` list
@@ -254,4 +254,4 @@ OUTPUT PATHS:
 
 **Related Bugs**: #47 (CLI), #48 (reward_settings), #49 (array order)
 **Supersedes**: v3.6.1-v3.6.4 SELL mitigation attempts
-**Config**: `configs/training/ppo_balanced_mem_optimized.json`
+**Config**: `archived/configs/ppo_legacy/training/ppo_balanced_mem_optimized.json`
