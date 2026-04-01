@@ -775,3 +775,19 @@ NNN_phX_TYPE_description.md
 | 667 | review | [667_phg_rev_663_666_1mbtc_cap_validation.md](667_phg_rev_663_666_1mbtc_cap_validation.md) | 663#-666# 検証レビュー: 1mBTC 制限機構の妥当性・反証・実装順序 |
 | 668 | review | [668_cplt_review_and_consensus_on_1mbtc_cap.md](668_cplt_review_and_consensus_on_1mbtc_cap.md) | 668# 検証と合意: 1mBTC Cap と非対称制約の確立 |
 | 669 | impl | [669_cplt_1mbtc_cap_restore_clamp.md](669_cplt_1mbtc_cap_restore_clamp.md) | 1mBTC Cap 実装: restore パス max_lot クランプ + YAML 設定 |
+| 670 | report | [670_cplt_post_meander_realignment.md](670_cplt_post_meander_realignment.md) | 渙の現在地 — 迷走の棚卸しと真のブロッカー |
+| 671 | impl | [671_cplt_log_improvement_and_multi_perspective_analysis.md](671_cplt_log_improvement_and_multi_perspective_analysis.md) | ログ改善・分析スクリプト修正 + 多角的分析による 670# 仮説検証 |
+| 672 | analysis | [672_cplt_deep_analysis_financial_engineering_information_theory.md](672_cplt_deep_analysis_financial_engineering_information_theory.md) | 深堀り分析 — 金融工学・情報理論・統計学・市場マイクロストラクチャ |
+| 673 | impl | [673_cplt_cap_bps_reduction_maxlot_sync.md](673_cplt_cap_bps_reduction_maxlot_sync.md) | cap_bps 引下げ + max_lot デフォルト同期 |
+| 674 | review | [674_cplt_self_review_pre669_theory_validation.md](674_cplt_self_review_pre669_theory_validation.md) | セルフレビュー — 669#以前の理論有効性検証と体制総点検 |
+| 675 | analysis | [675_cplt_ml_sac_improvement_analysis.md](675_cplt_ml_sac_improvement_analysis.md) | ML/SAC 総合分析 — 現状の問題と改善ロードマップ |
+| 676 | impl | [676_cplt_sac_sidecar_p0_fixes.md](676_cplt_sac_sidecar_p0_fixes.md) | SAC Sidecar P0 修正 — confidence 復活 + deploy gate 品質強化 |
+| 676 | review | [676_phg_ppo_foundation_inventory_and_compatibility.md](676_phg_ppo_foundation_inventory_and_compatibility.md) | PPO foundation 棚卸しと互換整理 |
+| 677 | impl | [677_phg_ppo_action_mask_runtime_revival.md](677_phg_ppo_action_mask_runtime_revival.md) | PPO action-mask runtime revival と archive 候補確認 |
+| 678 | impl | [678_phg_ppo_runtime_type_cleanup_and_unified_smoke.md](678_phg_ppo_runtime_type_cleanup_and_unified_smoke.md) | PPO runtime/type cleanup と unified smoke 追加 |
+| 679 | fix | [679_cplt_sac_reward_gamma_fundamental_fix.md](679_cplt_sac_reward_gamma_fundamental_fix.md) | SAC 報酬・γ・学習率の根本修正 + 676# セルフレビュー |
+| 680 | fix | [680_cplt_retrain_trigger_fix_vg_selectivity_balance_log.md](680_cplt_retrain_trigger_fix_vg_selectivity_balance_log.md) | retrain trigger 修正 + VG 選択性回復 + balance ログ詳細化 |
+| 681 | analysis | [681_cplt_apr1_fill_analysis_structural_improvements.md](681_cplt_apr1_fill_analysis_structural_improvements.md) | 4/1 Fill Analysis — 構造的改善提案 |
+| 682 | review | [682_phg_rev_668_681_multifaceted_validation_and_profitability_focus.md](682_phg_rev_668_681_multifaceted_validation_and_profitability_focus.md) | 668#-681# 多角的検証レビューと収益性集中プラン |
+| 683 | review | [683_cplt_review_681_682_huan_interpretation_and_profit_strategy.md](683_cplt_review_681_682_huan_interpretation_and_profit_strategy.md) | 681#-682# レビュー: 風水渙解釈と利益戦略 |
+| 684 | review | [684_cplt_integrated_review_681_683_cross_validation.md](684_cplt_integrated_review_681_683_cross_validation.md) | 681#-683# 統合レビュー: 多角的検証・盲点抽出・Codex タスク設計 |
