@@ -412,3 +412,23 @@ Phase 2 では、foundation の上に運用面の不足を埋めた。
 
 コード・docs 側の参照も archived path に追随させ、
 prompt / archive 自体を除けば旧 path 参照は残さないところまで整理した。
+
+### 16. SAC/PPO deploy helper 再共有 + scheduler test trim
+
+sidecar scheduler の deploy 安全化で、SAC/PPO 間にまだ残っていた
+tmp file + rename の重複を shared helper に寄せた。
+
+- `scripts/v460/ml/sidecar_scheduler_common.py`
+  - `atomic_replace_with_tmp(...)` を追加
+- `scripts/v460/ml/ppo_retrain_scheduler.py`
+  - PPO model deploy を shared helper に統一
+- `scripts/v460/ml/sac_retrain_scheduler.py`
+  - model deploy
+  - buffer deploy
+  - norm export
+  を shared helper に統一
+
+あわせて `sac_retrain_scheduler` の data freshness 呼び出しを
+`_run_data_freshness_check(...)` に寄せ、test では non-fatal helper を
+明示 patch できるようにした。これで scheduler test の責務が
+「data updater 実行」から「scheduler control flow」へ戻った。

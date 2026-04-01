@@ -42,6 +42,7 @@ from ztb.utils.time_utils import current_compact_timestamp, current_iso_timestam
 from scripts.v460.ml.sidecar_scheduler_common import (
     BaseRetrainResult,
     DataFileRetrainTrigger,
+    atomic_replace_with_tmp,
     append_history_jsonl,
     best_effort_training_cleanup,
     run_with_timeout,
@@ -257,6 +258,17 @@ class SACRetrainConfig:
             )
 
 
+def _run_data_freshness_check(
+    ohlcv_path: str,
+    *,
+    max_stale_hours: float,
+) -> bool:
+    """Run non-fatal data freshness maintenance for scheduler paths."""
+    from scripts.v460.ml.update_training_data import ensure_data_fresh
+
+    return bool(ensure_data_fresh(ohlcv_path, max_stale_hours=max_stale_hours))
+
+
 # ════════════════════════════════════════════════════════════════
 # Training Protocol — sac_common から統一定義を import
 # ════════════════════════════════════════════════════════════════
@@ -355,9 +367,10 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
 
     # ── 0. データ鮮度チェック + 自動更新 (552#) ──
     try:
-        from scripts.v460.ml.update_training_data import ensure_data_fresh
-
-        ensure_data_fresh(cfg.ohlcv_path, max_stale_hours=cfg.max_data_stale_hours)
+        _run_data_freshness_check(
+            cfg.ohlcv_path,
+            max_stale_hours=cfg.max_data_stale_hours,
+        )
     except Exception as e:
         logger.warning(f"[552#] Data freshness check failed (non-fatal): {e}")
 
@@ -763,9 +776,7 @@ def run_scheduler(cfg: SACRetrainConfig) -> None:
         if now - _last_data_freshness_check >= cfg.data_freshness_check_interval_sec:
             _last_data_freshness_check = now
             try:
-                from scripts.v460.ml.update_training_data import ensure_data_fresh
-
-                updated = ensure_data_fresh(
+                updated = _run_data_freshness_check(
                     cfg.ohlcv_path,
                     max_stale_hours=cfg.max_data_stale_hours,
                 )
@@ -885,45 +896,25 @@ def _atomic_deploy_model(
 
     365# §5.2 step 5.
     """
-    import tempfile
-
-    cfg.model_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Model: tmp → atomic rename
-    fd_m, tmp_model = tempfile.mkstemp(
-        dir=str(cfg.model_path.parent),
+    atomic_replace_with_tmp(
+        target_path=cfg.model_path,
         prefix=".sac_model_",
         suffix=".tmp.zip",
+        writer=model.save,
     )
-    os.close(fd_m)
-    try:
-        model.save(tmp_model)
-        os.replace(tmp_model, str(cfg.model_path))
-        logger.info(f"Model deployed: {cfg.model_path}")
-    except Exception:
-        try:
-            os.unlink(tmp_model)
-        except OSError:
-            pass
-        raise
+    logger.info(f"Model deployed: {cfg.model_path}")
 
     # Buffer: best-effort (非クリティカル)
     try:
-        fd_b, tmp_buffer = tempfile.mkstemp(
-            dir=str(cfg.buffer_path.parent),
+        atomic_replace_with_tmp(
+            target_path=cfg.buffer_path,
             prefix=".sac_buffer_",
             suffix=".tmp.pkl",
+            writer=model.save_replay_buffer,
         )
-        os.close(fd_b)
-        model.save_replay_buffer(tmp_buffer)
-        os.replace(tmp_buffer, str(cfg.buffer_path))
         logger.info(f"Buffer deployed: {cfg.buffer_path}")
     except Exception as e:
         logger.warning(f"Buffer save failed (non-critical): {e}")
-        try:
-            os.unlink(tmp_buffer)
-        except (OSError, NameError):
-            pass
 
 
 def _export_feature_norms(
@@ -935,8 +926,6 @@ def _export_feature_norms(
 
     retrain 成功時にモデルと同時に保存し、推論時の Z-score 変換に使用する。
     """
-    import tempfile
-
     import pandas as pd
 
     df = cast(pd.DataFrame, train_df)
@@ -964,24 +953,22 @@ def _export_feature_norms(
         },
     }
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(
-        dir=str(output_path.parent),
-        prefix=".sac_norm_",
-        suffix=".tmp.json",
-    )
-    os.close(fd)
     try:
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            json.dump(payload, f, indent=2, ensure_ascii=False)
-        os.replace(tmp_path, str(output_path))
+        def _write_norm_payload(tmp_path: str) -> None:
+            Path(tmp_path).write_text(
+                json.dumps(payload, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+        atomic_replace_with_tmp(
+            target_path=output_path,
+            prefix=".sac_norm_",
+            suffix=".tmp.json",
+            writer=_write_norm_payload,
+        )
         logger.info(f"Feature norms deployed: {output_path} ({len(feature_stats)} features)")
     except Exception as e:
         logger.warning(f"Feature norms save failed (non-critical): {e}")
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
 
 
 def _get_latest_obs(env: TrainingEnvProtocol) -> object:

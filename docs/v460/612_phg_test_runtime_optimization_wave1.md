@@ -917,3 +917,26 @@ durations 変化で特に効いた点:
   - `tests/training/unified_trainer/test_algorithms.py`
   - `252 passed, 2 skipped in 20.12s` の後、
     Phase 2 変更込みでも focused regression は維持
+
+- SAC scheduler / unified trainer trim:
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+    - `retrain_once(...)` 共通 patch helper で `_run_data_freshness_check(...)` を no-op 化
+    - scheduler loop test でも data freshness helper を切り離し、
+      control-flow だけを見る形に整理
+  - `tests/training/unified_trainer/test_algorithms.py`
+    - self-supervised synthetic default を小さくし、
+      shape contract は維持したまま synthetic tensor 固定費を削減
+  - `ztb/training/unified_trainer/algorithms/self_supervised_trainer.py`
+    - degraded torch fallback は random ではなく zero array を使うように変更
+  - subset 実測:
+    - before:
+      - `tests/unit/v460/test_sac_retrain_scheduler.py`
+      - `tests/training/unified_trainer/test_algorithms.py`
+      - `86 passed in 25.59s`
+    - after:
+      - 同 subset
+      - `86 passed in 11.11s`
+  - slowest call の変化:
+    - `test_oos_failed`: `2.84s -> 0.15s`
+    - `test_cold_start_success`: `1.93s -> 0.14s`
+    - `test_load_data_synthetic_falls_back_when_randn_is_degraded`: `1.52s -> 0.02s`

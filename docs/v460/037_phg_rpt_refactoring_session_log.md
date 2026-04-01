@@ -9850,3 +9850,19 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - `tests/training/unified_trainer/test_algorithms.py`
   - distributed state 持ち越しで揺れていた `total_timesteps` expectation を固定
   - `get_distributed_info()` を patch して non-distributed contract を明示
+
+### 037-678J Shared atomic deploy + scheduler test trim
+
+- `sidecar_scheduler_common`
+  - `atomic_replace_with_tmp(...)` を追加
+- `sac_retrain_scheduler`
+  - model / buffer / norm export の tmp + rename を shared helper に統一
+  - data freshness 呼び出しを `_run_data_freshness_check(...)` に寄せた
+- `ppo_retrain_scheduler`
+  - model deploy を shared helper に統一
+- `test_sac_retrain_scheduler`
+  - `retrain_once` / loop test で data freshness helper を切り離し
+  - scheduler 制御責務に集中
+- `test_algorithms`
+  - self-supervised synthetic default を縮小
+  - degraded torch fallback の固定費を削減

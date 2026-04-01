@@ -15,9 +15,7 @@ from __future__ import annotations
 
 import argparse
 import logging
-import os
 import signal
-import tempfile
 import threading
 import time
 from dataclasses import dataclass
@@ -37,6 +35,7 @@ from scripts.v460.ml.ppo_sidecar_config import PPOSidecarConfig
 from scripts.v460.ml.sidecar_scheduler_common import (
     BaseRetrainResult,
     DataFileRetrainTrigger,
+    atomic_replace_with_tmp,
     append_history_jsonl,
     best_effort_training_cleanup,
     run_with_timeout,
@@ -197,22 +196,12 @@ def _build_inference_env(cfg: PPOSidecarConfig) -> HeavyTradingEnv:
 
 def _atomic_deploy_model(model: _PPOModelProtocol, model_path: Path) -> None:
     """PPO model を tmp -> rename で deploy."""
-    model_path.parent.mkdir(parents=True, exist_ok=True)
-    fd_model, tmp_model = tempfile.mkstemp(
-        dir=str(model_path.parent),
+    atomic_replace_with_tmp(
+        target_path=model_path,
         prefix=".ppo_model_",
         suffix=".tmp.zip",
+        writer=model.save,
     )
-    os.close(fd_model)
-    try:
-        model.save(tmp_model)
-        os.replace(tmp_model, str(model_path))
-    except Exception:
-        try:
-            os.unlink(tmp_model)
-        except OSError:
-            pass
-        raise
 
 
 def _push_neutral_fallback(signal_path: Path | str) -> bool:

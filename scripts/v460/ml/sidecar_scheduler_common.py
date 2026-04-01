@@ -10,7 +10,9 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 import gc
 import json
+import os
 from pathlib import Path
+import tempfile
 import threading
 import time
 from typing import Generic, TypeVar
@@ -138,6 +140,32 @@ def append_history_jsonl(path: Path, payload: Mapping[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(dict(payload), ensure_ascii=False) + "\n")
+
+
+def atomic_replace_with_tmp(
+    *,
+    target_path: Path,
+    prefix: str,
+    suffix: str,
+    writer: Callable[[str], None],
+) -> None:
+    """Write a file via tmp + replace to avoid partial deploy artifacts."""
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    fd_tmp, tmp_path = tempfile.mkstemp(
+        dir=str(target_path.parent),
+        prefix=prefix,
+        suffix=suffix,
+    )
+    os.close(fd_tmp)
+    try:
+        writer(tmp_path)
+        os.replace(tmp_path, str(target_path))
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 def run_with_timeout(

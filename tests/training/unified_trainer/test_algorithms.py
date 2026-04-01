@@ -275,6 +275,9 @@ class TestSelfSupervisedTrainer:
             "device": "cpu",
             "checkpoint_dir": "test_checkpoints",
             "config_type": "lightweight",
+            "synthetic_batch_size": 8,
+            "synthetic_val_batch_size": 4,
+            "seq_len": 16,
         }
 
     @pytest.fixture
@@ -337,8 +340,8 @@ class TestSelfSupervisedTrainer:
         assert trainer._load_data() is True
         assert trainer.train_data is not None
         assert trainer.val_data is not None
-        assert trainer.train_data.shape[1:] == (100, 156)  # seq_len, input_dim
-        assert trainer.val_data.shape[1:] == (100, 156)
+        assert trainer.train_data.shape == (8, 16, 156)
+        assert trainer.val_data.shape == (4, 16, 156)
         mock_load_csv.assert_not_called()
 
     @patch(
@@ -374,8 +377,8 @@ class TestSelfSupervisedTrainer:
 
         trainer = SelfSupervisedTrainer(basic_config)
         assert trainer._load_data() is True
-        assert tuple(trainer.train_data.shape) == (100, 100, 156)
-        assert tuple(trainer.val_data.shape) == (100, 100, 156)
+        assert tuple(trainer.train_data.shape) == (8, 16, 156)
+        assert tuple(trainer.val_data.shape) == (4, 16, 156)
         mock_load_csv.assert_not_called()
 
     @patch("pandas.read_csv")

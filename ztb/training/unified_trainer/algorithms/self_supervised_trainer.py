@@ -69,7 +69,9 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
             return candidate
 
         tensor_ctor = getattr(torch, "tensor", None)
-        fallback_arr = np.random.randn(*expected_shape).astype(np.float32)
+        # Fallback exists mainly for degraded torch stubs in tests; prioritize
+        # shape stability and low allocation overhead over random contents.
+        fallback_arr = np.zeros(expected_shape, dtype=np.float32)
         if callable(tensor_ctor):
             try:
                 repaired = tensor_ctor(

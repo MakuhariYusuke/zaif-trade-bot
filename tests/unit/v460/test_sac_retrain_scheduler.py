@@ -404,6 +404,7 @@ def _run_retrain_once_with_patches(
     with (
         patch("scripts.v460.ml.sac_retrain_scheduler._create_env", return_value=mock_env) as mock_create_env,
         patch("scripts.v460.ml.sac_retrain_scheduler._evaluate_model", return_value=eval_result) as mock_evaluate_model,
+        patch("scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check", return_value=False),
         patch("scripts.v460.lib.data_loader.load_parquet", return_value=_MOCK_OHLCV_DF),
         _mock_sb3_import(mock_model) as mock_sac_cls,
     ):
@@ -534,6 +535,9 @@ class TestRetrainOnce:
         )
 
         with patch(
+            "scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check",
+            return_value=False,
+        ), patch(
             "scripts.v460.lib.data_loader.load_parquet",
             side_effect=FileNotFoundError("not found"),
         ):
@@ -766,7 +770,13 @@ class TestRunScheduler:
         _shutdown_event.clear()
 
         with patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait()):
-            with patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]):
+            with (
+                patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
+                patch(
+                    "scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check",
+                    return_value=False,
+                ),
+            ):
                 run_scheduler(cfg)
 
         mock_retrain.assert_called_once()
@@ -898,6 +908,10 @@ class TestCrashResilience495:
         with (
             patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait()),
             patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
+            patch(
+                "scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check",
+                return_value=False,
+            ),
             patch.object(
                 SACRetrainTrigger,
                 "should_retrain",
@@ -936,6 +950,10 @@ class TestCrashResilience495:
         with (
             patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait()),
             patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
+            patch(
+                "scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check",
+                return_value=False,
+            ),
             patch.object(
                 SACRetrainTrigger,
                 "record_result",
@@ -1074,6 +1092,7 @@ class TestCrashResilience495:
         with (
             patch("scripts.v460.ml.sac_retrain_scheduler._create_env", return_value=mock_env),
             patch("scripts.v460.ml.sac_retrain_scheduler._evaluate_model"),
+            patch("scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check", return_value=False),
             patch("scripts.v460.lib.data_loader.load_parquet", return_value=_MOCK_OHLCV_DF),
             _mock_sb3_import(mock_model),
             # タイムアウトを極短に設定
@@ -1141,6 +1160,7 @@ class TestCrashResilience495:
 
         with (
             patch("scripts.v460.ml.sac_retrain_scheduler._create_env", return_value=mock_env),
+            patch("scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check", return_value=False),
             patch("scripts.v460.lib.data_loader.load_parquet", return_value=_MOCK_OHLCV_DF),
             _mock_sb3_import(mock_model),
             patch(
