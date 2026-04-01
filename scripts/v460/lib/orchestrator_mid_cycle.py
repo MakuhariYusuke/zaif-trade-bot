@@ -68,6 +68,7 @@ class OrchestratorMidCycleMixin:
                     st, side=next_side,
                     cancel_reason=CR.ONE_SIDED_FREEZE_SKIP,
                     order_quantity=self._current_lot,
+                    # side attempt blocked by freeze: preserve attempted-side history
                     update_last_side=True,
                 )
                 return True
@@ -88,6 +89,7 @@ class OrchestratorMidCycleMixin:
                     st, side=next_side,
                     cancel_reason=CR.ONE_SIDED_COOLDOWN_SKIP,
                     order_quantity=self._current_lot,
+                    # side attempt blocked by cooldown: preserve attempted-side history
                     update_last_side=True,
                 )
                 return True
@@ -297,6 +299,7 @@ class OrchestratorMidCycleMixin:
             st, side=next_side,
             cancel_reason=gate_result.cancel_reason,
             order_quantity=self._current_lot,
+            # active gating decision for this side: preserve attempted-side history
             update_last_side=True, sleep=False,
         )
 
@@ -386,6 +389,7 @@ class OrchestratorMidCycleMixin:
                 st, side=ctx.next_side,
                 cancel_reason=CR.TOXICITY_PARTICIPATION_SKIP,
                 order_quantity=self._current_lot,
+                # probabilistic participation still consumed a side attempt
                 update_last_side=True,
             )
             return True
@@ -421,6 +425,7 @@ class OrchestratorMidCycleMixin:
                     st, side=ctx.next_side,
                     cancel_reason=CR.DEGRADED_LIQUIDATION_DUTY_SKIP,
                     order_quantity=self._current_lot,
+                    # degraded liquidation duty cycle is a side-specific execution decision
                     update_last_side=True,
                 )
                 return True

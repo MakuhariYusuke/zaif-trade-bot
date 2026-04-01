@@ -238,6 +238,7 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         run_id: str,
         git_sha: str | None,
         regime_value: str | None,
+        decision_trace_id: str | None,
     ) -> _SkipFillRecordContext:
         """Build the v460-specific core context for early skip FillRecord output."""
         return _SkipFillRecordContext(
@@ -252,6 +253,7 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             run_id=run_id,
             git_sha=git_sha,
             regime_value=regime_value,
+            decision_trace_id=decision_trace_id,
         )
 
     @staticmethod
@@ -440,6 +442,7 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         maker_price_vpin_setter: object | None = None,
         mid_trend_bps: float | None = None,
         *,
+        decision_trace_id: str | None = None,
         one_sided_balance: bool = False,
         kill_release_offset: float = 0.0,
         prefetched_ob: OrderBookSnapshot | None = None,
@@ -485,10 +488,12 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                 run_id=run_id,
                 git_sha=git_sha,
                 regime_value=regime_value,
+                decision_trace_id=decision_trace_id,
             )
             logger.info(
-                f"[skip_gate] SKIP: sell in unknown regime "
-                f"(124# rule_skip_unknown_sell)"
+                "[dt=%s] [skip_gate] SKIP: sell in unknown regime "
+                "(124# rule_skip_unknown_sell)",
+                decision_trace_id or "n/a",
             )
             self._set_early_skip_result(
                 result,
@@ -663,9 +668,14 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                         else CR.SKIP_GATE_RULE_VELOCITY_BUY
                     )
                     logger.info(
-                        f"[skip_gate] SKIP: {_vel_label} velocity {_pv60:.2f}bps "
-                        f"{'>' if _velocity_sell_triggered else '<'} {_vel_th}bps "
-                        f"(165# AS-R1 {_reason})"
+                        "[dt=%s] [skip_gate] SKIP: %s velocity %.2fbps %s %.2fbps "
+                        "(165# AS-R1 %s)",
+                        decision_trace_id or "n/a",
+                        _vel_label,
+                        _pv60,
+                        ">" if _velocity_sell_triggered else "<",
+                        _vel_th,
+                        _reason,
                     )
                     early_context = self._build_skip_fill_record_context(
                         cycle_id=cycle_id,
@@ -679,6 +689,7 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                         run_id=run_id,
                         git_sha=git_sha,
                         regime_value=regime_value,
+                        decision_trace_id=decision_trace_id,
                     )
                     self._set_early_skip_result(
                         result,
@@ -748,9 +759,10 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                     else:
                         # 旧モード: hard veto
                         logger.info(
-                            "[skip_gate] 654# VETO: toxic low-spread sell "
+                            "[dt=%s] [skip_gate] 654# VETO: toxic low-spread sell "
                             "spread=%.2fbps OBI=%.3f VPIN=%.3f vel=%.2fbps "
                             "(consec=%d, decay=%.2f)",
+                            decision_trace_id or "n/a",
                             _spread_bps, _obi, _vpin, _vel,
                             self._toxic_veto_consecutive_count, _decay,
                         )
@@ -766,6 +778,7 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                             run_id=run_id,
                             git_sha=git_sha,
                             regime_value=regime_value,
+                            decision_trace_id=decision_trace_id,
                         )
                         self._set_early_skip_result(
                             result,
@@ -797,7 +810,8 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
 
             if _trend_guard_action == "veto":
                 logger.info(
-                    "[skip_gate] 684# trend_5s veto: sell trend_5s=%.2fbps > %.2fbps",
+                    "[dt=%s] [skip_gate] 684# trend_5s veto: sell trend_5s=%.2fbps > %.2fbps",
+                    decision_trace_id or "n/a",
                     mid_trend_bps,
                     self._config.trend_5s_sell_guard_hard_veto_threshold_bps,
                 )
@@ -813,6 +827,7 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                     run_id=run_id,
                     git_sha=git_sha,
                     regime_value=regime_value,
+                    decision_trace_id=decision_trace_id,
                 )
                 self._set_early_skip_result(
                     result,
@@ -937,8 +952,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                     result.bypassed = True
                     result.skipped = False
                     logger.info(
-                        "[skip_gate] 686# BYPASS: %s skip suppressed "
+                        "[dt=%s] [skip_gate] 686# BYPASS: %s skip suppressed "
                         "(score=%.3f, reason=%s, model=%s, features=%d)",
+                        decision_trace_id or "n/a",
                         side,
                         result.score,
                         result.reason,
@@ -947,9 +963,14 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                     )
                     return result
                 logger.info(
-                    f"[skip_gate] SKIP: {side} order skipped "
-                    f"(score={result.score:.3f}, reason={result.reason}, "
-                    f"model={result.model_used}, features={decision.features_used})"
+                    "[dt=%s] [skip_gate] SKIP: %s order skipped "
+                    "(score=%.3f, reason=%s, model=%s, features=%d)",
+                    decision_trace_id or "n/a",
+                    side,
+                    result.score,
+                    result.reason,
+                    result.model_used,
+                    decision.features_used,
                 )
                 early_context = self._build_skip_fill_record_context(
                     cycle_id=cycle_id,
@@ -963,6 +984,7 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                     run_id=run_id,
                     git_sha=git_sha,
                     regime_value=regime_value,
+                    decision_trace_id=decision_trace_id,
                 )
                 self._set_early_skip_result(
                     result,
@@ -987,9 +1009,13 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                 )
             else:
                 logger.debug(
-                    f"[skip_gate] PASS: {side} order allowed "
-                    f"(score={result.score:.3f}, reason={result.reason}, "
-                    f"model={result.model_used})"
+                    "[dt=%s] [skip_gate] PASS: %s order allowed "
+                    "(score=%.3f, reason=%s, model=%s)",
+                    decision_trace_id or "n/a",
+                    side,
+                    result.score,
+                    result.reason,
+                    result.model_used,
                 )
         except Exception as e:
             logger.warning(f"[skip_gate] Evaluation failed (non-fatal): {e}")

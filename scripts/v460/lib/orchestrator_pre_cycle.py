@@ -293,6 +293,7 @@ class OrchestratorPreCycleMixin:
                     )
                 await self._execute_skip(
                     st, side="none", cancel_reason=CR.MCB_HALT,
+                    # env halt: don't bias side
                     heartbeat=True, multiplier=_halt_mult,
                 )
                 return True
@@ -312,6 +313,7 @@ class OrchestratorPreCycleMixin:
                 self._inc_guard_fire("sad_frozen")
                 await self._execute_skip(
                     st, side="none", cancel_reason=CR.SAD_FROZEN,
+                    # env halt: don't bias side
                     heartbeat=True, multiplier=_halt_mult,
                 )
                 return True
@@ -331,6 +333,7 @@ class OrchestratorPreCycleMixin:
             self._inc_guard_fire("mcb_sad_escalation")
             await self._execute_skip(
                 st, side="none", cancel_reason=CR.MCB_SAD_ESCALATION,
+                # env halt: don't bias side
                 heartbeat=True, multiplier=_halt_mult,
             )
             return True
@@ -437,6 +440,7 @@ class OrchestratorPreCycleMixin:
                 self._inc_guard_fire("per_side_dd_both_halt")
                 await self._execute_skip(
                     st, side="none", cancel_reason=CR.PER_SIDE_DD_HALT,
+                    # env halt: both sides unavailable, don't bias side
                     flush_context="per_side_dd_both_halt",
                     heartbeat=True, multiplier=_halt_mult,
                 )
@@ -461,6 +465,7 @@ class OrchestratorPreCycleMixin:
                 self._tick_toxic_veto("both-blocked")
                 await self._execute_skip(
                     st, side="none", cancel_reason=CR.TOXIC_FILL_SIDE_VETO,
+                    # env-style block: both sides unavailable, don't bias side
                     flush_context="toxic_veto_both",
                 )
                 return True
@@ -485,6 +490,7 @@ class OrchestratorPreCycleMixin:
                 self._inc_guard_fire("phantom_veto_block")
                 await self._execute_skip(
                     st, side="none", cancel_reason=CR.PHANTOM_SIDE_VETO,
+                    # env-style block: both sides unavailable, don't bias side
                     flush_context="phantom_veto_both",
                 )
                 return True
@@ -638,6 +644,7 @@ class OrchestratorPreCycleMixin:
         if _alert.halt:
             await self._execute_skip(
                 st, side="none", cancel_reason=CR.OPERATOR_HALT,
+                # env halt: operator override must not bias side
                 heartbeat=True, multiplier=self.config.halt_sleep_multiplier,
             )
             return True

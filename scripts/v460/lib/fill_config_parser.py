@@ -991,6 +991,20 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
         kwargs["regime_timeout_multipliers"] = {
             str(k): float(v) for k, v in regime["timeout_multipliers"].items()
         }
+    # 688# regime×side timeout override (macro-aware absolute timeout)
+    timeout_overrides = yaml_cfg.get("regime_timeout_overrides")
+    if not isinstance(timeout_overrides, dict):
+        timeout_overrides = regime.get("timeout_overrides")
+    if isinstance(timeout_overrides, dict):
+        parsed_overrides: dict[str, dict[str, float]] = {}
+        for regime_name, side_map in timeout_overrides.items():
+            if not isinstance(side_map, dict):
+                continue
+            parsed_side_map: dict[str, float] = {}
+            for side_name, timeout_sec in side_map.items():
+                parsed_side_map[str(side_name).lower()] = float(timeout_sec)
+            parsed_overrides[str(regime_name).lower()] = parsed_side_map
+        kwargs["regime_timeout_overrides"] = parsed_overrides
 
     # safety セクション → 損失キャップ
     safety = yaml_cfg.get("safety", {})

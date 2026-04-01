@@ -106,6 +106,7 @@ class OrchestratorBalanceMixin:
             flush_context="balance_insufficient",
             state_save=True,
             state_save_context="balance_insufficient",
+            # side attempt failed preflight: preserve attempted-side history
             update_last_side=True,
         )
         return True

@@ -57,6 +57,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class _PreOrderPhaseResult:
     cycle_id: str
+    decision_trace_id: str
     side: str
     order_price: float
     spread_at_order: float | None
@@ -109,6 +110,7 @@ class _FillPhaseResult:
     reprice_count: int
     reprice_drift_bps: float | None
     effective_timeout: float | None
+    timeout_reason: str | None
     cancel_failed_likely_filled: bool
     pending_reconciliation: bool
     order_price: float
@@ -377,6 +379,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         side: str,
         cancel_reason: str,
         cycle_id: str,
+        decision_trace_id: str | None,
         error: Exception,
     ) -> FillRecord:
         """239# maker price エラー時の fallback price + skip record 共通化.
@@ -417,6 +420,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             side=side,
             cancel_reason=cancel_reason,
             cycle_id=cycle_id,
+            decision_trace_id=decision_trace_id,
             order_price=_fallback_price if not _fallback_stale else 0.0,
             spread_offset_ratio=self._maker_price.base_offset_ratio,
             error_message=(
@@ -433,6 +437,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         side: str,
         cancel_reason: str,
         cycle_id: str | None = None,
+        decision_trace_id: str | None = None,
         order_quantity: float | None = None,
         order_price: float = 0.0,
         spread_at_order: float | None = None,
@@ -450,8 +455,22 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             spread_at_order=spread_at_order,
             spread_offset_ratio=spread_offset_ratio,
             regime=self._current_regime_value(),
+            decision_trace_id=decision_trace_id,
             **extra,
         )
+
+    def _resolve_cycle_timeout_policy(
+        self,
+        *,
+        side: str,
+    ) -> tuple[float, str, str | None]:
+        """688# macro-regime × side timeout を解決する."""
+        macro_trend = self._last_macro_trend
+        timeout_applied_sec, timeout_reason = self.config.get_timeout_with_reason(
+            side,
+            macro_trend,
+        )
+        return timeout_applied_sec, timeout_reason, macro_trend
 
     def _maybe_register_phantom(
         self,
@@ -512,6 +531,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         self,
         side: str,
         cycle_id: str,
+        decision_trace_id: str,
         order_price: float,
         spread_at_order: float | None,
         effective_offset_ratio: float,
@@ -557,6 +577,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             imbalance_enabled=self.config.imbalance_enabled,
             maker_price_vpin_setter=lambda v: setattr(self._maker_price, '_last_vpin', v),
             mid_trend_bps=self._maker_price.last_mid_trend_bps,
+            decision_trace_id=decision_trace_id,
             one_sided_balance=one_sided_balance,
             kill_release_offset=_kill_rel_offset,
             prefetched_ob=prefetched_ob,
@@ -573,6 +594,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         effective_offset_ratio: float,
         *,
         order_lot: float | None = None,
+        timeout_override_sec: float | None = None,
+        timeout_reason: str | None = None,
     ) -> _FillMonitorResult:
         """約定ポーリング監視 — 120# OrderMonitor に委譲.
 
@@ -609,6 +632,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             skip_gate=self._skip_gate,
             regime_detector=self._regime_detector,
             current_lot=_lot,
+            timeout_override_sec=timeout_override_sec,
+            timeout_reason=timeout_reason,
             chase_drift_bps_override=_chase_drift,          # 179# Chase
             chase_max_reprice_override=_chase_max_rp,       # 179# Chase
         )
@@ -657,6 +682,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         filled: bool,
         queue_wait: float,
         post_fill_pnl: float | None,
+        decision_trace_id: str,
         cancel_reason: str | None = None,
         sidecar_offset_bps: float = 0.0,
         sidecar_signal_status: str | None = None,
@@ -680,13 +706,13 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         _regime_tag = f", regime={regime}"
         if post_fill_pnl is not None:
             logger.info(
-                f"Cycle {self._cycle_count} result: "
+                f"[dt={decision_trace_id}] Cycle {self._cycle_count} result: "
                 f"filled={filled}, wait={queue_wait:.1f}s, pnl={post_fill_pnl:.2f}bps"
                 f"{_id_tag}{_bal_tag}{_regime_tag}{_sidecar_tag}"
             )
             return
         logger.info(
-            f"Cycle {self._cycle_count} result: "
+            f"[dt={decision_trace_id}] Cycle {self._cycle_count} result: "
             f"filled={filled}, wait={queue_wait:.1f}s"
             f"{_id_tag}{_cancel_tag}{_bal_tag}{_regime_tag}{_sidecar_tag}"
         )
@@ -711,6 +737,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         self,
         *,
         cycle_id: str,
+        decision_trace_id: str,
         side_override: str | None,
         one_sided_balance: bool,
         trending_offset_mult: float | None,
@@ -783,6 +810,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                 side=side,
                 cancel_reason=ob_cancel_reason,
                 cycle_id=cycle_id,
+                decision_trace_id=decision_trace_id,
                 error=e,
             )
         except Exception as e:
@@ -800,6 +828,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                 side=side,
                 cancel_reason=ob_cancel_reason,
                 cycle_id=cycle_id,
+                decision_trace_id=decision_trace_id,
                 error=e,
             )
 
@@ -853,6 +882,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                         side=side,
                         cancel_reason=CR.NARROW_SPREAD_PAUSE,
                         cycle_id=cycle_id,
+                        decision_trace_id=decision_trace_id,
                         order_price=order_price,
                         spread_at_order=spread_at_order,
                         spread_offset_ratio=effective_offset_ratio,
@@ -876,6 +906,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         sg = await self._evaluate_skip_gate(
             side,
             cycle_id,
+            decision_trace_id,
             order_price,
             spread_at_order,
             effective_offset_ratio,
@@ -886,6 +917,14 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         )
         if sg.early_return_record is not None:
             return sg.early_return_record
+        logger.info(
+            "[dt=%s] skip_gate: result=%s reason=%s bypassed=%s score=%s",
+            decision_trace_id,
+            "SKIP" if sg.skipped else "PASS",
+            sg.reason,
+            sg.bypassed,
+            f"{sg.score:.3f}" if sg.score is not None else "n/a",
+        )
 
         offset_result = self._apply_offset_pipeline(
             side=side,
@@ -901,12 +940,34 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             toxicity_offset_mult=toxicity_offset_mult,
             sidecar_offset_bps=sidecar_offset_bps,
             cycle_id=cycle_id,
+            decision_trace_id=decision_trace_id,
         )
         if offset_result.early_return_record is not None:
             return offset_result.early_return_record
 
+        decision_path = self._derive_decision_path(
+            ev_score_pretrade=offset_result.ev_score_pretrade,
+            skip_gate_reason=sg.reason,
+            ev_offset_applied=offset_result.ev_offset_applied,
+        )
+        if mid_at_order is not None and mid_at_order > 0:
+            final_offset_bps = abs(offset_result.order_price - mid_at_order) / mid_at_order * 10_000.0
+            logger.info(
+                "[dt=%s] offset: path=%s final_bps=%.2f",
+                decision_trace_id,
+                decision_path,
+                final_offset_bps,
+            )
+        else:
+            logger.info(
+                "[dt=%s] offset: path=%s final_bps=n/a",
+                decision_trace_id,
+                decision_path,
+            )
+
         return _PreOrderPhaseResult(
             cycle_id=cycle_id,
+            decision_trace_id=decision_trace_id,
             side=side,
             order_price=offset_result.order_price,
             spread_at_order=spread_at_order,
@@ -1106,6 +1167,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                 side=pre_order.side,
                 cancel_reason=cancel_reason,
                 cycle_id=pre_order.cycle_id,
+                decision_trace_id=pre_order.decision_trace_id,
                 order_quantity=order_lot,
                 order_price=order_price,
                 spread_at_order=pre_order.spread_at_order,
@@ -1145,31 +1207,19 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         first_t_submit = t_submit
 
         if micro_enabled:
-            mt_wait = (
-                self.config.micro_timeout_wait_sec_sell
-                if pre_order.side == "sell" and self.config.micro_timeout_wait_sec_sell is not None
-                else self.config.micro_timeout_wait_sec
+            mt_wait, timeout_reason, timeout_regime = self._resolve_cycle_timeout_policy(
+                side=pre_order.side,
             )
-            lt = self._last_macro_trend
-            if pre_order.side == "sell" and lt is not None:
-                from scripts.v460.lib.macro_regime import MacroTrend
-
-                if (
-                    lt == MacroTrend.STRONG_UP.value
-                    and self.config.macro_sell_timeout_strong_up is not None
-                ):
-                    mt_wait = self.config.macro_sell_timeout_strong_up
-                    logger.info("[458# H] sell timeout shortened: macro=STRONG_UP -> %.1fs", mt_wait)
-                elif (
-                    lt == MacroTrend.WEAK_UP.value
-                    and self.config.macro_sell_timeout_weak_up is not None
-                ):
-                    mt_wait = self.config.macro_sell_timeout_weak_up
-                    logger.info("[458# H] sell timeout shortened: macro=WEAK_UP -> %.1fs", mt_wait)
+            logger.info(
+                "[dt=%s] timeout: value=%.1fs reason=%s regime=%s side=%s",
+                pre_order.decision_trace_id,
+                mt_wait,
+                timeout_reason,
+                timeout_regime or "none",
+                pre_order.side,
+            )
             mt_max = self.config.micro_timeout_max_requote
             mt_cooloff = self.config.micro_timeout_requote_cooloff_sec
-            original_timeout = self.config.order_timeout_sec
-            original_timeout_sell = self.config.order_timeout_sec_sell
             mt_total_cap: float | None = (
                 self.config.sell_age_cap_sec
                 if pre_order.side == "sell"
@@ -1208,21 +1258,17 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                             )
                         break
 
-                object.__setattr__(self.config, "order_timeout_sec", mt_wait)
-                object.__setattr__(self.config, "order_timeout_sec_sell", None)
-                try:
-                    monitor = await self._monitor_fill_polling(
-                        order,
-                        order_price,
-                        pre_order.side,
-                        t_submit,
-                        pre_order.spread_at_order,
-                        pre_order.effective_offset_ratio,
-                        order_lot=remaining_lot,
-                    )
-                finally:
-                    object.__setattr__(self.config, "order_timeout_sec", original_timeout)
-                    object.__setattr__(self.config, "order_timeout_sec_sell", original_timeout_sell)
+                monitor = await self._monitor_fill_polling(
+                    order,
+                    order_price,
+                    pre_order.side,
+                    t_submit,
+                    pre_order.spread_at_order,
+                    pre_order.effective_offset_ratio,
+                    order_lot=remaining_lot,
+                    timeout_override_sec=mt_wait,
+                    timeout_reason=timeout_reason,
+                )
 
                 if monitor.filled or monitor.cancel_failed_likely_filled:
                     break
@@ -1284,6 +1330,17 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                     break
                 order = cast("OrderLike", order)
         else:
+            timeout_applied_sec, timeout_reason, timeout_regime = self._resolve_cycle_timeout_policy(
+                side=pre_order.side,
+            )
+            logger.info(
+                "[dt=%s] timeout: value=%.1fs reason=%s regime=%s side=%s",
+                pre_order.decision_trace_id,
+                timeout_applied_sec,
+                timeout_reason,
+                timeout_regime or "none",
+                pre_order.side,
+            )
             monitor = await self._monitor_fill_polling(
                 order,
                 order_price,
@@ -1292,6 +1349,8 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                 pre_order.spread_at_order,
                 pre_order.effective_offset_ratio,
                 order_lot=submission.order_lot,
+                timeout_override_sec=timeout_applied_sec,
+                timeout_reason=timeout_reason,
             )
 
         filled = monitor.filled
@@ -1317,6 +1376,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             reprice_count=monitor.reprice_count,
             reprice_drift_bps=monitor.reprice_drift_bps,
             effective_timeout=monitor.effective_timeout,
+            timeout_reason=monitor.timeout_reason,
             cancel_failed_likely_filled=monitor.cancel_failed_likely_filled,
             pending_reconciliation=pending_reconciliation,
             order_price=final_order_price,
@@ -1435,6 +1495,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             reprice_count=fill_phase.reprice_count,
             reprice_drift_bps=fill_phase.reprice_drift_bps,
             effective_timeout=fill_phase.effective_timeout,
+            timeout_reason=fill_phase.timeout_reason,
             cancel_failed_likely_filled=fill_phase.cancel_failed_likely_filled,
             pnl=pnl,
             sg_skipped=pre_order.skip_gate_skipped,
@@ -1464,6 +1525,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             ev_score_pretrade=pre_order.ev_score_pretrade,
             ev_offset_mult_applied=pre_order.ev_offset_mult_applied,
             decision_path=decision_path,
+            decision_trace_id=pre_order.decision_trace_id,
             sidecar_offset_bps=sidecar_offset_bps if sidecar_offset_bps != 0.0 else None,
             sidecar_bias=sidecar_bias,
             sidecar_confidence=sidecar_confidence,
@@ -1497,6 +1559,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             queue_wait=fill_phase.queue_wait,
             post_fill_pnl=pnl.post_fill_pnl,
             cancel_reason=fill_phase.cancel_reason_poll,
+            decision_trace_id=pre_order.decision_trace_id,
             sidecar_offset_bps=sidecar_offset_bps,
             sidecar_signal_status=sidecar_signal_status,
             order_id=self._pending_order_id,
@@ -1512,6 +1575,13 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             record.requote_attempts = fill_phase.requote_attempts
             if fill_phase.micro_partial_qty > 0:
                 record.micro_timeout_partial_filled_qty = fill_phase.micro_partial_qty
+        logger.info(
+            "[dt=%s] outcome: filled=%s reason=%s timeout_reason=%s",
+            pre_order.decision_trace_id,
+            fill_phase.filled,
+            fill_phase.cancel_reason_poll,
+            fill_phase.timeout_reason,
+        )
 
         await self._circuit_breaker.async_on_success()
         return record
@@ -1539,6 +1609,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
         """1 サイクル: 発注 → 監視 → 結果記録."""
         self._cycle_count += 1
         cycle_id = self._new_cycle_id()
+        decision_trace_id = self._new_decision_trace_id()
 
         # 113# resilience: CircuitBreaker ガード — OPEN 中は API 呼出しを回避
         from scripts.v460.lib.resilience import CircuitState
@@ -1553,9 +1624,11 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
                     side=side_override or "buy",
                     cancel_reason=CR.CIRCUIT_BREAKER_OPEN,
                     cycle_id=cycle_id,
+                    decision_trace_id=decision_trace_id,
                 )
         pre_order = await self._run_pre_order_phase(
             cycle_id=cycle_id,
+            decision_trace_id=decision_trace_id,
             side_override=side_override,
             one_sided_balance=one_sided_balance,
             trending_offset_mult=trending_offset_mult,

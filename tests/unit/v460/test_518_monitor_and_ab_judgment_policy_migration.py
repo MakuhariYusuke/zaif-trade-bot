@@ -18,6 +18,8 @@ class TestOrderMonitorPolicyMigration:
             side="sell",
             order_timeout_sec=40.0,
             order_timeout_sec_sell=30.0,
+            timeout_override_sec=None,
+            timeout_reason=None,
             regime_name="trending_down",
             regime_timeout_multipliers={"trending_down": 1.5},
             regime_reprice_adjustments={"trending_down": 2},

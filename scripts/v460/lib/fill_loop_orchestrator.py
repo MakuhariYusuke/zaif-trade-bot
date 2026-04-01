@@ -310,6 +310,14 @@ class FillLoopOrchestratorMixin(
 
         呼び出し側は ``await self._execute_skip(st, ...); continue`` のみ。
 
+        Args:
+            update_last_side:
+                True なら last_attempted_side を更新する。
+                side 試行の結果としてブロックされた skip
+                (freeze / cooldown / preflight / cycle gate 等) で使う。
+                False なら環境的 halt とみなし、side bias を残さない
+                (MCB / SAD / DD / operator halt 等)。
+
         理論的根拠:
           Skip ceremony はインフラ的処理 (observability / persistence /
           heartbeat) であり、blocking decision ロジック (Amihud 2002 非流動性

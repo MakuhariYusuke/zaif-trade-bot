@@ -162,12 +162,14 @@ class TestPreOrderPhaseResultDefaults:
 
         r = _PreOrderPhaseResult(
             cycle_id="test-001",
+            decision_trace_id="dt_test_001",
             side="buy",
             order_price=14_000_000.0,
             spread_at_order=100.0,
             effective_offset_ratio=0.0005,
             regime_lot=0.001,
             skip_gate_skipped=None,
+            skip_gate_bypassed=None,
             skip_gate_score=None,
             skip_gate_reason=None,
             skip_gate_model_used=None,

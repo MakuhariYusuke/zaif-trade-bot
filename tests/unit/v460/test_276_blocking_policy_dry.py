@@ -62,6 +62,13 @@ class TestExecuteSkipSignature:
         assert p["multiplier"].default == 1.0
         assert p["max_override"].default == 0.0
 
+    def test_docstring_describes_update_last_side_contract(self) -> None:
+        doc = inspect.getdoc(FillLoopOrchestratorMixin._execute_skip)
+        assert doc is not None
+        assert "last_attempted_side" in doc
+        assert "MCB / SAD / DD / operator halt" in doc
+        assert "freeze / cooldown / preflight / cycle gate" in doc
+
 
 # =====================================================================
 # B. 14箇所の _execute_skip 移行確認
@@ -407,3 +414,22 @@ class TestGateBlockLastSideUpdate:
         nearby = self.src[max(0, idx - 600):idx + 800]
         assert "_execute_skip" in nearby, "gate_block path should use _execute_skip"
         assert "sleep=False" in nearby, "gate_block _execute_skip should have sleep=False"
+
+
+class TestExecuteSkipAuditComments:
+    """688# call site comment audit."""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self) -> None:
+        self.src = read_fill_test_runner_source()
+
+    def test_pre_cycle_env_halts_have_dont_bias_comments(self) -> None:
+        assert "# env halt: don't bias side" in self.src
+        assert "# env-style block: both sides unavailable, don't bias side" in self.src
+        assert "# env halt: operator override must not bias side" in self.src
+
+    def test_active_side_blocks_have_preserve_attempted_comments(self) -> None:
+        assert "# side attempt blocked by freeze: preserve attempted-side history" in self.src
+        assert "# side attempt blocked by cooldown: preserve attempted-side history" in self.src
+        assert "# active gating decision for this side: preserve attempted-side history" in self.src
+        assert "# side attempt failed preflight: preserve attempted-side history" in self.src

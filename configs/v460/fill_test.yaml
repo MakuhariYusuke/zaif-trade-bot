@@ -212,6 +212,16 @@ regime:
     # 458# H: macro → micro-timeout 連動
     sell_timeout_weak_up: 12.0  # WEAK_UP 時の sell timeout (秒)
     sell_timeout_strong_up: 6.0 # STRONG_UP 時の sell timeout (秒)
+  # 688# regime × side timeout override
+  # 未設定 side/regime は order_timeout_sec / order_timeout_sec_sell、
+  # さらに legacy macro_sell_timeout_* へフォールバックする
+  timeout_overrides:
+    strong_up:
+      sell: 20.0
+      buy: 120.0
+    strong_down:
+      sell: 90.0
+      buy: 30.0
 
 # ---- 時間帯フィルター (041#) ----
 # 169# time_filter 全廃 (107# Phase 3 Step 3 完了)

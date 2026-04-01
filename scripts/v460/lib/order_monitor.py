@@ -189,6 +189,8 @@ class OrderMonitor:
         skip_gate: _SkipGateLike | None = None,
         regime_detector: RegimeDetectorLike | None = None,
         current_lot: float = 0.001,
+        timeout_override_sec: float | None = None,
+        timeout_reason: str | None = None,
         chase_drift_bps_override: float | None = None,      # 179# Chase
         chase_max_reprice_override: int | None = None,       # 179# Chase
     ) -> FillMonitorResult:
@@ -217,6 +219,8 @@ class OrderMonitor:
             side=side,
             order_timeout_sec=cfg.order_timeout_sec,
             order_timeout_sec_sell=cfg.order_timeout_sec_sell,
+            timeout_override_sec=timeout_override_sec,
+            timeout_reason=timeout_reason,
             regime_name=_regime_name,
             regime_timeout_multipliers=cfg.regime_timeout_multipliers,
             regime_reprice_adjustments=cfg.regime_reprice_adjustments,
@@ -577,6 +581,7 @@ class OrderMonitor:
             reprice_drift_bps=cumulative_drift_bps,  # 158# P1-3
             final_order_price=order_price,
             effective_timeout=_effective_timeout,
+            timeout_reason=timeout_policy.reason,
             cancel_failed_likely_filled=_cancel_failed_likely_filled,  # 166# C.7
             order_id_for_reconciliation=_order_id_for_reconciliation,  # 237#
         )

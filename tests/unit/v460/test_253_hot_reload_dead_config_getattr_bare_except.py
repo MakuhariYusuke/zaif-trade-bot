@@ -234,7 +234,8 @@ class TestRegressionIntegrity:
         # 642# 可観測性改善: 5フィールド追加 (+5行)
         # 671# NFQ構造化フィールド抽出 (+11行)
         # 685# PPO sidecar 統合で +16行
-        assert lines < 1600, f"fill_cycle_executor.py has {lines} lines"
+        # 688# timeout regime×side + decision_trace_id (+53行)
+        assert lines < 1700, f"fill_cycle_executor.py has {lines} lines"
 
     def test_event_logger_has_logger(self) -> None:
         """event_logger.py にモジュールレベル logger が存在。"""

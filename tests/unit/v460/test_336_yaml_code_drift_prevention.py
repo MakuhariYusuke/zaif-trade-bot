@@ -80,6 +80,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "skip_buy_unknown_regime",
     "skip_gate_adaptive_threshold",
     "skip_gate_enabled",
+    "skip_gate_bypass_mode",
     "skip_gate_ev_as_offset_enabled",
     "skip_gate_ev_weighted_enabled",
     "skip_gate_use_ob_features",
@@ -146,6 +147,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "regime_trend_threshold_pct",  # 630# 0.5→0.20: P1 感度向上
     "regime_trending_offset_boost_buy",
     "regime_trending_offset_boost_sell",
+    "regime_timeout_overrides",
     "sell_dynamic_kill_regime_thresholds",
     "sell_dynamic_kill_window",  # 519# 50→30
     "sell_dynamic_kill_ewma_input_clamp_bps",  # 549# Winsorization clamp

@@ -167,6 +167,9 @@ class FillRecord:
     ev_score_pretrade: float | None = None        # ランタイム ev_score (ex-ante 予測値)
     ev_offset_mult_applied: float | None = None   # 実適用 offset 乗数 (1.0=変更なし)
     decision_path: str | None = None              # "primary_only" / "ev_offset" / "ev_no_change" / "ev_emergency_skip" / "ev_normal_skip"
+    decision_trace_id: str | None = None          # 688# 同一サイクル判断トレース ID
+    timeout_applied_sec: float | None = None      # 688# 実効 timeout
+    timeout_reason: str | None = None             # 688# timeout 採用理由
     # 187# B-2: guard_trace — gated_regime + effective_cycle_interval 記録
     gated_regime: str | None = None              # ヒステリシス適用後の実効 regime
     effective_cycle_interval: float | None = None  # 使用されたサイクル間隔 (秒)

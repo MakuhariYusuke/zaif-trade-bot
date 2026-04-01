@@ -24,7 +24,7 @@ from scripts.v460.lib.fill_config import FillTestConfig
 # ======================================================================
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[untyped-decorator]
 def yaml_content_base() -> str:
     """Base YAML content for fill_test config."""
     return """\
@@ -60,10 +60,15 @@ regime:
   low_vol_offset_boost_enabled: false
   low_vol_offset_boost: 1.4
   skip_ranging_buy_low_vol: false
+  timeout_overrides:
+    strong_up:
+      sell: 20.0
+    strong_down:
+      buy: 30.0
 """
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[untyped-decorator]
 def yaml_content_updated() -> str:
     """Updated YAML with changed values."""
     return """\
@@ -99,10 +104,15 @@ regime:
   low_vol_offset_boost_enabled: true
   low_vol_offset_boost: 1.6
   skip_ranging_buy_low_vol: true
+  timeout_overrides:
+    strong_up:
+      sell: 15.0
+    strong_down:
+      buy: 25.0
 """
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[untyped-decorator]
 def temp_yaml(tmp_path: Path, yaml_content_base: str) -> Path:
     """Temporary YAML file that can be modified."""
     path = tmp_path / "fill_test.yaml"
@@ -110,7 +120,7 @@ def temp_yaml(tmp_path: Path, yaml_content_base: str) -> Path:
     return path
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[untyped-decorator]
 def base_config() -> FillTestConfig:
     """A config with known initial values."""
     return FillTestConfig(
@@ -125,17 +135,21 @@ def base_config() -> FillTestConfig:
         sell_dynamic_kill_threshold_bps=-0.5,
         daily_drawdown_enabled=True,
         daily_drawdown_hard_limit_bps=-50.0,
+        regime_timeout_overrides={
+            "strong_up": {"sell": 20.0},
+            "strong_down": {"buy": 30.0},
+        },
     )
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True)  # type: ignore[untyped-decorator]
 def _stub_git_sha() -> Iterator[None]:
     """Reload tests do not need a real git subprocess."""
     with patch("ztb.utils.git_utils.get_git_sha", return_value="abc123"):
         yield
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True)  # type: ignore[untyped-decorator]
 def _stub_time_filter() -> Iterator[None]:
     """Hot-reload tests do not need the real TimeFilter import graph."""
     with patch(
@@ -246,6 +260,28 @@ class TestConfigHotReloaderBasic:
         # すぐに呼んでもリロードされない
         result = reloader.maybe_reload(runner)
         assert result is False
+
+    def test_reload_updates_regime_timeout_overrides(
+        self,
+        base_config: FillTestConfig,
+        temp_yaml: Path,
+        yaml_content_updated: str,
+    ) -> None:
+        """regime timeout overrides が hot-reload で置き換わる."""
+        reloader, runner, changed = _run_do_reload_with_content(
+            base_config,
+            temp_yaml,
+            yaml_content_updated,
+        )
+
+        assert changed is True
+        assert runner.config.regime_timeout_overrides == {
+            "strong_up": {"sell": 15.0},
+            "strong_down": {"buy": 25.0},
+        }
+        timeout_sec, reason = runner.config.get_timeout_with_reason("sell", "strong_up")
+        assert timeout_sec == 15.0
+        assert reason == "regime_strong_up_sell"
 
     def test_no_reload_without_mtime_change(
         self, base_config: FillTestConfig, temp_yaml: Path,

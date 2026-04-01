@@ -63,6 +63,11 @@ class FillRecordHelpersMixin:
         base = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
         return f"{prefix}_{base}" if prefix else base
 
+    @staticmethod
+    def _new_decision_trace_id() -> str:
+        """688# 軽量な per-cycle decision trace ID."""
+        return f"dt_{int(time.time())}_{uuid.uuid4().hex[:6]}"
+
     def _make_skip_record(
         self,
         *,

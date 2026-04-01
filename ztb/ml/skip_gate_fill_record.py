@@ -23,6 +23,7 @@ class SkipFillRecordContext:
     run_id: str
     git_sha: str | None
     regime_value: str | None
+    decision_trace_id: str | None = None
 
 
 def build_skip_fill_record_from_context(
@@ -43,6 +44,7 @@ def build_skip_fill_record_from_context(
         spread_at_order=context.spread_at_order,
         spread_offset_ratio=context.spread_offset_ratio,
         regime=context.regime_value,
+        decision_trace_id=context.decision_trace_id,
         skip_gate_skipped=extra_fields.skip_gate_skipped,
         skip_gate_score=extra_fields.skip_gate_score,
         skip_gate_reason=extra_fields.skip_gate_reason,

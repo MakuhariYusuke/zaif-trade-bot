@@ -99,6 +99,26 @@ class TestStateSeparation:
         assert runner._side_selector.last_executed_side == "sell"
         assert runner._side_selector.last_attempted_side == "buy"
 
+    def test_execute_skip_env_halt_keeps_attempted_side_unchanged(self) -> None:
+        runner = _SkipRunnerStub()
+        runner._side_selector.update_after_decision("buy")
+        runner._side_selector.update_after_attempt("sell")
+        state = RunSessionState()
+
+        asyncio.run(
+            FillLoopOrchestratorMixin._execute_skip(
+                runner,
+                state,
+                side="none",
+                cancel_reason="mcb_halt",
+                update_last_side=False,
+                sleep=False,
+            )
+        )
+
+        assert runner._side_selector.last_executed_side == "buy"
+        assert runner._side_selector.last_attempted_side == "sell"
+
     def test_fill_record_roundtrip_preserves_side_states(self) -> None:
         record = build_fill_record(
             cycle_id="fill",
@@ -133,3 +153,21 @@ class TestStateSeparation:
 
         assert restored.last_executed_side == "buy"
         assert restored.last_attempted_side == "sell"
+
+    def test_fill_record_roundtrip_preserves_decision_trace_and_timeout(self) -> None:
+        record = build_fill_record(
+            cycle_id="trace",
+            timestamp=1.0,
+            side="buy",
+            order_price=100.0,
+            order_quantity=0.001,
+            decision_trace_id="dt_trace_1",
+            timeout_applied_sec=20.0,
+            timeout_reason="regime_strong_up_sell",
+        )
+
+        restored = FillRecord.from_dict(record.to_dict())
+
+        assert restored.decision_trace_id == "dt_trace_1"
+        assert restored.timeout_applied_sec == 20.0
+        assert restored.timeout_reason == "regime_strong_up_sell"

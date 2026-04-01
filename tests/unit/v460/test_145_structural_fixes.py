@@ -188,6 +188,7 @@ class TestCancelReasons:
             CR.FINAL_CLAMP_HARD_SKIP,          # 421# P0 Final Clamp
             CR.ROUTE_TO_KILL_DEADLOCK,          # 421# P0 Route-to-Kill
             CR.INVENTORY_DEADLOCK,              # 648# 在庫デッドロック
+            CR.TREND_5S_SELL_GUARD_VETO,       # 685# trend 5s sell guard
         }
         assert CR.AUDIT_CANCEL_REASONS == expected
 
@@ -469,6 +470,10 @@ class TestMakeSkipRecord:
         runner._git_sha = "abc1234"
         runner._current_lot = 0.005
         runner._regime_detector = None
+        runner._side_selector = types.SimpleNamespace(
+            last_executed_side=None,
+            last_attempted_side=None,
+        )
         runner.config = types.SimpleNamespace(ab_test_variant=None)
         runner._make_skip_record = types.MethodType(
             FillTestRunner._make_skip_record, runner,

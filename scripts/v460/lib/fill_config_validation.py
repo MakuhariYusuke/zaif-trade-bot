@@ -69,6 +69,22 @@ def validate_fill_config(config: FillTestConfig) -> None:
             raise ValueError(
                 f"regime_timeout_multipliers['{k}'] must be > 0, got {v}"
             )
+    for regime_name, side_map in config.regime_timeout_overrides.items():
+        if not isinstance(side_map, dict):
+            raise ValueError(
+                f"regime_timeout_overrides['{regime_name}'] must be a dict"
+            )
+        for side_name, timeout_sec in side_map.items():
+            if side_name not in {"buy", "sell"}:
+                raise ValueError(
+                    f"regime_timeout_overrides['{regime_name}'] "
+                    f"contains unsupported side '{side_name}'"
+                )
+            if timeout_sec <= 0:
+                raise ValueError(
+                    f"regime_timeout_overrides['{regime_name}']['{side_name}'] "
+                    f"must be > 0, got {timeout_sec}"
+                )
     for k, v in config.regime_lot_multipliers.items():
         if v <= 0:
             raise ValueError(

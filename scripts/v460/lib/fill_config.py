@@ -166,6 +166,7 @@ class FillTestConfig:
     # 144# R-1d: レジーム別 timeout 倍率 (regime_name -> float multiplier)
     # high_vol: 0.7 (早めに撤退), trending: 1.3 (トレンドに乗るため待機), ranging: 1.0
     regime_timeout_multipliers: dict[str, float] = field(default_factory=dict)
+    regime_timeout_overrides: dict[str, dict[str, float]] = field(default_factory=dict)
     # レジーム検知 (035# §4)
     enable_regime: bool = True
     regime_window: int = 20
@@ -1018,6 +1019,56 @@ class FillTestConfig:
             hard_veto_threshold_bps=self.trend_5s_sell_guard_hard_veto_threshold_bps,
             offset_boost_factor=self.trend_5s_sell_guard_offset_boost_factor,
         )
+
+    @staticmethod
+    def _normalize_timeout_regime(regime: str | None) -> str | None:
+        if regime is None:
+            return None
+        normalized = regime.strip().lower()
+        return normalized or None
+
+    def get_timeout_with_reason(
+        self,
+        side: str,
+        regime: str | None,
+    ) -> tuple[float, str]:
+        """688# side×macro-regime timeout を解決する.
+
+        優先順位:
+          1. regime_timeout_overrides[regime][side]
+          2. legacy macro sell timeout (strong_up / weak_up)
+          3. order_timeout_sec_sell
+          4. order_timeout_sec
+        """
+        normalized_side = side.strip().lower()
+        normalized_regime = self._normalize_timeout_regime(regime)
+        if normalized_regime is not None:
+            per_regime = self.regime_timeout_overrides.get(normalized_regime)
+            if per_regime is not None:
+                override = per_regime.get(normalized_side)
+                if override is not None:
+                    return float(override), f"regime_{normalized_regime}_{normalized_side}"
+
+        if normalized_side == "sell" and normalized_regime is not None:
+            if (
+                normalized_regime == "strong_up"
+                and self.macro_sell_timeout_strong_up is not None
+            ):
+                return float(self.macro_sell_timeout_strong_up), "legacy_macro_strong_up_sell"
+            if (
+                normalized_regime == "weak_up"
+                and self.macro_sell_timeout_weak_up is not None
+            ):
+                return float(self.macro_sell_timeout_weak_up), "legacy_macro_weak_up_sell"
+
+        if normalized_side == "sell" and self.order_timeout_sec_sell is not None:
+            return float(self.order_timeout_sec_sell), "sell_default"
+        return float(self.order_timeout_sec), "base_default"
+
+    def get_timeout(self, side: str, regime: str | None) -> float:
+        """688# timeout 値だけが必要な箇所向けの薄い wrapper."""
+        timeout_sec, _ = self.get_timeout_with_reason(side, regime)
+        return timeout_sec
 
 
     # ================================================================

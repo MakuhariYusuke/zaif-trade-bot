@@ -43,6 +43,7 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
         toxicity_offset_mult: float,
         sidecar_offset_bps: float,
         cycle_id: str,
+        decision_trace_id: str | None = None,
     ) -> "OffsetPipelineResult":
         """460# Offset adjustment pipeline -- 9 段の offset 乗数チェーン + final clamp."""
         # Avoid module import cycle at class-definition time.
@@ -303,6 +304,7 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
                             side=side,
                             cancel_reason=CR.FINAL_CLAMP_HARD_SKIP,
                             cycle_id=cycle_id,
+                            decision_trace_id=decision_trace_id,
                             order_price=order_price,
                             spread_at_order=spread_at_order,
                             spread_offset_ratio=effective_offset_ratio,

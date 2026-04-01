@@ -148,6 +148,7 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "macro_buy_boost_strong_down",
     "macro_sell_timeout_weak_up",
     "macro_sell_timeout_strong_up",
+    "regime_timeout_overrides",
     # --- dynamic kill ---
     "sell_dynamic_kill_enabled",
     "sell_dynamic_kill_window",

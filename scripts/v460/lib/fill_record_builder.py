@@ -88,6 +88,7 @@ class FillRecordBuilderMixin:
         queue_wait: float,
         cancel_reason_poll: str | None,
         effective_timeout: float | None,
+        timeout_reason: str | None,
         pnl: _PnlMeasurement,
     ) -> dict[str, object]:
         """FillRecord の約定/計測系フィールドを構築."""
@@ -116,6 +117,8 @@ class FillRecordBuilderMixin:
             "actual_measurement_sec": pnl.actual_measurement_sec if filled else None,
             "early_exit_triggered": pnl.early_exit_triggered if filled else None,
             "pnl_at_exit_bps": pnl.pnl_at_exit_bps if filled else None,
+            "timeout_applied_sec": effective_timeout,
+            "timeout_reason": timeout_reason,
         }
 
     def _build_fill_market_fields(
@@ -151,6 +154,7 @@ class FillRecordBuilderMixin:
         ev_score_pretrade: float | None = None,
         ev_offset_mult_applied: float | None = None,
         decision_path: str | None = None,
+        decision_trace_id: str | None = None,
         sidecar_offset_bps: float | None = None,
         sidecar_bias: float | None = None,
         # 487# P0: sidecar attribution 可観測性
@@ -217,6 +221,7 @@ class FillRecordBuilderMixin:
             "ev_score_pretrade": ev_score_pretrade,
             "ev_offset_mult_applied": ev_offset_mult_applied,
             "decision_path": decision_path,
+            "decision_trace_id": decision_trace_id,
             # 372# F1: SAC Sidecar offset 記録
             "sidecar_offset_bps": sidecar_offset_bps,
             "sidecar_bias": sidecar_bias,
@@ -347,6 +352,7 @@ class FillRecordBuilderMixin:
         reprice_count: int,
         reprice_drift_bps: float | None,
         effective_timeout: float | None,
+        timeout_reason: str | None,
         cancel_failed_likely_filled: bool,
         pnl: _PnlMeasurement,
         sg_skipped: bool | None,
@@ -376,6 +382,7 @@ class FillRecordBuilderMixin:
         ev_score_pretrade: float | None = None,
         ev_offset_mult_applied: float | None = None,
         decision_path: str | None = None,
+        decision_trace_id: str | None = None,
         sidecar_offset_bps: float | None = None,
         sidecar_bias: float | None = None,
         # 487# P0: sidecar attribution 可観測性
@@ -477,6 +484,7 @@ class FillRecordBuilderMixin:
                 queue_wait=queue_wait,
                 cancel_reason_poll=cancel_reason_poll,
                 effective_timeout=effective_timeout,
+                timeout_reason=timeout_reason,
                 pnl=pnl,
             )
         )
@@ -512,6 +520,7 @@ class FillRecordBuilderMixin:
                 ev_score_pretrade=ev_score_pretrade,
                 ev_offset_mult_applied=ev_offset_mult_applied,
                 decision_path=decision_path,
+                decision_trace_id=decision_trace_id,
                 sidecar_offset_bps=sidecar_offset_bps,
                 sidecar_bias=sidecar_bias,
                 sidecar_confidence=sidecar_confidence,

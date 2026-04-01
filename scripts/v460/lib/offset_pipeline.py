@@ -82,6 +82,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
         toxicity_offset_mult: float,
         sidecar_offset_bps: float,
         cycle_id: str,
+        decision_trace_id: str | None = None,
     ) -> OffsetPipelineResult:
         """582# A/B dispatcher: experimental flag に応じて加法 or 乗法を呼び分け."""
         if self.config.experimental_additive_pipeline:
@@ -99,6 +100,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
                 toxicity_offset_mult=toxicity_offset_mult,
                 sidecar_offset_bps=sidecar_offset_bps,
                 cycle_id=cycle_id,
+                decision_trace_id=decision_trace_id,
             )
         return self._apply_offset_pipeline_multiplicative(
             side=side,
@@ -114,6 +116,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
             toxicity_offset_mult=toxicity_offset_mult,
             sidecar_offset_bps=sidecar_offset_bps,
             cycle_id=cycle_id,
+            decision_trace_id=decision_trace_id,
         )
 
     # ── 582# True Additive Pipeline (RMS Toxicity/Liquidity Split) ──
@@ -134,6 +137,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
         toxicity_offset_mult: float,
         sidecar_offset_bps: float,
         cycle_id: str,
+        decision_trace_id: str | None = None,
     ) -> OffsetPipelineResult:
         """582# RMS 加法 offset pipeline — Toxicity / Liquidity バッファ分離.
 
@@ -315,6 +319,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
                             side=side,
                             cancel_reason=CR.FINAL_CLAMP_HARD_SKIP,
                             cycle_id=cycle_id,
+                            decision_trace_id=decision_trace_id,
                             order_price=order_price,
                             spread_at_order=spread_at_order,
                             spread_offset_ratio=effective_offset_ratio,

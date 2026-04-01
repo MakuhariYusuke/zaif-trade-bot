@@ -9,6 +9,7 @@ class EffectiveTimeoutPolicy:
     timeout_multiplier: float
     effective_timeout: float
     regime_reprice_offset: int
+    reason: str
     sell_age_cap_applied: bool = False
 
 
@@ -24,21 +25,34 @@ def compute_effective_timeout_policy(
     side: str,
     order_timeout_sec: float,
     order_timeout_sec_sell: float | None,
+    timeout_override_sec: float | None,
+    timeout_reason: str | None,
     regime_name: str | None,
     regime_timeout_multipliers: dict[str, float],
     regime_reprice_adjustments: dict[str, int],
     sell_age_cap_sec: int | None,
 ) -> EffectiveTimeoutPolicy:
-    base_timeout = (
-        order_timeout_sec_sell
-        if side == "sell" and order_timeout_sec_sell is not None
-        else order_timeout_sec
-    )
-    timeout_multiplier = (
-        regime_timeout_multipliers.get(regime_name, 1.0)
-        if regime_name is not None
-        else 1.0
-    )
+    if timeout_override_sec is not None:
+        base_timeout = float(timeout_override_sec)
+        timeout_multiplier = 1.0
+        reason = timeout_reason or "explicit_override"
+    else:
+        base_timeout = (
+            order_timeout_sec_sell
+            if side == "sell" and order_timeout_sec_sell is not None
+            else order_timeout_sec
+        )
+        timeout_multiplier = (
+            regime_timeout_multipliers.get(regime_name, 1.0)
+            if regime_name is not None
+            else 1.0
+        )
+        if side == "sell" and order_timeout_sec_sell is not None:
+            reason = "sell_default"
+        else:
+            reason = "base_default"
+        if regime_name is not None and timeout_multiplier != 1.0:
+            reason = f"{reason}_x_regime_{regime_name}"
     effective_timeout = base_timeout * timeout_multiplier
     sell_age_cap_applied = False
     if (
@@ -49,6 +63,7 @@ def compute_effective_timeout_policy(
     ):
         effective_timeout = float(sell_age_cap_sec)
         sell_age_cap_applied = True
+        reason = f"{reason}_sell_age_cap"
     regime_reprice_offset = (
         regime_reprice_adjustments.get(regime_name, 0)
         if regime_name is not None
@@ -59,6 +74,7 @@ def compute_effective_timeout_policy(
         timeout_multiplier=float(timeout_multiplier),
         effective_timeout=float(effective_timeout),
         regime_reprice_offset=int(regime_reprice_offset),
+        reason=reason,
         sell_age_cap_applied=sell_age_cap_applied,
     )
 

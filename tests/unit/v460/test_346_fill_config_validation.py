@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import warnings
 from copy import deepcopy
+from typing import cast
 
 import pytest
 
@@ -15,7 +16,7 @@ from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.fill_config_validation import validate_fill_config
 
 
-@pytest.fixture()
+@pytest.fixture()  # type: ignore[untyped-decorator]
 def cfg() -> FillTestConfig:
     """デフォルト値で構築した FillTestConfig (バリデーション済み)."""
     return FillTestConfig()
@@ -103,6 +104,24 @@ class TestRegimeDicts:
     def test_reprice_adj_boundary_pass(self, cfg: FillTestConfig) -> None:
         cfg.regime_reprice_adjustments = {"trending": 10}
         validate_fill_config(cfg)  # 境界値は OK
+
+    def test_timeout_override_side_map_must_be_dict(self, cfg: FillTestConfig) -> None:
+        cfg.regime_timeout_overrides = cast(
+            dict[str, dict[str, float]],
+            {"strong_up": 20.0},
+        )
+        with pytest.raises(ValueError, match="regime_timeout_overrides\\['strong_up'\\]"):
+            validate_fill_config(cfg)
+
+    def test_timeout_override_side_name_is_validated(self, cfg: FillTestConfig) -> None:
+        cfg.regime_timeout_overrides = {"strong_up": {"both": 20.0}}
+        with pytest.raises(ValueError, match="contains unsupported side 'both'"):
+            validate_fill_config(cfg)
+
+    def test_timeout_override_value_must_be_positive(self, cfg: FillTestConfig) -> None:
+        cfg.regime_timeout_overrides = {"strong_up": {"sell": 0.0}}
+        with pytest.raises(ValueError, match="must be > 0"):
+            validate_fill_config(cfg)
 
 
 class TestConfidenceLot:
