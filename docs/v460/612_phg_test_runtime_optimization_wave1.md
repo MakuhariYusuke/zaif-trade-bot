@@ -940,3 +940,19 @@ durations 変化で特に効いた点:
     - `test_oos_failed`: `2.84s -> 0.15s`
     - `test_cold_start_success`: `1.93s -> 0.14s`
     - `test_load_data_synthetic_falls_back_when_randn_is_degraded`: `1.52s -> 0.02s`
+
+- `enricher_skip_gate` / `fill_quality` trim:
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - real-data smoke と trainable fixture を分離
+    - smoke test が trainable enriched bundle の準備を踏まないよう整理
+  - `tests/unit/v460/test_fill_quality.py`
+    - fast-cycle unknown-status retry を 1 retry の fast path に寄せた
+  - subset 実測:
+    - `tests/integration/test_custom_ppo_integration.py`
+    - `tests/training/test_ppo_trainer.py`
+    - `tests/unit/v460/test_enricher_skip_gate.py`
+    - `tests/unit/v460/test_fill_quality.py`
+    - `312 passed in 7.86s`
+  - slowest 25 の変化:
+    - `test_enrichment_with_real_data` setup: `0.56s -> 0.29s`
+    - `test_status_none_twice_becomes_cancelled_status_unknown`: `0.58s -> 0.03s`

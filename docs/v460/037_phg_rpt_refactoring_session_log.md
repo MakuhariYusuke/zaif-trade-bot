@@ -9866,3 +9866,14 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - `test_algorithms`
   - self-supervised synthetic default を縮小
   - degraded torch fallback の固定費を削減
+
+### 037-678K CustomPPO helper split + heavy test trim
+
+- `custom_ppo`
+  - PAN / Lagrange / entropy / loss helper を分割
+  - train ループ本体を読みやすく整理
+- `test_enricher_skip_gate`
+  - real-data smoke fixture と train fixture を分離
+  - smoke path が trainable bundle 準備を踏まないようにした
+- `test_fill_quality`
+  - unknown-status fast retry path をさらに短縮

@@ -1046,32 +1046,13 @@ class Test058Integration:
         return has_fill_records_and_raw_data()
 
     @pytest.fixture(scope="class")
-    def real_enriched_bundle(
-        self,
-        real_data_available: bool,
-    ) -> dict[str, pd.DataFrame]:
-        if not real_data_available:
-            pytest.skip("No real data")
-        trainable = _cached_real_enriched_training_df()
-        if not trainable.empty:
-            smoke = trainable.head(min(len(trainable), _REAL_DATA_SMOKE_EXPANDED_SAMPLE_ROWS))
-            return {
-                "smoke": smoke.copy(deep=False),
-                "train": trainable,
-            }
-
-        smoke = _cached_real_enriched_smoke_df()
-        return {
-            "smoke": smoke,
-            "train": trainable,
-        }
-
-    @pytest.fixture(scope="class")
     def real_smoke_enriched_df(
         self,
-        real_enriched_bundle: dict[str, pd.DataFrame],
+        real_data_available: bool,
     ) -> pd.DataFrame:
-        enriched = real_enriched_bundle["smoke"]
+        if not real_data_available:
+            pytest.skip("No real data")
+        enriched = _cached_real_enriched_smoke_df()
         if enriched.empty:
             pytest.skip("No fill records")
         return enriched
@@ -1079,9 +1060,8 @@ class Test058Integration:
     @pytest.fixture(scope="class")
     def real_trainable_enriched_df(
         self,
-        real_enriched_bundle: dict[str, pd.DataFrame],
     ) -> pd.DataFrame:
-        enriched = real_enriched_bundle["train"]
+        enriched = _cached_real_enriched_training_df()
         if enriched.empty:
             pytest.skip("No fill records")
         return enriched

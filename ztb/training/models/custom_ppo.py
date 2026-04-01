@@ -59,6 +59,15 @@ def _num_actions(action_space: ActionSpace) -> int:
         return int(action_space.n)
     return 3
 
+
+def _record_stats(logger_obj: Any, prefix: str, stats: dict[str, float]) -> None:
+    for key, value in stats.items():
+        logger_obj.record(f"{prefix}_{key}", value)
+
+
+def _all_legal_action_masks(batch_size: int, n_actions: int) -> NDArray[np.float64]:
+    return np.ones((batch_size, n_actions), dtype=np.float64)
+
 class CustomPPO(MaskablePPO):
     """
     Custom PPO with integrated bias mitigation components.
@@ -206,6 +215,99 @@ class CustomPPO(MaskablePPO):
                 f"✓ Lagrange Constraint enabled (target={lagrange_target_action}, r_target={lagrange_r_target:.1%})"
             )
 
+    def _normalize_advantages(
+        self,
+        advantages: th.Tensor,
+        actions: th.Tensor,
+    ) -> th.Tensor:
+        if self.enable_pan and self.pan_normalizer is not None:
+            advantages_np = advantages.cpu().numpy()
+            actions_np = actions.cpu().numpy()
+            normalized_advantages = self.pan_normalizer.normalize(
+                advantages_np, actions_np
+            )
+            _record_stats(self.logger, "train/pan", self.pan_normalizer.get_statistics())
+            return th.tensor(
+                normalized_advantages,
+                device=self.device,
+                dtype=th.float32,
+            )
+
+        if self.normalize_advantage and len(advantages) > 1:
+            return (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+        return advantages
+
+    def _compute_lagrange_penalty(
+        self,
+        rollout_data: Any,
+        actions: th.Tensor,
+    ) -> float:
+        if not self.enable_lagrange or self.lagrange is None:
+            return 0.0
+
+        actions_np = actions.cpu().numpy()
+        if hasattr(rollout_data, "action_masks"):
+            action_masks_np = rollout_data.action_masks.cpu().numpy()
+        else:
+            action_masks_np = _all_legal_action_masks(
+                batch_size=len(actions_np),
+                n_actions=_num_actions(self.action_space),
+            )
+
+        penalty_value, lagrange_info = self.lagrange.compute_penalty(
+            actions=actions_np,
+            legal_masks=action_masks_np,
+        )
+        _record_stats(self.logger, "train/lagrange", lagrange_info)
+        return float(penalty_value)
+
+    def _resolve_entropy_coefficient(
+        self,
+        observations: th.Tensor,
+    ) -> float:
+        if not self.enable_target_entropy or self.entropy_controller is None:
+            return float(self.ent_coef)
+
+        with th.no_grad():
+            distribution = self.policy.get_distribution(observations)
+            action_logits = distribution.distribution.logits
+            current_entropy = self.entropy_controller.compute_entropy(action_logits)
+
+        _, new_alpha = self.entropy_controller.update(current_entropy)
+        _record_stats(
+            self.logger,
+            "train/entropy",
+            self.entropy_controller.get_statistics(),
+        )
+        return float(new_alpha)
+
+    def _compute_value_loss(
+        self,
+        *,
+        values: th.Tensor,
+        rollout_data: Any,
+        clip_range_vf: float | None,
+    ) -> th.Tensor:
+        if clip_range_vf is None:
+            values_pred = values
+        else:
+            values_pred = rollout_data.old_values + th.clamp(
+                values - rollout_data.old_values,
+                -clip_range_vf,
+                clip_range_vf,
+            )
+        return F.mse_loss(rollout_data.returns, values_pred)
+
+    def _compute_entropy_loss(
+        self,
+        *,
+        entropy: th.Tensor | None,
+        log_prob: th.Tensor,
+    ) -> th.Tensor:
+        if entropy is None:
+            return -th.mean(-log_prob)
+        return -th.mean(entropy)
+
     def train(self) -> None:
         """
         Update policy using the currently gathered rollout buffer with custom enhancements.
@@ -266,66 +368,12 @@ class CustomPPO(MaskablePPO):
                     # Convert discrete action from float to long
                     actions = rollout_data.actions.long().flatten()
 
-                # ★ CUSTOM: Apply PAN (Per-Action Advantage Normalization)
                 advantages = rollout_data.advantages
-
-                if self.enable_pan and self.pan_normalizer is not None:
-                    # Convert to numpy for PAN processing
-                    advantages_np = advantages.cpu().numpy()
-                    actions_np = actions.cpu().numpy()
-
-                    # Apply PAN
-                    advantages_np = self.pan_normalizer.normalize(
-                        advantages_np, actions_np
-                    )
-
-                    # Convert back to torch
-                    advantages = th.tensor(
-                        advantages_np, device=self.device, dtype=th.float32
-                    )
-
-                    # Log PAN statistics
-                    pan_stats = self.pan_normalizer.get_statistics()
-                    for key, value in pan_stats.items():
-                        self.logger.record(f"train/pan_{key}", value)
-                else:
-                    # Standard advantage normalization (SB3 default)
-                    if self.normalize_advantage and len(advantages) > 1:
-                        advantages = (advantages - advantages.mean()) / (
-                            advantages.std() + 1e-8
-                        )
-
-                # ★ CUSTOM: Compute Lagrange penalty (if enabled)
-                lagrange_penalty = 0.0
-                if self.enable_lagrange and self.lagrange is not None:
-                    # Get action masks from rollout data (MaskableRolloutBuffer stores these)
-                    # action_masks shape: [batch_size, n_actions]
-                        # Prefer using rollout-provided action_masks when available.
-                        actions_np = actions.cpu().numpy()
-                        if hasattr(rollout_data, "action_masks"):
-                            action_masks_np = rollout_data.action_masks.cpu().numpy()
-                        else:
-                            # If no action_masks are present (older SB3 versions or
-                            # custom rollout buffers), assume all actions legal so
-                            # Lagrange still receives updates during training.
-                            import numpy as _np
-
-                            n_actions = (
-                                int(self.action_space.n)
-                                if isinstance(self.action_space, spaces.Discrete)
-                                else 3
-                            )
-                            action_masks_np = _np.ones((len(actions_np), n_actions))
-
-                        # Compute penalty and update dual variable
-                        penalty_value, lagrange_info = self.lagrange.compute_penalty(
-                            actions=actions_np, legal_masks=action_masks_np
-                        )
-                        lagrange_penalty = penalty_value
-
-                        # Log Lagrange statistics
-                        for key, value in lagrange_info.items():
-                            self.logger.record(f"train/lagrange_{key}", value)
+                advantages = self._normalize_advantages(advantages, actions)
+                lagrange_penalty = self._compute_lagrange_penalty(
+                    rollout_data,
+                    actions,
+                )
 
                 # Evaluate policy
                 values, log_prob, entropy = self.policy.evaluate_actions(
@@ -333,35 +381,9 @@ class CustomPPO(MaskablePPO):
                 )
                 values = values.flatten()
 
-                # ★ CUSTOM: Target Entropy Controller
-                if self.enable_target_entropy and self.entropy_controller is not None:
-                    # Compute current entropy from policy distribution
-                    with th.no_grad():
-                        # Get action logits for entropy computation
-                        distribution = self.policy.get_distribution(
-                            rollout_data.observations
-                        )
-                        if distribution.distribution is not None:
-                            action_logits = distribution.distribution.logits
-
-                        # Compute entropy (keep as tensor)
-                        current_entropy = self.entropy_controller.compute_entropy(
-                            action_logits
-                        )
-
-                    # Update temperature (ent_coef) - returns loss and new alpha
-                    _, new_alpha = self.entropy_controller.update(current_entropy)
-
-                    # Use controlled entropy coefficient
-                    ent_coef_current = new_alpha
-
-                    # Log entropy controller statistics
-                    entropy_stats = self.entropy_controller.get_statistics()
-                    for key, value in entropy_stats.items():
-                        self.logger.record(f"train/entropy_{key}", value)
-                else:
-                    # Use fixed entropy coefficient
-                    ent_coef_current = self.ent_coef
+                ent_coef_current = self._resolve_entropy_coefficient(
+                    rollout_data.observations
+                )
 
                 # Ratio between old and new policy
                 ratio = th.exp(log_prob - rollout_data.old_log_prob)
@@ -378,25 +400,17 @@ class CustomPPO(MaskablePPO):
                 clip_fraction = th.mean((th.abs(ratio - 1) > clip_range).float()).item()
                 clip_fractions.append(clip_fraction)
 
-                # Value loss
-                if self.clip_range_vf is None:
-                    # No clipping
-                    values_pred = values
-                else:
-                    # Clip the different between old and new value
-                    values_pred = rollout_data.old_values + th.clamp(
-                        values - rollout_data.old_values, -clip_range_vf, clip_range_vf
-                    )
-                value_loss = F.mse_loss(rollout_data.returns, values_pred)
+                value_loss = self._compute_value_loss(
+                    values=values,
+                    rollout_data=rollout_data,
+                    clip_range_vf=clip_range_vf if self.clip_range_vf is not None else None,
+                )
                 value_losses.append(value_loss.item())
 
-                # Entropy loss (using potentially controlled coefficient)
-                if entropy is None:
-                    # Approximate entropy when no analytical form
-                    entropy_loss = -th.mean(-log_prob)
-                else:
-                    entropy_loss = -th.mean(entropy)
-
+                entropy_loss = self._compute_entropy_loss(
+                    entropy=entropy,
+                    log_prob=log_prob,
+                )
                 entropy_losses.append(entropy_loss.item())
 
                 # Total loss

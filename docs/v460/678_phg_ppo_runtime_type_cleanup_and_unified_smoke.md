@@ -432,3 +432,23 @@ tmp file + rename の重複を shared helper に寄せた。
 `_run_data_freshness_check(...)` に寄せ、test では non-fatal helper を
 明示 patch できるようにした。これで scheduler test の責務が
 「data updater 実行」から「scheduler control flow」へ戻った。
+
+### 17. `CustomPPO` train ループの helper 分割
+
+`ztb/training/models/custom_ppo.py` は train ループの責務が 1 箇所に寄りすぎていたため、
+大きな継承追加ではなく helper 分割で整理した。
+
+- 追加した helper:
+  - `_normalize_advantages(...)`
+  - `_compute_lagrange_penalty(...)`
+  - `_resolve_entropy_coefficient(...)`
+  - `_compute_value_loss(...)`
+  - `_compute_entropy_loss(...)`
+  - `_record_stats(...)`
+- 目的:
+  1. PAN / Lagrange / entropy controller の責務境界を明示
+  2. train ループ本体を「PPO update の流れ」に寄せる
+  3. `SELLBiasMitigationPPOTrainer` から見た component 境界を崩さない
+
+これは god object を無理に大分割するのではなく、
+hot path を読める長さに戻すための low-risk な整理。
