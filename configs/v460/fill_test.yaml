@@ -526,8 +526,8 @@ skip_gate:
   # 468# 467# hour_ceiling_mult: deep-night ceiling 緩和 (461# P2)
   # AS率 57-100% の危険時間帯で offset ceiling を緩和し防御を許容
   hour_ceiling_mult:
-    2: 2.0     # 685# 新規 JST11h: sell PnL=-5.19 sum=-31.1bps → ceiling解放 (684# S1c)
-    4: 2.5     # 685# 新規 JST13h: sell PnL=-8.85 sum=-26.6bps → ceiling解放 (684# S1d)
+    2: 3.0     # 688# 2.0→3.0: JST11h boost=5.0対応でceiling拡大 (688# Y2)
+    4: 3.5     # 688# 2.5→3.5: JST13h boost=5.0対応でceiling拡大 (688# Y2)
     13: 1.5    # 22h JST: AS57% → ceiling 0.30→0.45
     14: 2.0    # 23h JST: AS100%, PnL-12.94bps → ceiling 0.30→0.60
     15: 1.3    # 00h JST: AS18.2% → ceiling 0.30→0.39
@@ -731,7 +731,7 @@ offset_stage_recording:
 # - buy ceiling=0.15 据置 → buy side には十分な制御
 offset_ceiling_ratio: 0.15        # 共通デフォルト (サイド別が未設定時に使用)
 offset_ceiling_ratio_buy: 0.35    # 565# P1: 0.30→0.35 (I3 pre_clamp分布 p50=0.3067 のため引上げ、562# P-B提案)
-offset_ceiling_ratio_sell: 0.40   # 565# P1: 0.30→0.40 (sell側テールリスク対応のための上限解放)
+offset_ceiling_ratio_sell: 0.50   # 688# 0.40→0.50: 684# A1。sell全時間帯の防御余裕確保 (sell AS30.4%対策)
 
 # ---- 568# M1/M2: Additive Pipeline & eDRC Transition ----
 # 経路2 (A/Bトグル方式): enabled=false で既存乗法チェーンを維持。
@@ -777,9 +777,9 @@ micro_timeout:
 # 381# Rev.2: JST→UTC マッピング修正 + クリーンデータ (3/9-3/10) に基づく拡張
 sell_hour_offset_boost:
   0: 1.5      # 381# JST 09h: sell 30s=-1.748bps (AS危険時間帯)
-  2: 2.5      # 685# 2.0→2.5: 4/1 JST11h sell sum=-31.1bps(n=6)。sell損失88%を占める最悪帯 (684# S1)
+  2: 5.0      # 688# 2.5→5.0: JST11h boost=2.5でもAS50% PnL=-5.19 (n=6)。soft-killレベルへ
   3: 2.0      # 381# JST 12h: sell 30s=-4.802bps (最悪帯)
-  4: 2.5      # 685# 新規: 4/1 JST13h sell PnL=-8.85(n=3) sum=-26.6bps。壊滅帯 (684# S1)
+  4: 5.0      # 688# 2.5→5.0: JST13h boost=2.5でもAS100% PnL=-8.85 (n=3)。soft-killレベルへ
   8: 1.5      # 306# UTC 08h = JST 17h: AS 63%
   9: 1.8      # 468# UTC 09h = JST 18h: 461# AS50%, PnL-3.19bps → 新規追加
   11: 1.3     # 468# UTC 11h = JST 20h: 461# AS33.3%, PnL-1.37bps → 新規追加
