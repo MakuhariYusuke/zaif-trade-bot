@@ -1,12 +1,15 @@
 import importlib
+import time
 import sys
 import types
 import warnings
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, TypeVar
 
 import pytest
 import yaml
+
+_PerfResultT = TypeVar("_PerfResultT")
 
 # Workaround for [WinError 1114] DLL initialization failed
 # Torch must be imported before pandas/scipy/numpy in some environments
@@ -83,6 +86,20 @@ def write_yaml_file(tmp_path: Path) -> Callable[[str | Path, str | dict[str, Any
         return path
 
     return _write_yaml_file
+
+
+@pytest.fixture
+def perf_runner() -> Callable[[Callable[[], _PerfResultT]], _PerfResultT]:
+    """Plugin 非依存の軽量 performance harness."""
+
+    def _run(fn: Callable[[], _PerfResultT]) -> _PerfResultT:
+        start = time.perf_counter()
+        result = fn()
+        elapsed = time.perf_counter() - start
+        assert elapsed >= 0.0
+        return result
+
+    return _run
 
 # Minimal dummy model used as a fallback in a few places during collection.
 # Defined early so later import-time patching can reference it safely.

@@ -10163,3 +10163,31 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `tests/unit/v460/test_fill_test_config.py`
     - `tests/unit/v460/test_fill_quality.py`
     - `316 passed, 5 warnings in 8.75s`
+
+### 2026-04-02 fill metrics split + perf runner rollout
+
+- `ztb/metrics/fill_metrics_core.py`
+  - `scan_fill_metric_inputs(...)`
+  - `mean_and_one_sided_pvalue(...)`
+  - `format_utc_day(...)`
+  を抽出し、`fill_quality` の metrics scan を分割
+- `ztb/metrics/fill_quality.py`
+  - `compute_fill_metrics(...)` を thin orchestration に整理
+- `tests/conftest.py`
+  - `perf_runner` を global fixture 化
+- `tests/unit/risk/test_rules.py`
+  - local `perf_runner` を削除して共通 fixture に寄せた
+- `tests/integration/trading/test_signal_guidance_integration.py`
+  - performance benchmark を共通 harness に移行
+- `tests/unit/v460/test_292_observability.py`
+  - `skip_gate_bypassed` observability roundtrip を追加
+- validation
+  - targeted mypy:
+    - `ztb/metrics/fill_metrics_core.py`
+    - `Success: no issues found in 1 source file`
+  - focused:
+    - `tests/unit/v460/test_fill_quality.py`
+    - `tests/unit/v460/test_292_observability.py`
+    - `tests/unit/risk/test_rules.py`
+    - `tests/integration/trading/test_signal_guidance_integration.py`
+    - `294 passed, 5 warnings in 8.56s`

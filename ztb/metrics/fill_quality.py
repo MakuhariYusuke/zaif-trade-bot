@@ -13,7 +13,6 @@ E5: adverse_selection_ratio — 約定後 30 秒で逆行した注文の割合
 from __future__ import annotations
 
 import logging
-import math
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -21,8 +20,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Final, Iterable, Iterator, Mapping, Sequence
 
 import numpy as np
-from scipy import stats
 from ztb.io.jsonl import iter_jsonl_objects
+from ztb.metrics.fill_metrics_core import (
+    format_utc_day,
+    mean_and_one_sided_pvalue,
+    scan_fill_metric_inputs,
+)
 from ztb.metrics.fill_record_io import (
     apply_fill_record_filters,
     fill_records_to_dataframe,
@@ -43,8 +46,6 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     import pandas as pd
-
-_SECONDS_PER_DAY: Final[float] = 86_400.0
 
 # ======================================================================
 # Data classes
@@ -561,61 +562,9 @@ class PnlWinAccumulator:
     def win_rate(self) -> float:
         return self.positive_count / self.pnl.count if self.pnl.count else 0.0
 
-@dataclass
-class _DailyFillCount:
-    """日次 fill rate 用の軽量カウンタ."""
-
-    total: int = 0
-    filled: int = 0
-
-    def add(self, *, filled: bool) -> None:
-        self.total += 1
-        if filled:
-            self.filled += 1
-
 # ======================================================================
 # Metrics computation
 # ======================================================================
-
-def format_utc_day(timestamp: object, *, compact: bool = True) -> str | None:
-    """epoch 秒を UTC 日付文字列へ変換する."""
-    try:
-        ts = float(timestamp)
-    except (TypeError, ValueError):
-        return None
-    if not math.isfinite(ts):
-        return None
-    try:
-        pattern = "%Y%m%d" if compact else "%Y-%m-%d"
-        return datetime.fromtimestamp(ts, tz=timezone.utc).strftime(pattern)
-    except (OverflowError, OSError, ValueError):
-        return None
-
-def _utc_day_bucket(timestamp: object) -> int | None:
-    """epoch 秒を UTC 日単位バケットに変換する."""
-    try:
-        ts = float(timestamp)
-    except (TypeError, ValueError):
-        return None
-    if not math.isfinite(ts):
-        return None
-    try:
-        return int(ts // _SECONDS_PER_DAY)
-    except (OverflowError, ValueError):
-        return None
-
-def _mean_and_one_sided_pvalue(values: list[float]) -> tuple[float, float]:
-    """平均値と片側 t 検定 p 値を返す."""
-    if not values:
-        return 0.0, 1.0
-    mean_val = float(np.mean(values))
-    if len(values) < 2:
-        return mean_val, 1.0
-
-    t_stat, two_sided_p = stats.ttest_1samp(values, 0.0)
-    if t_stat < 0:
-        return mean_val, float(two_sided_p / 2)
-    return mean_val, 1.0 - float(two_sided_p / 2)
 
 def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
     """FillRecord のリストから G1.1 Gate 指標を算出.
@@ -628,119 +577,67 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
     if not records:
         return FillMetrics()
 
-    total = len(records)
-    filled_count = 0
-    cancelled_count = 0
-    cancel_reason_breakdown: dict[str, int] = {}
-    skip_gate_count = 0
-    daily_groups: dict[int, _DailyFillCount] = {}
-    wait_times: list[float] = []
-    pnl_values: list[float] = []
-    pnl60_values: list[float] = []
-    pnl120_values: list[float] = []
-    as_coverage = 0
-    as_raw_coverage = 0
-    n_adverse = 0
-    n_adverse_raw = 0
+    scan = scan_fill_metric_inputs(records)
 
-    # --- E1-E5 / cancel reason / attempted 用の前処理 ---
-    for record in records:
-        if record.filled:
-            filled_count += 1
-            if record.queue_wait_sec > 0:
-                wait_times.append(record.queue_wait_sec)
-
-            if record.post_fill_30s_pnl is not None:
-                pnl_values.append(record.post_fill_30s_pnl)
-            if record.post_fill_60s_pnl is not None:
-                pnl60_values.append(record.post_fill_60s_pnl)
-            if record.post_fill_120s_pnl is not None:
-                pnl120_values.append(record.post_fill_120s_pnl)
-
-            if record.adverse_selected is not None:
-                as_coverage += 1
-                if record.adverse_selected:
-                    n_adverse += 1
-
-            if record.adverse_selected_raw is not None:
-                as_raw_coverage += 1
-                if record.adverse_selected_raw:
-                    n_adverse_raw += 1
-
-        if record.cancelled:
-            cancelled_count += 1
-            reason = record.cancel_reason or "unknown"
-            cancel_reason_breakdown[reason] = cancel_reason_breakdown.get(reason, 0) + 1
-        if record.skip_gate_skipped is True or record.cancel_reason == "skip_gate":
-            skip_gate_count += 1
-
-        day_key = _utc_day_bucket(record.timestamp)
-        if day_key is None:
-            continue
-        day_stats = daily_groups.get(day_key)
-        if day_stats is None:
-            day_stats = _DailyFillCount()
-            daily_groups[day_key] = day_stats
-        day_stats.add(filled=record.filled)
-
-    daily_fill_rates: list[float] = []
-    for day_key in sorted(daily_groups):
-        day_stats = daily_groups[day_key]
-        daily_fill_rates.append(
-            day_stats.filled / day_stats.total if day_stats.total > 0 else 0.0
-        )
-
-    fill_rate_p90 = float(np.percentile(daily_fill_rates, 10)) if daily_fill_rates else 0.0
+    fill_rate_p90 = (
+        float(np.percentile(scan.daily_fill_rates, 10))
+        if scan.daily_fill_rates
+        else 0.0
+    )
     # NOTE: P90 = "90% of days have fill rate >= this value" = 10th percentile
     # (lower bound of the distribution)
 
     # --- E2: cancel_ratio ---
-    cancel_ratio = cancelled_count / total if total > 0 else 0.0
+    cancel_ratio = scan.cancelled_count / scan.total if scan.total > 0 else 0.0
 
     # --- E3: queue_wait_median_sec (filled orders only) ---
-    queue_wait_median = float(np.median(wait_times)) if wait_times else 0.0
+    queue_wait_median = float(np.median(scan.wait_times)) if scan.wait_times else 0.0
 
     # --- E4: post_fill_30s_pnl ---
-    pnl_mean, pnl_pvalue = _mean_and_one_sided_pvalue(pnl_values)
+    pnl_mean, pnl_pvalue = mean_and_one_sided_pvalue(scan.pnl_values)
 
     # --- E5: adverse_selection_ratio ---
-    adverse_ratio = n_adverse / as_coverage if as_coverage else 0.0
+    adverse_ratio = scan.n_adverse / scan.as_coverage if scan.as_coverage else 0.0
 
     # --- E5-raw: 020# O5 — deadzone 非適用の生データ並行監視 ---
     adverse_ratio_raw = (
-        n_adverse_raw / as_raw_coverage if as_raw_coverage else adverse_ratio
+        scan.n_adverse_raw / scan.as_raw_coverage if scan.as_raw_coverage else adverse_ratio
     )
 
     # --- 020# O1: サンプル充足判定 ---
     # 047# Finding3: 3日ではなく 7日を要求 (000# §3.3 準拠)
-    sample_sufficient = total >= 200 and len(daily_fill_rates) >= 7
+    sample_sufficient = scan.total >= 200 and len(scan.daily_fill_rates) >= 7
 
     # --- 116# attempted ベース指標 ---
-    attempted_orders = total - skip_gate_count
-    skip_gate_ratio = skip_gate_count / total if total > 0 else 0.0
-    attempted_fill_rate = filled_count / attempted_orders if attempted_orders > 0 else 0.0
+    attempted_orders = scan.total - scan.skip_gate_count
+    skip_gate_ratio = scan.skip_gate_count / scan.total if scan.total > 0 else 0.0
+    attempted_fill_rate = (
+        scan.filled_count / attempted_orders if attempted_orders > 0 else 0.0
+    )
     attempted_cancel_ratio = (
-        (attempted_orders - filled_count) / attempted_orders
+        (attempted_orders - scan.filled_count) / attempted_orders
         if attempted_orders > 0
         else 0.0
     )
-    overall_fill_rate = filled_count / total if total > 0 else 0.0
+    overall_fill_rate = scan.filled_count / scan.total if scan.total > 0 else 0.0
 
     # --- 116# PnL CI 上限 (Kill Gate 複合条件用) ---
     pnl_ci_upper = 0.0
-    if pnl_values and len(pnl_values) >= 2:
-        se = float(np.std(pnl_values, ddof=1)) / np.sqrt(len(pnl_values))
-        t_crit = float(stats.t.ppf(0.975, df=len(pnl_values) - 1))
+    if scan.pnl_values and len(scan.pnl_values) >= 2:
+        se = float(np.std(scan.pnl_values, ddof=1)) / np.sqrt(len(scan.pnl_values))
+        from scipy import stats
+
+        t_crit = float(stats.t.ppf(0.975, df=len(scan.pnl_values) - 1))
         pnl_ci_upper = pnl_mean + t_crit * se
 
     # --- 122# B3: multi-timeframe PnL (047# データ基盤活用) ---
-    pnl60_mean, pnl60_pvalue = _mean_and_one_sided_pvalue(pnl60_values)
-    pnl120_mean, pnl120_pvalue = _mean_and_one_sided_pvalue(pnl120_values)
+    pnl60_mean, pnl60_pvalue = mean_and_one_sided_pvalue(scan.pnl60_values)
+    pnl120_mean, pnl120_pvalue = mean_and_one_sided_pvalue(scan.pnl120_values)
 
     return FillMetrics(
-        total_orders=total,
-        filled_orders=filled_count,
-        cancelled_orders=cancelled_count,
+        total_orders=scan.total,
+        filled_orders=scan.filled_count,
+        cancelled_orders=scan.cancelled_count,
         fill_rate_p90=fill_rate_p90,
         cancel_ratio=cancel_ratio,
         queue_wait_median_sec=queue_wait_median,
@@ -748,15 +645,15 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
         post_fill_30s_pnl_pvalue=pnl_pvalue,
         adverse_selection_ratio=adverse_ratio,
         adverse_selection_ratio_raw=adverse_ratio_raw,
-        daily_fill_rates=daily_fill_rates,
-        measurement_days=len(daily_fill_rates),
+        daily_fill_rates=scan.daily_fill_rates,
+        measurement_days=len(scan.daily_fill_rates),
         sample_sufficient=sample_sufficient,
         # 047# Finding4: AS coverage
-        as_coverage=as_coverage,
-        as_raw_coverage=as_raw_coverage,
+        as_coverage=scan.as_coverage,
+        as_raw_coverage=scan.as_raw_coverage,
         # 116# attempted
         attempted_orders=attempted_orders,
-        skip_gate_count=skip_gate_count,
+        skip_gate_count=scan.skip_gate_count,
         skip_gate_ratio=skip_gate_ratio,
         attempted_fill_rate=attempted_fill_rate,
         attempted_cancel_ratio=attempted_cancel_ratio,
@@ -767,7 +664,7 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
         post_fill_60s_pnl_pvalue=pnl60_pvalue,
         post_fill_120s_pnl_mean=pnl120_mean,
         post_fill_120s_pnl_pvalue=pnl120_pvalue,
-        cancel_reason_breakdown=cancel_reason_breakdown,
+        cancel_reason_breakdown=scan.cancel_reason_breakdown,
     )
 
 # ======================================================================

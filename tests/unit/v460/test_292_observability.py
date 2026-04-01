@@ -58,16 +58,19 @@ class TestFillRecordObservabilityFields:
             ev_score_pretrade=2.5,
             ev_offset_mult_applied=0.95,
             decision_path="ev_offset",
+            skip_gate_bypassed=True,
         )
         d = r.to_dict()
         assert d["ev_score_pretrade"] == pytest.approx(2.5)
         assert d["ev_offset_mult_applied"] == pytest.approx(0.95)
         assert d["decision_path"] == "ev_offset"
+        assert d["skip_gate_bypassed"] is True
 
         r2 = FillRecord.from_dict(d)
         assert r2.ev_score_pretrade == pytest.approx(2.5)
         assert r2.ev_offset_mult_applied == pytest.approx(0.95)
         assert r2.decision_path == "ev_offset"
+        assert r2.skip_gate_bypassed is True
 
     def test_build_fill_record_accepts_new_fields(self) -> None:
         r = build_fill_record(

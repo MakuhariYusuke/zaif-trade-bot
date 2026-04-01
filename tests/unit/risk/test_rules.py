@@ -2,7 +2,6 @@
 
 import time
 from datetime import datetime, timedelta
-from typing import Callable, TypeVar
 from unittest.mock import patch
 
 import pytest
@@ -11,8 +10,6 @@ from hypothesis import strategies as st
 
 from ztb.risk.rules import RiskRuleEngine, RiskLimits
 from ztb.utils.errors import ValidationError
-
-_ResultT = TypeVar("_ResultT")
 
 
 @pytest.fixture
@@ -44,20 +41,6 @@ def sample_risk_limits():
 def risk_engine(sample_risk_limits):
     """RiskRuleEngine instance for testing."""
     return RiskRuleEngine(sample_risk_limits)
-
-
-@pytest.fixture
-def perf_runner() -> Callable[[Callable[[], _ResultT]], _ResultT]:
-    """Plugin 非依存の軽量 performance harness."""
-
-    def _run(fn: Callable[[], _ResultT]) -> _ResultT:
-        start = time.perf_counter()
-        result = fn()
-        elapsed = time.perf_counter() - start
-        assert elapsed >= 0.0
-        return result
-
-    return _run
 
 class TestRiskRuleEngineInitialization:
     """Test RiskRuleEngine initialization."""

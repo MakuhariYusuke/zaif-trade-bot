@@ -268,13 +268,21 @@ class TestSignalGuidanceIntegration:
         benchmark_rows,
         portfolio_state,
         benchmark_actions,
+        perf_runner,
     ):
         """Benchmark performance of signal generation"""
-        start_time = time.perf_counter()
-        signals = _collect_guided_actions(
-            improved_system, benchmark_rows, portfolio_state, benchmark_actions
-        )
-        processing_time = time.perf_counter() - start_time
+        measured = {"elapsed": 0.0}
+
+        def _run() -> list[int]:
+            start_time = time.perf_counter()
+            signals = _collect_guided_actions(
+                improved_system, benchmark_rows, portfolio_state, benchmark_actions
+            )
+            measured["elapsed"] = time.perf_counter() - start_time
+            return signals
+
+        signals = perf_runner(_run)
+        processing_time = measured["elapsed"]
 
         print(f"Processed {len(signals)} signals in {processing_time:.2f} seconds")
 

@@ -1093,3 +1093,15 @@ durations 変化で特に効いた点:
   - focused:
     - `tests/unit/risk/test_rules.py`
     - `57 passed in 1.86s`
+
+- 2026-04-02 686# 横展開:
+  - `tests/conftest.py`
+    - `perf_runner` を共通 fixture 化
+  - `tests/integration/trading/test_signal_guidance_integration.py`
+    - performance benchmark を共通 harness に寄せた
+  - focused:
+    - `tests/unit/risk/test_rules.py`
+    - `tests/integration/trading/test_signal_guidance_integration.py`
+    - `tests/unit/v460/test_292_observability.py`
+    - `tests/unit/v460/test_fill_quality.py`
+    - `294 passed in 8.56s`
