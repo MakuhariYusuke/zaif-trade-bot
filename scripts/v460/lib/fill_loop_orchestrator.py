@@ -334,7 +334,11 @@ class FillLoopOrchestratorMixin(
                 st, state_save_context or cancel_reason,
             )
         if update_last_side:
-            self._last_side = side
+            selector = getattr(self, "_side_selector", None)
+            if selector is not None:
+                selector.update_after_attempt(side)
+            else:
+                self._last_side = side
         if sleep:
             await self._effective_sleep(
                 multiplier=multiplier, max_override=max_override,

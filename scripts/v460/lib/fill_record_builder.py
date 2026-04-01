@@ -398,6 +398,8 @@ class FillRecordBuilderMixin:
         start_git_sha: str | None = None,
         requested_side: str | None = None,
         resolved_side_reason: str | None = None,
+        last_executed_side: str | None = None,
+        last_attempted_side: str | None = None,
         log_cycle_no: int | None = None,
         # 573# eDRC テレメトリ
         execution_sigma: float | None = None,
@@ -447,6 +449,14 @@ class FillRecordBuilderMixin:
             "start_git_sha": start_git_sha,
             "requested_side": requested_side,
             "resolved_side_reason": resolved_side_reason,
+            "last_executed_side": (
+                self._side_selector.last_executed_side
+                if last_executed_side is None else last_executed_side
+            ),
+            "last_attempted_side": (
+                self._side_selector.last_attempted_side
+                if last_attempted_side is None else last_attempted_side
+            ),
             # 533# log_cycle_no: ログ⇔JSONL join key
             "log_cycle_no": log_cycle_no,
             # 573# eDRC テレメトリ

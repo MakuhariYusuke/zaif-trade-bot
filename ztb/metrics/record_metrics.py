@@ -14,7 +14,8 @@ from typing import TypedDict
 import numpy as np
 
 from ztb.io.json_io import JSONObject
-from ztb.metrics.fill_quality import PnlAccumulator, PnlWinAccumulator, format_utc_day
+from ztb.metrics.fill_metrics_core import format_utc_day
+from ztb.metrics.fill_quality import PnlAccumulator, PnlWinAccumulator
 from ztb.utils.safety import safe_to_finite
 
 MetricRecord = JSONObject

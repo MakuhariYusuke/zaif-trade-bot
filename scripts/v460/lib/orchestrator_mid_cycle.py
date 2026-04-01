@@ -525,7 +525,7 @@ class OrchestratorMidCycleMixin:
                     "(cycle aborted by network error)", next_side,
                 )
             self._balance_checker.restore_lot_after_dust_sweep()
-            self._last_side = next_side
+            self._side_selector.update_after_attempt(next_side)
             await self._effective_sleep()
             return
         except Exception as e:
@@ -537,7 +537,7 @@ class OrchestratorMidCycleMixin:
                     f"(cycle aborted by exception)"
                 )
             self._balance_checker.restore_lot_after_dust_sweep()
-            self._last_side = next_side
+            self._side_selector.update_after_attempt(next_side)
             await self._effective_sleep()
             return
 

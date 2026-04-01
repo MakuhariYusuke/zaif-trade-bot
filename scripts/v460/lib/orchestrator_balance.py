@@ -122,7 +122,7 @@ class OrchestratorBalanceMixin:
         常に True を返す (caller: continue) — break 時は kill_switch で停止。
         """
         next_side = ctx.next_side
-        self._last_side = next_side
+        self._side_selector.update_after_attempt(next_side)
         self._preflight_skip_count += 1
         self._inc_guard_fire("preflight_insufficient")
         self._inventory_deadlock_counter += 1

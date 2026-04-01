@@ -6,8 +6,8 @@ This script generates a grid of configs from a template and runs AB evaluation
 for each combination using `tools/ab_test_runner` parallel runner.
 
 Example:
-  python tools\ab_param_search.py --template config\v447\sac_v447_1m_multiframe_config.json \
-    --grid config\ab_grid.json --seeds 3 --jobs 2 --objective balance
+  python tools/ab_param_search.py --template config/v447/sac_v447_1m_multiframe_config.json \
+    --grid config/ab_grid.json --seeds 3 --jobs 2 --objective balance
 
 Grid format (JSON):
 {
@@ -26,7 +26,7 @@ import json
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, cast
 
 # Ensure tools package path is importable when running as a script
 ROOT = Path(__file__).resolve().parent.parent
@@ -39,13 +39,14 @@ import importlib.util
 
 module_path = Path(__file__).parent / "ab_test_runner.py"
 spec = importlib.util.spec_from_file_location("tools.ab_test_runner", str(module_path))
+if spec is None or spec.loader is None:
+    raise RuntimeError(f"Failed to load tools.ab_test_runner from {module_path}")
 ab_mod = importlib.util.module_from_spec(spec)
 sys.modules["tools.ab_test_runner"] = ab_mod
 spec.loader.exec_module(ab_mod)
 ABTrainingExperiment = ab_mod.ABTrainingExperiment
 import uuid
 
-from ztb.training.unified_optimizer import OptimizationConfig, UnifiedOptimizer
 from ztb.utils.report_utils import extract_action_distribution, find_reports_for_model
 from ztb.trading.environment.components.rewards.utils import RewardUtils
 
@@ -82,10 +83,12 @@ def score_distribution(dist: Dict[str, float], objective: str) -> float:
     if objective == "min_sell":
         return -sell
     # balance: use canonical deviation helper (target 50/50 for BUY/SELL)
-    return -RewardUtils.calculate_balance_deviation_from_ratios([buy, sell], [0.5, 0.5])
+    return float(
+        -RewardUtils.calculate_balance_deviation_from_ratios([buy, sell], [0.5, 0.5])
+    )
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--template", required=True)
     parser.add_argument("--grid", required=True)
@@ -181,6 +184,9 @@ def main():
 
     # Use UnifiedOptimizer for grid search if configured
     if use_unified_optimizer:
+        # 687#: config generation path のみを使うテストで torch 依存を踏まないようにする
+        from ztb.training.unified_optimizer import OptimizationConfig, UnifiedOptimizer
+
         # convert grid JSON to search_space format used by UnifiedOptimizer.GridOptimizer
         optimizer_config = OptimizationConfig()
         optimizer = UnifiedOptimizer(optimizer_config)
@@ -194,7 +200,7 @@ def main():
                 # else assume low/high
                 search_space[key] = values
 
-        def objective_wrapper(params):
+        def objective_wrapper(params: dict[str, object]) -> float:
             # params is dict of param_name: value; convert keys into config
             run_cfg = json.loads(json.dumps(template))
             for k, v in params.items():
@@ -258,7 +264,7 @@ def main():
                     avg[k] /= len(dists)
 
             score = score_distribution(avg, args.objective)
-            return score
+            return float(score)
 
         # run grid optimization via unified optimizer
         print("Running search via UnifiedOptimizer (grid)")
@@ -306,7 +312,7 @@ def main():
         all_records.append({"params": params, "avg_distribution": avg, "score": score})
 
     # sort best
-    all_records.sort(key=lambda x: x["score"], reverse=True)
+    all_records.sort(key=lambda x: cast(float, x["score"]), reverse=True)
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(all_records, ensure_ascii=False, indent=2))
     print(f"Wrote summary to {args.out}")

@@ -252,6 +252,9 @@ class FillRecord:
     requested_side: str | None = None
     # 切替理由: 522# で balance_switch/recovery_skew 撤廃 → 現在は常に None
     resolved_side_reason: str | None = None
+    # 687# state separation: 実行 side と試行 side を分離して記録
+    last_executed_side: str | None = None
+    last_attempted_side: str | None = None
     # ---- 452# Micro-timeout (TIF Emulation) ----
     requote_attempts: int | None = None  # サブサイクル re-quote 回数 (0=初回で約定, None=micro_timeout 無効)
     micro_timeout_partial_filled_qty: float | None = None  # re-quote ループ中の部分約定合計

@@ -744,7 +744,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             logger.debug(f"Trades fetch for recording skipped: {te}")
 
         side = side_override if side_override is not None else self._next_side()
-        self._side_selector.update_after_decision(side)
+        self._side_selector.update_after_attempt(side)
         logger.info(f"=== Cycle {self._cycle_count} ({side}) ===")
 
         regime_at_order = self._current_regime_value()
@@ -1414,6 +1414,11 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             skip_gate_reason=pre_order.skip_gate_reason,
             ev_offset_applied=pre_order.ev_offset_applied,
         )
+
+        if fill_phase.filled:
+            self._side_selector.update_after_decision(
+                pre_order.side, attempt_already_recorded=True,
+            )
 
         record = self._build_fill_record(
             cycle_id=pre_order.cycle_id,

@@ -99,6 +99,8 @@ class FillRecordHelpersMixin:
             regime=regime,
             ab_test_variant=self.config.ab_test_variant or None,  # 158# P1-5
             pid=os.getpid(),  # 285# 283# P0-1: Split-Brain 検知用
+            last_executed_side=self._side_selector.last_executed_side,
+            last_attempted_side=self._side_selector.last_attempted_side,
             **extra,
         )
 
@@ -275,7 +277,20 @@ class FillRecordHelpersMixin:
         self._cycle_count = len(existing)
         # 最後のレコードの side を復元
         last_record = existing[-1]
-        self._last_side = last_record.side
+        restored_executed = (
+            last_record.last_executed_side
+            if last_record.last_executed_side is not None
+            else (last_record.side if last_record.filled else None)
+        )
+        restored_attempted = (
+            last_record.last_attempted_side
+            if last_record.last_attempted_side is not None
+            else last_record.side
+        )
+        self._side_selector.restore_state(
+            executed_side=restored_executed,
+            attempted_side=restored_attempted,
+        )
 
         # 167# DL-4/P2: 末尾連続 skip カウンタを復元 (再起動耐性)
         # 175# 各カウンタを独立したループで計算 (交互出現時の過大計上を防止)
@@ -286,7 +301,8 @@ class FillRecordHelpersMixin:
 
         logger.info(
             f"Resumed from existing records: n={len(existing)}, "
-            f"last_side={self._last_side}, cycle_count={self._cycle_count}, "
+            f"last_side={self._last_side}, attempted_side={self._side_selector.last_attempted_side}, "
+            f"cycle_count={self._cycle_count}, "
             f"trailing_tss={_tss_count}"
         )
         return existing

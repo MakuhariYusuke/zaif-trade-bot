@@ -1105,3 +1105,21 @@ durations 変化で特に効いた点:
     - `tests/unit/v460/test_292_observability.py`
     - `tests/unit/v460/test_fill_quality.py`
     - `294 passed in 8.56s`
+
+- 2026-04-02 687# test isolation / state separation:
+  - `tools/ab_param_search.py`
+    - `UnifiedOptimizer` import を lazy 化し、torch DLL 環境差で subprocess test が落ちないようにした
+  - 新規:
+    - `tests/unit/v460/test_687_state_separation.py`
+  - `scripts/v460/lib/fill_loop_orchestrator.py`
+    - `_execute_skip(update_last_side=True)` を attempted-only 更新に変更
+    - 既存 stub 用 fallback も維持
+  - focused:
+    - `tests/unit/tools/test_ab_param_search.py`
+    - `tests/unit/v460/test_687_state_separation.py`
+    - `tests/unit/v460/test_634_sell_ranging_suppression.py`
+    - `tests/unit/v460/test_fill_test_config.py`
+    - `tests/unit/v460/test_166_remaining_tasks.py`
+    - `tests/unit/v460/test_421_final_clamp_deadlock.py`
+    - `tests/unit/v460/test_276_blocking_policy_dry.py`
+    - `206 passed in 15.53s`

@@ -40,11 +40,13 @@ class SideSelector:
 
     def __init__(self, config: FillTestConfig) -> None:
         self._config = config
-        # start_side に応じて _last_side を設定 (交互ロジック用)
+        # start_side に応じて executed/attempted を設定 (交互ロジック用)
         if config.start_side == "sell":
-            self._last_side: str | None = "buy"  # → next() が "sell" を返す
+            initial_side: str | None = "buy"  # → next() が "sell" を返す
         else:
-            self._last_side = None  # → next() が "buy" を返す
+            initial_side = None  # → next() が "buy" を返す
+        self._last_executed_side: str | None = initial_side
+        self._last_attempted_side: str | None = initial_side
         # 054# S2: 同一 side 連続カウンタ
         self._consecutive_same_side: int = 0
         # 054# S3: Early Exit — rapid exit
@@ -55,11 +57,28 @@ class SideSelector:
 
     @property
     def last_side(self) -> str | None:
-        return self._last_side
+        return self._last_executed_side
 
     @last_side.setter
     def last_side(self, value: str | None) -> None:
-        self._last_side = value
+        self._last_executed_side = value
+        self._last_attempted_side = value
+
+    @property
+    def last_executed_side(self) -> str | None:
+        return self._last_executed_side
+
+    @last_executed_side.setter
+    def last_executed_side(self, value: str | None) -> None:
+        self._last_executed_side = value
+
+    @property
+    def last_attempted_side(self) -> str | None:
+        return self._last_attempted_side
+
+    @last_attempted_side.setter
+    def last_attempted_side(self, value: str | None) -> None:
+        self._last_attempted_side = value
 
     @property
     def consecutive_same_side(self) -> int:
@@ -93,7 +112,8 @@ class SideSelector:
             logger.info(f"[early_exit] Rapid exit forcing side={forced_side}")
             return forced_side
 
-        base_side = "buy" if (self._last_side is None or self._last_side == "sell") else "sell"
+        reference_side = self._last_executed_side
+        base_side = "buy" if (reference_side is None or reference_side == "sell") else "sell"
 
         # 634# P1-3: ranging では buy 優先 (sell の無理な試行を減らしつつ profitable な buy を増やす)
         if regime == "ranging" and base_side == "sell":
@@ -174,7 +194,7 @@ class SideSelector:
                         f"forcing {base_side}"
                     )
                     return base_side
-                alt_side = self._last_side or ("sell" if base_side == "buy" else "buy")
+                alt_side = self._last_executed_side or ("sell" if base_side == "buy" else "buy")
                 logger.info(
                     f"[smart_side] Suppressing {base_side} (imb={imbalance:+.3f}), "
                     f"continuing {alt_side}"
@@ -185,7 +205,7 @@ class SideSelector:
             if abs(imbalance) > self._config.imbalance_threshold:
                 follow_side = "buy" if imbalance > 0 else "sell"
                 if (
-                    follow_side == self._last_side
+                    follow_side == self._last_executed_side
                     and self._consecutive_same_side >= self._config.smart_side_max_consecutive
                 ):
                     return base_side
@@ -193,13 +213,46 @@ class SideSelector:
 
         return base_side
 
-    def update_after_decision(self, side: str) -> None:
-        """side 決定後のカウンタ更新."""
-        if side == self._last_side:
+    def update_after_attempt(self, side: str) -> None:
+        """試行時の side 状態を更新する."""
+        if side == self._last_attempted_side:
             self._consecutive_same_side += 1
         else:
             self._consecutive_same_side = 0
-        self._last_side = side
+        self._last_attempted_side = side
+        logger.debug(
+            "[side_selector] attempt updated: executed=%s attempted=%s consecutive=%d",
+            self._last_executed_side,
+            self._last_attempted_side,
+            self._consecutive_same_side,
+        )
+
+    def update_after_decision(
+        self,
+        side: str,
+        *,
+        attempt_already_recorded: bool = False,
+    ) -> None:
+        """約定成功時の side 状態を更新する."""
+        if not attempt_already_recorded:
+            self.update_after_attempt(side)
+        self._last_executed_side = side
+        logger.debug(
+            "[side_selector] execution updated: executed=%s attempted=%s consecutive=%d",
+            self._last_executed_side,
+            self._last_attempted_side,
+            self._consecutive_same_side,
+        )
+
+    def restore_state(
+        self,
+        *,
+        executed_side: str | None,
+        attempted_side: str | None,
+    ) -> None:
+        """永続化済み state から selector を復元する."""
+        self._last_executed_side = executed_side
+        self._last_attempted_side = attempted_side if attempted_side is not None else executed_side
 
     def set_rapid_exit(self, current_side: str) -> None:
         """054# S3: early exit → 反対 side を設定."""

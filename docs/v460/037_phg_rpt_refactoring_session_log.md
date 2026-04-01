@@ -10191,3 +10191,43 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `tests/unit/risk/test_rules.py`
     - `tests/integration/trading/test_signal_guidance_integration.py`
     - `294 passed, 5 warnings in 8.56s`
+
+### 2026-04-02 687# state separation + torch test isolation
+
+- `scripts/v460/lib/side_selector.py`
+  - `last_executed_side` / `last_attempted_side` を分離
+  - `update_after_attempt(...)` を追加
+  - `next()` は executed side を参照
+- `scripts/v460/lib/fill_loop_orchestrator.py`
+  - `_execute_skip(update_last_side=True)` は attempted 更新へ変更
+  - 既存 stub 互換の fallback を維持
+- `scripts/v460/lib/orchestrator_balance.py`
+- `scripts/v460/lib/orchestrator_mid_cycle.py`
+- `scripts/v460/lib/fill_cycle_executor.py`
+  - preflight / exception / fill success の更新点を separation 契約に追随
+- `scripts/v460/lib/fill_record_helpers.py`
+- `scripts/v460/lib/fill_record_builder.py`
+- `ztb/metrics/fill_quality.py`
+  - `FillRecord` に `last_executed_side` / `last_attempted_side` を追加
+- `tools/ab_param_search.py`
+  - `UnifiedOptimizer` / `OptimizationConfig` を lazy import 化
+  - torch DLL 問題がある環境でも config generation test が通るようにした
+- `ztb/metrics/record_metrics.py`
+  - `format_utc_day` を `fill_metrics_core` へ寄せて `fill_quality` 依存を薄くした
+- 新規:
+  - `tests/unit/v460/test_687_state_separation.py`
+- validation
+  - targeted mypy:
+    - `tools/ab_param_search.py`
+    - `scripts/v460/lib/side_selector.py`
+    - `tests/unit/v460/test_687_state_separation.py`
+    - `Success: no issues found in 3 source files`
+  - focused / broader:
+    - `tests/unit/tools/test_ab_param_search.py`
+    - `tests/unit/v460/test_687_state_separation.py`
+    - `tests/unit/v460/test_634_sell_ranging_suppression.py`
+    - `tests/unit/v460/test_fill_test_config.py`
+    - `tests/unit/v460/test_166_remaining_tasks.py`
+    - `tests/unit/v460/test_421_final_clamp_deadlock.py`
+    - `tests/unit/v460/test_276_blocking_policy_dry.py`
+    - `206 passed in 15.53s`
