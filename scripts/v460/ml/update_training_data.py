@@ -36,15 +36,17 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _PARQUET_PATH = _PROJECT_ROOT / "data" / "btc_jpy_1m_full_registry_features.parquet"
 _OHLCV_COLS = ["timestamp", "open", "high", "low", "close", "volume"]
 
-# SAC が使用する 17 特徴量 (g2_sac_train.yaml features.selected)
+# SAC が使用する 19 特徴量 (g2_sac_train.yaml features.selected)
 _SAC_FEATURES = [
     "price_velocity",
     "micro_trend",
+    "mid_price_trend_5s",
     "price_acceleration",
     "volume_surge",
     "momentum_divergence",
     "tick_volume_ratio",
     "order_flow_imbalance",
+    "signed_obi",
     "micro_volatility",
     "spread_pressure",
     "momentum_burst",

@@ -54,6 +54,9 @@ def build_skip_fill_record_from_context(
         bid_depth_total=extra_fields.bid_depth_total,
         ask_depth_total=extra_fields.ask_depth_total,
         price_velocity_bps=extra_fields.price_velocity_bps,
+        trend_5s_guard_triggered=extra_fields.trend_5s_guard_triggered,
+        trend_5s_guard_action=extra_fields.trend_5s_guard_action,
+        trend_5s_at_order=extra_fields.trend_5s_at_order,
         ev_score_pretrade=extra_fields.ev_score_pretrade,
         decision_path=extra_fields.decision_path,
     )

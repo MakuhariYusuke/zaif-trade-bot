@@ -58,6 +58,7 @@ from scripts.v460.ml.sac_retrain_scheduler import (
     retrain_once,
     run_scheduler,
 )
+from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
 
 
 # ════════════════════════════════════════════════════════════════
@@ -126,6 +127,12 @@ class TestSACRetrainConfig:
         cfg = SACRetrainConfig.from_yaml_dict({})
         assert cfg.confidence_roi_full == pytest.approx(0.005)
         assert cfg.min_trade_count == 3
+
+    def test_actual_g2_yaml_confidence_roi_full(self) -> None:
+        """684#: 実験 YAML では confidence binding を 0.001 まで緩和している."""
+        raw = load_yaml_mapping(Path("configs/v460/experiments/g2_sac_train.yaml"))
+        cfg = SACRetrainConfig.from_yaml_dict(raw)
+        assert cfg.confidence_roi_full == pytest.approx(0.001)
 
     def test_from_yaml_dict_600_max_signal_staleness(self) -> None:
         """600# max_signal_staleness_hours のパース."""

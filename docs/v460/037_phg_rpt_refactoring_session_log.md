@@ -9942,3 +9942,57 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - SELL mitigation warm-start path の focused integration guard を追加
 - focused:
   - `39 passed in 6.02s`
+
+### 2026-04-01 SAC sell-aware reward and trend_5s sell guard
+
+- SAC sell-aware reward / observation
+  - `ztb/features/scalping.py`
+    - `mid_price_trend_5s`
+    - `signed_obi`
+    を offline 学習パイプライン向けに追加
+  - `scripts/v460/ml/update_training_data.py`
+    - SAC feature export 対象へ 2 特徴量を追加
+  - `ztb/trading/environment/components/calculators/reward_calculator.py`
+    - sell adverse-selected penalty を simple reward path に追加
+    - penalty 適用後に clip する順へ整理
+  - `configs/v460/experiments/g2_sac_train.yaml`
+    - 2 特徴量
+    - `sell_as_penalty_mult: 1.5`
+    - `confidence_roi_full: 0.001`
+    を反映
+- trend_5s sell guard
+  - `fill_config` / `fill_config_parser` / `config_hot_reload`
+    に `trend_5s_sell_guard` の flat wiring を追加
+  - `skip_gate_evaluator`
+    - toxic sell veto 後、最終 offset 確定前の独立レイヤーとして
+      `soft boost / hard veto`
+      を追加
+  - `fill_cycle_executor` / `fill_record_builder` / `fill_quality`
+    - guard telemetry を FillRecord へ保存
+  - `offset_pipeline` / `multiplicative_pipeline`
+    - `trend_5s_guard` stage を executor JSON に保存
+- tests
+  - 新規:
+    - `tests/unit/v460/test_sac_sell_aware_reward.py`
+    - `tests/unit/v460/test_trend_5s_sell_guard.py`
+  - 既存更新:
+    - `test_fill_test_config`
+    - `test_169_config_hot_reload`
+    - `test_336_yaml_code_drift_prevention`
+    - `test_356_g2_sac_blockers`
+    - `test_sac_retrain_scheduler`
+    - `test_skip_gate_v3`
+    - `test_585_multiplicative_pipeline`
+- validation
+  - clean targeted mypy:
+    - `cancel_reasons`
+    - `guard_reason_classifier`
+    - `multiplicative_pipeline`
+    - `offset_pipeline`
+    - `test_sac_sell_aware_reward`
+    - `test_trend_5s_sell_guard`
+    - `Success: no issues found in 6 source files`
+  - focused:
+    - `122 passed in 9.60s`
+  - broader regression subset:
+    - `389 passed in 15.73s`

@@ -369,6 +369,22 @@ def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
             int(k): float(v) for k, v in hour_offsets_raw.items()
         }
 
+    # 684# Phase M1: independent mid_price_trend_5s sell guard
+    trend_guard = yaml_cfg.get("trend_5s_sell_guard", {})
+    tg_map = {
+        "enabled": "trend_5s_sell_guard_enabled",
+        "threshold_bps": "trend_5s_sell_guard_threshold_bps",
+        "hard_veto_threshold_bps": "trend_5s_sell_guard_hard_veto_threshold_bps",
+        "offset_boost_factor": "trend_5s_sell_guard_offset_boost_factor",
+    }
+    for yaml_key, config_key in tg_map.items():
+        if (
+            isinstance(trend_guard, dict)
+            and yaml_key in trend_guard
+            and trend_guard[yaml_key] is not None
+        ):
+            kwargs[config_key] = trend_guard[yaml_key]
+
     # 205# §9.4: hard_skip_utc_hours (取引完全停止する UTC 時間帯)
     hard_skip_raw = sg.get("hard_skip_utc_hours", [])
     if hard_skip_raw:

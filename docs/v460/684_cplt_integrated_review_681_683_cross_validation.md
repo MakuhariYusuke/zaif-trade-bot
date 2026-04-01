@@ -291,6 +291,26 @@ trending_up/sell の PnL=-2.93 は**レジーム判定が fill 時点で正し�
 
 ---
 
+## 4.5 実装フォローアップ（2026-04-01）
+
+- `mid_price_trend_5s`
+  - offline parquet 側では「直近 5 行 close の bps 変化」を proxy として採用
+  - 5 秒足の厳密再現ではないが、現行 `g2_sac_train.yaml` / parquet 生成パイプラインの整合を優先した
+- `signed_obi`
+  - live の buy=+1 / sell=-1 を parquet だけで完全再現できないため、offline 学習側では bar direction を proxy sign に利用
+  - 目的は「買い圧に逆らう sell」を観測空間へ入れること
+- `trend_5s_sell_guard`
+  - `toxic_sell_veto` の後、最終 offset 確定前の独立レイヤーとして追加
+  - sell のみ対象で、soft boost / hard veto を分離
+- blocker test の扱い
+  - 既存 parquet は新特徴量追加前の artifact を含むため、`test_356_g2_sac_blockers.py` では
+    - parquet schema に存在
+    - または FeatureRegistry に存在
+    のどちらかで accept する形に調整した
+  - これにより「YAML は先に更新済み、parquet は次の再生成で追随」という現行運用を壊さない
+
+---
+
 ## 5. 682# vs 683# 最終裁定
 
 | 論点 | 682# | 683# | **本検証判定** |

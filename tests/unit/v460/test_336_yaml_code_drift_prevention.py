@@ -208,6 +208,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "deadlock_escape_threshold",  # 664# code=0(無効), YAML=20
     "vg_vpin_continuous_min",  # 680# 0.40→0.50: VG選択性向上
     "wide_spread_bps",
+    "trend_5s_sell_guard_enabled",
 })
 
 

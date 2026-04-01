@@ -39,6 +39,9 @@ class SkipFillRecordExtraFields:
     bid_depth_total: float | None
     ask_depth_total: float | None
     price_velocity_bps: float | None
+    trend_5s_guard_triggered: bool | None
+    trend_5s_guard_action: str | None
+    trend_5s_at_order: float | None
     ev_score_pretrade: float | None
     decision_path: str | None
 
@@ -95,6 +98,9 @@ def build_skip_fill_record_extra_fields(
     threshold_used: float | None = None,
     hour_offset: float | None = None,
     price_velocity_bps: float | None = None,
+    trend_5s_guard_triggered: bool | None = None,
+    trend_5s_guard_action: str | None = None,
+    trend_5s_at_order: float | None = None,
     ev_score_pretrade: float | None = None,
     decision_path: str | None = None,
 ) -> SkipFillRecordExtraFields:
@@ -111,6 +117,9 @@ def build_skip_fill_record_extra_fields(
         bid_depth_total=bid_depth_total,
         ask_depth_total=ask_depth_total,
         price_velocity_bps=price_velocity_bps,
+        trend_5s_guard_triggered=trend_5s_guard_triggered,
+        trend_5s_guard_action=trend_5s_guard_action,
+        trend_5s_at_order=trend_5s_at_order,
         ev_score_pretrade=ev_score_pretrade,
         decision_path=decision_path,
     )

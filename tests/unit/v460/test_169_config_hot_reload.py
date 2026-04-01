@@ -537,6 +537,18 @@ class TestReloadableFieldsConsistency:
         )
         assert "entry_gate_calibration_map_path" not in _HOT_RELOADABLE_FIELDS
 
+    def test_trend_5s_sell_guard_fields_are_reloadable(self) -> None:
+        expected = {
+            "trend_5s_sell_guard_enabled",
+            "trend_5s_sell_guard_threshold_bps",
+            "trend_5s_sell_guard_hard_veto_threshold_bps",
+            "trend_5s_sell_guard_offset_boost_factor",
+        }
+        missing = expected - _HOT_RELOADABLE_FIELDS
+        assert missing == set(), (
+            f"Trend 5s sell guard fields should be hot-reloadable: {missing}"
+        )
+
     def test_legacy_inventory_escape_fields_are_not_reloadable(self) -> None:
         """598#: legacy read-only field は hot-reload 対象にしない."""
         assert "inventory_escape_enabled" not in _HOT_RELOADABLE_FIELDS

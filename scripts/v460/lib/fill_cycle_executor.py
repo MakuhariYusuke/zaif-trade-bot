@@ -70,6 +70,9 @@ class _PreOrderPhaseResult:
     skip_gate_threshold_used: float | None
     skip_gate_hour_offset: float | None
     sg_velocity_bps: float | None
+    trend_5s_guard_triggered: bool
+    trend_5s_guard_action: str | None
+    trend_5s_at_order: float | None
     ev_offset_applied: bool
     ev_score_pretrade: float | None
     ev_offset_mult_applied: float | None
@@ -552,6 +555,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             last_ask_depth=self._maker_price._last_ask_depth,
             imbalance_enabled=self.config.imbalance_enabled,
             maker_price_vpin_setter=lambda v: setattr(self._maker_price, '_last_vpin', v),
+            mid_trend_bps=self._maker_price.last_mid_trend_bps,
             one_sided_balance=one_sided_balance,
             kill_release_offset=_kill_rel_offset,
             prefetched_ob=prefetched_ob,
@@ -891,6 +895,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             sg_velocity_offset_mult=sg.velocity_offset_mult,
             sg_velocity_bps=sg.price_velocity_bps,
             sg_toxic_veto_offset_mult=sg.toxic_veto_offset_mult,  # 657# A-4
+            sg_trend_5s_guard_offset_mult=sg.trend_5s_guard_offset_mult,
             trending_offset_mult=trending_offset_mult,
             toxicity_offset_mult=toxicity_offset_mult,
             sidecar_offset_bps=sidecar_offset_bps,
@@ -914,6 +919,9 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             skip_gate_threshold_used=sg.threshold_used,
             skip_gate_hour_offset=sg.hour_offset if sg.hour_offset != 0.0 else None,
             sg_velocity_bps=sg.price_velocity_bps,
+            trend_5s_guard_triggered=sg.trend_5s_guard_triggered,
+            trend_5s_guard_action=sg.trend_5s_guard_action,
+            trend_5s_at_order=sg.trend_5s_at_order,
             ev_offset_applied=offset_result.ev_offset_applied,
             ev_score_pretrade=offset_result.ev_score_pretrade,
             ev_offset_mult_applied=offset_result.ev_offset_mult_applied,
@@ -1430,6 +1438,9 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             sg_threshold_used=pre_order.skip_gate_threshold_used,
             sg_hour_offset=pre_order.skip_gate_hour_offset,
             sg_velocity_bps=pre_order.sg_velocity_bps,
+            trend_5s_guard_triggered=pre_order.trend_5s_guard_triggered,
+            trend_5s_guard_action=pre_order.trend_5s_guard_action,
+            trend_5s_at_order=pre_order.trend_5s_at_order,
             regime_str=regime_str,
             regime_conf=regime_conf,
             regime_stab=regime_stab,

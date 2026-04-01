@@ -9,6 +9,31 @@ from ztb.features.core.registry import FeatureRegistry
 # Register scalping features
 register = FeatureRegistry.register
 
+
+def _pct_change_bps(
+    current: np.ndarray,
+    previous: np.ndarray,
+) -> np.ndarray:
+    """Return bps change with zero-safe handling."""
+    out = np.zeros(len(current), dtype=np.float64)
+    valid = previous != 0.0
+    out[valid] = ((current[valid] - previous[valid]) / previous[valid]) * 10000.0
+    return out
+
+
+def compute_signed_obi_values(
+    orderbook_imbalance: np.ndarray,
+    position_sign: np.ndarray,
+) -> np.ndarray:
+    """Return OBI signed by directional intent.
+
+    positive OBI means buy pressure. Multiplying by position_sign keeps the
+    conventional interpretation from the prompt:
+      buy(+1)  + positive OBI -> positive signed_obi
+      sell(-1) + positive OBI -> negative signed_obi
+    """
+    return orderbook_imbalance * position_sign
+
 @register("price_velocity")
 def price_velocity(df: pd.DataFrame) -> pd.Series:
     """Price velocity - rate of price change over short periods"""
@@ -31,6 +56,21 @@ def micro_trend(df: pd.DataFrame, window: int = 5) -> pd.Series:
         trend[window:][valid] = (close[window:][valid] - past_price[valid]) / past_price[valid]
 
     return pd.Series(trend, index=df.index, name="micro_trend")
+
+
+@register("mid_price_trend_5s")
+def mid_price_trend_5s(df: pd.DataFrame, window: int = 5) -> pd.Series:
+    """5-step close proxy for short-horizon mid-price trend in bps.
+
+    The training parquet is 1m OHLCV, so we do not have live 5-second mid-price
+    samples here. We use the closest offline proxy available in the current
+    FeatureRegistry path: close-to-close direction over 5 rows, scaled to bps.
+    """
+    close = df["close"].values.astype(np.float64, copy=False)
+    trend = np.zeros(len(close), dtype=np.float64)
+    if window > 0 and len(close) > window:
+        trend[window:] = _pct_change_bps(close[window:], close[:-window])
+    return pd.Series(trend, index=df.index, name="mid_price_trend_5s")
 
 @register("price_acceleration")
 def price_acceleration(df: pd.DataFrame, window: int = 3) -> pd.Series:
@@ -131,6 +171,27 @@ def order_flow_imbalance(df: pd.DataFrame) -> pd.Series:
     imbalance[valid] = (upper_wick[valid] - lower_wick[valid]) / body_size[valid]
     imbalance[0] = 0.0
     return pd.Series(imbalance, index=df.index, name="order_flow_imbalance")
+
+
+@register("signed_obi")
+def signed_obi(df: pd.DataFrame) -> pd.Series:
+    """Directional OBI proxy for the action-agnostic offline SAC dataset.
+
+    The live prompt describes `OBI * side_sign`, but offline OHLCV parquet does
+    not encode the eventual action side. We therefore sign OBI by bar direction
+    (`close - open`) as a directional proxy while keeping the same helper for
+    explicit buy/sell tests.
+    """
+    imbalance = order_flow_imbalance(df).to_numpy(dtype=np.float64, copy=False)
+    open_ = df["open"].values.astype(np.float64, copy=False)
+    close = df["close"].values.astype(np.float64, copy=False)
+    direction = np.sign(close - open_)
+    direction[direction == 0.0] = 1.0
+    return pd.Series(
+        compute_signed_obi_values(imbalance, direction),
+        index=df.index,
+        name="signed_obi",
+    )
 
 @register("micro_volatility")
 def micro_volatility(df: pd.DataFrame, window: int = 5) -> pd.Series:

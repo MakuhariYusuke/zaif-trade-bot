@@ -95,6 +95,9 @@ def _make_bypassed_evaluator(config: "FillTestConfig") -> "SkipGateEvaluator":
         evaluator._gate_path_sell = None
         evaluator._model_file_hash_buy = ""
         evaluator._model_file_hash_sell = ""
+        evaluator._ev_consecutive_skip_count = 0
+        evaluator._primary_consecutive_skip_count = 0
+        evaluator._toxic_veto_consecutive_count = 0
         evaluator._last_reload_check = 0.0
         evaluator._gate_path = None
         evaluator._model_file_hash = ""

@@ -488,6 +488,9 @@ class Test054FillRecordNewFields:
         assert "bid_depth_total" in fields
         assert "ask_depth_total" in fields
         assert "mid_price_trend_5s" in fields
+        assert "trend_5s_guard_triggered" in fields
+        assert "trend_5s_guard_action" in fields
+        assert "trend_5s_at_order" in fields
         assert "spread_bps" in fields
         assert "effective_offset_used" in fields
 
@@ -504,6 +507,9 @@ class Test054FillRecordNewFields:
         assert rec.bid_depth_total is None
         assert rec.ask_depth_total is None
         assert rec.mid_price_trend_5s is None
+        assert rec.trend_5s_guard_triggered is None
+        assert rec.trend_5s_guard_action is None
+        assert rec.trend_5s_at_order is None
         assert rec.spread_bps is None
         assert rec.effective_offset_used is None
 
@@ -519,6 +525,9 @@ class Test054FillRecordNewFields:
             bid_depth_total=1.5,
             ask_depth_total=0.8,
             mid_price_trend_5s=-2.1,
+            trend_5s_guard_triggered=True,
+            trend_5s_guard_action="boost",
+            trend_5s_at_order=1.4,
             spread_bps=15.3,
             effective_offset_used=0.075,
         )
@@ -528,6 +537,9 @@ class Test054FillRecordNewFields:
         rec2 = FillRecord.from_dict(d)
         assert rec2.orderbook_imbalance == rec.orderbook_imbalance
         assert rec2.bid_depth_total == rec.bid_depth_total
+        assert rec2.trend_5s_guard_triggered is True
+        assert rec2.trend_5s_guard_action == "boost"
+        assert rec2.trend_5s_at_order == pytest.approx(1.4)
         assert rec2.spread_bps == rec.spread_bps
         assert rec2.effective_offset_used == rec.effective_offset_used
 
@@ -542,7 +554,32 @@ class Test054FillRecordNewFields:
         }
         rec = FillRecord.from_dict(old_dict)
         assert rec.orderbook_imbalance is None
+        assert rec.trend_5s_guard_triggered is None
         assert rec.spread_bps is None
+
+
+class Test684Trend5sSellGuardConfig:
+    """684# trend_5s sell guard config/YAML wiring."""
+
+    def test_defaults(self, empty_fill_test_config: FillTestConfig) -> None:
+        cfg = empty_fill_test_config.trend_5s_sell_guard
+        assert cfg.enabled is False
+        assert cfg.threshold_bps == pytest.approx(0.5)
+        assert cfg.hard_veto_threshold_bps == pytest.approx(3.0)
+        assert cfg.offset_boost_factor == pytest.approx(1.5)
+
+    def test_yaml_loading(self, v460_fill_test_yaml_base: dict[str, object]) -> None:
+        section = v460_fill_test_yaml_base["trend_5s_sell_guard"]
+        assert isinstance(section, dict)
+        cfg = FillTestConfig.from_yaml(v460_fill_test_yaml_base).trend_5s_sell_guard
+        assert cfg.enabled is True
+        assert cfg.threshold_bps == pytest.approx(float(section["threshold_bps"]))
+        assert cfg.hard_veto_threshold_bps == pytest.approx(
+            float(section["hard_veto_threshold_bps"]),
+        )
+        assert cfg.offset_boost_factor == pytest.approx(
+            float(section["offset_boost_factor"]),
+        )
 
 
 class Test054SmartSideLogic:

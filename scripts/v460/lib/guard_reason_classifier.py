@@ -45,6 +45,7 @@ _CLASSIFICATION: Final[dict[str, GuardCategory]] = {
     "gate_spread_too_narrow": GuardCategory.MARKET,
     "gate_sell_guard_reject": GuardCategory.MARKET,
     "gate_toxicity_participation_skip": GuardCategory.MARKET,
+    "gate_trend_5s_sell_guard_veto": GuardCategory.MARKET,
     # ── Orchestrator 直接: 市場都合 ──
     "mcb_halt": GuardCategory.MARKET,
     "mcb_warning": GuardCategory.MARKET,

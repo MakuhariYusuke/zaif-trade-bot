@@ -77,6 +77,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
         sg_velocity_offset_mult: float | None,
         sg_velocity_bps: float | None,
         sg_toxic_veto_offset_mult: float | None = None,  # 657# A-4
+        sg_trend_5s_guard_offset_mult: float | None = None,
         trending_offset_mult: float | None,
         toxicity_offset_mult: float,
         sidecar_offset_bps: float,
@@ -93,6 +94,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
                 sg_velocity_offset_mult=sg_velocity_offset_mult,
                 sg_velocity_bps=sg_velocity_bps,
                 sg_toxic_veto_offset_mult=sg_toxic_veto_offset_mult,
+                sg_trend_5s_guard_offset_mult=sg_trend_5s_guard_offset_mult,
                 trending_offset_mult=trending_offset_mult,
                 toxicity_offset_mult=toxicity_offset_mult,
                 sidecar_offset_bps=sidecar_offset_bps,
@@ -107,6 +109,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
             sg_velocity_offset_mult=sg_velocity_offset_mult,
             sg_velocity_bps=sg_velocity_bps,
             sg_toxic_veto_offset_mult=sg_toxic_veto_offset_mult,
+            sg_trend_5s_guard_offset_mult=sg_trend_5s_guard_offset_mult,
             trending_offset_mult=trending_offset_mult,
             toxicity_offset_mult=toxicity_offset_mult,
             sidecar_offset_bps=sidecar_offset_bps,
@@ -126,6 +129,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
         sg_velocity_offset_mult: float | None,
         sg_velocity_bps: float | None,
         sg_toxic_veto_offset_mult: float | None = None,  # 657# A-4
+        sg_trend_5s_guard_offset_mult: float | None = None,
         trending_offset_mult: float | None,
         toxicity_offset_mult: float,
         sidecar_offset_bps: float,
@@ -151,6 +155,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
         _vg_supp_mult: float | None = None
         _a_mult: float | None = None
         _macro_m_mult: float | None = None
+        _trend_5s_guard_mult: float | None = None
 
         # Toxicity deltas: velocity, trending, toxicity, vg_supp, alert
         tox_deltas: list[float] = []
@@ -188,6 +193,15 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
         # 657# A-4: Toxic Sell Veto offset → Toxicity buffer
         if sg_toxic_veto_offset_mult is not None and sg_toxic_veto_offset_mult > 1.0:
             tox_deltas.append(base_ratio * (sg_toxic_veto_offset_mult - 1.0))
+
+        # 684# trend_5s sell guard → Toxicity buffer (toxic_veto の後段)
+        if (
+            side == "sell"
+            and sg_trend_5s_guard_offset_mult is not None
+            and sg_trend_5s_guard_offset_mult > 1.0
+        ):
+            _trend_5s_guard_mult = sg_trend_5s_guard_offset_mult
+            tox_deltas.append(base_ratio * (sg_trend_5s_guard_offset_mult - 1.0))
 
         # 196# Trending (sell only) → Toxicity buffer
         if side == "sell" and trending_offset_mult is not None and trending_offset_mult > 1.0:
@@ -252,6 +266,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
         _exec_stages: dict[str, float | None] = {
             "ev": _ev_offset_mult_applied,
             "velocity": _vel_mult,
+            "trend_5s_guard": _trend_5s_guard_mult,
             "trending": _trend_mult,
             "toxicity": _tox_mult,
             "vg_supp": _vg_supp_mult,

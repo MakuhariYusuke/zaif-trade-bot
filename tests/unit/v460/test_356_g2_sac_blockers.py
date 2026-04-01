@@ -12,6 +12,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 import pytest
 
+import ztb.features.scalping  # noqa: F401
 from scripts.v460.lib.sac_common import SACModelProtocol
 from scripts.v460.lib.tasks.sac_train import (
     _build_environment_config,
@@ -19,6 +20,7 @@ from scripts.v460.lib.tasks.sac_train import (
     _resolve_feature_columns,
 )
 from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
+from ztb.features.core.registry import FeatureRegistry
 from ztb.training.algorithms.sac import SACAlgorithm
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
@@ -574,12 +576,21 @@ class TestTrainingDataIntegrity:
         assert len(schema_names) > 0
 
     def test_yaml_features_present_in_data(self, yaml_cfg: dict, schema_names: tuple[str, ...]) -> None:
-        """YAML selected features が全てデータファイルに存在する."""
+        """YAML selected features は data schema か FeatureRegistry のどちらかに存在する."""
         schema_cols = set(schema_names)
+        registry_cols = set(FeatureRegistry.list())
         selected = yaml_cfg["features"]["selected"]
 
-        missing = [f for f in selected if f not in schema_cols]
-        assert not missing, f"Features missing in data: {missing}"
+        missing = [f for f in selected if f not in schema_cols and f not in registry_cols]
+        assert not missing, f"Features missing in data and registry: {missing}"
+
+    def test_yaml_includes_684_sell_aware_features(self, yaml_cfg: dict) -> None:
+        selected = yaml_cfg["features"]["selected"]
+        assert "mid_price_trend_5s" in selected
+        assert "signed_obi" in selected
+
+    def test_yaml_confidence_roi_full_is_684_value(self, yaml_cfg: dict) -> None:
+        assert yaml_cfg["sac_retrain"]["confidence_roi_full"] == pytest.approx(0.001)
 
     def test_data_has_close_column(self, schema_names: tuple[str, ...]) -> None:
         """HeavyTradingEnv が必要とする close カラムの存在確認."""

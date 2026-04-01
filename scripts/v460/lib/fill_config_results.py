@@ -40,6 +40,11 @@ class SkipGateResult:
     velocity_offset_mult: float | None = None
     # 657# A-4: toxic_sell_veto ソフトモード — offset boost 倍率
     toxic_veto_offset_mult: float | None = None
+    # 684# Phase M1: independent 5s trend sell guard
+    trend_5s_guard_offset_mult: float | None = None
+    trend_5s_guard_triggered: bool = False
+    trend_5s_guard_action: str | None = None
+    trend_5s_at_order: float | None = None
     # 642# 可観測性: skip_rate_limit 強制 pass / side skip rate
     forced_pass: bool = False
     side_skip_rate: float | None = None

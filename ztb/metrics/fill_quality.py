@@ -86,6 +86,9 @@ class FillRecord:
     bid_depth_total: float | None = None       # bid 側合計数量 (BTC)
     ask_depth_total: float | None = None       # ask 側合計数量 (BTC)
     mid_price_trend_5s: float | None = None    # 直前 5s の mid 変化率 (bps)
+    trend_5s_guard_triggered: bool | None = None  # 684# trend_5s guard が反応したか
+    trend_5s_guard_action: str | None = None      # "boost" / "veto" / "none"
+    trend_5s_at_order: float | None = None        # 判定時に使った trend_5s 値 (bps)
     spread_bps: float | None = None            # 発注時スプレッド (bps)
     effective_offset_used: float | None = None # 実際に適用された offset 比率
     # 062# SkipGate ML 判定情報

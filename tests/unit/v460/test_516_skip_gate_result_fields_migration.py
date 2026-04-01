@@ -106,6 +106,9 @@ class TestSkipGateResultFieldsMigration:
             bid_depth_total=10.0,
             ask_depth_total=8.0,
             price_velocity_bps=4.5,
+            trend_5s_guard_triggered=None,
+            trend_5s_guard_action=None,
+            trend_5s_at_order=None,
             ev_score_pretrade=-0.2,
             decision_path="ev_normal_skip",
         )
@@ -132,6 +135,9 @@ class TestSkipGateResultFieldsMigration:
             bid_depth_total=None,
             ask_depth_total=None,
             price_velocity_bps=None,
+            trend_5s_guard_triggered=None,
+            trend_5s_guard_action=None,
+            trend_5s_at_order=None,
             ev_score_pretrade=None,
             decision_path=None,
         )

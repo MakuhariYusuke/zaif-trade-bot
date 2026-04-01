@@ -36,6 +36,16 @@ def _resolve_fill_config_yaml_parser() -> Callable[[dict], FillTestConfig]:
 
     return cast(Callable[[dict], FillTestConfig], parse_fill_config_yaml)
 
+
+@dataclass(frozen=True)
+class Trend5sSellGuardConfig:
+    """684# Independent short-horizon sell guard configuration."""
+
+    enabled: bool = False
+    threshold_bps: float = 0.5
+    hard_veto_threshold_bps: float = 3.0
+    offset_boost_factor: float = 1.5
+
 @dataclass
 class FillTestConfig:
     """Fill test runner の設定.
@@ -599,6 +609,12 @@ class FillTestConfig:
     toxic_sell_veto_offset_boost_factor: float = 1.8  # ソフト時 offset boost 倍率
     # 657# A-5: 連続 veto 時間減衰 (656# 指数減衰でスティッキー回避)
     toxic_sell_veto_decay_alpha: float = 0.7  # 連続 veto 回数の指数減衰係数 (α^n)
+    # 684# Phase M1: 5s short-trend based independent sell guard.
+    # backward compatibility のため code default は off、live YAML で有効化する。
+    trend_5s_sell_guard_enabled: bool = False
+    trend_5s_sell_guard_threshold_bps: float = 0.5
+    trend_5s_sell_guard_hard_veto_threshold_bps: float = 3.0
+    trend_5s_sell_guard_offset_boost_factor: float = 1.5
     # 183# narrow spread 時の skip_gate 閾値オフセット (逆選択防御)
     # spread < narrow_spread_skip_threshold_jpy のとき threshold に加算。
     # ログ分析: spread<2kでAS32% (全体28%) → 閾値厳格化で AS fill削減
@@ -991,6 +1007,16 @@ class FillTestConfig:
         from scripts.v460.lib.fill_config_validation import validate_fill_config
 
         validate_fill_config(self)
+
+    @property
+    def trend_5s_sell_guard(self) -> Trend5sSellGuardConfig:
+        """684# grouped view for runtime guard code while keeping flat hot-reload fields."""
+        return Trend5sSellGuardConfig(
+            enabled=self.trend_5s_sell_guard_enabled,
+            threshold_bps=self.trend_5s_sell_guard_threshold_bps,
+            hard_veto_threshold_bps=self.trend_5s_sell_guard_hard_veto_threshold_bps,
+            offset_boost_factor=self.trend_5s_sell_guard_offset_boost_factor,
+        )
 
 
     # ================================================================

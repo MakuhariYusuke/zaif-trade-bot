@@ -791,3 +791,4 @@ NNN_phX_TYPE_description.md
 | 682 | review | [682_phg_rev_668_681_multifaceted_validation_and_profitability_focus.md](682_phg_rev_668_681_multifaceted_validation_and_profitability_focus.md) | 668#-681# 多角的検証レビューと収益性集中プラン |
 | 683 | review | [683_cplt_review_681_682_huan_interpretation_and_profit_strategy.md](683_cplt_review_681_682_huan_interpretation_and_profit_strategy.md) | 681#-682# レビュー: 風水渙解釈と利益戦略 |
 | 684 | review | [684_cplt_integrated_review_681_683_cross_validation.md](684_cplt_integrated_review_681_683_cross_validation.md) | 681#-683# 統合レビュー: 多角的検証・盲点抽出・Codex タスク設計 |
+| 685 | tuning | [685_cplt_phase1_sell_protection_yaml_changes.md](685_cplt_phase1_sell_protection_yaml_changes.md) | Phase 1 Sell Protection: trending boost, SG thresholds, AM hour defense (684# S1/S3/S4/S5) |

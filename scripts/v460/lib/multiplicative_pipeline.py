@@ -38,6 +38,7 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
         sg_velocity_offset_mult: float | None,
         sg_velocity_bps: float | None,
         sg_toxic_veto_offset_mult: float | None = None,  # 657# A-4
+        sg_trend_5s_guard_offset_mult: float | None = None,
         trending_offset_mult: float | None,
         toxicity_offset_mult: float,
         sidecar_offset_bps: float,
@@ -117,6 +118,28 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
                     f"[657# toxic_veto_offset] {side}: "
                     f"offset_mult={_tv_mult:.2f} "
                     f"(delta={_tv_delta:+.0f}JPY, price={order_price:.0f})"
+                )
+
+        _trend_5s_guard_mult: float | None = None
+        if (
+            side == "sell"
+            and sg_trend_5s_guard_offset_mult is not None
+            and sg_trend_5s_guard_offset_mult > 1.0
+        ):
+            order_price, effective_offset_ratio, _trend_5s_guard_mult, _tg_delta = self._apply_offset_multiplier(
+                side=side,
+                order_price=order_price,
+                spread_at_order=spread_at_order,
+                effective_offset_ratio=effective_offset_ratio,
+                offset_mult=sg_trend_5s_guard_offset_mult,
+            )
+            if _trend_5s_guard_mult is not None and _tg_delta is not None:
+                logger.info(
+                    "[684# trend_5s_guard] %s: offset_mult=%.2f (delta=%+.0fJPY, price=%.0f)",
+                    side,
+                    _trend_5s_guard_mult,
+                    _tg_delta,
+                    order_price,
                 )
 
         order_price, effective_offset_ratio, _trend_mult, _delta = self._apply_offset_multiplier(
@@ -228,6 +251,7 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
             "ev": _ev_offset_mult_applied,
             "velocity": _vel_mult if _vel_offset_applied else None,
             "toxic_veto": sg_toxic_veto_offset_mult if _toxic_veto_offset_applied else None,  # 657# A-4
+            "trend_5s_guard": _trend_5s_guard_mult,
             "trending": _trend_mult,
             "toxicity": _tox_mult,
             "vg_supp": _vg_supp_mult,
@@ -256,7 +280,7 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
                 # 641# P1-A: resolve_hard_skip_mult で regime 別 override を参照
                 _regime_val: str | None = None
                 if hasattr(self, "_current_regime_value"):
-                    _regime_val = self._current_regime_value()  # type: ignore[attr-defined]
+                    _regime_val = self._current_regime_value()
                 _hs_mult = self.config.resolve_hard_skip_mult(side, _regime_val)
                 if _hs_mult > 0 and effective_offset_ratio > _fc_ceil * _hs_mult:
                     logger.warning(

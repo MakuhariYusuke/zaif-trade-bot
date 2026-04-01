@@ -331,6 +331,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         threshold_used: float | None = None,
         hour_offset: float | None = None,
         price_velocity_bps: float | None = None,
+        trend_5s_guard_triggered: bool | None = None,
+        trend_5s_guard_action: str | None = None,
+        trend_5s_at_order: float | None = None,
         ev_score_pretrade: float | None = None,
         decision_path: str | None = None,
     ) -> None:
@@ -350,6 +353,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             threshold_used=threshold_used,
             hour_offset=hour_offset,
             price_velocity_bps=price_velocity_bps,
+            trend_5s_guard_triggered=trend_5s_guard_triggered,
+            trend_5s_guard_action=trend_5s_guard_action,
+            trend_5s_at_order=trend_5s_at_order,
             ev_score_pretrade=ev_score_pretrade,
             decision_path=decision_path,
         )
@@ -368,6 +374,22 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             context=context,
             extra_fields=extra_fields,
         )
+
+    def _apply_trend_5s_sell_guard(
+        self,
+        *,
+        side: str,
+        trend_5s_bps: float | None,
+    ) -> tuple[str, float | None]:
+        """684# Phase M1: independent short-horizon sell guard."""
+        cfg = self._config.trend_5s_sell_guard
+        if side != "sell" or not cfg.enabled or trend_5s_bps is None:
+            return "none", None
+        if trend_5s_bps > cfg.hard_veto_threshold_bps:
+            return "veto", None
+        if trend_5s_bps > cfg.threshold_bps:
+            return "boost", cfg.offset_boost_factor
+        return "none", None
 
     # --- 461# Mixin 移管済 ---
     # _apply_config_overrides, _apply_warm_start, _inject_calibrator → skip_gate_model_loader.py
@@ -416,6 +438,7 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         last_ask_depth: float | None,
         imbalance_enabled: bool,
         maker_price_vpin_setter: object | None = None,
+        mid_trend_bps: float | None = None,
         *,
         one_sided_balance: bool = False,
         kill_release_offset: float = 0.0,
@@ -753,12 +776,59 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                             last_imbalance=last_imbalance,
                             last_bid_depth=last_bid_depth,
                             last_ask_depth=last_ask_depth,
-                            price_velocity_bps=_pv60 if isinstance(_pv60, (int, float)) else None,
+                            price_velocity_bps=(
+                                _pv60 if isinstance(_pv60, (int, float)) else None
+                            ),
                         )
                         return result
                 else:
                     # 条件不充足 → 連続カウンタリセット
                     self._toxic_veto_consecutive_count = 0
+
+            # 684# Phase M1: trend_5s sell guard (independent from velocity/toxic veto).
+            _trend_guard_action, _trend_guard_mult = self._apply_trend_5s_sell_guard(
+                side=side,
+                trend_5s_bps=mid_trend_bps,
+            )
+            result.trend_5s_at_order = mid_trend_bps
+            result.trend_5s_guard_action = _trend_guard_action
+            result.trend_5s_guard_triggered = _trend_guard_action in {"boost", "veto"}
+            result.trend_5s_guard_offset_mult = _trend_guard_mult
+
+            if _trend_guard_action == "veto":
+                logger.info(
+                    "[skip_gate] 684# trend_5s veto: sell trend_5s=%.2fbps > %.2fbps",
+                    mid_trend_bps,
+                    self._config.trend_5s_sell_guard_hard_veto_threshold_bps,
+                )
+                early_context = self._build_skip_fill_record_context(
+                    cycle_id=cycle_id,
+                    timestamp=market_ts,
+                    side=side,
+                    order_price=order_price,
+                    order_quantity=current_lot,
+                    cancel_reason=CR.TREND_5S_SELL_GUARD_VETO,
+                    spread_at_order=spread_at_order,
+                    spread_offset_ratio=effective_offset_ratio,
+                    run_id=run_id,
+                    git_sha=git_sha,
+                    regime_value=regime_value,
+                )
+                self._set_early_skip_result(
+                    result,
+                    context=early_context,
+                    score=float(mid_trend_bps or 0.0),
+                    reason="rule_trend_5s_sell_guard_veto",
+                    model_used="rule",
+                    last_imbalance=last_imbalance,
+                    last_bid_depth=last_bid_depth,
+                    last_ask_depth=last_ask_depth,
+                    price_velocity_bps=_pv60 if isinstance(_pv60, (int, float)) else None,
+                    trend_5s_guard_triggered=True,
+                    trend_5s_guard_action="veto",
+                    trend_5s_at_order=mid_trend_bps,
+                )
+                return result
 
             # 158# P1-6: 時間帯別 skip_gate 閾値調整
             _utc_hour = utc_hour_from_timestamp(market_ts)

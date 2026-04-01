@@ -86,6 +86,8 @@ class RewardSettings:
     # Additional multiplicative penalty/bonus scalars for specific actions
     hold_penalty_multiplier: float = 1.0
     trade_frequency_bonus: float = 0.0
+    # 684# SAC sell-aware reward: keep neutral by default and opt in per config.
+    sell_as_penalty_mult: float = 1.0
     
     volatility_window: int = 20
     volatility_penalty_scale: float = 0.01

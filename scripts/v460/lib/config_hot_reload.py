@@ -225,6 +225,11 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "velocity_offset_boost_factor",
     "velocity_offset_proportional",
     "velocity_offset_max_mult",
+    # 684# trend_5s independent sell guard
+    "trend_5s_sell_guard_enabled",
+    "trend_5s_sell_guard_threshold_bps",
+    "trend_5s_sell_guard_hard_veto_threshold_bps",
+    "trend_5s_sell_guard_offset_boost_factor",
     # --- VG ---
     "volatility_guard_enabled",
     "volatility_guard_velocity_threshold_bps",

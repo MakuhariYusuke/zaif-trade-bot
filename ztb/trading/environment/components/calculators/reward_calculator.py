@@ -1318,6 +1318,7 @@ class RewardCalculator:
         continuous_action_value: float | None = None,
         previous_price: float | None = None,
         position_size: float | None = None,
+        adverse_selected: bool | None = None,
     ) -> float:
         """
         Calculate simple reward based on PnL with RewardKernel unification.
@@ -1350,6 +1351,7 @@ class RewardCalculator:
                 return 0.0
 
             # 2. Build RewardParams from settings
+            reward_clip_value = self.get_setting_float("reward_clip_value", 10.0)
             params = RewardParams(
                 reward_scaling=self.get_setting_float("reward_scaling", self.get_setting_float("reward_scale", 1.0)),
                 hold_penalty_multiplier=self.get_setting_float("hold_penalty_multiplier", 1.0),
@@ -1357,7 +1359,7 @@ class RewardCalculator:
                 bankruptcy_penalty=self.get_setting_float("bankruptcy_penalty", -100.0),
                 position_change_penalty=self.get_setting_float("position_change_penalty", 0.0),
                 position_change_threshold=self.get_setting_float("position_change_threshold", 0.1),
-                reward_clip_value=self.get_setting_float("reward_clip_value", 10.0),
+                reward_clip_value=None,
             )
 
             # 3. Delegate to RewardKernel for basic calculation
@@ -1369,6 +1371,25 @@ class RewardCalculator:
                 current_position=position,
                 portfolio_value=portfolio_value,
             )
+
+            # 684# SAC sell-aware penalty.
+            # The live training env does not currently surface explicit
+            # `adverse_selected`, so negative sell PnL acts as a conservative
+            # fallback proxy unless the caller passes an explicit flag.
+            sell_penalty_mult = self.get_setting_float("sell_as_penalty_mult", 1.0)
+            sell_as_penalty_applied = False
+            adverse_sell = (
+                action == ACTION_SELL
+                and (
+                    adverse_selected is True
+                    or (adverse_selected is None and pnl < 0.0)
+                )
+            )
+            if adverse_sell and sell_penalty_mult > 1.0:
+                reward *= sell_penalty_mult
+                sell_as_penalty_applied = True
+            if reward_clip_value > 0.0:
+                reward = float(np.clip(reward, -reward_clip_value, reward_clip_value))
 
             # 4. Apply Advanced Features (Shaping, Signals, Asymmetric Scaling)
             # These are maintained in RewardCalculator as they depend on other components
@@ -1403,6 +1424,10 @@ class RewardCalculator:
                     if action == ACTION_HOLD
                     and self.get_setting_float("hold_penalty_multiplier", 1.0) != 1.0
                     else 0.0
+                ),
+                sell_as_penalty_applied=1.0 if sell_as_penalty_applied else 0.0,
+                sell_as_penalty_mult=(
+                    float(sell_penalty_mult) if sell_as_penalty_applied else 1.0
                 ),
             )
 
