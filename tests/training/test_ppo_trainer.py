@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
 
 import pytest
+import pandas as pd
 
 from ztb.training.trainers.ppo_trainer import PPOAlgorithmTrainer
 
@@ -29,6 +30,10 @@ if TYPE_CHECKING:
         TrainingConfig,
         build_ppo_model_kwargs,
         load_ppo_model_for_env,
+    )
+    from ztb.training.core.runtime_limits import (
+        load_training_dataframe_with_limit,
+        resolve_max_features,
     )
 else:
     # At runtime we need the real classes; import them rather than using
@@ -42,6 +47,10 @@ else:
         load_ppo_model_for_env,
     )
     from ztb.training.core.ppo_trainer import PPOTrainingConfig as TrainingConfig
+    from ztb.training.core.runtime_limits import (
+        load_training_dataframe_with_limit,
+        resolve_max_features,
+    )
 
 
 @pytest.fixture
@@ -188,6 +197,31 @@ class TestPPOTrainerAutoHalt:
         assert kwargs["normalize_advantage"] is False
         assert kwargs["tensorboard_log"] == "tb_logs"
         assert kwargs["device"] == "cpu"
+
+    def test_resolve_max_features_prefers_top_level_value(self) -> None:
+        config = {
+            "max_features": 48,
+            "memory_optimization": {"max_features": 32},
+            "ppo": {"max_features": 24},
+        }
+        assert resolve_max_features(config) == 48
+
+    def test_load_training_dataframe_with_limit_uses_memory_optimization_section(self) -> None:
+        df = pd.DataFrame({"close": range(100)})
+        loader = Mock(return_value=df)
+        logger = Mock()
+
+        result = load_training_dataframe_with_limit(
+            "dummy.csv",
+            config={"memory_optimization": {"data_rows_limit": 25}},
+            loader=loader,
+            logger=logger,
+        )
+
+        loader.assert_called_once_with("dummy.csv")
+        assert len(result) == 25
+        assert result.iloc[0]["close"] == 0
+        assert result.iloc[-1]["close"] == 24
 
     @patch("ztb.training.ppo_trainer.CustomPPO")
     def test_load_ppo_model_for_env_uses_current_class_resolution(

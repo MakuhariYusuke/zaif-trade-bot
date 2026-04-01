@@ -580,3 +580,45 @@ broader PPO/SAC subset:
 - 後続の package 再整理がしやすい
 
 という状態になった。
+
+### 21. PPO runtime limit helper 共通化
+
+`PPOTrainerAutoHalt` と `SELLBiasMitigationPPOTrainer` には、
+
+- `data_rows_limit`
+- `max_features`
+
+の解決ロジックが重複していた。ここを
+`ztb/training/core/runtime_limits.py`
+へ寄せて、runtime helper として共通化した。
+
+- 追加:
+  - `resolve_data_rows_limit(...)`
+  - `resolve_max_features(...)`
+  - `load_training_dataframe_with_limit(...)`
+- 適用:
+  - `ztb/training/core/ppo_trainer.py`
+  - `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+
+新しい継承階層は増やしていない。ここは trainer の責務差を保ったまま、
+shared helper で drift を止める方が安全と判断した。
+
+### 22. Target entropy の grad-mode hardening
+
+フル `tests/ -x --tb=short --no-cov` を回した際、
+`tests/unit/training/test_target_entropy.py`
+で、外側の grad-mode が崩れていると
+`TargetEntropyController.update()` が `temp_loss.requires_grad=False`
+で落ちる経路が見つかった。
+
+今回は以下で hardening した。
+
+- `ztb/training/entropy_temperature.py`
+  - `log_alpha` を明示的に `device=self.device` で作成
+  - `update()` を `with torch.enable_grad():` で保護
+  - entropy 入力は `detach()` して、α 更新だけに責務を限定
+- `tests/unit/training/test_target_entropy.py`
+  - leaked `no_grad()` 下でも update が継続できる回帰を追加
+
+これは速度改善というより、PPO を長時間回したときの
+「他テスト/他コードが grad-mode を壊したまま残る」系の不安定性を潰す対応。

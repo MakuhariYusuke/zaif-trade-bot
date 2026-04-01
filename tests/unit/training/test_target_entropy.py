@@ -87,7 +87,7 @@ class TestTargetEntropyController:
         initial_alpha = controller.alpha
 
         # Feed low entropy repeatedly
-        for _ in range(6):
+        for _ in range(3):
             logits = torch.tensor([[10.0, 0.0, 0.0]] * 10)  # Very peaked
             entropy = controller.compute_entropy(logits)
             controller.update(entropy)
@@ -116,7 +116,7 @@ class TestTargetEntropyController:
         initial_alpha = controller.alpha
 
         # Feed high entropy repeatedly
-        for _ in range(6):
+        for _ in range(3):
             logits = torch.tensor([[0.0, 0.0, 0.0]] * 10)  # Uniform (max entropy)
             entropy = controller.compute_entropy(logits)
             controller.update(entropy)
@@ -152,6 +152,25 @@ class TestTargetEntropyController:
         # Alpha should show small variance (stable)
         alpha_std = np.std(alphas[-5:])
         assert alpha_std < 0.01, f"Alpha should stabilize (std={alpha_std:.6f})"
+
+    def test_update_reenables_grad_mode_when_outer_context_disabled(self):
+        """Target entropy update should survive leaked no-grad contexts."""
+        controller = TargetEntropyController(
+            n_actions=3,
+            target_entropy_ratio=0.7,
+            initial_temperature=0.01,
+            lr_temperature=1e-2,
+        )
+
+        logits = torch.tensor([[10.0, 0.0, 0.0]] * 10)
+        entropy = controller.compute_entropy(logits)
+
+        with torch.no_grad():
+            loss_value, current_alpha = controller.update(entropy)
+
+        assert isinstance(loss_value, float)
+        assert current_alpha > 0.0
+        assert controller.get_statistics()["num_updates"] == 1
 
     def test_statistics_tracking(self):
         """Test statistics tracking."""

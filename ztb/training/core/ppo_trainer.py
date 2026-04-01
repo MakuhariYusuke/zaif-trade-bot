@@ -37,6 +37,10 @@ from ztb.training.core.base_trainer import BaseTrainer
 from ztb.training.evaluation.eval_gates import EvalGates
 from ztb.training.models.custom_ppo import CustomPPO
 from ztb.training.policies.policy_utils import neutralize_policy_bias
+from ztb.training.core.runtime_limits import (
+    load_training_dataframe_with_limit,
+    resolve_max_features,
+)
 from ztb.io.data_loader import DataLoader
 from ztb.utils.logging_utils import get_logger
 
@@ -346,29 +350,12 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
 
     def _create_environment(self) -> ActionMasker:
         """Create and configure the trading environment."""
-        df_full = DataLoader.load_csv_optimized(self.data_path)
-
-        # ========================================================================
-        # UNIFIED MEMORY OPTIMIZATION (Bug #52 fix)
-        # ========================================================================
-        # Apply data_rows_limit if specified
-        # Priority: 1) Top-level config, 2) memory_optimization section
-        data_rows_limit = self.config.get("data_rows_limit") or (
-            self.config.get("memory_optimization", {}) or {}
-        ).get("data_rows_limit")
-
-        if data_rows_limit and len(df_full) > data_rows_limit:
-            logger.info(
-                f"⚠️  MEMORY OPTIMIZATION: Limiting data from {len(df_full)} to {data_rows_limit} rows"
-            )
-            # Memory optimized: Use iloc slice instead of copy
-            df = df_full.iloc[:data_rows_limit]
-            del df_full
-            import gc
-
-            gc.collect()
-        else:
-            df = df_full
+        df = load_training_dataframe_with_limit(
+            self.data_path,
+            config=self.config,
+            loader=DataLoader.load_csv_optimized,
+            logger=logger,
+        )
 
         # Determine feature inclusion list from configuration
         feature_columns: list[str] | None = None
@@ -460,11 +447,7 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
 
         # Extract max_features from unified config structure
         # Priority: 1) Top-level config, 2) memory_optimization section, 3) ppo section
-        max_features = (
-            self.config.get("max_features")
-            or (self.config.get("memory_optimization", {}) or {}).get("max_features")
-            or (self.config.get("ppo", {}) or {}).get("max_features")
-        )
+        max_features = resolve_max_features(self.config)
 
         # Create environment with memory optimization settings
         env = HeavyTradingEnv(

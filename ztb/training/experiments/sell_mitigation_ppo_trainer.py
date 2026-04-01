@@ -28,6 +28,10 @@ from ztb.training.callbacks_lib import SELLBiasMitigationCallback
 from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
 from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG, PPOConfig
 from ztb.training.config.trainer_params import SELLMitigationParams
+from ztb.training.core.runtime_limits import (
+    load_training_dataframe_with_limit,
+    resolve_max_features,
+)
 from ztb.training.core.ppo_trainer import (
     PPOTrainerAutoHalt as PPOTrainer,
     build_ppo_model_kwargs,
@@ -184,24 +188,12 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
 
     def _load_training_dataframe(self) -> pd.DataFrame:
         """Load training data and apply the shared memory-optimization limit."""
-        df_full = DataLoader.load_csv_strict(self.data_path)
-        data_rows_limit = self.config.get("data_rows_limit") or (
-            self.config.get("memory_optimization", {}) or {}
-        ).get("data_rows_limit")
-
-        if data_rows_limit and len(df_full) > data_rows_limit:
-            logger.info(
-                "⚠️  MEMORY OPTIMIZATION: Limiting data from %s to %s rows",
-                len(df_full),
-                data_rows_limit,
-            )
-            df = df_full.iloc[:data_rows_limit]
-            del df_full
-            import gc
-
-            gc.collect()
-            return df
-        return df_full
+        return load_training_dataframe_with_limit(
+            self.data_path,
+            config=self.config,
+            loader=DataLoader.load_csv_strict,
+            logger=logger,
+        )
 
     def _build_env_config(self, *, max_features: int | None) -> dict[str, object]:
         """Build the HeavyTradingEnv config for mitigation training."""
@@ -222,11 +214,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
     def _create_training_env(self) -> ActionMasker:
         """Create the current masked env for SELL mitigation PPO."""
         df = self._load_training_dataframe()
-        max_features = (
-            self.config.get("max_features")
-            or (self.config.get("memory_optimization", {}) or {}).get("max_features")
-            or (self.config.get("ppo", {}) or {}).get("max_features")
-        )
+        max_features = resolve_max_features(self.config)
         env = HeavyTradingEnv(
             df=df,
             config=self._build_env_config(max_features=max_features),

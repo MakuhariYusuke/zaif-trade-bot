@@ -9996,3 +9996,53 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     - `122 passed in 9.60s`
   - broader regression subset:
     - `389 passed in 15.73s`
+
+### 2026-04-01 PPO runtime limit helper + fill-record I/O split
+
+- `ztb/training/core/runtime_limits.py` を追加
+  - `resolve_data_rows_limit(...)`
+  - `resolve_max_features(...)`
+  - `load_training_dataframe_with_limit(...)`
+- `ztb/training/core/ppo_trainer.py`
+  - memory optimization row cap / max_features 解決を shared helper に統一
+- `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+  - 同じく data_rows_limit / max_features 解決を shared helper に統一
+- `ztb/metrics/fill_record_io.py` を追加
+  - raw fill-record object glob/load/filter/date-range helper を分離
+- `ztb/metrics/fill_quality.py`
+  - FillRecord / metric 判定本体に責務を寄せ、raw I/O helper を別 module へ分離
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - real-data sample rows を保守的に縮小
+- focused validation
+  - targeted mypy:
+    - `runtime_limits.py`
+    - `ppo_trainer.py`
+    - `sell_mitigation_ppo_trainer.py`
+    - `fill_record_io.py`
+    - `tests/training/test_ppo_trainer.py`
+    - `Success: no issues found in 5 source files`
+  - pytest:
+    - `tests/training/test_ppo_trainer.py`
+    - `tests/unit/v460/test_fill_quality.py`
+    - `tests/unit/v460/test_enricher_skip_gate.py`
+    - `tests/test_analyze_fill_logs.py`
+    - `342 passed, 1 skipped in 10.46s`
+
+### 2026-04-01 Target entropy grad-mode regression hardening
+
+- フル `tests/ -x --tb=short --no-cov` 実行で、
+  `tests/unit/training/test_target_entropy.py`
+  に `temp_loss.requires_grad=False` failure を検出
+- `ztb/training/entropy_temperature.py`
+  - `log_alpha` を `device=self.device` で作成
+  - `update()` を `torch.enable_grad()` で保護
+  - entropy 入力は `detach()` して α 更新責務に限定
+- `tests/unit/training/test_target_entropy.py`
+  - leaked `no_grad()` context 下でも update が通る guard を追加
+- focused:
+  - `tests/unit/training/test_target_entropy.py`
+  - `tests/training/test_ppo_trainer.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/test_analyze_fill_logs.py`
+  - `355 passed, 1 skipped in 11.59s`

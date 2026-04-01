@@ -1000,3 +1000,25 @@ durations 変化で特に効いた点:
   - core 側の `load_ppo_model_for_env(...)` も focused で固定
   - subset:
     - `39 passed in 6.02s`
+
+- 2026-04-01 additional trim:
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - real-data sample rows を `50/56/72` 系から `36/48/60` 系へ縮小
+    - smoke path も `16/24/32` に縮小
+  - `tests/training/test_ppo_trainer.py`
+    - runtime limit helper (`data_rows_limit` / `max_features`) の focused guard を追加
+  - subset:
+    - `tests/training/test_ppo_trainer.py`
+    - `tests/unit/v460/test_fill_quality.py`
+    - `tests/unit/v460/test_enricher_skip_gate.py`
+    - `tests/test_analyze_fill_logs.py`
+    - `342 passed, 1 skipped in 10.46s`
+  - `tests/unit/training/test_target_entropy.py`
+    - `no_grad()` 漏れに耐える回帰を追加
+    - focused bundle 更新:
+      - `tests/unit/training/test_target_entropy.py`
+      - `tests/training/test_ppo_trainer.py`
+      - `tests/unit/v460/test_fill_quality.py`
+      - `tests/unit/v460/test_enricher_skip_gate.py`
+      - `tests/test_analyze_fill_logs.py`
+      - `355 passed, 1 skipped in 11.59s`

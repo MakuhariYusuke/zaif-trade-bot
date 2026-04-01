@@ -68,7 +68,11 @@ class TargetEntropyController:
 
         # Temperature parameter (log_alpha for numerical stability)
         self.log_alpha = nn.Parameter(
-            torch.tensor(np.log(initial_temperature), dtype=torch.float32)
+            torch.tensor(
+                np.log(initial_temperature),
+                dtype=torch.float32,
+                device=self.device,
+            )
         )
 
         # Optimizer for temperature is created lazily because many tests and
@@ -140,26 +144,27 @@ class TargetEntropyController:
         Returns:
             tuple of (temperature_loss, current_alpha)
         """
-        # Temperature loss: L = α · (H* - H_π)
-        # We want to minimize this, which encourages H_π → H*
-        target_entropy_tensor = torch.tensor(
-            self.target_entropy,
-            dtype=torch.float32,
-            device=self.device,
-        )
+        # Temperature updates should remain trainable even if an outer caller
+        # accidentally leaves grad mode disabled. We only optimize α here, so
+        # the entropy input is treated as a detached statistic.
+        with torch.enable_grad():
+            target_entropy_tensor = torch.tensor(
+                self.target_entropy,
+                dtype=torch.float32,
+                device=self.device,
+            )
 
-        alpha = torch.exp(self.log_alpha)
-        temp_loss = alpha * (target_entropy_tensor - current_entropy)
+            alpha = torch.exp(self.log_alpha)
+            temp_loss = alpha * (target_entropy_tensor - current_entropy.detach())
 
-        # Update temperature
-        self.alpha_optimizer.zero_grad()
-        torch.autograd.backward([temp_loss])
-        self.alpha_optimizer.step()
+            self.alpha_optimizer.zero_grad()
+            temp_loss.backward()
+            self.alpha_optimizer.step()
 
         # Track statistics
-        current_alpha = alpha.item()
-        loss_value = temp_loss.item()
-        entropy_value = current_entropy.item()
+        current_alpha = alpha.detach().item()
+        loss_value = temp_loss.detach().item()
+        entropy_value = current_entropy.detach().item()
 
         self.history["alpha"].append(current_alpha)
         self.history["entropy"].append(entropy_value)
