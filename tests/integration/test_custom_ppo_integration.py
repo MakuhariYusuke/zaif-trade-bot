@@ -256,5 +256,6 @@ class TestSellMitigationTrainerIntegration:
         assert model is loaded_model
         mock_load.assert_called_once()
         mock_learn.assert_called_once()
+        assert mock_learn.call_args.kwargs["reset_num_timesteps"] is False
         mock_weights.assert_called_once()
         mock_neutralize.assert_not_called()

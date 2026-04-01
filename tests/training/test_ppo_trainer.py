@@ -53,6 +53,15 @@ else:
     )
 
 
+class _ContinueModel:
+    def __init__(self) -> None:
+        self.learn_kwargs: dict[str, object] | None = None
+
+    def learn(self, **kwargs: object) -> "_ContinueModel":
+        self.learn_kwargs = kwargs
+        return self
+
+
 @pytest.fixture
 def temp_dir(tmp_path):
     """Create temporary directory for tests that do not define a class-local fixture."""
@@ -242,6 +251,28 @@ class TestPPOTrainerAutoHalt:
         mock_custom_ppo.load.assert_called_once_with("dummy_model.zip")
         loaded_model.set_env.assert_called_once_with(env)
         assert model is loaded_model
+
+    def test_continue_loaded_ppo_training_keeps_timestep_continuity(self) -> None:
+        from ztb.training.core.ppo_trainer import continue_loaded_ppo_training
+
+        model = _ContinueModel()
+        callback = Mock()
+
+        continued = continue_loaded_ppo_training(
+            model,
+            total_timesteps=64,
+            callback=callback,
+            session_id="warm_resume",
+            progress_bar=False,
+        )
+
+        assert continued is model
+        assert model.learn_kwargs is not None
+        assert model.learn_kwargs["total_timesteps"] == 64
+        assert model.learn_kwargs["callback"] is callback
+        assert model.learn_kwargs["tb_log_name"] == "warm_resume"
+        assert model.learn_kwargs["progress_bar"] is False
+        assert model.learn_kwargs["reset_num_timesteps"] is False
 
     @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
     @patch("ztb.training.core.ppo_trainer.HeavyTradingEnv")

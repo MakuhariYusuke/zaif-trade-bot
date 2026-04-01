@@ -10261,3 +10261,50 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - regression:
   - targeted mypy: `Success: no issues found in 2 source files`
   - focused pytest: `284 passed, 5 warnings in 7.47s`
+
+- `688# timeout regime×side + decision trace id`
+  - [fill_config.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config.py)
+    - `regime_timeout_overrides`
+    - `get_timeout_with_reason(...)`
+  - [fill_config_parser.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config_parser.py)
+  - [fill_config_validation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config_validation.py)
+  - [config_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/config_hot_reload.py)
+  - [fill_cycle_executor.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_cycle_executor.py)
+  - [order_monitor.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/order_monitor.py)
+  - [fill_record_builder.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_record_builder.py)
+  - [skip_gate_evaluator.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/skip_gate_evaluator.py)
+  - [fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py)
+    - `decision_trace_id`
+    - `timeout_applied_sec`
+    - `timeout_reason`
+  - `sell_age_cap` 適用時は timeout reason に suffix を残すようにした
+  - `_execute_skip()` call site の監査コメントを追加
+  - YAML drift allowlist に
+    - `skip_gate_bypass_mode`
+    - `regime_timeout_overrides`
+    を追記
+  - regression:
+    - targeted mypy: `Success: no issues found in 8 source files`
+    - focused pytest: `439 passed, 5 warnings in 8.63s`
+    - broader pytest: `430 passed, 5 warnings in 12.41s`
+
+- PPO warm-start continuity / heavy test setup 削減
+  - [ztb/training/core/ppo_trainer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/core/ppo_trainer.py)
+    - `continue_loaded_ppo_training(...)`
+    - `reset_num_timesteps=False` で warm-start continuity を固定
+  - [ztb/training/experiments/sell_mitigation_ppo_trainer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/experiments/sell_mitigation_ppo_trainer.py)
+    - warm-start 経路も同じ continuity 契約へ追随
+  - [tests/unit/v460/test_ppo_warm_start.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_ppo_warm_start.py)
+  - [tests/integration/test_custom_ppo_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/integration/test_custom_ppo_integration.py)
+  - [tests/training/test_ppo_trainer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/test_ppo_trainer.py)
+    - warm-start continuity guard を追加
+  - [tests/unit/v460/test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py)
+    - source inspect を module-level 定数へ寄せた
+  - [tests/unit/v460/test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+    - real-data smoke sample を `6/10/14` へ縮小
+  - [scripts/v460/test_env_internal.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/test_env_internal.py)
+    - torch lazy import
+  - regression:
+    - targeted mypy: `Success: no issues found in 6 source files`
+    - focused pytest: `323 passed, 1 skipped, 5 warnings in 10.92s`
+    - broader pytest: `409 passed, 1 skipped, 5 warnings in 10.81s`

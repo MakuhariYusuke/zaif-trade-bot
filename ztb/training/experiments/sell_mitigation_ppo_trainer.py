@@ -35,6 +35,7 @@ from ztb.training.core.runtime_limits import (
 from ztb.training.core.ppo_trainer import (
     PPOTrainerAutoHalt as PPOTrainer,
     build_ppo_model_kwargs,
+    continue_loaded_ppo_training,
     load_ppo_model_for_env,
     wrap_env_with_action_masker,
 )
@@ -301,17 +302,28 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         *,
         total_timesteps: int,
         session_id: str,
+        reset_num_timesteps: bool = True,
     ) -> CustomPPO:
         """Train the current model using the shared mitigation training flow."""
         if self.model is None:
             raise RuntimeError("SELL mitigation model is not initialized")
 
         self.start_training()
-        self.model.learn(
-            total_timesteps=total_timesteps,
-            callback=self._create_callback(),
-            tb_log_name=session_id,
-        )
+        if reset_num_timesteps:
+            self.model.learn(
+                total_timesteps=total_timesteps,
+                callback=self._create_callback(),
+                tb_log_name=session_id,
+                reset_num_timesteps=True,
+            )
+        else:
+            continue_loaded_ppo_training(
+                self.model,
+                total_timesteps=total_timesteps,
+                callback=self._create_callback(),
+                session_id=session_id,
+                progress_bar=False,
+            )
         self._ensure_lagrange_step_count()
         self._final_validation()
         return self.model
@@ -364,6 +376,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             return self._run_current_model_training(
                 total_timesteps=total_timesteps,
                 session_id=session_id,
+                reset_num_timesteps=False,
             )
         except Exception as exc:
             logger.warning(

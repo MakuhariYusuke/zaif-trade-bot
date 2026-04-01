@@ -116,6 +116,25 @@ def load_ppo_model_for_env(
     loaded_model.set_env(env)
     return loaded_model
 
+
+def continue_loaded_ppo_training(
+    model: MaskablePPO,
+    *,
+    total_timesteps: int,
+    callback: BaseCallback,
+    session_id: str,
+    progress_bar: bool,
+) -> MaskablePPO:
+    """Continue training an already-loaded PPO model without resetting timesteps."""
+    model.learn(
+        total_timesteps=total_timesteps,
+        callback=callback,
+        tb_log_name=session_id,
+        progress_bar=progress_bar,
+        reset_num_timesteps=False,
+    )
+    return model
+
 class PPOTrainerProtocol(Protocol):
     """Protocol for PPO Trainer implementations."""
 
@@ -542,6 +561,7 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
         *,
         total_timesteps: int,
         session_id: str,
+        reset_num_timesteps: bool = True,
     ) -> MaskablePPO:
         """Run a PPO learn cycle with the current callback/runtime contract."""
         logger.info("Training for %s timesteps", total_timesteps)
@@ -551,6 +571,7 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
             callback=self._create_callback(),
             tb_log_name=session_id,
             progress_bar=self.progress_bar_enabled,
+            reset_num_timesteps=reset_num_timesteps,
         )
         logger.info("Training loop completed, evaluating final results...")
         return model
@@ -624,6 +645,7 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
                 loaded_model,
                 total_timesteps=total_timesteps,
                 session_id=session_id,
+                reset_num_timesteps=False,
             )
         except Exception as exc:
             logger.warning(

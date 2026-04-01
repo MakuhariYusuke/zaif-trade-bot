@@ -17,6 +17,7 @@ class _WarmStartModel:
     def __init__(self) -> None:
         self.env: object | None = None
         self.learn_calls: list[int] = []
+        self.reset_num_timesteps_calls: list[bool] = []
         self.saved_paths: list[str] = []
 
     def set_env(self, env: object) -> None:
@@ -28,9 +29,11 @@ class _WarmStartModel:
         callback: object,
         tb_log_name: str,
         progress_bar: bool,
+        reset_num_timesteps: bool = True,
     ) -> "_WarmStartModel":
         del callback, tb_log_name, progress_bar
         self.learn_calls.append(total_timesteps)
+        self.reset_num_timesteps_calls.append(reset_num_timesteps)
         return self
 
     def save(self, path: str) -> None:
@@ -91,6 +94,7 @@ class TestPPOWarmStart:
             trained = trainer.train(session_id="cold_start")
             assert trained is cold_model
             assert cold_model.learn_calls == [32]
+            assert cold_model.reset_num_timesteps_calls == [True]
 
             cold_model.save(str(model_path))
             warmed = trainer.load_and_continue(
@@ -102,6 +106,7 @@ class TestPPOWarmStart:
         assert warmed is warm_model
         assert warm_model.env is not None
         assert warm_model.learn_calls == [12]
+        assert warm_model.reset_num_timesteps_calls == [False]
         warm_model.save(str(model_path))
         assert model_path.exists()
 

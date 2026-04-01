@@ -92,6 +92,9 @@ _FAST_CYCLE_LOGGER_PATHS = (
     "scripts.v460.lib.phantom_position_guard.logger",
 )
 _ORDER_MONITOR_SOURCE = read_inspect_source(OrderMonitor)
+_PROCESS_POST_CYCLE_SOURCE = read_inspect_source(FillTestRunner._process_post_cycle)
+_RUN_PRE_ORDER_PHASE_SOURCE = read_fill_test_method_source("_run_pre_order_phase")
+_MAKER_PRICE_SOURCE = read_source_text(MAKER_PRICE)
 
 
 async def _instant_async_sleep(_delay: float) -> None:
@@ -572,6 +575,23 @@ class TestFillRecord:
         assert r.skip_gate_skipped is False
         assert r.skip_gate_bypassed is True
 
+    def test_build_fill_record_preserves_timeout_trace_fields(self) -> None:
+
+        r = build_fill_record(
+            cycle_id="trace_1",
+            timestamp=4.0,
+            side="buy",
+            order_price=100.0,
+            order_quantity=0.01,
+            decision_trace_id="dt_test_1",
+            timeout_applied_sec=20.0,
+            timeout_reason="regime_strong_up_sell",
+        )
+
+        assert r.decision_trace_id == "dt_test_1"
+        assert r.timeout_applied_sec == 20.0
+        assert r.timeout_reason == "regime_strong_up_sell"
+
     def test_build_fill_record_ignores_unknown_fields(self) -> None:
 
         r = build_fill_record(
@@ -635,6 +655,26 @@ class TestFillRecord:
         assert d["cancel_reason"] == "post_only_reject"
         r2 = FillRecord.from_dict(d)
         assert r2.cancel_reason == "post_only_reject"
+
+    def test_timeout_trace_fields_roundtrip(self) -> None:
+        r = FillRecord(
+            cycle_id="trace_rt",
+            timestamp=0.0,
+            side="buy",
+            order_price=1.0,
+            order_quantity=0.001,
+            decision_trace_id="dt_trace_rt",
+            timeout_applied_sec=30.0,
+            timeout_reason="base_default_sell_age_cap",
+        )
+        d = r.to_dict()
+        assert d["decision_trace_id"] == "dt_trace_rt"
+        assert d["timeout_applied_sec"] == 30.0
+        assert d["timeout_reason"] == "base_default_sell_age_cap"
+        r2 = FillRecord.from_dict(d)
+        assert r2.decision_trace_id == "dt_trace_rt"
+        assert r2.timeout_applied_sec == 30.0
+        assert r2.timeout_reason == "base_default_sell_age_cap"
 
     def test_cancel_reason_default_none(self) -> None:
         """CM-2: cancel_reason はデフォルト None."""
@@ -2594,7 +2634,7 @@ class Test049SideOffset:
         base_offset_ratio_buy/sell を参照する設計に変更。
         120#: maker_price.py に抽出済み。
         """
-        source = read_source_text(MAKER_PRICE)
+        source = _MAKER_PRICE_SOURCE
         # 096# 状態分離: base_offset_ratio* を使用
         assert "base_offset_ratio" in source
         assert "effective_offset_ratio" in source
@@ -2643,7 +2683,7 @@ class Test049FastFillDefense:
         265# extract: post-cycle 処理は _process_post_cycle に分離。
         """
 
-        source = read_inspect_source(FillTestRunner._process_post_cycle)
+        source = _PROCESS_POST_CYCLE_SOURCE
         assert "fast_fill_defense" in source
         assert "evaluate_fill" in source
 
@@ -2700,7 +2740,7 @@ class Test050FastFillDefenseRestore:
         265# extract: post-cycle 処理は _process_post_cycle に分離。
         """
 
-        source = read_inspect_source(FillTestRunner._process_post_cycle)
+        source = _PROCESS_POST_CYCLE_SOURCE
         # 100# FastFillDefense の evaluate_fill / reset_on_unfilled で管理
         assert "fast_fill_defense" in source
         assert "reset_on_unfilled" in source
@@ -2714,7 +2754,7 @@ class Test050EffectiveOffsetRecord:
 
         120#: maker_price.py に抽出済み。MakerPriceResult NamedTuple で返却。
         """
-        source = read_source_text(MAKER_PRICE)
+        source = _MAKER_PRICE_SOURCE
         assert "effective_offset_ratio" in source
         # MakerPriceResult に price, spread, effective_offset_ratio を格納
         assert "MakerPriceResult" in source
@@ -2722,7 +2762,7 @@ class Test050EffectiveOffsetRecord:
     def test_run_single_cycle_unpacks_3_values(self) -> None:
         """pre-order phase が 3 値展開を行う."""
 
-        source = read_fill_test_method_source("_run_pre_order_phase")
+        source = _RUN_PRE_ORDER_PHASE_SOURCE
         assert "effective_offset_ratio" in source
 
 

@@ -726,3 +726,46 @@ probe / weighting の wiring だけ current contract に揃えられた。
 - overlap 確認:
   - 今回切り出した helper は既存 helper と実質重複していない
   - `atomic_replace_with_tmp(...)` と同じく `ztb.training.sidecar` 配下に置くのが妥当
+
+## 2026-04-02 continuity 追記
+
+- `ztb/training/core/ppo_trainer.py`
+  - `continue_loaded_ppo_training(...)` を追加
+  - `load_and_continue(...)` は `reset_num_timesteps=False` で継続学習するように修正
+- `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+  - warm-start でも同じ continuity 契約を使用
+  - cold start のみ `neutralize_policy_bias()` を通す既存方針は維持
+- `tests/unit/v460/test_ppo_warm_start.py`
+  - cold start は `reset_num_timesteps=True`
+  - warm start は `reset_num_timesteps=False`
+  を明示的に guard
+- `tests/integration/test_custom_ppo_integration.py`
+  - SELL mitigation warm-start で continuity flag を確認
+- `tests/training/test_ppo_trainer.py`
+  - shared helper contract test を追加
+- `scripts/v460/test_env_internal.py`
+  - top-level `torch` import をやめ、`main()` 内 best-effort import に変更
+
+回帰:
+
+- targeted mypy:
+  - `ztb/training/core/ppo_trainer.py`
+  - `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+  - `tests/unit/v460/test_ppo_warm_start.py`
+  - `tests/integration/test_custom_ppo_integration.py`
+  - `tests/training/test_ppo_trainer.py`
+  - `scripts/v460/test_env_internal.py`
+  - `Success: no issues found in 6 source files`
+- focused pytest:
+  - `tests/unit/v460/test_ppo_warm_start.py`
+  - `tests/integration/test_custom_ppo_integration.py`
+  - `tests/training/test_ppo_trainer.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `323 passed, 1 skipped, 5 warnings in 10.92s`
+- broader regression:
+  - `tests/unit/v460/test_679_ppo_sidecar_foundation.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - 上記 focused 群
+  - `409 passed, 1 skipped, 5 warnings in 10.81s`

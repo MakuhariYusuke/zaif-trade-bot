@@ -8,9 +8,13 @@ sys.path.insert(0, str(project_root))
 
 from configs.v460.base import EnvironmentConfig
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-import torch # early import
 
-def main():
+def main() -> None:
+    try:
+        import torch  # noqa: F401
+    except Exception:
+        pass
+
     cfg = EnvironmentConfig(
         transaction_cost=0.001,
         max_position_size=0.01,

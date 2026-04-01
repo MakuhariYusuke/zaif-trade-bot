@@ -96,4 +96,80 @@
 ### 残 Codex バックログ
 - 638# P1: bucket 別 skip budget (M) — regime bucketing 基盤が必要
 - 672# P1: AS 予測モデル再構築 (L) — 長期課題
-- 687# torch test isolation — Codex 投入済み、結果待ち
+- 687# torch test isolation — 主要 entrypoint の lazy import 化まで完了、横展開は継続観察
+
+## §6 688# Codex 実装結果
+
+### C1: Timeout regime×side 別短縮
+
+- `FillTestConfig.regime_timeout_overrides` を追加
+- `get_timeout_with_reason(side, regime)` を追加
+  - 優先順:
+    1. `regime.timeout_overrides`
+    2. legacy `macro_sell_timeout_*`
+    3. `order_timeout_sec_sell`
+    4. `order_timeout_sec`
+- `config_hot_reload` に `regime_timeout_overrides` を追加
+- `fill_cycle_executor` / `order_monitor` / `FillMonitorResult` / `FillRecord`
+  に以下を接続
+  - `timeout_applied_sec`
+  - `timeout_reason`
+- `sell_age_cap_sec` で実効 timeout が短縮された場合は
+  `*_sell_age_cap` を reason に付与して可観測化
+
+### C2: _execute_skip 監査 + decision trace id
+
+- `_execute_skip()` に docstring を追加
+- 全 call site に `update_last_side=True/False` の意図コメントを追加
+- `decision_trace_id` をサイクル開始時に生成して
+  - skip gate
+  - offset
+  - timeout
+  - outcome
+ へ付与
+- `FillRecord` に `decision_trace_id` を追加
+
+### 横展開したもの
+
+- `skip_gate_bypass_mode` の YAML drift allowlist 漏れを補正
+- source-audit テストを既存 `test_276_blocking_policy_dry.py` へ統合
+- `regime.timeout_overrides` は YAML / hot-reload / validation / FillRecord の 4 層で整合を確保
+- `687# torch test isolation` の横展開として
+  - `tools/ab_param_search.py`
+  - `scripts/v460/test_env_internal.py`
+  の top-level torch 依存を薄くした
+
+### 回帰
+
+- targeted mypy:
+  - `fill_config.py`
+  - `fill_config_parser.py`
+  - `config_hot_reload.py`
+  - `fill_config_results.py`
+  - `order_monitor_policy.py`
+  - `test_688_timeout_trace_and_skip_audit.py`
+  - `test_169_config_hot_reload.py`
+  - `test_346_fill_config_validation.py`
+  - `Success: no issues found in 8 source files`
+- focused pytest:
+  - `test_336_yaml_code_drift_prevention.py`
+  - `test_688_timeout_trace_and_skip_audit.py`
+  - `test_169_config_hot_reload.py`
+  - `test_346_fill_config_validation.py`
+  - `test_fill_quality.py`
+  - `test_687_state_separation.py`
+  - `test_276_blocking_policy_dry.py`
+  - `test_143_regime_utilization.py`
+  - `test_skip_gate_v3.py`
+  - `439 passed, 5 warnings in 8.63s`
+- broader regression:
+  - `test_skip_gate_v3.py`
+  - `test_trend_5s_sell_guard.py`
+  - `test_679_ppo_sidecar_foundation.py`
+  - `test_680_ppo_retrain_scheduler.py`
+  - `test_sac_retrain_scheduler.py`
+  - `test_fill_quality.py`
+  - `test_687_state_separation.py`
+  - `test_276_blocking_policy_dry.py`
+  - `test_143_regime_utilization.py`
+  - `430 passed, 5 warnings in 12.41s`

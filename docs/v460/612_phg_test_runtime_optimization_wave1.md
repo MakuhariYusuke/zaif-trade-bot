@@ -1166,3 +1166,63 @@ durations 変化で特に効いた点:
 - `tests/unit/v460/test_sac_retrain_scheduler.py`
 - `tests/training/test_ppo_trainer.py`
 - `388 passed, 1 skipped, 5 warnings in 14.23s`
+
+## 2026-04-02 688# timeout/trace 回帰束
+
+- `test_336_yaml_code_drift_prevention.py`
+- `test_688_timeout_trace_and_skip_audit.py`
+- `test_169_config_hot_reload.py`
+- `test_346_fill_config_validation.py`
+- `test_fill_quality.py`
+- `test_687_state_separation.py`
+- `test_276_blocking_policy_dry.py`
+- `test_143_regime_utilization.py`
+- `test_skip_gate_v3.py`
+- 結果:
+  - `439 passed, 5 warnings in 8.63s`
+
+この束では runtime 短縮そのものより、
+- timeout override
+- trace id
+- skip audit
+- YAML drift
+の回帰面を厚くした。
+
+次の heavy-setup 優先順は引き続き同じ:
+1. scheduler exception-path / cleanup fixed-cost
+2. fill-quality command/wiring setup
+3. real-data smoke setup
+
+## 2026-04-02 追加削減: source inspect / warm-start / torch isolation
+
+- `tests/unit/v460/test_fill_quality.py`
+  - `read_inspect_source(...)`
+  - `read_fill_test_method_source(...)`
+  - `read_source_text(...)`
+  の重複呼び出しを module-level 定数へ寄せた
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - real-data smoke sample を
+    - `8/12/18 -> 6/10/14`
+    に縮小
+- PPO warm-start continuity の focused guard を追加
+  - `tests/unit/v460/test_ppo_warm_start.py`
+  - `tests/integration/test_custom_ppo_integration.py`
+  - `tests/training/test_ppo_trainer.py`
+- `scripts/v460/test_env_internal.py`
+  - top-level torch import をやめ、`main()` 内 lazy import に変更
+
+回帰:
+
+- focused:
+  - `tests/unit/v460/test_ppo_warm_start.py`
+  - `tests/integration/test_custom_ppo_integration.py`
+  - `tests/training/test_ppo_trainer.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `323 passed, 1 skipped, 5 warnings in 10.92s`
+- broader:
+  - `tests/unit/v460/test_679_ppo_sidecar_foundation.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - 上記 focused 群
+  - `409 passed, 1 skipped, 5 warnings in 10.81s`
