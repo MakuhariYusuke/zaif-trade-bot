@@ -192,3 +192,65 @@ class TestSellMitigationTrainerIntegration:
         mock_learn.assert_called_once()
         assert model.enable_pan is True
         assert model.enable_target_entropy is True
+
+    def test_sell_mitigation_load_and_continue_uses_current_warm_start_path(
+        self,
+        simple_df: pd.DataFrame,
+        tmp_path: Path,
+    ) -> None:
+        data_path = tmp_path / "ppo_smoke.csv"
+        simple_df.to_csv(data_path, index=False)
+        checkpoint_dir = tmp_path / "checkpoints"
+        checkpoint_dir.mkdir()
+        model_path = checkpoint_dir / "ppo_sidecar.zip"
+        model_path.write_bytes(b"fake-model")
+
+        params = SELLMitigationParams(
+            data_path=str(data_path),
+            config={
+                "policy": "MlpPolicy",
+                "learning_rate": 3e-4,
+                "n_steps": 16,
+                "batch_size": 8,
+                "n_epochs": 1,
+                "total_timesteps": 32,
+                "verbose": 0,
+                "use_continuous_actions": False,
+            },
+            checkpoint_dir=str(checkpoint_dir),
+            enable_lagrange=False,
+            enable_probes=False,
+            enable_weights=False,
+            enable_pan=True,
+            enable_target_entropy=True,
+            enable_stratified_sampling=False,
+        )
+        trainer = SELLBiasMitigationPPOTrainer(params)
+        loaded_model = CustomPPO(
+            policy="MlpPolicy",
+            env=ActionMasker(_TinyMaskedEnv(), mask_fn=lambda inner: inner.get_action_masks()),
+            n_steps=16,
+            batch_size=8,
+            n_epochs=1,
+            verbose=0,
+        )
+
+        with (
+            patch.object(trainer, "_create_training_env", return_value=ActionMasker(_TinyMaskedEnv(), mask_fn=lambda inner: inner.get_action_masks())),
+            patch(
+                "ztb.training.experiments.sell_mitigation_ppo_trainer.load_ppo_model_for_env",
+                return_value=loaded_model,
+            ) as mock_load,
+            patch.object(CustomPPO, "learn", autospec=True, return_value=None) as mock_learn,
+            patch.object(trainer, "_final_validation", return_value=None),
+            patch.object(trainer, "start_training", return_value=None),
+        ):
+            model = trainer.load_and_continue(
+                model_path=model_path,
+                total_timesteps=12,
+                session_id="ppo_warm_resume",
+            )
+
+        assert model is loaded_model
+        mock_load.assert_called_once()
+        mock_learn.assert_called_once()

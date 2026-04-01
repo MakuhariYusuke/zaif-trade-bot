@@ -991,3 +991,12 @@ durations 変化で特に効いた点:
   - interval/time 依存を trigger mock に寄せる
   - live RSS 依存を helper mock に寄せる
   という test responsibility の整理。
+
+- PPO warm-start helper reuse:
+  - `tests/training/test_ppo_trainer.py`
+  - `tests/integration/test_custom_ppo_integration.py`
+  - `tests/unit/v460/test_ppo_warm_start.py`
+  - `SELLBiasMitigationPPOTrainer` の warm-start path を direct guard
+  - core 側の `load_ppo_model_for_env(...)` も focused で固定
+  - subset:
+    - `39 passed in 6.02s`

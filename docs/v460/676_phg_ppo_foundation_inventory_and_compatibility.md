@@ -199,3 +199,25 @@ generic helper は `ztb/` 側へ戻していく方針を明記する。
      - kwargs / env wrapping / artifact wiring を helper 境界に分離
   3. `fill_quality.py`
      - skip payload shaping / dataframe bridge / persistence bridge を helper 化
+
+## 追記: warm-start helper 再利用
+
+PPO Phase 3 の後段として、warm-start と trainer 構築の責務も整理した。
+
+- `ztb/training/core/ppo_trainer.py`
+  - `resolve_ppo_model_class(...)`
+  - `load_ppo_model_for_env(...)`
+  を追加
+- `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+  - `load_and_continue(...)` を追加
+  - `train()` の長い初期化経路を
+    - dataframe load
+    - env config build
+    - env create
+    - model create
+    - total timestep resolve
+    - lagrange warmup nudge
+    に分離
+
+この整理で、PPO core と SELL mitigation で別々に model load / env bind を持たずに済むようになった。
+継承を増やすより、helper の共有で drift を止める方が安全、という判断である。

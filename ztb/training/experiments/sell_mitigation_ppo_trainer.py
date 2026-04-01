@@ -12,10 +12,12 @@ Extends PPOTrainer with comprehensive action bias mitigation:
 """
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
+import pandas as pd
 from sb3_contrib import MaskablePPO
+from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 
 from ztb.io.data_loader import DataLoader
@@ -29,6 +31,7 @@ from ztb.training.config.trainer_params import SELLMitigationParams
 from ztb.training.core.ppo_trainer import (
     PPOTrainerAutoHalt as PPOTrainer,
     build_ppo_model_kwargs,
+    load_ppo_model_for_env,
     wrap_env_with_action_masker,
 )
 from ztb.training.models.custom_ppo import CustomPPO
@@ -179,6 +182,173 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         # Note: This would require modifying the PPO loss computation
         # For now, we rely on the Lagrange constraint for the hard guarantee
 
+    def _load_training_dataframe(self) -> pd.DataFrame:
+        """Load training data and apply the shared memory-optimization limit."""
+        df_full = DataLoader.load_csv_strict(self.data_path)
+        data_rows_limit = self.config.get("data_rows_limit") or (
+            self.config.get("memory_optimization", {}) or {}
+        ).get("data_rows_limit")
+
+        if data_rows_limit and len(df_full) > data_rows_limit:
+            logger.info(
+                "⚠️  MEMORY OPTIMIZATION: Limiting data from %s to %s rows",
+                len(df_full),
+                data_rows_limit,
+            )
+            df = df_full.iloc[:data_rows_limit]
+            del df_full
+            import gc
+
+            gc.collect()
+            return df
+        return df_full
+
+    def _build_env_config(self, *, max_features: int | None) -> dict[str, object]:
+        """Build the HeavyTradingEnv config for mitigation training."""
+        return {
+            "curriculum_stage": self.config.get("curriculum_stage", "full"),
+            "allow_reverse": self.allow_reverse,
+            "transaction_cost": self.config.get("transaction_cost", 0.001),
+            "max_position_size": self.config.get("max_position_size", 1.0),
+            "risk_free_rate": self.config.get("risk_free_rate", 0.0),
+            "reward_scaling": self.config.get("reward_scaling", 1.0),
+            "reward_settings": self.config.get("reward_settings", {}),
+            "max_features": max_features,
+            "enable_correlation_reduction": self.config.get(
+                "enable_correlation_reduction", True
+            ),
+        }
+
+    def _create_training_env(self) -> ActionMasker:
+        """Create the current masked env for SELL mitigation PPO."""
+        df = self._load_training_dataframe()
+        max_features = (
+            self.config.get("max_features")
+            or (self.config.get("memory_optimization", {}) or {}).get("max_features")
+            or (self.config.get("ppo", {}) or {}).get("max_features")
+        )
+        env = HeavyTradingEnv(
+            df=df,
+            config=self._build_env_config(max_features=max_features),
+            max_features=max_features,
+        )
+        return wrap_env_with_action_masker(env)
+
+    def _create_custom_model(self, env: ActionMasker) -> CustomPPO:
+        """Create a CustomPPO model with the current mitigation settings."""
+        model_kwargs = build_ppo_model_kwargs(
+            self.training_config,
+            tensorboard_log=self.config.get("tensorboard_log"),
+            device=str(self.config.get("device", "auto")),
+        )
+        return CustomPPO(
+            policy=self.config.get("policy", "MlpPolicy"),
+            env=env,
+            **model_kwargs,
+            policy_kwargs=self.config.get("policy_kwargs"),
+            seed=self.config.get("seed"),
+            _init_setup_model=self.config.get("_init_setup_model", True),
+            enable_pan=self.enable_pan,
+            enable_target_entropy=self.enable_target_entropy,
+            enable_stratified_sampling=self.enable_stratified_sampling,
+            enable_lagrange=self.enable_lagrange,
+            lagrange_target_action="SELL",
+            lagrange_r_target=self.lagrange_params.get(
+                "r_target", LAGRANGE_DEFAULTS["r_target"]
+            ),
+            lagrange_tolerance=self.lagrange_params.get(
+                "tolerance", LAGRANGE_DEFAULTS["tolerance"]
+            ),
+            lagrange_eta=self.lagrange_params.get(
+                "eta", LAGRANGE_DEFAULTS["eta"]
+            ),
+            lagrange_lambda_max=self.lagrange_params.get(
+                "lambda_max", LAGRANGE_DEFAULTS["lambda_max"]
+            ),
+            lagrange_warmup_steps=int(
+                self.lagrange_params.get(
+                    "warmup_steps", LAGRANGE_DEFAULTS["warmup_steps"]
+                )
+            ),
+            pan_epsilon=EPSILON,
+            target_entropy_ratio=0.7,
+            lr_temperature=3e-4,
+            initial_temperature=0.01,
+        )
+
+    def _resolve_total_timesteps(self) -> int:
+        """Resolve total timesteps from current unified/legacy config layouts."""
+        training_cfg = self.config.get("training")
+        if isinstance(training_cfg, dict):
+            total_timesteps = training_cfg.get("total_timesteps")
+            if total_timesteps is not None:
+                return int(total_timesteps)
+
+        total_timesteps = self.config.get("total_timesteps")
+        if total_timesteps is None:
+            raise KeyError("training total_timesteps not found in config")
+        return int(total_timesteps)
+
+    def _ensure_lagrange_step_count(self) -> None:
+        """Make sure final validation has at least one Lagrange statistic sample."""
+        try:
+            model = self.model
+            lagrange = getattr(model, "lagrange", None)
+            if lagrange is not None and getattr(lagrange, "step_count", 0) == 0:
+                    import numpy as _np
+
+                    _ = lagrange.compute_penalty(
+                        actions=_np.array([0]), legal_masks=_np.ones((1, 3))
+                    )
+        except Exception:
+            return
+
+    def load_and_continue(
+        self,
+        model_path: Path,
+        total_timesteps: int,
+        session_id: str,
+    ) -> MaskablePPO:
+        """Warm-start SELL mitigation training from an existing PPO artifact."""
+        logger.info("Starting SELL mitigation PPO warm-start: %s", session_id)
+        if not model_path.exists():
+            logger.warning(
+                "Warm-start model not found at %s, falling back to cold start",
+                model_path,
+            )
+            return self.train(session_id=session_id)
+
+        try:
+            env = self._create_training_env()
+            self.model = cast(
+                CustomPPO,
+                load_ppo_model_for_env(
+                    model_path,
+                    use_custom_ppo=True,
+                    env=env,
+                ),
+            )
+            self.start_training()
+            self.model.learn(
+                total_timesteps=total_timesteps,
+                callback=self._create_callback(),
+                tb_log_name=session_id,
+            )
+            self._ensure_lagrange_step_count()
+            self._final_validation()
+            return self.model
+        except Exception as exc:
+            logger.warning(
+                "SELL mitigation warm-start failed for %s (%s), falling back to cold start",
+                model_path,
+                exc,
+                exc_info=True,
+            )
+            return self.train(session_id=session_id)
+        finally:
+            if self.probe is not None:
+                self.probe.close()
+
     def train(self, session_id: str) -> MaskablePPO:
         """Train with SELL bias mitigation using CustomPPO."""
         logger.info("=" * 60)
@@ -198,110 +368,8 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         try:
             # ★ MODIFIED: Create model with CustomPPO instead of standard flow
             if self.model is None:
-                # Load data
-                df_full = DataLoader.load_csv_strict(self.data_path)
-
-                # ====================================================================
-                # UNIFIED MEMORY OPTIMIZATION (Bug #52 fix)
-                # ====================================================================
-                # Apply data_rows_limit if specified
-                # Priority: 1) Top-level config, 2) memory_optimization section
-                data_rows_limit = self.config.get("data_rows_limit") or (
-                    self.config.get("memory_optimization", {}) or {}
-                ).get("data_rows_limit")
-
-                if data_rows_limit and len(df_full) > data_rows_limit:
-                    logger.info(
-                        f"⚠️  MEMORY OPTIMIZATION: Limiting data from {len(df_full)} to {data_rows_limit} rows"
-                    )
-                    # Memory optimized: Use iloc slice instead of copy
-                    df = df_full.iloc[:data_rows_limit]
-                    del df_full
-                    import gc
-
-                    gc.collect()
-                else:
-                    df = df_full
-
-                # Extract max_features from unified config structure
-                # Priority: 1) Top-level config, 2) memory_optimization section, 3) ppo section
-                max_features = (
-                    self.config.get("max_features")
-                    or (self.config.get("memory_optimization", {}) or {}).get(
-                        "max_features"
-                    )
-                    or (self.config.get("ppo", {}) or {}).get("max_features")
-                )
-
-                # Create environment config with curriculum_stage and allow_reverse
-                env_config = {
-                    "curriculum_stage": self.config.get("curriculum_stage", "full"),
-                    "allow_reverse": self.allow_reverse,
-                    "transaction_cost": self.config.get("transaction_cost", 0.001),
-                    "max_position_size": self.config.get("max_position_size", 1.0),
-                    "risk_free_rate": self.config.get("risk_free_rate", 0.0),
-                    "reward_scaling": self.config.get("reward_scaling", 1.0),
-                    # ★ BUG FIX: Pass reward_settings from config to environment
-                    "reward_settings": self.config.get("reward_settings", {}),
-                    # ★ BUG #52 FIX: Pass memory optimization settings (unified)
-                    "max_features": max_features,
-                    "enable_correlation_reduction": self.config.get(
-                        "enable_correlation_reduction", True
-                    ),
-                }
-
-                # Create environment with unified max_features
-                env = HeavyTradingEnv(
-                    df=df, config=env_config, max_features=max_features
-                )
-
-                # Keep the same action-mask contract as the core PPO trainer.
-                env = wrap_env_with_action_masker(env)
-
-                # ★ Create CustomPPO with integrated bias mitigations
-                model_kwargs = build_ppo_model_kwargs(
-                    self.training_config,
-                    tensorboard_log=self.config.get("tensorboard_log"),
-                    device=str(self.config.get("device", "auto")),
-                )
-
-                self.model = CustomPPO(
-                    policy=self.config.get("policy", "MlpPolicy"),
-                    env=env,
-                    **model_kwargs,
-                    policy_kwargs=self.config.get("policy_kwargs"),
-                    seed=self.config.get("seed"),
-                    _init_setup_model=self.config.get("_init_setup_model", True),
-                    # ★ Custom bias mitigation parameters
-                    enable_pan=self.enable_pan,
-                    enable_target_entropy=self.enable_target_entropy,
-                    enable_stratified_sampling=self.enable_stratified_sampling,
-                    # ★ Lagrange constraint parameters
-                    enable_lagrange=self.enable_lagrange,
-                    lagrange_target_action="SELL",
-                    lagrange_r_target=self.lagrange_params.get(
-                        "r_target", LAGRANGE_DEFAULTS["r_target"]
-                    ),
-                    lagrange_tolerance=self.lagrange_params.get(
-                        "tolerance", LAGRANGE_DEFAULTS["tolerance"]
-                    ),
-                    lagrange_eta=self.lagrange_params.get(
-                        "eta", LAGRANGE_DEFAULTS["eta"]
-                    ),
-                    lagrange_lambda_max=self.lagrange_params.get(
-                        "lambda_max", LAGRANGE_DEFAULTS["lambda_max"]
-                    ),
-                    lagrange_warmup_steps=int(
-                        self.lagrange_params.get(
-                            "warmup_steps", LAGRANGE_DEFAULTS["warmup_steps"]
-                        )
-                    ),
-                    # ★ PAN/Entropy/Stratified parameters
-                    pan_epsilon=EPSILON,
-                    target_entropy_ratio=0.7,
-                    lr_temperature=3e-4,
-                    initial_temperature=0.01,
-                )
+                env = self._create_training_env()
+                self.model = self._create_custom_model(env)
 
                 logger.info("CustomPPO model created with integrated mitigations")
 
@@ -316,18 +384,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
 
             # Train the model - support both unified config (with a 'training'
             # section) and legacy flat config keys.
-            total_timesteps = None
-            try:
-                training_cfg = self.config.get("training")
-                if isinstance(training_cfg, dict):
-                    total_timesteps = training_cfg.get("total_timesteps")
-            except Exception:
-                total_timesteps = None
-
-            if total_timesteps is None:
-                total_timesteps = self.config.get("total_timesteps")
-                if total_timesteps is None:
-                    raise KeyError("training total_timesteps not found in config")
+            total_timesteps = self._resolve_total_timesteps()
             logger.info("=" * 80)
             logger.info(
                 f"🚀 Starting model.learn() with total_timesteps={total_timesteps:,}"
@@ -344,22 +401,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             logger.info("=" * 80)
             logger.info("✅ model.learn() completed")
             logger.info("=" * 80)
-            # Ensure Lagrange has at least one recorded step so final validation
-            # and statistics reporting produce meaningful values. In some test
-            # environments (very short training or non-standard rollout buffers)
-            # the Lagrange update loop may not have been triggered; nudge it
-            # with a no-op computation to ensure downstream code has data.
-            try:
-                if hasattr(self.model, "lagrange") and self.model.lagrange is not None:
-                    if getattr(self.model.lagrange, "step_count", 0) == 0:
-                        import numpy as _np
-
-                        _ = self.model.lagrange.compute_penalty(
-                            actions=_np.array([0]), legal_masks=_np.ones((1, 3))
-                        )
-            except Exception:
-                # Best-effort only; don't fail training for diagnostic nudges
-                pass
+            self._ensure_lagrange_step_count()
 
             # Final validation
             self._final_validation()

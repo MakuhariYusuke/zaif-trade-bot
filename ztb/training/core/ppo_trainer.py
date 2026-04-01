@@ -84,6 +84,34 @@ def build_ppo_model_kwargs(
         "device": device,
     }
 
+
+def resolve_ppo_model_class(use_custom_ppo: bool) -> type[MaskablePPO]:
+    """Resolve the current PPO model class, honoring the compatibility shim."""
+    try:
+        import ztb.training.ppo_trainer as _shim
+
+        if use_custom_ppo:
+            return cast(type[MaskablePPO], getattr(_shim, "CustomPPO", CustomPPO))
+        return cast(type[MaskablePPO], getattr(_shim, "MaskablePPO", MaskablePPO))
+    except Exception:
+        return cast(type[MaskablePPO], CustomPPO if use_custom_ppo else MaskablePPO)
+
+
+def load_ppo_model_for_env(
+    model_path: Path,
+    *,
+    use_custom_ppo: bool,
+    env: ActionMasker,
+) -> MaskablePPO:
+    """Load an existing PPO model and bind it to a fresh env."""
+    model_class = resolve_ppo_model_class(use_custom_ppo)
+    load_fn = getattr(model_class, "load", None)
+    if load_fn is None:
+        load_fn = MaskablePPO.load
+    loaded_model = cast(MaskablePPO, load_fn(str(model_path)))
+    loaded_model.set_env(env)
+    return loaded_model
+
 class PPOTrainerProtocol(Protocol):
     """Protocol for PPO Trainer implementations."""
 
@@ -476,25 +504,11 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
         if not hasattr(self.env, "action_space"):
             raise RuntimeError("Environment does not have action_space")
 
-        # Use compatibility shim module names to allow tests to patch
-        # `ztb.training.ppo_trainer.CustomPPO` / `MaskablePPO` at runtime.
-        try:
-            import ztb.training.ppo_trainer as _shim
-
-            if self.training_config.use_custom_ppo:
-                model_class = getattr(_shim, "CustomPPO", CustomPPO)
-                logger.info("Using CustomPPO model")
-            else:
-                model_class = getattr(_shim, "MaskablePPO", MaskablePPO)
-                logger.info("Using standard MaskablePPO model")
-        except Exception:
-            # Fallback to locally imported symbols
-            if self.training_config.use_custom_ppo:
-                model_class = CustomPPO
-                logger.info("Using CustomPPO model")
-            else:
-                model_class = MaskablePPO
-                logger.info("Using standard MaskablePPO model")
+        model_class = resolve_ppo_model_class(self.training_config.use_custom_ppo)
+        logger.info(
+            "Using %s model",
+            "CustomPPO" if self.training_config.use_custom_ppo else "standard MaskablePPO",
+        )
 
         model = model_class(
             "MlpPolicy",
@@ -617,15 +631,11 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
 
         try:
             self.env = self._create_environment()
-            model_class: type[MaskablePPO]
-            if self.training_config.use_custom_ppo:
-                model_class = cast(type[MaskablePPO], CustomPPO)
-            else:
-                model_class = MaskablePPO
-
-            load_fn = getattr(model_class, "load", MaskablePPO.load)
-            loaded_model = cast(MaskablePPO, load_fn(str(model_path)))
-            loaded_model.set_env(self.env)
+            loaded_model = load_ppo_model_for_env(
+                model_path,
+                use_custom_ppo=self.training_config.use_custom_ppo,
+                env=self.env,
+            )
             self.model = loaded_model
             return self._learn_model(
                 loaded_model,

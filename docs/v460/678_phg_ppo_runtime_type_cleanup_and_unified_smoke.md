@@ -263,6 +263,53 @@ weights の warm-start は別 batch に分離した。
   tests/unit/v460/test_680_ppo_retrain_scheduler.py
 ```
 
+### 21. warm-start helper の共通化
+
+PPO Phase 3 の後段として、trainer ごとに重複していた warm-start / model-load 経路を整理した。
+
+- `ztb/training/core/ppo_trainer.py`
+  - `resolve_ppo_model_class(...)`
+  - `load_ppo_model_for_env(...)`
+- `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+  - `_load_training_dataframe(...)`
+  - `_build_env_config(...)`
+  - `_create_training_env(...)`
+  - `_create_custom_model(...)`
+  - `_resolve_total_timesteps(...)`
+  - `_ensure_lagrange_step_count(...)`
+  - `load_and_continue(...)`
+
+これにより、
+
+- current PPO class の解決
+- load 後の env bind
+- mitigation trainer の cold / warm start 分岐
+
+が 1 箇所ずつに寄った。
+
+focused:
+
+```bash
+.venv/Scripts/python.exe scripts/quality/run_targeted_mypy.py \
+  ztb/training/core/ppo_trainer.py \
+  ztb/training/experiments/sell_mitigation_ppo_trainer.py \
+  tests/training/test_ppo_trainer.py \
+  tests/integration/test_custom_ppo_integration.py \
+  tests/unit/v460/test_ppo_warm_start.py
+```
+
+- `Success: no issues found in 5 source files`
+
+```bash
+.venv/Scripts/python.exe -m pytest \
+  tests/training/test_ppo_trainer.py \
+  tests/integration/test_custom_ppo_integration.py \
+  tests/unit/v460/test_ppo_warm_start.py \
+  -x --tb=short --no-cov
+```
+
+- `39 passed in 6.02s`
+
 - `Success: no issues found in 4 source files`
 
 ```bash

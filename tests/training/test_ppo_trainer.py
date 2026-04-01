@@ -28,6 +28,7 @@ if TYPE_CHECKING:
         PPOTrainerAutoHalt,
         TrainingConfig,
         build_ppo_model_kwargs,
+        load_ppo_model_for_env,
     )
 else:
     # At runtime we need the real classes; import them rather than using
@@ -38,6 +39,7 @@ else:
         PPOTrainer,
         PPOTrainerAutoHalt,
         build_ppo_model_kwargs,
+        load_ppo_model_for_env,
     )
     from ztb.training.core.ppo_trainer import PPOTrainingConfig as TrainingConfig
 
@@ -186,6 +188,26 @@ class TestPPOTrainerAutoHalt:
         assert kwargs["normalize_advantage"] is False
         assert kwargs["tensorboard_log"] == "tb_logs"
         assert kwargs["device"] == "cpu"
+
+    @patch("ztb.training.ppo_trainer.CustomPPO")
+    def test_load_ppo_model_for_env_uses_current_class_resolution(
+        self,
+        mock_custom_ppo,
+        trainer_params,
+    ) -> None:
+        env = Mock()
+        loaded_model = Mock()
+        mock_custom_ppo.load.return_value = loaded_model
+
+        model = load_ppo_model_for_env(
+            Path("dummy_model.zip"),
+            use_custom_ppo=True,
+            env=env,
+        )
+
+        mock_custom_ppo.load.assert_called_once_with("dummy_model.zip")
+        loaded_model.set_env.assert_called_once_with(env)
+        assert model is loaded_model
 
     @patch("ztb.training.core.ppo_trainer.DataLoader.load_csv_optimized")
     @patch("ztb.training.core.ppo_trainer.HeavyTradingEnv")

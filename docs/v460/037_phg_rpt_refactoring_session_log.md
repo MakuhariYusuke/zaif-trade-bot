@@ -9926,3 +9926,19 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `235 passed in 7.10s`
 - broader PPO/SAC subset:
   - `237 passed in 8.80s`
+
+### 2026-04-01 PPO warm-start helper reuse and sell-mitigation split
+
+- `ztb/training/core/ppo_trainer.py`
+  - `resolve_ppo_model_class(...)`
+  - `load_ppo_model_for_env(...)`
+  を追加
+- `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+  - `load_and_continue(...)` を追加
+  - long `train()` setup を helper に分離
+- `tests/training/test_ppo_trainer.py`
+  - core warm-start helper の contract test を追加
+- `tests/integration/test_custom_ppo_integration.py`
+  - SELL mitigation warm-start path の focused integration guard を追加
+- focused:
+  - `39 passed in 6.02s`
