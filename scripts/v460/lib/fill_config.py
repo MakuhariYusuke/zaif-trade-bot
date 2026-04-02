@@ -1002,10 +1002,17 @@ class FillTestConfig:
     entry_gate_c_vol: float = 0.2                   # volatility cost weight
     entry_gate_c_imp: float = 0.5                   # market impact weight
     entry_gate_online_update: bool = True            # 約定後に CalibrationMap を online 更新
+    entry_gate_max_consecutive_blocks: int = 15
+    entry_gate_max_block_rate: float = 0.6
+    entry_gate_min_eval_for_rate: int = 20
+    entry_gate_staleness_threshold_sec: float = 600.0
     micro_timeout_wait_sec_sell: float | None = None  # sell 側の配置時間 (None=共通値)
     micro_timeout_max_requote: int = 4             # 1サイクル内の最大 re-quote 回数
     micro_timeout_requote_cooloff_sec: float = 5.0 # キャンセル→再発注間の冷却期間 (秒)
     micro_timeout_cancel_on_cv_flip: bool = True   # Cross-Venue 反転時に即キャンセル
+    offset_ev_stage_enabled: bool = False
+    offset_toxicity_stage_enabled: bool = True
+    offset_vg_supplement_enabled: bool = False
 
     def __post_init__(self) -> None:
         """103# バリデーション: YAML 誤設定による本番クラッシュ防止.
@@ -1076,7 +1083,10 @@ class FillTestConfig:
             if per_regime is not None:
                 override = per_regime.get(normalized_side)
                 if override is not None:
-                    return float(override), f"regime_{normalized_regime}_{normalized_side}"
+                    return (
+                        float(override),
+                        f"regime_override_{normalized_regime}_{normalized_side}",
+                    )
 
         if normalized_side == "sell" and normalized_regime is not None:
             if (

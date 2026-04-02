@@ -109,6 +109,7 @@ class RunSessionState:
     entry_gate_eval_count: int = 0     # EV 評価回数
     entry_gate_block_count: int = 0    # EV ≤ 0 の回数
     entry_gate_ev_sum: float = 0.0     # EV 加算 (平均計算用)
+    entry_gate_guard_suppressed_count: int = 0
     batch: list[FillRecord] = field(default_factory=list)
     batch_size: int = 10
 
@@ -210,6 +211,10 @@ class FillLoopOrchestratorMixin(
     # 648# Inventory Deadlock Detection: fill なし連続サイクル数
     _inventory_deadlock_counter: int = 0
     _last_inventory_deadlock_alert_time: float = 0.0
+    _entry_gate_ev_current: float | None = None
+    _entry_gate_blocked_current: bool | None = None
+    _entry_gate_guard_suppressed_current: bool | None = None
+    _entry_gate_regime_current: str | None = None
 
 
     # ------------------------------------------------------------------
@@ -407,6 +412,7 @@ class FillLoopOrchestratorMixin(
         self._last_state_save_time = time.monotonic()
 
         while time.time() < end_time and not self._kill_switch.is_killed():
+            self._reset_entry_gate_cycle_state()
             # ── 330# Phase 1-2: 日替わりリセット + DD halt ──
             self._process_daily_reset(st)
             if await self._handle_dd_halt(st):
@@ -459,3 +465,10 @@ class FillLoopOrchestratorMixin(
 
         # 265# extract: 最終 cleanup (~35行) を分離
         return await self._finalize_run(st, heartbeat_task)
+
+    def _reset_entry_gate_cycle_state(self) -> None:
+        """690# per-cycle entry_gate observability をリセット."""
+        self._entry_gate_ev_current = None
+        self._entry_gate_blocked_current = None
+        self._entry_gate_guard_suppressed_current = None
+        self._entry_gate_regime_current = None

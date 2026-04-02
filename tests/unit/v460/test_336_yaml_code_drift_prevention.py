@@ -58,6 +58,8 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "daily_drawdown_soft_lot_side_aware",
     "dual_kill_quiescence_enabled",
     "dynamic_cycle_interval_enabled",
+    "entry_gate_enabled",
+    "entry_gate_calibration_map_path",
     "enable_macro_regime",
     "enable_time_filter",
     "fast_fill_defense_enabled",
@@ -294,9 +296,10 @@ class TestYamlCodeDefaultDrift:
         n_fields = len(dataclasses.fields(FillTestConfig))
         # 336# 時点: 390 fields. 491# composite_risk 追加で 454 fields.
         # 555# entry_gate 追加で 481 fields. 654# toxic_sell_veto 追加で 504 fields.
-        assert 350 <= n_fields <= 520, (
+        # 690# timeout/entry_gate/offset stage controls で 527 fields.
+        assert 350 <= n_fields <= 540, (
             f"FillTestConfig のフィールド数が {n_fields} です。"
-            f" 350-520 の範囲外です — God Object 化の兆候かもしれません。"
+            f" 350-540 の範囲外です — God Object 化の兆候かもしれません。"
         )
 
 

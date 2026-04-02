@@ -58,6 +58,7 @@ class _HotReloadableRunner(Protocol):
     def _rebuild_cycle_strategy(self) -> None: ...  # 179#
     def _rebuild_mcb(self) -> None: ...  # 607#
     def _rebuild_sad(self) -> None: ...  # 607#
+    def _reset_entry_gate_guard(self) -> None: ...
 
 
 @lru_cache(maxsize=1)
@@ -554,6 +555,21 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "cross_venue_lead_lag_max_age_sec",
     # 587# Entry Gate runtime toggle (path は除外)
     "entry_gate_enabled",
+    "entry_gate_probability_mode",
+    "entry_gate_ewma_tau",
+    "entry_gate_n_min",
+    "entry_gate_fee_rate",
+    "entry_gate_c_spread",
+    "entry_gate_c_vol",
+    "entry_gate_c_imp",
+    "entry_gate_online_update",
+    "entry_gate_max_consecutive_blocks",
+    "entry_gate_max_block_rate",
+    "entry_gate_min_eval_for_rate",
+    "entry_gate_staleness_threshold_sec",
+    "offset_ev_stage_enabled",
+    "offset_toxicity_stage_enabled",
+    "offset_vg_supplement_enabled",
     "cross_venue_lead_lag_spread_bps_threshold",
     "cross_venue_lead_lag_velocity_bps_threshold",
     "cross_venue_lead_lag_offset_boost",
@@ -800,6 +816,17 @@ class ConfigHotReloader:
                 logger.info("[config_hot_reload]   TimeFilter rebuilt")
             except Exception as e:
                 logger.error(f"[config_hot_reload]   TimeFilter rebuild FAILED: {e}")
+
+        if any(f.startswith("entry_gate_") for f in changed_fields):
+            try:
+                runner._reset_entry_gate_guard()
+                logger.info("[config_hot_reload]   EntryGateGuard reset")
+            except Exception as e:
+                logger.error(
+                    "[config_hot_reload]   EntryGateGuard reset FAILED: %s",
+                    e,
+                    exc_info=True,
+                )
 
         # MakerPriceCalculator の base offset 更新
         if any(f.startswith("spread_offset_ratio") for f in changed_fields):

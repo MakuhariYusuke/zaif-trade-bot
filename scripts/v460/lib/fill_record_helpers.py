@@ -88,6 +88,17 @@ class FillRecordHelpersMixin:
         cancel_reason 文字列は cancel_reasons モジュールの定数を使うこと。
         """
         from ztb.metrics.fill_quality import build_skip_fill_record
+        extra_fields = {
+            "entry_gate_ev": getattr(self, "_entry_gate_ev_current", None),
+            "entry_gate_blocked": getattr(self, "_entry_gate_blocked_current", None),
+            "entry_gate_guard_suppressed": getattr(
+                self,
+                "_entry_gate_guard_suppressed_current",
+                None,
+            ),
+            "entry_gate_regime": getattr(self, "_entry_gate_regime_current", None),
+        }
+        extra_fields.update(extra)
 
         return build_skip_fill_record(
             cycle_id=cycle_id or self._new_cycle_id(),
@@ -106,7 +117,7 @@ class FillRecordHelpersMixin:
             pid=os.getpid(),  # 285# 283# P0-1: Split-Brain 検知用
             last_executed_side=self._side_selector.last_executed_side,
             last_attempted_side=self._side_selector.last_attempted_side,
-            **extra,
+            **extra_fields,
         )
 
     @staticmethod

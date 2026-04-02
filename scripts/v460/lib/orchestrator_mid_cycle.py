@@ -215,8 +215,11 @@ class OrchestratorMidCycleMixin:
             _cal_action = 0.3 if next_side == "buy" else -0.3
             _cal_bundle = self._calibration_map.get_stats(_cal_regime, _cal_action)
             _cal_fb = _cal_bundle["fallback"]
+            _n_eff = float(_cal_fb.get("n_eff", 0.0))
             _prob_mode = self.config.entry_gate_probability_mode
-            if _prob_mode == "ucb":
+            if _n_eff < self.config.entry_gate_n_min:
+                _p_win = 0.5
+            elif _prob_mode == "ucb":
                 _p_win = _cal_fb.get("p_win_ucb", _cal_fb.get("p_win_mean", 0.5))
             elif _prob_mode == "mean":
                 _p_win = _cal_fb.get("p_win_mean", 0.5)
@@ -225,32 +228,58 @@ class OrchestratorMidCycleMixin:
             _cal_ev = _p_win * _cal_fb["avg_win"] - (1.0 - _p_win) * _cal_fb["avg_loss"]
             st.entry_gate_eval_count += 1
             st.entry_gate_ev_sum += _cal_ev
+            self._entry_gate_ev_current = _cal_ev
+            self._entry_gate_blocked_current = bool(
+                self.config.entry_gate_enabled and _cal_ev <= 0
+            )
+            self._entry_gate_guard_suppressed_current = False
+            self._entry_gate_regime_current = _cal_regime
             if _cal_ev <= 0:
                 st.entry_gate_block_count += 1
                 if self.config.entry_gate_enabled:
-                    logger.info(
-                        "[555#] Entry gate BLOCK: %s %s EV=%.2f "
-                        "(p_win=%.3f, avg_win=%.2f, avg_loss=%.2f, n_eff=%.1f)",
-                        next_side, _cal_regime, _cal_ev,
-                        _p_win, _cal_fb["avg_win"], _cal_fb["avg_loss"],
-                        _cal_fb.get("n_eff", 0.0),
+                    _guard_suppressed = self._entry_gate_guard.should_suppress_block(
+                        ev=_cal_ev,
+                        regime=_cal_regime,
+                        side=next_side,
                     )
-                    from scripts.v460.lib.cycle_gate_aggregator import (
-                        CycleGateResult,
-                    )
-                    _eg_gate_result = CycleGateResult(
-                        blocked=True,
-                        blocking_reason="entry_gate_ev_negative",
-                        checks=_gate_result.checks,
-                    )
-                    await self._handle_gate_block(st, ctx, _eg_gate_result)
-                    return None
+                    if _guard_suppressed:
+                        st.entry_gate_guard_suppressed_count += 1
+                        self._entry_gate_guard_suppressed_current = True
+                        self._entry_gate_guard.record_eval(blocked=False)
+                        logger.warning(
+                            "[690#] Entry gate block SUPPRESSED: %s %s EV=%.2f (%s)",
+                            next_side,
+                            _cal_regime,
+                            _cal_ev,
+                            self._entry_gate_guard.state.auto_disable_reason or "guard",
+                        )
+                    else:
+                        self._entry_gate_guard.record_eval(blocked=True)
+                        logger.info(
+                            "[555#] Entry gate BLOCK: %s %s EV=%.2f "
+                            "(p_win=%.3f, avg_win=%.2f, avg_loss=%.2f, n_eff=%.1f)",
+                            next_side, _cal_regime, _cal_ev,
+                            _p_win, _cal_fb["avg_win"], _cal_fb["avg_loss"],
+                            _cal_fb.get("n_eff", 0.0),
+                        )
+                        from scripts.v460.lib.cycle_gate_aggregator import (
+                            CycleGateResult,
+                        )
+                        _eg_gate_result = CycleGateResult(
+                            blocked=True,
+                            blocking_reason="entry_gate_ev_negative",
+                            checks=_gate_result.checks,
+                        )
+                        await self._handle_gate_block(st, ctx, _eg_gate_result)
+                        return None
                 else:
-                    logger.debug(
+                    logger.info(
                         "[555#] Entry gate observe: %s %s EV=%.2f (disabled)",
                         next_side, _cal_regime, _cal_ev,
                     )
             else:
+                if self.config.entry_gate_enabled:
+                    self._entry_gate_guard.record_eval(blocked=False)
                 logger.debug(
                     "[555#] Entry gate PASS: %s %s EV=%.2f",
                     next_side, _cal_regime, _cal_ev,

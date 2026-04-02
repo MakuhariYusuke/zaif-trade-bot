@@ -174,6 +174,10 @@ class FillRecord:
     decision_trace_id: str | None = None          # 688# 同一サイクル判断トレース ID
     timeout_applied_sec: float | None = None      # 688# 実効 timeout
     timeout_reason: str | None = None             # 688# timeout 採用理由
+    entry_gate_ev: float | None = None            # 690# entry gate EV
+    entry_gate_blocked: bool | None = None        # 690# enabled 時に EV<=0 だったか
+    entry_gate_guard_suppressed: bool | None = None  # 690# safety guard 抑制
+    entry_gate_regime: str | None = None          # 690# entry gate 評価 regime
     # 187# B-2: guard_trace — gated_regime + effective_cycle_interval 記録
     gated_regime: str | None = None              # ヒステリシス適用後の実効 regime
     effective_cycle_interval: float | None = None  # 使用されたサイクル間隔 (秒)

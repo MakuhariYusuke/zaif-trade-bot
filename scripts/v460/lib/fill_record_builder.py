@@ -167,6 +167,10 @@ class FillRecordBuilderMixin:
         ppo_sidecar_model_version: str | None = None,
         ppo_sidecar_signal_status: str | None = None,
         ppo_sidecar_override_active: bool | None = None,
+        entry_gate_ev: float | None = None,
+        entry_gate_blocked: bool | None = None,
+        entry_gate_guard_suppressed: bool | None = None,
+        entry_gate_regime: str | None = None,
         sg_budget_regime: str | None = None,
         sg_budget_remaining: int | None = None,
         sg_budget_exhausted: bool | None = None,
@@ -241,6 +245,10 @@ class FillRecordBuilderMixin:
             "ppo_sidecar_model_version": ppo_sidecar_model_version,
             "ppo_sidecar_signal_status": ppo_sidecar_signal_status,
             "ppo_sidecar_override_active": ppo_sidecar_override_active,
+            "entry_gate_ev": entry_gate_ev,
+            "entry_gate_blocked": entry_gate_blocked,
+            "entry_gate_guard_suppressed": entry_gate_guard_suppressed,
+            "entry_gate_regime": entry_gate_regime,
         }
         fields.update(self._build_fill_cross_venue_fields(side=side))
         return fields
@@ -541,6 +549,14 @@ class FillRecordBuilderMixin:
                 ppo_sidecar_model_version=ppo_sidecar_model_version,
                 ppo_sidecar_signal_status=ppo_sidecar_signal_status,
                 ppo_sidecar_override_active=ppo_sidecar_override_active,
+                entry_gate_ev=getattr(self, "_entry_gate_ev_current", None),
+                entry_gate_blocked=getattr(self, "_entry_gate_blocked_current", None),
+                entry_gate_guard_suppressed=getattr(
+                    self,
+                    "_entry_gate_guard_suppressed_current",
+                    None,
+                ),
+                entry_gate_regime=getattr(self, "_entry_gate_regime_current", None),
                 sg_budget_regime=sg_budget_regime,
                 sg_budget_remaining=sg_budget_remaining,
                 sg_budget_exhausted=sg_budget_exhausted,

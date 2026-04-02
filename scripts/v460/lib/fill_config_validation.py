@@ -85,6 +85,26 @@ def validate_fill_config(config: FillTestConfig) -> None:
                     f"regime_timeout_overrides['{regime_name}']['{side_name}'] "
                     f"must be > 0, got {timeout_sec}"
                 )
+    if config.entry_gate_max_consecutive_blocks < 1:
+        raise ValueError(
+            "entry_gate_max_consecutive_blocks must be >= 1, "
+            f"got {config.entry_gate_max_consecutive_blocks}"
+        )
+    if not (0.0 < config.entry_gate_max_block_rate <= 1.0):
+        raise ValueError(
+            "entry_gate_max_block_rate must be in (0, 1], "
+            f"got {config.entry_gate_max_block_rate}"
+        )
+    if config.entry_gate_min_eval_for_rate < 5:
+        raise ValueError(
+            "entry_gate_min_eval_for_rate must be >= 5, "
+            f"got {config.entry_gate_min_eval_for_rate}"
+        )
+    if config.entry_gate_staleness_threshold_sec < 60.0:
+        raise ValueError(
+            "entry_gate_staleness_threshold_sec must be >= 60.0, "
+            f"got {config.entry_gate_staleness_threshold_sec}"
+        )
     if config.skip_gate_budget_window_min <= 0:
         raise ValueError(
             "skip_gate_budget_window_min must be > 0, "

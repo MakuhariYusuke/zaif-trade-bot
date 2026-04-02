@@ -72,6 +72,15 @@ regime:
       sell: 20.0
     strong_down:
       buy: 30.0
+
+entry_gate_enabled: true
+entry_gate_max_consecutive_blocks: 15
+entry_gate_max_block_rate: 0.6
+entry_gate_min_eval_for_rate: 20
+entry_gate_staleness_threshold_sec: 600.0
+offset_ev_stage_enabled: false
+offset_toxicity_stage_enabled: true
+offset_vg_supplement_enabled: false
 """
 
 
@@ -123,6 +132,15 @@ regime:
       sell: 15.0
     strong_down:
       buy: 25.0
+
+entry_gate_enabled: false
+entry_gate_max_consecutive_blocks: 9
+entry_gate_max_block_rate: 0.5
+entry_gate_min_eval_for_rate: 12
+entry_gate_staleness_threshold_sec: 900.0
+offset_ev_stage_enabled: true
+offset_toxicity_stage_enabled: false
+offset_vg_supplement_enabled: true
 """
 
 
@@ -159,6 +177,14 @@ def base_config() -> FillTestConfig:
             "strong_up": {"sell": 20.0},
             "strong_down": {"buy": 30.0},
         },
+        entry_gate_enabled=True,
+        entry_gate_max_consecutive_blocks=15,
+        entry_gate_max_block_rate=0.6,
+        entry_gate_min_eval_for_rate=20,
+        entry_gate_staleness_threshold_sec=600.0,
+        offset_ev_stage_enabled=False,
+        offset_toxicity_stage_enabled=True,
+        offset_vg_supplement_enabled=False,
     )
 
 
@@ -192,6 +218,7 @@ def _make_mock_runner(config: FillTestConfig) -> MagicMock:
     runner._daily_drawdown_guard.export_state.return_value = {}
     runner._fast_fill_defense = MagicMock()
     runner._config_reloader = MagicMock()
+    runner._reset_entry_gate_guard = MagicMock()
     return runner
 
 
@@ -301,7 +328,7 @@ class TestConfigHotReloaderBasic:
         }
         timeout_sec, reason = runner.config.get_timeout_with_reason("sell", "strong_up")
         assert timeout_sec == 15.0
-        assert reason == "regime_strong_up_sell"
+        assert reason == "regime_override_strong_up_sell"
 
     def test_no_reload_without_mtime_change(
         self, base_config: FillTestConfig, temp_yaml: Path,
@@ -399,6 +426,43 @@ class TestConfigFieldUpdate:
             "default": 6,
             "trending_up": {"sell": 2, "buy": 10},
         }
+
+    def test_reload_updates_entry_gate_guard_fields_and_resets_guard(
+        self,
+        base_config: FillTestConfig,
+        temp_yaml: Path,
+        yaml_content_updated: str,
+    ) -> None:
+        reloader, runner, result = _run_do_reload_with_content(
+            base_config,
+            temp_yaml,
+            yaml_content_updated,
+        )
+
+        assert result is True
+        assert runner.config.entry_gate_enabled is False
+        assert runner.config.entry_gate_max_consecutive_blocks == 9
+        assert runner.config.entry_gate_max_block_rate == pytest.approx(0.5)
+        assert runner.config.entry_gate_min_eval_for_rate == 12
+        assert runner.config.entry_gate_staleness_threshold_sec == pytest.approx(900.0)
+        runner._reset_entry_gate_guard.assert_called_once_with()
+
+    def test_reload_updates_offset_stage_toggles(
+        self,
+        base_config: FillTestConfig,
+        temp_yaml: Path,
+        yaml_content_updated: str,
+    ) -> None:
+        _, runner, result = _run_do_reload_with_content(
+            base_config,
+            temp_yaml,
+            yaml_content_updated,
+        )
+
+        assert result is True
+        assert runner.config.offset_ev_stage_enabled is True
+        assert runner.config.offset_toxicity_stage_enabled is False
+        assert runner.config.offset_vg_supplement_enabled is True
 
     def test_non_reloadable_fields_preserved(
         self,
@@ -608,6 +672,13 @@ class TestReloadableFieldsConsistency:
             "edrc_c_base",
             "edrc_hard_cap",
             "entry_gate_enabled",
+            "entry_gate_max_consecutive_blocks",
+            "entry_gate_max_block_rate",
+            "entry_gate_min_eval_for_rate",
+            "entry_gate_staleness_threshold_sec",
+            "offset_ev_stage_enabled",
+            "offset_toxicity_stage_enabled",
+            "offset_vg_supplement_enabled",
         }
         missing = expected - _HOT_RELOADABLE_FIELDS
         assert missing == set(), (

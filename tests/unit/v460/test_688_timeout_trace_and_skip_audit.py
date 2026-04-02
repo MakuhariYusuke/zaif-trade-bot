@@ -35,7 +35,7 @@ class TestTimeoutOverrideResolution:
         timeout_sec, reason = cfg.get_timeout_with_reason("sell", "strong_up")
 
         assert timeout_sec == 20.0
-        assert reason == "regime_strong_up_sell"
+        assert reason == "regime_override_strong_up_sell"
 
     def test_regime_timeout_override_buy_strong_down(self) -> None:
         cfg = FillTestConfig(
@@ -46,7 +46,7 @@ class TestTimeoutOverrideResolution:
         timeout_sec, reason = cfg.get_timeout_with_reason("buy", "strong_down")
 
         assert timeout_sec == 30.0
-        assert reason == "regime_strong_down_buy"
+        assert reason == "regime_override_strong_down_buy"
 
     def test_legacy_macro_sell_timeout_remains_fallback(self) -> None:
         cfg = FillTestConfig(

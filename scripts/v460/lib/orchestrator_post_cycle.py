@@ -122,6 +122,7 @@ class OrchestratorPostCycleMixin:
                 self._calibration_map.update(
                     _cal_regime, _cal_action, record.post_fill_30s_pnl, st.total_count,
                 )
+                self._entry_gate_guard.notify_calibration_update()
             # 249# BTC delta
             if record.order_quantity is not None:
                 _fill_qty = float(record.order_quantity)

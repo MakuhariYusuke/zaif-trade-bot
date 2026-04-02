@@ -1279,3 +1279,23 @@ durations 変化で特に効いた点:
 1. `tests/unit/v460/test_680_ppo_retrain_scheduler.py::test_error_pushes_neutral_fallback`
 2. `tests/unit/v460/test_enricher_skip_gate.py::test_enrichment_with_real_data`
 3. `tests/unit/v460/test_sac_retrain_scheduler.py` の data-freshness / loop path
+
+## 2026-04-02 690# runtime / analysis protocol batch
+
+- 追加:
+  - `tests/unit/v460/test_690_entry_gate_guard.py`
+  - `tests/unit/v460/test_690_timeout_priority.py`
+  - `tests/unit/v460/test_690_skip_audit.py`
+  - `tests/unit/v460/test_690_offset_pipeline.py`
+  - `tests/unit/v460/test_690_analysis_protocol.py`
+- 方針:
+  - real-data を踏まない focused regression に寄せる
+  - source audit / parser / CLI contract / stage toggle を低コストで確認する
+- 結果:
+  - runtime focused:
+    - `164 passed in 3.99s`
+  - analysis protocol focused:
+    - `test_690_analysis_protocol.py`
+- 効果:
+  - runtime 安全性を広めにカバーしつつ、heavy setup の追加は避けられている
+  - analysis protocol も registry / filter / json writer 契約だけを狙い撃ちできる状態になった

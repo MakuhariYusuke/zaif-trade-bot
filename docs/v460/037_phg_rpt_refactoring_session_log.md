@@ -10367,3 +10367,26 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - notes:
     - `enricher` real-data smoke setup は `1.05s -> 0.77s`
     - `PPO retrain` error path は `1.30s` で次の exception-path batch の本命
+
+- `690# runtime batch + analysis protocol`
+  - 新規:
+    - [691_phg_entry_gate_runtime_and_skip_audit.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/691_phg_entry_gate_runtime_and_skip_audit.md)
+    - [692_phg_analysis_protocol_688_cli.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/692_phg_analysis_protocol_688_cli.md)
+    - [test_690_entry_gate_guard.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_690_entry_gate_guard.py)
+    - [test_690_timeout_priority.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_690_timeout_priority.py)
+    - [test_690_skip_audit.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_690_skip_audit.py)
+    - [test_690_offset_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_690_offset_pipeline.py)
+    - [test_690_analysis_protocol.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_690_analysis_protocol.py)
+  - 更新:
+    - `entry_gate` を runtime blocking 化
+    - `EntryGateGuard` を導入
+    - timeout regime×side override を runtime / hot-reload / FillRecord に接続
+    - `_execute_skip(...)` の audit と cancel reason taxonomy を整備
+    - `AnalysisProtocol` / `Protocol688` / `run_protocol.py` を追加
+  - regression:
+    - runtime focused: `164 passed in 3.99s`
+    - analysis protocol focused: `test_690_analysis_protocol.py`
+  - next:
+    1. `fill_quality` judgment/report 側の残分割
+    2. `entry_gate` / `skip_gate` / budget observability の analysis protocol 取り込み
+    3. heavy test setup の継続削減

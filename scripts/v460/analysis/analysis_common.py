@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Final, TypeAlias, cast
 
@@ -238,6 +238,77 @@ def load_records_from_args(
         regime=getattr(args, "regime", None),
         exit_on_empty=exit_on_empty,
     )
+
+
+def add_standard_args(parser: argparse.ArgumentParser) -> None:
+    """run_protocol 向けの共通 CLI 引数セット."""
+    add_common_filter_args(parser)
+    add_side_regime_args(parser)
+    add_output_args(parser)
+
+
+def _record_to_utc_datetime(record: Record) -> datetime | None:
+    ts = record.get("timestamp")
+    if ts is None:
+        return None
+    try:
+        if isinstance(ts, str):
+            return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(timezone.utc)
+        if isinstance(ts, (int, float)):
+            return datetime.fromtimestamp(float(ts), tz=timezone.utc)
+    except (ValueError, OSError, OverflowError):
+        return None
+    return None
+
+
+def filter_by_date_range(
+    records: list[Record],
+    start: str | None,
+    end: str | None,
+) -> list[Record]:
+    """UTC 日付レンジでレコードを絞り込む."""
+    start_date = date.fromisoformat(start) if start else None
+    end_date = date.fromisoformat(end) if end else None
+    if start_date is None and end_date is None:
+        return list(records)
+
+    filtered: list[Record] = []
+    for record in records:
+        dt = _record_to_utc_datetime(record)
+        if dt is None:
+            continue
+        current = dt.date()
+        if start_date is not None and current < start_date:
+            continue
+        if end_date is not None and current > end_date:
+            continue
+        filtered.append(record)
+    return filtered
+
+
+def filter_by_days(records: list[Record], days: int | None) -> list[Record]:
+    """最新 timestamp 基準の直近 N 日フィルタ."""
+    if days is None or days <= 0 or not records:
+        return list(records)
+
+    dt_values = [dt for record in records if (dt := _record_to_utc_datetime(record)) is not None]
+    if not dt_values:
+        return []
+    latest_day = max(dt_values).date()
+    start_day = latest_day - timedelta(days=days - 1)
+    return filter_by_date_range(records, start_day.isoformat(), latest_day.isoformat())
+
+
+def load_records_with_filters(args: argparse.Namespace) -> list[Record]:
+    """protocol CLI 向け: load + date/day filter を一括適用."""
+    records = load_records_from_args(args, exit_on_empty=False)
+    records = filter_by_date_range(
+        records,
+        getattr(args, "start", None),
+        getattr(args, "end", None),
+    )
+    records = filter_by_days(records, getattr(args, "days", None))
+    return records
 
 
 # ======================================================================

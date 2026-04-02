@@ -1257,5 +1257,22 @@ composite_risk_weight_ranging_low_vol: 0.5
 composite_risk_weight_trending_sell: 0.7
 composite_risk_weight_velocity: 0.4
 # 555# Entry Gate: CalibrationMap EV ベースエントリー判定
-entry_gate_enabled: false              # True=EV≤0 でブロック, False=ログのみ
+entry_gate_enabled: true               # 690#: observe → safety-guard 付きで段階有効化
 entry_gate_calibration_map_path: "models/v460/entry_gate_calibration.json"  # 621# observe接続
+entry_gate_probability_mode: "lcb"
+entry_gate_ewma_tau: 100.0
+entry_gate_n_min: 30.0
+entry_gate_fee_rate: 0.0
+entry_gate_c_spread: 0.3
+entry_gate_c_vol: 0.2
+entry_gate_c_imp: 0.5
+entry_gate_online_update: true
+entry_gate_max_consecutive_blocks: 15
+entry_gate_max_block_rate: 0.6
+entry_gate_min_eval_for_rate: 20
+entry_gate_staleness_threshold_sec: 600.0
+
+# 690# Offset Pipeline Stage Controls (672# P2)
+offset_ev_stage_enabled: false
+offset_toxicity_stage_enabled: true
+offset_vg_supplement_enabled: false

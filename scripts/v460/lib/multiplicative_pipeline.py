@@ -27,6 +27,42 @@ logger = logging.getLogger(__name__)
 class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
     """従来の乗算 offset pipeline を提供する shared mixin."""
 
+    _offset_pipeline_stage_stats: dict[str, list[int]] = {}
+    _offset_pipeline_last_stats_cycle: int = 0
+
+    def _record_offset_stage_stat(self, stage_name: str, *, applied: bool) -> None:
+        stats = self._offset_pipeline_stage_stats.setdefault(stage_name, [0, 0])
+        stats[0] += 1
+        if applied:
+            stats[1] += 1
+
+    def _maybe_log_offset_pipeline_stats(self) -> None:
+        cycle_count = getattr(self, "_cycle_count", 0)
+        if cycle_count <= 0 or cycle_count % 100 != 0:
+            return
+        if self._offset_pipeline_last_stats_cycle == cycle_count:
+            return
+        self._offset_pipeline_last_stats_cycle = cycle_count
+
+        def _pair(stage_name: str) -> tuple[int, int]:
+            total, applied = self._offset_pipeline_stage_stats.get(stage_name, [0, 0])
+            return applied, total
+
+        logger.info(
+            "[690# pipeline_stats] stages: "
+            "ev=%d/%d vel=%d/%d toxic_veto=%d/%d trend5s=%d/%d macro=%d/%d "
+            "tox_model=%d/%d vg_supp=%d/%d alert=%d/%d clamp=%d/%d",
+            *_pair("ev"),
+            *_pair("velocity"),
+            *_pair("toxic_veto"),
+            *_pair("trend_5s_guard"),
+            *_pair("macro"),
+            *_pair("toxicity"),
+            *_pair("vg_supp"),
+            *_pair("alert"),
+            *_pair("clamp"),
+        )
+
     def _apply_offset_pipeline_multiplicative(
         self,
         *,
@@ -53,6 +89,8 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
         _ev_score_pretrade: float | None = sg_ev_score
         _ev_offset_mult_applied: float | None = None
         if (
+            self.config.offset_ev_stage_enabled
+            and
             sg_ev_score is not None
             and self.config.skip_gate_ev_as_offset_enabled
             and spread_at_order is not None
@@ -158,7 +196,7 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
             )
 
         _tox_mult: float | None = None
-        if toxicity_offset_mult > 1.0:
+        if self.config.offset_toxicity_stage_enabled and toxicity_offset_mult > 1.0:
             order_price, effective_offset_ratio, _tox_mult, _tox_delta = self._apply_offset_multiplier(
                 side=side,
                 order_price=order_price,
@@ -175,6 +213,8 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
 
         _vg_supp_mult: float | None = None
         if (
+            self.config.offset_vg_supplement_enabled
+            and
             side == "sell"
             and not self._maker_price.last_vg_triggered
             and sg_velocity_bps is not None
@@ -329,6 +369,24 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
                     f"(clamped, price={order_price:.0f})"
                 )
                 effective_offset_ratio = _ceiling.updated_ratio
+                self._record_offset_stage_stat("clamp", applied=True)
+            else:
+                self._record_offset_stage_stat("clamp", applied=False)
+        else:
+            self._record_offset_stage_stat("clamp", applied=False)
+
+        self._record_offset_stage_stat("ev", applied=_ev_offset_applied)
+        self._record_offset_stage_stat("velocity", applied=_vel_offset_applied)
+        self._record_offset_stage_stat("toxic_veto", applied=_toxic_veto_offset_applied)
+        self._record_offset_stage_stat(
+            "trend_5s_guard",
+            applied=_trend_5s_guard_mult is not None,
+        )
+        self._record_offset_stage_stat("macro", applied=_macro_boost_applied)
+        self._record_offset_stage_stat("toxicity", applied=_tox_mult is not None)
+        self._record_offset_stage_stat("vg_supp", applied=_vg_supp_mult is not None)
+        self._record_offset_stage_stat("alert", applied=_a_mult is not None)
+        self._maybe_log_offset_pipeline_stats()
 
         # 620# sidecar injection: ceiling clamp の後に適用。
         # sidecar は ceiling 制約を尊重した上での微調整として機能する。

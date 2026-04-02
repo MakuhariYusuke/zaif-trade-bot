@@ -899,6 +899,23 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
         "progress_log_interval",
         "log_max_bytes", "log_backup_count",
         "fallback_stale_sec",  # 156# §16
+        "entry_gate_enabled",
+        "entry_gate_calibration_map_path",
+        "entry_gate_probability_mode",
+        "entry_gate_ewma_tau",
+        "entry_gate_n_min",
+        "entry_gate_fee_rate",
+        "entry_gate_c_spread",
+        "entry_gate_c_vol",
+        "entry_gate_c_imp",
+        "entry_gate_online_update",
+        "entry_gate_max_consecutive_blocks",
+        "entry_gate_max_block_rate",
+        "entry_gate_min_eval_for_rate",
+        "entry_gate_staleness_threshold_sec",
+        "offset_ev_stage_enabled",
+        "offset_toxicity_stage_enabled",
+        "offset_vg_supplement_enabled",
     }
     for key in flat_keys:
         if key in yaml_cfg:
@@ -1255,10 +1272,25 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
             "c_vol": "entry_gate_c_vol",
             "c_imp": "entry_gate_c_imp",
             "online_update": "entry_gate_online_update",
+            "max_consecutive_blocks": "entry_gate_max_consecutive_blocks",
+            "max_block_rate": "entry_gate_max_block_rate",
+            "min_eval_for_rate": "entry_gate_min_eval_for_rate",
+            "staleness_threshold_sec": "entry_gate_staleness_threshold_sec",
         }
         for yaml_key, config_key in eg_map.items():
             if yaml_key in eg:
                 kwargs[config_key] = eg[yaml_key]
+
+    op = yaml_cfg.get("offset_pipeline", {})
+    if isinstance(op, dict) and op:
+        op_map = {
+            "ev_stage_enabled": "offset_ev_stage_enabled",
+            "toxicity_stage_enabled": "offset_toxicity_stage_enabled",
+            "vg_supplement_enabled": "offset_vg_supplement_enabled",
+        }
+        for yaml_key, config_key in op_map.items():
+            if yaml_key in op:
+                kwargs[config_key] = bool(op[yaml_key])
 
     cfg = _FillTestConfig(**kwargs)
     if (

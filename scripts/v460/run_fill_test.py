@@ -406,6 +406,7 @@ class FillTestRunner(
         self._cycle_gate = CycleGateAggregator(config)
 
         # 555# Entry Gate: CalibrationMap ロード
+        from scripts.v460.lib.entry_gate_guard import EntryGateGuard, EntryGateGuardConfig
         from ztb.trading.signal.calibration_map import CalibrationMap
         self._calibration_map: CalibrationMap | None = None
         if config.entry_gate_calibration_map_path:
@@ -433,6 +434,16 @@ class FillTestRunner(
                     config.entry_gate_calibration_map_path,
                 )
                 self._calibration_map = None
+        self._entry_gate_guard = EntryGateGuard(
+            EntryGateGuardConfig(
+                max_consecutive_blocks=config.entry_gate_max_consecutive_blocks,
+                max_block_rate=config.entry_gate_max_block_rate,
+                min_eval_count_for_rate=config.entry_gate_min_eval_for_rate,
+                staleness_threshold_sec=config.entry_gate_staleness_threshold_sec,
+            )
+        )
+        if self._calibration_map is not None:
+            self._entry_gate_guard.notify_calibration_update()
 
         # 211# P1-B: Micro Circuit Breaker (短期価格急変の自動検知・防御)
         from scripts.v460.lib.micro_circuit_breaker import MicroCircuitBreaker, MCBConfig
@@ -693,6 +704,21 @@ class FillTestRunner(
         if old_state:
             self._sad.import_state(old_state)
             logger.info("[607#] SAD hot-reload: state preserved")
+
+    def _reset_entry_gate_guard(self) -> None:
+        """690# entry_gate 設定変更時に guard をリセット."""
+        from scripts.v460.lib.entry_gate_guard import EntryGateGuard, EntryGateGuardConfig
+
+        self._entry_gate_guard = EntryGateGuard(
+            EntryGateGuardConfig(
+                max_consecutive_blocks=self.config.entry_gate_max_consecutive_blocks,
+                max_block_rate=self.config.entry_gate_max_block_rate,
+                min_eval_count_for_rate=self.config.entry_gate_min_eval_for_rate,
+                staleness_threshold_sec=self.config.entry_gate_staleness_threshold_sec,
+            )
+        )
+        if self._calibration_map is not None:
+            self._entry_gate_guard.notify_calibration_update()
 
     # ==================================================================
     # 163# Mixin 分割: 以下のメソッドは個別ファイルに抽出済み

@@ -138,6 +138,26 @@ class TestRegimeDicts:
         with pytest.raises(ValueError, match="contains unsupported side 'both'"):
             validate_fill_config(cfg)
 
+    def test_entry_gate_max_consecutive_blocks_must_be_positive(self, cfg: FillTestConfig) -> None:
+        cfg.entry_gate_max_consecutive_blocks = 0
+        with pytest.raises(ValueError, match="entry_gate_max_consecutive_blocks"):
+            validate_fill_config(cfg)
+
+    def test_entry_gate_max_block_rate_must_be_in_unit_interval(self, cfg: FillTestConfig) -> None:
+        cfg.entry_gate_max_block_rate = 1.2
+        with pytest.raises(ValueError, match="entry_gate_max_block_rate"):
+            validate_fill_config(cfg)
+
+    def test_entry_gate_min_eval_for_rate_has_lower_bound(self, cfg: FillTestConfig) -> None:
+        cfg.entry_gate_min_eval_for_rate = 4
+        with pytest.raises(ValueError, match="entry_gate_min_eval_for_rate"):
+            validate_fill_config(cfg)
+
+    def test_entry_gate_staleness_threshold_has_lower_bound(self, cfg: FillTestConfig) -> None:
+        cfg.entry_gate_staleness_threshold_sec = 30.0
+        with pytest.raises(ValueError, match="entry_gate_staleness_threshold_sec"):
+            validate_fill_config(cfg)
+
 
 class TestConfidenceLot:
     def test_floor_above_one(self, cfg: FillTestConfig) -> None:
