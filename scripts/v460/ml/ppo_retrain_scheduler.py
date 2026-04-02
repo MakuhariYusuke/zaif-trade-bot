@@ -352,7 +352,7 @@ def run_scheduler(cfg: PPOSidecarConfig) -> None:
         try:
             should_run, reason = trigger.should_retrain()
         except Exception as exc:  # pragma: no cover - exercised via loop tests
-            logger.error("PPO trigger.should_retrain failed: %s", exc, exc_info=True)
+            logger.warning("PPO trigger.should_retrain failed: %s", exc)
             if _shutdown_event.wait(timeout=cfg.check_interval_sec):
                 break
             continue

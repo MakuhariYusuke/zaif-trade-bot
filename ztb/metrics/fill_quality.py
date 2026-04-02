@@ -44,6 +44,12 @@ from ztb.metrics.fill_group_metrics import (
     compute_hourly_metrics,
     compute_regime_metrics,
 )
+from ztb.metrics.fill_record_integrity import (
+    detect_split_brain,
+    filter_clean_records,
+    partition_clean_records,
+    quarantine_reason as _quarantine_reason,
+)
 from ztb.metrics.pnl_accumulators import PnlAccumulator, PnlWinAccumulator
 from ztb.metrics.fill_record_io import (
     apply_fill_record_filters,
@@ -795,152 +801,6 @@ def g1_2_full_judgment(
         metrics=metrics,
         watch=is_watch,
     )
-
-def detect_split_brain(
-    records: Sequence[FillRecord],
-    *,
-    overlap_window_sec: float = 300.0,
-) -> list[dict[str, object]]:
-    """286# 283# P0-1: Split-Brain (多重起動) を事後検出する.
-
-    同一時刻帯に複数の run_id または pid が記録を書き込んでいるケースを検出。
-    FillRecord.pid (285# 追加) と run_id を使用。
-
-    検出ロジック:
-    - 隣接レコード間で run_id が異なり、かつ timestamp 差が overlap_window_sec 以内
-      → Split-Brain イベントとして報告
-    - pid が異なる場合も同様
-
-    Args:
-        records: 時系列順の FillRecord リスト
-        overlap_window_sec: 時間重複を判定する窓幅 (秒)
-
-    Returns:
-        検出された Split-Brain イベントのリスト。各要素は:
-        {"timestamp": float, "run_id_a": str, "run_id_b": str,
-         "pid_a": int|None, "pid_b": int|None, "gap_sec": float}
-    """
-    if len(records) < 2:
-        return []
-
-    events: list[dict[str, object]] = []
-    for i in range(1, len(records)):
-        prev, curr = records[i - 1], records[i]
-        # run_id チェック
-        if prev.run_id and curr.run_id and prev.run_id != curr.run_id:
-            gap = abs(curr.timestamp - prev.timestamp)
-            if gap <= overlap_window_sec:
-                events.append({
-                    "timestamp": curr.timestamp,
-                    "run_id_a": prev.run_id,
-                    "run_id_b": curr.run_id,
-                    "pid_a": prev.pid,
-                    "pid_b": curr.pid,
-                    "gap_sec": gap,
-                })
-        # 同一 run_id でも pid が異なるケース (プロセス入替の検出)
-        elif (
-            prev.pid is not None
-            and curr.pid is not None
-            and prev.pid != curr.pid
-            and prev.run_id == curr.run_id
-        ):
-            gap = abs(curr.timestamp - prev.timestamp)
-            if gap <= overlap_window_sec:
-                events.append({
-                    "timestamp": curr.timestamp,
-                    "run_id_a": prev.run_id,
-                    "run_id_b": curr.run_id,
-                    "pid_a": prev.pid,
-                    "pid_b": curr.pid,
-                    "gap_sec": gap,
-                })
-
-    if events:
-        logger.critical(
-            f"[286# SPLIT-BRAIN] {len(events)} overlapping process events "
-            f"detected! Multiple processes wrote to the same JSONL. "
-            f"First event: run_ids={events[0].get('run_id_a')}/{events[0].get('run_id_b')}, "
-            f"pids={events[0].get('pid_a')}/{events[0].get('pid_b')}"
-        )
-    return events
-def partition_clean_records(
-    records: Iterable[FillRecord],
-    *,
-    require_git_sha: bool = True,
-) -> tuple[list[FillRecord], list[FillRecord]]:
-    """046# clean/quarantine 分離 + 047# A5 拡張基準 (iterable 対応).
-
-    以下のいずれかに該当するレコードを quarantine へ分類:
-    - git_sha が blank/None (ゾンビプロセス由来)
-    - run_id が blank/None (020# O4 以前の旧形式レコード)
-    - 必須フィールド (side, order_price, order_quantity) が不正
-
-    Args:
-        records: 全 FillRecord iterable.
-        require_git_sha: True の場合 git_sha が blank/None のレコードを quarantine.
-            False の場合は全チェックをバイパスして全件 clean を返す.
-
-    Returns:
-        (clean, quarantine) のタプル.
-    """
-    if not require_git_sha:
-        if isinstance(records, list):
-            return records, []  # 既存互換: list 入力時は同一参照を返す
-        return list(records), []  # テスト用: 全件 clean (本番は常に True)
-
-    clean: list[FillRecord] = []
-    quarantine: list[FillRecord] = []
-    total = 0
-    for r in records:
-        total += 1
-        # 047# A5: 複合チェック — git_sha + run_id + 必須フィールド
-        reason = _quarantine_reason(r)
-        if reason:
-            quarantine.append(r)
-        else:
-            clean.append(r)
-
-    if quarantine:
-        logger.info(
-            f"[quarantine] {len(quarantine)}/{total} records quarantined. "
-            f"clean={len(clean)}"
-        )
-    return clean, quarantine
-
-def filter_clean_records(
-    records: list[FillRecord],
-    *,
-    require_git_sha: bool = True,
-) -> tuple[list[FillRecord], list[FillRecord]]:
-    """046# clean/quarantine 分離 + 047# A5 拡張基準.
-
-    list 入力の既存 API。新規コードでは `partition_clean_records()` を優先。
-    """
-    return partition_clean_records(records, require_git_sha=require_git_sha)
-
-def _quarantine_reason(r: FillRecord) -> str | None:
-    """047# A5: レコードの quarantine 理由を返す (None=clean)."""
-    if not (r.git_sha and r.git_sha.strip()):
-        return "blank_git_sha"
-    if not (r.run_id and r.run_id.strip()):
-        return "blank_run_id"
-    # 144# #3: cancel_reason バイパスは「監査系 reason + side=none」に限定
-    # 145# §9-#6 / 505#: canonical constants live in ztb.trading.common.cancel_reasons
-    from ztb.trading.common.cancel_reasons import AUDIT_CANCEL_REASONS
-    _cancel = getattr(r, "cancel_reason", None)
-    _is_audit = _cancel in AUDIT_CANCEL_REASONS and r.side in ("none", "buy", "sell")
-    if r.side not in ("buy", "sell"):
-        if _is_audit:
-            return None  # 監査レコードは clean 扱い
-        return f"invalid_side={r.side}"
-    if not r.order_price or r.order_price <= 0:
-        if not _is_audit:
-            return "invalid_order_price"
-    if not r.order_quantity or r.order_quantity <= 0:
-        if not _is_audit:
-            return "invalid_order_quantity"
-    return None
 
 # ======================================================================
 # 051# P2-2: Round-trip 評価 (buy→sell ペアリング)

@@ -40,9 +40,9 @@ from ztb.metrics.fill_quality import (
     FillRecord,
     PnlAccumulator,
     compute_fill_metrics,
-    filter_clean_records,
     load_fill_records_glob,
 )
+from ztb.metrics.fill_record_integrity import filter_clean_records
 from scripts.v460.analysis.analysis_common import add_results_dir_arg, write_json_output, write_output
 
 

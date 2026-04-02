@@ -429,7 +429,6 @@ class TestPPORetrainOnce:
             data_path=str(tmp_path / "ppo.csv"),
             signal_path=tmp_path / "ppo_signal.json",
         )
-        Path(cfg.data_path).write_text("timestamp,close\n1,100\n", encoding="utf-8")
         fake_trainer = MagicMock()
 
         with (

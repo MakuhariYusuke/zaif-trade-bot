@@ -10497,3 +10497,26 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - regression:
     - focused: `33 passed, 3 skipped in 2.88s`
     - broader: `476 passed, 3 skipped, 5 warnings in 10.42s`
+
+- `fill integrity split + scheduler/setup trim`
+  - 新規:
+    - [fill_record_integrity.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_record_integrity.py)
+  - 更新:
+    - [fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py)
+    - [run_pnl_monte_carlo.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/run_pnl_monte_carlo.py)
+    - [monitor_fill_test.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/monitor_fill_test.py)
+    - [oracle_baseline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/analysis/oracle_baseline.py)
+    - [vg_and_trend.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/analysis/vg_and_trend.py)
+    - [scheduler_common.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/sidecar/scheduler_common.py)
+    - [ppo_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/ppo_retrain_scheduler.py)
+    - [sac_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/sac_retrain_scheduler.py)
+    - [test_680_ppo_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_680_ppo_retrain_scheduler.py)
+    - [test_sac_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_sac_retrain_scheduler.py)
+    - [tests/unit/v460/_real_data_test_helpers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_real_data_test_helpers.py)
+  - self-review:
+    - `fill_quality` から record integrity を分離でき、analysis / monitor 系にも横展開できた
+    - scheduler bookkeeping failure は traceback を作らない方が安全で読みやすい
+    - heavy test はまだ揺れるが、PPO error path は slowest top 20 から外れた
+  - regression:
+    - heavy subset: `360 passed, 5 warnings in 13.71s`
+    - integrity/import follow-up: `5 passed in 3.97s`

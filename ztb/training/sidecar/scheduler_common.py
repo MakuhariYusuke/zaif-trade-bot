@@ -153,7 +153,7 @@ def append_history_best_effort(
     try:
         append_history_jsonl(path, payload)
     except Exception as exc:  # pragma: no cover - exercised via loop tests
-        logger_obj.warning("%s history append failed: %s", label, exc, exc_info=True)
+        logger_obj.warning("%s history append failed: %s", label, exc)
 
 
 def record_trigger_result_best_effort(
@@ -168,7 +168,7 @@ def record_trigger_result_best_effort(
     try:
         trigger.record_result(status)
     except Exception as exc:  # pragma: no cover - exercised via loop tests
-        logger_obj.warning("%s trigger.record_result failed: %s", label, exc, exc_info=True)
+        logger_obj.warning("%s trigger.record_result failed: %s", label, exc)
 
 
 def run_with_timeout(

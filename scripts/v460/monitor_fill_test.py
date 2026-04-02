@@ -33,8 +33,8 @@ from ztb.metrics.fill_quality import (
     iter_fill_records_glob,
     g1_1_quick_judgment,
     g1_2_full_judgment,
-    partition_clean_records,
 )
+from ztb.metrics.fill_record_integrity import partition_clean_records
 from ztb.io.json_io import write_json
 from scripts.v460.lib.config_loader import load_gate_thresholds
 

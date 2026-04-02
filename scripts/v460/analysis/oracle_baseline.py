@@ -42,8 +42,8 @@ from ztb.metrics.fill_quality import (
     FillRecord,
     PnlAccumulator,
     iter_fill_records_glob,
-    partition_clean_records,
 )
+from ztb.metrics.fill_record_integrity import partition_clean_records
 from scripts.v460.analysis.analysis_common import add_results_dir_arg, write_output, write_json_output
 from ztb.utils.dataclass_utils import shallow_asdict
 

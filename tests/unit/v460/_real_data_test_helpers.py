@@ -212,17 +212,20 @@ def select_minimum_smoke_enriched_fill_df(
     if not sample_sizes:
         return pd.DataFrame()
 
+    sorted_sizes = tuple(sorted(sample_sizes))
     recent_fill_df = load_recent_fill_records_df(
-        sample_rows=max(sample_sizes),
+        sample_rows=sorted_sizes[-1],
         results_dir=results_dir,
     )
     if recent_fill_df.empty:
         return pd.DataFrame()
 
-    for sample_rows in sample_sizes:
-        enriched = enrich_fn(recent_fill_df.tail(sample_rows))
-        if required_column not in enriched.columns:
-            continue
+    enriched_max = enrich_fn(recent_fill_df.tail(sorted_sizes[-1]))
+    if required_column not in enriched_max.columns:
+        return pd.DataFrame()
+
+    for sample_rows in sorted_sizes:
+        enriched = enriched_max.tail(sample_rows).copy()
         if enriched[required_column].notna().any():
             return enriched
     return pd.DataFrame()

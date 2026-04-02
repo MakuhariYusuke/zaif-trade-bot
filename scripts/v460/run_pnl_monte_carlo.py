@@ -32,10 +32,8 @@ from ztb.risk.pnl_monte_carlo import (
     MonteCarloConfig,
     PnLMonteCarloSimulator,
 )
-from ztb.metrics.fill_quality import (
-    compute_fill_metrics,
-    filter_clean_records,
-)
+from ztb.metrics.fill_quality import compute_fill_metrics
+from ztb.metrics.fill_record_integrity import filter_clean_records
 from ztb.io.json_io import write_json
 
 logging.basicConfig(

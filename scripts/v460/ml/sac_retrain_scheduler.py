@@ -795,7 +795,7 @@ def run_scheduler(cfg: SACRetrainConfig) -> None:
         try:
             should_run, reason = trigger.should_retrain()
         except Exception as e:
-            logger.error(f"[495#] trigger.should_retrain() failed: {e}", exc_info=True)
+            logger.warning(f"[495#] trigger.should_retrain() failed: {e}")
             if _shutdown_event.wait(timeout=cfg.check_interval_sec):
                 break
             continue

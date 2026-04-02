@@ -920,3 +920,19 @@ probe / weighting の wiring だけ current contract に揃えられた。
 
 - loop crash と one-cycle retrain failure を分ける
 - 常駐 scheduler のログ量と exception-path 固定費を少し下げる
+
+## 2026-04-02 follow-up: scheduler recoverable path + fill integrity split
+
+- `ztb/training/sidecar/scheduler_common.py`
+  - `append_history_best_effort()`
+  - `record_trigger_result_best_effort()`
+  で recoverable bookkeeping exception の traceback 生成をやめた
+- `scripts/v460/ml/ppo_retrain_scheduler.py`
+  - `trigger.should_retrain()` の recoverable failure は warning に寄せた
+- hidden task として、PPO/SAC の scheduler safety helper を先に軽くし、
+  その上で heavy test の固定費を減らす順番に整理した
+
+所見:
+
+- ループ crash と recoverable bookkeeping failure の線引きが前より明瞭
+- PPO runtime 自体の continuity 契約は維持したまま、常駐時の log noise を少し下げられた

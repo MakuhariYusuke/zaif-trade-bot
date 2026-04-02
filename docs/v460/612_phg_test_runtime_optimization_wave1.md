@@ -1465,3 +1465,51 @@ durations 変化で特に効いた点:
 - heavy test そのものの短縮は今回の主目的ではない
 - その代わり、694 追加仕様を fast unit で先に固定したので、
   次の heavy setup 削減 batch を安全に進めやすくなった
+
+## 2026-04-02 follow-up: fill integrity split + scheduler/setup trim
+
+- runtime split:
+  - `ztb/metrics/fill_record_integrity.py` を新設
+  - `fill_quality` から
+    - `detect_split_brain`
+    - `partition_clean_records`
+    - `filter_clean_records`
+    - `quarantine_reason`
+    を切り出した
+- horizontal rollout:
+  - `scripts/v460/run_pnl_monte_carlo.py`
+  - `scripts/v460/monitor_fill_test.py`
+  - `scripts/v460/analysis/oracle_baseline.py`
+  - `scripts/v460/analysis/vg_and_trend.py`
+  を新 helper へ追随
+- test/runtime trim:
+  - `tests/unit/v460/_real_data_test_helpers.py`
+    - smoke enriched sample は max sample を一度だけ enrich して tail を選ぶ形に整理
+  - `ztb/training/sidecar/scheduler_common.py`
+    - recoverable bookkeeping で traceback を作らない
+  - `scripts/v460/ml/ppo_retrain_scheduler.py`
+  - `scripts/v460/ml/sac_retrain_scheduler.py`
+    - `trigger.should_retrain()` 失敗の recoverable log を簡潔化
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+    - error path の不要 I/O を削減
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+    - interval test の loop 固定費を削減
+
+regression:
+
+- focused heavy subset:
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `360 passed, 5 warnings in 13.71s`
+- import follow-up:
+  - `tests/unit/v460/test_regime_detector.py -k "filter_clean_records or quarantine"`
+  - `3 passed in 2.00s`
+  - `tests/unit/v460/test_analysis_output_contracts.py -k "oracle_baseline or vg"`
+  - `2 passed in 1.97s`
+
+所見:
+
+- run-to-run の揺れはあるが、slowest top 20 から PPO error path は外れた
+- 次の本命は `enricher` 実データ setup と `fill_quality` report shaping 残り

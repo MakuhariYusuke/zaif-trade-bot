@@ -1384,14 +1384,14 @@ class TestDataFreshnessDecoupling649:
         def counting_is_set() -> bool:
             nonlocal is_set_count
             is_set_count += 1
-            return is_set_count > 3
+            return is_set_count > 2
 
         wait_count = 0
 
         def counting_wait(timeout: float | None = None) -> bool:
             nonlocal wait_count
             wait_count += 1
-            if wait_count >= 3:
+            if wait_count >= 2:
                 _shutdown_event.set()
                 return True
             return False
@@ -1403,6 +1403,11 @@ class TestDataFreshnessDecoupling649:
                 "scripts.v460.ml.update_training_data.ensure_data_fresh",
                 return_value=False,
             ) as mock_fresh,
+            patch_noop_paths(
+                "scripts.v460.ml.sac_retrain_scheduler.logger.info",
+                "scripts.v460.ml.sac_retrain_scheduler.logger.warning",
+                "scripts.v460.ml.sac_retrain_scheduler.logger.debug",
+            ),
         ):
             run_scheduler(cfg)
 
