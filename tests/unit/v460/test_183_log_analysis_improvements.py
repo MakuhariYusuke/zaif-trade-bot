@@ -92,6 +92,7 @@ skip_gate:
   enabled: true
   mode: pnl
   hour_offsets:
+    12: 0.3
     14: 0.3
     16: 0.5
     18: 0.3
@@ -234,9 +235,10 @@ class TestHourOffsetsYAML:
         assert cfg.skip_gate_hour_offsets[18] == pytest.approx(0.3)
         assert cfg.skip_gate_hour_offsets[21] == pytest.approx(0.3)
         assert cfg.skip_gate_hour_offsets[23] == pytest.approx(0.2)
+        # 703# 新規追加
+        assert cfg.skip_gate_hour_offsets[12] == pytest.approx(0.3)
         # 未設定時間帯
         assert cfg.skip_gate_hour_offsets.get(0, 0.0) == 0.0
-        assert cfg.skip_gate_hour_offsets.get(12, 0.0) == 0.0
 
     def test_hour_offsets_worst_hour_highest(self, hour_offsets_config: FillTestConfig) -> None:
         """183# 最悪時間帯 (01h JST=16 UTC) が最高オフセット."""

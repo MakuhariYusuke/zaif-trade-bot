@@ -548,6 +548,7 @@ skip_gate:
   # ログ分析: 01h JST(=16UTC)64%AS, 03h(=18UTC)50%, 06h(=21UTC)36%, 17h(=08UTC)42%, 23h(=14UTC)43%
   # PnLモード: 正方向=厳格化 (より高い予測PnLがないとskip)
   hour_offsets:
+    12: 0.3    # 703# JST21h: P688 avg=-1.73bps (n=20). skip_gate 閾値を厳格化
     13: 0.3    # 468# 22h JST: 461# AS57%, PnL-3.18bps → 新規追加
     14: 0.5    # 397# 23h JST: 395# current SHA n=6 WR=0% → 0.3→0.5 厳格化
     15: 0.2    # 468# 00h JST: 461# AS18.2%, PnL-1.93bps → 軽い厳格化
@@ -576,8 +577,6 @@ skip_gate:
   # ログ分析: spread<2kでAS32% (全体28%), PnL=-0.46bps (全体-0.30bps)
   skip_gate_narrow_spread_threshold_jpy: 2000.0
   skip_gate_narrow_spread_offset: 0.0     # 674# 0.2→0.0: 672#でα最低帯ペナルティ撤廃 (狭spread=低情報非対称)
-  hour_offsets:
-    12: 0.3    # 703# JST21h: P688 avg=-1.73bps (n=20). skip_gate 閾値を厳格化
   # 634# P0: sell/ranging ペナルティ (閾値を厳格化して sell/ranging の skip 率を上げる)
   sell_ranging_offset: 0.5
   # 703# P688: sell/trending_up avg_pnl=-2.01bps (n=54, p<0.01). sell/ranging と同等の閾値厳格化
