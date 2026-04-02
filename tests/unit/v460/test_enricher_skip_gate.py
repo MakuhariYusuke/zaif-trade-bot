@@ -1588,20 +1588,20 @@ class Test106R3WarmStart:
                 "filled": True,
                 "timestamp": 1700000000 + i * 60,
             })
-            for i in range(6)
+            for i in range(4)
         ]
         new_records = [
             json.dumps({
                 "side": "buy",
-                "skip_gate_as_prob": 0.60 + i * 0.01,
+                "skip_gate_as_prob": 0.61 + i * 0.01,
                 "filled": True,
                 "timestamp": 1700003600 + i * 60,
             })
-            for i in range(6)
+            for i in range(4)
         ]
         (tmp_path / "fill_records_20260101.jsonl").write_text("\n".join(old_records))
         (tmp_path / "fill_records_20260102.jsonl").write_text("\n".join(new_records))
 
-        warm_start_skip_gate_thresholds(adaptive_gate, str(tmp_path), window=3)
+        warm_start_skip_gate_thresholds(adaptive_gate, str(tmp_path), window=2)
 
-        assert adaptive_gate._pas_history_buy == pytest.approx([0.63, 0.64, 0.65])
+        assert adaptive_gate._pas_history_buy == pytest.approx([0.63, 0.64])

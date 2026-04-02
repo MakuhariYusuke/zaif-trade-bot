@@ -874,3 +874,23 @@ probe / weighting の wiring だけ current contract に揃えられた。
 
 1. `test_680_ppo_retrain_scheduler.py::test_error_pushes_neutral_fallback` はまだ最遅
 2. PPO warm-start の state/weight continuity は次段で継続
+
+## 2026-04-02 follow-up: exec monitoring split
+
+- `ztb/metrics/fill_exec_monitoring.py`
+  - G1.1 informational checks を切り出し
+- `ztb/metrics/fill_quality.py`
+  - execution judgment の組み立てをさらに薄くした
+- regression:
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `359 passed, 5 warnings in 11.03s`
+  - broader PPO/fill subset `483 passed, 5 warnings in 15.70s`
+
+所見:
+
+- PPO 本体の continuity は進んでいる
+- ただし scheduler exception-path の最遅点はまだ `test_error_pushes_neutral_fallback`
+- 次は runtime 側の error-path 自体をもう少し薄くできるかを見る

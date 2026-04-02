@@ -89,7 +89,7 @@ def write_jsonl_sample(path: Path, rows: list[JsonRow]) -> None:
 
 
 def write_jsonl_gz(path: Path, rows: list[JsonRow]) -> None:
-    with gzip.open(path, "wt", encoding="utf-8") as f:
+    with gzip.open(path, "wt", encoding="utf-8", compresslevel=1) as f:
         for row in rows:
             f.write(json.dumps(row, ensure_ascii=False))
             f.write("\n")

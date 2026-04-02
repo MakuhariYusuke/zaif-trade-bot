@@ -36,6 +36,7 @@ from ztb.metrics.fill_judgment_core import (
     resolve_exec_judgment_type,
     resolve_gate_result,
 )
+from ztb.metrics.fill_exec_monitoring import build_exec_monitoring_checks
 from ztb.metrics.fill_group_metrics import (
     GroupedMetricsBase,
     HourlyMetrics,
@@ -673,35 +674,8 @@ def g1_1_judgment(
     """
     checks = cast(dict[str, dict[str, object]], build_exec_gate_checks(metrics, thresholds))
 
-    # 092# E6: round-trip mean PnL (087# P1-1 / 083# §4.2-3)
-    # mean が負でもテール損失管理の監視として重要
     if records is not None:
-        filled_recs = [r for r in records if r.filled]
-        if len(filled_recs) >= 2:
-            rt_metrics, _ = compute_round_trip_metrics(records)
-            if rt_metrics.total_pairs > 0:
-                min_rt_pnl = thresholds.get("min_round_trip_pnl_mean", -2.0)
-                checks["E6_round_trip_pnl"] = {
-                    "value": rt_metrics.pnl_mean_bps,
-                    "threshold": min_rt_pnl,
-                    "pass": rt_metrics.pnl_mean_bps >= min_rt_pnl,
-                    "pairs": rt_metrics.total_pairs,
-                    "median": rt_metrics.pnl_median_bps,
-                    "total_jpy": rt_metrics.pnl_total_jpy,
-                    "informational": True,  # 当面は監視用、安定したら Gate 昇格
-                }
-
-                # E7: net inventory drift — 在庫偏り警告
-                max_inventory = thresholds.get("max_net_inventory", 5)
-                checks["E7_net_inventory"] = {
-                    "value": abs(rt_metrics.net_inventory),
-                    "threshold": max_inventory,
-                    "pass": abs(rt_metrics.net_inventory) <= max_inventory,
-                    "net_inventory": rt_metrics.net_inventory,
-                    "unpaired_buys": rt_metrics.unpaired_buys,
-                    "unpaired_sells": rt_metrics.unpaired_sells,
-                    "informational": True,  # 監視用
-                }
+        checks.update(build_exec_monitoring_checks(records, thresholds))
 
     # Gate 判定には informational=True のチェックは含めない
     gate_checks = {k: v for k, v in checks.items() if not v.get("informational")}

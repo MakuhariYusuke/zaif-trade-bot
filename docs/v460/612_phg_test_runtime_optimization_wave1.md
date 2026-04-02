@@ -1368,3 +1368,37 @@ durations 変化で特に効いた点:
 1. `test_680_ppo_retrain_scheduler.py::test_error_pushes_neutral_fallback` `0.76s`
 2. `test_enricher_skip_gate.py::test_enrichment_with_real_data` setup `0.18s`
 3. `test_sac_retrain_scheduler.py::test_data_check_respects_interval` `0.15s`
+
+## 2026-04-02 追加: exec monitoring split / gzip helper trim
+
+- `ztb/metrics/fill_exec_monitoring.py`
+  - G1.1 の informational round-trip checks を切り出し
+- `ztb/metrics/fill_quality.py`
+  - `g1_1_judgment()` から informational check 組み立てを外出し
+- `tests/unit/v460/_real_data_test_helpers.py`
+  - test 用 `write_jsonl_gz(...)` を `compresslevel=1` に変更
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - warm-start fixture 相当の件数を縮小
+
+回帰:
+
+- subset:
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `359 passed, 5 warnings in 11.03s`
+- broader:
+  - `tests/unit/v460/test_fill_test_config.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/training/test_ppo_trainer.py`
+  - `tests/integration/test_custom_ppo_integration.py`
+  - `483 passed, 5 warnings in 15.70s`
+
+所見:
+
+- raw cache invalidation 系は改善したが、run-to-run で揺れが残る
+- `PPO error path` は依然 slowest で、次の exception-path batch の本命

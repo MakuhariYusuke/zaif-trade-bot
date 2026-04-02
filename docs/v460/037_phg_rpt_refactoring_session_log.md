@@ -10435,3 +10435,21 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - regression:
     - subset: `359 passed, 5 warnings in 10.46s`
     - broader: `483 passed, 5 warnings in 12.31s`
+
+- `exec monitoring split + gzip helper trim`
+  - 新規:
+    - [fill_exec_monitoring.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_exec_monitoring.py)
+  - 更新:
+    - [fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py)
+      - G1.1 informational round-trip checks を helper 経由へ整理
+    - [tests/unit/v460/_real_data_test_helpers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_real_data_test_helpers.py)
+      - gzip writer を test 向けに軽量化
+    - [test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+      - warm-start fixture の件数を縮小
+  - self-review:
+    - `fill_quality` は metrics / grouped / round-trip / judgment payload / exec monitoring に整理された
+    - helper の責務重複は見られず、横展開も自然
+    - heavy test は改善したが、`PPO error path` は引き続き本命
+  - regression:
+    - subset: `359 passed, 5 warnings in 11.03s`
+    - broader: `483 passed, 5 warnings in 15.70s`
