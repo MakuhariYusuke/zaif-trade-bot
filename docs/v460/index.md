@@ -793,4 +793,17 @@ NNN_phX_TYPE_description.md
 | 684 | review | [684_cplt_integrated_review_681_683_cross_validation.md](684_cplt_integrated_review_681_683_cross_validation.md) | 681#-683# 統合レビュー: 多角的検証・盲点抽出・Codex タスク設計 |
 | 685 | tuning | [685_cplt_phase1_sell_protection_yaml_changes.md](685_cplt_phase1_sell_protection_yaml_changes.md) | Phase 1 Sell Protection: trending boost, SG thresholds, AM hour defense (684# S1/S3/S4/S5) |
 | 686 | analysis | [686_cplt_4day_analysis_min_spread_relax_codex_tasks.md](686_cplt_4day_analysis_min_spread_relax_codex_tasks.md) | 4日間データ分析・min_spread 緩和 (cap 2.0→1.2)・Codex タスク設計 (SG bypass / test infra) |
-| 687 | review | [687_cplt_doc_stocktake_codex_tasks.md](687_cplt_doc_stocktake_codex_tasks.md) | ドキュメント棚卸し: 605#/638#/672#/684# ステータス追記 + Codex タスク (state 分離 / torch 隔離) |
+| 687 | review | [687_phg_state_separation_and_torch_test_isolation.md](687_phg_state_separation_and_torch_test_isolation.md) | state 分離 / torch test isolation / ドキュメント棚卸し |
+| 688 | impl | [688_cplt_data_analysis_yaml_fix_codex_tasks.md](688_cplt_data_analysis_yaml_fix_codex_tasks.md) | データ分析 + YAML 緊急修正 + Bot 再起動 + Codex タスク設計 |
+| 689 | impl | [689_cplt_codex_timeout_regime_trace_id_integration.md](689_cplt_codex_timeout_regime_trace_id_integration.md) | Codex: timeout regime×side + decision trace ID 統合 |
+| 690 | impl | [690_phg_bucket_skip_budget_and_fill_observability.md](690_phg_bucket_skip_budget_and_fill_observability.md) | Skip Budget + Codex 5 件一括投入 + Bot 停止調査 |
+| 691 | impl | [691_phg_entry_gate_runtime_and_skip_audit.md](691_phg_entry_gate_runtime_and_skip_audit.md) | entry_gate runtime 有効化と skip audit 整備 |
+| 692 | impl | [692_phg_analysis_protocol_688_cli.md](692_phg_analysis_protocol_688_cli.md) | analysis protocol 688 CLI 整備 |
+| 693 | review | [693_cplt_codex_review_and_staleness_fix.md](693_cplt_codex_review_and_staleness_fix.md) | Codex 5タスク レビュー＆ staleness init fix |
+| 694 | plan | [694_cplt_next_codex_task_plan.md](694_cplt_next_codex_task_plan.md) | Codex タスク計画 |
+| 695 | plan | [695_cplt_next_codex_tasks.md](695_cplt_next_codex_tasks.md) | 次期 Codex タスク計画 |
+| 696 | analysis | [696_cplt_multi_perspective_analysis_deep_dive.md](696_cplt_multi_perspective_analysis_deep_dive.md) | 多視点フィルテスト分析レポート（深堀り版） |
+| 697 | review | [697_phg_rev_683_696_multifaceted_validation_and_profit_options.md](697_phg_rev_683_696_multifaceted_validation_and_profit_options.md) | 683#-696# 多角的検証レビューと収益化オプション整理 |
+| 698 | review | [698_cplt_second_opinion_696_697_academic_validation_and_profit_proposals.md](698_cplt_second_opinion_696_697_academic_validation_and_profit_proposals.md) | 696#-697# 学術的セカンドオピニオンと収益化提案 |
+| 699 | analysis | [699_cplt_review_response_697_698_cross_validation.md](699_cplt_review_response_697_698_cross_validation.md) | 697#/698# レビュー回答: クロスバリデーションと盲点分析 |
+| 700 | plan | [700_cplt_codex_task_plan_review_response.md](700_cplt_codex_task_plan_review_response.md) | Codex タスク計画: 697#/698# レビュー対応 |
