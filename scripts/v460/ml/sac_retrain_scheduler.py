@@ -648,7 +648,7 @@ def retrain_once(cfg: SACRetrainConfig) -> RetrainResult:
             debug_details=debug_details,
         )
     except Exception as e:
-        logger.error(f"Retrain failed: {e}", exc_info=True)
+        logger.error(f"Retrain failed: {e}")
         # 491# P0: 訓練例外時も neutral fallback を push し signal stale を防止
         _push_neutral_fallback(cfg.signal_path)
         return RetrainResult(

@@ -311,7 +311,7 @@ def retrain_once(cfg: PPOSidecarConfig) -> PPORetrainResult:
             },
         )
     except Exception as exc:
-        logger.error("PPO retrain failed: %s", exc, exc_info=True)
+        logger.error("PPO retrain failed: %s", exc)
         _push_neutral_fallback(cfg.signal_path)
         return PPORetrainResult(
             status="error",

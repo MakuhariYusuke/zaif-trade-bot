@@ -894,3 +894,15 @@ probe / weighting の wiring だけ current contract に揃えられた。
 - PPO 本体の continuity は進んでいる
 - ただし scheduler exception-path の最遅点はまだ `test_error_pushes_neutral_fallback`
 - 次は runtime 側の error-path 自体をもう少し薄くできるかを見る
+
+## 2026-04-02 follow-up: recoverable retrain logging trim
+
+- `scripts/v460/ml/ppo_retrain_scheduler.py`
+- `scripts/v460/ml/sac_retrain_scheduler.py`
+  - `retrain_once()` の recoverable failure は traceback なしの簡潔ログへ変更
+  - neutral fallback / error result の契約は維持
+
+意図:
+
+- loop crash と one-cycle retrain failure を分ける
+- 常駐 scheduler のログ量と exception-path 固定費を少し下げる

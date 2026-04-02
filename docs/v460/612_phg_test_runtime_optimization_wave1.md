@@ -1402,3 +1402,26 @@ durations 変化で特に効いた点:
 
 - raw cache invalidation 系は改善したが、run-to-run で揺れが残る
 - `PPO error path` は依然 slowest で、次の exception-path batch の本命
+
+## 2026-04-02 追加: recoverable retrain error logging trim
+
+- `scripts/v460/ml/ppo_retrain_scheduler.py`
+- `scripts/v460/ml/sac_retrain_scheduler.py`
+  - `retrain_once()` の recoverable error を traceback なしの簡潔ログに変更
+  - loop 側の crash-protection は従来どおり traceback を維持
+
+回帰:
+
+- focused:
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py::TestPPORetrainOnce::test_error_pushes_neutral_fallback`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py::TestCrashResilience495::test_training_timeout_raises`
+  - `tests/unit/v460/test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data`
+  - `3 passed in 5.78s`
+- broader:
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/training/test_ppo_trainer.py`
+  - `tests/integration/test_custom_ppo_integration.py`
+  - `398 passed, 5 warnings in 15.85s`

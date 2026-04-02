@@ -10453,3 +10453,17 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - regression:
     - subset: `359 passed, 5 warnings in 11.03s`
     - broader: `483 passed, 5 warnings in 15.70s`
+
+- `recoverable retrain logging trim`
+  - 更新:
+    - [ppo_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/ppo_retrain_scheduler.py)
+    - [sac_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/ml/sac_retrain_scheduler.py)
+  - 内容:
+    - `retrain_once()` の recoverable failure を traceback なしの簡潔ログへ変更
+    - loop crash protection 側の traceback は維持
+  - self-review:
+    - 速度改善は run-to-run で揺れるので、主目的は保守性と log noise 削減
+    - neutral fallback / error result の安全契約は維持
+  - regression:
+    - focused: `3 passed in 5.78s`
+    - broader: `398 passed, 5 warnings in 15.85s`
