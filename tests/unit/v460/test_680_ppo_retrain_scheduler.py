@@ -32,20 +32,10 @@ from scripts.v460.ml.ppo_retrain_scheduler import (
     run_scheduler,
 )
 from scripts.v460.ml.ppo_sidecar_config import PPOSidecarConfig
-
-
-def _make_shutdown_wait(*, set_after: int = 2) -> Callable[..., bool]:
-    """N 回目の wait で shutdown する side effect."""
-    counter = {"calls": 0}
-
-    def _wait(*_args: object, **_kwargs: object) -> bool:
-        counter["calls"] += 1
-        if counter["calls"] >= set_after:
-            _shutdown_event.set()
-            return True
-        return False
-
-    return _wait
+from tests.unit.v460._sidecar_scheduler_test_helpers import (
+    make_shutdown_wait,
+    patch_noop_paths,
+)
 
 
 @contextmanager
@@ -64,12 +54,12 @@ def _patch_scheduler_runtime_overheads() -> Iterator[None]:
             )
         )
         stack.enter_context(
-            patch("scripts.v460.ml.ppo_retrain_scheduler.logger.error", return_value=None)
-        )
-        stack.enter_context(
-            patch(
+            patch_noop_paths(
+                "scripts.v460.ml.ppo_retrain_scheduler.append_history_best_effort",
+                "scripts.v460.ml.ppo_retrain_scheduler.record_trigger_result_best_effort",
+                "scripts.v460.ml.ppo_retrain_scheduler.logger.error",
                 "scripts.v460.ml.ppo_retrain_scheduler.logger.warning",
-                return_value=None,
+                "scripts.v460.ml.ppo_retrain_scheduler.logger.info",
             )
         )
         yield
@@ -429,13 +419,13 @@ class TestPPORetrainOnce:
         )
         Path(cfg.data_path).write_text("timestamp,close\n1,100\n", encoding="utf-8")
         fake_trainer = MagicMock()
-        fake_trainer.train.side_effect = RuntimeError("boom")
 
         with (
             patch(
                 "scripts.v460.ml.ppo_retrain_scheduler.SELLBiasMitigationPPOTrainer",
                 return_value=fake_trainer,
             ),
+            patch("scripts.v460.ml.ppo_retrain_scheduler._train_with_timeout", side_effect=RuntimeError("boom")),
             patch(
                 "scripts.v460.ml.ppo_retrain_scheduler._push_neutral_fallback",
                 return_value=True,
@@ -469,7 +459,7 @@ class TestPPORunScheduler:
 
         _shutdown_event.clear()
         with (
-            patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait()),
+            patch.object(_shutdown_event, "wait", side_effect=make_shutdown_wait(shutdown_event=_shutdown_event)),
             patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
             patch.object(
                 PPORetrainTrigger,
@@ -506,7 +496,7 @@ class TestPPORunScheduler:
 
         _shutdown_event.clear()
         with (
-            patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait(set_after=3)),
+            patch.object(_shutdown_event, "wait", side_effect=make_shutdown_wait(set_after=3, shutdown_event=_shutdown_event)),
             patch.object(_shutdown_event, "is_set", side_effect=[False, False, False, True]),
             patch.object(
                 PPORetrainTrigger,
@@ -542,7 +532,7 @@ class TestPPORunScheduler:
 
         _shutdown_event.clear()
         with (
-            patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait()),
+            patch.object(_shutdown_event, "wait", side_effect=make_shutdown_wait(shutdown_event=_shutdown_event)),
             patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
             patch.object(
                 PPORetrainTrigger,

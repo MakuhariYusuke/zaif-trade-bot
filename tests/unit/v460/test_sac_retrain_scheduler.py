@@ -59,6 +59,10 @@ from scripts.v460.ml.sac_retrain_scheduler import (
     run_scheduler,
 )
 from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
+from tests.unit.v460._sidecar_scheduler_test_helpers import (
+    make_shutdown_wait,
+    patch_noop_paths,
+)
 
 
 # ════════════════════════════════════════════════════════════════
@@ -361,22 +365,6 @@ def _make_retrain_cfg(tmp_path: Path, **overrides: object) -> SACRetrainConfig:
     for key, value in overrides.items():
         setattr(cfg, key, value)
     return cfg
-
-
-def _make_shutdown_wait(*, set_after: int = 2):
-    """指定回数の wait 呼び出し後に shutdown_event を立てる."""
-    call_count = 0
-
-    def limited_wait(timeout: float | None = None) -> bool:
-        nonlocal call_count
-        del timeout
-        call_count += 1
-        if call_count >= set_after:
-            _shutdown_event.set()
-            return True
-        return False
-
-    return limited_wait
 
 
 @contextmanager
@@ -785,12 +773,21 @@ class TestRunScheduler:
         # 1回実行したら shutdown
         _shutdown_event.clear()
 
-        with patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait()):
+        with patch.object(
+            _shutdown_event,
+            "wait",
+            side_effect=make_shutdown_wait(shutdown_event=_shutdown_event),
+        ):
             with (
                 patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
                 patch(
                     "scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check",
                     return_value=False,
+                ),
+                patch_noop_paths(
+                    "scripts.v460.ml.sac_retrain_scheduler._post_cycle_memory_check",
+                    "scripts.v460.ml.sac_retrain_scheduler.append_history_best_effort",
+                    "scripts.v460.ml.sac_retrain_scheduler.logger.info",
                 ),
             ):
                 run_scheduler(cfg)
@@ -922,11 +919,19 @@ class TestCrashResilience495:
 
         # should_retrain が 1回目で例外→ 2回目の wait で shutdown
         with (
-            patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait()),
+            patch.object(
+                _shutdown_event,
+                "wait",
+                side_effect=make_shutdown_wait(shutdown_event=_shutdown_event),
+            ),
             patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
             patch(
                 "scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check",
                 return_value=False,
+            ),
+            patch_noop_paths(
+                "scripts.v460.ml.sac_retrain_scheduler.logger.error",
+                "scripts.v460.ml.sac_retrain_scheduler.logger.info",
             ),
             patch.object(
                 SACRetrainTrigger,
@@ -964,11 +969,21 @@ class TestCrashResilience495:
         _shutdown_event.clear()
 
         with (
-            patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait()),
+            patch.object(
+                _shutdown_event,
+                "wait",
+                side_effect=make_shutdown_wait(shutdown_event=_shutdown_event),
+            ),
             patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
             patch(
                 "scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check",
                 return_value=False,
+            ),
+            patch_noop_paths(
+                "scripts.v460.ml.sac_retrain_scheduler._post_cycle_memory_check",
+                "scripts.v460.ml.sac_retrain_scheduler.append_history_best_effort",
+                "scripts.v460.ml.sac_retrain_scheduler.logger.warning",
+                "scripts.v460.ml.sac_retrain_scheduler.logger.info",
             ),
             patch.object(
                 SACRetrainTrigger,
@@ -1257,12 +1272,21 @@ class TestDataFreshnessDecoupling649:
         _shutdown_event.clear()
 
         with (
-            patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait()),
+            patch.object(
+                _shutdown_event,
+                "wait",
+                side_effect=make_shutdown_wait(shutdown_event=_shutdown_event),
+            ),
             patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
             patch(
                 "scripts.v460.ml.update_training_data.ensure_data_fresh",
                 return_value=False,
             ) as mock_fresh,
+            patch_noop_paths(
+                "scripts.v460.ml.sac_retrain_scheduler._post_cycle_memory_check",
+                "scripts.v460.ml.sac_retrain_scheduler.append_history_best_effort",
+                "scripts.v460.ml.sac_retrain_scheduler.logger.info",
+            ),
         ):
             run_scheduler(cfg)
 
@@ -1297,11 +1321,21 @@ class TestDataFreshnessDecoupling649:
         _shutdown_event.clear()
 
         with (
-            patch.object(_shutdown_event, "wait", side_effect=_make_shutdown_wait()),
+            patch.object(
+                _shutdown_event,
+                "wait",
+                side_effect=make_shutdown_wait(shutdown_event=_shutdown_event),
+            ),
             patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
             patch(
                 "scripts.v460.ml.update_training_data.ensure_data_fresh",
                 side_effect=RuntimeError("yfinance down"),
+            ),
+            patch_noop_paths(
+                "scripts.v460.ml.sac_retrain_scheduler._post_cycle_memory_check",
+                "scripts.v460.ml.sac_retrain_scheduler.append_history_best_effort",
+                "scripts.v460.ml.sac_retrain_scheduler.logger.warning",
+                "scripts.v460.ml.sac_retrain_scheduler.logger.info",
             ),
         ):
             # ループが例外で死なないことを確認

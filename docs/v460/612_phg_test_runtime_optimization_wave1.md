@@ -1299,3 +1299,35 @@ durations 変化で特に効いた点:
 - 効果:
   - runtime 安全性を広めにカバーしつつ、heavy setup の追加は避けられている
   - analysis protocol も registry / filter / json writer 契約だけを狙い撃ちできる状態になった
+
+## 2026-04-02 追加: fill split / scheduler helper regroup
+
+- `ztb/metrics/fill_quality.py`
+  - grouped metrics / round-trip metrics を external helper へ移動
+- 新規:
+  - `ztb/metrics/fill_group_metrics.py`
+  - `ztb/metrics/fill_round_trip_metrics.py`
+  - `tests/unit/v460/_sidecar_scheduler_test_helpers.py`
+- `tests/unit/v460/test_fill_quality.py`
+  - live YAML inspect を module-level cache に寄せた
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - real-data smoke sample を `4/8/12` に縮小
+- `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - loop/history/logger/memory-check の fixed-cost patch を helper 化
+
+回帰:
+
+- subset/broader:
+  - `tests/unit/v460/test_fill_test_config.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `444 passed, 5 warnings in 18.43s`
+
+最新の slowest:
+
+1. `test_680_ppo_retrain_scheduler.py::test_error_pushes_neutral_fallback` `1.37s`
+2. `test_sac_retrain_scheduler.py::test_training_timeout_raises` `0.61s`
+3. `test_enricher_skip_gate.py::test_enrichment_with_real_data` setup `0.40s`

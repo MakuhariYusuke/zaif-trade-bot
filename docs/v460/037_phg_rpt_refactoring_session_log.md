@@ -10390,3 +10390,26 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     1. `fill_quality` judgment/report 側の残分割
     2. `entry_gate` / `skip_gate` / budget observability の analysis protocol 取り込み
     3. heavy test setup の継続削減
+
+- `fill split + PPO/SAC heavy-test cleanup`
+  - 新規:
+    - [fill_group_metrics.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_group_metrics.py)
+    - [fill_round_trip_metrics.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_round_trip_metrics.py)
+    - [tests/unit/v460/_sidecar_scheduler_test_helpers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_sidecar_scheduler_test_helpers.py)
+  - 更新:
+    - [fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py)
+      - grouped / round-trip metrics を re-export に整理
+    - [test_680_ppo_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_680_ppo_retrain_scheduler.py)
+    - [test_sac_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_sac_retrain_scheduler.py)
+      - scheduler loop の fixed-cost patch を helper 共有へ寄せた
+    - [test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py)
+      - live YAML inspect を module-level cache 化
+    - [test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+      - real-data smoke sample を `4/8/12` に縮小
+  - self-review:
+    - `fill_quality` の残る長さは judgment/report 側が主
+    - metrics helper の競合は無く、責務分離も自然
+    - heavy test の主犯は引き続き `PPO error path` / `SAC timeout` / `enricher real-data`
+  - regression:
+    - `359 passed, 5 warnings in 15.27s`
+    - `444 passed, 5 warnings in 18.43s`

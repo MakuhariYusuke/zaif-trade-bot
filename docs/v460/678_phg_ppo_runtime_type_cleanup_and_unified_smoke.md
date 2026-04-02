@@ -813,3 +813,37 @@ probe / weighting の wiring だけ current contract に揃えられた。
 - `enricher` real-data smoke setup は `1.05s -> 0.77s`
 - `PPO retrain` error path は `1.59s` まで残っており、次の exception-path batch の本命
 - `fill_quality` は metrics だけでなく judgment 側も shared helper 化が進んだ
+
+## 2026-04-02 follow-up: fill split / scheduler helper shared
+
+- `ztb/metrics/fill_group_metrics.py`
+  - `GroupedMetricsBase`
+  - `RegimeMetrics`
+  - `HourlyMetrics`
+  - `compute_regime_metrics(...)`
+  - `compute_hourly_metrics(...)`
+- `ztb/metrics/fill_round_trip_metrics.py`
+  - `RoundTripRecord`
+  - `RoundTripMetrics`
+  - `compute_round_trip_metrics(...)`
+- `ztb/metrics/fill_quality.py`
+  - grouped / round-trip metrics を re-export に整理
+- `tests/unit/v460/_sidecar_scheduler_test_helpers.py`
+  - `make_shutdown_wait(...)`
+  - `patch_noop_paths(...)`
+  を追加し、PPO/SAC scheduler test の fixed-cost patch を共有
+
+回帰:
+
+- `tests/unit/v460/test_fill_test_config.py`
+- `tests/unit/v460/test_fill_quality.py`
+- `tests/unit/v460/test_enricher_skip_gate.py`
+- `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+- `444 passed, 5 warnings in 18.43s`
+
+最新 subset durations:
+
+1. `test_680_ppo_retrain_scheduler.py::test_error_pushes_neutral_fallback` `1.37s`
+2. `test_sac_retrain_scheduler.py::test_training_timeout_raises` `0.61s`
+3. `test_enricher_skip_gate.py::test_enrichment_with_real_data` setup `0.40s`

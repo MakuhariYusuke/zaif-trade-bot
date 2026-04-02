@@ -34,6 +34,13 @@ from ztb.metrics.fill_judgment_core import (
     resolve_exec_judgment_type,
     resolve_gate_result,
 )
+from ztb.metrics.fill_group_metrics import (
+    GroupedMetricsBase,
+    HourlyMetrics,
+    RegimeMetrics,
+    compute_hourly_metrics,
+    compute_regime_metrics,
+)
 from ztb.metrics.pnl_accumulators import PnlAccumulator, PnlWinAccumulator
 from ztb.metrics.fill_record_io import (
     apply_fill_record_filters,
@@ -48,6 +55,11 @@ from ztb.metrics.fill_record_io import (
     load_fill_records,
     load_fill_records_glob,
     save_fill_records,
+)
+from ztb.metrics.fill_round_trip_metrics import (
+    RoundTripMetrics,
+    RoundTripRecord,
+    compute_round_trip_metrics,
 )
 from ztb.utils.dataclass_utils import get_dataclass_field_names, shallow_asdict
 
@@ -947,267 +959,3 @@ def _quarantine_reason(r: FillRecord) -> str | None:
 # ======================================================================
 # 051# P2-2: Round-trip 評価 (buy→sell ペアリング)
 # ======================================================================
-
-@dataclass
-class RoundTripRecord:
-    """往復取引記録 (buy→sell / sell→buy 双方向対応).
-
-    055# Fix: sell先行ペアも対称的に評価.
-    """
-
-    entry_record: FillRecord
-    exit_record: FillRecord
-    pnl_bps: float  # エントリー基準の損益 (bps)
-    pnl_jpy: float  # 実損益 (JPY)
-    hold_sec: float  # 保持時間 (秒)
-    direction: str  # "buy_first" or "sell_first"
-
-    # 後方互換: buy_record/sell_record プロパティ
-    @property
-    def buy_record(self) -> FillRecord:
-        return self.entry_record if self.direction == "buy_first" else self.exit_record
-
-    @property
-    def sell_record(self) -> FillRecord:
-        return self.exit_record if self.direction == "buy_first" else self.entry_record
-
-@dataclass
-class RoundTripMetrics:
-    """Round-trip 集計指標.
-
-    055# Fix: unpaired_sells / net_inventory 追加.
-    """
-
-    total_pairs: int = 0
-    pnl_mean_bps: float = 0.0
-    pnl_median_bps: float = 0.0
-    pnl_std_bps: float = 0.0
-    pnl_total_jpy: float = 0.0
-    win_rate: float = 0.0  # pnl > 0 の割合
-    hold_sec_median: float = 0.0
-    unpaired_buys: int = 0  # ペアリング未完了の buy 件数
-    unpaired_sells: int = 0  # 055# ペアリング未完了の sell 件数
-    net_inventory: int = 0  # 055# 純在庫 (unpaired_buys - unpaired_sells)
-
-def compute_round_trip_metrics(
-    records: list[FillRecord],
-) -> tuple[RoundTripMetrics, list[RoundTripRecord]]:
-    """051# P2-2 → 055# Fix: 双方向 FIFO ペアリングで往復損益を算出.
-
-    inventory-aware 方式:
-    - net inventory を追跡し、buy/sell どちらが先でもペアリング.
-    - buy 先行時: sell が来たら close. PnL = (sell - buy) / buy
-    - sell 先行時: buy が来たら close. PnL = (sell - buy) / buy (空売り利益)
-
-    Args:
-        records: FillRecord リスト (時系列ソート済み想定).
-
-    Returns:
-        (RoundTripMetrics, list[RoundTripRecord]) タプル.
-    """
-    filled = [r for r in records if r.filled and r.fill_price is not None]
-    filled.sort(key=lambda r: r.timestamp)
-
-    pending_buys: deque[FillRecord] = deque()
-    pending_sells: deque[FillRecord] = deque()
-    trips: list[RoundTripRecord] = []
-
-    for r in filled:
-        if r.side == "buy":
-            if pending_sells:
-                # sell 先行 → buy で close
-                sell_entry = pending_sells.popleft()  # FIFO
-                sell_price = sell_entry.fill_price
-                buy_price = r.fill_price
-                if sell_price is None or buy_price is None:
-                    continue
-                pnl_bps = (sell_price - buy_price) / buy_price * 10_000
-                qty = min(r.order_quantity, sell_entry.order_quantity)
-                pnl_jpy = (sell_price - buy_price) * qty
-                hold_sec = r.timestamp - sell_entry.timestamp
-                trips.append(RoundTripRecord(
-                    entry_record=sell_entry,
-                    exit_record=r,
-                    pnl_bps=pnl_bps,
-                    pnl_jpy=pnl_jpy,
-                    hold_sec=hold_sec,
-                    direction="sell_first",
-                ))
-            else:
-                pending_buys.append(r)
-        elif r.side == "sell":
-            if pending_buys:
-                # buy 先行 → sell で close
-                buy_entry = pending_buys.popleft()  # FIFO
-                sell_price = r.fill_price
-                buy_price = buy_entry.fill_price
-                if sell_price is None or buy_price is None:
-                    continue
-                pnl_bps = (sell_price - buy_price) / buy_price * 10_000
-                qty = min(r.order_quantity, buy_entry.order_quantity)
-                pnl_jpy = (sell_price - buy_price) * qty
-                hold_sec = r.timestamp - buy_entry.timestamp
-                trips.append(RoundTripRecord(
-                    entry_record=buy_entry,
-                    exit_record=r,
-                    pnl_bps=pnl_bps,
-                    pnl_jpy=pnl_jpy,
-                    hold_sec=hold_sec,
-                    direction="buy_first",
-                ))
-            else:
-                pending_sells.append(r)
-
-    if not trips:
-        return RoundTripMetrics(
-            unpaired_buys=len(pending_buys),
-            unpaired_sells=len(pending_sells),
-            net_inventory=len(pending_buys) - len(pending_sells),
-        ), []
-
-    pnl_arr = [t.pnl_bps for t in trips]
-    hold_arr = [t.hold_sec for t in trips]
-
-    return RoundTripMetrics(
-        total_pairs=len(trips),
-        pnl_mean_bps=float(np.mean(pnl_arr)),
-        pnl_median_bps=float(np.median(pnl_arr)),
-        pnl_std_bps=float(np.std(pnl_arr)),
-        pnl_total_jpy=sum(t.pnl_jpy for t in trips),
-        win_rate=sum(1 for p in pnl_arr if p > 0) / len(pnl_arr),
-        hold_sec_median=float(np.median(hold_arr)),
-        unpaired_buys=len(pending_buys),
-        unpaired_sells=len(pending_sells),
-        net_inventory=len(pending_buys) - len(pending_sells),
-    ), trips
-
-# ======================================================================
-# 051# P2-4: レジーム別メトリクス
-# ======================================================================
-
-@dataclass
-class GroupedMetricsBase:
-    """グループ集計で共通となる損益・AS 指標."""
-
-    count: int = 0
-    filled: int = 0
-    pnl_mean_bps: float = 0.0
-    as_ratio: float = 0.0
-
-@dataclass
-class RegimeMetrics(GroupedMetricsBase):
-    """レジーム別の集計指標."""
-
-    regime: str = "unknown"
-    fill_rate: float = 0.0
-    queue_wait_median_sec: float = 0.0
-
-def _summarize_filled_records(
-    records: list[FillRecord],
-    *,
-    include_queue_wait: bool = False,
-) -> tuple[int, float, float, float]:
-    """filled レコードの共通集計を単一パスで算出."""
-    filled_count = 0
-    pnl_acc = PnlAccumulator()
-    as_total = 0
-    as_positive = 0
-    queue_waits: list[float] = []
-
-    for rec in records:
-        if not rec.filled:
-            continue
-        filled_count += 1
-        pnl_acc.add(rec.post_fill_30s_pnl)
-        if rec.adverse_selected is not None:
-            as_total += 1
-            if rec.adverse_selected:
-                as_positive += 1
-        if include_queue_wait and rec.queue_wait_sec > 0:
-            queue_waits.append(rec.queue_wait_sec)
-
-    as_ratio = (as_positive / as_total) if as_total else 0.0
-    wait_median = float(np.median(queue_waits)) if queue_waits else 0.0
-    return filled_count, pnl_acc.mean_bps, as_ratio, wait_median
-
-def compute_regime_metrics(records: list[FillRecord]) -> list[RegimeMetrics]:
-    """051# P2-4: レジーム別にメトリクスを算出.
-
-    Args:
-        records: FillRecord リスト.
-
-    Returns:
-        RegimeMetrics のリスト (レジーム名でソート).
-    """
-    from collections import defaultdict
-
-    groups: dict[str, list[FillRecord]] = defaultdict(list)
-    for r in records:
-        regime = r.regime or "unknown"
-        groups[regime].append(r)
-
-    result: list[RegimeMetrics] = []
-    for regime_name in sorted(groups.keys()):
-        recs = groups[regime_name]
-        filled_count, pnl_mean, as_ratio, wait_median = _summarize_filled_records(
-            recs,
-            include_queue_wait=True,
-        )
-
-        result.append(RegimeMetrics(
-            regime=regime_name,
-            count=len(recs),
-            filled=filled_count,
-            fill_rate=filled_count / len(recs) if recs else 0.0,
-            pnl_mean_bps=pnl_mean,
-            as_ratio=as_ratio,
-            queue_wait_median_sec=wait_median,
-        ))
-    return result
-
-# ======================================================================
-# 051# UTC 時間帯別分析
-# ======================================================================
-
-@dataclass
-class HourlyMetrics(GroupedMetricsBase):
-    """UTC 時間帯別の集計指標."""
-
-    utc_hour: int = 0
-
-def compute_hourly_metrics(records: list[FillRecord]) -> list[HourlyMetrics]:
-    """051# UTC 時間帯別にメトリクスを算出.
-
-    time_filter 検証用: 各 UTC hour の AS/PnL を可視化.
-
-    Args:
-        records: FillRecord リスト.
-
-    Returns:
-        HourlyMetrics のリスト (utc_hour 昇順).
-    """
-    from collections import defaultdict
-
-    groups: dict[int, list[FillRecord]] = defaultdict(list)
-    for r in records:
-        utc_hour = datetime.fromtimestamp(r.timestamp, tz=timezone.utc).hour
-        groups[utc_hour].append(r)
-
-    result: list[HourlyMetrics] = []
-    for hour in range(24):
-        if hour not in groups:
-            continue
-        recs = groups[hour]
-        filled_count, pnl_mean, as_ratio, _wait_median_unused = _summarize_filled_records(
-            recs,
-            include_queue_wait=False,
-        )
-
-        result.append(HourlyMetrics(
-            utc_hour=hour,
-            count=len(recs),
-            filled=filled_count,
-            pnl_mean_bps=pnl_mean,
-            as_ratio=as_ratio,
-        ))
-    return result
