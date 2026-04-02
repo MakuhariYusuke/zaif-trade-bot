@@ -45,8 +45,7 @@ from scripts.v460.ml.data_loader import build_as_features, load_fill_records as 
 from tests.unit.v460._real_data_test_helpers import (
     JsonRow,
     has_fill_records_and_raw_data,
-    select_minimum_smoke_enriched_fill_df,
-    select_minimum_trainable_fill_df,
+    select_real_enriched_fill_bundle,
     write_jsonl_gz as _write_jsonl_gz,
 )
 from tests.unit.v460._skip_gate_test_helpers import save_and_load_skip_gate
@@ -86,23 +85,6 @@ def _assert_raw_cache_invalidates_on_file_update(
     _write_jsonl_gz(target_file, second_rows)
     df3 = load_fn(tmp_path, date_filter={"20260220"})
     assert len(df3) == len(second_rows)
-
-
-def _select_real_enriched_training_df(
-    *,
-    initial_rows: int = _REAL_DATA_SAMPLE_ROWS,
-    fallback_rows: int = _REAL_DATA_FALLBACK_SAMPLE_ROWS,
-    expanded_rows: int = _REAL_DATA_EXPANDED_SAMPLE_ROWS,
-    min_train_samples: int = _REAL_DATA_MIN_TRAIN_SAMPLES,
-) -> pd.DataFrame:
-    """学習成立条件を満たす最小限の real enriched_df を選ぶ."""
-    return select_minimum_trainable_fill_df(
-        initial_rows=initial_rows,
-        fallback_rows=fallback_rows,
-        expanded_rows=expanded_rows,
-        min_train_samples=min_train_samples,
-        enrich_fn=enrich_fill_records,
-    )
 
 
 def _make_negative_skip_gate(
@@ -1045,32 +1027,41 @@ class Test058Integration:
         return has_fill_records_and_raw_data()
 
     @pytest.fixture(scope="class")
-    def real_smoke_enriched_df(
+    def real_enriched_bundle(
         self,
         real_data_available: bool,
-    ) -> pd.DataFrame:
+    ):
         if not real_data_available:
             pytest.skip("No real data")
-        enriched = select_minimum_smoke_enriched_fill_df(
-            sample_sizes=(
+        bundle = select_real_enriched_fill_bundle(
+            smoke_sample_sizes=(
                 _REAL_DATA_SMOKE_SAMPLE_ROWS,
                 _REAL_DATA_SMOKE_FALLBACK_SAMPLE_ROWS,
                 _REAL_DATA_SMOKE_EXPANDED_SAMPLE_ROWS,
             ),
+            initial_rows=_REAL_DATA_SAMPLE_ROWS,
+            fallback_rows=_REAL_DATA_FALLBACK_SAMPLE_ROWS,
+            expanded_rows=_REAL_DATA_EXPANDED_SAMPLE_ROWS,
+            min_train_samples=_REAL_DATA_MIN_TRAIN_SAMPLES,
             enrich_fn=enrich_fill_records,
         )
-        if enriched.empty:
+        if bundle.smoke_enriched_df.empty or bundle.trainable_enriched_df.empty:
             pytest.skip("No fill records")
-        return enriched
+        return bundle
 
     @pytest.fixture(scope="class")
     def real_trainable_enriched_df(
         self,
+        real_enriched_bundle,
     ) -> pd.DataFrame:
-        enriched = _select_real_enriched_training_df()
-        if enriched.empty:
-            pytest.skip("No fill records")
-        return enriched
+        return real_enriched_bundle.trainable_enriched_df
+
+    @pytest.fixture(scope="class")
+    def real_smoke_enriched_df(
+        self,
+        real_enriched_bundle,
+    ) -> pd.DataFrame:
+        return real_enriched_bundle.smoke_enriched_df
 
     def test_enrichment_with_real_data(
         self,

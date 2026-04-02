@@ -206,6 +206,29 @@ PPO 継続対応では、runtime 本体より test fixed-cost と warm-start con
   - scheduler exception-path のさらなる fixed-cost 削減
   の 2 本
 
+## 2026-04-03 追記
+
+PPO runtime 本体は維持したまま、scheduler test の fixed-cost をさらに削減した。
+
+追加整理:
+- `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `run_scheduler()` 系 test で
+    - `record_trigger_result_best_effort`
+    - `append_history_best_effort`
+    - `logger.info/warning/error`
+    を no-op patch
+- recoverable failure の責務だけを見て、history/logging の I/O 固定費を切り離した
+
+確認:
+- heavy subset
+  - `360 passed, 5 warnings in 7.89s`
+- PPO 側の主残差
+  - `test_crash_resilience` call `0.14s`
+
+メモ:
+- ここで削っているのは test harness の固定費で、runtime semantics は変えていない
+- PPO 次段の本命は引き続き warm-start continuity の先と scheduler safety helper の共有
+
 ### 5. PPO sidecar reader / safe veto wiring
 
 current foundation の次段として、PPO signal を live pipeline に observe-safe に接続した。

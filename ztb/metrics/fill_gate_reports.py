@@ -16,7 +16,8 @@ from ztb.metrics.fill_judgment_core import (
 )
 
 if TYPE_CHECKING:
-    from ztb.metrics.fill_quality import FillMetrics, FillRecord
+    from ztb.metrics.fill_metric_results import FillMetrics
+    from ztb.metrics.fill_quality import FillRecord
 
 
 def build_g1_1_exec_judgment(

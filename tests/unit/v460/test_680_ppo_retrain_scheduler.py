@@ -482,6 +482,13 @@ class TestPPORunScheduler:
                 "should_retrain",
                 side_effect=[(True, "manual"), (False, "done")],
             ),
+            patch_noop_paths(
+                "scripts.v460.ml.ppo_retrain_scheduler.record_trigger_result_best_effort",
+                "scripts.v460.ml.ppo_retrain_scheduler.append_history_best_effort",
+                "scripts.v460.ml.ppo_retrain_scheduler.logger.error",
+                "scripts.v460.ml.ppo_retrain_scheduler.logger.warning",
+                "scripts.v460.ml.ppo_retrain_scheduler.logger.info",
+            ),
         ):
             run_scheduler(cfg)
 
@@ -520,6 +527,13 @@ class TestPPORunScheduler:
                 PPORetrainTrigger,
                 "should_retrain",
                 side_effect=[(True, "first"), (True, "second"), (False, "done")],
+            ),
+            patch_noop_paths(
+                "scripts.v460.ml.ppo_retrain_scheduler.record_trigger_result_best_effort",
+                "scripts.v460.ml.ppo_retrain_scheduler.append_history_best_effort",
+                "scripts.v460.ml.ppo_retrain_scheduler.logger.error",
+                "scripts.v460.ml.ppo_retrain_scheduler.logger.warning",
+                "scripts.v460.ml.ppo_retrain_scheduler.logger.info",
             ),
         ):
             run_scheduler(cfg)
@@ -564,6 +578,12 @@ class TestPPORunScheduler:
                 PPORetrainTrigger,
                 "record_result",
                 side_effect=RuntimeError("record error"),
+            ),
+            patch_noop_paths(
+                "scripts.v460.ml.ppo_retrain_scheduler.append_history_best_effort",
+                "scripts.v460.ml.ppo_retrain_scheduler.logger.error",
+                "scripts.v460.ml.ppo_retrain_scheduler.logger.warning",
+                "scripts.v460.ml.ppo_retrain_scheduler.logger.info",
             ),
         ):
             run_scheduler(cfg)

@@ -10595,3 +10595,29 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - regression:
   - cleanup tests `5 passed in 1.29s`
   - idempotency lock focused pass
+
+## 2026-04-03 fill metrics split / shared enriched bundle / PPO test trim
+
+- `fill` 分割を継続
+  - 新規:
+    - [fill_metric_results.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_metric_results.py)
+  - 更新:
+    - [fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py)
+    - [fill_gate_reports.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_gate_reports.py)
+    - [monitor_fill_test.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/monitor_fill_test.py)
+    - [run_pnl_monte_carlo.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/run_pnl_monte_carlo.py)
+- hidden task:
+  - `FillMetrics` / `compute_fill_metrics(...)` を `fill_quality` から出し、runtime import 側の依存を薄くした
+  - monitor / Monte Carlo も新 helper へ横展開
+- heavy test:
+  - [tests/unit/v460/_real_data_test_helpers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_real_data_test_helpers.py)
+    - `RealEnrichedFillBundle`
+    - `select_real_enriched_fill_bundle(...)`
+  - [test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+    - smoke/trainable enriched build を shared helper 化
+  - [test_680_ppo_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_680_ppo_retrain_scheduler.py)
+    - run-loop bookkeeping/logging を no-op patch して fixed-cost を削減
+- regression:
+  - heavy subset `360 passed, 5 warnings in 7.89s`
+  - warm-cache rerun `360 passed, 5 warnings in 6.83s`
+  - 701 subset `11 passed in 5.89s`

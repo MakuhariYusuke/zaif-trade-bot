@@ -22,10 +22,9 @@ from typing import Callable, TypedDict
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
+from ztb.metrics.fill_metric_results import FillMetrics, compute_fill_metrics
 from ztb.metrics.fill_quality import (
-    FillMetrics,
     FillRecord,
-    compute_fill_metrics,
     compute_hourly_metrics,
     compute_regime_metrics,
     compute_round_trip_metrics,

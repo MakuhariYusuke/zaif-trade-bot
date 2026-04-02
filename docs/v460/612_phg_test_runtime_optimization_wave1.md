@@ -238,6 +238,43 @@
   - smoke sample を `3/6/9` に縮小
 - `test_sac_retrain_scheduler.py`
   - deep import 側ではなく scheduler helper `_run_data_freshness_check(...)` を patch する形に統一
+
+## 2026-04-03 追記
+
+heavy setup の次バッチとして、`fill` 分割と real-data smoke の共有化を同時に進めた。
+
+追加整理:
+- `ztb/metrics/fill_metric_results.py`
+  - `FillMetrics`
+  - `compute_fill_metrics(...)`
+  を `fill_quality` から分離
+- `scripts/v460/monitor_fill_test.py`
+- `scripts/v460/run_pnl_monte_carlo.py`
+  - metrics import を新 helper に追随
+- `tests/unit/v460/_real_data_test_helpers.py`
+  - `RealEnrichedFillBundle`
+  - `select_real_enriched_fill_bundle(...)`
+  を追加
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - smoke/trainable の enriched df 構築を shared bundle helper に統一
+- `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - run-loop test の history/log bookkeeping を no-op patch して fixed-cost を削減
+
+効果:
+- heavy subset
+  - `360 passed, 5 warnings in 7.89s`
+- warm cache の同 subset
+  - `360 passed, 5 warnings in 6.83s`
+- `test_enrichment_with_real_data` setup
+  - `0.62s -> 0.33s`
+
+現時点の主残差:
+1. `tests/unit/v460/test_enricher_skip_gate.py`
+   - real-data setup
+2. `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+   - `test_crash_resilience`
+3. `tests/unit/v460/test_sac_retrain_scheduler.py`
+   - interval / loop path
 - `fill_quality`
   - gate report shaping を helper へ切り出し、後続分割をしやすくした
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gzip
 import json
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import TypeAlias, Callable
@@ -15,6 +16,12 @@ from ztb.io.jsonl import read_tail_jsonl_objects
 _DEFAULT_RESULTS_DIR = Path("results/v460/fill_test")
 _DEFAULT_RAW_DIR = Path("data/v460/raw")
 JsonRow: TypeAlias = dict[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class RealEnrichedFillBundle:
+    smoke_enriched_df: pd.DataFrame
+    trainable_enriched_df: pd.DataFrame
 
 
 @lru_cache(maxsize=8)
@@ -186,6 +193,33 @@ def select_minimum_trainable_fill_df(
     ).copy(deep=True)
 
 
+def select_real_enriched_fill_bundle(
+    *,
+    smoke_sample_sizes: tuple[int, ...],
+    initial_rows: int,
+    fallback_rows: int,
+    expanded_rows: int,
+    min_train_samples: int,
+    enrich_fn: Callable[[pd.DataFrame], pd.DataFrame],
+    results_dir: Path = _DEFAULT_RESULTS_DIR,
+    required_column: str = "spread_bps_ob",
+) -> RealEnrichedFillBundle:
+    smoke_df, trainable_df = _cached_real_enriched_fill_bundle(
+        smoke_sample_sizes=smoke_sample_sizes,
+        initial_rows=initial_rows,
+        fallback_rows=fallback_rows,
+        expanded_rows=expanded_rows,
+        min_train_samples=min_train_samples,
+        enrich_fn=enrich_fn,
+        results_dir_str=str(results_dir.resolve()),
+        required_column=required_column,
+    )
+    return RealEnrichedFillBundle(
+        smoke_enriched_df=smoke_df.copy(deep=True),
+        trainable_enriched_df=trainable_df.copy(deep=True),
+    )
+
+
 @lru_cache(maxsize=4)
 def _cached_minimum_trainable_fill_df(
     *,
@@ -221,6 +255,55 @@ def _cached_minimum_trainable_fill_df(
         selected_rows = fallback_rows
     selected_rows = min(selected_rows, expanded_rows)
     return enrich_fn(recent_fill_df.tail(selected_rows))
+
+
+@lru_cache(maxsize=4)
+def _cached_real_enriched_fill_bundle(
+    *,
+    smoke_sample_sizes: tuple[int, ...],
+    initial_rows: int,
+    fallback_rows: int,
+    expanded_rows: int,
+    min_train_samples: int,
+    enrich_fn: Callable[[pd.DataFrame], pd.DataFrame],
+    results_dir_str: str,
+    required_column: str = "spread_bps_ob",
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    results_dir = Path(results_dir_str)
+    sorted_sizes = tuple(sorted(smoke_sample_sizes))
+    max_rows = max(expanded_rows, sorted_sizes[-1] if sorted_sizes else 0)
+    recent_fill_df = load_recent_fill_records_df(
+        sample_rows=max_rows,
+        results_dir=results_dir,
+    )
+    if recent_fill_df.empty:
+        return pd.DataFrame(), pd.DataFrame()
+
+    enriched_max = enrich_fn(recent_fill_df.tail(max_rows))
+    smoke_df = pd.DataFrame()
+    if required_column in enriched_max.columns:
+        for sample_rows in sorted_sizes:
+            candidate = enriched_max.tail(sample_rows).copy()
+            if candidate[required_column].notna().any():
+                smoke_df = candidate
+                break
+
+    trainable_mask = (
+        recent_fill_df["filled"].astype(bool).to_numpy(copy=False)
+        & recent_fill_df["post_fill_30s_pnl"].notna().to_numpy(copy=False)
+    )
+    reverse_cumsum = np.cumsum(trainable_mask[::-1], dtype=np.int32)
+    enough_trainable = np.flatnonzero(reverse_cumsum >= min_train_samples)
+    if enough_trainable.size > 0:
+        selected_rows = int(enough_trainable[0]) + 1
+    else:
+        selected_rows = expanded_rows
+
+    if selected_rows > initial_rows and selected_rows < fallback_rows:
+        selected_rows = fallback_rows
+    selected_rows = min(selected_rows, expanded_rows)
+    trainable_df = enriched_max.tail(selected_rows).copy()
+    return smoke_df, trainable_df
 
 
 def select_minimum_smoke_enriched_fill_df(
