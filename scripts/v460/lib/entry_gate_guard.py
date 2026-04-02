@@ -34,7 +34,7 @@ class EntryGateGuard:
 
     def __init__(self, config: EntryGateGuardConfig) -> None:
         self._config = config
-        self._state = EntryGateGuardState()
+        self._state = EntryGateGuardState(last_calibration_update_ts=time.time())
 
     @property
     def state(self) -> EntryGateGuardState:

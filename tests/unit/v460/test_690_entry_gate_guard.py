@@ -92,7 +92,11 @@ class TestEntryGateGuard:
 
     def test_missing_calibration_update_is_treated_as_stale(self) -> None:
         guard = EntryGateGuard(EntryGateGuardConfig(staleness_threshold_sec=60.0))
+        # 690# fix: 起動直後は grace period (staleness_threshold_sec) があり stale ではない
+        assert guard.should_suppress_block(ev=-0.1, regime="ranging", side="buy") is False
 
+        # staleness_threshold_sec 経過後に stale 判定
+        guard._state.last_calibration_update_ts -= 120.0  # force expiry
         assert guard.should_suppress_block(ev=-0.1, regime="ranging", side="buy") is True
         assert "stale" in guard.state.auto_disable_reason
 
