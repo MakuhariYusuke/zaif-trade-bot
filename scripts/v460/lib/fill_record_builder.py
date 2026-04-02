@@ -227,6 +227,12 @@ class FillRecordBuilderMixin:
             "vg_boost_factor": self._maker_price.last_vg_boost_factor,
             "vg_reason": self._maker_price.last_vg_reason,
             "inv_skew_factor": self._maker_price.last_inv_skew_factor,
+            "inv_skew_drift_detected": self._maker_price.last_inv_skew_drift_detected,
+            "inv_skew_effective_max_factor": self._maker_price.last_inv_skew_effective_max_factor,
+            "regime_exit_escalated": self._maker_price.last_regime_exit_result.should_escalate_skewing,
+            "regime_exit_buy_count": self._maker_price.last_regime_exit_result.buy_count_in_window,
+            "regime_exit_reason": self._maker_price.last_regime_exit_result.reason,
+            "regime_exit_triggered_nfq": self._maker_price.last_regime_exit_result.should_trigger_nfq,
             "price_velocity_bps": sg_velocity_bps,
             "confidence_lot_factor": (
                 confidence_factor if self.config.enable_confidence_lot else None

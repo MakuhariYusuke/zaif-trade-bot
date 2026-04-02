@@ -963,3 +963,12 @@ probe / weighting の wiring だけ current contract に揃えられた。
 - 所見:
   - これは速度改善でもあるが、本質は correctness 修正
   - PPO scheduler のテストは環境依存性が下がり、再現性が上がった
+
+## 2026-04-03 follow-up: remaining scheduler optimization note
+
+- `test_error_pushes_neutral_fallback` 自体は slowest top 20 から外れた
+- 今の scheduler 系の主残差は PPO より SAC data-freshness / loop path に寄っている
+- 次段で詰める対象:
+  1. SAC interval/data-freshness path
+  2. `enricher` real-data setup
+  3. `fill_quality` report shaping 残り

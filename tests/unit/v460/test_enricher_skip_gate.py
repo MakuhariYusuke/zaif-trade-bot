@@ -105,23 +105,6 @@ def _select_real_enriched_training_df(
     )
 
 
-@lru_cache(maxsize=1)
-def _cached_real_enriched_training_df() -> pd.DataFrame:
-    return _select_real_enriched_training_df()
-
-
-@lru_cache(maxsize=1)
-def _cached_real_enriched_smoke_df() -> pd.DataFrame:
-    return select_minimum_smoke_enriched_fill_df(
-        sample_sizes=(
-            _REAL_DATA_SMOKE_SAMPLE_ROWS,
-            _REAL_DATA_SMOKE_FALLBACK_SAMPLE_ROWS,
-            _REAL_DATA_SMOKE_EXPANDED_SAMPLE_ROWS,
-        ),
-        enrich_fn=enrich_fill_records,
-    )
-
-
 def _make_negative_skip_gate(
     *,
     feature_cols: list[str],
@@ -1068,7 +1051,14 @@ class Test058Integration:
     ) -> pd.DataFrame:
         if not real_data_available:
             pytest.skip("No real data")
-        enriched = _cached_real_enriched_smoke_df()
+        enriched = select_minimum_smoke_enriched_fill_df(
+            sample_sizes=(
+                _REAL_DATA_SMOKE_SAMPLE_ROWS,
+                _REAL_DATA_SMOKE_FALLBACK_SAMPLE_ROWS,
+                _REAL_DATA_SMOKE_EXPANDED_SAMPLE_ROWS,
+            ),
+            enrich_fn=enrich_fill_records,
+        )
         if enriched.empty:
             pytest.skip("No fill records")
         return enriched
@@ -1077,7 +1067,7 @@ class Test058Integration:
     def real_trainable_enriched_df(
         self,
     ) -> pd.DataFrame:
-        enriched = _cached_real_enriched_training_df()
+        enriched = _select_real_enriched_training_df()
         if enriched.empty:
             pytest.skip("No fill records")
         return enriched

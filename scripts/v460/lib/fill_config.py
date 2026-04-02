@@ -25,6 +25,7 @@ from scripts.v460.lib.fill_config_results import (  # noqa: F401
 
 if TYPE_CHECKING:
     from scripts.v460.lib.as_trailing_tracker import ASTrailingConfig
+    from scripts.v460.lib.regime_exit_strategy import RegimeExitConfig
 
 
 # ======================================================================
@@ -65,7 +66,7 @@ class SpreadASGuardConfig:
     """695# Low-spread adverse-selection defense."""
 
     enabled: bool = False
-    spread_threshold_bps: float = 1500.0
+    spread_threshold_bps: float = 15.0
     ev_penalty_bps: float = 0.5
 
 
@@ -893,12 +894,15 @@ class FillTestConfig:
     # ---- 138# P1-10: preflight 失敗連続→run pause (dead-cycle 防止) ----
     # ---- 162# Inventory Skewing: 在庫偏重による非対称クオート ----
     inventory_skewing_enabled: bool = False    # True で在庫偏重 offset 補正を有効化
-    inventory_skewing_window: int = 100        # 直近 N fill で在庫偏重を計算
+    inventory_skewing_window: int = 300        # 直近 N fill で在庫偏重を計算
     inventory_skewing_max_factor: float = 0.4  # 最大 offset 補正倍率 (0.4 = 40%)
+    inventory_skewing_max_factor_drift: float = 0.6  # 700# sustained drift 時の escalated max factor
     # 657# B-3: regime別max_factor (656# Ho-Stoll/Cartea-Jaimungal 理論根拠)
     # trending時は完全停止ではなく低減されたmax_factorで在庫管理を継続
     inv_skew_max_factor_trending: float = 0.15  # trending時の max_factor (方向α保全 + 在庫管理両立)
     inventory_skewing_neutral_band: float = 0.1  # |imbalance| < この値なら補正なし
+    drift_detection_threshold: float = 0.15  # 700# |imbalance| threshold
+    drift_detection_sustain_sec: float = 1800.0  # 700# sustained threshold duration
     # 249# Regime-aware inv skewing: trending 時は在庫偏重補正を無効化
     inv_skew_regime_gate_enabled: bool = False  # True で trending 時の inv_skew を停止 (657# B-3でdeprecated)
     # 228# C2: 在庫偏重の時間減衰 — 古い fill 履歴の影響を指数関数的に減衰
@@ -1051,11 +1055,16 @@ class FillTestConfig:
     entry_gate_min_eval_for_rate: int = 20
     entry_gate_staleness_threshold_sec: float = 600.0
     spread_as_guard_enabled: bool = False
-    spread_as_guard_spread_threshold_bps: float = 1500.0
+    spread_as_guard_spread_threshold_bps: float = 15.0
     spread_as_guard_ev_penalty_bps: float = 0.5
     regime_guard_overrides_enabled: bool = False
     regime_guard_ev_threshold_premiums: dict[str, float] = field(default_factory=dict)
     regime_guard_spread_as_penalty_multipliers: dict[str, float] = field(default_factory=dict)
+    regime_exit_strategy_enabled: bool = False
+    regime_exit_max_trending_down_buy_fills: int = 10
+    regime_exit_tracking_window_sec: float = 3600.0
+    regime_exit_escalated_max_factor: float = 0.7
+    regime_exit_nfq_trigger_imbalance: float = 0.3
     micro_timeout_wait_sec_sell: float | None = None  # sell 側の配置時間 (None=共通値)
     micro_timeout_max_requote: int = 4             # 1サイクル内の最大 re-quote 回数
     micro_timeout_requote_cooloff_sec: float = 5.0 # キャンセル→再発注間の冷却期間 (秒)
@@ -1117,6 +1126,18 @@ class FillTestConfig:
             enabled=self.spread_as_guard_enabled,
             spread_threshold_bps=self.spread_as_guard_spread_threshold_bps,
             ev_penalty_bps=self.spread_as_guard_ev_penalty_bps,
+        )
+
+    @property
+    def regime_exit_strategy(self) -> RegimeExitConfig:
+        from scripts.v460.lib.regime_exit_strategy import RegimeExitConfig
+
+        return RegimeExitConfig(
+            enabled=self.regime_exit_strategy_enabled,
+            max_trending_down_buy_fills=self.regime_exit_max_trending_down_buy_fills,
+            tracking_window_sec=self.regime_exit_tracking_window_sec,
+            escalated_max_factor=self.regime_exit_escalated_max_factor,
+            nfq_trigger_imbalance=self.regime_exit_nfq_trigger_imbalance,
         )
 
     def get_regime_guard_override(self, regime: str | None) -> RegimeGuardOverride:

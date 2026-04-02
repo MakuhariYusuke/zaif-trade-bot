@@ -158,6 +158,29 @@ def _cancel_payload(records: list[Record]) -> dict[str, object]:
     }
 
 
+def _nfq_payload(records: list[Record]) -> dict[str, object]:
+    nfq_records = [
+        record
+        for record in records
+        if not _record_bool(record, "filled")
+        and _record_str(record, "cancel_reason", "") == "no_feasible_quote"
+    ]
+    regime_counts = collections.Counter(
+        _record_str(record, "regime", "unknown") for record in nfq_records
+    )
+    side_counts = collections.Counter(
+        _record_str(record, "side", "unknown") for record in nfq_records
+    )
+    total_cancels = sum(1 for record in records if not _record_bool(record, "filled"))
+    return {
+        "nfq_total": len(nfq_records),
+        "cancel_total": total_cancels,
+        "nfq_ratio": float(len(nfq_records) / total_cancels) if total_cancels else 0.0,
+        "regime": dict(regime_counts),
+        "side": dict(side_counts),
+    }
+
+
 def _adverse_selection_payload(
     records: list[Record],
     *,
@@ -346,7 +369,8 @@ class Protocol688(AnalysisProtocol):
             },
             "basic": _basic_payload(records),
             "side": _side_payload(records),
-            "nfq": _cancel_payload(records),
+            "nfq": _nfq_payload(records),
+            "cancels": _cancel_payload(records),
             "adverse_selection": _adverse_selection_payload(records, config=self._config),
             "spread": _spread_payload(records, config=self._config),
             "hour": _hourly_payload(records),

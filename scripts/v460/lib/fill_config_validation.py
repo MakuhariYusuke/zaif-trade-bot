@@ -110,6 +110,11 @@ def validate_fill_config(config: FillTestConfig) -> None:
             "spread_as_guard_spread_threshold_bps must be > 0, "
             f"got {config.spread_as_guard_spread_threshold_bps}"
         )
+    if config.spread_as_guard_spread_threshold_bps >= 100.0:
+        raise ValueError(
+            "spread_as_guard_spread_threshold_bps must be < 100.0, "
+            f"got {config.spread_as_guard_spread_threshold_bps}"
+        )
     if config.spread_as_guard_ev_penalty_bps < 0.0:
         raise ValueError(
             "spread_as_guard_ev_penalty_bps must be >= 0, "
@@ -258,6 +263,39 @@ def validate_fill_config(config: FillTestConfig) -> None:
     if config.inventory_skewing_window < 0:
         raise ValueError(
             f"inventory_skewing_window must be >= 0, got {config.inventory_skewing_window}"
+        )
+    if config.inventory_skewing_max_factor_drift < 0:
+        raise ValueError(
+            "inventory_skewing_max_factor_drift must be >= 0, "
+            f"got {config.inventory_skewing_max_factor_drift}"
+        )
+    if config.drift_detection_threshold < 0:
+        raise ValueError(
+            f"drift_detection_threshold must be >= 0, got {config.drift_detection_threshold}"
+        )
+    if config.drift_detection_sustain_sec < 0:
+        raise ValueError(
+            f"drift_detection_sustain_sec must be >= 0, got {config.drift_detection_sustain_sec}"
+        )
+    if config.regime_exit_max_trending_down_buy_fills < 0:
+        raise ValueError(
+            "regime_exit_max_trending_down_buy_fills must be >= 0, "
+            f"got {config.regime_exit_max_trending_down_buy_fills}"
+        )
+    if config.regime_exit_tracking_window_sec <= 0:
+        raise ValueError(
+            "regime_exit_tracking_window_sec must be > 0, "
+            f"got {config.regime_exit_tracking_window_sec}"
+        )
+    if config.regime_exit_escalated_max_factor < 0:
+        raise ValueError(
+            "regime_exit_escalated_max_factor must be >= 0, "
+            f"got {config.regime_exit_escalated_max_factor}"
+        )
+    if config.regime_exit_nfq_trigger_imbalance < 0:
+        raise ValueError(
+            "regime_exit_nfq_trigger_imbalance must be >= 0, "
+            f"got {config.regime_exit_nfq_trigger_imbalance}"
         )
     # 228# C2: inv_decay_tau_sec は非負
     if config.inv_decay_tau_sec < 0:

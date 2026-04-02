@@ -266,10 +266,8 @@ class OrchestratorLifecycleMixin:
         from scripts.v460.lib.event_logger import log_event as _log_event
         from scripts.v460.lib.fill_loop_orchestrator import RunSessionState
         from ztb.data.trades_health import check_trades_health
-        from ztb.metrics.fill_quality import (
-            compute_record_pnl_jpy,
-            filter_clean_records,
-        )
+        from ztb.metrics.fill_quality import filter_clean_records
+        from ztb.metrics.fill_record_pnl import compute_record_pnl_jpy
 
         # 044# 単一起動ロック取得
         self._acquire_lock()

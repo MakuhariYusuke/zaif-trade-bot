@@ -112,6 +112,12 @@ class FillRecordHelpersMixin:
             "regime_guard_penalty_multiplier": getattr(
                 self, "_regime_guard_penalty_multiplier_current", None
             ),
+            "inv_skew_drift_detected": self._maker_price.last_inv_skew_drift_detected,
+            "inv_skew_effective_max_factor": self._maker_price.last_inv_skew_effective_max_factor,
+            "regime_exit_escalated": self._maker_price.last_regime_exit_result.should_escalate_skewing,
+            "regime_exit_buy_count": self._maker_price.last_regime_exit_result.buy_count_in_window,
+            "regime_exit_reason": self._maker_price.last_regime_exit_result.reason,
+            "regime_exit_triggered_nfq": self._maker_price.last_regime_exit_result.should_trigger_nfq,
         }
         extra_fields.update(extra)
 

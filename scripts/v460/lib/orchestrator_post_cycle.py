@@ -47,7 +47,7 @@ class OrchestratorPostCycleMixin:
             next_side: このサイクルの side.
             st: ループ間共有状態.
         """
-        from ztb.metrics.fill_quality import compute_record_pnl_jpy
+        from ztb.metrics.fill_record_pnl import compute_record_pnl_jpy
 
         st.total_count += 1
         if record.filled:

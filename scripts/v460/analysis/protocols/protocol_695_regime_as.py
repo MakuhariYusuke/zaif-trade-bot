@@ -27,6 +27,7 @@ class Protocol695RegimeAS(AnalysisProtocol):
             "# 695 regime AS deep dive",
             f"ranging_buckets={len(payload['ranging_spread_attribution'])}",
             f"trend_5s_veto_overlap_count={payload['trend_5s_veto_overlap_count']}",
+            f"spread_p50_bps={payload['spread_distribution']['quantiles_bps']['p50']}",
         ]
         return ProtocolResult(
             text_report="\n".join(lines),
@@ -36,4 +37,3 @@ class Protocol695RegimeAS(AnalysisProtocol):
             },
             warnings=[],
         )
-

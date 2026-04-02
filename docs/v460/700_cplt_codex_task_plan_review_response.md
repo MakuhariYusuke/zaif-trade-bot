@@ -172,3 +172,25 @@ Phase 3 (Phase 2 検証後):
   - regime exit は単独 tracker で終わらせず、NFQ / fill telemetry / pricing veto まで通す必要があった
 
 このレビュー結果に基づき、700 batch は prompt の意図を保持しつつ、current code path に沿う最小実装へ寄せた。
+
+## 実装ステータス
+
+| タスク | 状態 | 補足 |
+|--------|------|------|
+| Protocol 688 NFQ fix | 完了 | `nfq` と `cancels` を分離し、過去の cancel 全体集計バグを解消 |
+| spread_as_guard fix | 完了 | 命名変更ではなく、`15.0bps` 系 threshold + validation + backward-compat parser に寄せた |
+| inventory skewing | 完了 | 既存 `maker_price` の drift telemetry / max_factor escalation を拡張 |
+| regime exit strategy | 完了 | 単独 tracker で終わらせず、NFQ / pricing veto / fill telemetry まで接続 |
+
+## 隠れタスクとして回収したもの
+
+- hot-reload / validation / YAML drift allowlist の追随
+- fill observability への telemetry 流し込み
+- protocol / analysis での spread 分布補助セクション追加
+- broad regression を通すための current threshold 系テスト追随
+
+## 横展開できたもの
+
+- `FillRecord` telemetry は runtime だけでなく analysis / fill_quality / tests まで接続
+- `spread_as_guard` の current 契約は hot-reload / validation / protocol 側へ横展開
+- inventory / regime-exit は maker path に閉じず NFQ / cancel taxonomy / observability まで反映

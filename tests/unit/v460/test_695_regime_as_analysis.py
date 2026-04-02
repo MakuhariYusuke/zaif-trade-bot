@@ -49,7 +49,7 @@ class TestRegimeASAnalysis:
     def test_regime_guard_adapter_ranging(self) -> None:
         cfg = FillTestConfig(
             spread_as_guard_enabled=True,
-            spread_as_guard_spread_threshold_bps=1500.0,
+            spread_as_guard_spread_threshold_bps=15.0,
             spread_as_guard_ev_penalty_bps=0.5,
             regime_guard_overrides_enabled=True,
             regime_guard_ev_threshold_premiums={"ranging": 0.3},
@@ -59,7 +59,7 @@ class TestRegimeASAnalysis:
         result = apply_entry_gate_adjustments(
             config=cfg,
             regime=FillTestRegime.RANGING,
-            spread_bps=1200.0,
+            spread_bps=12.0,
             base_ev_bps=1.2,
         )
 
@@ -70,7 +70,7 @@ class TestRegimeASAnalysis:
     def test_regime_guard_adapter_trending(self) -> None:
         cfg = FillTestConfig(
             spread_as_guard_enabled=True,
-            spread_as_guard_spread_threshold_bps=1500.0,
+            spread_as_guard_spread_threshold_bps=15.0,
             spread_as_guard_ev_penalty_bps=0.5,
             regime_guard_overrides_enabled=True,
             regime_guard_ev_threshold_premiums={"trending_down": 0.0},
@@ -80,7 +80,7 @@ class TestRegimeASAnalysis:
         result = apply_entry_gate_adjustments(
             config=cfg,
             regime=FillTestRegime.TRENDING_DOWN,
-            spread_bps=1200.0,
+            spread_bps=12.0,
             base_ev_bps=1.0,
         )
 
@@ -89,7 +89,7 @@ class TestRegimeASAnalysis:
     def test_regime_guard_adapter_disabled(self) -> None:
         cfg = FillTestConfig(
             spread_as_guard_enabled=True,
-            spread_as_guard_spread_threshold_bps=1500.0,
+            spread_as_guard_spread_threshold_bps=15.0,
             spread_as_guard_ev_penalty_bps=0.5,
             regime_guard_overrides_enabled=False,
             regime_guard_ev_threshold_premiums={"ranging": 0.3},
@@ -99,7 +99,7 @@ class TestRegimeASAnalysis:
         result = apply_entry_gate_adjustments(
             config=cfg,
             regime=FillTestRegime.RANGING,
-            spread_bps=1200.0,
+            spread_bps=12.0,
             base_ev_bps=1.0,
         )
 
@@ -109,7 +109,7 @@ class TestRegimeASAnalysis:
     def test_regime_guard_adapter_unknown_regime(self) -> None:
         cfg = FillTestConfig(
             spread_as_guard_enabled=True,
-            spread_as_guard_spread_threshold_bps=1500.0,
+            spread_as_guard_spread_threshold_bps=15.0,
             spread_as_guard_ev_penalty_bps=0.5,
             regime_guard_overrides_enabled=True,
             regime_guard_ev_threshold_premiums={"ranging": 0.3},
@@ -119,10 +119,42 @@ class TestRegimeASAnalysis:
         result = apply_entry_gate_adjustments(
             config=cfg,
             regime="mystery_regime",
-            spread_bps=1200.0,
+            spread_bps=12.0,
             base_ev_bps=1.0,
         )
 
         assert result.regime_guard_ev_premium_bps == pytest.approx(0.0)
         assert result.regime_guard_penalty_multiplier == pytest.approx(1.0)
 
+    def test_spread_distribution_is_exposed(self) -> None:
+        payload = build_regime_as_deep_dive_section(
+            [
+                {
+                    "cycle_id": "a",
+                    "timestamp": 1.0,
+                    "side": "sell",
+                    "filled": True,
+                    "regime": "ranging",
+                    "spread_bps": 6.0,
+                    "spread_at_order": 900.0,
+                    "mid_at_order": 1_500_000.0,
+                    "post_fill_30s_pnl": 1.0,
+                    "adverse_selected": False,
+                },
+                {
+                    "cycle_id": "b",
+                    "timestamp": 2.0,
+                    "side": "sell",
+                    "filled": True,
+                    "regime": "trending_down",
+                    "spread_bps": 18.0,
+                    "spread_at_order": 2_700.0,
+                    "mid_at_order": 1_500_000.0,
+                    "post_fill_30s_pnl": -1.0,
+                    "adverse_selected": True,
+                },
+            ]
+        )
+
+        assert payload["spread_distribution"]["quantiles_bps"]["p50"] == pytest.approx(12.0)
+        assert payload["spread_distribution"]["threshold_impact"]["15.0"]["count"] == 1

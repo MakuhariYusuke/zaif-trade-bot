@@ -12,14 +12,14 @@ class TestSpreadASGuard:
     def test_guard_triggers_below_threshold(self) -> None:
         cfg = FillTestConfig(
             spread_as_guard_enabled=True,
-            spread_as_guard_spread_threshold_bps=1500.0,
+            spread_as_guard_spread_threshold_bps=15.0,
             spread_as_guard_ev_penalty_bps=0.5,
         )
 
         result = apply_entry_gate_adjustments(
             config=cfg,
             regime=FillTestRegime.RANGING,
-            spread_bps=1200.0,
+            spread_bps=12.0,
             base_ev_bps=0.4,
         )
 
@@ -30,14 +30,14 @@ class TestSpreadASGuard:
     def test_guard_skips_above_threshold(self) -> None:
         cfg = FillTestConfig(
             spread_as_guard_enabled=True,
-            spread_as_guard_spread_threshold_bps=1500.0,
+            spread_as_guard_spread_threshold_bps=15.0,
             spread_as_guard_ev_penalty_bps=0.5,
         )
 
         result = apply_entry_gate_adjustments(
             config=cfg,
             regime=FillTestRegime.RANGING,
-            spread_bps=2000.0,
+            spread_bps=20.0,
             base_ev_bps=0.4,
         )
 
@@ -48,14 +48,14 @@ class TestSpreadASGuard:
     def test_guard_disabled_observe_mode(self) -> None:
         cfg = FillTestConfig(
             spread_as_guard_enabled=False,
-            spread_as_guard_spread_threshold_bps=1500.0,
+            spread_as_guard_spread_threshold_bps=15.0,
             spread_as_guard_ev_penalty_bps=0.5,
         )
 
         result = apply_entry_gate_adjustments(
             config=cfg,
             regime=FillTestRegime.RANGING,
-            spread_bps=1000.0,
+            spread_bps=10.0,
             base_ev_bps=0.4,
         )
 
@@ -73,4 +73,3 @@ class TestSpreadASGuard:
             "regime_guard_spread_as_penalty_multipliers",
         }
         assert expected <= _HOT_RELOADABLE_FIELDS
-

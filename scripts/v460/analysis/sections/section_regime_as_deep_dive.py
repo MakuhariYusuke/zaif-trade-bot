@@ -6,28 +6,29 @@ from collections import defaultdict
 from statistics import mean
 
 from scripts.v460.analysis.analysis_common import Record, get_pnl
+from scripts.v460.analysis.sections.section_spread_distribution import (
+    build_spread_distribution_section,
+)
 
 
 def build_regime_as_deep_dive_section(records: list[Record]) -> dict[str, object]:
     filled = [record for record in records if bool(record.get("filled"))]
     regime_spread: dict[str, dict[str, dict[str, float | int | None]]] = defaultdict(dict)
     ranging_buckets: dict[str, list[Record]] = defaultdict(list)
+    grouped: dict[tuple[str, str], list[Record]] = defaultdict(list)
     veto_overlap = 0
 
     for record in filled:
         regime = _as_str(record.get("regime")) or "unknown"
         bucket = _spread_bucket(_as_float(record.get("spread_at_order")))
-        bucket_records = [
-            candidate
-            for candidate in filled
-            if (_as_str(candidate.get("regime")) or "unknown") == regime
-            and _spread_bucket(_as_float(candidate.get("spread_at_order"))) == bucket
-        ]
-        regime_spread[regime][bucket] = _bucket_payload(bucket_records)
+        grouped[(regime, bucket)].append(record)
         if regime == "ranging":
             ranging_buckets[bucket].append(record)
         if record.get("trend_5s_guard_action") == "veto" or record.get("cancel_reason") == "trend_5s_sell_guard_veto":
             veto_overlap += 1
+
+    for (regime, bucket), bucket_records in sorted(grouped.items()):
+        regime_spread[regime][bucket] = _bucket_payload(bucket_records)
 
     return {
         "regime_spread_crosstab": regime_spread,
@@ -35,6 +36,7 @@ def build_regime_as_deep_dive_section(records: list[Record]) -> dict[str, object
             bucket: _bucket_payload(bucket_records)
             for bucket, bucket_records in sorted(ranging_buckets.items())
         },
+        "spread_distribution": build_spread_distribution_section(filled),
         "trend_5s_veto_overlap_count": veto_overlap,
         "bypass_segment": _segment_payload(
             [record for record in records if bool(record.get("skip_gate_bypassed"))]
@@ -97,4 +99,3 @@ def _as_float(value: object) -> float | None:
 
 def _as_str(value: object) -> str | None:
     return value if isinstance(value, str) else None
-

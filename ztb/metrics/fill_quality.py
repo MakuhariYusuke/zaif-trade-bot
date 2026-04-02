@@ -49,6 +49,7 @@ from ztb.metrics.fill_record_integrity import (
     quarantine_reason as _quarantine_reason,
 )
 from ztb.metrics.pnl_accumulators import PnlAccumulator, PnlWinAccumulator
+from ztb.metrics.fill_record_pnl import compute_record_pnl_jpy
 from ztb.metrics.fill_record_io import (
     apply_fill_record_filters,
     fill_records_to_dataframe,
@@ -171,6 +172,12 @@ class FillRecord:
     vg_reason: str | None = None                   # "velocity" / "vpin" / "velocity+vpin" / None
     # 510# 在庫偏重状態の追跡
     inv_skew_factor: float | None = None           # inventory skew factor (負=sell offset 緩和)
+    inv_skew_drift_detected: bool | None = None
+    inv_skew_effective_max_factor: float | None = None
+    regime_exit_escalated: bool | None = None
+    regime_exit_buy_count: int | None = None
+    regime_exit_reason: str | None = None
+    regime_exit_triggered_nfq: bool | None = None
     # 165# AS-R1: SkipGate 特徴量ログ (閾値キャリブレーション用)
     price_velocity_bps: float | None = None        # 直近60sの価格速度 (bps)
     # 129# D.2: 残高制約による side 強制切替フラグ (評価/学習での交絡分離用)
@@ -520,22 +527,6 @@ def build_skip_fill_record(
         extra=extra,
     )
     return build_fill_record(**payload)
-
-def compute_record_pnl_jpy(record: FillRecord) -> float | None:
-    """FillRecord の 30s PnL を JPY 概算へ変換.
-
-    filled でない、または必要値が不足/非有限な場合は None を返す。
-    """
-    if not record.filled:
-        return None
-    if record.post_fill_30s_pnl is None or record.fill_price is None:
-        return None
-    pnl_bps = float(record.post_fill_30s_pnl)
-    fill_price = float(record.fill_price)
-    order_qty = float(record.order_quantity)
-    if not (np.isfinite(pnl_bps) and np.isfinite(fill_price) and np.isfinite(order_qty)):
-        return None
-    return pnl_bps * 1e-4 * fill_price * order_qty
 
 @dataclass
 class FillMetrics:

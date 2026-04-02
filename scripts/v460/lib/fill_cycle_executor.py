@@ -797,10 +797,12 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             self._consecutive_no_feasible[side] = 0
         except InfeasibleQuoteError as e:
             ob_cancel_reason = e.reason
-            if e.reason == "spread_too_narrow":
+            if e.reason in {"spread_too_narrow", "regime_exit_nfq"}:
                 logger.info(f"[158# §20-D] {e}")
             else:
                 logger.warning(f"Maker price rejected: {e}")
+            if e.reason == "regime_exit_nfq":
+                ob_cancel_reason = CR.NO_FEASIBLE_QUOTE
             cnf = self._consecutive_no_feasible.get(side, 0) + 1
             self._consecutive_no_feasible[side] = cnf
             if cnf >= 3:

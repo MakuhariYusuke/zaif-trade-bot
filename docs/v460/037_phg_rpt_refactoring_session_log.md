@@ -10566,3 +10566,14 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - heavy subset `360 passed, 5 warnings in 10.21s`
 - hidden task:
   - PPO scheduler test の default `model_path` が既存 artifact に当たると warm-start 分岐が変わりうるため、`tmp_path` 固定で deterministic 化した
+
+## 2026-04-03 fill/PPO/heavy-test follow-up
+
+- `700#` の follow-up として、broad regression を通したうえで hidden task を回収した
+- hidden task:
+  - hot-reload / drift / validation の threshold 追随
+  - `enricher` の file-local cache を shared helper に戻す
+  - `compute_record_pnl_jpy(...)` を `fill_quality` から切り出して runtime import を軽くする
+- regression:
+  - broad subset `554 passed, 5 warnings in 9.74s`
+  - heavy subset `360 passed, 5 warnings in 10.21s`

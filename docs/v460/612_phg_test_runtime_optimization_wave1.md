@@ -1584,3 +1584,23 @@ notes:
 
 - heavy test の主残差は引き続き `enricher` real-data setup (`0.39s setup`)
 - PPO scheduler test は速度だけでなく warm-start/cold-start 前提の安定性も改善した
+
+## 2026-04-03 follow-up: shared real-data smoke cache + fill helper rollout
+
+changes:
+
+- `tests/unit/v460/_real_data_test_helpers.py`
+  - trainable / smoke enriched sample 選択を shared `lru_cache` 化
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - file-local cache を共通 helper cache に寄せた
+- `ztb/metrics/fill_record_pnl.py`
+  - `compute_record_pnl_jpy(...)` を `fill_quality` から切り出し
+- `scripts/v460/monitor_fill_test.py`
+- `scripts/v460/lib/orchestrator_post_cycle.py`
+- `scripts/v460/lib/orchestrator_lifecycle.py`
+  - 新 helper を利用するように更新
+
+notes:
+
+- `enricher` の最遅 setup は残っているが、cache の責務が test file から shared helper へ移った
+- `compute_record_pnl_jpy(...)` は runtime/monitor/orchestrator でも使うため、`fill_quality` 本体に残す必要が薄かった

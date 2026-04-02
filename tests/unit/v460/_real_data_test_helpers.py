@@ -176,6 +176,28 @@ def select_minimum_trainable_fill_df(
     results_dir: Path = _DEFAULT_RESULTS_DIR,
 ) -> pd.DataFrame:
     """学習成立条件を満たす最小限の fill_df/enriched_df を選ぶ."""
+    return _cached_minimum_trainable_fill_df(
+        initial_rows=initial_rows,
+        fallback_rows=fallback_rows,
+        expanded_rows=expanded_rows,
+        min_train_samples=min_train_samples,
+        enrich_fn=enrich_fn,
+        results_dir_str=str(results_dir.resolve()),
+    ).copy(deep=True)
+
+
+@lru_cache(maxsize=4)
+def _cached_minimum_trainable_fill_df(
+    *,
+    initial_rows: int,
+    fallback_rows: int,
+    expanded_rows: int,
+    min_train_samples: int,
+    enrich_fn: Callable[[pd.DataFrame], pd.DataFrame],
+    results_dir_str: str,
+) -> pd.DataFrame:
+    """学習用 minimal enriched sample の shared cache."""
+    results_dir = Path(results_dir_str)
     max_rows = max(initial_rows, fallback_rows, expanded_rows)
     recent_fill_df = load_recent_fill_records_df(
         sample_rows=max_rows,
@@ -209,6 +231,24 @@ def select_minimum_smoke_enriched_fill_df(
     required_column: str = "spread_bps_ob",
 ) -> pd.DataFrame:
     """観測系 smoke が成立する最小限の enriched fill sample を選ぶ."""
+    return _cached_minimum_smoke_enriched_fill_df(
+        sample_sizes=sample_sizes,
+        enrich_fn=enrich_fn,
+        results_dir_str=str(results_dir.resolve()),
+        required_column=required_column,
+    ).copy(deep=True)
+
+
+@lru_cache(maxsize=4)
+def _cached_minimum_smoke_enriched_fill_df(
+    *,
+    sample_sizes: tuple[int, ...],
+    enrich_fn: Callable[[pd.DataFrame], pd.DataFrame],
+    results_dir_str: str,
+    required_column: str = "spread_bps_ob",
+) -> pd.DataFrame:
+    """観測系 smoke enriched sample の shared cache."""
+    results_dir = Path(results_dir_str)
     if not sample_sizes:
         return pd.DataFrame()
 

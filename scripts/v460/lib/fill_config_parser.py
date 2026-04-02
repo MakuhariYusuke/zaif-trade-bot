@@ -665,9 +665,12 @@ def _parse_stopgap_section(yaml_cfg: dict) -> dict:
     for yk, ck in {
         "window": "inventory_skewing_window",
         "max_factor": "inventory_skewing_max_factor",
+        "max_factor_drift": "inventory_skewing_max_factor_drift",
         "max_factor_trending": "inv_skew_max_factor_trending",  # 657# B-3
         "neutral_band": "inventory_skewing_neutral_band",
         "decay_tau_sec": "inv_decay_tau_sec",  # 228# C2
+        "drift_detection_threshold": "drift_detection_threshold",
+        "drift_detection_sustain_sec": "drift_detection_sustain_sec",
     }.items():
         if yk in inv_skew:
             kwargs[ck] = inv_skew[yk]
@@ -1304,6 +1307,12 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
         for yaml_key, config_key in spread_as_guard_map.items():
             if yaml_key in spread_as_guard:
                 kwargs[config_key] = spread_as_guard[yaml_key]
+        if "threshold_bps" in spread_as_guard:
+            kwargs["spread_as_guard_spread_threshold_bps"] = spread_as_guard["threshold_bps"]
+        elif "threshold" in spread_as_guard:
+            kwargs["spread_as_guard_spread_threshold_bps"] = spread_as_guard["threshold"]
+        if "ev_penalty" in spread_as_guard:
+            kwargs["spread_as_guard_ev_penalty_bps"] = spread_as_guard["ev_penalty"]
 
     regime_guard_overrides = yaml_cfg.get("regime_guard_overrides", {})
     if isinstance(regime_guard_overrides, dict) and regime_guard_overrides:
@@ -1326,6 +1335,19 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
             kwargs["regime_guard_ev_threshold_premiums"] = premiums
         if penalty_multipliers:
             kwargs["regime_guard_spread_as_penalty_multipliers"] = penalty_multipliers
+
+    regime_exit = yaml_cfg.get("regime_exit_strategy", {})
+    if isinstance(regime_exit, dict) and regime_exit:
+        regime_exit_map = {
+            "enabled": "regime_exit_strategy_enabled",
+            "max_trending_down_buy_fills": "regime_exit_max_trending_down_buy_fills",
+            "tracking_window_sec": "regime_exit_tracking_window_sec",
+            "escalated_max_factor": "regime_exit_escalated_max_factor",
+            "nfq_trigger_imbalance": "regime_exit_nfq_trigger_imbalance",
+        }
+        for yaml_key, config_key in regime_exit_map.items():
+            if yaml_key in regime_exit:
+                kwargs[config_key] = regime_exit[yaml_key]
 
     op = yaml_cfg.get("offset_pipeline", {})
     if isinstance(op, dict) and op:

@@ -28,6 +28,7 @@ import numpy as np
 
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.regime_exit_strategy import RegimeExitResult, RegimeExitTracker
 from scripts.v460.lib.maker_microstructure import MicrostructureMixin
 from scripts.v460.lib.maker_regime_boost import RegimeBoostMixin
 from scripts.v460.lib.maker_risk_guards import RiskGuardsMixin
@@ -74,6 +75,7 @@ class InfeasibleQuoteError(ValueError):
     Reasons:
         - ``"spread_too_narrow"`` — spread < min_spread_jpy
         - ``"sell_guard_reject"`` — sell 時 spread > sell_max_spread_jpy
+        - ``"regime_exit_nfq"`` — trending_down 買い滞留による NFQ
 
     671# 構造化フィールド追加: error_message パース不要で NFQ 分析が可能。
     """
@@ -168,8 +170,13 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         "_inv_net_imbalance",        # 162# normalized net imbalance [-1,1]
         "_inv_buy_count",            # 226# P5: O(1) incremental buy counter
         "_inv_last_update_time",     # 228# C2: last fill timestamp for time-decay
+        "_drift_start_time",         # 700# drift detect start time
         "_last_inv_skew_factor",     # 168# last applied inv_skew factor
+        "_last_inv_skew_drift_detected",
+        "_last_inv_skew_effective_max_factor",
         "_inv_skew_last_info_time",  # 657# log throttle: 周期的INFOサマリ
+        "_regime_exit_tracker",
+        "_last_regime_exit_result",
         "_last_vg_reason",           # 510# VG boost reason (velocity/vpin/both)
         "_last_ob_snapshot",
         "_last_spread",              # 197# cached spread for Gate pre-check
@@ -250,9 +257,14 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         self._inv_net_imbalance: float = 0.0
         self._inv_buy_count: int = 0  # 226# P5: O(1) buy count tracker
         self._inv_last_update_time: float = 0.0  # 228# C2: time-decay 基準時刻
+        self._drift_start_time: float | None = None
         # 168# InvSkew/VG 競合解消: 直近の InvSkew 補正係数 (負=sell緩和)
         self._last_inv_skew_factor: float = 0.0
+        self._last_inv_skew_drift_detected: bool = False
+        self._last_inv_skew_effective_max_factor: float = 0.0
         self._inv_skew_last_info_time: float = 0.0  # 657# log throttle
+        self._regime_exit_tracker = RegimeExitTracker(config.regime_exit_strategy)
+        self._last_regime_exit_result = RegimeExitResult.noop()
         # 197# cached spread for CycleGateAggregator pre-check
         self._last_spread: float | None = None
         self._last_spread_time: float | None = None  # 210# M5: staleness tracking
@@ -386,7 +398,9 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
             side,
         )
         # 228# C2: fill 時刻を記録 → compute() で time-decay に使用
-        self._inv_last_update_time = time.time()
+        now = time.time()
+        self._inv_last_update_time = now
+        self._regime_exit_tracker.record_fill(side, now)
 
     def _decayed_imbalance(self, now: float) -> float:
         """228# C2: time-decay 適用後の在庫偏重値を返す.
@@ -536,6 +550,18 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
     def last_inv_skew_factor(self) -> float:
         """510# 直近の inventory skew factor."""
         return self._last_inv_skew_factor
+
+    @property
+    def last_inv_skew_drift_detected(self) -> bool:
+        return self._last_inv_skew_drift_detected
+
+    @property
+    def last_inv_skew_effective_max_factor(self) -> float:
+        return self._last_inv_skew_effective_max_factor
+
+    @property
+    def last_regime_exit_result(self) -> RegimeExitResult:
+        return self._last_regime_exit_result
 
     def _effective_sell_offset_floor(self) -> float:
         """173# 動的 sell_offset_floor — 在庫 buy 偏重時にフロアを割引.
@@ -803,14 +829,19 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         """
         cfg = self._config
         _decayed_imb = self._decayed_imbalance(now)
+        self._last_inv_skew_drift_detected = False
+        self._last_inv_skew_effective_max_factor = 0.0
+        self._last_regime_exit_result = RegimeExitResult.noop()
 
         # 657# B-3: regime別max_factor (656# Ho-Stoll/Cartea-Jaimungal)
         # trending時: 完全停止→低減max_factorで在庫管理を継続 (方向α保全 + 在庫管理両立)
         # legacy regime_gate_enabled=True の場合は後方互換で従来動作
         _inv_skew_regime_blocked = False
         _effective_max_factor = cfg.inventory_skewing_max_factor
+        _current_regime_value: str | None = None
         if self._regime_detector is not None:
             _r = self._regime_detector.current_regime
+            _current_regime_value = _r.value
             if _r.is_trending:
                 if cfg.inv_skew_regime_gate_enabled:
                     # legacy: 完全停止 (249# 旧動作)
@@ -827,12 +858,33 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
                         f"max_factor={_effective_max_factor:.3f} (trending)"
                     )
 
+        _drift_detected = self._update_inventory_drift_state(abs(_decayed_imb), now)
+        if _drift_detected:
+            _effective_max_factor = max(
+                _effective_max_factor,
+                cfg.inventory_skewing_max_factor_drift,
+            )
+
+        _regime_exit = self._regime_exit_tracker.evaluate(
+            regime=_current_regime_value,
+            imbalance=_decayed_imb,
+            now=now,
+        )
+        if _regime_exit.should_escalate_skewing and _regime_exit.effective_max_factor is not None:
+            _effective_max_factor = max(
+                _effective_max_factor,
+                _regime_exit.effective_max_factor,
+            )
+        self._last_regime_exit_result = _regime_exit
+
         if (
             not cfg.inventory_skewing_enabled
             or abs(_decayed_imb) <= cfg.inventory_skewing_neutral_band
             or _inv_skew_regime_blocked
         ):
             self._last_inv_skew_factor = 0.0
+            self._last_inv_skew_drift_detected = _drift_detected
+            self._last_inv_skew_effective_max_factor = _effective_max_factor
             return effective_offset_ratio
 
         _imb = _decayed_imb
@@ -851,6 +903,8 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
             min_ratio=cfg.min_offset_ratio,
         )
         self._last_inv_skew_factor = _factor
+        self._last_inv_skew_drift_detected = _drift_detected
+        self._last_inv_skew_effective_max_factor = _effective_max_factor
         # 657# log throttle: 毎回debug + 60秒ごとINFOサマリ
         _log_msg = (
             f"[inv_skew] {side} imb={_imb:+.3f} "
@@ -864,6 +918,15 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
             logger.info(_log_msg)
             self._inv_skew_last_info_time = _now_mono
         return effective_offset_ratio
+
+    def _update_inventory_drift_state(self, abs_imbalance: float, now: float) -> bool:
+        cfg = self._config
+        if abs_imbalance > cfg.drift_detection_threshold:
+            if self._drift_start_time is None:
+                self._drift_start_time = now
+            return (now - self._drift_start_time) >= cfg.drift_detection_sustain_sec
+        self._drift_start_time = None
+        return False
 
     def _apply_spread_adaptive(
         self,
@@ -1141,6 +1204,21 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
             logger.debug(
                 f"[664#] DEADLOCK_ESCAPE: effective_min {original_min:.0f}"
                 f" -> {effective_min:.0f} JPY (×{cfg.deadlock_escape_spread_mult})"
+            )
+
+        if side == "buy" and self._last_regime_exit_result.should_trigger_nfq:
+            raise InfeasibleQuoteError(
+                reason="regime_exit_nfq",
+                msg=(
+                    "regime_exit_nfq: trending_down buy exposure exceeded"
+                    f" window cap (buy_count={self._last_regime_exit_result.buy_count_in_window},"
+                    f" imbalance={self._decayed_imbalance(time.time()):+.3f})"
+                ),
+                actual_spread=spread,
+                min_spread_effective=effective_min,
+                min_spread_abs=cfg.min_spread_jpy,
+                min_spread_atr=atr_floor,
+                sigma=self._last_sigma,
             )
 
         if spread < effective_min:

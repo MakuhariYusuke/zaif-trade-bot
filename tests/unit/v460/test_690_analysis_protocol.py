@@ -65,6 +65,7 @@ class TestProtocol688:
             "basic",
             "side",
             "nfq",
+            "cancels",
             "adverse_selection",
             "spread",
             "hour",
