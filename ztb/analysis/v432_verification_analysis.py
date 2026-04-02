@@ -13,23 +13,23 @@ from ztb.io.json_io import read_json, write_json
 
 def load_v432_results() -> dict[str, dict[str, Any]]:
     """v432シリーズの全結果ファイルを読み込む"""
-    results_dir = Path("ztb/evaluation/v432")
+    legacy_results_dir = Path("ztb/evaluation/v432")
+    archived_results_dir = Path("archived/analysis")
     results = {}
 
     # バージョンとファイル名のマッピング
     version_files = {
-        "v432.0": "sac_v432_backtest_results.json",  # 古いファイル
-        "v432.1": "sac_v432_1_advanced_position_management_results.json",
-        "v432.2": "sac_v432_2_win_rate_optimization_results.json",
-        "v432.3": "sac_v432_3_entry_exit_enhancement_results.json",
-        "v432.4": "sac_v432_4_profit_focused_optimization_results.json",
-        "v432.5": "sac_v432_5_strict_entry_optimization_results.json",
-        "v432.6": "sac_v432_6_ensemble_approach_results.json",
-        "v432.7": "sac_v432_7_real_market_data_results.json",
+        "v432.0": legacy_results_dir / "sac_v432_backtest_results.json",  # 古いファイル
+        "v432.1": archived_results_dir / "sac_v432_1_advanced_position_management_results.json",
+        "v432.2": archived_results_dir / "sac_v432_2_win_rate_optimization_results.json",
+        "v432.3": archived_results_dir / "sac_v432_3_entry_exit_enhancement_results.json",
+        "v432.4": archived_results_dir / "sac_v432_4_profit_focused_optimization_results.json",
+        "v432.5": archived_results_dir / "sac_v432_5_strict_entry_optimization_results.json",
+        "v432.6": archived_results_dir / "sac_v432_6_ensemble_approach_results.json",
+        "v432.7": archived_results_dir / "sac_v432_7_real_market_data_results.json",
     }
 
-    for version, filename in version_files.items():
-        filepath = results_dir / filename
+    for version, filepath in version_files.items():
         if filepath.exists():
             try:
                 data = read_json(filepath)

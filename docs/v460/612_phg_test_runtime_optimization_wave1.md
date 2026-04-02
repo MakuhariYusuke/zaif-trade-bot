@@ -1604,3 +1604,30 @@ notes:
 
 - `enricher` の最遅 setup は残っているが、cache の責務が test file から shared helper へ移った
 - `compute_record_pnl_jpy(...)` は runtime/monitor/orchestrator でも使うため、`fill_quality` 本体に残す必要が薄かった
+
+## 2026-04-03 follow-up: IDE cleanup tooling + idempotency deadlock fix
+
+changes:
+
+- `scripts/v460/tools/cleanup_workspace.py`
+  - ignored temp/cache を dry-run default で掃除する CLI を追加
+- `tests/unit/v460/test_701_cleanup_workspace.py`
+  - cleanup CLI の safety contract を固定
+- `tests/unit/v460/test_codex_408_409_fixes.py`
+  - `TestT1IdempotencyLock` に cleanup fixture を追加
+  - test ごとに db 名を分離
+  - stale lock 不在 / 解放確認を追加
+- `tests/unit/v460/test_701_archived_v432.py`
+  - v432 JSON archive 配置と非参照を固定
+
+regression:
+
+- `tests/unit/v460/test_701_cleanup_workspace.py`
+  - `5 passed in 1.29s`
+- `tests/unit/v460/test_codex_408_409_fixes.py::TestT1IdempotencyLock`
+  - focused pass
+
+notes:
+
+- これは runtime 最適化というより、IDE/CI 側の固定費と deadlock 解消
+- heavy test 本線とは別だが、フル回帰が途中停止しない土台として重要

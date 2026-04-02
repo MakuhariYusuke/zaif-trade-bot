@@ -10577,3 +10577,21 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - regression:
   - broad subset `554 passed, 5 warnings in 9.74s`
   - heavy subset `360 passed, 5 warnings in 10.21s`
+
+## 2026-04-03 IDE cleanup / archive / deadlock follow-up
+
+- `701#` の prompt を現行 repo に寄せて実装
+- 更新:
+  - [scripts/v460/tools/cleanup_workspace.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/tools/cleanup_workspace.py)
+  - [tests/unit/v460/test_701_cleanup_workspace.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_701_cleanup_workspace.py)
+  - [tests/unit/v460/test_codex_408_409_fixes.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_codex_408_409_fixes.py)
+  - [tests/unit/v460/test_701_archived_v432.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_701_archived_v432.py)
+  - [docs/v460/701_cplt_ide_performance_audit_and_cleanup_plan.md](/mnt/c/Users/Admin/dev/zaif-trade-bot/docs/v460/701_cplt_ide_performance_audit_and_cleanup_plan.md)
+  - [.vscode/settings.json](/mnt/c/Users/Admin/dev/zaif-trade-bot/.vscode/settings.json)
+- hidden task:
+  - `files.watcherExclude` だけでなく `files.exclude` も更新し、Explorer 側の体感悪化も抑える
+  - `archived/` ignore 下でも既存 tracked payload があるため、`git mv -f` で履歴を維持
+  - deadlock 修正は production ではなく test 側分離に限定して安全に処理
+- regression:
+  - cleanup tests `5 passed in 1.29s`
+  - idempotency lock focused pass

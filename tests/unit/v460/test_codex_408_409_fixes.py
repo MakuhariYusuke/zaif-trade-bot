@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import time
+from collections.abc import Generator
 from functools import lru_cache
 from pathlib import Path
 from types import SimpleNamespace
@@ -98,20 +99,39 @@ class _FakeHealthProcess:
 
 
 class TestT1IdempotencyLock:
+    @pytest.fixture(autouse=True)
+    def _cleanup_lock_files(self, tmp_path: Path) -> Generator[None, None, None]:
+        for lock_file in tmp_path.glob("*.lock"):
+            try:
+                lock_file.unlink()
+            except OSError:
+                pass
+        yield
+        gc.collect()
+        for lock_file in tmp_path.glob("*.lock"):
+            try:
+                lock_file.unlink()
+            except OSError:
+                pass
+
     def test_process_lock_is_exclusive(self, tmp_path: Path) -> None:
-        db_path = tmp_path / "orders.sqlite"
+        db_path = tmp_path / "orders_exclusive.sqlite"
         owner = IdempotencyStore(str(db_path), lock_timeout_sec=0.05, lock_retry_interval_sec=0.01)
         waiter = IdempotencyStore(str(db_path), lock_timeout_sec=0.05, lock_retry_interval_sec=0.01)
+        assert owner._lock_file is not None
+        assert not owner._lock_file.exists()
 
         with owner._process_lock():
             with pytest.raises(TimeoutError):
                 with waiter._process_lock():
                     pass
+        assert not owner._lock_file.exists()
 
     def test_process_lock_releases_on_exit(self, tmp_path: Path) -> None:
-        db_path = tmp_path / "orders.sqlite"
+        db_path = tmp_path / "orders_release.sqlite"
         store = IdempotencyStore(str(db_path))
         assert store._lock_file is not None
+        assert not store._lock_file.exists()
 
         with store._process_lock():
             assert store._lock_file.exists()
@@ -119,15 +139,17 @@ class TestT1IdempotencyLock:
         assert not store._lock_file.exists()
 
     def test_stale_lock_recovery(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        db_path = tmp_path / "orders.sqlite"
+        db_path = tmp_path / "orders_stale.sqlite"
         store = IdempotencyStore(str(db_path), lock_timeout_sec=0.05, lock_retry_interval_sec=0.01)
         assert store._lock_file is not None
+        assert not store._lock_file.exists()
         store._lock_file.write_text("999999", encoding="utf-8")
         monkeypatch.setattr(store, "_pid_exists", lambda _pid: False)
 
         with store._process_lock():
             assert store._lock_file.exists()
             assert store._lock_file.read_text(encoding="utf-8").strip() == str(os.getpid())
+        assert not store._lock_file.exists()
 
 
 class TestT2RewardComponents:
