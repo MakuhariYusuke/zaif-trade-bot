@@ -189,6 +189,8 @@ class TestCancelReasons:
             CR.ROUTE_TO_KILL_DEADLOCK,          # 421# P0 Route-to-Kill
             CR.INVENTORY_DEADLOCK,              # 648# 在庫デッドロック
             CR.TREND_5S_SELL_GUARD_VETO,       # 685# trend 5s sell guard
+            CR.AS_TRAILING_GATE_VETO,          # 694# AS trailing gate
+            CR.CROSS_VENUE_BUY_VETO,           # 694# buy-side cross-venue
         }
         assert CR.AUDIT_CANCEL_REASONS == expected
 

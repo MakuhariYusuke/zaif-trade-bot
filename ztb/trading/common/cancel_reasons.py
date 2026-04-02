@@ -225,4 +225,7 @@ CancelReason = Literal[
     "route_to_kill_deadlock",
     # 648# Inventory Deadlock
     "inventory_deadlock",
+    # 694# AS trailing gate + buy-side cross-venue
+    "as_trailing_gate_veto",
+    "cross_venue_buy_veto",
 ]

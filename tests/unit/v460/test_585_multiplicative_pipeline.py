@@ -432,6 +432,7 @@ class TestStagesJson:
             "alert",
             "toxic_veto",
             "trend_5s_guard",
+            "as_trailing_guard",
         }
         assert expected_keys == set(stages.keys())
 

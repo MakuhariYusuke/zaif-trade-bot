@@ -189,6 +189,9 @@ class TestPreOrderPhaseResultDefaults:
             regime_at_order=None,
             regime_obs_count=None,
             mid_at_order=None,
+            as_trailing_gate_action=None,
+            as_trailing_gate_rate=None,
+            as_trailing_gate_offset_mult=None,
         )
         assert r.skip_gate_forced_pass is False
         assert r.skip_gate_side_skip_rate is None
