@@ -75,6 +75,9 @@ class _PreOrderPhaseResult:
     trend_5s_guard_triggered: bool
     trend_5s_guard_action: str | None
     trend_5s_at_order: float | None
+    as_trailing_gate_action: str | None
+    as_trailing_gate_rate: float | None
+    as_trailing_gate_offset_mult: float | None
     ev_offset_applied: bool
     ev_score_pretrade: float | None
     ev_offset_mult_applied: float | None
@@ -939,6 +942,7 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             sg_velocity_bps=sg.price_velocity_bps,
             sg_toxic_veto_offset_mult=sg.toxic_veto_offset_mult,  # 657# A-4
             sg_trend_5s_guard_offset_mult=sg.trend_5s_guard_offset_mult,
+            sg_as_trailing_offset_mult=sg.as_trailing_gate_offset_mult,
             trending_offset_mult=trending_offset_mult,
             toxicity_offset_mult=toxicity_offset_mult,
             sidecar_offset_bps=sidecar_offset_bps,
@@ -988,6 +992,9 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             trend_5s_guard_triggered=sg.trend_5s_guard_triggered,
             trend_5s_guard_action=sg.trend_5s_guard_action,
             trend_5s_at_order=sg.trend_5s_at_order,
+            as_trailing_gate_action=sg.as_trailing_gate_action,
+            as_trailing_gate_rate=sg.as_trailing_gate_rate,
+            as_trailing_gate_offset_mult=sg.as_trailing_gate_offset_mult,
             ev_offset_applied=offset_result.ev_offset_applied,
             ev_score_pretrade=offset_result.ev_score_pretrade,
             ev_offset_mult_applied=offset_result.ev_offset_mult_applied,
@@ -1485,6 +1492,11 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             self._side_selector.update_after_decision(
                 pre_order.side, attempt_already_recorded=True,
             )
+            self._skip_gate_evaluator.record_as_trailing_fill(
+                regime=pre_order.regime_at_order or regime_str,
+                spread=pre_order.spread_at_order,
+                is_adverse=pnl.adverse_selected,
+            )
 
         record = self._build_fill_record(
             cycle_id=pre_order.cycle_id,
@@ -1516,6 +1528,9 @@ class FillCycleExecutorMixin(FillRecordBuilderMixin, OffsetPipelineMixin):
             trend_5s_guard_triggered=pre_order.trend_5s_guard_triggered,
             trend_5s_guard_action=pre_order.trend_5s_guard_action,
             trend_5s_at_order=pre_order.trend_5s_at_order,
+            as_trailing_gate_action=pre_order.as_trailing_gate_action,
+            as_trailing_gate_rate=pre_order.as_trailing_gate_rate,
+            as_trailing_gate_offset_mult=pre_order.as_trailing_gate_offset_mult,
             regime_str=regime_str,
             regime_conf=regime_conf,
             regime_stab=regime_stab,

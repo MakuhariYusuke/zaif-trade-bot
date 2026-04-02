@@ -78,6 +78,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
         sg_velocity_bps: float | None,
         sg_toxic_veto_offset_mult: float | None = None,  # 657# A-4
         sg_trend_5s_guard_offset_mult: float | None = None,
+        sg_as_trailing_offset_mult: float | None = None,
         trending_offset_mult: float | None,
         toxicity_offset_mult: float,
         sidecar_offset_bps: float,
@@ -96,6 +97,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
                 sg_velocity_bps=sg_velocity_bps,
                 sg_toxic_veto_offset_mult=sg_toxic_veto_offset_mult,
                 sg_trend_5s_guard_offset_mult=sg_trend_5s_guard_offset_mult,
+                sg_as_trailing_offset_mult=sg_as_trailing_offset_mult,
                 trending_offset_mult=trending_offset_mult,
                 toxicity_offset_mult=toxicity_offset_mult,
                 sidecar_offset_bps=sidecar_offset_bps,
@@ -112,6 +114,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
             sg_velocity_bps=sg_velocity_bps,
             sg_toxic_veto_offset_mult=sg_toxic_veto_offset_mult,
             sg_trend_5s_guard_offset_mult=sg_trend_5s_guard_offset_mult,
+            sg_as_trailing_offset_mult=sg_as_trailing_offset_mult,
             trending_offset_mult=trending_offset_mult,
             toxicity_offset_mult=toxicity_offset_mult,
             sidecar_offset_bps=sidecar_offset_bps,
@@ -133,6 +136,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
         sg_velocity_bps: float | None,
         sg_toxic_veto_offset_mult: float | None = None,  # 657# A-4
         sg_trend_5s_guard_offset_mult: float | None = None,
+        sg_as_trailing_offset_mult: float | None = None,
         trending_offset_mult: float | None,
         toxicity_offset_mult: float,
         sidecar_offset_bps: float,
@@ -207,6 +211,11 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
             _trend_5s_guard_mult = sg_trend_5s_guard_offset_mult
             tox_deltas.append(base_ratio * (sg_trend_5s_guard_offset_mult - 1.0))
 
+        _as_trailing_mult: float | None = None
+        if sg_as_trailing_offset_mult is not None and sg_as_trailing_offset_mult > 1.0:
+            _as_trailing_mult = sg_as_trailing_offset_mult
+            tox_deltas.append(base_ratio * (_as_trailing_mult - 1.0))
+
         # 196# Trending (sell only) → Toxicity buffer
         if side == "sell" and trending_offset_mult is not None and trending_offset_mult > 1.0:
             _trend_mult = trending_offset_mult
@@ -271,6 +280,7 @@ class OffsetPipelineMixin(MultiplicativePipelineMixin):
             "ev": _ev_offset_mult_applied,
             "velocity": _vel_mult,
             "trend_5s_guard": _trend_5s_guard_mult,
+            "as_trailing_guard": _as_trailing_mult,
             "trending": _trend_mult,
             "toxicity": _tox_mult,
             "vg_supp": _vg_supp_mult,

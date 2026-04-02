@@ -895,6 +895,20 @@ probe / weighting の wiring だけ current contract に揃えられた。
 - ただし scheduler exception-path の最遅点はまだ `test_error_pushes_neutral_fallback`
 - 次は runtime 側の error-path 自体をもう少し薄くできるかを見る
 
+## 2026-04-02 follow-up: 694 batch との整合
+
+- 今回の 694 batch では PPO runtime 本体の新規変更は入れていない
+- 代わりに
+  - analysis protocol の型安全
+  - fill / skip / cross-venue observability
+  を固め、PPO/SAC sidecar の分析・監視前提を崩さないことを優先した
+
+次の PPO 本命:
+
+1. warm-start の weight/state continuity 次段
+2. scheduler exception-path の固定費削減
+3. heavy test setup の継続圧縮
+
 ## 2026-04-02 follow-up: recoverable retrain logging trim
 
 - `scripts/v460/ml/ppo_retrain_scheduler.py`

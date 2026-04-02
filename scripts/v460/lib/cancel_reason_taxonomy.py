@@ -89,6 +89,18 @@ CANCEL_REASON_REGISTRY: dict[str, CancelReasonMeta] = {
     CR.CROSS_VENUE_LEAD_LAG_VETO: _meta(
         CR.CROSS_VENUE_LEAD_LAG_VETO, SkipCategory.GATE_BLOCK, True, "Cross-venue veto"
     ),
+    CR.CROSS_VENUE_BUY_VETO: _meta(
+        CR.CROSS_VENUE_BUY_VETO,
+        SkipCategory.GATE_BLOCK,
+        True,
+        "694# Cross-venue buy-side protection veto",
+    ),
+    CR.AS_TRAILING_GATE_VETO: _meta(
+        CR.AS_TRAILING_GATE_VETO,
+        SkipCategory.GATE_BLOCK,
+        True,
+        "694# AS trailing rate gate veto",
+    ),
     "entry_gate_ev_negative": _meta(
         "entry_gate_ev_negative", SkipCategory.GATE_BLOCK, True, "Entry gate negative EV"
     ),

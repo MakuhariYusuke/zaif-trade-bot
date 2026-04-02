@@ -43,6 +43,7 @@ class _CrossVenueState:
     _cross_venue_lead_lag_pre_offset: float | None = None
     _cross_venue_lead_lag_post_offset: float | None = None
     _cross_venue_lead_lag_cap_hit: bool = False
+    _cross_venue_buy_offset_mult: float | None = None
     # 533# veto deadlock 防止
     _consecutive_veto_count: int = 0
 

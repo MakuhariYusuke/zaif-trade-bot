@@ -68,3 +68,61 @@ stage disable flags のテストカバレッジ向上。
 
 - Task 1, 2 は独立かつ最高優先度 → 並列で Codex に投入可能
 - Task 3, 4 は軽量 → Task 1, 2 完了後に投入
+
+---
+
+## 2026-04-02 実施結果
+
+### 完了
+
+- Task 1: AS-aware trailing skip filter
+  - `as_trailing_tracker.py` を追加
+  - `skip_gate_evaluator` に pre-ML gate と post-fill trailing record を接続
+  - additive / multiplicative offset pipeline に `as_trailing_guard` stage を追加
+  - FillRecord / early skip record observability を追加
+- Task 2: Buy-side cross-venue protection
+  - prompt 記載の `skip_gate_evaluator.py` ではなく、live path の正本である
+    `maker_risk_guards.py` / `maker_price.py` に実装
+  - buy-side 専用 veto / boost threshold を追加
+  - `cross_venue_buy_offset_mult` を FillRecord に保存
+- Task 3: Protocol 688 type safety
+  - `Protocol688Config` を追加
+  - spread bucket / adverse-selection severity を config 化
+  - `run_protocol.py` に `--days > 0` validation と protocol execute error handling を追加
+- Task 4: Offset pipeline math validation
+  - public pipeline API を通す math validation test を追加
+  - stage-disable flag の実挙動を current runtime semantics に合わせて固定
+
+### hidden task / 横展開
+
+- `cross_venue_buy_protect` は generic adverse retreat と競合させず、独立 threshold と telemetry だけ追加
+- `as_trailing_gate` は evaluator だけで止めず、
+  - `fill_cycle_executor`
+  - `fill_record_builder`
+  - `offset_pipeline`
+  - `multiplicative_pipeline`
+  まで通して drift を防止
+- `test_skip_gate_v3.py` / `test_516_skip_gate_result_fields_migration.py` / `test_439_cross_venue_lead_lag.py`
+  の stub / migration test も追随
+
+### 回帰
+
+- focused:
+  - `test_694_as_trailing_tracker.py`
+  - `test_694_cross_venue_buy_protect.py`
+  - `test_694_protocol_688_type_safety.py`
+  - `test_694_pipeline_math_validation.py`
+  - `33 passed, 3 skipped in 2.88s`
+- broader:
+  - parser / validation / hot-reload / YAML drift / skip-gate / cross-venue /
+    analysis protocol / offset pipeline / fill quality / migration / 694 tests
+  - `476 passed, 3 skipped, 5 warnings in 10.42s`
+
+### 残課題
+
+1. `fill_quality` の report shaping 残分割
+2. PPO warm-start の weight/state continuity 次段
+3. heavy test setup の次 batch
+   - `test_enricher_skip_gate.py`
+   - `test_680_ppo_retrain_scheduler.py`
+   - `test_sac_retrain_scheduler.py`

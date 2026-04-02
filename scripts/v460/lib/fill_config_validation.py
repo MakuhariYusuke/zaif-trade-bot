@@ -132,6 +132,64 @@ def validate_fill_config(config: FillTestConfig) -> None:
             raise ValueError(
                 f"skip_gate_budget_limits['{regime_name}'] must be > 0, got {budget_value}"
             )
+    if config.as_trailing_gate_window_size <= 0:
+        raise ValueError(
+            "as_trailing_gate_window_size must be > 0, "
+            f"got {config.as_trailing_gate_window_size}"
+        )
+    if config.as_trailing_gate_min_samples <= 0:
+        raise ValueError(
+            "as_trailing_gate_min_samples must be > 0, "
+            f"got {config.as_trailing_gate_min_samples}"
+        )
+    if not (0.0 <= config.as_trailing_gate_soft_threshold <= 1.0):
+        raise ValueError(
+            "as_trailing_gate_soft_threshold must be in [0, 1], "
+            f"got {config.as_trailing_gate_soft_threshold}"
+        )
+    if not (0.0 <= config.as_trailing_gate_hard_veto_threshold <= 1.0):
+        raise ValueError(
+            "as_trailing_gate_hard_veto_threshold must be in [0, 1], "
+            f"got {config.as_trailing_gate_hard_veto_threshold}"
+        )
+    if config.as_trailing_gate_hard_veto_threshold < config.as_trailing_gate_soft_threshold:
+        raise ValueError(
+            "as_trailing_gate_hard_veto_threshold must be >= "
+            "as_trailing_gate_soft_threshold"
+        )
+    if config.as_trailing_gate_offset_boost_factor < 1.0:
+        raise ValueError(
+            "as_trailing_gate_offset_boost_factor must be >= 1.0, "
+            f"got {config.as_trailing_gate_offset_boost_factor}"
+        )
+    try:
+        bucket_edges = tuple(
+            float(part.strip())
+            for part in config.as_trailing_gate_spread_bucket_edges.split(",")
+            if part.strip()
+        )
+    except ValueError as exc:
+        raise ValueError("as_trailing_gate_spread_bucket_edges must be comma-separated floats") from exc
+    if not bucket_edges:
+        raise ValueError("as_trailing_gate_spread_bucket_edges must not be empty")
+    if any(edge <= 0.0 for edge in bucket_edges):
+        raise ValueError("as_trailing_gate_spread_bucket_edges must be > 0")
+    if tuple(sorted(bucket_edges)) != bucket_edges:
+        raise ValueError("as_trailing_gate_spread_bucket_edges must be strictly nondecreasing")
+    if config.cross_venue_buy_offset_boost_factor < 1.0:
+        raise ValueError(
+            "cross_venue_buy_offset_boost_factor must be >= 1.0, "
+            f"got {config.cross_venue_buy_offset_boost_factor}"
+        )
+    if config.cross_venue_buy_boost_spread_bps < 0.0:
+        raise ValueError(
+            "cross_venue_buy_boost_spread_bps must be >= 0.0, "
+            f"got {config.cross_venue_buy_boost_spread_bps}"
+        )
+    if config.cross_venue_buy_veto_spread_bps < config.cross_venue_buy_boost_spread_bps:
+        raise ValueError(
+            "cross_venue_buy_veto_spread_bps must be >= cross_venue_buy_boost_spread_bps"
+        )
     for k, v in config.regime_lot_multipliers.items():
         if v <= 0:
             raise ValueError(

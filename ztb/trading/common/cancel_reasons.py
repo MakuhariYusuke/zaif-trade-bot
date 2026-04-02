@@ -47,12 +47,14 @@ TOXIC_FILL_SIDE_VETO = "toxic_fill_side_veto"
 # 654# P0-2: Toxic Low-Spread Sell Veto (651#/652# compound guard)
 TOXIC_LOW_SPREAD_SELL_VETO = "toxic_low_spread_sell_veto"
 TREND_5S_SELL_GUARD_VETO = "trend_5s_sell_guard_veto"
+AS_TRAILING_GATE_VETO = "as_trailing_gate_veto"
 # 238# S-2: Phantom 検出後の同 side 一時拒否 (逆選択防御)
 PHANTOM_SIDE_VETO = "phantom_side_veto"
 # 240# Toxicity Budget: 確率的不参加 (232# §2.2 Glosten-Milgrom)
 TOXICITY_PARTICIPATION_SKIP = "toxicity_participation_skip"
 # 439# cross-venue lead-lag veto
 CROSS_VENUE_LEAD_LAG_VETO = "cross_venue_lead_lag_veto"
+CROSS_VENUE_BUY_VETO = "cross_venue_buy_veto"
 # 205# §9.5: 片側 DD Halt (サイド別累積損失超過で片側封鎖)
 PER_SIDE_DD_HALT = "per_side_dd_halt"
 # 215# P0-C: alert_mode.json によるオペレータ緊急停止
@@ -104,9 +106,11 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     TOXIC_FILL_SIDE_VETO,
     TOXIC_LOW_SPREAD_SELL_VETO,
     TREND_5S_SELL_GUARD_VETO,
+    AS_TRAILING_GATE_VETO,
     PHANTOM_SIDE_VETO,
     TOXICITY_PARTICIPATION_SKIP,
     CROSS_VENUE_LEAD_LAG_VETO,
+    CROSS_VENUE_BUY_VETO,
     PER_SIDE_DD_HALT,
     OPERATOR_HALT,
     MCB_HALT,

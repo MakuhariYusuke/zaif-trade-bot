@@ -249,6 +249,11 @@ def _parse_cross_venue_section(yaml_cfg: dict) -> dict:
         "preemptive_sell_kill_cooldown_cycles": "sell_preemptive_cv_cooldown_cycles",
         # 593# B: CV cap_hit sell veto
         "cap_hit_sell_veto_enabled": "cross_venue_cap_hit_sell_veto_enabled",
+        # 694# buy-side cross-venue protection
+        "buy_protect_enabled": "cross_venue_buy_protect_enabled",
+        "buy_veto_spread_bps": "cross_venue_buy_veto_spread_bps",
+        "buy_boost_spread_bps": "cross_venue_buy_boost_spread_bps",
+        "buy_offset_boost_factor": "cross_venue_buy_offset_boost_factor",
     }
     for yaml_key, config_key in cv_map.items():
         if yaml_key in cv:
@@ -360,6 +365,14 @@ def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
         "kill_release_offset": "skip_gate_kill_release_offset",
         # 634# P0: sell ranging penalty
         "sell_ranging_offset": "skip_gate_sell_ranging_offset",
+        # 694# AS trailing gate
+        "as_trailing_gate_enabled": "as_trailing_gate_enabled",
+        "as_trailing_gate_window_size": "as_trailing_gate_window_size",
+        "as_trailing_gate_spread_bucket_edges": "as_trailing_gate_spread_bucket_edges",
+        "as_trailing_gate_soft_threshold": "as_trailing_gate_soft_threshold",
+        "as_trailing_gate_hard_veto_threshold": "as_trailing_gate_hard_veto_threshold",
+        "as_trailing_gate_offset_boost_factor": "as_trailing_gate_offset_boost_factor",
+        "as_trailing_gate_min_samples": "as_trailing_gate_min_samples",
     }
     for yaml_key, config_key in sg_map.items():
         if yaml_key in sg and sg[yaml_key] is not None:

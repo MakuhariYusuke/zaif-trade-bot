@@ -381,6 +381,11 @@ cross_venue_lead_lag:
   # adverse 側 retreat だけでなく favorable 側も confidence 比例で offset 縮小
   favorable_tighten_enabled: true    # 519# false→true (512#実装済み。buy PnL30=+39.0で健全、favorable側でfill rate向上を狙う)
   favorable_tighten_mult: 0.90       # offset × 0.90 = 10% 縮小 (confidence=1.0 時)
+  # 694# buy-side cross-venue protection (observe-only default)
+  buy_protect_enabled: false
+  buy_veto_spread_bps: 5.0
+  buy_boost_spread_bps: 3.0
+  buy_offset_boost_factor: 1.3
   # 535# Pre-emptive CV kill: CV adverse velocity 持続時に sell を事前ブロック (532# §4)
   # sell_dynamic_kill は損失後にrolling meanが下がってからkill→予防にならない
   # CV velocity が高く連続する場合、PnL悪化前にsellを停止する
@@ -480,6 +485,14 @@ skip_gate:
   pnl_threshold: -0.5          # 190# D: 0.0→-0.5 (ev_weighted score が常時負のため閾値緩和)
   max_skip_rate: 0.3               # 674# 0.4→0.3復元: 672# CI=[−0.53,+0.07]でskip増はPnL改善に寄与せず。fill rate直結
   bypass_mode: true            # 686# SG-1: score/telemetry は維持しつつブロック停止
+  # 694# AS trailing gate (observe-only default)
+  as_trailing_gate_enabled: false
+  as_trailing_gate_window_size: 100
+  as_trailing_gate_spread_bucket_edges: "1500,2500,3500"
+  as_trailing_gate_soft_threshold: 0.30
+  as_trailing_gate_hard_veto_threshold: 0.45
+  as_trailing_gate_offset_boost_factor: 1.3
+  as_trailing_gate_min_samples: 10
   use_ob_features: true        # 127# H4: retrain と統一 (false→true)
   # 088# 動的閾値較正: 目標 skip 率ベースで閾値を自動調整
   adaptive_threshold: true     # P(AS) 分位点から閾値を動的設定

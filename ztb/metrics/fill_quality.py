@@ -126,6 +126,9 @@ class FillRecord:
     trend_5s_guard_triggered: bool | None = None  # 684# trend_5s guard が反応したか
     trend_5s_guard_action: str | None = None      # "boost" / "veto" / "none"
     trend_5s_at_order: float | None = None        # 判定時に使った trend_5s 値 (bps)
+    as_trailing_gate_action: str | None = None    # 694# "boost" / "veto" / "none"
+    as_trailing_gate_rate: float | None = None    # 694# trailing AS rate
+    as_trailing_gate_offset_mult: float | None = None  # 694# offset multiplier
     spread_bps: float | None = None            # 発注時スプレッド (bps)
     effective_offset_used: float | None = None # 実際に適用された offset 比率
     # 062# SkipGate ML 判定情報
@@ -262,6 +265,7 @@ class FillRecord:
     cross_venue_lead_lag_pre_offset: float | None = None
     cross_venue_lead_lag_post_offset: float | None = None
     cross_venue_lead_lag_cap_hit: bool | None = None
+    cross_venue_buy_offset_mult: float | None = None
     # ---- 421# P0: Execution Final Clamp 記録 ----
     # executor multiplier chain 適用後・Final Clamp 適用前の offset ratio。
     # None=clamp 未発火 or 無効。値あり=clamp が発火し、ceiling に切り詰められた。

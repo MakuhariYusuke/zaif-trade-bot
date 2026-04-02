@@ -10467,3 +10467,33 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - regression:
     - focused: `3 passed in 5.78s`
     - broader: `398 passed, 5 warnings in 15.85s`
+
+- `694 task batch: AS trailing / buy cross-venue / protocol type safety / pipeline math`
+  - 更新:
+    - [as_trailing_tracker.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/as_trailing_tracker.py)
+    - [fill_config.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config.py)
+    - [fill_config_parser.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config_parser.py)
+    - [fill_config_validation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config_validation.py)
+    - [config_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/config_hot_reload.py)
+    - [skip_gate_evaluator.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/skip_gate_evaluator.py)
+    - [fill_cycle_executor.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_cycle_executor.py)
+    - [fill_record_builder.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_record_builder.py)
+    - [maker_risk_guards.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/maker_risk_guards.py)
+    - [maker_price.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/maker_price.py)
+    - [offset_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/offset_pipeline.py)
+    - [multiplicative_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/multiplicative_pipeline.py)
+    - [protocol_688.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/analysis/protocols/protocol_688.py)
+    - [run_protocol.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/analysis/run_protocol.py)
+    - [fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py)
+  - 追加テスト:
+    - [test_694_as_trailing_tracker.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_694_as_trailing_tracker.py)
+    - [test_694_cross_venue_buy_protect.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_694_cross_venue_buy_protect.py)
+    - [test_694_protocol_688_type_safety.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_694_protocol_688_type_safety.py)
+    - [test_694_pipeline_math_validation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_694_pipeline_math_validation.py)
+  - hidden task:
+    - task2 は prompt の `skip_gate_evaluator` ではなく live path の `maker_risk_guards` / `maker_price` に実装
+    - `as_trailing_gate` は evaluator だけで止めず FillRecord / offset pipeline / skip record telemetry まで横展開
+    - cross-venue / skip-gate migration stub も追随
+  - regression:
+    - focused: `33 passed, 3 skipped in 2.88s`
+    - broader: `476 passed, 3 skipped, 5 warnings in 10.42s`

@@ -1425,3 +1425,43 @@ durations 変化で特に効いた点:
   - `tests/training/test_ppo_trainer.py`
   - `tests/integration/test_custom_ppo_integration.py`
   - `398 passed, 5 warnings in 15.85s`
+
+## 2026-04-02 追加: 694 runtime/type-safety/math validation batch
+
+- 新規:
+  - `tests/unit/v460/test_694_as_trailing_tracker.py`
+  - `tests/unit/v460/test_694_cross_venue_buy_protect.py`
+  - `tests/unit/v460/test_694_protocol_688_type_safety.py`
+  - `tests/unit/v460/test_694_pipeline_math_validation.py`
+- 追随:
+  - `tests/unit/v460/test_516_skip_gate_result_fields_migration.py`
+  - `tests/unit/v460/test_skip_gate_v3.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_439_cross_venue_lead_lag.py`
+
+回帰:
+
+- focused 694 batch:
+  - `33 passed, 3 skipped in 2.88s`
+- broader:
+  - `tests/unit/v460/test_336_fill_config_parser.py`
+  - `tests/unit/v460/test_346_fill_config_validation.py`
+  - `tests/unit/v460/test_169_config_hot_reload.py`
+  - `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
+  - `tests/unit/v460/test_skip_gate_v3.py`
+  - `tests/unit/v460/test_439_cross_venue_lead_lag.py`
+  - `tests/unit/v460/test_690_analysis_protocol.py`
+  - `tests/unit/v460/test_690_offset_pipeline.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_516_skip_gate_result_fields_migration.py`
+  - `tests/unit/v460/test_694_as_trailing_tracker.py`
+  - `tests/unit/v460/test_694_cross_venue_buy_protect.py`
+  - `tests/unit/v460/test_694_protocol_688_type_safety.py`
+  - `tests/unit/v460/test_694_pipeline_math_validation.py`
+  - `476 passed, 3 skipped, 5 warnings in 10.42s`
+
+所見:
+
+- heavy test そのものの短縮は今回の主目的ではない
+- その代わり、694 追加仕様を fast unit で先に固定したので、
+  次の heavy setup 削減 batch を安全に進めやすくなった

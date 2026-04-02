@@ -102,6 +102,7 @@ def _make_bypassed_evaluator(config: "FillTestConfig") -> "SkipGateEvaluator":
         evaluator._gate_path = None
         evaluator._model_file_hash = ""
         evaluator._project_root = Path("/tmp")
+        evaluator._as_trailing_tracker = None
         return evaluator
 
 

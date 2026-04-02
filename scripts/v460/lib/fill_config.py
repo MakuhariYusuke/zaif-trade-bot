@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Callable, cast
+from typing import TYPE_CHECKING, Callable, cast
 
 # 329# re-export: 既存の import パスを維持
 from scripts.v460.lib.fill_config_results import (  # noqa: F401
@@ -22,6 +22,9 @@ from scripts.v460.lib.fill_config_results import (  # noqa: F401
     SkipGateResult,
     compute_ev_offset_multiplier,
 )
+
+if TYPE_CHECKING:
+    from scripts.v460.lib.as_trailing_tracker import ASTrailingConfig
 
 
 # ======================================================================
@@ -45,6 +48,16 @@ class Trend5sSellGuardConfig:
     threshold_bps: float = 0.5
     hard_veto_threshold_bps: float = 3.0
     offset_boost_factor: float = 1.5
+
+
+@dataclass(frozen=True)
+class CrossVenueBuyProtectConfig:
+    """694# Buy-side cross-venue protection configuration."""
+
+    enabled: bool = False
+    veto_spread_bps: float = 5.0
+    boost_spread_bps: float = 3.0
+    offset_boost_factor: float = 1.3
 
 @dataclass
 class FillTestConfig:
@@ -469,6 +482,11 @@ class FillTestConfig:
     # 533# veto deadlock 防止: 連続 veto 上限 + 在庫ゼロ時の閾値緩和
     cross_venue_lead_lag_veto_max_consecutive: int = 20  # 連続 veto 上限 (超過→veto 自動解除)
     cross_venue_lead_lag_veto_inventory_zero_threshold_mult: float = 1.5  # BTC=0 時に閾値を×1.5 緩和
+    # 694# buy-side cross-venue protection
+    cross_venue_buy_protect_enabled: bool = False
+    cross_venue_buy_veto_spread_bps: float = 5.0
+    cross_venue_buy_boost_spread_bps: float = 3.0
+    cross_venue_buy_offset_boost_factor: float = 1.3
     # 442# 板深度拡張: L5 microprice + depth imbalance
     cross_venue_reference_ob_depth: int = 5
     cross_venue_microprice_enabled: bool = False
@@ -532,6 +550,14 @@ class FillTestConfig:
     skip_gate_budget_limits: dict[str, dict[str, int] | int] = field(
         default_factory=lambda: {"default": 8}
     )
+    # 694# AS trailing gate
+    as_trailing_gate_enabled: bool = False
+    as_trailing_gate_window_size: int = 100
+    as_trailing_gate_spread_bucket_edges: str = "1500,2500,3500"
+    as_trailing_gate_soft_threshold: float = 0.30
+    as_trailing_gate_hard_veto_threshold: float = 0.45
+    as_trailing_gate_offset_boost_factor: float = 1.3
+    as_trailing_gate_min_samples: int = 10
     # 190# B: 片側 balance 時の ev_weighted threshold 緩和シフト (bps)
     # 193#: ev_as_offset_enabled=True 時は無視される。
     # 596#: primary safety valve で代替済み。
@@ -1031,6 +1057,34 @@ class FillTestConfig:
             threshold_bps=self.trend_5s_sell_guard_threshold_bps,
             hard_veto_threshold_bps=self.trend_5s_sell_guard_hard_veto_threshold_bps,
             offset_boost_factor=self.trend_5s_sell_guard_offset_boost_factor,
+        )
+
+    @property
+    def as_trailing_gate(self) -> "ASTrailingConfig":
+        from scripts.v460.lib.as_trailing_tracker import ASTrailingConfig
+
+        edges = tuple(
+            float(part.strip())
+            for part in self.as_trailing_gate_spread_bucket_edges.split(",")
+            if part.strip()
+        )
+        return ASTrailingConfig(
+            enabled=self.as_trailing_gate_enabled,
+            window_size=self.as_trailing_gate_window_size,
+            spread_bucket_edges=edges,
+            soft_threshold=self.as_trailing_gate_soft_threshold,
+            hard_veto_threshold=self.as_trailing_gate_hard_veto_threshold,
+            offset_boost_factor=self.as_trailing_gate_offset_boost_factor,
+            min_samples=self.as_trailing_gate_min_samples,
+        )
+
+    @property
+    def cross_venue_buy_protect(self) -> CrossVenueBuyProtectConfig:
+        return CrossVenueBuyProtectConfig(
+            enabled=self.cross_venue_buy_protect_enabled,
+            veto_spread_bps=self.cross_venue_buy_veto_spread_bps,
+            boost_spread_bps=self.cross_venue_buy_boost_spread_bps,
+            offset_boost_factor=self.cross_venue_buy_offset_boost_factor,
         )
 
     @staticmethod

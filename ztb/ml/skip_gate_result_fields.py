@@ -45,6 +45,9 @@ class SkipFillRecordExtraFields:
     trend_5s_guard_triggered: bool | None
     trend_5s_guard_action: str | None
     trend_5s_at_order: float | None
+    as_trailing_gate_action: str | None
+    as_trailing_gate_rate: float | None
+    as_trailing_gate_offset_mult: float | None
     ev_score_pretrade: float | None
     decision_path: str | None
     skip_gate_budget_regime: str | None
@@ -113,6 +116,9 @@ def build_skip_fill_record_extra_fields(
     trend_5s_guard_triggered: bool | None = None,
     trend_5s_guard_action: str | None = None,
     trend_5s_at_order: float | None = None,
+    as_trailing_gate_action: str | None = None,
+    as_trailing_gate_rate: float | None = None,
+    as_trailing_gate_offset_mult: float | None = None,
     ev_score_pretrade: float | None = None,
     decision_path: str | None = None,
     budget_regime: str | None = None,
@@ -135,6 +141,9 @@ def build_skip_fill_record_extra_fields(
         trend_5s_guard_triggered=trend_5s_guard_triggered,
         trend_5s_guard_action=trend_5s_guard_action,
         trend_5s_at_order=trend_5s_at_order,
+        as_trailing_gate_action=as_trailing_gate_action,
+        as_trailing_gate_rate=as_trailing_gate_rate,
+        as_trailing_gate_offset_mult=as_trailing_gate_offset_mult,
         ev_score_pretrade=ev_score_pretrade,
         decision_path=decision_path,
         skip_gate_budget_regime=budget_regime,

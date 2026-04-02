@@ -50,12 +50,13 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
 
         logger.info(
             "[690# pipeline_stats] stages: "
-            "ev=%d/%d vel=%d/%d toxic_veto=%d/%d trend5s=%d/%d macro=%d/%d "
+            "ev=%d/%d vel=%d/%d toxic_veto=%d/%d trend5s=%d/%d astrail=%d/%d macro=%d/%d "
             "tox_model=%d/%d vg_supp=%d/%d alert=%d/%d clamp=%d/%d",
             *_pair("ev"),
             *_pair("velocity"),
             *_pair("toxic_veto"),
             *_pair("trend_5s_guard"),
+            *_pair("as_trailing_guard"),
             *_pair("macro"),
             *_pair("toxicity"),
             *_pair("vg_supp"),
@@ -75,6 +76,7 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
         sg_velocity_bps: float | None,
         sg_toxic_veto_offset_mult: float | None = None,  # 657# A-4
         sg_trend_5s_guard_offset_mult: float | None = None,
+        sg_as_trailing_offset_mult: float | None = None,
         trending_offset_mult: float | None,
         toxicity_offset_mult: float,
         sidecar_offset_bps: float,
@@ -178,6 +180,24 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
                     side,
                     _trend_5s_guard_mult,
                     _tg_delta,
+                    order_price,
+                )
+
+        _as_trailing_mult: float | None = None
+        if sg_as_trailing_offset_mult is not None and sg_as_trailing_offset_mult > 1.0:
+            order_price, effective_offset_ratio, _as_trailing_mult, _as_delta = self._apply_offset_multiplier(
+                side=side,
+                order_price=order_price,
+                spread_at_order=spread_at_order,
+                effective_offset_ratio=effective_offset_ratio,
+                offset_mult=sg_as_trailing_offset_mult,
+            )
+            if _as_trailing_mult is not None and _as_delta is not None:
+                logger.info(
+                    "[694# as_trailing_guard] %s: offset_mult=%.2f (delta=%+.0fJPY, price=%.0f)",
+                    side,
+                    _as_trailing_mult,
+                    _as_delta,
                     order_price,
                 )
 
@@ -293,6 +313,7 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
             "velocity": _vel_mult if _vel_offset_applied else None,
             "toxic_veto": sg_toxic_veto_offset_mult if _toxic_veto_offset_applied else None,  # 657# A-4
             "trend_5s_guard": _trend_5s_guard_mult,
+            "as_trailing_guard": _as_trailing_mult,
             "trending": _trend_mult,
             "toxicity": _tox_mult,
             "vg_supp": _vg_supp_mult,
@@ -381,6 +402,10 @@ class MultiplicativePipelineMixin(PreOrderAdjustmentsMixin):
         self._record_offset_stage_stat(
             "trend_5s_guard",
             applied=_trend_5s_guard_mult is not None,
+        )
+        self._record_offset_stage_stat(
+            "as_trailing_guard",
+            applied=_as_trailing_mult is not None,
         )
         self._record_offset_stage_stat("macro", applied=_macro_boost_applied)
         self._record_offset_stage_stat("toxicity", applied=_tox_mult is not None)

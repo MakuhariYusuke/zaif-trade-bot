@@ -163,6 +163,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         "_cross_venue_lead_lag_hint",
         "_cross_venue_lead_lag_vetoed",
         "_cross_venue_lead_lag_veto_reason",
+        "_cross_venue_buy_offset_mult",
         "_inv_fill_history",        # 162# inventory skewing fill deque
         "_inv_net_imbalance",        # 162# normalized net imbalance [-1,1]
         "_inv_buy_count",            # 226# P5: O(1) incremental buy counter
@@ -229,6 +230,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         self._cross_venue_lead_lag_hint: CrossVenueLeadLagHint | None = None
         self._cross_venue_lead_lag_vetoed: bool = False
         self._cross_venue_lead_lag_veto_reason: str | None = None
+        self._cross_venue_buy_offset_mult: float | None = None
         # 533# veto deadlock 防止
         self._consecutive_veto_count: int = 0
         self._veto_btc_balance: float | None = None
@@ -303,6 +305,7 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         self._cross_venue_lead_lag_hint = hint
         self._cross_venue_lead_lag_vetoed = False
         self._cross_venue_lead_lag_veto_reason = None
+        self._cross_venue_buy_offset_mult = None
 
     def set_veto_btc_balance(self, btc_balance: float | None) -> None:
         """533# veto 判定用の BTC 残高を注入する."""
@@ -1016,12 +1019,15 @@ class MakerPriceCalculator(RiskGuardsMixin, MicrostructureMixin, RegimeBoostMixi
         """Raise the canonical veto error when cross-venue telemetry says stop."""
         if not self._cross_venue_lead_lag_vetoed:
             return
+        veto_reason = self._cross_venue_lead_lag_veto_reason or "cross-venue lead-lag veto"
+        veto_code = (
+            CR.CROSS_VENUE_BUY_VETO
+            if veto_reason.startswith("cross_venue_buy_veto:")
+            else CR.CROSS_VENUE_LEAD_LAG_VETO
+        )
         raise InfeasibleQuoteError(
-            reason=CR.CROSS_VENUE_LEAD_LAG_VETO,
-            msg=(
-                self._cross_venue_lead_lag_veto_reason
-                or "cross-venue lead-lag veto"
-            ),
+            reason=veto_code,
+            msg=veto_reason,
         )
 
     def _apply_cross_venue_offset_stage(

@@ -596,6 +596,25 @@ class TestFillRecord:
         assert r.skip_gate_budget_remaining == 2
         assert r.skip_gate_budget_exhausted is False
 
+    def test_build_fill_record_preserves_as_trailing_and_cross_venue_buy_fields(self) -> None:
+
+        r = build_fill_record(
+            cycle_id="base_3",
+            timestamp=3.5,
+            side="buy",
+            order_price=101.0,
+            order_quantity=0.02,
+            as_trailing_gate_action="boost",
+            as_trailing_gate_rate=0.4,
+            as_trailing_gate_offset_mult=1.3,
+            cross_venue_buy_offset_mult=1.25,
+        )
+
+        assert r.as_trailing_gate_action == "boost"
+        assert r.as_trailing_gate_rate == pytest.approx(0.4)
+        assert r.as_trailing_gate_offset_mult == pytest.approx(1.3)
+        assert r.cross_venue_buy_offset_mult == pytest.approx(1.25)
+
     def test_build_fill_record_preserves_timeout_trace_fields(self) -> None:
 
         r = build_fill_record(

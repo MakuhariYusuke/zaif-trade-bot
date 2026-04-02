@@ -44,6 +44,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if not args.protocol:
         parser.error("--protocol is required unless --list is used")
+    if args.days is not None and args.days <= 0:
+        parser.error("--days must be > 0")
 
     protocol_cls = PROTOCOL_REGISTRY.get(args.protocol)
     if protocol_cls is None:
@@ -51,7 +53,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     records = load_records_with_filters(args)
     protocol = protocol_cls()
-    result = protocol.execute(records, output_dir=args.output_dir)
+    try:
+        result = protocol.execute(records, output_dir=args.output_dir)
+    except (ValueError, OSError) as exc:
+        parser.error(f"protocol {args.protocol} failed: {exc}")
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

@@ -141,6 +141,9 @@ class FillRecordBuilderMixin:
         trend_5s_guard_triggered: bool,
         trend_5s_guard_action: str | None,
         trend_5s_at_order: float | None,
+        as_trailing_gate_action: str | None,
+        as_trailing_gate_rate: float | None,
+        as_trailing_gate_offset_mult: float | None,
         regime_str: str | None,
         regime_conf: float | None,
         regime_stab: int | None,
@@ -191,6 +194,9 @@ class FillRecordBuilderMixin:
             "trend_5s_guard_triggered": trend_5s_guard_triggered or None,
             "trend_5s_guard_action": trend_5s_guard_action,
             "trend_5s_at_order": trend_5s_at_order,
+            "as_trailing_gate_action": as_trailing_gate_action,
+            "as_trailing_gate_rate": as_trailing_gate_rate,
+            "as_trailing_gate_offset_mult": as_trailing_gate_offset_mult,
             "spread_bps": self._compute_fill_spread_bps(
                 spread_at_order=spread_at_order,
                 mid_at_fill=mid_at_fill,
@@ -274,6 +280,7 @@ class FillRecordBuilderMixin:
         fields["cross_venue_lead_lag_pre_offset"] = self._maker_price._cross_venue_lead_lag_pre_offset
         fields["cross_venue_lead_lag_post_offset"] = self._maker_price._cross_venue_lead_lag_post_offset
         fields["cross_venue_lead_lag_cap_hit"] = self._maker_price._cross_venue_lead_lag_cap_hit
+        fields["cross_venue_buy_offset_mult"] = self._maker_price._cross_venue_buy_offset_mult
         # 533# veto deadlock 防止: 連続 veto 回数
         fields["cross_venue_lead_lag_veto_consecutive"] = self._maker_price._consecutive_veto_count
         # 642# cv_offset_action: widen/tighten 方向を直接記録
@@ -381,6 +388,9 @@ class FillRecordBuilderMixin:
         trend_5s_guard_triggered: bool,
         trend_5s_guard_action: str | None,
         trend_5s_at_order: float | None,
+        as_trailing_gate_action: str | None,
+        as_trailing_gate_rate: float | None,
+        as_trailing_gate_offset_mult: float | None,
         regime_str: str | None,
         regime_conf: float | None,
         regime_stab: int | None,
@@ -524,6 +534,9 @@ class FillRecordBuilderMixin:
                 trend_5s_guard_triggered=trend_5s_guard_triggered,
                 trend_5s_guard_action=trend_5s_guard_action,
                 trend_5s_at_order=trend_5s_at_order,
+                as_trailing_gate_action=as_trailing_gate_action,
+                as_trailing_gate_rate=as_trailing_gate_rate,
+                as_trailing_gate_offset_mult=as_trailing_gate_offset_mult,
                 regime_str=regime_str,
                 regime_conf=regime_conf,
                 regime_stab=regime_stab,

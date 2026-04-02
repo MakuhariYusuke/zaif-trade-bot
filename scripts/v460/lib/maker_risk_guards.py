@@ -57,6 +57,7 @@ class RiskGuardsMixin:
     _cross_venue_lead_lag_hint: CrossVenueLeadLagHint | None
     _cross_venue_lead_lag_vetoed: bool
     _cross_venue_lead_lag_veto_reason: str | None
+    _cross_venue_buy_offset_mult: float | None
     # 448# F2修正: cap_hit (no-op) 可視化
     _cross_venue_lead_lag_pre_offset: float | None
     _cross_venue_lead_lag_post_offset: float | None
@@ -249,6 +250,7 @@ class RiskGuardsMixin:
         """
         self._cross_venue_lead_lag_vetoed = False
         self._cross_venue_lead_lag_veto_reason = None
+        self._cross_venue_buy_offset_mult = None
         # 448# F2: no-op 可視化
         self._cross_venue_lead_lag_pre_offset = None
         self._cross_venue_lead_lag_post_offset = None
@@ -351,6 +353,47 @@ class RiskGuardsMixin:
                 )
                 self._consecutive_veto_count = 0
                 # fall through to adverse retreat
+
+        if (
+            side == "buy"
+            and cfg.cross_venue_buy_protect_enabled
+            and hint.adverse_side == "buy"
+        ):
+            buy_cfg = cfg.cross_venue_buy_protect
+            if abs(hint.spread_bps) >= buy_cfg.veto_spread_bps:
+                self._cross_venue_lead_lag_vetoed = True
+                self._cross_venue_lead_lag_veto_reason = (
+                    f"cross_venue_buy_veto: buy suppressed by "
+                    f"{hint.reference_exchange} {hint.direction} lead "
+                    f"(spread={hint.spread_bps:+.2f}bps"
+                    f"{f', pt_spread={hint.point_spread_bps:+.2f}bps' if hint.point_spread_bps is not None else ''}"
+                    f", velocity={hint.reference_velocity_bps:+.2f}bps/s"
+                    f", age={hint.age_sec:.2f}s, conf={hint.confidence:.2f})"
+                )
+                logger.info("[%s] %s", "cross_venue", self._cross_venue_lead_lag_veto_reason)
+                return effective_offset_ratio
+            if abs(hint.spread_bps) >= buy_cfg.boost_spread_bps:
+                pre_offset = effective_offset_ratio
+                effective_offset_ratio, applied_mult = self._scale_offset_ratio(
+                    effective_offset_ratio,
+                    buy_cfg.offset_boost_factor,
+                    max_ratio=self._effective_max_ratio(side),
+                )
+                self._cross_venue_buy_offset_mult = applied_mult
+                self._cross_venue_lead_lag_pre_offset = pre_offset
+                self._cross_venue_lead_lag_post_offset = effective_offset_ratio
+                self._cross_venue_lead_lag_cap_hit = False
+                logger.info(
+                    "[cross_venue] buy protect from %s: offset %.4f->%.4f "
+                    "(mult=%.2f, spread=%+.2fbps, conf=%.2f)",
+                    hint.reference_exchange,
+                    pre_offset,
+                    effective_offset_ratio,
+                    applied_mult,
+                    hint.spread_bps,
+                    hint.confidence,
+                )
+                return effective_offset_ratio
 
         # veto 非発動時は連続カウンタをリセット
         self._consecutive_veto_count = 0

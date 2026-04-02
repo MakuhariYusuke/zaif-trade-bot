@@ -27,6 +27,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from scripts.v460.lib import cancel_reasons as CR
+from scripts.v460.lib.as_trailing_tracker import ASTrailingTracker
 from scripts.v460.lib.fill_config import FillTestConfig, SkipGateResult
 from scripts.v460.lib.hour_rules import resolve_hour_float, utc_hour_from_timestamp
 from scripts.v460.lib.skip_gate_budget import BucketedSkipBudget
@@ -115,6 +116,7 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         self._budget: BucketedSkipBudget | None = (
             BucketedSkipBudget(config) if config.skip_gate_budget_enabled else None
         )
+        self._as_trailing_tracker: ASTrailingTracker | None = None
         # 156# D-1: OB fetch 失敗カウンタ
         self._ob_fetch_fail_count: int = 0
         self._ob_fetch_total_count: int = 0
@@ -159,6 +161,17 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         except Exception as e:
             logger.error(f"[skip_gate] Failed to load: {e}. SkipGate disabled.")
             self._skip_gate = None
+
+    def _ensure_as_trailing_tracker(self) -> ASTrailingTracker | None:
+        gate_config = self._config.as_trailing_gate
+        if not gate_config.enabled:
+            self._as_trailing_tracker = None
+            return None
+        if self._as_trailing_tracker is None:
+            self._as_trailing_tracker = ASTrailingTracker(gate_config)
+            return self._as_trailing_tracker
+        self._as_trailing_tracker.reconfigure(gate_config)
+        return self._as_trailing_tracker
 
     # --- 461# Mixin 移管済: _resolve_model_path, _read_model_hash → skip_gate_model_loader.py ---
 
@@ -362,6 +375,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         trend_5s_guard_triggered: bool | None = None,
         trend_5s_guard_action: str | None = None,
         trend_5s_at_order: float | None = None,
+        as_trailing_gate_action: str | None = None,
+        as_trailing_gate_rate: float | None = None,
+        as_trailing_gate_offset_mult: float | None = None,
         ev_score_pretrade: float | None = None,
         decision_path: str | None = None,
         budget_regime: str | None = None,
@@ -387,6 +403,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             trend_5s_guard_triggered=trend_5s_guard_triggered,
             trend_5s_guard_action=trend_5s_guard_action,
             trend_5s_at_order=trend_5s_at_order,
+            as_trailing_gate_action=as_trailing_gate_action,
+            as_trailing_gate_rate=as_trailing_gate_rate,
+            as_trailing_gate_offset_mult=as_trailing_gate_offset_mult,
             ev_score_pretrade=ev_score_pretrade,
             decision_path=decision_path,
             budget_regime=budget_regime,
@@ -407,6 +426,9 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             budget_remaining=budget_remaining,
             budget_exhausted=budget_exhausted,
         )
+        result.as_trailing_gate_action = as_trailing_gate_action
+        result.as_trailing_gate_rate = as_trailing_gate_rate
+        result.as_trailing_gate_offset_mult = as_trailing_gate_offset_mult
         result.early_return_record = self._make_skip_fill_record(
             context=context,
             extra_fields=extra_fields,
@@ -427,6 +449,36 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         if trend_5s_bps > cfg.threshold_bps:
             return "boost", cfg.offset_boost_factor
         return "none", None
+
+    def _apply_as_trailing_gate(
+        self,
+        *,
+        regime: str,
+        spread: float,
+        side: str,
+    ) -> tuple[str, float | None, float | None]:
+        tracker = self._ensure_as_trailing_tracker()
+        if tracker is None:
+            return "none", None, None
+        return tracker.evaluate(regime=regime, spread=spread, side=side)
+
+    def record_as_trailing_fill(
+        self,
+        *,
+        regime: str | None,
+        spread: float | None,
+        is_adverse: bool | None,
+    ) -> None:
+        if spread is None or is_adverse is None:
+            return
+        tracker = self._ensure_as_trailing_tracker()
+        if tracker is None:
+            return
+        tracker.record_fill(
+            regime=(regime or "unknown").strip().lower() or "unknown",
+            spread=spread,
+            is_adverse=is_adverse,
+        )
 
     # --- 461# Mixin 移管済 ---
     # _apply_config_overrides, _apply_warm_start, _inject_calibrator → skip_gate_model_loader.py
@@ -879,6 +931,60 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                     trend_5s_at_order=mid_trend_bps,
                 )
                 return result
+
+            result.as_trailing_gate_action = "none"
+            result.as_trailing_gate_rate = None
+            result.as_trailing_gate_offset_mult = None
+            if spread_at_order is not None and spread_at_order > 0.0:
+                _as_gate_action, _as_gate_mult, _as_gate_rate = self._apply_as_trailing_gate(
+                    regime=sg_regime,
+                    spread=spread_at_order,
+                    side=side,
+                )
+                result.as_trailing_gate_action = _as_gate_action
+                result.as_trailing_gate_rate = _as_gate_rate
+                result.as_trailing_gate_offset_mult = _as_gate_mult
+                if _as_gate_action == "veto":
+                    logger.info(
+                        "[dt=%s] [skip_gate] 694# AS trailing veto: side=%s regime=%s spread=%.0f rate=%.3f",
+                        decision_trace_id or "n/a",
+                        side,
+                        sg_regime,
+                        spread_at_order,
+                        _as_gate_rate if _as_gate_rate is not None else -1.0,
+                    )
+                    early_context = self._build_skip_fill_record_context(
+                        cycle_id=cycle_id,
+                        timestamp=market_ts,
+                        side=side,
+                        order_price=order_price,
+                        order_quantity=current_lot,
+                        cancel_reason=CR.AS_TRAILING_GATE_VETO,
+                        spread_at_order=spread_at_order,
+                        spread_offset_ratio=effective_offset_ratio,
+                        run_id=run_id,
+                        git_sha=git_sha,
+                        regime_value=regime_value,
+                        decision_trace_id=decision_trace_id,
+                    )
+                    self._set_early_skip_result(
+                        result,
+                        context=early_context,
+                        score=float(_as_gate_rate or 0.0),
+                        reason="rule_as_trailing_gate_veto",
+                        model_used="rule",
+                        last_imbalance=last_imbalance,
+                        last_bid_depth=last_bid_depth,
+                        last_ask_depth=last_ask_depth,
+                        price_velocity_bps=_pv60 if isinstance(_pv60, (int, float)) else None,
+                        trend_5s_guard_triggered=result.trend_5s_guard_triggered,
+                        trend_5s_guard_action=result.trend_5s_guard_action,
+                        trend_5s_at_order=result.trend_5s_at_order,
+                        as_trailing_gate_action=_as_gate_action,
+                        as_trailing_gate_rate=_as_gate_rate,
+                        as_trailing_gate_offset_mult=_as_gate_mult,
+                    )
+                    return result
 
             # 158# P1-6: 時間帯別 skip_gate 閾値調整
             _utc_hour = utc_hour_from_timestamp(market_ts)

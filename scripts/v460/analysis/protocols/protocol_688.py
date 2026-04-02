@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import collections
+from dataclasses import dataclass
 from datetime import timezone
 from pathlib import Path
 
@@ -22,8 +23,34 @@ from scripts.v460.analysis.analysis_common import Record, get_pnl, record_to_utc
 from . import AnalysisProtocol, ProtocolResult, register_protocol
 
 
+@dataclass(frozen=True)
+class Protocol688Config:
+    as_rate_warn_threshold: float = 0.25
+    as_rate_alert_threshold: float = 0.35
+    pnl_warn_threshold_bps: float = -0.5
+    spread_bucket_edges: tuple[float, ...] = (1500.0, 2500.0, 3500.0)
+    min_section_samples: int = 5
+
+
+_DEFAULT_CONFIG = Protocol688Config()
+
+
+def _record_str(record: Record, key: str, default: str = "") -> str:
+    value = record.get(key)
+    return value if isinstance(value, str) else default
+
+
+def _record_bool(record: Record, key: str) -> bool:
+    return bool(record.get(key))
+
+
+def _record_float(record: Record, key: str) -> float | None:
+    value = record.get(key)
+    return float(value) if isinstance(value, (int, float)) else None
+
+
 def _filled(records: list[Record]) -> list[Record]:
-    return [record for record in records if record.get("filled")]
+    return [record for record in records if _record_bool(record, "filled")]
 
 
 def _pnls(records: list[Record]) -> list[float]:
@@ -38,22 +65,25 @@ def _rate(num: int, den: int) -> float:
     return float(num / den * 100.0) if den else 0.0
 
 
-def _spread_band(value: float | None) -> str:
+def _spread_band(value: float | None, *, config: Protocol688Config) -> str:
     if value is None:
         return "unknown"
-    if value < 1500.0:
-        return "0_1500"
-    if value < 2500.0:
-        return "1500_2500"
-    return "2500_plus"
+    edges = config.spread_bucket_edges
+    if value < edges[0]:
+        return f"0_{int(edges[0])}"
+    if value < edges[1]:
+        return f"{int(edges[0])}_{int(edges[1])}"
+    if len(edges) > 2 and value < edges[2]:
+        return f"{int(edges[1])}_{int(edges[2])}"
+    return f"{int(edges[-1])}_plus"
 
 
 def _section_side_regime_cross(records: list[Record]) -> list[str]:
     lines = ["## Side × Regime cross"]
     buckets: dict[tuple[str, str], list[Record]] = collections.defaultdict(list)
     for record in records:
-        side = str(record.get("side", "unknown"))
-        regime = str(record.get("regime", "unknown"))
+        side = _record_str(record, "side", "unknown")
+        regime = _record_str(record, "regime", "unknown")
         buckets[(side, regime)].append(record)
     for (side, regime), group in sorted(buckets.items()):
         filled = _filled(group)
@@ -69,16 +99,14 @@ def _section_sell_hour_boost_effectiveness(records: list[Record]) -> list[str]:
     lines = ["## Sell hour boost effectiveness"]
     boosted = [
         record for record in records
-        if record.get("side") == "sell"
-        and isinstance(record.get("skip_gate_hour_offset"), (int, float))
-        and float(record["skip_gate_hour_offset"]) > 0.0
+        if _record_str(record, "side", "unknown") == "sell"
+        and (_record_float(record, "skip_gate_hour_offset") or 0.0) > 0.0
     ]
     baseline = [
         record for record in records
-        if record.get("side") == "sell"
+        if _record_str(record, "side", "unknown") == "sell"
         and not (
-            isinstance(record.get("skip_gate_hour_offset"), (int, float))
-            and float(record["skip_gate_hour_offset"]) > 0.0
+            (_record_float(record, "skip_gate_hour_offset") or 0.0) > 0.0
         )
     ]
     lines.append(
@@ -106,7 +134,7 @@ def _basic_payload(records: list[Record]) -> dict[str, object]:
 def _side_payload(records: list[Record]) -> dict[str, object]:
     payload: dict[str, object] = {}
     for side in ("buy", "sell"):
-        side_records = [record for record in records if record.get("side") == side]
+        side_records = [record for record in records if _record_str(record, "side", "unknown") == side]
         filled = _filled(side_records)
         payload[side] = {
             "total": len(side_records),
@@ -114,7 +142,7 @@ def _side_payload(records: list[Record]) -> dict[str, object]:
             "fill_rate_pct": _rate(len(filled), len(side_records)),
             "avg_pnl30_bps": _avg(_pnls(filled)),
             "adverse_selection_rate_pct": _rate(
-                sum(1 for record in filled if record.get("adverse_selected")),
+                sum(1 for record in filled if _record_bool(record, "adverse_selected")),
                 len(filled),
             ),
         }
@@ -122,34 +150,53 @@ def _side_payload(records: list[Record]) -> dict[str, object]:
 
 
 def _cancel_payload(records: list[Record]) -> dict[str, object]:
-    cancels = [record for record in records if not record.get("filled")]
-    counts = collections.Counter(str(record.get("cancel_reason", "unknown")) for record in cancels)
+    cancels = [record for record in records if not _record_bool(record, "filled")]
+    counts = collections.Counter(_record_str(record, "cancel_reason", "unknown") for record in cancels)
     return {
         "total": len(cancels),
         "reasons": dict(counts),
     }
 
 
-def _adverse_selection_payload(records: list[Record]) -> dict[str, object]:
+def _adverse_selection_payload(
+    records: list[Record],
+    *,
+    config: Protocol688Config,
+) -> dict[str, object]:
     filled = _filled(records)
-    adverse = [record for record in filled if record.get("adverse_selected")]
+    adverse = [record for record in filled if _record_bool(record, "adverse_selected")]
     severe = [
         record for record in adverse
-        if (pnl := get_pnl(record)) is not None and pnl <= -10.0
+        if (pnl := get_pnl(record)) is not None and pnl <= config.pnl_warn_threshold_bps
     ]
+    rate_pct = _rate(len(adverse), len(filled))
+    severity = (
+        "alert"
+        if rate_pct >= config.as_rate_alert_threshold * 100.0
+        else "warn"
+        if rate_pct >= config.as_rate_warn_threshold * 100.0
+        else "ok"
+    )
     return {
         "count": len(adverse),
-        "rate_pct": _rate(len(adverse), len(filled)),
+        "rate_pct": rate_pct,
         "avg_pnl30_bps": _avg(_pnls(adverse)),
         "severe_count": len(severe),
+        "severity": severity,
     }
 
 
-def _spread_payload(records: list[Record]) -> dict[str, object]:
+def _spread_payload(
+    records: list[Record],
+    *,
+    config: Protocol688Config,
+) -> dict[str, object]:
     buckets: dict[str, dict[str, object]] = {}
     grouped: dict[str, list[Record]] = collections.defaultdict(list)
     for record in records:
-        grouped[_spread_band(getattr(record, "get", lambda *_: None)("spread_at_order"))].append(record)
+        spread_value = record.get("spread_at_order")
+        spread = float(spread_value) if isinstance(spread_value, (int, float)) else None
+        grouped[_spread_band(spread, config=config)].append(record)
     for name, group in sorted(grouped.items()):
         filled = _filled(group)
         buckets[name] = {
@@ -157,6 +204,7 @@ def _spread_payload(records: list[Record]) -> dict[str, object]:
             "filled": len(filled),
             "fill_rate_pct": _rate(len(filled), len(group)),
             "avg_pnl30_bps": _avg(_pnls(filled)),
+            "enough_samples": len(group) >= config.min_section_samples,
         }
     return buckets
 
@@ -182,7 +230,7 @@ def _hourly_payload(records: list[Record]) -> dict[str, object]:
 def _sha_payload(records: list[Record]) -> dict[str, object]:
     grouped: dict[str, list[Record]] = collections.defaultdict(list)
     for record in records:
-        grouped[str(record.get("git_sha", "?"))].append(record)
+        grouped[_record_str(record, "git_sha", "?")].append(record)
     return {
         sha: {
             "total": len(group),
@@ -196,7 +244,7 @@ def _sha_payload(records: list[Record]) -> dict[str, object]:
 def _regime_payload(records: list[Record]) -> dict[str, object]:
     grouped: dict[str, list[Record]] = collections.defaultdict(list)
     for record in records:
-        grouped[str(record.get("regime", "unknown"))].append(record)
+        grouped[_record_str(record, "regime", "unknown")].append(record)
     return {
         regime: {
             "total": len(group),
@@ -211,7 +259,7 @@ def _regime_payload(records: list[Record]) -> dict[str, object]:
 def _side_regime_payload(records: list[Record]) -> dict[str, object]:
     grouped: dict[str, list[Record]] = collections.defaultdict(list)
     for record in records:
-        key = f"{record.get('side', 'unknown')}::{record.get('regime', 'unknown')}"
+        key = f"{_record_str(record, 'side', 'unknown')}::{_record_str(record, 'regime', 'unknown')}"
         grouped[key].append(record)
     return {
         key: {
@@ -227,16 +275,14 @@ def _side_regime_payload(records: list[Record]) -> dict[str, object]:
 def _sell_hour_boost_payload(records: list[Record]) -> dict[str, object]:
     boosted = [
         record for record in records
-        if record.get("side") == "sell"
-        and isinstance(record.get("skip_gate_hour_offset"), (int, float))
-        and float(record["skip_gate_hour_offset"]) > 0.0
+        if _record_str(record, "side", "unknown") == "sell"
+        and (_record_float(record, "skip_gate_hour_offset") or 0.0) > 0.0
     ]
     baseline = [
         record for record in records
-        if record.get("side") == "sell"
+        if _record_str(record, "side", "unknown") == "sell"
         and not (
-            isinstance(record.get("skip_gate_hour_offset"), (int, float))
-            and float(record["skip_gate_hour_offset"]) > 0.0
+            (_record_float(record, "skip_gate_hour_offset") or 0.0) > 0.0
         )
     ]
     return {
@@ -255,6 +301,9 @@ def _sell_hour_boost_payload(records: list[Record]) -> dict[str, object]:
 class Protocol688(AnalysisProtocol):
     protocol_name = "688"
     description = "688# layered NFQ/AS/spread/hour/regime analysis"
+
+    def __init__(self, config: Protocol688Config = _DEFAULT_CONFIG) -> None:
+        self._config = config
 
     def execute(
         self,
@@ -288,11 +337,18 @@ class Protocol688(AnalysisProtocol):
         json_payload: dict[str, object] = {
             "protocol": "688",
             "warnings": warnings,
+            "config": {
+                "as_rate_warn_threshold": self._config.as_rate_warn_threshold,
+                "as_rate_alert_threshold": self._config.as_rate_alert_threshold,
+                "pnl_warn_threshold_bps": self._config.pnl_warn_threshold_bps,
+                "spread_bucket_edges": list(self._config.spread_bucket_edges),
+                "min_section_samples": self._config.min_section_samples,
+            },
             "basic": _basic_payload(records),
             "side": _side_payload(records),
             "nfq": _cancel_payload(records),
-            "adverse_selection": _adverse_selection_payload(records),
-            "spread": _spread_payload(records),
+            "adverse_selection": _adverse_selection_payload(records, config=self._config),
+            "spread": _spread_payload(records, config=self._config),
             "hour": _hourly_payload(records),
             "sha": _sha_payload(records),
             "regime": _regime_payload(records),

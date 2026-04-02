@@ -46,6 +46,10 @@ class SkipGateResult:
     trend_5s_guard_triggered: bool = False
     trend_5s_guard_action: str | None = None
     trend_5s_at_order: float | None = None
+    # 694# AS trailing gate
+    as_trailing_gate_action: str | None = None
+    as_trailing_gate_rate: float | None = None
+    as_trailing_gate_offset_mult: float | None = None
     # 642# 可観測性: skip_rate_limit 強制 pass / side skip rate
     forced_pass: bool = False
     side_skip_rate: float | None = None
