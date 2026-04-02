@@ -1331,3 +1331,40 @@ durations 変化で特に効いた点:
 1. `test_680_ppo_retrain_scheduler.py::test_error_pushes_neutral_fallback` `1.37s`
 2. `test_sac_retrain_scheduler.py::test_training_timeout_raises` `0.61s`
 3. `test_enricher_skip_gate.py::test_enrichment_with_real_data` setup `0.40s`
+
+## 2026-04-02 追加: judgment payload / real-data smoke helper / timeout-path trim
+
+- `ztb/metrics/fill_judgment_core.py`
+  - gate payload と quick watch detail を shared helper 化
+- `tests/unit/v460/_real_data_test_helpers.py`
+  - `select_minimum_smoke_enriched_fill_df(...)` を追加
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - real-data smoke を shared helper 経由へ変更
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - timeout / post-cycle tests で cleanup と error logging の固定費を patch
+- `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - timestamp formatting を patch して exception-path の周辺固定費を削減
+
+回帰:
+
+- subset:
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `359 passed, 5 warnings in 10.46s`
+- broader:
+  - `tests/unit/v460/test_fill_test_config.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/training/test_ppo_trainer.py`
+  - `tests/integration/test_custom_ppo_integration.py`
+  - `483 passed, 5 warnings in 12.31s`
+
+最新の slowest:
+
+1. `test_680_ppo_retrain_scheduler.py::test_error_pushes_neutral_fallback` `0.76s`
+2. `test_enricher_skip_gate.py::test_enrichment_with_real_data` setup `0.18s`
+3. `test_sac_retrain_scheduler.py::test_data_check_respects_interval` `0.15s`

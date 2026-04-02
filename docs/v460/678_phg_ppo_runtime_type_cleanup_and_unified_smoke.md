@@ -847,3 +847,30 @@ probe / weighting の wiring だけ current contract に揃えられた。
 1. `test_680_ppo_retrain_scheduler.py::test_error_pushes_neutral_fallback` `1.37s`
 2. `test_sac_retrain_scheduler.py::test_training_timeout_raises` `0.61s`
 3. `test_enricher_skip_gate.py::test_enrichment_with_real_data` setup `0.40s`
+
+## 2026-04-02 follow-up: judgment payload / timeout-path trim
+
+- `ztb/metrics/fill_judgment_core.py`
+  - `build_gate_payload(...)`
+  - `build_quick_watch_detail(...)`
+  を追加して gate result shaping を共通化
+- `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - timestamp formatting を patch して exception-path の固定費を削減
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - timeout / post-cycle tests で cleanup と error logging の固定費を切り離し
+
+回帰:
+
+- `tests/unit/v460/test_fill_test_config.py`
+- `tests/unit/v460/test_fill_quality.py`
+- `tests/unit/v460/test_enricher_skip_gate.py`
+- `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+- `tests/training/test_ppo_trainer.py`
+- `tests/integration/test_custom_ppo_integration.py`
+- `483 passed, 5 warnings in 12.31s`
+
+残課題:
+
+1. `test_680_ppo_retrain_scheduler.py::test_error_pushes_neutral_fallback` はまだ最遅
+2. PPO warm-start の state/weight continuity は次段で継続

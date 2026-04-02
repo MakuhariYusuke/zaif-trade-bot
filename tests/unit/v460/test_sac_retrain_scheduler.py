@@ -1126,6 +1126,10 @@ class TestCrashResilience495:
             patch("scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check", return_value=False),
             patch("scripts.v460.lib.data_loader.load_parquet", return_value=_MOCK_OHLCV_DF),
             _mock_sb3_import(mock_model),
+            patch_noop_paths(
+                "scripts.v460.ml.sac_retrain_scheduler.logger.error",
+                "scripts.v460.ml.sac_retrain_scheduler.cleanup_training_resources",
+            ),
             # タイムアウトを極短に設定
             patch(
                 "scripts.v460.ml.sac_retrain_scheduler._TRAINING_TIMEOUT_SEC",
@@ -1154,6 +1158,9 @@ class TestCrashResilience495:
                     "leak_warning": False,
                     "rss_warning": False,
                 },
+            ), patch(
+                "scripts.v460.ml.sac_retrain_scheduler.best_effort_training_cleanup",
+                return_value=None,
             ):
                 _post_cycle_memory_check()
             assert mod._last_cycle_rss_mb == 48.0
@@ -1175,6 +1182,9 @@ class TestCrashResilience495:
                     "leak_warning": False,
                     "rss_warning": False,
                 },
+            ), patch(
+                "scripts.v460.ml.sac_retrain_scheduler.best_effort_training_cleanup",
+                return_value=None,
             ), patch.object(mod.logger, "info") as mock_info:
                 _post_cycle_memory_check()
 

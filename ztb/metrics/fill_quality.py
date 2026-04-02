@@ -30,7 +30,9 @@ from ztb.metrics.fill_judgment_core import (
     build_exec_gate_checks,
     build_full_gate_pnl_checks,
     build_full_gate_structural_checks,
+    build_gate_payload,
     build_quick_gate_checks,
+    build_quick_watch_detail,
     resolve_exec_judgment_type,
     resolve_gate_result,
 )
@@ -707,14 +709,16 @@ def g1_1_judgment(
 
     judgment_type = resolve_exec_judgment_type(metrics)
 
-    return {
-        "gate": "G1.1-exec",
-        "gate_result": "PASS" if all_pass else "FAIL",
-        "judgment_type": judgment_type,  # 020# O1 / 047# Finding3
-        "sample_sufficient": metrics.sample_sufficient,
-        "checks": checks,
-        "metrics_summary": metrics.to_dict(),
-    }
+    return build_gate_payload(
+        gate="G1.1-exec",
+        gate_result="PASS" if all_pass else "FAIL",
+        checks=checks,
+        metrics=metrics,
+        extras={
+            "judgment_type": judgment_type,  # 020# O1 / 047# Finding3
+            "sample_sufficient": metrics.sample_sufficient,
+        },
+    )
 
 # ======================================================================
 # 116# Two-Stage Gate Judgment (115# review)
@@ -765,18 +769,22 @@ def g1_1_quick_judgment(
     else:
         gate_result = "PASS"
 
-    return {
-        "gate": "G1.1-quick",
-        "gate_result": gate_result,
-        "checks": checks,
-        "watch": is_watch,
-        "watch_detail": {
-            "pnl_mean": metrics.post_fill_30s_pnl_mean,
-            "pnl_pvalue": metrics.post_fill_30s_pnl_pvalue,
-            "watch_thresholds": {"p": pnl_watch_p, "mean": pnl_watch_mean},
-        } if is_watch else None,
-        "metrics_summary": metrics.to_dict(),
-    }
+    return build_gate_payload(
+        gate="G1.1-quick",
+        gate_result=gate_result,
+        checks=checks,
+        metrics=metrics,
+        watch=is_watch,
+        watch_detail=(
+            build_quick_watch_detail(
+                metrics,
+                pnl_watch_p=pnl_watch_p,
+                pnl_watch_mean=pnl_watch_mean,
+            )
+            if is_watch
+            else None
+        ),
+    )
 
 def g1_2_full_judgment(
     metrics: FillMetrics,
@@ -802,13 +810,13 @@ def g1_2_full_judgment(
 
     gate_result, is_watch = resolve_gate_result(checks)
 
-    return {
-        "gate": "G1.2-full",
-        "gate_result": gate_result,
-        "checks": checks,
-        "watch": is_watch,
-        "metrics_summary": metrics.to_dict(),
-    }
+    return build_gate_payload(
+        gate="G1.2-full",
+        gate_result=gate_result,
+        checks=checks,
+        metrics=metrics,
+        watch=is_watch,
+    )
 
 def detect_split_brain(
     records: Sequence[FillRecord],

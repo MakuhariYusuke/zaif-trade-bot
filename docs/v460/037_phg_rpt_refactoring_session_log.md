@@ -10413,3 +10413,25 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - regression:
     - `359 passed, 5 warnings in 15.27s`
     - `444 passed, 5 warnings in 18.43s`
+
+- `judgment payload helper + smoke/timeout-path trim`
+  - 更新:
+    - [fill_judgment_core.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_judgment_core.py)
+      - gate payload / quick watch detail を helper 化
+    - [fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py)
+      - G1.1 / quick / G1.2 の返却 shaping を helper 経由へ整理
+    - [tests/unit/v460/_real_data_test_helpers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_real_data_test_helpers.py)
+      - `select_minimum_smoke_enriched_fill_df(...)` を追加
+    - [test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+      - real-data smoke を shared helper 経由へ変更
+    - [test_sac_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_sac_retrain_scheduler.py)
+      - timeout / post-cycle test で cleanup fixed-cost を除去
+    - [test_680_ppo_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_680_ppo_retrain_scheduler.py)
+      - timestamp formatting の patch を追加
+  - self-review:
+    - `fill_quality` は metrics 側の分割後、judgment payload の揺れもかなり整理できた
+    - `enricher` smoke は test helper に外出ししたので、今後の横展開もしやすい
+    - `PPO error path` は依然 slowest で、次の exception-path batch の主対象
+  - regression:
+    - subset: `359 passed, 5 warnings in 10.46s`
+    - broader: `483 passed, 5 warnings in 12.31s`

@@ -46,6 +46,8 @@ class SupportsFullJudgmentMetrics(Protocol):
     post_fill_120s_pnl_mean: float
     post_fill_120s_pnl_pvalue: float
 
+    def to_dict(self) -> dict: ...
+
 
 def build_exec_gate_checks(
     metrics: SupportsExecJudgmentMetrics,
@@ -349,11 +351,52 @@ def resolve_gate_result(
     return "PASS", False
 
 
+def build_gate_payload(
+    *,
+    gate: str,
+    gate_result: str,
+    checks: Mapping[str, Mapping[str, object]],
+    metrics: SupportsFullJudgmentMetrics,
+    watch: bool = False,
+    watch_detail: Mapping[str, object] | None = None,
+    extras: Mapping[str, object] | None = None,
+) -> dict[str, object]:
+    """Build a consistent gate result payload for fill judgments."""
+    payload: dict[str, object] = {
+        "gate": gate,
+        "gate_result": gate_result,
+        "checks": dict(checks),
+        "watch": watch,
+        "metrics_summary": metrics.to_dict(),
+    }
+    if watch_detail is not None:
+        payload["watch_detail"] = dict(watch_detail)
+    if extras is not None:
+        payload.update(extras)
+    return payload
+
+
+def build_quick_watch_detail(
+    metrics: SupportsQuickJudgmentMetrics,
+    *,
+    pnl_watch_p: float,
+    pnl_watch_mean: float,
+) -> dict[str, object]:
+    """Build the WATCH detail payload for G1.1 quick judgments."""
+    return {
+        "pnl_mean": metrics.post_fill_30s_pnl_mean,
+        "pnl_pvalue": metrics.post_fill_30s_pnl_pvalue,
+        "watch_thresholds": {"p": pnl_watch_p, "mean": pnl_watch_mean},
+    }
+
+
 __all__ = [
     "build_exec_gate_checks",
     "build_full_gate_pnl_checks",
     "build_full_gate_structural_checks",
+    "build_gate_payload",
     "build_quick_gate_checks",
+    "build_quick_watch_detail",
     "resolve_exec_judgment_type",
     "resolve_gate_result",
 ]

@@ -45,7 +45,7 @@ from scripts.v460.ml.data_loader import build_as_features, load_fill_records as 
 from tests.unit.v460._real_data_test_helpers import (
     JsonRow,
     has_fill_records_and_raw_data,
-    load_recent_fill_records_df as _load_recent_fill_records_df,
+    select_minimum_smoke_enriched_fill_df,
     select_minimum_trainable_fill_df,
     write_jsonl_gz as _write_jsonl_gz,
 )
@@ -112,20 +112,14 @@ def _cached_real_enriched_training_df() -> pd.DataFrame:
 
 @lru_cache(maxsize=1)
 def _cached_real_enriched_smoke_df() -> pd.DataFrame:
-    for sample_rows in (
-        _REAL_DATA_SMOKE_SAMPLE_ROWS,
-        _REAL_DATA_SMOKE_FALLBACK_SAMPLE_ROWS,
-        _REAL_DATA_SMOKE_EXPANDED_SAMPLE_ROWS,
-    ):
-        recent_fill_df = _load_recent_fill_records_df(sample_rows=sample_rows)
-        if recent_fill_df.empty:
-            continue
-        enriched = enrich_fill_records(recent_fill_df)
-        if "spread_bps_ob" not in enriched.columns:
-            continue
-        if enriched["spread_bps_ob"].notna().any():
-            return enriched
-    return pd.DataFrame()
+    return select_minimum_smoke_enriched_fill_df(
+        sample_sizes=(
+            _REAL_DATA_SMOKE_SAMPLE_ROWS,
+            _REAL_DATA_SMOKE_FALLBACK_SAMPLE_ROWS,
+            _REAL_DATA_SMOKE_EXPANDED_SAMPLE_ROWS,
+        ),
+        enrich_fn=enrich_fill_records,
+    )
 
 
 def _make_negative_skip_gate(

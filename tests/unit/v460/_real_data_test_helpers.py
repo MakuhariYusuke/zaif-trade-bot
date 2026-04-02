@@ -199,3 +199,30 @@ def select_minimum_trainable_fill_df(
         selected_rows = fallback_rows
     selected_rows = min(selected_rows, expanded_rows)
     return enrich_fn(recent_fill_df.tail(selected_rows))
+
+
+def select_minimum_smoke_enriched_fill_df(
+    *,
+    sample_sizes: tuple[int, ...],
+    enrich_fn: Callable[[pd.DataFrame], pd.DataFrame],
+    results_dir: Path = _DEFAULT_RESULTS_DIR,
+    required_column: str = "spread_bps_ob",
+) -> pd.DataFrame:
+    """観測系 smoke が成立する最小限の enriched fill sample を選ぶ."""
+    if not sample_sizes:
+        return pd.DataFrame()
+
+    recent_fill_df = load_recent_fill_records_df(
+        sample_rows=max(sample_sizes),
+        results_dir=results_dir,
+    )
+    if recent_fill_df.empty:
+        return pd.DataFrame()
+
+    for sample_rows in sample_sizes:
+        enriched = enrich_fn(recent_fill_df.tail(sample_rows))
+        if required_column not in enriched.columns:
+            continue
+        if enriched[required_column].notna().any():
+            return enriched
+    return pd.DataFrame()

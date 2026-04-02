@@ -49,6 +49,18 @@ def _patch_scheduler_runtime_overheads() -> Iterator[None]:
         )
         stack.enter_context(
             patch(
+                "scripts.v460.ml.ppo_retrain_scheduler.current_iso_timestamp",
+                return_value="2026-04-01T00:00:00+00:00",
+            )
+        )
+        stack.enter_context(
+            patch(
+                "scripts.v460.ml.ppo_retrain_scheduler.current_compact_timestamp",
+                return_value="20260401_0000",
+            )
+        )
+        stack.enter_context(
+            patch(
                 "scripts.v460.ml.ppo_retrain_scheduler._cleanup_training_cycle",
                 return_value=None,
             )
