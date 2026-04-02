@@ -53,6 +53,12 @@ def _patch_scheduler_runtime_overheads() -> Iterator[None]:
     with ExitStack() as stack:
         stack.enter_context(
             patch(
+                "scripts.v460.ml.ppo_retrain_scheduler._build_trainer_params",
+                return_value=object(),
+            )
+        )
+        stack.enter_context(
+            patch(
                 "scripts.v460.ml.ppo_retrain_scheduler._cleanup_training_cycle",
                 return_value=None,
             )

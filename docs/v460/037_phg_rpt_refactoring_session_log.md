@@ -10336,3 +10336,34 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
     を FillRecord まで通した
   - regression:
     - focused pytest: `320 passed, 5 warnings in 5.78s`
+
+- `fill_quality judgment split + PPO/heavy-test follow-up`
+  - 更新:
+    - [fill_judgment_core.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_judgment_core.py)
+      - `build_exec_gate_checks(...)`
+      - `build_quick_gate_checks(...)`
+      - `build_full_gate_structural_checks(...)`
+      - `resolve_exec_judgment_type(...)`
+    - [fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py)
+      - G1.1 / quick / G1.2 の判定組み立てを shared helper ベースへ整理
+    - [sell_mitigation_ppo_trainer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/training/experiments/sell_mitigation_ppo_trainer.py)
+      - banner / plan / failure-dump / completion を helper 化
+    - [test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py)
+      - source-inspect の read-only path を module-level 定数へ寄せた
+    - [test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+      - real-data smoke sample を `6/10/14` に縮小
+    - [test_680_ppo_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_680_ppo_retrain_scheduler.py)
+      - trainer params 生成を patch して exception-path 固定費を削減
+  - regression:
+    - `py_compile` 通過
+    - subset pytest:
+      - [test_fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_fill_quality.py)
+      - [test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+      - [test_680_ppo_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_680_ppo_retrain_scheduler.py)
+      - [test_sac_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_sac_retrain_scheduler.py)
+      - [test_ppo_trainer.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/training/test_ppo_trainer.py)
+      - [test_custom_ppo_integration.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/integration/test_custom_ppo_integration.py)
+      - `397 passed, 1 skipped, 5 warnings in 19.46s`
+  - notes:
+    - `enricher` real-data smoke setup は `1.05s -> 0.77s`
+    - `PPO retrain` error path は `1.30s` で次の exception-path batch の本命

@@ -769,3 +769,47 @@ probe / weighting の wiring だけ current contract に揃えられた。
   - `tests/unit/v460/test_sac_retrain_scheduler.py`
   - 上記 focused 群
   - `409 passed, 1 skipped, 5 warnings in 10.81s`
+
+## 2026-04-02 follow-up: judgment split + PPO trainer cleanup
+
+- `ztb/metrics/fill_judgment_core.py`
+  - `build_exec_gate_checks(...)`
+  - `build_quick_gate_checks(...)`
+  - `build_full_gate_structural_checks(...)`
+  - `resolve_exec_judgment_type(...)`
+  を追加
+- `ztb/metrics/fill_quality.py`
+  - G1.1 / quick / G1.2 の判定組み立てを shared helper ベースへ整理
+- `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+  - `train()` の長い banner / plan / failure-dump / completion を helper 化
+  - cold / warm / failure の責務境界を少し明確化
+- `tests/unit/v460/test_fill_quality.py`
+  - source-inspect の read-only path を module-level 定数へ寄せた
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - real-data smoke sample を `6/10/14` へ縮小
+- `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - trainer params 生成を patch して exception-path 固定費を削減
+
+回帰:
+
+- `py_compile`
+  - `ztb/metrics/fill_judgment_core.py`
+  - `ztb/metrics/fill_quality.py`
+  - `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - 通過
+- focused/broader subset:
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/training/test_ppo_trainer.py`
+  - `tests/integration/test_custom_ppo_integration.py`
+  - `397 passed, 1 skipped, 5 warnings in 19.46s`
+
+所見:
+
+- `enricher` real-data smoke setup は `1.05s -> 0.77s`
+- `PPO retrain` error path は `1.59s` まで残っており、次の exception-path batch の本命
+- `fill_quality` は metrics だけでなく judgment 側も shared helper 化が進んだ

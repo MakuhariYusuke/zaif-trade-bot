@@ -95,6 +95,16 @@ _ORDER_MONITOR_SOURCE = read_inspect_source(OrderMonitor)
 _PROCESS_POST_CYCLE_SOURCE = read_inspect_source(FillTestRunner._process_post_cycle)
 _RUN_PRE_ORDER_PHASE_SOURCE = read_fill_test_method_source("_run_pre_order_phase")
 _MAKER_PRICE_SOURCE = read_source_text(MAKER_PRICE)
+_ADAPT_TRY_AUTO_ADAPT_SOURCE = read_inspect_source(AdaptationEngine.try_auto_adapt)
+_BALANCE_CHECK_BUY_SOURCE = read_inspect_source(BalanceChecker._check_buy)
+_MAKER_PRICE_TRENDING_BOOST_SOURCE = read_inspect_source(
+    MakerPriceCalculator._resolve_trending_boost
+)
+_MAKER_PRICE_VOLATILITY_GUARD_SOURCE = read_inspect_source(
+    MakerPriceCalculator._apply_volatility_guard
+)
+_RUN_MONITOR_SOURCE = read_inspect_source(run_monitor)
+_CHECK_CUMULATIVE_LOSS_SOURCE = read_inspect_source(_check_cumulative_loss)
 
 
 async def _instant_async_sleep(_delay: float) -> None:
@@ -3043,14 +3053,14 @@ class Test051MonitorExtensions:
 
     def test_run_monitor_uses_clean_records(self) -> None:
         """run_monitor が clean/quarantine 分離を使う."""
-        source = read_inspect_source(run_monitor)
+        source = _RUN_MONITOR_SOURCE
         assert "partition_clean_records" in source
         assert "iter_fill_records_glob" in source
         assert "clean_records" in source
         assert "quarantine_records" in source
 
     def test_run_monitor_uses_shared_pnl_helper(self) -> None:
-        source = read_inspect_source(_check_cumulative_loss)
+        source = _CHECK_CUMULATIVE_LOSS_SOURCE
         assert "compute_record_pnl_jpy" in source
 
     def test_monitor_imports_new_functions(self) -> None:
@@ -3081,7 +3091,7 @@ class Test052AdaptSellOffsetSync:
         096# 状態分離: _base_offset_ratio_sell を直接更新する設計に変更。
         120#: adaptation_engine.py に抽出済み。
         """
-        source = read_inspect_source(AdaptationEngine.try_auto_adapt)
+        source = _ADAPT_TRY_AUTO_ADAPT_SOURCE
         # 096# 状態分離: base_offset_ratio_sell を使用
         assert "base_offset_ratio_sell" in source
         # 120#: 比例調整 ratio = new_base / base_offset_ratio
@@ -3105,7 +3115,7 @@ class Test052AdaptSellOffsetSync:
 
     def test_dynamic_lot_shrink_in_balance_check(self) -> None:
         """052# BalanceChecker にロット自動縮小が含まれる (121# 抽出)."""
-        source = read_inspect_source(BalanceChecker._check_buy)
+        source = _BALANCE_CHECK_BUY_SOURCE
         assert "_min_order_btc" in source
         assert "affordable_lot" in source
 
@@ -3132,7 +3142,7 @@ class Test052AdaptSellOffsetSync:
         120#: maker_price.py に抽出済み。
         322# God Object 分割: regime boost は RegimeBoostMixin に移管。
         """
-        source = read_inspect_source(MakerPriceCalculator._resolve_trending_boost)
+        source = _MAKER_PRICE_TRENDING_BOOST_SOURCE
         assert "trending" in source
         assert "regime_trending_offset_boost" in source
 
@@ -3207,7 +3217,7 @@ class Test107TimeFilterDynamicGating:
         120#: maker_price.py に抽出済み。
         322# God Object 分割: VG は RiskGuardsMixin に移管。
         """
-        source = read_inspect_source(MakerPriceCalculator._apply_volatility_guard)
+        source = _MAKER_PRICE_VOLATILITY_GUARD_SOURCE
         assert "volatility_guard" in source
         assert "velocity_threshold_bps" in source or "vpin_threshold" in source
 
@@ -3231,7 +3241,7 @@ class Test107TimeFilterDynamicGating:
 
         322# God Object 分割: VG は RiskGuardsMixin に移管。
         """
-        source = read_inspect_source(MakerPriceCalculator._apply_volatility_guard)
+        source = _MAKER_PRICE_VOLATILITY_GUARD_SOURCE
         assert "vg_inv_skew_damping_enabled" in source
         assert "_last_inv_skew_factor" in source
         assert "vg_damping" in source  # ログラベル

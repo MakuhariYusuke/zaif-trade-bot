@@ -284,11 +284,11 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             model = self.model
             lagrange = getattr(model, "lagrange", None)
             if lagrange is not None and getattr(lagrange, "step_count", 0) == 0:
-                    import numpy as _np
+                import numpy as _np
 
-                    _ = lagrange.compute_penalty(
-                        actions=_np.array([0]), legal_masks=_np.ones((1, 3))
-                    )
+                _ = lagrange.compute_penalty(
+                    actions=_np.array([0]), legal_masks=_np.ones((1, 3))
+                )
         except Exception:
             return
 
@@ -296,6 +296,57 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         """Close the optional gradient probe once per training cycle."""
         if self.probe is not None:
             self.probe.close()
+
+    def _log_training_banner(self, session_id: str) -> None:
+        """Emit the current mitigation banner once per session."""
+        logger.info("=" * 60)
+        logger.info("SELL Bias Mitigation Training Started (CustomPPO)")
+        logger.info("=" * 60)
+        logger.info("Session ID: %s", session_id)
+        logger.info("Lagrange: %s", "✅" if self.enable_lagrange else "❌")
+        logger.info("Probes: %s", "✅" if self.enable_probes else "❌")
+        logger.info("Weights: %s", "✅" if self.enable_weights else "❌")
+        logger.info("PAN: %s", "✅" if self.enable_pan else "❌")
+        logger.info(
+            "Target Entropy: %s",
+            "✅" if self.enable_target_entropy else "❌",
+        )
+        logger.info(
+            "Stratified Sampling: %s",
+            "✅" if self.enable_stratified_sampling else "❌",
+        )
+        logger.info("Data: %s", self.data_path)
+
+    def _log_training_completion(self) -> None:
+        """Emit the completion banner once per session."""
+        logger.info("=" * 60)
+        logger.info("SELL Bias Mitigation Training Completed")
+        logger.info("=" * 60)
+
+    def _log_training_plan(self, *, total_timesteps: int) -> None:
+        """Log the current training budget and coarse iteration estimate."""
+        logger.info("=" * 80)
+        logger.info(
+            "🚀 Starting model.learn() with total_timesteps=%s",
+            f"{total_timesteps:,}",
+        )
+        logger.info(
+            "   Expected iterations: ~%s",
+            total_timesteps // self.config.get("n_steps", 2048),
+        )
+        logger.info("=" * 80)
+
+    def _handle_training_failure(self, exc: Exception) -> None:
+        """Persist probe diagnostics when mitigation training fails."""
+        logger.error("Training failed: %s", exc)
+        if self.probe is None or self.model is None:
+            return
+        try:
+            dump_dir = Path(self.checkpoint_dir) / "failsafe_dump"
+            create_failsafe_dump(self.model, self.probe, dump_dir)
+            logger.info("Failsafe dump created: %s", dump_dir)
+        except Exception as dump_exc:
+            logger.error("Failed to create failsafe dump: %s", dump_exc)
 
     def _run_current_model_training(
         self,
@@ -391,19 +442,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
 
     def train(self, session_id: str) -> MaskablePPO:
         """Train with SELL bias mitigation using CustomPPO."""
-        logger.info("=" * 60)
-        logger.info("SELL Bias Mitigation Training Started (CustomPPO)")
-        logger.info("=" * 60)
-        logger.info(f"Session ID: {session_id}")
-        logger.info(f"Lagrange: {'✅' if self.enable_lagrange else '❌'}")
-        logger.info(f"Probes: {'✅' if self.enable_probes else '❌'}")
-        logger.info(f"Weights: {'✅' if self.enable_weights else '❌'}")
-        logger.info(f"PAN: {'✅' if self.enable_pan else '❌'}")
-        logger.info(f"Target Entropy: {'✅' if self.enable_target_entropy else '❌'}")
-        logger.info(
-            f"Stratified Sampling: {'✅' if self.enable_stratified_sampling else '❌'}"
-        )
-        logger.info(f"Data: {self.data_path}")
+        self._log_training_banner(session_id)
 
         try:
             self._prepare_cold_start_model()
@@ -411,14 +450,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             # Train the model - support both unified config (with a 'training'
             # section) and legacy flat config keys.
             total_timesteps = self._resolve_total_timesteps()
-            logger.info("=" * 80)
-            logger.info(
-                f"🚀 Starting model.learn() with total_timesteps={total_timesteps:,}"
-            )
-            logger.info(
-                f"   Expected iterations: ~{total_timesteps // self.config.get('n_steps', 2048)}"
-            )
-            logger.info("=" * 80)
+            self._log_training_plan(total_timesteps=total_timesteps)
             self._run_current_model_training(
                 total_timesteps=total_timesteps,
                 session_id=session_id,
@@ -426,23 +458,12 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             logger.info("=" * 80)
             logger.info("✅ model.learn() completed")
             logger.info("=" * 80)
-
-            logger.info("=" * 60)
-            logger.info("SELL Bias Mitigation Training Completed")
-            logger.info("=" * 60)
+            self._log_training_completion()
 
             return cast(CustomPPO, self.model)
 
         except Exception as e:
-            logger.error(f"Training failed: {e}")
-            # Create failsafe dump if probes are enabled
-            if self.probe is not None and self.model is not None:
-                try:
-                    dump_dir = Path(self.checkpoint_dir) / "failsafe_dump"
-                    create_failsafe_dump(self.model, self.probe, dump_dir)
-                    logger.info(f"Failsafe dump created: {dump_dir}")
-                except Exception as dump_e:
-                    logger.error(f"Failed to create failsafe dump: {dump_e}")
+            self._handle_training_failure(e)
             raise
 
         finally:

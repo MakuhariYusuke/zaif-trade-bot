@@ -17,7 +17,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, Iterable, Iterator, Mapping, Sequence
+from typing import TYPE_CHECKING, Final, Iterable, Iterator, Mapping, Sequence, cast
 
 import numpy as np
 from ztb.io.jsonl import iter_jsonl_objects
@@ -27,7 +27,11 @@ from ztb.metrics.fill_metrics_core import (
     scan_fill_metric_inputs,
 )
 from ztb.metrics.fill_judgment_core import (
+    build_exec_gate_checks,
     build_full_gate_pnl_checks,
+    build_full_gate_structural_checks,
+    build_quick_gate_checks,
+    resolve_exec_judgment_type,
     resolve_gate_result,
 )
 from ztb.metrics.pnl_accumulators import PnlAccumulator, PnlWinAccumulator
@@ -649,63 +653,7 @@ def g1_1_judgment(
     Returns:
         dict with gate_result, per-check details.
     """
-    checks: dict[str, dict] = {}
-
-    # E1: fill_rate P90
-    min_fill = thresholds.get("min_fill_rate_p90", 0.90)
-    checks["E1_fill_rate_p90"] = {
-        "value": metrics.fill_rate_p90,
-        "threshold": min_fill,
-        "pass": metrics.fill_rate_p90 >= min_fill,
-    }
-
-    # E2: cancel_ratio
-    max_cancel = thresholds.get("max_cancel_ratio", 0.30)
-    checks["E2_cancel_ratio"] = {
-        "value": metrics.cancel_ratio,
-        "threshold": max_cancel,
-        "pass": metrics.cancel_ratio <= max_cancel,
-    }
-
-    # E3: queue_wait_median_sec
-    max_wait = thresholds.get("max_queue_wait_median_sec", 60)
-    checks["E3_queue_wait_median"] = {
-        "value": metrics.queue_wait_median_sec,
-        "threshold": max_wait,
-        "pass": metrics.queue_wait_median_sec <= max_wait,
-    }
-
-    # E4: post_fill_30s_pnl (§2.4 統計的補足)
-    min_pnl = thresholds.get("min_post_fill_30s_pnl", 0.0)
-    pnl_pass: bool
-    if metrics.post_fill_30s_pnl_mean >= min_pnl:
-        pnl_pass = True
-    elif metrics.post_fill_30s_pnl_pvalue >= 0.05:
-        pnl_pass = True  # 負だが統計的に有意でない → PASS
-    else:
-        pnl_pass = False  # 負かつ有意 → systemic adverse selection
-    checks["E4_post_fill_pnl"] = {
-        "value": metrics.post_fill_30s_pnl_mean,
-        "threshold": min_pnl,
-        "pvalue": metrics.post_fill_30s_pnl_pvalue,
-        "pass": pnl_pass,
-    }
-
-    # E5: adverse_selection_ratio
-    max_adverse = thresholds.get("max_adverse_selection_ratio", 0.20)
-    checks["E5_adverse_selection"] = {
-        "value": metrics.adverse_selection_ratio,
-        "threshold": max_adverse,
-        "pass": metrics.adverse_selection_ratio <= max_adverse,
-    }
-
-    # E5-raw: 020# O5 — deadzone 非適用の並行監視
-    checks["E5_adverse_selection_raw"] = {
-        "value": metrics.adverse_selection_ratio_raw,
-        "threshold": max_adverse,
-        "pass": metrics.adverse_selection_ratio_raw <= max_adverse,
-        "informational": True,  # Gate 判定には影響しない (監視用)
-    }
+    checks = cast(dict[str, dict[str, object]], build_exec_gate_checks(metrics, thresholds))
 
     # 092# E6: round-trip mean PnL (087# P1-1 / 083# §4.2-3)
     # mean が負でもテール損失管理の監視として重要
@@ -741,16 +689,7 @@ def g1_1_judgment(
     gate_checks = {k: v for k, v in checks.items() if not v.get("informational")}
     all_pass = all(c["pass"] for c in gate_checks.values())
 
-    # 047# Finding3: PROVISIONAL/INTERIM/FINAL の 3 段階判定
-    # - PROVISIONAL: n<200 or days<3
-    # - INTERIM: n>=200 & 3<=days<7 (暗定判定)
-    # - FINAL: n>=200 & days>=7 (000# §3.3 準拠)
-    if metrics.sample_sufficient:
-        judgment_type = "FINAL"  # n>=200 & days>=7
-    elif metrics.total_orders >= 200 and metrics.measurement_days >= 3:
-        judgment_type = "INTERIM"  # 十分なサンプルだが 7 日未満
-    else:
-        judgment_type = "PROVISIONAL"
+    judgment_type = resolve_exec_judgment_type(metrics)
 
     return {
         "gate": "G1.1-exec",
@@ -783,65 +722,14 @@ def g1_1_quick_judgment(
     Returns:
         dict with gate_result (PASS/FAIL/WATCH), per-check details.
     """
-    checks: dict[str, dict] = {}
-
-    # K1: attempted_fill_rate
-    min_att_fill = thresholds.get("min_attempted_fill_rate", 0.60)
-    checks["K1_attempted_fill_rate"] = {
-        "value": metrics.attempted_fill_rate,
-        "threshold": min_att_fill,
-        "pass": metrics.attempted_fill_rate >= min_att_fill,
-    }
-
-    # K2: attempted_cancel_ratio
-    max_att_cancel = thresholds.get("max_attempted_cancel_ratio", 0.40)
-    checks["K2_attempted_cancel_ratio"] = {
-        "value": metrics.attempted_cancel_ratio,
-        "threshold": max_att_cancel,
-        "pass": metrics.attempted_cancel_ratio <= max_att_cancel,
-    }
-
-    # K3: queue_wait_median
-    max_wait = thresholds.get("max_queue_wait_median_sec", 120)
-    checks["K3_queue_wait_median"] = {
-        "value": metrics.queue_wait_median_sec,
-        "threshold": max_wait,
-        "pass": metrics.queue_wait_median_sec <= max_wait,
-    }
-
-    # K4: PnL 複合条件 — p < threshold かつ mean <= threshold で FAIL
-    # 115# Q10.2(C): 単独 p 値判定は不十分。効果量条件を併設。
-    pnl_kill_p = thresholds.get("pnl_kill_p_threshold", 0.02)
-    pnl_kill_mean = thresholds.get("pnl_kill_mean_threshold", -0.8)
-    pnl_is_significant = metrics.post_fill_30s_pnl_pvalue < pnl_kill_p
-    pnl_is_large_loss = metrics.post_fill_30s_pnl_mean <= pnl_kill_mean
-    # FAIL = 両条件同時成立
-    k4_pass = not (pnl_is_significant and pnl_is_large_loss)
-    checks["K4_pnl_kill"] = {
-        "value": metrics.post_fill_30s_pnl_mean,
-        "pvalue": metrics.post_fill_30s_pnl_pvalue,
-        "threshold_p": pnl_kill_p,
-        "threshold_mean": pnl_kill_mean,
-        "significant": pnl_is_significant,
-        "large_loss": pnl_is_large_loss,
-        "pass": k4_pass,
-    }
-
-    # K5: 累積実損
-    max_loss = thresholds.get("max_cumulative_loss_jpy", 10000)
-    checks["K5_cumulative_loss"] = {
-        "value": cumulative_loss_jpy,
-        "threshold": max_loss,
-        "pass": cumulative_loss_jpy < max_loss,
-    }
-
-    # K6: skip_gate_ratio
-    max_skip = thresholds.get("max_skip_gate_ratio", 0.25)
-    checks["K6_skip_gate_ratio"] = {
-        "value": metrics.skip_gate_ratio,
-        "threshold": max_skip,
-        "pass": metrics.skip_gate_ratio <= max_skip,
-    }
+    checks = cast(
+        dict[str, dict[str, object]],
+        build_quick_gate_checks(
+            metrics,
+            thresholds,
+            cumulative_loss_jpy=cumulative_loss_jpy,
+        ),
+    )
 
     all_pass = all(c["pass"] for c in checks.values())
 
@@ -890,73 +778,11 @@ def g1_2_full_judgment(
     Returns:
         dict with gate_result (PASS/FAIL), per-check details.
     """
-    checks: dict[str, dict] = {}
-
-    # F1: attempted_fill_rate
-    min_att_fill = thresholds.get("min_attempted_fill_rate", 0.70)
-    checks["F1_attempted_fill_rate"] = {
-        "value": metrics.attempted_fill_rate,
-        "threshold": min_att_fill,
-        "pass": metrics.attempted_fill_rate >= min_att_fill,
-    }
-
-    # F1b: overall_fill_rate (115# Q10.2(A): SkipGate 過剰回避)
-    min_overall_fill = thresholds.get("min_overall_fill_rate", 0.62)
-    checks["F1b_overall_fill_rate"] = {
-        "value": metrics.overall_fill_rate,
-        "threshold": min_overall_fill,
-        "pass": metrics.overall_fill_rate >= min_overall_fill,
-    }
-
-    # F2: attempted_cancel_ratio
-    max_att_cancel = thresholds.get("max_attempted_cancel_ratio", 0.30)
-    checks["F2_attempted_cancel_ratio"] = {
-        "value": metrics.attempted_cancel_ratio,
-        "threshold": max_att_cancel,
-        "pass": metrics.attempted_cancel_ratio <= max_att_cancel,
-    }
-
-    # F3: queue_wait_median
-    max_wait = thresholds.get("max_queue_wait_median_sec", 60)
-    checks["F3_queue_wait_median"] = {
-        "value": metrics.queue_wait_median_sec,
-        "threshold": max_wait,
-        "pass": metrics.queue_wait_median_sec <= max_wait,
-    }
-
+    checks = cast(
+        dict[str, dict[str, object]],
+        build_full_gate_structural_checks(metrics, thresholds),
+    )
     checks.update(build_full_gate_pnl_checks(metrics, thresholds))
-
-    # F5: AS_ratio (115# Q10.2(B): 35→30)
-    max_as = thresholds.get("max_adverse_selection_ratio", 0.30)
-    checks["F5_adverse_selection"] = {
-        "value": metrics.adverse_selection_ratio,
-        "threshold": max_as,
-        "pass": metrics.adverse_selection_ratio <= max_as,
-    }
-
-    # F6: skip_gate_ratio
-    max_skip = thresholds.get("max_skip_gate_ratio", 0.20)
-    checks["F6_skip_gate_ratio"] = {
-        "value": metrics.skip_gate_ratio,
-        "threshold": max_skip,
-        "pass": metrics.skip_gate_ratio <= max_skip,
-    }
-
-    # F7: calendar_days
-    min_days = thresholds.get("min_calendar_days", 7)
-    checks["F7_calendar_days"] = {
-        "value": metrics.measurement_days,
-        "threshold": min_days,
-        "pass": metrics.measurement_days >= min_days,
-    }
-
-    # F8: n_attempted
-    min_n = thresholds.get("min_attempted_samples", 500)
-    checks["F8_n_attempted"] = {
-        "value": metrics.attempted_orders,
-        "threshold": min_n,
-        "pass": metrics.attempted_orders >= min_n,
-    }
 
     gate_result, is_watch = resolve_gate_result(checks)
 

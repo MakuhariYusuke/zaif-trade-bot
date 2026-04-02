@@ -1247,3 +1247,35 @@ durations 変化で特に効いた点:
    - smoke / trainable をさらに分離して cached subset 優先
 3. scheduler exception path
    - cleanup / traceback / neutral fallback logging を薄くする
+
+## 2026-04-02 follow-up: heavy setup regrouping
+
+- 更新:
+  - `tests/unit/v460/test_fill_quality.py`
+    - source-inspect の read-only path を module-level 定数へ寄せた
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - real-data smoke sample を `6/10/14` へ縮小
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+    - trainer params 生成を patch して exception-path 固定費を削減
+- 本体側の合わせ技:
+  - `ztb/metrics/fill_judgment_core.py`
+    - G1.1 / quick / G1.2 判定 helper を shared 化
+  - `ztb/training/experiments/sell_mitigation_ppo_trainer.py`
+    - long `train()` を banner/plan/failure helper に分割
+
+回帰:
+
+- subset:
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/training/test_ppo_trainer.py`
+  - `tests/integration/test_custom_ppo_integration.py`
+  - `397 passed, 1 skipped, 5 warnings in 19.46s`
+
+最新の slowest 25 から見た次優先:
+
+1. `tests/unit/v460/test_680_ppo_retrain_scheduler.py::test_error_pushes_neutral_fallback`
+2. `tests/unit/v460/test_enricher_skip_gate.py::test_enrichment_with_real_data`
+3. `tests/unit/v460/test_sac_retrain_scheduler.py` の data-freshness / loop path
