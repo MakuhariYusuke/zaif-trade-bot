@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 700# レビュー対応: 697#/698# クロスバリデーション + Codex タスク計画 (2026-04-03)
+
+### Added
+- 699# レビュー回答ドキュメント: 697#/698# の全指摘をコード・ライブデータで再検証
+  - 6 盲点特定: trending_down RT -63.54bps, 第3 SHA, MCB復帰後劣化, sell/trending_up AS, NFQ 0%, P688汚染範囲
+- 700# Codex タスク計画: T1 Protocol 688 NFQ fix, T2 spread_as_guard fix, T3 inventory skewing, T4 regime exit
+- Codex プロンプト 4 本 (prompts/codex_700_task{1-4}_*.md)
+
+### Changed
+- as_trailing_gate: enabled false→true (699# 検証済: 低リスク即効性、パラメータ妥当)
+
+### Investigated
+- Protocol 688 NFQ 汚染範囲: 全キャンセル 488 件 vs 実 NFQ 7 件 (70x誤差)。NFQ 依拠の設定変更なし、巻戻し不要
+- SHA b5f7828b16 成功要因: sidecar fresh (8/8), AS 12.5%, ranging/trending_up のみ。04390da と比べ sidecar 状態が決定的差異
+- as_trailing_gate retrospective: enabled=false のため fill_record に score 未記録。有効化後に初めてデータ蓄積開始
+
 ## 659# balance_checker重複排除 + MCB HALTポジション警告 (2026-03-31)
 
 ### Changed

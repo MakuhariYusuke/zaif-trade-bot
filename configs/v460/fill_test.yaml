@@ -485,8 +485,8 @@ skip_gate:
   pnl_threshold: -0.5          # 190# D: 0.0→-0.5 (ev_weighted score が常時負のため閾値緩和)
   max_skip_rate: 0.3               # 674# 0.4→0.3復元: 672# CI=[−0.53,+0.07]でskip増はPnL改善に寄与せず。fill rate直結
   bypass_mode: true            # 686# SG-1: score/telemetry は維持しつつブロック停止
-  # 694# AS trailing gate (observe-only default)
-  as_trailing_gate_enabled: false
+  # 694# AS trailing gate — 700# で enabled: true に切替 (699# 検証済: 低リスク即効性)
+  as_trailing_gate_enabled: true
   as_trailing_gate_window_size: 100
   as_trailing_gate_spread_bucket_edges: "1500,2500,3500"
   as_trailing_gate_soft_threshold: 0.30
