@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 701# spread_as_guard / regime_exit 有効化 + Protocol 688 再分析 (2026-04-03)
+
+### Changed
+- spread_as_guard: enabled false→true (EV penalty only, 0.5bps×regime_mult)
+- regime_exit_strategy: enabled false→true (trending_down + buy>10 + imbalance>=0.3 で段階介入)
+
+### Investigated
+- Protocol 688 再分析 (NFQフィルタ修正後, 直近4日):
+  - 真NFQ 206件 / 全キャンセル 1473件 = 14.0% (修正前: 488件=全キャンセル混入)
+  - NFQ regime分布: ranging 91, trending_down 60, trending_up 55
+  - NFQ side分布: buy 113, sell 93 (buy偏重は在庫スキュー影響)
+  - AS率 27.3%, sell AS 33.7% が依然高い
+  - sell/trending_up avg_pnl30=-2.01bps が最悪セグメント
+
 ## 700# レビュー対応: 697#/698# クロスバリデーション + Codex タスク計画 (2026-04-03)
 
 ### Added

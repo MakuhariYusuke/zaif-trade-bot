@@ -1288,11 +1288,11 @@ entry_gate_max_block_rate: 0.6
 entry_gate_min_eval_for_rate: 20
 entry_gate_staleness_threshold_sec: 600.0
 spread_as_guard:
-  enabled: false
+  enabled: true                   # 701# 有効化: 閾値15bps修正済, EV penalty only (skip不発生)
   spread_threshold_bps: 15.0
   ev_penalty_bps: 0.5
 regime_exit_strategy:
-  enabled: false
+  enabled: true                   # 701# 有効化: trending_down + buy>10 + imbalance>=0.3 で段階的介入
   max_trending_down_buy_fills: 10
   tracking_window_sec: 3600
   escalated_max_factor: 0.7
