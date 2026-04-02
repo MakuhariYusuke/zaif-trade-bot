@@ -88,6 +88,8 @@ class FillRecordHelpersMixin:
         cancel_reason 文字列は cancel_reasons モジュールの定数を使うこと。
         """
         from ztb.metrics.fill_quality import build_skip_fill_record
+        _mp = getattr(self, "_maker_price", None)
+        _re = getattr(_mp, "last_regime_exit_result", None) if _mp is not None else None
         extra_fields = {
             "entry_gate_ev": getattr(self, "_entry_gate_ev_current", None),
             "entry_gate_blocked": getattr(self, "_entry_gate_blocked_current", None),
@@ -112,12 +114,12 @@ class FillRecordHelpersMixin:
             "regime_guard_penalty_multiplier": getattr(
                 self, "_regime_guard_penalty_multiplier_current", None
             ),
-            "inv_skew_drift_detected": self._maker_price.last_inv_skew_drift_detected,
-            "inv_skew_effective_max_factor": self._maker_price.last_inv_skew_effective_max_factor,
-            "regime_exit_escalated": self._maker_price.last_regime_exit_result.should_escalate_skewing,
-            "regime_exit_buy_count": self._maker_price.last_regime_exit_result.buy_count_in_window,
-            "regime_exit_reason": self._maker_price.last_regime_exit_result.reason,
-            "regime_exit_triggered_nfq": self._maker_price.last_regime_exit_result.should_trigger_nfq,
+            "inv_skew_drift_detected": getattr(_mp, "last_inv_skew_drift_detected", None),
+            "inv_skew_effective_max_factor": getattr(_mp, "last_inv_skew_effective_max_factor", None),
+            "regime_exit_escalated": _re.should_escalate_skewing if _re is not None else None,
+            "regime_exit_buy_count": _re.buy_count_in_window if _re is not None else None,
+            "regime_exit_reason": _re.reason if _re is not None else None,
+            "regime_exit_triggered_nfq": _re.should_trigger_nfq if _re is not None else None,
         }
         extra_fields.update(extra)
 

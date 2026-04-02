@@ -153,7 +153,7 @@ class TestASTrailingConfigIntegration:
     def test_live_yaml_contains_as_trailing_gate_defaults(self) -> None:
         yaml_cfg = load_yaml_mapping(Path("configs/v460/fill_test.yaml"))
         skip_gate = yaml_cfg["skip_gate"]
-        assert skip_gate["as_trailing_gate_enabled"] is False
+        assert skip_gate["as_trailing_gate_enabled"] is True
         assert skip_gate["as_trailing_gate_window_size"] == 100
         assert skip_gate["as_trailing_gate_spread_bucket_edges"] == "1500,2500,3500"
 

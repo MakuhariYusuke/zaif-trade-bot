@@ -191,9 +191,11 @@ class TestInvNetImbalanceProperty:
         from unittest.mock import MagicMock
 
         from scripts.v460.lib.maker_price import MakerPriceCalculator
+        from scripts.v460.lib.regime_exit_strategy import RegimeExitConfig
 
         config = MagicMock()
         config.inventory_skewing_window = 100
+        config.regime_exit_strategy = RegimeExitConfig()
         ffd = MagicMock()
         mp = MakerPriceCalculator(
             config, ffd, None, base_offset_ratio=0.20
@@ -205,9 +207,11 @@ class TestInvNetImbalanceProperty:
         from unittest.mock import MagicMock
 
         from scripts.v460.lib.maker_price import MakerPriceCalculator
+        from scripts.v460.lib.regime_exit_strategy import RegimeExitConfig
 
         config = MagicMock()
         config.inventory_skewing_window = 10
+        config.regime_exit_strategy = RegimeExitConfig()
         ffd = MagicMock()
         mp = MakerPriceCalculator(
             config, ffd, None, base_offset_ratio=0.20
@@ -221,9 +225,11 @@ class TestInvNetImbalanceProperty:
         from unittest.mock import MagicMock
 
         from scripts.v460.lib.maker_price import MakerPriceCalculator
+        from scripts.v460.lib.regime_exit_strategy import RegimeExitConfig
 
         config = MagicMock()
         config.inventory_skewing_window = 10
+        config.regime_exit_strategy = RegimeExitConfig()
         ffd = MagicMock()
         mp = MakerPriceCalculator(
             config, ffd, None, base_offset_ratio=0.20

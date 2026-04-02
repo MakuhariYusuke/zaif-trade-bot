@@ -24,6 +24,8 @@ class TestCancelReasonsCanonicalMigration:
         assert canonical_cr.FINAL_CLAMP_HARD_SKIP in literal_values
         assert canonical_cr.ROUTE_TO_KILL_DEADLOCK in literal_values
 
-    def test_fill_quality_imports_canonical_cancel_reasons(self) -> None:
-        source = read_source_text(Path(fill_quality.__file__))
+    def test_fill_record_integrity_imports_canonical_cancel_reasons(self) -> None:
+        from ztb.metrics import fill_record_integrity
+
+        source = read_source_text(Path(fill_record_integrity.__file__))
         assert "from ztb.trading.common.cancel_reasons import AUDIT_CANCEL_REASONS" in source

@@ -133,6 +133,7 @@ def _make_skip_gate_eval_config(
         skip_gate_ev_warning_threshold=1.0,
         skip_gate_ev_warning_offset_factor=1.0,
         skip_sell_unknown_regime=False,
+        skip_gate_budget_enabled=False,
         results_dir=results_dir,
         hot_reload_check_interval_sec=120.0,
     )
