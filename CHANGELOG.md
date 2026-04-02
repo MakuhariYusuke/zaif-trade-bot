@@ -12,9 +12,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 6 盲点特定: trending_down RT -63.54bps, 第3 SHA, MCB復帰後劣化, sell/trending_up AS, NFQ 0%, P688汚染範囲
 - 700# Codex タスク計画: T1 Protocol 688 NFQ fix, T2 spread_as_guard fix, T3 inventory skewing, T4 regime exit
 - Codex プロンプト 4 本 (prompts/codex_700_task{1-4}_*.md)
+- regime_exit_strategy.py: RegimeExitConfig / RegimeExitTracker (trending_down buy 累積追跡)
+- fill_record_builder: 6 telemetry fields (inv_skew_drift_*, regime_exit_*)
+- section_spread_distribution.py: protocol spread 分布補助セクション
+- fill_record_pnl.py: compute_record_pnl_jpy のモジュール分離
 
 ### Changed
 - as_trailing_gate: enabled false→true (699# 検証済: 低リスク即効性、パラメータ妥当)
+- spread_as_guard: threshold 1500→15 bps (単位修正), validation 追加
+- inventory_skewing: window 100→300, max_factor_drift 0.6, drift detection (threshold 0.15, sustain 1800s)
+- protocol_688: _nfq_payload() 追加, NFQ と全キャンセルを分離
+- maker_price: drift detection + regime exit tracker 統合
+
+### Fixed
+- fill_record_helpers: safe getattr for _maker_price (SimpleNamespace mock 互換)
+- test_145/505: AUDIT_CANCEL_REASONS → fill_record_integrity.py に追従
+- test_169: RegimeExitConfig() mock 追加 (float vs MagicMock 比較エラー)
+- test_694: as_trailing_gate_enabled assertion True に更新
+- test_retrain_hot_reload: skip_gate_budget_enabled mock 追加
 
 ### Investigated
 - Protocol 688 NFQ 汚染範囲: 全キャンセル 488 件 vs 実 NFQ 7 件 (70x誤差)。NFQ 依拠の設定変更なし、巻戻し不要
