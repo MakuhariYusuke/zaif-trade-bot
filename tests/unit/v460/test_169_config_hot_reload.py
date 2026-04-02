@@ -80,7 +80,7 @@ entry_gate_min_eval_for_rate: 20
 entry_gate_staleness_threshold_sec: 600.0
 spread_as_guard:
   enabled: false
-  spread_threshold_bps: 1500.0
+  spread_threshold_bps: 15.0
   ev_penalty_bps: 0.5
 regime_guard_overrides:
   enabled: false
@@ -149,7 +149,7 @@ entry_gate_min_eval_for_rate: 12
 entry_gate_staleness_threshold_sec: 900.0
 spread_as_guard:
   enabled: true
-  spread_threshold_bps: 1200.0
+  spread_threshold_bps: 12.0
   ev_penalty_bps: 0.7
 regime_guard_overrides:
   enabled: true
@@ -201,7 +201,7 @@ def base_config() -> FillTestConfig:
         entry_gate_min_eval_for_rate=20,
         entry_gate_staleness_threshold_sec=600.0,
         spread_as_guard_enabled=False,
-        spread_as_guard_spread_threshold_bps=1500.0,
+        spread_as_guard_spread_threshold_bps=15.0,
         spread_as_guard_ev_penalty_bps=0.5,
         regime_guard_overrides_enabled=False,
         regime_guard_ev_threshold_premiums={"ranging": 0.3},

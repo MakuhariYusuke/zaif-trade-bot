@@ -154,3 +154,21 @@ Phase 3 (Phase 2 検証後):
 
 *生成: 2026-04-02 by cplt (700#)*
 *入力: 697#, 698#, 699#*
+
+---
+
+## 2026-04-03 follow-up: prompt-to-runtime review
+
+今回の実装前点検で、prompt 記述をそのまま当てるより current runtime に寄せる方が安全な点を確認した。
+
+- Task 1:
+  - `protocol_688` の `nfq` は本当に cancel 全体を見ていたため、prompt どおり修正で正しかった
+- Task 2:
+  - 本体はすでに `spread_threshold_bps` / `ev_penalty_bps` 契約へ移行済みだった
+  - 問題は命名より `1500.0bps` という実質無効な閾値で、修正点は threshold 値 + validation + backward-compat parser に絞るのが正解だった
+- Task 3:
+  - inventory skewing は新しい並列実装ではなく、既存 `maker_price` の drift/state telemetry を伸ばす方が live path に自然だった
+- Task 4:
+  - regime exit は単独 tracker で終わらせず、NFQ / fill telemetry / pricing veto まで通す必要があった
+
+このレビュー結果に基づき、700 batch は prompt の意図を保持しつつ、current code path に沿う最小実装へ寄せた。

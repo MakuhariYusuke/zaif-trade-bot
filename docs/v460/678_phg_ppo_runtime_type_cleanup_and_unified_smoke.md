@@ -952,3 +952,14 @@ probe / weighting の wiring だけ current contract に揃えられた。
 
 - ループ crash と recoverable bookkeeping failure の線引きが前より明瞭
 - PPO runtime 自体の continuity 契約は維持したまま、常駐時の log noise を少し下げられた
+
+## 2026-04-03 follow-up: scheduler test determinism
+
+- `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - fallback / run-loop testsで `model_path` と `checkpoint_dir` を `tmp_path` に固定した
+- 目的:
+  - repo 内の既存 model artifact 有無で warm-start 分岐が変わるのを防ぐ
+  - error-path test を本来の cold-start 契約に固定する
+- 所見:
+  - これは速度改善でもあるが、本質は correctness 修正
+  - PPO scheduler のテストは環境依存性が下がり、再現性が上がった

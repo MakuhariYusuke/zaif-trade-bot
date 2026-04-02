@@ -1550,3 +1550,37 @@ regression:
 
 - run-to-run の揺れはあるが、slowest top 20 から PPO error path は外れた
 - 次の本命は `enricher` 実データ setup と `fill_quality` report shaping 残り
+
+## 2026-04-03 follow-up: 700 broad regression + scheduler path trim
+
+changes:
+
+- `tests/unit/v460/test_169_config_hot_reload.py`
+  - `spread_as_guard` threshold を current 15bps 系へ追随
+- `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
+  - allowlist を整理
+  - `as_trailing_gate_enabled` を追記
+  - stale override を除去
+  - field-count sanity を current 552 fields に追随
+- `tests/unit/v460/test_346_fill_config_validation.py`
+  - `spread_as_guard_spread_threshold_bps < 100.0` の upper-bound 回帰を追加
+- `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - tmp-path 固定 `model_path/checkpoint_dir` を明示して warm-start 分岐の環境依存を除去
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - interval test で bookkeeping / post-cycle 固定費を patch して責務を明確化
+
+regression:
+
+- 700 broad subset:
+  - `554 passed, 5 warnings in 9.74s`
+- heavy subset:
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `360 passed, 5 warnings in 10.21s`
+
+notes:
+
+- heavy test の主残差は引き続き `enricher` real-data setup (`0.39s setup`)
+- PPO scheduler test は速度だけでなく warm-start/cold-start 前提の安定性も改善した

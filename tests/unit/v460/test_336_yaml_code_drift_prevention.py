@@ -41,6 +41,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "amihud_illiq_enabled",
     "as_delta_star_enabled",
     "as_reservation_enabled",
+    "as_trailing_gate_enabled",
     "as_tau_dynamic_enabled",
     "bayesian_regime_enabled",
     "buy_as_guard_enabled",
@@ -60,10 +61,6 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "dynamic_cycle_interval_enabled",
     "entry_gate_enabled",
     "entry_gate_calibration_map_path",
-    "spread_as_guard_enabled",
-    "spread_as_guard_spread_threshold_bps",
-    "spread_as_guard_ev_penalty_bps",
-    "regime_guard_overrides_enabled",
     "regime_guard_ev_threshold_premiums",
     "regime_guard_spread_as_penalty_multipliers",
     "enable_macro_regime",
@@ -303,9 +300,10 @@ class TestYamlCodeDefaultDrift:
         # 336# 時点: 390 fields. 491# composite_risk 追加で 454 fields.
         # 555# entry_gate 追加で 481 fields. 654# toxic_sell_veto 追加で 504 fields.
         # 690# timeout/entry_gate/offset stage controls で 527 fields.
-        assert 350 <= n_fields <= 540, (
+        # 700# NFQ/spread/inventory/regime-exit observability で 552 fields.
+        assert 350 <= n_fields <= 570, (
             f"FillTestConfig のフィールド数が {n_fields} です。"
-            f" 350-540 の範囲外です — God Object 化の兆候かもしれません。"
+            f" 350-570 の範囲外です — God Object 化の兆候かもしれません。"
         )
 
 

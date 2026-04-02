@@ -1401,6 +1401,9 @@ class TestDataFreshnessDecoupling649:
                 return_value=False,
             ) as mock_fresh,
             patch_noop_paths(
+                "scripts.v460.ml.sac_retrain_scheduler._post_cycle_memory_check",
+                "scripts.v460.ml.sac_retrain_scheduler.append_history_best_effort",
+                "scripts.v460.ml.sac_retrain_scheduler.record_trigger_result_best_effort",
                 "scripts.v460.ml.sac_retrain_scheduler.logger.info",
                 "scripts.v460.ml.sac_retrain_scheduler.logger.warning",
                 "scripts.v460.ml.sac_retrain_scheduler.logger.debug",

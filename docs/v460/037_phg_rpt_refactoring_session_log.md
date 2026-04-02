@@ -10553,3 +10553,16 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - regression:
     - heavy subset: `360 passed, 5 warnings in 13.71s`
     - integrity/import follow-up: `5 passed in 3.97s`
+
+## 2026-04-03 700 follow-up: prompt/runtime reconciliation and broad regression
+
+- `700#` の実装後に prompt と current runtime のズレを再点検した
+- 主な reconciliation:
+  - `spread_as_guard` は naming 変更より threshold 修正が本体
+  - `protocol_688 nfq` は cancel 全体集計のセマンティックバグ修正が主
+  - inventory / regime-exit は live path (`maker_price` / NFQ / fill telemetry) を通す必要があった
+- regression:
+  - broad subset `554 passed, 5 warnings in 9.74s`
+  - heavy subset `360 passed, 5 warnings in 10.21s`
+- hidden task:
+  - PPO scheduler test の default `model_path` が既存 artifact に当たると warm-start 分岐が変わりうるため、`tmp_path` 固定で deterministic 化した

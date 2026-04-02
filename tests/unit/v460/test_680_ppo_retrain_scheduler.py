@@ -427,6 +427,8 @@ class TestPPORetrainOnce:
     def test_error_pushes_neutral_fallback(self, tmp_path: Path) -> None:
         cfg = PPOSidecarConfig(
             data_path=str(tmp_path / "ppo.csv"),
+            model_path=tmp_path / "ppo_sidecar.zip",
+            checkpoint_dir=tmp_path / "ckpt",
             signal_path=tmp_path / "ppo_signal.json",
         )
         fake_trainer = MagicMock()
@@ -462,8 +464,11 @@ class TestPPORunScheduler:
         data_file.write_text("timestamp,close\n1,100\n", encoding="utf-8")
         cfg = PPOSidecarConfig(
             data_path=str(data_file),
+            model_path=tmp_path / "ppo_sidecar.zip",
+            checkpoint_dir=tmp_path / "ckpt",
             check_interval_sec=1,
             retrain_interval_sec=1,
+            signal_path=tmp_path / "ppo_signal.json",
             history_path=tmp_path / "history.jsonl",
         )
         mock_retrain.return_value = PPORetrainResult(status="deployed", action="buy")
@@ -495,6 +500,8 @@ class TestPPORunScheduler:
         data_file.write_text("timestamp,close\n1,100\n", encoding="utf-8")
         cfg = PPOSidecarConfig(
             data_path=str(data_file),
+            model_path=tmp_path / "ppo_sidecar.zip",
+            checkpoint_dir=tmp_path / "ckpt",
             check_interval_sec=1,
             retrain_interval_sec=1,
             signal_path=tmp_path / "ppo_signal.json",
@@ -535,8 +542,11 @@ class TestPPORunScheduler:
         data_file.write_text("timestamp,close\n1,100\n", encoding="utf-8")
         cfg = PPOSidecarConfig(
             data_path=str(data_file),
+            model_path=tmp_path / "ppo_sidecar.zip",
+            checkpoint_dir=tmp_path / "ckpt",
             check_interval_sec=1,
             retrain_interval_sec=1,
+            signal_path=tmp_path / "ppo_signal.json",
             history_path=tmp_path / "history.jsonl",
         )
         mock_retrain.return_value = PPORetrainResult(status="deployed", action="buy")
@@ -564,6 +574,8 @@ class TestPPORunScheduler:
     def test_update_signal_failure_pushes_neutral_fallback(self, tmp_path: Path) -> None:
         cfg = PPOSidecarConfig(
             data_path=str(tmp_path / "ppo.csv"),
+            model_path=tmp_path / "ppo_sidecar.zip",
+            checkpoint_dir=tmp_path / "ckpt",
             signal_path=tmp_path / "ppo_signal.json",
         )
         Path(cfg.data_path).write_text("timestamp,close\n1,100\n", encoding="utf-8")

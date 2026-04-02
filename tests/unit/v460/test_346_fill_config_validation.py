@@ -163,6 +163,11 @@ class TestRegimeDicts:
         with pytest.raises(ValueError, match="spread_as_guard_spread_threshold_bps"):
             validate_fill_config(cfg)
 
+    def test_spread_as_guard_threshold_has_upper_bound(self, cfg: FillTestConfig) -> None:
+        cfg.spread_as_guard_spread_threshold_bps = 1500.0
+        with pytest.raises(ValueError, match="spread_as_guard_spread_threshold_bps"):
+            validate_fill_config(cfg)
+
     def test_regime_guard_multiplier_must_be_positive(self, cfg: FillTestConfig) -> None:
         cfg.regime_guard_spread_as_penalty_multipliers = {"ranging": 0.0}
         with pytest.raises(ValueError, match="regime_guard_spread_as_penalty_multipliers"):
