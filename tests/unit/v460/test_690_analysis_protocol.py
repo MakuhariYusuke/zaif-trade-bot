@@ -11,6 +11,8 @@ from scripts.v460.analysis.analysis_common import (
 )
 from scripts.v460.analysis.protocols import PROTOCOL_REGISTRY
 from scripts.v460.analysis.protocols.protocol_688 import Protocol688
+from scripts.v460.analysis.protocols.protocol_695_regime_as import Protocol695RegimeAS
+from scripts.v460.analysis.protocols.protocol_695_trend5s import Protocol695Trend5s
 from scripts.v460.analysis.run_protocol import build_parser, main
 
 
@@ -75,6 +77,26 @@ class TestProtocol688:
     def test_protocol_registry_contains_688(self) -> None:
         assert "688" in PROTOCOL_REGISTRY
 
+    def test_protocol_registry_contains_695_protocols(self) -> None:
+        assert "695_trend5s" in PROTOCOL_REGISTRY
+        assert "695_regime_as" in PROTOCOL_REGISTRY
+
+    def test_protocol695s_execute(self) -> None:
+        records = [
+            _record(cycle_id="a", ts=1_710_000_000.0, side="sell", pnl=1.2),
+            _record(
+                cycle_id="b",
+                ts=1_710_000_060.0,
+                side="sell",
+                filled=False,
+                pnl=None,
+                cancel_reason="trend_5s_sell_guard_veto",
+            ),
+        ]
+
+        assert Protocol695Trend5s().execute(records).json_payload["protocol"] == "695_trend5s"
+        assert Protocol695RegimeAS().execute(records).json_payload["protocol"] == "695_regime_as"
+
 
 class TestAnalysisCommonFilters:
     def test_filter_by_days(self) -> None:
@@ -104,6 +126,7 @@ class TestRunProtocolCli:
         assert main(["--list"]) == 0
         out = capsys.readouterr().out
         assert "688" in out
+        assert "695_trend5s" in out
 
     def test_cli_parser_accepts_protocol_args(self) -> None:
         parser = build_parser()

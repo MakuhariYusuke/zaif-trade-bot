@@ -190,6 +190,22 @@ PPO sidecar は **side selection のみ** を扱い、
 
 - `77 passed, 2 skipped in 17.71s`
 
+## 2026-04-02 追記
+
+PPO 継続対応では、runtime 本体より test fixed-cost と warm-start continuity を優先した。
+
+追加メモ:
+- scheduler の recoverable failure は、loop crash traceback と分離したまま軽量化を継続
+- `test_680_ppo_retrain_scheduler.py` は runtime 全体ではなく exception path の責務へ寄せて patch を整理
+
+現状の見立て:
+- PPO runtime はかなり安定している
+- いまの残差は runtime より test fixed-cost 側に寄っている
+- 次の本命は
+  - warm-start state/weight continuity の次段
+  - scheduler exception-path のさらなる fixed-cost 削減
+  の 2 本
+
 ### 5. PPO sidecar reader / safe veto wiring
 
 current foundation の次段として、PPO signal を live pipeline に observe-safe に接続した。

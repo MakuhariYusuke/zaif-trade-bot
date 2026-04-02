@@ -174,6 +174,11 @@ class FillRecordBuilderMixin:
         entry_gate_blocked: bool | None = None,
         entry_gate_guard_suppressed: bool | None = None,
         entry_gate_regime: str | None = None,
+        spread_as_guard_triggered: bool | None = None,
+        spread_as_guard_action: str | None = None,
+        spread_as_guard_penalty_bps: float | None = None,
+        regime_guard_ev_premium_bps: float | None = None,
+        regime_guard_penalty_multiplier: float | None = None,
         sg_budget_regime: str | None = None,
         sg_budget_remaining: int | None = None,
         sg_budget_exhausted: bool | None = None,
@@ -255,6 +260,11 @@ class FillRecordBuilderMixin:
             "entry_gate_blocked": entry_gate_blocked,
             "entry_gate_guard_suppressed": entry_gate_guard_suppressed,
             "entry_gate_regime": entry_gate_regime,
+            "spread_as_guard_triggered": spread_as_guard_triggered,
+            "spread_as_guard_action": spread_as_guard_action,
+            "spread_as_guard_penalty_bps": spread_as_guard_penalty_bps,
+            "regime_guard_ev_premium_bps": regime_guard_ev_premium_bps,
+            "regime_guard_penalty_multiplier": regime_guard_penalty_multiplier,
         }
         fields.update(self._build_fill_cross_venue_fields(side=side))
         return fields
@@ -570,6 +580,21 @@ class FillRecordBuilderMixin:
                     None,
                 ),
                 entry_gate_regime=getattr(self, "_entry_gate_regime_current", None),
+                spread_as_guard_triggered=getattr(
+                    self, "_spread_as_guard_triggered_current", None
+                ),
+                spread_as_guard_action=getattr(
+                    self, "_spread_as_guard_action_current", None
+                ),
+                spread_as_guard_penalty_bps=getattr(
+                    self, "_spread_as_guard_penalty_bps_current", None
+                ),
+                regime_guard_ev_premium_bps=getattr(
+                    self, "_regime_guard_ev_premium_bps_current", None
+                ),
+                regime_guard_penalty_multiplier=getattr(
+                    self, "_regime_guard_penalty_multiplier_current", None
+                ),
                 sg_budget_regime=sg_budget_regime,
                 sg_budget_remaining=sg_budget_remaining,
                 sg_budget_exhausted=sg_budget_exhausted,

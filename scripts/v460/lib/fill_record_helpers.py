@@ -97,6 +97,21 @@ class FillRecordHelpersMixin:
                 None,
             ),
             "entry_gate_regime": getattr(self, "_entry_gate_regime_current", None),
+            "spread_as_guard_triggered": getattr(
+                self, "_spread_as_guard_triggered_current", None
+            ),
+            "spread_as_guard_action": getattr(
+                self, "_spread_as_guard_action_current", None
+            ),
+            "spread_as_guard_penalty_bps": getattr(
+                self, "_spread_as_guard_penalty_bps_current", None
+            ),
+            "regime_guard_ev_premium_bps": getattr(
+                self, "_regime_guard_ev_premium_bps_current", None
+            ),
+            "regime_guard_penalty_multiplier": getattr(
+                self, "_regime_guard_penalty_multiplier_current", None
+            ),
         }
         extra_fields.update(extra)
 

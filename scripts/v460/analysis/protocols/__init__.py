@@ -43,3 +43,9 @@ def register_protocol(cls: type[AnalysisProtocol]) -> type[AnalysisProtocol]:
 
 
 from scripts.v460.analysis.protocols.protocol_688 import Protocol688  # noqa: E402,F401
+from scripts.v460.analysis.protocols.protocol_695_regime_as import (  # noqa: E402,F401
+    Protocol695RegimeAS,
+)
+from scripts.v460.analysis.protocols.protocol_695_trend5s import (  # noqa: E402,F401
+    Protocol695Trend5s,
+)

@@ -105,6 +105,27 @@ def validate_fill_config(config: FillTestConfig) -> None:
             "entry_gate_staleness_threshold_sec must be >= 60.0, "
             f"got {config.entry_gate_staleness_threshold_sec}"
         )
+    if config.spread_as_guard_spread_threshold_bps <= 0.0:
+        raise ValueError(
+            "spread_as_guard_spread_threshold_bps must be > 0, "
+            f"got {config.spread_as_guard_spread_threshold_bps}"
+        )
+    if config.spread_as_guard_ev_penalty_bps < 0.0:
+        raise ValueError(
+            "spread_as_guard_ev_penalty_bps must be >= 0, "
+            f"got {config.spread_as_guard_ev_penalty_bps}"
+        )
+    for regime_name, premium in config.regime_guard_ev_threshold_premiums.items():
+        if premium < 0.0:
+            raise ValueError(
+                f"regime_guard_ev_threshold_premiums['{regime_name}'] must be >= 0, got {premium}"
+            )
+    for regime_name, multiplier in config.regime_guard_spread_as_penalty_multipliers.items():
+        if multiplier <= 0.0:
+            raise ValueError(
+                "regime_guard_spread_as_penalty_multipliers"
+                f"['{regime_name}'] must be > 0, got {multiplier}"
+            )
     if config.skip_gate_budget_window_min <= 0:
         raise ValueError(
             "skip_gate_budget_window_min must be > 0, "

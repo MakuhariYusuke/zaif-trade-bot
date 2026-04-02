@@ -390,3 +390,28 @@ $n = (2.8 \times 4.7 / 0.673)^2 \approx 385$ (per group, power=0.8)
 - `analysis_results/694_multi_perspective_analysis.json`
 - `results/v460/fill_test/fill_records_20260401.jsonl` (502 records)
 - `results/v460/fill_test/fill_records_20260402.jsonl` (204 records)
+
+---
+
+## 695# 実装反映メモ
+
+- `trend_5s_veto counterfactual`
+  - `scripts/v460/analysis/sections/section_trend_5s_counterfactual.py`
+  - `python scripts/v460/analysis/run_protocol.py --protocol 695_trend5s --days 1`
+  で再現可能化した
+- `spread_as_guard`
+  - `scripts/v460/lib/entry_gate_adjustments.py`
+  に実装し、YAML / validation / hot-reload / fill telemetry まで接続済み
+- `regime × spread AS deep dive`
+  - `scripts/v460/analysis/sections/section_regime_as_deep_dive.py`
+  - `python scripts/v460/analysis/run_protocol.py --protocol 695_regime_as --days 1`
+  で再現可能化した
+- `fill record observability`
+  - `FillRecord.schema_version = 2`
+  - `guard_pipeline_result`
+  を追加し、後方互換を維持したまま guard 判断メタデータを保存できるようにした
+
+現時点で残る本丸は、機能有無ではなく運用閾値の最適化。
+- `spread_as_guard.enabled`
+- `regime_guard_overrides.enabled`
+はまず observe 寄りで比較し、bucket / regime / fill-only 層別で見てから block 強化へ進めるのが安全。

@@ -1289,7 +1289,7 @@ class TestDataFreshnessDecoupling649:
             ),
             patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
             patch(
-                "scripts.v460.ml.update_training_data.ensure_data_fresh",
+                "scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check",
                 return_value=False,
             ) as mock_fresh,
             patch_noop_paths(
@@ -1301,10 +1301,7 @@ class TestDataFreshnessDecoupling649:
             run_scheduler(cfg)
 
         # 初回ループで data freshness check が呼ばれるはず
-        mock_fresh.assert_called_once_with(
-            str(data_file),
-            max_stale_hours=48.0,
-        )
+        mock_fresh.assert_called_once_with(str(data_file), max_stale_hours=48.0)
         _shutdown_event.clear()
 
     @patch("scripts.v460.ml.sac_retrain_scheduler.retrain_once")
@@ -1338,7 +1335,7 @@ class TestDataFreshnessDecoupling649:
             ),
             patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
             patch(
-                "scripts.v460.ml.update_training_data.ensure_data_fresh",
+                "scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check",
                 side_effect=RuntimeError("yfinance down"),
             ),
             patch_noop_paths(
@@ -1351,7 +1348,7 @@ class TestDataFreshnessDecoupling649:
             # ループが例外で死なないことを確認
             run_scheduler(cfg)
 
-        # ensure_data_fresh が例外でも retrain_once は呼ばれるはず
+        # data freshness check が例外でも retrain_once は呼ばれるはず
         mock_retrain.assert_called_once()
         _shutdown_event.clear()
 
@@ -1400,7 +1397,7 @@ class TestDataFreshnessDecoupling649:
             patch.object(_shutdown_event, "wait", side_effect=counting_wait),
             patch.object(_shutdown_event, "is_set", side_effect=counting_is_set),
             patch(
-                "scripts.v460.ml.update_training_data.ensure_data_fresh",
+                "scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check",
                 return_value=False,
             ) as mock_fresh,
             patch_noop_paths(

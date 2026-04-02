@@ -1294,6 +1294,39 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
             if yaml_key in eg:
                 kwargs[config_key] = eg[yaml_key]
 
+    spread_as_guard = yaml_cfg.get("spread_as_guard", {})
+    if isinstance(spread_as_guard, dict) and spread_as_guard:
+        spread_as_guard_map = {
+            "enabled": "spread_as_guard_enabled",
+            "spread_threshold_bps": "spread_as_guard_spread_threshold_bps",
+            "ev_penalty_bps": "spread_as_guard_ev_penalty_bps",
+        }
+        for yaml_key, config_key in spread_as_guard_map.items():
+            if yaml_key in spread_as_guard:
+                kwargs[config_key] = spread_as_guard[yaml_key]
+
+    regime_guard_overrides = yaml_cfg.get("regime_guard_overrides", {})
+    if isinstance(regime_guard_overrides, dict) and regime_guard_overrides:
+        if regime_guard_overrides.get("enabled") is not None:
+            kwargs["regime_guard_overrides_enabled"] = bool(
+                regime_guard_overrides["enabled"]
+            )
+        premiums: dict[str, float] = {}
+        penalty_multipliers: dict[str, float] = {}
+        for regime_name, override in regime_guard_overrides.items():
+            if regime_name == "enabled" or not isinstance(override, dict):
+                continue
+            if "ev_threshold_premium_bps" in override:
+                premiums[regime_name] = float(override["ev_threshold_premium_bps"])
+            if "spread_as_guard_penalty_multiplier" in override:
+                penalty_multipliers[regime_name] = float(
+                    override["spread_as_guard_penalty_multiplier"]
+                )
+        if premiums:
+            kwargs["regime_guard_ev_threshold_premiums"] = premiums
+        if penalty_multipliers:
+            kwargs["regime_guard_spread_as_penalty_multipliers"] = penalty_multipliers
+
     op = yaml_cfg.get("offset_pipeline", {})
     if isinstance(op, dict) and op:
         op_map = {

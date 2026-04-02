@@ -24,6 +24,7 @@ import time
 from typing import TYPE_CHECKING
 
 from scripts.v460.lib import cancel_reasons as CR
+from scripts.v460.lib.entry_gate_adjustments import apply_entry_gate_adjustments
 
 if TYPE_CHECKING:
     from scripts.v460.lib.cycle_gate_aggregator import CycleGateResult
@@ -226,9 +227,34 @@ class OrchestratorMidCycleMixin:
             else:
                 _p_win = _cal_fb.get("p_win_lcb", 0.0)
             _cal_ev = _p_win * _cal_fb["avg_win"] - (1.0 - _p_win) * _cal_fb["avg_loss"]
+            _spread_bps: float | None = None
+            if (
+                self._maker_price.last_spread is not None
+                and self._maker_price.last_mid_price is not None
+                and self._maker_price.last_mid_price > 0
+            ):
+                _spread_bps = float(
+                    self._maker_price.last_spread
+                    / self._maker_price.last_mid_price
+                    * 10_000.0
+                )
+            _adjustment = apply_entry_gate_adjustments(
+                config=self.config,
+                regime=_cal_regime,
+                spread_bps=_spread_bps,
+                base_ev_bps=_cal_ev,
+            )
+            _cal_ev = _adjustment.adjusted_ev_bps
             st.entry_gate_eval_count += 1
             st.entry_gate_ev_sum += _cal_ev
             self._entry_gate_ev_current = _cal_ev
+            self._spread_as_guard_triggered_current = _adjustment.spread_as_guard_triggered
+            self._spread_as_guard_action_current = _adjustment.spread_as_guard_action
+            self._spread_as_guard_penalty_bps_current = _adjustment.spread_as_guard_penalty_bps
+            self._regime_guard_ev_premium_bps_current = _adjustment.regime_guard_ev_premium_bps
+            self._regime_guard_penalty_multiplier_current = (
+                _adjustment.regime_guard_penalty_multiplier
+            )
             self._entry_gate_blocked_current = bool(
                 self.config.entry_gate_enabled and _cal_ev <= 0
             )

@@ -1284,6 +1284,21 @@ entry_gate_max_consecutive_blocks: 15
 entry_gate_max_block_rate: 0.6
 entry_gate_min_eval_for_rate: 20
 entry_gate_staleness_threshold_sec: 600.0
+spread_as_guard:
+  enabled: false
+  spread_threshold_bps: 1500.0
+  ev_penalty_bps: 0.5
+regime_guard_overrides:
+  enabled: false
+  ranging:
+    ev_threshold_premium_bps: 0.3
+    spread_as_guard_penalty_multiplier: 1.5
+  trending_up:
+    ev_threshold_premium_bps: 0.0
+    spread_as_guard_penalty_multiplier: 1.0
+  trending_down:
+    ev_threshold_premium_bps: 0.0
+    spread_as_guard_penalty_multiplier: 1.0
 
 # 690# Offset Pipeline Stage Controls (672# P2)
 offset_ev_stage_enabled: false

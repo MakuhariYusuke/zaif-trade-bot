@@ -78,6 +78,15 @@ entry_gate_max_consecutive_blocks: 15
 entry_gate_max_block_rate: 0.6
 entry_gate_min_eval_for_rate: 20
 entry_gate_staleness_threshold_sec: 600.0
+spread_as_guard:
+  enabled: false
+  spread_threshold_bps: 1500.0
+  ev_penalty_bps: 0.5
+regime_guard_overrides:
+  enabled: false
+  ranging:
+    ev_threshold_premium_bps: 0.3
+    spread_as_guard_penalty_multiplier: 1.5
 offset_ev_stage_enabled: false
 offset_toxicity_stage_enabled: true
 offset_vg_supplement_enabled: false
@@ -138,6 +147,15 @@ entry_gate_max_consecutive_blocks: 9
 entry_gate_max_block_rate: 0.5
 entry_gate_min_eval_for_rate: 12
 entry_gate_staleness_threshold_sec: 900.0
+spread_as_guard:
+  enabled: true
+  spread_threshold_bps: 1200.0
+  ev_penalty_bps: 0.7
+regime_guard_overrides:
+  enabled: true
+  ranging:
+    ev_threshold_premium_bps: 0.4
+    spread_as_guard_penalty_multiplier: 1.8
 offset_ev_stage_enabled: true
 offset_toxicity_stage_enabled: false
 offset_vg_supplement_enabled: true
@@ -182,6 +200,12 @@ def base_config() -> FillTestConfig:
         entry_gate_max_block_rate=0.6,
         entry_gate_min_eval_for_rate=20,
         entry_gate_staleness_threshold_sec=600.0,
+        spread_as_guard_enabled=False,
+        spread_as_guard_spread_threshold_bps=1500.0,
+        spread_as_guard_ev_penalty_bps=0.5,
+        regime_guard_overrides_enabled=False,
+        regime_guard_ev_threshold_premiums={"ranging": 0.3},
+        regime_guard_spread_as_penalty_multipliers={"ranging": 1.5},
         offset_ev_stage_enabled=False,
         offset_toxicity_stage_enabled=True,
         offset_vg_supplement_enabled=False,

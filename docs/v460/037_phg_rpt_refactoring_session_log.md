@@ -219,6 +219,39 @@
   - `test_155_hindsight_review.py`: hindsight_filter / FillConfig / cancel_reasons / source helper import を先頭集約
   - `test_enricher_skip_gate.py`: sklearn / skip_gate / data_loader / datetime の反復 import を先頭集約
 
+---
+
+## 2026-04-02
+
+### 実施
+- 695# fill / analysis 継続
+  - `entry_gate_adjustments.py` を追加し、
+    `spread_as_guard` と `regime_guard_overrides` を runtime / YAML / hot-reload / validation に接続
+  - `protocol_695_trend5s.py`
+  - `protocol_695_regime_as.py`
+  - `section_trend_5s_counterfactual.py`
+  - `section_regime_as_deep_dive.py`
+  を追加し、`run_protocol.py` から再現可能化
+  - `FillRecord.schema_version=2`
+  - `guard_pipeline_result`
+  を追加して fill observability を強化
+- fill 分割
+  - `fill_gate_reports.py` を追加し、
+    `fill_quality.py` の G1.1 / G1.2 gate report shaping を外出し
+- heavy test 最適化
+  - `test_enricher_skip_gate.py`: smoke sample を縮小
+  - `test_sac_retrain_scheduler.py`: data freshness test を helper patch 化
+
+### 結果
+- focused:
+  - 695/690 analysis + config/hot-reload subset `135 passed in 5.99s`
+- broader:
+  - fill / enricher / PPO / SAC / 695 analysis subset `390 passed, 5 warnings in 11.43s`
+
+### メモ
+- mypy は analysis package の duplicate-module 問題で broader file-path 実行が不安定
+- この batch では `py_compile + focused/broader pytest` を主証拠として採用
+
 ## 2026-03-26 / Session 037-613
 
 ### 実施

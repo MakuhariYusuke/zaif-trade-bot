@@ -59,6 +59,24 @@ class CrossVenueBuyProtectConfig:
     boost_spread_bps: float = 3.0
     offset_boost_factor: float = 1.3
 
+
+@dataclass(frozen=True)
+class SpreadASGuardConfig:
+    """695# Low-spread adverse-selection defense."""
+
+    enabled: bool = False
+    spread_threshold_bps: float = 1500.0
+    ev_penalty_bps: float = 0.5
+
+
+@dataclass(frozen=True)
+class RegimeGuardOverride:
+    """695# Regime-conditional entry guard adjustments."""
+
+    enabled: bool = False
+    ev_threshold_premium_bps: float = 0.0
+    spread_as_guard_penalty_multiplier: float = 1.0
+
 @dataclass
 class FillTestConfig:
     """Fill test runner の設定.
@@ -1032,6 +1050,12 @@ class FillTestConfig:
     entry_gate_max_block_rate: float = 0.6
     entry_gate_min_eval_for_rate: int = 20
     entry_gate_staleness_threshold_sec: float = 600.0
+    spread_as_guard_enabled: bool = False
+    spread_as_guard_spread_threshold_bps: float = 1500.0
+    spread_as_guard_ev_penalty_bps: float = 0.5
+    regime_guard_overrides_enabled: bool = False
+    regime_guard_ev_threshold_premiums: dict[str, float] = field(default_factory=dict)
+    regime_guard_spread_as_penalty_multipliers: dict[str, float] = field(default_factory=dict)
     micro_timeout_wait_sec_sell: float | None = None  # sell 側の配置時間 (None=共通値)
     micro_timeout_max_requote: int = 4             # 1サイクル内の最大 re-quote 回数
     micro_timeout_requote_cooloff_sec: float = 5.0 # キャンセル→再発注間の冷却期間 (秒)
@@ -1085,6 +1109,26 @@ class FillTestConfig:
             veto_spread_bps=self.cross_venue_buy_veto_spread_bps,
             boost_spread_bps=self.cross_venue_buy_boost_spread_bps,
             offset_boost_factor=self.cross_venue_buy_offset_boost_factor,
+        )
+
+    @property
+    def spread_as_guard(self) -> SpreadASGuardConfig:
+        return SpreadASGuardConfig(
+            enabled=self.spread_as_guard_enabled,
+            spread_threshold_bps=self.spread_as_guard_spread_threshold_bps,
+            ev_penalty_bps=self.spread_as_guard_ev_penalty_bps,
+        )
+
+    def get_regime_guard_override(self, regime: str | None) -> RegimeGuardOverride:
+        normalized_regime = self._normalize_timeout_regime(regime) or "unknown"
+        premium = float(self.regime_guard_ev_threshold_premiums.get(normalized_regime, 0.0))
+        penalty_multiplier = float(
+            self.regime_guard_spread_as_penalty_multipliers.get(normalized_regime, 1.0)
+        )
+        return RegimeGuardOverride(
+            enabled=self.regime_guard_overrides_enabled,
+            ev_threshold_premium_bps=premium,
+            spread_as_guard_penalty_multiplier=penalty_multiplier,
         )
 
     @staticmethod

@@ -211,6 +211,43 @@
   - `0.21s setup`
   で、ここは real-data を読む限り次の本丸
 
+## 2026-04-02 追記
+
+695/690/688 の継続対応に伴い、heavy subset を改めて束で観測した。
+
+対象:
+- `tests/unit/v460/test_fill_quality.py`
+- `tests/unit/v460/test_enricher_skip_gate.py`
+- `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+- `tests/unit/v460/test_695_spread_as_guard.py`
+- `tests/unit/v460/test_695_regime_as_analysis.py`
+- `tests/unit/v460/test_695_trend5s_counterfactual.py`
+- `tests/unit/v460/test_695_fill_record_enrichment.py`
+- `tests/unit/v460/test_690_analysis_protocol.py`
+
+結果:
+- `390 passed, 5 warnings in 11.43s`
+- `--durations=15` では主残差は次の 3 本
+  - `test_enrichment_with_real_data` setup
+  - `test_data_check_respects_interval`
+  - `test_error_pushes_neutral_fallback`
+
+今回の追加整理:
+- `test_enricher_skip_gate.py`
+  - smoke sample を `3/6/9` に縮小
+- `test_sac_retrain_scheduler.py`
+  - deep import 側ではなく scheduler helper `_run_data_freshness_check(...)` を patch する形に統一
+- `fill_quality`
+  - gate report shaping を helper へ切り出し、後続分割をしやすくした
+
+見立て:
+- heavy test は単発で触るより
+  - scheduler exception path
+  - fill/report wiring
+  - real-data smoke setup
+  の 3 束でまとめて削る方が効率が良い
+
 - legacy / integration cleanup 追加:
   - `tests/legacy_tests/unit/utils/test_feature_cache.py`
   - `tests/legacy_tests/unit/utils/test_checkpoint_light.py`

@@ -215,6 +215,11 @@ class FillLoopOrchestratorMixin(
     _entry_gate_blocked_current: bool | None = None
     _entry_gate_guard_suppressed_current: bool | None = None
     _entry_gate_regime_current: str | None = None
+    _spread_as_guard_triggered_current: bool | None = None
+    _spread_as_guard_action_current: str | None = None
+    _spread_as_guard_penalty_bps_current: float | None = None
+    _regime_guard_ev_premium_bps_current: float | None = None
+    _regime_guard_penalty_multiplier_current: float | None = None
 
 
     # ------------------------------------------------------------------
@@ -472,3 +477,8 @@ class FillLoopOrchestratorMixin(
         self._entry_gate_blocked_current = None
         self._entry_gate_guard_suppressed_current = None
         self._entry_gate_regime_current = None
+        self._spread_as_guard_triggered_current = None
+        self._spread_as_guard_action_current = None
+        self._spread_as_guard_penalty_bps_current = None
+        self._regime_guard_ev_premium_bps_current = None
+        self._regime_guard_penalty_multiplier_current = None

@@ -26,17 +26,15 @@ from ztb.metrics.fill_metrics_core import (
     mean_and_one_sided_pvalue,
     scan_fill_metric_inputs,
 )
-from ztb.metrics.fill_judgment_core import (
-    build_exec_gate_checks,
-    build_full_gate_pnl_checks,
-    build_full_gate_structural_checks,
-    build_gate_payload,
-    build_quick_gate_checks,
-    build_quick_watch_detail,
-    resolve_exec_judgment_type,
-    resolve_gate_result,
+from ztb.metrics.fill_gate_reports import (
+    build_g1_1_exec_judgment,
+    build_g1_1_quick_judgment,
+    build_g1_2_full_judgment,
 )
-from ztb.metrics.fill_exec_monitoring import build_exec_monitoring_checks
+from ztb.metrics.fill_guard_pipeline import (
+    GuardPipelineResult,
+    build_guard_pipeline_result,
+)
 from ztb.metrics.fill_group_metrics import (
     GroupedMetricsBase,
     HourlyMetrics,
@@ -93,6 +91,7 @@ class FillRecord:
     side: str  # 'buy' or 'sell'
     order_price: float  # 発注価格
     order_quantity: float  # 発注数量
+    schema_version: int = 2
     fill_price: float | None = None  # 約定価格 (未約定は None)
     filled: bool = False
     cancelled: bool = False
@@ -202,6 +201,11 @@ class FillRecord:
     entry_gate_blocked: bool | None = None        # 690# enabled 時に EV<=0 だったか
     entry_gate_guard_suppressed: bool | None = None  # 690# safety guard 抑制
     entry_gate_regime: str | None = None          # 690# entry gate 評価 regime
+    spread_as_guard_triggered: bool | None = None  # 695# low-spread AS guard trigger
+    spread_as_guard_action: str | None = None      # 695# "observe" / "apply" / "none"
+    spread_as_guard_penalty_bps: float | None = None
+    regime_guard_ev_premium_bps: float | None = None
+    regime_guard_penalty_multiplier: float | None = None
     # 187# B-2: guard_trace — gated_regime + effective_cycle_interval 記録
     gated_regime: str | None = None              # ヒステリシス適用後の実効 regime
     effective_cycle_interval: float | None = None  # 使用されたサイクル間隔 (秒)
@@ -324,14 +328,41 @@ class FillRecord:
     nfq_min_spread_atr: float | None = None        # ATR ベース最小スプレッド (JPY)
     nfq_sigma: float | None = None                 # ATR 計算時の σ 値
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, object]:
         """JSON serializable dict."""
-        return shallow_asdict(self)
+        payload = shallow_asdict(self)
+        guard_pipeline_result = self.guard_pipeline_result
+        payload["guard_pipeline_result"] = (
+            guard_pipeline_result.to_dict() if guard_pipeline_result is not None else None
+        )
+        return payload
 
     @classmethod
     def from_dict(cls, d: Mapping[str, object]) -> FillRecord:
         """Reconstruct from dict."""
-        return cls(**_sanitize_fill_record_fields(d, context="FillRecord.from_dict"))
+        payload = dict(d)
+        if "schema_version" not in payload:
+            payload["schema_version"] = 1
+        payload.pop("guard_pipeline_result", None)
+        return cls(**_sanitize_fill_record_fields(payload, context="FillRecord.from_dict"))
+
+    @property
+    def guard_pipeline_result(self) -> GuardPipelineResult | None:
+        return build_guard_pipeline_result(
+            cancel_reason=self.cancel_reason,
+            entry_gate_ev=self.entry_gate_ev,
+            entry_gate_blocked=self.entry_gate_blocked,
+            entry_gate_guard_suppressed=self.entry_gate_guard_suppressed,
+            spread_bps=self.spread_bps,
+            regime_at_order=self.regime_at_order,
+            entry_gate_regime=self.entry_gate_regime,
+            trend_5s_at_order=self.trend_5s_at_order,
+            trend_5s_guard_action=self.trend_5s_guard_action,
+            skip_gate_score=self.skip_gate_score,
+            skip_gate_skipped=self.skip_gate_skipped,
+            skip_gate_bypassed=self.skip_gate_bypassed,
+            skip_gate_reason=self.skip_gate_reason,
+        )
 
 _FILL_RECORD_FIELD_NAMES: Final[frozenset[str]] = get_dataclass_field_names(FillRecord)
 _SKIP_RECORD_PROTECTED_FIELDS: Final[frozenset[str]] = frozenset({
@@ -682,26 +713,10 @@ def g1_1_judgment(
     Returns:
         dict with gate_result, per-check details.
     """
-    checks = cast(dict[str, dict[str, object]], build_exec_gate_checks(metrics, thresholds))
-
-    if records is not None:
-        checks.update(build_exec_monitoring_checks(records, thresholds))
-
-    # Gate 判定には informational=True のチェックは含めない
-    gate_checks = {k: v for k, v in checks.items() if not v.get("informational")}
-    all_pass = all(c["pass"] for c in gate_checks.values())
-
-    judgment_type = resolve_exec_judgment_type(metrics)
-
-    return build_gate_payload(
-        gate="G1.1-exec",
-        gate_result="PASS" if all_pass else "FAIL",
-        checks=checks,
+    return build_g1_1_exec_judgment(
         metrics=metrics,
-        extras={
-            "judgment_type": judgment_type,  # 020# O1 / 047# Finding3
-            "sample_sufficient": metrics.sample_sufficient,
-        },
+        thresholds=thresholds,
+        records=records,
     )
 
 # ======================================================================
@@ -726,48 +741,10 @@ def g1_1_quick_judgment(
     Returns:
         dict with gate_result (PASS/FAIL/WATCH), per-check details.
     """
-    checks = cast(
-        dict[str, dict[str, object]],
-        build_quick_gate_checks(
-            metrics,
-            thresholds,
-            cumulative_loss_jpy=cumulative_loss_jpy,
-        ),
-    )
-
-    all_pass = all(c["pass"] for c in checks.values())
-
-    # 115# Q10.4: Watch 層 — Kill には至らないが黄信号
-    pnl_watch_p = thresholds.get("pnl_watch_p_threshold", 0.05)
-    pnl_watch_mean = thresholds.get("pnl_watch_mean_threshold", -0.3)
-    is_watch = (
-        all_pass
-        and metrics.post_fill_30s_pnl_pvalue < pnl_watch_p
-        and metrics.post_fill_30s_pnl_mean < pnl_watch_mean
-    )
-
-    if not all_pass:
-        gate_result = "FAIL"
-    elif is_watch:
-        gate_result = "WATCH"
-    else:
-        gate_result = "PASS"
-
-    return build_gate_payload(
-        gate="G1.1-quick",
-        gate_result=gate_result,
-        checks=checks,
+    return build_g1_1_quick_judgment(
         metrics=metrics,
-        watch=is_watch,
-        watch_detail=(
-            build_quick_watch_detail(
-                metrics,
-                pnl_watch_p=pnl_watch_p,
-                pnl_watch_mean=pnl_watch_mean,
-            )
-            if is_watch
-            else None
-        ),
+        thresholds=thresholds,
+        cumulative_loss_jpy=cumulative_loss_jpy,
     )
 
 def g1_2_full_judgment(
@@ -786,20 +763,9 @@ def g1_2_full_judgment(
     Returns:
         dict with gate_result (PASS/FAIL), per-check details.
     """
-    checks = cast(
-        dict[str, dict[str, object]],
-        build_full_gate_structural_checks(metrics, thresholds),
-    )
-    checks.update(build_full_gate_pnl_checks(metrics, thresholds))
-
-    gate_result, is_watch = resolve_gate_result(checks)
-
-    return build_gate_payload(
-        gate="G1.2-full",
-        gate_result=gate_result,
-        checks=checks,
+    return build_g1_2_full_judgment(
         metrics=metrics,
-        watch=is_watch,
+        thresholds=thresholds,
     )
 
 # ======================================================================
