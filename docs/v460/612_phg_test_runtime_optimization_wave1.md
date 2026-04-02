@@ -1668,3 +1668,35 @@ notes:
 
 - これは runtime 最適化というより、IDE/CI 側の固定費と deadlock 解消
 - heavy test 本線とは別だが、フル回帰が途中停止しない土台として重要
+
+## 2026-04-03 follow-up: 703 config/runtime reconciliation + heavy subset trim
+
+changes:
+
+- `scripts/v460/lib/fill_config.py`
+- `scripts/v460/lib/fill_config_parser.py`
+- `scripts/v460/lib/fill_config_validation.py`
+- `scripts/v460/lib/config_hot_reload.py`
+- `scripts/v460/lib/skip_gate_evaluator.py`
+- `scripts/v460/analysis/protocols/protocol_688.py`
+  - `703#` の prompt を current runtime に照らして実装
+  - hidden task として `hour_ceiling_mult` の nested parse drift を修正
+  - hot-reload / validation / YAML drift allowlist まで追随
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - real-data sample を `30/42/54` に縮小
+
+regression:
+
+- focused 703/config/protocol subset:
+  - `140 passed in 3.11s`
+- heavy subset:
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `359 passed, 1 skipped, 5 warnings in 8.45s`
+
+notes:
+
+- slowest は引き続き `test_enrichment_with_real_data` setup だが、`0.34s` まで縮小
+- 703 は YAML 変更だけでなく parser/hot-reload/drift 追随が隠れ本体だった

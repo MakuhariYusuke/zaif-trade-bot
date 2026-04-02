@@ -675,6 +675,8 @@ class FillTestConfig:
     skip_gate_narrow_spread_offset: float = 0.0  # 正=厳格化 (PnLモード)
     # 634# P0: ranging + sell の skip 確率を大幅に上げる (閾値を厳格化)
     skip_gate_sell_ranging_offset: float = 0.5
+    # 703# P688: sell/trending_up の統計的損失に対する skip_gate 厳格化
+    skip_gate_sell_trending_up_offset: float = 0.0
 
     # 187# clamp YAML外部化: skip_gate offset の上下限
     skip_gate_offset_floor: float = -0.3   # 最大緩和

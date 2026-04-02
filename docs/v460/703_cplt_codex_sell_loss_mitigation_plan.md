@@ -107,3 +107,50 @@ Phase 2:
 
 *生成: 2026-04-03 by cplt (703#)*
 *入力: 702# 重大発見 A-D*
+
+---
+
+## 実装レビュー結果
+
+**ステータス: 実装済み（current runtime に整合する形へ補正）**
+
+### prompt 検証メモ
+
+- `task1` は概ね妥当だったが、現行 runtime の adverse selection フィールドは `is_adverse` ではなく `adverse_selected` が正本
+  - 実装では両方を吸収し、旧ログも壊さない形にした
+- `task2` はそのまま当てると過剰実装になりやすかった
+  - 現行 live path には既に
+    - `skip_sell_trending_up_only`
+    - `trending_up_sell_offset_boost`
+    - `spread_as_guard`
+    があるため、今回は不足していた `skip_gate` 側の `sell_trending_up_offset` のみを追加
+- `task2` の regime override は「trending_up だけ個別有効化」ではなく、現行 `FillTestConfig` 契約に合わせて
+  - global enable
+  - trending_up 側の premium / multiplier 調整
+  の形に寄せた
+- `task3` は YAML 変更だけに見えたが、hidden task として `hour_ceiling_mult` の nested parse drift 修正が必要だった
+
+### hidden task
+
+- `hour_ceiling_mult` は live YAML では `skip_gate` 配下が正本なので、parser を nested 優先へ修正
+- hot-reload 対象に
+  - `skip_gate_sell_ranging_offset`
+  - `skip_gate_sell_trending_up_offset`
+  を追加して、値変更が runtime へ反映されるようにした
+- YAML drift allowlist に
+  - `hour_ceiling_mult`
+  - `skip_gate_sell_trending_up_offset`
+  - `spread_as_guard_enabled`
+  - `regime_guard_overrides_enabled`
+  を追記して source-contract を現行 runtime に合わせた
+
+### 横展開
+
+- SHA telemetry は `protocol_688` だけでなく、legacy `is_adverse` を読む履歴にも後方互換を持たせた
+- sell/trending_up offset は validation / parser / hot-reload / live YAML / tests まで一気に通した
+- hour retune は YAML 値更新だけで終わらせず、parser drift と validation まで揃えた
+
+### 回帰
+
+- focused 703/config/protocol subset:
+  - `140 passed in 3.11s`

@@ -173,6 +173,16 @@ class TestRegimeDicts:
         with pytest.raises(ValueError, match="regime_guard_spread_as_penalty_multipliers"):
             validate_fill_config(cfg)
 
+    def test_sell_ranging_offset_has_upper_bound(self, cfg: FillTestConfig) -> None:
+        cfg.skip_gate_sell_ranging_offset = 2.5
+        with pytest.raises(ValueError, match="skip_gate_sell_ranging_offset"):
+            validate_fill_config(cfg)
+
+    def test_sell_trending_up_offset_has_upper_bound(self, cfg: FillTestConfig) -> None:
+        cfg.skip_gate_sell_trending_up_offset = 2.5
+        with pytest.raises(ValueError, match="skip_gate_sell_trending_up_offset"):
+            validate_fill_config(cfg)
+
 
 class TestConfidenceLot:
     def test_floor_above_one(self, cfg: FillTestConfig) -> None:

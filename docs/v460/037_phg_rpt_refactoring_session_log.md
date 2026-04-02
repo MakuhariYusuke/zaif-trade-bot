@@ -10621,3 +10621,26 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - heavy subset `360 passed, 5 warnings in 7.89s`
   - warm-cache rerun `360 passed, 5 warnings in 6.83s`
   - 701 subset `11 passed in 5.89s`
+
+## 2026-04-03 703 follow-up: sell-loss mitigation prompt/runtime reconciliation
+
+- `703#` を current runtime ベースで見直して実装
+- 更新:
+  - [fill_config.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config.py)
+  - [fill_config_parser.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config_parser.py)
+  - [fill_config_validation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config_validation.py)
+  - [config_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/config_hot_reload.py)
+  - [skip_gate_evaluator.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/skip_gate_evaluator.py)
+  - [protocol_688.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/analysis/protocols/protocol_688.py)
+  - [fill_test.yaml](/mnt/c/Users/Admin/dev/zaif-trade-bot/configs/v460/fill_test.yaml)
+- hidden task:
+  - `hour_ceiling_mult` は live YAML では `skip_gate` 配下が正本だったため nested parse drift を修正
+  - hot-reload に `skip_gate_sell_ranging_offset` / `skip_gate_sell_trending_up_offset` を追加
+  - SHA adverse flag は current `adverse_selected` を正本にしつつ legacy `is_adverse` も吸収
+- 追加テスト:
+  - [test_703_sha_telemetry.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_703_sha_telemetry.py)
+  - [test_703_sell_trending_up_guard.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_703_sell_trending_up_guard.py)
+  - [test_703_hour_param_retune.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_703_hour_param_retune.py)
+- regression:
+  - focused 703/config/protocol subset `140 passed in 3.11s`
+  - heavy subset `359 passed, 1 skipped, 5 warnings in 8.45s`

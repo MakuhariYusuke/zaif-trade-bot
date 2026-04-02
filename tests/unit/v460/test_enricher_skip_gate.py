@@ -51,13 +51,13 @@ from tests.unit.v460._real_data_test_helpers import (
 from tests.unit.v460._skip_gate_test_helpers import save_and_load_skip_gate
 from ztb.ml.artifact_paths import hash_sidecar_path
 
-_REAL_DATA_SAMPLE_ROWS = 36
+_REAL_DATA_SAMPLE_ROWS = 30
 _REAL_DATA_SMOKE_SAMPLE_ROWS = 3
 _REAL_DATA_SMOKE_FALLBACK_SAMPLE_ROWS = 6
 _REAL_DATA_SMOKE_EXPANDED_SAMPLE_ROWS = 9
-_REAL_DATA_FALLBACK_SAMPLE_ROWS = 48
-_REAL_DATA_EXPANDED_SAMPLE_ROWS = 60
-_REAL_DATA_MIN_TRAIN_SAMPLES = 20
+_REAL_DATA_FALLBACK_SAMPLE_ROWS = 42
+_REAL_DATA_EXPANDED_SAMPLE_ROWS = 54
+_REAL_DATA_MIN_TRAIN_SAMPLES = 18
 
 
 def _assert_raw_cache_invalidates_on_file_update(

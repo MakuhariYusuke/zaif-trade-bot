@@ -44,6 +44,14 @@ def _record_bool(record: Record, key: str) -> bool:
     return bool(record.get(key))
 
 
+def _record_optional_bool(record: Record, *keys: str) -> bool | None:
+    for key in keys:
+        value = record.get(key)
+        if isinstance(value, bool):
+            return value
+    return None
+
+
 def _record_float(record: Record, key: str) -> float | None:
     value = record.get(key)
     return float(value) if isinstance(value, (int, float)) else None
@@ -254,14 +262,36 @@ def _sha_payload(records: list[Record]) -> dict[str, object]:
     grouped: dict[str, list[Record]] = collections.defaultdict(list)
     for record in records:
         grouped[_record_str(record, "git_sha", "?")].append(record)
-    return {
-        sha: {
-            "total": len(group),
-            "filled": len(_filled(group)),
-            "avg_pnl30_bps": _avg(_pnls(_filled(group))),
-        }
-        for sha, group in sorted(grouped.items())
-    }
+    sha_rows: list[tuple[str, dict[str, object]]] = []
+    for sha, group in grouped.items():
+        filled = _filled(group)
+        adverse_count = sum(
+            1
+            for record in filled
+            if _record_optional_bool(record, "adverse_selected", "is_adverse") is True
+        )
+        avg_pnl30_bps = _avg(_pnls(filled))
+        total_pnl_contribution_bps = float((avg_pnl30_bps or 0.0) * len(filled))
+        sha_rows.append(
+            (
+                sha,
+                {
+                    "total": len(group),
+                    "filled": len(filled),
+                    "avg_pnl30_bps": avg_pnl30_bps,
+                    "adverse_selection_count": adverse_count,
+                    "adverse_selection_rate_pct": _rate(adverse_count, len(filled)),
+                    "total_pnl_contribution_bps": total_pnl_contribution_bps,
+                },
+            )
+        )
+    sha_rows.sort(
+        key=lambda item: (
+            float(item[1]["total_pnl_contribution_bps"]),
+            item[0],
+        )
+    )
+    return dict(sha_rows)
 
 
 def _regime_payload(records: list[Record]) -> dict[str, object]:

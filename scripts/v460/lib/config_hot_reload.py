@@ -493,6 +493,8 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     # 343# skip_gate/kill 連携
     "skip_gate_kill_release_grace_cycles",
     "skip_gate_kill_release_offset",
+    "skip_gate_sell_ranging_offset",
+    "skip_gate_sell_trending_up_offset",
     "dust_sweep_enabled",
     "phantom_detection_sleep_multiplier",
     "max_086_consecutive_wait",

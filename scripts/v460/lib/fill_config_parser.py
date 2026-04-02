@@ -365,6 +365,8 @@ def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
         "kill_release_offset": "skip_gate_kill_release_offset",
         # 634# P0: sell ranging penalty
         "sell_ranging_offset": "skip_gate_sell_ranging_offset",
+        # 703# P688: sell trending_up penalty
+        "sell_trending_up_offset": "skip_gate_sell_trending_up_offset",
         # 694# AS trailing gate
         "as_trailing_gate_enabled": "as_trailing_gate_enabled",
         "as_trailing_gate_window_size": "as_trailing_gate_window_size",
@@ -1180,7 +1182,11 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
             int(k): float(v) for k, v in shob.items()
         }
     # 467# hour_ceiling_mult: deep-night ceiling 緩和
-    hcm = yaml_cfg.get("hour_ceiling_mult", {})
+    # current live YAML は skip_gate 配下を正本とするため nested を優先
+    _skip_gate_cfg = yaml_cfg.get("skip_gate", {})
+    hcm = _skip_gate_cfg.get("hour_ceiling_mult", {})
+    if not hcm:
+        hcm = yaml_cfg.get("hour_ceiling_mult", {})
     if hcm:
         kwargs["hour_ceiling_mult"] = {
             int(k): float(v) for k, v in hcm.items()

@@ -992,6 +992,22 @@ probe / weighting の wiring だけ current contract に揃えられた。
 - `test_error_pushes_neutral_fallback` 自体は slowest top 20 から外れた
 - 今の scheduler 系の主残差は PPO より SAC data-freshness / loop path に寄っている
 - 次段で詰める対象:
-  1. SAC interval/data-freshness path
-  2. `enricher` real-data setup
-  3. `fill_quality` report shaping 残り
+1. SAC interval/data-freshness path
+2. `enricher` real-data setup
+3. `fill_quality` report shaping 残り
+
+## 2026-04-03 follow-up: 703 runtime reconciliation impact
+
+- `703#` では PPO runtime 本体に新しい code path は足していない
+- ただし heavy subset を同時に回して、PPO/SAC scheduler の主残差が変わっていないことを確認した
+- regression:
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `359 passed, 1 skipped, 5 warnings in 8.45s`
+- 所見:
+  - PPO scheduler の最遅点は以前より下がっていて、本線の支配点は `enricher` 実データ setup に寄っている
+  - 次の PPO/SAC 本命は引き続き
+    1. exception-path fixed-cost の継続削減
+    2. warm-start continuity 次段

@@ -41,6 +41,7 @@ side_offset:
 skip_gate:
   enabled: true
   as_threshold: 0.52
+  sell_trending_up_offset: 0.0
   budget_enabled: true
   budget_window_min: 60
   budget_limits:
@@ -110,6 +111,7 @@ side_offset:
 skip_gate:
   enabled: false
   as_threshold: 0.60
+  sell_trending_up_offset: 0.6
   budget_enabled: true
   budget_window_min: 30
   budget_limits:
@@ -181,6 +183,7 @@ def base_config() -> FillTestConfig:
         min_spread_jpy=0.0,
         skip_gate_enabled=True,
         skip_gate_as_threshold=0.52,
+        skip_gate_sell_trending_up_offset=0.0,
         skip_gate_budget_enabled=True,
         skip_gate_budget_window_min=60,
         skip_gate_budget_limits={
@@ -446,6 +449,7 @@ class TestConfigFieldUpdate:
         assert result is True
         assert runner.config.skip_gate_budget_enabled is True
         assert runner.config.skip_gate_budget_window_min == 30
+        assert runner.config.skip_gate_sell_trending_up_offset == pytest.approx(0.6)
         assert runner.config.skip_gate_budget_limits == {
             "default": 6,
             "trending_up": {"sell": 2, "buy": 10},
@@ -680,6 +684,8 @@ class TestReloadableFieldsConsistency:
             "velocity_offset_max_mult",
             "trending_sell_as_offset_enabled",
             "trending_sell_offset_boost_factor",
+            "skip_gate_sell_ranging_offset",
+            "skip_gate_sell_trending_up_offset",
             # 253# 削除済: "balance_forced_apply_trending_offset",
         }
         missing = expected - _HOT_RELOADABLE_FIELDS

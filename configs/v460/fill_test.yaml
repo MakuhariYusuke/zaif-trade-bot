@@ -564,10 +564,11 @@ skip_gate:
   hour_ceiling_mult:
     2: 3.0     # 688# 2.0→3.0: JST11h boost=5.0対応でceiling拡大 (688# Y2)
     4: 3.5     # 688# 2.5→3.5: JST13h boost=5.0対応でceiling拡大 (688# Y2)
+    12: 1.5    # 703# JST21h: P688 avg=-1.73bps (n=20). ceiling を緩めて防御を許容
     13: 1.5    # 22h JST: AS57% → ceiling 0.30→0.45
     14: 2.0    # 23h JST: AS100%, PnL-12.94bps → ceiling 0.30→0.60
     15: 1.3    # 00h JST: AS18.2% → ceiling 0.30→0.39
-    16: 2.0    # 623# 01h JST: AS64% → hard_skip廃止に伴い ceiling 防御追加
+    16: 2.5    # 703# 01h JST: P688 avg=-3.41bps (n=22). ceiling をさらに拡大
     17: 1.5    # 02h JST: AS36.4% → ceiling 0.30→0.45
     18: 2.0    # 03h JST: AS100%, PnL-6.90bps → ceiling 0.30→0.60
     21: 2.5    # 674# 1.5→2.5: PnL-125.8bps/日の最危険時間帯。ceiling強化
@@ -575,8 +576,12 @@ skip_gate:
   # ログ分析: spread<2kでAS32% (全体28%), PnL=-0.46bps (全体-0.30bps)
   skip_gate_narrow_spread_threshold_jpy: 2000.0
   skip_gate_narrow_spread_offset: 0.0     # 674# 0.2→0.0: 672#でα最低帯ペナルティ撤廃 (狭spread=低情報非対称)
+  hour_offsets:
+    12: 0.3    # 703# JST21h: P688 avg=-1.73bps (n=20). skip_gate 閾値を厳格化
   # 634# P0: sell/ranging ペナルティ (閾値を厳格化して sell/ranging の skip 率を上げる)
   sell_ranging_offset: 0.5
+  # 703# P688: sell/trending_up avg_pnl=-2.01bps (n=54, p<0.01). sell/ranging と同等の閾値厳格化
+  sell_trending_up_offset: 0.5
   # 187# clamp: offset 合計の上下限 (hot-reload 対応)
   offset_floor: -0.3   # 最大緩和
   offset_ceil: 0.8     # 最大厳格化 (634# sell_ranging_offset=0.5 が有効に機能するよう引き上げ)
@@ -821,9 +826,9 @@ sell_hour_offset_boost:
   11: 1.3     # 468# UTC 11h = JST 20h: 461# AS33.3%, PnL-1.37bps → 新規追加
   12: 2.0     # 381# JST 21h: sell 30s=-7.369bps (極悪)
   13: 2.0     # 468# UTC 13h = JST 22h: 461# AS57%, PnL-3.18bps → 1.3→2.0 強化
-  14: 1.5     # 397# UTC 14h = JST 23h: 395# current SHA n=6 WR=0% −6.996bps → 1.3→1.5 強化
+  14: 2.5     # 703# UTC 14h = JST 23h: P688 avg=-6.05bps (n=4). sell offset を強化
   15: 1.3     # 468# UTC 15h = JST 00h: 461# AS18.2%, PnL-1.93bps → 新規追加
-  16: 1.5     # 306# UTC 16h = JST 01h: AS 61% (623# hard_skip廃止で有効化)
+  16: 2.5     # 703# UTC 16h = JST 01h: P688 avg=-3.41bps (n=22). sell offset を強化
   17: 1.5     # 468# UTC 17h = JST 02h: 461# AS36.4%, PnL-1.50bps → 新規追加
   21: 1.5     # 623# UTC 21h = JST 06h: PnL-125.8bps/日 → hard_skip廃止に伴い追加
 
@@ -1298,13 +1303,13 @@ regime_exit_strategy:
   escalated_max_factor: 0.7
   nfq_trigger_imbalance: 0.3
 regime_guard_overrides:
-  enabled: false
+  enabled: true
   ranging:
     ev_threshold_premium_bps: 0.3
     spread_as_guard_penalty_multiplier: 1.5
   trending_up:
-    ev_threshold_premium_bps: 0.0
-    spread_as_guard_penalty_multiplier: 1.0
+    ev_threshold_premium_bps: 0.3
+    spread_as_guard_penalty_multiplier: 1.5
   trending_down:
     ev_threshold_premium_bps: 0.0
     spread_as_guard_penalty_multiplier: 1.0
