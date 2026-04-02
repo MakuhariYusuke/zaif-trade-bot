@@ -1011,3 +1011,19 @@ probe / weighting の wiring だけ current contract に揃えられた。
   - 次の PPO/SAC 本命は引き続き
     1. exception-path fixed-cost の継続削減
     2. warm-start continuity 次段
+
+## 2026-04-03 follow-up: scheduler test loop-cost trim
+
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - interval/failure tests で `SACRetrainTrigger.should_retrain()` を patch し、
+    data-freshness loop の責務だけを見る形に整理
+- `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - 既存の no-op bookkeeping patch を維持しつつ、heavy subset の再回帰を確認
+- regression:
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `359 passed, 1 skipped, 5 warnings in 9.36s`
+- 所見:
+  - PPO/SAC scheduler の固定費はかなり落ちていて、支配点は scheduler 本体より `enricher` setup に移っている

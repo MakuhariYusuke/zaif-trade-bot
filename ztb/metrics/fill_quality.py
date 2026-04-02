@@ -34,7 +34,7 @@ from ztb.metrics.fill_gate_reports import (
 )
 from ztb.metrics.fill_guard_pipeline import (
     GuardPipelineResult,
-    build_guard_pipeline_result,
+    build_fill_record_guard_pipeline,
 )
 from ztb.metrics.fill_group_metrics import (
     GroupedMetricsBase,
@@ -356,21 +356,7 @@ class FillRecord:
 
     @property
     def guard_pipeline_result(self) -> GuardPipelineResult | None:
-        return build_guard_pipeline_result(
-            cancel_reason=self.cancel_reason,
-            entry_gate_ev=self.entry_gate_ev,
-            entry_gate_blocked=self.entry_gate_blocked,
-            entry_gate_guard_suppressed=self.entry_gate_guard_suppressed,
-            spread_bps=self.spread_bps,
-            regime_at_order=self.regime_at_order,
-            entry_gate_regime=self.entry_gate_regime,
-            trend_5s_at_order=self.trend_5s_at_order,
-            trend_5s_guard_action=self.trend_5s_guard_action,
-            skip_gate_score=self.skip_gate_score,
-            skip_gate_skipped=self.skip_gate_skipped,
-            skip_gate_bypassed=self.skip_gate_bypassed,
-            skip_gate_reason=self.skip_gate_reason,
-        )
+        return build_fill_record_guard_pipeline(self)
 
 _FILL_RECORD_FIELD_NAMES: Final[frozenset[str]] = get_dataclass_field_names(FillRecord)
 _SKIP_RECORD_PROTECTED_FIELDS: Final[frozenset[str]] = frozenset({

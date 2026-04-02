@@ -1334,6 +1334,11 @@ class TestDataFreshnessDecoupling649:
                 side_effect=make_shutdown_wait(shutdown_event=_shutdown_event),
             ),
             patch.object(_shutdown_event, "is_set", side_effect=[False, False, True]),
+            patch.object(
+                SACRetrainTrigger,
+                "should_retrain",
+                side_effect=[(True, "manual"), (False, "done")],
+            ),
             patch(
                 "scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check",
                 side_effect=RuntimeError("yfinance down"),
@@ -1396,6 +1401,11 @@ class TestDataFreshnessDecoupling649:
         with (
             patch.object(_shutdown_event, "wait", side_effect=counting_wait),
             patch.object(_shutdown_event, "is_set", side_effect=counting_is_set),
+            patch.object(
+                SACRetrainTrigger,
+                "should_retrain",
+                side_effect=[(False, "data_unchanged"), (False, "done")],
+            ),
             patch(
                 "scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check",
                 return_value=False,

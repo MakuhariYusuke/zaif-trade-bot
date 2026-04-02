@@ -45,7 +45,8 @@ from scripts.v460.ml.data_loader import build_as_features, load_fill_records as 
 from tests.unit.v460._real_data_test_helpers import (
     JsonRow,
     has_fill_records_and_raw_data,
-    select_real_enriched_fill_bundle,
+    select_minimum_smoke_enriched_fill_df,
+    select_real_trainable_enriched_fill_df,
     write_jsonl_gz as _write_jsonl_gz,
 )
 from tests.unit.v460._skip_gate_test_helpers import save_and_load_skip_gate
@@ -1027,41 +1028,41 @@ class Test058Integration:
         return has_fill_records_and_raw_data()
 
     @pytest.fixture(scope="class")
-    def real_enriched_bundle(
+    def real_smoke_enriched_df(
         self,
         real_data_available: bool,
-    ):
+    ) -> pd.DataFrame:
         if not real_data_available:
             pytest.skip("No real data")
-        bundle = select_real_enriched_fill_bundle(
-            smoke_sample_sizes=(
+        smoke_df = select_minimum_smoke_enriched_fill_df(
+            sample_sizes=(
                 _REAL_DATA_SMOKE_SAMPLE_ROWS,
                 _REAL_DATA_SMOKE_FALLBACK_SAMPLE_ROWS,
                 _REAL_DATA_SMOKE_EXPANDED_SAMPLE_ROWS,
             ),
+            enrich_fn=enrich_fill_records,
+        )
+        if smoke_df.empty:
+            pytest.skip("No fill records")
+        return smoke_df
+
+    @pytest.fixture(scope="class")
+    def real_trainable_enriched_df(
+        self,
+        real_data_available: bool,
+    ) -> pd.DataFrame:
+        if not real_data_available:
+            pytest.skip("No real data")
+        trainable_df = select_real_trainable_enriched_fill_df(
             initial_rows=_REAL_DATA_SAMPLE_ROWS,
             fallback_rows=_REAL_DATA_FALLBACK_SAMPLE_ROWS,
             expanded_rows=_REAL_DATA_EXPANDED_SAMPLE_ROWS,
             min_train_samples=_REAL_DATA_MIN_TRAIN_SAMPLES,
             enrich_fn=enrich_fill_records,
         )
-        if bundle.smoke_enriched_df.empty or bundle.trainable_enriched_df.empty:
+        if trainable_df.empty:
             pytest.skip("No fill records")
-        return bundle
-
-    @pytest.fixture(scope="class")
-    def real_trainable_enriched_df(
-        self,
-        real_enriched_bundle,
-    ) -> pd.DataFrame:
-        return real_enriched_bundle.trainable_enriched_df
-
-    @pytest.fixture(scope="class")
-    def real_smoke_enriched_df(
-        self,
-        real_enriched_bundle,
-    ) -> pd.DataFrame:
-        return real_enriched_bundle.smoke_enriched_df
+        return trainable_df
 
     def test_enrichment_with_real_data(
         self,

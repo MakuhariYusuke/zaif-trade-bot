@@ -10644,3 +10644,21 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - regression:
   - focused 703/config/protocol subset `140 passed in 3.11s`
   - heavy subset `359 passed, 1 skipped, 5 warnings in 8.45s`
+
+## 2026-04-03 fill/PPO/SAC follow-up: smoke-vs-trainable separation
+
+- `enricher` 実データ integration の fixture を
+  - smoke enriched sample
+  - trainable enriched sample
+  に分離し、smoke test が大きい enrich を踏まないようにした
+- 更新:
+  - [tests/unit/v460/_real_data_test_helpers.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/_real_data_test_helpers.py)
+  - [tests/unit/v460/test_enricher_skip_gate.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_enricher_skip_gate.py)
+  - [tests/unit/v460/test_sac_retrain_scheduler.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_sac_retrain_scheduler.py)
+  - [ztb/metrics/fill_guard_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_guard_pipeline.py)
+  - [ztb/metrics/fill_quality.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/ztb/metrics/fill_quality.py)
+- hidden task:
+  - bundle helper はこの時点で test file 以外から使われておらず、保持コストの方が高かったので撤去
+  - SAC data-freshness loop test は trigger 実装まで抱える必要がなかったため、責務を整理
+- regression:
+  - heavy subset `359 passed, 1 skipped, 5 warnings in 9.36s`

@@ -1700,3 +1700,37 @@ notes:
 
 - slowest は引き続き `test_enrichment_with_real_data` setup だが、`0.34s` まで縮小
 - 703 は YAML 変更だけでなく parser/hot-reload/drift 追随が隠れ本体だった
+
+## 2026-04-03 follow-up: split real-data smoke/trainable setup
+
+changes:
+
+- `tests/unit/v460/_real_data_test_helpers.py`
+  - real-data integration 用の bundle helper をやめ、
+    - smoke enriched sample
+    - trainable enriched sample
+    を個別 helper に分離
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - smoke test が trainable 用の大きい enrich を踏まないように整理
+- `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - data-freshness interval/failure tests で `trigger.should_retrain()` を patch し、
+    run-loop の責務だけを見る形に整理
+- `ztb/metrics/fill_guard_pipeline.py`
+  - `build_fill_record_guard_pipeline(...)` を追加
+- `ztb/metrics/fill_quality.py`
+  - FillRecord の guard pipeline property を shared helper 経由へ整理
+
+regression:
+
+- heavy subset:
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `359 passed, 1 skipped, 5 warnings in 9.36s`
+
+notes:
+
+- cold-cache では `test_enrichment_with_real_data` setup の見かけが揺れるが、
+  subset total は `10.42s -> 9.36s` に改善
+- 次の本命は依然として `enricher` real-data setup のさらなる縮小

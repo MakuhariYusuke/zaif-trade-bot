@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Mapping, Protocol
 
 
 @dataclass(frozen=True)
@@ -46,6 +46,22 @@ class GuardPipelineResult:
             skip_gate_score=_as_float(payload.get("skip_gate_score")),
             skip_gate_action=_as_str(payload.get("skip_gate_action")),
         )
+
+
+class SupportsFillRecordGuardInputs(Protocol):
+    cancel_reason: str | None
+    entry_gate_ev: float | None
+    entry_gate_blocked: bool | None
+    entry_gate_guard_suppressed: bool | None
+    spread_bps: float | None
+    regime_at_order: str | None
+    entry_gate_regime: str | None
+    trend_5s_at_order: float | None
+    trend_5s_guard_action: str | None
+    skip_gate_score: float | None
+    skip_gate_skipped: bool | None
+    skip_gate_bypassed: bool | None
+    skip_gate_reason: str | None
 
 
 def build_guard_pipeline_result(
@@ -108,6 +124,27 @@ def build_guard_pipeline_result(
     )
 
 
+def build_fill_record_guard_pipeline(
+    record: SupportsFillRecordGuardInputs,
+) -> GuardPipelineResult | None:
+    """Build a guard pipeline payload directly from a FillRecord-like object."""
+    return build_guard_pipeline_result(
+        cancel_reason=record.cancel_reason,
+        entry_gate_ev=record.entry_gate_ev,
+        entry_gate_blocked=record.entry_gate_blocked,
+        entry_gate_guard_suppressed=record.entry_gate_guard_suppressed,
+        spread_bps=record.spread_bps,
+        regime_at_order=record.regime_at_order,
+        entry_gate_regime=record.entry_gate_regime,
+        trend_5s_at_order=record.trend_5s_at_order,
+        trend_5s_guard_action=record.trend_5s_guard_action,
+        skip_gate_score=record.skip_gate_score,
+        skip_gate_skipped=record.skip_gate_skipped,
+        skip_gate_bypassed=record.skip_gate_bypassed,
+        skip_gate_reason=record.skip_gate_reason,
+    )
+
+
 def _resolve_entry_gate_action(
     *,
     entry_gate_ev: float | None,
@@ -161,5 +198,6 @@ def _as_str(value: object) -> str | None:
 
 __all__ = [
     "GuardPipelineResult",
+    "build_fill_record_guard_pipeline",
     "build_guard_pipeline_result",
 ]
