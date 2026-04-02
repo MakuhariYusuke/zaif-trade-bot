@@ -163,3 +163,10 @@ PID 9192 の「謎の停止」を調査した結果:
 
 ### M (blocked)
 - A-S 最適 spread / SAC action 幅 / eDRC / lib→ztb 統合 / walk-forward (全て blocked)
+
+## §5 テスト修正: test_516 SkipDecisionResultFields budget fields
+
+690# Codex (§1) で `SkipDecisionResultFields` に `budget_regime`, `budget_remaining`, `budget_exhausted` を追加した際、既存テスト `test_516_skip_gate_result_fields_migration.py` が未更新のまま残っていた。
+
+- 修正: 3箇所の assertion に budget 系フィールドのデフォルト値を追加
+- 影響: テストのみ。ランタイム変更なし

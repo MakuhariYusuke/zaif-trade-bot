@@ -76,6 +76,9 @@ class TestSkipGateResultFieldsMigration:
             price_velocity_bps=1.5,
             forced_pass=False,
             side_skip_rate=None,
+            budget_regime=None,
+            budget_remaining=None,
+            budget_exhausted=False,
         )
 
     def test_build_skip_fill_record_extra_fields(self) -> None:
@@ -111,6 +114,9 @@ class TestSkipGateResultFieldsMigration:
             trend_5s_at_order=None,
             ev_score_pretrade=-0.2,
             decision_path="ev_normal_skip",
+            skip_gate_budget_regime=None,
+            skip_gate_budget_remaining=None,
+            skip_gate_budget_exhausted=None,
         )
 
     def test_build_skip_fill_record_extra_fields_defaults_optional_to_none(self) -> None:
@@ -140,6 +146,9 @@ class TestSkipGateResultFieldsMigration:
             trend_5s_at_order=None,
             ev_score_pretrade=None,
             decision_path=None,
+            skip_gate_budget_regime=None,
+            skip_gate_budget_remaining=None,
+            skip_gate_budget_exhausted=None,
         )
 
     def test_build_skip_fill_record_from_context(self) -> None:
