@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 703# sell 損失対策 Codex 実装 + クリティカルバグ修正 (2026-04-03)
+
+### Added
+- sell_trending_up_offset: skip_gate に sell/trending_up ペナルティ +0.5 追加 (P688: -2.01bps 対策)
+- regime_guard_overrides: enabled=true, trending_up ev_premium=0.3bps, penalty_multiplier=1.5
+- SHA テレメトリ: protocol_688 に SHA 別 AS 率・PnL 寄与セクション追加
+- SHA 変更検知ログ強化 (fill_test_runner)
+- test_703_sell_trending_up_guard, test_703_hour_param_retune, test_703_sha_telemetry
+
+### Changed
+- sell_hour_offset_boost: 14h 1.5→2.5, 16h 1.5→2.5 (P688 時間帯損失集中対策)
+- skip_gate_hour_offsets: 12h=0.3 追加 (UTC 12h avg -1.73bps, n=20)
+- hour_ceiling_mult: 12h=1.5 新規, 16h 2.0→2.5
+- hot-reload 対象に sell_trending_up_offset, regime_guard params 追加
+- YAML drift allowlist に hour_ceiling_mult, sell_trending_up_offset 等追記
+
+### Fixed
+- **CRITICAL**: Codex が生成した duplicate `hour_offsets:` YAML キーを修正
+  - YAML last-key-wins で元の 8 エントリ (13-18,21,23) がサイレント消失していた
+  - 2 ブロックを 1 ブロックに統合、全 9 エントリ (12-18,21,23) を正しく保持
+
+### Investigated
+- regime_guard_overrides 適用フロー確認: entry_gate_adjustments.py で EV 調整に反映済
+- trending_down は neutral (0.0/1.0) のため影響なし。ranging/trending_up のみ有効
+- 703# 最終レビュー: 全コンポーネント健全、残存リスク 3 点を文書化
+
 ## 701# spread_as_guard / regime_exit 有効化 + Protocol 688 再分析 (2026-04-03)
 
 ### Changed
