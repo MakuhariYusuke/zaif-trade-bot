@@ -677,6 +677,8 @@ class FillTestConfig:
     skip_gate_sell_ranging_offset: float = 0.5
     # 703# P688: sell/trending_up の統計的損失に対する skip_gate 厳格化
     skip_gate_sell_trending_up_offset: float = 0.0
+    # 704#: sell/trending_down skip_gate 厳格化
+    skip_gate_sell_trending_down_offset: float = 0.0
 
     # 187# clamp YAML外部化: skip_gate offset の上下限
     skip_gate_offset_floor: float = -0.3   # 最大緩和

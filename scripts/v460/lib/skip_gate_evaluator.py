@@ -1023,6 +1023,13 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
                     "[703# SkipGate] applied sell/trending_up penalty offset: +%s",
                     _sell_trending_penalty,
                 )
+            if side == "sell" and sg_regime == "trending_down":
+                _sell_td_penalty = self._config.skip_gate_sell_trending_down_offset
+                _total_offset += _sell_td_penalty
+                logger.debug(
+                    "[704# SkipGate] applied sell/trending_down penalty offset: +%s",
+                    _sell_td_penalty,
+                )
 
             # 186# strictness clamp: 過剰な厳格化/緩和を防止 (187# YAML外部化)
             _OFFSET_FLOOR = self._config.skip_gate_offset_floor

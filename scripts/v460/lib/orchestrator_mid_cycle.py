@@ -228,13 +228,17 @@ class OrchestratorMidCycleMixin:
                 _p_win = _cal_fb.get("p_win_lcb", 0.0)
             _cal_ev = _p_win * _cal_fb["avg_win"] - (1.0 - _p_win) * _cal_fb["avg_loss"]
             _spread_bps: float | None = None
+            # 704#: last_spread_raw を使用 (staleness guard なし)
+            # last_spread は 210# M5 の 60s staleness guard 付きで Gate 8 向け。
+            # entry gate の spread_as_guard は独立判定のため raw 値を使用する。
+            _raw_spread = self._maker_price.last_spread_raw
             if (
-                self._maker_price.last_spread is not None
+                _raw_spread is not None
                 and self._maker_price.last_mid_price is not None
                 and self._maker_price.last_mid_price > 0
             ):
                 _spread_bps = float(
-                    self._maker_price.last_spread
+                    _raw_spread
                     / self._maker_price.last_mid_price
                     * 10_000.0
                 )

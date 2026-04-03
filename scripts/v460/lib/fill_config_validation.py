@@ -130,6 +130,11 @@ def validate_fill_config(config: FillTestConfig) -> None:
             "skip_gate_sell_trending_up_offset must be in [0, 2], "
             f"got {config.skip_gate_sell_trending_up_offset}"
         )
+    if not (0.0 <= config.skip_gate_sell_trending_down_offset <= 2.0):
+        raise ValueError(
+            "skip_gate_sell_trending_down_offset must be in [0, 2], "
+            f"got {config.skip_gate_sell_trending_down_offset}"
+        )
     for regime_name, premium in config.regime_guard_ev_threshold_premiums.items():
         if premium < 0.0:
             raise ValueError(

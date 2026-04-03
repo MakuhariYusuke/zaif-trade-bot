@@ -367,6 +367,8 @@ def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
         "sell_ranging_offset": "skip_gate_sell_ranging_offset",
         # 703# P688: sell trending_up penalty
         "sell_trending_up_offset": "skip_gate_sell_trending_up_offset",
+        # 704#: sell trending_down penalty
+        "sell_trending_down_offset": "skip_gate_sell_trending_down_offset",
         # 694# AS trailing gate
         "as_trailing_gate_enabled": "as_trailing_gate_enabled",
         "as_trailing_gate_window_size": "as_trailing_gate_window_size",

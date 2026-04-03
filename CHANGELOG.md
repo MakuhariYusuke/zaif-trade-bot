@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 704# Sell 損失構造分析 + 即時改善 (2026-04-04)
+
+### Fixed
+- **CRITICAL**: spread_as_guard が 100% 未起動だったバグを修正 — `last_spread` (60s staleness guard) → `last_spread_raw` に変更 (orchestrator_mid_cycle.py)
+
+### Added
+- sell_trending_down_offset: skip_gate に sell/trending_down ペナルティ +0.5 追加 (3日 n=64, avg=-1.17bps, total=-74.84bps)
+- sell_hour_offset_boost: UTC 7h=3.0, 19h=2.0, 20h=3.0 新規追加 (未防御時間帯)
+- regime_guard_overrides: trending_down に ev_premium=0.3, penalty_mult=1.5 適用
+- Codex prompts: task1 (テスト), task2 (entry gate side-aware), task3 (sell offset 分析)
+
+### Changed
+- sell_hour_offset_boost 12h: 2.0→3.0 (3日 sell n=11, avg=-3.23bps)
+- entry_gate_max_consecutive_blocks: 15→50, max_block_rate: 0.6→0.95 (100% 負EV で即 auto-disable 防止)
+
 ## 703# sell 損失対策 Codex 実装 + クリティカルバグ修正 (2026-04-03)
 
 ### Added
