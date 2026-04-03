@@ -10686,3 +10686,8 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - regression:
   - focused 704/config subset `145 passed in 3.51s`
   - broader fill/PPO/SAC subset `471 passed, 1 skipped, 5 warnings in 6.42s`
+
+## 2026-04-04
+- 704 commit `c77c93c73`: side-aware entry gate suppression, sell loss defense tests, sell offset analysis CLI, parser/hot-reload/validation follow-up.
+- follow-up batch: split fill gate payload shaping into `ztb/metrics/fill_gate_payloads.py`, trimmed `test_enricher_skip_gate.py` smoke/trainable setup, and reduced PPO scheduler neutral-fallback test fixed cost.
+- heavy subset check: `359 passed, 1 skipped, 5 warnings in 6.66s`.

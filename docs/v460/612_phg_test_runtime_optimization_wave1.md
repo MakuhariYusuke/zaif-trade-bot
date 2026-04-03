@@ -1766,3 +1766,9 @@ notes:
 
 - heavy subset は今回 `enricher` cold-cache 揺れ込みでも `6.42s` に収まっている
 - 704 追加で config/runtime の分岐は増えたが、既存 heavy path の固定費は悪化していない
+
+## 2026-04-04 704/Fill/PPO follow-up
+- Split remaining fill gate payload/report shaping into `ztb/metrics/fill_gate_payloads.py` and reduced `fill_judgment_core` responsibility.
+- Reduced heavy subset runtime by trimming real-data smoke fixture copies and shrinking enrich sample windows in `test_enricher_skip_gate.py`.
+- Trimmed PPO scheduler exception-path fixed cost by reusing scheduler runtime-overhead patching in neutral-fallback tests.
+- Verification: `tests/unit/v460/test_fill_quality.py tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_680_ppo_retrain_scheduler.py tests/unit/v460/test_sac_retrain_scheduler.py -x --tb=short --no-cov` => `359 passed, 1 skipped, 5 warnings in 6.66s` (from 7.63s).

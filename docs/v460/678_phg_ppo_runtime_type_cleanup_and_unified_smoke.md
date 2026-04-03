@@ -1044,3 +1044,7 @@ probe / weighting の wiring だけ current contract に揃えられた。
 
 - 今回の主改善は runtime というより coexistence safety の確認
 - PPO/SAC 側の次段本命は引き続き exception-path fixed-cost と warm-start continuity
+
+## 2026-04-04 Fill/PPO follow-up
+- Split fill gate payload/report shaping into `ztb/metrics/fill_gate_payloads.py` so `fill_judgment_core` stays focused on threshold math.
+- PPO scheduler tests now reuse the shared runtime-overhead patch in neutral-fallback error paths; heavy subset remained green.

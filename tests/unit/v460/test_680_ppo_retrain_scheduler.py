@@ -616,10 +616,7 @@ class TestPPORunScheduler:
                 "scripts.v460.ml.ppo_retrain_scheduler._push_neutral_fallback",
                 return_value=True,
             ) as mock_fallback,
-            patch(
-                "scripts.v460.ml.ppo_retrain_scheduler._cleanup_training_cycle",
-                return_value=None,
-            ),
+            _patch_scheduler_runtime_overheads(),
         ):
             result = retrain_once(cfg)
 

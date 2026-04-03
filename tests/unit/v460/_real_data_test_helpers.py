@@ -183,7 +183,7 @@ def select_minimum_trainable_fill_df(
         min_train_samples=min_train_samples,
         enrich_fn=enrich_fn,
         results_dir_str=str(results_dir.resolve()),
-    ).copy(deep=True)
+    ).copy(deep=False)
 
 
 @lru_cache(maxsize=4)
@@ -236,7 +236,7 @@ def select_minimum_smoke_enriched_fill_df(
         enrich_fn=enrich_fn,
         results_dir_str=str(results_dir.resolve()),
         required_column=required_column,
-    ).copy(deep=True)
+    ).copy(deep=False)
 
 
 @lru_cache(maxsize=4)
