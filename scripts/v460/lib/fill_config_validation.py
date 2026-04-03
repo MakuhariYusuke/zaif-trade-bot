@@ -105,6 +105,11 @@ def validate_fill_config(config: FillTestConfig) -> None:
             "entry_gate_staleness_threshold_sec must be >= 60.0, "
             f"got {config.entry_gate_staleness_threshold_sec}"
         )
+    if not (-5.0 <= config.entry_gate_buy_suppress_ev_threshold <= 0.0):
+        raise ValueError(
+            "entry_gate_buy_suppress_ev_threshold must be in [-5.0, 0.0], "
+            f"got {config.entry_gate_buy_suppress_ev_threshold}"
+        )
     if config.spread_as_guard_spread_threshold_bps <= 0.0:
         raise ValueError(
             "spread_as_guard_spread_threshold_bps must be > 0, "

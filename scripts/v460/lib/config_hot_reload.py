@@ -580,6 +580,7 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "entry_gate_max_block_rate",
     "entry_gate_min_eval_for_rate",
     "entry_gate_staleness_threshold_sec",
+    "entry_gate_buy_suppress_ev_threshold",
     "spread_as_guard_enabled",
     "spread_as_guard_spread_threshold_bps",
     "spread_as_guard_ev_penalty_bps",

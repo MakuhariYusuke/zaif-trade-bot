@@ -1027,3 +1027,20 @@ probe / weighting の wiring だけ current contract に揃えられた。
   - `359 passed, 1 skipped, 5 warnings in 9.36s`
 - 所見:
   - PPO/SAC scheduler の固定費はかなり落ちていて、支配点は scheduler 本体より `enricher` setup に移っている
+
+## 2026-04-04 follow-up: 704 coexistence check
+
+- `704#` は PPO/SAC runtime 本体には直接手を入れていない
+- ただし scheduler heavy subset と同時回帰を実施し、entry-gate / skip-gate / analysis 追加が
+  PPO/SAC sidecar path に波及していないことを確認した
+- regression:
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `471 passed, 1 skipped, 5 warnings in 6.42s` subset に包含
+
+所見:
+
+- 今回の主改善は runtime というより coexistence safety の確認
+- PPO/SAC 側の次段本命は引き続き exception-path fixed-cost と warm-start continuity

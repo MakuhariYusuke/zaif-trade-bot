@@ -10662,3 +10662,27 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - SAC data-freshness loop test は trigger 実装まで抱える必要がなかったため、責務を整理
 - regression:
   - heavy subset `359 passed, 1 skipped, 5 warnings in 9.36s`
+
+## 2026-04-04 704 sell-loss defense / side-aware entry-gate / offset analysis
+
+- runtime:
+  - [scripts/v460/lib/entry_gate_guard.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/entry_gate_guard.py)
+  - [scripts/v460/lib/fill_config.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config.py)
+  - [scripts/v460/lib/fill_config_parser.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config_parser.py)
+  - [scripts/v460/lib/fill_config_validation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/fill_config_validation.py)
+  - [scripts/v460/lib/config_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/lib/config_hot_reload.py)
+  - [scripts/v460/run_fill_test.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/run_fill_test.py)
+  - [scripts/v460/analysis/analyze_704_sell_offset_pipeline.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/scripts/v460/analysis/analyze_704_sell_offset_pipeline.py)
+- tests:
+  - [tests/unit/v460/test_704_sell_loss_defense.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_704_sell_loss_defense.py)
+  - [tests/unit/v460/test_704_entry_gate_side_aware.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_704_entry_gate_side_aware.py)
+  - [tests/unit/v460/test_704_sell_offset_analysis.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_704_sell_offset_analysis.py)
+  - [tests/unit/v460/test_169_config_hot_reload.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_169_config_hot_reload.py)
+  - [tests/unit/v460/test_346_fill_config_validation.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_346_fill_config_validation.py)
+  - [tests/unit/v460/test_690_entry_gate_guard.py](/mnt/c/Users/Admin/dev/zaif-trade-bot/tests/unit/v460/test_690_entry_gate_guard.py)
+- hidden task:
+  - prompt 704-2 は side-aware suppress だけでは不十分で、default/live YAML drift と `run_fill_test` wiring 追随が必要だった
+  - 既存 `test_690_entry_gate_guard.py` は buy mild-negative 前提のため、新仕様と衝突しないよう責務を調整した
+- regression:
+  - focused 704/config subset `145 passed in 3.51s`
+  - broader fill/PPO/SAC subset `471 passed, 1 skipped, 5 warnings in 6.42s`

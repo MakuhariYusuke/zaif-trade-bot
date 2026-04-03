@@ -1296,6 +1296,7 @@ entry_gate_max_consecutive_blocks: 50     # 704# 15→50: EV常時負のため15
 entry_gate_max_block_rate: 0.95            # 704# 0.6→0.95: 3日間データで100%負EV → 0.6では実質全通過
 entry_gate_min_eval_for_rate: 20
 entry_gate_staleness_threshold_sec: 600.0
+entry_gate_buy_suppress_ev_threshold: -0.5  # 704# buy 側の軽度負EVは suppress して通過
 spread_as_guard:
   enabled: true                   # 701# 有効化: 閾値15bps修正済, EV penalty only (skip不発生)
   spread_threshold_bps: 15.0

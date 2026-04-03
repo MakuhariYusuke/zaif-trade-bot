@@ -158,6 +158,16 @@ class TestRegimeDicts:
         with pytest.raises(ValueError, match="entry_gate_staleness_threshold_sec"):
             validate_fill_config(cfg)
 
+    def test_entry_gate_buy_suppress_threshold_has_upper_bound(self, cfg: FillTestConfig) -> None:
+        cfg.entry_gate_buy_suppress_ev_threshold = 0.1
+        with pytest.raises(ValueError, match="entry_gate_buy_suppress_ev_threshold"):
+            validate_fill_config(cfg)
+
+    def test_entry_gate_buy_suppress_threshold_has_lower_bound(self, cfg: FillTestConfig) -> None:
+        cfg.entry_gate_buy_suppress_ev_threshold = -5.1
+        with pytest.raises(ValueError, match="entry_gate_buy_suppress_ev_threshold"):
+            validate_fill_config(cfg)
+
     def test_spread_as_guard_threshold_must_be_positive(self, cfg: FillTestConfig) -> None:
         cfg.spread_as_guard_spread_threshold_bps = 0.0
         with pytest.raises(ValueError, match="spread_as_guard_spread_threshold_bps"):
@@ -181,6 +191,11 @@ class TestRegimeDicts:
     def test_sell_trending_up_offset_has_upper_bound(self, cfg: FillTestConfig) -> None:
         cfg.skip_gate_sell_trending_up_offset = 2.5
         with pytest.raises(ValueError, match="skip_gate_sell_trending_up_offset"):
+            validate_fill_config(cfg)
+
+    def test_sell_trending_down_offset_has_upper_bound(self, cfg: FillTestConfig) -> None:
+        cfg.skip_gate_sell_trending_down_offset = 2.5
+        with pytest.raises(ValueError, match="skip_gate_sell_trending_down_offset"):
             validate_fill_config(cfg)
 
 

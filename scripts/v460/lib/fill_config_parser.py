@@ -933,6 +933,7 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
         "entry_gate_max_block_rate",
         "entry_gate_min_eval_for_rate",
         "entry_gate_staleness_threshold_sec",
+        "entry_gate_buy_suppress_ev_threshold",
         "offset_ev_stage_enabled",
         "offset_toxicity_stage_enabled",
         "offset_vg_supplement_enabled",
@@ -1300,6 +1301,7 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
             "max_block_rate": "entry_gate_max_block_rate",
             "min_eval_for_rate": "entry_gate_min_eval_for_rate",
             "staleness_threshold_sec": "entry_gate_staleness_threshold_sec",
+            "buy_suppress_ev_threshold": "entry_gate_buy_suppress_ev_threshold",
         }
         for yaml_key, config_key in eg_map.items():
             if yaml_key in eg:

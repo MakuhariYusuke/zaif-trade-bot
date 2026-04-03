@@ -1734,3 +1734,35 @@ notes:
 - cold-cache では `test_enrichment_with_real_data` setup の見かけが揺れるが、
   subset total は `10.42s -> 9.36s` に改善
 - 次の本命は依然として `enricher` real-data setup のさらなる縮小
+
+## 2026-04-04 follow-up: 704 regression pack + heavy subset hold
+
+changes:
+
+- `tests/unit/v460/test_704_sell_loss_defense.py`
+- `tests/unit/v460/test_704_entry_gate_side_aware.py`
+- `tests/unit/v460/test_704_sell_offset_analysis.py`
+- `tests/unit/v460/test_169_config_hot_reload.py`
+- `tests/unit/v460/test_346_fill_config_validation.py`
+- `tests/unit/v460/test_690_entry_gate_guard.py`
+  - 704 side-aware suppress 追加に合わせて、旧 auto-disable/staleness テストの責務を sell 側へ寄せた
+
+regression:
+
+- focused 704/config subset:
+  - `145 passed in 3.51s`
+- heavy+broad subset:
+  - `tests/unit/v460/test_fill_test_config.py`
+  - `tests/unit/v460/test_704_sell_loss_defense.py`
+  - `tests/unit/v460/test_704_entry_gate_side_aware.py`
+  - `tests/unit/v460/test_704_sell_offset_analysis.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `471 passed, 1 skipped, 5 warnings in 6.42s`
+
+notes:
+
+- heavy subset は今回 `enricher` cold-cache 揺れ込みでも `6.42s` に収まっている
+- 704 追加で config/runtime の分岐は増えたが、既存 heavy path の固定費は悪化していない

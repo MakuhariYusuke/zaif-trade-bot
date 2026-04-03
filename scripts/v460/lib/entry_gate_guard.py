@@ -11,10 +11,11 @@ logger = logging.getLogger(__name__)
 class EntryGateGuardConfig:
     """Safety configuration for entry-gate blocking."""
 
-    max_consecutive_blocks: int = 15
-    max_block_rate: float = 0.6
+    max_consecutive_blocks: int = 50
+    max_block_rate: float = 0.95
     min_eval_count_for_rate: int = 20
     staleness_threshold_sec: float = 600.0
+    buy_suppress_ev_threshold: float = -0.5
 
 
 @dataclass
@@ -42,7 +43,7 @@ class EntryGateGuard:
 
     def should_suppress_block(self, *, ev: float, regime: str, side: str) -> bool:
         """Return True when the guard should suppress an EV<=0 block."""
-        del ev, regime, side
+        del regime
         if self._state.auto_disabled:
             return True
 
@@ -60,6 +61,9 @@ class EntryGateGuard:
             >= self._config.max_block_rate
         ):
             self._auto_disable("max_block_rate")
+            return True
+
+        if side == "buy" and ev >= self._config.buy_suppress_ev_threshold:
             return True
 
         return False

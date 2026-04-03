@@ -75,10 +75,11 @@ regime:
       buy: 30.0
 
 entry_gate_enabled: true
-entry_gate_max_consecutive_blocks: 15
-entry_gate_max_block_rate: 0.6
+entry_gate_max_consecutive_blocks: 50
+entry_gate_max_block_rate: 0.95
 entry_gate_min_eval_for_rate: 20
 entry_gate_staleness_threshold_sec: 600.0
+entry_gate_buy_suppress_ev_threshold: -0.5
 spread_as_guard:
   enabled: false
   spread_threshold_bps: 15.0
@@ -149,6 +150,7 @@ entry_gate_max_consecutive_blocks: 9
 entry_gate_max_block_rate: 0.5
 entry_gate_min_eval_for_rate: 12
 entry_gate_staleness_threshold_sec: 900.0
+entry_gate_buy_suppress_ev_threshold: -0.2
 spread_as_guard:
   enabled: true
   spread_threshold_bps: 12.0
@@ -199,10 +201,11 @@ def base_config() -> FillTestConfig:
             "strong_down": {"buy": 30.0},
         },
         entry_gate_enabled=True,
-        entry_gate_max_consecutive_blocks=15,
-        entry_gate_max_block_rate=0.6,
+        entry_gate_max_consecutive_blocks=50,
+        entry_gate_max_block_rate=0.95,
         entry_gate_min_eval_for_rate=20,
         entry_gate_staleness_threshold_sec=600.0,
+        entry_gate_buy_suppress_ev_threshold=-0.5,
         spread_as_guard_enabled=False,
         spread_as_guard_spread_threshold_bps=15.0,
         spread_as_guard_ev_penalty_bps=0.5,
@@ -473,6 +476,7 @@ class TestConfigFieldUpdate:
         assert runner.config.entry_gate_max_block_rate == pytest.approx(0.5)
         assert runner.config.entry_gate_min_eval_for_rate == 12
         assert runner.config.entry_gate_staleness_threshold_sec == pytest.approx(900.0)
+        assert runner.config.entry_gate_buy_suppress_ev_threshold == pytest.approx(-0.2)
         runner._reset_entry_gate_guard.assert_called_once_with()
 
     def test_reload_updates_offset_stage_toggles(
@@ -706,6 +710,7 @@ class TestReloadableFieldsConsistency:
             "entry_gate_max_block_rate",
             "entry_gate_min_eval_for_rate",
             "entry_gate_staleness_threshold_sec",
+            "entry_gate_buy_suppress_ev_threshold",
             "offset_ev_stage_enabled",
             "offset_toxicity_stage_enabled",
             "offset_vg_supplement_enabled",

@@ -1054,10 +1054,11 @@ class FillTestConfig:
     entry_gate_c_vol: float = 0.2                   # volatility cost weight
     entry_gate_c_imp: float = 0.5                   # market impact weight
     entry_gate_online_update: bool = True            # 約定後に CalibrationMap を online 更新
-    entry_gate_max_consecutive_blocks: int = 15
-    entry_gate_max_block_rate: float = 0.6
+    entry_gate_max_consecutive_blocks: int = 50
+    entry_gate_max_block_rate: float = 0.95
     entry_gate_min_eval_for_rate: int = 20
     entry_gate_staleness_threshold_sec: float = 600.0
+    entry_gate_buy_suppress_ev_threshold: float = -0.5
     spread_as_guard_enabled: bool = False
     spread_as_guard_spread_threshold_bps: float = 15.0
     spread_as_guard_ev_penalty_bps: float = 0.5

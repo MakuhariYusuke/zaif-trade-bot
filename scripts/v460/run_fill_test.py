@@ -440,6 +440,7 @@ class FillTestRunner(
                 max_block_rate=config.entry_gate_max_block_rate,
                 min_eval_count_for_rate=config.entry_gate_min_eval_for_rate,
                 staleness_threshold_sec=config.entry_gate_staleness_threshold_sec,
+                buy_suppress_ev_threshold=config.entry_gate_buy_suppress_ev_threshold,
             )
         )
         if self._calibration_map is not None:
@@ -715,6 +716,7 @@ class FillTestRunner(
                 max_block_rate=self.config.entry_gate_max_block_rate,
                 min_eval_count_for_rate=self.config.entry_gate_min_eval_for_rate,
                 staleness_threshold_sec=self.config.entry_gate_staleness_threshold_sec,
+                buy_suppress_ev_threshold=self.config.entry_gate_buy_suppress_ev_threshold,
             )
         )
         if self._calibration_map is not None:

@@ -21,12 +21,12 @@ class TestEntryGateGuard:
         )
         guard.notify_calibration_update()
 
-        assert guard.should_suppress_block(ev=-0.1, regime="ranging", side="buy") is False
+        assert guard.should_suppress_block(ev=-1.0, regime="ranging", side="sell") is False
         guard.record_eval(blocked=True)
-        assert guard.should_suppress_block(ev=-0.2, regime="ranging", side="buy") is False
+        assert guard.should_suppress_block(ev=-1.0, regime="ranging", side="sell") is False
         guard.record_eval(blocked=True)
 
-        assert guard.should_suppress_block(ev=-0.3, regime="ranging", side="buy") is True
+        assert guard.should_suppress_block(ev=-1.0, regime="ranging", side="sell") is True
         assert guard.state.auto_disabled is True
         assert "consecutive" in guard.state.auto_disable_reason
 
@@ -93,11 +93,11 @@ class TestEntryGateGuard:
     def test_missing_calibration_update_is_treated_as_stale(self) -> None:
         guard = EntryGateGuard(EntryGateGuardConfig(staleness_threshold_sec=60.0))
         # 690# fix: 起動直後は grace period (staleness_threshold_sec) があり stale ではない
-        assert guard.should_suppress_block(ev=-0.1, regime="ranging", side="buy") is False
+        assert guard.should_suppress_block(ev=-1.0, regime="ranging", side="sell") is False
 
         # staleness_threshold_sec 経過後に stale 判定
         guard._state.last_calibration_update_ts -= 120.0  # force expiry
-        assert guard.should_suppress_block(ev=-0.1, regime="ranging", side="buy") is True
+        assert guard.should_suppress_block(ev=-1.0, regime="ranging", side="sell") is True
         assert "stale" in guard.state.auto_disable_reason
 
 
@@ -107,4 +107,3 @@ class TestEntryGateSourceAudit:
 
         assert "_n_eff < self.config.entry_gate_n_min" in source
         assert "_p_win = 0.5" in source
-

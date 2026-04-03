@@ -124,3 +124,55 @@ Phase 2:
 
 *生成: 2026-04-04 by cplt (704#)*
 *入力: 703# 後のライブデータ 3日間分析 (429 fills)*
+
+---
+
+## 実装レビュー結果
+
+**ステータス: Task 1-3 実装済み（current runtime に整合する形へ補正）**
+
+### prompt 検証メモ
+
+- `Task 1` は runtime 実装が先に入っていたため、実装追加ではなく
+  - `sell_trending_down_offset`
+  - `spread_as_guard` の raw spread 参照
+  - `trending_down` regime guard
+  の回帰固定が本体だった
+- `Task 2` は prompt の方向性は妥当だったが、current runtime では
+  - live YAML がすでに `50 / 0.95`
+  - code default はまだ `15 / 0.6`
+  のまま残っていた
+  - そのため side-aware suppression 追加と同時に default も live posture に揃えた
+- `Task 3` は新規 script 追加で正しい
+  - ただし既存 `analysis_common` を使えば
+    - filter
+    - output
+    - empty-dir graceful handling
+    を再利用できるため、prompt の再実装は避けた
+
+### hidden task
+
+- `entry_gate_buy_suppress_ev_threshold` は top-level YAML と nested `entry_gate:` の両方を受けられるようにした
+- `run_fill_test.py` の `EntryGateGuardConfig(...)` 構築 2 箇所にも新フィールドを通した
+- `test_690_entry_gate_guard.py` は buy mild-negative 前提の既存ケースが新 side-aware suppress と衝突するため、
+  旧ロジックだけを見たいケースは sell 側へ寄せて責務を分離した
+- `skip_gate_sell_trending_down_offset` は YAML drift allowlist へ追随した
+
+### 横展開
+
+- `entry_gate` の side-aware 追加は
+  - parser
+  - validation
+  - hot-reload
+  - runner wiring
+  - live YAML
+  まで一気に通した
+- `sell offset analysis` は単発 script にせず、以後の analysis task でも再利用しやすい
+  stdlib-only パターンとして残した
+
+### 回帰
+
+- focused 704/config subset:
+  - `145 passed in 3.51s`
+- broader 704 + fill/PPO/SAC subset:
+  - `471 passed, 1 skipped, 5 warnings in 6.42s`
