@@ -251,7 +251,7 @@ e3:
 # ---- 049# side 別 offset ----
 # buy は共通値 (0.05) を継承、sell のみ保守化
 side_offset:
-  # buy: 0.05                  # buy 側は共通値で十分 (PnL -0.10bps)
+  buy: 0.08                    # 708# 706#P3/707#P0: 0.05→0.08 (buy+ranging n=211 avg=-0.350, 止血。706#/707#合意)
   sell: 0.14                   # 506# P0: 0.18→0.14 (0.10-0.19バケット WR=67.4%, avg=+3.223)
 
 # ---- 049# 即約定防御 ----
@@ -593,7 +593,7 @@ skip_gate:
 # ---- 684# trend_5s sell guard ----
 # velocity_skip / toxic_sell_veto と独立した短期上昇ドリフト防御。
 trend_5s_sell_guard:
-  enabled: true
+  enabled: false                 # 708# 706#P1: veto→無効化 (695# counterfactual +136.8bps WR=75% — veto は機会損失)
   threshold_bps: 0.5
   hard_veto_threshold_bps: 3.0
   offset_boost_factor: 1.5

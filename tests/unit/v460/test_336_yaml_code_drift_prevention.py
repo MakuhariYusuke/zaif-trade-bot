@@ -191,6 +191,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "skip_utc_hours",
     "skip_utc_hours_buy",
     "skip_utc_hours_sell",
+    "spread_offset_ratio_buy",  # 708# 0.05→0.08: buy base offset引上げ (706#P3/707#P0)
     "spread_offset_ratio_sell",
     "stale_check_after_sec_buy",
     "stale_check_after_sec_sell",
@@ -222,7 +223,6 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "deadlock_escape_threshold",  # 664# code=0(無効), YAML=20
     "vg_vpin_continuous_min",  # 680# 0.40→0.50: VG選択性向上
     "wide_spread_bps",
-    "trend_5s_sell_guard_enabled",
 })
 
 

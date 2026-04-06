@@ -572,7 +572,7 @@ class Test684Trend5sSellGuardConfig:
         section = v460_fill_test_yaml_base["trend_5s_sell_guard"]
         assert isinstance(section, dict)
         cfg = FillTestConfig.from_yaml(v460_fill_test_yaml_base).trend_5s_sell_guard
-        assert cfg.enabled is True
+        assert cfg.enabled is False  # 708# 706#P1: veto→無効化
         assert cfg.threshold_bps == pytest.approx(float(section["threshold_bps"]))
         assert cfg.hard_veto_threshold_bps == pytest.approx(
             float(section["hard_veto_threshold_bps"]),
