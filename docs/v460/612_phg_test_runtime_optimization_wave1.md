@@ -1772,3 +1772,32 @@ notes:
 - Reduced heavy subset runtime by trimming real-data smoke fixture copies and shrinking enrich sample windows in `test_enricher_skip_gate.py`.
 - Trimmed PPO scheduler exception-path fixed cost by reusing scheduler runtime-overhead patching in neutral-fallback tests.
 - Verification: `tests/unit/v460/test_fill_quality.py tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_680_ppo_retrain_scheduler.py tests/unit/v460/test_sac_retrain_scheduler.py -x --tb=short --no-cov` => `359 passed, 1 skipped, 5 warnings in 6.66s` (from 7.63s).
+
+## 2026-04-07 708 follow-up: skip-gate analysis + heavy setup trim
+
+changes:
+
+- `tests/unit/v460/test_enricher_skip_gate.py`
+  - real-data smoke/trainable sample window をさらに縮小
+  - smoke: `1/3/5`
+  - trainable: `12/18/24`
+- `tests/unit/v460/test_708_skip_gate_quality_protocol.py`
+  - 708 analysis CLI / protocol 契約を追加
+- `ztb/metrics/fill_gate_judgments.py`
+  - `fill_quality` から gate judgment API を外出し
+
+regression:
+
+- focused 708/config subset:
+  - `140 passed in 2.46s`
+- heavy subset:
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - all green (`360 passed, 1 skipped, 5 warnings`)
+
+notes:
+
+- 支配点は依然として `test_enrichment_with_real_data` setup だが、sample 窓はさらに絞れた
+- 708 の analysis 実装は heavy test を悪化させていない

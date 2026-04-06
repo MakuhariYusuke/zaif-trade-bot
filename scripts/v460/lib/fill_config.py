@@ -68,6 +68,11 @@ class SpreadASGuardConfig:
     enabled: bool = False
     spread_threshold_bps: float = 15.0
     ev_penalty_bps: float = 0.5
+    redesign_enabled: bool = False
+    active_threshold_bps: float = 4.0
+    inverse_penalty_reference_bps: float = 4.0
+    inverse_penalty_floor_bps: float = 0.25
+    inverse_penalty_cap_bps: float = 2.0
 
 
 @dataclass(frozen=True)
@@ -1062,6 +1067,11 @@ class FillTestConfig:
     spread_as_guard_enabled: bool = False
     spread_as_guard_spread_threshold_bps: float = 15.0
     spread_as_guard_ev_penalty_bps: float = 0.5
+    spread_as_guard_redesign_enabled: bool = False
+    spread_as_guard_active_threshold_bps: float = 4.0
+    spread_as_guard_inverse_penalty_reference_bps: float = 4.0
+    spread_as_guard_inverse_penalty_floor_bps: float = 0.25
+    spread_as_guard_inverse_penalty_cap_bps: float = 2.0
     regime_guard_overrides_enabled: bool = False
     regime_guard_ev_threshold_premiums: dict[str, float] = field(default_factory=dict)
     regime_guard_spread_as_penalty_multipliers: dict[str, float] = field(default_factory=dict)
@@ -1131,6 +1141,11 @@ class FillTestConfig:
             enabled=self.spread_as_guard_enabled,
             spread_threshold_bps=self.spread_as_guard_spread_threshold_bps,
             ev_penalty_bps=self.spread_as_guard_ev_penalty_bps,
+            redesign_enabled=self.spread_as_guard_redesign_enabled,
+            active_threshold_bps=self.spread_as_guard_active_threshold_bps,
+            inverse_penalty_reference_bps=self.spread_as_guard_inverse_penalty_reference_bps,
+            inverse_penalty_floor_bps=self.spread_as_guard_inverse_penalty_floor_bps,
+            inverse_penalty_cap_bps=self.spread_as_guard_inverse_penalty_cap_bps,
         )
 
     @property

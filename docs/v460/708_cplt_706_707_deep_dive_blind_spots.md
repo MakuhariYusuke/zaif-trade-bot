@@ -241,6 +241,78 @@ side_offset:
 
 ---
 
+## 6. Codex 実装レビュー (708# follow-up)
+
+### 6.1 prompt 妥当性の再点検
+
+`CX1/CX2/CX3` は問題設定としては妥当だったが、**そのまま写経するのは危険**だった。
+
+- `CX1 skip_gate quality`
+  - 妥当。実データでの分布検証と model path/vintage 確認が本体だった
+  - ただし成果物は prompt 指定の単発 markdown より、現行の protocol/CLI 契約へ寄せた方が再利用性が高い
+- `CX2 entry_gate redesign`
+  - dead code 指摘は妥当
+  - ただし `buy` を常に先判定して `sell` を即通しにする書き換えは、stale guard を弱めやすい
+  - 実装では **stale check を先に維持** しつつ、buy mild-negative suppress を auto-disable より前に評価した
+- `CX3 SAG redesign`
+  - 「定数税」の指摘は妥当
+  - ただし offset 直加算へ一気に切り替えると、既存 entry-gate / regime premium / telemetry 契約に波及が大きい
+  - 実装ではまず **opt-in の inverse EV penalty** として現行 path に安全に載せた
+
+### 6.2 実データで確認したこと
+
+`analysis_results/708_skip_gate_quality.json` の実測要約:
+
+- model artifact は存在し、fresh
+  - `models/v460/skip_gate_lgbm_pnl120.pkl`
+  - mtime: `2026-04-06T21:22:57.609698`
+  - size: `27281`
+- Post (2026-04-04..06) score 分布
+  - mean: `-0.0283`
+  - std: `1.2607`
+  - skew: `5.5829`
+  - kurtosis: `57.4899`
+  - bimodality coefficient: `0.5595`
+- 相関
+  - Pearson(score,pnl): `-0.0523`
+  - Spearman(score,pnl): `-0.0260`
+- forced_pass の主因
+  - `skip_rate_limit(35%>30%)`: `338`
+  - つまり selector そのものより、**rate-limit override が強く効いていた**
+- threshold counterfactual (Post avg pnl)
+  - `0.1`: `-0.4582`
+  - `0.4`: `-0.3176`
+  - `0.6`: `-0.2612`
+  - 少なくとも `0.1` は弱すぎ、`0.4-0.6` が候補
+
+### 6.3 708# 実装判断
+
+- `entry_gate`
+  - dead layer の本質は threshold だけではなく
+    - stale/auto-disable の順序
+    - CalibrationMap base EV の負側集中
+    - SAG + regime premium の定数寄り penalty
+    にあった
+- `SAG`
+  - 実 spread は `median ≈ 2.05bps`, `P90 ≈ 2.84bps`
+  - `spread_threshold_bps: 15.0` は事実上常時発火
+  - したがって threshold 現実化と penalty 反比例化の両方が必要
+- `skip_gate`
+  - 「完全に死んでいる」より、**override と feature shift が混ざっている**のが実態
+  - model stale だけに帰すのは早計
+
+### 6.4 残課題
+
+1. `entry_gate_buy_suppress_ev_threshold`
+   - `-0.5` は依然として現実離れ
+   - runtime 変更ではなく、`-1.5` / `-1.8` / `-2.0` の候補比較を先に継続
+2. `SAG redesign`
+   - opt-in 実装は入ったが、AB 実運用は未開始
+3. `skip_gate`
+   - `forced_pass` と純粋 selector quality を分離した protocol 比較を続ける
+
+---
+
 ## 6. 再現コマンド
 
 ```bash

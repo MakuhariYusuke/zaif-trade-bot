@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.regime_detector import FillTestRegime
@@ -19,6 +20,42 @@ class EntryGateAdjustmentResult:
     regime_guard_penalty_multiplier: float
 
 
+def _resolve_spread_as_guard_penalty(
+    *,
+    spread_bps: float,
+    enabled: bool,
+    spread_threshold_bps: float,
+    ev_penalty_bps: float,
+    redesign_enabled: bool,
+    active_threshold_bps: float,
+    inverse_penalty_reference_bps: float,
+    inverse_penalty_floor_bps: float,
+    inverse_penalty_cap_bps: float,
+) -> tuple[bool, str, float]:
+    if not enabled and spread_bps >= spread_threshold_bps:
+        return False, "none", 0.0
+    if enabled and not redesign_enabled and spread_bps >= spread_threshold_bps:
+        return False, "none", 0.0
+    if enabled and redesign_enabled and spread_bps > active_threshold_bps:
+        return False, "none", 0.0
+
+    action = "apply" if enabled else "observe"
+    if not redesign_enabled:
+        return True, action, float(ev_penalty_bps)
+
+    denominator = max(spread_bps, 0.1)
+    inverse_penalty = ev_penalty_bps * (
+        inverse_penalty_reference_bps / denominator
+    )
+    resolved_penalty = min(
+        inverse_penalty_cap_bps,
+        max(inverse_penalty_floor_bps, inverse_penalty),
+    )
+    if not math.isfinite(resolved_penalty):
+        resolved_penalty = inverse_penalty_cap_bps
+    return True, action, float(resolved_penalty)
+
+
 def apply_entry_gate_adjustments(
     *,
     config: FillTestConfig,
@@ -33,14 +70,21 @@ def apply_entry_gate_adjustments(
         normalized_regime.value if normalized_regime is not None else None
     )
 
-    spread_triggered = (
-        spread_bps is not None and spread_bps < spread_guard.spread_threshold_bps
-    )
+    spread_triggered = False
     spread_action = "none"
     spread_penalty = 0.0
-    if spread_triggered:
-        spread_action = "apply" if spread_guard.enabled else "observe"
-        spread_penalty = float(spread_guard.ev_penalty_bps)
+    if spread_bps is not None:
+        spread_triggered, spread_action, spread_penalty = _resolve_spread_as_guard_penalty(
+            spread_bps=float(spread_bps),
+            enabled=spread_guard.enabled,
+            spread_threshold_bps=float(spread_guard.spread_threshold_bps),
+            ev_penalty_bps=float(spread_guard.ev_penalty_bps),
+            redesign_enabled=spread_guard.redesign_enabled,
+            active_threshold_bps=float(spread_guard.active_threshold_bps),
+            inverse_penalty_reference_bps=float(spread_guard.inverse_penalty_reference_bps),
+            inverse_penalty_floor_bps=float(spread_guard.inverse_penalty_floor_bps),
+            inverse_penalty_cap_bps=float(spread_guard.inverse_penalty_cap_bps),
+        )
 
     regime_premium = float(regime_override.ev_threshold_premium_bps)
     regime_multiplier = float(regime_override.spread_as_guard_penalty_multiplier)

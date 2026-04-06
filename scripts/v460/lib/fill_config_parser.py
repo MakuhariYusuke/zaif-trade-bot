@@ -1313,6 +1313,11 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
             "enabled": "spread_as_guard_enabled",
             "spread_threshold_bps": "spread_as_guard_spread_threshold_bps",
             "ev_penalty_bps": "spread_as_guard_ev_penalty_bps",
+            "redesign_enabled": "spread_as_guard_redesign_enabled",
+            "active_threshold_bps": "spread_as_guard_active_threshold_bps",
+            "inverse_penalty_reference_bps": "spread_as_guard_inverse_penalty_reference_bps",
+            "inverse_penalty_floor_bps": "spread_as_guard_inverse_penalty_floor_bps",
+            "inverse_penalty_cap_bps": "spread_as_guard_inverse_penalty_cap_bps",
         }
         for yaml_key, config_key in spread_as_guard_map.items():
             if yaml_key in spread_as_guard:

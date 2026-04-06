@@ -49,3 +49,6 @@ from scripts.v460.analysis.protocols.protocol_695_regime_as import (  # noqa: E4
 from scripts.v460.analysis.protocols.protocol_695_trend5s import (  # noqa: E402,F401
     Protocol695Trend5s,
 )
+from scripts.v460.analysis.protocols.protocol_708_skip_gate_quality import (  # noqa: E402,F401
+    Protocol708SkipGateQuality,
+)

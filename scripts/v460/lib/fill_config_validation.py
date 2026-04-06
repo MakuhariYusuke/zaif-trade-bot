@@ -125,6 +125,26 @@ def validate_fill_config(config: FillTestConfig) -> None:
             "spread_as_guard_ev_penalty_bps must be >= 0, "
             f"got {config.spread_as_guard_ev_penalty_bps}"
         )
+    if config.spread_as_guard_active_threshold_bps <= 0.0:
+        raise ValueError(
+            "spread_as_guard_active_threshold_bps must be > 0, "
+            f"got {config.spread_as_guard_active_threshold_bps}"
+        )
+    if config.spread_as_guard_inverse_penalty_reference_bps <= 0.0:
+        raise ValueError(
+            "spread_as_guard_inverse_penalty_reference_bps must be > 0, "
+            f"got {config.spread_as_guard_inverse_penalty_reference_bps}"
+        )
+    if config.spread_as_guard_inverse_penalty_floor_bps < 0.0:
+        raise ValueError(
+            "spread_as_guard_inverse_penalty_floor_bps must be >= 0, "
+            f"got {config.spread_as_guard_inverse_penalty_floor_bps}"
+        )
+    if config.spread_as_guard_inverse_penalty_cap_bps < config.spread_as_guard_inverse_penalty_floor_bps:
+        raise ValueError(
+            "spread_as_guard_inverse_penalty_cap_bps must be >= "
+            "spread_as_guard_inverse_penalty_floor_bps"
+        )
     if not (0.0 <= config.skip_gate_sell_ranging_offset <= 2.0):
         raise ValueError(
             "skip_gate_sell_ranging_offset must be in [0, 2], "

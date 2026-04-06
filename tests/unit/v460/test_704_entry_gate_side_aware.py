@@ -47,6 +47,15 @@ def test_auto_disable_still_works() -> None:
     assert guard.should_suppress_block(ev=-1.0, regime="ranging", side="sell") is True
 
 
+def test_buy_side_aware_stays_reachable_before_auto_disable() -> None:
+    guard = _make_guard()
+    guard.state.auto_disabled = True
+    guard.state.auto_disable_reason = "max_block_rate"
+
+    assert guard.should_suppress_block(ev=-0.3, regime="ranging", side="buy") is True
+    assert guard.state.auto_disable_reason == "max_block_rate"
+
+
 def test_staleness_overrides_side_aware() -> None:
     guard = _make_guard()
     guard.state.last_calibration_update_ts = time.time() - 1200.0

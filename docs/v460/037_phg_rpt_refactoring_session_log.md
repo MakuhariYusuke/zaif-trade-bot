@@ -10691,3 +10691,30 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - 704 commit `c77c93c73`: side-aware entry gate suppression, sell loss defense tests, sell offset analysis CLI, parser/hot-reload/validation follow-up.
 - follow-up batch: split fill gate payload shaping into `ztb/metrics/fill_gate_payloads.py`, trimmed `test_enricher_skip_gate.py` smoke/trainable setup, and reduced PPO scheduler neutral-fallback test fixed cost.
 - heavy subset check: `359 passed, 1 skipped, 5 warnings in 6.66s`.
+
+## 2026-04-07 708 prompt validation + fill/heavy follow-up
+
+- 708 follow-up:
+  - `scripts/v460/analysis/skip_gate_quality_analysis.py`
+  - `scripts/v460/analysis/protocols/protocol_708_skip_gate_quality.py`
+  - `scripts/v460/analysis/analyze_708_skip_gate_quality.py`
+  - `tests/unit/v460/test_708_skip_gate_quality_protocol.py`
+- fill split:
+  - `ztb/metrics/fill_gate_judgments.py`
+  - `ztb/metrics/fill_quality.py`
+  - gate judgment API を外出しし、`fill_quality` を report/wiring 寄りに整理
+- heavy test:
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - real-data smoke/trainable sample 窓を縮小 (`1/3/5`, `12/18/24`)
+- prompt validation:
+  - `CX1` はほぼ妥当。実装は protocol/CLI 契約へ寄せた
+  - `CX2` は dead code 指摘は正しいが、stale guard を弱めない形に補正した
+  - `CX3` は定数税診断は正しいが、offset 直加算ではなく opt-in inverse EV penalty とした
+- observed facts:
+  - post skip_gate score mean `-0.0283`
+  - post bimodality coefficient `0.5595`
+  - forced_pass 主因は `skip_rate_limit(35%>30%)`
+  - threshold counterfactual は `0.4-0.6` が `0.1` より良い
+- regression:
+  - focused 708/config subset `140 passed in 2.46s`
+  - heavy subset all green (`360 passed, 1 skipped, 5 warnings`)

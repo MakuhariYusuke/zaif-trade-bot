@@ -183,6 +183,12 @@ class TestRegimeDicts:
         with pytest.raises(ValueError, match="regime_guard_spread_as_penalty_multipliers"):
             validate_fill_config(cfg)
 
+    def test_spread_as_guard_redesign_cap_must_exceed_floor(self, cfg: FillTestConfig) -> None:
+        cfg.spread_as_guard_inverse_penalty_floor_bps = 0.5
+        cfg.spread_as_guard_inverse_penalty_cap_bps = 0.25
+        with pytest.raises(ValueError, match="spread_as_guard_inverse_penalty_cap_bps"):
+            validate_fill_config(cfg)
+
     def test_sell_ranging_offset_has_upper_bound(self, cfg: FillTestConfig) -> None:
         cfg.skip_gate_sell_ranging_offset = 2.5
         with pytest.raises(ValueError, match="skip_gate_sell_ranging_offset"):

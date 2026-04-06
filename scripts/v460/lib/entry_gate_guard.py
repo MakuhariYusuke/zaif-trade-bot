@@ -44,11 +44,17 @@ class EntryGateGuard:
     def should_suppress_block(self, *, ev: float, regime: str, side: str) -> bool:
         """Return True when the guard should suppress an EV<=0 block."""
         del regime
-        if self._state.auto_disabled:
-            return True
-
         if self._is_stale():
             self._auto_disable("stale_calibration_map")
+            return True
+
+        # 708# buy-side mild-negative EV suppression must remain reachable even if
+        # the global auto-disable counters have tripped. Stale calibration still
+        # wins because that is a stronger safety condition than side-aware routing.
+        if side == "buy" and ev >= self._config.buy_suppress_ev_threshold:
+            return True
+
+        if self._state.auto_disabled:
             return True
 
         if self._state.consecutive_blocks >= self._config.max_consecutive_blocks:
@@ -61,9 +67,6 @@ class EntryGateGuard:
             >= self._config.max_block_rate
         ):
             self._auto_disable("max_block_rate")
-            return True
-
-        if side == "buy" and ev >= self._config.buy_suppress_ev_threshold:
             return True
 
         return False

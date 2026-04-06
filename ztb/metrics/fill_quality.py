@@ -27,10 +27,10 @@ from ztb.metrics.fill_metrics_core import (
     scan_fill_metric_inputs,
 )
 from ztb.metrics.fill_metric_results import FillMetrics, compute_fill_metrics
-from ztb.metrics.fill_gate_reports import (
-    build_g1_1_exec_judgment,
-    build_g1_1_quick_judgment,
-    build_g1_2_full_judgment,
+from ztb.metrics.fill_gate_judgments import (
+    g1_1_judgment,
+    g1_1_quick_judgment,
+    g1_2_full_judgment,
 )
 from ztb.metrics.fill_guard_pipeline import (
     GuardPipelineResult,
@@ -517,81 +517,6 @@ def build_skip_fill_record(
 
 # ======================================================================
 # G1.1 Gate Judgment
-# ======================================================================
-
-def g1_1_judgment(
-    metrics: FillMetrics,
-    thresholds: dict,
-    records: list[FillRecord] | None = None,
-) -> dict:
-    """G1.1 Gate 合否判定.
-
-    009# §2.1 / 000# §3.3 準拠.
-    092# 追加: E6 (round-trip mean PnL), E7 (net inventory drift).
-
-    Args:
-        metrics: compute_fill_metrics() の出力.
-        thresholds: gate_thresholds.yaml の ``g1_1_exec`` セクション.
-        records: round-trip KPI 算出用の FillRecord リスト (省略時は E6/E7 スキップ).
-
-    Returns:
-        dict with gate_result, per-check details.
-    """
-    return build_g1_1_exec_judgment(
-        metrics=metrics,
-        thresholds=thresholds,
-        records=records,
-    )
-
-# ======================================================================
-# 116# Two-Stage Gate Judgment (115# review)
-# ======================================================================
-
-def g1_1_quick_judgment(
-    metrics: FillMetrics,
-    thresholds: dict,
-    cumulative_loss_jpy: float = 0.0,
-) -> dict:
-    """G1.1-quick (72h Kill Gate) 判定.
-
-    116# 実装 / 115# レビュー反映.
-    明らかに不成立な戦略を早期棄却する。
-
-    Args:
-        metrics: compute_fill_metrics() の出力.
-        thresholds: gate_thresholds.yaml の ``g1_1_quick_exec`` セクション.
-        cumulative_loss_jpy: fill_test の累積実損 (JPY, 正値=損失).
-
-    Returns:
-        dict with gate_result (PASS/FAIL/WATCH), per-check details.
-    """
-    return build_g1_1_quick_judgment(
-        metrics=metrics,
-        thresholds=thresholds,
-        cumulative_loss_jpy=cumulative_loss_jpy,
-    )
-
-def g1_2_full_judgment(
-    metrics: FillMetrics,
-    thresholds: dict,
-) -> dict:
-    """G1.2-full (168h Qualification Gate) 判定.
-
-    116# 実装 / 115# レビュー反映.
-    完全な品質適格性の確認。
-
-    Args:
-        metrics: compute_fill_metrics() の出力.
-        thresholds: gate_thresholds.yaml の ``g1_2_full_exec`` セクション.
-
-    Returns:
-        dict with gate_result (PASS/FAIL), per-check details.
-    """
-    return build_g1_2_full_judgment(
-        metrics=metrics,
-        thresholds=thresholds,
-    )
-
 # ======================================================================
 # 051# P2-2: Round-trip 評価 (buy→sell ペアリング)
 # ======================================================================

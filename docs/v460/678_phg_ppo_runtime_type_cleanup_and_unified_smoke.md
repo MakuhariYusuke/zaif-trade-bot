@@ -1048,3 +1048,21 @@ probe / weighting の wiring だけ current contract に揃えられた。
 ## 2026-04-04 Fill/PPO follow-up
 - Split fill gate payload/report shaping into `ztb/metrics/fill_gate_payloads.py` so `fill_judgment_core` stays focused on threshold math.
 - PPO scheduler tests now reuse the shared runtime-overhead patch in neutral-fallback error paths; heavy subset remained green.
+
+## 2026-04-07 708 coexistence note
+
+- `708#` は PPO runtime を直接変更していない
+- ただし heavy subset を同時に回し、skip-gate analysis / entry-gate / SAG redesign 追加が
+  PPO/SAC scheduler path を悪化させていないことを確認した
+- regression:
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - all green (`360 passed, 1 skipped, 5 warnings`)
+
+所見:
+
+- 次段の PPO/SAC 本命は変わらず
+  1. exception-path fixed-cost の継続削減
+  2. warm-start continuity の追加詰め

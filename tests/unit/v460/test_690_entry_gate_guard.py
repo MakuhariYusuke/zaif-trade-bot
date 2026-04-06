@@ -100,6 +100,19 @@ class TestEntryGateGuard:
         assert guard.should_suppress_block(ev=-1.0, regime="ranging", side="sell") is True
         assert "stale" in guard.state.auto_disable_reason
 
+    def test_buy_side_aware_precedes_counter_auto_disable(self) -> None:
+        guard = EntryGateGuard(
+            EntryGateGuardConfig(
+                max_consecutive_blocks=1,
+                buy_suppress_ev_threshold=-0.5,
+            )
+        )
+        guard.notify_calibration_update()
+        guard.record_eval(blocked=True)
+
+        assert guard.should_suppress_block(ev=-0.4, regime="ranging", side="buy") is True
+        assert guard.state.auto_disabled is False
+
 
 class TestEntryGateSourceAudit:
     def test_n_eff_guard_forces_neutral_probability(self) -> None:
