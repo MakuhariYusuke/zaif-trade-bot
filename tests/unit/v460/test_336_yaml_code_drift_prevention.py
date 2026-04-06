@@ -42,6 +42,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "as_delta_star_enabled",
     "as_reservation_enabled",
     "as_trailing_gate_enabled",
+    "as_trailing_gate_soft_threshold",  # 708# T2: 0.30→0.20
     "as_tau_dynamic_enabled",
     "bayesian_regime_enabled",
     "buy_as_guard_enabled",

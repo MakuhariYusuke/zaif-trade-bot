@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-28 (645# 退化 sell モデル無効化)
+> 最終更新: 2026-04-07 (706# Post-705 収益性リアリティチェック)
 
 ---
 
@@ -807,3 +807,12 @@ NNN_phX_TYPE_description.md
 | 698 | review | [698_cplt_second_opinion_696_697_academic_validation_and_profit_proposals.md](698_cplt_second_opinion_696_697_academic_validation_and_profit_proposals.md) | 696#-697# 学術的セカンドオピニオンと収益化提案 |
 | 699 | analysis | [699_cplt_review_response_697_698_cross_validation.md](699_cplt_review_response_697_698_cross_validation.md) | 697#/698# レビュー回答: クロスバリデーションと盲点分析 |
 | 700 | plan | [700_cplt_codex_task_plan_review_response.md](700_cplt_codex_task_plan_review_response.md) | Codex タスク計画: 697#/698# レビュー対応 |
+| 701 | analysis | [701_cplt_ide_performance_audit_and_cleanup_plan.md](701_cplt_ide_performance_audit_and_cleanup_plan.md) | IDE パフォーマンス監査 & クリーンアップ計画 |
+| 702 | analysis | [702_cplt_p688_reanalysis_validation.md](702_cplt_p688_reanalysis_validation.md) | Protocol 688 再分析: NFQ フィルタ修正後の精密検証 |
+| 703 | plan | [703_cplt_codex_sell_loss_mitigation_plan.md](703_cplt_codex_sell_loss_mitigation_plan.md) | Codex タスク計画: Protocol 688 精密検証に基づく sell 損失対策 |
+| 704 | analysis | [704_cplt_sell_loss_structural_analysis.md](704_cplt_sell_loss_structural_analysis.md) | Sell 損失構造分析 + 即時改善 + Codex タスク計画 |
+| 705 | analysis | [705_cplt_post704_3day_analysis.md](705_cplt_post704_3day_analysis.md) | Post-704 3 日分析 (2026-04-04〜06 vs 2026-04-01〜03) |
+| 706 | analysis | [706_cplt_post705_profitability_reality_check.md](706_cplt_post705_profitability_reality_check.md) | Post-705 収益性リアリティチェックと優先順位再設計 |
+| 707 | review | [707_cplt_second_opinion_post706_academic_pipeline_evolution.md](707_cplt_second_opinion_post706_academic_pipeline_evolution.md) | 706# 批判的検証と真の最適化アプローチ (Rev.2) |
+| 708 | analysis | [708_cplt_706_707_deep_dive_blind_spots.md](708_cplt_706_707_deep_dive_blind_spots.md) | 706/707 セカンドオピニオン深堀り: 盲点検証と実装判断 |
+| 708 | impl | — | T1: sell/trending_up hard_skip 緩和 (mult 5.0), T2: AS trailing gate soft_threshold 0.30→0.20 |
