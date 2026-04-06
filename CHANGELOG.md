@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 705# Post-704# 3日間分析 + buy 側劣化根本原因特定 (2026-04-07)
+
+### Analysis
+- 704# fix 効果検証: sell PnL -194→+3 bps (劇的改善 ✓)、buy PnL +45→-75 bps (完全反転 ✗)
+- spread_as_guard trigger率: 5.8%→99.6% (P1 fix 完全成功)
+- **発見**: entry_gate_guard auto-disable が side-aware ロジックを無効化 (dead code 化)
+  - CalibrationMap EV 常時負 → block_rate=100% > max_block_rate=0.95 → auto_disable → 全通し
+- buy offset -30% 低下: 市場スプレッド縮小(-15%)による cascade（外部要因）
+- skip_gate score 崩壊: +0.33→-0.32、buy skip ゼロ化（モデルドリフト）
+- buy_dynamic_kill Apr 6 に 14 回発動（正常動作）
+
+### Added
+- `scripts/v460/analysis/compare_periods.py` — 再利用可能な期間比較分析スクリプト
+- `docs/v460/705_cplt_post704_3day_analysis.md` — 包括分析レポート
+- 改善提案 P1-P5: entry_gate fix、buy_base_offset、buy_trending_up_offset、hour_boost、skip_gate 調査
+
 ## 704# Sell 損失構造分析 + 即時改善 (2026-04-04)
 
 ### Fixed
