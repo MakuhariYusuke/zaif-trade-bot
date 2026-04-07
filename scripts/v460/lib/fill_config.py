@@ -252,6 +252,7 @@ class FillTestConfig:
     # AS理論: ranging市場ではOBIがmean-reversion方向を予測
     ranging_obi_asymmetry_factor: float = 0.3  # 344#: 0.0→0.3 (ranging OBI方向シグナル)
     ranging_obi_threshold: float = 0.1         # |imbalance| がこの値以下では中立扱い
+    ranging_obi_mode: str = "linear"
     # 168# §9.10: 低ボラティリティ offset boost (time_filter 根本対策)
     # vol_ratio < threshold 時に offset を拡大し、低ボラ環境での過剰アグレッシブ発注を抑制
     low_vol_offset_boost_enabled: bool = False
@@ -545,6 +546,8 @@ class FillTestConfig:
     # 062# S5: SkipGate ML フィルター (AS 分類器ベースの注文スキップ)
     skip_gate_enabled: bool = False
     skip_gate_bypass_mode: bool = False  # 686# SG-1: score計算継続, ブロック停止
+    skip_gate_bypass_mode_buy: bool | None = None
+    skip_gate_bypass_mode_sell: bool | None = None
     # 118# A3: side 別有効/無効 (sell 逆選別対策)
     skip_gate_buy_enabled: bool = True
     skip_gate_sell_enabled: bool = True

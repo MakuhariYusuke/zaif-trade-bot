@@ -20,6 +20,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from scripts.v460.lib.obi_mode import compute_ranging_obi_multiplier
 from ztb.trading.signal.regime.regime_detector import FillTestRegime
 
 if TYPE_CHECKING:
@@ -171,11 +172,14 @@ class RegimeBoostMixin:
                 _imb = self._last_imbalance
                 _obi_thresh = cfg.ranging_obi_threshold
                 if abs(_imb) > _obi_thresh:
-                    _obi_adj = _imb * cfg.ranging_obi_asymmetry_factor
-                    if side == "buy":
-                        _ranging_mult = _ranging_mult * (1.0 - _obi_adj)
-                    else:
-                        _ranging_mult = _ranging_mult * (1.0 + _obi_adj)
+                    _ranging_mult = compute_ranging_obi_multiplier(
+                        _ranging_mult,
+                        side=side,
+                        imbalance=_imb,
+                        threshold=_obi_thresh,
+                        factor=cfg.ranging_obi_asymmetry_factor,
+                        mode=cfg.ranging_obi_mode,
+                    )
                     _ranging_mult = max(cfg.min_offset_ratio / max(effective_offset_ratio, 1e-6),
                                         min(_ranging_mult, self._effective_max_ratio(side) / max(effective_offset_ratio, 1e-6)))
             pre_offset = effective_offset_ratio

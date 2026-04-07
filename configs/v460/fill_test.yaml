@@ -166,6 +166,7 @@ regime:
   # 227# C1: OBI方向非対称 — ranging市場でOBIに基づく方向性シグナル
   ranging_obi_asymmetry_factor: 0.3  # 344#: 0.0→0.3 有効化 (ranging市場OBI方向シグナル)
   ranging_obi_threshold: 0.1         # OBI非対称適用の最小imbalance閾値
+  ranging_obi_mode: linear
   # 397# mid-confidence paradox guard (395# SHA-fenced 実証)
   # confidence [0.7,0.9) は全 SHA で paradoxical underperformance (−0.734, WR=46%)
   # offset を 1.2x に拡大しリスク低減 (レジーム判定が medium-confident だが不正確な帯域)
@@ -485,6 +486,8 @@ skip_gate:
   pnl_threshold: -0.5          # 190# D: 0.0→-0.5 (ev_weighted score が常時負のため閾値緩和)
   max_skip_rate: 0.3               # 674# 0.4→0.3復元: 672# CI=[−0.53,+0.07]でskip増はPnL改善に寄与せず。fill rate直結
   bypass_mode: true            # 686# SG-1: score/telemetry は維持しつつブロック停止
+  bypass_mode_buy: true
+  bypass_mode_sell: true
   # 694# AS trailing gate — 700# で enabled: true に切替 (699# 検証済: 低リスク即効性)
   as_trailing_gate_enabled: true
   as_trailing_gate_window_size: 100
@@ -525,7 +528,7 @@ skip_gate:
   sell_velocity_skip_enabled: true
   sell_velocity_skip_threshold_bps: 4.0   # 630# 6.0→4.0 (626#/629# AS防御: buy=-4.0と対称化。vel≥4bps帯のsell AS率60%超)
   buy_velocity_skip_enabled: true          # 183# false→true (buy AS率28%≒sell同等。急落局面で買い参入を抑制)
-  buy_velocity_skip_threshold_bps: -4.0   # 353# -6.0→-4.0 (buy逆走許容を絞る: 164# SHAP buy_vpin=0.548)
+  buy_velocity_skip_threshold_bps: -3.0   # 710# -4.0→-3.0 (710#分析: -4.0発動時avg=-0.114 vs非発動-0.371。-3~-4帯7fills avg=-1.39を捕捉)
   # 654# P0-2: Toxic Low-Spread Sell Veto (651#/652# Glosten-Milgrom compound guard)
   # sell + 狭spread + 高OBI + 高VPIN + 上方velocity = informed flow → veto
   toxic_sell_veto_enabled: true            # 654# 有効化

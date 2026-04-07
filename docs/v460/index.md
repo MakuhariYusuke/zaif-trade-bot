@@ -818,3 +818,4 @@ NNN_phX_TYPE_description.md
 | 708 | impl | — | T1: sell/trending_up hard_skip 緩和 (mult 5.0), T2: AS trailing gate soft_threshold 0.30→0.20 |
 | 709 | review | [709_phg_708_skip_gate_entry_gate_sag_review.md](709_phg_708_skip_gate_entry_gate_sag_review.md) | 708 Codex CX1-CX3 実装レビュー: skip_gate quality / entry_gate / SAG redesign |
 | 710 | plan | [710_cplt_pre_restart_action_plan_and_codex_tasks.md](710_cplt_pre_restart_action_plan_and_codex_tasks.md) | 再起動前アクション整理 + SAG param fix + 方針比較 + CX4-CX6 設計 |
+| 711 | review | [711_phg_cx4_cx6_validation_and_fill_split_followup.md](711_phg_cx4_cx6_validation_and_fill_split_followup.md) | CX4-CX6 検証、fill payload 分割、heavy test follow-up |

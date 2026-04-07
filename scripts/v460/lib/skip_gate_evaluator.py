@@ -173,6 +173,13 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         self._as_trailing_tracker.reconfigure(gate_config)
         return self._as_trailing_tracker
 
+    def _is_bypass_mode_active(self, side: str) -> bool:
+        if side == "buy" and self._config.skip_gate_bypass_mode_buy is not None:
+            return bool(self._config.skip_gate_bypass_mode_buy)
+        if side == "sell" and self._config.skip_gate_bypass_mode_sell is not None:
+            return bool(self._config.skip_gate_bypass_mode_sell)
+        return bool(self._config.skip_gate_bypass_mode)
+
     # --- 461# Mixin 移管済: _resolve_model_path, _read_model_hash → skip_gate_model_loader.py ---
 
     @staticmethod
@@ -1143,7 +1150,7 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             )
 
             if decision.should_skip:
-                if self._config.skip_gate_bypass_mode:
+                if self._is_bypass_mode_active(side):
                     result.bypassed = True
                     result.skipped = False
                     logger.info(

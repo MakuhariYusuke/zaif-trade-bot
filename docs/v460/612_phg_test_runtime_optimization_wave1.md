@@ -1801,3 +1801,22 @@ notes:
 
 - 支配点は依然として `test_enrichment_with_real_data` setup だが、sample 窓はさらに絞れた
 - 708 の analysis 実装は heavy test を悪化させていない
+
+## 2026-04-07 CX4-CX6 follow-up
+
+- `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
+  - `ranging_obi_mode` は code/YAML とも `linear` で一致したため allowlist から除去
+- `tests/unit/v460/_real_data_test_helpers.py`
+  - smoke sample の tail copy を `deep=False` に変更
+- regression:
+  - focused CX4-CX6/config subset `136 passed in 3.78s`
+  - heavy subset `359 passed, 1 skipped, 5 warnings in 7.00s`
+- slowest 12:
+  1. `test_enrichment_with_real_data` setup `0.17s`
+  2. `test_oos_failed_keeps_fresh_signal` call `0.13s`
+  3. `test_raw_load_cache_is_bounded_and_clearable` call `0.09s`
+
+所見:
+
+- heavy subset は引き続き `enricher` 実データ setup が主残差
+- scheduler test 側は top duration からかなり外れてきている

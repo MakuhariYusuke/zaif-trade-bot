@@ -337,6 +337,11 @@ class TestRangingObi:
         with pytest.raises(ValueError, match="ranging_obi_threshold"):
             validate_fill_config(cfg)
 
+    def test_mode_invalid(self, cfg: FillTestConfig) -> None:
+        cfg.ranging_obi_mode = "bad"
+        with pytest.raises(ValueError, match="ranging_obi_mode"):
+            validate_fill_config(cfg)
+
 
 class TestFFDParams:
     def test_deadzone_above_100(self, cfg: FillTestConfig) -> None:

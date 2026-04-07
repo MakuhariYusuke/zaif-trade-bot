@@ -10718,3 +10718,24 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - regression:
   - focused 708/config subset `140 passed in 2.46s`
   - heavy subset all green (`360 passed, 1 skipped, 5 warnings`)
+
+## 2026-04-07 CX4-CX6 validation + fill payload split
+
+- prompt validation:
+  - `CX4` は概ね妥当
+    - side-aware gradual rollout はそのまま採用
+    - global `bypass_mode` は backward compatibility のため fallback 維持
+  - `CX5` は hidden task として `calibration_batch.py` の date range 対応が必要だった
+  - `CX6` は問題設定は妥当
+    - ただし `linear` を壊さず opt-in mode 拡張に留めるのが安全
+- refactor:
+  - `ztb/metrics/fill_record_payloads.py` を追加
+  - `ztb/metrics/fill_quality.py` の record payload shaping を外出し
+- test/runtime:
+  - `tests/unit/v460/test_336_yaml_code_drift_prevention.py`
+    - stale allowlist `ranging_obi_mode` を削除
+  - `tests/unit/v460/_real_data_test_helpers.py`
+    - smoke tail copy を `deep=False` 化
+- verification:
+  - focused CX4-CX6/config subset `136 passed in 3.78s`
+  - heavy subset `359 passed, 1 skipped, 5 warnings in 7.00s`

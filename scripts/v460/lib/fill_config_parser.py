@@ -271,6 +271,8 @@ def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
         kwargs["skip_gate_enabled"] = sg["enabled"]
     sg_map = {
         "bypass_mode": "skip_gate_bypass_mode",
+        "bypass_mode_buy": "skip_gate_bypass_mode_buy",
+        "bypass_mode_sell": "skip_gate_bypass_mode_sell",
         "mode": "skip_gate_mode",
         "model_path": "skip_gate_model_path",
         # 141# P1-01: side 別モデルパス
@@ -999,6 +1001,7 @@ def parse_fill_config_yaml(yaml_cfg: dict) -> FillTestConfig:
         # 227# C1: Ranging × OBI 方向別非対称 offset
         "ranging_obi_asymmetry_factor": "ranging_obi_asymmetry_factor",
         "ranging_obi_threshold": "ranging_obi_threshold",
+        "ranging_obi_mode": "ranging_obi_mode",
         # 397# mid-confidence paradox guard
         "mid_confidence_offset_boost": "regime_mid_confidence_offset_boost",
         "mid_confidence_lo": "regime_mid_confidence_lo",

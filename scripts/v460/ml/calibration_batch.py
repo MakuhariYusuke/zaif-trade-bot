@@ -23,7 +23,7 @@ from __future__ import annotations
 import json
 import logging
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +57,8 @@ def build_calibration_map(
     results_dir: Path | str | None = None,
     output_path: Path | str | None = None,
     days: int | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
     config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """fill_records から CalibrationMap を構築して JSON 保存.
@@ -81,10 +83,19 @@ def build_calibration_map(
 
     # 日数フィルタ
     cutoff_ts: float | None = None
+    end_ts: float | None = None
     if days is not None:
         cutoff_ts = (
             datetime.now(timezone.utc).timestamp() - days * 86_400
         )
+    if date_from is not None:
+        cutoff_ts = max(
+            cutoff_ts or float("-inf"),
+            datetime.fromisoformat(date_from).replace(tzinfo=timezone.utc).timestamp(),
+        )
+    if date_to is not None:
+        end_dt = datetime.fromisoformat(date_to).replace(tzinfo=timezone.utc) + timedelta(days=1)
+        end_ts = end_dt.timestamp()
 
     n_total = 0
     n_filled = 0
@@ -97,6 +108,8 @@ def build_calibration_map(
 
         # 日数フィルタ
         if cutoff_ts is not None and record.timestamp < cutoff_ts:
+            continue
+        if end_ts is not None and record.timestamp >= end_ts:
             continue
 
         # filled レコードのみ (PnL が存在するもの)
@@ -145,6 +158,8 @@ def build_calibration_map(
         "n_records_filled": n_filled,
         "n_records_used": n_used,
         "days_filter": days,
+        "date_from": date_from,
+        "date_to": date_to,
         "regime_counts": regime_counts,
         "config": cfg,
     }
@@ -249,12 +264,16 @@ def main() -> None:
         "--days", type=int, default=None,
         help="Only use last N days of data (default: all)",
     )
+    parser.add_argument("--date-from", type=str, default=None, help="開始日 YYYY-MM-DD")
+    parser.add_argument("--date-to", type=str, default=None, help="終了日 YYYY-MM-DD")
     args = parser.parse_args()
 
     export = build_calibration_map(
         results_dir=args.results_dir,
         output_path=args.output,
         days=args.days,
+        date_from=args.date_from,
+        date_to=args.date_to,
     )
 
     # サマリ表示

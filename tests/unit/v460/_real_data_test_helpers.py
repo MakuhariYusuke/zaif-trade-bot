@@ -265,7 +265,7 @@ def _cached_minimum_smoke_enriched_fill_df(
         return pd.DataFrame()
 
     for sample_rows in sorted_sizes:
-        enriched = enriched_max.tail(sample_rows).copy()
+        enriched = enriched_max.tail(sample_rows).copy(deep=False)
         if enriched[required_column].notna().any():
             return enriched
     return pd.DataFrame()

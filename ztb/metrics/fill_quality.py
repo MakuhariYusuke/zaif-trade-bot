@@ -12,7 +12,6 @@ E5: adverse_selection_ratio — 約定後 30 秒で逆行した注文の割合
 
 from __future__ import annotations
 
-import logging
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -70,9 +69,12 @@ from ztb.metrics.fill_round_trip_metrics import (
     RoundTripRecord,
     compute_round_trip_metrics,
 )
+from ztb.metrics.fill_record_payloads import (
+    FillRecordPayload,
+    build_skip_fill_record_payload,
+    sanitize_fill_record_fields,
+)
 from ztb.utils.dataclass_utils import get_dataclass_field_names, shallow_asdict
-
-logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -352,7 +354,13 @@ class FillRecord:
         if "schema_version" not in payload:
             payload["schema_version"] = 1
         payload.pop("guard_pipeline_result", None)
-        return cls(**_sanitize_fill_record_fields(payload, context="FillRecord.from_dict"))
+        return cls(  # type: ignore[arg-type]
+            **sanitize_fill_record_fields(
+                payload,
+                valid_field_names=_FILL_RECORD_FIELD_NAMES,
+                context="FillRecord.from_dict",
+            )
+        )
 
     @property
     def guard_pipeline_result(self) -> GuardPipelineResult | None:
@@ -376,105 +384,19 @@ _SKIP_RECORD_PROTECTED_FIELDS: Final[frozenset[str]] = frozenset({
     "balance_forced_switch",
     "ab_test_variant",
 })
-FillRecordPayload = dict[str, object]
-
-def _sanitize_fill_record_fields(
-    values: Mapping[str, object],
-    *,
-    context: str,
-    protected_keys: frozenset[str] = frozenset(),
-) -> FillRecordPayload:
-    """FillRecord に存在するキーだけ通し、不要キーは無視する."""
-    # 216# §6: 旧フィールド名 → 新フィールド名 のマイグレーション
-    _FIELD_ALIASES: dict[str, str] = {
-        "price_velocity_60s": "price_velocity_bps",
-    }
-    filtered: FillRecordPayload = {}
-    unknown_keys: list[str] = []
-    protected_hits: list[str] = []
-
-    for key, value in values.items():
-        # エイリアス解決 (新名が既に存在しない場合のみ)
-        resolved = _FIELD_ALIASES.get(key, key)
-        if resolved != key and resolved in values:
-            # 新名が既に存在 → 旧名は無視
-            unknown_keys.append(key)
-            continue
-        key = resolved
-
-        if key in protected_keys:
-            protected_hits.append(key)
-            continue
-        if key not in _FILL_RECORD_FIELD_NAMES:
-            unknown_keys.append(key)
-            continue
-        filtered[key] = value
-
-    if protected_hits:
-        logger.debug(
-            "%s: protected keys ignored: %s",
-            context,
-            sorted(protected_hits),
-        )
-    if unknown_keys:
-        logger.debug(
-            "%s: unknown fields ignored: %s",
-            context,
-            sorted(unknown_keys),
-        )
-    return filtered
 
 def build_fill_record(**data: object) -> FillRecord:
     """FillRecord の generic builder.
 
     known field のみを通す。必須フィールド不足は FillRecord 側の TypeError に委ねる。
     """
-    return FillRecord(**_sanitize_fill_record_fields(data, context="build_fill_record"))
-
-
-def _build_skip_fill_record_payload(
-    *,
-    cycle_id: str,
-    timestamp: float,
-    side: str,
-    order_price: float,
-    order_quantity: float,
-    cancel_reason: str,
-    run_id: str | None,
-    git_sha: str | None,
-    spread_at_order: float | None = None,
-    spread_offset_ratio: float | None = None,
-    regime: str | None = None,
-    balance_forced_switch: bool = False,
-    ab_test_variant: str | None = None,
-    extra: Mapping[str, object],
-) -> FillRecordPayload:
-    """skip/監査系 FillRecord の payload shaping を集約する."""
-    payload: FillRecordPayload = {
-        "cycle_id": cycle_id,
-        "timestamp": timestamp,
-        "side": side,
-        "order_price": order_price,
-        "order_quantity": order_quantity,
-        "filled": False,
-        "cancelled": True,
-        "cancel_reason": cancel_reason,
-        "run_id": run_id,
-        "git_sha": git_sha,
-        "spread_at_order": spread_at_order,
-        "spread_offset_ratio": spread_offset_ratio,
-        "regime": regime,
-        "balance_forced_switch": balance_forced_switch,
-        "ab_test_variant": ab_test_variant,
-    }
-    payload.update(
-        _sanitize_fill_record_fields(
-            extra,
-            context="build_skip_fill_record",
-            protected_keys=_SKIP_RECORD_PROTECTED_FIELDS,
+    return FillRecord(  # type: ignore[arg-type]
+        **sanitize_fill_record_fields(
+            data,
+            valid_field_names=_FILL_RECORD_FIELD_NAMES,
+            context="build_fill_record",
         )
     )
-    return payload
 
 def build_skip_fill_record(
     *,
@@ -497,7 +419,7 @@ def build_skip_fill_record(
 
     追加フィールドは FillRecord に存在するものだけを反映し、それ以外は無視する。
     """
-    payload = _build_skip_fill_record_payload(
+    payload = build_skip_fill_record_payload(
         cycle_id=cycle_id,
         timestamp=timestamp,
         side=side,
@@ -512,6 +434,8 @@ def build_skip_fill_record(
         balance_forced_switch=balance_forced_switch,
         ab_test_variant=ab_test_variant,
         extra=extra,
+        valid_field_names=_FILL_RECORD_FIELD_NAMES,
+        protected_keys=_SKIP_RECORD_PROTECTED_FIELDS,
     )
     return build_fill_record(**payload)
 

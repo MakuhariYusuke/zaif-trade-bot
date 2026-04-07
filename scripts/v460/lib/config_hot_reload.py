@@ -107,6 +107,9 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "regime_adaptive_extra_sell",
     # --- SkipGate 閾値 (モデル自体は別途 hot-reload) ---
     "skip_gate_enabled",
+    "skip_gate_bypass_mode",
+    "skip_gate_bypass_mode_buy",
+    "skip_gate_bypass_mode_sell",
     "skip_gate_buy_enabled",
     "skip_gate_sell_enabled",
     "skip_gate_as_threshold",
@@ -401,6 +404,7 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "imbalance_depth",
     "ranging_obi_threshold",
     "ranging_obi_asymmetry_factor",
+    "ranging_obi_mode",
     # --- narrow spread boost ---
     "narrow_spread_boost",
     "narrow_spread_boost_buy",

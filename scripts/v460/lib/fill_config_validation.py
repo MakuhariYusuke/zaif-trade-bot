@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+from scripts.v460.lib.obi_mode import VALID_RANGING_OBI_MODES
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -429,6 +431,12 @@ def validate_fill_config(config: FillTestConfig) -> None:
     if config.ranging_obi_threshold < 0:
         raise ValueError(
             f"ranging_obi_threshold must be >= 0, got {config.ranging_obi_threshold}"
+        )
+    valid_obi_modes = set(VALID_RANGING_OBI_MODES)
+    if config.ranging_obi_mode not in valid_obi_modes:
+        raise ValueError(
+            f"ranging_obi_mode must be one of {sorted(valid_obi_modes)}, "
+            f"got {config.ranging_obi_mode}"
         )
     if not (0.0 < config.velocity_ema_alpha <= 1.0):
         raise ValueError(

@@ -1066,3 +1066,20 @@ probe / weighting の wiring だけ current contract に揃えられた。
 - 次段の PPO/SAC 本命は変わらず
   1. exception-path fixed-cost の継続削減
   2. warm-start continuity の追加詰め
+
+## 2026-04-07 CX4-CX6 coexistence / heavy-test note
+
+- CX4-CX6 は PPO runtime 本体に直接変更を入れていない
+- ただし同時に heavy subset を回し、skip-gate/calibration/OBI analysis 追加が
+  PPO/SAC scheduler path を悪化させていないことを確認した
+- regression:
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `359 passed, 1 skipped, 5 warnings in 7.00s`
+
+所見:
+
+- PPO/SAC scheduler の主残差は now secondary
+- 直近の支配点は `enricher` 実データ setup と SAC fresh-signal path
