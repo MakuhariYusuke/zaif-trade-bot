@@ -1083,3 +1083,16 @@ probe / weighting の wiring だけ current contract に揃えられた。
 
 - PPO/SAC scheduler の主残差は now secondary
 - 直近の支配点は `enricher` 実データ setup と SAC fresh-signal path
+
+## 2026-04-07 follow-up: shared scheduler test no-op helpers
+
+- `tests/unit/v460/_sidecar_scheduler_test_helpers.py`
+  - `patch_module_noop_suffixes(...)` を追加
+- 適用:
+  - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+  - `tests/unit/v460/test_sac_retrain_scheduler.py`
+
+所見:
+
+- exception-path test の patch 記述が揃い、PPO/SAC 間の drift を減らせた
+- runtime 変更なしで test fixed-cost を削る方向として妥当

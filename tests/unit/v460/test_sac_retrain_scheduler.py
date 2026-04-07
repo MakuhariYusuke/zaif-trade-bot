@@ -61,6 +61,7 @@ from scripts.v460.ml.sac_retrain_scheduler import (
 from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
 from tests.unit.v460._sidecar_scheduler_test_helpers import (
     make_shutdown_wait,
+    patch_module_noop_suffixes,
     patch_noop_paths,
 )
 
@@ -401,9 +402,12 @@ def _run_retrain_once_with_patches(
         patch("scripts.v460.ml.sac_retrain_scheduler._evaluate_model", return_value=eval_result) as mock_evaluate_model,
         patch("scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check", return_value=False),
         patch("scripts.v460.lib.data_loader.load_parquet", return_value=_MOCK_OHLCV_DF),
-        patch("scripts.v460.ml.sac_retrain_scheduler.cleanup_training_resources", return_value=None),
-        patch("scripts.v460.ml.sac_retrain_scheduler.logger.error", return_value=None),
-        patch("scripts.v460.ml.sac_retrain_scheduler.logger.warning", return_value=None),
+        patch_module_noop_suffixes(
+            "scripts.v460.ml.sac_retrain_scheduler",
+            "cleanup_training_resources",
+            "logger.error",
+            "logger.warning",
+        ),
         _mock_sb3_import(mock_model) as mock_sac_cls,
     ):
         yield mock_sac_cls, mock_evaluate_model
@@ -784,10 +788,11 @@ class TestRunScheduler:
                     "scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check",
                     return_value=False,
                 ),
-                patch_noop_paths(
-                    "scripts.v460.ml.sac_retrain_scheduler._post_cycle_memory_check",
-                    "scripts.v460.ml.sac_retrain_scheduler.append_history_best_effort",
-                    "scripts.v460.ml.sac_retrain_scheduler.logger.info",
+                patch_module_noop_suffixes(
+                    "scripts.v460.ml.sac_retrain_scheduler",
+                    "_post_cycle_memory_check",
+                    "append_history_best_effort",
+                    "logger.info",
                 ),
             ):
                 run_scheduler(cfg)
@@ -979,11 +984,12 @@ class TestCrashResilience495:
                 "scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check",
                 return_value=False,
             ),
-            patch_noop_paths(
-                "scripts.v460.ml.sac_retrain_scheduler._post_cycle_memory_check",
-                "scripts.v460.ml.sac_retrain_scheduler.append_history_best_effort",
-                "scripts.v460.ml.sac_retrain_scheduler.logger.warning",
-                "scripts.v460.ml.sac_retrain_scheduler.logger.info",
+            patch_module_noop_suffixes(
+                "scripts.v460.ml.sac_retrain_scheduler",
+                "_post_cycle_memory_check",
+                "append_history_best_effort",
+                "logger.warning",
+                "logger.info",
             ),
             patch.object(
                 SACRetrainTrigger,
@@ -1410,13 +1416,14 @@ class TestDataFreshnessDecoupling649:
                 "scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check",
                 return_value=False,
             ) as mock_fresh,
-            patch_noop_paths(
-                "scripts.v460.ml.sac_retrain_scheduler._post_cycle_memory_check",
-                "scripts.v460.ml.sac_retrain_scheduler.append_history_best_effort",
-                "scripts.v460.ml.sac_retrain_scheduler.record_trigger_result_best_effort",
-                "scripts.v460.ml.sac_retrain_scheduler.logger.info",
-                "scripts.v460.ml.sac_retrain_scheduler.logger.warning",
-                "scripts.v460.ml.sac_retrain_scheduler.logger.debug",
+            patch_module_noop_suffixes(
+                "scripts.v460.ml.sac_retrain_scheduler",
+                "_post_cycle_memory_check",
+                "append_history_best_effort",
+                "record_trigger_result_best_effort",
+                "logger.info",
+                "logger.warning",
+                "logger.debug",
             ),
         ):
             run_scheduler(cfg)

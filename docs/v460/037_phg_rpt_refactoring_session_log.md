@@ -10739,3 +10739,13 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - verification:
   - focused CX4-CX6/config subset `136 passed in 3.78s`
   - heavy subset `359 passed, 1 skipped, 5 warnings in 7.00s`
+
+## 2026-04-07 heavy/stale test follow-up
+
+- hidden task:
+  - `fill_record_payloads` を切った後、`ztb/metrics/fill_record_io.py` の type import も追随させて coupling を下げた
+  - source-inspect 系テストの repeated assert は陳腐化しやすいため、`_fill_test_source.py` に helper を追加した
+- horizontal:
+  - `patch_module_noop_suffixes(...)` を追加して PPO/SAC scheduler tests に横展開
+- test trim:
+  - `test_enricher_skip_gate.py` の smoke sample を `1/2/4` に縮小

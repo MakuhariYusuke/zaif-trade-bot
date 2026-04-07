@@ -17,7 +17,8 @@ from ztb.io.jsonl import iter_jsonl_objects
 if TYPE_CHECKING:
     import pandas as pd
 
-    from ztb.metrics.fill_quality import FillRecord, FillRecordPayload
+    from ztb.metrics.fill_quality import FillRecord
+    from ztb.metrics.fill_record_payloads import FillRecordPayload
 
 FillRecordObject = dict[str, object]
 logger = logging.getLogger(__name__)

@@ -1820,3 +1820,29 @@ notes:
 
 - heavy subset は引き続き `enricher` 実データ setup が主残差
 - scheduler test 側は top duration からかなり外れてきている
+
+## 2026-04-07 follow-up: stale test helper / scheduler no-op sharing
+
+- stale test 整理:
+  - `tests/unit/v460/_fill_test_source.py`
+    - `source_contains_all(...)`
+    - `source_contains_any(...)`
+    を追加し、source-inspect 系テストの重複 assert を減らした
+  - 先行適用:
+    - `tests/unit/v460/test_145_structural_fixes.py`
+    - `tests/unit/v460/test_158_regime_deadlock_fix.py`
+- scheduler test 横展開:
+  - `tests/unit/v460/_sidecar_scheduler_test_helpers.py`
+    - `patch_module_noop_suffixes(...)` を追加
+  - 適用:
+    - `tests/unit/v460/test_680_ppo_retrain_scheduler.py`
+    - `tests/unit/v460/test_sac_retrain_scheduler.py`
+- real-data smoke setup:
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - smoke sample を `1/2/4` に縮小
+
+狙い:
+
+- source-inspect test の陳腐化ポイントを helper に寄せる
+- PPO/SAC の no-op patch パターンを shared 化し、以後の保守を軽くする
+- cold-cache でも `enricher` smoke の初期固定費を下げる

@@ -26,3 +26,10 @@ def patch_noop_paths(*paths: str) -> Iterator[None]:
         for path in paths:
             stack.enter_context(patch(path, return_value=None))
         yield
+
+
+@contextmanager
+def patch_module_noop_suffixes(module_prefix: str, *suffixes: str) -> Iterator[None]:
+    """共通 prefix + suffix 群を no-op patch する."""
+    with patch_noop_paths(*(f"{module_prefix}.{suffix}" for suffix in suffixes)):
+        yield

@@ -26,6 +26,8 @@ from tests.unit.v460._fill_test_source import (
     read_fill_test_method_source,
     read_fill_test_runner_source,
     read_source_text,
+    source_contains_all,
+    source_contains_any,
 )
 from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping, parse_yaml_mapping
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
@@ -59,9 +61,12 @@ class TestRegimeUpdateDuringSkip:
         # 332# Phase 4: mixin に移管
         source = read_fill_test_runner_source()
         # §20-A: main loop regime update
-        assert "§20-A" in source
-        assert "_maker_price.get_fallback_price()" in source
-        assert "_regime_detector.update(" in source
+        assert source_contains_all(
+            source,
+            "§20-A",
+            "_maker_price.get_fallback_price()",
+            "_regime_detector.update(",
+        )
 
     def test_regime_update_before_skip_checks(self) -> None:
         """§20-A のレジーム更新が skip 判定 (CycleGateAggregator) より前にあること.
@@ -175,9 +180,12 @@ class TestMaxConsecutiveTrendingSellSkip:
         """run メソッドに §20-B 安全弁ロジックが含まれる."""
         source = _CYCLE_GATE_AGGREGATOR_SOURCE
         assert "§20-B" in source
-        assert "safety valve" in source.lower() or "安全弁" in source
-        assert "trending_sell_skip_count" in source
-        assert "max_consecutive_trending_sell_skip" in source
+        assert source_contains_any(source.lower(), "safety valve", "安全弁")
+        assert source_contains_all(
+            source,
+            "trending_sell_skip_count",
+            "max_consecutive_trending_sell_skip",
+        )
 
     def test_counter_reset_on_cycle_execution(self) -> None:
         """run_single_cycle 実行後に trending_sell_skip_count がリセットされるコードが存在."""

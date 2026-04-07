@@ -223,3 +223,13 @@ def read_function_source(path: Path, function_name: str) -> str:
 def read_inspect_source(obj: object) -> str:
     """inspect.getsource() の共有キャッシュ."""
     return inspect.getsource(obj)
+
+
+def source_contains_all(source: str, *needles: str) -> bool:
+    """複数 needle がすべて source に含まれるかを返す."""
+    return all(needle in source for needle in needles)
+
+
+def source_contains_any(source: str, *needles: str) -> bool:
+    """複数 needle のいずれかが source に含まれるかを返す."""
+    return any(needle in source for needle in needles)

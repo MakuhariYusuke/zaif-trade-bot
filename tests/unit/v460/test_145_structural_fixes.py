@@ -33,6 +33,7 @@ from tests.unit.v460._fill_test_source import (
     ORCHESTRATOR_LIFECYCLE,
     read_fill_test_runner_source,
     read_source_text,
+    source_contains_all,
 )
 from ztb.metrics import fill_quality
 from ztb.metrics.fill_quality import FillRecord
@@ -611,12 +612,15 @@ class TestFillRecordBuilderIntegration:
 
     def test_build_fill_record_is_used(self) -> None:
         source = read_source_text(FILL_RECORD_BUILDER)
-        assert "build_fill_record(" in source
-        assert "_build_fill_measurement_fields(" in source
-        assert "_build_fill_market_fields(" in source
-        assert "_build_fill_strategy_fields(" in source
-        assert "_resolve_fill_cancel_reason(" in source
-        assert "_compute_fill_spread_bps(" in source
+        assert source_contains_all(
+            source,
+            "build_fill_record(",
+            "_build_fill_measurement_fields(",
+            "_build_fill_market_fields(",
+            "_build_fill_strategy_fields(",
+            "_resolve_fill_cancel_reason(",
+            "_compute_fill_spread_bps(",
+        )
 
     def test_fill_cycle_executor_passes_execution_additive_enabled(self) -> None:
         source = read_source_text(FILL_CYCLE_EXECUTOR)
