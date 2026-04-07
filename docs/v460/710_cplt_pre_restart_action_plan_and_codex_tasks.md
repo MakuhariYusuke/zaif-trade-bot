@@ -1,9 +1,9 @@
-# 710# 再起動前アクション整理 & 方針比較 & Codex タスク
+# 710# 再起動前アクション整理 & 方針比較 & Codex タスク & Deep Analysis
 
 ## 概要
 
 708#-709# の全変更を統合レビューし、再起動前の最終確認・パラメータ修正・残課題の方針比較を行った。
-新規 Codex タスク CX4-CX6 を設計。
+新規 Codex タスク CX4-CX6 を設計。後半でself-task deep analysis (4 phase) を実施し、追加YAML変更を決定。
 
 ---
 
@@ -116,6 +116,87 @@ penalty = ev_penalty_bps × (reference / spread)
 ### CX5: CalibrationMap 再学習 + entry_gate 復活準備
 
 **目的**: entry_gate の CalibrationMap を直近データで再学習し、EV 分布を現実化
+
+---
+
+## 5. Self-Task Deep Analysis (710# 後半)
+
+### 5.1 分析概要
+
+4 phase の deep analysis を Apr 4-6 データ (499 fills) で実施。
+
+### 5.2 主要発見
+
+#### 5.2.1 skip_gate adaptive threshold simulation
+
+| 側 | target_skip_rate | adaptive_thresh | 改善(bps) | 判定 |
+|----|-----------------|-----------------|-----------|------|
+| buy | 0.15 | -0.7805 | **+27.5** | 有効 |
+| sell | 0.20 | -0.7900 | **-15.6** | **有害** |
+
+**sell 側の skip_gate モデルは反転** — 低スコア fill が高収益 (blocked avg=+0.323, rest avg=-0.020)。
+CX4 の side-aware bypass が不可欠。
+
+#### 5.2.2 velocity_offset_mult フィールド問題
+
+`velocity_offset_mult` フィールドが fill_records に None で記録されており、velocity 防御が無効に見えたが、
+実際は **`executor_offset_stages.velocity` に正しく記録** されており機能していた（例: vel=-6.10 → mult=1.762）。
+
+velocity threshold -4.0 での発動効果:
+- 発動時 12 fills: avg PnL = **-0.114** (ほぼ break-even)
+- 非発動時 243 fills: avg PnL = **-0.371**
+→ velocity defense は実証済みの有効性。
+
+#### 5.2.3 buy/ranging worst/best 分析
+
+| 指標 | worst 20% (n=43) | best 20% (n=43) | 差 |
+|------|------------------|-----------------|-----|
+| OBI med | -0.019 | 0.030 | 微差 |
+| velocity avg | 0.16 | 0.06 | 微差 |
+| spread avg | 2.09 | 2.04 | 微差 |
+| offset avg | 0.1457 | 0.1382 | 微差 |
+
+**worst/best fills は全特徴量で分離不能** → 逆選択が確率的（stochastic AS）。
+閾値チューニングでの改善は構造的に限界あり。
+
+#### 5.2.4 OBI U-shape 確認 (`orderbook_imbalance` フィールド)
+
+前回フィールド名を `obi` と誤り "none" と報告。正しくは `orderbook_imbalance` で **全 499 fills にデータあり**。
+
+| OBI zone | buy/ranging n | avg PnL | 判定 |
+|----------|--------------|---------|------|
+| sell_heavy (<-0.1) | 75 | -0.578 | 損失 |
+| **neutral (-0.1~0.1)** | **52** | **+0.180** | **唯一の黒字** |
+| buy_heavy (>0.1) | 88 | -0.466 | 損失 |
+
+U-shape 完全確認。CX6 の absolute/quadratic OBI モードで対応予定。
+
+#### 5.2.5 buy ceiling ヒット率
+
+buy ceiling (0.35) ヒット率はわずか **7.5%** (19/255)。ceiling 引上げの効果は限定的。
+ただし ceiling ヒット + velocity boost の 4 fills は avg=**+2.150** と好成績。
+
+### 5.3 追加 YAML 変更
+
+| 変更 | 値 | 根拠 |
+|------|-----|------|
+| `buy_velocity_skip_threshold_bps` | -4.0→**-3.0** | -3~-4 帯 7 fills avg=-1.39。velocity defense (-4.0 発動時 avg=-0.114) の有効性実証済み |
+
+#### 見送り事項
+
+| 案 | 判断 | 理由 |
+|----|------|------|
+| buy offset ceiling 0.35→0.40 | 見送り | ceiling ヒット率 7.5%、影響軽微 |
+| buy base offset 0.08→0.10 | 見送り | 708# 変更後、初期データで再変更は早計 |
+| skip_gate bypass=false (buy) | CX4 待ち | sell 有害確認、side-aware 実装が前提 |
+| OBI absolute/quadratic filter | CX6 待ち | code 変更必要 |
+| min_spread_floor 0.38→1.0 | 見送り | fill rate 影響が大きく、追加分析必要 |
+
+### 5.4 CX4-CX6 への追加インプット
+
+- **CX4**: sell bypass は**絶対に維持**。sell SG モデルは反転（低スコア=高収益）
+- **CX5**: entry_gate CalibrationMap の再学習は OBI 修正後に実施が効果的
+- **CX6**: `orderbook_imbalance` フィールド名確認済み。全499件にデータあり。U-shape の安全帯は OBI ∈ [-0.1, 0.1]
 
 **要件**:
 1. `scripts/v460/ml/calibration_batch.py` を最新 fill_records で実行

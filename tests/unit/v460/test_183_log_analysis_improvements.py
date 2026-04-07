@@ -345,9 +345,9 @@ class TestFillTestYAMLIntegration:
         cfg = clone_fill_test_config(load_fill_test_config_from_mapping(data))
 
         # velocity skip 現在値
-        # buy=-4.0, sell=4.0 は現行 fill_test.yaml の対称設定に追随
+        # 710# buy=-3.0 (710#分析: -4→-3, velocity defense拡大), sell=4.0
         assert cfg.buy_velocity_skip_enabled is True
-        assert cfg.buy_velocity_skip_threshold_bps == pytest.approx(-4.0)
+        assert cfg.buy_velocity_skip_threshold_bps == pytest.approx(-3.0)
         assert cfg.sell_velocity_skip_threshold_bps == pytest.approx(4.0)
 
         # 183# hour offsets
