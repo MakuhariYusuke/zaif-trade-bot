@@ -70,9 +70,9 @@ class SpreadASGuardConfig:
     ev_penalty_bps: float = 0.5
     redesign_enabled: bool = False
     active_threshold_bps: float = 4.0
-    inverse_penalty_reference_bps: float = 4.0
+    inverse_penalty_reference_bps: float = 2.0  # 710# fix: median spread≈2.05 に合わせる
     inverse_penalty_floor_bps: float = 0.25
-    inverse_penalty_cap_bps: float = 2.0
+    inverse_penalty_cap_bps: float = 1.5  # 710# fix: 過罰防止
 
 
 @dataclass(frozen=True)
@@ -1069,9 +1069,9 @@ class FillTestConfig:
     spread_as_guard_ev_penalty_bps: float = 0.5
     spread_as_guard_redesign_enabled: bool = False
     spread_as_guard_active_threshold_bps: float = 4.0
-    spread_as_guard_inverse_penalty_reference_bps: float = 4.0
+    spread_as_guard_inverse_penalty_reference_bps: float = 2.0  # 710# fix
     spread_as_guard_inverse_penalty_floor_bps: float = 0.25
-    spread_as_guard_inverse_penalty_cap_bps: float = 2.0
+    spread_as_guard_inverse_penalty_cap_bps: float = 1.5  # 710# fix
     regime_guard_overrides_enabled: bool = False
     regime_guard_ev_threshold_premiums: dict[str, float] = field(default_factory=dict)
     regime_guard_spread_as_penalty_multipliers: dict[str, float] = field(default_factory=dict)

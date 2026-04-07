@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-04-07 (706# Post-705 収益性リアリティチェック)
+> 最終更新: 2026-04-07 (710# 再起動前アクション整理 + CX4-CX6)
 
 ---
 
@@ -816,3 +816,5 @@ NNN_phX_TYPE_description.md
 | 707 | review | [707_cplt_second_opinion_post706_academic_pipeline_evolution.md](707_cplt_second_opinion_post706_academic_pipeline_evolution.md) | 706# 批判的検証と真の最適化アプローチ (Rev.2) |
 | 708 | analysis | [708_cplt_706_707_deep_dive_blind_spots.md](708_cplt_706_707_deep_dive_blind_spots.md) | 706/707 セカンドオピニオン深堀り: 盲点検証と実装判断 |
 | 708 | impl | — | T1: sell/trending_up hard_skip 緩和 (mult 5.0), T2: AS trailing gate soft_threshold 0.30→0.20 |
+| 709 | review | [709_phg_708_skip_gate_entry_gate_sag_review.md](709_phg_708_skip_gate_entry_gate_sag_review.md) | 708 Codex CX1-CX3 実装レビュー: skip_gate quality / entry_gate / SAG redesign |
+| 710 | plan | [710_cplt_pre_restart_action_plan_and_codex_tasks.md](710_cplt_pre_restart_action_plan_and_codex_tasks.md) | 再起動前アクション整理 + SAG param fix + 方針比較 + CX4-CX6 設計 |

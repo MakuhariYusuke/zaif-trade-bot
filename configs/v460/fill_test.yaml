@@ -1304,9 +1304,9 @@ spread_as_guard:
   ev_penalty_bps: 0.5
   redesign_enabled: false
   active_threshold_bps: 4.0
-  inverse_penalty_reference_bps: 4.0
+  inverse_penalty_reference_bps: 2.0   # 710# fix: 4.0→2.0 (median spread≈2.05, ref=4.0だと全帯域でpenalty倍増)
   inverse_penalty_floor_bps: 0.25
-  inverse_penalty_cap_bps: 2.0
+  inverse_penalty_cap_bps: 1.5         # 710# fix: 2.0→1.5 (ref=2.0でも狭スプレッド時の過罰防止)
 regime_exit_strategy:
   enabled: true                   # 701# 有効化: trending_down + buy>10 + imbalance>=0.3 で段階的介入
   max_trending_down_buy_fills: 10
