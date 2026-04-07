@@ -3114,8 +3114,8 @@ class Test052AdaptSellOffsetSync:
         assert "ratio" in source and "new_sell" in source
 
     def test_yaml_sell_offset_updated(self) -> None:
-        """current YAML で sell offset が 0.14 に設定されている."""
-        assert _FILL_TEST_YAML_CFG["side_offset"]["sell"] == 0.14
+        """current YAML で sell offset が 0.18 に設定されている."""
+        assert _FILL_TEST_YAML_CFG["side_offset"]["sell"] == 0.18
 
     def test_yaml_skip_utc_hours_buy_includes_12(self) -> None:
         """163# Step2: time_filter buy=[16]のみ。旧 UTC08/18 は regime_adaptive で復元."""

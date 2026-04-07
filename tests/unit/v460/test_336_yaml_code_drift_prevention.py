@@ -60,7 +60,6 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "daily_drawdown_soft_lot_side_aware",
     "dual_kill_quiescence_enabled",
     "dynamic_cycle_interval_enabled",
-    "entry_gate_enabled",
     "entry_gate_calibration_map_path",
     "spread_as_guard_enabled",
     "regime_guard_ev_threshold_premiums",

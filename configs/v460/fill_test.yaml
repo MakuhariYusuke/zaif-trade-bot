@@ -252,8 +252,8 @@ e3:
 # ---- 049# side 別 offset ----
 # buy は共通値 (0.05) を継承、sell のみ保守化
 side_offset:
-  buy: 0.08                    # 708# 706#P3/707#P0: 0.05→0.08 (buy+ranging n=211 avg=-0.350, 止血。706#/707#合意)
-  sell: 0.14                   # 506# P0: 0.18→0.14 (0.10-0.19バケット WR=67.4%, avg=+3.223)
+  buy: 0.10                    # 712# 0.08→0.10: buy AS=22.9%, sc_avg=-0.716。unclamped fills保護
+  sell: 0.18                   # 712# 0.14→0.18: sell AS=32.7%, sc_avg=-0.615。688#時点AS30.4%から悪化
 
 # ---- 049# 即約定防御 ----
 fast_fill_defense:
@@ -775,8 +775,8 @@ offset_stage_recording:
 # - sell ceiling=0.50 に引上げ → regime boost(×1.8=0.54)が ceil で 0.50 まで有効化
 # - buy ceiling=0.15 据置 → buy side には十分な制御
 offset_ceiling_ratio: 0.15        # 共通デフォルト (サイド別が未設定時に使用)
-offset_ceiling_ratio_buy: 0.35    # 565# P1: 0.30→0.35 (I3 pre_clamp分布 p50=0.3067 のため引上げ、562# P-B提案)
-offset_ceiling_ratio_sell: 0.50   # 688# 0.40→0.50: 684# A1。sell全時間帯の防御余裕確保 (sell AS30.4%対策)
+offset_ceiling_ratio_buy: 0.50    # 712# 0.35→0.50: 100% clamp率。pre_clamp avg=0.56 → pipeline判断をより尊重
+offset_ceiling_ratio_sell: 0.65   # 712# 0.50→0.65: 100% clamp率。pre_clamp avg=0.73 → sell AS32.7%対策
 
 # ---- 568# M1/M2: Additive Pipeline & eDRC Transition ----
 # 経路2 (A/Bトグル方式): enabled=false で既存乗法チェーンを維持。
@@ -1286,7 +1286,7 @@ composite_risk_weight_ranging_low_vol: 0.5
 composite_risk_weight_trending_sell: 0.7
 composite_risk_weight_velocity: 0.4
 # 555# Entry Gate: CalibrationMap EV ベースエントリー判定
-entry_gate_enabled: true               # 690#: observe → safety-guard 付きで段階有効化
+entry_gate_enabled: false              # 712# true→false: 88/日のブロックが全てstale_calibration_mapで抑制。CalibrationMap再学習まで無効化
 entry_gate_calibration_map_path: "models/v460/entry_gate_calibration.json"  # 621# observe接続
 entry_gate_probability_mode: "lcb"
 entry_gate_ewma_tau: 100.0

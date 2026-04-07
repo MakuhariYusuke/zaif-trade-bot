@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 712# Post-Restart Ceiling & Offset Recalibration (2026-04-08)
+
+### Analysis
+- 750cd71 (CX4-CX6) restart後 97 fills: sc_avg=-0.665 (OLD SHA -0.975 より改善)
+- **Final clamp 100% hit rate**: buy pre_clamp=0.56→final=0.26, sell pre_clamp=0.73→final=0.41
+- Entry gate 88 wasted blocks/日 (全て stale_calibration_map で SUPPRESSED)
+- Sell AS rate 32.7% (688# 時点 30.4% から悪化)
+
+### Changed
+- `offset_ceiling_ratio_buy`: 0.35→0.50 (100% clamp 率対策)
+- `offset_ceiling_ratio_sell`: 0.50→0.65 (100% clamp 率対策)
+- `entry_gate_enabled`: true→false (stale CalibrationMap、88 blocks/日の無駄解消)
+- `side_offset.buy`: 0.08→0.10 (buy AS=22.9% 対策)
+- `side_offset.sell`: 0.14→0.18 (sell AS=32.7% 対策)
+- test: sell offset assertion 0.14→0.18, KNOWN_YAML_OVERRIDES から entry_gate_enabled 除去
+- 全変更 hot-reload 対応 (コールドリスタート不要)
+
+### Tests
+- `4552 passed, 8 skipped` (pre-existing 1 failure: line count check, 無関係)
+
 ## 705# Post-704# 3日間分析 + buy 側劣化根本原因特定 (2026-04-07)
 
 ### Analysis
