@@ -401,12 +401,26 @@ def _run_retrain_once_with_patches(
         patch("scripts.v460.ml.sac_retrain_scheduler._create_env", return_value=mock_env) as mock_create_env,
         patch("scripts.v460.ml.sac_retrain_scheduler._evaluate_model", return_value=eval_result) as mock_evaluate_model,
         patch("scripts.v460.ml.sac_retrain_scheduler._run_data_freshness_check", return_value=False),
+        patch(
+            "scripts.v460.ml.sac_retrain_scheduler._build_training_debug_details",
+            return_value={},
+        ),
+        patch(
+            "scripts.v460.ml.sac_retrain_scheduler.current_iso_timestamp",
+            return_value="2026-04-01T00:00:00+00:00",
+        ),
+        patch(
+            "scripts.v460.ml.sac_retrain_scheduler.current_compact_timestamp",
+            return_value="20260401_0000",
+        ),
+        patch("scripts.v460.ml.sac_retrain_scheduler._export_feature_norms", return_value=None),
         patch("scripts.v460.lib.data_loader.load_parquet", return_value=_MOCK_OHLCV_DF),
         patch_module_noop_suffixes(
             "scripts.v460.ml.sac_retrain_scheduler",
             "cleanup_training_resources",
             "logger.error",
             "logger.warning",
+            "logger.info",
         ),
         _mock_sb3_import(mock_model) as mock_sac_cls,
     ):

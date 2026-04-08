@@ -1096,3 +1096,11 @@ probe / weighting の wiring だけ current contract に揃えられた。
 
 - exception-path test の patch 記述が揃い、PPO/SAC 間の drift を減らせた
 - runtime 変更なしで test fixed-cost を削る方向として妥当
+## 2026-04-08 follow-up
+
+- scheduler heavy test の fixed-cost 削減を継続
+- `test_sac_retrain_scheduler.py` の `retrain_once()` helper で
+  - timestamp
+  - debug details
+  - feature norm export
+  を patch 化し、PPO/SAC scheduler test 方針をさらに揃えた

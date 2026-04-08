@@ -10761,3 +10761,9 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - 方針:
   - 常時 skip の群は archive candidate として separate batch
   - source-inspect 群は即削除せず、まず helper 化で保守性を上げる
+
+## 2026-04-08 fill/scheduler follow-up
+
+- `fill_record_builders.py` を追加し、`fill_quality` の record builder 責務を分離
+- `test_enricher_skip_gate.py` の real-data sample を `1/2/3` と `12/16/20` へ圧縮
+- `test_sac_retrain_scheduler.py` の `retrain_once()` patch helper で timestamp/debug/export の固定費を削減

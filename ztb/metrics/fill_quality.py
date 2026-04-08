@@ -74,6 +74,10 @@ from ztb.metrics.fill_record_payloads import (
     build_skip_fill_record_payload,
     sanitize_fill_record_fields,
 )
+from ztb.metrics.fill_record_builders import (
+    build_typed_fill_record,
+    build_typed_skip_fill_record,
+)
 from ztb.utils.dataclass_utils import get_dataclass_field_names, shallow_asdict
 
 if TYPE_CHECKING:
@@ -390,12 +394,11 @@ def build_fill_record(**data: object) -> FillRecord:
 
     known field のみを通す。必須フィールド不足は FillRecord 側の TypeError に委ねる。
     """
-    return FillRecord(  # type: ignore[arg-type]
-        **sanitize_fill_record_fields(
-            data,
-            valid_field_names=_FILL_RECORD_FIELD_NAMES,
-            context="build_fill_record",
-        )
+    return build_typed_fill_record(
+        FillRecord,
+        valid_field_names=_FILL_RECORD_FIELD_NAMES,
+        context="build_fill_record",
+        data=data,
     )
 
 def build_skip_fill_record(
@@ -419,7 +422,10 @@ def build_skip_fill_record(
 
     追加フィールドは FillRecord に存在するものだけを反映し、それ以外は無視する。
     """
-    payload = build_skip_fill_record_payload(
+    return build_typed_skip_fill_record(
+        FillRecord,
+        valid_field_names=_FILL_RECORD_FIELD_NAMES,
+        protected_fields=_SKIP_RECORD_PROTECTED_FIELDS,
         cycle_id=cycle_id,
         timestamp=timestamp,
         side=side,
@@ -434,10 +440,7 @@ def build_skip_fill_record(
         balance_forced_switch=balance_forced_switch,
         ab_test_variant=ab_test_variant,
         extra=extra,
-        valid_field_names=_FILL_RECORD_FIELD_NAMES,
-        protected_keys=_SKIP_RECORD_PROTECTED_FIELDS,
     )
-    return build_fill_record(**payload)
 
 # ======================================================================
 # G1.1 Gate Judgment

@@ -1870,3 +1870,19 @@ notes:
 - すぐ削除はしない
 - source-inspect 群は helper 化で陳腐化耐性を上げる
 - 常時 skip 群は archive candidate として別束で整理する
+
+## 2026-04-08 追加メモ
+
+- `test_enricher_skip_gate.py`
+  - real-data smoke / trainable の sample 上限をさらに圧縮
+  - `smoke=1/2/3`, `trainable=12/16/20`
+- `test_sac_retrain_scheduler.py`
+  - `retrain_once()` helper で
+    - timestamp formatting
+    - debug detail build
+    - feature norms export
+    の無関係固定費を patch 化
+- `fill_quality`
+  - `build_fill_record(...)`
+  - `build_skip_fill_record(...)`
+  の typed builder を `fill_record_builders.py` へ分離
