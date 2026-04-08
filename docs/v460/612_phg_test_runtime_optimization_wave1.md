@@ -1846,3 +1846,27 @@ notes:
 - source-inspect test の陳腐化ポイントを helper に寄せる
 - PPO/SAC の no-op patch パターンを shared 化し、以後の保守を軽くする
 - cold-cache でも `enricher` smoke の初期固定費を下げる
+
+## 実行意義が薄い候補の棚卸し
+
+現時点で「日常の maintained baseline」に対する価値が薄い候補は次の 2 系統。
+
+1. 常時 skip の module-level tests
+   - `tests/training/test_system_optimizer.py`
+   - `tests/training/test_model_compression.py`
+   - `tests/training/compression/test_composite_compressor.py`
+   - `tests/training/quantization/test_quantization.py`
+   - `tests/training/test_gradient_accumulation.py` の CUDA 専用枝
+   - これらは壊してはいけない知識の保管先ではあるが、日常回帰としての価値は低い
+2. source-inspect string assert が厚いテスト
+   - `tests/unit/v460/test_139_review_fixes.py`
+   - `tests/unit/v460/test_113_resilience.py`
+   - `tests/unit/v460/test_145_structural_fixes.py`
+   - `tests/unit/v460/test_158_regime_deadlock_fix.py`
+   - 実行コストは軽い一方で、rename/comment 移動で壊れやすい
+
+方針:
+
+- すぐ削除はしない
+- source-inspect 群は helper 化で陳腐化耐性を上げる
+- 常時 skip 群は archive candidate として別束で整理する

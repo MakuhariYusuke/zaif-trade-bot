@@ -10749,3 +10749,15 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `patch_module_noop_suffixes(...)` を追加して PPO/SAC scheduler tests に横展開
 - test trim:
   - `test_enricher_skip_gate.py` の smoke sample を `1/2/4` に縮小
+
+## 2026-04-08 low-value test audit
+
+- candidate buckets:
+  1. module-level skip で maintained baseline に寄与しにくい training/compression tests
+  2. source-inspect string assert が厚く、rename/comment 移動で壊れやすい tests
+- 対応:
+  - `_fill_test_source.py` の helper を `test_139_review_fixes.py` / `test_113_resilience.py` に横展開
+  - scheduler tests は `_sidecar_scheduler_test_helpers.py` に no-op patch helper を集約
+- 方針:
+  - 常時 skip の群は archive candidate として separate batch
+  - source-inspect 群は即削除せず、まず helper 化で保守性を上げる

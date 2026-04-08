@@ -44,6 +44,7 @@ from tests.unit.v460._fill_test_source import (
     read_inspect_source,
     read_fill_test_runner_source,
     read_source_text,
+    source_contains_all,
 )
 from tests.unit.v460._yaml_test_helpers import clone_fill_test_config, load_fill_test_config_from_mapping
 from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
@@ -165,8 +166,7 @@ class TestPreflightPauseAuditRecord:
         """run_fill_test.py の preflight pause ブロックに _make_skip_record がある."""
         source = read_fill_test_runner_source()  # 163# mixin 分割対応
         # 145# §9-#5: CR.PREFLIGHT_PAUSE 定数に移行済み
-        assert "PREFLIGHT_PAUSE" in source
-        assert "_make_skip_record" in source
+        assert source_contains_all(source, "PREFLIGHT_PAUSE", "_make_skip_record")
 
 
 # ---------------------------------------------------------------------------

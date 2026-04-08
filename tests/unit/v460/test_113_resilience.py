@@ -22,7 +22,7 @@ from scripts.v460.lib.resilience import (
     HealthThresholds,
     create_api_circuit_breaker,
 )
-from tests.unit.v460._fill_test_source import read_fill_test_method_source
+from tests.unit.v460._fill_test_source import read_fill_test_method_source, source_contains_all
 from ztb.utils.circuit_breaker import CircuitBreaker, CircuitState
 
 
@@ -224,9 +224,9 @@ class TestR1MethodExtraction:
         pre_source = read_fill_test_method_source("_run_pre_order_phase")
         monitor_source = read_fill_test_method_source("_monitor_fill_phase")
         finalize_source = read_fill_test_method_source("_finalize_cycle")
-        assert "_evaluate_skip_gate" in pre_source
-        assert "_monitor_fill_polling" in monitor_source
-        assert "_measure_post_fill_pnl" in finalize_source
+        assert source_contains_all(pre_source, "_evaluate_skip_gate")
+        assert source_contains_all(monitor_source, "_monitor_fill_polling")
+        assert source_contains_all(finalize_source, "_measure_post_fill_pnl")
 
     def test_result_dataclasses_exist(self) -> None:
         """R1 結果データクラスがインポート可能."""
@@ -272,8 +272,7 @@ class TestR1ResilienceInRunContinuous:
     def test_health_check_in_continuous(self) -> None:
         # 265# extract: health monitor は _log_progress_and_adapt に分離
         source = read_fill_test_method_source("_log_progress_and_adapt")
-        assert "maybe_check" in source
-        assert "maybe_gc" in source
+        assert source_contains_all(source, "maybe_check", "maybe_gc")
 
     def test_state_persistence_in_continuous(self) -> None:
         # 265# extract: state persistence は _log_progress_and_adapt + _finalize_run に分離
@@ -284,6 +283,9 @@ class TestR1ResilienceInRunContinuous:
 
     def test_resilience_init_in_constructor(self) -> None:
         source = read_fill_test_method_source("__init__")
-        assert "_circuit_breaker" in source
-        assert "_health_monitor" in source
-        assert "_state_persistence" in source
+        assert source_contains_all(
+            source,
+            "_circuit_breaker",
+            "_health_monitor",
+            "_state_persistence",
+        )
