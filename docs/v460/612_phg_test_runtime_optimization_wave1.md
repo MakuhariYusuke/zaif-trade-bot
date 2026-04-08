@@ -1886,3 +1886,17 @@ notes:
   - `build_fill_record(...)`
   - `build_skip_fill_record(...)`
   の typed builder を `fill_record_builders.py` へ分離
+
+## 2026-04-09 追加メモ
+
+- `test_enricher_skip_gate.py`
+  - trainable sample を `12/14/18` へ圧縮
+  - `min_train_samples=18` を維持したまま expanded 上限を最小化
+- scheduler tests
+  - `current_iso_timestamp/current_compact_timestamp` の patch を
+    `_sidecar_scheduler_test_helpers.py` の shared helper に統一
+- `fill_quality`
+  - `guard_pipeline_result` の payload serialize/strip を
+    `fill_guard_pipeline_payloads.py` に分離
+- `fill_gate_judgments.py`
+  - `Any` を除去して `Mapping[str, object]` に揃えた

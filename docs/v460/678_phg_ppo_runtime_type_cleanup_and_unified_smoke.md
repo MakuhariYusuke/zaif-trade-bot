@@ -1104,3 +1104,9 @@ probe / weighting の wiring だけ current contract に揃えられた。
   - debug details
   - feature norm export
   を patch 化し、PPO/SAC scheduler test 方針をさらに揃えた
+
+## 2026-04-09 follow-up
+
+- PPO/SAC scheduler tests の timestamp patch を
+  `patch_module_fixed_timestamps(...)` に共通化
+- runtime ではなく test helper 層の共有として寄せたため、挙動変更はない

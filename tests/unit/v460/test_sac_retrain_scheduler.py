@@ -61,6 +61,7 @@ from scripts.v460.ml.sac_retrain_scheduler import (
 from tests.unit.v460._yaml_test_helpers import load_yaml_mapping
 from tests.unit.v460._sidecar_scheduler_test_helpers import (
     make_shutdown_wait,
+    patch_module_fixed_timestamps,
     patch_module_noop_suffixes,
     patch_noop_paths,
 )
@@ -405,14 +406,7 @@ def _run_retrain_once_with_patches(
             "scripts.v460.ml.sac_retrain_scheduler._build_training_debug_details",
             return_value={},
         ),
-        patch(
-            "scripts.v460.ml.sac_retrain_scheduler.current_iso_timestamp",
-            return_value="2026-04-01T00:00:00+00:00",
-        ),
-        patch(
-            "scripts.v460.ml.sac_retrain_scheduler.current_compact_timestamp",
-            return_value="20260401_0000",
-        ),
+        patch_module_fixed_timestamps("scripts.v460.ml.sac_retrain_scheduler"),
         patch("scripts.v460.ml.sac_retrain_scheduler._export_feature_norms", return_value=None),
         patch("scripts.v460.lib.data_loader.load_parquet", return_value=_MOCK_OHLCV_DF),
         patch_module_noop_suffixes(

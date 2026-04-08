@@ -10776,3 +10776,10 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - `test_260_compute_extract_regime_split.py`
   - helper source-contract と unit test を追加
 - docs は既存 `720` が別件のため `721` で記録
+
+## 2026-04-09 fill/scheduler follow-up
+
+- `fill_guard_pipeline_payloads.py` を追加し、`guard_pipeline_result` の payload serialize/strip を分離
+- `fill_gate_judgments.py` から `Any` を除去
+- `test_enricher_skip_gate.py` の trainable sample を `12/14/18` に圧縮
+- scheduler tests の timestamp patch を shared helper へ集約

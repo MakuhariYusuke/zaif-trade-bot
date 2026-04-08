@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
 from ztb.metrics.fill_gate_reports import (
     build_g1_1_exec_judgment,
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 
 def g1_1_judgment(
     metrics: "FillMetrics",
-    thresholds: dict[str, Any],
+    thresholds: Mapping[str, object],
     records: list["FillRecord"] | None = None,
 ) -> dict[str, object]:
     """G1.1 Gate 合否判定."""
@@ -28,7 +29,7 @@ def g1_1_judgment(
 
 def g1_1_quick_judgment(
     metrics: "FillMetrics",
-    thresholds: dict[str, Any],
+    thresholds: Mapping[str, object],
     cumulative_loss_jpy: float = 0.0,
 ) -> dict[str, object]:
     """G1.1-quick (72h Kill Gate) 判定."""
@@ -41,7 +42,7 @@ def g1_1_quick_judgment(
 
 def g1_2_full_judgment(
     metrics: "FillMetrics",
-    thresholds: dict[str, Any],
+    thresholds: Mapping[str, object],
 ) -> dict[str, object]:
     """G1.2-full (168h Qualification Gate) 判定."""
     return build_g1_2_full_judgment(

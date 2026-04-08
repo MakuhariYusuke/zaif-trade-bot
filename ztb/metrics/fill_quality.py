@@ -35,6 +35,10 @@ from ztb.metrics.fill_guard_pipeline import (
     GuardPipelineResult,
     build_fill_record_guard_pipeline,
 )
+from ztb.metrics.fill_guard_pipeline_payloads import (
+    serialize_guard_pipeline_result,
+    strip_guard_pipeline_result,
+)
 from ztb.metrics.fill_group_metrics import (
     GroupedMetricsBase,
     HourlyMetrics,
@@ -345,9 +349,8 @@ class FillRecord:
     def to_dict(self) -> dict[str, object]:
         """JSON serializable dict."""
         payload = shallow_asdict(self)
-        guard_pipeline_result = self.guard_pipeline_result
-        payload["guard_pipeline_result"] = (
-            guard_pipeline_result.to_dict() if guard_pipeline_result is not None else None
+        payload["guard_pipeline_result"] = serialize_guard_pipeline_result(
+            self.guard_pipeline_result
         )
         return payload
 
@@ -357,7 +360,7 @@ class FillRecord:
         payload = dict(d)
         if "schema_version" not in payload:
             payload["schema_version"] = 1
-        payload.pop("guard_pipeline_result", None)
+        strip_guard_pipeline_result(payload)
         return cls(  # type: ignore[arg-type]
             **sanitize_fill_record_fields(
                 payload,
