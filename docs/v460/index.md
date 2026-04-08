@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-04-07 (710# 再起動前アクション整理 + CX4-CX6)
+> 最終更新: 2026-04-09 (716# 706#-715# 横断レビュー: メトリクス監査・因果補正・runtime 盲点棚卸し)
 
 ---
 
@@ -819,3 +819,12 @@ NNN_phX_TYPE_description.md
 | 709 | review | [709_phg_708_skip_gate_entry_gate_sag_review.md](709_phg_708_skip_gate_entry_gate_sag_review.md) | 708 Codex CX1-CX3 実装レビュー: skip_gate quality / entry_gate / SAG redesign |
 | 710 | plan+analysis | [710_cplt_pre_restart_action_plan_and_codex_tasks.md](710_cplt_pre_restart_action_plan_and_codex_tasks.md) | 再起動前アクション整理 + SAG param fix + 方針比較 + CX4-CX6 設計 + Deep Analysis (SG adaptive/OBI U-shape/velocity defense) + buy_vel_thresh -4→-3 |
 | 711 | review | [711_phg_cx4_cx6_validation_and_fill_split_followup.md](711_phg_cx4_cx6_validation_and_fill_split_followup.md) | CX4-CX6 検証、fill payload 分割、heavy test follow-up |
+| 712 | analysis | [712_cplt_post_restart_ceiling_recalibration.md](712_cplt_post_restart_ceiling_recalibration.md) | 再起動後 ceiling 再校正: Fix F1-F3 と即時検証 |
+| 713 | analysis | [713_cplt_post_712_multi_perspective_evaluation.md](713_cplt_post_712_multi_perspective_evaluation.md) | 712# 後の multi-perspective 評価 |
+| 714 | note | [714_hexagram_thunder_mountain_small_exceeding.md](714_hexagram_thunder_mountain_small_exceeding.md) | 雷山小過 |
+| 715 | review | [715_cplt_713_claims_audit_skeptical_cross_validation.md](715_cplt_713_claims_audit_skeptical_cross_validation.md) | 713# Claims Audit — Skeptical Cross-Validation |
+| 716 | review | [716_cplt_706_715_cross_review_metric_and_runtime_audit.md](716_cplt_706_715_cross_review_metric_and_runtime_audit.md) | 706#-715# 横断レビュー: メトリクス監査・因果補正・runtime 盲点棚卸し |
+| 717 | analysis | [717_cplt_microstructure_reality_check_and_pricing_shift.md](717_cplt_microstructure_reality_check_and_pricing_shift.md) | マイクロストラクチャ分析: OBI 動的 pricing 提案 |
+| 718 | review | [718_cplt_counter_proposals_and_bug_refutation.md](718_cplt_counter_proposals_and_bug_refutation.md) | 反論とバグ否定 (sell_hour "phantom bug" 主張 — 後に反証) |
+| 719 | synthesis | [719_cplt_synthesis_and_xiaoguo_reinterpretation.md](719_cplt_synthesis_and_xiaoguo_reinterpretation.md) | 716-718# 統合 + 小過再解釈 |
+| 720 | fix | [720_cplt_clone_config_value_int_key_silent_drop_fix.md](720_cplt_clone_config_value_int_key_silent_drop_fix.md) | **致命的バグ修正**: _clone_config_value int-key ドロップ — sell_hour/ceiling/hour_offsets 計36 entries 全滅の根因 |
