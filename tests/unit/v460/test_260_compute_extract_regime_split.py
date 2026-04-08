@@ -5,9 +5,14 @@ P2-3: _apply_regime_boosts() → 5 sub-method 分割
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import pytest
 
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.maker_regime_boost import RegimeBoostMixin
 from scripts.v460.lib.maker_price import MakerPriceCalculator as MakerPrice
+from scripts.v460.lib.obi_mode import compute_ranging_obi_multiplier
 from tests.unit.v460._fill_test_source import (
     MAKER_PRICE,
     MAKER_REGIME_BOOST,
@@ -140,7 +145,14 @@ class TestRegimeBoostsSplit:
         assert hasattr(MakerPrice, "_regime_boost_ranging")
         src = self._maker_price_source("_regime_boost_ranging")
         assert "RANGING" in src
-        assert "obi" in src.lower()
+        assert "_apply_ranging_obi_asymmetry" in src
+
+    def test_ranging_obi_helper_exists(self) -> None:
+        """720# CX7: ranging OBI helper が抽出されている."""
+        assert hasattr(MakerPrice, "_apply_ranging_obi_asymmetry")
+        src = self._maker_price_source("_apply_ranging_obi_asymmetry")
+        assert "compute_ranging_obi_multiplier" in src
+        assert "ranging_obi_asymmetry_factor" in src
 
     def test_low_vol_method_exists(self) -> None:
         """_regime_boost_low_vol() が存在し last_volatility_ratio を使用."""
@@ -178,3 +190,68 @@ class TestRegimeBoostsSplit:
             src = self._maker_price_source(name)
             lines = len(src.strip().splitlines())
             assert lines <= 60, f"{name} should be <= 60 lines, got {lines}"
+
+
+@dataclass(slots=True)
+class _RangingObiHarness(RegimeBoostMixin):
+    _config: FillTestConfig
+    _last_imbalance: float = 0.0
+    _effective_max_ratio_value: float = 0.30
+
+    @staticmethod
+    def _scale_offset_ratio(
+        effective_offset_ratio: float,
+        multiplier: float,
+        *,
+        min_ratio: float | None = None,
+        max_ratio: float | None = None,
+    ) -> tuple[float, float]:
+        scaled = effective_offset_ratio * multiplier
+        if min_ratio is not None:
+            scaled = max(min_ratio, scaled)
+        if max_ratio is not None:
+            scaled = min(max_ratio, scaled)
+        return scaled, scaled / effective_offset_ratio
+
+    def _effective_max_ratio(self, side: str) -> float:
+        del side
+        return self._effective_max_ratio_value
+
+
+class TestRangingObiHelper:
+    def test_apply_ranging_obi_asymmetry_matches_existing_formula(self) -> None:
+        cfg = FillTestConfig(
+            min_offset_ratio=0.01,
+            max_offset_ratio=0.30,
+            ranging_obi_asymmetry_factor=0.3,
+            ranging_obi_threshold=0.1,
+            ranging_obi_mode="linear",
+        )
+        harness = _RangingObiHarness(_config=cfg, _last_imbalance=0.4)
+
+        result = harness._apply_ranging_obi_asymmetry("buy", 0.05, 0.8)
+
+        expected = compute_ranging_obi_multiplier(
+            0.8,
+            side="buy",
+            imbalance=0.4,
+            threshold=0.1,
+            factor=0.3,
+            mode="linear",
+        )
+        expected = max(
+            cfg.min_offset_ratio / max(0.05, 1e-6),
+            min(expected, harness._effective_max_ratio("buy") / max(0.05, 1e-6)),
+        )
+        assert result == pytest.approx(expected)
+
+    def test_apply_ranging_obi_asymmetry_returns_base_when_disabled(self) -> None:
+        cfg = FillTestConfig(
+            ranging_obi_asymmetry_factor=0.0,
+            ranging_obi_threshold=0.1,
+        )
+        harness = _RangingObiHarness(_config=cfg, _last_imbalance=0.8)
+
+        result = harness._apply_ranging_obi_asymmetry("sell", 0.05, 0.8)
+
+        assert result == pytest.approx(0.8)

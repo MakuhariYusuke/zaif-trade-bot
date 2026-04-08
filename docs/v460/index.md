@@ -828,3 +828,4 @@ NNN_phX_TYPE_description.md
 | 718 | review | [718_cplt_counter_proposals_and_bug_refutation.md](718_cplt_counter_proposals_and_bug_refutation.md) | 反論とバグ否定 (sell_hour "phantom bug" 主張 — 後に反証) |
 | 719 | synthesis | [719_cplt_synthesis_and_xiaoguo_reinterpretation.md](719_cplt_synthesis_and_xiaoguo_reinterpretation.md) | 716-718# 統合 + 小過再解釈 |
 | 720 | fix | [720_cplt_clone_config_value_int_key_silent_drop_fix.md](720_cplt_clone_config_value_int_key_silent_drop_fix.md) | **致命的バグ修正**: _clone_config_value int-key ドロップ — sell_hour/ceiling/hour_offsets 計36 entries 全滅の根因 |
+| 721 | refactor | [721_phg_cx7_maker_regime_boost_ranging_extract.md](721_phg_cx7_maker_regime_boost_ranging_extract.md) | CX7: `_regime_boost_ranging()` から OBI 非対称 helper を抽出し 60 行以下へ整理 |

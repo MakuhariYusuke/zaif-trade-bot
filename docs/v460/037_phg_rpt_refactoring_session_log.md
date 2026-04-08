@@ -10767,3 +10767,12 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - `fill_record_builders.py` を追加し、`fill_quality` の record builder 責務を分離
 - `test_enricher_skip_gate.py` の real-data sample を `1/2/3` と `12/16/20` へ圧縮
 - `test_sac_retrain_scheduler.py` の `retrain_once()` patch helper で timestamp/debug/export の固定費を削減
+
+## 2026-04-09 maker_regime_boost CX7
+
+- `maker_regime_boost.py`
+  - `_apply_ranging_obi_asymmetry(...)` を追加
+  - `_regime_boost_ranging()` から OBI 非対称 multiplier 解決だけを抽出
+- `test_260_compute_extract_regime_split.py`
+  - helper source-contract と unit test を追加
+- docs は既存 `720` が別件のため `721` で記録

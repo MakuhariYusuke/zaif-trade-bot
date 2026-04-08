@@ -57,6 +57,34 @@ class RegimeBoostMixin:
 
     def _effective_max_ratio(self, side: str) -> float: ...
 
+    def _apply_ranging_obi_asymmetry(
+        self,
+        side: str,
+        effective_offset_ratio: float,
+        base_multiplier: float,
+    ) -> float:
+        """227# C1: ranging OBI 非対称 multiplier を解決する."""
+        cfg = self._config
+        if cfg.ranging_obi_asymmetry_factor <= 0.0:
+            return base_multiplier
+
+        imbalance = self._last_imbalance
+        obi_threshold = cfg.ranging_obi_threshold
+        if abs(imbalance) <= obi_threshold:
+            return base_multiplier
+
+        ranging_mult = compute_ranging_obi_multiplier(
+            base_multiplier,
+            side=side,
+            imbalance=imbalance,
+            threshold=obi_threshold,
+            factor=cfg.ranging_obi_asymmetry_factor,
+            mode=cfg.ranging_obi_mode,
+        )
+        min_mult = cfg.min_offset_ratio / max(effective_offset_ratio, 1e-6)
+        max_mult = self._effective_max_ratio(side) / max(effective_offset_ratio, 1e-6)
+        return max(min_mult, min(ranging_mult, max_mult))
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -167,21 +195,11 @@ class RegimeBoostMixin:
             if _ranging_mult == 1.0:
                 return effective_offset_ratio
 
-            # 227# C1: OBI 方向別非対称化
-            if cfg.ranging_obi_asymmetry_factor > 0.0:
-                _imb = self._last_imbalance
-                _obi_thresh = cfg.ranging_obi_threshold
-                if abs(_imb) > _obi_thresh:
-                    _ranging_mult = compute_ranging_obi_multiplier(
-                        _ranging_mult,
-                        side=side,
-                        imbalance=_imb,
-                        threshold=_obi_thresh,
-                        factor=cfg.ranging_obi_asymmetry_factor,
-                        mode=cfg.ranging_obi_mode,
-                    )
-                    _ranging_mult = max(cfg.min_offset_ratio / max(effective_offset_ratio, 1e-6),
-                                        min(_ranging_mult, self._effective_max_ratio(side) / max(effective_offset_ratio, 1e-6)))
+            _ranging_mult = self._apply_ranging_obi_asymmetry(
+                side,
+                effective_offset_ratio,
+                _ranging_mult,
+            )
             pre_offset = effective_offset_ratio
             if _ranging_mult < 1.0:
                 effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
