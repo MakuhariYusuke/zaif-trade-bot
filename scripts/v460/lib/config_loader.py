@@ -40,10 +40,13 @@ def _clone_config_value(value: object) -> object:
     if isinstance(value, tuple):
         return tuple(_clone_config_value(item) for item in value)
     if isinstance(value, dict):
+        # 720# fix: YAML は hour map 等で int キーを生成するため、
+        # str/int 両方を保持する。元のキー型を維持して
+        # sell_hour_offset_boost / hour_ceiling_mult 等のサイレント消失を防止。
         return {
-            str(k): _clone_config_value(v)
+            k: _clone_config_value(v)
             for k, v in value.items()
-            if isinstance(k, str)
+            if isinstance(k, (str, int))
         }
     return copy.deepcopy(value)
 

@@ -1096,6 +1096,35 @@ class Test062SkipGateRunner:
         assert record.skip_gate_reason is None
 
 
+# ======================================================================
+# 720# int-key YAML maps の end-to-end 回帰テスト
+# ======================================================================
+
+
+class TestIntKeyYamlMapsEndToEnd:
+    """720# sell_hour_offset_boost / hour_ceiling_mult / hour_offsets が
+    YAML→FillTestConfig で int key を保持すること."""
+
+    def test_sell_hour_offset_boost_not_empty(
+        self,
+        v460_fill_test_config_base: FillTestConfig,
+    ) -> None:
+        """live YAML の sell_hour_offset_boost がクローンで消えない."""
+        shob = v460_fill_test_config_base.sell_hour_offset_boost
+        assert len(shob) > 0, "sell_hour_offset_boost is empty after load"
+        assert all(isinstance(k, int) for k in shob), "keys must be int"
+        assert all(isinstance(v, float) for v in shob.values()), "values must be float"
+
+    def test_hour_ceiling_mult_not_empty(
+        self,
+        v460_fill_test_config_base: FillTestConfig,
+    ) -> None:
+        """live YAML の hour_ceiling_mult がクローンで消えない."""
+        hcm = v460_fill_test_config_base.hour_ceiling_mult
+        assert len(hcm) > 0, "hour_ceiling_mult is empty after load"
+        assert all(isinstance(k, int) for k in hcm), "keys must be int"
+
+
 class TestSideOverride:
     """075# Fix: side_override パラメータの回帰テスト (076# HIGH#5)."""
 

@@ -14,6 +14,7 @@ from typing import Any
 import pytest
 
 from scripts.v460.lib.config_loader import (
+    _clone_config_value,
     _deep_merge,
     _validate,
     load_config,
@@ -225,6 +226,50 @@ class TestGateThresholds:
         g11 = thresholds["g1_1_exec"]
         # fill_rate P90 + cancel_ratio の合計は 100% 以下でなければならない
         assert g11["min_fill_rate_p90"] + g11["max_cancel_ratio"] <= 1.2  # soft check
+
+
+# ======================================================================
+# 720# _clone_config_value — int key 保持の回帰テスト
+# ======================================================================
+
+
+class TestCloneConfigValue:
+    """720# _clone_config_value が int key を保持することを検証."""
+
+    def test_str_keys_preserved(self) -> None:
+        original = {"a": 1, "b": {"c": 2}}
+        cloned = _clone_config_value(original)
+        assert cloned == original
+
+    def test_int_keys_preserved(self) -> None:
+        """YAML hour map パターン: {0: 1.5, 2: 5.0} の int key が消えない."""
+        original = {0: 1.5, 2: 5.0, 8: 1.5}
+        cloned = _clone_config_value(original)
+        assert cloned == original
+        assert set(cloned.keys()) == {0, 2, 8}
+
+    def test_nested_int_keys_preserved(self) -> None:
+        """sell_hour_offset_boost / hour_ceiling_mult パターン."""
+        original = {
+            "sell_hour_offset_boost": {0: 1.5, 2: 5.0},
+            "hour_ceiling_mult": {12: 1.5, 14: 2.0},
+        }
+        cloned = _clone_config_value(original)
+        assert cloned["sell_hour_offset_boost"] == {0: 1.5, 2: 5.0}
+        assert cloned["hour_ceiling_mult"] == {12: 1.5, 14: 2.0}
+
+    def test_clone_is_independent(self) -> None:
+        original = {"x": {0: 1.0}}
+        cloned = _clone_config_value(original)
+        cloned["x"][0] = 99.0
+        assert original["x"][0] == 1.0
+
+    def test_list_cloned(self) -> None:
+        original = [1, {"a": 2}]
+        cloned = _clone_config_value(original)
+        assert cloned == original
+        cloned[1]["a"] = 99
+        assert original[1]["a"] == 2
 
 
 # ======================================================================
