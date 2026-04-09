@@ -293,14 +293,46 @@ sell_hour_offset_boost の 17 entries に UTC 5 / 6 が欠落していた。
 - **「可小事，不可大事」**: YAML 2箇所の微調整。アーキテクチャ変更なし
 - **「公弋取彼在穴」**: hot-reload で回収可能な変更。穴を射抜く
 
-### P0 改訂 (722# 時点)
+### P0 改訂 (723# 時点)
 
 | 優先 | 変更 | 状態 | 備考 |
 |------|------|------|------|
 | **P0** | 720# デプロイ（int-key 修正） | **完了** (09a8cb263) | 36 entries 有効化 |
-| **P0.5** | 722# sell_hour UTC 5/6 + narrow boost | **完了** | 2つの gap を塞ぐ |
-| P1 | max_skip_rate 0.30→0.35 | 保留 | 722# 効果を見てから判断 |
+| **P0.5** | 722# sell_hour UTC 5/6 + narrow boost | **完了** (a7735cad3) | hot-reload 確認済 |
+| ~~P1~~ | ~~max_skip_rate 0.30→0.35~~ | **棄却** | 723# bypass paradox: 現行 0.30 が最適 |
 | P2 | SAG redesign_enabled: true | 保留 | 同上 |
+
+## 第八部: 723# — 「密雲不雨」の正体
+
+### bypass paradox: モデルが退ける fill が利益を運ぶ
+
+723# の 4 日間分析で明らかになった事実:
+
+- **bypass fills** (n=183, model=skip → bypass_mode で通過): avg=**+0.36bps**, total=**+66.0bps**
+- **normal fills** (n=392, rate_limiter/genuine_pass): avg=**-0.53bps**, total=**-206.9bps**
+- **genuine_pass** (n=62, model=pass): avg=**-0.55bps** — model の pass 判定が最も悪い
+
+→ skip_gate LightGBM の予測力はゼロないし負。「密雲不雨」は雲（=モデル）が雨（=利益）を
+妨げていた構図。bypass_mode がその遮蔽を破っている。
+
+### trending_up bypass の驚異
+
+trending_up × bypass: n=23, avg=**+2.01bps**, WR=61%, AS=4%。
+trending_up × normal: n=51, avg=-2.42bps, WR=43%, AS=22%。
+
+差は 4.43bps。上昇局面で model が「危険」と退けた fill が最も安全かつ収益的。
+
+### P1 棄却の根拠
+
+max_skip_rate を 0.30→0.35 に上げる案は「model をより信じる」方向。
+model に予測力が無い以上、skip rate を上げることは単に fill 機会を逸するだけ。
+672# の CI=[−0.53,+0.07] も同方向を示唆。0.30 維持が正解。
+
+### 「飛鳥遺之音、不宜上、宜下」の再解釈
+
+小過の教え「上に宜しからず、下に宜し」。
+bypass paradox の文脈では: **高度なモデルの判断（上）に従うより、素朴な rate_limiter +
+bypass_mode（下）に従う方が良い**。小事（=局所的な安全バイアス）に過ぎれば利益を逃す。
 
 ```
 方法: 梅花心易 年月日時法
