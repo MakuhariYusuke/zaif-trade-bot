@@ -364,4 +364,4 @@ class TestFillTestYAMLIntegration:
 
         # 183# narrow spread boost
         assert cfg.narrow_spread_boost_buy == pytest.approx(1.0)  # 674# 2.0→1.0
-        assert cfg.narrow_spread_boost_sell == pytest.approx(1.5)  # 674# 2.5→1.5
+        assert cfg.narrow_spread_boost_sell == pytest.approx(2.0)  # 722# 1.5→2.0

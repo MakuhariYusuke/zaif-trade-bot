@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-04-09 (716# 706#-715# 横断レビュー: メトリクス監査・因果補正・runtime 盲点棚卸し)
+> 最終更新: 2026-04-09 (722# sell_hour UTC 5/6 gap + narrow spread sell boost)
 
 ---
 
@@ -829,3 +829,4 @@ NNN_phX_TYPE_description.md
 | 719 | synthesis | [719_cplt_synthesis_and_xiaoguo_reinterpretation.md](719_cplt_synthesis_and_xiaoguo_reinterpretation.md) | 716-718# 統合 + 小過再解釈 |
 | 720 | fix | [720_cplt_clone_config_value_int_key_silent_drop_fix.md](720_cplt_clone_config_value_int_key_silent_drop_fix.md) | **致命的バグ修正**: _clone_config_value int-key ドロップ — sell_hour/ceiling/hour_offsets 計36 entries 全滅の根因 |
 | 721 | refactor | [721_phg_cx7_maker_regime_boost_ranging_extract.md](721_phg_cx7_maker_regime_boost_ranging_extract.md) | CX7: `_regime_boost_ranging()` から OBI 非対称 helper を抽出し 60 行以下へ整理 |
+| 722 | tuning | [722_cplt_sell_hour_gap_narrow_spread_defense.md](722_cplt_sell_hour_gap_narrow_spread_defense.md) | 720# 初動分析: sell_hour_boost UTC 5/6 gap 追加 + narrow spread sell boost 1.5→2.0 |

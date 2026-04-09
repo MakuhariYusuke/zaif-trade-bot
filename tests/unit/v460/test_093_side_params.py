@@ -150,7 +150,7 @@ class TestSpreadAdaptiveSideYAML:
         assert "narrow_spread_boost_buy" in sa
         assert "narrow_spread_boost_sell" in sa
         assert sa["narrow_spread_boost_buy"] == pytest.approx(1.0)   # 674# 2.0→1.0 (672# α最低帯でboost逆効果)
-        assert sa["narrow_spread_boost_sell"] == pytest.approx(1.5)  # 674# 2.5→1.5 (最低限防御のみ)
+        assert sa["narrow_spread_boost_sell"] == pytest.approx(2.0)  # 722# 1.5→2.0: 4日 narrow sell=-81.8bps 防御強化
 
 
 # =====================================================================

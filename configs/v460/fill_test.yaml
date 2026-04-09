@@ -342,7 +342,7 @@ spread_adaptive:
   narrow_spread_bps: 2.5       # 121# A3: 2.0→2.5 P50近辺に引上げ→postonly_reject -20~30%削減 (168h 65件→~45件)
   narrow_spread_boost: 2.0     # 狭スプレッド時の offset 倍率 (共通フォールバック)
   narrow_spread_boost_buy: 1.0 # 674# 2.0→1.0: 672#分析でα最低帯(0-1500)にboostは逆効果。fill促進に転換
-  narrow_spread_boost_sell: 1.5 # 674# 2.5→1.5: 672#α分析に基づき最低限防御のみ維持
+  narrow_spread_boost_sell: 2.0 # 722# 1.5→2.0: 4日集計 narrow(<2bps) sell=-81.8bps vs mid=+35.9bps。防御強化
   wide_spread_bps: 4.5         # 120# 25.0→4.5: P95相当。max(5.03)に近い帯で wide 判定
   wide_spread_ratio: 0.5       # 広スプレッド時の offset 割引
   ofi_boost_sensitivity: 0.5   # 546# OFI adverse方向 boost 感度 (0=無効, 0.5=最大50%増)
@@ -826,6 +826,8 @@ sell_hour_offset_boost:
   2: 5.0      # 688# 2.5→5.0: JST11h boost=2.5でもAS50% PnL=-5.19 (n=6)。soft-killレベルへ
   3: 2.0      # 381# JST 12h: sell 30s=-4.802bps (最悪帯)
   4: 5.0      # 688# 2.5→5.0: JST13h boost=2.5でもAS100% PnL=-8.85 (n=3)。soft-killレベルへ
+  5: 1.3      # 722# UTC 05h = JST 14h: 4日 sell n=23 avg=-1.28bps AS=26% → 新規追加
+  6: 1.3      # 722# UTC 06h = JST 15h: 4日 sell n=20 avg=-1.08bps AS=25% → 新規追加
   7: 3.0      # 704# UTC 07h = JST 16h: 3日 sell n=8 avg=-3.72bps total=-29.78bps → 新規追加
   8: 1.5      # 306# UTC 08h = JST 17h: AS 63%
   9: 1.8      # 468# UTC 09h = JST 18h: 461# AS50%, PnL-3.19bps → 新規追加
