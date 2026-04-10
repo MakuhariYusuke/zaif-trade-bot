@@ -31,6 +31,7 @@ import time
 # --- PyTorch DLL load fix (import early) ---
 import torch
 # ----------------------------------------
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol, cast
@@ -78,6 +79,12 @@ def _install_signal_handlers() -> None:
 # 同一ウィンドウで連続 warm-start すると過学習するため、
 # データウィンドウが更新されるまで retrain をスキップする
 _last_deployed_val_ts_max: float = 0.0
+
+
+def _yaml_section(cfg: Mapping[str, object], key: str) -> Mapping[str, object]:
+    """Return a typed YAML subsection or an empty mapping for malformed input."""
+    section = cfg.get(key, {})
+    return cast(Mapping[str, object], section) if isinstance(section, Mapping) else {}
 
 
 # ════════════════════════════════════════════════════════════════
@@ -152,15 +159,16 @@ class SACRetrainConfig:
     max_signal_staleness_hours: float = 24.0
 
     @classmethod
-    def from_yaml_dict(cls, cfg: dict) -> SACRetrainConfig:
+    def from_yaml_dict(cls, cfg: Mapping[str, object]) -> SACRetrainConfig:
         """g2_sac_train.yaml の dict から SACRetrainConfig を構築."""
-        data_cfg: dict = cfg.get("data", {})  # type: ignore[assignment]
-        sac_cfg: dict = cfg.get("sac_hyperparameters", {})  # type: ignore[assignment]
-        training_cfg: dict = cfg.get("training", {})  # type: ignore[assignment]
-        env_cfg: dict = cfg.get("environment", {})  # type: ignore[assignment]
-        feat_cfg: dict = cfg.get("features", {})  # type: ignore[assignment]
-        output_cfg: dict = cfg.get("output", {})  # type: ignore[assignment]
-        retrain_cfg: dict = cfg.get("sac_retrain", {})  # type: ignore[assignment]
+        data_cfg = _yaml_section(cfg, "data")
+        sac_cfg = _yaml_section(cfg, "sac_hyperparameters")
+        training_cfg = _yaml_section(cfg, "training")
+        env_cfg = _yaml_section(cfg, "environment")
+        feat_cfg = _yaml_section(cfg, "features")
+        output_cfg = _yaml_section(cfg, "output")
+        retrain_cfg = _yaml_section(cfg, "sac_retrain")
+        evaluation_cfg = _yaml_section(cfg, "evaluation")
 
         selected = feat_cfg.get("selected", [])
         feature_columns = [str(c) for c in selected] if isinstance(selected, list) else []
@@ -168,9 +176,7 @@ class SACRetrainConfig:
         model_dir = Path(str(output_cfg.get("model_dir", "models/v460")))
 
         return cls(
-            ohlcv_path=str(
-                data_cfg.get("ohlcv_path", cls.ohlcv_path)  # type: ignore[arg-type]
-            ),
+            ohlcv_path=str(data_cfg.get("ohlcv_path", cls.ohlcv_path)),
             rolling_window_days=int(retrain_cfg.get("rolling_window_days", 7)),
             model_path=model_dir / str(retrain_cfg.get("model_name", "sac_sidecar.zip")),
             buffer_path=model_dir / str(retrain_cfg.get("buffer_name", "sac_sidecar.buffer.pkl")),
@@ -197,7 +203,7 @@ class SACRetrainConfig:
             use_simple_reward=bool(env_cfg.get("use_simple_reward", False)),
             reward_scaling=float(env_cfg.get("reward_scaling", 1.0)),
             min_gross_roi=float(retrain_cfg.get("min_gross_roi", 0.0)),
-            n_eval_episodes=int(retrain_cfg.get("n_eval_episodes", cfg.get("evaluation", {}).get("n_episodes", 3))),
+            n_eval_episodes=int(retrain_cfg.get("n_eval_episodes", evaluation_cfg.get("n_episodes", 3))),
             check_interval_sec=int(retrain_cfg.get("check_interval_sec", 300)),
             retrain_interval_sec=int(retrain_cfg.get("retrain_interval_sec", 7200)),
             retrain_interval_max_sec=int(retrain_cfg.get("retrain_interval_max_sec", 14400)),
@@ -1195,7 +1201,7 @@ def load_config(config_path: str | Path) -> SACRetrainConfig:
     if not isinstance(raw, dict):
         raise TypeError(f"Expected YAML mapping in {path}")
 
-    return SACRetrainConfig.from_yaml_dict(raw)
+    return SACRetrainConfig.from_yaml_dict(cast(dict[str, object], raw))
 
 
 # ════════════════════════════════════════════════════════════════

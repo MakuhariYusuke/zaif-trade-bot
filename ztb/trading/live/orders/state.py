@@ -12,7 +12,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from ztb.trading.live.orders.compat import OrderData
+from ztb.trading.orders.state_machine import OrderData
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)

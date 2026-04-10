@@ -705,6 +705,7 @@ class TestBuildFullFeatures:
 
 
 @pytest.mark.skipif(not _HAS_LIGHTGBM, reason="lightgbm not installed")
+@pytest.mark.slow
 class TestRetrainModel:
     """126# retrain_model() テスト."""
 

@@ -53,3 +53,42 @@
   - YAML 値は config に載るが、参照するコードが旧 SHA にないため
   - → 次回 hot-swap 再起動時に反映
 - `trending_down_sell_offset_boost: 1.3` は YAML 値のみのため hot-reload で反映済
+
+## 実装結果
+
+| # | 結果 | 実装メモ |
+|---|------|----------|
+| T1 | 完了 | `MIN_RECORDS_FOR_INTEGRATION = 5` を導入し、実データ件数不足は fail ではなく skip。ラベル化後サンプル不足も同根 flaky として skip し、特徴量生成成功時は `len(X) > 0` と `len(X) == len(y)` で実効性を維持 |
+| T2 | 完了 | `SACRetrainConfig.from_yaml_dict()` を `Mapping[str, object]` 入力へ寄せ、`_yaml_section()` で YAML section を型付き取得。対象8箇所の `type: ignore` を除去 |
+| T3 | 完了 | `ztb.trading.live.orders.compat` の残存 import を正規 `ztb.trading.orders.state_machine` へ変更し、compat shim を削除 |
+| T4 | 完了 | `tmp_path` 未定義防止、`eval_set` の typed cast、`psutil` import ignore の mypy 設定化で対象3箇所の `type: ignore` を除去 |
+| T5 | 完了 | `TestRetrainModel` に `@pytest.mark.slow` を追加。既存 marker 登録は `pytest.ini`/`pyproject.toml` に存在するため追加不要 |
+
+## プロンプト妥当性と補正
+
+- T1 は妥当。ただし `len(X) >= 1` だけでは label 側の整合を見ないため、`len(X) == len(y)` を追加した。また record 件数だけでなくラベル化後件数でも不足が起きるため、`Insufficient labeled samples` も skip 対象にした。
+- T2 は妥当。単純 `cast()` の羅列より、壊れた YAML section が来ても既定値に落ちる `_yaml_section()` の方が安全と判断した。
+- T3 は妥当。`rg` で live orders compat の利用が `state.py` のみであることを確認した。
+- T4 は妥当。ただし `Any` は増やさず、`pd.DataFrame`/`pd.Series` の eval_set cast にした。
+- T5 は妥当。slow marker の未登録問題は既に解決済みだったため、対象 class への付与に留めた。
+
+## 隠れタスク・水平展開
+
+- `psutil` の inline ignore は module-level mypy 設定へ移した。今後 `import psutil` を増やす場合も局所 suppress を増やさずに済む。
+- YAML dict 取り出しは SAC 側で helper 化した。PPO 側にも同型の `from_yaml_dict()` が残る場合は同じパターンを横展開候補にする。
+- real-data test は件数依存 fail とラベル化後サンプル不足 fail を避ける一方、特徴量生成自体は `>0` と label 長一致で維持した。完全 skip ではないため回帰検知力を残す。
+
+## 著者への質問
+
+- なし。今回の5タスクはいずれも既存コードとプロンプトの範囲で実装判断可能だった。
+
+## 検証結果
+
+- `python3 -m py_compile scripts/v460/ml/sac_retrain_scheduler.py scripts/v460/ml/retrain_scheduler.py tests/unit/v460/test_ml_pipeline.py tests/unit/v460/test_retrain_hot_reload.py ztb/trading/live/orders/state.py` PASS
+- `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_ml_pipeline.py::Test057Integration tests/unit/v460/test_sac_retrain_scheduler.py::TestSACRetrainConfig -x --tb=short --no-cov` PASS: `10 passed, 1 skipped in 2.52s`
+- `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_retrain_hot_reload.py::TestRetrainModel -x --tb=short --no-cov` PASS: `3 passed in 3.73s`
+- `rg` confirmed no remaining target `type: ignore` / live orders compat import in touched scopes.
+- Import smoke PASS: `from ztb.trading.live.orders.state import OrderRecord`
+- targeted mypy:
+  - plain invocation failed before checking due existing module duplication: `lightgbm/__init__.py` seen as both `v460.ml` and `scripts.v460.ml`
+  - `--explicit-package-bases` invocation exceeded 45s timeout; no code error was emitted before timeout

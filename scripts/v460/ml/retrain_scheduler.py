@@ -40,6 +40,7 @@ import time
 import types
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -505,6 +506,7 @@ def _save_enriched_cache(
     cache_key: str | None = None,
 ) -> None:
     """E4: enriched data を cache に保存 (cache_key 付き, アトミック書き込み)."""
+    tmp_path: Path | None = None
     try:
         import pickle
         payload = {
@@ -521,10 +523,11 @@ def _save_enriched_cache(
     except Exception as e:
         logger.warning(f"E4: Cache save failed: {e}")
         # tmp ファイル残留を防止
-        try:
-            tmp_path.unlink(missing_ok=True)  # type: ignore[possibly-undefined]
-        except Exception:  # noqa: R-18 cleanup best-effort
-            pass
+        if tmp_path is not None:
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except Exception:  # noqa: R-18 cleanup best-effort
+                pass
 
 def _resolve_early_stopping(
     cfg: ConfigMap,
@@ -1709,7 +1712,8 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
 
     # 646# P0-B: eval_set があれば val split の pred_std も診断用に記録
     if early_stop > 0 and "eval_set" in fit_kwargs:
-        es_X, _ = fit_kwargs["eval_set"][0]  # type: ignore[index]
+        eval_set = cast(list[tuple[pd.DataFrame, pd.Series]], fit_kwargs["eval_set"])
+        es_X, _ = eval_set[0]
         preds_val = lgbm.predict(es_X)
         pred_std_val = float(np.std(preds_val))
         result["pred_std_val"] = pred_std_val
@@ -2151,7 +2155,7 @@ def main() -> None:
         # 既存ロックの PID 生存チェック
         try:
             existing_pid = int(lock_path.read_text().strip())
-            import psutil  # type: ignore[import-untyped]
+            import psutil
             if psutil.pid_exists(existing_pid):
                 proc = psutil.Process(existing_pid)
                 if proc.is_running() and "retrain" in " ".join(proc.cmdline()):
