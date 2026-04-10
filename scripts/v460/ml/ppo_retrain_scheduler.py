@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import signal
 import threading
 import time
 from dataclasses import dataclass
@@ -36,6 +35,7 @@ from scripts.v460.ml.sidecar_scheduler_common import (
     atomic_replace_with_tmp,
     append_history_best_effort,
     best_effort_training_cleanup,
+    install_shutdown_signal_handlers,
     push_neutral_signal_best_effort,
     record_trigger_result_best_effort,
     run_with_timeout,
@@ -64,14 +64,11 @@ _TRAINING_TIMEOUT_SEC = 3600
 
 def _install_signal_handlers() -> None:
     """SIGTERM/SIGINT で graceful 停止."""
-
-    def _handler(signum: int, _frame: object) -> None:
-        name = signal.Signals(signum).name
-        logger.warning("[675#] Received %s — scheduling graceful shutdown", name)
-        _shutdown_event.set()
-
-    signal.signal(signal.SIGTERM, _handler)
-    signal.signal(signal.SIGINT, _handler)
+    install_shutdown_signal_handlers(
+        shutdown_event=_shutdown_event,
+        logger_obj=logger,
+        label="[675#]",
+    )
 
 
 @dataclass(slots=True)

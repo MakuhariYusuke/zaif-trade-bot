@@ -13,6 +13,7 @@ import gc
 import json
 import logging
 from pathlib import Path
+import signal
 import threading
 import time
 from typing import Generic, Protocol, TypeVar
@@ -226,6 +227,23 @@ def push_neutral_signal_best_effort(
     return True
 
 
+def install_shutdown_signal_handlers(
+    *,
+    shutdown_event: threading.Event,
+    logger_obj: logging.Logger,
+    label: str,
+) -> None:
+    """Install SIGTERM/SIGINT handlers that request a graceful scheduler shutdown."""
+
+    def _handler(signum: int, _frame: object) -> None:
+        name = signal.Signals(signum).name
+        logger_obj.warning("%s Received %s — scheduling graceful shutdown", label, name)
+        shutdown_event.set()
+
+    signal.signal(signal.SIGTERM, _handler)
+    signal.signal(signal.SIGINT, _handler)
+
+
 __all__ = [
     "BaseRetrainResult",
     "DataFileRetrainTrigger",
@@ -233,6 +251,7 @@ __all__ = [
     "append_history_jsonl",
     "atomic_replace_with_tmp",
     "best_effort_training_cleanup",
+    "install_shutdown_signal_handlers",
     "push_neutral_signal_best_effort",
     "record_trigger_result_best_effort",
     "run_with_timeout",

@@ -10797,3 +10797,10 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
   - `ztb.trading.live.orders.compat` shim を削除し、残存 import を canonical path へ変更
 - test runtime:
   - `TestRetrainModel` を `slow` marker 対象へ追加
+
+## 2026-04-10 727 sidecar scheduler commonization
+
+- PPO/SAC scheduler に重複していた graceful shutdown signal handler を `ztb.training.sidecar.scheduler_common.install_shutdown_signal_handlers()` へ集約
+- script 層の `_install_signal_handlers()` wrapper は patch 互換のため維持
+- `tests/unit/v460/test_sidecar_scheduler_common.py` で common helper の signal 登録と event set を確認
+- `726` は並行作業で使用済みのため、こちらのドキュメントは `727` に採番
