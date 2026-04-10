@@ -1,0 +1,11 @@
+{
+    // 729# GitHub MCP Server (Remote)
+    // GitHub Copilot OAuth 経由で認証 — PAT/wrapper 不要
+    // Ref: https://github.com/github/github-mcp-server
+    "servers": {
+        "github": {
+            "type": "http",
+            "url": "https://api.githubcopilot.com/mcp/"
+        }
+    }
+}
