@@ -6,9 +6,14 @@
 #   (CLI 引数は YAML より優先される)
 #
 # v459 反省: 設定がコード内 dict で形骸化していた → YAML に一元化
+#
+# Hot-reload 凡例 (726#):
+#   大半のフィールドは YAML 変更のみで hot-reload 反映（config_hot_reload.py 参照）
+#   ⚠ CODE-COUPLED: YAML 値は hot-reload で config に載るが、対応コードがない旧 SHA では無効
+#   ⚠ RESTART-REQUIRED: hot-reload 対象外、プロセス再起動（hot-swap）必須
 
 # ---- 基本設定 ----
-symbol: btc_jpy
+symbol: btc_jpy                  # ⚠ RESTART-REQUIRED
 order_quantity: 0.001         # 初期ロット (BTC) — Coincheck 最小
 cycle_interval_sec: 120.0     # サイクル間隔 (秒)
 max_cycle_sleep_sec: 600.0    # 209#: sleep 乗数積み重ね上限 (10分)
@@ -32,7 +37,7 @@ sell_age_cap_sec: 25.0        # 506# P0: sell 最大滴留時間 (30-50sバケ�
 poll_interval_sec: 5.0        # ポーリング間隔 (秒)
 post_fill_wait_sec: 30.0      # 約定後 PnL 計測待ち (秒)
 post_fill_wait_sec_sell: 90.0  # 168# §4.1 #1: sell 保持期間延長 (30→90s, PnL120>0 が根拠)
-results_dir: results/v460/fill_test
+results_dir: results/v460/fill_test   # ⚠ RESTART-REQUIRED
 start_side: buy               # 開始サイド (buy / sell)
 max_preflight_skip: 10        # preflight 連続失敗の上限
 
@@ -352,8 +357,8 @@ spread_adaptive:
 # BitFlyer 等の先行気味な public 板を directional flip ではなく、
 # adverse-side の retreat / veto hint としてのみ使う。
 cross_venue_lead_lag:
-  enabled: true                    # 442# 有効化 (API実機確認OK: 518ms, mid=11.44M)
-  reference_exchange: bitflyer
+  enabled: true                    # 442# 有効化 (API実機確認OK: 518ms, mid=11.44M) ⚠ RESTART-REQUIRED
+  reference_exchange: bitflyer     # ⚠ RESTART-REQUIRED (WebSocket 初期化時に固定)
   max_age_sec: 3.0
   spread_bps_threshold: 1.0       # 444# 実測0.5-1.7bps → 2.0では発火せず → 1.0
   velocity_bps_threshold: 0.01    # 444# 120s cycleではvel~0.01-0.07bps/s: 5.98bps乖離捕捉に0.01必要
@@ -489,6 +494,7 @@ skip_gate:
   bypass_mode_buy: true
   bypass_mode_sell: true
   # 724# regime-conditional bypass exclusion (723# analysis: trending_down bypass avg=-0.59 vs normal +0.05)
+  # ⚠ CODE-COUPLED (724# ddd30ae): _is_bypass_mode_active() の regime チェック必須。hot-reload で値は載るがコード不在時は無効。
   bypass_regime_exclude:
     - "sell/trending_down"
   # 694# AS trailing gate — 700# で enabled: true に切替 (699# 検証済: 低リスク即効性)

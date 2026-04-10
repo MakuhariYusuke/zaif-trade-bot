@@ -88,6 +88,29 @@ def get_git_status_lines(
         return lines[:max_lines]
     return lines
 
+
+def get_changed_py_files(
+    old_sha: str,
+    new_sha: str,
+    *,
+    path_prefix: str = "scripts/v460/lib/",
+    cwd: Path | None = None,
+    timeout: int = 5,
+) -> list[str]:
+    """Return .py files changed between two SHAs under *path_prefix*.
+
+    726# hot-reload code-change detection: SHA 変更時に Python コードの
+    差分を検出し、restart が必要かどうかを判定するためのヘルパー。
+    """
+    output = get_git_output(
+        ["diff", "--name-only", f"{old_sha}..{new_sha}", "--", path_prefix],
+        cwd=cwd,
+        timeout=timeout,
+    )
+    if not output:
+        return []
+    return [f for f in output.splitlines() if f.strip().endswith(".py")]
+
 def get_git_dirty_status(
     cwd: Path | None = None, timeout: int = 8, *, include_untracked: bool = False
 ) -> bool:

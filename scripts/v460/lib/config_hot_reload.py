@@ -687,6 +687,17 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "halt_sleep_multiplier",
 })
 
+# ======================================================================
+# 726# コード結合フィールド: YAML 値は hot-reload 可能だが、
+# 対応するコードが running SHA に存在しない場合は無効。
+# フィールド名 → 導入 SHA (short) のマッピング。
+# hot-reload 時に running SHA が古い場合、WARNING を出力する。
+# ======================================================================
+_CODE_COUPLED_FIELDS: dict[str, str] = {
+    # 724# _is_bypass_mode_active() の regime 除外チェック
+    "skip_gate_bypass_regime_exclude": "ddd30ae",
+}
+
 # 構造体再構築が必要なコンポーネントのマッピング
 # field_prefix -> コールバック名
 _COMPONENT_REBUILD_PREFIXES: dict[str, str] = {
@@ -874,9 +885,9 @@ class ConfigHotReloader:
             runner._maker_price.base_offset_ratio_sell = self._config.spread_offset_ratio_sell
             logger.info("[config_hot_reload]   MakerPriceCalculator offsets updated")
 
-        # git SHA の再取得
+        # git SHA の再取得 + 726# コード変更検知
         try:
-            from ztb.utils.git_utils import get_git_sha
+            from ztb.utils.git_utils import get_changed_py_files, get_git_sha
             new_sha = get_git_sha()
             if new_sha != runner._git_sha:
                 old_sha = runner._git_sha
@@ -884,6 +895,29 @@ class ConfigHotReloader:
                 logger.info(
                     f"[config_hot_reload]   git SHA updated: {old_sha} → {new_sha}"
                 )
+                # 726# コード変更検知: scripts/v460/lib/ 配下の .py 差分を確認
+                py_changes = get_changed_py_files(old_sha, new_sha)
+                if py_changes:
+                    logger.warning(
+                        f"[config_hot_reload] ⚠ CODE CHANGES DETECTED between "
+                        f"{old_sha[:7]}..{new_sha[:7]} — {len(py_changes)} Python "
+                        f"file(s) modified. YAML values updated but code logic "
+                        f"changes require process restart (hot-swap)."
+                    )
+                    for pf in py_changes[:10]:
+                        logger.warning(f"[config_hot_reload]   changed: {pf}")
+                # 726# コード結合フィールド警告
+                coupled_in_change = [
+                    f for f in changed_fields if f in _CODE_COUPLED_FIELDS
+                ]
+                if coupled_in_change:
+                    logger.warning(
+                        f"[config_hot_reload] ⚠ CODE-COUPLED fields changed: "
+                        f"{coupled_in_change}. These fields require code from "
+                        f"the corresponding commit to take effect. If running "
+                        f"SHA predates the field introduction, values will be "
+                        f"loaded but NOT used."
+                    )
         except Exception as e:
             logger.warning(f"[config_hot_reload]   git SHA update failed: {e}")
 

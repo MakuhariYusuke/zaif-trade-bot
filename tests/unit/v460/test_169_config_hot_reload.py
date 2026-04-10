@@ -749,3 +749,20 @@ class TestReloadableFieldsConsistency:
         assert "inventory_escape_duty_cycle" not in _HOT_RELOADABLE_FIELDS
         assert "recovery_skew_enabled" not in _HOT_RELOADABLE_FIELDS
         assert "recovery_skew_offset_mult" not in _HOT_RELOADABLE_FIELDS
+
+    def test_code_coupled_fields_subset_of_reloadable(self) -> None:
+        """726# CODE_COUPLED_FIELDS は HOT_RELOADABLE_FIELDS のサブセット."""
+        from scripts.v460.lib.config_hot_reload import _CODE_COUPLED_FIELDS
+        not_reloadable = set(_CODE_COUPLED_FIELDS) - _HOT_RELOADABLE_FIELDS
+        assert not_reloadable == set(), (
+            f"CODE_COUPLED fields must be in HOT_RELOADABLE_FIELDS: {not_reloadable}"
+        )
+
+    def test_code_coupled_fields_exist_in_config(self) -> None:
+        """726# CODE_COUPLED_FIELDS が FillTestConfig に実在する."""
+        from scripts.v460.lib.config_hot_reload import _CODE_COUPLED_FIELDS
+        config_fields = {f.name for f in dataclasses.fields(FillTestConfig)}
+        missing = set(_CODE_COUPLED_FIELDS) - config_fields
+        assert missing == set(), (
+            f"CODE_COUPLED fields not in FillTestConfig: {missing}"
+        )

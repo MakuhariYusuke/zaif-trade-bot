@@ -354,3 +354,27 @@ def test_compare_manifests_ignore_git():
     )
     assert are_compatible is False
     assert any("Git" in diff for diff in differences)
+
+
+# ======================================================================
+# 726# get_changed_py_files テスト
+# ======================================================================
+
+
+def test_get_changed_py_files_returns_list():
+    """726# get_changed_py_files が list[str] を返す."""
+    from ztb.utils.git_utils import get_changed_py_files
+
+    # HEAD..HEAD は差分なし → 空リスト
+    result = get_changed_py_files("HEAD", "HEAD")
+    assert isinstance(result, list)
+    assert len(result) == 0
+
+
+def test_get_changed_py_files_invalid_sha():
+    """726# 無効 SHA は空リストを返す（例外なし）."""
+    from ztb.utils.git_utils import get_changed_py_files
+
+    result = get_changed_py_files("0000000", "0000001")
+    assert isinstance(result, list)
+    assert len(result) == 0
