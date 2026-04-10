@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import TypeVar
+from collections.abc import Callable, Mapping
+from typing import TypeVar, cast
 
 from ztb.metrics.fill_record_payloads import (
     build_skip_fill_record_payload,
@@ -21,7 +21,8 @@ def build_typed_fill_record(
 ) -> FillRecordT:
     """Build a typed fill record while filtering unknown payload fields."""
 
-    return record_cls(  # type: ignore[call-arg]
+    constructor = cast(Callable[..., FillRecordT], record_cls)
+    return constructor(
         **sanitize_fill_record_fields(
             data,
             valid_field_names=valid_field_names,

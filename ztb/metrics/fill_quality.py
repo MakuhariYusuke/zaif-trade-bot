@@ -73,11 +73,6 @@ from ztb.metrics.fill_round_trip_metrics import (
     RoundTripRecord,
     compute_round_trip_metrics,
 )
-from ztb.metrics.fill_record_payloads import (
-    FillRecordPayload,
-    build_skip_fill_record_payload,
-    sanitize_fill_record_fields,
-)
 from ztb.metrics.fill_record_builders import (
     build_typed_fill_record,
     build_typed_skip_fill_record,
@@ -361,12 +356,11 @@ class FillRecord:
         if "schema_version" not in payload:
             payload["schema_version"] = 1
         strip_guard_pipeline_result(payload)
-        return cls(  # type: ignore[arg-type]
-            **sanitize_fill_record_fields(
-                payload,
-                valid_field_names=_FILL_RECORD_FIELD_NAMES,
-                context="FillRecord.from_dict",
-            )
+        return build_typed_fill_record(
+            cls,
+            valid_field_names=_FILL_RECORD_FIELD_NAMES,
+            context="FillRecord.from_dict",
+            data=payload,
         )
 
     @property

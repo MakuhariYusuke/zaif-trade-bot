@@ -835,3 +835,4 @@ NNN_phX_TYPE_description.md
 | 725 | plan | [725_cplt_codex_tasks_type_safety_test_robustness.md](725_cplt_codex_tasks_type_safety_test_robustness.md) | Codex 5タスク委譲: 型安全・flaky テスト修正・compat 削除・テスト高速化 |
 | 726 | impl | [726_cplt_hot_reload_code_change_detection.md](726_cplt_hot_reload_code_change_detection.md) | hot-reload 改善: SHA 変更時コード差分検知 + CODE_COUPLED_FIELDS 注釈 + YAML 凡例 |
 | 727 | refactor | [727_phg_sidecar_scheduler_signal_handler_common.md](727_phg_sidecar_scheduler_signal_handler_common.md) | PPO/SAC sidecar scheduler の graceful shutdown signal handler 共通化 |
+| 728 | refactor | [728_phg_fill_record_builder_type_safety.md](728_phg_fill_record_builder_type_safety.md) | FillRecord builder/from_dict の重複整理と type ignore 削減 |

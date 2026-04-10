@@ -10804,3 +10804,9 @@ AS 分類器 ROC-AUC ≈ 0.50（ランダム同等）で受入基準 FAIL。
 - script 層の `_install_signal_handlers()` wrapper は patch 互換のため維持
 - `tests/unit/v460/test_sidecar_scheduler_common.py` で common helper の signal 登録と event set を確認
 - `726` は並行作業で使用済みのため、こちらのドキュメントは `727` に採番
+
+## 2026-04-10 728 fill builder type-safety cleanup
+
+- `FillRecord.from_dict()` を `build_typed_fill_record()` 経由へ寄せ、sanitize + constructor 呼び出しの重複を削減
+- `fill_record_builders.py` の `type: ignore[call-arg]` と `fill_quality.py` の `type: ignore[arg-type]` を削除
+- `test_fill_quality.py::TestFillRecord` / 695 / 687 subset で回帰確認
