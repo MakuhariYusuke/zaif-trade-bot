@@ -832,3 +832,4 @@ NNN_phX_TYPE_description.md
 | 722 | tuning | [722_cplt_sell_hour_gap_narrow_spread_defense.md](722_cplt_sell_hour_gap_narrow_spread_defense.md) | 720# 初動分析: sell_hour_boost UTC 5/6 gap 追加 + narrow spread sell boost 1.5→2.0 |
 | 723 | analysis | [723_cplt_skip_gate_bypass_paradox_deep_analysis.md](723_cplt_skip_gate_bypass_paradox_deep_analysis.md) | skip_gate bypass パラドックス深堀り: モデル予測力ゼロ確認、bypass_mode +66.0bps 貢献 |
 | 724 | impl | [724_cplt_regime_conditional_bypass_exclusion.md](724_cplt_regime_conditional_bypass_exclusion.md) | regime-conditional bypass exclusion + trending_down_sell_offset_boost 1.0→1.3 |
+| 725 | plan | [725_cplt_codex_tasks_type_safety_test_robustness.md](725_cplt_codex_tasks_type_safety_test_robustness.md) | Codex 5タスク委譲: 型安全・flaky テスト修正・compat 削除・テスト高速化 |
