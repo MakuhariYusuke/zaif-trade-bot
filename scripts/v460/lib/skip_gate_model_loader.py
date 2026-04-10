@@ -107,8 +107,8 @@ class SkipGateModelLoaderMixin:
 
     @staticmethod
     def _file_hash(path: Path) -> str:
-        """Return the MD5 hex-digest of *path*."""
-        digest = hashlib.md5()  # noqa: S324  # not a security-sensitive hash
+        """Return the SHA-256 hex-digest of *path* (used for change detection)."""
+        digest = hashlib.sha256()
         digest.update(path.read_bytes())
         return digest.hexdigest()
 

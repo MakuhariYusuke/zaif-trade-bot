@@ -15,6 +15,7 @@ import tempfile
 import pickle
 
 import numpy as np
+from numpy import typing as npt
 import pytest
 
 from ztb.ml.skip_gate_contracts import (
@@ -42,10 +43,10 @@ class _StubDecision:
 class _StubGate:
     """Picklable _SkipGateLike stub."""
 
-    def predict(self, features: np.ndarray) -> _StubDecision:  # type: ignore[override]
+    def predict(self, features: npt.NDArray[np.float32]) -> _StubDecision:
         return _StubDecision()
 
-    def predict_proba(self, features: np.ndarray) -> float:
+    def predict_proba(self, features: npt.NDArray[np.float32]) -> float:
         return 0.9
 
 
