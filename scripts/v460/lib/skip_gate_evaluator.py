@@ -173,7 +173,12 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
         self._as_trailing_tracker.reconfigure(gate_config)
         return self._as_trailing_tracker
 
-    def _is_bypass_mode_active(self, side: str) -> bool:
+    def _is_bypass_mode_active(self, side: str, regime: str | None = None) -> bool:
+        # 724# regime-conditional exclusion
+        if regime and self._config.skip_gate_bypass_regime_exclude:
+            key = f"{side}/{regime}"
+            if key in self._config.skip_gate_bypass_regime_exclude:
+                return False
         if side == "buy" and self._config.skip_gate_bypass_mode_buy is not None:
             return bool(self._config.skip_gate_bypass_mode_buy)
         if side == "sell" and self._config.skip_gate_bypass_mode_sell is not None:
@@ -1150,7 +1155,7 @@ class SkipGateEvaluator(SkipGateModelLoaderMixin, SkipGateEvWeightedMixin):
             )
 
             if decision.should_skip:
-                if self._is_bypass_mode_active(side):
+                if self._is_bypass_mode_active(side, regime=regime_value):
                     result.bypassed = True
                     result.skipped = False
                     logger.info(

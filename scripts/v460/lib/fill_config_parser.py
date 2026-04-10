@@ -273,6 +273,7 @@ def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
         "bypass_mode": "skip_gate_bypass_mode",
         "bypass_mode_buy": "skip_gate_bypass_mode_buy",
         "bypass_mode_sell": "skip_gate_bypass_mode_sell",
+        "bypass_regime_exclude": "skip_gate_bypass_regime_exclude",
         "mode": "skip_gate_mode",
         "model_path": "skip_gate_model_path",
         # 141# P1-01: side 別モデルパス

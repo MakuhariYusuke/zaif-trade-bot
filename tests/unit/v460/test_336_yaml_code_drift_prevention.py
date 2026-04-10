@@ -91,6 +91,7 @@ KNOWN_YAML_OVERRIDES: frozenset[str] = frozenset({
     "skip_gate_bypass_mode",
     "skip_gate_bypass_mode_buy",
     "skip_gate_bypass_mode_sell",
+    "skip_gate_bypass_regime_exclude",
     "skip_gate_ev_as_offset_enabled",
     "skip_gate_ev_weighted_enabled",
     "skip_gate_use_ob_features",

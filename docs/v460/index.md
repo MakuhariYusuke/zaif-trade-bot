@@ -831,3 +831,4 @@ NNN_phX_TYPE_description.md
 | 721 | refactor | [721_phg_cx7_maker_regime_boost_ranging_extract.md](721_phg_cx7_maker_regime_boost_ranging_extract.md) | CX7: `_regime_boost_ranging()` から OBI 非対称 helper を抽出し 60 行以下へ整理 |
 | 722 | tuning | [722_cplt_sell_hour_gap_narrow_spread_defense.md](722_cplt_sell_hour_gap_narrow_spread_defense.md) | 720# 初動分析: sell_hour_boost UTC 5/6 gap 追加 + narrow spread sell boost 1.5→2.0 |
 | 723 | analysis | [723_cplt_skip_gate_bypass_paradox_deep_analysis.md](723_cplt_skip_gate_bypass_paradox_deep_analysis.md) | skip_gate bypass パラドックス深堀り: モデル予測力ゼロ確認、bypass_mode +66.0bps 貢献 |
+| 724 | impl | [724_cplt_regime_conditional_bypass_exclusion.md](724_cplt_regime_conditional_bypass_exclusion.md) | regime-conditional bypass exclusion + trending_down_sell_offset_boost 1.0→1.3 |

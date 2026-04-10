@@ -685,6 +685,7 @@ class TestReloadableFieldsConsistency:
             "skip_gate_bypass_mode",
             "skip_gate_bypass_mode_buy",
             "skip_gate_bypass_mode_sell",
+            "skip_gate_bypass_regime_exclude",
             "velocity_skip_as_offset_enabled",
             "velocity_offset_boost_factor",
             "velocity_offset_proportional",

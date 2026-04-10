@@ -155,7 +155,7 @@ regime:
   trending_up_buy_offset_boost: 0.7
   trending_up_sell_offset_boost: 2.2   # 685# 1.8→2.2: 4/1 trending_up/sell PnL=-2.93 AS=45%。1.8は防御不足
   trending_down_buy_offset_boost: 1.8
-  trending_down_sell_offset_boost: 1.0   # 685# 0.7→1.0: 4/1 trending_down/sell PnL=-2.49 AS=31%。順張り割引が不成立→中立化
+  trending_down_sell_offset_boost: 1.3   # 724# 1.0→1.3: 5日 sell/td avg=-0.75 AS=29%, spread>2bps帯でAS=33-43%。中立化不足→軽防御
   # 156# §18: ranging 時に offset 縮小 → 安定市場で fill_rate+利幅確保
   ranging_offset_discount: 0.90   # ranging 時 offset × 0.90 (控えめ開始、A/B で 0.85 検証予定)
   # 440# ranging offset buy/sell 非対称化 (432# buy+ranging PF=0.766 対策)
@@ -488,6 +488,9 @@ skip_gate:
   bypass_mode: true            # 686# SG-1: score/telemetry は維持しつつブロック停止
   bypass_mode_buy: true
   bypass_mode_sell: true
+  # 724# regime-conditional bypass exclusion (723# analysis: trending_down bypass avg=-0.59 vs normal +0.05)
+  bypass_regime_exclude:
+    - "sell/trending_down"
   # 694# AS trailing gate — 700# で enabled: true に切替 (699# 検証済: 低リスク即効性)
   as_trailing_gate_enabled: true
   as_trailing_gate_window_size: 100

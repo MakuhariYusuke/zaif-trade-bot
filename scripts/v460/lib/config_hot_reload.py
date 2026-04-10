@@ -110,6 +110,7 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "skip_gate_bypass_mode",
     "skip_gate_bypass_mode_buy",
     "skip_gate_bypass_mode_sell",
+    "skip_gate_bypass_regime_exclude",
     "skip_gate_buy_enabled",
     "skip_gate_sell_enabled",
     "skip_gate_as_threshold",

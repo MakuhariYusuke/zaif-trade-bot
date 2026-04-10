@@ -117,7 +117,7 @@ class TestDirectionalBoostConfig:
         assert regime["trending_up_buy_offset_boost"] == 0.7
         assert regime["trending_up_sell_offset_boost"] == 2.2   # 685#: 1.8→2.2
         assert regime["trending_down_buy_offset_boost"] == 1.8
-        assert regime["trending_down_sell_offset_boost"] == 1.0   # 685#: 0.7→1.0
+        assert regime["trending_down_sell_offset_boost"] == 1.3   # 724#: 1.0→1.3
 
     def test_live_yaml_skip_sell_trending_false(self, v460_fill_test_yaml: dict[str, object]) -> None:
         """176# B → 196#: skip_sell_trending=true + trending_sell_as_offset_enabled=true.

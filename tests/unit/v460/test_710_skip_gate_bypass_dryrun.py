@@ -71,6 +71,27 @@ def test_side_aware_bypass_resolution() -> None:
     assert evaluator._is_bypass_mode_active("sell") is False  # type: ignore[attr-defined]
 
 
+def test_bypass_regime_exclude() -> None:
+    """724# regime-conditional bypass exclusion."""
+    cfg = FillTestConfig(
+        skip_gate_enabled=True,
+        skip_gate_bypass_mode=True,
+        skip_gate_bypass_mode_buy=True,
+        skip_gate_bypass_mode_sell=True,
+        skip_gate_bypass_regime_exclude=["sell/trending_down"],
+    )
+    evaluator = object.__new__(SkipGateEvaluator)
+    evaluator._config = cfg  # type: ignore[attr-defined]
+    # sell/trending_down is excluded → bypass inactive
+    assert evaluator._is_bypass_mode_active("sell", regime="trending_down") is False  # type: ignore[attr-defined]
+    # sell/ranging is NOT excluded → bypass active
+    assert evaluator._is_bypass_mode_active("sell", regime="ranging") is True  # type: ignore[attr-defined]
+    # buy/trending_down is NOT excluded → bypass active
+    assert evaluator._is_bypass_mode_active("buy", regime="trending_down") is True  # type: ignore[attr-defined]
+    # None regime → bypass active (fallback)
+    assert evaluator._is_bypass_mode_active("sell") is True  # type: ignore[attr-defined]
+
+
 def test_main_handles_missing_dir(tmp_path: Path) -> None:
     output = tmp_path / "report.json"
     assert main(

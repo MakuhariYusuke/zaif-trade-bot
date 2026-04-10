@@ -548,6 +548,8 @@ class FillTestConfig:
     skip_gate_bypass_mode: bool = False  # 686# SG-1: score計算継続, ブロック停止
     skip_gate_bypass_mode_buy: bool | None = None
     skip_gate_bypass_mode_sell: bool | None = None
+    # 724# regime-conditional bypass exclusion (e.g. ["sell/trending_down"])
+    skip_gate_bypass_regime_exclude: list[str] = field(default_factory=list)
     # 118# A3: side 別有効/無効 (sell 逆選別対策)
     skip_gate_buy_enabled: bool = True
     skip_gate_sell_enabled: bool = True
